@@ -50,9 +50,9 @@ Add your project-specific automation scripts here.
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | ? | Agent collaboration guide |
 | [terminology.md](./terminology.md) | ?? Template | AAIF/A2A/MCP terminology |
 | [a2a/](./a2a/) | ?? | A2A agent card and task templates |
-| [specs/](./specs/) | ?? | Feature specifications, including `SPEC-001` |
-| [plans/](./plans/) | ?? | Implementation plans, including `PLAN-001` |
-| [decisions/](./decisions/) | ?? | Architecture Decision Records, including `ADR-001` |
+| [specs/](./specs/) | ?? | Feature specifications, including `SPEC-001` and `SPEC-002` |
+| [plans/](./plans/) | ?? | Implementation plans, including `PLAN-001` and `PLAN-002` |
+| [decisions/](./decisions/) | ?? | Architecture Decision Records, including `ADR-001` and `ADR-002` |
 
 **Legend**: ? Complete | ?? Template (needs content) | ?? Directory
 

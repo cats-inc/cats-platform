@@ -37,7 +37,14 @@ through `cats-runtime`.
 - **Description**: The product shall support many persistent channels under one
   workspace model.
 - **Priority**: High
-- **Status**: Planned
+- **Status**: In Progress
+
+### FR-005: Renderer Shell
+
+- **Description**: The product shall provide a renderer shell that makes the
+  multi-channel workspace visible without forcing an Electron dependency yet.
+- **Priority**: High
+- **Status**: In Progress
 
 ## Non-Functional Requirements
 
@@ -53,7 +60,8 @@ through `cats-runtime`.
 
 ### NFR-003: Incremental Delivery
 
-- Phase 1 should remain dependency-light and easy to validate locally
+- Desktop packaging should be deferred until the renderer and workflow model
+  are stable
 
 ## User Stories
 
@@ -76,6 +84,17 @@ through `cats-runtime`.
 **Acceptance Criteria**:
 - [x] `/api/app-shell` returns workspace and orchestrator metadata
 - [x] The payload names future capabilities explicitly
+
+### US-003: Operator Workspace Shell
+
+**As an** operator,
+**I want to** see channels, orchestrator state, and runtime health in one UI,
+**So that** I can reason about the future product shape before persistence lands.
+
+**Acceptance Criteria**:
+- [x] Renderer shows a multi-channel sidebar
+- [x] Renderer shows runtime health and orchestrator notes
+- [ ] Renderer persists channel changes across reloads
 
 ## Constraints
 

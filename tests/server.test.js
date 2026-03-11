@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import test from 'node:test';
 
-import { createServer } from '../dist/server.js';
+import { createServer } from '../dist-server/server.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -77,7 +77,9 @@ test('GET /api/app-shell exposes the planned workspace contract', async () => {
     const payload = await response.json();
     assert.equal(payload.app.name, 'cats-inc');
     assert.equal(payload.app.runtimeBoundary, 'cats-runtime');
-    assert.deepEqual(payload.workspace.channels, []);
+    assert.equal(payload.workspace.selectedChannelId, 'launchpad');
+    assert.equal(payload.workspace.channels.length, 3);
+    assert.equal(payload.workspace.channels[0].title, 'Launchpad');
     assert.equal(payload.workspace.capabilities.multiChannel, true);
     assert.equal(payload.runtime.reachable, false);
   });

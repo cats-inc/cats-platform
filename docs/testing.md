@@ -4,9 +4,9 @@
 
 ## Overview
 
-Phase 1 focuses on smoke and integration tests around the initial HTTP shell.
-The goal is to prove the new subproject starts cleanly, reports runtime status,
-and exposes the planned workspace contract.
+The current focus is smoke and integration coverage around the Node server and
+shared app-shell contract. The renderer is still in the shell stage and is not
+yet under dedicated component-test coverage.
 
 ## Test Types
 
@@ -21,6 +21,12 @@ and exposes the planned workspace contract.
 - **Location**: `tests/` or `tests/unit/`
 - **Framework**: `node:test`
 - **Scope**: Pure workspace, orchestration, and persistence modules
+
+### Future Renderer Tests
+
+- **Location**: `src/renderer/**` or `tests/ui/`
+- **Framework**: TBD
+- **Scope**: Channel switching, runtime banners, orchestrator shell behavior
 
 ## Running Tests
 

@@ -4,22 +4,22 @@
 
 ## Overview
 
-`cats-inc` is the product-facing application layer for the cats initiative. In
-phase 1 it exposes a minimal HTTP shell, reaches runtime state through
-`cats-runtime`, and keeps the future workspace model explicit in its payloads.
+`cats-inc` is the product-facing application layer for the cats initiative. The
+current shape is a split architecture: a Node server owns runtime-facing APIs,
+and a React/Vite renderer owns the operator-facing workspace shell.
 
 ## Architecture Diagram
 
 ```text
 ┌───────────────────────────┐
-│     cats-inc clients      │
-│   (future web product)    │
+│     React/Vite shell      │
+│  sidebar + workspace UI   │
 └──────────────┬────────────┘
                │ HTTP
                ▼
 ┌───────────────────────────┐
-│         cats-inc          │
-│  config + server + shell  │
+│     cats-inc server       │
+│ app-shell + runtime API   │
 └──────────────┬────────────┘
                │ HTTP
                ▼
@@ -52,9 +52,16 @@ phase 1 it exposes a minimal HTTP shell, reaches runtime state through
 
 ### HTTP Server
 
-- **Purpose**: Publish the first product-facing HTTP contract
+- **Purpose**: Publish the app-shell API and serve built static assets
 - **Technology**: Native `node:http`
-- **Responsibilities**: Serve `/health` and `/api/app-shell`
+- **Responsibilities**: Serve `/health`, `/api/app-shell`, and built renderer files
+
+### Renderer Shell
+
+- **Purpose**: Present the first operator-facing multi-channel workspace UI
+- **Technology**: React + Vite
+- **Responsibilities**: Render channels, runtime status, orchestrator notes, and
+  the initial workspace shell
 
 ### Workspace Shell Model
 
@@ -64,16 +71,17 @@ phase 1 it exposes a minimal HTTP shell, reaches runtime state through
 
 ## Data Flow
 
-1. A client calls `cats-inc` over HTTP.
+1. In development, Vite serves the renderer and proxies `/api` to the Node server.
 2. The server asks the runtime client for current `cats-runtime` health.
-3. The server returns either a service health payload or a bootstrap app-shell
-   payload.
-4. Future phases will replace the bootstrap shell with persistent channel data.
+3. The server returns app-shell JSON consumed by the renderer.
+4. In built mode, the server also serves the static renderer bundle.
+5. Future phases will replace the bootstrap shell with persistent channel data.
 
 ## Technology Stack
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
+| Renderer | React + Vite | Operator-facing workspace UI |
 | Product app | Node.js + TypeScript | Product-facing backend shell |
 | Runtime boundary | `cats-runtime` | Stable runtime contract |
 | Runtime backend | `agent-fleet` | Phase 1 execution backend |
@@ -85,6 +93,7 @@ phase 1 it exposes a minimal HTTP shell, reaches runtime state through
   interface, not `agent-fleet`
 - Dependency injection by constructor or factory parameter
 - Explicit shell payloads over hidden process state
+- Renderer-first UI iteration with desktop packaging deferred
 
 ## API Design
 
@@ -94,6 +103,8 @@ phase 1 it exposes a minimal HTTP shell, reaches runtime state through
 
 - [ADR-001](./decisions/001-use-cats-runtime-boundary.md): use `cats-runtime`
   as the only runtime boundary
+- [ADR-002](./decisions/002-react-vite-renderer-before-electron.md): use
+  React/Vite before adding a desktop shell
 
 ---
 

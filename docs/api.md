@@ -7,7 +7,7 @@
 The phase 1 API is intentionally small. It provides:
 
 - service and runtime reachability health
-- an explicit bootstrap payload for the future workspace shell
+- an explicit bootstrap payload for the workspace renderer shell
 
 ## Base URL
 
@@ -59,14 +59,26 @@ Example response:
 {
   "app": {
     "name": "cats-inc",
-    "stage": "phase-1",
+    "stage": "phase-2-shell",
     "runtimeBoundary": "cats-runtime"
   },
   "workspace": {
     "id": "default",
-    "channels": [],
+    "name": "Cats Inc Workspace",
+    "selectedChannelId": "launchpad",
+    "channels": [
+      {
+        "id": "launchpad",
+        "title": "Launchpad",
+        "topic": "Shape the next workspace loop before wiring persistence.",
+        "status": "active",
+        "unreadCount": 2,
+        "memberCount": 4
+      }
+    ],
     "globalOrchestrator": {
-      "mode": "planned"
+      "mode": "planned",
+      "status": "ready"
     }
   },
   "runtime": {
@@ -98,6 +110,7 @@ Errors use a minimal payload:
 ## Notes
 
 - `cats-inc` does not talk to `agent-fleet` directly
+- The renderer consumes this endpoint over a Vite proxy during development
 - Future session and channel APIs should extend this contract without leaking
   backend-specific transport details
 

@@ -48,6 +48,7 @@ docker compose up --build
 
 - **Logs**: stdout from the Node process
 - **Health**: `GET /health`
+- **Renderer**: served by the Node server after `npm run build`
 
 ## Troubleshooting
 

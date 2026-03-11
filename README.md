@@ -9,18 +9,20 @@ replace `agent-workspace-poc` as the main product shell. It keeps
 `agent-workspace-poc` as a behavior reference, but it talks to `cats-runtime`
 instead of binding directly to `agent-fleet`.
 
-The first slice in this subproject is intentionally small:
+The current slices are:
 
-- a minimal HTTP service on `CATS_INC_PORT` (default `8181`)
-- a `cats-runtime` health adapter
-- an initial app-shell endpoint that describes the future workspace contract
+- a Node app/runtime core on `CATS_INC_PORT` (default `8181`)
+- a `cats-runtime` health and app-shell API
+- a `React/Vite` renderer that consumes the workspace shell
 
 ## Current Status
 
 - [x] Bootstrap `cats-inc/` from `project-bootstrap`
 - [x] Establish `cats-runtime` as the only runtime boundary
 - [x] Add a minimal Node/TypeScript HTTP entrypoint and smoke tests
-- [ ] Build the real multi-channel workspace UI and persistence model
+- [x] Choose `React/Vite` as the initial renderer approach
+- [x] Add the first multi-channel workspace UI shell
+- [ ] Add real persistence and runtime-backed channel operations
 - [ ] Recreate `agent-workspace-poc` product behaviors on this new stack
 
 ## Quick Start
@@ -29,17 +31,25 @@ The first slice in this subproject is intentionally small:
 cd cats-inc
 cp .env.example .env
 npm install
-npm run build
-npm start
+npm run dev:server
+# in a second terminal
+npm run dev:web
 ```
 
 Default endpoints:
 
-- App: `http://127.0.0.1:8181`
+- App API: `http://127.0.0.1:8181`
+- Renderer dev server: `http://127.0.0.1:5173`
 - Runtime dependency: `http://127.0.0.1:3110`
 
-The app assumes `cats-runtime` is already running. In phase 1,
-`cats-runtime` still depends on `agent-fleet`.
+For a built run:
+
+```bash
+npm run build
+npm start
+```
+
+The Node server will serve the built web UI from `dist/` when available.
 
 ## Documentation
 
@@ -56,7 +66,9 @@ See [docs/](./docs/) for project details:
 
 ```text
 cats-inc/
-├── src/           # Node/TS entrypoint, runtime client, workspace shell
+├── src/server*    # Node/TS app core and runtime-facing API
+├── src/renderer/  # React/Vite workspace shell
+├── src/shared/    # Types shared by server and renderer
 ├── tests/         # Node built-in test runner coverage
 ├── docs/          # Product, API, architecture, and delivery docs
 ├── scripts/       # Cross-platform project automation scripts

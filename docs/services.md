@@ -8,6 +8,7 @@
 | Service Name | Port | Protocol | Description | Start Command |
 |--------------|------|----------|-------------|---------------|
 | `cats-inc` HTTP app | 8181 | TCP | Product-facing app shell and health endpoints | `npm start` |
+| `cats-inc` Vite dev server | 5173 | TCP | Renderer development server with `/api` proxy | `npm run dev:web` |
 
 ## Environment Variables
 

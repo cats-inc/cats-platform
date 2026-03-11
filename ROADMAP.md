@@ -15,11 +15,11 @@ application that sits above `cats-runtime`, absorbs the useful behavior from
 - [x] Bootstrap the subproject and align docs
 - [x] Establish `cats-runtime` as the runtime boundary
 - [x] Ship a minimal HTTP app shell and health surface
-- [ ] Choose the concrete frontend rendering approach for the product UI
+- [x] Choose `React/Vite` as the initial renderer approach
 
 ### Phase 2: Workspace Core
 
-- [ ] Multi-channel workspace shell
+- [x] Multi-channel workspace shell
 - [ ] Channel creation flow with team/runtime setup
 - [ ] Global orchestrator surface
 - [ ] Basic `@mention` routing and participant management
@@ -34,6 +34,7 @@ application that sits above `cats-runtime`, absorbs the useful behavior from
 
 ## Future Considerations
 
+- Thin Electron host once tray/runtime lifecycle needs are concrete
 - Multiple runtime backends behind `cats-runtime`
 - Richer memory retrieval loops through MCP and RAG
 - Multi-tenant product packaging

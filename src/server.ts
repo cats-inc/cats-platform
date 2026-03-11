@@ -1,5 +1,8 @@
 import { createServer as createHttpServer } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { access, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import type { AppConfig } from './config.js';
 import type { RuntimeClient } from './runtime/client.js';
@@ -11,11 +14,33 @@ export interface ServerDependencies {
   now?: () => Date;
 }
 
+const WEB_DIST_ROOT = fileURLToPath(new URL('../dist', import.meta.url));
+const MIME_TYPES: Record<string, string> = {
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+};
+
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
   const body = JSON.stringify(payload, null, 2);
   response.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
     'content-length': Buffer.byteLength(body).toString(),
+  });
+  response.end(body);
+}
+
+function sendBinary(
+  response: ServerResponse,
+  statusCode: number,
+  body: Buffer,
+  contentType: string,
+): void {
+  response.writeHead(statusCode, {
+    'content-type': contentType,
+    'content-length': body.byteLength.toString(),
   });
   response.end(body);
 }
@@ -72,7 +97,44 @@ async function handleGet(
       sendJson(response, 200, createAppShell(dependencies.config, runtime, now));
       return;
     default:
+      if (await tryServeWebAsset(path, response)) {
+        return;
+      }
       sendJson(response, 404, { error: 'Not found' });
+  }
+}
+
+async function tryServeWebAsset(pathname: string, response: ServerResponse): Promise<boolean> {
+  const requestedPath = pathname === '/' ? '/index.html' : pathname;
+  const resolvedPath = path.resolve(WEB_DIST_ROOT, `.${requestedPath}`);
+
+  if (!resolvedPath.startsWith(WEB_DIST_ROOT)) {
+    return false;
+  }
+
+  const fallbackIndexPath = path.join(WEB_DIST_ROOT, 'index.html');
+  const candidatePath = path.extname(resolvedPath) ? resolvedPath : fallbackIndexPath;
+
+  try {
+    await access(candidatePath);
+    const fileBody = await readFile(candidatePath);
+    const extension = path.extname(candidatePath);
+    const contentType = MIME_TYPES[extension] ?? 'application/octet-stream';
+    sendBinary(response, 200, fileBody, contentType);
+    return true;
+  } catch {
+    if (candidatePath !== fallbackIndexPath) {
+      try {
+        await access(fallbackIndexPath);
+        const fileBody = await readFile(fallbackIndexPath);
+        sendBinary(response, 200, fileBody, MIME_TYPES['.html']);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    return false;
   }
 }
 

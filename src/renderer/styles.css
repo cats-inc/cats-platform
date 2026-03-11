@@ -1,0 +1,371 @@
+:root {
+  font-family: 'Bahnschrift', 'Trebuchet MS', 'Segoe UI Variable Text', sans-serif;
+  color: #f6f0e8;
+  background:
+    radial-gradient(circle at top left, rgba(255, 133, 82, 0.24), transparent 28%),
+    radial-gradient(circle at top right, rgba(51, 187, 170, 0.18), transparent 25%),
+    linear-gradient(145deg, #1c232f 0%, #10151d 54%, #17110d 100%);
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+code {
+  font-family: 'Consolas', 'Cascadia Mono', monospace;
+}
+
+.screen {
+  position: relative;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.screenCentered {
+  place-items: center;
+  grid-template-columns: 1fr;
+  padding: 32px;
+}
+
+.shellBackdrop {
+  position: absolute;
+  inset: 24px;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.03), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+  border: 1px solid rgba(246, 240, 232, 0.08);
+  border-radius: 28px;
+  pointer-events: none;
+}
+
+.sidebar,
+.workspace {
+  position: relative;
+  z-index: 1;
+  padding: 34px;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  border-right: 1px solid rgba(246, 240, 232, 0.08);
+  background: rgba(9, 11, 16, 0.34);
+  backdrop-filter: blur(18px);
+}
+
+.brandBlock h1,
+.workspaceHeader h2,
+.heroPanel h3,
+.loadingPanel h1,
+.errorPanel h1 {
+  margin: 0;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.brandBlock h1 {
+  font-size: 2.25rem;
+}
+
+.muted,
+.workspaceLead,
+.heroCopy,
+.channelCard p,
+.loadingPanel p,
+.errorPanel p {
+  color: rgba(246, 240, 232, 0.72);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: #f7aa5b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.sidebarSection,
+.loadingPanel,
+.errorPanel,
+.heroPanel,
+.statusPanel,
+.detailPanel,
+.runtimePill {
+  border: 1px solid rgba(246, 240, 232, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+}
+
+.sidebarSection {
+  padding: 18px;
+}
+
+.sectionHeading,
+.channelCardTop,
+.channelMeta,
+.workspaceHeader,
+.detailRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sectionHeading {
+  margin-bottom: 14px;
+  color: rgba(246, 240, 232, 0.72);
+  font-size: 0.85rem;
+}
+
+.channelList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.channelCard {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(246, 240, 232, 0.08);
+  border-radius: 18px;
+  background: rgba(10, 13, 18, 0.75);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+  animation: riseIn 420ms ease both;
+}
+
+.channelCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(247, 170, 91, 0.42);
+}
+
+.channelCardSelected {
+  border-color: rgba(247, 170, 91, 0.62);
+  background: linear-gradient(145deg, rgba(247, 170, 91, 0.16), rgba(13, 17, 24, 0.92));
+}
+
+.channelCard p {
+  margin: 8px 0 10px;
+  font-size: 0.92rem;
+}
+
+.channelMeta {
+  color: rgba(246, 240, 232, 0.58);
+  font-size: 0.8rem;
+}
+
+.channelBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.channelBadgeActive {
+  background: rgba(255, 133, 82, 0.18);
+  color: #ffb18b;
+}
+
+.channelBadgeWatching {
+  background: rgba(51, 187, 170, 0.18);
+  color: #8ee8d8;
+}
+
+.channelBadgePlanned {
+  background: rgba(246, 240, 232, 0.1);
+  color: #e9dbc7;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.workspaceHeader h2 {
+  font-size: clamp(2.1rem, 4vw, 3.4rem);
+}
+
+.workspaceLead {
+  margin: 10px 0 0;
+  max-width: 60ch;
+  font-size: 1.05rem;
+}
+
+.runtimePill {
+  min-width: 240px;
+  padding: 16px 18px;
+}
+
+.runtimePill p {
+  margin: 4px 0 0;
+  color: rgba(246, 240, 232, 0.62);
+}
+
+.runtimeDot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 12px;
+  border-radius: 999px;
+  background: #ff8552;
+  box-shadow: 0 0 0 6px rgba(255, 133, 82, 0.14);
+}
+
+.runtimeDotOk {
+  background: #33bbaa;
+  box-shadow: 0 0 0 6px rgba(51, 187, 170, 0.14);
+}
+
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 20px;
+}
+
+.heroPanel,
+.statusPanel,
+.detailPanel,
+.loadingPanel,
+.errorPanel {
+  padding: 24px;
+}
+
+.heroPanel {
+  min-height: 360px;
+  background:
+    linear-gradient(135deg, rgba(255, 133, 82, 0.14), rgba(255, 255, 255, 0.03)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.heroPanel h3 {
+  font-size: 2rem;
+}
+
+.heroCopy {
+  margin: 12px 0 20px;
+  max-width: 52ch;
+}
+
+.noteList,
+.capabilityList,
+.detailList {
+  display: grid;
+  gap: 12px;
+}
+
+.noteItem,
+.capabilityCard,
+.detailRow {
+  border-radius: 16px;
+  background: rgba(10, 13, 18, 0.56);
+  border: 1px solid rgba(246, 240, 232, 0.08);
+}
+
+.noteItem,
+.capabilityCard {
+  padding: 14px 16px;
+}
+
+.capabilityCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.capabilityCard span,
+.detailRow span {
+  color: rgba(246, 240, 232, 0.62);
+}
+
+.detailRow {
+  padding: 16px;
+}
+
+.loadingPanel,
+.errorPanel {
+  max-width: 540px;
+  animation: riseIn 420ms ease both;
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1100px) {
+  .screen {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid rgba(246, 240, 232, 0.08);
+  }
+
+  .workspaceGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .sidebar,
+  .workspace {
+    padding: 22px;
+  }
+
+  .workspaceHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .runtimePill {
+    width: 100%;
+  }
+}

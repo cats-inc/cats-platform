@@ -31,17 +31,27 @@ npm test
 
 ## Running the Project
 
-### Local Run
+### Development
+
+```bash
+npm run dev:server
+# in a second terminal
+npm run dev:web
+```
+
+Open:
+
+- Renderer: `http://127.0.0.1:5173`
+- API: `http://127.0.0.1:8181/health`
+
+### Built Run
 
 ```bash
 npm run build
 npm start
 ```
 
-Open:
-
-- `http://127.0.0.1:8181/health`
-- `http://127.0.0.1:8181/api/app-shell`
+The built Node server serves the static UI from `dist/`.
 
 ## Common Issues
 
@@ -54,6 +64,11 @@ correct.
 
 **Solution**: In phase 1, `cats-runtime` still depends on `agent-fleet`. Check
 that both services are available.
+
+### Issue 3: Renderer cannot load app-shell data
+
+**Solution**: Ensure `npm run dev:server` is running. Vite proxies `/api` to the
+Node server on port `8181`.
 
 ---
 

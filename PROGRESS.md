@@ -8,8 +8,9 @@
 |-----------|--------|-------------|
 | Bootstrap | Completed | Subproject created from `project-bootstrap` with Node.js preset |
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
-| HTTP App Shell | Completed | Minimal server exposes `/health` and `/api/app-shell` |
-| Workspace Product Features | Not Started | Channels, orchestration, mentions, persistence still ahead |
+| HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
+| Renderer Shell | Completed | React/Vite shell consumes app-shell and renders a multi-channel workspace UI |
+| Workspace Product Features | In Progress | Shell exists; persistence and real runtime actions still ahead |
 | Documentation | In Progress | Core docs aligned; deeper product docs still needed |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
@@ -41,8 +42,8 @@
 
 ### WP-2: Workspace Shell Delivery
 
-**Status**: Not Started
-**Assigned**: Unassigned
+**Status**: In Progress
+**Assigned**: Codex
 **Priority**: P1
 **Depends on**: WP-1
 
@@ -50,13 +51,14 @@
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Design multi-channel workspace model | [ ] | Rebuild product behavior from `agent-workspace-poc` |
+| Choose renderer approach | [x] | React/Vite first, Electron deferred |
+| Add initial multi-channel workspace UI shell | [x] | Sidebar, channel cards, orchestrator and runtime panels |
 | Add persistent channel and transcript storage | [ ] | Storage shape should support later RAG ingestion |
 | Implement orchestrator and channel setup UX | [ ] | Use `crew-chat-poc` as runtime integration reference |
 
 #### Acceptance Criteria
 
-- [ ] Users can create and switch workspace channels
+- [x] Users can switch among initial workspace shell channels
 - [ ] Product shell can bootstrap runtime-backed sessions through `cats-runtime`
 - [ ] Channel state is persisted beyond in-memory process lifetime
 
@@ -77,8 +79,24 @@
 #### Remaining Items
 
 - [ ] Replace the placeholder app shell with the real workspace model
-- [ ] Decide the concrete frontend rendering approach for the product UI
+- [x] Decide the concrete frontend rendering approach for the product UI
 - [ ] Add persistence and transcript export paths
+
+### WP-2: Workspace Shell Delivery
+
+**Completed to date**: 2026-03-11 (initial slice)
+
+#### Key Decisions
+
+- Use `React/Vite` for the renderer while keeping Electron deferred
+- Keep the Node server as the API and future desktop-safe integration boundary
+- Serve built static assets from the Node server after `npm run build`
+
+#### Remaining Items
+
+- [ ] Replace static shell data with persisted workspace state
+- [ ] Add runtime-backed channel actions and composer flows
+- [ ] Add a real mention model and transcript storage
 
 ---
 

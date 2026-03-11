@@ -15,6 +15,7 @@ __pycache__/
 htmlcov/
 *.egg-info/
 dist/
+dist-server/
 build/
 
 # === Node.js ===

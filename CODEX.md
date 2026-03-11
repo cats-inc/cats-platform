@@ -79,9 +79,10 @@ To sync skills after changes:
 ### Project-Specific Context
 
 - Main app port: `CATS_INC_PORT` (default `8181`)
+- Renderer dev port: `5173`
 - Runtime dependency: `CATS_RUNTIME_BASE_URL` (default `http://127.0.0.1:3110`)
 - Core modules: `src/config.ts`, `src/runtime/client.ts`, `src/workspace/shell.ts`,
-  `src/server.ts`
+  `src/server.ts`, `src/renderer/App.tsx`
 - Test command: `npm test`
 - Product direction: rebuild `agent-workspace-poc` behavior on Node/TS while
   keeping `cats-runtime` as the only runtime boundary
