@@ -7,10 +7,24 @@ import { fileURLToPath } from 'node:url';
 import type { AppConfig } from './config.js';
 import type { RuntimeClient } from './runtime/client.js';
 import type {
+  AddChannelMemberInput,
   CreateWorkspaceChannelInput,
+  SendChannelMessageInput,
+  UpdateGlobalOrchestratorInput,
   UpdateSelectedChannelInput,
 } from './shared/app-shell.js';
 import type { WorkspaceStore } from './workspace/store.js';
+import {
+  addMemberToChannel,
+  appendMessage,
+  createChannel,
+  exportChannel,
+  removeMemberFromChannel,
+  requireChannel,
+  selectChannel,
+  updateGlobalOrchestrator,
+} from './workspace/model.js';
+import { activateChannelSessions, routeChannelMessage } from './workspace/runtimeActions.js';
 import { createAppShell } from './workspace/shell.js';
 
 export interface ServerDependencies {
@@ -29,11 +43,17 @@ const MIME_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
 };
 
-function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
+function sendJson(
+  response: ServerResponse,
+  statusCode: number,
+  payload: unknown,
+  headers: Record<string, string> = {},
+): void {
   const body = JSON.stringify(payload, null, 2);
   response.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
     'content-length': Buffer.byteLength(body).toString(),
+    ...headers,
   });
   response.end(body);
 }
@@ -51,8 +71,13 @@ function sendBinary(
   response.end(body);
 }
 
-function sendMethodNotAllowed(response: ServerResponse): void {
-  sendJson(response, 405, { error: 'Method not allowed' });
+function sendMethodNotAllowed(response: ServerResponse, allowedMethods: string[]): void {
+  sendJson(
+    response,
+    405,
+    { error: 'Method not allowed' },
+    { Allow: allowedMethods.join(', ') },
+  );
 }
 
 async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
@@ -70,73 +95,55 @@ async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
   return JSON.parse(rawBody) as T;
 }
 
-function routeRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
-  dependencies: ServerDependencies,
-): Promise<void> {
-  const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
-  const method = request.method ?? 'GET';
-
-  if (method === 'POST' && url.pathname === '/api/workspace/selection') {
-    return handleSelectionUpdate(request, response, dependencies);
+function matchRoute(pathname: string, pattern: RegExp): string[] | null {
+  const match = pattern.exec(pathname);
+  if (!match) {
+    return null;
   }
 
-  if (method === 'POST' && url.pathname === '/api/workspace/channels') {
-    return handleChannelCreate(request, response, dependencies);
-  }
-
-  if (method !== 'GET') {
-    switch (url.pathname) {
-      case '/health':
-      case '/api/app-shell':
-      case '/api/workspace/selection':
-      case '/api/workspace/channels':
-        sendMethodNotAllowed(response);
-        return Promise.resolve();
-      default:
-        sendJson(response, 404, { error: 'Not found' });
-        return Promise.resolve();
-    }
-  }
-
-  return handleGet(url.pathname, response, dependencies);
+  return match.slice(1).map((value) => decodeURIComponent(value));
 }
 
-async function handleGet(
-  path: string,
+function errorStatusCode(error: unknown): number {
+  const message = error instanceof Error ? error.message : '';
+  if (message.startsWith('Channel not found:') || message.startsWith('Member not found:')) {
+    return 404;
+  }
+  return 400;
+}
+
+async function buildAppShell(
+  dependencies: ServerDependencies,
+  state?: Awaited<ReturnType<WorkspaceStore['read']>>,
+): Promise<ReturnType<typeof createAppShell>> {
+  const resolvedState = state ?? (await dependencies.workspaceStore.read());
+  const runtime = await dependencies.runtimeClient.getHealth();
+  const now = dependencies.now?.() ?? new Date();
+  return createAppShell(dependencies.config, runtime, resolvedState, now);
+}
+
+async function handleHealth(
   response: ServerResponse,
   dependencies: ServerDependencies,
 ): Promise<void> {
-  switch (path) {
-    case '/health': {
-      const runtime = await dependencies.runtimeClient.getHealth();
-      const now = dependencies.now?.() ?? new Date();
-      const status = runtime.reachable ? 'ok' : 'degraded';
-      const statusCode = runtime.reachable ? 200 : 503;
+  const runtime = await dependencies.runtimeClient.getHealth();
+  const now = dependencies.now?.() ?? new Date();
+  const status = runtime.reachable ? 'ok' : 'degraded';
+  const statusCode = runtime.reachable ? 200 : 503;
 
-      sendJson(response, statusCode, {
-        service: 'cats-inc',
-        status,
-        timestamp: now.toISOString(),
-        runtime,
-      });
-      return;
-    }
-    case '/api/app-shell': {
-      const runtime = await dependencies.runtimeClient.getHealth();
-      const workspace = await dependencies.workspaceStore.read();
-      const now = dependencies.now?.() ?? new Date();
+  sendJson(response, statusCode, {
+    service: 'cats-inc',
+    status,
+    timestamp: now.toISOString(),
+    runtime,
+  });
+}
 
-      sendJson(response, 200, createAppShell(dependencies.config, runtime, workspace, now));
-      return;
-    }
-    default:
-      if (await tryServeWebAsset(path, response)) {
-        return;
-      }
-      sendJson(response, 404, { error: 'Not found' });
-  }
+async function handleAppShell(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  sendJson(response, 200, await buildAppShell(dependencies));
 }
 
 async function handleSelectionUpdate(
@@ -146,13 +153,15 @@ async function handleSelectionUpdate(
 ): Promise<void> {
   try {
     const body = await readJsonBody<UpdateSelectedChannelInput>(request);
-    const workspace = await dependencies.workspaceStore.updateSelectedChannel(body.selectedChannelId);
-    const runtime = await dependencies.runtimeClient.getHealth();
-    const now = dependencies.now?.() ?? new Date();
-
-    sendJson(response, 200, createAppShell(dependencies.config, runtime, workspace, now));
+    const nextState = selectChannel(
+      await dependencies.workspaceStore.read(),
+      body.selectedChannelId,
+      dependencies.now?.() ?? new Date(),
+    );
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, await buildAppShell(dependencies, persisted));
   } catch (error) {
-    sendJson(response, 400, {
+    sendJson(response, errorStatusCode(error), {
       error: error instanceof Error ? error.message : 'Failed to update workspace selection',
     });
   }
@@ -165,14 +174,180 @@ async function handleChannelCreate(
 ): Promise<void> {
   try {
     const body = await readJsonBody<CreateWorkspaceChannelInput>(request);
-    const workspace = await dependencies.workspaceStore.createChannel(body);
-    const runtime = await dependencies.runtimeClient.getHealth();
-    const now = dependencies.now?.() ?? new Date();
-
-    sendJson(response, 200, createAppShell(dependencies.config, runtime, workspace, now));
+    const nextState = createChannel(
+      await dependencies.workspaceStore.read(),
+      body,
+      dependencies.now?.() ?? new Date(),
+    );
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, await buildAppShell(dependencies, persisted));
   } catch (error) {
-    sendJson(response, 400, {
+    sendJson(response, errorStatusCode(error), {
       error: error instanceof Error ? error.message : 'Failed to create workspace channel',
+    });
+  }
+}
+
+async function handleAddMember(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<AddChannelMemberInput>(request);
+    const nextState = addMemberToChannel(
+      await dependencies.workspaceStore.read(),
+      channelId,
+      body,
+      dependencies.now?.() ?? new Date(),
+    );
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, await buildAppShell(dependencies, persisted));
+  } catch (error) {
+    sendJson(response, errorStatusCode(error), {
+      error: error instanceof Error ? error.message : 'Failed to add channel member',
+    });
+  }
+}
+
+async function handleRemoveMember(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+  memberId: string,
+): Promise<void> {
+  try {
+    const currentState = await dependencies.workspaceStore.read();
+    const channel = requireChannel(currentState, channelId);
+    const member = channel.members.find((candidate) => candidate.id === memberId);
+    if (!member) {
+      throw new Error(`Member not found: ${memberId}`);
+    }
+
+    let nextState = removeMemberFromChannel(
+      currentState,
+      channelId,
+      memberId,
+      dependencies.now?.() ?? new Date(),
+    );
+
+    if (member.session.sessionId) {
+      try {
+        await dependencies.runtimeClient.closeSession(member.session.sessionId);
+      } catch (error) {
+        nextState = appendMessage(
+          nextState,
+          channelId,
+          {
+            senderKind: 'system',
+            senderName: 'Runtime',
+            body: `Failed to close ${member.name}'s session cleanly: ${
+              error instanceof Error ? error.message : 'Unknown runtime error'
+            }`,
+          },
+          dependencies.now?.() ?? new Date(),
+          {
+            metadata: { event: 'session_close_failed', memberId },
+          },
+        ).state;
+      }
+    }
+
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, await buildAppShell(dependencies, persisted));
+  } catch (error) {
+    sendJson(response, errorStatusCode(error), {
+      error: error instanceof Error ? error.message : 'Failed to remove channel member',
+    });
+  }
+}
+
+async function handleOrchestratorUpdate(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<UpdateGlobalOrchestratorInput>(request);
+    const nextState = updateGlobalOrchestrator(
+      await dependencies.workspaceStore.read(),
+      body,
+      dependencies.now?.() ?? new Date(),
+    );
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, await buildAppShell(dependencies, persisted));
+  } catch (error) {
+    sendJson(response, errorStatusCode(error), {
+      error: error instanceof Error ? error.message : 'Failed to update orchestrator',
+    });
+  }
+}
+
+async function handleChannelActivation(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+): Promise<void> {
+  try {
+    const activation = await activateChannelSessions(
+      await dependencies.workspaceStore.read(),
+      channelId,
+      dependencies.runtimeClient,
+      dependencies.now?.() ?? new Date(),
+    );
+    const persisted = await dependencies.workspaceStore.write(activation.state);
+    sendJson(response, 200, {
+      appShell: await buildAppShell(dependencies, persisted),
+      results: activation.results,
+    });
+  } catch (error) {
+    sendJson(response, errorStatusCode(error), {
+      error: error instanceof Error ? error.message : 'Failed to activate workspace channel',
+    });
+  }
+}
+
+async function handleChannelMessage(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<SendChannelMessageInput>(request);
+    const dispatch = await routeChannelMessage(
+      await dependencies.workspaceStore.read(),
+      channelId,
+      body,
+      dependencies.runtimeClient,
+      dependencies.now?.() ?? new Date(),
+    );
+    const persisted = await dependencies.workspaceStore.write(dispatch.state);
+    sendJson(response, 200, {
+      appShell: await buildAppShell(dependencies, persisted),
+      results: dispatch.results,
+    });
+  } catch (error) {
+    sendJson(response, errorStatusCode(error), {
+      error: error instanceof Error ? error.message : 'Failed to route channel message',
+    });
+  }
+}
+
+async function handleChannelExport(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+): Promise<void> {
+  try {
+    const payload = exportChannel(await dependencies.workspaceStore.read(), channelId);
+    sendJson(response, 200, payload, {
+      'content-disposition': `attachment; filename="channel-${channelId}.json"`,
+    });
+  } catch (error) {
+    sendJson(response, errorStatusCode(error), {
+      error: error instanceof Error ? error.message : 'Failed to export channel',
     });
   }
 }
@@ -211,8 +386,120 @@ async function tryServeWebAsset(pathname: string, response: ServerResponse): Pro
   }
 }
 
+function routeRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
+  const method = request.method ?? 'GET';
+  const activateMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/activate$/u);
+  const messageMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/messages$/u);
+  const addMemberMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/members$/u);
+  const removeMemberMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspace\/channels\/([^/]+)\/members\/([^/]+)$/u,
+  );
+  const exportMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/export$/u);
+
+  if (url.pathname === '/health') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleHealth(response, dependencies);
+  }
+
+  if (url.pathname === '/api/app-shell') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleAppShell(response, dependencies);
+  }
+
+  if (url.pathname === '/api/workspace/selection') {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleSelectionUpdate(request, response, dependencies);
+  }
+
+  if (url.pathname === '/api/workspace/channels') {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleChannelCreate(request, response, dependencies);
+  }
+
+  if (url.pathname === '/api/orchestrator') {
+    if (method !== 'PUT') {
+      sendMethodNotAllowed(response, ['PUT']);
+      return Promise.resolve();
+    }
+    return handleOrchestratorUpdate(request, response, dependencies);
+  }
+
+  if (activateMatch) {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleChannelActivation(response, dependencies, activateMatch[0]);
+  }
+
+  if (messageMatch) {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleChannelMessage(request, response, dependencies, messageMatch[0]);
+  }
+
+  if (addMemberMatch) {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleAddMember(request, response, dependencies, addMemberMatch[0]);
+  }
+
+  if (removeMemberMatch) {
+    if (method !== 'DELETE') {
+      sendMethodNotAllowed(response, ['DELETE']);
+      return Promise.resolve();
+    }
+    return handleRemoveMember(response, dependencies, removeMemberMatch[0], removeMemberMatch[1]);
+  }
+
+  if (exportMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleChannelExport(response, dependencies, exportMatch[0]);
+  }
+
+  if (method === 'GET') {
+    return tryServeWebAsset(url.pathname, response).then((served) => {
+      if (!served) {
+        sendJson(response, 404, { error: 'Not found' });
+      }
+    });
+  }
+
+  sendJson(response, 404, { error: 'Not found' });
+  return Promise.resolve();
+}
+
 export function createServer(dependencies: ServerDependencies) {
   return createHttpServer((request, response) => {
-    void routeRequest(request, response, dependencies);
+    void routeRequest(request, response, dependencies).catch((error) => {
+      sendJson(response, 500, {
+        error: error instanceof Error ? error.message : 'Unexpected server error',
+      });
+    });
   });
 }

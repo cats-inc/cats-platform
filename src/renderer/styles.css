@@ -32,7 +32,8 @@ body {
 button,
 input,
 textarea,
-select {
+select,
+a {
   font: inherit;
 }
 
@@ -43,9 +44,8 @@ code {
 .screen {
   position: relative;
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: 340px minmax(0, 1fr);
   min-height: 100vh;
-  overflow: hidden;
 }
 
 .screenCentered {
@@ -57,11 +57,11 @@ code {
 .shellBackdrop {
   position: absolute;
   inset: 24px;
+  border: 1px solid rgba(246, 240, 232, 0.08);
+  border-radius: 28px;
   background:
     linear-gradient(120deg, rgba(255, 255, 255, 0.03), transparent),
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
-  border: 1px solid rgba(246, 240, 232, 0.08);
-  border-radius: 28px;
   pointer-events: none;
 }
 
@@ -69,13 +69,13 @@ code {
 .workspace {
   position: relative;
   z-index: 1;
-  padding: 34px;
+  padding: 30px;
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 22px;
   border-right: 1px solid rgba(246, 240, 232, 0.08);
   background: rgba(9, 11, 16, 0.34);
   backdrop-filter: blur(18px);
@@ -83,7 +83,7 @@ code {
 
 .brandBlock h1,
 .workspaceHeader h2,
-.heroPanel h3,
+.panelHeader h3,
 .loadingPanel h1,
 .errorPanel h1 {
   margin: 0;
@@ -93,16 +93,16 @@ code {
 }
 
 .brandBlock h1 {
-  font-size: 2.25rem;
+  font-size: 2.2rem;
 }
 
 .muted,
 .workspaceLead,
-.heroCopy,
-.sectionCopy,
 .channelCard p,
 .loadingPanel p,
-.errorPanel p {
+.errorPanel p,
+.draftItem p,
+.memberCard p {
   color: rgba(246, 240, 232, 0.72);
 }
 
@@ -116,19 +116,21 @@ code {
 }
 
 .sidebarSection,
+.panel,
 .loadingPanel,
 .errorPanel,
-.heroPanel,
-.statusPanel,
-.detailPanel,
-.runtimePill {
+.runtimePill,
+.inlinePanel {
   border: 1px solid rgba(246, 240, 232, 0.08);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.04);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
 }
 
-.sidebarSection {
+.sidebarSection,
+.panel,
+.loadingPanel,
+.errorPanel {
   padding: 18px;
 }
 
@@ -136,7 +138,15 @@ code {
 .channelCardTop,
 .channelMeta,
 .workspaceHeader,
-.detailRow {
+.panelHeader,
+.messageMeta,
+.messageFooter,
+.memberTop,
+.memberActions,
+.detailRow,
+.actionRow,
+.composerMeta,
+.inlinePanelHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -149,15 +159,14 @@ code {
   font-size: 0.85rem;
 }
 
-.channelList {
-  display: flex;
-  flex-direction: column;
+.channelList,
+.stackForm,
+.draftList,
+.messageList,
+.detailList,
+.memberList {
+  display: grid;
   gap: 12px;
-}
-
-.sectionCopy {
-  margin: 0 0 14px;
-  font-size: 0.92rem;
 }
 
 .channelCard {
@@ -169,16 +178,11 @@ code {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    background 180ms ease;
-  animation: riseIn 420ms ease both;
 }
 
 .channelCard:hover {
-  transform: translateY(-2px);
   border-color: rgba(247, 170, 91, 0.42);
+  transform: translateY(-2px);
 }
 
 .channelCardSelected {
@@ -186,9 +190,10 @@ code {
   background: linear-gradient(145deg, rgba(247, 170, 91, 0.16), rgba(13, 17, 24, 0.92));
 }
 
-.channelCard p {
-  margin: 8px 0 10px;
-  font-size: 0.92rem;
+.channelCard p,
+.draftItem p,
+.memberCard p {
+  margin: 6px 0 0;
 }
 
 .channelMeta {
@@ -196,40 +201,34 @@ code {
   font-size: 0.8rem;
 }
 
-.channelBadge {
+.statusChip,
+.tagChip {
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.channelBadgeActive {
-  background: rgba(255, 133, 82, 0.18);
-  color: #ffb18b;
-}
-
-.channelBadgeWatching {
+.statusChipReady {
   background: rgba(51, 187, 170, 0.18);
   color: #8ee8d8;
 }
 
-.channelBadgePlanned {
+.statusChipWarm {
+  background: rgba(247, 170, 91, 0.18);
+  color: #ffd4a4;
+}
+
+.statusChipError {
+  background: rgba(255, 133, 82, 0.18);
+  color: #ffb18b;
+}
+
+.statusChipMuted,
+.tagChip {
   background: rgba(246, 240, 232, 0.1);
   color: #e9dbc7;
-}
-
-.channelSetupForm {
-  display: grid;
-  gap: 12px;
-}
-
-.fieldLabel {
-  display: grid;
-  gap: 8px;
-  color: rgba(246, 240, 232, 0.72);
-  font-size: 0.86rem;
 }
 
 .textInput {
@@ -256,13 +255,19 @@ code {
   resize: vertical;
 }
 
-.primaryButton {
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.primaryButton,
+.secondaryButton,
+.secondaryButtonLink {
   padding: 12px 16px;
-  border: 0;
   border-radius: 14px;
-  background: linear-gradient(135deg, #f7aa5b, #ff8552);
-  color: #1b130d;
   font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
   transition:
     transform 180ms ease,
@@ -270,34 +275,76 @@ code {
     box-shadow 180ms ease;
 }
 
-.primaryButton:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 26px rgba(247, 170, 91, 0.18);
+.primaryButton {
+  border: 0;
+  background: linear-gradient(135deg, #f7aa5b, #ff8552);
+  color: #1b130d;
 }
 
-.primaryButton:disabled {
+.secondaryButton,
+.secondaryButtonLink {
+  border: 1px solid rgba(246, 240, 232, 0.12);
+  background: rgba(10, 13, 18, 0.72);
+  color: inherit;
+}
+
+.primaryButton:hover:not(:disabled),
+.secondaryButton:hover:not(:disabled),
+.secondaryButtonLink:hover {
+  transform: translateY(-1px);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.textButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f7aa5b;
+  cursor: pointer;
+}
+
+.inlinePanel {
+  padding: 14px;
+}
+
+.draftItem,
+.messageCard,
+.detailRow,
+.memberCard {
+  border: 1px solid rgba(246, 240, 232, 0.08);
+  border-radius: 16px;
+  background: rgba(10, 13, 18, 0.56);
+}
+
+.draftItem,
+.detailRow,
+.memberCard {
+  padding: 14px 16px;
 }
 
 .workspace {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 22px;
 }
 
 .workspaceHeader h2 {
-  font-size: clamp(2.1rem, 4vw, 3.4rem);
+  font-size: clamp(2.1rem, 4vw, 3.3rem);
 }
 
 .workspaceLead {
   margin: 10px 0 0;
   max-width: 60ch;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
 }
 
 .runtimePill {
-  min-width: 240px;
+  min-width: 260px;
   padding: 16px 18px;
 }
 
@@ -323,89 +370,76 @@ code {
 
 .workspaceGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.95fr);
+  gap: 18px;
 }
 
-.heroPanel,
-.statusPanel,
-.detailPanel,
-.loadingPanel,
-.errorPanel {
-  padding: 24px;
+.conversationPanel {
+  display: grid;
+  gap: 14px;
 }
 
-.heroPanel {
-  min-height: 360px;
-  background:
-    linear-gradient(135deg, rgba(255, 133, 82, 0.14), rgba(255, 255, 255, 0.03)),
-    rgba(255, 255, 255, 0.04);
+.panelHeader h3 {
+  font-size: 1.4rem;
 }
 
-.heroPanel h3 {
-  font-size: 2rem;
+.compactDetails {
+  grid-template-columns: 1fr;
 }
 
-.heroCopy {
-  margin: 12px 0 20px;
-  max-width: 52ch;
+.detailRow span,
+.messageFooter span,
+.memberActions span {
+  color: rgba(246, 240, 232, 0.62);
 }
 
-.noteList,
-.capabilityList,
-.detailList {
+.messageCard {
+  padding: 14px 16px;
+}
+
+.messageCard p {
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+}
+
+.messageUser {
+  background: rgba(247, 170, 91, 0.09);
+}
+
+.messageOrchestrator {
+  background: rgba(51, 187, 170, 0.1);
+}
+
+.messageAgent {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.messageSystem {
+  background: rgba(255, 133, 82, 0.08);
+}
+
+.messageComposer {
+  display: grid;
+  gap: 10px;
+}
+
+.memberCard {
   display: grid;
   gap: 12px;
 }
 
-.noteItem,
-.capabilityCard,
-.detailRow {
-  border-radius: 16px;
-  background: rgba(10, 13, 18, 0.56);
-  border: 1px solid rgba(246, 240, 232, 0.08);
-}
-
-.noteItem,
-.capabilityCard {
-  padding: 14px 16px;
-}
-
-.capabilityCard {
+.tagList {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.capabilityCard span,
-.detailRow span {
-  color: rgba(246, 240, 232, 0.62);
-}
-
-.detailRow {
-  padding: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .loadingPanel,
 .errorPanel {
   max-width: 540px;
-  animation: riseIn 420ms ease both;
 }
 
-@keyframes riseIn {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (max-width: 1100px) {
+@media (max-width: 1180px) {
   .screen {
     grid-template-columns: 1fr;
   }
@@ -429,6 +463,10 @@ code {
   .workspaceHeader {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
   }
 
   .runtimePill {

@@ -5,8 +5,8 @@
 ## Overview
 
 The current focus is smoke and integration coverage around the Node server and
-shared app-shell contract. The renderer is still in the shell stage and is not
-yet under dedicated component-test coverage.
+shared app-shell contract. The renderer now drives real workspace flows, but it
+is still covered indirectly through server and state integration tests.
 
 ## Test Types
 
@@ -14,7 +14,8 @@ yet under dedicated component-test coverage.
 
 - **Location**: `tests/*.test.js`
 - **Framework**: `node:test`
-- **Scope**: Built server endpoints, workspace mutations, and file-backed store behavior
+- **Scope**: Built server endpoints, runtime-backed workspace mutations, and
+  file-backed store behavior
 
 ### Future Unit Tests
 

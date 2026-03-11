@@ -14,7 +14,9 @@ The current slices are:
 - a Node app/runtime core on `CATS_INC_PORT` (default `8181`)
 - a `cats-runtime` health and app-shell API
 - a `React/Vite` renderer that consumes the workspace shell
-- local channel setup that persists new channels into the workspace store
+- file-backed workspace, member, and transcript persistence
+- runtime-backed channel activation and routed messaging through `cats-runtime`
+- a global orchestrator surface, basic `@mention` routing, and transcript export
 
 ## Current Status
 
@@ -25,8 +27,9 @@ The current slices are:
 - [x] Add the first multi-channel workspace UI shell
 - [x] Add initial file-backed workspace state persistence
 - [x] Add local channel setup and persistence
-- [ ] Add real runtime-backed channel operations
-- [ ] Recreate `agent-workspace-poc` product behaviors on this new stack
+- [x] Add basic runtime-backed channel operations
+- [x] Add participant management, mention routing, and transcript export
+- [ ] Add richer orchestrator automation and productization layers
 
 ## Quick Start
 
@@ -45,7 +48,8 @@ Default endpoints:
 - Renderer dev server: `http://127.0.0.1:5173`
 - Runtime dependency: `http://127.0.0.1:3110`
 
-The workspace shell persists local state, including created channels, to
+The workspace shell persists local state, including created channels, members,
+session metadata, and transcripts, to
 `config/workspace-state.local.json` unless `CATS_INC_STATE_PATH` overrides it.
 
 For a built run:

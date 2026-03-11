@@ -8,8 +8,9 @@ The phase 1 API is intentionally small. It provides:
 
 - service and runtime reachability health
 - an explicit bootstrap payload for the workspace renderer shell
-- a narrow workspace mutation for selected-channel persistence
-- a local channel-creation mutation for workspace setup
+- a file-backed workspace mutation surface
+- runtime-backed channel activation and message routing
+- transcript export for later ingestion
 
 ## Base URL
 
@@ -81,9 +82,87 @@ Request body:
 Behavior:
 
 - trims title and topic before persistence
-- creates a new planned channel in the local workspace store
+- creates a new persisted channel in the local workspace store
 - selects the new channel immediately
 - returns the updated app-shell payload
+
+### Add Channel Member
+
+```text
+POST /api/workspace/channels/{id}/members
+```
+
+Adds a persisted channel member with provider/model/roles metadata.
+
+### Remove Channel Member
+
+```text
+DELETE /api/workspace/channels/{id}/members/{memberId}
+```
+
+Marks the member as removed and best-effort closes its runtime session.
+
+### Activate Channel
+
+```text
+POST /api/workspace/channels/{id}/activate
+```
+
+Creates channel-scoped runtime sessions for the global orchestrator and active
+members, then returns:
+
+```json
+{
+  "appShell": { "...": "updated shell payload" },
+  "results": [
+    {
+      "targetKind": "member",
+      "targetId": "member-id",
+      "targetName": "Agent-1",
+      "status": "started",
+      "sessionId": "session-2"
+    }
+  ]
+}
+```
+
+### Send Channel Message
+
+```text
+POST /api/workspace/channels/{id}/messages
+```
+
+Request body:
+
+```json
+{
+  "body": "Please review this fix with @Agent-1"
+}
+```
+
+Behavior:
+
+- persists the user message to the transcript
+- resolves `@mentions` against the orchestrator and active members
+- routes the prompt through `cats-runtime` sessions
+- persists runtime responses and token usage back into the channel transcript
+
+### Update Global Orchestrator
+
+```text
+PUT /api/orchestrator
+```
+
+Persists provider/model/prompt metadata for the global orchestrator surface.
+
+### Export Channel
+
+```text
+GET /api/workspace/channels/{id}/export
+```
+
+Returns a JSON attachment containing the current orchestrator settings and full
+channel transcript.
 
 ### App Shell
 
@@ -152,7 +231,8 @@ Errors use a minimal payload:
 - `cats-inc` does not talk to `agent-fleet` directly
 - The renderer consumes this endpoint over a Vite proxy during development
 - Workspace shell state is currently persisted to a local JSON file
-- Workspace mutations currently cover selection and local channel creation only
+- Workspace mutations now cover selection, channel setup, membership, activation,
+  messaging, orchestrator editing, and export
 - Future session and channel APIs should extend this contract without leaking
   backend-specific transport details
 

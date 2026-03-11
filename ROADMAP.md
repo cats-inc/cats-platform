@@ -22,10 +22,10 @@ application that sits above `cats-runtime`, absorbs the useful behavior from
 - [x] Multi-channel workspace shell
 - [x] Initial file-backed workspace state
 - [x] Local channel creation flow
-- [ ] Channel creation flow with team/runtime setup
-- [ ] Global orchestrator surface
-- [ ] Basic `@mention` routing and participant management
-- [ ] Transcript persistence designed for later ingestion
+- [x] Channel creation flow with team/runtime setup
+- [x] Global orchestrator surface
+- [x] Basic `@mention` routing and participant management
+- [x] Transcript persistence with export designed for later ingestion
 
 ### Phase 3: Productization
 

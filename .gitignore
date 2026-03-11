@@ -24,6 +24,8 @@ node_modules/
 dist/
 .npm/
 *.tgz
+!src/workspace/
+!src/workspace/**
 
 # === Environment ===
 .env

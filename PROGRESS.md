@@ -9,8 +9,8 @@
 | Bootstrap | Completed | Subproject created from `project-bootstrap` with Node.js preset |
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
-| Renderer Shell | Completed | React/Vite shell consumes app-shell and renders a multi-channel workspace UI |
-| Workspace Product Features | In Progress | Shell, local channel creation, and file-backed persistence exist; real runtime actions still ahead |
+| Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes channel setup, transcript, members, and orchestrator surfaces |
+| Workspace Product Features | Completed | Basic runtime-backed setup, messaging, member management, mention routing, and transcript export landed |
 | Documentation | In Progress | Core docs aligned; deeper product docs still needed |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
@@ -42,7 +42,7 @@
 
 ### WP-2: Workspace Shell Delivery
 
-**Status**: In Progress
+**Status**: Completed
 **Assigned**: Codex
 **Priority**: P1
 **Depends on**: WP-1
@@ -54,15 +54,18 @@
 | Choose renderer approach | [x] | React/Vite first, Electron deferred |
 | Add initial multi-channel workspace UI shell | [x] | Sidebar, channel cards, orchestrator and runtime panels |
 | Add persistent workspace shell storage | [x] | File-backed shell state now includes selected and created channels |
-| Implement orchestrator and channel setup UX | [ ] | Local channel setup landed; runtime-backed bootstrapping still ahead |
+| Implement orchestrator and channel setup UX | [x] | Channel setup, global orchestrator editing, and runtime activation all landed |
+| Add runtime-backed message, member, and export flows | [x] | Basic participant management, mention routing, and transcript export now exist |
 
 #### Acceptance Criteria
 
 - [x] Users can switch among initial workspace shell channels
 - [x] Selected channel survives reloads through local state persistence
 - [x] Users can create planned channels and keep them across reloads
-- [ ] Product shell can bootstrap runtime-backed sessions through `cats-runtime`
+- [x] Product shell can bootstrap runtime-backed sessions through `cats-runtime`
 - [x] Channel state is persisted beyond in-memory process lifetime
+- [x] Basic participant management and mention routing work against persisted channels
+- [x] Channels can export their transcript and configuration as JSON
 
 ---
 
@@ -86,20 +89,21 @@
 
 ### WP-2: Workspace Shell Delivery
 
-**Completed to date**: 2026-03-11 (initial slice)
+**Completed**: 2026-03-11
 
 #### Key Decisions
 
 - Use `React/Vite` for the renderer while keeping Electron deferred
 - Keep the Node server as the API and future desktop-safe integration boundary
 - Serve built static assets from the Node server after `npm run build`
+- Keep workspace persistence local and inspectable while runtime work stays behind `cats-runtime`
 
 #### Remaining Items
 
 - [x] Replace static shell selection with persisted workspace state
 - [x] Add a local channel setup flow with persisted workspace updates
-- [ ] Add runtime-backed channel actions and composer flows
-- [ ] Add a real mention model and transcript storage
+- [x] Add runtime-backed channel actions and composer flows
+- [x] Add a basic mention model, member management, and transcript export
 
 ---
 

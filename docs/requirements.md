@@ -58,7 +58,28 @@ through `cats-runtime`.
 - **Description**: The product shall let operators create planned channels from
   the renderer before runtime-backed session bootstrapping exists.
 - **Priority**: High
-- **Status**: In Progress
+- **Status**: Completed
+
+### FR-008: Runtime-Backed Channel Activation
+
+- **Description**: The product shall create channel-scoped orchestrator and
+  member sessions through `cats-runtime`.
+- **Priority**: High
+- **Status**: Completed
+
+### FR-009: Transcript and Mention Routing
+
+- **Description**: The product shall persist user, system, and runtime messages
+  locally while using basic `@mention` routing to choose channel targets.
+- **Priority**: High
+- **Status**: Completed
+
+### FR-010: Participant Management and Export
+
+- **Description**: The product shall support member add/remove flows and export
+  the current channel transcript for later ingestion.
+- **Priority**: High
+- **Status**: Completed
 
 ## Non-Functional Requirements
 
@@ -125,6 +146,37 @@ through `cats-runtime`.
 - [x] Renderer exposes a channel setup form
 - [x] New channels persist across reloads
 - [x] Newly created channels become the current selection
+
+### US-005: Operator Activates a Channel
+
+**As an** operator,
+**I want to** start runtime sessions for the orchestrator and members,
+**So that** channel work moves beyond local setup into real execution.
+
+**Acceptance Criteria**:
+- [x] Channel activation creates runtime sessions through `cats-runtime`
+- [x] Session metadata is persisted back into the workspace store
+
+### US-006: Operator Routes Work with Mentions
+
+**As an** operator,
+**I want to** send a channel message and mention specific teammates,
+**So that** work can be routed explicitly without leaving the workspace.
+
+**Acceptance Criteria**:
+- [x] User messages are persisted to the transcript
+- [x] Basic `@mention` parsing resolves orchestrator and active members
+- [x] Runtime responses are persisted with usage metadata
+
+### US-007: Operator Exports a Transcript
+
+**As an** operator,
+**I want to** export a channel transcript and setup bundle,
+**So that** later offline normalization or ingestion can happen without replaying the UI.
+
+**Acceptance Criteria**:
+- [x] Export returns orchestrator metadata plus full channel history
+- [x] Export is available through a stable HTTP route
 
 ## Constraints
 

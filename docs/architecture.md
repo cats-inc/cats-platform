@@ -54,21 +54,30 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 
 - **Purpose**: Publish the app-shell API and serve built static assets
 - **Technology**: Native `node:http`
-- **Responsibilities**: Serve `/health`, `/api/app-shell`, and built renderer files
+- **Responsibilities**: Serve `/health`, `/api/app-shell`, workspace mutation
+  routes, and built renderer files
 
 ### Workspace Store
 
-- **Purpose**: Persist minimal local workspace state
+ - **Purpose**: Persist full local workspace state
 - **Technology**: JSON file inside `config/`
-- **Responsibilities**: Load defaults, validate channel selections, create local
-  planned channels, and save workspace updates
+- **Responsibilities**: Load defaults, persist channels, members, transcript
+  messages, runtime session metadata, and exportable workspace state
+
+### Workspace Runtime Actions
+
+- **Purpose**: Translate workspace-level channel actions into `cats-runtime`
+  session calls
+- **Technology**: Native `fetch` through the runtime client
+- **Responsibilities**: Activate channel sessions, route mention-driven
+  messages, and persist runtime outcomes back into local transcripts
 
 ### Renderer Shell
 
 - **Purpose**: Present the first operator-facing multi-channel workspace UI
 - **Technology**: React + Vite
-- **Responsibilities**: Render channels, runtime status, orchestrator notes,
-  and the initial workspace shell, including local channel setup
+- **Responsibilities**: Render channels, runtime status, transcript composer,
+  member management, channel setup, and global orchestrator editing
 
 ### Workspace Shell Model
 
@@ -81,11 +90,12 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 1. In development, Vite serves the renderer and proxies `/api` to the Node server.
 2. The server asks the runtime client for current `cats-runtime` health.
 3. The server merges runtime health with persisted workspace state.
-4. The renderer can write selected-channel changes and new planned channels back
-   through narrow workspace APIs.
-5. In built mode, the server also serves the static renderer bundle.
-6. Future phases will expand this beyond shell persistence into real transcript
-   and channel storage.
+4. The renderer can create channels, add/remove members, activate sessions,
+   send mention-routed messages, edit the orchestrator, and export transcripts.
+5. Runtime-facing work still flows only through `cats-runtime`.
+6. In built mode, the server also serves the static renderer bundle.
+7. Future phases will expand this into richer orchestration automation and
+   alternate entrypoints.
 
 ## Technology Stack
 

@@ -53,7 +53,7 @@ npm start
 
 The built Node server serves the static UI from `dist/`.
 By default local workspace state is stored in `config/workspace-state.local.json`.
-That file now holds both the selected channel and any locally created channels.
+That file now holds channels, members, runtime session metadata, and transcripts.
 
 ## Common Issues
 
@@ -76,6 +76,12 @@ Node server on port `8181`.
 
 **Solution**: Check whether `CATS_INC_STATE_PATH` points to a writable file
 location. If unset, the app uses `config/workspace-state.local.json`.
+
+### Issue 5: Channel activation fails immediately
+
+**Solution**: Confirm `cats-runtime` is reachable, then verify the chosen
+provider/model pair is supported by the runtime backend. Activation errors are
+also persisted into the channel transcript.
 
 ---
 
