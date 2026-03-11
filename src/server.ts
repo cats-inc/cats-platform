@@ -6,11 +6,14 @@ import { fileURLToPath } from 'node:url';
 
 import type { AppConfig } from './config.js';
 import type { RuntimeClient } from './runtime/client.js';
+import type { UpdateSelectedChannelInput } from './shared/app-shell.js';
+import type { WorkspaceStore } from './workspace/store.js';
 import { createAppShell } from './workspace/shell.js';
 
 export interface ServerDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
+  workspaceStore: WorkspaceStore;
   now?: () => Date;
 }
 
@@ -49,6 +52,21 @@ function sendMethodNotAllowed(response: ServerResponse): void {
   sendJson(response, 405, { error: 'Method not allowed' });
 }
 
+async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of request) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+
+  const rawBody = Buffer.concat(chunks).toString('utf-8').trim();
+  if (!rawBody) {
+    throw new Error('Request body is required');
+  }
+
+  return JSON.parse(rawBody) as T;
+}
+
 function routeRequest(
   request: IncomingMessage,
   response: ServerResponse,
@@ -57,10 +75,15 @@ function routeRequest(
   const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
   const method = request.method ?? 'GET';
 
+  if (method === 'POST' && url.pathname === '/api/workspace/selection') {
+    return handleSelectionUpdate(request, response, dependencies);
+  }
+
   if (method !== 'GET') {
     switch (url.pathname) {
       case '/health':
       case '/api/app-shell':
+      case '/api/workspace/selection':
         sendMethodNotAllowed(response);
         return Promise.resolve();
       default:
@@ -77,11 +100,10 @@ async function handleGet(
   response: ServerResponse,
   dependencies: ServerDependencies,
 ): Promise<void> {
-  const runtime = await dependencies.runtimeClient.getHealth();
-  const now = dependencies.now?.() ?? new Date();
-
   switch (path) {
     case '/health': {
+      const runtime = await dependencies.runtimeClient.getHealth();
+      const now = dependencies.now?.() ?? new Date();
       const status = runtime.reachable ? 'ok' : 'degraded';
       const statusCode = runtime.reachable ? 200 : 503;
 
@@ -93,14 +115,38 @@ async function handleGet(
       });
       return;
     }
-    case '/api/app-shell':
-      sendJson(response, 200, createAppShell(dependencies.config, runtime, now));
+    case '/api/app-shell': {
+      const runtime = await dependencies.runtimeClient.getHealth();
+      const workspace = await dependencies.workspaceStore.read();
+      const now = dependencies.now?.() ?? new Date();
+
+      sendJson(response, 200, createAppShell(dependencies.config, runtime, workspace, now));
       return;
+    }
     default:
       if (await tryServeWebAsset(path, response)) {
         return;
       }
       sendJson(response, 404, { error: 'Not found' });
+  }
+}
+
+async function handleSelectionUpdate(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<UpdateSelectedChannelInput>(request);
+    const workspace = await dependencies.workspaceStore.updateSelectedChannel(body.selectedChannelId);
+    const runtime = await dependencies.runtimeClient.getHealth();
+    const now = dependencies.now?.() ?? new Date();
+
+    sendJson(response, 200, createAppShell(dependencies.config, runtime, workspace, now));
+  } catch (error) {
+    sendJson(response, 400, {
+      error: error instanceof Error ? error.message : 'Failed to update workspace selection',
+    });
   }
 }
 

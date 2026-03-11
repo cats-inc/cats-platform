@@ -52,6 +52,7 @@ npm start
 ```
 
 The built Node server serves the static UI from `dist/`.
+By default local workspace state is stored in `config/workspace-state.local.json`.
 
 ## Common Issues
 
@@ -69,6 +70,11 @@ that both services are available.
 
 **Solution**: Ensure `npm run dev:server` is running. Vite proxies `/api` to the
 Node server on port `8181`.
+
+### Issue 4: Channel selection does not persist
+
+**Solution**: Check whether `CATS_INC_STATE_PATH` points to a writable file
+location. If unset, the app uses `config/workspace-state.local.json`.
 
 ---
 

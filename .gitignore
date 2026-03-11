@@ -17,6 +17,7 @@ htmlcov/
 dist/
 dist-server/
 build/
+config/*.local.json
 
 # === Node.js ===
 node_modules/

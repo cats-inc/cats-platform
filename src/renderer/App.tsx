@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useState } from 'react';
 
 import type { AppShellPayload, WorkspaceChannelSummary } from '../shared/app-shell';
-import { fetchAppShell } from './api';
+import { fetchAppShell, updateSelectedChannel } from './api';
 
 type LoadState =
   | { status: 'loading' }
@@ -22,6 +22,7 @@ function channelTone(status: WorkspaceChannelSummary['status']): string {
 export default function App() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [selectedChannelId, setSelectedChannelId] = useState<string>('');
+  const [syncMessage, setSyncMessage] = useState<string>('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -77,6 +78,22 @@ export default function App() {
     payload.workspace.channels.find((channel) => channel.id === selectedChannelId) ??
     payload.workspace.channels[0];
 
+  async function handleChannelSelect(channelId: string): Promise<void> {
+    setSelectedChannelId(channelId);
+    setSyncMessage('Saving workspace selection...');
+
+    try {
+      const nextPayload = await updateSelectedChannel(channelId);
+      startTransition(() => {
+        setState({ status: 'ready', payload: nextPayload });
+        setSelectedChannelId(nextPayload.workspace.selectedChannelId);
+        setSyncMessage('Workspace selection saved.');
+      });
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : 'Failed to save selection.');
+    }
+  }
+
   return (
     <div className="screen">
       <div className="shellBackdrop" />
@@ -100,7 +117,7 @@ export default function App() {
                 <button
                   key={channel.id}
                   className={isSelected ? 'channelCard channelCardSelected' : 'channelCard'}
-                  onClick={() => setSelectedChannelId(channel.id)}
+                  onClick={() => void handleChannelSelect(channel.id)}
                   type="button"
                 >
                   <div className="channelCardTop">
@@ -131,6 +148,7 @@ export default function App() {
             <div>
               <strong>{payload.runtime.reachable ? 'Runtime reachable' : 'Runtime degraded'}</strong>
               <p>{payload.runtime.baseUrl}</p>
+              <p>{syncMessage || `State file sync via ${payload.workspace.capabilities.persistence}`}</p>
             </div>
           </div>
         </header>

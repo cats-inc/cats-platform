@@ -46,6 +46,13 @@ through `cats-runtime`.
 - **Priority**: High
 - **Status**: In Progress
 
+### FR-006: Local Workspace Persistence
+
+- **Description**: The product shall persist essential workspace shell state
+  locally so channel selection survives reloads.
+- **Priority**: High
+- **Status**: In Progress
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -62,6 +69,11 @@ through `cats-runtime`.
 
 - Desktop packaging should be deferred until the renderer and workflow model
   are stable
+
+### NFR-004: Local Persistence Safety
+
+- Workspace shell persistence should use a simple local file path first
+- The default persistence location should remain inside the project boundary
 
 ## User Stories
 
@@ -94,7 +106,7 @@ through `cats-runtime`.
 **Acceptance Criteria**:
 - [x] Renderer shows a multi-channel sidebar
 - [x] Renderer shows runtime health and orchestrator notes
-- [ ] Renderer persists channel changes across reloads
+- [x] Renderer persists selected channel changes across reloads
 
 ## Constraints
 

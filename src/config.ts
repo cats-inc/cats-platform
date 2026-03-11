@@ -1,8 +1,11 @@
+import path from 'node:path';
+
 export interface AppConfig {
   host: string;
   port: number;
   runtimeBaseUrl: string;
   runtimeApiKey: string;
+  workspaceStatePath: string;
 }
 
 const DEFAULT_HOST = '127.0.0.1';
@@ -29,5 +32,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: parsePort(env.CATS_INC_PORT, DEFAULT_PORT),
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
+    workspaceStatePath:
+      env.CATS_INC_STATE_PATH?.trim() || path.join(process.cwd(), 'config', 'workspace-state.local.json'),
   };
 }

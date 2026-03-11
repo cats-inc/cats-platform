@@ -22,7 +22,8 @@ The current slices are:
 - [x] Add a minimal Node/TypeScript HTTP entrypoint and smoke tests
 - [x] Choose `React/Vite` as the initial renderer approach
 - [x] Add the first multi-channel workspace UI shell
-- [ ] Add real persistence and runtime-backed channel operations
+- [x] Add initial file-backed workspace state persistence
+- [ ] Add real runtime-backed channel operations
 - [ ] Recreate `agent-workspace-poc` product behaviors on this new stack
 
 ## Quick Start
@@ -41,6 +42,9 @@ Default endpoints:
 - App API: `http://127.0.0.1:8181`
 - Renderer dev server: `http://127.0.0.1:5173`
 - Runtime dependency: `http://127.0.0.1:3110`
+
+The workspace shell persists local state to
+`config/workspace-state.local.json` unless `CATS_INC_STATE_PATH` overrides it.
 
 For a built run:
 

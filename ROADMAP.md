@@ -20,6 +20,7 @@ application that sits above `cats-runtime`, absorbs the useful behavior from
 ### Phase 2: Workspace Core
 
 - [x] Multi-channel workspace shell
+- [x] Initial file-backed workspace state
 - [ ] Channel creation flow with team/runtime setup
 - [ ] Global orchestrator surface
 - [ ] Basic `@mention` routing and participant management

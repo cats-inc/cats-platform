@@ -10,7 +10,7 @@
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and renders a multi-channel workspace UI |
-| Workspace Product Features | In Progress | Shell exists; persistence and real runtime actions still ahead |
+| Workspace Product Features | In Progress | Shell and file-backed selection persistence exist; real runtime actions still ahead |
 | Documentation | In Progress | Core docs aligned; deeper product docs still needed |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
@@ -53,12 +53,13 @@
 |------|--------|-------|
 | Choose renderer approach | [x] | React/Vite first, Electron deferred |
 | Add initial multi-channel workspace UI shell | [x] | Sidebar, channel cards, orchestrator and runtime panels |
-| Add persistent channel and transcript storage | [ ] | Storage shape should support later RAG ingestion |
+| Add persistent channel and transcript storage | [x] | File-backed selected-channel persistence landed |
 | Implement orchestrator and channel setup UX | [ ] | Use `crew-chat-poc` as runtime integration reference |
 
 #### Acceptance Criteria
 
 - [x] Users can switch among initial workspace shell channels
+- [x] Selected channel survives reloads through local state persistence
 - [ ] Product shell can bootstrap runtime-backed sessions through `cats-runtime`
 - [ ] Channel state is persisted beyond in-memory process lifetime
 
@@ -94,7 +95,7 @@
 
 #### Remaining Items
 
-- [ ] Replace static shell data with persisted workspace state
+- [x] Replace static shell selection with persisted workspace state
 - [ ] Add runtime-backed channel actions and composer flows
 - [ ] Add a real mention model and transcript storage
 

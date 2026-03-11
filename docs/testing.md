@@ -14,7 +14,7 @@ yet under dedicated component-test coverage.
 
 - **Location**: `tests/*.test.js`
 - **Framework**: `node:test`
-- **Scope**: Built server endpoints and bootstrap payloads
+- **Scope**: Built server endpoints, workspace mutation, and file-backed store behavior
 
 ### Future Unit Tests
 

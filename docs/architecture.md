@@ -56,6 +56,13 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 - **Technology**: Native `node:http`
 - **Responsibilities**: Serve `/health`, `/api/app-shell`, and built renderer files
 
+### Workspace Store
+
+- **Purpose**: Persist minimal local workspace state
+- **Technology**: JSON file inside `config/`
+- **Responsibilities**: Load defaults, validate channel selections, and save
+  selected-channel updates
+
 ### Renderer Shell
 
 - **Purpose**: Present the first operator-facing multi-channel workspace UI
@@ -73,9 +80,11 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 
 1. In development, Vite serves the renderer and proxies `/api` to the Node server.
 2. The server asks the runtime client for current `cats-runtime` health.
-3. The server returns app-shell JSON consumed by the renderer.
-4. In built mode, the server also serves the static renderer bundle.
-5. Future phases will replace the bootstrap shell with persistent channel data.
+3. The server merges runtime health with persisted workspace state.
+4. The renderer can write selected-channel changes back through a narrow API.
+5. In built mode, the server also serves the static renderer bundle.
+6. Future phases will expand this beyond shell persistence into real transcript
+   and channel storage.
 
 ## Technology Stack
 
