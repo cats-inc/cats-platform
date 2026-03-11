@@ -1,10 +1,10 @@
 # API Specification
 
-> Public HTTP surface for the initial `cats-inc` shell.
+> Public HTTP surface for the current `cats-inc` workspace shell.
 
 ## Overview
 
-The phase 1 API is intentionally small. It provides:
+The current Phase 2 API provides:
 
 - service and runtime reachability health
 - an explicit bootstrap payload for the workspace renderer shell
@@ -75,7 +75,19 @@ Request body:
 ```json
 {
   "title": "Ops Radar",
-  "topic": "Track runtime regressions before the desktop host arrives."
+  "topic": "Track runtime regressions before the desktop host arrives.",
+  "repoPath": "C:/Users/kenne/Source/SK2/one-man-digital-company",
+  "language": "TypeScript",
+  "responseLanguage": "zh-TW",
+  "formationMode": "manual",
+  "members": [
+    {
+      "name": "Agent-1",
+      "provider": "claude",
+      "model": "sonnet",
+      "roles": ["coder", "reviewer"]
+    }
+  ]
 }
 ```
 
@@ -170,9 +182,9 @@ channel transcript.
 GET /api/app-shell
 ```
 
-Returns the initial product bootstrap contract.
+Returns the current product shell contract.
 
-Example response:
+Abbreviated example response:
 
 ```json
 {
@@ -185,6 +197,9 @@ Example response:
     "id": "default",
     "name": "Cats Inc Workspace",
     "selectedChannelId": "launchpad",
+    "selectedChannel": {
+      "...": "full selected channel state including members, messages, and session metadata"
+    },
     "channels": [
       {
         "id": "launchpad",
@@ -192,17 +207,38 @@ Example response:
         "topic": "Shape the next workspace loop before wiring persistence.",
         "status": "active",
         "unreadCount": 2,
-        "memberCount": 4
+        "memberCount": 4,
+        "activeMemberCount": 4,
+        "repoPath": null,
+        "workspaceCwd": null,
+        "lastMessageAt": "2026-03-11T12:00:00.000Z",
+        "lastActivatedAt": "2026-03-11T11:59:00.000Z"
       }
     ],
     "globalOrchestrator": {
-      "mode": "planned",
-      "status": "ready"
+      "mode": "global",
+      "status": "ready",
+      "provider": "claude",
+      "model": "sonnet"
+    },
+    "capabilities": {
+      "multiChannel": true,
+      "persistence": "file-backed",
+      "mentions": "basic",
+      "splitView": "planned",
+      "transcriptExport": true,
+      "participantManagement": "basic",
+      "runtimeSessions": true
     }
   },
   "runtime": {
     "baseUrl": "http://127.0.0.1:3110",
     "reachable": true
+  },
+  "metadata": {
+    "generatedAt": "2026-03-11T12:34:56.000Z",
+    "host": "127.0.0.1",
+    "port": 8181
   }
 }
 ```
@@ -233,6 +269,8 @@ Errors use a minimal payload:
 - Workspace shell state is currently persisted to a local JSON file
 - Workspace mutations now cover selection, channel setup, membership, activation,
   messaging, orchestrator editing, and export
+- Runtime responses are currently delivered as request/response completions; the
+  API does not expose live push or WebSocket streaming yet
 - Future session and channel APIs should extend this contract without leaking
   backend-specific transport details
 

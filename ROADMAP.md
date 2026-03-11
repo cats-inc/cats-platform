@@ -29,9 +29,10 @@ application that sits above `cats-runtime`, absorbs the useful behavior from
 
 ### Phase 3: Productization
 
-- [ ] Transcript export and offline normalization hooks
-- [ ] Split-view workspace canvas for chat plus live preview
-- [ ] Operator-grade activity indicators and channel state
+- [ ] Offline transcript normalization and ingestion handoff hooks
+- [ ] Split-view workspace canvas for chat plus preview and debug surfaces
+- [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
+- [ ] Desktop host and tray lifecycle management above the existing Node server boundary
 - [ ] Telegram and alternate orchestrator entrypoints
 
 ## Future Considerations

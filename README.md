@@ -29,7 +29,18 @@ The current slices are:
 - [x] Add local channel setup and persistence
 - [x] Add basic runtime-backed channel operations
 - [x] Add participant management, mention routing, and transcript export
-- [ ] Add richer orchestrator automation and productization layers
+- [ ] Add productization layers beyond the current Phase 2 workspace core
+
+## Still Open
+
+The current implementation closes the main product gaps versus
+`agent-workspace-poc`, but several Phase 3 items remain:
+
+- richer orchestrator automation beyond explicit `@mention` routing
+- split-view workspace surfaces for chat plus preview/debug context
+- operator-grade activity indicators and better live runtime state
+- offline transcript normalization and ingestion handoff hooks
+- desktop host and alternate entrypoints such as Telegram or tray-driven flows
 
 ## Quick Start
 

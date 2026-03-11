@@ -16,47 +16,47 @@ through `cats-runtime`.
 - **Description**: The app shall talk to `cats-runtime` for runtime status and
   future session operations.
 - **Priority**: High
-- **Status**: In Progress
+- **Status**: Completed
 
 ### FR-002: Workspace Shell Contract
 
 - **Description**: The app shall expose an initial workspace shell payload that
   makes future channels, orchestrator controls, and capability flags explicit.
 - **Priority**: High
-- **Status**: In Progress
+- **Status**: Completed
 
 ### FR-003: Product Rebuild Direction
 
 - **Description**: The app shall treat `agent-workspace-poc` as a behavior
   reference rather than a long-term product base.
 - **Priority**: High
-- **Status**: Planned
+- **Status**: Completed
 
 ### FR-004: Multi-Channel Workspace
 
 - **Description**: The product shall support many persistent channels under one
   workspace model.
 - **Priority**: High
-- **Status**: In Progress
+- **Status**: Completed
 
 ### FR-005: Renderer Shell
 
 - **Description**: The product shall provide a renderer shell that makes the
   multi-channel workspace visible without forcing an Electron dependency yet.
 - **Priority**: High
-- **Status**: In Progress
+- **Status**: Completed
 
 ### FR-006: Local Workspace Persistence
 
 - **Description**: The product shall persist essential workspace shell state
   locally so channel selection and local channel setup survive reloads.
 - **Priority**: High
-- **Status**: In Progress
+- **Status**: Completed
 
 ### FR-007: Channel Setup Flow
 
 - **Description**: The product shall let operators create planned channels from
-  the renderer before runtime-backed session bootstrapping exists.
+  the renderer before they choose to activate runtime-backed sessions.
 - **Priority**: High
 - **Status**: Completed
 
@@ -80,6 +80,27 @@ through `cats-runtime`.
   the current channel transcript for later ingestion.
 - **Priority**: High
 - **Status**: Completed
+
+### FR-011: Richer Orchestrator Automation
+
+- **Description**: The product shall grow beyond explicit `@mention` routing
+  into more capable orchestration patterns and operator assists.
+- **Priority**: Medium
+- **Status**: Planned
+
+### FR-012: Productization Surfaces
+
+- **Description**: The product shall add split-view, richer activity state, and
+  desktop-safe integration seams without changing the `cats-runtime` boundary.
+- **Priority**: Medium
+- **Status**: Planned
+
+### FR-013: Alternate Entrypoints
+
+- **Description**: The product shall support desktop-host and non-web
+  entrypoints such as Telegram once the core workspace contract stabilizes.
+- **Priority**: Medium
+- **Status**: Planned
 
 ## Non-Functional Requirements
 
@@ -129,7 +150,8 @@ through `cats-runtime`.
 
 **As an** operator,
 **I want to** see channels, orchestrator state, and runtime health in one UI,
-**So that** I can reason about the future product shape before richer runtime actions land.
+**So that** I can reason about the current workspace state while richer
+automation is still evolving.
 
 **Acceptance Criteria**:
 - [x] Renderer shows a multi-channel sidebar
@@ -140,7 +162,8 @@ through `cats-runtime`.
 
 **As an** operator,
 **I want to** create a new planned workspace channel locally,
-**So that** I can shape the workspace before runtime-backed setup exists.
+**So that** I can shape the workspace before deciding when to activate runtime
+sessions.
 
 **Acceptance Criteria**:
 - [x] Renderer exposes a channel setup form
@@ -177,6 +200,18 @@ through `cats-runtime`.
 **Acceptance Criteria**:
 - [x] Export returns orchestrator metadata plus full channel history
 - [x] Export is available through a stable HTTP route
+
+### US-008: Operator Needs Better Runtime Visibility
+
+**As an** operator,
+**I want to** see richer activity and channel lifecycle state,
+**So that** I can tell what the workspace is doing without relying only on
+request completion banners.
+
+**Acceptance Criteria**:
+- [ ] The product exposes richer runtime or activity state than the current
+  request/response flow
+- [ ] The UI can surface those states without manual transcript inspection
 
 ## Constraints
 

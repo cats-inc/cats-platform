@@ -8,9 +8,11 @@
 | Environment | URL | Purpose |
 |-------------|-----|---------|
 | Development | `http://127.0.0.1:8181` | Local development |
-| Containerized local | `http://127.0.0.1:8181` | Docker-based local run |
+| Built local | `http://127.0.0.1:8181` | Local production-style run after `npm run build` |
+| Containerized local | `http://127.0.0.1:8181` | Scaffold exists, but container assets need refresh before being treated as current |
 | Staging | TBD | Pre-production testing |
 | Production | TBD | Live environment |
+| Desktop distributable | Planned | Electron or another desktop host is not implemented yet |
 
 ## Deployment Methods
 
@@ -27,6 +29,10 @@ npm start
 ```bash
 docker compose up --build
 ```
+
+Container assets were inherited from bootstrap and have not yet been refreshed
+for the current `dist-server/` plus Vite output layout. Treat them as a future
+follow-up, not a validated deployment path.
 
 ## Configuration
 
@@ -49,6 +55,7 @@ docker compose up --build
 - **Logs**: stdout from the Node process
 - **Health**: `GET /health`
 - **Renderer**: served by the Node server after `npm run build`
+- **Desktop host**: not implemented yet
 
 ## Troubleshooting
 
@@ -57,6 +64,13 @@ docker compose up --build
 **Symptoms**: `/health` returns `503`
 **Solution**: Check `cats-runtime` first, then verify `agent-fleet` during
 phase 1.
+
+### Issue 2: Container build does not match the current output layout
+
+**Symptoms**: The Docker image fails to start or cannot find the built server
+entrypoint.
+**Solution**: Refresh the inherited container assets before using Docker as an
+official deployment path.
 
 ---
 

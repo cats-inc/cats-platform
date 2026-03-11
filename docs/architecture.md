@@ -47,8 +47,8 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 
 - **Purpose**: Talk to `cats-runtime` over HTTP
 - **Technology**: Native `fetch`
-- **Responsibilities**: Retrieve runtime health and keep backend details out of
-  higher layers
+- **Responsibilities**: Retrieve runtime health, create and close sessions,
+  send routed messages, and keep backend details out of higher layers
 
 ### HTTP Server
 
@@ -81,9 +81,10 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 
 ### Workspace Shell Model
 
-- **Purpose**: Describe the initial product contract for the future workspace UI
+- **Purpose**: Describe the current product contract shared by server and renderer
 - **Technology**: Plain TypeScript data structures
-- **Responsibilities**: Expose workspace, orchestrator, and capability state
+- **Responsibilities**: Expose workspace, orchestrator, participant, message,
+  session, and capability state
 
 ## Data Flow
 
@@ -96,6 +97,17 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 6. In built mode, the server also serves the static renderer bundle.
 7. Future phases will expand this into richer orchestration automation and
    alternate entrypoints.
+
+## Current Gaps
+
+The main `agent-workspace-poc` parity gaps are now closed, but these areas are
+still intentionally deferred:
+
+- live streaming or push-based renderer updates
+- split-view workspace panes beyond the current chat-first layout
+- richer orchestrator automation than explicit runtime activation plus basic
+  `@mention` routing
+- desktop host lifecycle management and tray-driven UX
 
 ## Technology Stack
 

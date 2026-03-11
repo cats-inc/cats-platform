@@ -27,7 +27,8 @@ is still covered indirectly through server and state integration tests.
 
 - **Location**: `src/renderer/**` or `tests/ui/`
 - **Framework**: TBD
-- **Scope**: Channel switching, runtime banners, orchestrator shell behavior
+- **Scope**: Channel switching, runtime banners, orchestrator shell behavior,
+  and richer productization interactions
 
 ## Running Tests
 
@@ -39,6 +40,15 @@ npm test
 
 This builds the TypeScript source and then runs the Node built-in test runner
 against the compiled output.
+
+### Build Verification
+
+```bash
+npm run build
+```
+
+This is the current production-bundle smoke check. It is still run manually;
+the CI workflow does not yet build the Vite bundle.
 
 ## Mocking Guidelines
 
@@ -52,6 +62,7 @@ against the compiled output.
 - Tests run automatically on:
   - [x] Pull requests
   - [x] Main branch commits
+  - [ ] Production bundle build verification
   - [ ] Scheduled (nightly)
 
 ---

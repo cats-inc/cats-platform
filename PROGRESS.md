@@ -11,7 +11,8 @@
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes channel setup, transcript, members, and orchestrator surfaces |
 | Workspace Product Features | Completed | Basic runtime-backed setup, messaging, member management, mention routing, and transcript export landed |
-| Documentation | In Progress | Core docs aligned; deeper product docs still needed |
+| Documentation | In Progress | Core status and product docs are aligned; bootstrap template docs still need project-specific follow-up |
+| Productization Backlog | Not Started | Split-view, richer orchestration, desktop host, and alternate entrypoints remain |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
 
@@ -69,6 +70,32 @@
 
 ---
 
+### WP-3: Productization Backlog
+
+**Status**: Not Started
+**Assigned**: Codex
+**Priority**: P2
+**Depends on**: WP-2
+
+#### Tasks
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Add transcript normalization and ingestion handoff hooks | [ ] | Export exists; post-export normalization does not |
+| Add split-view workspace surfaces | [ ] | The current renderer is still chat-first |
+| Add operator-grade activity indicators and richer runtime state | [ ] | Current UI is request/response, not live-streamed |
+| Add alternate entrypoints and desktop-safe packaging seams | [ ] | Electron/tray and Telegram remain deferred |
+| Refresh deployment assets inherited from bootstrap | [ ] | Docker and desktop packaging need a dedicated follow-up pass |
+
+#### Acceptance Criteria
+
+- [ ] Exported transcripts can be normalized for downstream ingestion without manual edits
+- [ ] The workspace can show chat alongside at least one secondary pane
+- [ ] Operators can see richer session/activity state than the current request result banners
+- [ ] Desktop-host and alternate-entrypoint decisions are documented and implemented behind stable seams
+
+---
+
 ## Completion Notes
 
 ### WP-1: Bootstrap and Runtime Boundary
@@ -83,9 +110,10 @@
 
 #### Remaining Items
 
-- [ ] Replace the placeholder app shell with the real workspace model
 - [x] Decide the concrete frontend rendering approach for the product UI
-- [ ] Add persistence and transcript export paths
+- [x] Replace the placeholder app shell with the real workspace model
+- [x] Add persistence and transcript export paths
+- [ ] Productization follow-up work continues in WP-3
 
 ### WP-2: Workspace Shell Delivery
 
@@ -104,6 +132,7 @@
 - [x] Add a local channel setup flow with persisted workspace updates
 - [x] Add runtime-backed channel actions and composer flows
 - [x] Add a basic mention model, member management, and transcript export
+- [ ] Productization follow-up work continues in WP-3
 
 ---
 

@@ -8,32 +8,32 @@ These important documents live in the project root:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [PROGRESS.md](../PROGRESS.md) | ? | Implementation status and work packages |
-| [ROADMAP.md](../ROADMAP.md) | ? | Project roadmap and milestones |
+| [PROGRESS.md](../PROGRESS.md) | Complete | Implementation status and work packages |
+| [ROADMAP.md](../ROADMAP.md) | Complete | Project roadmap and milestones |
 
 ## Core Documents
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [requirements.md](./requirements.md) | ? | Requirements specification |
-| [architecture.md](./architecture.md) | ? | System architecture |
-| [api.md](./api.md) | ? | API specification (REST/WebSocket) |
+| [requirements.md](./requirements.md) | Complete | Requirements for the current Phase 2 shell plus open Phase 3 gaps |
+| [architecture.md](./architecture.md) | Complete | System architecture for the Node server, renderer, and runtime boundary |
+| [api.md](./api.md) | Complete | Current REST API surface for workspace state, runtime actions, and export |
 
 ## Development Guides
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [setup-guide.md](./setup-guide.md) | ? | Environment setup |
-| [testing.md](./testing.md) | ? | Testing strategy |
-| [deployment.md](./deployment.md) | ? | Deployment instructions |
-| [security-guidelines.md](./security-guidelines.md) | ?? Template | Security policies |
-| [mcp-config.md](./mcp-config.md) | ?? Template | MCP server configuration |
-| [services.md](./services.md) | ? | Service registry and port assignments |
-| [SCRIPT-STANDARDS.md](./SCRIPT-STANDARDS.md) | ?? Template | Script standards and naming |
+| [setup-guide.md](./setup-guide.md) | Complete | Environment setup |
+| [testing.md](./testing.md) | Complete | Current testing strategy and coverage boundaries |
+| [deployment.md](./deployment.md) | Partial | Manual local deployment is current; container and desktop packaging remain follow-up work |
+| [security-guidelines.md](./security-guidelines.md) | Template | Security policies placeholder inherited from bootstrap |
+| [mcp-config.md](./mcp-config.md) | Template | MCP configuration placeholder; not active for this project today |
+| [services.md](./services.md) | Complete | Service registry and port assignments |
+| [SCRIPT-STANDARDS.md](./SCRIPT-STANDARDS.md) | Template | Shared script standards reference |
 
 ## Scripts
 
-The `scripts/` directory contains platform-specific scripts for your project:
+The `scripts/` directory contains platform-specific scripts for this project:
 
 | Directory | Platform | Purpose |
 |-----------|----------|---------|
@@ -41,26 +41,24 @@ The `scripts/` directory contains platform-specific scripts for your project:
 | `scripts/linux/` | Linux | Bash scripts (.sh) |
 | `scripts/macos/` | macOS | Bash scripts (.sh) |
 
-Add your project-specific automation scripts here.
-
 ## AAIF Documents
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [AGENT-GUIDE.md](./AGENT-GUIDE.md) | ? | Agent collaboration guide |
-| [terminology.md](./terminology.md) | ?? Template | AAIF/A2A/MCP terminology |
-| [a2a/](./a2a/) | ?? | A2A agent card and task templates |
-| [specs/](./specs/) | ?? | Feature specifications, including `SPEC-001` through `SPEC-004` |
-| [plans/](./plans/) | ?? | Implementation plans, including `PLAN-001` through `PLAN-004` |
-| [decisions/](./decisions/) | ?? | Architecture Decision Records, including `ADR-001` and `ADR-002` |
+| [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide |
+| [terminology.md](./terminology.md) | Template | AAIF/A2A/MCP terminology placeholder |
+| [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
+| [specs/](./specs/) | Complete | Feature specifications, including `SPEC-001` through `SPEC-004` |
+| [plans/](./plans/) | Complete | Implementation plans, including `PLAN-001` through `PLAN-004` |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including `ADR-001` and `ADR-002` |
 
-**Legend**: ? Complete | ?? Template (needs content) | ?? Directory
+**Legend**: Complete | Partial | Template
 
 ## Research
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [research/](./research/) | ?? | Research notes and external sources |
+| [research/](./research/) | Template | Reserved for future external investigations and design notes |
 
 ## Context-Driven Development
 
@@ -68,7 +66,7 @@ For complex features, use the spec-plan-implement workflow:
 
 1. **Spec** (`specs/SPEC-NNN-title.md`): Define what to build and why
 2. **Plan** (`plans/PLAN-NNN-title.md`): Define how to build it
-3. **Implement**: Follow the plan, update progress
+3. **Implement**: Follow the plan and update progress documents
 
 This ensures AI agents understand requirements before writing code.
 
@@ -79,7 +77,15 @@ When working on this project:
 1. Check this index to understand what documentation exists
 2. Create missing documents as needed
 3. Update this index when adding new documents
-4. Follow templates provided in each file
+4. Keep status labels honest when a document is still a bootstrap placeholder
+
+## Current Documentation Gaps
+
+The main product docs are current, but these areas still need dedicated passes:
+
+- deployment assets and instructions for container or desktop packaging
+- project-specific security and MCP notes
+- A2A and terminology references once cross-agent workflows stabilize
 
 ## Document Standards
 
