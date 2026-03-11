@@ -1,7 +1,7 @@
-import { startTransition, useEffect, useState } from 'react';
+import { startTransition, useEffect, useState, type FormEvent } from 'react';
 
 import type { AppShellPayload, WorkspaceChannelSummary } from '../shared/app-shell';
-import { fetchAppShell, updateSelectedChannel } from './api';
+import { createWorkspaceChannel, fetchAppShell, updateSelectedChannel } from './api';
 
 type LoadState =
   | { status: 'loading' }
@@ -23,6 +23,9 @@ export default function App() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [selectedChannelId, setSelectedChannelId] = useState<string>('');
   const [syncMessage, setSyncMessage] = useState<string>('');
+  const [draftTitle, setDraftTitle] = useState<string>('');
+  const [draftTopic, setDraftTopic] = useState<string>('');
+  const [isCreatingChannel, setIsCreatingChannel] = useState<boolean>(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -77,6 +80,16 @@ export default function App() {
   const selectedChannel =
     payload.workspace.channels.find((channel) => channel.id === selectedChannelId) ??
     payload.workspace.channels[0];
+  const createDisabled =
+    isCreatingChannel || draftTitle.trim().length === 0 || draftTopic.trim().length === 0;
+
+  function applyPayload(nextPayload: AppShellPayload, message: string): void {
+    startTransition(() => {
+      setState({ status: 'ready', payload: nextPayload });
+      setSelectedChannelId(nextPayload.workspace.selectedChannelId);
+      setSyncMessage(message);
+    });
+  }
 
   async function handleChannelSelect(channelId: string): Promise<void> {
     setSelectedChannelId(channelId);
@@ -84,13 +97,34 @@ export default function App() {
 
     try {
       const nextPayload = await updateSelectedChannel(channelId);
+      applyPayload(nextPayload, 'Workspace selection saved.');
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : 'Failed to save selection.');
+    }
+  }
+
+  async function handleChannelCreate(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setIsCreatingChannel(true);
+    setSyncMessage('Creating workspace channel...');
+
+    try {
+      const nextPayload = await createWorkspaceChannel({
+        title: draftTitle,
+        topic: draftTopic,
+      });
+
       startTransition(() => {
         setState({ status: 'ready', payload: nextPayload });
         setSelectedChannelId(nextPayload.workspace.selectedChannelId);
-        setSyncMessage('Workspace selection saved.');
+        setDraftTitle('');
+        setDraftTopic('');
+        setSyncMessage('Workspace channel created.');
       });
     } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'Failed to save selection.');
+      setSyncMessage(error instanceof Error ? error.message : 'Failed to create channel.');
+    } finally {
+      setIsCreatingChannel(false);
     }
   }
 
@@ -133,6 +167,45 @@ export default function App() {
               );
             })}
           </div>
+        </section>
+
+        <section className="sidebarSection">
+          <div className="sectionHeading">
+            <span>Channel setup</span>
+            <span>local</span>
+          </div>
+          <p className="sectionCopy">
+            Create a planned channel and persist it to the local workspace store.
+          </p>
+          <form className="channelSetupForm" onSubmit={(event) => void handleChannelCreate(event)}>
+            <label className="fieldLabel" htmlFor="channel-title">
+              <span>Title</span>
+              <input
+                id="channel-title"
+                className="textInput"
+                onChange={(event) => setDraftTitle(event.target.value)}
+                placeholder="Ops Radar"
+                type="text"
+                value={draftTitle}
+              />
+            </label>
+
+            <label className="fieldLabel" htmlFor="channel-topic">
+              <span>Topic</span>
+              <textarea
+                id="channel-topic"
+                className="textInput textAreaInput"
+                onChange={(event) => setDraftTopic(event.target.value)}
+                placeholder="Track runtime regressions before the desktop host arrives."
+                rows={3}
+                value={draftTopic}
+              />
+            </label>
+
+            <button className="primaryButton" disabled={createDisabled} type="submit">
+              {isCreatingChannel ? 'Creating...' : 'Create channel'}
+            </button>
+          </form>
         </section>
       </aside>
 

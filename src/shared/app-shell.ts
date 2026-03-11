@@ -52,3 +52,8 @@ export interface AppShellPayload {
 export interface UpdateSelectedChannelInput {
   selectedChannelId: string;
 }
+
+export interface CreateWorkspaceChannelInput {
+  title: string;
+  topic: string;
+}

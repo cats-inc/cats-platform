@@ -124,3 +124,51 @@ test('POST /api/workspace/selection persists selected channel state', async () =
     assert.equal(fetchPayload.workspace.selectedChannelId, 'runtime-debug');
   }, workspaceStore);
 });
+
+test('POST /api/workspace/channels creates and persists a new channel', async () => {
+  const runtimeClient = {
+    async getHealth() {
+      return {
+        baseUrl: 'http://127.0.0.1:3110',
+        reachable: true,
+        status: 'ok',
+        service: 'cats-runtime',
+      };
+    },
+  };
+
+  const workspaceStore = new MemoryWorkspaceStore();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createResponse = await fetch(`${baseUrl}/api/workspace/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Ops Radar',
+        topic: 'Track runtime regressions before the desktop host arrives.',
+      }),
+    });
+
+    assert.equal(createResponse.status, 200);
+
+    const createPayload = await createResponse.json();
+    assert.equal(createPayload.workspace.selectedChannelId, 'ops-radar');
+    assert.equal(createPayload.workspace.channels.length, 4);
+
+    const createdChannel = createPayload.workspace.channels.find(
+      (channel) => channel.id === 'ops-radar',
+    );
+    assert.ok(createdChannel);
+    assert.equal(createdChannel.title, 'Ops Radar');
+    assert.equal(createdChannel.status, 'planned');
+
+    const fetchResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(fetchResponse.status, 200);
+
+    const fetchPayload = await fetchResponse.json();
+    assert.equal(fetchPayload.workspace.selectedChannelId, 'ops-radar');
+    assert.equal(fetchPayload.workspace.channels.length, 4);
+  }, workspaceStore);
+});

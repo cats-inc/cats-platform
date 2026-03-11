@@ -14,7 +14,7 @@ yet under dedicated component-test coverage.
 
 - **Location**: `tests/*.test.js`
 - **Framework**: `node:test`
-- **Scope**: Built server endpoints, workspace mutation, and file-backed store behavior
+- **Scope**: Built server endpoints, workspace mutations, and file-backed store behavior
 
 ### Future Unit Tests
 
@@ -42,6 +42,7 @@ against the compiled output.
 ## Mocking Guidelines
 
 - Prefer in-process stub objects for runtime clients
+- Prefer local temp directories for file-backed workspace store coverage
 - Avoid heavy mocking libraries unless the product surface grows enough to need
   them
 

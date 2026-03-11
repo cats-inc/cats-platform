@@ -49,7 +49,14 @@ through `cats-runtime`.
 ### FR-006: Local Workspace Persistence
 
 - **Description**: The product shall persist essential workspace shell state
-  locally so channel selection survives reloads.
+  locally so channel selection and local channel setup survive reloads.
+- **Priority**: High
+- **Status**: In Progress
+
+### FR-007: Channel Setup Flow
+
+- **Description**: The product shall let operators create planned channels from
+  the renderer before runtime-backed session bootstrapping exists.
 - **Priority**: High
 - **Status**: In Progress
 
@@ -101,12 +108,23 @@ through `cats-runtime`.
 
 **As an** operator,
 **I want to** see channels, orchestrator state, and runtime health in one UI,
-**So that** I can reason about the future product shape before persistence lands.
+**So that** I can reason about the future product shape before richer runtime actions land.
 
 **Acceptance Criteria**:
 - [x] Renderer shows a multi-channel sidebar
 - [x] Renderer shows runtime health and orchestrator notes
 - [x] Renderer persists selected channel changes across reloads
+
+### US-004: Operator Creates a Channel
+
+**As an** operator,
+**I want to** create a new planned workspace channel locally,
+**So that** I can shape the workspace before runtime-backed setup exists.
+
+**Acceptance Criteria**:
+- [x] Renderer exposes a channel setup form
+- [x] New channels persist across reloads
+- [x] Newly created channels become the current selection
 
 ## Constraints
 

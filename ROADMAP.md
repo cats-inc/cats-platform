@@ -21,6 +21,7 @@ application that sits above `cats-runtime`, absorbs the useful behavior from
 
 - [x] Multi-channel workspace shell
 - [x] Initial file-backed workspace state
+- [x] Local channel creation flow
 - [ ] Channel creation flow with team/runtime setup
 - [ ] Global orchestrator surface
 - [ ] Basic `@mention` routing and participant management

@@ -9,6 +9,7 @@ The phase 1 API is intentionally small. It provides:
 - service and runtime reachability health
 - an explicit bootstrap payload for the workspace renderer shell
 - a narrow workspace mutation for selected-channel persistence
+- a local channel-creation mutation for workspace setup
 
 ## Base URL
 
@@ -61,6 +62,28 @@ Request body:
 ```
 
 Returns the updated app-shell payload on success.
+
+### Create Workspace Channel
+
+```text
+POST /api/workspace/channels
+```
+
+Request body:
+
+```json
+{
+  "title": "Ops Radar",
+  "topic": "Track runtime regressions before the desktop host arrives."
+}
+```
+
+Behavior:
+
+- trims title and topic before persistence
+- creates a new planned channel in the local workspace store
+- selects the new channel immediately
+- returns the updated app-shell payload
 
 ### App Shell
 
@@ -129,6 +152,7 @@ Errors use a minimal payload:
 - `cats-inc` does not talk to `agent-fleet` directly
 - The renderer consumes this endpoint over a Vite proxy during development
 - Workspace shell state is currently persisted to a local JSON file
+- Workspace mutations currently cover selection and local channel creation only
 - Future session and channel APIs should extend this contract without leaking
   backend-specific transport details
 

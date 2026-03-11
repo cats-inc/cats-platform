@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url';
 
 import type { AppConfig } from './config.js';
 import type { RuntimeClient } from './runtime/client.js';
-import type { UpdateSelectedChannelInput } from './shared/app-shell.js';
+import type {
+  CreateWorkspaceChannelInput,
+  UpdateSelectedChannelInput,
+} from './shared/app-shell.js';
 import type { WorkspaceStore } from './workspace/store.js';
 import { createAppShell } from './workspace/shell.js';
 
@@ -79,11 +82,16 @@ function routeRequest(
     return handleSelectionUpdate(request, response, dependencies);
   }
 
+  if (method === 'POST' && url.pathname === '/api/workspace/channels') {
+    return handleChannelCreate(request, response, dependencies);
+  }
+
   if (method !== 'GET') {
     switch (url.pathname) {
       case '/health':
       case '/api/app-shell':
       case '/api/workspace/selection':
+      case '/api/workspace/channels':
         sendMethodNotAllowed(response);
         return Promise.resolve();
       default:
@@ -146,6 +154,25 @@ async function handleSelectionUpdate(
   } catch (error) {
     sendJson(response, 400, {
       error: error instanceof Error ? error.message : 'Failed to update workspace selection',
+    });
+  }
+}
+
+async function handleChannelCreate(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<CreateWorkspaceChannelInput>(request);
+    const workspace = await dependencies.workspaceStore.createChannel(body);
+    const runtime = await dependencies.runtimeClient.getHealth();
+    const now = dependencies.now?.() ?? new Date();
+
+    sendJson(response, 200, createAppShell(dependencies.config, runtime, workspace, now));
+  } catch (error) {
+    sendJson(response, 400, {
+      error: error instanceof Error ? error.message : 'Failed to create workspace channel',
     });
   }
 }
