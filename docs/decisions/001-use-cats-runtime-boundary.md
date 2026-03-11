@@ -23,8 +23,8 @@ backend-specific routes in its public contract.
 - Runtime backends can evolve behind `cats-runtime`
 - Product APIs must be designed around stable app-level needs, not backend
   transport details
-- In phase 1, `cats-inc` still indirectly depends on `agent-fleet` because
-  `cats-runtime` does
+- The original migration context assumed an indirect `agent-fleet` dependency,
+  but that no longer applies now that `cats-runtime` embeds the CLI runtime
 
 ## Alternatives Considered
 

@@ -34,6 +34,21 @@ Container assets were inherited from bootstrap and have not yet been refreshed
 for the current `dist-server/` plus Vite output layout. Treat them as a future
 follow-up, not a validated deployment path.
 
+### Planned Desktop Packaging
+
+Desktop packaging is not implemented yet, but the intended topology is now
+documented:
+
+- Electron `main` owns tray, windows, startup, and process supervision
+- `cats-runtime` runs as a managed local process
+- `cats-inc` runs as a managed local process
+- The BrowserWindow loads the local `cats-inc` app URL
+- The renderer does not talk to provider CLIs or spawn local runtimes directly
+
+See
+[ADR-003](./decisions/003-electron-host-manages-local-services.md)
+for the planned desktop host model.
+
 ## Configuration
 
 ### Environment Variables
@@ -62,8 +77,8 @@ follow-up, not a validated deployment path.
 ### Issue 1: Runtime dependency unavailable
 
 **Symptoms**: `/health` returns `503`
-**Solution**: Check `cats-runtime` first, then verify `agent-fleet` during
-phase 1.
+**Solution**: Check `cats-runtime` first, then verify the required local CLI
+providers and session directories are available to the runtime process.
 
 ### Issue 2: Container build does not match the current output layout
 

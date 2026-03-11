@@ -64,8 +64,9 @@ correct.
 
 ### Issue 2: Runtime still unavailable even though `cats-runtime` is up
 
-**Solution**: In phase 1, `cats-runtime` still depends on `agent-fleet`. Check
-that both services are available.
+**Solution**: Verify the chosen provider CLI is installed and reachable from
+the `cats-runtime` process, and confirm any required local session directories
+or databases are accessible.
 
 ### Issue 3: Renderer cannot load app-shell data
 

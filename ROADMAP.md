@@ -37,7 +37,7 @@ application that sits above `cats-runtime`, absorbs the useful behavior from
 
 ## Future Considerations
 
-- Thin Electron host once tray/runtime lifecycle needs are concrete
+- Thin Electron host that manages local `cats-inc` and `cats-runtime` services
 - Multiple runtime backends behind `cats-runtime`
 - Richer memory retrieval loops through MCP and RAG
 - Multi-tenant product packaging

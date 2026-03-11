@@ -50,7 +50,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
 | [specs/](./specs/) | Complete | Feature specifications, including `SPEC-001` through `SPEC-004` |
 | [plans/](./plans/) | Complete | Implementation plans, including `PLAN-001` through `PLAN-004` |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including `ADR-001` and `ADR-002` |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including `ADR-001` through `ADR-003` |
 
 **Legend**: Complete | Partial | Template
 
@@ -83,7 +83,7 @@ When working on this project:
 
 The main product docs are current, but these areas still need dedicated passes:
 
-- deployment assets and instructions for container or desktop packaging
+- deployment assets and implementation details for container or desktop packaging
 - project-specific security and MCP notes
 - A2A and terminology references once cross-agent workflows stabilize
 

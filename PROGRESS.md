@@ -84,7 +84,7 @@
 | Add transcript normalization and ingestion handoff hooks | [ ] | Export exists; post-export normalization does not |
 | Add split-view workspace surfaces | [ ] | The current renderer is still chat-first |
 | Add operator-grade activity indicators and richer runtime state | [ ] | Current UI is request/response, not live-streamed |
-| Add alternate entrypoints and desktop-safe packaging seams | [ ] | Electron/tray and Telegram remain deferred |
+| Add alternate entrypoints and desktop-safe packaging seams | [ ] | Electron/tray and Telegram remain deferred; desktop topology is documented in ADR-003 |
 | Refresh deployment assets inherited from bootstrap | [ ] | Docker and desktop packaging need a dedicated follow-up pass |
 
 #### Acceptance Criteria

@@ -26,12 +26,13 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 ┌───────────────────────────┐
 │       cats-runtime        │
 │ stable runtime boundary   │
+│ + embedded CLI backend    │
 └──────────────┬────────────┘
-               │ HTTP
+               │ subprocess / local files / local APIs
                ▼
 ┌───────────────────────────┐
-│       agent-fleet         │
-│ phase 1 backend adapter   │
+│ Claude / Codex / Gemini   │
+│ Cursor / Kiro / OpenCode  │
 └───────────────────────────┘
 ```
 
@@ -98,6 +99,31 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 7. Future phases will expand this into richer orchestration automation and
    alternate entrypoints.
 
+## Planned Desktop Topology
+
+The future desktop shape is now decided even though it is not implemented yet:
+
+```text
+Electron main
+  ├─ tray + window lifecycle
+  ├─ starts cats-runtime
+  ├─ starts cats-inc
+  └─ loads BrowserWindow from cats-inc
+
+BrowserWindow renderer
+  └─ React/Vite workspace UI
+
+cats-inc
+  └─ product HTTP boundary over cats-runtime
+
+cats-runtime
+  └─ CLI spawning, native discovery, and runtime state
+```
+
+This keeps subprocess-backed runtime work out of the renderer and preserves the
+existing `cats-inc -> cats-runtime` boundary for desktop packaging. See
+[ADR-003](./decisions/003-electron-host-manages-local-services.md).
+
 ## Current Gaps
 
 The main `agent-workspace-poc` parity gaps are now closed, but these areas are
@@ -107,7 +133,7 @@ still intentionally deferred:
 - split-view workspace panes beyond the current chat-first layout
 - richer orchestrator automation than explicit runtime activation plus basic
   `@mention` routing
-- desktop host lifecycle management and tray-driven UX
+- desktop host lifecycle management and tray-driven UX implementation
 
 ## Technology Stack
 
@@ -115,8 +141,7 @@ still intentionally deferred:
 |-------|------------|---------|
 | Renderer | React + Vite | Operator-facing workspace UI |
 | Product app | Node.js + TypeScript | Product-facing backend shell |
-| Runtime boundary | `cats-runtime` | Stable runtime contract |
-| Runtime backend | `agent-fleet` | Phase 1 execution backend |
+| Runtime boundary | `cats-runtime` | Stable runtime contract and embedded CLI runtime |
 | Testing | `node:test` | Lightweight smoke and integration tests |
 
 ## Design Patterns
