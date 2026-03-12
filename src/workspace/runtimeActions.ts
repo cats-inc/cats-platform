@@ -385,7 +385,7 @@ export async function routeChannelMessage(
       channelId,
       {
         senderKind: 'system',
-        senderName: 'Workspace',
+        senderName: 'Chat',
         body: `Unresolved mentions: ${unresolved.map((item) => `@${item}`).join(', ')}`,
       },
       now,
@@ -401,8 +401,8 @@ export async function routeChannelMessage(
       channelId,
       {
         senderKind: 'system',
-        senderName: 'Workspace',
-        body: 'No routing targets matched this message. Mention a teammate or activate the orchestrator session.',
+        senderName: 'Chat',
+        body: 'No routing targets matched this message. Mention someone or activate the coordinator first.',
       },
       now,
       {
@@ -427,8 +427,8 @@ export async function routeChannelMessage(
         channelId,
         {
           senderKind: 'system',
-          senderName: 'Workspace',
-          body: `${target.name} has no active session yet. Activate the channel before routing work.`,
+          senderName: 'Chat',
+          body: `${target.name} has no active session yet. Activate the chat before routing work.`,
         },
         now,
         {

@@ -60,7 +60,7 @@
 
 #### Acceptance Criteria
 
-- [x] Users can switch among initial workspace shell channels
+- [x] Users can switch among persisted workspace channels
 - [x] Selected channel survives reloads through local state persistence
 - [x] Users can create planned channels and keep them across reloads
 - [x] Product shell can bootstrap runtime-backed sessions through `cats-runtime`
@@ -136,4 +136,4 @@
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-13*

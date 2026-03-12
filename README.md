@@ -1,6 +1,6 @@
 # cats-inc
 
-> Next-generation chat and workspace product shell for the cats initiative.
+> Chat is the lightweight team conversation module for Cats Inc.
 
 ## Overview
 
@@ -13,7 +13,7 @@ The current slices are:
 
 - a Node app/runtime core on `CATS_INC_PORT` (default `8181`)
 - a `cats-runtime` health and app-shell API
-- a `React/Vite` renderer that consumes the workspace shell
+- a chat-first `React/Vite` renderer with on-demand tools
 - file-backed workspace, member, and transcript persistence
 - runtime-backed channel activation and routed messaging through `cats-runtime`
 - a global orchestrator surface, basic `@mention` routing, and transcript export

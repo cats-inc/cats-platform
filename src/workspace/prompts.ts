@@ -17,7 +17,7 @@ function languageInstruction(responseLanguage: string): string {
 function formatRecentMessages(messages: WorkspaceMessage[]): string {
   const recent = messages.slice(-6);
   if (recent.length === 0) {
-    return 'No prior channel messages.';
+    return 'No prior chat messages.';
   }
 
   return recent
@@ -28,7 +28,7 @@ function formatRecentMessages(messages: WorkspaceMessage[]): string {
 function formatMemberRoster(channel: WorkspaceChannelState): string {
   const activeMembers = channel.members.filter((member) => member.status === 'active');
   if (activeMembers.length === 0) {
-    return 'No active channel members yet.';
+    return 'No active people in this chat yet.';
   }
 
   return activeMembers
@@ -44,9 +44,9 @@ function formatSharedContext(
   orchestrator: GlobalOrchestratorSummary,
 ): string {
   const lines = [
-    `Channel: ${channel.title}`,
+    `Chat: ${channel.title}`,
     `Topic: ${channel.topic}`,
-    `Channel status: ${channel.status}`,
+    `Chat status: ${channel.status}`,
     `Formation mode: ${channel.formationMode}`,
   ];
 
@@ -54,16 +54,16 @@ function formatSharedContext(
     lines.push(`Repo path: ${channel.repoPath}`);
   }
   if (channel.workspaceCwd) {
-    lines.push(`Workspace cwd: ${channel.workspaceCwd}`);
+    lines.push(`Runtime cwd: ${channel.workspaceCwd}`);
   }
   if (channel.language) {
     lines.push(`Project language: ${channel.language}`);
   }
   if (channel.skillProfile) {
-    lines.push(`Channel skill profile: ${channel.skillProfile}`);
+    lines.push(`Chat skill profile: ${channel.skillProfile}`);
   }
   if (channel.mcpProfile) {
-    lines.push(`Channel MCP profile: ${channel.mcpProfile}`);
+    lines.push(`Chat MCP profile: ${channel.mcpProfile}`);
   }
 
   lines.push(`Global orchestrator provider: ${orchestrator.provider}`);
@@ -80,10 +80,10 @@ export function buildOrchestratorPrompt(
   userMessage: WorkspaceMessage,
 ): string {
   return [
-    `You are ${ORCHESTRATOR_NAME}, the global workspace orchestrator for cats-inc.`,
-    'You coordinate who should act next inside this single channel. Respect explicit @mentions.',
+    `You are ${ORCHESTRATOR_NAME}, the global chat coordinator for Cats Inc.`,
+    'You coordinate who should act next inside this chat. Respect explicit @mentions.',
     'If the user explicitly mentions a teammate, assume they want that teammate involved.',
-    'When referring to teammates, mention them with @Name so the workspace can route follow-up turns.',
+    'When referring to teammates, mention them with @Name so Chat can route follow-up turns.',
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
     `Global system prompt:\n${orchestrator.systemPrompt}`,
@@ -104,10 +104,10 @@ export function buildMemberPrompt(
   const roleLabel = member.roles.length > 0 ? member.roles.join(', ') : 'general';
 
   return [
-    `You are ${member.name}, a channel participant inside cats-inc.`,
+    `You are ${member.name}, a chat participant inside the Chat module for Cats Inc.`,
     `Your provider is ${member.provider}${member.model ? ` and model ${member.model}` : ''}.`,
-    `Your roles in this channel: ${roleLabel}.`,
-    'Work inside the current channel context and answer as a teammate, not as the orchestrator.',
+    `Your roles in this chat: ${roleLabel}.`,
+    'Work inside the current chat context and answer as a teammate, not as the orchestrator.',
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
     `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,

@@ -176,8 +176,8 @@ export function createChannel(
 ): WorkspaceState {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
-  const title = input.title.trim() || 'Untitled channel';
-  const topic = input.topic.trim() || 'Channel setup is still being shaped.';
+  const title = input.title.trim() || 'Untitled chat';
+  const topic = input.topic.trim() || 'This chat is still taking shape.';
   const channelId = createUniqueChannelId(nextState, title);
   const members = (input.members ?? []).map((member) => createMemberRecord(member, nowIso));
   const channel: WorkspaceChannelState = {
@@ -204,8 +204,8 @@ export function createChannel(
       createMessageRecord(
         channelId,
         'system',
-        'Workspace',
-        `Channel created with ${members.length} member(s). Activate it to start runtime sessions.`,
+        'Chat',
+        `Chat created with ${members.length} member(s). Activate it to start runtime replies.`,
         nowIso,
         { event: 'channel_created' },
         null,
@@ -239,8 +239,8 @@ export function addMemberToChannel(
     createMessageRecord(
       channelId,
       'system',
-      'Workspace',
-      `${member.name} joined the channel.`,
+      'Chat',
+      `${member.name} joined the chat.`,
       nowIso,
       { event: 'member_joined', memberId: member.id },
       null,
@@ -275,8 +275,8 @@ export function removeMemberFromChannel(
     createMessageRecord(
       channelId,
       'system',
-      'Workspace',
-      `${member.name} left the channel.`,
+      'Chat',
+      `${member.name} left the chat.`,
       nowIso,
       { event: 'member_removed', memberId },
       null,

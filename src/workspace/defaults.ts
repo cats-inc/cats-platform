@@ -27,7 +27,7 @@ function createSystemMessage(channelId: string, body: string, createdAt: string)
     id: randomUUID(),
     channelId,
     senderKind: 'system',
-    senderName: 'Workspace',
+    senderName: 'Chat',
     body,
     mentions: [],
     metadata: {},
@@ -52,7 +52,7 @@ function createBaseChannel(
 ): WorkspaceChannelState {
   const initialMessage = createSystemMessage(
     partial.id,
-    partial.initialBody ?? 'Channel shell created. Add members, then activate runtime sessions.',
+    partial.initialBody ?? 'Chat ready. Add people, then activate replies when you need them.',
     createdAt,
   );
 
@@ -84,19 +84,20 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
   return {
     mode: 'global',
     status: 'warming',
-    nextFocus: 'Activate channels, route @mentions, and persist transcripts for later export',
+    nextFocus: 'Bring chats online, route @mentions, and keep transcripts ready to export',
     entrypoints: ['web', 'desktop', 'telegram'],
     referenceProjects: ['agent-workspace-poc', 'crew-chat-poc', 'cats-runtime'],
     notes: [
       'Keep runtime concerns behind cats-runtime.',
-      'Channel setup should stay pre-start and explicit.',
-      'Messages, membership, and exports should be first-class local data.',
+      'Chat setup should stay lightweight and explicit.',
+      'Messages, people, and exports should be first-class local data.',
     ],
     provider: 'claude',
     model: null,
     systemPrompt:
-      'You are the global orchestrator for cats-inc. Coordinate the workspace, respect ' +
-      'explicit @mentions, and keep the user aware of which teammates should act next.',
+      'You are the global coordinator for Cats Inc. This conversation happens in the Chat ' +
+      'module. Keep team chats clear, respect explicit @mentions, and tell the user who ' +
+      'should act next.',
     skillProfile: 'aaif-a2a-default',
     mcpProfile: 'workspace-memory',
     telegramBotName: null,
@@ -121,31 +122,11 @@ export function createDefaultWorkspaceState(): WorkspaceState {
   const channels: WorkspaceChannelState[] = [
     createBaseChannel(
       {
-        id: 'launchpad',
-        title: 'Launchpad',
-        topic: 'Shape the next workspace loop before wiring the first runtime-backed team.',
+        id: 'lobby',
+        title: 'Lobby',
+        topic: 'A casual room for the team to coordinate, ask for help, and keep things moving.',
         status: 'configured',
         orchestratorRoles: ['architect', 'coder', 'reviewer'],
-      },
-      createdAt,
-    ),
-    createBaseChannel(
-      {
-        id: 'runtime-debug',
-        title: 'Runtime Debug',
-        topic: 'Watch cats-runtime reachability and keep recovery notes attached to one channel.',
-        status: 'watching',
-        initialBody: 'Runtime watch channel ready. Use this room for diagnostics and recovery notes.',
-      },
-      createdAt,
-    ),
-    createBaseChannel(
-      {
-        id: 'strategy-room',
-        title: 'Strategy Room',
-        topic: 'Keep long-range orchestrator and product direction visible alongside delivery work.',
-        status: 'planned',
-        initialBody: 'Strategy room ready. Add members when you want a dedicated planning track.',
       },
       createdAt,
     ),
@@ -153,7 +134,7 @@ export function createDefaultWorkspaceState(): WorkspaceState {
 
   return {
     id: 'default',
-    name: 'Cats Inc Workspace',
+    name: 'Chat',
     selectedChannelId: channels[0].id,
     channels,
     globalOrchestrator: createDefaultOrchestrator(createdAt),

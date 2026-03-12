@@ -58,7 +58,7 @@ Request body:
 
 ```json
 {
-  "selectedChannelId": "runtime-debug"
+  "selectedChannelId": "lobby"
 }
 ```
 
@@ -195,16 +195,16 @@ Abbreviated example response:
   },
   "workspace": {
     "id": "default",
-    "name": "Cats Inc Workspace",
-    "selectedChannelId": "launchpad",
+    "name": "Chat",
+    "selectedChannelId": "lobby",
     "selectedChannel": {
       "...": "full selected channel state including members, messages, and session metadata"
     },
     "channels": [
       {
-        "id": "launchpad",
-        "title": "Launchpad",
-        "topic": "Shape the next workspace loop before wiring persistence.",
+        "id": "lobby",
+        "title": "Lobby",
+        "topic": "A casual room for the team to coordinate, ask for help, and keep things moving.",
         "status": "active",
         "unreadCount": 2,
         "memberCount": 4,
@@ -276,4 +276,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-13*

@@ -54,6 +54,8 @@ npm start
 The built Node server serves the static UI from `dist/`.
 By default local workspace state is stored in `config/workspace-state.local.json`.
 That file now holds channels, members, runtime session metadata, and transcripts.
+The checked-in starter state keeps only the `Launchpad` channel so the renderer
+does not open with extra mock channels.
 
 ## Common Issues
 
@@ -86,4 +88,4 @@ also persisted into the channel transcript.
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-13*

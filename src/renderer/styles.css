@@ -84,6 +84,7 @@ code {
 .brandBlock h1,
 .workspaceHeader h2,
 .panelHeader h3,
+.drawerHeader h3,
 .loadingPanel h1,
 .errorPanel h1 {
   margin: 0;
@@ -94,6 +95,17 @@ code {
 
 .brandBlock h1 {
   font-size: 2.2rem;
+}
+
+.sidebarActionBar {
+  display: grid;
+  gap: 10px;
+}
+
+.sidebarHint {
+  margin: 0;
+  color: rgba(246, 240, 232, 0.62);
+  font-size: 0.9rem;
 }
 
 .muted,
@@ -333,8 +345,25 @@ code {
   gap: 22px;
 }
 
+.workspaceHeader {
+  align-items: flex-start;
+}
+
 .workspaceHeader h2 {
   font-size: clamp(2.1rem, 4vw, 3.3rem);
+}
+
+.workspaceHeaderActions {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+}
+
+.workspaceToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .workspaceLead {
@@ -377,6 +406,45 @@ code {
 .conversationPanel {
   display: grid;
   gap: 14px;
+}
+
+.conversationPanelExpanded {
+  min-height: min(760px, calc(100vh - 140px));
+}
+
+.summaryStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summaryPill {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid rgba(246, 240, 232, 0.08);
+  border-radius: 16px;
+  background: rgba(10, 13, 18, 0.56);
+}
+
+.summaryPill span {
+  color: rgba(246, 240, 232, 0.58);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.participantStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.participantHint {
+  margin: 0;
+  color: rgba(246, 240, 232, 0.62);
 }
 
 .panelHeader h3 {
@@ -434,6 +502,41 @@ code {
   gap: 8px;
 }
 
+.drawerScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  padding: 24px;
+  background: rgba(4, 6, 10, 0.56);
+  backdrop-filter: blur(12px);
+}
+
+.drawerPanel {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(246, 240, 232, 0.08);
+  border-radius: 28px;
+  background:
+    linear-gradient(160deg, rgba(33, 41, 55, 0.96), rgba(15, 18, 25, 0.98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.drawerHeader .muted {
+  margin: 10px 0 0;
+}
+
 .loadingPanel,
 .errorPanel {
   max-width: 540px;
@@ -452,6 +555,15 @@ code {
   .workspaceGrid {
     grid-template-columns: 1fr;
   }
+
+  .workspaceHeaderActions {
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .workspaceToolbar {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 720px) {
@@ -465,11 +577,24 @@ code {
     align-items: flex-start;
   }
 
+  .summaryStrip {
+    grid-template-columns: 1fr;
+  }
+
   .fieldGrid {
     grid-template-columns: 1fr;
   }
 
   .runtimePill {
     width: 100%;
+  }
+
+  .drawerScrim {
+    padding: 14px;
+    align-items: flex-end;
+  }
+
+  .drawerPanel {
+    max-height: 92vh;
   }
 }

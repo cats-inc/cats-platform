@@ -43,7 +43,7 @@ function createRuntimeStub() {
       return {
         content: content.includes('Agent-1')
           ? 'Agent-1 handled the routed turn.'
-          : 'Orchestrator acknowledged the workspace request.',
+          : 'Orchestrator acknowledged the chat request.',
         inputTokens: 11,
         outputTokens: 7,
         tokensUsed: 18,
@@ -98,9 +98,14 @@ test('GET /api/app-shell exposes detailed workspace state', async () => {
 
     const payload = await response.json();
     assert.equal(payload.app.name, 'cats-inc');
-    assert.equal(payload.workspace.selectedChannelId, 'launchpad');
-    assert.equal(payload.workspace.channels.length, 3);
-    assert.equal(payload.workspace.selectedChannel.title, 'Launchpad');
+    assert.equal(payload.workspace.name, 'Chat');
+    assert.equal(payload.workspace.selectedChannelId, 'lobby');
+    assert.equal(payload.workspace.channels.length, 1);
+    assert.deepEqual(
+      payload.workspace.channels.map((channel) => channel.id),
+      ['lobby'],
+    );
+    assert.equal(payload.workspace.selectedChannel.title, 'Lobby');
     assert.equal(payload.workspace.capabilities.mentions, 'basic');
     assert.equal(payload.workspace.capabilities.transcriptExport, true);
   });
