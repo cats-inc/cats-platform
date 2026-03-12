@@ -53,8 +53,9 @@ npm start
 
 The built Node server serves the static UI from `dist/`.
 By default local workspace state is stored in `config/workspace-state.local.json`.
-That file now holds channels, members, runtime session metadata, and transcripts.
-The checked-in starter state keeps only the `Launchpad` channel so the renderer
+That file now holds channels, pals, execution targets, execution lease
+metadata, memory checkpoints, and transcripts.
+The checked-in starter state keeps only the `Lobby` channel so the renderer
 does not open with extra mock channels.
 
 ## Common Issues
@@ -83,8 +84,8 @@ location. If unset, the app uses `config/workspace-state.local.json`.
 ### Issue 5: Channel activation fails immediately
 
 **Solution**: Confirm `cats-runtime` is reachable, then verify the chosen
-provider/model pair is supported by the runtime backend. Activation errors are
-also persisted into the channel transcript.
+provider/model execution target is supported by the runtime backend. Activation
+errors are also persisted into the channel transcript.
 
 ---
 

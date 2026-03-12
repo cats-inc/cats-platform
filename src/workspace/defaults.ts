@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
+  MemoryCheckpointSummary,
+  ParticipantExecutionLease,
   GlobalOrchestratorSummary,
-  ParticipantSessionSummary,
   WorkspaceCapabilities,
   WorkspaceChannelState,
   WorkspaceMessage,
@@ -13,12 +14,25 @@ function isoNow(): string {
   return new Date().toISOString();
 }
 
-export function createEmptySessionState(): ParticipantSessionSummary {
+export function createEmptyExecutionLease(): ParticipantExecutionLease {
   return {
     sessionId: null,
     status: 'not_started',
     cwd: null,
     lastError: null,
+    provider: null,
+    model: null,
+    startedAt: null,
+    lastUsedAt: null,
+  };
+}
+
+export function createEmptyMemoryCheckpoint(): MemoryCheckpointSummary {
+  return {
+    summary: null,
+    facts: [],
+    openLoops: [],
+    updatedAt: null,
   };
 }
 
@@ -52,7 +66,7 @@ function createBaseChannel(
 ): WorkspaceChannelState {
   const initialMessage = createSystemMessage(
     partial.id,
-    partial.initialBody ?? 'Chat ready. Add people, then activate replies when you need them.',
+    partial.initialBody ?? 'Chat ready. Add pals, then activate replies when you need them.',
     createdAt,
   );
 
@@ -74,7 +88,7 @@ function createBaseChannel(
     updatedAt: createdAt,
     lastMessageAt: createdAt,
     lastActivatedAt: null,
-    orchestratorSession: createEmptySessionState(),
+    orchestratorLease: createEmptyExecutionLease(),
     members: [],
     messages: [initialMessage],
   };
@@ -90,16 +104,19 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
     notes: [
       'Keep runtime concerns behind cats-runtime.',
       'Chat setup should stay lightweight and explicit.',
-      'Messages, people, and exports should be first-class local data.',
+      'Messages, pals, memory checkpoints, and exports should be first-class local data.',
     ],
-    provider: 'claude',
-    model: null,
+    executionTarget: {
+      provider: 'claude',
+      model: null,
+    },
     systemPrompt:
       'You are the global coordinator for Cats Inc. This conversation happens in the Chat ' +
       'module. Keep team chats clear, respect explicit @mentions, and tell the user who ' +
       'should act next.',
     skillProfile: 'aaif-a2a-default',
     mcpProfile: 'workspace-memory',
+    memory: createEmptyMemoryCheckpoint(),
     telegramBotName: null,
     updatedAt,
   };

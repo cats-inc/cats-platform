@@ -60,10 +60,11 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 
 ### Workspace Store
 
- - **Purpose**: Persist full local workspace state
+- **Purpose**: Persist full local workspace state
 - **Technology**: JSON file inside `config/`
 - **Responsibilities**: Load defaults, persist channels, members, transcript
-  messages, runtime session metadata, and exportable workspace state
+  messages, execution targets, execution lease metadata, pal memory
+  checkpoints, and exportable workspace state
 
 ### Workspace Runtime Actions
 
@@ -87,12 +88,30 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 - **Responsibilities**: Expose workspace, orchestrator, participant, message,
   session, and capability state
 
+## Pal Identity and Execution
+
+`cats-inc` now treats teammate identity and runtime execution as separate
+concerns.
+
+- `Pal identity` covers who the teammate is: name, roles, skill profile, and
+  other durable metadata
+- `Execution target` covers which provider/model should be used in a given
+  channel
+- `Execution lease` covers the currently active runtime session and its status
+- `Memory checkpoint` covers product-owned summary data that should survive
+  session restarts or provider changes
+
+This boundary matters because the same pal may need different providers in
+different channels, and cross-session continuity must belong to `cats-inc`
+rather than to any one provider's native thread model. See
+[ADR-004](./decisions/004-separate-pal-identity-from-provider-execution.md).
+
 ## Data Flow
 
 1. In development, Vite serves the renderer and proxies `/api` to the Node server.
 2. The server asks the runtime client for current `cats-runtime` health.
 3. The server merges runtime health with persisted workspace state.
-4. The renderer can create channels, add/remove members, activate sessions,
+4. The renderer can create channels, add/remove pals, activate sessions,
    send mention-routed messages, edit the orchestrator, and export transcripts.
 5. Runtime-facing work still flows only through `cats-runtime`.
 6. In built mode, the server also serves the static renderer bundle.
@@ -150,6 +169,7 @@ still intentionally deferred:
   interface, not `agent-fleet`
 - Dependency injection by constructor or factory parameter
 - Explicit shell payloads over hidden process state
+- Product-owned memory over provider-owned session continuity
 - Renderer-first UI iteration with desktop packaging deferred
 
 ## API Design
@@ -162,7 +182,9 @@ still intentionally deferred:
   as the only runtime boundary
 - [ADR-002](./decisions/002-react-vite-renderer-before-electron.md): use
   React/Vite before adding a desktop shell
+- [ADR-004](./decisions/004-separate-pal-identity-from-provider-execution.md):
+  keep pal identity separate from provider execution and memory leases
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-13*

@@ -6,8 +6,8 @@ import type {
   CreateWorkspaceChannelInput,
   GlobalOrchestratorSummary,
   MessageUsageSummary,
+  ParticipantExecutionLease,
   ParticipantSessionStatus,
-  ParticipantSessionSummary,
   SendChannelMessageInput,
   WorkspaceChannelState,
   WorkspaceChannelStatus,
@@ -18,7 +18,7 @@ import type {
   WorkspaceState,
   UpdateGlobalOrchestratorInput,
 } from '../shared/app-shell.js';
-import { createEmptySessionState } from './defaults.js';
+import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from './defaults.js';
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
 
@@ -128,15 +128,20 @@ function createMemberRecord(input: AddChannelMemberInput, nowIso: string): Works
   return {
     id: randomUUID(),
     name,
-    provider,
-    model: normalizeOptionalText(input.model),
     roles: normalizeList(input.roles),
     skillProfile: normalizeOptionalText(input.skillProfile),
     mcpProfile: normalizeOptionalText(input.mcpProfile),
     status: 'active',
     joinedAt: nowIso,
     leftAt: null,
-    session: createEmptySessionState(),
+    execution: {
+      target: {
+        provider,
+        model: normalizeOptionalText(input.model),
+      },
+      lease: createEmptyExecutionLease(),
+    },
+    memory: createEmptyMemoryCheckpoint(),
   };
 }
 
@@ -198,14 +203,14 @@ export function createChannel(
     updatedAt: nowIso,
     lastMessageAt: nowIso,
     lastActivatedAt: null,
-    orchestratorSession: createEmptySessionState(),
+    orchestratorLease: createEmptyExecutionLease(),
     members,
     messages: [
       createMessageRecord(
         channelId,
         'system',
         'Chat',
-        `Chat created with ${members.length} member(s). Activate it to start runtime replies.`,
+        `Chat created with ${members.length} pal${members.length === 1 ? '' : 's'}. Activate it to start runtime replies.`,
         nowIso,
         { event: 'channel_created' },
         null,
@@ -268,7 +273,7 @@ export function removeMemberFromChannel(
 
   member.status = 'removed';
   member.leftAt = nowIso;
-  member.session.status = 'removed';
+  member.execution.lease.status = 'removed';
 
   applyMessageToChannel(
     channel,
@@ -295,8 +300,10 @@ export function updateGlobalOrchestrator(
   const nextState = cloneState(state);
   nextState.globalOrchestrator = {
     ...nextState.globalOrchestrator,
-    provider: input.provider.trim() || nextState.globalOrchestrator.provider,
-    model: normalizeOptionalText(input.model),
+    executionTarget: {
+      provider: input.provider.trim() || nextState.globalOrchestrator.executionTarget.provider,
+      model: normalizeOptionalText(input.model),
+    },
     systemPrompt:
       input.systemPrompt?.trim() || nextState.globalOrchestrator.systemPrompt,
     skillProfile: normalizeOptionalText(input.skillProfile),
@@ -347,10 +354,10 @@ export function appendMessage(
   return { state: nextState, message };
 }
 
-function updateSession(
-  current: ParticipantSessionSummary,
-  input: Partial<ParticipantSessionSummary> & { status?: ParticipantSessionStatus },
-): ParticipantSessionSummary {
+function updateExecutionLease(
+  current: ParticipantExecutionLease,
+  input: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
+): ParticipantExecutionLease {
   return {
     sessionId:
       input.sessionId === undefined ? current.sessionId : input.sessionId,
@@ -358,27 +365,35 @@ function updateSession(
     cwd: input.cwd === undefined ? current.cwd : input.cwd,
     lastError:
       input.lastError === undefined ? current.lastError : input.lastError,
+    provider:
+      input.provider === undefined ? current.provider : normalizeOptionalText(input.provider),
+    model:
+      input.model === undefined ? current.model : normalizeOptionalText(input.model),
+    startedAt:
+      input.startedAt === undefined ? current.startedAt : input.startedAt,
+    lastUsedAt:
+      input.lastUsedAt === undefined ? current.lastUsedAt : input.lastUsedAt,
   };
 }
 
-export function setChannelOrchestratorSession(
+export function setChannelOrchestratorLease(
   state: WorkspaceState,
   channelId: string,
-  sessionUpdate: Partial<ParticipantSessionSummary> & { status?: ParticipantSessionStatus },
+  leaseUpdate: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
   now: Date = new Date(),
 ): WorkspaceState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
-  channel.orchestratorSession = updateSession(channel.orchestratorSession, sessionUpdate);
+  channel.orchestratorLease = updateExecutionLease(channel.orchestratorLease, leaseUpdate);
   channel.updatedAt = isoAt(now);
   return nextState;
 }
 
-export function setChannelMemberSession(
+export function setChannelMemberLease(
   state: WorkspaceState,
   channelId: string,
   memberId: string,
-  sessionUpdate: Partial<ParticipantSessionSummary> & { status?: ParticipantSessionStatus },
+  leaseUpdate: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
   now: Date = new Date(),
 ): WorkspaceState {
   const nextState = cloneState(state);
@@ -389,7 +404,7 @@ export function setChannelMemberSession(
     throw new Error(`Member not found: ${memberId}`);
   }
 
-  member.session = updateSession(member.session, sessionUpdate);
+  member.execution.lease = updateExecutionLease(member.execution.lease, leaseUpdate);
   channel.updatedAt = isoAt(now);
   return nextState;
 }

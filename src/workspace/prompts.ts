@@ -1,5 +1,6 @@
 import type {
   GlobalOrchestratorSummary,
+  MemoryCheckpointSummary,
   WorkspaceChannelState,
   WorkspaceMember,
   WorkspaceMessage,
@@ -28,15 +29,34 @@ function formatRecentMessages(messages: WorkspaceMessage[]): string {
 function formatMemberRoster(channel: WorkspaceChannelState): string {
   const activeMembers = channel.members.filter((member) => member.status === 'active');
   if (activeMembers.length === 0) {
-    return 'No active people in this chat yet.';
+    return 'No active pals in this chat yet.';
   }
 
   return activeMembers
     .map((member) => {
       const roleLabel = member.roles.length > 0 ? member.roles.join(', ') : 'general';
-      return `- ${member.name} (${member.provider}${member.model ? ` / ${member.model}` : ''}; roles: ${roleLabel})`;
+      return `- ${member.name} (${member.execution.target.provider}${member.execution.target.model ? ` / ${member.execution.target.model}` : ''}; roles: ${roleLabel})`;
     })
     .join('\n');
+}
+
+function formatMemoryCheckpoint(memory: MemoryCheckpointSummary): string {
+  const lines: string[] = [];
+
+  if (memory.summary) {
+    lines.push(`Summary: ${memory.summary}`);
+  }
+  if (memory.facts.length > 0) {
+    lines.push(`Facts: ${memory.facts.join(' | ')}`);
+  }
+  if (memory.openLoops.length > 0) {
+    lines.push(`Open loops: ${memory.openLoops.join(' | ')}`);
+  }
+  if (memory.updatedAt) {
+    lines.push(`Updated at: ${memory.updatedAt}`);
+  }
+
+  return lines.length > 0 ? lines.join('\n') : 'No saved memory checkpoint yet.';
 }
 
 function formatSharedContext(
@@ -66,9 +86,9 @@ function formatSharedContext(
     lines.push(`Chat MCP profile: ${channel.mcpProfile}`);
   }
 
-  lines.push(`Global orchestrator provider: ${orchestrator.provider}`);
-  if (orchestrator.model) {
-    lines.push(`Global orchestrator model: ${orchestrator.model}`);
+  lines.push(`Global orchestrator provider: ${orchestrator.executionTarget.provider}`);
+  if (orchestrator.executionTarget.model) {
+    lines.push(`Global orchestrator model: ${orchestrator.executionTarget.model}`);
   }
 
   return lines.join('\n');
@@ -88,6 +108,7 @@ export function buildOrchestratorPrompt(
     languageInstruction(channel.responseLanguage),
     `Global system prompt:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
+    `Coordinator memory checkpoint:\n${formatMemoryCheckpoint(orchestrator.memory)}`,
     `Active members:\n${formatMemberRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(channel.messages)}`,
     `Latest user message:\n${userMessage.body}`,
@@ -105,13 +126,14 @@ export function buildMemberPrompt(
 
   return [
     `You are ${member.name}, a chat participant inside the Chat module for Cats Inc.`,
-    `Your provider is ${member.provider}${member.model ? ` and model ${member.model}` : ''}.`,
+    `Your provider is ${member.execution.target.provider}${member.execution.target.model ? ` and model ${member.execution.target.model}` : ''}.`,
     `Your roles in this chat: ${roleLabel}.`,
     'Work inside the current chat context and answer as a teammate, not as the orchestrator.',
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
     `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
+    `Your memory checkpoint:\n${formatMemoryCheckpoint(member.memory)}`,
     `Channel roster:\n${formatMemberRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(channel.messages)}`,
     `Latest routed message:\n${userMessage.body}`,

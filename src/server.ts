@@ -232,9 +232,9 @@ async function handleRemoveMember(
       dependencies.now?.() ?? new Date(),
     );
 
-    if (member.session.sessionId) {
+    if (member.execution.lease.sessionId) {
       try {
-        await dependencies.runtimeClient.closeSession(member.session.sessionId);
+        await dependencies.runtimeClient.closeSession(member.execution.lease.sessionId);
       } catch (error) {
         nextState = appendMessage(
           nextState,

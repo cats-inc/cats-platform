@@ -9,8 +9,8 @@
 | Bootstrap | Completed | Subproject created from `project-bootstrap` with Node.js preset |
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
-| Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes channel setup, transcript, members, and orchestrator surfaces |
-| Workspace Product Features | Completed | Basic runtime-backed setup, messaging, member management, mention routing, and transcript export landed |
+| Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes channel setup, transcript, pals, and orchestrator surfaces |
+| Workspace Product Features | Completed | Basic runtime-backed setup, messaging, pal management, mention routing, transcript export, and execution-aware state landed |
 | Documentation | In Progress | Core status and product docs are aligned; bootstrap template docs still need project-specific follow-up |
 | Productization Backlog | Not Started | Split-view, richer orchestration, desktop host, and alternate entrypoints remain |
 
@@ -125,6 +125,7 @@
 - Keep the Node server as the API and future desktop-safe integration boundary
 - Serve built static assets from the Node server after `npm run build`
 - Keep workspace persistence local and inspectable while runtime work stays behind `cats-runtime`
+- Keep pal identity and memory separate from provider execution leases
 
 #### Remaining Items
 

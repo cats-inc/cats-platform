@@ -11,15 +11,17 @@
 | MCP | Model Context Protocol; see modelcontextprotocol.io for the official description. In this project, MCP refers to agent-to-tool integration. |
 | A2A | "An open protocol enabling communication and interoperability between opaque agentic applications." |
 
-## Template Architecture
-
-If your project does not use layered templates, you can remove this section.
+## Product Terms
 
 | Term | Meaning |
 |------|---------|
-| Base | Core template layer that is always included. |
-| Flavor | Optional add-on layer such as docker, github-actions, python, or nodejs. |
-| Preset | Named combination of base + flavors for common project types. |
+| Cats Inc | The parent product suite. |
+| Chat | The current lightweight team conversation module inside Cats Inc. |
+| Pal | A reusable teammate identity used inside Chat. A pal is not the same thing as a provider choice. |
+| Execution target | The provider/model preference selected for a pal or orchestrator in one context. |
+| Execution lease | The currently active runtime session metadata used to execute work through a provider. |
+| Memory checkpoint | Product-owned summary data, facts, and open loops that should survive session restarts or provider changes. |
+| Runtime boundary | The stable service seam between `cats-inc` and `cats-runtime`. |
 
 ## Roles
 
@@ -40,4 +42,4 @@ If your project does not use layered templates, you can remove this section.
 
 ---
 
-Last updated: YYYY-MM-DD
+Last updated: 2026-03-13

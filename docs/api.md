@@ -104,7 +104,8 @@ Behavior:
 POST /api/workspace/channels/{id}/members
 ```
 
-Adds a persisted channel member with provider/model/roles metadata.
+Adds a persisted channel member with an execution target
+(`provider`/`model`) plus role metadata.
 
 ### Remove Channel Member
 
@@ -112,7 +113,7 @@ Adds a persisted channel member with provider/model/roles metadata.
 DELETE /api/workspace/channels/{id}/members/{memberId}
 ```
 
-Marks the member as removed and best-effort closes its runtime session.
+Marks the member as removed and best-effort closes its active execution lease.
 
 ### Activate Channel
 
@@ -121,7 +122,7 @@ POST /api/workspace/channels/{id}/activate
 ```
 
 Creates channel-scoped runtime sessions for the global orchestrator and active
-members, then returns:
+members, recording them as execution leases, then returns:
 
 ```json
 {
@@ -165,7 +166,8 @@ Behavior:
 PUT /api/orchestrator
 ```
 
-Persists provider/model/prompt metadata for the global orchestrator surface.
+Persists the default execution target plus prompt metadata for the global
+orchestrator surface.
 
 ### Export Channel
 
@@ -198,7 +200,34 @@ Abbreviated example response:
     "name": "Chat",
     "selectedChannelId": "lobby",
     "selectedChannel": {
-      "...": "full selected channel state including members, messages, and session metadata"
+      "orchestratorLease": {
+        "sessionId": "session-1",
+        "status": "ready",
+        "provider": "claude",
+        "model": "claude-opus-4-6"
+      },
+      "members": [
+        {
+          "name": "Agent-1",
+          "execution": {
+            "target": {
+              "provider": "claude",
+              "model": "sonnet"
+            },
+            "lease": {
+              "sessionId": "session-2",
+              "status": "ready",
+              "provider": "claude",
+              "model": "sonnet"
+            }
+          },
+          "memory": {
+            "summary": null,
+            "facts": [],
+            "openLoops": []
+          }
+        }
+      ]
     },
     "channels": [
       {
@@ -218,8 +247,10 @@ Abbreviated example response:
     "globalOrchestrator": {
       "mode": "global",
       "status": "ready",
-      "provider": "claude",
-      "model": "sonnet"
+      "executionTarget": {
+        "provider": "claude",
+        "model": "claude-opus-4-6"
+      }
     },
     "capabilities": {
       "multiChannel": true,
@@ -267,6 +298,8 @@ Errors use a minimal payload:
 - `cats-inc` does not talk to `agent-fleet` directly
 - The renderer consumes this endpoint over a Vite proxy during development
 - Workspace shell state is currently persisted to a local JSON file
+- Persisted pal state now separates execution targets, execution leases, and
+  provider-agnostic memory checkpoints
 - Workspace mutations now cover selection, channel setup, membership, activation,
   messaging, orchestrator editing, and export
 - Runtime responses are currently delivered as request/response completions; the

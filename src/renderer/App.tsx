@@ -62,6 +62,10 @@ function splitList(value: string): string[] {
     .filter((item, index, list) => item.length > 0 && list.indexOf(item) === index);
 }
 
+function executionLabel(provider: string, model: string | null): string {
+  return model ? `${provider} / ${model}` : provider;
+}
+
 function sessionTone(status: string): string {
   switch (status) {
     case 'ready':
@@ -115,8 +119,8 @@ export default function App() {
         startTransition(() => {
           setState({ status: 'ready', payload });
           setOrchestratorForm({
-            provider: payload.workspace.globalOrchestrator.provider,
-            model: payload.workspace.globalOrchestrator.model ?? '',
+            provider: payload.workspace.globalOrchestrator.executionTarget.provider,
+            model: payload.workspace.globalOrchestrator.executionTarget.model ?? '',
             systemPrompt: payload.workspace.globalOrchestrator.systemPrompt,
             skillProfile: payload.workspace.globalOrchestrator.skillProfile ?? '',
             mcpProfile: payload.workspace.globalOrchestrator.mcpProfile ?? '',
@@ -172,8 +176,8 @@ export default function App() {
       setState({ status: 'ready', payload: nextPayload });
       setSyncMessage(message);
       setOrchestratorForm({
-        provider: nextPayload.workspace.globalOrchestrator.provider,
-        model: nextPayload.workspace.globalOrchestrator.model ?? '',
+        provider: nextPayload.workspace.globalOrchestrator.executionTarget.provider,
+        model: nextPayload.workspace.globalOrchestrator.executionTarget.model ?? '',
         systemPrompt: nextPayload.workspace.globalOrchestrator.systemPrompt,
         skillProfile: nextPayload.workspace.globalOrchestrator.skillProfile ?? '',
         mcpProfile: nextPayload.workspace.globalOrchestrator.mcpProfile ?? '',
@@ -264,7 +268,7 @@ export default function App() {
           model: memberForm.model,
           roles: splitList(memberForm.roles),
         }),
-        'Person added to the chat.',
+        'Pal added to the chat.',
       );
       setMemberForm(emptyMemberForm());
     } catch (error) {
@@ -354,7 +358,7 @@ export default function App() {
                 onClick={() => setActiveTool('members')}
                 type="button"
               >
-                People
+                Pals
               </button>
               <button
                 className="secondaryButton"
@@ -394,8 +398,8 @@ export default function App() {
           </div>
           <div className="summaryStrip">
             <div className="summaryPill"><span>Status</span><strong>{selectedChannel?.status ?? 'n/a'}</strong></div>
-            <div className="summaryPill"><span>People</span><strong>{activeMembers.length}</strong></div>
-            <div className="summaryPill"><span>Session</span><strong>{selectedChannel?.orchestratorSession.status ?? 'not_started'}</strong></div>
+            <div className="summaryPill"><span>Pals</span><strong>{activeMembers.length}</strong></div>
+            <div className="summaryPill"><span>Session</span><strong>{selectedChannel?.orchestratorLease.status ?? 'not_started'}</strong></div>
           </div>
           <div className="participantStrip">
             {activeMembers.length > 0 ? (
@@ -404,7 +408,7 @@ export default function App() {
               ))
             ) : (
               <p className="participantHint">
-                No active teammates yet. Open People when you want to add them.
+                No active pals yet. Open Pals when you want to add them.
               </p>
             )}
           </div>
@@ -516,7 +520,7 @@ export default function App() {
                   </div>
                   <div className="inlinePanel">
                     <div className="inlinePanelHeader">
-                      <strong>Initial people</strong>
+                      <strong>Initial pals</strong>
                       <span>{draftMembers.length}</span>
                     </div>
                     <div className="fieldGrid">
@@ -556,14 +560,14 @@ export default function App() {
                         setDraftMember(emptyMemberForm());
                       }}
                     >
-                      Add Draft Person
+                      Add Draft Pal
                     </button>
                     <div className="draftList">
                       {draftMembers.map((member, index) => (
                         <div key={`${member.name}-${index}`} className="draftItem">
                           <div>
                             <strong>{member.name}</strong>
-                            <p>{member.provider}{member.model ? ` / ${member.model}` : ''}</p>
+                            <p>{executionLabel(member.provider, member.model || null)}</p>
                           </div>
                           <button
                             className="textButton"
@@ -593,8 +597,8 @@ export default function App() {
               <>
                 <div className="drawerHeader">
                   <div>
-                    <p className="eyebrow">People</p>
-                    <h3>{selectedChannel ? `${selectedChannel.title} crew` : 'Chat members'}</h3>
+                    <p className="eyebrow">Pals</p>
+                    <h3>{selectedChannel ? `${selectedChannel.title} pals` : 'Chat pals'}</h3>
                     <p className="muted">
                       Add or remove specialists without cluttering the main chat view.
                     </p>
@@ -610,10 +614,10 @@ export default function App() {
                         <div className="memberTop">
                           <div>
                             <strong>{member.name}</strong>
-                            <p>{member.provider}{member.model ? ` / ${member.model}` : ''}</p>
+                            <p>{executionLabel(member.execution.target.provider, member.execution.target.model)}</p>
                           </div>
-                          <span className={sessionTone(member.session.status)}>
-                            {member.session.status}
+                          <span className={sessionTone(member.execution.lease.status)}>
+                            {member.execution.lease.status}
                           </span>
                         </div>
                         <div className="tagList">
@@ -635,7 +639,7 @@ export default function App() {
                     ))
                   ) : (
                     <div className="memberCard">
-                      <p>No people in this chat yet.</p>
+                      <p>No pals in this chat yet.</p>
                     </div>
                   )}
                 </div>
@@ -669,7 +673,7 @@ export default function App() {
                     />
                   </div>
                   <button className="secondaryButton" disabled={!selectedChannel} type="submit">
-                    {busy === `member:add:${selectedChannel?.id}` ? 'Adding...' : 'Add Person'}
+                    {busy === `member:add:${selectedChannel?.id}` ? 'Adding...' : 'Add Pal'}
                   </button>
                 </form>
               </>

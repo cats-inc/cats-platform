@@ -102,6 +102,14 @@ through `cats-runtime`.
 - **Priority**: Medium
 - **Status**: Planned
 
+### FR-014: Provider-Agnostic Pal Execution
+
+- **Description**: The product shall let a pal keep its identity and local
+  memory while using different providers or models across channels and
+  sessions.
+- **Priority**: High
+- **Status**: In Progress
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -123,6 +131,12 @@ through `cats-runtime`.
 
 - Workspace shell persistence should use a simple local file path first
 - The default persistence location should remain inside the project boundary
+
+### NFR-005: Provider Portability
+
+- Long-lived pal memory MUST remain product-owned rather than provider-owned
+- Provider-native sessions should be replaceable without redefining pal
+  identity
 
 ## User Stories
 
@@ -219,7 +233,9 @@ request completion banners.
 - `cats-runtime` is the mandatory runtime boundary
 - `agent-workspace-poc` remains the reference for product behavior
 - `crew-chat-poc` remains the reference for `cats-runtime` integration style
+- pal identity and pal memory must not be modeled as permanent provider-bound
+  records
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-13*

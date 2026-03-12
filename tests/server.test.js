@@ -141,6 +141,10 @@ test('workspace API covers channel setup, activation, messaging, members, and ex
     const channelId = createdPayload.workspace.selectedChannel.id;
     assert.equal(channelId, 'ops-radar');
     assert.equal(createdPayload.workspace.selectedChannel.members.length, 1);
+    assert.equal(
+      createdPayload.workspace.selectedChannel.members[0].execution.target.provider,
+      'claude',
+    );
 
     const activateResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/activate`, {
       method: 'POST',
@@ -219,7 +223,10 @@ test('workspace API covers channel setup, activation, messaging, members, and ex
     });
     assert.equal(orchestratorResponse.status, 200);
     const orchestratorPayload = await orchestratorResponse.json();
-    assert.equal(orchestratorPayload.workspace.globalOrchestrator.model, 'claude-opus-4-6');
+    assert.equal(
+      orchestratorPayload.workspace.globalOrchestrator.executionTarget.model,
+      'claude-opus-4-6',
+    );
 
     const exportResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/export`);
     assert.equal(exportResponse.status, 200);

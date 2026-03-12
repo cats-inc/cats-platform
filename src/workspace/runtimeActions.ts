@@ -12,8 +12,8 @@ import {
   appendMessage,
   parseMentions,
   requireChannel,
-  setChannelMemberSession,
-  setChannelOrchestratorSession,
+  setChannelMemberLease,
+  setChannelOrchestratorLease,
   setChannelStatus,
   setChannelWorkspaceCwd,
 } from './model.js';
@@ -47,8 +47,9 @@ function setStartedSession(
   session: RuntimeSessionInfo,
   now: Date,
 ): WorkspaceState {
+  const timestamp = now.toISOString();
   if (typeof target !== 'string') {
-    return setChannelMemberSession(
+    return setChannelMemberLease(
       state,
       channelId,
       target.memberId,
@@ -57,12 +58,16 @@ function setStartedSession(
         status: normalizeRuntimeStatus(session.status),
         cwd: session.cwd,
         lastError: null,
+        provider: session.provider,
+        model: session.model,
+        startedAt: timestamp,
+        lastUsedAt: timestamp,
       },
       now,
     );
   }
 
-  return setChannelOrchestratorSession(
+  return setChannelOrchestratorLease(
     state,
     channelId,
     {
@@ -70,6 +75,10 @@ function setStartedSession(
       status: normalizeRuntimeStatus(session.status),
       cwd: session.cwd,
       lastError: null,
+      provider: session.provider,
+      model: session.model,
+      startedAt: timestamp,
+      lastUsedAt: timestamp,
     },
     now,
   );
@@ -83,7 +92,7 @@ function setErroredSession(
   now: Date,
 ): WorkspaceState {
   if (typeof target !== 'string') {
-    return setChannelMemberSession(
+    return setChannelMemberLease(
       state,
       channelId,
       target.memberId,
@@ -95,7 +104,7 @@ function setErroredSession(
     );
   }
 
-  return setChannelOrchestratorSession(
+  return setChannelOrchestratorLease(
     state,
     channelId,
     {
@@ -113,10 +122,21 @@ function setReadyAfterMessage(
   now: Date,
 ): WorkspaceState {
   if (typeof target !== 'string') {
-    return setChannelMemberSession(state, channelId, target.memberId, { status: 'ready' }, now);
+    return setChannelMemberLease(
+      state,
+      channelId,
+      target.memberId,
+      { status: 'ready', lastUsedAt: now.toISOString() },
+      now,
+    );
   }
 
-  return setChannelOrchestratorSession(state, channelId, { status: 'ready' }, now);
+  return setChannelOrchestratorLease(
+    state,
+    channelId,
+    { status: 'ready', lastUsedAt: now.toISOString() },
+    now,
+  );
 }
 
 function resolveTargets(channel: WorkspaceChannelState, body: string): {
@@ -142,7 +162,7 @@ function resolveTargets(channel: WorkspaceChannelState, body: string): {
           kind: 'orchestrator',
           id: 'orchestrator',
           name: ORCHESTRATOR_NAME,
-          sessionId: channel.orchestratorSession.sessionId,
+          sessionId: channel.orchestratorLease.sessionId,
         },
       ],
       unresolved,
@@ -157,7 +177,7 @@ function resolveTargets(channel: WorkspaceChannelState, body: string): {
           kind: 'orchestrator',
           id: 'orchestrator',
           name: ORCHESTRATOR_NAME,
-          sessionId: channel.orchestratorSession.sessionId,
+          sessionId: channel.orchestratorLease.sessionId,
         });
       }
       continue;
@@ -174,7 +194,7 @@ function resolveTargets(channel: WorkspaceChannelState, body: string): {
         kind: 'member',
         id: member.id,
         name: member.name,
-        sessionId: member.session.sessionId,
+        sessionId: member.execution.lease.sessionId,
       });
     }
   }
@@ -194,19 +214,19 @@ export async function activateChannelSessions(
   const workspaceMode = spawnCwd ? 'shared' : null;
   const results: ChannelActivationResult[] = [];
 
-  if (channel.orchestratorSession.sessionId) {
+  if (channel.orchestratorLease.sessionId) {
     results.push({
       targetKind: 'orchestrator',
       targetId: 'orchestrator',
       targetName: ORCHESTRATOR_NAME,
       status: 'already_started',
-      sessionId: channel.orchestratorSession.sessionId,
+      sessionId: channel.orchestratorLease.sessionId,
     });
   } else {
     try {
       const session = await runtimeClient.createSession({
-        provider: nextState.globalOrchestrator.provider,
-        model: nextState.globalOrchestrator.model,
+        provider: nextState.globalOrchestrator.executionTarget.provider,
+        model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
         workspaceMode,
       });
@@ -264,21 +284,21 @@ export async function activateChannelSessions(
 
   channel = requireChannel(nextState, channelId);
   for (const member of activeMembers(channel)) {
-    if (member.session.sessionId) {
+    if (member.execution.lease.sessionId) {
       results.push({
         targetKind: 'member',
         targetId: member.id,
         targetName: member.name,
         status: 'already_started',
-        sessionId: member.session.sessionId,
+        sessionId: member.execution.lease.sessionId,
       });
       continue;
     }
 
     try {
       const session = await runtimeClient.createSession({
-        provider: member.provider,
-        model: member.model,
+        provider: member.execution.target.provider,
+        model: member.execution.target.model,
         cwd: spawnCwd,
         workspaceMode,
       });
@@ -513,17 +533,17 @@ export async function routeChannelMessage(
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown runtime error';
       nextState = target.kind === 'member'
-        ? setChannelMemberSession(
+        ? setChannelMemberLease(
             nextState,
             channelId,
             target.id,
-            { status: 'error', lastError: message },
+            { status: 'error', lastError: message, lastUsedAt: now.toISOString() },
             now,
           )
-        : setChannelOrchestratorSession(
+        : setChannelOrchestratorLease(
             nextState,
             channelId,
-            { status: 'error', lastError: message },
+            { status: 'error', lastError: message, lastUsedAt: now.toISOString() },
             now,
           );
       nextState = appendMessage(

@@ -46,11 +46,11 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | Document | Status | Description |
 |----------|--------|-------------|
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide |
-| [terminology.md](./terminology.md) | Template | AAIF/A2A/MCP terminology placeholder |
+| [terminology.md](./terminology.md) | Complete | Product and protocol terms, including pals, execution leases, and memory checkpoints |
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
 | [specs/](./specs/) | Complete | Feature specifications, including `SPEC-001` through `SPEC-004` |
 | [plans/](./plans/) | Complete | Implementation plans, including `PLAN-001` through `PLAN-004` |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including `ADR-001` through `ADR-003` |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including `ADR-001` through `ADR-004` |
 
 **Legend**: Complete | Partial | Template
 
@@ -96,4 +96,4 @@ The main product docs are current, but these areas still need dedicated passes:
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-13*

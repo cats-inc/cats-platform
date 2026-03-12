@@ -32,18 +32,41 @@ export interface ParticipantSessionSummary {
   lastError: string | null;
 }
 
+export interface ExecutionTargetSummary {
+  provider: string;
+  model: string | null;
+}
+
+export interface ParticipantExecutionLease extends ParticipantSessionSummary {
+  provider: string | null;
+  model: string | null;
+  startedAt: string | null;
+  lastUsedAt: string | null;
+}
+
+export interface MemoryCheckpointSummary {
+  summary: string | null;
+  facts: string[];
+  openLoops: string[];
+  updatedAt: string | null;
+}
+
+export interface ParticipantExecutionState {
+  target: ExecutionTargetSummary;
+  lease: ParticipantExecutionLease;
+}
+
 export interface WorkspaceMember {
   id: string;
   name: string;
-  provider: string;
-  model: string | null;
   roles: string[];
   skillProfile: string | null;
   mcpProfile: string | null;
   status: 'active' | 'removed';
   joinedAt: string;
   leftAt: string | null;
-  session: ParticipantSessionSummary;
+  execution: ParticipantExecutionState;
+  memory: MemoryCheckpointSummary;
 }
 
 export interface WorkspaceMessage {
@@ -76,7 +99,7 @@ export interface WorkspaceChannelState {
   updatedAt: string;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
-  orchestratorSession: ParticipantSessionSummary;
+  orchestratorLease: ParticipantExecutionLease;
   members: WorkspaceMember[];
   messages: WorkspaceMessage[];
 }
@@ -102,11 +125,11 @@ export interface GlobalOrchestratorSummary {
   entrypoints: string[];
   referenceProjects: string[];
   notes: string[];
-  provider: string;
-  model: string | null;
+  executionTarget: ExecutionTargetSummary;
   systemPrompt: string;
   skillProfile: string | null;
   mcpProfile: string | null;
+  memory: MemoryCheckpointSummary;
   telegramBotName: string | null;
   updatedAt: string;
 }

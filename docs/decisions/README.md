@@ -42,6 +42,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [001-use-cats-runtime-boundary](./001-use-cats-runtime-boundary.md) | Use `cats-runtime` as the only runtime boundary | Accepted | 2026-03-11 |
 | [002-react-vite-renderer-before-electron](./002-react-vite-renderer-before-electron.md) | Use a React/Vite renderer before adding Electron | Accepted | 2026-03-11 |
 | [003-electron-host-manages-local-services](./003-electron-host-manages-local-services.md) | Use Electron as a thin desktop host around local services | Accepted | 2026-03-11 |
+| [004-separate-pal-identity-from-provider-execution](./004-separate-pal-identity-from-provider-execution.md) | Separate pal identity from provider execution | Accepted | 2026-03-13 |
 <!-- Add new ADRs above this line -->
 
 ## For AI Agents

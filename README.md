@@ -14,9 +14,10 @@ The current slices are:
 - a Node app/runtime core on `CATS_INC_PORT` (default `8181`)
 - a `cats-runtime` health and app-shell API
 - a chat-first `React/Vite` renderer with on-demand tools
-- file-backed workspace, member, and transcript persistence
+- file-backed workspace, pal execution, and transcript persistence
 - runtime-backed channel activation and routed messaging through `cats-runtime`
 - a global orchestrator surface, basic `@mention` routing, and transcript export
+- provider-agnostic pal memory checkpoints plus channel-scoped execution leases
 
 ## Current Status
 
@@ -29,6 +30,7 @@ The current slices are:
 - [x] Add local channel setup and persistence
 - [x] Add basic runtime-backed channel operations
 - [x] Add participant management, mention routing, and transcript export
+- [x] Separate pal identity and memory from provider-specific execution state
 - [ ] Add productization layers beyond the current Phase 2 workspace core
 
 ## Still Open
@@ -59,8 +61,9 @@ Default endpoints:
 - Renderer dev server: `http://127.0.0.1:5173`
 - Runtime dependency: `http://127.0.0.1:3110`
 
-The workspace shell persists local state, including created channels, members,
-session metadata, and transcripts, to
+The workspace shell persists local state, including created channels, pals,
+execution targets, execution lease metadata, memory checkpoints, and
+transcripts, to
 `config/workspace-state.local.json` unless `CATS_INC_STATE_PATH` overrides it.
 
 For a built run:
