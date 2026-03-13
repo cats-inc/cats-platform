@@ -56,8 +56,31 @@ export interface ParticipantExecutionState {
   lease: ParticipantExecutionLease;
 }
 
-export interface WorkspaceMember {
+export interface WorkspacePal {
   id: string;
+  name: string;
+  roles: string[];
+  skillProfile: string | null;
+  mcpProfile: string | null;
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  defaultExecutionTarget: ExecutionTargetSummary;
+  memory: MemoryCheckpointSummary;
+}
+
+export interface ChannelPalAssignment {
+  palId: string;
+  status: 'active' | 'removed';
+  roles: string[];
+  joinedAt: string;
+  leftAt: string | null;
+  execution: ParticipantExecutionState;
+}
+
+export interface WorkspaceChannelPal {
+  palId: string;
   name: string;
   roles: string[];
   skillProfile: string | null;
@@ -100,8 +123,12 @@ export interface WorkspaceChannelState {
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   orchestratorLease: ParticipantExecutionLease;
-  members: WorkspaceMember[];
+  palAssignments: ChannelPalAssignment[];
   messages: WorkspaceMessage[];
+}
+
+export interface WorkspaceChannelView extends WorkspaceChannelState {
+  assignedPals: WorkspaceChannelPal[];
 }
 
 export interface WorkspaceChannelSummary {
@@ -110,8 +137,8 @@ export interface WorkspaceChannelSummary {
   topic: string;
   status: WorkspaceChannelStatus;
   unreadCount: number;
-  memberCount: number;
-  activeMemberCount: number;
+  palCount: number;
+  activePalCount: number;
   repoPath: string | null;
   workspaceCwd: string | null;
   lastMessageAt: string | null;
@@ -148,6 +175,7 @@ export interface WorkspaceState {
   id: string;
   name: string;
   selectedChannelId: string;
+  pals: WorkspacePal[];
   channels: WorkspaceChannelState[];
   globalOrchestrator: GlobalOrchestratorSummary;
   capabilities: WorkspaceCapabilities;
@@ -157,8 +185,9 @@ export interface WorkspaceShellState {
   id: string;
   name: string;
   selectedChannelId: string;
+  pals: WorkspacePal[];
   channels: WorkspaceChannelSummary[];
-  selectedChannel: WorkspaceChannelState | null;
+  selectedChannel: WorkspaceChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
   capabilities: WorkspaceCapabilities;
 }
@@ -178,13 +207,22 @@ export interface AppShellPayload {
   };
 }
 
-export interface ChannelMemberDraftInput {
+export interface PalDraftInput {
   name: string;
   provider: string;
   model?: string;
   roles?: string[];
   skillProfile?: string;
   mcpProfile?: string;
+}
+
+export interface CreateWorkspacePalInput extends PalDraftInput {}
+
+export interface AssignChannelPalInput {
+  palId: string;
+  provider?: string;
+  model?: string;
+  roles?: string[];
 }
 
 export interface UpdateSelectedChannelInput {
@@ -201,10 +239,8 @@ export interface CreateWorkspaceChannelInput {
   skillProfile?: string;
   mcpProfile?: string;
   orchestratorRoles?: string[];
-  members?: ChannelMemberDraftInput[];
+  pals?: PalDraftInput[];
 }
-
-export interface AddChannelMemberInput extends ChannelMemberDraftInput {}
 
 export interface UpdateGlobalOrchestratorInput {
   provider: string;
@@ -221,7 +257,7 @@ export interface SendChannelMessageInput {
 }
 
 export interface ChannelActivationResult {
-  targetKind: 'orchestrator' | 'member';
+  targetKind: 'orchestrator' | 'pal';
   targetId: string;
   targetName: string;
   status: 'started' | 'already_started' | 'error';
@@ -230,7 +266,7 @@ export interface ChannelActivationResult {
 }
 
 export interface ChannelDispatchResult {
-  targetKind: 'orchestrator' | 'member';
+  targetKind: 'orchestrator' | 'pal';
   targetId: string;
   targetName: string;
   sessionId: string | null;
@@ -252,4 +288,5 @@ export interface ChannelExportPayload {
   exportedAt: string;
   orchestrator: GlobalOrchestratorSummary;
   channel: WorkspaceChannelState;
+  assignedPals: WorkspaceChannelPal[];
 }

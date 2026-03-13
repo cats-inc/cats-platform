@@ -8,7 +8,7 @@ ADRs capture the context, decision, and consequences of architectural choices. T
 
 - Future developers understand *why* decisions were made
 - Prevent re-discussing settled decisions
-- Create institutional memory across sessions and team members
+- Create institutional memory across sessions and teammates
 
 ## When to Create an ADR
 
@@ -43,6 +43,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [002-react-vite-renderer-before-electron](./002-react-vite-renderer-before-electron.md) | Use a React/Vite renderer before adding Electron | Accepted | 2026-03-11 |
 | [003-electron-host-manages-local-services](./003-electron-host-manages-local-services.md) | Use Electron as a thin desktop host around local services | Accepted | 2026-03-11 |
 | [004-separate-pal-identity-from-provider-execution](./004-separate-pal-identity-from-provider-execution.md) | Separate pal identity from provider execution | Accepted | 2026-03-13 |
+| [005-use-workspace-pal-registry-and-channel-assignments](./005-use-workspace-pal-registry-and-channel-assignments.md) | Use a workspace pal registry with channel assignments | Accepted | 2026-03-13 |
 <!-- Add new ADRs above this line -->
 
 ## For AI Agents

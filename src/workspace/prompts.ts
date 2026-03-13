@@ -1,8 +1,8 @@
 import type {
   GlobalOrchestratorSummary,
   MemoryCheckpointSummary,
-  WorkspaceChannelState,
-  WorkspaceMember,
+  WorkspaceChannelPal,
+  WorkspaceChannelView,
   WorkspaceMessage,
 } from '../shared/app-shell.js';
 import { ORCHESTRATOR_NAME } from './model.js';
@@ -26,16 +26,16 @@ function formatRecentMessages(messages: WorkspaceMessage[]): string {
     .join('\n');
 }
 
-function formatMemberRoster(channel: WorkspaceChannelState): string {
-  const activeMembers = channel.members.filter((member) => member.status === 'active');
-  if (activeMembers.length === 0) {
+function formatPalRoster(channel: WorkspaceChannelView): string {
+  const activePals = channel.assignedPals.filter((pal) => pal.status === 'active');
+  if (activePals.length === 0) {
     return 'No active pals in this chat yet.';
   }
 
-  return activeMembers
-    .map((member) => {
-      const roleLabel = member.roles.length > 0 ? member.roles.join(', ') : 'general';
-      return `- ${member.name} (${member.execution.target.provider}${member.execution.target.model ? ` / ${member.execution.target.model}` : ''}; roles: ${roleLabel})`;
+  return activePals
+    .map((pal) => {
+      const roleLabel = pal.roles.length > 0 ? pal.roles.join(', ') : 'general';
+      return `- ${pal.name} (${pal.execution.target.provider}${pal.execution.target.model ? ` / ${pal.execution.target.model}` : ''}; roles: ${roleLabel})`;
     })
     .join('\n');
 }
@@ -60,7 +60,7 @@ function formatMemoryCheckpoint(memory: MemoryCheckpointSummary): string {
 }
 
 function formatSharedContext(
-  channel: WorkspaceChannelState,
+  channel: WorkspaceChannelView,
   orchestrator: GlobalOrchestratorSummary,
 ): string {
   const lines = [
@@ -95,7 +95,7 @@ function formatSharedContext(
 }
 
 export function buildOrchestratorPrompt(
-  channel: WorkspaceChannelState,
+  channel: WorkspaceChannelView,
   orchestrator: GlobalOrchestratorSummary,
   userMessage: WorkspaceMessage,
 ): string {
@@ -109,32 +109,32 @@ export function buildOrchestratorPrompt(
     `Global system prompt:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
     `Coordinator memory checkpoint:\n${formatMemoryCheckpoint(orchestrator.memory)}`,
-    `Active members:\n${formatMemberRoster(channel)}`,
+    `Active pals:\n${formatPalRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(channel.messages)}`,
     `Latest user message:\n${userMessage.body}`,
     'Respond directly to the user. Be concise, explicit about who should act, and mention teammates when needed.',
   ].join('\n\n');
 }
 
-export function buildMemberPrompt(
-  channel: WorkspaceChannelState,
+export function buildPalPrompt(
+  channel: WorkspaceChannelView,
   orchestrator: GlobalOrchestratorSummary,
-  member: WorkspaceMember,
+  pal: WorkspaceChannelPal,
   userMessage: WorkspaceMessage,
 ): string {
-  const roleLabel = member.roles.length > 0 ? member.roles.join(', ') : 'general';
+  const roleLabel = pal.roles.length > 0 ? pal.roles.join(', ') : 'general';
 
   return [
-    `You are ${member.name}, a chat participant inside the Chat module for Cats Inc.`,
-    `Your provider is ${member.execution.target.provider}${member.execution.target.model ? ` and model ${member.execution.target.model}` : ''}.`,
+    `You are ${pal.name}, a chat participant inside the Chat module for Cats Inc.`,
+    `Your provider is ${pal.execution.target.provider}${pal.execution.target.model ? ` and model ${pal.execution.target.model}` : ''}.`,
     `Your roles in this chat: ${roleLabel}.`,
     'Work inside the current chat context and answer as a teammate, not as the orchestrator.',
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
     `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
-    `Your memory checkpoint:\n${formatMemoryCheckpoint(member.memory)}`,
-    `Channel roster:\n${formatMemberRoster(channel)}`,
+    `Your memory checkpoint:\n${formatMemoryCheckpoint(pal.memory)}`,
+    `Channel roster:\n${formatPalRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(channel.messages)}`,
     `Latest routed message:\n${userMessage.body}`,
     'Reply with the work product or the next useful observation. Mention teammates with @Name only when needed.',

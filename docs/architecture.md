@@ -62,9 +62,9 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 
 - **Purpose**: Persist full local workspace state
 - **Technology**: JSON file inside `config/`
-- **Responsibilities**: Load defaults, persist channels, members, transcript
-  messages, execution targets, execution lease metadata, pal memory
-  checkpoints, and exportable workspace state
+- **Responsibilities**: Load defaults, persist channels, workspace pals, channel
+  pal assignments, transcript messages, execution targets, execution lease
+  metadata, pal memory checkpoints, and exportable workspace state
 
 ### Workspace Runtime Actions
 
@@ -79,13 +79,14 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 - **Purpose**: Present the first operator-facing multi-channel workspace UI
 - **Technology**: React + Vite
 - **Responsibilities**: Render channels, runtime status, transcript composer,
-  member management, channel setup, and global orchestrator editing
+  a preview-ready artifact pane, global pal management, channel assignment,
+  channel setup, and global orchestrator editing
 
 ### Workspace Shell Model
 
 - **Purpose**: Describe the current product contract shared by server and renderer
 - **Technology**: Plain TypeScript data structures
-- **Responsibilities**: Expose workspace, orchestrator, participant, message,
+- **Responsibilities**: Expose workspace, pal registry, pal assignment, message,
   session, and capability state
 
 ## Pal Identity and Execution
@@ -93,10 +94,12 @@ and a React/Vite renderer owns the operator-facing workspace shell.
 `cats-inc` now treats teammate identity and runtime execution as separate
 concerns.
 
-- `Pal identity` covers who the teammate is: name, roles, skill profile, and
-  other durable metadata
+- `Workspace pal registry` covers reusable teammate identity, default execution
+  settings, and long-lived memory
+- `Channel pal assignment` covers whether a pal is active in one chat plus any
+  channel-specific role or provider override
 - `Execution target` covers which provider/model should be used in a given
-  channel
+  channel assignment
 - `Execution lease` covers the currently active runtime session and its status
 - `Memory checkpoint` covers product-owned summary data that should survive
   session restarts or provider changes
@@ -104,15 +107,18 @@ concerns.
 This boundary matters because the same pal may need different providers in
 different channels, and cross-session continuity must belong to `cats-inc`
 rather than to any one provider's native thread model. See
-[ADR-004](./decisions/004-separate-pal-identity-from-provider-execution.md).
+[ADR-004](./decisions/004-separate-pal-identity-from-provider-execution.md)
+and
+[ADR-005](./decisions/005-use-workspace-pal-registry-and-channel-assignments.md).
 
 ## Data Flow
 
 1. In development, Vite serves the renderer and proxies `/api` to the Node server.
 2. The server asks the runtime client for current `cats-runtime` health.
 3. The server merges runtime health with persisted workspace state.
-4. The renderer can create channels, add/remove pals, activate sessions,
-   send mention-routed messages, edit the orchestrator, and export transcripts.
+4. The renderer can create channels, define workspace pals, assign or remove
+   pals per chat, activate sessions, send mention-routed messages, edit the
+   orchestrator, and export transcripts.
 5. Runtime-facing work still flows only through `cats-runtime`.
 6. In built mode, the server also serves the static renderer bundle.
 7. Future phases will expand this into richer orchestration automation and
@@ -184,6 +190,8 @@ still intentionally deferred:
   React/Vite before adding a desktop shell
 - [ADR-004](./decisions/004-separate-pal-identity-from-provider-execution.md):
   keep pal identity separate from provider execution and memory leases
+- [ADR-005](./decisions/005-use-workspace-pal-registry-and-channel-assignments.md):
+  keep reusable pals at workspace scope and channel-specific overrides in assignments
 
 ---
 

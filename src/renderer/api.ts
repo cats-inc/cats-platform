@@ -1,10 +1,11 @@
 import type {
   ActivateChannelResponse,
-  AddChannelMemberInput,
   AppShellPayload,
+  AssignChannelPalInput,
   CreateWorkspaceChannelInput,
-  SendChannelMessageResponse,
+  CreateWorkspacePalInput,
   SendChannelMessageInput,
+  SendChannelMessageResponse,
   UpdateGlobalOrchestratorInput,
 } from '../shared/app-shell';
 
@@ -78,42 +79,149 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
     };
   }
 
-  if (selectedChannel && Array.isArray(selectedChannel.members)) {
-    selectedChannel.members = selectedChannel.members.map((memberValue) => {
-      const member = asRecord(memberValue) ?? {};
-      if (!asRecord(member.execution)) {
-        member.execution = {
-          target: {
-            provider: readString(member.provider, 'claude'),
-            model: readNullableString(member.model),
-          },
-          lease: {
-            sessionId: readNullableString(asRecord(member.session)?.sessionId),
-            status: readString(asRecord(member.session)?.status, 'not_started'),
-            cwd: readNullableString(asRecord(member.session)?.cwd),
-            lastError: readNullableString(asRecord(member.session)?.lastError),
-            provider: readString(member.provider, 'claude'),
-            model: readNullableString(member.model),
-            startedAt: null,
-            lastUsedAt: null,
+  if (!Array.isArray(workspace?.pals)) {
+    workspace!.pals = [];
+  }
+
+  const pals = (workspace?.pals as Array<Record<string, unknown>>).map((palValue) => {
+    const pal = asRecord(palValue) ?? {};
+    if (!asRecord(pal.defaultExecutionTarget)) {
+      pal.defaultExecutionTarget = {
+        provider: readString(pal.provider, 'claude'),
+        model: readNullableString(pal.model),
+      };
+    }
+    if (!asRecord(pal.memory)) {
+      pal.memory = {
+        summary: null,
+        facts: [],
+        openLoops: [],
+        updatedAt: null,
+      };
+    }
+    if (!Array.isArray(pal.roles)) {
+      pal.roles = readStringArray(pal.roles);
+    }
+    return pal;
+  });
+  const palsById = new Map(pals.map((pal) => [readString(pal.id), pal]));
+
+  if (selectedChannel) {
+    if (!Array.isArray(selectedChannel.palAssignments) && Array.isArray(selectedChannel.members)) {
+      selectedChannel.palAssignments = selectedChannel.members.map((memberValue) => {
+        const member = asRecord(memberValue) ?? {};
+        const execution = asRecord(member.execution);
+        const target = asRecord(execution?.target);
+        const lease = asRecord(execution?.lease);
+        return {
+          palId: readString(member.id),
+          status: readString(member.status, 'active'),
+          roles: Array.isArray(member.roles) ? member.roles : [],
+          joinedAt: readString(member.joinedAt),
+          leftAt: readNullableString(member.leftAt),
+          execution: {
+            target: {
+              provider: readString(target?.provider, readString(member.provider, 'claude')),
+              model: readNullableString(target?.model ?? member.model),
+            },
+            lease: {
+              sessionId: readNullableString(lease?.sessionId ?? asRecord(member.session)?.sessionId),
+              status: readString(lease?.status ?? asRecord(member.session)?.status, 'not_started'),
+              cwd: readNullableString(lease?.cwd ?? asRecord(member.session)?.cwd),
+              lastError: readNullableString(lease?.lastError ?? asRecord(member.session)?.lastError),
+              provider: readNullableString(lease?.provider) ?? readString(target?.provider, readString(member.provider, 'claude')),
+              model: readNullableString(lease?.model ?? target?.model ?? member.model),
+              startedAt: readNullableString(lease?.startedAt),
+              lastUsedAt: readNullableString(lease?.lastUsedAt),
+            },
           },
         };
-      }
+      });
+    }
 
-      if (!asRecord(member.memory)) {
-        member.memory = {
-          summary: null,
-          facts: [],
-          openLoops: [],
-          updatedAt: null,
-        };
+    if (!Array.isArray(selectedChannel.assignedPals)) {
+      if (Array.isArray(selectedChannel.members)) {
+        selectedChannel.assignedPals = selectedChannel.members.map((memberValue) => {
+          const member = asRecord(memberValue) ?? {};
+          if (!palsById.has(readString(member.id))) {
+            palsById.set(readString(member.id), {
+              id: readString(member.id),
+              name: readString(member.name, 'Pal'),
+              roles: Array.isArray(member.roles) ? member.roles : [],
+              skillProfile: readNullableString(member.skillProfile),
+              mcpProfile: readNullableString(member.mcpProfile),
+              status: readString(member.status, 'active') === 'removed' ? 'archived' : 'active',
+              createdAt: readString(member.joinedAt),
+              updatedAt: readString(member.joinedAt),
+              archivedAt: readNullableString(member.leftAt),
+              defaultExecutionTarget: {
+                provider: readString(member.provider, 'claude'),
+                model: readNullableString(member.model),
+              },
+              memory: asRecord(member.memory) ?? {
+                summary: null,
+                facts: [],
+                openLoops: [],
+                updatedAt: null,
+              },
+            });
+          }
+          return {
+            palId: readString(member.id),
+            name: readString(member.name, 'Pal'),
+            roles: Array.isArray(member.roles) ? member.roles : [],
+            skillProfile: readNullableString(member.skillProfile),
+            mcpProfile: readNullableString(member.mcpProfile),
+            status: readString(member.status, 'active'),
+            joinedAt: readString(member.joinedAt),
+            leftAt: readNullableString(member.leftAt),
+            execution: member.execution,
+            memory: asRecord(member.memory) ?? {
+              summary: null,
+              facts: [],
+              openLoops: [],
+              updatedAt: null,
+            },
+          };
+        });
+      } else if (Array.isArray(selectedChannel.palAssignments)) {
+        selectedChannel.assignedPals = selectedChannel.palAssignments.map((assignmentValue) => {
+          const assignment = asRecord(assignmentValue) ?? {};
+          const pal = palsById.get(readString(assignment.palId)) ?? {};
+          return {
+            palId: readString(assignment.palId),
+            name: readString(pal.name, 'Pal'),
+            roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(pal.roles),
+            skillProfile: readNullableString(pal.skillProfile),
+            mcpProfile: readNullableString(pal.mcpProfile),
+            status: readString(assignment.status, 'active'),
+            joinedAt: readString(assignment.joinedAt),
+            leftAt: readNullableString(assignment.leftAt),
+            execution: assignment.execution,
+            memory: asRecord(pal.memory) ?? {
+              summary: null,
+              facts: [],
+              openLoops: [],
+              updatedAt: null,
+            },
+          };
+        });
       }
+    }
+  }
 
-      if (!Array.isArray(member.roles)) {
-        member.roles = readStringArray(member.roles);
+  workspace!.pals = Array.from(palsById.values());
+
+  if (Array.isArray(workspace?.channels)) {
+    workspace.channels = workspace.channels.map((channelValue) => {
+      const channel = asRecord(channelValue) ?? {};
+      if (channel.palCount === undefined) {
+        channel.palCount = channel.memberCount ?? 0;
       }
-
-      return member;
+      if (channel.activePalCount === undefined) {
+        channel.activePalCount = channel.activeMemberCount ?? 0;
+      }
+      return channel;
     });
   }
 
@@ -185,6 +293,72 @@ export async function createWorkspaceChannel(
   );
 }
 
+export async function createGlobalPal(
+  input: CreateWorkspacePalInput,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch('/api/workspace/pals', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return normalizeAppShellPayload(
+    await expectJson<AppShellPayload>(
+      response,
+      `cats-inc workspace pal creation returned ${response.status}`,
+    ),
+  );
+}
+
+export async function assignPalToWorkspaceChannel(
+  channelId: string,
+  input: AssignChannelPalInput,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/workspace/channels/${channelId}/pals`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return normalizeAppShellPayload(
+    await expectJson<AppShellPayload>(
+      response,
+      `cats-inc channel pal assignment returned ${response.status}`,
+    ),
+  );
+}
+
+export async function removePalFromWorkspaceChannel(
+  channelId: string,
+  palId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/workspace/channels/${channelId}/pals/${palId}`, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+
+  return normalizeAppShellPayload(
+    await expectJson<AppShellPayload>(
+      response,
+      `cats-inc channel pal removal returned ${response.status}`,
+    ),
+  );
+}
+
 export async function activateWorkspaceChannel(
   channelId: string,
   signal?: AbortSignal,
@@ -230,50 +404,6 @@ export async function sendWorkspaceMessage(
     ...result,
     appShell: normalizeAppShellPayload(result.appShell),
   };
-}
-
-export async function addWorkspaceMember(
-  channelId: string,
-  input: AddChannelMemberInput,
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch(`/api/workspace/channels/${channelId}/members`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(input),
-    signal,
-  });
-
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(
-      response,
-      `cats-inc add member returned ${response.status}`,
-    ),
-  );
-}
-
-export async function removeWorkspaceMember(
-  channelId: string,
-  memberId: string,
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch(`/api/workspace/channels/${channelId}/members/${memberId}`, {
-    method: 'DELETE',
-    headers: {
-      Accept: 'application/json',
-    },
-    signal,
-  });
-
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(
-      response,
-      `cats-inc remove member returned ${response.status}`,
-    ),
-  );
 }
 
 export async function updateWorkspaceOrchestrator(

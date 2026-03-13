@@ -9,8 +9,8 @@
 | Bootstrap | Completed | Subproject created from `project-bootstrap` with Node.js preset |
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
-| Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes channel setup, transcript, pals, and orchestrator surfaces |
-| Workspace Product Features | Completed | Basic runtime-backed setup, messaging, pal management, mention routing, transcript export, and execution-aware state landed |
+| Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global pals, assignments, transcript, and orchestrator surfaces |
+| Workspace Product Features | Completed | Basic runtime-backed setup, global pal registry, channel assignment, mention routing, transcript export, and execution-aware state landed |
 | Documentation | In Progress | Core status and product docs are aligned; bootstrap template docs still need project-specific follow-up |
 | Productization Backlog | Not Started | Split-view, richer orchestration, desktop host, and alternate entrypoints remain |
 
@@ -56,7 +56,7 @@
 | Add initial multi-channel workspace UI shell | [x] | Sidebar, channel cards, orchestrator and runtime panels |
 | Add persistent workspace shell storage | [x] | File-backed shell state now includes selected and created channels |
 | Implement orchestrator and channel setup UX | [x] | Channel setup, global orchestrator editing, and runtime activation all landed |
-| Add runtime-backed message, member, and export flows | [x] | Basic participant management, mention routing, and transcript export now exist |
+| Add runtime-backed message, pal, and export flows | [x] | Global pal registry, channel assignment, mention routing, and transcript export now exist |
 
 #### Acceptance Criteria
 
@@ -65,7 +65,7 @@
 - [x] Users can create planned channels and keep them across reloads
 - [x] Product shell can bootstrap runtime-backed sessions through `cats-runtime`
 - [x] Channel state is persisted beyond in-memory process lifetime
-- [x] Basic participant management and mention routing work against persisted channels
+- [x] Workspace pals can be assigned into persisted channels and reached through basic mentions
 - [x] Channels can export their transcript and configuration as JSON
 
 ---
@@ -132,7 +132,7 @@
 - [x] Replace static shell selection with persisted workspace state
 - [x] Add a local channel setup flow with persisted workspace updates
 - [x] Add runtime-backed channel actions and composer flows
-- [x] Add a basic mention model, member management, and transcript export
+- [x] Add a basic mention model, global pal registry, and transcript export
 - [ ] Productization follow-up work continues in WP-3
 
 ---

@@ -55,8 +55,8 @@ The built Node server serves the static UI from `dist/`.
 By default local workspace state is stored in `config/workspace-state.local.json`.
 That file now holds channels, pals, execution targets, execution lease
 metadata, memory checkpoints, and transcripts.
-The checked-in starter state keeps only the `Lobby` channel so the renderer
-does not open with extra mock channels.
+The checked-in starter state is empty, so the renderer does not open with any
+default or mock chats.
 
 ## Common Issues
 

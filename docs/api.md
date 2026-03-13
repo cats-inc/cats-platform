@@ -1,14 +1,15 @@
 # API Specification
 
-> Public HTTP surface for the current `cats-inc` workspace shell.
+> Public HTTP surface for the current `cats-inc` chat shell.
 
 ## Overview
 
 The current Phase 2 API provides:
 
 - service and runtime reachability health
-- an explicit bootstrap payload for the workspace renderer shell
+- an explicit bootstrap payload for the chat renderer shell
 - a file-backed workspace mutation surface
+- a workspace-level pal registry plus channel-scoped pal assignment
 - runtime-backed channel activation and message routing
 - transcript export for later ingestion
 
@@ -58,7 +59,7 @@ Request body:
 
 ```json
 {
-  "selectedChannelId": "lobby"
+  "selectedChannelId": "ops-radar"
 }
 ```
 
@@ -80,7 +81,7 @@ Request body:
   "language": "TypeScript",
   "responseLanguage": "zh-TW",
   "formationMode": "manual",
-  "members": [
+  "pals": [
     {
       "name": "Agent-1",
       "provider": "claude",
@@ -95,25 +96,74 @@ Behavior:
 
 - trims title and topic before persistence
 - creates a new persisted channel in the local workspace store
+- promotes any draft `pals` into the workspace-level pal registry
+- creates channel assignments for those pals in the new chat
 - selects the new channel immediately
 - returns the updated app-shell payload
 
-### Add Channel Member
+### Create Workspace Pal
+
+```text
+POST /api/workspace/pals
+```
+
+Request body:
+
+```json
+{
+  "name": "Agent-2",
+  "provider": "gemini",
+  "model": "gemini-2.5-pro",
+  "roles": ["reviewer"]
+}
+```
+
+Creates a reusable workspace-level pal and returns the updated app-shell
+payload.
+
+### Assign Workspace Pal to a Channel
+
+```text
+POST /api/workspace/channels/{id}/pals
+```
+
+Request body:
+
+```json
+{
+  "palId": "pal-agent-2",
+  "provider": "gemini",
+  "model": "gemini-2.5-pro",
+  "roles": ["reviewer"]
+}
+```
+
+Behavior:
+
+- creates or updates the channel-scoped pal assignment
+- keeps the workspace pal identity and memory checkpoint intact
+- stores the channel-specific execution target on the assignment
+- if the assignment already had an active lease and the target changes, the
+  server best-effort closes the prior runtime session before returning
+
+### Remove Workspace Pal from a Channel
+
+```text
+DELETE /api/workspace/channels/{id}/pals/{palId}
+```
+
+Marks the channel assignment as removed and best-effort closes its active
+execution lease.
+
+### Legacy Compatibility Aliases
 
 ```text
 POST /api/workspace/channels/{id}/members
-```
-
-Adds a persisted channel member with an execution target
-(`provider`/`model`) plus role metadata.
-
-### Remove Channel Member
-
-```text
 DELETE /api/workspace/channels/{id}/members/{memberId}
 ```
 
-Marks the member as removed and best-effort closes its active execution lease.
+These aliases still work for older clients and stored state. They now route
+through the workspace-pal model internally.
 
 ### Activate Channel
 
@@ -122,15 +172,15 @@ POST /api/workspace/channels/{id}/activate
 ```
 
 Creates channel-scoped runtime sessions for the global orchestrator and active
-members, recording them as execution leases, then returns:
+assigned pals, records execution leases, then returns:
 
 ```json
 {
   "appShell": { "...": "updated shell payload" },
   "results": [
     {
-      "targetKind": "member",
-      "targetId": "member-id",
+      "targetKind": "pal",
+      "targetId": "pal-agent-1",
       "targetName": "Agent-1",
       "status": "started",
       "sessionId": "session-2"
@@ -156,7 +206,7 @@ Request body:
 Behavior:
 
 - persists the user message to the transcript
-- resolves `@mentions` against the orchestrator and active members
+- resolves `@mentions` against the orchestrator and active assigned pals
 - routes the prompt through `cats-runtime` sessions
 - persists runtime responses and token usage back into the channel transcript
 
@@ -175,8 +225,8 @@ orchestrator surface.
 GET /api/workspace/channels/{id}/export
 ```
 
-Returns a JSON attachment containing the current orchestrator settings and full
-channel transcript.
+Returns a JSON attachment containing the current orchestrator settings, raw
+channel state, hydrated `assignedPals`, and full channel transcript.
 
 ### App Shell
 
@@ -198,52 +248,10 @@ Abbreviated example response:
   "workspace": {
     "id": "default",
     "name": "Chat",
-    "selectedChannelId": "lobby",
-    "selectedChannel": {
-      "orchestratorLease": {
-        "sessionId": "session-1",
-        "status": "ready",
-        "provider": "claude",
-        "model": "claude-opus-4-6"
-      },
-      "members": [
-        {
-          "name": "Agent-1",
-          "execution": {
-            "target": {
-              "provider": "claude",
-              "model": "sonnet"
-            },
-            "lease": {
-              "sessionId": "session-2",
-              "status": "ready",
-              "provider": "claude",
-              "model": "sonnet"
-            }
-          },
-          "memory": {
-            "summary": null,
-            "facts": [],
-            "openLoops": []
-          }
-        }
-      ]
-    },
-    "channels": [
-      {
-        "id": "lobby",
-        "title": "Lobby",
-        "topic": "A casual room for the team to coordinate, ask for help, and keep things moving.",
-        "status": "active",
-        "unreadCount": 2,
-        "memberCount": 4,
-        "activeMemberCount": 4,
-        "repoPath": null,
-        "workspaceCwd": null,
-        "lastMessageAt": "2026-03-11T12:00:00.000Z",
-        "lastActivatedAt": "2026-03-11T11:59:00.000Z"
-      }
-    ],
+    "selectedChannelId": "",
+    "pals": [],
+    "selectedChannel": null,
+    "channels": [],
     "globalOrchestrator": {
       "mode": "global",
       "status": "ready",
@@ -289,7 +297,7 @@ Errors use a minimal payload:
 | Status | Meaning |
 |--------|---------|
 | `200` | Request handled successfully |
-| `404` | Unknown route |
+| `404` | Unknown route or workspace entity |
 | `405` | Unsupported method |
 | `503` | Runtime dependency unavailable for health checks |
 
@@ -298,10 +306,12 @@ Errors use a minimal payload:
 - `cats-inc` does not talk to `agent-fleet` directly
 - The renderer consumes this endpoint over a Vite proxy during development
 - Workspace shell state is currently persisted to a local JSON file
-- Persisted pal state now separates execution targets, execution leases, and
-  provider-agnostic memory checkpoints
-- Workspace mutations now cover selection, channel setup, membership, activation,
-  messaging, orchestrator editing, and export
+- Persisted pal state separates workspace identity, channel assignment,
+  execution targets, execution leases, and provider-agnostic memory checkpoints
+- Workspace mutations now cover selection, chat setup, global pal registry,
+  channel assignment, activation, messaging, orchestrator editing, and export
+- Legacy `/members` routes remain available as compatibility aliases during
+  migration
 - Runtime responses are currently delivered as request/response completions; the
   API does not expose live push or WebSocket streaming yet
 - Future session and channel APIs should extend this contract without leaking

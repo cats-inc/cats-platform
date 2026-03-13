@@ -4,10 +4,16 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createChannel, appendMessage, addMemberToChannel, exportChannel } from '../dist-server/workspace/model.js';
+import {
+  appendMessage,
+  assignPalToChannel,
+  createChannel,
+  createWorkspacePal,
+  exportChannel,
+} from '../dist-server/workspace/model.js';
 import { FileWorkspaceStore } from '../dist-server/workspace/store.js';
 
-test('FileWorkspaceStore persists configured channels, members, and messages to disk', async () => {
+test('FileWorkspaceStore persists configured channels, pals, assignments, and messages to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-'));
   const statePath = path.join(tempDir, 'workspace-state.json');
   const store = new FileWorkspaceStore(statePath);
@@ -18,7 +24,7 @@ test('FileWorkspaceStore persists configured channels, members, and messages to 
     {
       title: 'Ops Radar',
       topic: 'Track runtime regressions before shipping the desktop shell.',
-      members: [
+      pals: [
         {
           name: 'Agent-1',
           provider: 'claude',
@@ -30,12 +36,22 @@ test('FileWorkspaceStore persists configured channels, members, and messages to 
   );
 
   const channelId = state.selectedChannelId;
-  state = addMemberToChannel(
+  state = createWorkspacePal(
+    state,
+    {
+      name: 'Agent-2',
+      provider: 'gemini',
+      roles: ['reviewer'],
+    },
+    new Date('2026-03-11T00:00:00.000Z'),
+  );
+
+  state = assignPalToChannel(
     state,
     channelId,
     {
-      name: 'Agent-2',
-      provider: 'claude',
+      palId: state.pals[0].id,
+      provider: 'gemini',
       roles: ['reviewer'],
     },
     new Date('2026-03-11T00:00:00.000Z'),
@@ -59,23 +75,33 @@ test('FileWorkspaceStore persists configured channels, members, and messages to 
   const createdChannel = parsedState.channels.find((channel) => channel.id === channelId);
 
   assert.equal(parsedState.selectedChannelId, 'ops-radar');
+  assert.equal(parsedState.pals.length, 2);
   assert.ok(createdChannel);
-  assert.equal(createdChannel.members.length, 2);
-  assert.equal(createdChannel.members[0].execution.target.provider, 'claude');
+  assert.equal(createdChannel.palAssignments.length, 2);
+  assert.equal(createdChannel.palAssignments[0].execution.target.provider, 'claude');
   assert.equal(createdChannel.messages.at(-1).mentions[0], 'Agent-1');
 });
 
-test('exportChannel returns orchestrator context with the selected transcript', async () => {
+test('exportChannel returns assigned pals with the selected transcript', async () => {
   const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'));
-  const state = await store.read();
+  const initialState = await store.read();
+  const state = createChannel(
+    initialState,
+    {
+      title: 'Ops Radar',
+      topic: 'Track runtime regressions before shipping the desktop shell.',
+    },
+    new Date('2026-03-11T00:00:00.000Z'),
+  );
   const payload = exportChannel(state, state.selectedChannelId);
 
   assert.equal(payload.channel.id, state.selectedChannelId);
   assert.equal(payload.orchestrator.mode, 'global');
+  assert.ok(Array.isArray(payload.assignedPals));
   assert.ok(Array.isArray(payload.channel.messages));
 });
 
-test('FileWorkspaceStore migrates legacy provider-bound records into execution-aware state', async () => {
+test('FileWorkspaceStore migrates legacy provider-bound records into global pals plus assignments', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-'));
   const statePath = path.join(tempDir, 'workspace-state.json');
   await writeFile(
@@ -163,10 +189,12 @@ test('FileWorkspaceStore migrates legacy provider-bound records into execution-a
   const store = new FileWorkspaceStore(statePath);
   const state = await store.read();
 
+  assert.equal(state.pals.length, 1);
   assert.equal(state.globalOrchestrator.executionTarget.provider, 'claude');
   assert.equal(state.globalOrchestrator.executionTarget.model, 'claude-opus-4-6');
   assert.equal(state.channels[0].orchestratorLease.sessionId, 'orch-1');
-  assert.equal(state.channels[0].members[0].execution.target.provider, 'claude');
-  assert.equal(state.channels[0].members[0].execution.target.model, 'claude-sonnet');
-  assert.equal(state.channels[0].members[0].execution.lease.sessionId, 'pal-session-1');
+  assert.equal(state.channels[0].palAssignments[0].palId, 'pal-1');
+  assert.equal(state.channels[0].palAssignments[0].execution.target.provider, 'claude');
+  assert.equal(state.channels[0].palAssignments[0].execution.target.model, 'claude-sonnet');
+  assert.equal(state.channels[0].palAssignments[0].execution.lease.sessionId, 'pal-session-1');
 });

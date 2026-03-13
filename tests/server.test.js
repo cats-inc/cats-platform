@@ -91,7 +91,7 @@ test('GET /health reports runtime reachability', async () => {
   });
 });
 
-test('GET /api/app-shell exposes detailed workspace state', async () => {
+test('GET /api/app-shell exposes detailed workspace state with global pals', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(response.status, 200);
@@ -99,19 +99,16 @@ test('GET /api/app-shell exposes detailed workspace state', async () => {
     const payload = await response.json();
     assert.equal(payload.app.name, 'cats-inc');
     assert.equal(payload.workspace.name, 'Chat');
-    assert.equal(payload.workspace.selectedChannelId, 'lobby');
-    assert.equal(payload.workspace.channels.length, 1);
-    assert.deepEqual(
-      payload.workspace.channels.map((channel) => channel.id),
-      ['lobby'],
-    );
-    assert.equal(payload.workspace.selectedChannel.title, 'Lobby');
+    assert.equal(payload.workspace.selectedChannelId, '');
+    assert.equal(payload.workspace.channels.length, 0);
+    assert.equal(payload.workspace.pals.length, 0);
+    assert.equal(payload.workspace.selectedChannel, null);
     assert.equal(payload.workspace.capabilities.mentions, 'basic');
     assert.equal(payload.workspace.capabilities.transcriptExport, true);
   });
 });
 
-test('workspace API covers channel setup, activation, messaging, members, and export', async () => {
+test('workspace API covers chat setup, activation, messaging, global pals, assignments, and export', async () => {
   const runtimeClient = createRuntimeStub();
   const workspaceStore = new MemoryWorkspaceStore();
 
@@ -126,7 +123,7 @@ test('workspace API covers channel setup, activation, messaging, members, and ex
         topic: 'Track runtime regressions before shipping the desktop shell.',
         repoPath: 'C:/repo/cats-inc',
         language: 'TypeScript',
-        members: [
+        pals: [
           {
             name: 'Agent-1',
             provider: 'claude',
@@ -140,9 +137,10 @@ test('workspace API covers channel setup, activation, messaging, members, and ex
     const createdPayload = await createResponse.json();
     const channelId = createdPayload.workspace.selectedChannel.id;
     assert.equal(channelId, 'ops-radar');
-    assert.equal(createdPayload.workspace.selectedChannel.members.length, 1);
+    assert.equal(createdPayload.workspace.pals.length, 1);
+    assert.equal(createdPayload.workspace.selectedChannel.assignedPals.length, 1);
     assert.equal(
-      createdPayload.workspace.selectedChannel.members[0].execution.target.provider,
+      createdPayload.workspace.selectedChannel.assignedPals[0].execution.target.provider,
       'claude',
     );
 
@@ -174,37 +172,59 @@ test('workspace API covers channel setup, activation, messaging, members, and ex
       ),
     );
 
-    const addMemberResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/members`, {
+    const createPalResponse = await fetch(`${baseUrl}/api/workspace/pals`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
         name: 'Agent-2',
-        provider: 'claude',
+        provider: 'gemini',
         roles: ['reviewer'],
       }),
     });
-    assert.equal(addMemberResponse.status, 200);
-    const addMemberPayload = await addMemberResponse.json();
-    assert.equal(addMemberPayload.workspace.selectedChannel.members.length, 2);
+    assert.equal(createPalResponse.status, 200);
+    const createPalPayload = await createPalResponse.json();
+    assert.equal(createPalPayload.workspace.pals.length, 2);
+    const secondPal = createPalPayload.workspace.pals.find((pal) => pal.name === 'Agent-2');
+    assert.ok(secondPal);
 
-    const firstMember = addMemberPayload.workspace.selectedChannel.members.find(
-      (member) => member.name === 'Agent-1',
+    const assignPalResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/pals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        palId: secondPal.id,
+        provider: 'gemini',
+        model: 'gemini-2.5-pro',
+        roles: ['reviewer'],
+      }),
+    });
+    assert.equal(assignPalResponse.status, 200);
+    const assignPalPayload = await assignPalResponse.json();
+    assert.equal(assignPalPayload.workspace.selectedChannel.assignedPals.length, 2);
+    assert.equal(
+      assignPalPayload.workspace.selectedChannel.assignedPals.find((pal) => pal.palId === secondPal.id).execution.target.model,
+      'gemini-2.5-pro',
     );
-    assert.ok(firstMember);
 
-    const removeMemberResponse = await fetch(
-      `${baseUrl}/api/workspace/channels/${channelId}/members/${firstMember.id}`,
+    const firstPal = assignPalPayload.workspace.selectedChannel.assignedPals.find(
+      (pal) => pal.name === 'Agent-1',
+    );
+    assert.ok(firstPal);
+
+    const removePalResponse = await fetch(
+      `${baseUrl}/api/workspace/channels/${channelId}/pals/${firstPal.palId}`,
       {
         method: 'DELETE',
       },
     );
-    assert.equal(removeMemberResponse.status, 200);
-    const removeMemberPayload = await removeMemberResponse.json();
+    assert.equal(removePalResponse.status, 200);
+    const removePalPayload = await removePalResponse.json();
     assert.equal(
-      removeMemberPayload.workspace.selectedChannel.members.find(
-        (member) => member.id === firstMember.id,
+      removePalPayload.workspace.selectedChannel.assignedPals.find(
+        (pal) => pal.palId === firstPal.palId,
       ).status,
       'removed',
     );
@@ -233,6 +253,7 @@ test('workspace API covers channel setup, activation, messaging, members, and ex
     assert.match(exportResponse.headers.get('content-disposition') ?? '', /channel-ops-radar\.json/);
     const exportPayload = await exportResponse.json();
     assert.equal(exportPayload.channel.id, channelId);
+    assert.ok(exportPayload.assignedPals.length >= 1);
     assert.ok(exportPayload.channel.messages.length >= 4);
   }, workspaceStore);
 });

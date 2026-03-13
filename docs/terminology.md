@@ -18,6 +18,8 @@
 | Cats Inc | The parent product suite. |
 | Chat | The current lightweight team conversation module inside Cats Inc. |
 | Pal | A reusable teammate identity used inside Chat. A pal is not the same thing as a provider choice. |
+| Workspace pal registry | The workspace-level list of reusable pals that can be assigned into one or more chats. |
+| Pal assignment | The channel-scoped record that decides whether a workspace pal is active in one chat and which execution target it should use there. |
 | Execution target | The provider/model preference selected for a pal or orchestrator in one context. |
 | Execution lease | The currently active runtime session metadata used to execute work through a provider. |
 | Memory checkpoint | Product-owned summary data, facts, and open loops that should survive session restarts or provider changes. |

@@ -1,20 +1,24 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-  AddChannelMemberInput,
+  AssignChannelPalInput,
   ChannelExportPayload,
+  ChannelPalAssignment,
   CreateWorkspaceChannelInput,
+  CreateWorkspacePalInput,
   GlobalOrchestratorSummary,
   MessageUsageSummary,
   ParticipantExecutionLease,
   ParticipantSessionStatus,
   SendChannelMessageInput,
+  WorkspaceChannelPal,
   WorkspaceChannelState,
   WorkspaceChannelStatus,
   WorkspaceChannelSummary,
-  WorkspaceMember,
+  WorkspaceChannelView,
   WorkspaceMessage,
   WorkspaceMessageSenderKind,
+  WorkspacePal,
   WorkspaceState,
   UpdateGlobalOrchestratorInput,
 } from '../shared/app-shell.js';
@@ -79,8 +83,17 @@ export function requireChannel(state: WorkspaceState, channelId: string): Worksp
   return channel;
 }
 
-function activeMemberCount(channel: WorkspaceChannelState): number {
-  return channel.members.filter((member) => member.status === 'active').length;
+export function requirePal(state: WorkspaceState, palId: string): WorkspacePal {
+  const pal = state.pals.find((candidate) => candidate.id === palId);
+  if (!pal) {
+    throw new Error(`Pal not found: ${palId}`);
+  }
+
+  return pal;
+}
+
+function activePalCount(channel: WorkspaceChannelState): number {
+  return channel.palAssignments.filter((assignment) => assignment.status === 'active').length;
 }
 
 function createMessageRecord(
@@ -115,14 +128,15 @@ function applyMessageToChannel(
   channel.lastMessageAt = nowIso;
 }
 
-function createMemberRecord(input: AddChannelMemberInput, nowIso: string): WorkspaceMember {
+function createPalRecord(input: CreateWorkspacePalInput, nowIso: string): WorkspacePal {
   const name = input.name.trim();
   const provider = input.provider.trim();
+
   if (!name) {
-    throw new Error('Member name is required');
+    throw new Error('Pal name is required');
   }
   if (!provider) {
-    throw new Error('Member provider is required');
+    throw new Error('Pal provider is required');
   }
 
   return {
@@ -132,16 +146,77 @@ function createMemberRecord(input: AddChannelMemberInput, nowIso: string): Works
     skillProfile: normalizeOptionalText(input.skillProfile),
     mcpProfile: normalizeOptionalText(input.mcpProfile),
     status: 'active',
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    archivedAt: null,
+    defaultExecutionTarget: {
+      provider,
+      model: normalizeOptionalText(input.model),
+    },
+    memory: createEmptyMemoryCheckpoint(),
+  };
+}
+
+function createAssignmentRecord(
+  pal: WorkspacePal,
+  input: {
+    provider?: string;
+    model?: string | null;
+    roles?: string[];
+  },
+  nowIso: string,
+): ChannelPalAssignment {
+  const roles = normalizeList(input.roles);
+
+  return {
+    palId: pal.id,
+    status: 'active',
+    roles: roles.length > 0 ? roles : pal.roles,
     joinedAt: nowIso,
     leftAt: null,
     execution: {
       target: {
-        provider,
-        model: normalizeOptionalText(input.model),
+        provider: input.provider?.trim() || pal.defaultExecutionTarget.provider,
+        model:
+          input.model === undefined
+            ? pal.defaultExecutionTarget.model
+            : normalizeOptionalText(input.model),
       },
       lease: createEmptyExecutionLease(),
     },
-    memory: createEmptyMemoryCheckpoint(),
+  };
+}
+
+function hydrateChannelPal(
+  pal: WorkspacePal,
+  assignment: ChannelPalAssignment,
+): WorkspaceChannelPal {
+  return {
+    palId: pal.id,
+    name: pal.name,
+    roles: assignment.roles.length > 0 ? structuredClone(assignment.roles) : structuredClone(pal.roles),
+    skillProfile: pal.skillProfile,
+    mcpProfile: pal.mcpProfile,
+    status: assignment.status,
+    joinedAt: assignment.joinedAt,
+    leftAt: assignment.leftAt,
+    execution: structuredClone(assignment.execution),
+    memory: structuredClone(pal.memory),
+  };
+}
+
+export function buildChannelView(
+  state: WorkspaceState,
+  channelOrId: WorkspaceChannelState | string,
+): WorkspaceChannelView {
+  const channel =
+    typeof channelOrId === 'string' ? requireChannel(state, channelOrId) : channelOrId;
+
+  return {
+    ...structuredClone(channel),
+    assignedPals: channel.palAssignments.map((assignment) =>
+      hydrateChannelPal(requirePal(state, assignment.palId), assignment),
+    ),
   };
 }
 
@@ -152,8 +227,8 @@ export function toChannelSummary(channel: WorkspaceChannelState): WorkspaceChann
     topic: channel.topic,
     status: channel.status,
     unreadCount: channel.unreadCount,
-    memberCount: channel.members.length,
-    activeMemberCount: activeMemberCount(channel),
+    palCount: channel.palAssignments.length,
+    activePalCount: activePalCount(channel),
     repoPath: channel.repoPath,
     workspaceCwd: channel.workspaceCwd,
     lastMessageAt: channel.lastMessageAt,
@@ -174,6 +249,17 @@ export function selectChannel(
   return nextState;
 }
 
+export function createWorkspacePal(
+  state: WorkspaceState,
+  input: CreateWorkspacePalInput,
+  now: Date = new Date(),
+): WorkspaceState {
+  const nextState = cloneState(state);
+  const pal = createPalRecord(input, isoAt(now));
+  nextState.pals.unshift(pal);
+  return nextState;
+}
+
 export function createChannel(
   state: WorkspaceState,
   input: CreateWorkspaceChannelInput,
@@ -184,12 +270,27 @@ export function createChannel(
   const title = input.title.trim() || 'Untitled chat';
   const topic = input.topic.trim() || 'This chat is still taking shape.';
   const channelId = createUniqueChannelId(nextState, title);
-  const members = (input.members ?? []).map((member) => createMemberRecord(member, nowIso));
+  const createdPals = (input.pals ?? []).map((palInput) => createPalRecord(palInput, nowIso));
+
+  nextState.pals.unshift(...createdPals);
+
+  const palAssignments = createdPals.map((pal, index) =>
+    createAssignmentRecord(
+      pal,
+      {
+        provider: input.pals?.[index]?.provider,
+        model: input.pals?.[index]?.model,
+        roles: input.pals?.[index]?.roles,
+      },
+      nowIso,
+    ),
+  );
+
   const channel: WorkspaceChannelState = {
     id: channelId,
     title,
     topic,
-    status: members.length > 0 ? 'configured' : 'planned',
+    status: palAssignments.length > 0 ? 'configured' : 'planned',
     unreadCount: 0,
     repoPath: normalizeOptionalText(input.repoPath),
     workspaceCwd: null,
@@ -204,13 +305,13 @@ export function createChannel(
     lastMessageAt: nowIso,
     lastActivatedAt: null,
     orchestratorLease: createEmptyExecutionLease(),
-    members,
+    palAssignments,
     messages: [
       createMessageRecord(
         channelId,
         'system',
         'Chat',
-        `Chat created with ${members.length} pal${members.length === 1 ? '' : 's'}. Activate it to start runtime replies.`,
+        `Chat created with ${palAssignments.length} pal${palAssignments.length === 1 ? '' : 's'}. Activate it to start runtime replies.`,
         nowIso,
         { event: 'channel_created' },
         null,
@@ -223,20 +324,73 @@ export function createChannel(
   return nextState;
 }
 
-export function addMemberToChannel(
+export function assignPalToChannel(
   state: WorkspaceState,
   channelId: string,
-  input: AddChannelMemberInput,
+  input: AssignChannelPalInput,
   now: Date = new Date(),
 ): WorkspaceState {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
-  const member = createMemberRecord(input, nowIso);
+  const pal = requirePal(nextState, input.palId);
+  const existing = channel.palAssignments.find((candidate) => candidate.palId === input.palId);
 
-  channel.members.push(member);
-  if (channel.status === 'planned') {
-    channel.status = 'configured';
+  if (!existing) {
+    channel.palAssignments.push(
+      createAssignmentRecord(
+        pal,
+        {
+          provider: input.provider,
+          model: input.model,
+          roles: input.roles,
+        },
+        nowIso,
+      ),
+    );
+
+    if (channel.status === 'planned') {
+      channel.status = 'configured';
+    }
+
+    applyMessageToChannel(
+      channel,
+      createMessageRecord(
+        channelId,
+        'system',
+        'Chat',
+        `${pal.name} joined the chat.`,
+        nowIso,
+        { event: 'pal_assigned', palId: pal.id },
+        null,
+      ),
+      nowIso,
+    );
+    return nextState;
+  }
+
+  const nextRoles = normalizeList(input.roles);
+  const nextProvider = input.provider?.trim() || existing.execution.target.provider;
+  const nextModel =
+    input.model === undefined
+      ? existing.execution.target.model
+      : normalizeOptionalText(input.model);
+  const targetChanged =
+    existing.execution.target.provider !== nextProvider
+    || existing.execution.target.model !== nextModel;
+
+  existing.status = 'active';
+  existing.leftAt = null;
+  existing.roles = nextRoles.length > 0 ? nextRoles : (existing.roles.length > 0 ? existing.roles : pal.roles);
+  existing.execution.target = {
+    provider: nextProvider,
+    model: nextModel,
+  };
+
+  if (targetChanged) {
+    existing.execution.lease = createEmptyExecutionLease();
+  } else if (existing.execution.lease.status === 'removed') {
+    existing.execution.lease.status = 'not_started';
   }
 
   applyMessageToChannel(
@@ -245,9 +399,14 @@ export function addMemberToChannel(
       channelId,
       'system',
       'Chat',
-      `${member.name} joined the chat.`,
+      targetChanged
+        ? `${pal.name}'s chat assignment was updated. Reactivate the chat to use the new provider target.`
+        : `${pal.name}'s chat assignment is ready.`,
       nowIso,
-      { event: 'member_joined', memberId: member.id },
+      {
+        event: targetChanged ? 'pal_assignment_updated' : 'pal_assignment_reused',
+        palId: pal.id,
+      },
       null,
     ),
     nowIso,
@@ -256,34 +415,35 @@ export function addMemberToChannel(
   return nextState;
 }
 
-export function removeMemberFromChannel(
+export function removePalFromChannel(
   state: WorkspaceState,
   channelId: string,
-  memberId: string,
+  palId: string,
   now: Date = new Date(),
 ): WorkspaceState {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
-  const member = channel.members.find((candidate) => candidate.id === memberId);
+  const assignment = channel.palAssignments.find((candidate) => candidate.palId === palId);
 
-  if (!member) {
-    throw new Error(`Member not found: ${memberId}`);
+  if (!assignment) {
+    throw new Error(`Channel pal assignment not found: ${palId}`);
   }
 
-  member.status = 'removed';
-  member.leftAt = nowIso;
-  member.execution.lease.status = 'removed';
+  assignment.status = 'removed';
+  assignment.leftAt = nowIso;
+  assignment.execution.lease.status = 'removed';
 
+  const pal = requirePal(nextState, palId);
   applyMessageToChannel(
     channel,
     createMessageRecord(
       channelId,
       'system',
       'Chat',
-      `${member.name} left the chat.`,
+      `${pal.name} left the chat.`,
       nowIso,
-      { event: 'member_removed', memberId },
+      { event: 'pal_removed', palId },
       null,
     ),
     nowIso,
@@ -389,22 +549,22 @@ export function setChannelOrchestratorLease(
   return nextState;
 }
 
-export function setChannelMemberLease(
+export function setChannelPalLease(
   state: WorkspaceState,
   channelId: string,
-  memberId: string,
+  palId: string,
   leaseUpdate: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
   now: Date = new Date(),
 ): WorkspaceState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
-  const member = channel.members.find((candidate) => candidate.id === memberId);
+  const assignment = channel.palAssignments.find((candidate) => candidate.palId === palId);
 
-  if (!member) {
-    throw new Error(`Member not found: ${memberId}`);
+  if (!assignment) {
+    throw new Error(`Channel pal assignment not found: ${palId}`);
   }
 
-  member.execution.lease = updateExecutionLease(member.execution.lease, leaseUpdate);
+  assignment.execution.lease = updateExecutionLease(assignment.execution.lease, leaseUpdate);
   channel.updatedAt = isoAt(now);
   return nextState;
 }
@@ -443,24 +603,29 @@ export function parseMentions(text: string): string[] {
 }
 
 export function exportChannel(state: WorkspaceState, channelId: string): ChannelExportPayload {
+  const channel = requireChannel(state, channelId);
+
   return {
     exportedAt: new Date().toISOString(),
     orchestrator: structuredClone(state.globalOrchestrator),
-    channel: structuredClone(requireChannel(state, channelId)),
+    channel: structuredClone(channel),
+    assignedPals: buildChannelView(state, channel).assignedPals,
   };
 }
 
 export function summarizeState(state: WorkspaceState): {
+  pals: WorkspacePal[];
   channels: WorkspaceChannelSummary[];
-  selectedChannel: WorkspaceChannelState | null;
+  selectedChannel: WorkspaceChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
 } {
-  const selectedChannel =
+  const selectedChannelState =
     state.channels.find((channel) => channel.id === state.selectedChannelId) ?? null;
 
   return {
+    pals: structuredClone(state.pals),
     channels: state.channels.map((channel) => toChannelSummary(channel)),
-    selectedChannel: selectedChannel ? structuredClone(selectedChannel) : null,
+    selectedChannel: selectedChannelState ? buildChannelView(state, selectedChannelState) : null,
     globalOrchestrator: structuredClone(state.globalOrchestrator),
   };
 }

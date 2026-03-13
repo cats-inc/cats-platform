@@ -18,7 +18,7 @@ Port numbers should be configurable via environment variables so developers can 
 |----------|---------|---------|-------|
 | `CATS_INC_HOST` | `127.0.0.1` | `cats-inc` HTTP app | Use `0.0.0.0` in containers |
 | `CATS_INC_PORT` | `8181` | `cats-inc` HTTP app | Main local app port |
-| `CATS_INC_STATE_PATH` | empty | Workspace store | Defaults to `config/workspace-state.local.json` for channels, members, sessions, and transcripts |
+| `CATS_INC_STATE_PATH` | empty | Workspace store | Defaults to `config/workspace-state.local.json` for channels, workspace pals, assignments, execution leases, and transcripts |
 | `CATS_RUNTIME_BASE_URL` | `http://127.0.0.1:3110` | Runtime client | Points to `cats-runtime` |
 | `CATS_RUNTIME_API_KEY` | empty | Runtime client | Optional bearer token for `cats-runtime` |
 
@@ -39,4 +39,4 @@ This project was created from **project-bootstrap**, which maintains a central p
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-13*

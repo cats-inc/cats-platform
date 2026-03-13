@@ -7,20 +7,23 @@ import { fileURLToPath } from 'node:url';
 import type { AppConfig } from './config.js';
 import type { RuntimeClient } from './runtime/client.js';
 import type {
-  AddChannelMemberInput,
+  AssignChannelPalInput,
   CreateWorkspaceChannelInput,
+  CreateWorkspacePalInput,
   SendChannelMessageInput,
   UpdateGlobalOrchestratorInput,
   UpdateSelectedChannelInput,
 } from './shared/app-shell.js';
 import type { WorkspaceStore } from './workspace/store.js';
 import {
-  addMemberToChannel,
   appendMessage,
+  assignPalToChannel,
   createChannel,
+  createWorkspacePal,
   exportChannel,
-  removeMemberFromChannel,
   requireChannel,
+  requirePal,
+  removePalFromChannel,
   selectChannel,
   updateGlobalOrchestrator,
 } from './workspace/model.js';
@@ -106,7 +109,11 @@ function matchRoute(pathname: string, pattern: RegExp): string[] | null {
 
 function errorStatusCode(error: unknown): number {
   const message = error instanceof Error ? error.message : '';
-  if (message.startsWith('Channel not found:') || message.startsWith('Member not found:')) {
+  if (
+    message.startsWith('Channel not found:')
+    || message.startsWith('Pal not found:')
+    || message.startsWith('Channel pal assignment not found:')
+  ) {
     return 404;
   }
   return 400;
@@ -188,17 +195,15 @@ async function handleChannelCreate(
   }
 }
 
-async function handleAddMember(
+async function handleWorkspacePalCreate(
   request: IncomingMessage,
   response: ServerResponse,
   dependencies: ServerDependencies,
-  channelId: string,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<AddChannelMemberInput>(request);
-    const nextState = addMemberToChannel(
+    const body = await readJsonBody<CreateWorkspacePalInput>(request);
+    const nextState = createWorkspacePal(
       await dependencies.workspaceStore.read(),
-      channelId,
       body,
       dependencies.now?.() ?? new Date(),
     );
@@ -206,49 +211,65 @@ async function handleAddMember(
     sendJson(response, 200, await buildAppShell(dependencies, persisted));
   } catch (error) {
     sendJson(response, errorStatusCode(error), {
-      error: error instanceof Error ? error.message : 'Failed to add channel member',
+      error: error instanceof Error ? error.message : 'Failed to create workspace pal',
     });
   }
 }
 
-async function handleRemoveMember(
+async function handleAssignPal(
+  request: IncomingMessage,
   response: ServerResponse,
   dependencies: ServerDependencies,
   channelId: string,
-  memberId: string,
 ): Promise<void> {
   try {
+    const body = await readJsonBody<AssignChannelPalInput>(request);
     const currentState = await dependencies.workspaceStore.read();
-    const channel = requireChannel(currentState, channelId);
-    const member = channel.members.find((candidate) => candidate.id === memberId);
-    if (!member) {
-      throw new Error(`Member not found: ${memberId}`);
-    }
+    const currentChannel = requireChannel(currentState, channelId);
+    const existingAssignment = currentChannel.palAssignments.find(
+      (candidate) => candidate.palId === body.palId,
+    );
+    const previousSessionId = existingAssignment?.execution.lease.sessionId ?? null;
+    const previousProvider = existingAssignment?.execution.target.provider ?? null;
+    const previousModel = existingAssignment?.execution.target.model ?? null;
 
-    let nextState = removeMemberFromChannel(
+    let nextState = assignPalToChannel(
       currentState,
       channelId,
-      memberId,
+      body,
       dependencies.now?.() ?? new Date(),
     );
+    const updatedChannel = requireChannel(nextState, channelId);
+    const updatedAssignment = updatedChannel.palAssignments.find(
+      (candidate) => candidate.palId === body.palId,
+    );
+    const targetChanged = Boolean(
+      existingAssignment
+      && updatedAssignment
+      && (
+        updatedAssignment.execution.target.provider !== previousProvider
+        || updatedAssignment.execution.target.model !== previousModel
+      ),
+    );
 
-    if (member.execution.lease.sessionId) {
+    if (targetChanged && previousSessionId) {
       try {
-        await dependencies.runtimeClient.closeSession(member.execution.lease.sessionId);
+        await dependencies.runtimeClient.closeSession(previousSessionId);
       } catch (error) {
+        const pal = requirePal(nextState, body.palId);
         nextState = appendMessage(
           nextState,
           channelId,
           {
             senderKind: 'system',
             senderName: 'Runtime',
-            body: `Failed to close ${member.name}'s session cleanly: ${
+            body: `Failed to close ${pal.name}'s previous session cleanly: ${
               error instanceof Error ? error.message : 'Unknown runtime error'
             }`,
           },
           dependencies.now?.() ?? new Date(),
           {
-            metadata: { event: 'session_close_failed', memberId },
+            metadata: { event: 'session_close_failed', palId: body.palId },
           },
         ).state;
       }
@@ -258,7 +279,97 @@ async function handleRemoveMember(
     sendJson(response, 200, await buildAppShell(dependencies, persisted));
   } catch (error) {
     sendJson(response, errorStatusCode(error), {
-      error: error instanceof Error ? error.message : 'Failed to remove channel member',
+      error: error instanceof Error ? error.message : 'Failed to assign pal to channel',
+    });
+  }
+}
+
+async function handleRemovePalAssignment(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+  palId: string,
+): Promise<void> {
+  try {
+    const currentState = await dependencies.workspaceStore.read();
+    const channel = requireChannel(currentState, channelId);
+    const assignment = channel.palAssignments.find((candidate) => candidate.palId === palId);
+    if (!assignment) {
+      throw new Error(`Channel pal assignment not found: ${palId}`);
+    }
+    const pal = requirePal(currentState, palId);
+
+    let nextState = removePalFromChannel(
+      currentState,
+      channelId,
+      palId,
+      dependencies.now?.() ?? new Date(),
+    );
+
+    if (assignment.execution.lease.sessionId) {
+      try {
+        await dependencies.runtimeClient.closeSession(assignment.execution.lease.sessionId);
+      } catch (error) {
+        nextState = appendMessage(
+          nextState,
+          channelId,
+          {
+            senderKind: 'system',
+            senderName: 'Runtime',
+            body: `Failed to close ${pal.name}'s session cleanly: ${
+              error instanceof Error ? error.message : 'Unknown runtime error'
+            }`,
+          },
+          dependencies.now?.() ?? new Date(),
+          {
+            metadata: { event: 'session_close_failed', palId },
+          },
+        ).state;
+      }
+    }
+
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, await buildAppShell(dependencies, persisted));
+  } catch (error) {
+    sendJson(response, errorStatusCode(error), {
+      error: error instanceof Error ? error.message : 'Failed to remove channel pal',
+    });
+  }
+}
+
+async function handleLegacyAddMember(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<CreateWorkspacePalInput>(request);
+    let nextState = createWorkspacePal(
+      await dependencies.workspaceStore.read(),
+      body,
+      dependencies.now?.() ?? new Date(),
+    );
+    const createdPalId = nextState.pals[0]?.id;
+    if (!createdPalId) {
+      throw new Error('Failed to create pal for channel assignment');
+    }
+    nextState = assignPalToChannel(
+      nextState,
+      channelId,
+      {
+        palId: createdPalId,
+        provider: body.provider,
+        model: body.model,
+        roles: body.roles,
+      },
+      dependencies.now?.() ?? new Date(),
+    );
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, await buildAppShell(dependencies, persisted));
+  } catch (error) {
+    sendJson(response, errorStatusCode(error), {
+      error: error instanceof Error ? error.message : 'Failed to create and assign channel pal',
     });
   }
 }
@@ -395,6 +506,11 @@ function routeRequest(
   const method = request.method ?? 'GET';
   const activateMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/activate$/u);
   const messageMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/messages$/u);
+  const assignPalMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/pals$/u);
+  const removePalMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspace\/channels\/([^/]+)\/pals\/([^/]+)$/u,
+  );
   const addMemberMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/members$/u);
   const removeMemberMatch = matchRoute(
     url.pathname,
@@ -434,6 +550,14 @@ function routeRequest(
     return handleChannelCreate(request, response, dependencies);
   }
 
+  if (url.pathname === '/api/workspace/pals') {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleWorkspacePalCreate(request, response, dependencies);
+  }
+
   if (url.pathname === '/api/orchestrator') {
     if (method !== 'PUT') {
       sendMethodNotAllowed(response, ['PUT']);
@@ -458,12 +582,28 @@ function routeRequest(
     return handleChannelMessage(request, response, dependencies, messageMatch[0]);
   }
 
+  if (assignPalMatch) {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleAssignPal(request, response, dependencies, assignPalMatch[0]);
+  }
+
+  if (removePalMatch) {
+    if (method !== 'DELETE') {
+      sendMethodNotAllowed(response, ['DELETE']);
+      return Promise.resolve();
+    }
+    return handleRemovePalAssignment(response, dependencies, removePalMatch[0], removePalMatch[1]);
+  }
+
   if (addMemberMatch) {
     if (method !== 'POST') {
       sendMethodNotAllowed(response, ['POST']);
       return Promise.resolve();
     }
-    return handleAddMember(request, response, dependencies, addMemberMatch[0]);
+    return handleLegacyAddMember(request, response, dependencies, addMemberMatch[0]);
   }
 
   if (removeMemberMatch) {
@@ -471,7 +611,7 @@ function routeRequest(
       sendMethodNotAllowed(response, ['DELETE']);
       return Promise.resolve();
     }
-    return handleRemoveMember(response, dependencies, removeMemberMatch[0], removeMemberMatch[1]);
+    return handleRemovePalAssignment(response, dependencies, removeMemberMatch[0], removeMemberMatch[1]);
   }
 
   if (exportMatch) {

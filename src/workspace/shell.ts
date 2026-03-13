@@ -21,6 +21,7 @@ export function createAppShell(
       id: workspace.id,
       name: workspace.name,
       selectedChannelId: workspace.selectedChannelId,
+      pals: summary.pals,
       channels: summary.channels,
       selectedChannel: summary.selectedChannel,
       globalOrchestrator: {

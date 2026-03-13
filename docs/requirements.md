@@ -63,7 +63,7 @@ through `cats-runtime`.
 ### FR-008: Runtime-Backed Channel Activation
 
 - **Description**: The product shall create channel-scoped orchestrator and
-  member sessions through `cats-runtime`.
+  assigned pal sessions through `cats-runtime`.
 - **Priority**: High
 - **Status**: Completed
 
@@ -74,10 +74,11 @@ through `cats-runtime`.
 - **Priority**: High
 - **Status**: Completed
 
-### FR-010: Participant Management and Export
+### FR-010: Global Pal Management and Export
 
-- **Description**: The product shall support member add/remove flows and export
-  the current channel transcript for later ingestion.
+- **Description**: The product shall support a workspace-level pal registry,
+  channel-specific pal assignment or removal, and export the current channel
+  transcript for later ingestion.
 - **Priority**: High
 - **Status**: Completed
 
@@ -108,7 +109,7 @@ through `cats-runtime`.
   memory while using different providers or models across channels and
   sessions.
 - **Priority**: High
-- **Status**: In Progress
+- **Status**: Completed
 
 ## Non-Functional Requirements
 
@@ -187,7 +188,7 @@ sessions.
 ### US-005: Operator Activates a Channel
 
 **As an** operator,
-**I want to** start runtime sessions for the orchestrator and members,
+**I want to** start runtime sessions for the orchestrator and assigned pals,
 **So that** channel work moves beyond local setup into real execution.
 
 **Acceptance Criteria**:
@@ -202,7 +203,7 @@ sessions.
 
 **Acceptance Criteria**:
 - [x] User messages are persisted to the transcript
-- [x] Basic `@mention` parsing resolves orchestrator and active members
+- [x] Basic `@mention` parsing resolves orchestrator and active assigned pals
 - [x] Runtime responses are persisted with usage metadata
 
 ### US-007: Operator Exports a Transcript

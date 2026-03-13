@@ -1,115 +1,67 @@
 import { startTransition, useEffect, useState, type FormEvent } from 'react';
 
-import type { AppShellPayload, WorkspaceMember } from '../shared/app-shell';
-import {
-  activateWorkspaceChannel,
-  addWorkspaceMember,
-  createWorkspaceChannel,
-  fetchAppShell,
-  removeWorkspaceMember,
-  sendWorkspaceMessage,
-  updateSelectedChannel,
-  updateWorkspaceOrchestrator,
-} from './api';
+import type { AppShellPayload, WorkspacePal } from '../shared/app-shell';
+import { createGlobalPal, fetchAppShell, updateSelectedChannel } from './api';
+import { getDefaultModel, getProviderModels, PAL_PROVIDER_ORDER } from './providerCatalog';
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
 
-type ActiveTool = 'channel' | 'members' | 'workspace' | null;
+type Surface = 'chats' | 'pals';
 
-interface ChannelFormState {
-  title: string;
-  topic: string;
-  repoPath: string;
-  language: string;
-  responseLanguage: string;
-  formationMode: 'manual' | 'orchestrator_suggested';
-}
+const primaryNav = ['New chat', 'Search', 'Customize'];
+const workspaceNav: Array<{ id: Surface | 'projects' | 'artifacts' | 'code'; label: string }> = [
+  { id: 'chats', label: 'Chats' },
+  { id: 'pals', label: 'Pals' },
+  { id: 'projects', label: 'Projects' },
+  { id: 'artifacts', label: 'Artifacts' },
+  { id: 'code', label: 'Code' },
+];
+const promptChips = ['Write', 'Learn', 'Code', 'Life stuff', 'Cats choice'];
 
-interface MemberFormState {
+interface PalFormState {
   name: string;
   provider: string;
   model: string;
-  roles: string;
 }
 
-function emptyChannelForm(): ChannelFormState {
-  return {
-    title: '',
-    topic: '',
-    repoPath: '',
-    language: '',
-    responseLanguage: 'en',
-    formationMode: 'manual',
-  };
-}
-
-function emptyMemberForm(): MemberFormState {
+function emptyPalForm(): PalFormState {
   return {
     name: '',
     provider: 'claude',
-    model: '',
-    roles: 'coder',
+    model: getDefaultModel('claude'),
   };
-}
-
-function splitList(value: string): string[] {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter((item, index, list) => item.length > 0 && list.indexOf(item) === index);
-}
-
-function executionLabel(provider: string, model: string | null): string {
-  return model ? `${provider} / ${model}` : provider;
 }
 
 function sessionTone(status: string): string {
   switch (status) {
-    case 'ready':
+    case 'active':
       return 'statusChip statusChipReady';
-    case 'initializing':
+    case 'configured':
+    case 'watching':
       return 'statusChip statusChipWarm';
-    case 'error':
-      return 'statusChip statusChipError';
+    case 'archived':
+      return 'statusChip statusChipMuted';
     default:
       return 'statusChip statusChipMuted';
   }
 }
 
-function messageTone(senderKind: string): string {
-  switch (senderKind) {
-    case 'user':
-      return 'messageCard messageUser';
-    case 'orchestrator':
-      return 'messageCard messageOrchestrator';
-    case 'agent':
-      return 'messageCard messageAgent';
-    default:
-      return 'messageCard messageSystem';
-  }
+function executionLabel(pal: WorkspacePal): string {
+  return pal.defaultExecutionTarget.model
+    ? `${pal.defaultExecutionTarget.provider} / ${pal.defaultExecutionTarget.model}`
+    : pal.defaultExecutionTarget.provider;
 }
 
 export default function App() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
-  const [syncMessage, setSyncMessage] = useState('');
+  const [surface, setSurface] = useState<Surface>('chats');
+  const [composerDraft, setComposerDraft] = useState('');
+  const [palForm, setPalForm] = useState<PalFormState>(emptyPalForm);
   const [busy, setBusy] = useState('');
-  const [activeTool, setActiveTool] = useState<ActiveTool>(null);
-  const [channelForm, setChannelForm] = useState<ChannelFormState>(emptyChannelForm);
-  const [draftMember, setDraftMember] = useState<MemberFormState>(emptyMemberForm);
-  const [draftMembers, setDraftMembers] = useState<MemberFormState[]>([]);
-  const [memberForm, setMemberForm] = useState<MemberFormState>(emptyMemberForm);
-  const [messageDraft, setMessageDraft] = useState('');
-  const [orchestratorForm, setOrchestratorForm] = useState({
-    provider: 'claude',
-    model: '',
-    systemPrompt: '',
-    skillProfile: '',
-    mcpProfile: '',
-    telegramBotName: '',
-  });
+  const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -118,14 +70,6 @@ export default function App() {
       .then((payload) => {
         startTransition(() => {
           setState({ status: 'ready', payload });
-          setOrchestratorForm({
-            provider: payload.workspace.globalOrchestrator.executionTarget.provider,
-            model: payload.workspace.globalOrchestrator.executionTarget.model ?? '',
-            systemPrompt: payload.workspace.globalOrchestrator.systemPrompt,
-            skillProfile: payload.workspace.globalOrchestrator.skillProfile ?? '',
-            mcpProfile: payload.workspace.globalOrchestrator.mcpProfile ?? '',
-            telegramBotName: payload.workspace.globalOrchestrator.telegramBotName ?? '',
-          });
         });
       })
       .catch((error: unknown) => {
@@ -140,13 +84,47 @@ export default function App() {
     return () => controller.abort();
   }, []);
 
+  async function onSelect(channelId: string): Promise<void> {
+    try {
+      const payload = await updateSelectedChannel(channelId);
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setSurface('chats');
+        setFeedback('');
+      });
+    } catch {
+      // Keep the shell stable if selection sync fails.
+    }
+  }
+
+  async function onCreatePal(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setBusy('pal:create');
+    try {
+      const payload = await createGlobalPal({
+        name: palForm.name,
+        provider: palForm.provider,
+        model: palForm.model || getDefaultModel(palForm.provider),
+      });
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setPalForm(emptyPalForm());
+        setSurface('pals');
+        setFeedback('Pal saved.');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to save pal.');
+    } finally {
+      setBusy('');
+    }
+  }
+
   if (state.status === 'loading') {
     return (
       <div className="screen screenCentered">
         <div className="loadingPanel">
           <p className="eyebrow">Cats Inc</p>
           <h1>Chat</h1>
-          <p>Starting team conversations from the local cats-inc server.</p>
         </div>
       </div>
     );
@@ -159,7 +137,6 @@ export default function App() {
           <p className="eyebrow">Renderer Error</p>
           <h1>Chat unavailable</h1>
           <p>{state.message}</p>
-          <p>Start the API server with <code>npm run dev:server</code> and reload the page.</p>
         </div>
       </div>
     );
@@ -167,582 +144,245 @@ export default function App() {
 
   const { payload } = state;
   const selectedChannel = payload.workspace.selectedChannel;
-  const activeMembers =
-    selectedChannel?.members.filter((member) => member.status === 'active') ?? [];
-  const exportHref = selectedChannel ? `/api/workspace/channels/${selectedChannel.id}/export` : '#';
-
-  function applyPayload(nextPayload: AppShellPayload, message: string): void {
-    startTransition(() => {
-      setState({ status: 'ready', payload: nextPayload });
-      setSyncMessage(message);
-      setOrchestratorForm({
-        provider: nextPayload.workspace.globalOrchestrator.executionTarget.provider,
-        model: nextPayload.workspace.globalOrchestrator.executionTarget.model ?? '',
-        systemPrompt: nextPayload.workspace.globalOrchestrator.systemPrompt,
-        skillProfile: nextPayload.workspace.globalOrchestrator.skillProfile ?? '',
-        mcpProfile: nextPayload.workspace.globalOrchestrator.mcpProfile ?? '',
-        telegramBotName: nextPayload.workspace.globalOrchestrator.telegramBotName ?? '',
-      });
-    });
-  }
-
-  async function onSelect(channelId: string): Promise<void> {
-    setBusy(`select:${channelId}`);
-    try {
-      applyPayload(await updateSelectedChannel(channelId), 'Chat selection saved.');
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'Failed to select channel.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onCreateChannel(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setBusy('create');
-    try {
-      applyPayload(
-        await createWorkspaceChannel({
-          title: channelForm.title,
-          topic: channelForm.topic,
-          repoPath: channelForm.repoPath,
-          language: channelForm.language,
-          responseLanguage: channelForm.responseLanguage,
-          formationMode: channelForm.formationMode,
-          members: draftMembers.map((member) => ({
-            name: member.name,
-            provider: member.provider,
-            model: member.model,
-            roles: splitList(member.roles),
-          })),
-        }),
-        'Chat created and saved locally.',
-      );
-      setChannelForm(emptyChannelForm());
-      setDraftMembers([]);
-      setActiveTool(null);
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'Failed to create channel.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onActivate(): Promise<void> {
-    if (!selectedChannel) return;
-    setBusy(`activate:${selectedChannel.id}`);
-    try {
-      const result = await activateWorkspaceChannel(selectedChannel.id);
-      applyPayload(result.appShell, `${result.results.length} runtime target(s) processed.`);
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'Failed to activate channel.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onSend(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (!selectedChannel || !messageDraft.trim()) return;
-    setBusy(`message:${selectedChannel.id}`);
-    try {
-      const result = await sendWorkspaceMessage(selectedChannel.id, { body: messageDraft });
-      applyPayload(result.appShell, 'Message routed through runtime.');
-      setMessageDraft('');
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'Failed to send message.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onAddMember(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (!selectedChannel || !memberForm.name.trim()) return;
-    setBusy(`member:add:${selectedChannel.id}`);
-    try {
-      applyPayload(
-        await addWorkspaceMember(selectedChannel.id, {
-          name: memberForm.name,
-          provider: memberForm.provider,
-          model: memberForm.model,
-          roles: splitList(memberForm.roles),
-        }),
-        'Pal added to the chat.',
-      );
-      setMemberForm(emptyMemberForm());
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'Failed to add member.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onRemoveMember(member: WorkspaceMember): Promise<void> {
-    if (!selectedChannel) return;
-    setBusy(`member:remove:${member.id}`);
-    try {
-      applyPayload(
-        await removeWorkspaceMember(selectedChannel.id, member.id),
-        `${member.name} removed from the chat.`,
-      );
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'Failed to remove member.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onSaveOrchestrator(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setBusy('orchestrator');
-    try {
-      applyPayload(await updateWorkspaceOrchestrator(orchestratorForm), 'Settings saved.');
-      setActiveTool(null);
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : 'Failed to save orchestrator.');
-    } finally {
-      setBusy('');
-    }
-  }
+  const assignedPalIds = new Set(selectedChannel?.assignedPals.map((pal) => pal.palId) ?? []);
+  const providerModels = getProviderModels(palForm.provider);
+  const heroTitle = selectedChannel ? selectedChannel.title : 'Welcome, Kenny';
+  const heroNote = selectedChannel?.topic ?? 'How can I help you today?';
 
   return (
-    <div className="screen">
-      <div className="shellBackdrop" />
+    <div className="screen claudeShell">
       <aside className="sidebar">
-        <div className="brandBlock">
-          <p className="eyebrow">Cats Inc</p>
-          <h1>{payload.workspace.name}</h1>
-          <p className="muted">Team conversations on top of cats-runtime.</p>
-        </div>
+        <div className="sidebarInner">
+          <div className="brandRow">
+            <div>
+              <p className="brandLabel">Cats Inc Chat</p>
+            </div>
+            <button className="chromeButton" type="button" aria-label="Toggle sidebar" />
+          </div>
 
-        <div className="sidebarActionBar">
-          <button className="primaryButton" onClick={() => setActiveTool('channel')} type="button">
-            New Chat
-          </button>
-          <p className="sidebarHint">Setup tools stay hidden until you ask for them.</p>
-        </div>
-
-        <section className="sidebarSection">
-          <div className="sectionHeading"><span>Chats</span><span>{payload.workspace.channels.length}</span></div>
-          <div className="channelList">
-            {payload.workspace.channels.map((channel) => (
-              <button
-                key={channel.id}
-                className={payload.workspace.selectedChannelId === channel.id ? 'channelCard channelCardSelected' : 'channelCard'}
-                onClick={() => void onSelect(channel.id)}
-                type="button"
-              >
-                <div className="channelCardTop"><strong>{channel.title}</strong><span className={sessionTone(channel.status)}>{channel.status}</span></div>
-                <p>{channel.topic}</p>
-                <div className="channelMeta"><span>{channel.activeMemberCount} active</span><span>{channel.unreadCount} unread</span></div>
+          <nav className="navGroup" aria-label="Primary">
+            {primaryNav.map((item) => (
+              <button key={item} className="navItem" type="button">
+                <span className="navGlyph" aria-hidden="true" />
+                <span>{item}</span>
               </button>
             ))}
+          </nav>
+
+          <nav className="navGroup navGroupWorkspace" aria-label="Workspace">
+            {workspaceNav.map((item) => (
+              <button
+                key={item.id}
+                className={
+                  surface === item.id || (surface === 'chats' && item.id === 'chats')
+                    ? 'navItem navItemActive'
+                    : 'navItem'
+                }
+                onClick={() => {
+                  if (item.id === 'chats' || item.id === 'pals') {
+                    setSurface(item.id);
+                  }
+                }}
+                type="button"
+              >
+                <span className="navGlyph navGlyphSquare" aria-hidden="true" />
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          <section className="recentSection">
+            <p className="sectionLabel">Recents</p>
+            <div className="recentList">
+              {payload.workspace.channels.length > 0 ? (
+                payload.workspace.channels.map((channel) => (
+                  <button
+                    key={channel.id}
+                    className={
+                      payload.workspace.selectedChannelId === channel.id
+                        ? 'recentItem recentItemSelected'
+                        : 'recentItem'
+                    }
+                    onClick={() => void onSelect(channel.id)}
+                    type="button"
+                  >
+                    <div className="recentTitleRow">
+                      <strong>{channel.title}</strong>
+                      <span className={sessionTone(channel.status)}>{channel.status}</span>
+                    </div>
+                    <p>{channel.topic}</p>
+                  </button>
+                ))
+              ) : (
+                <div className="recentEmpty">
+                  <p>No chats yet</p>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="sidebarFooter">
+          <div className="profileBadge">KC</div>
+          <div>
+            <strong>Kenny Chou</strong>
+            <p>Max plan</p>
           </div>
-        </section>
+        </div>
       </aside>
 
-      <main className="workspace">
-        <header className="workspaceHeader">
-          <div>
-            <p className="eyebrow">Current Chat</p>
-            <h2>{selectedChannel?.title ?? 'No chat selected'}</h2>
-            <p className="workspaceLead">
-              {selectedChannel?.topic ?? 'Create or select a chat to continue.'}
-            </p>
-          </div>
-          <div className="workspaceHeaderActions">
-            <div className="workspaceToolbar">
-              <button
-                className="secondaryButton"
-                onClick={() => setActiveTool('members')}
-                type="button"
-              >
-                Pals
-              </button>
-              <button
-                className="secondaryButton"
-                onClick={() => setActiveTool('workspace')}
-                type="button"
-              >
-                Settings
-              </button>
-            </div>
-            <div className="runtimePill">
-              <span className={payload.runtime.reachable ? 'runtimeDot runtimeDotOk' : 'runtimeDot'} />
-              <div>
-                <strong>
-                  {payload.runtime.reachable ? 'Runtime reachable' : 'Runtime degraded'}
-                </strong>
-                <p>{payload.runtime.baseUrl}</p>
-                <p>{syncMessage || `State sync via ${payload.workspace.capabilities.persistence}`}</p>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <article className="panel conversationPanel conversationPanelExpanded">
-          <div className="panelHeader">
-            <div><p className="eyebrow">Chat</p><h3>Transcript</h3></div>
-            <div className="actionRow">
-              <button
-                className="secondaryButton"
-                disabled={!selectedChannel}
-                onClick={() => void onActivate()}
-                type="button"
-              >
-                {busy === `activate:${selectedChannel?.id}` ? 'Activating...' : 'Activate'}
-              </button>
-              <a className="secondaryButton secondaryButtonLink" href={exportHref}>Export</a>
-            </div>
-          </div>
-          <div className="summaryStrip">
-            <div className="summaryPill"><span>Status</span><strong>{selectedChannel?.status ?? 'n/a'}</strong></div>
-            <div className="summaryPill"><span>Pals</span><strong>{activeMembers.length}</strong></div>
-            <div className="summaryPill"><span>Session</span><strong>{selectedChannel?.orchestratorLease.status ?? 'not_started'}</strong></div>
-          </div>
-          <div className="participantStrip">
-            {activeMembers.length > 0 ? (
-              activeMembers.map((member) => (
-                <span key={member.id} className="tagChip">{member.name}</span>
-              ))
-            ) : (
-              <p className="participantHint">
-                No active pals yet. Open Pals when you want to add them.
+      <main className="canvas">
+        {surface === 'pals' ? (
+          <div className="viewShell palsShell">
+            <div className="viewIntro">
+              <div className="planPill">Workspace</div>
+              <h1>Pals</h1>
+              <p className="heroNote">
+                Reusable pals live here. Add them once, then use them in whichever chat needs
+                them.
               </p>
-            )}
-          </div>
-          <div className="messageList">
-            {selectedChannel?.messages.map((message) => (
-              <div key={message.id} className={messageTone(message.senderKind)}>
-                <div className="messageMeta">
-                  <strong>{message.senderName}</strong>
-                  <span>{message.senderKind}</span>
-                  <span>{new Date(message.createdAt).toLocaleString()}</span>
-                </div>
-                <p>{message.body}</p>
-                <div className="messageFooter">
-                  <span>
-                    {message.mentions.length > 0
-                      ? message.mentions.map((item) => `@${item}`).join(', ')
-                      : 'no mentions'}
-                  </span>
-                  {message.usage ? <span>{message.usage.tokensUsed} tokens</span> : null}
-                </div>
-              </div>
-            ))}
-          </div>
-          <form className="messageComposer" onSubmit={(event) => void onSend(event)}>
-            <textarea
-              className="textInput textAreaInput"
-              placeholder="Message this chat. Use @Orchestrator or @Agent-1 to route explicitly."
-              rows={4}
-              value={messageDraft}
-              onChange={(event) => setMessageDraft(event.target.value)}
-            />
-            <div className="composerMeta">
-              <span>Basic @mention routing is enabled.</span>
-              <button
-                className="primaryButton"
-                disabled={!selectedChannel || !messageDraft.trim()}
-                type="submit"
-              >
-                {busy === `message:${selectedChannel?.id}` ? 'Sending...' : 'Send'}
-              </button>
+              {feedback ? <p className="feedbackText">{feedback}</p> : null}
             </div>
-          </form>
-        </article>
-      </main>
 
-      {activeTool ? (
-        <div className="drawerScrim" onClick={() => setActiveTool(null)}>
-          <aside className="drawerPanel" onClick={(event) => event.stopPropagation()}>
-            {activeTool === 'channel' ? (
-              <>
-                <div className="drawerHeader">
+            <div className="palsLayout">
+              <section className="contentCard">
+                <div className="contentCardHeader">
                   <div>
-                    <p className="eyebrow">New Chat</p>
-                    <h3>Start a clean room</h3>
-                    <p className="muted">
-                      Create a chat only when you need a separate team thread.
-                    </p>
+                    <p className="sectionLabel">Registry</p>
+                    <h2>{payload.workspace.pals.length > 0 ? 'Saved pals' : 'No pals yet'}</h2>
                   </div>
-                  <button className="textButton" onClick={() => setActiveTool(null)} type="button">
-                    Close
-                  </button>
+                  <span className="countBadge">{payload.workspace.pals.length}</span>
                 </div>
-                <form className="stackForm" onSubmit={(event) => void onCreateChannel(event)}>
-                  <input
-                    className="textInput"
-                    placeholder="Chat title"
-                    value={channelForm.title}
-                    onChange={(event) => setChannelForm({ ...channelForm, title: event.target.value })}
-                  />
-                  <textarea
-                    className="textInput textAreaInput"
-                    placeholder="What is this chat for?"
-                    rows={3}
-                    value={channelForm.topic}
-                    onChange={(event) => setChannelForm({ ...channelForm, topic: event.target.value })}
-                  />
-                  <div className="fieldGrid">
-                    <input
-                      className="textInput"
-                      placeholder="Repo path"
-                      value={channelForm.repoPath}
-                      onChange={(event) => setChannelForm({ ...channelForm, repoPath: event.target.value })}
-                    />
-                    <input
-                      className="textInput"
-                      placeholder="Language"
-                      value={channelForm.language}
-                      onChange={(event) => setChannelForm({ ...channelForm, language: event.target.value })}
-                    />
-                  </div>
-                  <div className="fieldGrid">
-                    <input
-                      className="textInput"
-                      placeholder="Response language"
-                      value={channelForm.responseLanguage}
-                      onChange={(event) => setChannelForm({ ...channelForm, responseLanguage: event.target.value })}
-                    />
-                    <select
-                      className="textInput"
-                      value={channelForm.formationMode}
-                      onChange={(event) => setChannelForm({
-                        ...channelForm,
-                        formationMode: event.target.value as 'manual' | 'orchestrator_suggested',
-                      })}
-                    >
-                      <option value="manual">manual</option>
-                      <option value="orchestrator_suggested">orchestrator_suggested</option>
-                    </select>
-                  </div>
-                  <div className="inlinePanel">
-                    <div className="inlinePanelHeader">
-                      <strong>Initial pals</strong>
-                      <span>{draftMembers.length}</span>
-                    </div>
-                    <div className="fieldGrid">
-                      <input
-                        className="textInput"
-                        placeholder="Name"
-                        value={draftMember.name}
-                        onChange={(event) => setDraftMember({ ...draftMember, name: event.target.value })}
-                      />
-                      <input
-                        className="textInput"
-                        placeholder="Provider"
-                        value={draftMember.provider}
-                        onChange={(event) => setDraftMember({ ...draftMember, provider: event.target.value })}
-                      />
-                    </div>
-                    <div className="fieldGrid">
-                      <input
-                        className="textInput"
-                        placeholder="Model"
-                        value={draftMember.model}
-                        onChange={(event) => setDraftMember({ ...draftMember, model: event.target.value })}
-                      />
-                      <input
-                        className="textInput"
-                        placeholder="Roles: coder, tester"
-                        value={draftMember.roles}
-                        onChange={(event) => setDraftMember({ ...draftMember, roles: event.target.value })}
-                      />
-                    </div>
-                    <button
-                      className="secondaryButton"
-                      type="button"
-                      onClick={() => {
-                        if (!draftMember.name.trim() || !draftMember.provider.trim()) return;
-                        setDraftMembers([...draftMembers, draftMember]);
-                        setDraftMember(emptyMemberForm());
-                      }}
-                    >
-                      Add Draft Pal
-                    </button>
-                    <div className="draftList">
-                      {draftMembers.map((member, index) => (
-                        <div key={`${member.name}-${index}`} className="draftItem">
+
+                <div className="palList">
+                  {payload.workspace.pals.length > 0 ? (
+                    payload.workspace.pals.map((pal) => (
+                      <article key={pal.id} className="palCard">
+                        <div className="palCardTop">
                           <div>
-                            <strong>{member.name}</strong>
-                            <p>{executionLabel(member.provider, member.model || null)}</p>
+                            <strong>{pal.name}</strong>
+                            <p>{executionLabel(pal)}</p>
                           </div>
-                          <button
-                            className="textButton"
-                            type="button"
-                            onClick={() => setDraftMembers(
-                              draftMembers.filter((_, currentIndex) => currentIndex !== index),
-                            )}
+                          <span
+                            className={assignedPalIds.has(pal.id) ? 'statusChip statusChipReady' : 'statusChip statusChipMuted'}
                           >
-                            remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <button
-                    className="primaryButton"
-                    disabled={!channelForm.title.trim() || !channelForm.topic.trim()}
-                    type="submit"
-                  >
-                    {busy === 'create' ? 'Creating...' : 'Create Chat'}
-                  </button>
-                </form>
-              </>
-            ) : null}
-
-            {activeTool === 'members' ? (
-              <>
-                <div className="drawerHeader">
-                  <div>
-                    <p className="eyebrow">Pals</p>
-                    <h3>{selectedChannel ? `${selectedChannel.title} pals` : 'Chat pals'}</h3>
-                    <p className="muted">
-                      Add or remove specialists without cluttering the main chat view.
-                    </p>
-                  </div>
-                  <button className="textButton" onClick={() => setActiveTool(null)} type="button">
-                    Close
-                  </button>
-                </div>
-                <div className="memberList">
-                  {selectedChannel && selectedChannel.members.length > 0 ? (
-                    selectedChannel.members.map((member) => (
-                      <div key={member.id} className="memberCard">
-                        <div className="memberTop">
-                          <div>
-                            <strong>{member.name}</strong>
-                            <p>{executionLabel(member.execution.target.provider, member.execution.target.model)}</p>
-                          </div>
-                          <span className={sessionTone(member.execution.lease.status)}>
-                            {member.execution.lease.status}
+                            {assignedPalIds.has(pal.id) ? 'In current chat' : pal.status}
                           </span>
                         </div>
-                        <div className="tagList">
-                          {member.roles.map((role) => <span key={role} className="tagChip">{role}</span>)}
+                        <div className="palMeta">
+                          <span>{pal.skillProfile ?? 'No skill profile'}</span>
+                          <span>{pal.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
                         </div>
-                        <div className="memberActions">
-                          <span>{member.status}</span>
-                          {member.status === 'active' ? (
-                            <button
-                              className="textButton"
-                              onClick={() => void onRemoveMember(member)}
-                              type="button"
-                            >
-                              {busy === `member:remove:${member.id}` ? 'Removing...' : 'Remove'}
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
+                      </article>
                     ))
                   ) : (
-                    <div className="memberCard">
-                      <p>No pals in this chat yet.</p>
+                    <div className="emptyStateCard">
+                      <p>Create your first pal from the panel on the right.</p>
                     </div>
                   )}
                 </div>
-                <form className="stackForm compactForm" onSubmit={(event) => void onAddMember(event)}>
-                  <div className="fieldGrid">
-                    <input
-                      className="textInput"
-                      placeholder="Name"
-                      value={memberForm.name}
-                      onChange={(event) => setMemberForm({ ...memberForm, name: event.target.value })}
-                    />
-                    <input
-                      className="textInput"
-                      placeholder="Provider"
-                      value={memberForm.provider}
-                      onChange={(event) => setMemberForm({ ...memberForm, provider: event.target.value })}
-                    />
-                  </div>
-                  <div className="fieldGrid">
-                    <input
-                      className="textInput"
-                      placeholder="Model"
-                      value={memberForm.model}
-                      onChange={(event) => setMemberForm({ ...memberForm, model: event.target.value })}
-                    />
-                    <input
-                      className="textInput"
-                      placeholder="Roles: coder, tester"
-                      value={memberForm.roles}
-                      onChange={(event) => setMemberForm({ ...memberForm, roles: event.target.value })}
-                    />
-                  </div>
-                  <button className="secondaryButton" disabled={!selectedChannel} type="submit">
-                    {busy === `member:add:${selectedChannel?.id}` ? 'Adding...' : 'Add Pal'}
-                  </button>
-                </form>
-              </>
-            ) : null}
+              </section>
 
-            {activeTool === 'workspace' ? (
-              <>
-                <div className="drawerHeader">
+              <section className="contentCard contentCardForm">
+                <div className="contentCardHeader">
                   <div>
-                    <p className="eyebrow">Settings</p>
-                    <h3>Behind-the-scenes settings</h3>
-                    <p className="muted">
-                      Runtime and coordinator controls stay off the chat surface until needed.
-                    </p>
+                    <p className="sectionLabel">Create</p>
+                    <h2>New pal</h2>
                   </div>
-                  <button className="textButton" onClick={() => setActiveTool(null)} type="button">
-                    Close
-                  </button>
                 </div>
-                <form className="stackForm" onSubmit={(event) => void onSaveOrchestrator(event)}>
-                  <div className="fieldGrid">
+
+                <form className="stackForm" onSubmit={(event) => void onCreatePal(event)}>
+                  <label className="fieldLabel">
+                    <span>Name</span>
                     <input
                       className="textInput"
-                      placeholder="Provider"
-                      value={orchestratorForm.provider}
-                      onChange={(event) => setOrchestratorForm({ ...orchestratorForm, provider: event.target.value })}
+                      value={palForm.name}
+                      onChange={(event) => setPalForm({ ...palForm, name: event.target.value })}
+                      placeholder="Ops reviewer"
                     />
-                    <input
+                  </label>
+                  <label className="fieldLabel">
+                    <span>Provider</span>
+                    <select
                       className="textInput"
-                      placeholder="Model"
-                      value={orchestratorForm.model}
-                      onChange={(event) => setOrchestratorForm({ ...orchestratorForm, model: event.target.value })}
-                    />
-                  </div>
-                  <div className="fieldGrid">
-                    <input
+                      value={palForm.provider}
+                      onChange={(event) =>
+                        setPalForm({
+                          ...palForm,
+                          provider: event.target.value,
+                          model: getDefaultModel(event.target.value),
+                        })
+                      }
+                    >
+                      {PAL_PROVIDER_ORDER.map((provider) => (
+                        <option key={provider} value={provider}>
+                          {provider}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="fieldLabel">
+                    <span>Model</span>
+                    <select
                       className="textInput"
-                      placeholder="Skill profile"
-                      value={orchestratorForm.skillProfile}
-                      onChange={(event) => setOrchestratorForm({ ...orchestratorForm, skillProfile: event.target.value })}
-                    />
-                    <input
-                      className="textInput"
-                      placeholder="MCP profile"
-                      value={orchestratorForm.mcpProfile}
-                      onChange={(event) => setOrchestratorForm({ ...orchestratorForm, mcpProfile: event.target.value })}
-                    />
-                  </div>
-                  <input
-                    className="textInput"
-                    placeholder="Telegram bot name"
-                    value={orchestratorForm.telegramBotName}
-                    onChange={(event) => setOrchestratorForm({ ...orchestratorForm, telegramBotName: event.target.value })}
-                  />
-                  <textarea
-                    className="textInput textAreaInput"
-                    rows={6}
-                    value={orchestratorForm.systemPrompt}
-                    onChange={(event) => setOrchestratorForm({ ...orchestratorForm, systemPrompt: event.target.value })}
-                  />
-                  <button className="primaryButton" type="submit">
-                    {busy === 'orchestrator' ? 'Saving...' : 'Save Settings'}
+                      value={palForm.model}
+                      onChange={(event) => setPalForm({ ...palForm, model: event.target.value })}
+                    >
+                      {providerModels.map((model) => (
+                        <option key={model.value} value={model.value}>
+                          {model.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    className="primaryButton"
+                    disabled={!palForm.name.trim() || !palForm.provider.trim()}
+                    type="submit"
+                  >
+                    {busy === 'pal:create' ? 'Saving...' : 'Save Pal'}
                   </button>
                 </form>
-              </>
-            ) : null}
-          </aside>
-        </div>
-      ) : null}
+              </section>
+            </div>
+          </div>
+        ) : (
+          <div className="viewShell">
+            <div className="welcomeShell">
+              <div className="planPill">Your local workspace shell is ready</div>
+              <h1>{heroTitle}</h1>
+              <p className="heroNote">{heroNote}</p>
+
+              <form className="composerCard">
+                <textarea
+                  className="composerInput"
+                  rows={3}
+                  placeholder="How can I help you today?"
+                  value={composerDraft}
+                  onChange={(event) => setComposerDraft(event.target.value)}
+                />
+                <div className="composerFooter">
+                  <button className="composerAction" type="button" aria-label="Add attachment">
+                    <span className="composerPlus" aria-hidden="true" />
+                  </button>
+                  <div className="composerMeta">
+                    <span>{selectedChannel ? selectedChannel.title : 'No chat selected'}</span>
+                    <span>sonnet 4.6</span>
+                  </div>
+                </div>
+              </form>
+
+              <div className="chipRow">
+                {promptChips.map((item) => (
+                  <button key={item} className="promptChip" type="button">
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

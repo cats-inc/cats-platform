@@ -3,14 +3,16 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type {
+  ChannelPalAssignment,
   ExecutionTargetSummary,
   GlobalOrchestratorSummary,
   MemoryCheckpointSummary,
   ParticipantExecutionLease,
+  ParticipantExecutionState,
   WorkspaceCapabilities,
   WorkspaceChannelState,
-  WorkspaceMember,
   WorkspaceMessage,
+  WorkspacePal,
   WorkspaceState,
 } from '../shared/app-shell.js';
 import {
@@ -79,7 +81,20 @@ function normalizeExecutionLease(
   const defaultLease = createEmptyExecutionLease();
   const leaseRecord = asRecord(rawLease);
   const legacySession = asRecord(legacyOwner?.session);
-  const source = leaseRecord ?? legacySession;
+  const rawLeaseStatus = readString(leaseRecord?.status);
+  const source = leaseRecord && (
+    leaseRecord.sessionId !== undefined
+    || leaseRecord.cwd !== undefined
+    || leaseRecord.lastError !== undefined
+    || rawLeaseStatus === 'not_started'
+    || rawLeaseStatus === 'initializing'
+    || rawLeaseStatus === 'ready'
+    || rawLeaseStatus === 'error'
+    || rawLeaseStatus === 'closed'
+    || rawLeaseStatus === 'removed'
+  )
+    ? leaseRecord
+    : (legacySession ?? leaseRecord);
   const rawStatus = readString(source?.status, defaultLease.status);
   const status = (
     rawStatus === 'ready'
@@ -121,6 +136,28 @@ function normalizeMemoryCheckpoint(rawMemory: unknown): MemoryCheckpointSummary 
   };
 }
 
+function normalizeExecutionState(
+  rawExecution: unknown,
+  legacyOwner: Record<string, unknown> | null,
+  fallbackTarget: ExecutionTargetSummary,
+): ParticipantExecutionState {
+  const executionRecord = asRecord(rawExecution);
+  const target = normalizeExecutionTarget(
+    executionRecord?.target ?? rawExecution,
+    legacyOwner,
+    fallbackTarget,
+  );
+
+  return {
+    target,
+    lease: normalizeExecutionLease(
+      executionRecord?.lease ?? rawExecution,
+      legacyOwner,
+      target,
+    ),
+  };
+}
+
 function normalizeMessage(rawMessage: unknown, channelId: string): WorkspaceMessage {
   const messageRecord = asRecord(rawMessage);
   const usageRecord = asRecord(messageRecord?.usage);
@@ -153,45 +190,108 @@ function normalizeMessage(rawMessage: unknown, channelId: string): WorkspaceMess
   };
 }
 
-function normalizeMember(rawMember: unknown): WorkspaceMember | null {
+function normalizeWorkspacePal(rawPal: unknown): WorkspacePal | null {
+  const palRecord = asRecord(rawPal);
+  if (!palRecord) {
+    return null;
+  }
+
+  const defaultExecutionTarget = normalizeExecutionTarget(
+    palRecord.defaultExecutionTarget,
+    palRecord,
+    { provider: 'claude', model: null },
+  );
+  const rawStatus = readString(palRecord.status, 'active');
+
+  return {
+    id: readString(palRecord.id, randomUUID()),
+    name: readString(palRecord.name, 'Pal'),
+    roles: readStringArray(palRecord.roles),
+    skillProfile: readNullableString(palRecord.skillProfile),
+    mcpProfile: readNullableString(palRecord.mcpProfile),
+    status: rawStatus === 'archived' ? 'archived' : 'active',
+    createdAt: readString(palRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(palRecord.updatedAt, new Date().toISOString()),
+    archivedAt: readNullableString(palRecord.archivedAt),
+    defaultExecutionTarget,
+    memory: asRecord(palRecord.memory)
+      ? normalizeMemoryCheckpoint(palRecord.memory)
+      : createEmptyMemoryCheckpoint(),
+  };
+}
+
+function normalizeChannelAssignment(
+  rawAssignment: unknown,
+  fallbackPal: WorkspacePal,
+): ChannelPalAssignment | null {
+  const assignmentRecord = asRecord(rawAssignment);
+  if (!assignmentRecord) {
+    return null;
+  }
+
+  const rawStatus = readString(assignmentRecord.status, 'active');
+  const execution = normalizeExecutionState(
+    assignmentRecord.execution,
+    assignmentRecord,
+    fallbackPal.defaultExecutionTarget,
+  );
+
+  return {
+    palId: readString(assignmentRecord.palId, fallbackPal.id),
+    status: rawStatus === 'removed' ? 'removed' : 'active',
+    roles: readStringArray(assignmentRecord.roles),
+    joinedAt: readString(assignmentRecord.joinedAt, new Date().toISOString()),
+    leftAt: readNullableString(assignmentRecord.leftAt),
+    execution,
+  };
+}
+
+function ensureLegacyPalFromMember(
+  rawMember: unknown,
+  palsById: Map<string, WorkspacePal>,
+): WorkspacePal | null {
   const memberRecord = asRecord(rawMember);
   if (!memberRecord) {
     return null;
   }
 
-  const executionRecord = asRecord(memberRecord.execution);
-  const executionTarget = normalizeExecutionTarget(
-    executionRecord?.target ?? memberRecord.execution,
+  const palId = readString(memberRecord.id, randomUUID());
+  const existing = palsById.get(palId);
+  if (existing) {
+    return existing;
+  }
+
+  const execution = normalizeExecutionState(
+    memberRecord.execution ?? memberRecord,
     memberRecord,
-    {
-      provider: 'claude',
-      model: null,
-    },
+    { provider: 'claude', model: null },
   );
   const rawStatus = readString(memberRecord.status, 'active');
 
-  return {
-    id: readString(memberRecord.id, randomUUID()),
+  const pal: WorkspacePal = {
+    id: palId,
     name: readString(memberRecord.name, 'Pal'),
     roles: readStringArray(memberRecord.roles),
     skillProfile: readNullableString(memberRecord.skillProfile),
     mcpProfile: readNullableString(memberRecord.mcpProfile),
-    status: rawStatus === 'removed' ? 'removed' : 'active',
-    joinedAt: readString(memberRecord.joinedAt, new Date().toISOString()),
-    leftAt: readNullableString(memberRecord.leftAt),
-    execution: {
-      target: executionTarget,
-      lease: normalizeExecutionLease(
-        asRecord(memberRecord.execution)?.lease ?? memberRecord.execution,
-        memberRecord,
-        executionTarget,
-      ),
-    },
-    memory: normalizeMemoryCheckpoint(memberRecord.memory),
+    status: rawStatus === 'removed' ? 'archived' : 'active',
+    createdAt: readString(memberRecord.joinedAt, new Date().toISOString()),
+    updatedAt: readString(memberRecord.joinedAt, new Date().toISOString()),
+    archivedAt: readNullableString(memberRecord.leftAt),
+    defaultExecutionTarget: execution.target,
+    memory: asRecord(memberRecord.memory)
+      ? normalizeMemoryCheckpoint(memberRecord.memory)
+      : createEmptyMemoryCheckpoint(),
   };
+
+  palsById.set(pal.id, pal);
+  return pal;
 }
 
-function normalizeChannel(rawChannel: unknown): WorkspaceChannelState | null {
+function normalizeChannel(
+  rawChannel: unknown,
+  palsById: Map<string, WorkspacePal>,
+): WorkspaceChannelState | null {
   const channelRecord = asRecord(rawChannel);
   if (!channelRecord) {
     return null;
@@ -211,13 +311,46 @@ function normalizeChannel(rawChannel: unknown): WorkspaceChannelState | null {
   const formationMode = rawFormationMode === 'orchestrator_suggested'
     ? 'orchestrator_suggested'
     : 'manual';
-  const defaultTarget: ExecutionTargetSummary = { provider: 'claude', model: null };
-  const normalizedMembers = Array.isArray(channelRecord.members)
-    ? channelRecord.members
-        .map((member) => normalizeMember(member))
-        .filter((member): member is WorkspaceMember => member !== null)
-    : [];
   const channelId = readString(channelRecord.id, randomUUID());
+
+  const palAssignments = Array.isArray(channelRecord.palAssignments)
+    ? channelRecord.palAssignments
+        .map((assignment) => {
+          const assignmentRecord = asRecord(assignment);
+          const palId = readString(assignmentRecord?.palId, '');
+          const fallbackPal = palId && palsById.has(palId)
+            ? palsById.get(palId) ?? null
+            : null;
+          return fallbackPal ? normalizeChannelAssignment(assignmentRecord, fallbackPal) : null;
+        })
+        .filter((assignment): assignment is ChannelPalAssignment => assignment !== null)
+    : Array.isArray(channelRecord.members)
+      ? channelRecord.members
+          .map((member) => {
+            const pal = ensureLegacyPalFromMember(member, palsById);
+            if (!pal) {
+              return null;
+            }
+
+            const memberRecord = asRecord(member);
+            const execution = normalizeExecutionState(
+              memberRecord?.execution ?? memberRecord,
+              memberRecord,
+              pal.defaultExecutionTarget,
+            );
+            const rawMemberStatus = readString(memberRecord?.status, 'active');
+
+            return {
+              palId: pal.id,
+              status: rawMemberStatus === 'removed' ? 'removed' : 'active',
+              roles: readStringArray(memberRecord?.roles),
+              joinedAt: readString(memberRecord?.joinedAt, new Date().toISOString()),
+              leftAt: readNullableString(memberRecord?.leftAt),
+              execution,
+            };
+          })
+          .filter((assignment): assignment is ChannelPalAssignment => assignment !== null)
+      : [];
   const messages = Array.isArray(channelRecord.messages)
     ? channelRecord.messages.map((message) => normalizeMessage(message, channelId))
     : [];
@@ -243,9 +376,9 @@ function normalizeChannel(rawChannel: unknown): WorkspaceChannelState | null {
     orchestratorLease: normalizeExecutionLease(
       channelRecord.orchestratorLease ?? channelRecord.orchestratorSession,
       null,
-      defaultTarget,
+      { provider: 'claude', model: null },
     ),
-    members: normalizedMembers,
+    palAssignments,
     messages,
   };
 }
@@ -311,9 +444,15 @@ function normalizeWorkspaceState(rawState: unknown): WorkspaceState {
     return fallback;
   }
 
+  const normalizedPals = Array.isArray(stateRecord.pals)
+    ? stateRecord.pals
+        .map((pal) => normalizeWorkspacePal(pal))
+        .filter((pal): pal is WorkspacePal => pal !== null)
+    : [];
+  const palsById = new Map(normalizedPals.map((pal) => [pal.id, pal]));
   const channels = Array.isArray(stateRecord.channels)
     ? stateRecord.channels
-        .map((channel) => normalizeChannel(channel))
+        .map((channel) => normalizeChannel(channel, palsById))
         .filter((channel): channel is WorkspaceChannelState => channel !== null)
     : fallback.channels;
   const selectedChannelId = readString(
@@ -327,6 +466,7 @@ function normalizeWorkspaceState(rawState: unknown): WorkspaceState {
     selectedChannelId: channels.some((channel) => channel.id === selectedChannelId)
       ? selectedChannelId
       : channels[0]?.id ?? fallback.selectedChannelId,
+    pals: Array.from(palsById.values()),
     channels: channels.length > 0 ? channels : fallback.channels,
     globalOrchestrator: normalizeGlobalOrchestrator(stateRecord.globalOrchestrator),
     capabilities: normalizeCapabilities(stateRecord.capabilities),

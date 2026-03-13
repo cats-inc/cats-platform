@@ -1,12 +1,8 @@
-import { randomUUID } from 'node:crypto';
-
 import type {
   MemoryCheckpointSummary,
   ParticipantExecutionLease,
   GlobalOrchestratorSummary,
   WorkspaceCapabilities,
-  WorkspaceChannelState,
-  WorkspaceMessage,
   WorkspaceState,
 } from '../shared/app-shell.js';
 
@@ -33,64 +29,6 @@ export function createEmptyMemoryCheckpoint(): MemoryCheckpointSummary {
     facts: [],
     openLoops: [],
     updatedAt: null,
-  };
-}
-
-function createSystemMessage(channelId: string, body: string, createdAt: string): WorkspaceMessage {
-  return {
-    id: randomUUID(),
-    channelId,
-    senderKind: 'system',
-    senderName: 'Chat',
-    body,
-    mentions: [],
-    metadata: {},
-    usage: null,
-    createdAt,
-  };
-}
-
-function createBaseChannel(
-  partial: Pick<WorkspaceChannelState, 'id' | 'title' | 'topic' | 'status'> & {
-    repoPath?: string | null;
-    workspaceCwd?: string | null;
-    language?: string | null;
-    responseLanguage?: string;
-    formationMode?: WorkspaceChannelState['formationMode'];
-    skillProfile?: string | null;
-    mcpProfile?: string | null;
-    orchestratorRoles?: string[];
-    initialBody?: string;
-  },
-  createdAt: string,
-): WorkspaceChannelState {
-  const initialMessage = createSystemMessage(
-    partial.id,
-    partial.initialBody ?? 'Chat ready. Add pals, then activate replies when you need them.',
-    createdAt,
-  );
-
-  return {
-    id: partial.id,
-    title: partial.title,
-    topic: partial.topic,
-    status: partial.status,
-    unreadCount: 0,
-    repoPath: partial.repoPath ?? null,
-    workspaceCwd: partial.workspaceCwd ?? null,
-    language: partial.language ?? null,
-    responseLanguage: partial.responseLanguage ?? 'en',
-    formationMode: partial.formationMode ?? 'manual',
-    skillProfile: partial.skillProfile ?? 'workspace-default',
-    mcpProfile: partial.mcpProfile ?? 'workspace-memory',
-    orchestratorRoles: partial.orchestratorRoles ?? [],
-    createdAt,
-    updatedAt: createdAt,
-    lastMessageAt: createdAt,
-    lastActivatedAt: null,
-    orchestratorLease: createEmptyExecutionLease(),
-    members: [],
-    messages: [initialMessage],
   };
 }
 
@@ -136,24 +74,13 @@ function createCapabilities(): WorkspaceCapabilities {
 
 export function createDefaultWorkspaceState(): WorkspaceState {
   const createdAt = isoNow();
-  const channels: WorkspaceChannelState[] = [
-    createBaseChannel(
-      {
-        id: 'lobby',
-        title: 'Lobby',
-        topic: 'A casual room for the team to coordinate, ask for help, and keep things moving.',
-        status: 'configured',
-        orchestratorRoles: ['architect', 'coder', 'reviewer'],
-      },
-      createdAt,
-    ),
-  ];
 
   return {
     id: 'default',
     name: 'Chat',
-    selectedChannelId: channels[0].id,
-    channels,
+    selectedChannelId: '',
+    pals: [],
+    channels: [],
     globalOrchestrator: createDefaultOrchestrator(createdAt),
     capabilities: createCapabilities(),
   };
