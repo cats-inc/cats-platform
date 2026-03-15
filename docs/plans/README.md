@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-005](./PLAN-005-company-control-plane-evolution.md) | Company Control Plane Evolution | Draft (Unreviewed) | [SPEC-005](../specs/SPEC-005-company-control-plane-evolution.md) |
 | [PLAN-004](./PLAN-004-runtime-workspace-core.md) | Runtime Workspace Core | Completed | [SPEC-004](../specs/SPEC-004-runtime-workspace-core.md) |
 | [PLAN-003](./PLAN-003-local-channel-setup-flow.md) | Local Channel Setup Flow | Completed | [SPEC-003](../specs/SPEC-003-local-channel-setup-flow.md) |
 | [PLAN-002](./PLAN-002-workspace-renderer-shell.md) | Workspace Renderer Shell | Completed | [SPEC-002](../specs/SPEC-002-workspace-renderer-shell.md) |

@@ -6,7 +6,8 @@
 
 Build the flagship cats product experience as a Node.js/TypeScript workspace
 application that sits above `cats-runtime`, absorbs the useful behavior from
-`agent-workspace-poc`, and grows into the long-term multi-agent chat shell.
+`agent-workspace-poc`, and grows into the long-term multi-agent chat and
+company-control-plane product shell.
 
 ## Milestones
 
@@ -35,6 +36,13 @@ application that sits above `cats-runtime`, absorbs the useful behavior from
 - [ ] Desktop host and tray lifecycle management above the existing Node server boundary
 - [ ] Telegram and alternate orchestrator entrypoints
 
+### Phase 4: Company Control Plane Evolution (Pending Review)
+
+- [ ] Add company, goal, project, and work-item objects above chat channels
+- [ ] Add operator inbox, approval, activity, and cost surfaces
+- [ ] Add explicit project workspace, execution workspace, and output models
+- [ ] Keep extension and plugin seams outside the core control-plane rewrite
+
 ## Future Considerations
 
 - Thin Electron host that manages local `cats-inc` and `cats-runtime` services
@@ -42,7 +50,8 @@ application that sits above `cats-runtime`, absorbs the useful behavior from
 - Richer memory retrieval loops through MCP and RAG
 - Multi-tenant product packaging
 - Mobile and desktop product shells sharing the same workspace contract
+- Reusable company templates once the control-plane model stabilizes
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-16*
