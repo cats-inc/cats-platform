@@ -2,6 +2,13 @@
 
 Status: Unreviewed notes
 
+> Scope note for current `cats-inc`: this document preserves a broader
+> Paperclip-to-Cats product analysis. Sections discussing company root scope,
+> org charts, goals, projects, work items, approvals, budgets, and broader
+> control-plane evolution are currently not applicable to the chat-only
+> `cats-inc` product line. Keep those sections as reference notes only unless a
+> future product split explicitly revives them.
+
 ## Purpose
 
 Study the local `paperclip/` submodule and extract the product concepts,
@@ -84,6 +91,11 @@ keeping `cats-runtime` as the only execution boundary.
 
 ## What Cats Inc Should Keep
 
+> Temporarily not applicable note: in the current chat-only `cats-inc` scope,
+> the most relevant items in this section are transcript UX, operator
+> visibility, execution history, and output presentation. The broader
+> control-plane recommendations are reference-only for now.
+
 - Paperclip's control-plane framing: manage organization, work, outputs,
   costs, and approvals above the raw agent sessions.
 - Goal and work ancestry: operators should be able to explain why a chat,
@@ -94,6 +106,10 @@ keeping `cats-runtime` as the only execution boundary.
 - Progressive disclosure: top layer for operators, deeper layers for debugging.
 
 ## What Cats Inc Should Adapt
+
+> Temporarily not applicable note: this section contains cross-product
+> exploration. For the current `cats-inc` scope, do not interpret company/org
+> expansion ideas here as active roadmap commitments.
 
 - Keep chat as a first-class module, but stop treating chat channels as the
   product root object.
@@ -118,6 +134,9 @@ keeping `cats-runtime` as the only execution boundary.
 
 ## Mapping from Paperclip to Cats Inc
 
+> Temporarily not applicable note: this mapping reflects the broader study and
+> includes concepts that exceed the current chat-only project boundary.
+
 | Paperclip concept | Current Cats Inc primitive | Recommended Cats Inc target |
 |-------------------|----------------------------|-----------------------------|
 | Company | Workspace shell | Company or workspace root for the full control plane |
@@ -135,6 +154,10 @@ keeping `cats-runtime` as the only execution boundary.
 | Plugin | None | Later extension seam for non-core capabilities |
 
 ## Recommended Rewrite Sequence
+
+> Temporarily not applicable note: this sequence is not the active `cats-inc`
+> implementation plan while the product remains chat-only. Preserve it as
+> exploratory reference only.
 
 1. Define a product model above channels.
    Add company, goal, project, work item, activity, approval, cost, and output
