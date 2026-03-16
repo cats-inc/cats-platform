@@ -199,6 +199,22 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: Medium
 - **Status**: Planned
 
+### FR-026: Chat-Contextual Add Pal Flow
+
+- **Description**: The product shall make `Add pal to this chat` the primary
+  pal-entry workflow inside the active chat surface rather than requiring a
+  registry-first navigation step.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-027: Settings-Hosted Pal Registry
+
+- **Description**: The product shall keep the reusable pal registry as a global
+  management surface under `Settings > Pals`, reachable from the left-panel
+  account menu, while still allowing direct `Create new` there.
+- **Priority**: High
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -258,6 +274,13 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
   and optional bot binding without requiring a terminal session
 - Tauri or Flutter SHOULD NOT be introduced into the primary suite path unless
   the desktop Node-sidecar assumptions change materially
+
+### NFR-010: Workflow Hierarchy
+
+- High-frequency chat actions SHOULD stay in chat context instead of being
+  displaced into management-first navigation
+- Reusable resource management SHOULD remain available without becoming the
+  default path for chat-time assignment tasks
 
 ## User Stories
 
@@ -414,6 +437,30 @@ shift,
   React/TypeScript renderer path
 - [ ] Tray, windowing, and local packaging behave consistently across the suite
 
+### US-015: Operator Adds an Existing Pal from the Current Chat
+
+**As an** operator,
+**I want to** add an existing pal from inside the active chat,
+**So that** I can keep working in context instead of switching to a registry
+screen first.
+
+**Acceptance Criteria**:
+- [ ] The active chat exposes a visible `Add pal` entry point
+- [ ] The default add flow lets the operator choose an existing workspace pal
+- [ ] Successful assignment updates the current chat roster without requiring a
+      separate registry visit
+
+### US-016: Operator Manages the Registry from Settings
+
+**As an** operator,
+**I want to** manage reusable pals from Settings,
+**So that** the registry stays global without crowding the main chat workflow.
+
+**Acceptance Criteria**:
+- [ ] A `Settings` entry is reachable from the left-panel account menu
+- [ ] `Settings > Pals` exposes the reusable registry
+- [ ] `Settings > Pals` still supports direct `Create new`
+
 ## Constraints
 
 - The stack for this subproject is Node.js/TypeScript
@@ -429,4 +476,4 @@ shift,
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-17*

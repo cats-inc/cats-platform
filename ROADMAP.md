@@ -50,6 +50,8 @@ contracts.
 - [ ] Offline transcript normalization and ingestion handoff hooks
 - [ ] Split-view workspace canvas for chat plus preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
+- [ ] Shift pal UX to a chat-contextual `Add pal` flow while moving registry
+      administration into `Settings > Pals`
 - [ ] Desktop host and tray lifecycle management above the existing Node server boundary
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
@@ -85,4 +87,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-17*

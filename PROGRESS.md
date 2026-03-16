@@ -111,6 +111,7 @@
 | Task | Status | Notes |
 |------|--------|-------|
 | Add operator-grade chat activity and split-view surfaces | [ ] | Current renderer remains phase-2 shell quality |
+| Rework pal information architecture around current-chat `Add pal` | [ ] | Registry stays global, but the main entry should move into chat context |
 | Add interactive delegation and owner approval loop | [ ] | Dispatch planning before worker execution is not implemented yet |
 | Add Telegram and LINE orchestrator entrypoints | [ ] | External transport path still needs bot binding and relay logic |
 | Add escalation and takeover support | [ ] | HITL flows are defined in planning only |
@@ -120,6 +121,8 @@
 #### Acceptance Criteria
 
 - [ ] Operators can approve or redirect orchestrator plans before dispatch
+- [ ] Operators can add an existing or new pal from the active chat without
+      going through a first-level registry page
 - [ ] External transport channels can route through a single orchestrator bot
 - [ ] Desktop packaging can start local services with guided setup
 
@@ -192,4 +195,4 @@
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-17*

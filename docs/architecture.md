@@ -62,7 +62,9 @@ directly to individual workers.
   relays for Telegram and LINE; optional mobile companion later if needed
 - **Responsibilities**: Render chat and work views, surface approvals,
   ownership, activity, and allow external transport messages to reach the
-  orchestrator safely
+  orchestrator safely. For Chat, high-frequency actions such as adding a pal
+  should stay in current-chat context, while reusable registry management lives
+  under Settings.
 
 ### Cats Core v1
 
@@ -125,8 +127,8 @@ directly to individual workers.
   into dedicated Chat and Work experiences
 - **Technology**: React + Vite
 - **Responsibilities**: Render channels, runtime status, transcript composer,
-  a preview-ready artifact pane, global pal management, channel assignment,
-  channel setup, and global orchestrator editing
+  a preview-ready artifact pane, contextual pal assignment, settings-hosted
+  pal management, channel setup, and global orchestrator editing
 
 ### Workspace Shell Model
 
@@ -179,6 +181,18 @@ and product-facing:
 `Cats Core v1` is not the place for provider adapters, CLI process ownership,
 or a full RAG engine implementation. Those stay behind `cats-runtime` or
 adjacent archive services.
+
+## Current Chat Navigation Direction
+
+The current planning direction for Chat information architecture is:
+
+- keep `Add pal` as a current-chat action
+- move the reusable pal registry under `Settings > Pals`
+- use the left-panel account area as the entry to Settings
+
+This keeps workspace resources global without making registry administration the
+primary operator workflow. See
+[ADR-009](./decisions/009-prefer-chat-contextual-pal-entry-and-settings-registry.md).
 
 ## Data Flow
 
@@ -304,4 +318,4 @@ still intentionally deferred:
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-17*

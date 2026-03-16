@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-007](./PLAN-007-chat-contextual-pal-entry.md) | Chat-Contextual Pal Entry | Draft (Pending Review) | [SPEC-007](../specs/SPEC-007-chat-contextual-pal-entry.md) |
 | [PLAN-006](./PLAN-006-cats-core-v1-and-suite-foundation.md) | Cats Core v1 and Suite Foundation | Approved | [SPEC-006](../specs/SPEC-006-cats-core-v1-and-suite-foundation.md) |
 | [PLAN-005](./PLAN-005-company-control-plane-evolution.md) | Company Control Plane Evolution | Draft (Exploratory, Unreviewed) | [SPEC-005](../specs/SPEC-005-company-control-plane-evolution.md) |
 | [PLAN-004](./PLAN-004-runtime-workspace-core.md) | Runtime Workspace Core | Completed | [SPEC-004](../specs/SPEC-004-runtime-workspace-core.md) |
@@ -62,5 +63,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 3. **Log updates**: Add entries to the Progress Log section
 
 ---
+
+*Last updated: 2026-03-17*
 
 *See also: [specs/](../specs/) for feature specifications*

@@ -16,7 +16,7 @@ These important documents live in the project root:
 | Document | Status | Description |
 |----------|--------|-------------|
 | [requirements.md](./requirements.md) | Complete | Requirements for the current shell plus the accepted `Cats Core v1`, Chat, and Work planning direction |
-| [architecture.md](./architecture.md) | Complete | Current implementation architecture plus the planned shared-core suite topology |
+| [architecture.md](./architecture.md) | Complete | Current implementation architecture plus the planned shared-core suite topology and current chat navigation direction |
 | [api.md](./api.md) | Complete | Current REST API surface plus planned shared-core and runtime-boundary expansion notes |
 
 ## Development Guides
@@ -48,9 +48,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current suite-foundation context |
 | [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Cats Core v1`, bot bindings, approvals, and owner profile |
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
-| [specs/](./specs/) | Complete | Feature specifications, including the accepted suite-foundation planning docs |
-| [plans/](./plans/) | Complete | Implementation plans, including the accepted suite-foundation planning docs |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including the accepted `Cats Core v1` and runtime-boundary refinements |
+| [specs/](./specs/) | Complete | Feature specifications, including the accepted suite-foundation planning docs and the pending chat-contextual pal UX proposal |
+| [plans/](./plans/) | Complete | Implementation plans, including the accepted suite-foundation planning docs and the pending chat-contextual pal UX plan |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including the accepted `Cats Core v1` and runtime-boundary refinements plus newer proposed UX refinements |
 
 **Legend**: Complete | Partial | Template
 
@@ -96,4 +96,4 @@ The main suite-foundation docs are current, but these areas still need dedicated
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-17*

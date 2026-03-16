@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-007](./SPEC-007-chat-contextual-pal-entry.md) | Chat-Contextual Pal Entry | Draft (Pending Review) | [PLAN-007](../plans/PLAN-007-chat-contextual-pal-entry.md) |
 | [SPEC-006](./SPEC-006-cats-core-v1-and-suite-foundation.md) | Cats Core v1 and Suite Foundation | Approved | [PLAN-006](../plans/PLAN-006-cats-core-v1-and-suite-foundation.md) |
 | [SPEC-005](./SPEC-005-company-control-plane-evolution.md) | Company Control Plane Evolution | Draft (Exploratory, Unreviewed) | [PLAN-005](../plans/PLAN-005-company-control-plane-evolution.md) |
 | [SPEC-004](./SPEC-004-runtime-workspace-core.md) | Runtime Workspace Core | Implemented | [PLAN-004](../plans/PLAN-004-runtime-workspace-core.md) |
@@ -64,5 +65,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 3. **Link to plan**: Reference the related PLAN document when created
 
 ---
+
+*Last updated: 2026-03-17*
 
 *See also: [plans/](../plans/) for implementation plans*
