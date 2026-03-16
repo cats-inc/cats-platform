@@ -134,13 +134,25 @@ export default function App() {
 
     setBusy('pal:create-assign');
     try {
+      const trimmedName = palForm.name.trim();
+      const previousIds = new Set(state.payload.workspace.pals.map((p) => p.id));
       const created = await createGlobalPal({
-        name: palForm.name,
+        name: trimmedName,
         provider: palForm.provider,
         model: palForm.model || getDefaultModel(palForm.provider),
       });
-      const newPal = created.workspace.pals.find((p) => p.name === palForm.name);
-      if (newPal) {
+      // Always apply create result so the UI stays in sync with the backend.
+      startTransition(() => setState({ status: 'ready', payload: created }));
+
+      const newPal = created.workspace.pals.find((p) => !previousIds.has(p.id));
+      if (!newPal) {
+        setPalForm(emptyPalForm());
+        setFeedback('Pal created. Open "Choose existing" to assign it.');
+        setBusy('');
+        return;
+      }
+
+      try {
         const assigned = await assignPalToWorkspaceChannel(channelId, {
           palId: newPal.id,
           provider: newPal.defaultExecutionTarget.provider,
@@ -152,12 +164,12 @@ export default function App() {
           setAddPalOpen(false);
           setFeedback('');
         });
-      } else {
-        startTransition(() => {
-          setState({ status: 'ready', payload: created });
-          setPalForm(emptyPalForm());
-          setFeedback('Pal created but could not auto-assign.');
-        });
+      } catch (assignError) {
+        setPalForm(emptyPalForm());
+        setFeedback(
+          'Pal created but could not assign: ' +
+            (assignError instanceof Error ? assignError.message : 'unknown error'),
+        );
       }
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to create pal.');
@@ -214,9 +226,13 @@ export default function App() {
 
   const { payload } = state;
   const selectedChannel = payload.workspace.selectedChannel;
-  const assignedPalIds = new Set(selectedChannel?.assignedPals.map((pal) => pal.palId) ?? []);
+  const activePalIds = new Set(
+    selectedChannel?.assignedPals
+      .filter((p) => p.status === 'active')
+      .map((p) => p.palId) ?? [],
+  );
   const unassignedPals = payload.workspace.pals.filter(
-    (pal) => pal.status === 'active' && !assignedPalIds.has(pal.id),
+    (pal) => pal.status === 'active' && !activePalIds.has(pal.id),
   );
   const providerModels = getProviderModels(palForm.provider);
   const heroTitle = selectedChannel ? selectedChannel.title : 'Welcome, Kenny';
