@@ -501,8 +501,8 @@ export default function App() {
                 <div className="chatRoster">
                   <div className="rosterHeader">
                     <span className="rosterLabel">
-                      {selectedChannel.assignedPals.length} pal
-                      {selectedChannel.assignedPals.length !== 1 ? 's' : ''} in this chat
+                      {selectedChannel.assignedPals.filter((p) => p.status === 'active').length} pal
+                      {selectedChannel.assignedPals.filter((p) => p.status === 'active').length !== 1 ? 's' : ''} in this chat
                     </span>
                     <button
                       className="addPalButton"
