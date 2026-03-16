@@ -524,6 +524,255 @@ textarea {
   color: var(--muted);
 }
 
+/* Account menu and Settings entry */
+
+.footerSettingsButton {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.accountMenu {
+  position: absolute;
+  right: 12px;
+  bottom: 100%;
+  margin-bottom: 6px;
+  min-width: 140px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+
+.accountMenuItem {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.accountMenuItem:hover {
+  background: var(--panel-hover);
+}
+
+/* Settings breadcrumb */
+
+.settingsBreadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.breadcrumbLink {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.breadcrumbLink:hover {
+  text-decoration: underline;
+}
+
+.breadcrumbSep {
+  color: var(--muted-soft);
+}
+
+/* Chat roster and Add pal button */
+
+.chatRoster {
+  display: grid;
+  gap: 8px;
+  width: min(100%, 362px);
+}
+
+.rosterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rosterLabel {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.addPalButton {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.addPalButton:hover {
+  background: var(--accent-soft);
+}
+
+.rosterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rosterChip {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+/* Add pal side panel */
+
+.addPalPanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 100vh;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: -4px 0 24px rgba(16, 24, 40, 0.06);
+  padding: 20px;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.addPalPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.addPalPanelHeader h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.addPalClose {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.addPalClose:hover {
+  background: var(--panel-hover);
+}
+
+.addPalTabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.addPalTab {
+  flex: 1;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.addPalTabActive {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.addPalList {
+  display: grid;
+  gap: 8px;
+}
+
+.addPalItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fbfaf8;
+}
+
+.addPalItem strong {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.addPalItem p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.addPalAssignButton {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #1f1f1c;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.addPalAssignButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.addPalAssignButton:hover:not(:disabled) {
+  background: #333;
+}
+
+.addPalCreate {
+  display: grid;
+  gap: 8px;
+}
+
 @media (max-width: 980px) {
   .claudeShell {
     grid-template-columns: 1fr;
@@ -541,6 +790,10 @@ textarea {
 
   .palsLayout {
     grid-template-columns: 1fr;
+  }
+
+  .addPalPanel {
+    width: 100%;
   }
 }
 

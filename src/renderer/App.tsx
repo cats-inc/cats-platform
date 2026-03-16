@@ -1,7 +1,12 @@
 import { startTransition, useEffect, useState, type FormEvent } from 'react';
 
 import type { AppShellPayload, WorkspacePal } from '../shared/app-shell';
-import { createGlobalPal, fetchAppShell, updateSelectedChannel } from './api';
+import {
+  assignPalToWorkspaceChannel,
+  createGlobalPal,
+  fetchAppShell,
+  updateSelectedChannel,
+} from './api';
 import { getDefaultModel, getProviderModels, PAL_PROVIDER_ORDER } from './providerCatalog';
 
 type LoadState =
@@ -9,12 +14,11 @@ type LoadState =
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
 
-type Surface = 'chats' | 'pals';
+type Surface = 'chats' | 'settings';
 
 const primaryNav = ['New chat', 'Search', 'Customize'];
 const workspaceNav: Array<{ id: Surface | 'projects' | 'artifacts' | 'code'; label: string }> = [
   { id: 'chats', label: 'Chats' },
-  { id: 'pals', label: 'Pals' },
   { id: 'projects', label: 'Projects' },
   { id: 'artifacts', label: 'Artifacts' },
   { id: 'code', label: 'Code' },
@@ -62,6 +66,9 @@ export default function App() {
   const [palForm, setPalForm] = useState<PalFormState>(emptyPalForm);
   const [busy, setBusy] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [addPalOpen, setAddPalOpen] = useState(false);
+  const [addPalTab, setAddPalTab] = useState<'existing' | 'new'>('existing');
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -91,6 +98,7 @@ export default function App() {
         setState({ status: 'ready', payload });
         setSurface('chats');
         setFeedback('');
+        setAddPalOpen(false);
       });
     } catch {
       // Keep the shell stable if selection sync fails.
@@ -109,11 +117,73 @@ export default function App() {
       startTransition(() => {
         setState({ status: 'ready', payload });
         setPalForm(emptyPalForm());
-        setSurface('pals');
         setFeedback('Pal saved.');
       });
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to save pal.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function onCreateAndAssignPal(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (state.status !== 'ready') return;
+    const channelId = state.payload.workspace.selectedChannelId;
+    if (!channelId) return;
+
+    setBusy('pal:create-assign');
+    try {
+      const created = await createGlobalPal({
+        name: palForm.name,
+        provider: palForm.provider,
+        model: palForm.model || getDefaultModel(palForm.provider),
+      });
+      const newPal = created.workspace.pals.find((p) => p.name === palForm.name);
+      if (newPal) {
+        const assigned = await assignPalToWorkspaceChannel(channelId, {
+          palId: newPal.id,
+          provider: newPal.defaultExecutionTarget.provider,
+          model: newPal.defaultExecutionTarget.model ?? undefined,
+        });
+        startTransition(() => {
+          setState({ status: 'ready', payload: assigned });
+          setPalForm(emptyPalForm());
+          setAddPalOpen(false);
+          setFeedback('');
+        });
+      } else {
+        startTransition(() => {
+          setState({ status: 'ready', payload: created });
+          setPalForm(emptyPalForm());
+          setFeedback('Pal created but could not auto-assign.');
+        });
+      }
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to create pal.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function onAssignExistingPal(pal: WorkspacePal): Promise<void> {
+    if (state.status !== 'ready') return;
+    const channelId = state.payload.workspace.selectedChannelId;
+    if (!channelId) return;
+
+    setBusy(`pal:assign:${pal.id}`);
+    try {
+      const payload = await assignPalToWorkspaceChannel(channelId, {
+        palId: pal.id,
+        provider: pal.defaultExecutionTarget.provider,
+        model: pal.defaultExecutionTarget.model ?? undefined,
+      });
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setFeedback('');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to assign pal.');
     } finally {
       setBusy('');
     }
@@ -145,9 +215,78 @@ export default function App() {
   const { payload } = state;
   const selectedChannel = payload.workspace.selectedChannel;
   const assignedPalIds = new Set(selectedChannel?.assignedPals.map((pal) => pal.palId) ?? []);
+  const unassignedPals = payload.workspace.pals.filter(
+    (pal) => pal.status === 'active' && !assignedPalIds.has(pal.id),
+  );
   const providerModels = getProviderModels(palForm.provider);
   const heroTitle = selectedChannel ? selectedChannel.title : 'Welcome, Kenny';
   const heroNote = selectedChannel?.topic ?? 'How can I help you today?';
+
+  const palCreationForm = (
+    <form
+      className="stackForm"
+      onSubmit={(event) =>
+        surface === 'settings'
+          ? void onCreatePal(event)
+          : void onCreateAndAssignPal(event)
+      }
+    >
+      <label className="fieldLabel">
+        <span>Name</span>
+        <input
+          className="textInput"
+          value={palForm.name}
+          onChange={(event) => setPalForm({ ...palForm, name: event.target.value })}
+          placeholder="Ops reviewer"
+        />
+      </label>
+      <label className="fieldLabel">
+        <span>Provider</span>
+        <select
+          className="textInput"
+          value={palForm.provider}
+          onChange={(event) =>
+            setPalForm({
+              ...palForm,
+              provider: event.target.value,
+              model: getDefaultModel(event.target.value),
+            })
+          }
+        >
+          {PAL_PROVIDER_ORDER.map((provider) => (
+            <option key={provider} value={provider}>
+              {provider}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="fieldLabel">
+        <span>Model</span>
+        <select
+          className="textInput"
+          value={palForm.model}
+          onChange={(event) => setPalForm({ ...palForm, model: event.target.value })}
+        >
+          {providerModels.map((model) => (
+            <option key={model.value} value={model.value}>
+              {model.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        className="primaryButton"
+        disabled={!palForm.name.trim() || !palForm.provider.trim()}
+        type="submit"
+      >
+        {busy === 'pal:create' || busy === 'pal:create-assign'
+          ? 'Saving...'
+          : surface === 'settings'
+            ? 'Save Pal'
+            : 'Create & Add to Chat'}
+      </button>
+    </form>
+  );
 
   return (
     <div className="screen claudeShell">
@@ -179,8 +318,9 @@ export default function App() {
                     : 'navItem'
                 }
                 onClick={() => {
-                  if (item.id === 'chats' || item.id === 'pals') {
+                  if (item.id === 'chats') {
                     setSurface(item.id);
+                    setAddPalOpen(false);
                   }
                 }}
                 type="button"
@@ -222,24 +362,60 @@ export default function App() {
           </section>
         </div>
 
-        <div className="sidebarFooter">
+        <div className="sidebarFooter" style={{ position: 'relative' }}>
           <div className="profileBadge">KC</div>
-          <div>
+          <div style={{ flex: 1 }}>
             <strong>Kenny Chou</strong>
             <p>Max plan</p>
           </div>
+          <button
+            className="footerSettingsButton"
+            type="button"
+            onClick={() => setAccountMenuOpen(!accountMenuOpen)}
+            aria-label="Account menu"
+          >
+            ...
+          </button>
+          {accountMenuOpen ? (
+            <div className="accountMenu">
+              <button
+                className="accountMenuItem"
+                type="button"
+                onClick={() => {
+                  setSurface('settings');
+                  setAccountMenuOpen(false);
+                  setAddPalOpen(false);
+                  setFeedback('');
+                }}
+              >
+                Settings
+              </button>
+            </div>
+          ) : null}
         </div>
       </aside>
 
       <main className="canvas">
-        {surface === 'pals' ? (
+        {surface === 'settings' ? (
           <div className="viewShell palsShell">
             <div className="viewIntro">
-              <div className="planPill">Workspace</div>
+              <div className="settingsBreadcrumb">
+                <button
+                  className="breadcrumbLink"
+                  type="button"
+                  onClick={() => setSurface('chats')}
+                >
+                  Chat
+                </button>
+                <span className="breadcrumbSep">/</span>
+                <span>Settings</span>
+                <span className="breadcrumbSep">/</span>
+                <span>Pals</span>
+              </div>
               <h1>Pals</h1>
               <p className="heroNote">
-                Reusable pals live here. Add them once, then use them in whichever chat needs
-                them.
+                Manage reusable pals across your workspace. Add them to any chat from the chat
+                view.
               </p>
               {feedback ? <p className="feedbackText">{feedback}</p> : null}
             </div>
@@ -264,9 +440,13 @@ export default function App() {
                             <p>{executionLabel(pal)}</p>
                           </div>
                           <span
-                            className={assignedPalIds.has(pal.id) ? 'statusChip statusChipReady' : 'statusChip statusChipMuted'}
+                            className={
+                              pal.status === 'active'
+                                ? 'statusChip statusChipReady'
+                                : 'statusChip statusChipMuted'
+                            }
                           >
-                            {assignedPalIds.has(pal.id) ? 'In current chat' : pal.status}
+                            {pal.status}
                           </span>
                         </div>
                         <div className="palMeta">
@@ -290,59 +470,7 @@ export default function App() {
                     <h2>New pal</h2>
                   </div>
                 </div>
-
-                <form className="stackForm" onSubmit={(event) => void onCreatePal(event)}>
-                  <label className="fieldLabel">
-                    <span>Name</span>
-                    <input
-                      className="textInput"
-                      value={palForm.name}
-                      onChange={(event) => setPalForm({ ...palForm, name: event.target.value })}
-                      placeholder="Ops reviewer"
-                    />
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Provider</span>
-                    <select
-                      className="textInput"
-                      value={palForm.provider}
-                      onChange={(event) =>
-                        setPalForm({
-                          ...palForm,
-                          provider: event.target.value,
-                          model: getDefaultModel(event.target.value),
-                        })
-                      }
-                    >
-                      {PAL_PROVIDER_ORDER.map((provider) => (
-                        <option key={provider} value={provider}>
-                          {provider}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Model</span>
-                    <select
-                      className="textInput"
-                      value={palForm.model}
-                      onChange={(event) => setPalForm({ ...palForm, model: event.target.value })}
-                    >
-                      {providerModels.map((model) => (
-                        <option key={model.value} value={model.value}>
-                          {model.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    className="primaryButton"
-                    disabled={!palForm.name.trim() || !palForm.provider.trim()}
-                    type="submit"
-                  >
-                    {busy === 'pal:create' ? 'Saving...' : 'Save Pal'}
-                  </button>
-                </form>
+                {palCreationForm}
               </section>
             </div>
           </div>
@@ -352,6 +480,40 @@ export default function App() {
               <div className="planPill">Your local workspace shell is ready</div>
               <h1>{heroTitle}</h1>
               <p className="heroNote">{heroNote}</p>
+
+              {selectedChannel ? (
+                <div className="chatRoster">
+                  <div className="rosterHeader">
+                    <span className="rosterLabel">
+                      {selectedChannel.assignedPals.length} pal
+                      {selectedChannel.assignedPals.length !== 1 ? 's' : ''} in this chat
+                    </span>
+                    <button
+                      className="addPalButton"
+                      type="button"
+                      onClick={() => {
+                        setAddPalOpen(!addPalOpen);
+                        setAddPalTab('existing');
+                        setFeedback('');
+                        setPalForm(emptyPalForm());
+                      }}
+                    >
+                      + Add pal
+                    </button>
+                  </div>
+                  {selectedChannel.assignedPals.length > 0 ? (
+                    <div className="rosterChips">
+                      {selectedChannel.assignedPals
+                        .filter((p) => p.status === 'active')
+                        .map((pal) => (
+                          <span key={pal.palId} className="rosterChip">
+                            {pal.name}
+                          </span>
+                        ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               <form className="composerCard">
                 <textarea
@@ -380,6 +542,76 @@ export default function App() {
                 ))}
               </div>
             </div>
+
+            {addPalOpen && selectedChannel ? (
+              <div className="addPalPanel">
+                <div className="addPalPanelHeader">
+                  <h2>Add pal to chat</h2>
+                  <button
+                    className="addPalClose"
+                    type="button"
+                    onClick={() => setAddPalOpen(false)}
+                    aria-label="Close"
+                  >
+                    x
+                  </button>
+                </div>
+
+                <div className="addPalTabs">
+                  <button
+                    className={addPalTab === 'existing' ? 'addPalTab addPalTabActive' : 'addPalTab'}
+                    type="button"
+                    onClick={() => setAddPalTab('existing')}
+                  >
+                    Choose existing
+                  </button>
+                  <button
+                    className={addPalTab === 'new' ? 'addPalTab addPalTabActive' : 'addPalTab'}
+                    type="button"
+                    onClick={() => setAddPalTab('new')}
+                  >
+                    Create new
+                  </button>
+                </div>
+
+                {feedback ? <p className="feedbackText">{feedback}</p> : null}
+
+                {addPalTab === 'existing' ? (
+                  <div className="addPalList">
+                    {unassignedPals.length > 0 ? (
+                      unassignedPals.map((pal) => (
+                        <div key={pal.id} className="addPalItem">
+                          <div>
+                            <strong>{pal.name}</strong>
+                            <p>{executionLabel(pal)}</p>
+                          </div>
+                          <button
+                            className="addPalAssignButton"
+                            type="button"
+                            disabled={busy === `pal:assign:${pal.id}`}
+                            onClick={() => void onAssignExistingPal(pal)}
+                          >
+                            {busy === `pal:assign:${pal.id}` ? 'Adding...' : 'Add'}
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="emptyStateCard">
+                        <p>
+                          {payload.workspace.pals.length === 0
+                            ? 'No pals yet. Create one first.'
+                            : 'All pals are already in this chat.'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="addPalCreate">
+                    {palCreationForm}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         )}
       </main>
