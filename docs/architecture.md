@@ -68,8 +68,9 @@ directly to individual workers.
 
 - **Purpose**: Provide the shared domain model used by both `Cats Chat` and
   `Cats Work`
-- **Technology**: Shared TypeScript contracts first, with room to grow into a
-  co-hosted service if parallel teams need a stronger boundary
+- **Technology**: Shared TypeScript contracts plus a co-hosted product API and
+  core-backed workspace store today, with room to grow into a stronger service
+  boundary later
 - **Responsibilities**:
   - identity and actor/resource records
   - conversation and channel records
@@ -103,11 +104,12 @@ directly to individual workers.
 
 - **Purpose**: Persist the current workspace shell while preparing for a
   stronger operational store
-- **Technology**: JSON file inside `config/` today; operational DB plus
-  archive/RAG pipelines planned
+- **Technology**: Core-backed JSON file inside `config/` today; operational DB
+  plus archive/RAG pipelines planned
 - **Responsibilities**: Load defaults, persist channels, workspace pals, channel
   assignments, transcript messages, execution targets, execution leases, pal
-  memory checkpoints, and later shared-core records
+  memory checkpoints, and the derived `Cats Core v1` records that wrap the
+  phase-2 workspace model
 
 ### Workspace Runtime Actions
 
@@ -232,8 +234,8 @@ existing `cats-inc -> cats-runtime` boundary for desktop packaging. See
 - Current implementation is still a phase-2 chat shell with file-backed state,
   global orchestrator settings, pal assignments, mention routing, and transcript
   export.
-- `Cats Core v1` is an accepted planning direction, not an implemented module
-  yet.
+- `Cats Core v1` now exists as a first in-tree contract and read-only API
+  surface derived from the current workspace model.
 - `Cats Work` is a planned sibling surface, not a shipped UI in the current
   codebase.
 - The current execution path keeps full Chat and Work desktop surfaces on the
@@ -251,7 +253,7 @@ still intentionally deferred:
 - split-view workspace panes beyond the current chat-first layout
 - richer orchestrator automation than explicit runtime activation plus basic
   `@mention` routing
-- shared-core storage and approval models
+- shared-core write APIs, approval models, and stronger storage boundaries
 - Telegram/LINE transport relays, escalation, and takeover behavior
 - desktop host lifecycle management and tray-driven UX implementation
 - `Cats Work` product surfaces above the shared core

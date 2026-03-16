@@ -11,8 +11,8 @@
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global pals, assignments, transcript, and orchestrator surfaces |
 | Workspace Product Features | Completed | Basic runtime-backed setup, global pal registry, channel assignment, mention routing, transcript export, and execution-aware state landed |
-| Suite Foundation Planning | In Progress | `Cats Core v1`, Chat/Work shared contracts, and the `cats-runtime` API plus MCP split are now being documented for parallel teams |
-| Documentation | In Progress | Core status and product docs are being realigned around the shared suite foundation |
+| Suite Foundation Planning | In Progress | `Cats Core v1` schema, compatibility mapping, core-backed store abstraction, and first read-only core APIs are now implemented while broader launch tracks remain open |
+| Documentation | In Progress | Core status and product docs are being realigned around the shared suite foundation and newly landed core-backed implementation seams |
 | Cats Chat Launch Track | Not Started | Chat launch features such as approvals, escalation, takeover, and desktop packaging remain ahead |
 | Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
@@ -88,14 +88,14 @@
 | Document `cats-runtime` direct API and MCP facade responsibilities | [x] | Runtime boundary planning now distinguishes app APIs from orchestrator tool use |
 | Freeze the suite desktop stance | [x] | Electron plus React/TypeScript remains the current path; Tauri and Flutter are not on the active route |
 | Annotate exploratory Paperclip control-plane documents | [ ] | Existing research remains in-tree but needs explicit exploratory labels everywhere it appears |
-| Define the first implementation slices for shared storage and contracts | [ ] | Execution planning follows after the documentation pass lands |
+| Land the first implementation slices for shared storage and contracts | [x] | `src/shared/core.ts`, `src/core/model.ts`, the core-backed workspace store, and `/api/core/*` routes are now in-tree |
 
 #### Acceptance Criteria
 
 - [x] The suite foundation is documented in roadmap, requirements, architecture, and ADR/spec/plan form
 - [x] `Cats Core v1` scope is explicit enough for Chat and Work teams to share a contract
 - [x] The runtime boundary is documented as direct product API plus planned MCP facade
-- [ ] The first implementation slices for shared storage and transport entrypoints are scheduled
+- [x] The first implementation slices for shared storage and shared-core APIs are landed and covered by tests
 
 ---
 

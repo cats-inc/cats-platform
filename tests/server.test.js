@@ -108,6 +108,30 @@ test('GET /api/app-shell exposes detailed workspace state with global pals', asy
   });
 });
 
+test('GET /api/core endpoints expose the shared Cats Core contract', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const stateResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(stateResponse.status, 200);
+    const statePayload = await stateResponse.json();
+    assert.equal(statePayload.version, 1);
+    assert.equal(statePayload.ownerProfile.actorId, 'actor-owner');
+    assert.ok(Array.isArray(statePayload.actors));
+    assert.ok(Array.isArray(statePayload.conversations));
+    assert.ok(Array.isArray(statePayload.tasks));
+
+    const actorsResponse = await fetch(`${baseUrl}/api/core/actors`);
+    assert.equal(actorsResponse.status, 200);
+    const actorsPayload = await actorsResponse.json();
+    assert.ok(actorsPayload.actors.some((actor) => actor.kind === 'owner'));
+    assert.ok(actorsPayload.actors.some((actor) => actor.kind === 'orchestrator'));
+
+    const ownerProfileResponse = await fetch(`${baseUrl}/api/core/owner-profile`);
+    assert.equal(ownerProfileResponse.status, 200);
+    const ownerProfilePayload = await ownerProfileResponse.json();
+    assert.equal(ownerProfilePayload.ownerProfile.displayName, 'Owner');
+  });
+});
+
 test('workspace API covers chat setup, activation, messaging, global pals, assignments, and export', async () => {
   const runtimeClient = createRuntimeStub();
   const workspaceStore = new MemoryWorkspaceStore();
@@ -246,6 +270,30 @@ test('workspace API covers chat setup, activation, messaging, global pals, assig
     assert.equal(
       orchestratorPayload.workspace.globalOrchestrator.executionTarget.model,
       'claude-opus-4-6',
+    );
+
+    const actorsResponse = await fetch(`${baseUrl}/api/core/actors`);
+    assert.equal(actorsResponse.status, 200);
+    const actorsPayload = await actorsResponse.json();
+    assert.ok(actorsPayload.actors.some((actor) => actor.name === 'Agent-1'));
+    assert.ok(actorsPayload.actors.some((actor) => actor.name === 'Agent-2'));
+
+    const conversationsResponse = await fetch(`${baseUrl}/api/core/conversations`);
+    assert.equal(conversationsResponse.status, 200);
+    const conversationsPayload = await conversationsResponse.json();
+    assert.ok(
+      conversationsPayload.conversations.some(
+        (conversation) => conversation.sourceChannelId === channelId,
+      ),
+    );
+
+    const tasksResponse = await fetch(`${baseUrl}/api/core/tasks`);
+    assert.equal(tasksResponse.status, 200);
+    const tasksPayload = await tasksResponse.json();
+    assert.ok(
+      tasksPayload.tasks.some(
+        (task) => task.conversationId === `conversation-channel-${channelId}`,
+      ),
     );
 
     const exportResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/export`);

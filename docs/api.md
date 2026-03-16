@@ -8,15 +8,16 @@ The current Phase 2 API provides:
 
 - service and runtime reachability health
 - an explicit bootstrap payload for the chat renderer shell
+- a derived `Cats Core v1` read surface for shared suite contracts
 - a file-backed workspace mutation surface
 - a workspace-level pal registry plus channel-scoped pal assignment
 - runtime-backed channel activation and message routing
 - transcript export for later ingestion
 
-This document also records the accepted planning direction for the next API
-layers. Those shared-core and orchestration APIs are not implemented yet, but
-they are part of the current product contract work for parallel Chat and Work
-development.
+The current server now exposes the first read-only `Cats Core v1` routes so
+parallel Chat and Work workstreams can consume the same actor, conversation,
+task, and owner-profile contract. Write-side approval, escalation, and
+transport APIs remain future work.
 
 ## Base URL
 
@@ -50,6 +51,83 @@ Example response:
     "reachable": true,
     "status": "ok",
     "service": "cats-runtime"
+  }
+}
+```
+
+### Core State
+
+```text
+GET /api/core
+```
+
+Returns the full derived `Cats Core v1` state currently backed by the workspace
+store. The payload includes:
+
+- `version`
+- `ownerProfile`
+- `actors`
+- `conversations`
+- `tasks`
+- `botBindings`
+- `archives`
+- `workspace`
+
+### List Core Actors
+
+```text
+GET /api/core/actors
+```
+
+Returns:
+
+```json
+{
+  "actors": []
+}
+```
+
+### List Core Conversations
+
+```text
+GET /api/core/conversations
+```
+
+Returns:
+
+```json
+{
+  "conversations": []
+}
+```
+
+### List Core Tasks
+
+```text
+GET /api/core/tasks
+```
+
+Returns:
+
+```json
+{
+  "tasks": []
+}
+```
+
+### Get Owner Profile
+
+```text
+GET /api/core/owner-profile
+```
+
+Returns:
+
+```json
+{
+  "ownerProfile": {
+    "actorId": "actor-owner",
+    "displayName": "Owner"
   }
 }
 ```

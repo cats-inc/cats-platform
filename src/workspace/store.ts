@@ -15,15 +15,30 @@ import type {
   WorkspacePal,
   WorkspaceState,
 } from '../shared/app-shell.js';
+import type {
+  ArchiveMetadataRecord,
+  BotBindingRecord,
+  CatsCoreState,
+  CoreTaskRecord,
+  OwnerProfileRecord,
+} from '../shared/core.js';
 import {
   createDefaultWorkspaceState,
   createEmptyExecutionLease,
   createEmptyMemoryCheckpoint,
 } from './defaults.js';
+import { createDefaultCoreState, syncCoreStateWithWorkspace } from '../core/model.js';
 
 export interface WorkspaceStore {
   read(): Promise<WorkspaceState>;
   write(state: WorkspaceState): Promise<WorkspaceState>;
+  readCore(): Promise<CatsCoreState>;
+  writeCore(state: CatsCoreState): Promise<CatsCoreState>;
+}
+
+export interface CoreStore {
+  readCore(): Promise<CatsCoreState>;
+  writeCore(state: CatsCoreState): Promise<CatsCoreState>;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -437,39 +452,198 @@ function normalizeGlobalOrchestrator(rawOrchestrator: unknown): GlobalOrchestrat
   };
 }
 
+function normalizeOwnerProfile(rawOwnerProfile: unknown): OwnerProfileRecord {
+  const fallback = createDefaultCoreState().ownerProfile;
+  const ownerProfileRecord = asRecord(rawOwnerProfile);
+
+  return {
+    actorId: readString(ownerProfileRecord?.actorId, fallback.actorId),
+    displayName: readString(ownerProfileRecord?.displayName, fallback.displayName),
+    summary: readNullableString(ownerProfileRecord?.summary),
+    communicationPreferences: readStringArray(ownerProfileRecord?.communicationPreferences),
+    decisionPreferences: readStringArray(ownerProfileRecord?.decisionPreferences),
+    escalationPreferences: readStringArray(ownerProfileRecord?.escalationPreferences),
+    updatedAt: readString(ownerProfileRecord?.updatedAt, fallback.updatedAt),
+  };
+}
+
+function normalizeCoreTask(rawTask: unknown): CoreTaskRecord | null {
+  const taskRecord = asRecord(rawTask);
+  if (!taskRecord) {
+    return null;
+  }
+
+  const approvalRecord = asRecord(taskRecord.approval);
+  const rawStatus = readString(taskRecord.status, 'draft');
+  const status = (
+    rawStatus === 'draft'
+    || rawStatus === 'pending_approval'
+    || rawStatus === 'approved'
+    || rawStatus === 'in_progress'
+    || rawStatus === 'archived'
+  )
+    ? rawStatus
+    : 'draft';
+  const rawApprovalStatus = readString(approvalRecord?.status, 'not_requested');
+  const approvalStatus = (
+    rawApprovalStatus === 'not_requested'
+    || rawApprovalStatus === 'pending'
+    || rawApprovalStatus === 'approved'
+    || rawApprovalStatus === 'rejected'
+  )
+    ? rawApprovalStatus
+    : 'not_requested';
+
+  return {
+    id: readString(taskRecord.id, randomUUID()),
+    title: readString(taskRecord.title, 'Untitled task'),
+    status,
+    conversationId: readNullableString(taskRecord.conversationId),
+    ownerActorId: readString(taskRecord.ownerActorId),
+    orchestratorActorId: readNullableString(taskRecord.orchestratorActorId),
+    assignedActorIds: readStringArray(taskRecord.assignedActorIds),
+    summary: readNullableString(taskRecord.summary),
+    approval: {
+      status: approvalStatus,
+      requestedAt: readNullableString(approvalRecord?.requestedAt),
+      decidedAt: readNullableString(approvalRecord?.decidedAt),
+      decidedByActorId: readNullableString(approvalRecord?.decidedByActorId),
+      notes: readNullableString(approvalRecord?.notes),
+    },
+    createdAt: readString(taskRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(taskRecord.updatedAt, new Date().toISOString()),
+  };
+}
+
+function normalizeBotBinding(rawBinding: unknown): BotBindingRecord | null {
+  const bindingRecord = asRecord(rawBinding);
+  if (!bindingRecord) {
+    return null;
+  }
+
+  const platform = readString(bindingRecord.platform);
+  if (platform !== 'telegram' && platform !== 'line') {
+    return null;
+  }
+
+  const rawStatus = readString(bindingRecord.status, 'active');
+
+  return {
+    id: readString(bindingRecord.id, randomUUID()),
+    platform,
+    botName: readString(bindingRecord.botName),
+    orchestratorActorId: readString(bindingRecord.orchestratorActorId),
+    status: rawStatus === 'disabled' ? 'disabled' : 'active',
+    createdAt: readString(bindingRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(bindingRecord.updatedAt, new Date().toISOString()),
+  };
+}
+
+function normalizeArchiveMetadata(rawArchive: unknown): ArchiveMetadataRecord | null {
+  const archiveRecord = asRecord(rawArchive);
+  if (!archiveRecord) {
+    return null;
+  }
+
+  const rawStatus = readString(archiveRecord.status, 'not_ready');
+  const status = (
+    rawStatus === 'not_ready'
+    || rawStatus === 'ready_for_archive'
+    || rawStatus === 'archived'
+  )
+    ? rawStatus
+    : 'not_ready';
+
+  return {
+    id: readString(archiveRecord.id, randomUUID()),
+    sourceConversationId: readString(archiveRecord.sourceConversationId),
+    sourceChannelId: readNullableString(archiveRecord.sourceChannelId),
+    exportFormat: 'workspace-channel-json',
+    status,
+    lastExportedAt: readNullableString(archiveRecord.lastExportedAt),
+    updatedAt: readString(archiveRecord.updatedAt, new Date().toISOString()),
+  };
+}
+
 function normalizeWorkspaceState(rawState: unknown): WorkspaceState {
   const fallback = createDefaultWorkspaceState();
   const stateRecord = asRecord(rawState);
   if (!stateRecord) {
     return fallback;
   }
+  const workspaceRecord = asRecord(stateRecord.workspace);
+  const sourceRecord = workspaceRecord ?? stateRecord;
 
-  const normalizedPals = Array.isArray(stateRecord.pals)
-    ? stateRecord.pals
+  const normalizedPals = Array.isArray(sourceRecord.pals)
+    ? sourceRecord.pals
         .map((pal) => normalizeWorkspacePal(pal))
         .filter((pal): pal is WorkspacePal => pal !== null)
     : [];
   const palsById = new Map(normalizedPals.map((pal) => [pal.id, pal]));
-  const channels = Array.isArray(stateRecord.channels)
-    ? stateRecord.channels
+  const channels = Array.isArray(sourceRecord.channels)
+    ? sourceRecord.channels
         .map((channel) => normalizeChannel(channel, palsById))
         .filter((channel): channel is WorkspaceChannelState => channel !== null)
     : fallback.channels;
   const selectedChannelId = readString(
-    stateRecord.selectedChannelId,
+    sourceRecord.selectedChannelId,
     channels[0]?.id ?? fallback.selectedChannelId,
   );
 
   return {
-    id: readString(stateRecord.id, fallback.id),
-    name: readString(stateRecord.name, fallback.name),
+    id: readString(sourceRecord.id, fallback.id),
+    name: readString(sourceRecord.name, fallback.name),
     selectedChannelId: channels.some((channel) => channel.id === selectedChannelId)
       ? selectedChannelId
       : channels[0]?.id ?? fallback.selectedChannelId,
     pals: Array.from(palsById.values()),
     channels: channels.length > 0 ? channels : fallback.channels,
-    globalOrchestrator: normalizeGlobalOrchestrator(stateRecord.globalOrchestrator),
-    capabilities: normalizeCapabilities(stateRecord.capabilities),
+    globalOrchestrator: normalizeGlobalOrchestrator(sourceRecord.globalOrchestrator),
+    capabilities: normalizeCapabilities(sourceRecord.capabilities),
+  };
+}
+
+function normalizeCoreState(rawState: unknown): CatsCoreState {
+  const fallback = createDefaultCoreState();
+  const stateRecord = asRecord(rawState);
+  const workspace = normalizeWorkspaceState(rawState);
+
+  if (!stateRecord || !asRecord(stateRecord.workspace)) {
+    return syncCoreStateWithWorkspace(workspace, fallback);
+  }
+
+  const tasks = Array.isArray(stateRecord.tasks)
+    ? stateRecord.tasks
+        .map((task) => normalizeCoreTask(task))
+        .filter((task): task is CoreTaskRecord => task !== null)
+    : [];
+  const botBindings = Array.isArray(stateRecord.botBindings)
+    ? stateRecord.botBindings
+        .map((binding) => normalizeBotBinding(binding))
+        .filter((binding): binding is BotBindingRecord => binding !== null)
+    : [];
+  const archives = Array.isArray(stateRecord.archives)
+    ? stateRecord.archives
+        .map((archive) => normalizeArchiveMetadata(archive))
+        .filter((archive): archive is ArchiveMetadataRecord => archive !== null)
+    : [];
+  const normalized = syncCoreStateWithWorkspace(workspace, {
+    ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
+    tasks,
+    botBindings,
+    archives,
+  });
+
+  return {
+    ...normalized,
+    updatedAt: readString(stateRecord.updatedAt, normalized.updatedAt),
+    ownerProfile: {
+      ...normalized.ownerProfile,
+      updatedAt: readString(
+        asRecord(stateRecord.ownerProfile)?.updatedAt,
+        normalized.ownerProfile.updatedAt,
+      ),
+    },
   };
 }
 
@@ -477,18 +651,34 @@ export class FileWorkspaceStore implements WorkspaceStore {
   constructor(private readonly filePath: string) {}
 
   async read(): Promise<WorkspaceState> {
+    return (await this.readCore()).workspace;
+  }
+
+  async readCore(): Promise<CatsCoreState> {
     try {
       const raw = await readFile(this.filePath, 'utf-8');
-      return normalizeWorkspaceState(JSON.parse(raw) as unknown);
+      return normalizeCoreState(JSON.parse(raw) as unknown);
     } catch {
-      const fallback = createDefaultWorkspaceState();
-      await this.write(fallback);
+      const fallback = createDefaultCoreState();
+      await this.writeCore(fallback);
       return fallback;
     }
   }
 
   async write(state: WorkspaceState): Promise<WorkspaceState> {
-    const nextState = structuredClone(state);
+    const nextCore = syncCoreStateWithWorkspace(
+      structuredClone(state),
+      await this.readCore(),
+    );
+    await this.writeCore(nextCore);
+    return structuredClone(nextCore.workspace);
+  }
+
+  async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
+    const nextState = syncCoreStateWithWorkspace(
+      structuredClone(state.workspace),
+      structuredClone(state),
+    );
     await mkdir(path.dirname(this.filePath), { recursive: true });
     await writeFile(this.filePath, `${JSON.stringify(nextState, null, 2)}\n`, 'utf-8');
     return structuredClone(nextState);
@@ -496,18 +686,32 @@ export class FileWorkspaceStore implements WorkspaceStore {
 }
 
 export class MemoryWorkspaceStore implements WorkspaceStore {
-  private state: WorkspaceState;
+  private state: CatsCoreState;
 
-  constructor(initialState: WorkspaceState = createDefaultWorkspaceState()) {
-    this.state = structuredClone(initialState);
+  constructor(initialState: WorkspaceState | CatsCoreState = createDefaultWorkspaceState()) {
+    this.state = 'workspace' in initialState
+      ? normalizeCoreState(initialState)
+      : syncCoreStateWithWorkspace(structuredClone(initialState));
   }
 
   async read(): Promise<WorkspaceState> {
+    return structuredClone(this.state.workspace);
+  }
+
+  async readCore(): Promise<CatsCoreState> {
     return structuredClone(this.state);
   }
 
   async write(state: WorkspaceState): Promise<WorkspaceState> {
-    this.state = structuredClone(state);
+    this.state = syncCoreStateWithWorkspace(structuredClone(state), this.state);
+    return structuredClone(this.state.workspace);
+  }
+
+  async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
+    this.state = syncCoreStateWithWorkspace(
+      structuredClone(state.workspace),
+      structuredClone(state),
+    );
     return structuredClone(this.state);
   }
 }

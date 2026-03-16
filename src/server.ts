@@ -153,6 +153,45 @@ async function handleAppShell(
   sendJson(response, 200, await buildAppShell(dependencies));
 }
 
+async function handleCoreState(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  sendJson(response, 200, await dependencies.workspaceStore.readCore());
+}
+
+async function handleCoreActors(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  const core = await dependencies.workspaceStore.readCore();
+  sendJson(response, 200, { actors: core.actors });
+}
+
+async function handleCoreConversations(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  const core = await dependencies.workspaceStore.readCore();
+  sendJson(response, 200, { conversations: core.conversations });
+}
+
+async function handleCoreTasks(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  const core = await dependencies.workspaceStore.readCore();
+  sendJson(response, 200, { tasks: core.tasks });
+}
+
+async function handleOwnerProfile(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  const core = await dependencies.workspaceStore.readCore();
+  sendJson(response, 200, { ownerProfile: core.ownerProfile });
+}
+
 async function handleSelectionUpdate(
   request: IncomingMessage,
   response: ServerResponse,
@@ -532,6 +571,46 @@ function routeRequest(
       return Promise.resolve();
     }
     return handleAppShell(response, dependencies);
+  }
+
+  if (url.pathname === '/api/core') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleCoreState(response, dependencies);
+  }
+
+  if (url.pathname === '/api/core/actors') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleCoreActors(response, dependencies);
+  }
+
+  if (url.pathname === '/api/core/conversations') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleCoreConversations(response, dependencies);
+  }
+
+  if (url.pathname === '/api/core/tasks') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleCoreTasks(response, dependencies);
+  }
+
+  if (url.pathname === '/api/core/owner-profile') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleOwnerProfile(response, dependencies);
   }
 
   if (url.pathname === '/api/workspace/selection') {

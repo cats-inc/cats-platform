@@ -72,10 +72,15 @@ test('FileWorkspaceStore persists configured channels, pals, assignments, and me
 
   const rawState = await readFile(statePath, 'utf-8');
   const parsedState = JSON.parse(rawState);
-  const createdChannel = parsedState.channels.find((channel) => channel.id === channelId);
+  const createdChannel = parsedState.workspace.channels.find((channel) => channel.id === channelId);
 
-  assert.equal(parsedState.selectedChannelId, 'ops-radar');
-  assert.equal(parsedState.pals.length, 2);
+  assert.equal(parsedState.version, 1);
+  assert.equal(parsedState.workspace.selectedChannelId, 'ops-radar');
+  assert.equal(parsedState.workspace.pals.length, 2);
+  assert.ok(parsedState.ownerProfile);
+  assert.ok(Array.isArray(parsedState.actors));
+  assert.ok(Array.isArray(parsedState.conversations));
+  assert.ok(Array.isArray(parsedState.tasks));
   assert.ok(createdChannel);
   assert.equal(createdChannel.palAssignments.length, 2);
   assert.equal(createdChannel.palAssignments[0].execution.target.provider, 'claude');
@@ -197,4 +202,36 @@ test('FileWorkspaceStore migrates legacy provider-bound records into global pals
   assert.equal(state.channels[0].palAssignments[0].execution.target.provider, 'claude');
   assert.equal(state.channels[0].palAssignments[0].execution.target.model, 'claude-sonnet');
   assert.equal(state.channels[0].palAssignments[0].execution.lease.sessionId, 'pal-session-1');
+});
+
+test('WorkspaceStore exposes a derived Cats Core view that stays in sync with workspace state', async () => {
+  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'));
+  let state = await store.read();
+
+  state = createChannel(
+    state,
+    {
+      title: 'Owner Loop',
+      topic: 'Validate owner approvals before dispatch.',
+      pals: [
+        {
+          name: 'Planner',
+          provider: 'claude',
+          roles: ['planner'],
+        },
+      ],
+    },
+    new Date('2026-03-11T00:00:00.000Z'),
+  );
+
+  await store.write(state);
+  const core = await store.readCore();
+
+  assert.equal(core.workspace.selectedChannelId, 'owner-loop');
+  assert.equal(core.ownerProfile.actorId, 'actor-owner');
+  assert.ok(core.actors.some((actor) => actor.kind === 'owner'));
+  assert.ok(core.actors.some((actor) => actor.kind === 'orchestrator'));
+  assert.ok(core.actors.some((actor) => actor.name === 'Planner'));
+  assert.ok(core.conversations.some((conversation) => conversation.sourceChannelId === 'owner-loop'));
+  assert.ok(core.tasks.some((task) => task.conversationId === 'conversation-channel-owner-loop'));
 });

@@ -12,12 +12,12 @@ and the `cats-runtime` boundary.
 
 ### Phase 1: Contract Freeze
 
-- [ ] Define the initial shared record shapes for identity, actors/resources,
+- [x] Define the initial shared record shapes for identity, actors/resources,
       permissions, conversations, bot bindings, tasks/runs, approvals, owner
       profile, and archive metadata.
-- [ ] Define terminology mappings from current chat-shell terms such as pal,
+- [x] Define terminology mappings from current chat-shell terms such as pal,
       assignment, lease, and memory checkpoint into the broader shared model.
-- [ ] Publish example payloads or fixtures that both Chat and Work teams can
+- [x] Publish example payloads or fixtures that both Chat and Work teams can
       consume.
 
 **Deliverables**: stable shared contracts, terminology mapping, and reference
@@ -25,10 +25,10 @@ fixtures.
 
 ### Phase 2: Product API and Storage Seams
 
-- [ ] Define which routes or modules belong to shared-core product APIs.
-- [ ] Define the first storage abstraction that can evolve beyond the current
+- [x] Define which routes or modules belong to shared-core product APIs.
+- [x] Define the first storage abstraction that can evolve beyond the current
       file-backed workspace state.
-- [ ] Keep operational search, approval state, and owner profile product-owned.
+- [x] Keep operational search, approval state, and owner profile product-owned.
 
 **Deliverables**: first product-facing shared-core API map and storage seam.
 
