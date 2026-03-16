@@ -19,10 +19,13 @@
 - `Cats Chat` and `Cats Work` are parallel product tracks and should not invent
   divergent schemas for shared actors, conversations, approvals, or owner
   profile data
+- The current suite desktop path is `Electron + React/TypeScript`; do not
+  assume Flutter or Tauri unless a newer ADR changes that decision
 - App code MUST depend on `cats-runtime`, not `agent-fleet`
 - Product services should use direct `cats-runtime` APIs; MCP is a planned
   supplemental tool surface for orchestrator-style agents
 - Phase 1 keeps the implementation dependency-light with built-in Node APIs
+- Mobile is optional companion scope later, not the current full-product focus
 - Paperclip-derived control-plane docs remain exploratory unless a newer ADR
   explicitly promotes them into the execution path
 

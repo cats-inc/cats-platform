@@ -100,12 +100,18 @@ boundary.
   focus inside this repo.
 - `Cats Work` is expected to follow immediately after `Cats Chat`, so shared
   contracts MUST be defined before the product surfaces diverge.
+- The full desktop surfaces for both `Cats Chat` and `Cats Work` should stay on
+  one React/TypeScript renderer stack inside the Electron host chosen by
+  ADR-003.
 - `Cats Core v1` should stay minimal: shared identity, actors/resources,
   permissions, conversations, bot bindings, tasks/approvals, owner profile, and
   archive metadata.
 - `cats-runtime` remains the only runtime boundary. Product services should use
   direct APIs; MCP is an additional tool surface for orchestrators, not a
   replacement boundary.
+- Flutter and Tauri are not part of the current execution path. If a mobile
+  client is added later, treat it as a companion scope rather than a second
+  full primary shell.
 - The Paperclip-derived control-plane documents remain useful research, but
   they are exploratory and not the current execution path unless explicitly
   reactivated.

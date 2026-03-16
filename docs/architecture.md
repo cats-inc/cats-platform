@@ -58,8 +58,8 @@ directly to individual workers.
 
 - **Purpose**: Expose product behavior through dedicated Chat, Work, and
   external transport experiences
-- **Technology**: React/Vite today; desktop host later; transport relays for
-  Telegram and LINE
+- **Technology**: Shared React/Vite desktop renderer inside Electron; transport
+  relays for Telegram and LINE; optional mobile companion later if needed
 - **Responsibilities**: Render chat and work views, surface approvals,
   ownership, activity, and allow external transport messages to reach the
   orchestrator safely
@@ -236,6 +236,9 @@ existing `cats-inc -> cats-runtime` boundary for desktop packaging. See
   yet.
 - `Cats Work` is a planned sibling surface, not a shipped UI in the current
   codebase.
+- The current execution path keeps full Chat and Work desktop surfaces on the
+  same React/TypeScript renderer stack under Electron.
+- Flutter and Tauri are not part of the active implementation route.
 - Paperclip-derived control-plane documents remain exploratory and are not the
   active implementation plan.
 
@@ -252,6 +255,8 @@ still intentionally deferred:
 - Telegram/LINE transport relays, escalation, and takeover behavior
 - desktop host lifecycle management and tray-driven UX implementation
 - `Cats Work` product surfaces above the shared core
+- any limited mobile companion scope, which is intentionally secondary to the
+  desktop suite
 
 ## Technology Stack
 

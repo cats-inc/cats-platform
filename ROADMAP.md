@@ -35,6 +35,8 @@ contracts.
 - [ ] Freeze `Cats Core v1` shared contracts for identity, actors/resources,
       permissions, conversations, bot bindings, tasks/approvals, owner profile,
       and archive metadata
+- [x] Keep the full desktop suite on one `Electron + React/TypeScript` path
+      while `cats-inc` and `cats-runtime` remain Node sidecars
 - [ ] Define how `cats-inc` hosts or exposes shared `Cats Core v1` services for
       both `Cats Chat` and `Cats Work`
 - [ ] Define the split between `cats-runtime` direct product APIs and the
@@ -53,6 +55,8 @@ contracts.
       profile injection before dispatch
 - [ ] Telegram, LINE, and alternate orchestrator entrypoints with escalation
       and takeover support
+- [ ] Revisit a limited Chat mobile companion only after the desktop Chat
+      surface is stable
 
 ### Phase 5: Cats Work Launch Track
 
@@ -75,8 +79,7 @@ contracts.
 - Thin Electron host that manages local `cats-inc` and `cats-runtime` services
 - Shared desktop host that can open both `Cats Chat` and `Cats Work`
 - Richer memory retrieval loops through structured owner profile plus archive RAG
-- Mobile wrappers or dedicated mobile shells after the shared product contracts
-  stabilize
+- Optional Chat mobile companion after the shared desktop suite stabilizes
 - Product rename or repo split once the public open-source topology is ready
 - Reusable company templates only after the core Chat/Work model is stable
 

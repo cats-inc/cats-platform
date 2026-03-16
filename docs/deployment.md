@@ -48,6 +48,10 @@ documented:
 - The renderer does not talk to provider CLIs or spawn local runtimes directly
 - The packaged experience should guide owner profile, model credentials, and
   optional bot-binding setup rather than requiring terminal steps
+- Tauri is not the current path because the desktop package still needs to
+  supervise Node-based `cats-inc` and `cats-runtime` sidecars
+- Mobile is not part of the first packaged primary product surface; if added
+  later, treat it as companion scope
 
 See
 [ADR-003](./decisions/003-electron-host-manages-local-services.md)

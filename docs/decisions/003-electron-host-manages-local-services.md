@@ -19,6 +19,15 @@ This became more concrete once `cats-runtime` embedded the CLI runtime directly.
 provider-specific native execution. Those responsibilities are Node-only and
 must not move into a browser renderer process.
 
+Later discussion revisited Tauri and Flutter as alternatives. Under the current
+topology, those options do not improve the primary desktop path:
+
+- both `cats-inc` and `cats-runtime` still need Node-friendly sidecar
+  supervision
+- Electron already matches the chosen React/Vite renderer stack
+- introducing Rust- or Dart-based hosts would add another runtime or language
+  without removing the Node sidecars that matter most
+
 The project needs a written answer for the future desktop shape before the
 implementation work starts, so later packaging work does not revisit the same
 boundary decisions.
@@ -93,6 +102,13 @@ service internals and increases version-coupling pressure too early.
 
 Rejected because the target product shape includes tray-driven and background
 desktop behavior that a normal web deployment cannot satisfy well.
+
+### Replace Electron with Tauri Under the Current Sidecar Topology
+
+Rejected because the current product package still needs to supervise Node-based
+`cats-inc` and `cats-runtime` processes. Tauri can run sidecars, but doing so
+would add packaging complexity without removing the Node runtime assumptions
+that already fit Electron.
 
 ## Follow-up
 

@@ -183,6 +183,22 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: High
 - **Status**: Planned
 
+### FR-024: Unified Desktop Suite Shell
+
+- **Description**: The full desktop surfaces for `Cats Chat` and `Cats Work`
+  shall stay on one React/TypeScript renderer stack inside the Electron host
+  selected for the current Node-sidecar topology.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-025: Mobile Companion Is Secondary
+
+- **Description**: If a mobile client is added later, it shall begin as a
+  limited companion scope for Chat notifications, quick replies, and approvals
+  rather than a second full primary product shell.
+- **Priority**: Medium
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -199,8 +215,10 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 - Shared-core contracts should stabilize before Chat and Work implementations
   diverge
-- Product surfaces should avoid early frontend stack fragmentation while the
-  suite foundation is still forming
+- Product surfaces should avoid frontend stack fragmentation while the suite
+  foundation is still forming
+- The default desktop path is Electron plus React/TypeScript while
+  `cats-runtime` and `cats-inc` remain Node-based local services
 
 ### NFR-004: Local Persistence Safety
 
@@ -238,6 +256,8 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
   a manual dev stack
 - Local onboarding SHOULD be able to capture model credentials, owner profile,
   and optional bot binding without requiring a terminal session
+- Tauri or Flutter SHOULD NOT be introduced into the primary suite path unless
+  the desktop Node-sidecar assumptions change materially
 
 ## User Stories
 
@@ -382,6 +402,18 @@ automation flow.
 - [ ] A structured owner profile exists in the shared product model
 - [ ] Orchestrators can consume that profile without depending on archive RAG
 
+### US-014: Owner Uses Chat and Work on the Same Desktop Suite
+
+**As an** owner,
+**I want to** move between Chat and Work on desktop without a jarring framework
+shift,
+**So that** the suite feels like one product family instead of unrelated apps.
+
+**Acceptance Criteria**:
+- [ ] Full desktop Chat and Work surfaces share one Electron-hosted
+  React/TypeScript renderer path
+- [ ] Tray, windowing, and local packaging behave consistently across the suite
+
 ## Constraints
 
 - The stack for this subproject is Node.js/TypeScript
@@ -392,6 +424,8 @@ automation flow.
   records
 - `Cats Chat` and `Cats Work` are expected to launch from shared contracts,
   not from two unrelated product schemas
+- The current product path keeps the full desktop suite on Electron plus
+  React/TypeScript, with mobile treated as later companion scope
 
 ---
 

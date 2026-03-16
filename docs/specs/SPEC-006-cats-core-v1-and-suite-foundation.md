@@ -43,8 +43,10 @@ archive metadata.
 
 - `Cats Core v1` should remain small enough for fast parallel adoption.
 - The migration should preserve current chat-shell behavior where practical.
-- The suite should avoid frontend stack fragmentation while the shared
-  contracts are still settling.
+- The suite should keep the full desktop surfaces on one Electron-hosted
+  React/TypeScript path while the shared contracts are still settling.
+- Mobile, if added, should begin as companion scope rather than a second full
+  primary shell.
 - Packaging should aim for a desktop-first native-feeling experience with local
   onboarding.
 

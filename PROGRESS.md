@@ -86,6 +86,7 @@
 | Define `Cats Core v1` shared scope | [x] | Shared actors/resources, permissions, conversations, approvals, owner profile, and archive metadata are now the accepted planning baseline |
 | Document `Cats Chat` and `Cats Work` as parallel product tracks | [x] | Roadmap and architecture now assume a shared-core split instead of one future control-plane jump |
 | Document `cats-runtime` direct API and MCP facade responsibilities | [x] | Runtime boundary planning now distinguishes app APIs from orchestrator tool use |
+| Freeze the suite desktop stance | [x] | Electron plus React/TypeScript remains the current path; Tauri and Flutter are not on the active route |
 | Annotate exploratory Paperclip control-plane documents | [ ] | Existing research remains in-tree but needs explicit exploratory labels everywhere it appears |
 | Define the first implementation slices for shared storage and contracts | [ ] | Execution planning follows after the documentation pass lands |
 
@@ -114,6 +115,7 @@
 | Add Telegram and LINE orchestrator entrypoints | [ ] | External transport path still needs bot binding and relay logic |
 | Add escalation and takeover support | [ ] | HITL flows are defined in planning only |
 | Ship desktop-safe packaging and onboarding | [ ] | Electron host exists only as an ADR today |
+| Revisit limited mobile companion scope | [ ] | Mobile is not a full primary shell in the current plan |
 
 #### Acceptance Criteria
 
@@ -173,6 +175,8 @@
 #### Key Decisions
 
 - Use `React/Vite` for the renderer while keeping Electron deferred
+- The suite desktop direction is now Electron plus React/TypeScript; Flutter and
+  Tauri are outside the current execution path
 - Keep the Node server as the API and future desktop-safe integration boundary
 - Serve built static assets from the Node server after `npm run build`
 - Keep workspace persistence local and inspectable while runtime work stays behind `cats-runtime`

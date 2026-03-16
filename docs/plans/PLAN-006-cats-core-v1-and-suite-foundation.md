@@ -47,6 +47,8 @@ fixtures.
 - [ ] Add orchestrator bot bindings for Telegram and LINE style transports.
 - [ ] Add escalation and takeover flows tied to owner-facing channels.
 - [ ] Define packaged desktop onboarding requirements.
+- [ ] Keep the full desktop Chat surface on the shared Electron plus
+      React/TypeScript shell and treat mobile as later companion scope.
 
 **Deliverables**: Chat launch slice plan aligned to the shared contracts.
 
@@ -55,6 +57,8 @@ fixtures.
 - [ ] Add work dashboard, inbox, and work-item views above the shared contracts.
 - [ ] Reuse the same actor, conversation, approval, and archive metadata model.
 - [ ] Keep Work surfaces above the same `cats-runtime` boundary.
+- [ ] Reuse the same Electron-hosted React/TypeScript desktop shell decisions as
+      Chat for suite consistency.
 
 **Deliverables**: Work launch slice plan aligned to the shared contracts.
 
