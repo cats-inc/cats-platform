@@ -5,7 +5,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -139,5 +139,5 @@ From this point forward, the planned UX is:
 
 ---
 
-*Decision proposed: 2026-03-17*
-*Decision makers: Codex + user direction (pending wider review)*
+*Accepted: 2026-03-17*
+*Accepted by: user direction captured through Codex*
