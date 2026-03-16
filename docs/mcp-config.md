@@ -1,10 +1,16 @@
 # MCP Configuration Guide
 
-> Model Context Protocol (MCP) server configuration for AI agents.
+> Planning notes for how this project expects to use Model Context Protocol
+> (MCP).
 
 ## Overview
 
-MCP (Model Context Protocol) is the AAIF standard for connecting AI agents to external tools and data sources. This document describes how to configure MCP servers for this project.
+MCP (Model Context Protocol) is the tool-facing protocol this project plans to
+use for orchestrator-style agents. In the accepted architecture, MCP is not the
+primary app integration boundary. Product services still use direct
+`cats-runtime` APIs. MCP is the additional tool surface that lets an
+orchestrator call runtime capabilities without binding directly to provider
+adapters or CLI details.
 
 ## MCP Architecture
 
@@ -27,6 +33,30 @@ MCP (Model Context Protocol) is the AAIF standard for connecting AI agents to ex
    │(Database)│   │  (API)   │   │ (Files)  │
    └──────────┘   └──────────┘   └──────────┘
 ```
+
+## Current Project Stance
+
+- `cats-runtime` remains the main runtime boundary for all product code.
+- `cats-inc` product services should continue to call `cats-runtime` through
+  direct HTTP or SDK-style APIs.
+- A future `cats-runtime` MCP facade should expose a curated tool set for
+  orchestrators.
+- `cats-inc` should not require MCP just to render Chat or Work surfaces.
+
+## Planned MCP Tool Scope
+
+The exact tool names are still to be finalized, but the intended scope is:
+
+- session or worker creation
+- dispatching or routing work
+- querying run status or worker status
+- cancellation or interruption
+- artifact or output retrieval
+- safe escalation or approval handoff hooks where runtime context is needed
+
+MCP should not become a back door around product-owned permissions,
+conversations, or approval state. Those remain inside `cats-inc` and
+`Cats Core v1`.
 
 ## Configuration
 
@@ -104,21 +134,15 @@ Location: `.cursor/mcp.json` (project root)
 
 ## Project-Specific Configuration
 
-(Add your project's MCP server configurations here)
+The project does not ship a validated MCP server command today. When the
+`cats-runtime` MCP facade lands, this section should be replaced with the real
+command, arguments, and environment contract.
 
-### Server 1: [Name]
+Until then:
 
-**Purpose**: (What this server provides)
-
-```json
-{
-  "server-name": {
-    "command": "",
-    "args": [],
-    "env": {}
-  }
-}
-```
+- treat any MCP examples here as planning-only
+- do not document a fake production command
+- keep product services on the direct runtime API path
 
 ## Security Considerations
 
@@ -135,4 +159,4 @@ Location: `.cursor/mcp.json` (project root)
 
 ---
 
-*Last updated: YYYY-MM-DD*
+*Last updated: 2026-03-16*

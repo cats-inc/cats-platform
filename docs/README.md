@@ -15,9 +15,9 @@ These important documents live in the project root:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [requirements.md](./requirements.md) | Complete | Requirements for the current Phase 2 shell plus open Phase 3 gaps |
-| [architecture.md](./architecture.md) | Complete | System architecture for the Node server, renderer, and runtime boundary |
-| [api.md](./api.md) | Complete | Current REST API surface for workspace state, runtime actions, and export |
+| [requirements.md](./requirements.md) | Complete | Requirements for the current shell plus the accepted `Cats Core v1`, Chat, and Work planning direction |
+| [architecture.md](./architecture.md) | Complete | Current implementation architecture plus the planned shared-core suite topology |
+| [api.md](./api.md) | Complete | Current REST API surface plus planned shared-core and runtime-boundary expansion notes |
 
 ## Development Guides
 
@@ -25,10 +25,10 @@ These important documents live in the project root:
 |----------|--------|-------------|
 | [setup-guide.md](./setup-guide.md) | Complete | Environment setup |
 | [testing.md](./testing.md) | Complete | Current testing strategy and coverage boundaries |
-| [deployment.md](./deployment.md) | Partial | Manual local deployment is current; container and desktop packaging remain follow-up work |
+| [deployment.md](./deployment.md) | Complete | Current local deployment plus planned desktop-first packaged topology and onboarding direction |
 | [security-guidelines.md](./security-guidelines.md) | Template | Security policies placeholder inherited from bootstrap |
-| [mcp-config.md](./mcp-config.md) | Template | MCP configuration placeholder; not active for this project today |
-| [services.md](./services.md) | Complete | Service registry and port assignments |
+| [mcp-config.md](./mcp-config.md) | Partial | Planning notes for the future `cats-runtime` MCP facade used by orchestrators |
+| [services.md](./services.md) | Complete | Service registry, port assignments, and shared service-boundary notes |
 | [SCRIPT-STANDARDS.md](./SCRIPT-STANDARDS.md) | Template | Shared script standards reference |
 
 ## Scripts
@@ -45,12 +45,12 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide |
-| [terminology.md](./terminology.md) | Complete | Product and protocol terms, including pals, execution leases, and memory checkpoints |
+| [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current suite-foundation context |
+| [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Cats Core v1`, bot bindings, approvals, and owner profile |
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
-| [specs/](./specs/) | Complete | Feature specifications, including `SPEC-001` through `SPEC-005` |
-| [plans/](./plans/) | Complete | Implementation plans, including `PLAN-001` through `PLAN-005` |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including `ADR-001` through `ADR-006` |
+| [specs/](./specs/) | Complete | Feature specifications, including the accepted suite-foundation planning docs |
+| [plans/](./plans/) | Complete | Implementation plans, including the accepted suite-foundation planning docs |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including the accepted `Cats Core v1` and runtime-boundary refinements |
 
 **Legend**: Complete | Partial | Template
 
@@ -58,7 +58,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [research/](./research/) | Partial | Research notes for Paperclip-informed control-plane evolution |
+| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution |
 
 ## Context-Driven Development
 
@@ -81,11 +81,11 @@ When working on this project:
 
 ## Current Documentation Gaps
 
-The main product docs are current, but these areas still need dedicated passes:
+The main suite-foundation docs are current, but these areas still need dedicated passes:
 
-- deployment assets and implementation details for container or desktop packaging
-- project-specific security and MCP notes
-- A2A and terminology references once cross-agent workflows stabilize
+- implementation details for shared storage, transport relays, and desktop packaging
+- project-specific security notes beyond the inherited template
+- A2A and automation references once cross-agent workflows stabilize
 
 ## Document Standards
 

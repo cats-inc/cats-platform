@@ -11,8 +11,10 @@
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global pals, assignments, transcript, and orchestrator surfaces |
 | Workspace Product Features | Completed | Basic runtime-backed setup, global pal registry, channel assignment, mention routing, transcript export, and execution-aware state landed |
-| Documentation | In Progress | Core status and product docs are aligned; bootstrap template docs still need project-specific follow-up |
-| Productization Backlog | Not Started | Split-view, richer orchestration, desktop host, and alternate entrypoints remain |
+| Suite Foundation Planning | In Progress | `Cats Core v1`, Chat/Work shared contracts, and the `cats-runtime` API plus MCP split are now being documented for parallel teams |
+| Documentation | In Progress | Core status and product docs are being realigned around the shared suite foundation |
+| Cats Chat Launch Track | Not Started | Chat launch features such as approvals, escalation, takeover, and desktop packaging remain ahead |
+| Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
 
@@ -70,9 +72,9 @@
 
 ---
 
-### WP-3: Productization Backlog
+### WP-3: Suite Foundation Planning
 
-**Status**: Not Started
+**Status**: In Progress
 **Assigned**: Codex
 **Priority**: P2
 **Depends on**: WP-2
@@ -81,18 +83,67 @@
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Add transcript normalization and ingestion handoff hooks | [ ] | Export exists; post-export normalization does not |
-| Add split-view workspace surfaces | [ ] | The current renderer is still chat-first |
-| Add operator-grade activity indicators and richer runtime state | [ ] | Current UI is request/response, not live-streamed |
-| Add alternate entrypoints and desktop-safe packaging seams | [ ] | Electron/tray and Telegram remain deferred; desktop topology is documented in ADR-003 |
-| Refresh deployment assets inherited from bootstrap | [ ] | Docker and desktop packaging need a dedicated follow-up pass |
+| Define `Cats Core v1` shared scope | [x] | Shared actors/resources, permissions, conversations, approvals, owner profile, and archive metadata are now the accepted planning baseline |
+| Document `Cats Chat` and `Cats Work` as parallel product tracks | [x] | Roadmap and architecture now assume a shared-core split instead of one future control-plane jump |
+| Document `cats-runtime` direct API and MCP facade responsibilities | [x] | Runtime boundary planning now distinguishes app APIs from orchestrator tool use |
+| Annotate exploratory Paperclip control-plane documents | [ ] | Existing research remains in-tree but needs explicit exploratory labels everywhere it appears |
+| Define the first implementation slices for shared storage and contracts | [ ] | Execution planning follows after the documentation pass lands |
 
 #### Acceptance Criteria
 
-- [ ] Exported transcripts can be normalized for downstream ingestion without manual edits
-- [ ] The workspace can show chat alongside at least one secondary pane
-- [ ] Operators can see richer session/activity state than the current request result banners
-- [ ] Desktop-host and alternate-entrypoint decisions are documented and implemented behind stable seams
+- [x] The suite foundation is documented in roadmap, requirements, architecture, and ADR/spec/plan form
+- [x] `Cats Core v1` scope is explicit enough for Chat and Work teams to share a contract
+- [x] The runtime boundary is documented as direct product API plus planned MCP facade
+- [ ] The first implementation slices for shared storage and transport entrypoints are scheduled
+
+---
+
+### WP-4: Cats Chat Launch Track
+
+**Status**: Not Started
+**Assigned**: Codex
+**Priority**: P2
+**Depends on**: WP-3
+
+#### Tasks
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Add operator-grade chat activity and split-view surfaces | [ ] | Current renderer remains phase-2 shell quality |
+| Add interactive delegation and owner approval loop | [ ] | Dispatch planning before worker execution is not implemented yet |
+| Add Telegram and LINE orchestrator entrypoints | [ ] | External transport path still needs bot binding and relay logic |
+| Add escalation and takeover support | [ ] | HITL flows are defined in planning only |
+| Ship desktop-safe packaging and onboarding | [ ] | Electron host exists only as an ADR today |
+
+#### Acceptance Criteria
+
+- [ ] Operators can approve or redirect orchestrator plans before dispatch
+- [ ] External transport channels can route through a single orchestrator bot
+- [ ] Desktop packaging can start local services with guided setup
+
+---
+
+### WP-5: Cats Work Launch Track
+
+**Status**: Not Started
+**Assigned**: Codex
+**Priority**: P2
+**Depends on**: WP-3
+
+#### Tasks
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Add work dashboard and inbox surfaces | [ ] | No Work-specific UI exists yet |
+| Add project/work-item views on top of shared contracts | [ ] | Current model stops at channels and transcripts |
+| Reuse Chat actors/resources, permissions, and archive metadata | [ ] | Shared core must land before Work diverges |
+| Keep Work surfaces decoupled from runtime internals | [ ] | `cats-runtime` remains below the product layer |
+
+#### Acceptance Criteria
+
+- [ ] `Cats Work` can render useful work views without inventing a separate schema
+- [ ] Chat and Work share the same actor, conversation, approval, and owner-profile contracts
+- [ ] Work surfaces stay above the same runtime boundary used by Chat
 
 ---
 
@@ -113,7 +164,7 @@
 - [x] Decide the concrete frontend rendering approach for the product UI
 - [x] Replace the placeholder app shell with the real workspace model
 - [x] Add persistence and transcript export paths
-- [ ] Productization follow-up work continues in WP-3
+- [ ] Suite-foundation and launch-track follow-up work continues in WP-3 through WP-5
 
 ### WP-2: Workspace Shell Delivery
 
@@ -133,8 +184,8 @@
 - [x] Add a local channel setup flow with persisted workspace updates
 - [x] Add runtime-backed channel actions and composer flows
 - [x] Add a basic mention model, global pal registry, and transcript export
-- [ ] Productization follow-up work continues in WP-3
+- [ ] Suite-foundation and launch-track follow-up work continues in WP-3 through WP-5
 
 ---
 
-*Last updated: 2026-03-13*
+*Last updated: 2026-03-16*

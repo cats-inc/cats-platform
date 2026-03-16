@@ -1,7 +1,7 @@
 # Deployment Guide
 
 > Deployment procedures and infrastructure documentation for the current
-> `cats-inc` slice.
+> `cats-inc` slice and the planned packaged Cats suite topology.
 
 ## Environments
 
@@ -12,7 +12,7 @@
 | Containerized local | `http://127.0.0.1:8181` | Scaffold exists, but container assets need refresh before being treated as current |
 | Staging | TBD | Pre-production testing |
 | Production | TBD | Live environment |
-| Desktop distributable | Planned | Electron or another desktop host is not implemented yet |
+| Desktop distributable | Planned | Preferred first public distribution path for `Cats Chat` and `Cats Work` |
 
 ## Deployment Methods
 
@@ -41,9 +41,13 @@ documented:
 
 - Electron `main` owns tray, windows, startup, and process supervision
 - `cats-runtime` runs as a managed local process
-- `cats-inc` runs as a managed local process
-- The BrowserWindow loads the local `cats-inc` app URL
+- `cats-inc` runs as a managed local process and hosts the first `Cats Core v1`
+  APIs or modules
+- The BrowserWindow loads local `Cats Chat` and `Cats Work` URLs from
+  `cats-inc`
 - The renderer does not talk to provider CLIs or spawn local runtimes directly
+- The packaged experience should guide owner profile, model credentials, and
+  optional bot-binding setup rather than requiring terminal steps
 
 See
 [ADR-003](./decisions/003-electron-host-manages-local-services.md)
@@ -70,7 +74,7 @@ for the planned desktop host model.
 - **Logs**: stdout from the Node process
 - **Health**: `GET /health`
 - **Renderer**: served by the Node server after `npm run build`
-- **Desktop host**: not implemented yet
+- **Desktop host**: planned to supervise local services and onboarding
 
 ## Troubleshooting
 
@@ -87,6 +91,14 @@ entrypoint.
 **Solution**: Refresh the inherited container assets before using Docker as an
 official deployment path.
 
+### Issue 3: Packaged desktop onboarding does not exist yet
+
+**Symptoms**: Non-technical users still need to edit `.env` files or start
+multiple local services manually.
+**Solution**: Treat packaged desktop onboarding as a product requirement, not as
+an optional polish item. The intended first-run flow should capture model
+credentials, owner profile, and optional transport bindings.
+
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-16*

@@ -10,12 +10,21 @@
 
 ## Project Context
 
-- `cats-inc` is the long-term product shell for the cats initiative
+- `cats-inc` is the current product shell and planning repo for the cats suite
 - `agent-workspace-poc` is a behavior reference, not a base to keep scaling
 - `crew-chat-poc` is the best local reference for how upper-layer apps should
   talk to `cats-runtime`
+- `Cats Core v1` is now the shared contract layer for both `Cats Chat` and
+  `Cats Work`
+- `Cats Chat` and `Cats Work` are parallel product tracks and should not invent
+  divergent schemas for shared actors, conversations, approvals, or owner
+  profile data
 - App code MUST depend on `cats-runtime`, not `agent-fleet`
+- Product services should use direct `cats-runtime` APIs; MCP is a planned
+  supplemental tool surface for orchestrator-style agents
 - Phase 1 keeps the implementation dependency-light with built-in Node APIs
+- Paperclip-derived control-plane docs remain exploratory unless a newer ADR
+  explicitly promotes them into the execution path
 
 ## A2A Collaboration (Optional)
 
@@ -82,4 +91,4 @@ Before completing a task or handing off:
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-16*

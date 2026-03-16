@@ -10,6 +10,19 @@
 | `cats-inc` HTTP app | 8181 | TCP | Product-facing app shell and health endpoints | `npm start` |
 | `cats-inc` Vite dev server | 5173 | TCP | Renderer development server with `/api` proxy | `npm run dev:web` |
 
+## Planned Shared Service Boundaries
+
+- `Cats Core v1` is a required shared contract for `Cats Chat` and
+  `Cats Work`, but it does not have a dedicated network port yet. The current
+  planning assumption is that it starts co-hosted inside `cats-inc` until a
+  stronger boundary is needed.
+- `cats-runtime` remains the upstream runtime dependency for this project. Its
+  direct API remains the primary app-facing boundary, while a future MCP facade
+  is intended for orchestrator-style tool use rather than for general app
+  routing.
+- Do not assign a standalone `Cats Core` port until the implementation proves
+  that co-hosting inside `cats-inc` blocks team parallelism or packaging.
+
 ## Environment Variables
 
 Port numbers should be configurable via environment variables so developers can override defaults when needed.
@@ -39,4 +52,4 @@ This project was created from **project-bootstrap**, which maintains a central p
 
 ---
 
-*Last updated: 2026-03-13*
+*Last updated: 2026-03-16*

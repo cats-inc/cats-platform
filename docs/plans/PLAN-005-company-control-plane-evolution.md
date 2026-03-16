@@ -1,6 +1,10 @@
 # PLAN-005: Company Control Plane Evolution
 
-Status: Draft (Unreviewed)
+Status: Draft (Exploratory, Unreviewed)
+
+Note: This plan remains as exploratory Paperclip-informed research. It is not
+the current execution path for the accepted `Cats Core v1` and Chat/Work
+parallel-track plan.
 
 ## Scope
 

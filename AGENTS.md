@@ -75,16 +75,40 @@ If an agent realizes it has violated a MUST/MUST NOT directive:
 
 ## Project Overview
 
-**Purpose**: Flagship Node.js/TypeScript product shell for the cats initiative.
+**Purpose**: Shared planning and product application repo for the cats suite.
 
 **Background**: `agent-workspace-poc` proved the workspace concept but is a
-Python POC directly coupled to `agent-fleet`. `cats-inc` is the long-term
-product application and MUST depend on `cats-runtime` as its runtime boundary.
+Python POC directly coupled to `agent-fleet`. `cats-inc` now carries two jobs:
+it is the current Node.js/TypeScript product shell, and it is the planning home
+for shared `Cats Core v1` contracts that both `Cats Chat` and `Cats Work` must
+reuse. The project MUST continue to depend on `cats-runtime` as its runtime
+boundary.
 
 **Key Features**:
-- Multi-channel workspace shell above runtime-backed agent sessions
-- Global orchestrator surface distinct from per-channel participants
-- Runtime integration through `cats-runtime`, not direct `agent-fleet` calls
+- Shared `Cats Core v1` domain contracts for actors, channels, approvals,
+  owner profile, and archive metadata
+- Chat-first workspace shell above runtime-backed agent sessions
+- Planned `Cats Work` surfaces that reuse the same shared product contracts
+- Runtime integration through `cats-runtime` direct APIs, with a planned MCP
+  facade for orchestrator-style tool use
+
+---
+
+## Current Product Direction
+
+- `Cats Chat` is the first launch surface and remains the main implementation
+  focus inside this repo.
+- `Cats Work` is expected to follow immediately after `Cats Chat`, so shared
+  contracts MUST be defined before the product surfaces diverge.
+- `Cats Core v1` should stay minimal: shared identity, actors/resources,
+  permissions, conversations, bot bindings, tasks/approvals, owner profile, and
+  archive metadata.
+- `cats-runtime` remains the only runtime boundary. Product services should use
+  direct APIs; MCP is an additional tool surface for orchestrators, not a
+  replacement boundary.
+- The Paperclip-derived control-plane documents remain useful research, but
+  they are exploratory and not the current execution path unless explicitly
+  reactivated.
 
 ---
 

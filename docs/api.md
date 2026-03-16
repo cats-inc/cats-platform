@@ -13,6 +13,11 @@ The current Phase 2 API provides:
 - runtime-backed channel activation and message routing
 - transcript export for later ingestion
 
+This document also records the accepted planning direction for the next API
+layers. Those shared-core and orchestration APIs are not implemented yet, but
+they are part of the current product contract work for parallel Chat and Work
+development.
+
 ## Base URL
 
 ```text
@@ -282,6 +287,36 @@ Abbreviated example response:
 }
 ```
 
+## Planned Shared-Core API Families
+
+The following families are planned but not implemented today. They are listed
+here so Chat and Work planning can converge on one surface instead of diverging
+into separate private schemas.
+
+- `/api/core/actors`
+  - shared human, orchestrator, worker, stakeholder, and virtual-friend
+    records
+- `/api/core/conversations`
+  - chat threads, work threads, transport-linked threads, and private
+    escalation channels
+- `/api/core/bot-bindings`
+  - one external bot or transport identity mapped to one orchestrator
+- `/api/core/tasks`
+  - product-owned task, run, approval, escalation, and takeover state
+- `/api/core/owner-profile`
+  - structured owner preferences and collaboration rules
+- `/api/core/archive`
+  - archive eligibility and downstream RAG handoff metadata
+
+## Planned Runtime Access Split
+
+- Product services continue to call `cats-runtime` through direct APIs for
+  health, session lifecycle, routing, and operational control.
+- Orchestrator-style agents are expected to gain a planned MCP tool surface
+  exposed by `cats-runtime`.
+- MCP is therefore an additional runtime access mode, not a replacement for the
+  app-facing API described in this document.
+
 ## Error Responses
 
 Errors use a minimal payload:
@@ -316,7 +351,9 @@ Errors use a minimal payload:
   API does not expose live push or WebSocket streaming yet
 - Future session and channel APIs should extend this contract without leaking
   backend-specific transport details
+- Planned shared-core APIs should be added as new route families rather than
+  overloading the current phase-2 workspace routes with unrelated concerns
 
 ---
 
-*Last updated: 2026-03-13*
+*Last updated: 2026-03-16*
