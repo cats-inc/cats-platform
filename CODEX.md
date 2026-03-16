@@ -87,10 +87,46 @@ To sync skills after changes:
 - Product direction: rebuild `agent-workspace-poc` behavior on Node/TS while
   keeping `cats-runtime` as the only runtime boundary
 
+### Working Product Memory
+
+These notes capture the current user direction for `cats-inc`. They are
+working memory for Codex, not yet a ratified product spec or ADR.
+
+- The current `cats-inc` repo name is likely temporary and may later conflict
+  with the intended broader brand or GitHub org/user rename.
+- The first real product line is a chat product, not a narrow "one-man digital
+  company" shell. It should feel like a general chat app that also supports
+  agent orchestration.
+- A later product line may exist as `Cats Work`, with dashboards, org views,
+  backlog, finance, and other company-control-plane surfaces. That line should
+  be treated as future work, not pulled into the current chat scope by default.
+- `cats-runtime` is expected to be open source and remains the runtime boundary
+  for the product. The app should not couple directly to lower-level runtime
+  internals.
+- External entrypoints such as Telegram Bot and LINE@ are part of the intended
+  MVP shape. In those channels, the user expects a single bot-facing
+  orchestrator surface rather than many visible workers.
+- The orchestrator may itself run as a worker backed by `cats-runtime`, but in
+  product terms it has elevated responsibilities: delegation, summarization,
+  escalation, takeover handoff, and owner-facing option presentation before
+  dispatch.
+- Inside the main app, users should still be able to chat directly with
+  non-orchestrator pals/resources. The "single orchestrator bot" constraint is
+  mainly for external messaging transports like Telegram or LINE.
+- Worker conversations, user conversations, and external transport transcripts
+  should be persisted. Operational search should be available from the app, and
+  archived material is expected to flow into a separate RAG/memory layer later.
+- The system should eventually support "Know Your Boss" behavior: orchestrators
+  and workers adapting to the owner's preferences, escalation thresholds, and
+  decision style.
+- Packaging and onboarding matter. The product should move toward a
+  native-feeling desktop experience with simple installation and guided setup,
+  especially to reduce the friction of deploying local runtime dependencies.
+
 ---
 
 ## Maintenance
 
 This file is maintained by Codex only. Other agents should not modify this file.
 
-Last updated: 2026-01-05
+Last updated: 2026-03-16

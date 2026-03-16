@@ -92,7 +92,69 @@ To sync skills after changes:
 
 ### Project-Specific Context
 
-(Add any project-specific context or conventions that Claude should be aware of)
+#### Cats 產品生態系定位
+
+cats-inc 是 Cats 生態系的旗艦產品應用，取代 agent-workspace-poc 作為長期產品基礎。
+
+#### 產品線規劃
+
+- **Cats Chat**：對標 chat 軟體，是最先落地的產品
+  - 獨立 mobile app（至少 web-wrapped，如 Flutter/Tauri/Electron）
+  - 使用者可直接 1:1 對任何 worker 私聊發任務
+  - Telegram/LINE 整合：只有一個 Orchestrator BOT 作為單一入口
+- **Cats Work**（Phase N）：Dashboard、戰情室、財報、組織圖、專案管理、backlog
+- **Cats Core**（待決）：跨 Chat/Work 的共用資料層（predefined resources 如員工/好友）
+
+#### Orchestrator 架構
+
+- Orchestrator 本身也是一個 worker，可能跑在 cats-runtime 的 api backend
+- 設計方向：cats-runtime 包成 MCP server，Orchestrator 作為 MCP client 使用
+- 賦予 coordinate 的 SKILL.md + 權限（可拉起其他 worker）
+- 發包工作前應與 owner 有幾輪互動，提供選項讓 owner 優化決策
+
+#### Telegram/LINE 整合情境
+
+- **情境一**：Owner 直接使喚 Orchestrator BOT
+- **情境二（Stakeholder）**：Owner + BOT + Stakeholder 同一 channel
+  - BOT 可先行處理簡單客戶請求
+  - 重大/緊急事項 escalate 到 owner（透過私人 channel）
+  - Owner 可選擇真人回覆或 takeover BOT 身份回覆
+  - Owner 可進入休假模式，BOT 自主判斷處理或 escalate
+
+#### 資料持久化與知識系統
+
+- 所有對話持久化到資料庫，平時可全文檢索（透過 MCP 或 SKILL）
+- Archive 後進入 RAG 系統，算出 embeddings 作為 worker 跨 Chat 的 knowledge
+- 應搭配權限控制
+
+#### Know Your Boss
+
+- Worker/Orchestrator 應認識老闆，adaptive 優化與 owner 的合作
+- 知道 owner 的決策偏好
+- 實作方式待定：RAG、memory injection、或兩者結合
+
+#### 部署體驗目標
+
+- 解決非技術人員難以 deploy 的問題（OpenClaw 的痛點）
+- 簡單安裝 + 引導設定即可開始使用
+- 體驗至少像 native software（如 Claude Desktop）
+
+#### 相關子專案關係
+
+- **cats-runtime**：底層 runtime，提供 cli-backend（現有）+ api-backend（另一組人實作中）
+- **cats-inc**（本專案）：旗艦產品應用，消費 cats-runtime
+- **paperclip**（submodule）：參考用 orchestration platform，可借鑑 worktree isolation 概念
+- **personal-rag-system**：未來 archive 對話的 RAG 後端候選
+
+#### Paperclip 比較筆記（2026-03-16）
+
+cats-runtime vs paperclip CLI runtime 比較：
+- 兩者都是 subprocess orchestration 模式，spawn CLI 讓 CLI 自己處理認證
+- 都不偷 OAuth token，但 paperclip 的 Codex adapter 會 symlink auth.json（較 hacky）
+- cats-runtime provider 廣度領先：8 家（Claude, Gemini, Codex, Copilot, Cursor, Augment, Kiro, OpenCode）
+- paperclip 有 7 adapter，但 Pi + OpenClaw 本質同一家，獨有的是 Pi/OpenClaw 生態系
+- paperclip 值得借鑑的：worktree isolation 概念
+- API 支援不列入比較，因為 cats-runtime 計劃另建 api-runtime
 
 ---
 
@@ -100,4 +162,4 @@ To sync skills after changes:
 
 This file is maintained by Claude only. Other agents should not modify this file.
 
-Last updated: <!-- Update this when making changes -->
+Last updated: 2026-03-16
