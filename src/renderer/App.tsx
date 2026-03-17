@@ -579,18 +579,16 @@ export default function App() {
         </div>
 
         <div className="sidebarFooter">
-          <div className="profileBadge">KC</div>
-          <div className="sidebarFooterMeta">
-            <strong>Kenny Chou</strong>
-            <p>Max plan</p>
-          </div>
           <button
-            className="footerSettingsButton"
+            className="sidebarFooterButton"
             type="button"
             onClick={() => setAccountMenuOpen(!accountMenuOpen)}
             aria-label="Account menu"
           >
-            ...
+            <div className="profileBadge">KC</div>
+            <div className="sidebarFooterMeta">
+              <strong>Kenny Chou</strong>
+            </div>
           </button>
           {accountMenuOpen ? (
             <div className="accountMenu">

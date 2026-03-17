@@ -631,18 +631,22 @@ textarea {
 
 /* Account menu and Settings entry */
 
-.footerSettingsButton {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border: 1px solid var(--border);
+.sidebarFooterButton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--muted);
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
   cursor: pointer;
+}
+
+.sidebarFooterButton:hover {
+  background: var(--sidebar-hover-bg);
 }
 
 .accountMenu {
