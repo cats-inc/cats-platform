@@ -952,7 +952,7 @@ textarea {
 }
 
 .claudeShellSidebarCollapsed {
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -969,18 +969,33 @@ textarea {
   display: none;
 }
 
+.sidebarCollapsed .sidebarInner {
+  padding: 18px 0 10px;
+  align-items: center;
+}
+
 .sidebarCollapsed .brandRow {
   justify-content: center;
   padding: 6px 0 12px;
 }
 
+.sidebarCollapsed .navGroup {
+  width: 100%;
+  align-items: center;
+}
+
 .sidebarCollapsed .navItem {
   justify-content: center;
-  padding: 8px 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0 auto;
 }
 
 .sidebarCollapsed .sidebarFooter {
   justify-content: center;
+  margin: 0 0 12px;
+  padding: 10px 0;
 }
 
 .sidebarCollapsed .sidebarFooterButton {
