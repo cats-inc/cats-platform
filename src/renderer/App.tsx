@@ -7,7 +7,7 @@ import {
   fetchAppShell,
   updateSelectedChannel,
 } from './api';
-import { getDefaultModel, getProviderModels, PAL_PROVIDER_ORDER } from './providerCatalog';
+import { getDefaultModel, getProviderDisplayName, getProviderModels, PAL_PROVIDER_ORDER } from './providerCatalog';
 
 type LoadState =
   | { status: 'loading' }
@@ -54,9 +54,10 @@ function sessionTone(status: string): string {
 }
 
 function executionLabel(pal: WorkspacePal): string {
+  const name = getProviderDisplayName(pal.defaultExecutionTarget.provider);
   return pal.defaultExecutionTarget.model
-    ? `${pal.defaultExecutionTarget.provider} / ${pal.defaultExecutionTarget.model}`
-    : pal.defaultExecutionTarget.provider;
+    ? `${name} / ${pal.defaultExecutionTarget.model}`
+    : name;
 }
 
 export default function App() {
@@ -271,7 +272,7 @@ export default function App() {
         >
           {PAL_PROVIDER_ORDER.map((provider) => (
             <option key={provider} value={provider}>
-              {provider}
+              {getProviderDisplayName(provider)}
             </option>
           ))}
         </select>

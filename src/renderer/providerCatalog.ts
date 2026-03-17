@@ -10,8 +10,12 @@ export const PAL_PROVIDER_ORDER = [
   'copilot',
   'opencode',
   'auggie',
+  'pi',
+  'junie',
   'cursor',
   'kiro',
+  'goose',
+  'ollama',
 ] as const;
 
 export type PalProviderId = (typeof PAL_PROVIDER_ORDER)[number];
@@ -47,6 +51,12 @@ export const PAL_PROVIDER_MODELS: Record<PalProviderId, ProviderModelOption[]> =
     { value: 'claude opus 4.6', label: 'claude opus 4.6' },
     { value: 'sonnet 4.6', label: 'sonnet 4.6' },
   ],
+  pi: [
+    { value: 'openai-codex/gpt-5.4', label: 'openai-codex gpt-5.4 (default)' },
+  ],
+  junie: [
+    { value: 'gpt-5.4', label: 'gpt-5.4 (default)' },
+  ],
   cursor: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)' },
     { value: 'claude-opus-4-6', label: 'claude 4.6 opus' },
@@ -57,7 +67,19 @@ export const PAL_PROVIDER_MODELS: Record<PalProviderId, ProviderModelOption[]> =
     { value: 'deepseek-3.2', label: 'deepseek-3.2' },
     { value: 'minimax-m2.1', label: 'minimax-m2.1' },
   ],
+  goose: [
+    { value: 'gpt-5.2-codex', label: 'gpt-5.2-codex (default)' },
+  ],
+  ollama: [
+    { value: 'qwen2.5-coder:7b', label: 'qwen2.5-coder:7b (default)' },
+  ],
 };
+
+export function getProviderDisplayName(provider: string): string {
+  if (provider === 'ollama') return 'Ollama';
+  const name = provider.charAt(0).toUpperCase() + provider.slice(1);
+  return `${name}-CLI`;
+}
 
 export function getProviderModels(provider: string): ProviderModelOption[] {
   return PAL_PROVIDER_MODELS[provider as PalProviderId] ?? [];
