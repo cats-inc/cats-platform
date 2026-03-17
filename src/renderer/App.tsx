@@ -132,6 +132,7 @@ export default function App() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [sidebarPinned, setSidebarPinned] = useState(true);
   const [sidebarHoverOpen, setSidebarHoverOpen] = useState(false);
+  const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
 
   const sidebarExpanded = sidebarPinned || sidebarHoverOpen;
 
@@ -158,11 +159,7 @@ export default function App() {
   }, []);
 
   function onOpenChatsOverview(): void {
-    setSurface('chats');
-    setChatView('overview');
-    setDraftingNewChat(false);
-    setAddPalOpen(false);
-    setFeedback('');
+    void onStartNewChat();
   }
 
   function onToggleSidebarPin(): void {
@@ -413,9 +410,8 @@ export default function App() {
   const providerModels = getProviderModels(palForm.provider);
   const hasConversationStarted =
     selectedChannel?.messages.some((message) => message.senderKind !== 'system') ?? false;
-  const showDraftComposer = surface === 'chats' && chatView === 'channel' && draftingNewChat;
-  const showChatOverview =
-    surface === 'chats' && !showDraftComposer && (chatView === 'overview' || !selectedChannel);
+  const showDraftComposer = surface === 'chats' && (draftingNewChat || !selectedChannel);
+  const showChatOverview = false;
 
   const palCreationForm = (
     <form
@@ -523,7 +519,12 @@ export default function App() {
               onClick={() => void onStartNewChat()}
               type="button"
             >
-              <span className="navGlyph" aria-hidden="true" />
+              <span className="navGlyph" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11.5 1.5l3 3-9 9H2.5v-3z" />
+                  <path d="M10 3l3 3" />
+                </svg>
+              </span>
               <span className="navLabel">New chat</span>
             </button>
           </nav>
@@ -559,23 +560,32 @@ export default function App() {
                       onClick={() => void onSelect(channel.id)}
                       type="button"
                     >
-                      <div className="recentTitleRow">
-                        <strong>{presentChannelTitle(channel.title)}</strong>
-                        <span className={sessionTone(channel.status)}>{channel.status}</span>
-                      </div>
-                      {presentChannelTopic(channel.topic) ? (
-                        <p>{presentChannelTopic(channel.topic)}</p>
-                      ) : null}
+                      <strong>{presentChannelTitle(channel.title)}</strong>
                     </button>
                     <button
-                      className="recentDeleteButton"
+                      className="recentOverflowButton"
                       type="button"
-                      aria-label={`Delete ${channel.title}`}
-                      disabled={busy === `channel:delete:${channel.id}`}
-                      onClick={() => void onDeleteChannel(channel.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOverflowMenuOpenId(overflowMenuOpenId === channel.id ? null : channel.id);
+                      }}
                     >
-                      {busy === `channel:delete:${channel.id}` ? '...' : 'x'}
+                      ...
                     </button>
+                    {overflowMenuOpenId === channel.id ? (
+                      <div className="recentOverflowMenu">
+                        <button
+                          type="button"
+                          disabled={busy === `channel:delete:${channel.id}`}
+                          onClick={() => {
+                            setOverflowMenuOpenId(null);
+                            void onDeleteChannel(channel.id);
+                          }}
+                        >
+                          {busy === `channel:delete:${channel.id}` ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    ) : null}
                   </article>
                 ))
               ) : (
@@ -760,39 +770,33 @@ export default function App() {
         ) : showDraftComposer ? (
           <div className="viewShell viewShellDraft">
             <section className="draftShell">
+              <div className="draftGreeting"><h1>How can I help you today?</h1></div>
               <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
                 <textarea
                   className="composerInput"
-                  rows={5}
-                  placeholder="Message"
+                  rows={1}
+                  placeholder="Message Cats..."
                   value={composerDraft}
                   onChange={(event) => setComposerDraft(event.target.value)}
                   onKeyDown={(event) => void onComposerKeyDown(event)}
                 />
-                <div className="composerFooter composerFooterTight">
-                  <button
-                    className="sendButton"
-                    disabled={!composerDraft.trim() || busy === 'message:send'}
-                    type="submit"
-                  >
-                    {busy === 'message:send' ? 'Sending...' : 'Send'}
-                  </button>
-                </div>
+                <button
+                  className="sendButton"
+                  disabled={!composerDraft.trim() || busy === 'message:send'}
+                  type="submit"
+                >
+                  {busy === 'message:send' ? '...' : '\u2191'}
+                </button>
               </form>
+              <div className="composerFooterMinimal">
+                <span className="composerHint">Enter to send</span>
+              </div>
             </section>
           </div>
         ) : selectedChannel ? (
           <div className="viewShell viewShellChannel">
             <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
               <header className="channelTopBar">
-                <div className="channelIdentity">
-                  <p className="sectionLabel">Chat</p>
-                  <h1>{presentChannelTitle(selectedChannel.title)}</h1>
-                  {presentChannelTopic(selectedChannel.topic) ? (
-                    <p className="heroNote">{presentChannelTopic(selectedChannel.topic)}</p>
-                  ) : null}
-                </div>
-
                 <div className="channelParticipantsBar">
                   <div className="channelParticipantsList">
                     {activeAssignedPals.length > 0 ? (
@@ -815,7 +819,7 @@ export default function App() {
                       setPalForm(emptyPalForm());
                     }}
                   >
-                    + Pal
+                    +
                   </button>
                 </div>
               </header>
@@ -827,17 +831,20 @@ export default function App() {
                   <div className="transcriptList">
                     {selectedChannel.messages.map((message) => (
                       <article key={message.id} className={messageTone(message.senderKind)}>
-                        <div className="transcriptMessageTop">
-                          <strong>{message.senderName}</strong>
-                          <span>{message.senderKind}</span>
-                        </div>
+                        {message.senderKind !== 'user' ? (
+                          <div className="transcriptMessageTop">
+                            <strong>{message.senderName}</strong>
+                          </div>
+                        ) : null}
                         <p>{message.body}</p>
                       </article>
                     ))}
                   </div>
                 </section>
               ) : (
-                <section className="freshChatIntro" />
+                <section className="freshChatIntro">
+                  <div className="draftGreeting"><h1>How can I help you today?</h1></div>
+                </section>
               )}
 
               <form
@@ -850,22 +857,23 @@ export default function App() {
               >
                 <textarea
                   className="composerInput"
-                  rows={hasConversationStarted ? 4 : 5}
-                  placeholder="How can I help you today?"
+                  rows={1}
+                  placeholder="Message Cats..."
                   value={composerDraft}
                   onChange={(event) => setComposerDraft(event.target.value)}
                   onKeyDown={(event) => void onComposerKeyDown(event)}
                 />
-                <div className="composerFooter composerFooterTight">
-                  <button
-                    className="sendButton"
-                    disabled={!composerDraft.trim() || busy === 'message:send'}
-                    type="submit"
-                  >
-                    {busy === 'message:send' ? 'Sending...' : 'Send'}
-                  </button>
-                </div>
+                <button
+                  className="sendButton"
+                  disabled={!composerDraft.trim() || busy === 'message:send'}
+                  type="submit"
+                >
+                  {busy === 'message:send' ? '...' : '\u2191'}
+                </button>
               </form>
+              <div className="composerFooterMinimal">
+                <span className="composerHint">Enter to send</span>
+              </div>
             </section>
           </div>
         ) : null}
