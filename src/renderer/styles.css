@@ -969,9 +969,23 @@ textarea {
   display: none;
 }
 
-.sidebarCollapsed .navItem,
+.sidebarCollapsed .brandRow {
+  justify-content: center;
+  padding: 6px 0 12px;
+}
+
+.sidebarCollapsed .navItem {
+  justify-content: center;
+  padding: 8px 0;
+}
+
 .sidebarCollapsed .sidebarFooter {
   justify-content: center;
+}
+
+.sidebarCollapsed .sidebarFooterButton {
+  justify-content: center;
+  width: auto;
 }
 
 .sidebarInner {
