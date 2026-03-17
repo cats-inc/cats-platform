@@ -1302,7 +1302,7 @@ textarea {
 }
 
 .recentSection > .sectionLabel {
-  display: none;
+  display: block;
 }
 
 .draftGreeting {

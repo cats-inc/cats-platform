@@ -130,11 +130,8 @@ export default function App() {
   const [addPalOpen, setAddPalOpen] = useState(false);
   const [addPalTab, setAddPalTab] = useState<'existing' | 'new'>('existing');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [sidebarPinned, setSidebarPinned] = useState(true);
-  const [sidebarHoverOpen, setSidebarHoverOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
-
-  const sidebarExpanded = sidebarPinned || sidebarHoverOpen;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -162,15 +159,10 @@ export default function App() {
     void onStartNewChat();
   }
 
-  function onToggleSidebarPin(): void {
-    setSidebarPinned((current) => {
-      const nextPinned = !current;
-      if (nextPinned) {
-        setSidebarHoverOpen(false);
-      } else {
-        setAccountMenuOpen(false);
-      }
-      return nextPinned;
+  function onToggleSidebar(): void {
+    setSidebarOpen((current) => {
+      if (current) setAccountMenuOpen(false);
+      return !current;
     });
   }
 
@@ -479,24 +471,13 @@ export default function App() {
   return (
     <div
       className={
-        sidebarExpanded
+        sidebarOpen
           ? 'screen claudeShell'
           : 'screen claudeShell claudeShellSidebarCollapsed'
       }
     >
       <aside
-        className={sidebarExpanded ? 'sidebar' : 'sidebar sidebarCollapsed'}
-        onMouseEnter={() => {
-          if (!sidebarPinned) {
-            setSidebarHoverOpen(true);
-          }
-        }}
-        onMouseLeave={() => {
-          if (!sidebarPinned) {
-            setSidebarHoverOpen(false);
-            setAccountMenuOpen(false);
-          }
-        }}
+        className={sidebarOpen ? 'sidebar' : 'sidebar sidebarCollapsed'}
       >
         <div className="sidebarInner">
           <div className="brandRow">
@@ -506,10 +487,10 @@ export default function App() {
             <button
               className="chromeButton"
               type="button"
-              aria-label={sidebarPinned ? 'Auto-hide sidebar' : 'Pin sidebar'}
-              onClick={onToggleSidebarPin}
+              aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+              onClick={onToggleSidebar}
             >
-              {sidebarPinned ? '<' : '>'}
+              {sidebarOpen ? '<' : '>'}
             </button>
           </div>
 
