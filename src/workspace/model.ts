@@ -249,6 +249,25 @@ export function selectChannel(
   return nextState;
 }
 
+export function deleteChannel(
+  state: WorkspaceState,
+  channelId: string,
+): WorkspaceState {
+  const nextState = cloneState(state);
+  const index = findChannelIndex(nextState, channelId);
+  if (index === -1) {
+    throw new Error(`Channel not found: ${channelId}`);
+  }
+
+  nextState.channels.splice(index, 1);
+
+  if (nextState.selectedChannelId === channelId) {
+    nextState.selectedChannelId = nextState.channels[0]?.id ?? '';
+  }
+
+  return nextState;
+}
+
 export function createWorkspacePal(
   state: WorkspaceState,
   input: CreateWorkspacePalInput,
@@ -267,8 +286,8 @@ export function createChannel(
 ): WorkspaceState {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
-  const title = input.title.trim() || 'Untitled chat';
-  const topic = input.topic.trim() || 'This chat is still taking shape.';
+  const title = input.title.trim() || 'New chat';
+  const topic = input.topic.trim();
   const channelId = createUniqueChannelId(nextState, title);
   const createdPals = (input.pals ?? []).map((palInput) => createPalRecord(palInput, nowIso));
 

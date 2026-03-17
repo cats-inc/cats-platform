@@ -184,6 +184,21 @@ Behavior:
 - selects the new channel immediately
 - returns the updated app-shell payload
 
+### Delete Workspace Channel
+
+```text
+DELETE /api/workspace/channels/{id}
+```
+
+Behavior:
+
+- removes the selected chat from the local workspace store
+- best-effort closes any orchestrator and pal runtime sessions still attached to
+  that chat
+- falls back to the next most recent remaining chat, or clears selection if no
+  chats remain
+- returns the updated app-shell payload
+
 ### Create Workspace Pal
 
 ```text
@@ -422,7 +437,8 @@ Errors use a minimal payload:
 - Persisted pal state separates workspace identity, channel assignment,
   execution targets, execution leases, and provider-agnostic memory checkpoints
 - Workspace mutations now cover selection, chat setup, global pal registry,
-  channel assignment, activation, messaging, orchestrator editing, and export
+  channel deletion, channel assignment, activation, messaging, orchestrator
+  editing, and export
 - Legacy `/members` routes remain available as compatibility aliases during
   migration
 - Runtime responses are currently delivered as request/response completions; the
@@ -434,4 +450,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-17*

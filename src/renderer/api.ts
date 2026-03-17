@@ -293,6 +293,26 @@ export async function createWorkspaceChannel(
   );
 }
 
+export async function deleteWorkspaceChannel(
+  channelId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/workspace/channels/${channelId}`, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+
+  return normalizeAppShellPayload(
+    await expectJson<AppShellPayload>(
+      response,
+      `cats-inc workspace channel deletion returned ${response.status}`,
+    ),
+  );
+}
+
 export async function createGlobalPal(
   input: CreateWorkspacePalInput,
   signal?: AbortSignal,

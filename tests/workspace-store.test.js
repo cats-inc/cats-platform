@@ -9,6 +9,7 @@ import {
   assignPalToChannel,
   createChannel,
   createWorkspacePal,
+  deleteChannel,
   exportChannel,
 } from '../dist-server/workspace/model.js';
 import { FileWorkspaceStore } from '../dist-server/workspace/store.js';
@@ -234,4 +235,52 @@ test('WorkspaceStore exposes a derived Cats Core view that stays in sync with wo
   assert.ok(core.actors.some((actor) => actor.name === 'Planner'));
   assert.ok(core.conversations.some((conversation) => conversation.sourceChannelId === 'owner-loop'));
   assert.ok(core.tasks.some((task) => task.conversationId === 'conversation-channel-owner-loop'));
+});
+
+test('deleteChannel removes the selected chat and falls back to the next recent chat', async () => {
+  let state = createChannel(
+    await new FileWorkspaceStore(
+      path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'),
+    ).read(),
+    {
+      title: 'First Chat',
+      topic: 'Keep this one after deleting the second.',
+    },
+    new Date('2026-03-11T00:00:00.000Z'),
+  );
+
+  state = createChannel(
+    state,
+    {
+      title: 'Second Chat',
+      topic: 'Delete this one from recents.',
+    },
+    new Date('2026-03-11T00:05:00.000Z'),
+  );
+
+  assert.equal(state.selectedChannelId, 'second-chat');
+
+  const nextState = deleteChannel(state, 'second-chat');
+
+  assert.equal(nextState.channels.length, 1);
+  assert.equal(nextState.channels[0].id, 'first-chat');
+  assert.equal(nextState.selectedChannelId, 'first-chat');
+});
+
+test('createChannel defaults empty draft fields to a neutral new-chat label', async () => {
+  const initialState = await new FileWorkspaceStore(
+    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'),
+  ).read();
+
+  const state = createChannel(
+    initialState,
+    {
+      title: '',
+      topic: '',
+    },
+    new Date('2026-03-11T00:00:00.000Z'),
+  );
+
+  assert.equal(state.channels[0].title, 'New chat');
+  assert.equal(state.channels[0].topic, '');
 });

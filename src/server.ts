@@ -20,6 +20,7 @@ import {
   assignPalToChannel,
   createChannel,
   createWorkspacePal,
+  deleteChannel,
   exportChannel,
   requireChannel,
   requirePal,
@@ -230,6 +231,32 @@ async function handleChannelCreate(
   } catch (error) {
     sendJson(response, errorStatusCode(error), {
       error: error instanceof Error ? error.message : 'Failed to create workspace channel',
+    });
+  }
+}
+
+async function handleChannelDelete(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+): Promise<void> {
+  try {
+    const currentState = await dependencies.workspaceStore.read();
+    const channel = requireChannel(currentState, channelId);
+    const sessionIds = [
+      channel.orchestratorLease.sessionId,
+      ...channel.palAssignments.map((assignment) => assignment.execution.lease.sessionId),
+    ].filter((sessionId): sessionId is string => typeof sessionId === 'string' && sessionId.length > 0);
+
+    await Promise.allSettled(
+      sessionIds.map((sessionId) => dependencies.runtimeClient.closeSession(sessionId)),
+    );
+
+    const persisted = await dependencies.workspaceStore.write(deleteChannel(currentState, channelId));
+    sendJson(response, 200, await buildAppShell(dependencies, persisted));
+  } catch (error) {
+    sendJson(response, errorStatusCode(error), {
+      error: error instanceof Error ? error.message : 'Failed to delete workspace channel',
     });
   }
 }
@@ -546,6 +573,7 @@ function routeRequest(
   const activateMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/activate$/u);
   const messageMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/messages$/u);
   const assignPalMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)\/pals$/u);
+  const deleteChannelMatch = matchRoute(url.pathname, /^\/api\/workspace\/channels\/([^/]+)$/u);
   const removePalMatch = matchRoute(
     url.pathname,
     /^\/api\/workspace\/channels\/([^/]+)\/pals\/([^/]+)$/u,
@@ -651,6 +679,14 @@ function routeRequest(
       return Promise.resolve();
     }
     return handleChannelActivation(response, dependencies, activateMatch[0]);
+  }
+
+  if (deleteChannelMatch) {
+    if (method !== 'DELETE') {
+      sendMethodNotAllowed(response, ['DELETE']);
+      return Promise.resolve();
+    }
+    return handleChannelDelete(response, dependencies, deleteChannelMatch[0]);
   }
 
   if (messageMatch) {

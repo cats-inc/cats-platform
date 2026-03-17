@@ -303,5 +303,25 @@ test('workspace API covers chat setup, activation, messaging, global pals, assig
     assert.equal(exportPayload.channel.id, channelId);
     assert.ok(exportPayload.assignedPals.length >= 1);
     assert.ok(exportPayload.channel.messages.length >= 4);
+
+    const deleteResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteResponse.status, 200);
+    const deletePayload = await deleteResponse.json();
+    assert.equal(deletePayload.workspace.channels.length, 0);
+    assert.equal(deletePayload.workspace.selectedChannelId, '');
+    assert.equal(deletePayload.workspace.selectedChannel, null);
+    assert.equal(runtimeClient.closedSessions.length, 3);
+
+    const conversationsAfterDelete = await fetch(`${baseUrl}/api/core/conversations`);
+    assert.equal(conversationsAfterDelete.status, 200);
+    const conversationsAfterDeletePayload = await conversationsAfterDelete.json();
+    assert.equal(conversationsAfterDeletePayload.conversations.length, 0);
+
+    const tasksAfterDelete = await fetch(`${baseUrl}/api/core/tasks`);
+    assert.equal(tasksAfterDelete.status, 200);
+    const tasksAfterDeletePayload = await tasksAfterDelete.json();
+    assert.equal(tasksAfterDeletePayload.tasks.length, 0);
   }, workspaceStore);
 });

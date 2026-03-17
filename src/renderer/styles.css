@@ -18,10 +18,9 @@
   --muted-text: #756d64;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 28px rgba(16, 24, 40, 0.05);
   font-family:
-    'Sohne',
-    'ABC Diatype',
-    'SF Pro Text',
-    'Segoe UI Variable Text',
+    'Aptos',
+    'Segoe UI',
+    'Helvetica Neue',
     sans-serif;
   color: var(--text);
   background: linear-gradient(180deg, #fbfaf7 0%, var(--app-bg) 100%);
@@ -138,7 +137,8 @@ textarea {
 .recentItem:hover,
 .promptChip:hover,
 .composerAction:hover,
-.primaryButton:hover:not(:disabled) {
+.primaryButton:hover:not(:disabled),
+.sendButton:hover:not(:disabled) {
   background: var(--panel-hover);
 }
 
@@ -355,6 +355,75 @@ textarea {
   padding: 12px 12px 10px;
 }
 
+.transcriptPanel {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 560px);
+}
+
+.transcriptPanelEmpty {
+  width: min(100%, 420px);
+}
+
+.transcriptHeader,
+.transcriptMessageTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.transcriptList {
+  display: grid;
+  gap: 10px;
+}
+
+.transcriptMessage {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.transcriptMessageTop strong {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.transcriptMessageTop span {
+  color: var(--muted-soft);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.transcriptMessage p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.transcriptMessageUser {
+  background: #fdfaf4;
+}
+
+.transcriptMessageOrchestrator {
+  background: rgba(217, 119, 87, 0.08);
+}
+
+.transcriptMessageAgent {
+  background: #f8fbf8;
+}
+
+.transcriptMessageSystem {
+  background: #fbfaf8;
+}
+
+.transcriptEmpty {
+  border: 1px dashed var(--border);
+}
+
 .composerInput {
   width: 100%;
   min-height: 82px;
@@ -495,7 +564,16 @@ textarea {
   color: #fff;
 }
 
-.primaryButton:disabled {
+.sendButton {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #1f1f1c;
+  color: #fff;
+}
+
+.primaryButton:disabled,
+.sendButton:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -820,5 +898,443 @@ textarea {
   .loadingPanel,
   .errorPanel {
     padding: 14px;
+  }
+}
+
+/* Current chat shell overrides */
+
+.screen {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.claudeShell {
+  height: 100vh;
+  min-height: 0;
+  grid-template-columns: 280px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.claudeShellSidebarCollapsed {
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+
+.sidebar {
+  position: relative;
+  min-height: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebarCollapsed .brandCopy,
+.sidebarCollapsed .navLabel,
+.sidebarCollapsed .sidebarFooterMeta,
+.sidebarCollapsed .recentSection {
+  display: none;
+}
+
+.sidebarCollapsed .navItem,
+.sidebarCollapsed .sidebarFooter {
+  justify-content: center;
+}
+
+.sidebarInner {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  padding: 18px 10px 10px;
+}
+
+.chromeButton {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  cursor: pointer;
+}
+
+.navItem {
+  cursor: pointer;
+}
+
+.recentSection {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.recentList {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  align-content: start;
+  padding-bottom: 8px;
+}
+
+.recentItemCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.recentSelectButton {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.recentSelectButton:hover,
+.overviewCardSelect:hover,
+.recentDeleteButton:hover,
+.overviewDeleteButton:hover {
+  background: var(--panel-hover);
+}
+
+.recentItemSelected {
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(231, 226, 217, 0.9);
+}
+
+.recentDeleteButton,
+.overviewDeleteButton {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  align-self: center;
+}
+
+.sidebarFooter {
+  position: relative;
+  margin: 0 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebarFooterMeta {
+  min-width: 0;
+  flex: 1;
+}
+
+.profileBadge {
+  flex: 0 0 28px;
+}
+
+.sidebarCollapsed .sidebarFooter {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebarCollapsed .profileBadge {
+  width: 28px;
+  height: 28px;
+}
+
+.canvas {
+  width: 100%;
+  min-height: 0;
+  height: 100vh;
+  padding: 24px 28px;
+  overflow: hidden;
+}
+
+.viewShell {
+  width: min(100%, 1240px);
+  margin: 0 auto;
+}
+
+.viewShellScrollable {
+  height: 100%;
+  overflow: auto;
+  padding-right: 8px;
+}
+
+.viewShellChannel {
+  height: 100%;
+}
+
+.palsShell {
+  padding-bottom: 32px;
+}
+
+.overviewShell {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 960px);
+  margin: 0 auto;
+  padding: 28px 0 48px;
+}
+
+.overviewHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.overviewList {
+  display: grid;
+  gap: 14px;
+}
+
+.overviewCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.overviewCardSelect {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.overviewCardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.overviewCardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.overviewEmpty {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  padding: 28px;
+}
+
+.channelShell {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 18px;
+  height: 100%;
+}
+
+.channelShellFresh {
+  grid-template-rows: auto auto auto auto;
+  align-content: start;
+}
+
+.channelTopBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: var(--shadow);
+}
+
+.channelIdentity h1 {
+  margin: 0;
+  font-family:
+    'Aptos',
+    'Segoe UI',
+    'Helvetica Neue',
+    sans-serif;
+  font-size: clamp(1.8rem, 3vw, 2.35rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.channelParticipantsBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.channelParticipantsList {
+  display: flex;
+  max-width: 560px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.channelFeedback {
+  margin: 0;
+}
+
+.transcriptPanel {
+  width: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 8px;
+}
+
+.transcriptList {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+}
+
+.transcriptMessage {
+  max-width: min(72%, 760px);
+}
+
+.transcriptMessageUser {
+  margin-left: auto;
+}
+
+.transcriptMessageOrchestrator,
+.transcriptMessageAgent {
+  margin-right: auto;
+}
+
+.transcriptMessageSystem {
+  margin: 0 auto;
+  max-width: min(72%, 700px);
+  border-style: dashed;
+  box-shadow: none;
+  text-align: center;
+}
+
+.freshChatIntro {
+  display: none;
+}
+
+.freshChatCard {
+  width: min(100%, 760px);
+  text-align: center;
+}
+
+.viewShellDraft {
+  height: 100%;
+}
+
+.draftShell {
+  display: grid;
+  height: 100%;
+  align-content: start;
+  justify-items: center;
+  padding-top: 12vh;
+}
+
+.composerCard {
+  width: min(100%, 980px);
+  margin: 0 auto;
+}
+
+.composerCardDocked {
+  align-self: end;
+}
+
+.composerCardFresh {
+  margin-top: 0;
+}
+
+.composerInput {
+  min-height: 110px;
+}
+
+.composerFooterMinimal {
+  justify-content: space-between;
+}
+
+.composerHint {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.composerFooterTight {
+  justify-content: flex-end;
+}
+
+.viewIntro h1,
+.overviewHeader h1,
+.loadingPanel h1,
+.errorPanel h1 {
+  font-family:
+    'Aptos',
+    'Segoe UI',
+    'Helvetica Neue',
+    sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 980px) {
+  .claudeShell,
+  .claudeShellSidebarCollapsed {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .screen {
+    height: auto;
+    overflow: visible;
+  }
+
+  .sidebar,
+  .sidebarCollapsed {
+    height: auto;
+    min-height: auto;
+  }
+
+  .canvas {
+    height: auto;
+    min-height: 60vh;
+    overflow: visible;
+  }
+
+  .viewShellScrollable,
+  .viewShellChannel {
+    height: auto;
+  }
+
+  .overviewHeader,
+  .channelTopBar {
+    grid-template-columns: 1fr;
+  }
+
+  .channelParticipantsBar,
+  .channelParticipantsList {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  .channelShell {
+    height: auto;
+  }
+
+  .transcriptMessage {
+    max-width: 100%;
   }
 }
