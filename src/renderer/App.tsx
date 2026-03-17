@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { startTransition, useCallback, useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
 
 import { shouldSubmitComposerOnKeyDown } from '../shared/composer';
 import type {
@@ -118,6 +118,18 @@ function presentChannelTopic(topic: string): string {
   return topic.trim() === 'This chat is still taking shape.' ? '' : topic;
 }
 
+const GREETING_LINES = [
+  "Hi, I'm your Ugly Cat.",
+  "Meow. What's on your mind?",
+  "Your cat is ready to work.",
+  "Let's get things done today.",
+  "What can I help you with?",
+];
+
+function pickGreeting(): string {
+  return GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
+}
+
 export default function App() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [surface, setSurface] = useState<Surface>('chats');
@@ -132,6 +144,19 @@ export default function App() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
+  const [greeting] = useState(pickGreeting);
+
+  const autoResize = useCallback((el: HTMLTextAreaElement) => {
+    el.style.height = 'auto';
+    const max = 200;
+    if (el.scrollHeight > max) {
+      el.style.height = `${max}px`;
+      el.style.overflowY = 'auto';
+    } else {
+      el.style.height = `${el.scrollHeight}px`;
+      el.style.overflowY = 'hidden';
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -482,7 +507,7 @@ export default function App() {
         <div className="sidebarInner">
           <div className="brandRow">
             <div className="brandCopy">
-              <p className="brandLabel">Cats Inc Chat</p>
+              <p className="brandLabel">Cats Chat</p>
             </div>
             <button
               className="chromeButton"
@@ -490,7 +515,10 @@ export default function App() {
               aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
               onClick={onToggleSidebar}
             >
-              {sidebarOpen ? '<' : '>'}
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1" y="2" width="14" height="12" rx="2" />
+                <path d="M6 2v12" />
+              </svg>
             </button>
           </div>
 
@@ -502,8 +530,8 @@ export default function App() {
             >
               <span className="navGlyph" aria-hidden="true">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11.5 1.5l3 3-9 9H2.5v-3z" />
-                  <path d="M10 3l3 3" />
+                  <path d="M8 3v10" />
+                  <path d="M3 8h10" />
                 </svg>
               </span>
               <span className="navLabel">New chat</span>
@@ -749,27 +777,36 @@ export default function App() {
         ) : showDraftComposer ? (
           <div className="viewShell viewShellDraft">
             <section className="draftShell">
-              <div className="draftGreeting"><h1>How can I help you today?</h1></div>
+              <div className="draftGreeting"><h1>{greeting}</h1></div>
               <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
                 <textarea
                   className="composerInput"
                   rows={1}
-                  placeholder="Message Cats..."
+                  placeholder="How can I help you today?"
                   value={composerDraft}
-                  onChange={(event) => setComposerDraft(event.target.value)}
+                  onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
                   onKeyDown={(event) => void onComposerKeyDown(event)}
                 />
-                <button
-                  className="sendButton"
-                  disabled={!composerDraft.trim() || busy === 'message:send'}
-                  type="submit"
-                >
-                  {busy === 'message:send' ? '...' : '\u2191'}
-                </button>
+                <div className="composerBottomRow">
+                  <button className="composerPlusButton" type="button" aria-label="Attach">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3v10" />
+                      <path d="M3 8h10" />
+                    </svg>
+                  </button>
+                  <button
+                    className="composerSendButton"
+                    disabled={!composerDraft.trim() || busy === 'message:send'}
+                    type="submit"
+                    aria-label="Send"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 13V3" />
+                      <path d="M3 7l5-5 5 5" />
+                    </svg>
+                  </button>
+                </div>
               </form>
-              <div className="composerFooterMinimal">
-                <span className="composerHint">Enter to send</span>
-              </div>
             </section>
           </div>
         ) : selectedChannel ? (
@@ -822,7 +859,7 @@ export default function App() {
                 </section>
               ) : (
                 <section className="freshChatIntro">
-                  <div className="draftGreeting"><h1>How can I help you today?</h1></div>
+                  <div className="draftGreeting"><h1>{greeting}</h1></div>
                 </section>
               )}
 
@@ -837,22 +874,31 @@ export default function App() {
                 <textarea
                   className="composerInput"
                   rows={1}
-                  placeholder="Message Cats..."
+                  placeholder="How can I help you today?"
                   value={composerDraft}
-                  onChange={(event) => setComposerDraft(event.target.value)}
+                  onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
                   onKeyDown={(event) => void onComposerKeyDown(event)}
                 />
-                <button
-                  className="sendButton"
-                  disabled={!composerDraft.trim() || busy === 'message:send'}
-                  type="submit"
-                >
-                  {busy === 'message:send' ? '...' : '\u2191'}
-                </button>
+                <div className="composerBottomRow">
+                  <button className="composerPlusButton" type="button" aria-label="Attach">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3v10" />
+                      <path d="M3 8h10" />
+                    </svg>
+                  </button>
+                  <button
+                    className="composerSendButton"
+                    disabled={!composerDraft.trim() || busy === 'message:send'}
+                    type="submit"
+                    aria-label="Send"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 13V3" />
+                      <path d="M3 7l5-5 5 5" />
+                    </svg>
+                  </button>
+                </div>
               </form>
-              <div className="composerFooterMinimal">
-                <span className="composerHint">Enter to send</span>
-              </div>
             </section>
           </div>
         ) : null}
