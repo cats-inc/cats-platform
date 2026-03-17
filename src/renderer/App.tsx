@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { startTransition, useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 
 import { shouldSubmitComposerOnKeyDown } from '../shared/composer';
 import type {
@@ -119,11 +119,13 @@ function presentChannelTopic(topic: string): string {
 }
 
 const GREETING_LINES = [
-  "Hi, I'm your Ugly Cat.",
-  "Meow. What's on your mind?",
-  "Your cat is ready to work.",
-  "Let's get things done today.",
-  "What can I help you with?",
+  "Meow. Ready when you are.",
+  "Your cat hasn't napped yet.",
+  "Paws on the keyboard.",
+  "Tail up, let's go.",
+  "Purring in standby.",
+  "Claws sharpened. What's the task?",
+  "This cat doesn't sleep on the job.",
 ];
 
 function pickGreeting(): string {
@@ -145,6 +147,18 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [greeting] = useState(pickGreeting);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [accountMenuOpen]);
 
   const autoResize = useCallback((el: HTMLTextAreaElement) => {
     el.style.height = 'auto';
@@ -606,7 +620,7 @@ export default function App() {
           </section>
         </div>
 
-        <div className="sidebarFooter">
+        <div className="sidebarFooter" ref={accountMenuRef}>
           <button
             className="sidebarFooterButton"
             type="button"
