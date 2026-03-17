@@ -7,14 +7,14 @@ export const PAL_PROVIDER_ORDER = [
   'claude',
   'codex',
   'gemini',
+  'cursor',
   'copilot',
   'opencode',
-  'auggie',
-  'pi',
-  'junie',
-  'cursor',
-  'kiro',
   'goose',
+  'pi',
+  'auggie',
+  'junie',
+  'kiro',
   'ollama',
 ] as const;
 
@@ -55,7 +55,9 @@ export const PAL_PROVIDER_MODELS: Record<PalProviderId, ProviderModelOption[]> =
     { value: 'openai-codex/gpt-5.4', label: 'openai-codex gpt-5.4 (default)' },
   ],
   junie: [
-    { value: 'gpt-5.4', label: 'gpt-5.4 (default)' },
+    { value: 'gpt', label: 'gpt (default)' },
+    { value: 'gpt-codex', label: 'gpt-codex' },
+    { value: 'sonnet', label: 'sonnet' },
   ],
   cursor: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)' },
@@ -68,7 +70,8 @@ export const PAL_PROVIDER_MODELS: Record<PalProviderId, ProviderModelOption[]> =
     { value: 'minimax-m2.1', label: 'minimax-m2.1' },
   ],
   goose: [
-    { value: 'gpt-5.2-codex', label: 'gpt-5.2-codex (default)' },
+    { value: 'openai/gpt-5-codex', label: 'openai/gpt-5-codex (default)' },
+    { value: 'openai/gpt-5', label: 'openai/gpt-5' },
   ],
   ollama: [
     { value: 'qwen2.5-coder:7b', label: 'qwen2.5-coder:7b (default)' },
