@@ -524,7 +524,7 @@ export default function App() {
 
           <nav className="navGroup" aria-label="Primary">
             <button
-              className={showDraftComposer ? 'navItem navItemActive' : 'navItem'}
+              className="navItem"
               onClick={() => void onStartNewChat()}
               type="button"
             >
