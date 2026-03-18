@@ -50,7 +50,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
 | [specs/](./specs/) | Complete | Feature specifications, including the accepted suite-foundation planning docs, the primary-orchestrator chat-entry spec, and the pending chat-contextual pal UX proposal |
 | [plans/](./plans/) | Complete | Implementation plans, including the accepted suite-foundation planning docs and the pending chat-contextual pal UX plan |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including the accepted `Cats Core v1`, runtime-boundary refinements, and the visible primary-orchestrator model |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including the accepted `Cats Core v1`, runtime-boundary refinements, the visible primary-orchestrator model, and the proposed self-hosted npm app distribution direction |
 
 **Legend**: Complete | Partial | Template
 
