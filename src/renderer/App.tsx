@@ -1034,6 +1034,7 @@ export default function App() {
               </nav>
               <div className="settingsContent">
                 <h1>General</h1>
+                {feedback ? <p className="feedbackText">{feedback}</p> : null}
                 <div className="contentCard">
                   <label className="fieldLabel">
                     <span>Display name</span>
