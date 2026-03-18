@@ -147,18 +147,27 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [greeting] = useState(pickGreeting);
+  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!accountMenuOpen) return;
+    if (!accountMenuOpen && !overflowMenuOpenId) return;
     function handleClick(e: MouseEvent) {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (accountMenuOpen && accountMenuRef.current && !accountMenuRef.current.contains(target)) {
         setAccountMenuOpen(false);
+      }
+      if (overflowMenuOpenId) {
+        const menu = document.querySelector('.recentOverflowMenu');
+        const button = (e.target as Element).closest?.('.recentOverflowButton');
+        if (!menu?.contains(target) && !button) {
+          setOverflowMenuOpenId(null);
+        }
       }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [accountMenuOpen]);
+  }, [accountMenuOpen, overflowMenuOpenId]);
 
   const autoResize = useCallback((el: HTMLTextAreaElement) => {
     el.style.height = 'auto';
@@ -345,6 +354,13 @@ export default function App() {
     }
 
     setBusy('message:send');
+    setComposerDraft('');
+    setPendingUserMessage(body);
+    setDraftingNewChat(false);
+    setSurface('chats');
+    setChatView('channel');
+    setFeedback('');
+
     try {
       let payload = state.payload;
       let channelId = draftingNewChat ? '' : payload.workspace.selectedChannelId;
@@ -371,13 +387,10 @@ export default function App() {
       const dispatch = await sendWorkspaceMessage(channelId, { body });
       startTransition(() => {
         setState({ status: 'ready', payload: dispatch.appShell });
-        setSurface('chats');
-        setChatView('channel');
-        setDraftingNewChat(false);
-        setComposerDraft('');
-        setFeedback('');
+        setPendingUserMessage(null);
       });
     } catch (error) {
+      setPendingUserMessage(null);
       setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
     } finally {
       setBusy('');
@@ -440,8 +453,9 @@ export default function App() {
   );
   const providerModels = getProviderModels(palForm.provider);
   const hasConversationStarted =
-    selectedChannel?.messages.some((message) => message.senderKind !== 'system') ?? false;
-  const showDraftComposer = surface === 'chats' && (draftingNewChat || !selectedChannel);
+    pendingUserMessage !== null
+    || (selectedChannel?.messages.some((message) => message.senderKind !== 'system') ?? false);
+  const showDraftComposer = surface === 'chats' && !pendingUserMessage && (draftingNewChat || !selectedChannel);
   const showChatOverview = false;
 
   const palCreationForm = (
@@ -823,6 +837,53 @@ export default function App() {
               </form>
             </section>
           </div>
+        ) : pendingUserMessage && !selectedChannel ? (
+          <div className="viewShell viewShellChannel">
+            <section className="channelShell">
+              <header className="channelTopBar">
+                <div className="channelParticipantsBar">
+                  <div className="channelParticipantsList">
+                    <span className="rosterLabel">No pals in this chat yet</span>
+                  </div>
+                </div>
+              </header>
+              <section className="transcriptPanel">
+                <div className="transcriptList">
+                  <article className="transcriptMessage transcriptMessageUser">
+                    <p>{pendingUserMessage}</p>
+                  </article>
+                </div>
+              </section>
+              <form
+                className="composerCard composerCardDocked"
+                onSubmit={(event) => void onSendMessage(event)}
+              >
+                <textarea
+                  className="composerInput"
+                  rows={1}
+                  placeholder="How can I help you today?"
+                  value={composerDraft}
+                  onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
+                  onKeyDown={(event) => void onComposerKeyDown(event)}
+                  disabled
+                />
+                <div className="composerBottomRow">
+                  <button className="composerPlusButton" type="button" aria-label="Attach" disabled>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3v10" />
+                      <path d="M3 8h10" />
+                    </svg>
+                  </button>
+                  <button className="composerSendButton" disabled type="submit" aria-label="Send">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 13V3" />
+                      <path d="M3 7l5-5 5 5" />
+                    </svg>
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
         ) : selectedChannel ? (
           <div className="viewShell viewShellChannel">
             <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
@@ -869,6 +930,11 @@ export default function App() {
                         <p>{message.body}</p>
                       </article>
                     ))}
+                    {pendingUserMessage && !selectedChannel.messages.some((m) => m.body === pendingUserMessage && m.senderKind === 'user') ? (
+                      <article className="transcriptMessage transcriptMessageUser">
+                        <p>{pendingUserMessage}</p>
+                      </article>
+                    ) : null}
                   </div>
                 </section>
               ) : (

@@ -465,8 +465,13 @@ textarea {
 }
 
 .transcriptMessageTop strong {
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.transcriptMessageTop {
+  margin-bottom: 4px;
 }
 
 .transcriptMessageTop span {
@@ -490,24 +495,39 @@ textarea {
 }
 
 .transcriptMessageOrchestrator {
-  background: transparent;
+  background: #F5F3EF;
   border: none;
-  padding: 8px 0;
-  border-radius: 0;
+  padding: 12px 16px;
+  border-radius: 18px 18px 18px 4px;
 }
 
 .transcriptMessageAgent {
-  background: transparent;
+  background: #F5F3EF;
   border: none;
-  padding: 8px 0;
-  border-radius: 0;
+  padding: 12px 16px;
+  border-radius: 18px 18px 18px 4px;
 }
 
 .transcriptMessageSystem {
-  background: transparent;
-  border: none;
-  font-size: 0.85rem;
-  color: var(--muted);
+  margin: 4px auto;
+  max-width: 90%;
+  border-style: none;
+  box-shadow: none;
+  text-align: left;
+  font-size: 0.78rem;
+  color: var(--muted-soft);
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+}
+
+.transcriptMessageSystem .transcriptMessageTop {
+  display: none;
+}
+
+.transcriptMessageSystem p {
+  font-size: 0.78rem;
+  line-height: 1.5;
 }
 
 .transcriptEmpty {
@@ -1190,8 +1210,9 @@ textarea {
   width: 100%;
   min-height: 0;
   height: 100vh;
-  padding: 24px 28px;
-  overflow: hidden;
+  padding: 0 28px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .viewShell {
@@ -1206,7 +1227,9 @@ textarea {
 }
 
 .viewShellChannel {
-  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .palsShell {
@@ -1276,27 +1299,31 @@ textarea {
 }
 
 .channelShell {
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .channelShellFresh {
-  grid-template-rows: auto auto auto auto auto;
-  align-content: start;
+  justify-content: flex-start;
 }
 
 .channelTopBar {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 8px 20px;
+  padding: 12px 20px;
   border: none;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
-  background: transparent;
+  background: var(--canvas-bg);
   box-shadow: none;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex-shrink: 0;
 }
 
 .channelIdentity {
@@ -1331,9 +1358,10 @@ textarea {
 
 .transcriptPanel {
   width: 100%;
-  min-height: 0;
-  overflow: auto;
+  max-width: 680px;
+  flex: 1;
   padding-right: 8px;
+  margin: 0 auto;
 }
 
 .transcriptList {
@@ -1357,11 +1385,11 @@ textarea {
 }
 
 .transcriptMessageSystem {
-  margin: 0 auto;
-  max-width: 85%;
+  margin: 4px auto;
+  max-width: 90%;
   border-style: none;
   box-shadow: none;
-  text-align: center;
+  text-align: left;
 }
 
 .freshChatIntro {
@@ -1393,7 +1421,12 @@ textarea {
 }
 
 .composerCardDocked {
-  align-self: end;
+  position: sticky;
+  bottom: 16px;
+  max-width: 680px;
+  margin: 0 auto;
+  width: 100%;
+  z-index: 5;
 }
 
 .composerCardFresh {
