@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-009](./SPEC-009-public-surface-naming-refresh.md) | Public-Surface Naming Refresh | Draft (Pending Review) | [PLAN-009](../plans/PLAN-009-public-surface-naming-refresh.md) |
 | [SPEC-008](./SPEC-008-restful-product-api-refactor.md) | RESTful Product API Refactor | Draft (Pending Review) | [PLAN-008](../plans/PLAN-008-restful-product-api-refactor.md) |
 | [SPEC-007](./SPEC-007-chat-contextual-pal-entry.md) | Chat-Contextual Pal Entry | Draft (Pending Review) | [PLAN-007](../plans/PLAN-007-chat-contextual-pal-entry.md) |
 | [SPEC-006](./SPEC-006-cats-core-v1-and-suite-foundation.md) | Cats Core v1 and Suite Foundation | Approved | [PLAN-006](../plans/PLAN-006-cats-core-v1-and-suite-foundation.md) |
