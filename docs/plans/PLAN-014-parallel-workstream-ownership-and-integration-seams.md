@@ -50,8 +50,11 @@ The main rule is simple:
 - [ ] Add `GET /api/providers`
 - [ ] Add `GET /api/providers/{provider}/models`
 - [ ] Call `cats-runtime` server-side for per-provider model catalog reads
-- [ ] Preserve static fallback with warnings while runtime adoption rolls out
+- [ ] Preserve static fallback with warnings while runtime adoption rolls out,
+      but keep it confined to `src/shared/providerCatalog.ts`
 - [ ] Migrate provider forms from inline markup toward product-API-fed options
+- [ ] Stop adding new renderer-only provider/model hardcodes once the product
+      API seam is in place
 
 ### Phase 3: Telegram Relay MVP
 
@@ -71,6 +74,8 @@ The main rule is simple:
 ### Phase 5: Integration and Follow-Ons
 
 - [ ] Update product forms to consume product provider APIs by default
+- [ ] Reduce duplicated provider/model fallback data once runtime-backed reads
+      are stable enough to stop treating `cats-inc` as a second catalog owner
 - [ ] Add real Telegram conversation/channel mapping
 - [ ] Add capability-aware assignment heuristics for `Boss Cat`
 - [ ] Update docs and tests once all three workstreams converge

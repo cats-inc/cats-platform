@@ -25,6 +25,8 @@ provider workstream does not need to keep editing the full chat shell.
 - keep the renderer off direct runtime HTTP calls
 - extract provider/model form UI out of `App.tsx`
 - allow static fallback when runtime catalog lookups are unavailable
+- treat `cats-inc` static provider/model data as transitional fallback only,
+  not as the long-term source of truth
 
 ## Non-Goals
 
@@ -60,6 +62,9 @@ provider workstream does not need to keep editing the full chat shell.
   the provider workstream migrates toward live product-API reads
 - **Parallel delivery**: provider UI changes should primarily touch extracted
   provider files, not the entire chat shell
+- **Fallback discipline**: `src/shared/providerCatalog.ts` may keep a curated
+  static fallback during transition, but new renderer-only model hardcodes
+  should not be introduced
 
 ## API Shape
 
@@ -115,6 +120,9 @@ static product data when runtime discovery is unavailable.
   It gives the provider workstream one place to update once it switches to
   product-API-fed options.
 - Static fallback is a safety net, not the future source of truth.
+- `src/shared/providerCatalog.ts` is a transitional compatibility layer. The
+  long-term goal is to shrink duplicated model tables until `cats-inc` no
+  longer maintains its own authoritative provider-model copy.
 
 ## Dependencies
 
@@ -128,6 +136,8 @@ static product data when runtime discovery is unavailable.
       instances after the aggregate product flow is proven?
 - [ ] Should product fallback warnings be shown directly in setup UI or only in
       advanced settings?
+- [ ] Should the remaining static fallback eventually collapse to a minimal
+      emergency catalog or be replaced by a runtime-fed persisted snapshot?
 
 ## References
 
