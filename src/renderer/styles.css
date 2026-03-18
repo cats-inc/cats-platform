@@ -90,7 +90,9 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 6px 16px;
+  height: 32px;
+  padding: 0 6px;
+  margin-bottom: 16px;
 }
 
 .brandLabel {
@@ -132,7 +134,8 @@ textarea {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 9px 12px;
+  height: 40px;
+  padding: 0 12px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -726,7 +729,8 @@ textarea {
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 12px 18px;
+  height: 52px;
+  padding: 0 18px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1068,7 +1072,8 @@ textarea {
 
 .sidebarCollapsed .brandRow {
   justify-content: center;
-  padding: 0 0 16px;
+  padding: 0;
+  margin-bottom: 16px;
 }
 
 .sidebarCollapsed .navGroup {
@@ -1078,21 +1083,20 @@ textarea {
 
 .sidebarCollapsed .navItem {
   justify-content: center;
-  width: 36px;
-  height: 36px;
   padding: 0;
-  margin: 0 auto;
 }
 
 .sidebarCollapsed .sidebarFooter {
+  display: flex;
   justify-content: center;
-  margin: 0 0 12px;
-  padding: 10px 0;
+  margin: 0;
+  padding: 0;
+  border-top: none;
 }
 
 .sidebarCollapsed .sidebarFooterButton {
   justify-content: center;
-  width: auto;
+  padding: 0;
 }
 
 .sidebarInner {
@@ -1302,8 +1306,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  flex: 1;
-  min-height: 0;
+  min-height: calc(100vh - 48px);
 }
 
 .channelShellFresh {
@@ -1313,8 +1316,9 @@ textarea {
 .channelTopBar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 20px;
+  justify-content: space-between;
+  margin: 0 -28px;
+  padding: 10px 28px;
   border: none;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
@@ -1324,6 +1328,49 @@ textarea {
   top: 0;
   z-index: 5;
   flex-shrink: 0;
+  width: calc(100% + 56px);
+}
+
+.rosterAvatars {
+  display: flex;
+  align-items: center;
+}
+
+.rosterAvatars .palAvatar {
+  margin-left: -8px;
+  transition: margin-left 0.2s ease;
+}
+
+.rosterAvatars .palAvatar:first-child {
+  margin-left: 0;
+}
+
+.rosterAvatars:hover .palAvatar {
+  margin-left: 4px;
+}
+
+.rosterAvatars:hover .palAvatar:first-child {
+  margin-left: 0;
+}
+
+.palAvatar {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: #8B7E74;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border: 2px solid var(--canvas-bg);
+  cursor: default;
+  position: relative;
+  z-index: 1;
+}
+
+.palAvatarOrch {
+  background: var(--accent);
 }
 
 .channelIdentity {
@@ -1361,6 +1408,7 @@ textarea {
   max-width: 680px;
   flex: 1;
   padding-right: 8px;
+  padding-bottom: 0;
   margin: 0 auto;
 }
 
@@ -1369,6 +1417,7 @@ textarea {
   gap: 4px;
   width: 100%;
   margin: 0 auto;
+  align-content: start;
 }
 
 .transcriptMessage {

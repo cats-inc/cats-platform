@@ -118,6 +118,12 @@ function presentChannelTopic(topic: string): string {
   return topic.trim() === 'This chat is still taking shape.' ? '' : topic;
 }
 
+function palInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 const GREETING_LINES = [
   "Meow. Ready when you are.",
   "Your cat hasn't napped yet.",
@@ -147,7 +153,6 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [greeting] = useState(pickGreeting);
-  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -354,13 +359,6 @@ export default function App() {
     }
 
     setBusy('message:send');
-    setComposerDraft('');
-    setPendingUserMessage(body);
-    setDraftingNewChat(false);
-    setSurface('chats');
-    setChatView('channel');
-    setFeedback('');
-
     try {
       let payload = state.payload;
       let channelId = draftingNewChat ? '' : payload.workspace.selectedChannelId;
@@ -387,10 +385,13 @@ export default function App() {
       const dispatch = await sendWorkspaceMessage(channelId, { body });
       startTransition(() => {
         setState({ status: 'ready', payload: dispatch.appShell });
-        setPendingUserMessage(null);
+        setSurface('chats');
+        setChatView('channel');
+        setDraftingNewChat(false);
+        setComposerDraft('');
+        setFeedback('');
       });
     } catch (error) {
-      setPendingUserMessage(null);
       setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
     } finally {
       setBusy('');
@@ -453,9 +454,8 @@ export default function App() {
   );
   const providerModels = getProviderModels(palForm.provider);
   const hasConversationStarted =
-    pendingUserMessage !== null
-    || (selectedChannel?.messages.some((message) => message.senderKind !== 'system') ?? false);
-  const showDraftComposer = surface === 'chats' && !pendingUserMessage && (draftingNewChat || !selectedChannel);
+    selectedChannel?.messages.some((message) => message.senderKind !== 'system') ?? false;
+  const showDraftComposer = surface === 'chats' && (draftingNewChat || !selectedChannel);
   const showChatOverview = false;
 
   const palCreationForm = (
@@ -837,83 +837,32 @@ export default function App() {
               </form>
             </section>
           </div>
-        ) : pendingUserMessage && !selectedChannel ? (
-          <div className="viewShell viewShellChannel">
-            <section className="channelShell">
-              <header className="channelTopBar">
-                <div className="channelParticipantsBar">
-                  <div className="channelParticipantsList">
-                    <span className="rosterLabel">No pals in this chat yet</span>
-                  </div>
-                </div>
-              </header>
-              <section className="transcriptPanel">
-                <div className="transcriptList">
-                  <article className="transcriptMessage transcriptMessageUser">
-                    <p>{pendingUserMessage}</p>
-                  </article>
-                </div>
-              </section>
-              <form
-                className="composerCard composerCardDocked"
-                onSubmit={(event) => void onSendMessage(event)}
-              >
-                <textarea
-                  className="composerInput"
-                  rows={1}
-                  placeholder="How can I help you today?"
-                  value={composerDraft}
-                  onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
-                  onKeyDown={(event) => void onComposerKeyDown(event)}
-                  disabled
-                />
-                <div className="composerBottomRow">
-                  <button className="composerPlusButton" type="button" aria-label="Attach" disabled>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 3v10" />
-                      <path d="M3 8h10" />
-                    </svg>
-                  </button>
-                  <button className="composerSendButton" disabled type="submit" aria-label="Send">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 13V3" />
-                      <path d="M3 7l5-5 5 5" />
-                    </svg>
-                  </button>
-                </div>
-              </form>
-            </section>
-          </div>
         ) : selectedChannel ? (
+          <>
+          <header className="channelTopBar">
+            <div className="rosterAvatars">
+              <div className="palAvatar palAvatarOrch" title="Orchestrator">Or</div>
+              {activeAssignedPals.map((pal) => (
+                <div key={pal.palId} className="palAvatar" title={pal.name}>
+                  {palInitials(pal.name)}
+                </div>
+              ))}
+            </div>
+            <button
+              className="addPalButton"
+              type="button"
+              onClick={() => {
+                setAddPalOpen(!addPalOpen);
+                setAddPalTab('existing');
+                setFeedback('');
+                setPalForm(emptyPalForm());
+              }}
+            >
+              +
+            </button>
+          </header>
           <div className="viewShell viewShellChannel">
             <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
-              <header className="channelTopBar">
-                <div className="channelParticipantsBar">
-                  <div className="channelParticipantsList">
-                    {activeAssignedPals.length > 0 ? (
-                      activeAssignedPals.map((pal) => (
-                        <span key={pal.palId} className="rosterChip">
-                          {pal.name}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="rosterLabel">No pals in this chat yet</span>
-                    )}
-                  </div>
-                  <button
-                    className="addPalButton"
-                    type="button"
-                    onClick={() => {
-                      setAddPalOpen(!addPalOpen);
-                      setAddPalTab('existing');
-                      setFeedback('');
-                      setPalForm(emptyPalForm());
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
-              </header>
 
               {feedback ? <p className="feedbackText channelFeedback">{feedback}</p> : null}
 
@@ -930,11 +879,6 @@ export default function App() {
                         <p>{message.body}</p>
                       </article>
                     ))}
-                    {pendingUserMessage && !selectedChannel.messages.some((m) => m.body === pendingUserMessage && m.senderKind === 'user') ? (
-                      <article className="transcriptMessage transcriptMessageUser">
-                        <p>{pendingUserMessage}</p>
-                      </article>
-                    ) : null}
                   </div>
                 </section>
               ) : (
@@ -981,6 +925,7 @@ export default function App() {
               </form>
             </section>
           </div>
+          </>
         ) : null}
       </main>
 
