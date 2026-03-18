@@ -97,6 +97,36 @@ test('GET /api/providers/:provider/models proxies runtime-owned catalog', async 
   });
 });
 
+test('GET /api/providers/:provider/models forwards the optional instance query', async () => {
+  const calls = [];
+  const runtimeClient = createRuntimeStub();
+  runtimeClient.getProviderModels = async (provider, instance) => {
+    calls.push({ provider, instance });
+    return {
+      provider,
+      backend: 'agent',
+      instance: instance ?? 'default',
+      defaultModel: 'gpt-5.4',
+      source: 'config',
+      cache: null,
+      models: [
+        { id: 'gpt-5.4', label: 'gpt-5.4', default: true },
+      ],
+      warnings: [],
+    };
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/codex/models?instance=agent/bridge`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.catalog.instance, 'agent/bridge');
+  });
+
+  assert.deepEqual(calls, [{ provider: 'codex', instance: 'agent/bridge' }]);
+});
+
 test('GET /api/providers/:provider/models falls back to static data on runtime failure', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.getProviderModels = async () => {
