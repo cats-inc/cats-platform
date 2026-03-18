@@ -153,6 +153,57 @@ keeping `cats-runtime` as the only execution boundary.
 | Work product | Transcript export | Previews, PRs, artifacts, documents, and transcripts |
 | Plugin | None | Later extension seam for non-core capabilities |
 
+## Current State Gap Matrix (2026-03-19)
+
+The current `cats-runtime` and `cats-inc` comparison against `paperclip` is more
+precise than a raw feature checklist.
+
+`cats-runtime` already has a real execution runtime. `cats-inc` already has
+early product and shared-core seams. The main gaps are:
+
+- runtime-managed skills
+- orchestration-grade runtime semantics
+- an executable plugin or MCP-style tool surface
+
+| Area | Cats today | Paperclip today | True gap | Priority |
+|------|------------|-----------------|----------|----------|
+| Runtime execution depth | `cats-runtime` already spans `cli`, `api`, `local`, and `agent` targets with provider catalog routing, SSE/NDJSON streaming, local tool runtime support, `sessionKey` / `outputDir` / `artifacts`, and structured invocation context | Heartbeat wakeups and coalescing, task-scoped session continuity, runtime services lifecycle, execution workspaces, and optional git worktree isolation are already first-class runtime services | Cats does not mainly lack adapter breadth; it lacks orchestration-grade runtime semantics | High |
+| Skill integration | `skills/` directories, sync scripts, and `skillProfile` / `mcpProfile` fields exist, but profiles currently affect prompt metadata more than execution dispatch | The Paperclip skill is the actual heartbeat operating procedure, and adapters inject Paperclip-managed skills into CLI runtime homes | Cats does not yet have runtime-managed skills or execution-time skill injection | Highest |
+| MCP / plugin surface | ADR-008 defines direct product APIs plus a future MCP facade, but the first curated MCP tool set is still open work | Paperclip already ships a plugin SDK, JSON-RPC worker host, capability model, UI bridge, and agent tool registration model | Cats lacks an executable tool-extension surface; the MCP facade is still architectural intent | High |
+| Control plane | `Cats Core v1` shared records and read-only APIs exist for actors, conversations, tasks, approvals, owner profile, and archive metadata | Company, org, work, approvals, activity, costs, and run history are all live operator-facing product objects | Cats still lacks a working operator control plane, but that gap belongs above the runtime boundary rather than inside `cats-runtime` | Medium-High |
+
+### Boundary Clarifications
+
+- Do not copy Paperclip's scheduler ownership, run-store DB model, company
+  workflow semantics, or budget and approval orchestration into
+  `cats-runtime`.
+- Keep `cats-runtime` as the execution boundary and let `cats-inc` own
+  approvals, owner profile, conversations, and operator-facing control-plane
+  state.
+- Treat Paperclip's plugin SDK as a later extension seam, not the first Cats
+  milestone.
+
+### Local Evidence for the Current-State Matrix
+
+- Runtime depth:
+  [`cats-runtime/src/core/types.ts`](../../../cats-runtime/src/core/types.ts),
+  [`cats-runtime/src/core/providerCatalog.ts`](../../../cats-runtime/src/core/providerCatalog.ts),
+  [`paperclip/server/src/services/heartbeat.ts`](../../../paperclip/server/src/services/heartbeat.ts),
+  [`paperclip/server/src/services/workspace-runtime.ts`](../../../paperclip/server/src/services/workspace-runtime.ts)
+- Skill integration:
+  [`cats-runtime/skills/README.md`](../../../cats-runtime/skills/README.md),
+  [`cats-runtime/scripts/windows/Sync-AgentSkills.ps1`](../../../cats-runtime/scripts/windows/Sync-AgentSkills.ps1),
+  [`paperclip/skills/paperclip/SKILL.md`](../../../paperclip/skills/paperclip/SKILL.md),
+  [`paperclip/packages/adapters/codex-local/src/server/execute.ts`](../../../paperclip/packages/adapters/codex-local/src/server/execute.ts)
+- MCP and plugin surface:
+  [`../decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md`](../decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md),
+  [`../plans/PLAN-006-cats-core-v1-and-suite-foundation.md`](../plans/PLAN-006-cats-core-v1-and-suite-foundation.md),
+  [`../../../paperclip/doc/plugins/PLUGIN_SPEC.md`](../../../paperclip/doc/plugins/PLUGIN_SPEC.md),
+  [`../../../paperclip/packages/plugins/sdk/src/worker-rpc-host.ts`](../../../paperclip/packages/plugins/sdk/src/worker-rpc-host.ts)
+- Product control plane:
+  [`../api.md`](../api.md),
+  [`../../src/shared/core.ts`](../../src/shared/core.ts)
+
 ## Recommended Rewrite Sequence
 
 > Temporarily not applicable note: this sequence is not the active `cats-inc`
@@ -176,6 +227,27 @@ keeping `cats-runtime` as the only execution boundary.
 6. Add extension seams later.
    Only after the control plane is stable should `cats-inc` grow plugin,
    alternate entrypoint, or template distribution seams.
+
+## Current Recommended Implementation Order (2026-03-19)
+
+This order reflects the current repo state rather than the broader long-term
+rewrite sequence above.
+
+1. Add `runtime-managed skills v0` to `cats-runtime`.
+   Resolve `skillProfile` into explicit skill packages and adapter injection
+   rules before expanding orchestration.
+2. Connect `cats-inc` metadata to runtime execution.
+   Promote `skillProfile` and `mcpProfile` from prompt-level metadata into
+   explicit runtime request and orchestration inputs.
+3. Add execution workspace and runtime-services modeling to `cats-runtime`.
+   Start with explicit workspace and service lifecycle ownership; keep git
+   worktree support optional until the contract is stable.
+4. Define the first curated MCP facade for orchestrators.
+   Expose a small, product-safe tool set without bypassing product-owned
+   permissions, approvals, or bot bindings.
+5. Land product-side control-plane writes in `cats-inc`.
+   Add approval, activity, execution-history, and cost surfaces above the same
+   runtime boundary.
 
 ## Open Questions
 
@@ -203,4 +275,5 @@ migration is:
 ---
 
 *Created: 2026-03-16*
+*Updated: 2026-03-19*
 *Author: Codex*
