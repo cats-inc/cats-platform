@@ -1,6 +1,6 @@
 # PLAN-010: Full-Site Routing and URL-Driven Navigation
 
-Status: Draft (Ready for Specialist Handoff)
+Status: Implemented
 
 ## Scope
 

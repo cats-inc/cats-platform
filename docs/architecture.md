@@ -182,6 +182,27 @@ and product-facing:
 or a full RAG engine implementation. Those stay behind `cats-runtime` or
 adjacent archive services.
 
+## Renderer Routing
+
+The renderer uses `react-router-dom` for path-based client-side routing
+([SPEC-010](./specs/SPEC-010-full-site-routing-and-url-driven-navigation.md) /
+[PLAN-010](./plans/PLAN-010-full-site-routing-and-url-driven-navigation.md)).
+The URL drives navigation — no hidden `useState` surface switches.
+
+Active routes:
+
+- `/` — redirect to `/chats`
+- `/chats` — draft composer (or redirect to last selected channel)
+- `/chats/:channelId` — individual chat view with deep-link support
+- `/settings` — redirect to `/settings/cats`
+- `/settings/cats` — cats registry
+
+Reserved (not yet implemented): `/work/*`, `/tools/*`.
+
+Browser back/forward and page refresh preserve the current surface. The server's
+SPA fallback (`tryServeWebAsset`) serves `index.html` for extensionless paths,
+enabling deep links in built mode.
+
 ## Current Chat Navigation Direction
 
 The current planning direction for Chat information architecture is:
@@ -318,4 +339,4 @@ still intentionally deferred:
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-18*

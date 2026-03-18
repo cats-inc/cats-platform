@@ -1,9 +1,12 @@
 import { startTransition, useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import {
+  Routes, Route, Navigate,
+  useNavigate, useLocation, useMatch,
+} from 'react-router-dom';
 
 import { shouldSubmitComposerOnKeyDown } from '../shared/composer';
 import type {
   AppShellPayload,
-  WorkspaceChannelSummary,
   WorkspacePal,
 } from '../shared/app-shell';
 import {
@@ -24,7 +27,6 @@ type LoadState =
   | { status: 'error'; message: string };
 
 type Surface = 'chats' | 'settings';
-type ChatView = 'overview' | 'channel';
 
 interface PalFormState {
   name: string;
@@ -40,19 +42,6 @@ function emptyPalForm(): PalFormState {
   };
 }
 
-function sessionTone(status: string): string {
-  switch (status) {
-    case 'active':
-      return 'statusChip statusChipReady';
-    case 'configured':
-    case 'watching':
-      return 'statusChip statusChipWarm';
-    case 'archived':
-      return 'statusChip statusChipMuted';
-    default:
-      return 'statusChip statusChipMuted';
-  }
-}
 
 function executionLabel(pal: WorkspacePal): string {
   const name = getProviderDisplayName(pal.defaultExecutionTarget.provider);
@@ -88,34 +77,8 @@ function messageTone(senderKind: string): string {
   }
 }
 
-function formatActivityLabel(timestamp: string | null): string {
-  if (!timestamp) {
-    return 'No recent activity';
-  }
-
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return 'Recent activity unavailable';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date);
-}
-
-function summarizeChannelActivity(channel: WorkspaceChannelSummary): string {
-  return formatActivityLabel(channel.lastMessageAt ?? channel.lastActivatedAt);
-}
-
 function presentChannelTitle(title: string): string {
   return title.trim() === 'Untitled chat' ? 'New chat' : title;
-}
-
-function presentChannelTopic(topic: string): string {
-  return topic.trim() === 'This chat is still taking shape.' ? '' : topic;
 }
 
 function palInitials(name: string): string {
@@ -139,9 +102,12 @@ function pickGreeting(): string {
 }
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const channelMatch = useMatch('/chats/:channelId');
+  const routeChannelId = channelMatch?.params.channelId ?? null;
+
   const [state, setState] = useState<LoadState>({ status: 'loading' });
-  const [surface, setSurface] = useState<Surface>('chats');
-  const [chatView, setChatView] = useState<ChatView>('overview');
   const [draftingNewChat, setDraftingNewChat] = useState(false);
   const [composerDraft, setComposerDraft] = useState('');
   const [palForm, setPalForm] = useState<PalFormState>(emptyPalForm);
@@ -154,6 +120,7 @@ export default function App() {
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [greeting] = useState(pickGreeting);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const syncingRef = useRef(false);
 
   useEffect(() => {
     if (!accountMenuOpen && !overflowMenuOpenId) return;
@@ -193,7 +160,6 @@ export default function App() {
       .then((payload) => {
         startTransition(() => {
           setState({ status: 'ready', payload });
-          setChatView(payload.workspace.selectedChannel ? 'channel' : 'overview');
         });
       })
       .catch((error: unknown) => {
@@ -208,6 +174,24 @@ export default function App() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    if (state.status !== 'ready' || !routeChannelId || syncingRef.current) return;
+    const { selectedChannelId, selectedChannel } = state.payload.workspace;
+    if (selectedChannelId === routeChannelId && selectedChannel?.id === routeChannelId) return;
+
+    const exists = state.payload.workspace.channels.some(ch => ch.id === routeChannelId);
+    if (!exists) {
+      navigate('/chats', { replace: true });
+      return;
+    }
+
+    syncingRef.current = true;
+    updateSelectedChannel(routeChannelId)
+      .then(p => startTransition(() => setState({ status: 'ready', payload: p })))
+      .catch(() => navigate('/chats', { replace: true }))
+      .finally(() => { syncingRef.current = false; });
+  }, [routeChannelId, state.status]);
+
   function onOpenChatsOverview(): void {
     void onStartNewChat();
   }
@@ -220,19 +204,14 @@ export default function App() {
   }
 
   async function onSelect(channelId: string): Promise<void> {
+    navigate(`/chats/${channelId}`);
+    setDraftingNewChat(false);
+    setFeedback('');
+    setAddPalOpen(false);
     try {
       const payload = await updateSelectedChannel(channelId);
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setSurface('chats');
-        setChatView('channel');
-        setDraftingNewChat(false);
-        setFeedback('');
-        setAddPalOpen(false);
-      });
-    } catch {
-      // Keep the shell stable if selection sync fails.
-    }
+      startTransition(() => setState({ status: 'ready', payload }));
+    } catch { /* URL still shows correct channel */ }
   }
 
   async function onDeleteChannel(channelId: string): Promise<void> {
@@ -241,12 +220,11 @@ export default function App() {
       const payload = await deleteWorkspaceChannel(channelId);
       startTransition(() => {
         setState({ status: 'ready', payload });
-        setSurface('chats');
-        setChatView('overview');
         setDraftingNewChat(false);
         setAddPalOpen(false);
         setFeedback('');
       });
+      navigate('/chats');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
     } finally {
@@ -342,8 +320,7 @@ export default function App() {
   }
 
   async function onStartNewChat(): Promise<void> {
-    setSurface('chats');
-    setChatView('channel');
+    navigate('/chats');
     setDraftingNewChat(true);
     setComposerDraft('');
     setFeedback('');
@@ -385,12 +362,11 @@ export default function App() {
       const dispatch = await sendWorkspaceMessage(channelId, { body });
       startTransition(() => {
         setState({ status: 'ready', payload: dispatch.appShell });
-        setSurface('chats');
-        setChatView('channel');
         setDraftingNewChat(false);
         setComposerDraft('');
         setFeedback('');
       });
+      navigate(`/chats/${channelId}`, { replace: true });
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
     } finally {
@@ -445,7 +421,14 @@ export default function App() {
   }
 
   const { payload } = state;
-  const selectedChannel = draftingNewChat ? null : payload.workspace.selectedChannel;
+  const surface: Surface = location.pathname.startsWith('/settings')
+    ? 'settings' : 'chats';
+
+  const selectedChannel = routeChannelId
+    && payload.workspace.selectedChannel?.id === routeChannelId
+    ? payload.workspace.selectedChannel
+    : null;
+
   const activeAssignedPals =
     selectedChannel?.assignedPals.filter((pal) => pal.status === 'active') ?? [];
   const activePalIds = new Set(activeAssignedPals.map((pal) => pal.palId));
@@ -455,8 +438,6 @@ export default function App() {
   const providerModels = getProviderModels(palForm.provider);
   const hasConversationStarted =
     selectedChannel?.messages.some((message) => message.senderKind !== 'system') ?? false;
-  const showDraftComposer = surface === 'chats' && (draftingNewChat || !selectedChannel);
-  const showChatOverview = false;
 
   const palCreationForm = (
     <form
@@ -568,7 +549,7 @@ export default function App() {
 
           <nav className="navGroup navGroupWorkspace" aria-label="Workspace">
             <button
-              className={surface === 'chats' && !showDraftComposer ? 'navItem navItemActive' : 'navItem'}
+              className={surface === 'chats' && routeChannelId ? 'navItem navItemActive' : 'navItem'}
               onClick={onOpenChatsOverview}
               type="button"
             >
@@ -585,9 +566,7 @@ export default function App() {
                   <article
                     key={channel.id}
                     className={
-                      !draftingNewChat
-                        && payload.workspace.selectedChannelId === channel.id
-                        && chatView === 'channel'
+                      routeChannelId === channel.id
                         ? 'recentItemCard recentItemSelected'
                         : 'recentItemCard'
                     }
@@ -652,7 +631,7 @@ export default function App() {
                 className="accountMenuItem"
                 type="button"
                 onClick={() => {
-                  setSurface('settings');
+                  navigate('/settings/cats');
                   setAccountMenuOpen(false);
                   setAddPalOpen(false);
                   setFeedback('');
@@ -666,267 +645,225 @@ export default function App() {
       </aside>
 
       <main className="canvas">
-        {surface === 'settings' ? (
-          <div className="viewShell viewShellScrollable palsShell">
-            <div className="viewIntro">
-              <div className="settingsBreadcrumb">
-                <button className="breadcrumbLink" type="button" onClick={onOpenChatsOverview}>
-                  Chat
-                </button>
-                <span className="breadcrumbSep">/</span>
-                <span>Settings</span>
-                <span className="breadcrumbSep">/</span>
-                <span>Cats</span>
-              </div>
-              <h1>Cats</h1>
-              <p className="heroNote">
-                Manage reusable cats across your workspace. Add them to any chat from the chat
-                view.
-              </p>
-              {feedback ? <p className="feedbackText">{feedback}</p> : null}
-            </div>
-
-            <div className="palsLayout">
-              <section className="contentCard">
-                <div className="contentCardHeader">
-                  <div>
-                    <p className="sectionLabel">Registry</p>
-                    <h2>{payload.workspace.pals.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
-                  </div>
-                  <span className="countBadge">{payload.workspace.pals.length}</span>
+        <Routes>
+          <Route path="/" element={<Navigate to="/chats" replace />} />
+          <Route path="/settings" element={<Navigate to="/settings/cats" replace />} />
+          <Route path="/settings/cats" element={
+            <div className="viewShell viewShellScrollable palsShell">
+              <div className="viewIntro">
+                <div className="settingsBreadcrumb">
+                  <button className="breadcrumbLink" type="button" onClick={() => navigate('/chats')}>
+                    Chat
+                  </button>
+                  <span className="breadcrumbSep">/</span>
+                  <span>Settings</span>
+                  <span className="breadcrumbSep">/</span>
+                  <span>Cats</span>
                 </div>
+                <h1>Cats</h1>
+                <p className="heroNote">
+                  Manage reusable cats across your workspace. Add them to any chat from the chat
+                  view.
+                </p>
+                {feedback ? <p className="feedbackText">{feedback}</p> : null}
+              </div>
 
-                <div className="palList">
-                  {payload.workspace.pals.length > 0 ? (
-                    payload.workspace.pals.map((pal) => (
-                      <article key={pal.id} className="palCard">
-                        <div className="palCardTop">
-                          <div>
-                            <strong>{pal.name}</strong>
-                            <p>{executionLabel(pal)}</p>
-                          </div>
-                          <span
-                            className={
-                              pal.status === 'active'
-                                ? 'statusChip statusChipReady'
-                                : 'statusChip statusChipMuted'
-                            }
-                          >
-                            {pal.status}
-                          </span>
-                        </div>
-                        <div className="palMeta">
-                          <span>{pal.skillProfile ?? 'No skill profile'}</span>
-                          <span>{pal.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
-                        </div>
-                      </article>
-                    ))
-                  ) : (
-                    <div className="emptyStateCard">
-                      <p>Create your first cat from the panel on the right.</p>
+              <div className="palsLayout">
+                <section className="contentCard">
+                  <div className="contentCardHeader">
+                    <div>
+                      <p className="sectionLabel">Registry</p>
+                      <h2>{payload.workspace.pals.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
                     </div>
-                  )}
-                </div>
-              </section>
-
-              <section className="contentCard contentCardForm">
-                <div className="contentCardHeader">
-                  <div>
-                    <p className="sectionLabel">Create</p>
-                    <h2>New cat</h2>
+                    <span className="countBadge">{payload.workspace.pals.length}</span>
                   </div>
-                </div>
-                {palCreationForm}
-              </section>
+
+                  <div className="palList">
+                    {payload.workspace.pals.length > 0 ? (
+                      payload.workspace.pals.map((pal) => (
+                        <article key={pal.id} className="palCard">
+                          <div className="palCardTop">
+                            <div>
+                              <strong>{pal.name}</strong>
+                              <p>{executionLabel(pal)}</p>
+                            </div>
+                            <span
+                              className={
+                                pal.status === 'active'
+                                  ? 'statusChip statusChipReady'
+                                  : 'statusChip statusChipMuted'
+                              }
+                            >
+                              {pal.status}
+                            </span>
+                          </div>
+                          <div className="palMeta">
+                            <span>{pal.skillProfile ?? 'No skill profile'}</span>
+                            <span>{pal.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
+                          </div>
+                        </article>
+                      ))
+                    ) : (
+                      <div className="emptyStateCard">
+                        <p>Create your first cat from the panel on the right.</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="contentCard contentCardForm">
+                  <div className="contentCardHeader">
+                    <div>
+                      <p className="sectionLabel">Create</p>
+                      <h2>New cat</h2>
+                    </div>
+                  </div>
+                  {palCreationForm}
+                </section>
+              </div>
             </div>
-          </div>
-        ) : showChatOverview ? (
-          <div className="viewShell viewShellScrollable">
-            <section className="overviewShell">
-              <div className="overviewHeader">
-                <div>
-                  <p className="sectionLabel">Chats</p>
-                  <h1>Recent chats</h1>
+          } />
+          <Route path="/chats/:channelId" element={
+            selectedChannel ? (
+              <>
+              <header className="channelTopBar">
+                <div className="rosterAvatars">
+                  <div className="palAvatar palAvatarOrch" title="Orchestrator">Or</div>
+                  {activeAssignedPals.map((pal) => (
+                    <div key={pal.palId} className="palAvatar" title={pal.name}>
+                      {palInitials(pal.name)}
+                    </div>
+                  ))}
                 </div>
-                <button className="primaryButton" type="button" onClick={() => void onStartNewChat()}>
-                  New chat
+                <button
+                  className="addPalButton"
+                  type="button"
+                  onClick={() => {
+                    setAddPalOpen(!addPalOpen);
+                    setAddPalTab('existing');
+                    setFeedback('');
+                    setPalForm(emptyPalForm());
+                  }}
+                >
+                  +
                 </button>
-              </div>
+              </header>
+              <div className="viewShell viewShellChannel">
+                <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
 
-              {feedback ? <p className="feedbackText">{feedback}</p> : null}
+                  {feedback ? <p className="feedbackText channelFeedback">{feedback}</p> : null}
 
-              <div className="overviewList">
-                {payload.workspace.channels.length > 0 ? (
-                  payload.workspace.channels.map((channel) => (
-                    <article key={channel.id} className="overviewCard">
-                      <button
-                        className="overviewCardSelect"
-                        type="button"
-                        onClick={() => void onSelect(channel.id)}
-                      >
-                        <div className="overviewCardTop">
-                          <div>
-                            <strong>{presentChannelTitle(channel.title)}</strong>
-                            {presentChannelTopic(channel.topic) ? (
-                              <p>{presentChannelTopic(channel.topic)}</p>
+                  {hasConversationStarted ? (
+                    <section className="transcriptPanel">
+                      <div className="transcriptList">
+                        {selectedChannel.messages.map((message) => (
+                          <article key={message.id} className={messageTone(message.senderKind)}>
+                            {message.senderKind !== 'user' ? (
+                              <div className="transcriptMessageTop">
+                                <strong>{message.senderName}</strong>
+                              </div>
                             ) : null}
-                          </div>
-                          <span className={sessionTone(channel.status)}>{channel.status}</span>
-                        </div>
-                        <div className="overviewCardMeta">
-                          <span>
-                            {channel.activePalCount} active cat
-                            {channel.activePalCount === 1 ? '' : 's'}
-                          </span>
-                          <span>{channel.unreadCount} unread</span>
-                          <span>{summarizeChannelActivity(channel)}</span>
-                        </div>
+                            <p>{message.body}</p>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  ) : (
+                    <section className="freshChatIntro">
+                      <div className="draftGreeting"><h1>{greeting}</h1></div>
+                    </section>
+                  )}
+
+                  <form
+                    className={
+                      hasConversationStarted
+                        ? 'composerCard composerCardDocked'
+                        : 'composerCard composerCardFresh'
+                    }
+                    onSubmit={(event) => void onSendMessage(event)}
+                  >
+                    <textarea
+                      className="composerInput"
+                      rows={1}
+                      placeholder="How can I help you today?"
+                      value={composerDraft}
+                      onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
+                      onKeyDown={(event) => void onComposerKeyDown(event)}
+                    />
+                    <div className="composerBottomRow">
+                      <button className="composerPlusButton" type="button" aria-label="Attach">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M8 3v10" />
+                          <path d="M3 8h10" />
+                        </svg>
                       </button>
                       <button
-                        className="overviewDeleteButton"
-                        type="button"
-                        disabled={busy === `channel:delete:${channel.id}`}
-                        onClick={() => void onDeleteChannel(channel.id)}
+                        className="composerSendButton"
+                        disabled={!composerDraft.trim() || busy === 'message:send'}
+                        type="submit"
+                        aria-label="Send"
                       >
-                        {busy === `channel:delete:${channel.id}` ? 'Deleting...' : 'Delete'}
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M8 13V3" />
+                          <path d="M3 7l5-5 5 5" />
+                        </svg>
                       </button>
-                    </article>
-                  ))
-                ) : (
-                  <div className="emptyStateCard overviewEmpty">
-                    <button className="primaryButton" type="button" onClick={() => void onStartNewChat()}>
-                      New chat
-                    </button>
-                  </div>
-                )}
+                    </div>
+                  </form>
+                </section>
               </div>
-            </section>
-          </div>
-        ) : showDraftComposer ? (
-          <div className="viewShell viewShellDraft">
-            <section className="draftShell">
-              <div className="draftGreeting"><h1>{greeting}</h1></div>
-              <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
-                <textarea
-                  className="composerInput"
-                  rows={1}
-                  placeholder="How can I help you today?"
-                  value={composerDraft}
-                  onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
-                  onKeyDown={(event) => void onComposerKeyDown(event)}
-                />
-                <div className="composerBottomRow">
-                  <button className="composerPlusButton" type="button" aria-label="Attach">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 3v10" />
-                      <path d="M3 8h10" />
-                    </svg>
-                  </button>
-                  <button
-                    className="composerSendButton"
-                    disabled={!composerDraft.trim() || busy === 'message:send'}
-                    type="submit"
-                    aria-label="Send"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 13V3" />
-                      <path d="M3 7l5-5 5 5" />
-                    </svg>
-                  </button>
+              </>
+            ) : (
+              <div className="screen screenCentered">
+                <div className="loadingPanel">
+                  <p className="eyebrow">Cats Inc</p>
+                  <h1>Chat</h1>
                 </div>
-              </form>
-            </section>
-          </div>
-        ) : selectedChannel ? (
-          <>
-          <header className="channelTopBar">
-            <div className="rosterAvatars">
-              <div className="palAvatar palAvatarOrch" title="Orchestrator">Or</div>
-              {activeAssignedPals.map((pal) => (
-                <div key={pal.palId} className="palAvatar" title={pal.name}>
-                  {palInitials(pal.name)}
+              </div>
+            )
+          } />
+          <Route path="/chats" element={
+            !draftingNewChat && payload.workspace.selectedChannelId
+              ? <Navigate to={`/chats/${payload.workspace.selectedChannelId}`} replace />
+              : (
+                <div className="viewShell viewShellDraft">
+                  <section className="draftShell">
+                    <div className="draftGreeting"><h1>{greeting}</h1></div>
+                    <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
+                      <textarea
+                        className="composerInput"
+                        rows={1}
+                        placeholder="How can I help you today?"
+                        value={composerDraft}
+                        onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
+                        onKeyDown={(event) => void onComposerKeyDown(event)}
+                      />
+                      <div className="composerBottomRow">
+                        <button className="composerPlusButton" type="button" aria-label="Attach">
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 3v10" />
+                            <path d="M3 8h10" />
+                          </svg>
+                        </button>
+                        <button
+                          className="composerSendButton"
+                          disabled={!composerDraft.trim() || busy === 'message:send'}
+                          type="submit"
+                          aria-label="Send"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 13V3" />
+                            <path d="M3 7l5-5 5 5" />
+                          </svg>
+                        </button>
+                      </div>
+                    </form>
+                  </section>
                 </div>
-              ))}
-            </div>
-            <button
-              className="addPalButton"
-              type="button"
-              onClick={() => {
-                setAddPalOpen(!addPalOpen);
-                setAddPalTab('existing');
-                setFeedback('');
-                setPalForm(emptyPalForm());
-              }}
-            >
-              +
-            </button>
-          </header>
-          <div className="viewShell viewShellChannel">
-            <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
-
-              {feedback ? <p className="feedbackText channelFeedback">{feedback}</p> : null}
-
-              {hasConversationStarted ? (
-                <section className="transcriptPanel">
-                  <div className="transcriptList">
-                    {selectedChannel.messages.map((message) => (
-                      <article key={message.id} className={messageTone(message.senderKind)}>
-                        {message.senderKind !== 'user' ? (
-                          <div className="transcriptMessageTop">
-                            <strong>{message.senderName}</strong>
-                          </div>
-                        ) : null}
-                        <p>{message.body}</p>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              ) : (
-                <section className="freshChatIntro">
-                  <div className="draftGreeting"><h1>{greeting}</h1></div>
-                </section>
-              )}
-
-              <form
-                className={
-                  hasConversationStarted
-                    ? 'composerCard composerCardDocked'
-                    : 'composerCard composerCardFresh'
-                }
-                onSubmit={(event) => void onSendMessage(event)}
-              >
-                <textarea
-                  className="composerInput"
-                  rows={1}
-                  placeholder="How can I help you today?"
-                  value={composerDraft}
-                  onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
-                  onKeyDown={(event) => void onComposerKeyDown(event)}
-                />
-                <div className="composerBottomRow">
-                  <button className="composerPlusButton" type="button" aria-label="Attach">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 3v10" />
-                      <path d="M3 8h10" />
-                    </svg>
-                  </button>
-                  <button
-                    className="composerSendButton"
-                    disabled={!composerDraft.trim() || busy === 'message:send'}
-                    type="submit"
-                    aria-label="Send"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 13V3" />
-                      <path d="M3 7l5-5 5 5" />
-                    </svg>
-                  </button>
-                </div>
-              </form>
-            </section>
-          </div>
-          </>
-        ) : null}
+              )
+          } />
+          <Route path="*" element={<Navigate to="/chats" replace />} />
+        </Routes>
       </main>
 
       {addPalOpen && selectedChannel ? (
