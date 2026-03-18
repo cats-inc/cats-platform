@@ -27,7 +27,11 @@ import {
   createEmptyExecutionLease,
   createEmptyMemoryCheckpoint,
 } from './defaults.js';
-import { createDefaultCoreState, syncCoreStateWithWorkspace } from '../core/model.js';
+import {
+  createDefaultCoreState,
+  createPalActorId,
+  syncCoreStateWithWorkspace,
+} from '../core/model.js';
 
 export interface WorkspaceStore {
   read(): Promise<WorkspaceState>;
@@ -522,7 +526,10 @@ function normalizeCoreTask(rawTask: unknown): CoreTaskRecord | null {
   };
 }
 
-function normalizeBotBinding(rawBinding: unknown): BotBindingRecord | null {
+function normalizeBotBinding(
+  rawBinding: unknown,
+  workspace: WorkspaceState,
+): BotBindingRecord | null {
   const bindingRecord = asRecord(rawBinding);
   if (!bindingRecord) {
     return null;
@@ -540,6 +547,9 @@ function normalizeBotBinding(rawBinding: unknown): BotBindingRecord | null {
     platform,
     botName: readString(bindingRecord.botName),
     orchestratorActorId: readString(bindingRecord.orchestratorActorId),
+    bossCatActorId:
+      readNullableString(bindingRecord.bossCatActorId)
+      ?? (workspace.bossCatId ? createPalActorId(workspace.bossCatId) : null),
     status: rawStatus === 'disabled' ? 'disabled' : 'active',
     createdAt: readString(bindingRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(bindingRecord.updatedAt, new Date().toISOString()),
@@ -628,7 +638,7 @@ function normalizeCoreState(rawState: unknown): CatsCoreState {
     : [];
   const botBindings = Array.isArray(stateRecord.botBindings)
     ? stateRecord.botBindings
-        .map((binding) => normalizeBotBinding(binding))
+        .map((binding) => normalizeBotBinding(binding, workspace))
         .filter((binding): binding is BotBindingRecord => binding !== null)
     : [];
   const archives = Array.isArray(stateRecord.archives)

@@ -1,0 +1,114 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { createTelegramRelay } from '../dist-server/transports/telegram/relay.js';
+import { InMemoryTelegramRelayStore } from '../dist-server/transports/telegram/store.js';
+
+function createContext(overrides = {}) {
+  return {
+    bossCatId: 'cat-smelly',
+    bossCatName: 'Smelly',
+    bossCatActorId: 'actor-pal-cat-smelly',
+    botBinding: {
+      id: 'bot-binding-telegram-global',
+      platform: 'telegram',
+      botName: 'smelly_bot',
+      orchestratorActorId: 'actor-orchestrator-global',
+      bossCatActorId: 'actor-pal-cat-smelly',
+      status: 'active',
+      createdAt: '2026-03-19T00:00:00.000Z',
+      updatedAt: '2026-03-19T00:00:00.000Z',
+    },
+    ...overrides,
+  };
+}
+
+test('telegram relay reports unbound when the bot binding does not front the current Boss Cat', () => {
+  const relay = createTelegramRelay();
+
+  const status = relay.getStatus(createContext({
+    bossCatActorId: 'actor-pal-cat-other',
+  }));
+
+  assert.equal(status.status, 'unbound');
+  assert.equal(status.botBinding, null);
+});
+
+test('telegram relay dedupes exact update ids and keeps the chat-to-conversation seam', () => {
+  const store = new InMemoryTelegramRelayStore();
+  const relay = createTelegramRelay({
+    store,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+
+  const accepted = relay.receiveUpdate({
+    update: {
+      update_id: 101,
+      message: {
+        message_id: 88,
+        text: 'hello from telegram',
+        chat: { id: 12345, type: 'private' },
+      },
+    },
+    context: createContext(),
+  });
+
+  assert.equal(accepted.status, 'accepted');
+  assert.equal(accepted.mappedConversationId, 'telegram:12345');
+  assert.equal(store.getBinding('12345')?.conversationId, 'telegram:12345');
+  assert.equal(
+    store.getBindingByConversationId('telegram:12345')?.telegramChatId,
+    '12345',
+  );
+
+  const duplicate = relay.receiveUpdate({
+    update: {
+      update_id: 101,
+      message: {
+        message_id: 89,
+        text: 'duplicate',
+        chat: { id: 12345, type: 'private' },
+      },
+    },
+    context: createContext(),
+  });
+
+  assert.equal(duplicate.status, 'ignored');
+  assert.equal(duplicate.reason, 'duplicate_update');
+  assert.equal(duplicate.mappedConversationId, 'telegram:12345');
+});
+
+test('telegram relay accepts older unseen update ids while keeping the highest processed marker', () => {
+  const relay = createTelegramRelay({
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+  const context = createContext();
+
+  relay.receiveUpdate({
+    update: {
+      update_id: 101,
+      message: {
+        message_id: 88,
+        chat: { id: 12345, type: 'private' },
+      },
+    },
+    context,
+  });
+
+  const olderButUnseen = relay.receiveUpdate({
+    update: {
+      update_id: 99,
+      message: {
+        message_id: 77,
+        chat: { id: 67890, type: 'private' },
+      },
+    },
+    context,
+  });
+
+  assert.equal(olderButUnseen.status, 'accepted');
+
+  const status = relay.getStatus(context);
+  assert.equal(status.lastProcessedUpdateId, 101);
+  assert.equal(status.mappedConversationCount, 2);
+});

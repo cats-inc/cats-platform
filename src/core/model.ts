@@ -25,6 +25,10 @@ function uniqueStrings(values: string[]): string[] {
   return values.filter((value, index) => value.length > 0 && values.indexOf(value) === index);
 }
 
+export function createPalActorId(palId: string): string {
+  return `actor-pal-${palId}`;
+}
+
 export function createDefaultOwnerProfile(updatedAt: string): OwnerProfileRecord {
   return {
     actorId: OWNER_ACTOR_ID,
@@ -96,13 +100,17 @@ function createOrchestratorActor(workspace: WorkspaceState): CoreActorRecord {
   };
 }
 
-function createPalActor(pal: WorkspacePal): CoreActorRecord {
+function createPalActor(pal: WorkspacePal, bossCatId: string | null): CoreActorRecord {
+  const bossCatRoles = pal.id === bossCatId
+    ? ['boss_cat', 'primary_orchestrator']
+    : [];
+
   return {
-    id: `actor-pal-${pal.id}`,
+    id: createPalActorId(pal.id),
     name: pal.name,
     kind: 'worker',
     status: pal.status === 'archived' ? 'archived' : 'active',
-    roles: structuredClone(pal.roles),
+    roles: uniqueStrings([...bossCatRoles, ...structuredClone(pal.roles)]),
     skillProfile: pal.skillProfile,
     mcpProfile: pal.mcpProfile,
     defaultExecutionTarget: structuredClone(pal.defaultExecutionTarget),
@@ -192,8 +200,11 @@ function syncBotBindings(
 ): BotBindingRecord[] {
   const preservedLineBindings = existingBindings.filter((binding) => binding.platform === 'line');
   const telegramBotName = workspace.globalOrchestrator.telegramBotName?.trim();
+  const bossCatActorId = workspace.bossCatId
+    ? createPalActorId(workspace.bossCatId)
+    : null;
 
-  if (!telegramBotName) {
+  if (!telegramBotName || !bossCatActorId) {
     return preservedLineBindings;
   }
 
@@ -207,6 +218,7 @@ function syncBotBindings(
       platform: 'telegram',
       botName: telegramBotName,
       orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
+      bossCatActorId,
       status: 'active',
       createdAt: existingTelegram?.createdAt ?? updatedAt,
       updatedAt,
@@ -222,7 +234,7 @@ export function syncCoreStateWithWorkspace(
   const ownerProfile = existingCore?.ownerProfile ?? createDefaultOwnerProfile(updatedAt);
   const ownerActor = createOwnerActor(ownerProfile);
   const orchestratorActor = createOrchestratorActor(workspace);
-  const palActors = workspace.pals.map((pal) => createPalActor(pal));
+  const palActors = workspace.pals.map((pal) => createPalActor(pal, workspace.bossCatId));
   const existingTasks = new Map((existingCore?.tasks ?? []).map((task) => [task.id, task]));
   const existingArchives = new Map((existingCore?.archives ?? []).map((archive) => [archive.id, archive]));
   const conversations = workspace.channels.map((channel) =>

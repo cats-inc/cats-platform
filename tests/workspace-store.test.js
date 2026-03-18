@@ -11,6 +11,7 @@ import {
   createWorkspacePal,
   deleteChannel,
   exportChannel,
+  updateGlobalOrchestrator,
 } from '../dist-server/workspace/model.js';
 import { FileWorkspaceStore } from '../dist-server/workspace/store.js';
 
@@ -235,6 +236,41 @@ test('WorkspaceStore exposes a derived Cats Core view that stays in sync with wo
   assert.ok(core.actors.some((actor) => actor.name === 'Planner'));
   assert.ok(core.conversations.some((conversation) => conversation.sourceChannelId === 'owner-loop'));
   assert.ok(core.tasks.some((task) => task.conversationId === 'conversation-channel-owner-loop'));
+});
+
+test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor', async () => {
+  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'));
+  let state = await store.read();
+
+  state = createWorkspacePal(
+    state,
+    {
+      name: 'Smelly',
+      provider: 'claude',
+      roles: ['planner'],
+    },
+    new Date('2026-03-19T00:00:00.000Z'),
+  );
+  state.bossCatId = state.pals[0].id;
+  state = updateGlobalOrchestrator(
+    state,
+    {
+      provider: 'claude',
+      telegramBotName: 'smelly_bot',
+    },
+    new Date('2026-03-19T00:01:00.000Z'),
+  );
+
+  await store.write(state);
+  const core = await store.readCore();
+  const telegramBinding = core.botBindings.find((binding) => binding.platform === 'telegram');
+  const bossCatActor = core.actors.find((actor) => actor.sourceId === state.bossCatId);
+
+  assert.ok(telegramBinding);
+  assert.equal(telegramBinding.botName, 'smelly_bot');
+  assert.equal(telegramBinding.bossCatActorId, `actor-pal-${state.bossCatId}`);
+  assert.ok(bossCatActor);
+  assert.ok(bossCatActor.roles.includes('boss_cat'));
 });
 
 test('deleteChannel removes the selected chat and falls back to the next recent chat', async () => {

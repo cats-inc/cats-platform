@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+import { createPalActorId } from '../../core/model.js';
 import type { WorkspaceState } from '../../shared/app-shell.js';
 import type { BotBindingRecord } from '../../shared/core.js';
 import type { WorkspaceStore } from '../../workspace/store.js';
@@ -59,13 +60,24 @@ async function readTelegramContext(
 ): Promise<{
   bossCatId: string | null;
   bossCatName: string | null;
+  bossCatActorId: string | null;
   botBinding: BotBindingRecord | null;
 }> {
   const core = await workspaceStore.readCore();
+  const bossCatId = core.workspace.bossCatId;
+  const bossCatActorId = bossCatId ? createPalActorId(bossCatId) : null;
+
   return {
-    bossCatId: core.workspace.bossCatId,
+    bossCatId,
     bossCatName: resolveBossCatName(core.workspace),
-    botBinding: core.botBindings.find((binding) => binding.platform === 'telegram') ?? null,
+    bossCatActorId,
+    botBinding: bossCatActorId
+      ? core.botBindings.find((binding) =>
+        binding.platform === 'telegram'
+        && binding.status === 'active'
+        && binding.bossCatActorId === bossCatActorId,
+      ) ?? null
+      : null,
   };
 }
 

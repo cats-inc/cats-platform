@@ -25,6 +25,16 @@ function pickMessage(update: TelegramWebhookUpdate): TelegramMessagePayload | nu
   return update.message ?? update.edited_message ?? null;
 }
 
+function hasActiveBossCatBinding(context: TelegramRelayContext): boolean {
+  return Boolean(
+    context.bossCatId
+    && context.bossCatActorId
+    && context.botBinding
+    && context.botBinding.status === 'active'
+    && context.botBinding.bossCatActorId === context.bossCatActorId,
+  );
+}
+
 export function createTelegramRelay(options: TelegramRelayOptions = {}): TelegramRelay {
   const now = options.now ?? (() => new Date());
   const store = options.store ?? new InMemoryTelegramRelayStore();
@@ -32,12 +42,14 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
 
   return {
     getStatus(context: TelegramRelayContext): TelegramRelayStatus {
+      const boundToBossCat = hasActiveBossCatBinding(context);
+
       return {
         platform: 'telegram',
-        status: context.botBinding ? 'bound' : 'unbound',
+        status: boundToBossCat ? 'bound' : 'unbound',
         bossCatId: context.bossCatId,
         bossCatName: context.bossCatName,
-        botBinding: context.botBinding
+        botBinding: boundToBossCat && context.botBinding
           ? {
             id: context.botBinding.id,
             platform: 'telegram',
@@ -48,9 +60,11 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         lastProcessedUpdateId: store.getLastProcessedUpdateId(),
         webhookPath,
         relayMode: 'boss-cat-ingress',
-        note: context.botBinding
-          ? 'Telegram ingress is wired to Boss Cat. Outbound delivery remains pending.'
-          : 'No Telegram bot binding is configured for the current Boss Cat.',
+        note: !context.bossCatId
+          ? 'No Boss Cat is configured for Telegram ingress.'
+          : boundToBossCat
+            ? 'Telegram ingress is wired to Boss Cat. Outbound delivery remains pending.'
+            : 'No Telegram bot binding is configured for the current Boss Cat.',
       };
     },
 
@@ -67,7 +81,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       const chatId = message?.chat?.id != null ? String(message.chat.id) : null;
       const messageId = typeof message?.message_id === 'number' ? String(message.message_id) : null;
 
-      if (!context.botBinding || !context.bossCatId) {
+      if (!hasActiveBossCatBinding(context)) {
         return {
           platform: 'telegram',
           status: 'ignored',
@@ -82,8 +96,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         };
       }
 
-      const lastProcessedUpdateId = store.getLastProcessedUpdateId();
-      if (updateId !== null && lastProcessedUpdateId !== null && updateId <= lastProcessedUpdateId) {
+      if (updateId !== null && store.hasProcessedUpdate(updateId)) {
         return {
           platform: 'telegram',
           status: 'ignored',
@@ -98,10 +111,6 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         };
       }
 
-      if (updateId !== null) {
-        store.setLastProcessedUpdateId(updateId);
-      }
-
       let mappedConversationId: string | null = null;
       if (chatId) {
         const existingBinding = store.getBinding(chatId);
@@ -112,6 +121,10 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           createdAt: existingBinding?.createdAt ?? acceptedAt,
           updatedAt: acceptedAt,
         });
+      }
+
+      if (updateId !== null) {
+        store.markProcessedUpdate(updateId);
       }
 
       return {

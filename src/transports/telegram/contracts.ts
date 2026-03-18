@@ -34,6 +34,7 @@ export interface TelegramConversationBinding {
 export interface TelegramRelayContext {
   bossCatId: string | null;
   bossCatName: string | null;
+  bossCatActorId: string | null;
   botBinding: BotBindingRecord | null;
 }
 

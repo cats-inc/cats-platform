@@ -2,34 +2,58 @@ import type { TelegramConversationBinding } from './contracts.js';
 
 export interface TelegramRelayStore {
   getBinding(chatId: string): TelegramConversationBinding | null;
+  getBindingByConversationId(conversationId: string): TelegramConversationBinding | null;
   listBindings(): TelegramConversationBinding[];
   upsertBinding(binding: TelegramConversationBinding): void;
+  hasProcessedUpdate(updateId: number): boolean;
+  markProcessedUpdate(updateId: number): void;
   getLastProcessedUpdateId(): number | null;
-  setLastProcessedUpdateId(updateId: number): void;
 }
 
 export class InMemoryTelegramRelayStore implements TelegramRelayStore {
-  private readonly bindings = new Map<string, TelegramConversationBinding>();
+  private readonly bindingsByChatId = new Map<string, TelegramConversationBinding>();
+
+  private readonly bindingsByConversationId = new Map<string, TelegramConversationBinding>();
+
+  private readonly processedUpdateIds = new Set<number>();
 
   private lastProcessedUpdateId: number | null = null;
 
   getBinding(chatId: string): TelegramConversationBinding | null {
-    return this.bindings.get(chatId) ?? null;
+    return this.bindingsByChatId.get(chatId) ?? null;
+  }
+
+  getBindingByConversationId(conversationId: string): TelegramConversationBinding | null {
+    return this.bindingsByConversationId.get(conversationId) ?? null;
   }
 
   listBindings(): TelegramConversationBinding[] {
-    return [...this.bindings.values()];
+    return [...this.bindingsByChatId.values()];
   }
 
   upsertBinding(binding: TelegramConversationBinding): void {
-    this.bindings.set(binding.telegramChatId, binding);
+    const previousBinding = this.bindingsByChatId.get(binding.telegramChatId);
+    if (previousBinding && previousBinding.conversationId !== binding.conversationId) {
+      this.bindingsByConversationId.delete(previousBinding.conversationId);
+    }
+
+    this.bindingsByChatId.set(binding.telegramChatId, binding);
+    this.bindingsByConversationId.set(binding.conversationId, binding);
+  }
+
+  hasProcessedUpdate(updateId: number): boolean {
+    return this.processedUpdateIds.has(updateId);
+  }
+
+  markProcessedUpdate(updateId: number): void {
+    this.processedUpdateIds.add(updateId);
+    this.lastProcessedUpdateId = Math.max(
+      this.lastProcessedUpdateId ?? updateId,
+      updateId,
+    );
   }
 
   getLastProcessedUpdateId(): number | null {
     return this.lastProcessedUpdateId;
-  }
-
-  setLastProcessedUpdateId(updateId: number): void {
-    this.lastProcessedUpdateId = updateId;
   }
 }

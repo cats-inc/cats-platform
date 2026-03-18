@@ -96,6 +96,7 @@ export interface BotBindingRecord {
   platform: BotBindingPlatform;
   botName: string;
   orchestratorActorId: string;
+  bossCatActorId: string | null;
   status: 'active' | 'disabled';
   createdAt: string;
   updatedAt: string;
