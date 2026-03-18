@@ -27,6 +27,7 @@ import {
   requireChannel,
   requirePal,
   removePalFromChannel,
+  resolveOrchestratorDisplayName,
   selectChannel,
   toChannelSummary,
   updateGlobalOrchestrator,
@@ -51,28 +52,19 @@ const MIME_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
 };
 
-function autoAssignBossCat(
+function seedBossCatGreeting(
   state: WorkspaceState, channelId: string, now: Date,
 ): WorkspaceState {
   if (!state.bossCatId) return state;
   const channel = requireChannel(state, channelId);
-  if (channel.palAssignments.length > 0) return state;
-  const bossCat = state.pals.find((p) => p.id === state.bossCatId);
-  if (!bossCat) return state;
+  if (channel.palAssignments.length > 0 || channel.messages.length > 0) return state;
+  const bossCatName = resolveOrchestratorDisplayName(state);
 
-  let next = assignPalToChannel(state, channelId, {
-    palId: bossCat.id,
-    provider: bossCat.defaultExecutionTarget.provider,
-    model: bossCat.defaultExecutionTarget.model ?? undefined,
-  }, now);
-
-  next = appendMessage(next, channelId, {
-    senderKind: 'agent',
-    senderName: bossCat.name,
-    body: `Meow! I'm ${bossCat.name}, your Boss Cat. What shall we work on?`,
+  return appendMessage(state, channelId, {
+    senderKind: 'orchestrator',
+    senderName: bossCatName,
+    body: `Meow! I'm ${bossCatName}, your Boss Cat. What shall we work on?`,
   }, now).state;
-
-  return next;
 }
 
 function sendJson(
@@ -325,7 +317,9 @@ async function handleChannelCreate(
       body,
       now,
     );
-    nextState = autoAssignBossCat(nextState, nextState.selectedChannelId, now);
+    if (!body.skipBossCatGreeting) {
+      nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
+    }
     const persisted = await dependencies.workspaceStore.write(nextState);
     sendJson(response, 200, await buildAppShell(dependencies, persisted));
   } catch (error) {
@@ -746,7 +740,9 @@ async function handleRestCreateChannel(
       body,
       now,
     );
-    nextState = autoAssignBossCat(nextState, nextState.selectedChannelId, now);
+    if (!body.skipBossCatGreeting) {
+      nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
+    }
     const persisted = await dependencies.workspaceStore.write(nextState);
     const createdChannel = persisted.channels[0];
     sendJson(response, 201, {
@@ -1375,16 +1371,9 @@ async function handleSetupComplete(
     }, now);
     const channelId = workspace.selectedChannelId;
 
-    // Assign Boss Cat to channel
-    workspace = assignPalToChannel(workspace, channelId, {
-      palId: bossCat.id,
-      provider: body.bossCatProvider,
-      model: body.bossCatModel,
-    }, now);
-
-    // Add greeting from Boss Cat
+    // Add greeting from Boss Cat as the visible orchestrator entrypoint.
     workspace = appendMessage(workspace, channelId, {
-      senderKind: 'agent',
+      senderKind: 'orchestrator',
       senderName: bossCat.name,
       body: `Meow! I'm ${bossCat.name}, your Boss Cat. What shall we work on?`,
     }, now).state;

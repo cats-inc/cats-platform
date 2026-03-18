@@ -7,6 +7,9 @@ import {
 import { shouldSubmitComposerOnKeyDown } from '../shared/composer';
 import type {
   AppShellPayload,
+  WorkspaceChannelSummary,
+  WorkspaceChannelView,
+  WorkspaceMessage,
   WorkspacePal,
 } from '../shared/app-shell';
 import {
@@ -102,6 +105,141 @@ const GREETING_LINES = [
 
 function pickGreeting(): string {
   return GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
+}
+
+function resolveBossCatName(payload: AppShellPayload): string | null {
+  if (!payload.workspace.bossCatId) {
+    return null;
+  }
+
+  return payload.workspace.pals.find((pal) => pal.id === payload.workspace.bossCatId)?.name ?? null;
+}
+
+type SelectedChannelView = NonNullable<AppShellPayload['workspace']['selectedChannel']>;
+
+function createEmptyParticipantLease(): SelectedChannelView['orchestratorLease'] {
+  return {
+    sessionId: null,
+    status: 'not_started',
+    cwd: null,
+    lastError: null,
+    provider: null,
+    model: null,
+    startedAt: null,
+    lastUsedAt: null,
+  };
+}
+
+function createOptimisticUserMessage(
+  channelId: string,
+  body: string,
+  senderName: string,
+  createdAt: string,
+): WorkspaceMessage {
+  return {
+    id: `optimistic-${crypto.randomUUID()}`,
+    channelId,
+    senderKind: 'user',
+    senderName: senderName.trim() || 'User',
+    body,
+    mentions: [],
+    metadata: { optimistic: true },
+    usage: null,
+    createdAt,
+  };
+}
+
+function createOptimisticDraftPayload(
+  payload: AppShellPayload,
+  body: string,
+): { payload: AppShellPayload; channelId: string } {
+  const createdAt = new Date().toISOString();
+  const channelId = `draft-${crypto.randomUUID()}`;
+  const title = createDraftChannelTitle(body, payload.workspace.channels.length);
+  const topic = createDraftChannelTopic(body);
+  const message = createOptimisticUserMessage(channelId, body, payload.ownerDisplayName, createdAt);
+  const channelSummary: WorkspaceChannelSummary = {
+    id: channelId,
+    title,
+    topic,
+    status: 'planned',
+    unreadCount: 0,
+    palCount: 0,
+    activePalCount: 0,
+    repoPath: null,
+    workspaceCwd: null,
+    lastMessageAt: createdAt,
+    lastActivatedAt: null,
+  };
+  const selectedChannel: WorkspaceChannelView = {
+    id: channelId,
+    title,
+    topic,
+    status: 'planned',
+    unreadCount: 0,
+    repoPath: null,
+    workspaceCwd: null,
+    language: null,
+    responseLanguage: 'en',
+    formationMode: 'manual',
+    skillProfile: 'workspace-default',
+    mcpProfile: 'workspace-memory',
+    orchestratorRoles: [],
+    createdAt,
+    updatedAt: createdAt,
+    lastMessageAt: createdAt,
+    lastActivatedAt: null,
+    orchestratorLease: createEmptyParticipantLease(),
+    palAssignments: [],
+    messages: [message],
+    assignedPals: [],
+  };
+
+  return {
+    channelId,
+    payload: {
+      ...structuredClone(payload),
+      workspace: {
+        ...structuredClone(payload.workspace),
+        channels: [channelSummary, ...structuredClone(payload.workspace.channels)],
+        selectedChannelId: channelId,
+        selectedChannel,
+      },
+      metadata: {
+        ...structuredClone(payload.metadata),
+        generatedAt: createdAt,
+      },
+    },
+  };
+}
+
+function appendOptimisticUserMessage(
+  payload: AppShellPayload,
+  channelId: string,
+  body: string,
+): AppShellPayload {
+  const createdAt = new Date().toISOString();
+  const next = structuredClone(payload);
+  const selectedChannel = next.workspace.selectedChannel;
+  const channelSummary = next.workspace.channels.find((channel) => channel.id === channelId);
+
+  if (!selectedChannel || selectedChannel.id !== channelId || !channelSummary) {
+    throw new Error('No chat is available for optimistic updates.');
+  }
+
+  selectedChannel.messages.push(
+    createOptimisticUserMessage(channelId, body, next.ownerDisplayName, createdAt),
+  );
+  selectedChannel.updatedAt = createdAt;
+  selectedChannel.lastMessageAt = createdAt;
+  selectedChannel.unreadCount = 0;
+
+  channelSummary.lastMessageAt = createdAt;
+  channelSummary.unreadCount = 0;
+  next.workspace.selectedChannelId = channelId;
+  next.metadata.generatedAt = createdAt;
+
+  return next;
 }
 
 function SetupWizard({
@@ -515,18 +653,47 @@ export default function App() {
       return;
     }
 
-    setBusy('message:send');
-    try {
-      let payload = state.payload;
-      let channelId = draftingNewChat ? '' : payload.workspace.selectedChannelId;
+    const initialPayload = state.payload;
+    const wasDraftingNewChat = draftingNewChat;
+    let payload = initialPayload;
+    let rollbackPayload = initialPayload;
+    let channelId = wasDraftingNewChat ? '' : initialPayload.workspace.selectedChannelId;
+    let rollbackPath = wasDraftingNewChat ? '/chats' : location.pathname;
+    let shouldRestoreDraftShell = wasDraftingNewChat;
 
-      if (!channelId) {
-        payload = await createWorkspaceChannel({
-          title: createDraftChannelTitle(body, payload.workspace.channels.length),
+    setBusy('message:send');
+    setFeedback('');
+    try {
+      if (wasDraftingNewChat) {
+        const optimisticDraft = createOptimisticDraftPayload(initialPayload, body);
+        payload = optimisticDraft.payload;
+        setState({ status: 'ready', payload });
+        setDraftingNewChat(false);
+        setComposerDraft('');
+        navigate(`/chats/${optimisticDraft.channelId}`, { replace: true });
+
+        const createdPayload = await createWorkspaceChannel({
+          title: createDraftChannelTitle(body, initialPayload.workspace.channels.length),
           topic: createDraftChannelTopic(body),
+          skipBossCatGreeting: true,
         });
-        channelId = payload.workspace.selectedChannelId;
-        startTransition(() => setState({ status: 'ready', payload }));
+        channelId = createdPayload.workspace.selectedChannelId;
+        if (!channelId) {
+          throw new Error('No chat is available for sending messages.');
+        }
+        rollbackPayload = createdPayload;
+        rollbackPath = `/chats/${channelId}`;
+        shouldRestoreDraftShell = false;
+        payload = appendOptimisticUserMessage(createdPayload, channelId, body);
+        setState({ status: 'ready', payload });
+        navigate(rollbackPath, { replace: true });
+      } else {
+        if (!channelId) {
+          throw new Error('No chat is available for sending messages.');
+        }
+        payload = appendOptimisticUserMessage(payload, channelId, body);
+        setState({ status: 'ready', payload });
+        setComposerDraft('');
       }
 
       if (!channelId) {
@@ -535,20 +702,21 @@ export default function App() {
 
       if (!payload.workspace.selectedChannel?.orchestratorLease.sessionId) {
         const activation = await activateWorkspaceChannel(channelId);
-        payload = activation.appShell;
-        startTransition(() => setState({ status: 'ready', payload }));
+        rollbackPayload = activation.appShell;
       }
 
       const dispatch = await sendWorkspaceMessage(channelId, { body });
-      startTransition(() => {
-        setState({ status: 'ready', payload: dispatch.appShell });
-        setDraftingNewChat(false);
-        setComposerDraft('');
-        setFeedback('');
-      });
+      setState({ status: 'ready', payload: dispatch.appShell });
+      setDraftingNewChat(false);
+      setComposerDraft('');
+      setFeedback('');
       navigate(`/chats/${channelId}`, { replace: true });
     } catch (error) {
+      setState({ status: 'ready', payload: rollbackPayload });
+      setDraftingNewChat(shouldRestoreDraftShell);
+      setComposerDraft(body);
       setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
+      navigate(rollbackPath, { replace: true });
     } finally {
       setBusy('');
     }
@@ -632,8 +800,17 @@ export default function App() {
   const activeAssignedPals =
     selectedChannel?.assignedPals.filter((pal) => pal.status === 'active') ?? [];
   const activePalIds = new Set(activeAssignedPals.map((pal) => pal.palId));
+  const bossCatName = resolveBossCatName(payload) ?? 'Orchestrator';
+  const showBossCatAvatar = Boolean(payload.workspace.bossCatId)
+    && !activeAssignedPals.some((pal) => pal.palId === payload.workspace.bossCatId);
+  const assignablePalCount = payload.workspace.pals.filter(
+    (pal) => pal.status === 'active' && pal.id !== payload.workspace.bossCatId,
+  ).length;
   const unassignedPals = payload.workspace.pals.filter(
-    (pal) => pal.status === 'active' && !activePalIds.has(pal.id),
+    (pal) =>
+      pal.status === 'active'
+      && pal.id !== payload.workspace.bossCatId
+      && !activePalIds.has(pal.id),
   );
   const providerModels = getProviderModels(palForm.provider);
   const hasConversationStarted =
@@ -875,7 +1052,7 @@ export default function App() {
                       className="toggleRow"
                       onClick={async () => {
                         const show = !payload.workspace.showVerboseMessages;
-                        setLoadState({
+                        setState({
                           status: 'ready',
                           payload: {
                             ...payload,
@@ -884,9 +1061,9 @@ export default function App() {
                         });
                         try {
                           const next = await updateVerbosePreference(show);
-                          startTransition(() => setLoadState({ status: 'ready', payload: next }));
+                          startTransition(() => setState({ status: 'ready', payload: next }));
                         } catch (err) {
-                          setLoadState({
+                          setState({
                             status: 'ready',
                             payload: {
                               ...payload,
@@ -1010,6 +1187,11 @@ export default function App() {
               <>
               <header className="channelTopBar">
                 <div className="rosterAvatars">
+                  {showBossCatAvatar ? (
+                    <div className="palAvatar palAvatarOrch" title={bossCatName}>
+                      {palInitials(bossCatName)}
+                    </div>
+                  ) : null}
                   {activeAssignedPals.map((pal) => (
                     <div key={pal.palId} className="palAvatar" title={pal.name}>
                       {palInitials(pal.name)}
@@ -1202,8 +1384,8 @@ export default function App() {
               ) : (
                 <div className="emptyStateCard">
                   <p>
-                    {payload.workspace.pals.length === 0
-                      ? 'No cats yet. Create one first.'
+                    {assignablePalCount === 0
+                      ? 'No other cats yet. Create one first.'
                       : 'All cats are already in this chat.'}
                   </p>
                 </div>

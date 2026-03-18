@@ -5,6 +5,7 @@ import type {
   SendChannelMessageInput,
   WorkspaceChannelPal,
   WorkspaceChannelState,
+  WorkspaceChannelView,
   WorkspaceState,
 } from '../shared/app-shell.js';
 import type { RuntimeClient, RuntimeSessionInfo } from '../runtime/client.js';
@@ -20,7 +21,11 @@ import {
   setChannelStatus,
   setChannelWorkspaceCwd,
 } from './model.js';
-import { buildOrchestratorPrompt, buildPalPrompt } from './prompts.js';
+import {
+  buildOrchestratorPrompt,
+  buildOrchestratorRewritePrompt,
+  buildPalPrompt,
+} from './prompts.js';
 
 function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionStatus {
   switch (status) {
@@ -41,6 +46,20 @@ function spawnCwdFor(channel: WorkspaceChannelState): string | null {
 
 function activeAssignedPals(channel: { assignedPals: WorkspaceChannelPal[] }) {
   return channel.assignedPals.filter((pal) => pal.status === 'active');
+}
+
+function shouldRewriteOrchestratorReply(
+  content: string,
+  orchestratorName: string,
+  channel: WorkspaceChannelView,
+): boolean {
+  if (activeAssignedPals(channel).length > 0) {
+    return false;
+  }
+
+  const normalized = content.toLowerCase();
+  return normalized.includes(`@${orchestratorName.toLowerCase()}`)
+    || normalized.includes(`@${ORCHESTRATOR_NAME.toLowerCase()}`);
 }
 
 function setStartedSession(
@@ -154,6 +173,10 @@ function resolveTargets(state: WorkspaceState, channelId: string, body: string):
   const activePals = activeAssignedPals(channel);
   const palsByName = new Map(activePals.map((pal) => [pal.name.toLowerCase(), pal]));
   const orchestratorDisplayName = resolveOrchestratorDisplayName(state);
+  const orchestratorMentionAliases = new Set([
+    ORCHESTRATOR_NAME.toLowerCase(),
+    orchestratorDisplayName.toLowerCase(),
+  ]);
   const targets: Array<
     | { kind: 'orchestrator'; id: 'orchestrator'; name: string; sessionId: string | null }
     | { kind: 'pal'; id: string; name: string; sessionId: string | null }
@@ -176,7 +199,7 @@ function resolveTargets(state: WorkspaceState, channelId: string, body: string):
 
   for (const mention of mentions) {
     const normalized = mention.toLowerCase();
-    if (normalized === 'orchestrator') {
+    if (orchestratorMentionAliases.has(normalized)) {
       if (!targets.some((target) => target.kind === 'orchestrator')) {
         targets.push({
           kind: 'orchestrator',
@@ -477,6 +500,7 @@ export async function routeChannelMessage(
       currentChannel,
       nextState.globalOrchestrator,
       userMessage,
+      target.name,
     );
 
     if (target.kind === 'pal') {
@@ -503,6 +527,35 @@ export async function routeChannelMessage(
 
     try {
       const runtimeResult = await runtimeClient.sendMessage(target.sessionId, prompt);
+      let responseBody = runtimeResult.content || `${target.name} completed the routed turn without text output.`;
+      let usage = {
+        inputTokens: runtimeResult.inputTokens,
+        outputTokens: runtimeResult.outputTokens,
+        tokensUsed: runtimeResult.tokensUsed,
+      };
+
+      if (
+        target.kind === 'orchestrator'
+        && shouldRewriteOrchestratorReply(responseBody, target.name, currentChannel)
+      ) {
+        try {
+          const rewrite = await runtimeClient.sendMessage(
+            target.sessionId,
+            buildOrchestratorRewritePrompt(currentChannel, userMessage, target.name, responseBody),
+          );
+          if (rewrite.content) {
+            responseBody = rewrite.content;
+          }
+          usage = {
+            inputTokens: usage.inputTokens + rewrite.inputTokens,
+            outputTokens: usage.outputTokens + rewrite.outputTokens,
+            tokensUsed: usage.tokensUsed + rewrite.tokensUsed,
+          };
+        } catch {
+          // Keep the original draft if the repair pass fails.
+        }
+      }
+
       nextState = setReadyAfterMessage(
         nextState,
         channelId,
@@ -515,7 +568,7 @@ export async function routeChannelMessage(
         {
           senderKind: target.kind === 'orchestrator' ? 'orchestrator' : 'agent',
           senderName: target.name,
-          body: runtimeResult.content || `${target.name} completed the routed turn without text output.`,
+          body: responseBody,
         },
         now,
         {
@@ -525,11 +578,7 @@ export async function routeChannelMessage(
             targetId: target.id,
             sessionId: target.sessionId,
           },
-          usage: {
-            inputTokens: runtimeResult.inputTokens,
-            outputTokens: runtimeResult.outputTokens,
-            tokensUsed: runtimeResult.tokensUsed,
-          },
+          usage,
           incrementUnread: false,
         },
       ).state;

@@ -246,6 +246,8 @@ export interface CreateWorkspaceChannelInput {
   mcpProfile?: string;
   orchestratorRoles?: string[];
   cats?: PalDraftInput[];
+  /** Internal UI affordance for the first user-sent turn in a newly created chat. */
+  skipBossCatGreeting?: boolean;
   /** @deprecated Use `cats` on canonical routes. Kept for legacy `/api/workspace/channels`. */
   pals?: PalDraftInput[];
 }

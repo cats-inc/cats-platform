@@ -98,12 +98,20 @@ export function buildOrchestratorPrompt(
   channel: WorkspaceChannelView,
   orchestrator: GlobalOrchestratorSummary,
   userMessage: WorkspaceMessage,
+  orchestratorName = ORCHESTRATOR_NAME,
 ): string {
+  const activePalCount = channel.assignedPals.filter((pal) => pal.status === 'active').length;
+
   return [
-    `You are ${ORCHESTRATOR_NAME}, the global chat coordinator for Cats Inc.`,
+    `You are ${orchestratorName}, the visible Boss Cat and chat coordinator for Cats Inc.`,
     'You coordinate who should act next inside this chat. Respect explicit @mentions.',
     'If the user explicitly mentions a teammate, assume they want that teammate involved.',
     'When referring to teammates, mention them with @Name so Chat can route follow-up turns.',
+    activePalCount === 0
+      ? 'There are no other active cats in this chat right now, so answer the user directly instead of delegating.'
+      : 'If another active cat is better suited, you may mention that cat to involve them.',
+    `Never address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
+    'Never output internal routing notes, self-instructions, or coordinator scratchpad text.',
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
     `Global system prompt:\n${orchestrator.systemPrompt}`,
@@ -113,6 +121,24 @@ export function buildOrchestratorPrompt(
     `Recent messages:\n${formatRecentMessages(channel.messages)}`,
     `Latest user message:\n${userMessage.body}`,
     'Respond directly to the user. Be concise, explicit about who should act, and mention teammates when needed.',
+  ].join('\n\n');
+}
+
+export function buildOrchestratorRewritePrompt(
+  channel: WorkspaceChannelView,
+  userMessage: WorkspaceMessage,
+  orchestratorName: string,
+  draft: string,
+): string {
+  return [
+    `You are ${orchestratorName}, rewriting your previous draft into the final reply for the user.`,
+    'Rewrite the draft as a direct user-facing assistant response.',
+    `Do not address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
+    'Do not mention routing, delegation, coordination, or what the user is asking in third person.',
+    'Do not add commentary about internal process. Just give the user the answer.',
+    languageInstruction(channel.responseLanguage),
+    `Latest user message:\n${userMessage.body}`,
+    `Draft to rewrite:\n${draft}`,
   ].join('\n\n');
 }
 

@@ -123,10 +123,11 @@ test('POST /api/setup/complete creates Boss Cat, channel, and marks setup done',
     assert.ok(selected);
     assert.ok(selected.messages.length >= 1);
     const greeting = selected.messages.find(
-      (m) => m.senderKind === 'agent' && m.senderName === 'Smelly',
+      (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
     );
     assert.ok(greeting, 'Boss Cat greeting message should exist');
     assert.ok(greeting.body.includes('Smelly'));
+    assert.equal(selected.assignedPals.length, 0, 'Boss Cat should stay implicit, not an assigned pal');
 
     // Orchestrator executionTarget matches Boss Cat config
     const orch = payload.workspace.globalOrchestrator;
@@ -298,7 +299,11 @@ test('after setup + activate, system messages use boss cat name and have verbosi
     const sessionStartedMessages = messages.filter(
       (m) => m.metadata?.event === 'session_started',
     );
-    assert.ok(sessionStartedMessages.length >= 1, 'Should have at least one session_started message');
+    assert.equal(
+      sessionStartedMessages.length,
+      1,
+      'Fresh Boss Cat chat should start one implicit orchestrator session',
+    );
 
     // Orchestrator session_started should use boss cat name, not "Orchestrator"
     const orchMessage = sessionStartedMessages.find(
@@ -323,7 +328,78 @@ test('after setup + activate, system messages use boss cat name and have verbosi
   });
 });
 
-test('POST /api/channels auto-assigns Boss Cat when bossCatId is set and no cats provided', async () => {
+test('orchestrator self-routing draft is rewritten before it reaches the transcript', async () => {
+  const runtimeClient = createRuntimeStub();
+  let sendCount = 0;
+  runtimeClient.sendMessage = async (sessionId, content) => {
+    runtimeClient.sentMessages.push({ sessionId, content });
+    sendCount += 1;
+
+    if (sendCount === 1) {
+      return {
+        content: '@Smelly, the user is asking for a joke (in Chinese). Go ahead and tell them one!',
+        inputTokens: 10,
+        outputTokens: 12,
+        tokensUsed: 22,
+      };
+    }
+
+    return {
+      content: '有一天兩隻貓在比誰比較會寫程式，結果其中一隻說：「我不是 bug，我是 feature 喵。」',
+      inputTokens: 9,
+      outputTokens: 20,
+      tokensUsed: 29,
+    };
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+    const setupPayload = await setupResponse.json();
+    const channelId = setupPayload.workspace.selectedChannelId;
+
+    const activateResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/activations`,
+      { method: 'POST' },
+    );
+    assert.equal(activateResponse.status, 200);
+
+    const messageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: '講個笑話' }),
+    });
+    assert.equal(messageResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+    const latestMessage = channelPayload.channel.messages.at(-1);
+
+    assert.ok(latestMessage, 'Final transcript message should exist');
+    assert.equal(latestMessage.senderKind, 'orchestrator');
+    assert.equal(latestMessage.senderName, 'Smelly');
+    assert.ok(
+      !latestMessage.body.includes('@Smelly'),
+      'Self-routing draft should not reach the user transcript',
+    );
+    assert.ok(
+      latestMessage.body.includes('feature 喵'),
+      'Rewritten direct answer should be persisted instead',
+    );
+    assert.equal(runtimeClient.sentMessages.length, 2);
+  });
+});
+
+test('POST /api/channels seeds Boss Cat greeting without assigning Boss Cat as a worker', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup first
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
@@ -348,19 +424,54 @@ test('POST /api/channels auto-assigns Boss Cat when bossCatId is set and no cats
     assert.equal(createResponse.status, 201);
     const createPayload = await createResponse.json();
 
-    // Boss Cat should be auto-assigned
-    assert.ok(
+    // Boss Cat should stay implicit instead of becoming an assigned worker.
+    assert.equal(
       createPayload.channel.assignedPals.some((p) => p.palId === bossCatId),
-      'Boss Cat should be assigned to the new channel',
+      false,
+      'Boss Cat should stay implicit in the new channel',
     );
-    assert.equal(createPayload.channel.status, 'configured');
 
     // Greeting message should exist
     const greeting = createPayload.channel.messages.find(
-      (m) => m.senderKind === 'agent' && m.senderName === 'Smelly',
+      (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
     );
     assert.ok(greeting, 'Boss Cat greeting message should exist');
     assert.ok(greeting.body.includes('Smelly'));
+  });
+});
+
+test('POST /api/channels can skip Boss Cat greeting for the first optimistic user turn', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'First turn',
+        topic: 'Send before any greeting',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createResponse.status, 201);
+
+    const createPayload = await createResponse.json();
+    assert.equal(createPayload.channel.messages.length, 0);
+    assert.equal(
+      createPayload.channel.messages.some(
+        (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
+      ),
+      false,
+    );
   });
 });
 
@@ -402,5 +513,49 @@ test('POST /api/channels does NOT auto-assign when cats are explicitly provided'
       createPayload.channel.assignedPals.some((p) => p.name === 'Custom-Agent'),
       'Explicit cat should be assigned',
     );
+    assert.equal(
+      createPayload.channel.messages.some(
+        (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
+      ),
+      false,
+      'Boss Cat greeting should not be injected when explicit cats are provided',
+    );
+  });
+});
+
+test('Boss Cat cannot be assigned as a regular chat participant', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+    const setupPayload = await setupResponse.json();
+    const bossCatId = setupPayload.workspace.bossCatId;
+
+    const createResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Manual Assign', topic: 'Should reject Boss Cat assignment' }),
+    });
+    assert.equal(createResponse.status, 201);
+    const createPayload = await createResponse.json();
+    const channelId = createPayload.channel.id;
+
+    const assignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${bossCatId}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ provider: 'claude' }),
+    });
+    assert.equal(assignResponse.status, 400);
+
+    const assignPayload = await assignResponse.json();
+    assert.equal(assignPayload.error.code, 'bad_request');
+    assert.equal(assignPayload.error.message, 'Boss Cat is already the default chat entrypoint');
   });
 });

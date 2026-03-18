@@ -348,6 +348,10 @@ export function assignPalToChannel(
   input: AssignChannelPalInput,
   now: Date = new Date(),
 ): WorkspaceState {
+  if (state.bossCatId && input.palId === state.bossCatId) {
+    throw new Error('Boss Cat is already the default chat entrypoint');
+  }
+
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
