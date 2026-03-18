@@ -124,6 +124,7 @@ export interface OwnerProfileRecord {
 export interface CatsCoreState {
   version: typeof CATS_CORE_STATE_VERSION;
   updatedAt: string;
+  setupCompleteAt: string | null;
   ownerProfile: OwnerProfileRecord;
   actors: CoreActorRecord[];
   conversations: CoreConversationRecord[];

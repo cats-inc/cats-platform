@@ -220,6 +220,16 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
 
   workspace!.pals = Array.from(palsById.values());
 
+  if (nextPayload.setupCompleteAt === undefined) {
+    (nextPayload as Record<string, unknown>).setupCompleteAt = null;
+  }
+  if (!nextPayload.ownerDisplayName) {
+    (nextPayload as Record<string, unknown>).ownerDisplayName = 'Owner';
+  }
+  if (workspace && workspace.bossCatId === undefined) {
+    (workspace as Record<string, unknown>).bossCatId = null;
+  }
+
   if (Array.isArray(workspace?.channels)) {
     workspace.channels = workspace.channels.map((channelValue) => {
       const channel = asRecord(channelValue) ?? {};
@@ -472,5 +482,43 @@ export async function updateWorkspaceOrchestrator(
     response,
     `cats-inc orchestrator update returned ${response.status}`,
     signal,
+  );
+}
+
+export async function completeSetup(
+  input: {
+    ownerDisplayName: string;
+    bossCatName: string;
+    bossCatProvider: string;
+    bossCatModel?: string;
+  },
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch('/api/setup/complete', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return normalizeAppShellPayload(
+    await expectJson<AppShellPayload>(response, `setup completion returned ${response.status}`),
+  );
+}
+
+export async function resetSetup(signal?: AbortSignal): Promise<AppShellPayload> {
+  const response = await fetch('/api/setup/reset', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+
+  return normalizeAppShellPayload(
+    await expectJson<AppShellPayload>(response, `setup reset returned ${response.status}`),
   );
 }

@@ -175,6 +175,7 @@ export interface WorkspaceState {
   id: string;
   name: string;
   selectedChannelId: string;
+  bossCatId: string | null;
   pals: WorkspacePal[];
   channels: WorkspaceChannelState[];
   globalOrchestrator: GlobalOrchestratorSummary;
@@ -185,6 +186,7 @@ export interface WorkspaceShellState {
   id: string;
   name: string;
   selectedChannelId: string;
+  bossCatId: string | null;
   pals: WorkspacePal[];
   channels: WorkspaceChannelSummary[];
   selectedChannel: WorkspaceChannelView | null;
@@ -205,6 +207,8 @@ export interface AppShellPayload {
     host: string;
     port: number;
   };
+  setupCompleteAt: string | null;
+  ownerDisplayName: string;
 }
 
 export interface PalDraftInput {

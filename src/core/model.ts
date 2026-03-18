@@ -253,6 +253,7 @@ export function syncCoreStateWithWorkspace(
   return {
     version: CATS_CORE_STATE_VERSION,
     updatedAt,
+    setupCompleteAt: existingCore?.setupCompleteAt ?? null,
     ownerProfile: {
       ...ownerProfile,
       updatedAt: ownerProfile.updatedAt || updatedAt,

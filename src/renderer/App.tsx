@@ -12,7 +12,9 @@ import type {
 import {
   activateWorkspaceChannel,
   assignPalToWorkspaceChannel,
+  completeSetup,
   createGlobalPal,
+  resetSetup,
   createWorkspaceChannel,
   deleteWorkspaceChannel,
   fetchAppShell,
@@ -99,6 +101,160 @@ const GREETING_LINES = [
 
 function pickGreeting(): string {
   return GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
+}
+
+function SetupWizard({
+  payload,
+  onComplete,
+}: {
+  payload: AppShellPayload;
+  onComplete: (payload: AppShellPayload) => void;
+}) {
+  const navigate = useNavigate();
+  const [step, setStep] = useState(1);
+  const [ownerName, setOwnerName] = useState('');
+  const [bossCatName, setBossCatName] = useState('Smelly');
+  const [provider, setProvider] = useState('claude');
+  const [model, setModel] = useState(getDefaultModel('claude'));
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState('');
+
+  async function handleComplete(): Promise<void> {
+    setBusy(true);
+    try {
+      const result = await completeSetup({
+        ownerDisplayName: ownerName.trim(),
+        bossCatName: bossCatName.trim() || 'Smelly',
+        bossCatProvider: provider,
+        bossCatModel: model || undefined,
+      });
+      onComplete(result);
+      navigate(`/chats/${result.workspace.selectedChannelId}`, { replace: true });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Setup failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const providerModels = getProviderModels(provider);
+
+  return (
+    <div className="screen screenCentered">
+      <div className="setupWizard">
+        <div className="setupStepIndicator">
+          <span className={step >= 1 ? 'setupDot setupDotActive' : 'setupDot'} />
+          <span className={step >= 2 ? 'setupDot setupDotActive' : 'setupDot'} />
+        </div>
+
+        {step === 1 ? (
+          <div className="contentCard setupCard">
+            <p className="eyebrow">Cats Chat</p>
+            <h1>Welcome to Cats Chat</h1>
+            <p className="heroNote">
+              Let&apos;s get you set up. This will only take a moment.
+            </p>
+            <label className="fieldLabel">
+              <span>Your name</span>
+              <input
+                className="textInput"
+                value={ownerName}
+                onChange={(e) => setOwnerName(e.target.value)}
+                placeholder="Your display name"
+              />
+            </label>
+            <button
+              className="primaryButton"
+              disabled={!ownerName.trim()}
+              type="button"
+              onClick={() => setStep(2)}
+            >
+              Continue
+            </button>
+          </div>
+        ) : (
+          <div className="contentCard setupCard">
+            <p className="eyebrow">Boss Cat</p>
+            <h1>Meet your Boss Cat</h1>
+            <p className="heroNote">
+              Your Boss Cat is your primary AI assistant. You can change these settings later.
+            </p>
+            <label className="fieldLabel">
+              <span>Name</span>
+              <input
+                className="textInput"
+                value={bossCatName}
+                onChange={(e) => setBossCatName(e.target.value)}
+                placeholder="Smelly"
+              />
+            </label>
+            <label className="fieldLabel">
+              <span>Provider</span>
+              <select
+                className="textInput"
+                value={provider}
+                onChange={(e) => {
+                  setProvider(e.target.value);
+                  setModel(getDefaultModel(e.target.value));
+                }}
+              >
+                {PAL_PROVIDER_ORDER.map((p) => (
+                  <option key={p} value={p}>
+                    {getProviderDisplayName(p)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="fieldLabel">
+              <span>Model</span>
+              <select
+                className="textInput"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              >
+                {providerModels.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="setupRuntimeStatus">
+              <span
+                className={
+                  payload.runtime.reachable
+                    ? 'statusChip statusChipReady'
+                    : 'statusChip statusChipWarm'
+                }
+              >
+                {payload.runtime.reachable
+                  ? 'Cats Runtime connected'
+                  : 'Cats Runtime not detected'}
+              </span>
+            </div>
+            {feedback ? <p className="feedbackText">{feedback}</p> : null}
+            <div className="setupActions">
+              <button
+                className="setupBackButton"
+                type="button"
+                onClick={() => setStep(1)}
+              >
+                Back
+              </button>
+              <button
+                className="primaryButton"
+                disabled={!bossCatName.trim() || busy}
+                type="button"
+                onClick={() => void handleComplete()}
+              >
+                {busy ? 'Setting up...' : 'Get started'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -323,6 +479,22 @@ export default function App() {
     }
   }
 
+  async function onResetSetup(): Promise<void> {
+    setBusy('setup:reset');
+    try {
+      const payload = await resetSetup();
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setAccountMenuOpen(false);
+      });
+      navigate('/setup');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to reset setup.');
+    } finally {
+      setBusy('');
+    }
+  }
+
   async function onStartNewChat(): Promise<void> {
     navigate('/chats');
     setDraftingNewChat(true);
@@ -425,6 +597,26 @@ export default function App() {
   }
 
   const { payload } = state;
+
+  if (!payload.setupCompleteAt) {
+    return (
+      <Routes>
+        <Route
+          path="/setup"
+          element={
+            <SetupWizard
+              payload={payload}
+              onComplete={(next) => {
+                startTransition(() => setState({ status: 'ready', payload: next }));
+              }}
+            />
+          }
+        />
+        <Route path="*" element={<Navigate to="/setup" replace />} />
+      </Routes>
+    );
+  }
+
   const surface: Surface = location.pathname.startsWith('/settings')
     ? 'settings' : 'chats';
 
@@ -642,6 +834,15 @@ export default function App() {
                 }}
               >
                 Settings
+              </button>
+              <div className="accountMenuDivider" />
+              <button
+                className="accountMenuItem"
+                type="button"
+                disabled={busy === 'setup:reset'}
+                onClick={() => void onResetSetup()}
+              >
+                {busy === 'setup:reset' ? 'Resetting...' : 'Reset setup'}
               </button>
             </div>
           ) : null}

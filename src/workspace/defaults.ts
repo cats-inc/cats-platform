@@ -79,6 +79,7 @@ export function createDefaultWorkspaceState(): WorkspaceState {
     id: 'default',
     name: 'Chat',
     selectedChannelId: '',
+    bossCatId: null,
     pals: [],
     channels: [],
     globalOrchestrator: createDefaultOrchestrator(createdAt),

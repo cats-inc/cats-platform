@@ -8,6 +8,7 @@ export function createAppShell(
   runtime: RuntimeStatusSummary,
   workspace: WorkspaceState,
   now: Date = new Date(),
+  setup?: { setupCompleteAt: string | null; ownerDisplayName: string },
 ): AppShellPayload {
   const summary = summarizeState(workspace);
 
@@ -21,6 +22,7 @@ export function createAppShell(
       id: workspace.id,
       name: workspace.name,
       selectedChannelId: workspace.selectedChannelId,
+      bossCatId: workspace.bossCatId,
       pals: summary.pals,
       channels: summary.channels,
       selectedChannel: summary.selectedChannel,
@@ -36,5 +38,7 @@ export function createAppShell(
       host: config.host,
       port: config.port,
     },
+    setupCompleteAt: setup?.setupCompleteAt ?? null,
+    ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
   };
 }

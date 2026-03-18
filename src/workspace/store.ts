@@ -596,6 +596,7 @@ function normalizeWorkspaceState(rawState: unknown): WorkspaceState {
     selectedChannelId: channels.some((channel) => channel.id === selectedChannelId)
       ? selectedChannelId
       : channels[0]?.id ?? fallback.selectedChannelId,
+    bossCatId: readNullableString(sourceRecord.bossCatId),
     pals: Array.from(palsById.values()),
     channels: channels.length > 0 ? channels : fallback.channels,
     globalOrchestrator: normalizeGlobalOrchestrator(sourceRecord.globalOrchestrator),
@@ -628,6 +629,7 @@ function normalizeCoreState(rawState: unknown): CatsCoreState {
         .filter((archive): archive is ArchiveMetadataRecord => archive !== null)
     : [];
   const normalized = syncCoreStateWithWorkspace(workspace, {
+    setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
     tasks,
     botBindings,
@@ -636,6 +638,7 @@ function normalizeCoreState(rawState: unknown): CatsCoreState {
 
   return {
     ...normalized,
+    setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     updatedAt: readString(stateRecord.updatedAt, normalized.updatedAt),
     ownerProfile: {
       ...normalized.ownerProfile,

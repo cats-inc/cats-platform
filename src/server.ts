@@ -32,6 +32,7 @@ import {
 } from './workspace/model.js';
 import { activateChannelSessions, routeChannelMessage } from './workspace/runtimeActions.js';
 import { createAppShell } from './workspace/shell.js';
+import { createDefaultCoreState } from './core/model.js';
 
 export interface ServerDependencies {
   config: AppConfig;
@@ -192,10 +193,14 @@ async function buildAppShell(
   dependencies: ServerDependencies,
   state?: Awaited<ReturnType<WorkspaceStore['read']>>,
 ): Promise<ReturnType<typeof createAppShell>> {
-  const resolvedState = state ?? (await dependencies.workspaceStore.read());
+  const core = await dependencies.workspaceStore.readCore();
+  const resolvedState = state ?? core.workspace;
   const runtime = await dependencies.runtimeClient.getHealth();
   const now = dependencies.now?.() ?? new Date();
-  return createAppShell(dependencies.config, runtime, resolvedState, now);
+  return createAppShell(dependencies.config, runtime, resolvedState, now, {
+    setupCompleteAt: core.setupCompleteAt,
+    ownerDisplayName: core.ownerProfile.displayName,
+  });
 }
 
 async function handleHealth(
@@ -1281,6 +1286,99 @@ async function handleCanonicalRemoveChannelCat(
   }
 }
 
+interface SetupCompleteInput {
+  ownerDisplayName: string;
+  bossCatName: string;
+  bossCatProvider: string;
+  bossCatModel?: string;
+}
+
+async function handleSetupComplete(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<SetupCompleteInput>(request);
+    const now = dependencies.now?.() ?? new Date();
+
+    let core = await dependencies.workspaceStore.readCore();
+
+    if (core.setupCompleteAt) {
+      sendRestError(response, 409, 'already_complete', 'Setup has already been completed');
+      return;
+    }
+
+    let workspace = core.workspace;
+
+    // Create Boss Cat
+    const prevPalIds = new Set(workspace.pals.map((p) => p.id));
+    workspace = createWorkspacePal(workspace, {
+      name: body.bossCatName.trim() || 'Smelly',
+      provider: body.bossCatProvider,
+      model: body.bossCatModel,
+    }, now);
+    const bossCat = workspace.pals.find((p) => !prevPalIds.has(p.id));
+    if (!bossCat) {
+      sendRestError(response, 500, 'internal_error', 'Failed to create Boss Cat');
+      return;
+    }
+    workspace.bossCatId = bossCat.id;
+
+    // Create first channel
+    workspace = createChannel(workspace, {
+      title: `Chat with ${bossCat.name}`,
+      topic: 'Your first conversation.',
+    }, now);
+    const channelId = workspace.selectedChannelId;
+
+    // Assign Boss Cat to channel
+    workspace = assignPalToChannel(workspace, channelId, {
+      palId: bossCat.id,
+      provider: body.bossCatProvider,
+      model: body.bossCatModel,
+    }, now);
+
+    // Add greeting from Boss Cat
+    workspace = appendMessage(workspace, channelId, {
+      senderKind: 'agent',
+      senderName: bossCat.name,
+      body: `Meow! I'm ${bossCat.name}, your Boss Cat. What shall we work on?`,
+    }, now).state;
+
+    // Finalize core state
+    core = {
+      ...core,
+      workspace,
+      setupCompleteAt: now.toISOString(),
+      ownerProfile: {
+        ...core.ownerProfile,
+        displayName: body.ownerDisplayName.trim() || 'Owner',
+        updatedAt: now.toISOString(),
+      },
+    };
+
+    await dependencies.workspaceStore.writeCore(core);
+    sendJson(response, 200, await buildAppShell(dependencies));
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+async function handleSetupReset(
+  _request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  try {
+    const core = createDefaultCoreState();
+    await dependencies.workspaceStore.writeCore(core);
+    sendJson(response, 200, await buildAppShell(dependencies));
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
 async function tryServeWebAsset(pathname: string, response: ServerResponse): Promise<boolean> {
   const requestedPath = pathname === '/' ? '/index.html' : pathname;
   const resolvedPath = path.resolve(WEB_DIST_ROOT, `.${requestedPath}`);
@@ -1391,6 +1489,22 @@ function routeRequest(
       return Promise.resolve();
     }
     return handleOwnerProfile(response, dependencies);
+  }
+
+  if (url.pathname === '/api/setup/complete') {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleSetupComplete(request, response, dependencies);
+  }
+
+  if (url.pathname === '/api/setup/reset') {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleSetupReset(request, response, dependencies);
   }
 
   if (url.pathname === '/api/workspace/selection') {

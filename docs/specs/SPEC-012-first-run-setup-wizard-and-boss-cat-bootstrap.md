@@ -110,6 +110,7 @@ First chat with Boss Cat
 
 ### Step 1: Welcome
 
+- headline: "Welcome to Cats Chat" (not "Welcome to Cats")
 - brief product introduction
 - short explanation of what the product is
 - clear CTA to start setup
@@ -122,12 +123,14 @@ First chat with Boss Cat
 
 ### Step 3: Runtime Check
 
-- check whether `cats-runtime` is reachable
+- check whether the runtime is reachable
+- display as "Cats Runtime" in the UI (not the internal identifier `cats-runtime`)
 - if it is not ready, explain the issue and provide a guided remediation path
 
 ### Step 4: Boss Cat Setup
 
 - create or choose the first Boss Cat
+- default Boss Cat name: "Smelly"
 - set provider and model
 - confirm this Cat as the default public orchestrator identity
 
