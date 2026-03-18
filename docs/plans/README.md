@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-011](./PLAN-011-primary-orchestrator-chat-entry-and-trace-separation.md) | Primary Orchestrator Chat Entry and Trace Separation | Approved | [SPEC-011](../specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md) |
 | [PLAN-010](./PLAN-010-full-site-routing-and-url-driven-navigation.md) | Full-Site Routing and URL-Driven Navigation | Draft (Ready for Specialist Handoff) | [SPEC-010](../specs/SPEC-010-full-site-routing-and-url-driven-navigation.md) |
 | [PLAN-009](./PLAN-009-public-surface-naming-refresh.md) | Public-Surface Naming Refresh | Draft (Ready for Specialist Handoff) | [SPEC-009](../specs/SPEC-009-public-surface-naming-refresh.md) |
 | [PLAN-008](./PLAN-008-restful-product-api-refactor.md) | RESTful Product API Refactor | Draft (Ready for Specialist Handoff) | [SPEC-008](../specs/SPEC-008-restful-product-api-refactor.md) |
@@ -67,6 +68,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-19*
 
 *See also: [specs/](../specs/) for feature specifications*

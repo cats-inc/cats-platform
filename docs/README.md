@@ -48,9 +48,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current suite-foundation context |
 | [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Cats Core v1`, bot bindings, approvals, and owner profile |
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
-| [specs/](./specs/) | Complete | Feature specifications, including the accepted suite-foundation planning docs and the pending chat-contextual pal UX proposal |
+| [specs/](./specs/) | Complete | Feature specifications, including the accepted suite-foundation planning docs, the primary-orchestrator chat-entry spec, and the pending chat-contextual pal UX proposal |
 | [plans/](./plans/) | Complete | Implementation plans, including the accepted suite-foundation planning docs and the pending chat-contextual pal UX plan |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including the accepted `Cats Core v1` and runtime-boundary refinements plus newer proposed UX refinements |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including the accepted `Cats Core v1`, runtime-boundary refinements, and the visible primary-orchestrator model |
 
 **Legend**: Complete | Partial | Template
 
@@ -96,4 +96,4 @@ The main suite-foundation docs are current, but these areas still need dedicated
 
 ---
 
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-19*

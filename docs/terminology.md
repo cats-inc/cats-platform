@@ -21,6 +21,8 @@
 | Cats Core v1 | The shared product contract layer for identity, actors/resources, permissions, conversations, approvals, owner profile, and archive metadata. |
 | Chat | The current lightweight team conversation module inside the current shell; this term is gradually being made more explicit as `Cats Chat`. |
 | Cat | A reusable teammate identity used inside the current chat shell. A cat is not the same thing as a provider choice and is expected to evolve into the broader actor/resource model. `Pal` remains as an internal implementation term. |
+| Boss Cat | The user-facing product term for the one visible public chat-entry Cat that leads new conversations and represents the default public orchestrator identity. |
+| Primary Orchestrator Cat | The formal product and domain term for the Cat selected as the default public orchestrator. In UI copy, this should usually be presented as `Boss Cat`. |
 | Cat registry | The workspace-level list of reusable cats that can be assigned into one or more chats. |
 | Cat assignment | The channel-scoped record that decides whether a workspace cat is active in one chat and which execution target it should use there. |
 | Actor / Resource | The broader `Cats Core v1` term for a human, orchestrator, worker, stakeholder, virtual friend, or other reusable participant. |
@@ -55,4 +57,4 @@
 
 ---
 
-Last updated: 2026-03-18
+Last updated: 2026-03-19
