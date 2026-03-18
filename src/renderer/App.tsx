@@ -24,6 +24,7 @@ import {
   sendWorkspaceMessage,
   updateSelectedChannel,
   updateVerbosePreference,
+  deleteGlobalPal,
 } from './api';
 import { ProviderModelFields } from './components/ProviderModelFields';
 import { getDefaultModel, getProviderDisplayName } from './providerCatalog';
@@ -778,6 +779,9 @@ export default function App() {
     selectedChannel?.assignedPals.filter((pal) => pal.status === 'active') ?? [];
   const activePalIds = new Set(activeAssignedPals.map((pal) => pal.palId));
   const bossCatName = resolveBossCatName(payload) ?? 'Orchestrator';
+  const bossCatAvatarColor = payload.workspace.pals.find(
+    (pal) => pal.id === payload.workspace.bossCatId,
+  )?.avatarColor ?? null;
   const showBossCatAvatar = Boolean(payload.workspace.bossCatId)
     && !activeAssignedPals.some((pal) => pal.palId === payload.workspace.bossCatId);
   const assignablePalCount = payload.workspace.pals.filter(
@@ -917,7 +921,7 @@ export default function App() {
                         setOverflowMenuOpenId(overflowMenuOpenId === channel.id ? null : channel.id);
                       }}
                     >
-                      ...
+                      ⋯
                     </button>
                     {overflowMenuOpenId === channel.id ? (
                       <div className="recentOverflowMenu">
@@ -1066,29 +1070,66 @@ export default function App() {
 
                     <div className="palList">
                       {payload.workspace.pals.length > 0 ? (
-                        payload.workspace.pals.map((pal) => (
-                          <article key={pal.id} className="palCard">
-                            <div className="palCardTop">
-                              <div>
-                                <strong>{pal.name}</strong>
-                                <p>{executionLabel(pal)}</p>
-                              </div>
-                              <span
-                                className={
-                                  pal.status === 'active'
-                                    ? 'statusChip statusChipReady'
-                                    : 'statusChip statusChipMuted'
-                                }
-                              >
-                                {pal.status}
-                              </span>
-                            </div>
-                            <div className="palMeta">
-                              <span>{pal.skillProfile ?? 'No skill profile'}</span>
-                              <span>{pal.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
-                            </div>
-                          </article>
-                        ))
+                        [...payload.workspace.pals]
+                          .sort((a, b) => {
+                            const aIsBoss = a.id === payload.workspace.bossCatId ? 0 : 1;
+                            const bIsBoss = b.id === payload.workspace.bossCatId ? 0 : 1;
+                            return aIsBoss - bIsBoss;
+                          })
+                          .map((pal) => {
+                            const isBossCat = pal.id === payload.workspace.bossCatId;
+                            return (
+                              <article key={pal.id} className="palCard">
+                                <div className="palCardTop">
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <strong>{pal.name}</strong>
+                                      {isBossCat ? <span className="statusChip statusChipAccent">Boss Cat</span> : null}
+                                    </div>
+                                    <p>{executionLabel(pal)}</p>
+                                  </div>
+                                  <div style={{ display: 'flex', alignSelf: 'start', alignItems: 'center', gap: 8 }}>
+                                    <span
+                                      className={
+                                        pal.status === 'active'
+                                          ? 'statusChip statusChipReady'
+                                          : 'statusChip statusChipMuted'
+                                      }
+                                    >
+                                      {pal.status}
+                                    </span>
+                                    {!isBossCat ? (
+                                      <button
+                                        className="chromeButton"
+                                        type="button"
+                                        disabled={busy === `pal:delete:${pal.id}`}
+                                        onClick={async () => {
+                                          setBusy(`pal:delete:${pal.id}`);
+                                          setFeedback('');
+                                          try {
+                                            const next = await deleteGlobalPal(pal.id);
+                                            setState({ status: 'ready', payload: next });
+                                            setFeedback(`${pal.name} deleted.`);
+                                          } catch (err) {
+                                            setFeedback(err instanceof Error ? err.message : 'Failed to delete cat');
+                                          } finally {
+                                            setBusy('');
+                                          }
+                                        }}
+                                        title={`Delete ${pal.name}`}
+                                      >
+                                        ✕
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <div className="palMeta">
+                                  <span>{pal.skillProfile ?? 'No skill profile'}</span>
+                                  <span>{pal.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
+                                </div>
+                              </article>
+                            );
+                          })
                       ) : (
                         <div className="emptyStateCard">
                           <p>Create your first cat from the panel on the right.</p>
@@ -1143,12 +1184,12 @@ export default function App() {
               <header className="channelTopBar">
                 <div className="rosterAvatars">
                   {showBossCatAvatar ? (
-                    <div className="palAvatar palAvatarOrch" title={bossCatName}>
+                    <div className="palAvatar palAvatarOrch" title={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
                       {palInitials(bossCatName)}
                     </div>
                   ) : null}
                   {activeAssignedPals.map((pal) => (
-                    <div key={pal.palId} className="palAvatar" title={pal.name}>
+                    <div key={pal.palId} className="palAvatar" title={pal.name} style={pal.avatarColor ? { background: pal.avatarColor } : undefined}>
                       {palInitials(pal.name)}
                     </div>
                   ))}

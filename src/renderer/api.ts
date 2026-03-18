@@ -230,6 +230,9 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
   if (!nextPayload.ownerDisplayName) {
     (nextPayload as Record<string, unknown>).ownerDisplayName = 'Owner';
   }
+  if (nextPayload.ownerAvatarColor === undefined) {
+    (nextPayload as Record<string, unknown>).ownerAvatarColor = null;
+  }
   if (workspace && workspace.bossCatId === undefined) {
     (workspace as Record<string, unknown>).bossCatId = null;
   }
@@ -362,6 +365,23 @@ export async function updateVerbosePreference(
   return mutateAndRefetch(
     response,
     `cats-inc verbose preference update returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function deleteGlobalPal(
+  catId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/cats/${encodeURIComponent(catId)}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  return mutateAndRefetch(
+    response,
+    `cats-inc cat deletion returned ${response.status}`,
     signal,
   );
 }

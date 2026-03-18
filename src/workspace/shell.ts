@@ -8,7 +8,7 @@ export function createAppShell(
   runtime: RuntimeStatusSummary,
   workspace: WorkspaceState,
   now: Date = new Date(),
-  setup?: { setupCompleteAt: string | null; ownerDisplayName: string },
+  setup?: { setupCompleteAt: string | null; ownerDisplayName: string; ownerAvatarColor: string | null },
 ): AppShellPayload {
   const summary = summarizeState(workspace);
 
@@ -41,5 +41,6 @@ export function createAppShell(
     },
     setupCompleteAt: setup?.setupCompleteAt ?? null,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
+    ownerAvatarColor: setup?.ownerAvatarColor ?? null,
   };
 }

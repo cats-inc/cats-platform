@@ -1,5 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
+export const AVATAR_PALETTE = [
+  '#E57373', '#F06292', '#BA68C8', '#9575CD',
+  '#7986CB', '#64B5F6', '#4FC3F7', '#4DB6AC',
+  '#81C784', '#FFB74D', '#FF8A65', '#A1887F',
+] as const;
+
+export function pickAvatarColor(index: number): string {
+  return AVATAR_PALETTE[index % AVATAR_PALETTE.length];
+}
+
 import type {
   AssignChannelPalInput,
   ChannelExportPayload,
@@ -157,6 +167,7 @@ function createPalRecord(input: CreateWorkspacePalInput, nowIso: string): Worksp
     createdAt: nowIso,
     updatedAt: nowIso,
     archivedAt: null,
+    avatarColor: null,
     defaultExecutionTarget: {
       provider,
       model: normalizeOptionalText(input.model),
@@ -208,6 +219,7 @@ function hydrateChannelPal(
     status: assignment.status,
     joinedAt: assignment.joinedAt,
     leftAt: assignment.leftAt,
+    avatarColor: pal.avatarColor,
     execution: structuredClone(assignment.execution),
     memory: structuredClone(pal.memory),
   };
@@ -222,9 +234,11 @@ export function buildChannelView(
 
   return {
     ...structuredClone(channel),
-    assignedPals: channel.palAssignments.map((assignment) =>
-      hydrateChannelPal(requirePal(state, assignment.palId), assignment),
-    ),
+    assignedPals: channel.palAssignments
+      .filter((assignment) => state.pals.some((p) => p.id === assignment.palId))
+      .map((assignment) =>
+        hydrateChannelPal(requirePal(state, assignment.palId), assignment),
+      ),
   };
 }
 
@@ -283,7 +297,29 @@ export function createWorkspacePal(
 ): WorkspaceState {
   const nextState = cloneState(state);
   const pal = createPalRecord(input, isoAt(now));
+  if (!pal.avatarColor) {
+    pal.avatarColor = pickAvatarColor(nextState.pals.length);
+  }
   nextState.pals.unshift(pal);
+  return nextState;
+}
+
+export function deletePal(
+  state: WorkspaceState,
+  palId: string,
+): WorkspaceState {
+  const nextState = cloneState(state);
+  const palIndex = nextState.pals.findIndex((p) => p.id === palId);
+  if (palIndex === -1) {
+    throw new Error(`Pal not found: ${palId}`);
+  }
+  if (nextState.bossCatId === palId) {
+    throw new Error('Cannot delete Boss Cat');
+  }
+  nextState.pals.splice(palIndex, 1);
+  for (const channel of nextState.channels) {
+    channel.palAssignments = channel.palAssignments.filter((a) => a.palId !== palId);
+  }
   return nextState;
 }
 

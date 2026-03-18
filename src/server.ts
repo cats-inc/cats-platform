@@ -31,6 +31,8 @@ import {
   selectChannel,
   toChannelSummary,
   updateGlobalOrchestrator,
+  pickAvatarColor,
+  deletePal,
 } from './workspace/model.js';
 import { activateChannelSessions, routeChannelMessage } from './workspace/runtimeActions.js';
 import { createAppShell } from './workspace/shell.js';
@@ -225,6 +227,7 @@ async function buildAppShell(
   return createAppShell(dependencies.config, runtime, resolvedState, now, {
     setupCompleteAt: core.setupCompleteAt,
     ownerDisplayName: core.ownerProfile.displayName,
+    ownerAvatarColor: core.ownerProfile.avatarColor,
   });
 }
 
@@ -1199,6 +1202,22 @@ async function handleCanonicalGetCat(
   }
 }
 
+// DELETE /api/cats/:catId
+async function handleCanonicalDeleteCat(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  catId: string,
+): Promise<void> {
+  try {
+    const state = await dependencies.workspaceStore.read();
+    const nextState = deletePal(state, catId);
+    await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, { deleted: true, catId });
+  } catch (error) {
+    handleCanonicalCatError(response, error);
+  }
+}
+
 // GET /api/channels/:channelId/cats
 async function handleCanonicalListChannelCats(
   response: ServerResponse,
@@ -1407,6 +1426,7 @@ async function handleSetupComplete(
       ownerProfile: {
         ...core.ownerProfile,
         displayName: body.ownerDisplayName.trim() || 'Owner',
+        avatarColor: core.ownerProfile.avatarColor ?? '#90A4AE',
         updatedAt: now.toISOString(),
       },
     };
@@ -1750,11 +1770,14 @@ function routeRequest(
 
   const canonicalCatDetailMatch = matchRoute(url.pathname, /^\/api\/cats\/([^/]+)$/u);
   if (canonicalCatDetailMatch) {
-    if (method !== 'GET') {
-      sendMethodNotAllowed(response, ['GET']);
-      return Promise.resolve();
+    if (method === 'GET') {
+      return handleCanonicalGetCat(response, dependencies, canonicalCatDetailMatch[0]);
     }
-    return handleCanonicalGetCat(response, dependencies, canonicalCatDetailMatch[0]);
+    if (method === 'DELETE') {
+      return handleCanonicalDeleteCat(response, dependencies, canonicalCatDetailMatch[0]);
+    }
+    sendMethodNotAllowed(response, ['GET', 'DELETE']);
+    return Promise.resolve();
   }
 
   const canonicalChannelCatDetailMatch = matchRoute(

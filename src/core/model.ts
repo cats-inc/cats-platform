@@ -29,6 +29,7 @@ export function createDefaultOwnerProfile(updatedAt: string): OwnerProfileRecord
   return {
     actorId: OWNER_ACTOR_ID,
     displayName: 'Owner',
+    avatarColor: null,
     summary: null,
     communicationPreferences: [],
     decisionPreferences: [],

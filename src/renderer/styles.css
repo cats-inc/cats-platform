@@ -279,6 +279,11 @@ textarea {
   color: var(--muted-text);
 }
 
+.statusChipAccent {
+  background: var(--muted-bg);
+  color: var(--muted-text);
+}
+
 .sidebarFooter {
   position: relative;
   margin: 0;

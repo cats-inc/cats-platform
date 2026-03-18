@@ -114,6 +114,7 @@ export interface ArchiveMetadataRecord {
 export interface OwnerProfileRecord {
   actorId: string;
   displayName: string;
+  avatarColor: string | null;
   summary: string | null;
   communicationPreferences: string[];
   decisionPreferences: string[];

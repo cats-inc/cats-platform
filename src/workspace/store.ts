@@ -232,6 +232,7 @@ function normalizeWorkspacePal(rawPal: unknown): WorkspacePal | null {
     createdAt: readString(palRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(palRecord.updatedAt, new Date().toISOString()),
     archivedAt: readNullableString(palRecord.archivedAt),
+    avatarColor: readNullableString(palRecord.avatarColor),
     defaultExecutionTarget,
     memory: asRecord(palRecord.memory)
       ? normalizeMemoryCheckpoint(palRecord.memory)
@@ -297,6 +298,7 @@ function ensureLegacyPalFromMember(
     createdAt: readString(memberRecord.joinedAt, new Date().toISOString()),
     updatedAt: readString(memberRecord.joinedAt, new Date().toISOString()),
     archivedAt: readNullableString(memberRecord.leftAt),
+    avatarColor: readNullableString(memberRecord.avatarColor),
     defaultExecutionTarget: execution.target,
     memory: asRecord(memberRecord.memory)
       ? normalizeMemoryCheckpoint(memberRecord.memory)
@@ -463,6 +465,7 @@ function normalizeOwnerProfile(rawOwnerProfile: unknown): OwnerProfileRecord {
   return {
     actorId: readString(ownerProfileRecord?.actorId, fallback.actorId),
     displayName: readString(ownerProfileRecord?.displayName, fallback.displayName),
+    avatarColor: readNullableString(ownerProfileRecord?.avatarColor),
     summary: readNullableString(ownerProfileRecord?.summary),
     communicationPreferences: readStringArray(ownerProfileRecord?.communicationPreferences),
     decisionPreferences: readStringArray(ownerProfileRecord?.decisionPreferences),

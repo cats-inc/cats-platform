@@ -66,6 +66,7 @@ export interface WorkspacePal {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+  avatarColor: string | null;
   defaultExecutionTarget: ExecutionTargetSummary;
   memory: MemoryCheckpointSummary;
 }
@@ -88,6 +89,7 @@ export interface WorkspaceChannelPal {
   status: 'active' | 'removed';
   joinedAt: string;
   leftAt: string | null;
+  avatarColor: string | null;
   execution: ParticipantExecutionState;
   memory: MemoryCheckpointSummary;
 }
@@ -211,6 +213,7 @@ export interface AppShellPayload {
   };
   setupCompleteAt: string | null;
   ownerDisplayName: string;
+  ownerAvatarColor: string | null;
 }
 
 export interface PalDraftInput {
