@@ -19,6 +19,24 @@ parallel Chat and Work workstreams can consume the same actor, conversation,
 task, and owner-profile contract. Write-side approval, escalation, and
 transport APIs remain future work.
 
+## Migration Note
+
+The routes documented below are still the current phase-2 compatibility API.
+The accepted next step is to separate:
+
+- RESTful resource and operation endpoints as the authoritative contract
+- view/read-model endpoints such as app-shell for renderer bootstrap only
+
+New implementation work should follow:
+
+- [ADR-010](./decisions/010-separate-read-model-app-shell-from-restful-resource-apis.md)
+- [SPEC-008](./specs/SPEC-008-restful-product-api-refactor.md)
+- [PLAN-008](./plans/PLAN-008-restful-product-api-refactor.md)
+
+In practice, that means the current `/api/workspace/*` mutation routes should
+be treated as legacy compatibility endpoints once the RESTful resource surface
+starts landing.
+
 ## Base URL
 
 ```text
@@ -450,4 +468,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-18*

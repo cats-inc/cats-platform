@@ -39,7 +39,8 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
-| [009-prefer-chat-contextual-pal-entry-and-settings-registry](./009-prefer-chat-contextual-pal-entry-and-settings-registry.md) | Prefer chat-contextual pal entry and a Settings-hosted registry | Proposed | 2026-03-17 |
+| [010-separate-read-model-app-shell-from-restful-resource-apis](./010-separate-read-model-app-shell-from-restful-resource-apis.md) | Separate read-model app shell from RESTful resource APIs | Accepted | 2026-03-18 |
+| [009-prefer-chat-contextual-pal-entry-and-settings-registry](./009-prefer-chat-contextual-pal-entry-and-settings-registry.md) | Prefer chat-contextual pal entry and a Settings-hosted registry | Accepted | 2026-03-17 |
 | [008-expose-cats-runtime-via-direct-api-and-mcp-facade](./008-expose-cats-runtime-via-direct-api-and-mcp-facade.md) | Expose `cats-runtime` via direct API and MCP facade | Accepted | 2026-03-16 |
 | [007-establish-cats-core-v1-for-chat-and-work](./007-establish-cats-core-v1-for-chat-and-work.md) | Establish `Cats Core v1` for Chat and Work | Accepted | 2026-03-16 |
 | [006-absorb-paperclip-concepts-without-copying-runtime](./006-absorb-paperclip-concepts-without-copying-runtime.md) | Absorb Paperclip concepts without copying Paperclip runtime | Proposed (Exploratory) | 2026-03-16 |
@@ -58,6 +59,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-18*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

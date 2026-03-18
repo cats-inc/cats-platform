@@ -17,7 +17,7 @@ These important documents live in the project root:
 |----------|--------|-------------|
 | [requirements.md](./requirements.md) | Complete | Requirements for the current shell plus the accepted `Cats Core v1`, Chat, and Work planning direction |
 | [architecture.md](./architecture.md) | Complete | Current implementation architecture plus the planned shared-core suite topology and current chat navigation direction |
-| [api.md](./api.md) | Complete | Current REST API surface plus planned shared-core and runtime-boundary expansion notes |
+| [api.md](./api.md) | Complete | Current API surface plus the approved RESTful migration direction and shared-core/runtime-boundary notes |
 
 ## Development Guides
 
@@ -96,4 +96,4 @@ The main suite-foundation docs are current, but these areas still need dedicated
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-18*
