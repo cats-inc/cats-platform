@@ -81,7 +81,7 @@ function sendMethodNotAllowed(response: ServerResponse, allowedMethods: string[]
   sendJson(
     response,
     405,
-    { error: 'Method not allowed' },
+    { error: { code: 'method_not_allowed', message: 'Method not allowed' } },
     { Allow: allowedMethods.join(', ') },
   );
 }
@@ -1500,12 +1500,12 @@ function routeRequest(
   if (method === 'GET') {
     return tryServeWebAsset(url.pathname, response).then((served) => {
       if (!served) {
-        sendJson(response, 404, { error: 'Not found' });
+        sendJson(response, 404, { error: { code: 'not_found', message: 'Not found' } });
       }
     });
   }
 
-  sendJson(response, 404, { error: 'Not found' });
+  sendJson(response, 404, { error: { code: 'not_found', message: 'Not found' } });
   return Promise.resolve();
 }
 
@@ -1513,7 +1513,10 @@ export function createServer(dependencies: ServerDependencies) {
   return createHttpServer((request, response) => {
     void routeRequest(request, response, dependencies).catch((error) => {
       sendJson(response, 500, {
-        error: error instanceof Error ? error.message : 'Unexpected server error',
+        error: {
+          code: 'internal_error',
+          message: error instanceof Error ? error.message : 'Unexpected server error',
+        },
       });
     });
   });

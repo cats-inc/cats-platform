@@ -405,6 +405,8 @@ test('REST API returns 405 for unsupported methods', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const deleteOnPals = await fetch(`${baseUrl}/api/pals`, { method: 'DELETE' });
     assert.equal(deleteOnPals.status, 405);
+    const deleteOnPalsBody = await deleteOnPals.json();
+    assert.equal(deleteOnPalsBody.error.code, 'method_not_allowed');
 
     const postOnWorkspace = await fetch(`${baseUrl}/api/workspaces/default`, { method: 'POST' });
     assert.equal(postOnWorkspace.status, 405);

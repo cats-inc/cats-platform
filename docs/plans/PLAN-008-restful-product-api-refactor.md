@@ -1,6 +1,6 @@
 # PLAN-008: RESTful Product API Refactor
 
-Status: Phase 1-3 Complete
+Status: Phase 1-4 Complete
 
 ## Scope
 
@@ -63,20 +63,24 @@ baseline.
 
 **Deliverables**: full RESTful mutation surface with compatibility adapters.
 
-### Phase 4: Renderer API Client Refactor
+### Phase 4: Renderer API Client Migration
 
-- [ ] Split the renderer API layer into resource clients instead of one
-      app-shell mutation client.
-- [ ] Remove the assumption that every mutation returns a full shell payload.
+- [x] Migrate all mutation functions in `src/renderer/api.ts` to call canonical
+      REST endpoints instead of legacy routes.
+- [x] Adopt mutate-then-refetch pattern: mutations call REST endpoints, then
+      re-fetch `GET /api/app-shell` for consistent state. App.tsx unchanged.
+- [x] Move `palId` from request body to URL path for pal-assignment endpoints.
+- [x] Handle structured error responses (`{ error: { code, message } }`)
+      alongside legacy string errors in `readErrorMessage`.
+- [x] Guard re-fetch failures after committed mutations to prevent false error
+      signals that could prompt duplicate retries.
+- [ ] Split the renderer API layer into independent resource clients — deferred,
+      single-file mutate-then-refetch approach is sufficient for now.
 - [ ] Decide whether selected-chat persistence stays server-side or becomes
-      local renderer state.
-- [ ] Keep one shell/bootstrap fetch if still useful, but treat it as a read
-      model instead of the source of truth for all mutations.
-- [ ] Update UI flows for create chat, assign pal, create pal, activate chat,
-      and send message so they consume resource/operation responses directly.
+      local renderer state — deferred, stays as server-side workspace preference.
 
-**Deliverables**: renderer consumes REST resources, not action-style shell
-mutations.
+**Deliverables**: renderer calls canonical REST endpoints; further resource
+client decomposition deferred.
 
 ### Phase 5: Tests, Deprecation, and Documentation Cleanup
 

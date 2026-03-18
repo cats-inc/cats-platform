@@ -265,7 +265,14 @@ async function mutateAndRefetch(
   if (!mutationResponse.ok) {
     throw new Error(await readErrorMessage(mutationResponse, errorFallback));
   }
-  return fetchAppShell(signal);
+  // Mutation committed — retry re-fetch once without the caller's abort signal
+  // so an in-flight cancellation doesn't surface as a mutation failure, which
+  // could prompt the user to retry and create duplicates.
+  try {
+    return await fetchAppShell(signal);
+  } catch {
+    return fetchAppShell();
+  }
 }
 
 export async function updateSelectedChannel(
@@ -409,7 +416,12 @@ export async function activateWorkspaceChannel(
     activation: { channelId: string; startedAt: string; results: ActivateChannelResponse['results'] };
   }>(response, `cats-inc channel activation returned ${response.status}`);
 
-  const appShell = await fetchAppShell(signal);
+  let appShell: AppShellPayload;
+  try {
+    appShell = await fetchAppShell(signal);
+  } catch {
+    appShell = await fetchAppShell();
+  }
   return { appShell, results: activation.results };
 }
 
@@ -433,7 +445,12 @@ export async function sendWorkspaceMessage(
     dispatch: { channelId: string; results: SendChannelMessageResponse['results'] };
   }>(response, `cats-inc channel messaging returned ${response.status}`);
 
-  const appShell = await fetchAppShell(signal);
+  let appShell: AppShellPayload;
+  try {
+    appShell = await fetchAppShell(signal);
+  } catch {
+    appShell = await fetchAppShell();
+  }
   return { appShell, results: dispatch.results };
 }
 
