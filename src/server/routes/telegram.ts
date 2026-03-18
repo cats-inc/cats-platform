@@ -71,13 +71,10 @@ async function readTelegramContext(
     bossCatId,
     bossCatName: resolveBossCatName(core.workspace),
     bossCatActorId,
-    botBinding: bossCatActorId
-      ? core.botBindings.find((binding) =>
-        binding.platform === 'telegram'
-        && binding.status === 'active'
-        && binding.bossCatActorId === bossCatActorId,
-      ) ?? null
-      : null,
+    botBinding: core.botBindings.find((binding) =>
+      binding.platform === 'telegram'
+      && binding.status === 'active',
+    ) ?? null,
   };
 }
 

@@ -11,6 +11,8 @@ export interface TelegramRelayStore {
 }
 
 export class InMemoryTelegramRelayStore implements TelegramRelayStore {
+  private readonly processedUpdateOrder: number[] = [];
+
   private readonly bindingsByChatId = new Map<string, TelegramConversationBinding>();
 
   private readonly bindingsByConversationId = new Map<string, TelegramConversationBinding>();
@@ -18,6 +20,8 @@ export class InMemoryTelegramRelayStore implements TelegramRelayStore {
   private readonly processedUpdateIds = new Set<number>();
 
   private lastProcessedUpdateId: number | null = null;
+
+  constructor(private readonly maxProcessedUpdates = 2048) {}
 
   getBinding(chatId: string): TelegramConversationBinding | null {
     return this.bindingsByChatId.get(chatId) ?? null;
@@ -46,11 +50,23 @@ export class InMemoryTelegramRelayStore implements TelegramRelayStore {
   }
 
   markProcessedUpdate(updateId: number): void {
+    if (this.processedUpdateIds.has(updateId)) {
+      return;
+    }
+
     this.processedUpdateIds.add(updateId);
+    this.processedUpdateOrder.push(updateId);
     this.lastProcessedUpdateId = Math.max(
       this.lastProcessedUpdateId ?? updateId,
       updateId,
     );
+
+    while (this.processedUpdateOrder.length > this.maxProcessedUpdates) {
+      const evictedUpdateId = this.processedUpdateOrder.shift();
+      if (evictedUpdateId !== undefined) {
+        this.processedUpdateIds.delete(evictedUpdateId);
+      }
+    }
   }
 
   getLastProcessedUpdateId(): number | null {

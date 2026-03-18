@@ -273,6 +273,57 @@ test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor',
   assert.ok(bossCatActor.roles.includes('boss_cat'));
 });
 
+test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', async () => {
+  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'));
+  let state = await store.read();
+
+  state = createWorkspacePal(
+    state,
+    {
+      name: 'Smelly',
+      provider: 'claude',
+      roles: ['planner'],
+    },
+    new Date('2026-03-19T00:00:00.000Z'),
+  );
+  const firstBossCatId = state.pals[0].id;
+  state.bossCatId = firstBossCatId;
+  state = updateGlobalOrchestrator(
+    state,
+    {
+      provider: 'claude',
+      telegramBotName: 'smelly_bot',
+    },
+    new Date('2026-03-19T00:01:00.000Z'),
+  );
+  state = createWorkspacePal(
+    state,
+    {
+      name: 'Bossy',
+      provider: 'gemini',
+      roles: ['reviewer'],
+    },
+    new Date('2026-03-19T00:02:00.000Z'),
+  );
+  const secondBossCatId = state.pals.find((pal) => pal.id !== firstBossCatId)?.id;
+  assert.ok(secondBossCatId);
+
+  state.bossCatId = secondBossCatId;
+  await store.write(state);
+
+  const core = await store.readCore();
+  const telegramBinding = core.botBindings.find((binding) => binding.platform === 'telegram');
+  const firstBossCatActor = core.actors.find((actor) => actor.sourceId === firstBossCatId);
+  const secondBossCatActor = core.actors.find((actor) => actor.sourceId === secondBossCatId);
+
+  assert.ok(telegramBinding);
+  assert.equal(telegramBinding.bossCatActorId, `actor-pal-${secondBossCatId}`);
+  assert.ok(firstBossCatActor);
+  assert.ok(secondBossCatActor);
+  assert.equal(firstBossCatActor.roles.includes('boss_cat'), false);
+  assert.ok(secondBossCatActor.roles.includes('boss_cat'));
+});
+
 test('deleteChannel removes the selected chat and falls back to the next recent chat', async () => {
   let state = createChannel(
     await new FileWorkspaceStore(

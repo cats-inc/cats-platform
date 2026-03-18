@@ -112,3 +112,50 @@ test('telegram relay accepts older unseen update ids while keeping the highest p
   assert.equal(status.lastProcessedUpdateId, 101);
   assert.equal(status.mappedConversationCount, 2);
 });
+
+test('telegram relay bounds retained update ids while keeping a high-water status marker', () => {
+  const store = new InMemoryTelegramRelayStore(2);
+  const relay = createTelegramRelay({
+    store,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+  const context = createContext();
+
+  relay.receiveUpdate({
+    update: {
+      update_id: 101,
+      message: {
+        message_id: 1,
+        chat: { id: 1, type: 'private' },
+      },
+    },
+    context,
+  });
+  relay.receiveUpdate({
+    update: {
+      update_id: 102,
+      message: {
+        message_id: 2,
+        chat: { id: 2, type: 'private' },
+      },
+    },
+    context,
+  });
+  relay.receiveUpdate({
+    update: {
+      update_id: 103,
+      message: {
+        message_id: 3,
+        chat: { id: 3, type: 'private' },
+      },
+    },
+    context,
+  });
+
+  assert.equal(store.hasProcessedUpdate(101), false);
+  assert.equal(store.hasProcessedUpdate(102), true);
+  assert.equal(store.hasProcessedUpdate(103), true);
+
+  const status = relay.getStatus(context);
+  assert.equal(status.lastProcessedUpdateId, 103);
+});
