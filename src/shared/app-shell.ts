@@ -239,6 +239,8 @@ export interface CreateWorkspaceChannelInput {
   skillProfile?: string;
   mcpProfile?: string;
   orchestratorRoles?: string[];
+  cats?: PalDraftInput[];
+  /** @deprecated Use `cats` on canonical routes. Kept for legacy `/api/workspace/channels`. */
   pals?: PalDraftInput[];
 }
 

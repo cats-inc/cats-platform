@@ -506,7 +506,7 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
         topic: 'Track regressions.',
         repoPath: 'C:/repo/cats-inc',
         language: 'TypeScript',
-        pals: [
+        cats: [
           { name: 'Inline-Agent', provider: 'gemini', roles: ['reviewer'] },
         ],
       }),

@@ -289,7 +289,8 @@ export function createChannel(
   const title = input.title.trim() || 'New chat';
   const topic = input.topic.trim();
   const channelId = createUniqueChannelId(nextState, title);
-  const createdPals = (input.pals ?? []).map((palInput) => createPalRecord(palInput, nowIso));
+  const catDrafts = input.cats ?? input.pals ?? [];
+  const createdPals = catDrafts.map((palInput) => createPalRecord(palInput, nowIso));
 
   nextState.pals.unshift(...createdPals);
 
@@ -297,9 +298,9 @@ export function createChannel(
     createAssignmentRecord(
       pal,
       {
-        provider: input.pals?.[index]?.provider,
-        model: input.pals?.[index]?.model,
-        roles: input.pals?.[index]?.roles,
+        provider: catDrafts[index]?.provider,
+        model: catDrafts[index]?.model,
+        roles: catDrafts[index]?.roles,
       },
       nowIso,
     ),

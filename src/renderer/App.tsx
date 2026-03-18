@@ -120,7 +120,6 @@ export default function App() {
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [greeting] = useState(pickGreeting);
   const accountMenuRef = useRef<HTMLDivElement>(null);
-  const syncingRef = useRef(false);
 
   useEffect(() => {
     if (!accountMenuOpen && !overflowMenuOpenId) return;
@@ -175,7 +174,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (state.status !== 'ready' || !routeChannelId || syncingRef.current) return;
+    if (state.status !== 'ready' || !routeChannelId) return;
     const { selectedChannelId, selectedChannel } = state.payload.workspace;
     if (selectedChannelId === routeChannelId && selectedChannel?.id === routeChannelId) return;
 
@@ -185,11 +184,20 @@ export default function App() {
       return;
     }
 
-    syncingRef.current = true;
-    updateSelectedChannel(routeChannelId)
-      .then(p => startTransition(() => setState({ status: 'ready', payload: p })))
-      .catch(() => navigate('/chats', { replace: true }))
-      .finally(() => { syncingRef.current = false; });
+    const controller = new AbortController();
+    updateSelectedChannel(routeChannelId, controller.signal)
+      .then(p => {
+        if (!controller.signal.aborted) {
+          startTransition(() => setState({ status: 'ready', payload: p }));
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          navigate('/chats', { replace: true });
+        }
+      });
+
+    return () => controller.abort();
   }, [routeChannelId, state.status]);
 
   function onOpenChatsOverview(): void {
@@ -203,15 +211,11 @@ export default function App() {
     });
   }
 
-  async function onSelect(channelId: string): Promise<void> {
+  function onSelect(channelId: string): void {
     navigate(`/chats/${channelId}`);
     setDraftingNewChat(false);
     setFeedback('');
     setAddPalOpen(false);
-    try {
-      const payload = await updateSelectedChannel(channelId);
-      startTransition(() => setState({ status: 'ready', payload }));
-    } catch { /* URL still shows correct channel */ }
   }
 
   async function onDeleteChannel(channelId: string): Promise<void> {
@@ -573,7 +577,7 @@ export default function App() {
                   >
                     <button
                       className="recentSelectButton"
-                      onClick={() => void onSelect(channel.id)}
+                      onClick={() => onSelect(channel.id)}
                       type="button"
                     >
                       <strong>{presentChannelTitle(channel.title)}</strong>
