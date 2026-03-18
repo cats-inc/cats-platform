@@ -19,23 +19,26 @@ parallel Chat and Work workstreams can consume the same actor, conversation,
 task, and owner-profile contract. Write-side approval, escalation, and
 transport APIs remain future work.
 
-## Migration Note
+## Migration Status
 
-The routes documented below are still the current phase-2 compatibility API.
-The accepted next step is to separate:
+The RESTful resource API (ADR-010 / SPEC-008 / PLAN-008 Phase 1-3) is now
+implemented. Both the canonical REST surface and the legacy compatibility
+surface are active.
 
-- RESTful resource and operation endpoints as the authoritative contract
-- view/read-model endpoints such as app-shell for renderer bootstrap only
+- **Canonical**: resource-oriented routes under `/api/workspaces/`, `/api/pals`
+- **Compatibility**: legacy `/api/workspace/*` and `/api/orchestrator` routes
+  still work and return `AppShellPayload`
+- **Read model**: `GET /api/app-shell` and `GET /api/views/app-shell` remain
+  available for renderer bootstrap
 
-New implementation work should follow:
+New client code should target the canonical REST routes. Legacy routes will be
+deprecated once the renderer migration (Phase 4) is complete.
+
+References:
 
 - [ADR-010](./decisions/010-separate-read-model-app-shell-from-restful-resource-apis.md)
 - [SPEC-008](./specs/SPEC-008-restful-product-api-refactor.md)
 - [PLAN-008](./plans/PLAN-008-restful-product-api-refactor.md)
-
-In practice, that means the current `/api/workspace/*` mutation routes should
-be treated as legacy compatibility endpoints once the RESTful resource surface
-starts landing.
 
 ## Base URL
 
@@ -47,7 +50,138 @@ Development: http://127.0.0.1:8181
 
 No inbound auth is implemented yet.
 
-## Endpoints
+## Canonical REST Endpoints
+
+### Workspace
+
+```text
+GET /api/workspaces/{workspaceId}
+```
+
+Returns a workspace summary (id, name, selectedChannelId, channelCount,
+palCount, capabilities). Currently only `workspaceId = "default"` is supported.
+
+### Workspace Preferences
+
+```text
+GET  /api/workspaces/{workspaceId}/preferences
+PATCH /api/workspaces/{workspaceId}/preferences
+```
+
+`GET` returns `{ preferences: { selectedChannelId } }`.
+
+`PATCH` accepts `{ selectedChannelId }` and returns the updated preferences.
+
+### Channels
+
+```text
+GET  /api/workspaces/{workspaceId}/channels
+POST /api/workspaces/{workspaceId}/channels
+GET  /api/workspaces/{workspaceId}/channels/{channelId}
+DELETE /api/workspaces/{workspaceId}/channels/{channelId}
+```
+
+- `GET` collection returns `{ channels: [...summaries] }`.
+- `POST` returns `201` with `{ channel: { ...view } }`. No `AppShellPayload`.
+- `GET` detail returns `{ channel: { ...view with messages and assignedPals } }`.
+- `DELETE` returns `{ deleted: true, channelId }`. No `AppShellPayload`.
+
+### Channel Messages
+
+```text
+GET  /api/workspaces/{workspaceId}/channels/{channelId}/messages
+POST /api/workspaces/{workspaceId}/channels/{channelId}/messages
+```
+
+- `GET` returns `{ messages: [...] }`.
+- `POST` accepts `{ body, senderName? }` and returns
+  `{ message: { ...userMessage }, dispatch: { channelId, results } }`.
+  No `AppShellPayload`.
+
+### Channel Pal Assignments
+
+```text
+GET    /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments
+PUT    /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}
+DELETE /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}
+```
+
+- `GET` returns `{ palAssignments: [...hydrated] }`.
+- `PUT` is idempotent: creates (`201`) or updates (`200`) an assignment.
+  Returns `{ palAssignment: { ...hydrated } }`.
+- `DELETE` returns `{ removed: true, channelId, palId }`.
+
+### Channel Activations
+
+```text
+POST /api/workspaces/{workspaceId}/channels/{channelId}/activations
+```
+
+Returns `{ activation: { channelId, startedAt, results } }`.
+No `AppShellPayload`.
+
+### Channel Export
+
+```text
+GET /api/workspaces/{workspaceId}/channels/{channelId}/exports/latest
+```
+
+Returns the export payload as a JSON attachment.
+
+### Orchestrator
+
+```text
+GET   /api/workspaces/{workspaceId}/orchestrator
+PATCH /api/workspaces/{workspaceId}/orchestrator
+```
+
+- `GET` returns `{ orchestrator: { ...state } }`.
+- `PATCH` accepts `{ provider, model?, systemPrompt?, ... }` and returns
+  `{ orchestrator: { ...updated } }`.
+
+### Pals
+
+```text
+GET  /api/pals
+POST /api/pals
+GET  /api/pals/{palId}
+```
+
+- `GET` collection returns `{ pals: [...] }`.
+- `POST` returns `201` with `{ pal: { ...created } }`.
+- `GET` detail returns `{ pal: { ... } }`.
+
+### View Read Model (Compatibility)
+
+```text
+GET /api/views/app-shell
+```
+
+Alias for `GET /api/app-shell`. Returns the full renderer bootstrap payload.
+
+### Error Shape (REST Routes)
+
+REST routes use structured errors:
+
+```json
+{
+  "error": {
+    "code": "channel_not_found",
+    "message": "Channel not found: ops-radar"
+  }
+}
+```
+
+Codes: `workspace_not_found`, `channel_not_found`, `pal_not_found`,
+`assignment_not_found`, `bad_request`.
+
+---
+
+## Legacy Compatibility Endpoints
+
+> The routes below are the phase-2 compatibility API. They still work and
+> return `AppShellPayload` for mutations. New client code should use the
+> canonical REST endpoints above.
 
 ### Health
 

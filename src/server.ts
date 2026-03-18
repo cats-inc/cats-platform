@@ -18,6 +18,7 @@ import type { WorkspaceStore } from './workspace/store.js';
 import {
   appendMessage,
   assignPalToChannel,
+  buildChannelView,
   createChannel,
   createWorkspacePal,
   deleteChannel,
@@ -26,6 +27,7 @@ import {
   requirePal,
   removePalFromChannel,
   selectChannel,
+  toChannelSummary,
   updateGlobalOrchestrator,
 } from './workspace/model.js';
 import { activateChannelSessions, routeChannelMessage } from './workspace/runtimeActions.js';
@@ -118,6 +120,57 @@ function errorStatusCode(error: unknown): number {
     return 404;
   }
   return 400;
+}
+
+// ---------------------------------------------------------------------------
+// RESTful structured error helpers (SPEC-008)
+// ---------------------------------------------------------------------------
+
+function sendRestError(
+  response: ServerResponse,
+  statusCode: number,
+  code: string,
+  message: string,
+  details?: Record<string, unknown>,
+): void {
+  const payload: { error: { code: string; message: string; details?: Record<string, unknown> } } = {
+    error: { code, message },
+  };
+  if (details) {
+    payload.error.details = details;
+  }
+  sendJson(response, statusCode, payload);
+}
+
+function handleRestError(response: ServerResponse, error: unknown): void {
+  const message = error instanceof Error ? error.message : 'Unknown error';
+
+  if (message.startsWith('Workspace not found:')) {
+    sendRestError(response, 404, 'workspace_not_found', message);
+    return;
+  }
+  if (message.startsWith('Channel not found:')) {
+    sendRestError(response, 404, 'channel_not_found', message);
+    return;
+  }
+  if (message.startsWith('Pal not found:')) {
+    sendRestError(response, 404, 'pal_not_found', message);
+    return;
+  }
+  if (message.startsWith('Channel pal assignment not found:')) {
+    sendRestError(response, 404, 'assignment_not_found', message);
+    return;
+  }
+
+  sendRestError(response, 400, 'bad_request', message);
+}
+
+const DEFAULT_WORKSPACE_ID = 'default';
+
+function requireValidWorkspaceId(workspaceId: string): void {
+  if (workspaceId !== DEFAULT_WORKSPACE_ID) {
+    throw new Error(`Workspace not found: ${workspaceId}`);
+  }
 }
 
 async function buildAppShell(
@@ -529,6 +582,503 @@ async function handleChannelExport(
   }
 }
 
+// ---------------------------------------------------------------------------
+// RESTful resource handlers – Phase 2 (read) + Phase 3 (write/operations)
+// ---------------------------------------------------------------------------
+
+// GET /api/workspaces/:workspaceId
+async function handleRestGetWorkspace(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const state = await dependencies.workspaceStore.read();
+    sendJson(response, 200, {
+      workspace: {
+        id: state.id,
+        name: state.name,
+        selectedChannelId: state.selectedChannelId,
+        channelCount: state.channels.length,
+        palCount: state.pals.length,
+        capabilities: state.capabilities,
+      },
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// GET /api/workspaces/:workspaceId/preferences
+async function handleRestGetPreferences(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const state = await dependencies.workspaceStore.read();
+    sendJson(response, 200, {
+      preferences: { selectedChannelId: state.selectedChannelId },
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// PATCH /api/workspaces/:workspaceId/preferences
+async function handleRestUpdatePreferences(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const body = await readJsonBody<{ selectedChannelId: string }>(request);
+    const nextState = selectChannel(
+      await dependencies.workspaceStore.read(),
+      body.selectedChannelId,
+      dependencies.now?.() ?? new Date(),
+    );
+    await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, {
+      preferences: { selectedChannelId: body.selectedChannelId },
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// GET /api/workspaces/:workspaceId/channels
+async function handleRestListChannels(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const state = await dependencies.workspaceStore.read();
+    sendJson(response, 200, {
+      channels: state.channels.map((channel) => toChannelSummary(channel)),
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// POST /api/workspaces/:workspaceId/channels
+async function handleRestCreateChannel(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const body = await readJsonBody<CreateWorkspaceChannelInput>(request);
+    const now = dependencies.now?.() ?? new Date();
+    const nextState = createChannel(
+      await dependencies.workspaceStore.read(),
+      body,
+      now,
+    );
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    const createdChannel = persisted.channels[0];
+    sendJson(response, 201, {
+      channel: buildChannelView(persisted, createdChannel),
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// GET /api/workspaces/:workspaceId/channels/:channelId
+async function handleRestGetChannel(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const state = await dependencies.workspaceStore.read();
+    sendJson(response, 200, {
+      channel: buildChannelView(state, channelId),
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// DELETE /api/workspaces/:workspaceId/channels/:channelId
+async function handleRestDeleteChannel(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const currentState = await dependencies.workspaceStore.read();
+    const channel = requireChannel(currentState, channelId);
+    const sessionIds = [
+      channel.orchestratorLease.sessionId,
+      ...channel.palAssignments.map((assignment) => assignment.execution.lease.sessionId),
+    ].filter((sessionId): sessionId is string => typeof sessionId === 'string' && sessionId.length > 0);
+
+    await Promise.allSettled(
+      sessionIds.map((sessionId) => dependencies.runtimeClient.closeSession(sessionId)),
+    );
+
+    await dependencies.workspaceStore.write(deleteChannel(currentState, channelId));
+    sendJson(response, 200, { deleted: true, channelId });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// GET /api/workspaces/:workspaceId/channels/:channelId/messages
+async function handleRestListMessages(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const state = await dependencies.workspaceStore.read();
+    const channel = requireChannel(state, channelId);
+    sendJson(response, 200, { messages: channel.messages });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// POST /api/workspaces/:workspaceId/channels/:channelId/messages
+async function handleRestSendMessage(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const body = await readJsonBody<SendChannelMessageInput>(request);
+    const now = dependencies.now?.() ?? new Date();
+    const stateBefore = await dependencies.workspaceStore.read();
+    const channelBefore = requireChannel(stateBefore, channelId);
+    const messageCountBefore = channelBefore.messages.length;
+
+    const dispatch = await routeChannelMessage(
+      stateBefore,
+      channelId,
+      body,
+      dependencies.runtimeClient,
+      now,
+    );
+    const persisted = await dependencies.workspaceStore.write(dispatch.state);
+    const channelAfter = requireChannel(persisted, channelId);
+    const userMessage = channelAfter.messages[messageCountBefore] ?? null;
+
+    sendJson(response, 200, {
+      message: userMessage,
+      dispatch: {
+        channelId,
+        results: dispatch.results,
+      },
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// GET /api/workspaces/:workspaceId/channels/:channelId/pal-assignments
+async function handleRestListPalAssignments(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const state = await dependencies.workspaceStore.read();
+    const view = buildChannelView(state, channelId);
+    sendJson(response, 200, { palAssignments: view.assignedPals });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// PUT /api/workspaces/:workspaceId/channels/:channelId/pal-assignments/:palId
+async function handleRestAssignPal(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+  channelId: string,
+  palId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const body = await readJsonBody<Omit<AssignChannelPalInput, 'palId'>>(request);
+    const now = dependencies.now?.() ?? new Date();
+    const currentState = await dependencies.workspaceStore.read();
+    const currentChannel = requireChannel(currentState, channelId);
+    const existingAssignment = currentChannel.palAssignments.find(
+      (candidate) => candidate.palId === palId,
+    );
+    const isNew = !existingAssignment;
+    const previousSessionId = existingAssignment?.execution.lease.sessionId ?? null;
+    const previousProvider = existingAssignment?.execution.target.provider ?? null;
+    const previousModel = existingAssignment?.execution.target.model ?? null;
+
+    let nextState = assignPalToChannel(
+      currentState,
+      channelId,
+      { palId, ...body },
+      now,
+    );
+
+    const updatedChannel = requireChannel(nextState, channelId);
+    const updatedAssignment = updatedChannel.palAssignments.find(
+      (candidate) => candidate.palId === palId,
+    );
+    const targetChanged = Boolean(
+      existingAssignment
+      && updatedAssignment
+      && (
+        updatedAssignment.execution.target.provider !== previousProvider
+        || updatedAssignment.execution.target.model !== previousModel
+      ),
+    );
+
+    if (targetChanged && previousSessionId) {
+      try {
+        await dependencies.runtimeClient.closeSession(previousSessionId);
+      } catch (closeError) {
+        const pal = requirePal(nextState, palId);
+        nextState = appendMessage(
+          nextState,
+          channelId,
+          {
+            senderKind: 'system',
+            senderName: 'Runtime',
+            body: `Failed to close ${pal.name}'s previous session cleanly: ${
+              closeError instanceof Error ? closeError.message : 'Unknown runtime error'
+            }`,
+          },
+          now,
+          { metadata: { event: 'session_close_failed', palId } },
+        ).state;
+      }
+    }
+
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    const view = buildChannelView(persisted, channelId);
+    const assignment = view.assignedPals.find((candidate) => candidate.palId === palId);
+    sendJson(response, isNew ? 201 : 200, { palAssignment: assignment });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// DELETE /api/workspaces/:workspaceId/channels/:channelId/pal-assignments/:palId
+async function handleRestRemovePalAssignment(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+  channelId: string,
+  palId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const currentState = await dependencies.workspaceStore.read();
+    const channel = requireChannel(currentState, channelId);
+    const assignment = channel.palAssignments.find((candidate) => candidate.palId === palId);
+    if (!assignment) {
+      throw new Error(`Channel pal assignment not found: ${palId}`);
+    }
+    const pal = requirePal(currentState, palId);
+    const now = dependencies.now?.() ?? new Date();
+
+    let nextState = removePalFromChannel(currentState, channelId, palId, now);
+
+    if (assignment.execution.lease.sessionId) {
+      try {
+        await dependencies.runtimeClient.closeSession(assignment.execution.lease.sessionId);
+      } catch (closeError) {
+        nextState = appendMessage(
+          nextState,
+          channelId,
+          {
+            senderKind: 'system',
+            senderName: 'Runtime',
+            body: `Failed to close ${pal.name}'s session cleanly: ${
+              closeError instanceof Error ? closeError.message : 'Unknown runtime error'
+            }`,
+          },
+          now,
+          { metadata: { event: 'session_close_failed', palId } },
+        ).state;
+      }
+    }
+
+    await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, { removed: true, channelId, palId });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// GET /api/workspaces/:workspaceId/orchestrator
+async function handleRestGetOrchestrator(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const state = await dependencies.workspaceStore.read();
+    const runtime = await dependencies.runtimeClient.getHealth();
+    sendJson(response, 200, {
+      orchestrator: {
+        ...state.globalOrchestrator,
+        status: runtime.reachable ? 'ready' : 'warming',
+      },
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// PATCH /api/workspaces/:workspaceId/orchestrator
+async function handleRestUpdateOrchestrator(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const body = await readJsonBody<UpdateGlobalOrchestratorInput>(request);
+    const now = dependencies.now?.() ?? new Date();
+    const nextState = updateGlobalOrchestrator(
+      await dependencies.workspaceStore.read(),
+      body,
+      now,
+    );
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    const runtime = await dependencies.runtimeClient.getHealth();
+    sendJson(response, 200, {
+      orchestrator: {
+        ...persisted.globalOrchestrator,
+        status: runtime.reachable ? 'ready' : 'warming',
+      },
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// GET /api/pals
+async function handleRestListPals(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  try {
+    const state = await dependencies.workspaceStore.read();
+    sendJson(response, 200, { pals: state.pals });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// POST /api/pals
+async function handleRestCreatePal(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<CreateWorkspacePalInput>(request);
+    const now = dependencies.now?.() ?? new Date();
+    const nextState = createWorkspacePal(
+      await dependencies.workspaceStore.read(),
+      body,
+      now,
+    );
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 201, { pal: persisted.pals[0] });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// GET /api/pals/:palId
+async function handleRestGetPal(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  palId: string,
+): Promise<void> {
+  try {
+    const state = await dependencies.workspaceStore.read();
+    const pal = requirePal(state, palId);
+    sendJson(response, 200, { pal });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// POST /api/workspaces/:workspaceId/channels/:channelId/activations
+async function handleRestActivateChannel(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const now = dependencies.now?.() ?? new Date();
+    const activation = await activateChannelSessions(
+      await dependencies.workspaceStore.read(),
+      channelId,
+      dependencies.runtimeClient,
+      now,
+    );
+    await dependencies.workspaceStore.write(activation.state);
+    sendJson(response, 200, {
+      activation: {
+        channelId,
+        startedAt: now.toISOString(),
+        results: activation.results,
+      },
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
+// GET /api/workspaces/:workspaceId/channels/:channelId/exports/latest
+async function handleRestGetExport(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  workspaceId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const payload = exportChannel(await dependencies.workspaceStore.read(), channelId);
+    sendJson(response, 200, payload, {
+      'content-disposition': `attachment; filename="channel-${channelId}.json"`,
+    });
+  } catch (error) {
+    handleRestError(response, error);
+  }
+}
+
 async function tryServeWebAsset(pathname: string, response: ServerResponse): Promise<boolean> {
   const requestedPath = pathname === '/' ? '/index.html' : pathname;
   const resolvedPath = path.resolve(WEB_DIST_ROOT, `.${requestedPath}`);
@@ -735,6 +1285,216 @@ function routeRequest(
       return Promise.resolve();
     }
     return handleChannelExport(response, dependencies, exportMatch[0]);
+  }
+
+  // =========================================================================
+  // RESTful Resource Routes (ADR-010 / SPEC-008 / PLAN-008 Phase 2-3)
+  // =========================================================================
+
+  // GET /api/views/app-shell (read-model alias)
+  if (url.pathname === '/api/views/app-shell') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleAppShell(response, dependencies);
+  }
+
+  // /api/pals collection
+  if (url.pathname === '/api/pals') {
+    if (method === 'GET') {
+      return handleRestListPals(response, dependencies);
+    }
+    if (method === 'POST') {
+      return handleRestCreatePal(request, response, dependencies);
+    }
+    sendMethodNotAllowed(response, ['GET', 'POST']);
+    return Promise.resolve();
+  }
+
+  // /api/pals/:palId
+  const restPalDetailMatch = matchRoute(url.pathname, /^\/api\/pals\/([^/]+)$/u);
+  if (restPalDetailMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleRestGetPal(response, dependencies, restPalDetailMatch[0]);
+  }
+
+  // /api/workspaces/:wid/channels/:cid/pal-assignments/:pid
+  const restPalAssignmentDetailMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/pal-assignments\/([^/]+)$/u,
+  );
+  if (restPalAssignmentDetailMatch) {
+    if (method === 'PUT') {
+      return handleRestAssignPal(
+        request, response, dependencies,
+        restPalAssignmentDetailMatch[0], restPalAssignmentDetailMatch[1], restPalAssignmentDetailMatch[2],
+      );
+    }
+    if (method === 'DELETE') {
+      return handleRestRemovePalAssignment(
+        response, dependencies,
+        restPalAssignmentDetailMatch[0], restPalAssignmentDetailMatch[1], restPalAssignmentDetailMatch[2],
+      );
+    }
+    sendMethodNotAllowed(response, ['PUT', 'DELETE']);
+    return Promise.resolve();
+  }
+
+  // /api/workspaces/:wid/channels/:cid/pal-assignments
+  const restPalAssignmentsMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/pal-assignments$/u,
+  );
+  if (restPalAssignmentsMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleRestListPalAssignments(
+      response, dependencies,
+      restPalAssignmentsMatch[0], restPalAssignmentsMatch[1],
+    );
+  }
+
+  // /api/workspaces/:wid/channels/:cid/activations
+  const restActivationsMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/activations$/u,
+  );
+  if (restActivationsMatch) {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleRestActivateChannel(
+      response, dependencies,
+      restActivationsMatch[0], restActivationsMatch[1],
+    );
+  }
+
+  // /api/workspaces/:wid/channels/:cid/exports/latest
+  const restExportMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/exports\/latest$/u,
+  );
+  if (restExportMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleRestGetExport(
+      response, dependencies,
+      restExportMatch[0], restExportMatch[1],
+    );
+  }
+
+  // /api/workspaces/:wid/channels/:cid/messages
+  const restMessagesMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/messages$/u,
+  );
+  if (restMessagesMatch) {
+    if (method === 'GET') {
+      return handleRestListMessages(
+        response, dependencies,
+        restMessagesMatch[0], restMessagesMatch[1],
+      );
+    }
+    if (method === 'POST') {
+      return handleRestSendMessage(
+        request, response, dependencies,
+        restMessagesMatch[0], restMessagesMatch[1],
+      );
+    }
+    sendMethodNotAllowed(response, ['GET', 'POST']);
+    return Promise.resolve();
+  }
+
+  // /api/workspaces/:wid/channels/:cid
+  const restChannelDetailMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)$/u,
+  );
+  if (restChannelDetailMatch) {
+    if (method === 'GET') {
+      return handleRestGetChannel(
+        response, dependencies,
+        restChannelDetailMatch[0], restChannelDetailMatch[1],
+      );
+    }
+    if (method === 'DELETE') {
+      return handleRestDeleteChannel(
+        response, dependencies,
+        restChannelDetailMatch[0], restChannelDetailMatch[1],
+      );
+    }
+    sendMethodNotAllowed(response, ['GET', 'DELETE']);
+    return Promise.resolve();
+  }
+
+  // /api/workspaces/:wid/channels
+  const restChannelsMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)\/channels$/u,
+  );
+  if (restChannelsMatch) {
+    if (method === 'GET') {
+      return handleRestListChannels(response, dependencies, restChannelsMatch[0]);
+    }
+    if (method === 'POST') {
+      return handleRestCreateChannel(request, response, dependencies, restChannelsMatch[0]);
+    }
+    sendMethodNotAllowed(response, ['GET', 'POST']);
+    return Promise.resolve();
+  }
+
+  // /api/workspaces/:wid/preferences
+  const restPreferencesMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)\/preferences$/u,
+  );
+  if (restPreferencesMatch) {
+    if (method === 'GET') {
+      return handleRestGetPreferences(response, dependencies, restPreferencesMatch[0]);
+    }
+    if (method === 'PATCH') {
+      return handleRestUpdatePreferences(request, response, dependencies, restPreferencesMatch[0]);
+    }
+    sendMethodNotAllowed(response, ['GET', 'PATCH']);
+    return Promise.resolve();
+  }
+
+  // /api/workspaces/:wid/orchestrator
+  const restOrchestratorMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)\/orchestrator$/u,
+  );
+  if (restOrchestratorMatch) {
+    if (method === 'GET') {
+      return handleRestGetOrchestrator(response, dependencies, restOrchestratorMatch[0]);
+    }
+    if (method === 'PATCH') {
+      return handleRestUpdateOrchestrator(request, response, dependencies, restOrchestratorMatch[0]);
+    }
+    sendMethodNotAllowed(response, ['GET', 'PATCH']);
+    return Promise.resolve();
+  }
+
+  // /api/workspaces/:wid
+  const restWorkspaceMatch = matchRoute(
+    url.pathname,
+    /^\/api\/workspaces\/([^/]+)$/u,
+  );
+  if (restWorkspaceMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleRestGetWorkspace(response, dependencies, restWorkspaceMatch[0]);
   }
 
   if (method === 'GET') {

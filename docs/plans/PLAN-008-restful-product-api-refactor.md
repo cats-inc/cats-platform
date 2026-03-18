@@ -1,6 +1,6 @@
 # PLAN-008: RESTful Product API Refactor
 
-Status: Draft (Ready for Specialist Handoff)
+Status: Phase 1-3 Complete
 
 ## Scope
 
@@ -19,47 +19,47 @@ The main objective is not just to rename routes. The goal is to separate:
 
 ### Phase 1: Contract Extraction and Compatibility Baseline
 
-- [ ] Introduce canonical resource DTOs for workspace, preferences, channel,
+- [x] Introduce canonical resource DTOs for workspace, preferences, channel,
       message, pal, pal assignment, orchestrator, export, and activation
       payloads.
-- [ ] Decide the authoritative `workspaceId` strategy for the current single
-      workspace implementation.
-- [ ] Freeze the legacy-to-target route mapping in `docs/api.md`.
-- [ ] Keep `GET /api/app-shell` available and document it as a read-only
-      compatibility view.
+- [x] Decide the authoritative `workspaceId` strategy for the current single
+      workspace implementation. → `"default"` is the only supported workspaceId.
+- [x] Freeze the legacy-to-target route mapping in `docs/api.md`.
+- [x] Keep `GET /api/app-shell` available and document it as a read-only
+      compatibility view. Also added `GET /api/views/app-shell` alias.
 
 **Deliverables**: shared REST DTOs, migration notes, and a stable compatibility
 baseline.
 
 ### Phase 2: Read-Side Resource Routes
 
-- [ ] Add `GET /api/workspaces/{workspaceId}`.
-- [ ] Add `GET /api/workspaces/{workspaceId}/preferences`.
-- [ ] Add `GET /api/workspaces/{workspaceId}/channels`.
-- [ ] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}`.
-- [ ] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/messages`.
-- [ ] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments`.
-- [ ] Add `GET /api/workspaces/{workspaceId}/orchestrator`.
-- [ ] Add `GET /api/pals` and `GET /api/pals/{palId}`.
+- [x] Add `GET /api/workspaces/{workspaceId}`.
+- [x] Add `GET /api/workspaces/{workspaceId}/preferences`.
+- [x] Add `GET /api/workspaces/{workspaceId}/channels`.
+- [x] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}`.
+- [x] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/messages`.
+- [x] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments`.
+- [x] Add `GET /api/workspaces/{workspaceId}/orchestrator`.
+- [x] Add `GET /api/pals` and `GET /api/pals/{palId}`.
 
 **Deliverables**: read-only resource surface with tests.
 
 ### Phase 3: Write-Side Resource and Operation Routes
 
-- [ ] Add `POST /api/workspaces/{workspaceId}/channels`.
-- [ ] Add `PATCH /api/workspaces/{workspaceId}/preferences` if server-side
-      selection persistence is retained.
-- [ ] Add `PATCH /api/workspaces/{workspaceId}/channels/{channelId}` if channel
-      metadata editing is exposed in the same slice.
-- [ ] Add `DELETE /api/workspaces/{workspaceId}/channels/{channelId}`.
-- [ ] Add `POST /api/workspaces/{workspaceId}/channels/{channelId}/messages`.
-- [ ] Add `PUT /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}`.
-- [ ] Add `DELETE /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}`.
-- [ ] Add `PATCH /api/workspaces/{workspaceId}/orchestrator`.
-- [ ] Add `POST /api/pals` and `PATCH /api/pals/{palId}`.
-- [ ] Add `POST /api/workspaces/{workspaceId}/channels/{channelId}/activations`.
-- [ ] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/exports/latest`.
-- [ ] Convert legacy routes into thin adapters over the same store/runtime logic.
+- [x] Add `POST /api/workspaces/{workspaceId}/channels`.
+- [x] Add `PATCH /api/workspaces/{workspaceId}/preferences` – server-side
+      selection persistence retained as workspace preference.
+- [ ] Add `PATCH /api/workspaces/{workspaceId}/channels/{channelId}` – deferred,
+      channel metadata editing not yet exposed in the renderer.
+- [x] Add `DELETE /api/workspaces/{workspaceId}/channels/{channelId}`.
+- [x] Add `POST /api/workspaces/{workspaceId}/channels/{channelId}/messages`.
+- [x] Add `PUT /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}`.
+- [x] Add `DELETE /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}`.
+- [x] Add `PATCH /api/workspaces/{workspaceId}/orchestrator`.
+- [x] Add `POST /api/pals`. `PATCH /api/pals/{palId}` deferred (no UI need yet).
+- [x] Add `POST /api/workspaces/{workspaceId}/channels/{channelId}/activations`.
+- [x] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/exports/latest`.
+- [x] Legacy routes kept as compatibility adapters over the same store/runtime logic.
 
 **Deliverables**: full RESTful mutation surface with compatibility adapters.
 

@@ -11,8 +11,16 @@ import type {
 
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
-    const payload = (await response.json()) as { error?: string };
-    return payload.error ?? fallback;
+    const payload = (await response.json()) as {
+      error?: string | { code?: string; message?: string };
+    };
+    if (typeof payload.error === 'string') {
+      return payload.error || fallback;
+    }
+    if (payload.error && typeof payload.error === 'object' && typeof payload.error.message === 'string') {
+      return payload.error.message || fallback;
+    }
+    return fallback;
   } catch {
     return fallback;
   }
@@ -249,12 +257,23 @@ export async function fetchAppShell(signal?: AbortSignal): Promise<AppShellPaylo
   );
 }
 
+async function mutateAndRefetch(
+  mutationResponse: Response,
+  errorFallback: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  if (!mutationResponse.ok) {
+    throw new Error(await readErrorMessage(mutationResponse, errorFallback));
+  }
+  return fetchAppShell(signal);
+}
+
 export async function updateSelectedChannel(
   selectedChannelId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch('/api/workspace/selection', {
-    method: 'POST',
+  const response = await fetch('/api/workspaces/default/preferences', {
+    method: 'PATCH',
     headers: {
       'content-type': 'application/json',
       Accept: 'application/json',
@@ -263,11 +282,10 @@ export async function updateSelectedChannel(
     signal,
   });
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(
-      response,
-      `cats-inc workspace selection returned ${response.status}`,
-    ),
+  return mutateAndRefetch(
+    response,
+    `cats-inc workspace selection returned ${response.status}`,
+    signal,
   );
 }
 
@@ -275,7 +293,7 @@ export async function createWorkspaceChannel(
   input: CreateWorkspaceChannelInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch('/api/workspace/channels', {
+  const response = await fetch('/api/workspaces/default/channels', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -285,11 +303,10 @@ export async function createWorkspaceChannel(
     signal,
   });
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(
-      response,
-      `cats-inc workspace channel creation returned ${response.status}`,
-    ),
+  return mutateAndRefetch(
+    response,
+    `cats-inc workspace channel creation returned ${response.status}`,
+    signal,
   );
 }
 
@@ -297,7 +314,7 @@ export async function deleteWorkspaceChannel(
   channelId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/workspace/channels/${channelId}`, {
+  const response = await fetch(`/api/workspaces/default/channels/${channelId}`, {
     method: 'DELETE',
     headers: {
       Accept: 'application/json',
@@ -305,11 +322,10 @@ export async function deleteWorkspaceChannel(
     signal,
   });
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(
-      response,
-      `cats-inc workspace channel deletion returned ${response.status}`,
-    ),
+  return mutateAndRefetch(
+    response,
+    `cats-inc workspace channel deletion returned ${response.status}`,
+    signal,
   );
 }
 
@@ -317,7 +333,7 @@ export async function createGlobalPal(
   input: CreateWorkspacePalInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch('/api/workspace/pals', {
+  const response = await fetch('/api/pals', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -327,11 +343,10 @@ export async function createGlobalPal(
     signal,
   });
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(
-      response,
-      `cats-inc workspace pal creation returned ${response.status}`,
-    ),
+  return mutateAndRefetch(
+    response,
+    `cats-inc workspace pal creation returned ${response.status}`,
+    signal,
   );
 }
 
@@ -340,21 +355,21 @@ export async function assignPalToWorkspaceChannel(
   input: AssignChannelPalInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/workspace/channels/${channelId}/pals`, {
-    method: 'POST',
+  const { palId, ...assignmentBody } = input;
+  const response = await fetch(`/api/workspaces/default/channels/${channelId}/pal-assignments/${palId}`, {
+    method: 'PUT',
     headers: {
       'content-type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(input),
+    body: JSON.stringify(assignmentBody),
     signal,
   });
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(
-      response,
-      `cats-inc channel pal assignment returned ${response.status}`,
-    ),
+  return mutateAndRefetch(
+    response,
+    `cats-inc channel pal assignment returned ${response.status}`,
+    signal,
   );
 }
 
@@ -363,7 +378,7 @@ export async function removePalFromWorkspaceChannel(
   palId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/workspace/channels/${channelId}/pals/${palId}`, {
+  const response = await fetch(`/api/workspaces/default/channels/${channelId}/pal-assignments/${palId}`, {
     method: 'DELETE',
     headers: {
       Accept: 'application/json',
@@ -371,11 +386,10 @@ export async function removePalFromWorkspaceChannel(
     signal,
   });
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(
-      response,
-      `cats-inc channel pal removal returned ${response.status}`,
-    ),
+  return mutateAndRefetch(
+    response,
+    `cats-inc channel pal removal returned ${response.status}`,
+    signal,
   );
 }
 
@@ -383,7 +397,7 @@ export async function activateWorkspaceChannel(
   channelId: string,
   signal?: AbortSignal,
 ): Promise<ActivateChannelResponse> {
-  const response = await fetch(`/api/workspace/channels/${channelId}/activate`, {
+  const response = await fetch(`/api/workspaces/default/channels/${channelId}/activations`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -391,14 +405,12 @@ export async function activateWorkspaceChannel(
     signal,
   });
 
-  const result = await expectJson<ActivateChannelResponse>(
-    response,
-    `cats-inc channel activation returned ${response.status}`,
-  );
-  return {
-    ...result,
-    appShell: normalizeAppShellPayload(result.appShell),
-  };
+  const { activation } = await expectJson<{
+    activation: { channelId: string; startedAt: string; results: ActivateChannelResponse['results'] };
+  }>(response, `cats-inc channel activation returned ${response.status}`);
+
+  const appShell = await fetchAppShell(signal);
+  return { appShell, results: activation.results };
 }
 
 export async function sendWorkspaceMessage(
@@ -406,7 +418,7 @@ export async function sendWorkspaceMessage(
   input: SendChannelMessageInput,
   signal?: AbortSignal,
 ): Promise<SendChannelMessageResponse> {
-  const response = await fetch(`/api/workspace/channels/${channelId}/messages`, {
+  const response = await fetch(`/api/workspaces/default/channels/${channelId}/messages`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -416,22 +428,21 @@ export async function sendWorkspaceMessage(
     signal,
   });
 
-  const result = await expectJson<SendChannelMessageResponse>(
-    response,
-    `cats-inc channel messaging returned ${response.status}`,
-  );
-  return {
-    ...result,
-    appShell: normalizeAppShellPayload(result.appShell),
-  };
+  const { dispatch } = await expectJson<{
+    message: unknown;
+    dispatch: { channelId: string; results: SendChannelMessageResponse['results'] };
+  }>(response, `cats-inc channel messaging returned ${response.status}`);
+
+  const appShell = await fetchAppShell(signal);
+  return { appShell, results: dispatch.results };
 }
 
 export async function updateWorkspaceOrchestrator(
   input: UpdateGlobalOrchestratorInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch('/api/orchestrator', {
-    method: 'PUT',
+  const response = await fetch('/api/workspaces/default/orchestrator', {
+    method: 'PATCH',
     headers: {
       'content-type': 'application/json',
       Accept: 'application/json',
@@ -440,10 +451,9 @@ export async function updateWorkspaceOrchestrator(
     signal,
   });
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(
-      response,
-      `cats-inc orchestrator update returned ${response.status}`,
-    ),
+  return mutateAndRefetch(
+    response,
+    `cats-inc orchestrator update returned ${response.status}`,
+    signal,
   );
 }
