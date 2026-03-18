@@ -20,6 +20,7 @@ import {
   fetchAppShell,
   sendWorkspaceMessage,
   updateSelectedChannel,
+  updateVerbosePreference,
 } from './api';
 import { getDefaultModel, getProviderDisplayName, getProviderModels, PAL_PROVIDER_ORDER } from './providerCatalog';
 
@@ -480,6 +481,9 @@ export default function App() {
   }
 
   async function onResetSetup(): Promise<void> {
+    if (!window.confirm('This will erase all chats, cats, and settings. Continue?')) {
+      return;
+    }
     setBusy('setup:reset');
     try {
       const payload = await resetSetup();
@@ -816,9 +820,9 @@ export default function App() {
             onClick={() => setAccountMenuOpen(!accountMenuOpen)}
             aria-label="Account menu"
           >
-            <div className="profileBadge">KC</div>
+            <div className="profileBadge">{palInitials(payload.ownerDisplayName)}</div>
             <div className="sidebarFooterMeta">
-              <strong>Kenny Chou</strong>
+              <strong>{payload.ownerDisplayName}</strong>
             </div>
           </button>
           {accountMenuOpen ? (
@@ -827,22 +831,13 @@ export default function App() {
                 className="accountMenuItem"
                 type="button"
                 onClick={() => {
-                  navigate('/settings/cats');
+                  navigate('/settings/general');
                   setAccountMenuOpen(false);
                   setAddPalOpen(false);
                   setFeedback('');
                 }}
               >
                 Settings
-              </button>
-              <div className="accountMenuDivider" />
-              <button
-                className="accountMenuItem"
-                type="button"
-                disabled={busy === 'setup:reset'}
-                onClick={() => void onResetSetup()}
-              >
-                {busy === 'setup:reset' ? 'Resetting...' : 'Reset setup'}
               </button>
             </div>
           ) : null}
@@ -852,79 +847,161 @@ export default function App() {
       <main className="canvas">
         <Routes>
           <Route path="/" element={<Navigate to="/chats" replace />} />
-          <Route path="/settings" element={<Navigate to="/settings/cats" replace />} />
-          <Route path="/settings/cats" element={
-            <div className="viewShell viewShellScrollable palsShell">
-              <div className="viewIntro">
-                <div className="settingsBreadcrumb">
-                  <button className="breadcrumbLink" type="button" onClick={() => navigate('/chats')}>
-                    Chat
-                  </button>
-                  <span className="breadcrumbSep">/</span>
-                  <span>Settings</span>
-                  <span className="breadcrumbSep">/</span>
-                  <span>Cats</span>
+          <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
+          <Route path="/settings/general" element={
+            <div className="settingsShell">
+              <nav className="settingsSidebar">
+                <button className="settingsTab settingsTabActive" type="button" onClick={() => navigate('/settings/general')}>General</button>
+                <button className="settingsTab" type="button" onClick={() => navigate('/settings/cats')}>Cats</button>
+                <button className="settingsTab" type="button" onClick={() => navigate('/settings/data')}>Data</button>
+              </nav>
+              <div className="settingsContent">
+                <h1>General</h1>
+                <div className="contentCard">
+                  <label className="fieldLabel">
+                    <span>Display name</span>
+                    <input className="textInput" value={payload.ownerDisplayName} readOnly />
+                  </label>
+                  <div style={{ marginTop: 16 }}>
+                    <p className="sectionLabel">Runtime</p>
+                    <span className={payload.runtime.reachable ? 'statusChip statusChipReady' : 'statusChip statusChipWarm'}>
+                      {payload.runtime.reachable ? 'Cats Runtime connected' : 'Cats Runtime not detected'}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 16 }}>
+                    <p className="sectionLabel">Chat</p>
+                    <button
+                      type="button"
+                      className="toggleRow"
+                      onClick={async () => {
+                        const show = !payload.workspace.showVerboseMessages;
+                        setLoadState({
+                          status: 'ready',
+                          payload: {
+                            ...payload,
+                            workspace: { ...payload.workspace, showVerboseMessages: show },
+                          },
+                        });
+                        try {
+                          const next = await updateVerbosePreference(show);
+                          startTransition(() => setLoadState({ status: 'ready', payload: next }));
+                        } catch (err) {
+                          setLoadState({
+                            status: 'ready',
+                            payload: {
+                              ...payload,
+                              workspace: { ...payload.workspace, showVerboseMessages: !show },
+                            },
+                          });
+                          setFeedback(err instanceof Error ? err.message : 'Failed to update preference');
+                        }
+                      }}
+                    >
+                      <span className={payload.workspace.showVerboseMessages ? 'toggleDot toggleDotOn' : 'toggleDot'} />
+                      <span>Show verbose messages</span>
+                    </button>
+                  </div>
                 </div>
-                <h1>Cats</h1>
-                <p className="heroNote">
-                  Manage reusable cats across your workspace. Add them to any chat from the chat
-                  view.
-                </p>
-                {feedback ? <p className="feedbackText">{feedback}</p> : null}
               </div>
+            </div>
+          } />
+          <Route path="/settings/cats" element={
+            <div className="settingsShell">
+              <nav className="settingsSidebar">
+                <button className="settingsTab" type="button" onClick={() => navigate('/settings/general')}>General</button>
+                <button className="settingsTab settingsTabActive" type="button" onClick={() => navigate('/settings/cats')}>Cats</button>
+                <button className="settingsTab" type="button" onClick={() => navigate('/settings/data')}>Data</button>
+              </nav>
+              <div className="settingsContent">
+                <div className="viewIntro">
+                  <h1>Cats</h1>
+                  <p className="heroNote">
+                    Manage reusable cats across your workspace. Add them to any chat from the chat
+                    view.
+                  </p>
+                  {feedback ? <p className="feedbackText">{feedback}</p> : null}
+                </div>
 
-              <div className="palsLayout">
-                <section className="contentCard">
-                  <div className="contentCardHeader">
-                    <div>
-                      <p className="sectionLabel">Registry</p>
-                      <h2>{payload.workspace.pals.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
-                    </div>
-                    <span className="countBadge">{payload.workspace.pals.length}</span>
-                  </div>
-
-                  <div className="palList">
-                    {payload.workspace.pals.length > 0 ? (
-                      payload.workspace.pals.map((pal) => (
-                        <article key={pal.id} className="palCard">
-                          <div className="palCardTop">
-                            <div>
-                              <strong>{pal.name}</strong>
-                              <p>{executionLabel(pal)}</p>
-                            </div>
-                            <span
-                              className={
-                                pal.status === 'active'
-                                  ? 'statusChip statusChipReady'
-                                  : 'statusChip statusChipMuted'
-                              }
-                            >
-                              {pal.status}
-                            </span>
-                          </div>
-                          <div className="palMeta">
-                            <span>{pal.skillProfile ?? 'No skill profile'}</span>
-                            <span>{pal.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
-                          </div>
-                        </article>
-                      ))
-                    ) : (
-                      <div className="emptyStateCard">
-                        <p>Create your first cat from the panel on the right.</p>
+                <div className="palsLayout">
+                  <section className="contentCard">
+                    <div className="contentCardHeader">
+                      <div>
+                        <p className="sectionLabel">Registry</p>
+                        <h2>{payload.workspace.pals.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
                       </div>
-                    )}
-                  </div>
-                </section>
-
-                <section className="contentCard contentCardForm">
-                  <div className="contentCardHeader">
-                    <div>
-                      <p className="sectionLabel">Create</p>
-                      <h2>New cat</h2>
+                      <span className="countBadge">{payload.workspace.pals.length}</span>
                     </div>
-                  </div>
-                  {palCreationForm}
-                </section>
+
+                    <div className="palList">
+                      {payload.workspace.pals.length > 0 ? (
+                        payload.workspace.pals.map((pal) => (
+                          <article key={pal.id} className="palCard">
+                            <div className="palCardTop">
+                              <div>
+                                <strong>{pal.name}</strong>
+                                <p>{executionLabel(pal)}</p>
+                              </div>
+                              <span
+                                className={
+                                  pal.status === 'active'
+                                    ? 'statusChip statusChipReady'
+                                    : 'statusChip statusChipMuted'
+                                }
+                              >
+                                {pal.status}
+                              </span>
+                            </div>
+                            <div className="palMeta">
+                              <span>{pal.skillProfile ?? 'No skill profile'}</span>
+                              <span>{pal.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
+                            </div>
+                          </article>
+                        ))
+                      ) : (
+                        <div className="emptyStateCard">
+                          <p>Create your first cat from the panel on the right.</p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="contentCard contentCardForm">
+                    <div className="contentCardHeader">
+                      <div>
+                        <p className="sectionLabel">Create</p>
+                        <h2>New cat</h2>
+                      </div>
+                    </div>
+                    {palCreationForm}
+                  </section>
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/settings/data" element={
+            <div className="settingsShell">
+              <nav className="settingsSidebar">
+                <button className="settingsTab" type="button" onClick={() => navigate('/settings/general')}>General</button>
+                <button className="settingsTab" type="button" onClick={() => navigate('/settings/cats')}>Cats</button>
+                <button className="settingsTab settingsTabActive" type="button" onClick={() => navigate('/settings/data')}>Data</button>
+              </nav>
+              <div className="settingsContent">
+                <h1>Data</h1>
+                <div className="contentCard">
+                  <h2>Reset all data</h2>
+                  <p className="heroNote">
+                    This will erase all chats, cats, and settings. You will be returned to the setup wizard.
+                  </p>
+                  {feedback ? <p className="feedbackText">{feedback}</p> : null}
+                  <button
+                    className="dangerButton"
+                    type="button"
+                    disabled={busy === 'setup:reset'}
+                    onClick={() => void onResetSetup()}
+                  >
+                    {busy === 'setup:reset' ? 'Resetting...' : 'Reset all data'}
+                  </button>
+                </div>
               </div>
             </div>
           } />
@@ -933,7 +1010,6 @@ export default function App() {
               <>
               <header className="channelTopBar">
                 <div className="rosterAvatars">
-                  <div className="palAvatar palAvatarOrch" title="Orchestrator">Or</div>
                   {activeAssignedPals.map((pal) => (
                     <div key={pal.palId} className="palAvatar" title={pal.name}>
                       {palInitials(pal.name)}
@@ -961,7 +1037,7 @@ export default function App() {
                   {hasConversationStarted ? (
                     <section className="transcriptPanel">
                       <div className="transcriptList">
-                        {selectedChannel.messages.map((message) => (
+                        {selectedChannel.messages.filter((msg) => payload.workspace.showVerboseMessages || msg.metadata?.verbosity !== 'verbose').map((message) => (
                           <article key={message.id} className={messageTone(message.senderKind)}>
                             {message.senderKind !== 'user' ? (
                               <div className="transcriptMessageTop">

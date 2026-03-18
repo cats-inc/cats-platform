@@ -238,7 +238,7 @@ test('REST API full lifecycle: create pal, create channel, activate, message, as
     assert.equal(getChannelResponse.status, 200);
     const getChannelPayload = await getChannelResponse.json();
     assert.equal(getChannelPayload.channel.id, channelId);
-    assert.ok(getChannelPayload.channel.messages.length >= 1);
+    assert.ok(Array.isArray(getChannelPayload.channel.messages));
 
     // PUT /api/workspaces/default/channels/:cid/pal-assignments/:pid – assign existing pal
     const assignPalResponse = await fetch(
@@ -660,6 +660,36 @@ test('canonical 405 for unsupported methods', async () => {
 // ---------------------------------------------------------------------------
 // Legacy compatibility
 // ---------------------------------------------------------------------------
+
+test('GET /api/preferences includes showVerboseMessages defaulting to false', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/preferences`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.preferences.showVerboseMessages, false);
+  });
+});
+
+test('PATCH /api/preferences accepts showVerboseMessages and persists it', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    // Enable verbose messages
+    const patchResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ showVerboseMessages: true }),
+    });
+    assert.equal(patchResponse.status, 200);
+    const patchPayload = await patchResponse.json();
+    assert.equal(patchPayload.preferences.showVerboseMessages, true);
+
+    // Verify it persists on GET
+    const getResponse = await fetch(`${baseUrl}/api/preferences`);
+    assert.equal(getResponse.status, 200);
+    const getPayload = await getResponse.json();
+    assert.equal(getPayload.preferences.showVerboseMessages, true);
+  });
+});
 
 test('legacy routes still work alongside REST routes', async () => {
   const runtimeClient = createRuntimeStub();

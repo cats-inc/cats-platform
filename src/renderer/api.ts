@@ -229,6 +229,9 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
   if (workspace && workspace.bossCatId === undefined) {
     (workspace as Record<string, unknown>).bossCatId = null;
   }
+  if (workspace && workspace.showVerboseMessages === undefined) {
+    (workspace as Record<string, unknown>).showVerboseMessages = false;
+  }
 
   if (Array.isArray(workspace?.channels)) {
     workspace.channels = workspace.channels.map((channelValue) => {
@@ -302,6 +305,27 @@ export async function updateSelectedChannel(
   return mutateAndRefetch(
     response,
     `cats-inc workspace selection returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function updateVerbosePreference(
+  show: boolean,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch('/api/preferences', {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ showVerboseMessages: show }),
+    signal,
+  });
+
+  return mutateAndRefetch(
+    response,
+    `cats-inc verbose preference update returned ${response.status}`,
     signal,
   );
 }

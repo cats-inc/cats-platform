@@ -180,6 +180,7 @@ export interface WorkspaceState {
   channels: WorkspaceChannelState[];
   globalOrchestrator: GlobalOrchestratorSummary;
   capabilities: WorkspaceCapabilities;
+  showVerboseMessages: boolean;
 }
 
 export interface WorkspaceShellState {
@@ -192,6 +193,7 @@ export interface WorkspaceShellState {
   selectedChannel: WorkspaceChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
   capabilities: WorkspaceCapabilities;
+  showVerboseMessages: boolean;
 }
 
 export interface AppShellPayload {

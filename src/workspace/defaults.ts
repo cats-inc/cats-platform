@@ -84,5 +84,6 @@ export function createDefaultWorkspaceState(): WorkspaceState {
     channels: [],
     globalOrchestrator: createDefaultOrchestrator(createdAt),
     capabilities: createCapabilities(),
+    showVerboseMessages: false,
   };
 }

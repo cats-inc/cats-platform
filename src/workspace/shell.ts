@@ -31,6 +31,7 @@ export function createAppShell(
         status: runtime.reachable ? 'ready' : 'warming',
       },
       capabilities: workspace.capabilities,
+      showVerboseMessages: workspace.showVerboseMessages,
     },
     runtime,
     metadata: {

@@ -14,6 +14,7 @@ import {
   buildChannelView,
   parseMentions,
   requireChannel,
+  resolveOrchestratorDisplayName,
   setChannelOrchestratorLease,
   setChannelPalLease,
   setChannelStatus,
@@ -143,7 +144,7 @@ function setReadyAfterMessage(
 
 function resolveTargets(state: WorkspaceState, channelId: string, body: string): {
   targets: Array<
-    | { kind: 'orchestrator'; id: 'orchestrator'; name: typeof ORCHESTRATOR_NAME; sessionId: string | null }
+    | { kind: 'orchestrator'; id: 'orchestrator'; name: string; sessionId: string | null }
     | { kind: 'pal'; id: string; name: string; sessionId: string | null }
   >;
   unresolved: string[];
@@ -152,8 +153,9 @@ function resolveTargets(state: WorkspaceState, channelId: string, body: string):
   const mentions = parseMentions(body);
   const activePals = activeAssignedPals(channel);
   const palsByName = new Map(activePals.map((pal) => [pal.name.toLowerCase(), pal]));
+  const orchestratorDisplayName = resolveOrchestratorDisplayName(state);
   const targets: Array<
-    | { kind: 'orchestrator'; id: 'orchestrator'; name: typeof ORCHESTRATOR_NAME; sessionId: string | null }
+    | { kind: 'orchestrator'; id: 'orchestrator'; name: string; sessionId: string | null }
     | { kind: 'pal'; id: string; name: string; sessionId: string | null }
   > = [];
   const unresolved: string[] = [];
@@ -164,7 +166,7 @@ function resolveTargets(state: WorkspaceState, channelId: string, body: string):
         {
           kind: 'orchestrator',
           id: 'orchestrator',
-          name: ORCHESTRATOR_NAME,
+          name: orchestratorDisplayName,
           sessionId: channel.orchestratorLease.sessionId,
         },
       ],
@@ -179,7 +181,7 @@ function resolveTargets(state: WorkspaceState, channelId: string, body: string):
         targets.push({
           kind: 'orchestrator',
           id: 'orchestrator',
-          name: ORCHESTRATOR_NAME,
+          name: orchestratorDisplayName,
           sessionId: channel.orchestratorLease.sessionId,
         });
       }
@@ -216,13 +218,14 @@ export async function activateChannelSessions(
   let channelView = buildChannelView(nextState, channelId);
   let spawnCwd = spawnCwdFor(channelState);
   const workspaceMode = spawnCwd ? 'shared' : null;
+  const orchestratorDisplayName = resolveOrchestratorDisplayName(nextState);
   const results: ChannelActivationResult[] = [];
 
   if (channelState.orchestratorLease.sessionId) {
     results.push({
       targetKind: 'orchestrator',
       targetId: 'orchestrator',
-      targetName: ORCHESTRATOR_NAME,
+      targetName: orchestratorDisplayName,
       status: 'already_started',
       sessionId: channelState.orchestratorLease.sessionId,
     });
@@ -245,17 +248,17 @@ export async function activateChannelSessions(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `${ORCHESTRATOR_NAME} connected to cats-runtime session ${session.id}.`,
+          body: `${orchestratorDisplayName} connected to cats-runtime session ${session.id}.`,
         },
         now,
         {
-          metadata: { event: 'session_started', targetKind: 'orchestrator', sessionId: session.id },
+          metadata: { event: 'session_started', targetKind: 'orchestrator', sessionId: session.id, verbosity: 'verbose' },
         },
       ).state;
       results.push({
         targetKind: 'orchestrator',
         targetId: 'orchestrator',
-        targetName: ORCHESTRATOR_NAME,
+        targetName: orchestratorDisplayName,
         status: 'started',
         sessionId: session.id,
       });
@@ -268,7 +271,7 @@ export async function activateChannelSessions(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `Failed to start ${ORCHESTRATOR_NAME}: ${message}`,
+          body: `Failed to start ${orchestratorDisplayName}: ${message}`,
         },
         now,
         {
@@ -278,7 +281,7 @@ export async function activateChannelSessions(
       results.push({
         targetKind: 'orchestrator',
         targetId: 'orchestrator',
-        targetName: ORCHESTRATOR_NAME,
+        targetName: orchestratorDisplayName,
         status: 'error',
         sessionId: null,
         error: message,
@@ -326,6 +329,7 @@ export async function activateChannelSessions(
             targetKind: 'pal',
             targetId: pal.palId,
             sessionId: session.id,
+            verbosity: 'verbose',
           },
         },
       ).state;

@@ -13,6 +13,7 @@ import type {
   SendChannelMessageInput,
   UpdateGlobalOrchestratorInput,
   UpdateSelectedChannelInput,
+  WorkspaceState,
 } from './shared/app-shell.js';
 import type { WorkspaceStore } from './workspace/store.js';
 import {
@@ -49,6 +50,30 @@ const MIME_TYPES: Record<string, string> = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
 };
+
+function autoAssignBossCat(
+  state: WorkspaceState, channelId: string, now: Date,
+): WorkspaceState {
+  if (!state.bossCatId) return state;
+  const channel = requireChannel(state, channelId);
+  if (channel.palAssignments.length > 0) return state;
+  const bossCat = state.pals.find((p) => p.id === state.bossCatId);
+  if (!bossCat) return state;
+
+  let next = assignPalToChannel(state, channelId, {
+    palId: bossCat.id,
+    provider: bossCat.defaultExecutionTarget.provider,
+    model: bossCat.defaultExecutionTarget.model ?? undefined,
+  }, now);
+
+  next = appendMessage(next, channelId, {
+    senderKind: 'agent',
+    senderName: bossCat.name,
+    body: `Meow! I'm ${bossCat.name}, your Boss Cat. What shall we work on?`,
+  }, now).state;
+
+  return next;
+}
 
 function sendJson(
   response: ServerResponse,
@@ -294,11 +319,13 @@ async function handleChannelCreate(
 ): Promise<void> {
   try {
     const body = await readJsonBody<CreateWorkspaceChannelInput>(request);
-    const nextState = createChannel(
+    const now = dependencies.now?.() ?? new Date();
+    let nextState = createChannel(
       await dependencies.workspaceStore.read(),
       body,
-      dependencies.now?.() ?? new Date(),
+      now,
     );
+    nextState = autoAssignBossCat(nextState, nextState.selectedChannelId, now);
     const persisted = await dependencies.workspaceStore.write(nextState);
     sendJson(response, 200, await buildAppShell(dependencies, persisted));
   } catch (error) {
@@ -640,7 +667,10 @@ async function handleRestGetPreferences(
     requireValidWorkspaceId(workspaceId);
     const state = await dependencies.workspaceStore.read();
     sendJson(response, 200, {
-      preferences: { selectedChannelId: state.selectedChannelId },
+      preferences: {
+        selectedChannelId: state.selectedChannelId,
+        showVerboseMessages: state.showVerboseMessages,
+      },
     });
   } catch (error) {
     handleRestError(response, error);
@@ -656,15 +686,27 @@ async function handleRestUpdatePreferences(
 ): Promise<void> {
   try {
     requireValidWorkspaceId(workspaceId);
-    const body = await readJsonBody<{ selectedChannelId: string }>(request);
-    const nextState = selectChannel(
-      await dependencies.workspaceStore.read(),
-      body.selectedChannelId,
-      dependencies.now?.() ?? new Date(),
-    );
-    await dependencies.workspaceStore.write(nextState);
+    const body = await readJsonBody<{
+      selectedChannelId?: string;
+      showVerboseMessages?: boolean;
+    }>(request);
+    let nextState = await dependencies.workspaceStore.read();
+    if (body.selectedChannelId !== undefined) {
+      nextState = selectChannel(
+        nextState,
+        body.selectedChannelId,
+        dependencies.now?.() ?? new Date(),
+      );
+    }
+    if (typeof body.showVerboseMessages === 'boolean') {
+      nextState = { ...nextState, showVerboseMessages: body.showVerboseMessages };
+    }
+    const persisted = await dependencies.workspaceStore.write(nextState);
     sendJson(response, 200, {
-      preferences: { selectedChannelId: body.selectedChannelId },
+      preferences: {
+        selectedChannelId: persisted.selectedChannelId,
+        showVerboseMessages: persisted.showVerboseMessages,
+      },
     });
   } catch (error) {
     handleRestError(response, error);
@@ -699,11 +741,12 @@ async function handleRestCreateChannel(
     requireValidWorkspaceId(workspaceId);
     const body = await readJsonBody<CreateWorkspaceChannelInput>(request);
     const now = dependencies.now?.() ?? new Date();
-    const nextState = createChannel(
+    let nextState = createChannel(
       await dependencies.workspaceStore.read(),
       body,
       now,
     );
+    nextState = autoAssignBossCat(nextState, nextState.selectedChannelId, now);
     const persisted = await dependencies.workspaceStore.write(nextState);
     const createdChannel = persisted.channels[0];
     sendJson(response, 201, {
@@ -1345,6 +1388,19 @@ async function handleSetupComplete(
       senderName: bossCat.name,
       body: `Meow! I'm ${bossCat.name}, your Boss Cat. What shall we work on?`,
     }, now).state;
+
+    // Sync orchestrator execution target with Boss Cat so unmentioned
+    // messages use the provider/model the user chose during setup.
+    workspace = {
+      ...workspace,
+      globalOrchestrator: {
+        ...workspace.globalOrchestrator,
+        executionTarget: {
+          provider: body.bossCatProvider,
+          model: body.bossCatModel ?? null,
+        },
+      },
+    };
 
     // Finalize core state
     core = {

@@ -26,6 +26,14 @@ import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from './defaul
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
 
+export function resolveOrchestratorDisplayName(state: WorkspaceState): string {
+  if (state.bossCatId) {
+    const pal = state.pals.find((candidate) => candidate.id === state.bossCatId);
+    if (pal) return pal.name;
+  }
+  return ORCHESTRATOR_NAME;
+}
+
 function cloneState(state: WorkspaceState): WorkspaceState {
   return structuredClone(state);
 }
@@ -326,17 +334,7 @@ export function createChannel(
     lastActivatedAt: null,
     orchestratorLease: createEmptyExecutionLease(),
     palAssignments,
-    messages: [
-      createMessageRecord(
-        channelId,
-        'system',
-        'Chat',
-        `Chat created with ${palAssignments.length} pal${palAssignments.length === 1 ? '' : 's'}. Activate it to start runtime replies.`,
-        nowIso,
-        { event: 'channel_created' },
-        null,
-      ),
-    ],
+    messages: [],
   };
 
   nextState.channels.unshift(channel);
