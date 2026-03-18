@@ -20,9 +20,9 @@
 | Cats Work | The work and operations product surface in the Cats suite. |
 | Cats Core v1 | The shared product contract layer for identity, actors/resources, permissions, conversations, approvals, owner profile, and archive metadata. |
 | Chat | The current lightweight team conversation module inside the current shell; this term is gradually being made more explicit as `Cats Chat`. |
-| Pal | A reusable teammate identity used inside the current chat shell. A pal is not the same thing as a provider choice and is expected to evolve into the broader actor/resource model. |
-| Workspace pal registry | The workspace-level list of reusable pals that can be assigned into one or more chats. |
-| Pal assignment | The channel-scoped record that decides whether a workspace pal is active in one chat and which execution target it should use there. |
+| Cat | A reusable teammate identity used inside the current chat shell. A cat is not the same thing as a provider choice and is expected to evolve into the broader actor/resource model. `Pal` remains as an internal implementation term. |
+| Cat registry | The workspace-level list of reusable cats that can be assigned into one or more chats. |
+| Cat assignment | The channel-scoped record that decides whether a workspace cat is active in one chat and which execution target it should use there. |
 | Actor / Resource | The broader `Cats Core v1` term for a human, orchestrator, worker, stakeholder, virtual friend, or other reusable participant. |
 | Execution target | The provider/model preference selected for a pal or orchestrator in one context. |
 | Execution lease | The currently active runtime session metadata used to execute work through a provider. |
@@ -55,4 +55,4 @@
 
 ---
 
-Last updated: 2026-03-16
+Last updated: 2026-03-18

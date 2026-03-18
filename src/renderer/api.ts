@@ -279,7 +279,7 @@ export async function updateSelectedChannel(
   selectedChannelId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch('/api/workspaces/default/preferences', {
+  const response = await fetch('/api/preferences', {
     method: 'PATCH',
     headers: {
       'content-type': 'application/json',
@@ -300,7 +300,7 @@ export async function createWorkspaceChannel(
   input: CreateWorkspaceChannelInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch('/api/workspaces/default/channels', {
+  const response = await fetch('/api/channels', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -321,7 +321,7 @@ export async function deleteWorkspaceChannel(
   channelId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/workspaces/default/channels/${channelId}`, {
+  const response = await fetch(`/api/channels/${channelId}`, {
     method: 'DELETE',
     headers: {
       Accept: 'application/json',
@@ -340,7 +340,7 @@ export async function createGlobalPal(
   input: CreateWorkspacePalInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch('/api/pals', {
+  const response = await fetch('/api/cats', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -363,7 +363,7 @@ export async function assignPalToWorkspaceChannel(
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
   const { palId, ...assignmentBody } = input;
-  const response = await fetch(`/api/workspaces/default/channels/${channelId}/pal-assignments/${palId}`, {
+  const response = await fetch(`/api/channels/${channelId}/cats/${palId}`, {
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
@@ -385,7 +385,7 @@ export async function removePalFromWorkspaceChannel(
   palId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/workspaces/default/channels/${channelId}/pal-assignments/${palId}`, {
+  const response = await fetch(`/api/channels/${channelId}/cats/${palId}`, {
     method: 'DELETE',
     headers: {
       Accept: 'application/json',
@@ -404,7 +404,7 @@ export async function activateWorkspaceChannel(
   channelId: string,
   signal?: AbortSignal,
 ): Promise<ActivateChannelResponse> {
-  const response = await fetch(`/api/workspaces/default/channels/${channelId}/activations`, {
+  const response = await fetch(`/api/channels/${channelId}/activations`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -430,7 +430,7 @@ export async function sendWorkspaceMessage(
   input: SendChannelMessageInput,
   signal?: AbortSignal,
 ): Promise<SendChannelMessageResponse> {
-  const response = await fetch(`/api/workspaces/default/channels/${channelId}/messages`, {
+  const response = await fetch(`/api/channels/${channelId}/messages`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -458,7 +458,7 @@ export async function updateWorkspaceOrchestrator(
   input: UpdateGlobalOrchestratorInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch('/api/workspaces/default/orchestrator', {
+  const response = await fetch('/api/orchestrator', {
     method: 'PATCH',
     headers: {
       'content-type': 'application/json',

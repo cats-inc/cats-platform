@@ -165,6 +165,21 @@ function handleRestError(response: ServerResponse, error: unknown): void {
   sendRestError(response, 400, 'bad_request', message);
 }
 
+function handleCanonicalCatError(response: ServerResponse, error: unknown): void {
+  const message = error instanceof Error ? error.message : 'Unknown error';
+
+  if (message.startsWith('Pal not found:')) {
+    sendRestError(response, 404, 'cat_not_found', message.replace('Pal not found:', 'Cat not found:'));
+    return;
+  }
+  if (message.startsWith('Channel pal assignment not found:')) {
+    sendRestError(response, 404, 'cat_not_found', message.replace('Channel pal assignment not found:', 'Cat not found in channel:'));
+    return;
+  }
+
+  handleRestError(response, error);
+}
+
 const DEFAULT_WORKSPACE_ID = 'default';
 
 function requireValidWorkspaceId(workspaceId: string): void {
@@ -1079,6 +1094,193 @@ async function handleRestGetExport(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Canonical cat handlers (SPEC-009)
+// ---------------------------------------------------------------------------
+
+// GET /api/cats
+async function handleCanonicalListCats(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  try {
+    const state = await dependencies.workspaceStore.read();
+    sendJson(response, 200, { cats: state.pals });
+  } catch (error) {
+    handleCanonicalCatError(response, error);
+  }
+}
+
+// POST /api/cats
+async function handleCanonicalCreateCat(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<CreateWorkspacePalInput>(request);
+    const now = dependencies.now?.() ?? new Date();
+    const nextState = createWorkspacePal(
+      await dependencies.workspaceStore.read(),
+      body,
+      now,
+    );
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 201, { cat: persisted.pals[0] });
+  } catch (error) {
+    handleCanonicalCatError(response, error);
+  }
+}
+
+// GET /api/cats/:catId
+async function handleCanonicalGetCat(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  catId: string,
+): Promise<void> {
+  try {
+    const state = await dependencies.workspaceStore.read();
+    const pal = requirePal(state, catId);
+    sendJson(response, 200, { cat: pal });
+  } catch (error) {
+    handleCanonicalCatError(response, error);
+  }
+}
+
+// GET /api/channels/:channelId/cats
+async function handleCanonicalListChannelCats(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+): Promise<void> {
+  try {
+    const state = await dependencies.workspaceStore.read();
+    const view = buildChannelView(state, channelId);
+    const cats = view.assignedPals.map(({ palId, ...rest }) => ({ catId: palId, ...rest }));
+    sendJson(response, 200, { cats });
+  } catch (error) {
+    handleCanonicalCatError(response, error);
+  }
+}
+
+// PUT /api/channels/:channelId/cats/:catId
+async function handleCanonicalAssignChannelCat(
+  request: IncomingMessage,
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+  catId: string,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<Omit<AssignChannelPalInput, 'palId'>>(request);
+    const now = dependencies.now?.() ?? new Date();
+    const currentState = await dependencies.workspaceStore.read();
+    const currentChannel = requireChannel(currentState, channelId);
+    const existingAssignment = currentChannel.palAssignments.find(
+      (candidate) => candidate.palId === catId,
+    );
+    const isNew = !existingAssignment;
+    const previousSessionId = existingAssignment?.execution.lease.sessionId ?? null;
+    const previousProvider = existingAssignment?.execution.target.provider ?? null;
+    const previousModel = existingAssignment?.execution.target.model ?? null;
+
+    let nextState = assignPalToChannel(
+      currentState,
+      channelId,
+      { palId: catId, ...body },
+      now,
+    );
+
+    const updatedChannel = requireChannel(nextState, channelId);
+    const updatedAssignment = updatedChannel.palAssignments.find(
+      (candidate) => candidate.palId === catId,
+    );
+    const targetChanged = Boolean(
+      existingAssignment
+      && updatedAssignment
+      && (
+        updatedAssignment.execution.target.provider !== previousProvider
+        || updatedAssignment.execution.target.model !== previousModel
+      ),
+    );
+
+    if (targetChanged && previousSessionId) {
+      try {
+        await dependencies.runtimeClient.closeSession(previousSessionId);
+      } catch (closeError) {
+        const pal = requirePal(nextState, catId);
+        nextState = appendMessage(
+          nextState,
+          channelId,
+          {
+            senderKind: 'system',
+            senderName: 'Runtime',
+            body: `Failed to close ${pal.name}'s previous session cleanly: ${
+              closeError instanceof Error ? closeError.message : 'Unknown runtime error'
+            }`,
+          },
+          now,
+          { metadata: { event: 'session_close_failed', palId: catId } },
+        ).state;
+      }
+    }
+
+    const persisted = await dependencies.workspaceStore.write(nextState);
+    const view = buildChannelView(persisted, channelId);
+    const assignment = view.assignedPals.find((candidate) => candidate.palId === catId);
+    const cat = assignment ? { catId: assignment.palId, ...Object.fromEntries(Object.entries(assignment).filter(([k]) => k !== 'palId')) } : assignment;
+    sendJson(response, isNew ? 201 : 200, { cat });
+  } catch (error) {
+    handleCanonicalCatError(response, error);
+  }
+}
+
+// DELETE /api/channels/:channelId/cats/:catId
+async function handleCanonicalRemoveChannelCat(
+  response: ServerResponse,
+  dependencies: ServerDependencies,
+  channelId: string,
+  catId: string,
+): Promise<void> {
+  try {
+    const currentState = await dependencies.workspaceStore.read();
+    const channel = requireChannel(currentState, channelId);
+    const assignment = channel.palAssignments.find((candidate) => candidate.palId === catId);
+    if (!assignment) {
+      throw new Error(`Channel pal assignment not found: ${catId}`);
+    }
+    const pal = requirePal(currentState, catId);
+    const now = dependencies.now?.() ?? new Date();
+
+    let nextState = removePalFromChannel(currentState, channelId, catId, now);
+
+    if (assignment.execution.lease.sessionId) {
+      try {
+        await dependencies.runtimeClient.closeSession(assignment.execution.lease.sessionId);
+      } catch (closeError) {
+        nextState = appendMessage(
+          nextState,
+          channelId,
+          {
+            senderKind: 'system',
+            senderName: 'Runtime',
+            body: `Failed to close ${pal.name}'s session cleanly: ${
+              closeError instanceof Error ? closeError.message : 'Unknown runtime error'
+            }`,
+          },
+          now,
+          { metadata: { event: 'session_close_failed', palId: catId } },
+        ).state;
+      }
+    }
+
+    await dependencies.workspaceStore.write(nextState);
+    sendJson(response, 200, { removed: true, channelId, catId });
+  } catch (error) {
+    handleCanonicalCatError(response, error);
+  }
+}
+
 async function tryServeWebAsset(pathname: string, response: ServerResponse): Promise<boolean> {
   const requestedPath = pathname === '/' ? '/index.html' : pathname;
   const resolvedPath = path.resolve(WEB_DIST_ROOT, `.${requestedPath}`);
@@ -1216,11 +1418,17 @@ function routeRequest(
   }
 
   if (url.pathname === '/api/orchestrator') {
-    if (method !== 'PUT') {
-      sendMethodNotAllowed(response, ['PUT']);
-      return Promise.resolve();
+    if (method === 'GET') {
+      return handleRestGetOrchestrator(response, dependencies, 'default');
     }
-    return handleOrchestratorUpdate(request, response, dependencies);
+    if (method === 'PATCH') {
+      return handleRestUpdateOrchestrator(request, response, dependencies, 'default');
+    }
+    if (method === 'PUT') {
+      return handleOrchestratorUpdate(request, response, dependencies);
+    }
+    sendMethodNotAllowed(response, ['GET', 'PATCH', 'PUT']);
+    return Promise.resolve();
   }
 
   if (activateMatch) {
@@ -1285,6 +1493,141 @@ function routeRequest(
       return Promise.resolve();
     }
     return handleChannelExport(response, dependencies, exportMatch[0]);
+  }
+
+  // =========================================================================
+  // Canonical Public Routes (SPEC-009 / PLAN-009)
+  // =========================================================================
+
+  // Static canonical paths
+  if (url.pathname === '/api/cats') {
+    if (method === 'GET') {
+      return handleCanonicalListCats(response, dependencies);
+    }
+    if (method === 'POST') {
+      return handleCanonicalCreateCat(request, response, dependencies);
+    }
+    sendMethodNotAllowed(response, ['GET', 'POST']);
+    return Promise.resolve();
+  }
+
+  if (url.pathname === '/api/channels') {
+    if (method === 'GET') {
+      return handleRestListChannels(response, dependencies, 'default');
+    }
+    if (method === 'POST') {
+      return handleRestCreateChannel(request, response, dependencies, 'default');
+    }
+    sendMethodNotAllowed(response, ['GET', 'POST']);
+    return Promise.resolve();
+  }
+
+  if (url.pathname === '/api/preferences') {
+    if (method === 'GET') {
+      return handleRestGetPreferences(response, dependencies, 'default');
+    }
+    if (method === 'PATCH') {
+      return handleRestUpdatePreferences(request, response, dependencies, 'default');
+    }
+    sendMethodNotAllowed(response, ['GET', 'PATCH']);
+    return Promise.resolve();
+  }
+
+  // Regex canonical paths — match longest/most-specific first
+  const canonicalCatDetailMatch = matchRoute(url.pathname, /^\/api\/cats\/([^/]+)$/u);
+  if (canonicalCatDetailMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleCanonicalGetCat(response, dependencies, canonicalCatDetailMatch[0]);
+  }
+
+  const canonicalChannelCatDetailMatch = matchRoute(
+    url.pathname,
+    /^\/api\/channels\/([^/]+)\/cats\/([^/]+)$/u,
+  );
+  if (canonicalChannelCatDetailMatch) {
+    if (method === 'PUT') {
+      return handleCanonicalAssignChannelCat(
+        request, response, dependencies,
+        canonicalChannelCatDetailMatch[0], canonicalChannelCatDetailMatch[1],
+      );
+    }
+    if (method === 'DELETE') {
+      return handleCanonicalRemoveChannelCat(
+        response, dependencies,
+        canonicalChannelCatDetailMatch[0], canonicalChannelCatDetailMatch[1],
+      );
+    }
+    sendMethodNotAllowed(response, ['PUT', 'DELETE']);
+    return Promise.resolve();
+  }
+
+  const canonicalChannelCatsMatch = matchRoute(
+    url.pathname,
+    /^\/api\/channels\/([^/]+)\/cats$/u,
+  );
+  if (canonicalChannelCatsMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleCanonicalListChannelCats(response, dependencies, canonicalChannelCatsMatch[0]);
+  }
+
+  const canonicalChannelMessagesMatch = matchRoute(
+    url.pathname,
+    /^\/api\/channels\/([^/]+)\/messages$/u,
+  );
+  if (canonicalChannelMessagesMatch) {
+    if (method === 'GET') {
+      return handleRestListMessages(response, dependencies, 'default', canonicalChannelMessagesMatch[0]);
+    }
+    if (method === 'POST') {
+      return handleRestSendMessage(request, response, dependencies, 'default', canonicalChannelMessagesMatch[0]);
+    }
+    sendMethodNotAllowed(response, ['GET', 'POST']);
+    return Promise.resolve();
+  }
+
+  const canonicalChannelActivationsMatch = matchRoute(
+    url.pathname,
+    /^\/api\/channels\/([^/]+)\/activations$/u,
+  );
+  if (canonicalChannelActivationsMatch) {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleRestActivateChannel(response, dependencies, 'default', canonicalChannelActivationsMatch[0]);
+  }
+
+  const canonicalChannelExportMatch = matchRoute(
+    url.pathname,
+    /^\/api\/channels\/([^/]+)\/exports\/latest$/u,
+  );
+  if (canonicalChannelExportMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleRestGetExport(response, dependencies, 'default', canonicalChannelExportMatch[0]);
+  }
+
+  const canonicalChannelDetailMatch = matchRoute(
+    url.pathname,
+    /^\/api\/channels\/([^/]+)$/u,
+  );
+  if (canonicalChannelDetailMatch) {
+    if (method === 'GET') {
+      return handleRestGetChannel(response, dependencies, 'default', canonicalChannelDetailMatch[0]);
+    }
+    if (method === 'DELETE') {
+      return handleRestDeleteChannel(response, dependencies, 'default', canonicalChannelDetailMatch[0]);
+    }
+    sendMethodNotAllowed(response, ['GET', 'DELETE']);
+    return Promise.resolve();
   }
 
   // =========================================================================

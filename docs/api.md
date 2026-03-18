@@ -21,24 +21,29 @@ transport APIs remain future work.
 
 ## Migration Status
 
-The RESTful resource API (ADR-010 / SPEC-008 / PLAN-008 Phase 1-3) is now
-implemented. Both the canonical REST surface and the legacy compatibility
-surface are active.
+The public naming refresh (SPEC-009 / PLAN-009) is now implemented. The
+canonical public API uses `/api/cats`, `/api/channels`, `/api/preferences`,
+and `/api/orchestrator` routes without workspace prefixes.
 
-- **Canonical**: resource-oriented routes under `/api/workspaces/`, `/api/pals`
-- **Compatibility**: legacy `/api/workspace/*` and `/api/orchestrator` routes
-  still work and return `AppShellPayload`
+- **Canonical**: public routes at `/api/cats`, `/api/channels/*`,
+  `/api/preferences`, `/api/orchestrator`
+- **Compatibility (workspace-prefixed)**: `/api/workspaces/default/*` and
+  `/api/pals` routes remain active as aliases
+- **Compatibility (legacy)**: `/api/workspace/*` routes still work and return
+  `AppShellPayload`
 - **Read model**: `GET /api/app-shell` and `GET /api/views/app-shell` remain
   available for renderer bootstrap
 
-New client code should target the canonical REST routes. Legacy routes will be
-deprecated once the renderer migration (Phase 4) is complete.
+New client code should target the canonical public routes. Workspace-prefixed
+and legacy routes will be deprecated once migration is confirmed complete.
 
 References:
 
 - [ADR-010](./decisions/010-separate-read-model-app-shell-from-restful-resource-apis.md)
 - [SPEC-008](./specs/SPEC-008-restful-product-api-refactor.md)
 - [PLAN-008](./plans/PLAN-008-restful-product-api-refactor.md)
+- [SPEC-009](./specs/SPEC-009-public-surface-naming-refresh.md)
+- [PLAN-009](./plans/PLAN-009-public-surface-naming-refresh.md)
 
 ## Base URL
 
@@ -50,7 +55,120 @@ Development: http://127.0.0.1:8181
 
 No inbound auth is implemented yet.
 
-## Canonical REST Endpoints
+## Canonical Public API (SPEC-009)
+
+### Cats
+
+```text
+GET  /api/cats
+POST /api/cats
+GET  /api/cats/{catId}
+```
+
+- `GET` collection returns `{ cats: [...] }`.
+- `POST` returns `201` with `{ cat: { ...created } }`.
+- `GET` detail returns `{ cat: { ... } }`.
+
+### Channels
+
+```text
+GET    /api/channels
+POST   /api/channels
+GET    /api/channels/{channelId}
+DELETE /api/channels/{channelId}
+```
+
+- `GET` collection returns `{ channels: [...summaries] }`.
+- `POST` returns `201` with `{ channel: { ...view } }`.
+- `GET` detail returns `{ channel: { ...view with messages and assignedPals } }`.
+- `DELETE` returns `{ deleted: true, channelId }`.
+
+### Channel Messages
+
+```text
+GET  /api/channels/{channelId}/messages
+POST /api/channels/{channelId}/messages
+```
+
+- `GET` returns `{ messages: [...] }`.
+- `POST` accepts `{ body, senderName? }` and returns
+  `{ message: { ...userMessage }, dispatch: { channelId, results } }`.
+
+### Channel Cats
+
+```text
+GET    /api/channels/{channelId}/cats
+PUT    /api/channels/{channelId}/cats/{catId}
+DELETE /api/channels/{channelId}/cats/{catId}
+```
+
+- `GET` returns `{ cats: [...hydrated] }` with `catId` keys instead of `palId`.
+- `PUT` is idempotent: creates (`201`) or updates (`200`) an assignment.
+  Returns `{ cat: { catId, ...hydrated } }`.
+- `DELETE` returns `{ removed: true, channelId, catId }`.
+
+### Channel Activations
+
+```text
+POST /api/channels/{channelId}/activations
+```
+
+Returns `{ activation: { channelId, startedAt, results } }`.
+
+### Channel Export
+
+```text
+GET /api/channels/{channelId}/exports/latest
+```
+
+Returns the export payload as a JSON attachment.
+
+### Preferences
+
+```text
+GET  /api/preferences
+PATCH /api/preferences
+```
+
+- `GET` returns `{ preferences: { selectedChannelId } }`.
+- `PATCH` accepts `{ selectedChannelId }` and returns the updated preferences.
+
+### Orchestrator
+
+```text
+GET   /api/orchestrator
+PATCH /api/orchestrator
+PUT   /api/orchestrator
+```
+
+- `GET` returns `{ orchestrator: { ...state } }`.
+- `PATCH` accepts `{ provider, model?, systemPrompt?, ... }` and returns
+  `{ orchestrator: { ...updated } }`.
+- `PUT` is a legacy alias that returns `AppShellPayload`.
+
+### Error Shape (Canonical Routes)
+
+Canonical routes use structured errors:
+
+```json
+{
+  "error": {
+    "code": "cat_not_found",
+    "message": "Cat not found: ops-reviewer"
+  }
+}
+```
+
+Codes: `cat_not_found`, `channel_not_found`, `workspace_not_found`,
+`bad_request`.
+
+---
+
+## Compatibility Endpoints (Workspace-Prefixed)
+
+> The routes below are the workspace-prefixed REST API. They still work and
+> will be maintained as aliases. New client code should use the canonical
+> public routes above.
 
 ### Workspace
 
@@ -173,7 +291,7 @@ REST routes use structured errors:
 ```
 
 Codes: `workspace_not_found`, `channel_not_found`, `pal_not_found`,
-`assignment_not_found`, `bad_request`.
+`assignment_not_found`, `cat_not_found`, `bad_request`.
 
 ---
 

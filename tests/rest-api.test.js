@@ -416,6 +416,251 @@ test('REST API returns 405 for unsupported methods', async () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Canonical public routes (SPEC-009 / PLAN-009)
+// ---------------------------------------------------------------------------
+
+test('GET /api/cats returns empty cat list', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/cats`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.ok(Array.isArray(payload.cats));
+    assert.equal(payload.cats.length, 0);
+  });
+});
+
+test('GET /api/cats/nonexistent returns 404 with cat_not_found', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/cats/nonexistent`);
+    assert.equal(response.status, 404);
+
+    const payload = await response.json();
+    assert.equal(payload.error.code, 'cat_not_found');
+    assert.match(payload.error.message, /Cat not found/);
+  });
+});
+
+test('GET /api/preferences returns preferences', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/preferences`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(typeof payload.preferences.selectedChannelId, 'string');
+  });
+});
+
+test('GET /api/orchestrator returns orchestrator state', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/orchestrator`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.orchestrator.mode, 'global');
+    assert.equal(payload.orchestrator.status, 'ready');
+    assert.ok(payload.orchestrator.executionTarget);
+  });
+});
+
+test('canonical routes full lifecycle: create cat, channel, activate, message, assign, remove, export, delete', async () => {
+  const runtimeClient = createRuntimeStub();
+  const workspaceStore = new MemoryWorkspaceStore();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    // POST /api/cats – create a cat
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Agent-1',
+        provider: 'claude',
+        roles: ['coder'],
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    assert.equal(createCatPayload.cat.name, 'Agent-1');
+    assert.ok(createCatPayload.cat.id);
+    const catId = createCatPayload.cat.id;
+
+    // GET /api/cats/:catId – read cat detail
+    const getCatResponse = await fetch(`${baseUrl}/api/cats/${catId}`);
+    assert.equal(getCatResponse.status, 200);
+    const getCatPayload = await getCatResponse.json();
+    assert.equal(getCatPayload.cat.name, 'Agent-1');
+
+    // GET /api/cats – list cats
+    const listCatsResponse = await fetch(`${baseUrl}/api/cats`);
+    assert.equal(listCatsResponse.status, 200);
+    const listCatsPayload = await listCatsResponse.json();
+    assert.equal(listCatsPayload.cats.length, 1);
+
+    // POST /api/channels – create channel
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Ops Radar',
+        topic: 'Track regressions.',
+        repoPath: 'C:/repo/cats-inc',
+        language: 'TypeScript',
+        pals: [
+          { name: 'Inline-Agent', provider: 'gemini', roles: ['reviewer'] },
+        ],
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    assert.equal(createChannelPayload.channel.title, 'Ops Radar');
+    const channelId = createChannelPayload.channel.id;
+
+    // GET /api/channels – list channels
+    const listChannelsResponse = await fetch(`${baseUrl}/api/channels`);
+    assert.equal(listChannelsResponse.status, 200);
+    const listChannelsPayload = await listChannelsResponse.json();
+    assert.equal(listChannelsPayload.channels.length, 1);
+
+    // PATCH /api/preferences – select channel
+    const updatePrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+    assert.equal(updatePrefsResponse.status, 200);
+    const updatePrefsPayload = await updatePrefsResponse.json();
+    assert.equal(updatePrefsPayload.preferences.selectedChannelId, channelId);
+
+    // POST /api/channels/:cid/activations
+    const activateResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/activations`,
+      { method: 'POST' },
+    );
+    assert.equal(activateResponse.status, 200);
+    const activatePayload = await activateResponse.json();
+    assert.equal(activatePayload.activation.channelId, channelId);
+    assert.ok(activatePayload.activation.results.length >= 1);
+
+    // POST /api/channels/:cid/messages – send message
+    const sendMessageResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/messages`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body: 'Hello from canonical route' }),
+      },
+    );
+    assert.equal(sendMessageResponse.status, 200);
+    const sendMessagePayload = await sendMessageResponse.json();
+    assert.equal(sendMessagePayload.message.body, 'Hello from canonical route');
+    assert.ok(sendMessagePayload.dispatch);
+
+    // GET /api/channels/:cid/messages – list messages
+    const listMessagesResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/messages`,
+    );
+    assert.equal(listMessagesResponse.status, 200);
+    const listMessagesPayload = await listMessagesResponse.json();
+    assert.ok(listMessagesPayload.messages.length >= 2);
+
+    // PUT /api/channels/:cid/cats/:catId – assign cat
+    const assignCatResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/cats/${catId}`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'claude',
+          roles: ['coder'],
+        }),
+      },
+    );
+    assert.equal(assignCatResponse.status, 201);
+    const assignCatPayload = await assignCatResponse.json();
+    assert.equal(assignCatPayload.cat.catId, catId);
+
+    // GET /api/channels/:cid/cats – list channel cats
+    const listChannelCatsResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/cats`,
+    );
+    assert.equal(listChannelCatsResponse.status, 200);
+    const listChannelCatsPayload = await listChannelCatsResponse.json();
+    assert.ok(listChannelCatsPayload.cats.length >= 2);
+    assert.ok(listChannelCatsPayload.cats.some((c) => c.catId === catId));
+
+    // PATCH /api/orchestrator – update orchestrator
+    const updateOrchResponse = await fetch(`${baseUrl}/api/orchestrator`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+        systemPrompt: 'Updated from canonical.',
+      }),
+    });
+    assert.equal(updateOrchResponse.status, 200);
+    const updateOrchPayload = await updateOrchResponse.json();
+    assert.equal(updateOrchPayload.orchestrator.executionTarget.model, 'claude-opus-4-6');
+
+    // GET /api/channels/:cid/exports/latest
+    const exportResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/exports/latest`,
+    );
+    assert.equal(exportResponse.status, 200);
+    assert.match(
+      exportResponse.headers.get('content-disposition') ?? '',
+      /channel-ops-radar\.json/,
+    );
+
+    // DELETE /api/channels/:cid/cats/:catId – remove cat
+    const removeCatResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/cats/${catId}`,
+      { method: 'DELETE' },
+    );
+    assert.equal(removeCatResponse.status, 200);
+    const removeCatPayload = await removeCatResponse.json();
+    assert.equal(removeCatPayload.removed, true);
+    assert.equal(removeCatPayload.catId, catId);
+
+    // DELETE /api/channels/:channelId
+    const deleteChannelResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}`,
+      { method: 'DELETE' },
+    );
+    assert.equal(deleteChannelResponse.status, 200);
+    const deletePayload = await deleteChannelResponse.json();
+    assert.equal(deletePayload.deleted, true);
+
+    // Verify channel is gone
+    const listAfterDelete = await fetch(`${baseUrl}/api/channels`);
+    const listAfterDeletePayload = await listAfterDelete.json();
+    assert.equal(listAfterDeletePayload.channels.length, 0);
+  }, workspaceStore);
+});
+
+test('canonical 405 for unsupported methods', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const deleteOnCats = await fetch(`${baseUrl}/api/cats`, { method: 'DELETE' });
+    assert.equal(deleteOnCats.status, 405);
+    const deleteOnCatsBody = await deleteOnCats.json();
+    assert.equal(deleteOnCatsBody.error.code, 'method_not_allowed');
+
+    const putOnChannels = await fetch(`${baseUrl}/api/channels`, { method: 'PUT' });
+    assert.equal(putOnChannels.status, 405);
+
+    const postOnPreferences = await fetch(`${baseUrl}/api/preferences`, { method: 'POST' });
+    assert.equal(postOnPreferences.status, 405);
+
+    const deleteOnOrchestrator = await fetch(`${baseUrl}/api/orchestrator`, { method: 'DELETE' });
+    assert.equal(deleteOnOrchestrator.status, 405);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Legacy compatibility
+// ---------------------------------------------------------------------------
+
 test('legacy routes still work alongside REST routes', async () => {
   const runtimeClient = createRuntimeStub();
   const workspaceStore = new MemoryWorkspaceStore();

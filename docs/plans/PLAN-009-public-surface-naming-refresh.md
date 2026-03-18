@@ -1,6 +1,6 @@
 # PLAN-009: Public-Surface Naming Refresh
 
-Status: Draft (Ready for Specialist Handoff)
+Status: Complete (Phase 1-5 implemented)
 
 ## Scope
 
@@ -29,35 +29,35 @@ This plan is explicitly **not** a visual refresh plan.
 
 ### Phase 1: Naming Contract Freeze
 
-- [ ] Freeze the approved public nouns:
+- [x] Freeze the approved public nouns:
       `Cat / Cats`, reject `Paw / Paws`.
-- [ ] Freeze the public API direction:
+- [x] Freeze the public API direction:
       no canonical `workspace / workspaces` root.
-- [ ] Define canonical route replacements for all currently exposed public
+- [x] Define canonical route replacements for all currently exposed public
       REST endpoints.
-- [ ] Document which internal names remain intentionally unchanged for now.
+- [x] Document which internal names remain intentionally unchanged for now.
 
 **Deliverables**: approved glossary and rename boundary.
 
 ### Phase 2: Documentation and Terminology Update
 
-- [ ] Update `docs/terminology.md` to reflect `Cat / Cats`.
-- [ ] Update `docs/api.md` so canonical routes use `/api/cats`, `/api/channels`,
+- [x] Update `docs/terminology.md` to reflect `Cat / Cats`.
+- [x] Update `docs/api.md` so canonical routes use `/api/cats`, `/api/channels`,
       `/api/preferences`, and `/api/orchestrator`.
 - [ ] Update related planning docs that are meant to guide future work:
       - `SPEC-007`
       - `PLAN-007`
       - `SPEC-008`
       - `PLAN-008`
-- [ ] Update high-level product docs only where the public naming appears and
+- [x] Update high-level product docs only where the public naming appears and
       would otherwise confuse future implementers.
 
 **Deliverables**: docs align on the new public naming.
 
 ### Phase 3: Canonical API Rename with Compatibility Aliases
 
-- [ ] Add canonical `GET/POST /api/cats` and `GET /api/cats/{catId}` routes.
-- [ ] Add canonical root-level routes:
+- [x] Add canonical `GET/POST /api/cats` and `GET /api/cats/{catId}` routes.
+- [x] Add canonical root-level routes:
       - `/api/channels`
       - `/api/channels/{channelId}`
       - `/api/channels/{channelId}/messages`
@@ -67,34 +67,34 @@ This plan is explicitly **not** a visual refresh plan.
       - `/api/orchestrator`
       - `/api/channels/{channelId}/activations`
       - `/api/channels/{channelId}/exports/latest`
-- [ ] Keep `/api/pals` and `/api/workspaces/default/...` as compatibility
+- [x] Keep `/api/pals` and `/api/workspaces/default/...` as compatibility
       aliases during migration.
-- [ ] Decide whether canonical payloads return `cat/cats/catId` immediately, or
+- [x] Decide whether canonical payloads return `cat/cats/catId` immediately, or
       whether route renaming lands first with payload adapters.
 
 **Deliverables**: new canonical public API with compatibility preserved.
 
 ### Phase 4: Renderer Client and Visible Label Migration
 
-- [ ] Update `src/renderer/api.ts` to call the new canonical routes.
-- [ ] Update visible text labels in `src/renderer/App.tsx` from `Pal / Pals` to
+- [x] Update `src/renderer/api.ts` to call the new canonical routes.
+- [x] Update visible text labels in `src/renderer/App.tsx` from `Pal / Pals` to
       `Cat / Cats`.
-- [ ] Keep component structure and layout untouched.
-- [ ] Keep CSS class names unchanged unless a strictly necessary bug fix forces
+- [x] Keep component structure and layout untouched.
+- [x] Keep CSS class names unchanged unless a strictly necessary bug fix forces
       a minimal exception.
-- [ ] Verify that no changed label requires spacing/layout intervention.
+- [x] Verify that no changed label requires spacing/layout intervention.
 
 **Deliverables**: renderer uses the new names without a UI redesign.
 
 ### Phase 5: Tests and Deprecation Notes
 
-- [ ] Add or update route tests for the new `/api/cats` and root-level route
+- [x] Add or update route tests for the new `/api/cats` and root-level route
       families.
-- [ ] Preserve compatibility-route coverage for `/api/pals` and
+- [x] Preserve compatibility-route coverage for `/api/pals` and
       `/api/workspaces/default/...`.
-- [ ] Add tests or assertions that the renderer-facing rename did not require
+- [x] Add tests or assertions that the renderer-facing rename did not require
       DOM/class restructuring.
-- [ ] Document which aliases remain, and what conditions are required before
+- [x] Document which aliases remain, and what conditions are required before
       later removal.
 
 **Deliverables**: tested rename path and clear alias policy.

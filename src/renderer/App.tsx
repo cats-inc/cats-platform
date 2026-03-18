@@ -127,7 +127,7 @@ function palInitials(name: string): string {
 const GREETING_LINES = [
   "Meow. Ready when you are.",
   "Your cat hasn't napped yet.",
-  "Paws on the keyboard.",
+  "Cats on the keyboard.",
   "Tail up, let's go.",
   "Purring in standby.",
   "Claws sharpened. What's the task?",
@@ -266,10 +266,10 @@ export default function App() {
       startTransition(() => {
         setState({ status: 'ready', payload });
         setPalForm(emptyPalForm());
-        setFeedback('Pal saved.');
+        setFeedback('Cat saved.');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to save pal.');
+      setFeedback(error instanceof Error ? error.message : 'Failed to save cat.');
     } finally {
       setBusy('');
     }
@@ -295,7 +295,7 @@ export default function App() {
       const newPal = created.workspace.pals.find((p) => !previousIds.has(p.id));
       if (!newPal) {
         setPalForm(emptyPalForm());
-        setFeedback('Pal created. Open "Choose existing" to assign it.');
+        setFeedback('Cat created. Open "Choose existing" to assign it.');
         setBusy('');
         return;
       }
@@ -312,7 +312,7 @@ export default function App() {
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to create pal.');
+      setFeedback(error instanceof Error ? error.message : 'Failed to create cat.');
     } finally {
       setBusy('');
     }
@@ -335,7 +335,7 @@ export default function App() {
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to assign pal.');
+      setFeedback(error instanceof Error ? error.message : 'Failed to assign cat.');
     } finally {
       setBusy('');
     }
@@ -515,7 +515,7 @@ export default function App() {
         {busy === 'pal:create' || busy === 'pal:create-assign'
           ? 'Saving...'
           : surface === 'settings'
-            ? 'Save Pal'
+            ? 'Save Cat'
             : 'Create & Add to Chat'}
       </button>
     </form>
@@ -676,11 +676,11 @@ export default function App() {
                 <span className="breadcrumbSep">/</span>
                 <span>Settings</span>
                 <span className="breadcrumbSep">/</span>
-                <span>Pals</span>
+                <span>Cats</span>
               </div>
-              <h1>Pals</h1>
+              <h1>Cats</h1>
               <p className="heroNote">
-                Manage reusable pals across your workspace. Add them to any chat from the chat
+                Manage reusable cats across your workspace. Add them to any chat from the chat
                 view.
               </p>
               {feedback ? <p className="feedbackText">{feedback}</p> : null}
@@ -691,7 +691,7 @@ export default function App() {
                 <div className="contentCardHeader">
                   <div>
                     <p className="sectionLabel">Registry</p>
-                    <h2>{payload.workspace.pals.length > 0 ? 'Saved pals' : 'No pals yet'}</h2>
+                    <h2>{payload.workspace.pals.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
                   </div>
                   <span className="countBadge">{payload.workspace.pals.length}</span>
                 </div>
@@ -723,7 +723,7 @@ export default function App() {
                     ))
                   ) : (
                     <div className="emptyStateCard">
-                      <p>Create your first pal from the panel on the right.</p>
+                      <p>Create your first cat from the panel on the right.</p>
                     </div>
                   )}
                 </div>
@@ -733,7 +733,7 @@ export default function App() {
                 <div className="contentCardHeader">
                   <div>
                     <p className="sectionLabel">Create</p>
-                    <h2>New pal</h2>
+                    <h2>New cat</h2>
                   </div>
                 </div>
                 {palCreationForm}
@@ -775,7 +775,7 @@ export default function App() {
                         </div>
                         <div className="overviewCardMeta">
                           <span>
-                            {channel.activePalCount} active pal
+                            {channel.activePalCount} active cat
                             {channel.activePalCount === 1 ? '' : 's'}
                           </span>
                           <span>{channel.unreadCount} unread</span>
@@ -932,7 +932,7 @@ export default function App() {
       {addPalOpen && selectedChannel ? (
         <div className="addPalPanel">
           <div className="addPalPanelHeader">
-            <h2>Add pal to chat</h2>
+            <h2>Add cat to chat</h2>
             <button
               className="addPalClose"
               type="button"
@@ -985,8 +985,8 @@ export default function App() {
                 <div className="emptyStateCard">
                   <p>
                     {payload.workspace.pals.length === 0
-                      ? 'No pals yet. Create one first.'
-                      : 'All pals are already in this chat.'}
+                      ? 'No cats yet. Create one first.'
+                      : 'All cats are already in this chat.'}
                   </p>
                 </div>
               )}
