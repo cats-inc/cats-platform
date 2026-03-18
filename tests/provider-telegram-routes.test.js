@@ -1,0 +1,170 @@
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import test from 'node:test';
+
+import { createServer } from '../dist-server/server.js';
+import { MemoryWorkspaceStore } from '../dist-server/workspace/store.js';
+
+const baseConfig = {
+  host: '127.0.0.1',
+  port: 8181,
+  runtimeBaseUrl: 'http://127.0.0.1:3110',
+  runtimeApiKey: '',
+  workspaceStatePath: 'unused-for-tests',
+};
+
+function createRuntimeStub() {
+  return {
+    async getHealth() {
+      return {
+        baseUrl: 'http://127.0.0.1:3110',
+        reachable: true,
+        status: 'ok',
+        service: 'cats-runtime',
+      };
+    },
+    async getProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: `${provider}-default`,
+        source: 'config',
+        cache: null,
+        models: [
+          { id: `${provider}-default`, label: `${provider} default`, default: true },
+        ],
+        warnings: [],
+      };
+    },
+    async createSession() {
+      throw new Error('not used');
+    },
+    async sendMessage() {
+      throw new Error('not used');
+    },
+    async closeSession() {
+      throw new Error('not used');
+    },
+  };
+}
+
+async function withServer(runtimeClient, callback, workspaceStore = new MemoryWorkspaceStore()) {
+  const server = createServer({
+    config: baseConfig,
+    runtimeClient,
+    workspaceStore,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to resolve test server address');
+  }
+
+  try {
+    await callback(`http://127.0.0.1:${address.port}`);
+  } finally {
+    server.close();
+    await once(server, 'close');
+  }
+}
+
+test('GET /api/providers returns product provider registry', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.ok(Array.isArray(payload.providers));
+    assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
+    assert.ok(payload.providers.every((provider) => typeof provider.modelsPath === 'string'));
+  });
+});
+
+test('GET /api/providers/:provider/models proxies runtime-owned catalog', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/claude/models`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.catalog.provider, 'claude');
+    assert.equal(payload.catalog.source, 'config');
+    assert.equal(payload.catalog.models[0].id, 'claude-default');
+  });
+});
+
+test('GET /api/providers/:provider/models falls back to static data on runtime failure', async () => {
+  const runtimeClient = createRuntimeStub();
+  runtimeClient.getProviderModels = async () => {
+    throw new Error('runtime unavailable');
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/claude/models`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.catalog.provider, 'claude');
+    assert.equal(payload.catalog.source, 'static');
+    assert.ok(payload.catalog.warnings[0].includes('runtime unavailable'));
+  });
+});
+
+test('telegram status reports unbound relay before bot binding is configured', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/transports/telegram`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.telegram.status, 'unbound');
+    assert.equal(payload.telegram.botBinding, null);
+  });
+});
+
+test('telegram webhook accepts inbound updates once Boss Cat and bot binding exist', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const orchestratorResponse = await fetch(`${baseUrl}/api/orchestrator`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        provider: 'claude',
+        telegramBotName: 'smelly_bot',
+      }),
+    });
+    assert.equal(orchestratorResponse.status, 200);
+
+    const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        update_id: 101,
+        message: {
+          message_id: 88,
+          text: 'hello from telegram',
+          chat: { id: 12345, type: 'private' },
+        },
+      }),
+    });
+    assert.equal(webhookResponse.status, 202);
+
+    const payload = await webhookResponse.json();
+    assert.equal(payload.receipt.status, 'accepted');
+    assert.equal(payload.receipt.bossCatName, 'Smelly');
+    assert.equal(payload.receipt.mappedConversationId, 'telegram:12345');
+  });
+});

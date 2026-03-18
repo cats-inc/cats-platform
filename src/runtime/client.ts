@@ -1,3 +1,8 @@
+import {
+  normalizeProviderModelCatalog,
+  type ProviderModelCatalog,
+} from '../shared/providerCatalog.js';
+
 export interface RuntimeHealthPayload {
   service?: string;
   status?: string;
@@ -37,6 +42,7 @@ export interface RuntimeSessionCreateInput {
 
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
+  getProviderModels(provider: string, instance?: string | null): Promise<ProviderModelCatalog>;
   createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo>;
   sendMessage(sessionId: string, content: string): Promise<RuntimeMessageResult>;
   closeSession(sessionId: string): Promise<void>;
@@ -45,6 +51,13 @@ export interface RuntimeClient {
 interface RuntimeClientOptions {
   apiKey?: string;
   timeoutMs?: number;
+}
+
+export class RuntimeRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'RuntimeRequestError';
+  }
 }
 
 function readErrorText(body: string, fallback: string): string {
@@ -189,6 +202,34 @@ export class CatsRuntimeClient implements RuntimeClient {
         error: error instanceof Error ? error.message : 'Unknown runtime error',
       };
     }
+  }
+
+  async getProviderModels(
+    provider: string,
+    instance?: string | null,
+  ): Promise<ProviderModelCatalog> {
+    const url = new URL(`${this.baseUrl}/providers/${encodeURIComponent(provider)}/models`);
+    if (instance?.trim()) {
+      url.searchParams.set('instance', instance.trim());
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new RuntimeRequestError(
+        readErrorText(rawBody, `Failed to fetch provider models (${response.status})`),
+        response.status,
+      );
+    }
+
+    return normalizeProviderModelCatalog(await response.json(), provider);
   }
 
   async createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {

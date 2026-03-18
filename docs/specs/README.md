@@ -48,6 +48,9 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-015](./SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md) | Cat Capability Registry and Runtime Skill/MCP Mapping | Draft (Ready for Specialist Handoff) | [PLAN-014](../plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md) |
+| [SPEC-014](./SPEC-014-telegram-boss-cat-relay-mvp.md) | Telegram Boss Cat Relay MVP | Draft (Ready for Specialist Handoff) | [PLAN-014](../plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md) |
+| [SPEC-013](./SPEC-013-provider-catalog-consumption-and-ui-seam.md) | Provider Catalog Consumption and UI Seam | Draft (Ready for Specialist Handoff) | [PLAN-014](../plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md) |
 | [SPEC-012](./SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) | First-Run Setup Wizard and Boss Cat Bootstrap | Draft (Pending Review) | [PLAN-012](../plans/PLAN-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) |
 | [SPEC-011](./SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md) | Primary Orchestrator Chat Entry and Trace Separation | Approved | [PLAN-011](../plans/PLAN-011-primary-orchestrator-chat-entry-and-trace-separation.md) |
 | [SPEC-010](./SPEC-010-full-site-routing-and-url-driven-navigation.md) | Full-Site Routing and URL-Driven Navigation | Draft (Pending Review) | [PLAN-010](../plans/PLAN-010-full-site-routing-and-url-driven-navigation.md) |

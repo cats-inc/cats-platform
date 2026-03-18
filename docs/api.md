@@ -17,7 +17,8 @@ The current Phase 2 API provides:
 The current server now exposes the first read-only `Cats Core v1` routes so
 parallel Chat and Work workstreams can consume the same actor, conversation,
 task, and owner-profile contract. Write-side approval, escalation, and
-transport APIs remain future work.
+transport APIs now have first seam routes for provider catalog consumption and a
+Telegram relay skeleton, while full transport delivery remains future work.
 
 ## Migration Status
 
@@ -132,6 +133,33 @@ PATCH /api/preferences
 
 - `GET` returns `{ preferences: { selectedChannelId } }`.
 - `PATCH` accepts `{ selectedChannelId }` and returns the updated preferences.
+
+### Providers
+
+```text
+GET /api/providers
+GET /api/providers/{provider}/models
+```
+
+- `GET /api/providers` returns the product-supported provider families used by
+  setup and cat-creation UI.
+- `GET /api/providers/{provider}/models` returns a product-level provider model
+  catalog. The server prefers `cats-runtime` as the source of truth and may
+  fall back to curated static data with warnings when runtime lookup is
+  unavailable.
+
+### Transport Relays
+
+```text
+GET  /api/transports/telegram
+POST /api/transports/telegram/webhook
+```
+
+- `GET /api/transports/telegram` returns Telegram relay status for the current
+  `Boss Cat` binding.
+- `POST /api/transports/telegram/webhook` is the Telegram ingress seam used by
+  the future Boss Cat bridge. The current slice returns transport receipts; it
+  does not yet deliver full Telegram-to-chat behavior.
 
 ### Orchestrator
 

@@ -25,7 +25,8 @@ import {
   updateSelectedChannel,
   updateVerbosePreference,
 } from './api';
-import { getDefaultModel, getProviderDisplayName, getProviderModels, PAL_PROVIDER_ORDER } from './providerCatalog';
+import { ProviderModelFields } from './components/ProviderModelFields';
+import { getDefaultModel, getProviderDisplayName } from './providerCatalog';
 
 type LoadState =
   | { status: 'loading' }
@@ -276,8 +277,6 @@ function SetupWizard({
     }
   }
 
-  const providerModels = getProviderModels(provider);
-
   return (
     <div className="screen screenCentered">
       <div className="setupWizard">
@@ -327,37 +326,15 @@ function SetupWizard({
                 placeholder="Smelly"
               />
             </label>
-            <label className="fieldLabel">
-              <span>Provider</span>
-              <select
-                className="textInput"
-                value={provider}
-                onChange={(e) => {
-                  setProvider(e.target.value);
-                  setModel(getDefaultModel(e.target.value));
-                }}
-              >
-                {PAL_PROVIDER_ORDER.map((p) => (
-                  <option key={p} value={p}>
-                    {getProviderDisplayName(p)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="fieldLabel">
-              <span>Model</span>
-              <select
-                className="textInput"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-              >
-                {providerModels.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <ProviderModelFields
+              provider={provider}
+              model={model}
+              onProviderChange={(nextProvider, defaultModel) => {
+                setProvider(nextProvider);
+                setModel(defaultModel);
+              }}
+              onModelChange={setModel}
+            />
             <div className="setupRuntimeStatus">
               <span
                 className={
@@ -812,7 +789,6 @@ export default function App() {
       && pal.id !== payload.workspace.bossCatId
       && !activePalIds.has(pal.id),
   );
-  const providerModels = getProviderModels(palForm.provider);
   const hasConversationStarted =
     selectedChannel?.messages.some((message) => message.senderKind !== 'system') ?? false;
 
@@ -832,39 +808,17 @@ export default function App() {
           placeholder="Ops reviewer"
         />
       </label>
-      <label className="fieldLabel">
-        <span>Provider</span>
-        <select
-          className="textInput"
-          value={palForm.provider}
-          onChange={(event) =>
-            setPalForm({
-              ...palForm,
-              provider: event.target.value,
-              model: getDefaultModel(event.target.value),
-            })}
-        >
-          {PAL_PROVIDER_ORDER.map((provider) => (
-            <option key={provider} value={provider}>
-              {getProviderDisplayName(provider)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="fieldLabel">
-        <span>Model</span>
-        <select
-          className="textInput"
-          value={palForm.model}
-          onChange={(event) => setPalForm({ ...palForm, model: event.target.value })}
-        >
-          {providerModels.map((model) => (
-            <option key={model.value} value={model.value}>
-              {model.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ProviderModelFields
+        provider={palForm.provider}
+        model={palForm.model}
+        onProviderChange={(provider, defaultModel) =>
+          setPalForm({
+            ...palForm,
+            provider,
+            model: defaultModel,
+          })}
+        onModelChange={(model) => setPalForm({ ...palForm, model })}
+      />
       <button
         className="primaryButton"
         disabled={!palForm.name.trim() || !palForm.provider.trim()}

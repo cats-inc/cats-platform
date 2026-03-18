@@ -48,9 +48,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current suite-foundation context |
 | [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Cats Core v1`, bot bindings, approvals, and owner profile |
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
-| [specs/](./specs/) | Complete | Feature specifications, including the accepted suite-foundation planning docs, the primary-orchestrator chat-entry spec, and the pending chat-contextual pal UX proposal |
-| [plans/](./plans/) | Complete | Implementation plans, including the accepted suite-foundation planning docs, the primary-orchestrator/setup-wizard work, the pending chat-contextual UX work, and the proposed self-hosted npm app packaging rollout |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including the accepted `Cats Core v1`, runtime-boundary refinements, the visible primary-orchestrator model, and the proposed self-hosted npm app distribution direction |
+| [specs/](./specs/) | Complete | Feature specifications, including suite-foundation work, primary-orchestrator/setup-wizard behavior, and the new provider-catalog, Telegram-relay, and capability-registry seams |
+| [plans/](./plans/) | Complete | Implementation plans, including suite-foundation work, self-hosted npm app packaging, and the new parallel-workstream ownership and seam plan |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, the proposed self-hosted npm app distribution direction, and frozen parallel-delivery ownership boundaries |
 
 **Legend**: Complete | Partial | Template
 
@@ -83,7 +83,7 @@ When working on this project:
 
 The main suite-foundation docs are current, but these areas still need dedicated passes:
 
-- implementation details for shared storage, transport relays, and desktop packaging
+- implementation details for desktop packaging and later-stage transport delivery behavior
 - project-specific security notes beyond the inherited template
 - A2A and automation references once cross-agent workflows stabilize
 

@@ -8,6 +8,10 @@ import type {
   SendChannelMessageResponse,
   UpdateGlobalOrchestratorInput,
 } from '../shared/app-shell';
+import type {
+  ProductProviderDescriptor,
+  ProviderModelCatalog,
+} from '../shared/providerCatalog';
 
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
@@ -247,6 +251,38 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
   }
 
   return nextPayload;
+}
+
+export async function fetchProviders(): Promise<ProductProviderDescriptor[]> {
+  const response = await fetch('/api/providers');
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to load providers.'));
+  }
+
+  const payload = (await response.json()) as { providers?: ProductProviderDescriptor[] };
+  return Array.isArray(payload.providers) ? payload.providers : [];
+}
+
+export async function fetchProviderModels(
+  provider: string,
+  instance?: string | null,
+): Promise<ProviderModelCatalog> {
+  const url = new URL(`/api/providers/${encodeURIComponent(provider)}/models`, window.location.origin);
+  if (instance?.trim()) {
+    url.searchParams.set('instance', instance.trim());
+  }
+
+  const response = await fetch(`${url.pathname}${url.search}`);
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to load provider models.'));
+  }
+
+  const payload = (await response.json()) as { catalog?: ProviderModelCatalog };
+  if (!payload.catalog) {
+    throw new Error('Provider catalog response was incomplete.');
+  }
+
+  return payload.catalog;
 }
 
 async function expectJson<T>(response: Response, fallback: string): Promise<T> {

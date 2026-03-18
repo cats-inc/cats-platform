@@ -35,13 +35,21 @@ import {
 import { activateChannelSessions, routeChannelMessage } from './workspace/runtimeActions.js';
 import { createAppShell } from './workspace/shell.js';
 import { createDefaultCoreState } from './core/model.js';
+import { handleProviderModels, handleProviderRegistry } from './server/routes/providers.js';
+import { handleTelegramStatus, handleTelegramWebhook } from './server/routes/telegram.js';
+import { createTelegramRelay, type TelegramRelay } from './transports/telegram/relay.js';
 
 export interface ServerDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
   workspaceStore: WorkspaceStore;
+  telegramRelay?: TelegramRelay;
   now?: () => Date;
 }
+
+type ResolvedServerDependencies = ServerDependencies & {
+  telegramRelay: TelegramRelay;
+};
 
 const WEB_DIST_ROOT = fileURLToPath(new URL('../dist', import.meta.url));
 const MIME_TYPES: Record<string, string> = {
@@ -1461,7 +1469,7 @@ async function tryServeWebAsset(pathname: string, response: ServerResponse): Pro
 function routeRequest(
   request: IncomingMessage,
   response: ServerResponse,
-  dependencies: ServerDependencies,
+  dependencies: ResolvedServerDependencies,
 ): Promise<void> {
   const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
   const method = request.method ?? 'GET';
@@ -1692,7 +1700,54 @@ function routeRequest(
     return Promise.resolve();
   }
 
+  if (url.pathname === '/api/providers') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleProviderRegistry(response);
+  }
+
+  if (url.pathname === '/api/transports/telegram') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleTelegramStatus(response, {
+      workspaceStore: dependencies.workspaceStore,
+      telegramRelay: dependencies.telegramRelay,
+    });
+  }
+
+  if (url.pathname === '/api/transports/telegram/webhook') {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return Promise.resolve();
+    }
+    return handleTelegramWebhook(request, response, {
+      workspaceStore: dependencies.workspaceStore,
+      telegramRelay: dependencies.telegramRelay,
+    });
+  }
+
   // Regex canonical paths — match longest/most-specific first
+  const providerModelsMatch = matchRoute(
+    url.pathname,
+    /^\/api\/providers\/([^/]+)\/models$/u,
+  );
+  if (providerModelsMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return handleProviderModels(
+      response,
+      { runtimeClient: dependencies.runtimeClient },
+      providerModelsMatch[0],
+      url.searchParams.get('instance'),
+    );
+  }
+
   const canonicalCatDetailMatch = matchRoute(url.pathname, /^\/api\/cats\/([^/]+)$/u);
   if (canonicalCatDetailMatch) {
     if (method !== 'GET') {
@@ -2012,8 +2067,15 @@ function routeRequest(
 }
 
 export function createServer(dependencies: ServerDependencies) {
+  const resolvedDependencies: ResolvedServerDependencies = {
+    ...dependencies,
+    telegramRelay: dependencies.telegramRelay ?? createTelegramRelay({
+      now: dependencies.now,
+    }),
+  };
+
   return createHttpServer((request, response) => {
-    void routeRequest(request, response, dependencies).catch((error) => {
+    void routeRequest(request, response, resolvedDependencies).catch((error) => {
       sendJson(response, 500, {
         error: {
           code: 'internal_error',
