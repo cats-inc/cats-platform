@@ -58,7 +58,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution and the new OpenClaw memory-layering benchmark |
+| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution, the current Chat/runtime killer-feature gap audit, and the OpenClaw memory-layering benchmark |
 
 ## Context-Driven Development
 
