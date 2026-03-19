@@ -40,6 +40,10 @@ test('new-chat route detection and export filenames remain title-based', () => {
     createChannelExportFilename('Ops Radar', '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae'),
     'channel-ops-radar.json',
   );
+  assert.equal(
+    createChannelExportFilename('日常對話', '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae'),
+    'channel-0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae.json',
+  );
 });
 
 test('slugifyChannelLabel falls back to chat for non-Latin input', () => {

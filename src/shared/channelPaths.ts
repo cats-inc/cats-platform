@@ -25,19 +25,22 @@ export function isOpaqueChannelId(channelId: string): boolean {
   return UUID_PATTERN.test(channelId.trim());
 }
 
-export function slugifyChannelLabel(value: string): string {
-  const slug = value
+function rawSlugifyChannelLabel(value: string): string {
+  return value
     .trim()
     .toLowerCase()
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return slug || 'chat';
+}
+
+export function slugifyChannelLabel(value: string): string {
+  return rawSlugifyChannelLabel(value) || 'chat';
 }
 
 export function createChannelExportFilename(title: string, fallbackId: string): string {
-  const slug = slugifyChannelLabel(title);
+  const slug = rawSlugifyChannelLabel(title);
   return `channel-${slug || fallbackId}.json`;
 }
 
