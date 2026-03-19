@@ -116,7 +116,10 @@ This plan is explicitly **not** a visual redesign plan.
 
 ## Validation
 
-- Visiting `/chats` opens the chats surface.
+- Visiting `/new` opens the new-chat draft and survives refresh.
+- Visiting `/` redirects to `/setup` before initialization and to `/new` after setup.
+- Visiting `/setup` after setup redirects to `/new`.
+- Visiting `/chats` resolves to the last selected chat or `/new`.
 - Visiting `/chats/:channelId` opens the named chat when it exists.
 - Selecting a chat updates the browser URL.
 - Visiting `/settings/cats` opens the cats settings section directly.

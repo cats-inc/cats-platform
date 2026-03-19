@@ -191,11 +191,16 @@ The URL drives navigation — no hidden `useState` surface switches.
 
 Active routes:
 
-- `/` — redirect to `/chats`
-- `/chats` — draft composer (or redirect to last selected channel)
+- `/` — redirect to `/setup` before initialization, otherwise redirect to `/new`
+- `/setup` — setup wizard before initialization, otherwise redirect to `/new`
+- `/new` — draft composer for a brand-new chat
+- `/chats` — legacy alias that resolves to the last selected chat, or `/new`
 - `/chats/:channelId` — individual chat view with deep-link support
-- `/settings` — redirect to `/settings/cats`
+- `/settings` — redirect to `/settings/general`
+- `/settings/general` — general settings
 - `/settings/cats` — cats registry
+
+Persisted `channelId` values are opaque ids rather than title-derived slugs.
 
 Reserved (not yet implemented): `/work/*`, `/tools/*`.
 

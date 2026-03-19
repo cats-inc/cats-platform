@@ -32,6 +32,7 @@ import type {
   WorkspaceState,
   UpdateGlobalOrchestratorInput,
 } from '../shared/app-shell.js';
+import { createChannelExportFilename } from '../shared/channelPaths.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from './defaults.js';
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
@@ -63,29 +64,8 @@ function normalizeList(values: string[] | undefined): string[] {
     .filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
 }
 
-function slugify(value: string): string {
-  return (
-    value
-      .trim()
-      .toLowerCase()
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'channel'
-  );
-}
-
-function createUniqueChannelId(state: WorkspaceState, title: string): string {
-  const base = slugify(title);
-  let candidate = base;
-  let suffix = 2;
-
-  while (state.channels.some((channel) => channel.id === candidate)) {
-    candidate = `${base}-${suffix}`;
-    suffix += 1;
-  }
-
-  return candidate;
+function createChannelId(): string {
+  return randomUUID();
 }
 
 function findChannelIndex(state: WorkspaceState, channelId: string): number {
@@ -338,7 +318,7 @@ export function createChannel(
   const nowIso = isoAt(now);
   const title = input.title.trim() || 'New chat';
   const topic = input.topic.trim();
-  const channelId = createUniqueChannelId(nextState, title);
+  const channelId = createChannelId();
   const catDrafts = input.cats ?? input.pals ?? [];
   const createdPals = catDrafts.map((palInput) => createPalRecord(palInput, nowIso));
 
@@ -685,6 +665,11 @@ export function exportChannel(state: WorkspaceState, channelId: string): Channel
     channel: structuredClone(channel),
     assignedPals: buildChannelView(state, channel).assignedPals,
   };
+}
+
+export function buildChannelExportFilename(state: WorkspaceState, channelId: string): string {
+  const channel = requireChannel(state, channelId);
+  return createChannelExportFilename(channel.title, channel.id);
 }
 
 export function summarizeState(state: WorkspaceState): {

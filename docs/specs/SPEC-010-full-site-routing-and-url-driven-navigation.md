@@ -99,7 +99,10 @@ If the URL explicitly identifies a surface or entity, the URL wins.
 
 Examples:
 
-- `/chats/abc123` opens channel `abc123`
+- `/` opens `/setup` before initialization, otherwise `/new`
+- `/setup` opens the setup wizard before initialization, otherwise `/new`
+- `/chats/550e8400-e29b-41d4-a716-446655440000` opens that persisted chat
+- `/new` opens a fresh new-chat draft
 - `/settings/cats` opens the cats settings section
 - `/work/projects/roadmap` opens that project when such a surface exists
 
@@ -108,7 +111,7 @@ choose a default.
 
 Examples:
 
-- `/chats` may open the last selected channel or the chat overview
+- `/chats` may resolve to the last selected channel or `/new`
 - `/settings` may open a default settings subsection
 
 This keeps deep links stable without throwing away useful persisted defaults.
@@ -120,10 +123,14 @@ This keeps deep links stable without throwing away useful persisted defaults.
 The routing foundation must support these route families first:
 
 - `/`
+- `/new`
+- `/setup`
 - `/chats`
 - `/chats/:channelId`
 - `/settings`
 - `/settings/cats`
+
+Persisted `channelId` values should be treated as opaque ids, not title slugs.
 
 ### Reserved Future Route Families
 

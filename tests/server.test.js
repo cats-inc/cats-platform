@@ -5,6 +5,9 @@ import test from 'node:test';
 import { createServer } from '../dist-server/server.js';
 import { MemoryWorkspaceStore } from '../dist-server/workspace/store.js';
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
 const baseConfig = {
   host: '127.0.0.1',
   port: 8181,
@@ -160,7 +163,7 @@ test('workspace API covers chat setup, activation, messaging, global pals, assig
     assert.equal(createResponse.status, 200);
     const createdPayload = await createResponse.json();
     const channelId = createdPayload.workspace.selectedChannel.id;
-    assert.equal(channelId, 'ops-radar');
+    assert.match(channelId, UUID_PATTERN);
     assert.equal(createdPayload.workspace.pals.length, 1);
     assert.equal(createdPayload.workspace.selectedChannel.assignedPals.length, 1);
     assert.equal(

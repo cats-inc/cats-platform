@@ -1,10 +1,30 @@
-import { startTransition, useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import {
   Routes, Route, Navigate,
   useNavigate, useLocation, useMatch,
 } from 'react-router-dom';
 
 import { shouldSubmitComposerOnKeyDown } from '../shared/composer';
+import {
+  buildChannelPath,
+  isNewChatPath,
+  NEW_CHAT_PATH,
+  resolveAppEntryPath,
+  resolveDefaultChatPath,
+} from '../shared/channelPaths';
+import {
+  readSidebarOpenPreference,
+  writeSidebarOpenPreference,
+} from '../shared/sidebarPreference';
 import type {
   AppShellPayload,
   WorkspaceChannelSummary,
@@ -279,7 +299,7 @@ function SetupWizard({
         bossCatModel: model || undefined,
       });
       onComplete(result);
-      navigate(`/chats/${result.workspace.selectedChannelId}`, { replace: true });
+      navigate(resolveDefaultChatPath(result.workspace.selectedChannelId), { replace: true });
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Setup failed.');
     } finally {
@@ -389,9 +409,9 @@ export default function App() {
   const location = useLocation();
   const channelMatch = useMatch('/chats/:channelId');
   const routeChannelId = channelMatch?.params.channelId ?? null;
+  const showingNewChatDraft = isNewChatPath(location.pathname);
 
   const [state, setState] = useState<LoadState>({ status: 'loading' });
-  const [draftingNewChat, setDraftingNewChat] = useState(false);
   const [composerDraft, setComposerDraft] = useState('');
   const [palForm, setPalForm] = useState<PalFormState>(emptyPalForm);
   const [busy, setBusy] = useState('');
@@ -399,7 +419,9 @@ export default function App() {
   const [addPalOpen, setAddPalOpen] = useState(false);
   const [addPalTab, setAddPalTab] = useState<'existing' | 'new'>('existing');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    readSidebarOpenPreference(typeof window === 'undefined' ? null : window.localStorage),
+  );
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [greeting] = useState(pickGreeting);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -422,6 +444,13 @@ export default function App() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [accountMenuOpen, overflowMenuOpenId]);
+
+  useEffect(() => {
+    writeSidebarOpenPreference(
+      typeof window === 'undefined' ? null : window.localStorage,
+      sidebarOpen,
+    );
+  }, [sidebarOpen]);
 
   const autoResize = useCallback((el: HTMLTextAreaElement) => {
     el.style.height = 'auto';
@@ -463,7 +492,7 @@ export default function App() {
 
     const exists = state.payload.workspace.channels.some(ch => ch.id === routeChannelId);
     if (!exists) {
-      navigate('/chats', { replace: true });
+      navigate(resolveDefaultChatPath(selectedChannelId), { replace: true });
       return;
     }
 
@@ -476,15 +505,21 @@ export default function App() {
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          navigate('/chats', { replace: true });
+          navigate(resolveDefaultChatPath(selectedChannelId), { replace: true });
         }
       });
 
     return () => controller.abort();
-  }, [routeChannelId, state.status]);
+  }, [navigate, routeChannelId, state]);
 
   function onOpenChatsOverview(): void {
-    void onStartNewChat();
+    if (state.status !== 'ready') {
+      return;
+    }
+
+    navigate(resolveDefaultChatPath(state.payload.workspace.selectedChannelId));
+    setFeedback('');
+    setAddPalOpen(false);
   }
 
   function onToggleSidebar(): void {
@@ -494,9 +529,24 @@ export default function App() {
     });
   }
 
+  function onCollapsedSidebarClick(event: ReactMouseEvent<HTMLElement>): void {
+    if (sidebarOpen) {
+      return;
+    }
+
+    const target = event.target as HTMLElement;
+    if (
+      target.closest('button, a, input, textarea, select, [role="button"]')
+      || target.closest('.accountMenu')
+    ) {
+      return;
+    }
+
+    setSidebarOpen(true);
+  }
+
   function onSelect(channelId: string): void {
-    navigate(`/chats/${channelId}`);
-    setDraftingNewChat(false);
+    navigate(buildChannelPath(channelId));
     setFeedback('');
     setAddPalOpen(false);
   }
@@ -507,11 +557,10 @@ export default function App() {
       const payload = await deleteWorkspaceChannel(channelId);
       startTransition(() => {
         setState({ status: 'ready', payload });
-        setDraftingNewChat(false);
         setAddPalOpen(false);
         setFeedback('');
       });
-      navigate('/chats');
+      navigate(resolveDefaultChatPath(payload.workspace.selectedChannelId));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
     } finally {
@@ -630,8 +679,7 @@ export default function App() {
   }
 
   async function onStartNewChat(): Promise<void> {
-    navigate('/chats');
-    setDraftingNewChat(true);
+    navigate(NEW_CHAT_PATH);
     setComposerDraft('');
     setFeedback('');
     setAddPalOpen(false);
@@ -646,12 +694,11 @@ export default function App() {
     }
 
     const initialPayload = state.payload;
-    const wasDraftingNewChat = draftingNewChat;
+    const wasDraftingNewChat = showingNewChatDraft;
     let payload = initialPayload;
     let rollbackPayload = initialPayload;
     let channelId = wasDraftingNewChat ? '' : initialPayload.workspace.selectedChannelId;
-    let rollbackPath = wasDraftingNewChat ? '/chats' : location.pathname;
-    let shouldRestoreDraftShell = wasDraftingNewChat;
+    let rollbackPath = wasDraftingNewChat ? NEW_CHAT_PATH : location.pathname;
 
     setBusy('message:send');
     setFeedback('');
@@ -660,9 +707,8 @@ export default function App() {
         const optimisticDraft = createOptimisticDraftPayload(initialPayload, body);
         payload = optimisticDraft.payload;
         setState({ status: 'ready', payload });
-        setDraftingNewChat(false);
         setComposerDraft('');
-        navigate(`/chats/${optimisticDraft.channelId}`, { replace: true });
+        navigate(buildChannelPath(optimisticDraft.channelId), { replace: true });
 
         const createdPayload = await createWorkspaceChannel({
           title: createDraftChannelTitle(body, initialPayload.workspace.channels.length),
@@ -674,8 +720,7 @@ export default function App() {
           throw new Error('No chat is available for sending messages.');
         }
         rollbackPayload = createdPayload;
-        rollbackPath = `/chats/${channelId}`;
-        shouldRestoreDraftShell = false;
+        rollbackPath = buildChannelPath(channelId);
         payload = appendOptimisticUserMessage(createdPayload, channelId, body);
         setState({ status: 'ready', payload });
         navigate(rollbackPath, { replace: true });
@@ -699,13 +744,11 @@ export default function App() {
 
       const dispatch = await sendWorkspaceMessage(channelId, { body });
       setState({ status: 'ready', payload: dispatch.appShell });
-      setDraftingNewChat(false);
       setComposerDraft('');
       setFeedback('');
-      navigate(`/chats/${channelId}`, { replace: true });
+      navigate(buildChannelPath(channelId), { replace: true });
     } catch (error) {
       setState({ status: 'ready', payload: rollbackPayload });
-      setDraftingNewChat(shouldRestoreDraftShell);
       setComposerDraft(body);
       setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
       navigate(rollbackPath, { replace: true });
@@ -862,6 +905,7 @@ export default function App() {
     >
       <aside
         className={sidebarOpen ? 'sidebar' : 'sidebar sidebarCollapsed'}
+        onClick={(event) => onCollapsedSidebarClick(event)}
       >
         <div className="sidebarInner">
           <div className="brandRow">
@@ -899,7 +943,7 @@ export default function App() {
 
           <nav className="navGroup navGroupWorkspace" aria-label="Workspace">
             <button
-              className={surface === 'chats' && routeChannelId ? 'navItem navItemActive' : 'navItem'}
+              className={surface === 'chats' ? 'navItem navItemActive' : 'navItem'}
               onClick={onOpenChatsOverview}
               type="button"
             >
@@ -996,7 +1040,14 @@ export default function App() {
 
       <main className="canvas">
         <Routes>
-          <Route path="/" element={<Navigate to="/chats" replace />} />
+        <Route
+          path="/"
+          element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
+        />
+          <Route
+            path="/setup"
+            element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
+          />
           <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
           <Route path="/settings/general" element={
             <div className="settingsShell">
@@ -1296,47 +1347,50 @@ export default function App() {
               </div>
             )
           } />
-          <Route path="/chats" element={
-            !draftingNewChat && payload.workspace.selectedChannelId
-              ? <Navigate to={`/chats/${payload.workspace.selectedChannelId}`} replace />
-              : (
-                <div className="viewShell viewShellDraft">
-                  <section className="draftShell">
-                    <div className="draftGreeting"><h1>{greeting}</h1></div>
-                    <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
-                      <textarea
-                        className="composerInput"
-                        rows={1}
-                        placeholder="How can I help you today?"
-                        value={composerDraft}
-                        onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
-                        onKeyDown={(event) => void onComposerKeyDown(event)}
-                      />
-                      <div className="composerBottomRow">
-                        <button className="composerPlusButton" type="button" aria-label="Attach">
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M8 3v10" />
-                            <path d="M3 8h10" />
-                          </svg>
-                        </button>
-                        <button
-                          className="composerSendButton"
-                          disabled={!composerDraft.trim() || busy === 'message:send'}
-                          type="submit"
-                          aria-label="Send"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M8 13V3" />
-                            <path d="M3 7l5-5 5 5" />
-                          </svg>
-                        </button>
-                      </div>
-                    </form>
-                  </section>
-                </div>
-              )
+          <Route
+            path="/chats"
+            element={<Navigate to={resolveDefaultChatPath(payload.workspace.selectedChannelId)} replace />}
+          />
+          <Route path={NEW_CHAT_PATH} element={
+            <div className="viewShell viewShellDraft">
+              <section className="draftShell">
+                <div className="draftGreeting"><h1>{greeting}</h1></div>
+                <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
+                  <textarea
+                    className="composerInput"
+                    rows={1}
+                    placeholder="How can I help you today?"
+                    value={composerDraft}
+                    onChange={(event) => { setComposerDraft(event.target.value); autoResize(event.target); }}
+                    onKeyDown={(event) => void onComposerKeyDown(event)}
+                  />
+                  <div className="composerBottomRow">
+                    <button className="composerPlusButton" type="button" aria-label="Attach">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8 3v10" />
+                        <path d="M3 8h10" />
+                      </svg>
+                    </button>
+                    <button
+                      className="composerSendButton"
+                      disabled={!composerDraft.trim() || busy === 'message:send'}
+                      type="submit"
+                      aria-label="Send"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8 13V3" />
+                        <path d="M3 7l5-5 5 5" />
+                      </svg>
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
           } />
-          <Route path="*" element={<Navigate to="/chats" replace />} />
+          <Route
+            path="*"
+            element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
+          />
         </Routes>
       </main>
 

@@ -19,6 +19,7 @@ import { MemoryWorkspaceStore, type WorkspaceStore } from './workspace/store.js'
 import {
   appendMessage,
   assignPalToChannel,
+  buildChannelExportFilename,
   buildChannelView,
   createChannel,
   createWorkspacePal,
@@ -630,9 +631,10 @@ async function handleChannelExport(
   channelId: string,
 ): Promise<void> {
   try {
-    const payload = exportChannel(await dependencies.workspaceStore.read(), channelId);
+    const state = await dependencies.workspaceStore.read();
+    const payload = exportChannel(state, channelId);
     sendJson(response, 200, payload, {
-      'content-disposition': `attachment; filename="channel-${channelId}.json"`,
+      'content-disposition': `attachment; filename="${buildChannelExportFilename(state, channelId)}"`,
     });
   } catch (error) {
     sendJson(response, errorStatusCode(error), {
@@ -1149,9 +1151,10 @@ async function handleRestGetExport(
 ): Promise<void> {
   try {
     requireValidWorkspaceId(workspaceId);
-    const payload = exportChannel(await dependencies.workspaceStore.read(), channelId);
+    const state = await dependencies.workspaceStore.read();
+    const payload = exportChannel(state, channelId);
     sendJson(response, 200, payload, {
-      'content-disposition': `attachment; filename="channel-${channelId}.json"`,
+      'content-disposition': `attachment; filename="${buildChannelExportFilename(state, channelId)}"`,
     });
   } catch (error) {
     handleRestError(response, error);

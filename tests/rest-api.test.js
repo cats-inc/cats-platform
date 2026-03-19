@@ -5,6 +5,9 @@ import test from 'node:test';
 import { createServer } from '../dist-server/server.js';
 import { MemoryWorkspaceStore } from '../dist-server/workspace/store.js';
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
 const baseConfig = {
   host: '127.0.0.1',
   port: 8181,
@@ -220,7 +223,7 @@ test('REST API full lifecycle: create pal, create channel, activate, message, as
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
     assert.equal(createChannelPayload.channel.title, 'Ops Radar');
-    assert.equal(createChannelPayload.channel.id, 'ops-radar');
+    assert.match(createChannelPayload.channel.id, UUID_PATTERN);
     assert.ok(createChannelPayload.channel.assignedPals.length >= 1);
     // Verify no appShell in response
     assert.equal(createChannelPayload.appShell, undefined);
@@ -515,6 +518,7 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
     const createChannelPayload = await createChannelResponse.json();
     assert.equal(createChannelPayload.channel.title, 'Ops Radar');
     const channelId = createChannelPayload.channel.id;
+    assert.match(channelId, UUID_PATTERN);
 
     // GET /api/channels – list channels
     const listChannelsResponse = await fetch(`${baseUrl}/api/channels`);

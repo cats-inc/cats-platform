@@ -1178,7 +1178,8 @@ textarea {
   position: relative;
   min-height: 0;
   height: 100vh;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 2;
 }
 
 .sidebarCollapsed .brandCopy,
@@ -1326,11 +1327,29 @@ textarea {
 .sidebarCollapsed .sidebarFooter {
   padding-left: 0;
   padding-right: 0;
+  overflow: visible;
 }
 
 .sidebarCollapsed .profileBadge {
   width: 28px;
   height: 28px;
+}
+
+.sidebarCollapsed {
+  cursor: pointer;
+}
+
+.sidebarCollapsed .sidebarFooterButton,
+.sidebarCollapsed .chromeButton,
+.sidebarCollapsed .navItem {
+  cursor: pointer;
+}
+
+.sidebarCollapsed .accountMenu {
+  left: calc(100% + 8px);
+  bottom: 8px;
+  width: 200px;
+  margin-bottom: 0;
 }
 
 .canvas {

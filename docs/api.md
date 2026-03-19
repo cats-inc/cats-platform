@@ -313,13 +313,16 @@ REST routes use structured errors:
 {
   "error": {
     "code": "channel_not_found",
-    "message": "Channel not found: ops-radar"
+    "message": "Channel not found: 550e8400-e29b-41d4-a716-446655440000"
   }
 }
 ```
 
 Codes: `workspace_not_found`, `channel_not_found`, `pal_not_found`,
 `assignment_not_found`, `cat_not_found`, `bad_request`.
+
+Channel ids are opaque identifiers. Clients should not derive meaning from the
+id or assume it matches the chat title.
 
 ---
 
@@ -440,7 +443,7 @@ Request body:
 
 ```json
 {
-  "selectedChannelId": "ops-radar"
+  "selectedChannelId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 

@@ -22,6 +22,7 @@ import type {
   CoreTaskRecord,
   OwnerProfileRecord,
 } from '../shared/core.js';
+import { isOpaqueChannelId } from '../shared/channelPaths.js';
 import {
   createDefaultWorkspaceState,
   createEmptyExecutionLease,
@@ -601,15 +602,17 @@ function normalizeWorkspaceState(rawState: unknown): WorkspaceState {
         .filter((pal): pal is WorkspacePal => pal !== null)
     : [];
   const palsById = new Map(normalizedPals.map((pal) => [pal.id, pal]));
-  const channels = Array.isArray(sourceRecord.channels)
+  const normalizedChannels = Array.isArray(sourceRecord.channels)
     ? sourceRecord.channels
         .map((channel) => normalizeChannel(channel, palsById))
         .filter((channel): channel is WorkspaceChannelState => channel !== null)
     : fallback.channels;
-  const selectedChannelId = readString(
+  const { channels, migratedChannelIds } = migrateLegacyChannelIds(normalizedChannels);
+  const rawSelectedChannelId = readString(
     sourceRecord.selectedChannelId,
     channels[0]?.id ?? fallback.selectedChannelId,
   );
+  const selectedChannelId = migratedChannelIds.get(rawSelectedChannelId) ?? rawSelectedChannelId;
 
   return {
     id: readString(sourceRecord.id, fallback.id),
@@ -623,6 +626,40 @@ function normalizeWorkspaceState(rawState: unknown): WorkspaceState {
     globalOrchestrator: normalizeGlobalOrchestrator(sourceRecord.globalOrchestrator),
     capabilities: normalizeCapabilities(sourceRecord.capabilities),
     showVerboseMessages: readBoolean(sourceRecord.showVerboseMessages, false),
+  };
+}
+
+function migrateLegacyChannelIds(
+  channels: WorkspaceChannelState[],
+): {
+  channels: WorkspaceChannelState[];
+  migratedChannelIds: Map<string, string>;
+} {
+  const migratedChannelIds = new Map<string, string>();
+  const assignedChannelIds = new Set<string>();
+  const nextChannels = channels.map((channel) => {
+    const needsOpaqueId = !isOpaqueChannelId(channel.id) || assignedChannelIds.has(channel.id);
+    const nextChannelId = needsOpaqueId ? randomUUID() : channel.id;
+    assignedChannelIds.add(nextChannelId);
+
+    if (nextChannelId === channel.id) {
+      return channel;
+    }
+
+    migratedChannelIds.set(channel.id, nextChannelId);
+    return {
+      ...channel,
+      id: nextChannelId,
+      messages: channel.messages.map((message) => ({
+        ...message,
+        channelId: nextChannelId,
+      })),
+    };
+  });
+
+  return {
+    channels: nextChannels,
+    migratedChannelIds,
   };
 }
 

@@ -15,6 +15,9 @@ import {
 } from '../dist-server/workspace/model.js';
 import { FileWorkspaceStore } from '../dist-server/workspace/store.js';
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
 test('FileWorkspaceStore persists configured channels, pals, assignments, and messages to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-'));
   const statePath = path.join(tempDir, 'workspace-state.json');
@@ -77,7 +80,8 @@ test('FileWorkspaceStore persists configured channels, pals, assignments, and me
   const createdChannel = parsedState.workspace.channels.find((channel) => channel.id === channelId);
 
   assert.equal(parsedState.version, 1);
-  assert.equal(parsedState.workspace.selectedChannelId, 'ops-radar');
+  assert.match(parsedState.workspace.selectedChannelId, UUID_PATTERN);
+  assert.equal(parsedState.workspace.selectedChannelId, channelId);
   assert.equal(parsedState.workspace.pals.length, 2);
   assert.ok(parsedState.ownerProfile);
   assert.ok(Array.isArray(parsedState.actors));
@@ -162,7 +166,19 @@ test('FileWorkspaceStore migrates legacy provider-bound records into global pals
               },
             },
           ],
-          messages: [],
+          messages: [
+            {
+              id: 'message-1',
+              channelId: 'legacy-room',
+              senderKind: 'user',
+              senderName: 'Owner',
+              body: 'Please migrate this chat id.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-03-11T00:00:00.000Z',
+            },
+          ],
         },
       ],
       globalOrchestrator: {
@@ -195,11 +211,16 @@ test('FileWorkspaceStore migrates legacy provider-bound records into global pals
 
   const store = new FileWorkspaceStore(statePath);
   const state = await store.read();
+  const migratedChannelId = state.channels[0].id;
 
   assert.equal(state.pals.length, 1);
+  assert.match(migratedChannelId, UUID_PATTERN);
+  assert.notEqual(migratedChannelId, 'legacy-room');
+  assert.equal(state.selectedChannelId, migratedChannelId);
   assert.equal(state.globalOrchestrator.executionTarget.provider, 'claude');
   assert.equal(state.globalOrchestrator.executionTarget.model, 'claude-opus-4-6');
   assert.equal(state.channels[0].orchestratorLease.sessionId, 'orch-1');
+  assert.equal(state.channels[0].messages[0].channelId, migratedChannelId);
   assert.equal(state.channels[0].palAssignments[0].palId, 'pal-1');
   assert.equal(state.channels[0].palAssignments[0].execution.target.provider, 'claude');
   assert.equal(state.channels[0].palAssignments[0].execution.target.model, 'claude-sonnet');
@@ -228,14 +249,15 @@ test('WorkspaceStore exposes a derived Cats Core view that stays in sync with wo
 
   await store.write(state);
   const core = await store.readCore();
+  const channelId = state.selectedChannelId;
 
-  assert.equal(core.workspace.selectedChannelId, 'owner-loop');
+  assert.equal(core.workspace.selectedChannelId, channelId);
   assert.equal(core.ownerProfile.actorId, 'actor-owner');
   assert.ok(core.actors.some((actor) => actor.kind === 'owner'));
   assert.ok(core.actors.some((actor) => actor.kind === 'orchestrator'));
   assert.ok(core.actors.some((actor) => actor.name === 'Planner'));
-  assert.ok(core.conversations.some((conversation) => conversation.sourceChannelId === 'owner-loop'));
-  assert.ok(core.tasks.some((task) => task.conversationId === 'conversation-channel-owner-loop'));
+  assert.ok(core.conversations.some((conversation) => conversation.sourceChannelId === channelId));
+  assert.ok(core.tasks.some((task) => task.conversationId === `conversation-channel-${channelId}`));
 });
 
 test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor', async () => {
@@ -345,13 +367,17 @@ test('deleteChannel removes the selected chat and falls back to the next recent 
     new Date('2026-03-11T00:05:00.000Z'),
   );
 
-  assert.equal(state.selectedChannelId, 'second-chat');
+  const secondChatId = state.selectedChannelId;
+  const firstChatId = state.channels.find((channel) => channel.title === 'First Chat')?.id;
 
-  const nextState = deleteChannel(state, 'second-chat');
+  assert.ok(firstChatId);
+  assert.match(secondChatId, UUID_PATTERN);
+
+  const nextState = deleteChannel(state, secondChatId);
 
   assert.equal(nextState.channels.length, 1);
-  assert.equal(nextState.channels[0].id, 'first-chat');
-  assert.equal(nextState.selectedChannelId, 'first-chat');
+  assert.equal(nextState.channels[0].id, firstChatId);
+  assert.equal(nextState.selectedChannelId, firstChatId);
 });
 
 test('createChannel defaults empty draft fields to a neutral new-chat label', async () => {
@@ -370,4 +396,5 @@ test('createChannel defaults empty draft fields to a neutral new-chat label', as
 
   assert.equal(state.channels[0].title, 'New chat');
   assert.equal(state.channels[0].topic, '');
+  assert.match(state.channels[0].id, UUID_PATTERN);
 });
