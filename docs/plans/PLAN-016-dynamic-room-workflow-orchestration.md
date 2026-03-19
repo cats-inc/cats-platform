@@ -90,11 +90,15 @@ spreads across routing, runtime integration, and renderer code.
 ### Phase 4: Room Workflow State and Event-Driven Replanning
 
 - [ ] Introduce room workflow state separate from mention-routing output.
+- [ ] Define a normalized workflow-recommendation envelope that can be attached
+      to or derived from a completed checkpoint.
 - [ ] Allow `Boss Cat` or the system layer to set or update workflow state when:
       - the room starts
       - membership changes
       - a checkpoint completes
       - an explicit replan is requested
+- [ ] Normalize checkpoint recommendations before policy evaluation so provider-
+      specific output formats do not become room-workflow truth directly.
 - [ ] Add completion events that can trigger:
       - sequential handoff
       - new parallel branch requests
@@ -114,6 +118,8 @@ pointing from `Boss Cat`.
         should inherit the same provider context
       - fall back to context transplant when provider-native fork is unavailable
         or when the child should move to a different provider/Cat profile
+- [ ] Map normalized workflow recommendations into concrete branch requests and
+      target selections.
 - [ ] Attach branch lineage metadata to room-level orchestration state.
 - [ ] Keep runtime capability checks explicit so unsupported providers degrade
       honestly.

@@ -109,37 +109,52 @@ context transplant, but it does not own room policy.
     - explicit replanning after new information appears
 17. The orchestration model shall support dynamic re-planning after a Cat
     completes meaningful work.
-18. The product shall support at least these workflow shapes:
+18. A workflow checkpoint shall be able to carry structured orchestration
+    recommendations for the next stage.
+19. Structured orchestration recommendations should be able to express at least:
+    - suggested workflow shape
+    - candidate next targets or groups
+    - whether the next stage is sequential or parallel
+    - suggested branch strategy
+    - rationale or supporting notes
+20. The product shall normalize checkpoint recommendations into product-owned
+    room-workflow decisions rather than letting provider-native output become
+    room-policy truth directly.
+21. The first slice may obtain those recommendations from structured output,
+    explicit checkpoint metadata, or other system-captured run artifacts, but
+    the routing/orchestration layer must consume one normalized product-owned
+    shape.
+22. The product shall support at least these workflow shapes:
     - sequential handoff
     - parallel branch fan-out
     - converge or review stage after branches complete
-19. Parallel branching should not require the full branch set to be known at
+23. Parallel branching should not require the full branch set to be known at
     room start.
-20. When a new branch needs the parent session's context, the product should be
+24. When a new branch needs the parent session's context, the product should be
     able to request one of these execution strategies:
     - `fork_if_possible`
     - `transplant_context`
     - `fresh_no_parent`
-21. `fork_if_possible` should be preferred when:
+25. `fork_if_possible` should be preferred when:
     - the parent provider/runtime supports native fork
     - the child benefits from the exact same session context
     - the child does not require a different provider family or incompatible
       skill/tool surface
-22. `transplant_context` should be preferred when:
+26. `transplant_context` should be preferred when:
     - provider-native fork is unavailable
     - the child should run on a different provider, model, or Cat role
     - the child should inherit a curated checkpoint or handoff bundle rather
       than the entire parent provider session
-23. Each branch invocation should retain lineage metadata that can point back to
+27. Each branch invocation should retain lineage metadata that can point back to
     at least:
     - parent room turn
     - parent checkpoint or branch root
     - branch strategy used
-24. When a branch completes, the product shall be able to emit a checkpoint or
+28. When a branch completes, the product shall be able to emit a checkpoint or
     handoff bundle for the next stage.
-25. Converge behavior shall be able to wait for multiple required branches or
+29. Converge behavior shall be able to wait for multiple required branches or
     proceed when the branch policy allows partial completion.
-26. The room shall retain branch status suitable for operator-facing visibility,
+30. The room shall retain branch status suitable for operator-facing visibility,
     including at least:
     - pending
     - running
@@ -147,9 +162,9 @@ context transplant, but it does not own room policy.
     - failed
     - cancelled
     - waiting_for_converge
-27. The first slice shall remain event-driven and shall not require a general
+31. The first slice shall remain event-driven and shall not require a general
     heartbeat or timer scheduler.
-28. The implementation shall preserve the `cats-inc -> cats-runtime` boundary.
+32. The implementation shall preserve the `cats-inc -> cats-runtime` boundary.
 
 ### Non-Functional Requirements
 
@@ -228,6 +243,15 @@ interface WorkflowBranchRequest {
   strategy: BranchStrategy;
   rationale?: string;
 }
+
+interface WorkflowRecommendation {
+  source: 'checkpoint' | 'boss_replan' | 'system_inference';
+  workflowShape: 'sequential' | 'parallel' | 'converge' | 'group_claim';
+  candidateTargetIds?: string[];
+  candidateGroupIds?: string[];
+  branchStrategy?: BranchStrategy;
+  rationale?: string;
+}
 ```
 
 ## Flow
@@ -246,6 +270,8 @@ user turn arrives
                     |
                     v
           checkpoint or specialist completion
+                    |
+                    +--> normalize workflow recommendation
                     |
                     +--> continue sequentially
                     +--> fan out in parallel
@@ -289,6 +315,9 @@ The first slice should not require:
       limited multi-claimer group policies?
 - [ ] At convergence time, should the first slice require all required branches
       to finish, or allow policy-driven partial completion with warnings?
+- [ ] What is the minimum normalized workflow-recommendation envelope for the
+      first slice: target ids plus shape only, or a richer structured payload
+      with branch-strategy and rationale fields from the start?
 
 ## References
 
