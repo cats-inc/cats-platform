@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [018-separate-product-skill-intent-from-runtime-skill-hosting](./018-separate-product-skill-intent-from-runtime-skill-hosting.md) | Separate product skill intent from runtime skill hosting | Accepted | 2026-03-19 |
 | [017-allow-direct-cat-chat-and-move-routing-into-system-layer](./017-allow-direct-cat-chat-and-move-routing-into-system-layer.md) | Allow direct Cat chat and move routing into the system layer | Accepted | 2026-03-19 |
 | [016-treat-telegram-as-boss-cat-inbox-not-room-mirror](./016-treat-telegram-as-boss-cat-inbox-not-room-mirror.md) | Treat Telegram as a Boss Cat inbox, not a room mirror | Accepted | 2026-03-19 |
 | [015-adopt-cat-sleep-wake-lifecycle-for-chat-sessions](./015-adopt-cat-sleep-wake-lifecycle-for-chat-sessions.md) | Adopt cat sleep/wake lifecycle for chat sessions | Accepted | 2026-03-19 |

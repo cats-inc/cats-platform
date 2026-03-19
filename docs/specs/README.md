@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-019](./SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md) | Product Skill Profiles and Runtime Skill Manifests | Draft (Pending Review) | - |
 | [SPEC-018](./SPEC-018-direct-cat-chat-and-conversation-routing-layer.md) | Direct Cat Chat and Conversation Routing Layer | Draft (Pending Review) | - |
 | [SPEC-017](./SPEC-017-telegram-inbox-and-room-routing.md) | Telegram Inbox and Room Routing | Draft (Pending Review) | - |
 | [SPEC-016](./SPEC-016-chat-session-sleep-wake-lifecycle.md) | Chat Session Sleep/Wake Lifecycle | Approved | [PLAN-015](../plans/PLAN-015-chat-session-sleep-wake-lifecycle.md) |

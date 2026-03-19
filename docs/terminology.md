@@ -36,6 +36,9 @@
 | Spawned room | A normal `Cats Chat` room that `Boss Cat` created or continued from a transport inbox context so it can appear in `Recents` and hold canonical topic work. |
 | Routing layer | The product-owned system layer that resolves mentions, default targets, wake-before-route behavior, and per-room routing mode before prompts are sent to runtime sessions. |
 | Lead participant | The default target participant for a room mode when an operator turn does not contain an explicit valid `@mention`. |
+| Skill profile | A product-owned capability mapping that decides which runtime skill names should be requested for a Cat in a given room or transport context. |
+| Runtime skill catalog | The `cats-runtime` hosted catalog of execution-ready `SKILL.md` packages that can be validated, resolved, and mounted into sessions. |
+| Runtime skill manifest | The product-to-runtime request payload that carries requested skill names plus optional context metadata for one session or wake flow. |
 | Actor / Resource | The broader `Cats Core v1` term for a human, orchestrator, worker, stakeholder, virtual friend, or other reusable participant. |
 | Execution target | The provider/model preference selected for a pal or orchestrator in one context. |
 | Execution lease | The currently active runtime session metadata used to execute work through a provider. |
