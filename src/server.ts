@@ -15,7 +15,7 @@ import type {
   UpdateSelectedChannelInput,
   WorkspaceState,
 } from './shared/app-shell.js';
-import type { WorkspaceStore } from './workspace/store.js';
+import { MemoryWorkspaceStore, type WorkspaceStore } from './workspace/store.js';
 import {
   appendMessage,
   assignPalToChannel,
@@ -40,6 +40,10 @@ import { createDefaultCoreState } from './core/model.js';
 import { handleProviderModels, handleProviderRegistry } from './server/routes/providers.js';
 import { handleTelegramStatus, handleTelegramWebhook } from './server/routes/telegram.js';
 import { createTelegramRelay, type TelegramRelay } from './transports/telegram/relay.js';
+import {
+  createFileBackedTelegramRelayStore,
+  InMemoryTelegramRelayStore,
+} from './transports/telegram/store.js';
 
 export interface ServerDependencies {
   config: AppConfig;
@@ -402,6 +406,7 @@ async function handleAssignPal(
     );
     const previousSessionId = existingAssignment?.execution.lease.sessionId ?? null;
     const previousProvider = existingAssignment?.execution.target.provider ?? null;
+    const previousInstance = existingAssignment?.execution.target.instance ?? null;
     const previousModel = existingAssignment?.execution.target.model ?? null;
 
     let nextState = assignPalToChannel(
@@ -419,6 +424,7 @@ async function handleAssignPal(
       && updatedAssignment
       && (
         updatedAssignment.execution.target.provider !== previousProvider
+        || updatedAssignment.execution.target.instance !== previousInstance
         || updatedAssignment.execution.target.model !== previousModel
       ),
     );
@@ -531,6 +537,7 @@ async function handleLegacyAddMember(
       {
         palId: createdPalId,
         provider: body.provider,
+        instance: body.instance,
         model: body.model,
         roles: body.roles,
       },
@@ -903,6 +910,7 @@ async function handleRestAssignPal(
     const isNew = !existingAssignment;
     const previousSessionId = existingAssignment?.execution.lease.sessionId ?? null;
     const previousProvider = existingAssignment?.execution.target.provider ?? null;
+    const previousInstance = existingAssignment?.execution.target.instance ?? null;
     const previousModel = existingAssignment?.execution.target.model ?? null;
 
     let nextState = assignPalToChannel(
@@ -921,6 +929,7 @@ async function handleRestAssignPal(
       && updatedAssignment
       && (
         updatedAssignment.execution.target.provider !== previousProvider
+        || updatedAssignment.execution.target.instance !== previousInstance
         || updatedAssignment.execution.target.model !== previousModel
       ),
     );
@@ -1253,6 +1262,7 @@ async function handleCanonicalAssignChannelCat(
     const isNew = !existingAssignment;
     const previousSessionId = existingAssignment?.execution.lease.sessionId ?? null;
     const previousProvider = existingAssignment?.execution.target.provider ?? null;
+    const previousInstance = existingAssignment?.execution.target.instance ?? null;
     const previousModel = existingAssignment?.execution.target.model ?? null;
 
     let nextState = assignPalToChannel(
@@ -1271,6 +1281,7 @@ async function handleCanonicalAssignChannelCat(
       && updatedAssignment
       && (
         updatedAssignment.execution.target.provider !== previousProvider
+        || updatedAssignment.execution.target.instance !== previousInstance
         || updatedAssignment.execution.target.model !== previousModel
       ),
     );
@@ -1356,6 +1367,7 @@ interface SetupCompleteInput {
   ownerDisplayName: string;
   bossCatName: string;
   bossCatProvider: string;
+  bossCatInstance?: string;
   bossCatModel?: string;
 }
 
@@ -1382,6 +1394,7 @@ async function handleSetupComplete(
     workspace = createWorkspacePal(workspace, {
       name: body.bossCatName.trim() || 'Smelly',
       provider: body.bossCatProvider,
+      instance: body.bossCatInstance,
       model: body.bossCatModel,
     }, now);
     const bossCat = workspace.pals.find((p) => !prevPalIds.has(p.id));
@@ -1413,6 +1426,7 @@ async function handleSetupComplete(
         ...workspace.globalOrchestrator,
         executionTarget: {
           provider: body.bossCatProvider,
+          instance: body.bossCatInstance?.trim() || null,
           model: body.bossCatModel ?? null,
         },
       },
@@ -1725,7 +1739,7 @@ function routeRequest(
       sendMethodNotAllowed(response, ['GET']);
       return Promise.resolve();
     }
-    return handleProviderRegistry(response);
+    return handleProviderRegistry(dependencies, response);
   }
 
   if (url.pathname === '/api/transports/telegram') {
@@ -2094,6 +2108,9 @@ export function createServer(dependencies: ServerDependencies) {
     ...dependencies,
     telegramRelay: dependencies.telegramRelay ?? createTelegramRelay({
       now: dependencies.now,
+      store: dependencies.workspaceStore instanceof MemoryWorkspaceStore
+        ? new InMemoryTelegramRelayStore()
+        : createFileBackedTelegramRelayStore(dependencies.config.workspaceStatePath),
     }),
   };
 

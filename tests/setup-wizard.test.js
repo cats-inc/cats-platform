@@ -99,6 +99,7 @@ test('POST /api/setup/complete creates Boss Cat, channel, and marks setup done',
         ownerDisplayName: 'Kenny',
         bossCatName: 'Smelly',
         bossCatProvider: 'claude',
+        bossCatInstance: 'native',
         bossCatModel: 'claude-opus-4-6',
       }),
     });
@@ -113,6 +114,8 @@ test('POST /api/setup/complete creates Boss Cat, channel, and marks setup done',
     // Boss Cat was created
     assert.ok(payload.workspace.bossCatId);
     assert.ok(payload.workspace.pals.length >= 1);
+    const bossCat = payload.workspace.pals.find((p) => p.id === payload.workspace.bossCatId);
+    assert.equal(bossCat?.defaultExecutionTarget.instance, 'native');
 
     // First channel was created
     assert.ok(payload.workspace.channels.length >= 1);
@@ -132,6 +135,7 @@ test('POST /api/setup/complete creates Boss Cat, channel, and marks setup done',
     // Orchestrator executionTarget matches Boss Cat config
     const orch = payload.workspace.globalOrchestrator;
     assert.equal(orch.executionTarget.provider, 'claude');
+    assert.equal(orch.executionTarget.instance, 'native');
     assert.equal(orch.executionTarget.model, 'claude-opus-4-6');
   });
 });
@@ -248,10 +252,10 @@ test('resolveOrchestratorDisplayName returns boss cat name when set, Orchestrato
     selectedChannelId: '',
     bossCatId: 'cat-1',
     pals: [
-      { id: 'cat-1', name: '將將', roles: [], skillProfile: null, mcpProfile: null, status: 'active', createdAt: '', updatedAt: '', archivedAt: null, defaultExecutionTarget: { provider: 'claude', model: null }, memory: { updatedAt: null, content: null } },
+      { id: 'cat-1', name: '將將', roles: [], skillProfile: null, mcpProfile: null, status: 'active', createdAt: '', updatedAt: '', archivedAt: null, defaultExecutionTarget: { provider: 'claude', instance: null, model: null }, memory: { updatedAt: null, content: null } },
     ],
     channels: [],
-    globalOrchestrator: { mode: 'global', status: 'ready', executionTarget: { provider: 'claude', model: null }, systemPrompt: '', skillProfile: null, mcpProfile: null, telegramBotName: null, updatedAt: '' },
+    globalOrchestrator: { mode: 'global', status: 'ready', executionTarget: { provider: 'claude', instance: null, model: null }, systemPrompt: '', skillProfile: null, mcpProfile: null, telegramBotName: null, updatedAt: '' },
     capabilities: { maxChannels: 50, maxPalsPerChannel: 10, supportedProviders: [] },
   };
 
@@ -267,7 +271,8 @@ test('resolveOrchestratorDisplayName returns boss cat name when set, Orchestrato
 });
 
 test('after setup + activate, system messages use boss cat name and have verbosity metadata', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
+  const runtimeClient = createRuntimeStub();
+  await withServer(runtimeClient, async (baseUrl) => {
     // Complete setup with a named Boss Cat
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
       method: 'POST',
@@ -276,6 +281,7 @@ test('after setup + activate, system messages use boss cat name and have verbosi
         ownerDisplayName: 'Kenny',
         bossCatName: '將將',
         bossCatProvider: 'claude',
+        bossCatInstance: 'native',
       }),
     });
     assert.equal(setupResponse.status, 200);
@@ -325,6 +331,8 @@ test('after setup + activate, system messages use boss cat name and have verbosi
     for (const msg of failedMessages) {
       assert.equal(msg.metadata.verbosity, undefined, 'session_start_failed should not have verbosity');
     }
+
+    assert.equal(runtimeClient.createdSessions[0]?.instance, 'native');
   });
 });
 

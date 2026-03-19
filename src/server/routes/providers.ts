@@ -4,11 +4,40 @@ import {
   createStaticProviderModelCatalog,
   isKnownProvider,
   listProductProviders,
+  type ProductProviderDescriptor,
+  type ProductProviderInstanceDescriptor,
 } from '../../shared/providerCatalog.js';
-import type { RuntimeRequestError, RuntimeClient } from '../../runtime/client.js';
+import type {
+  RuntimeProviderConfigRegistry,
+  RuntimeRequestError,
+  RuntimeClient,
+} from '../../runtime/client.js';
 
 interface ProviderRouteDependencies {
   runtimeClient: RuntimeClient;
+}
+
+function mergeProviderRegistry(
+  productProviders: ProductProviderDescriptor[],
+  runtimeConfig: RuntimeProviderConfigRegistry,
+): ProductProviderDescriptor[] {
+  return productProviders.map((provider) => {
+    const runtimeProvider = runtimeConfig[provider.id];
+    const instances: ProductProviderInstanceDescriptor[] = runtimeProvider?.instances.map((instance) => ({
+      id: instance.id,
+      label: instance.target ?? instance.id,
+      target: instance.target,
+      backend: instance.backend,
+      default: runtimeProvider.defaultInstance === instance.id,
+    })) ?? [];
+
+    return {
+      ...provider,
+      defaultInstance: runtimeProvider?.defaultInstance ?? provider.defaultInstance,
+      defaultBackend: runtimeProvider?.defaultBackend ?? provider.defaultBackend,
+      instances,
+    };
+  });
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
@@ -37,9 +66,17 @@ function sendRestError(
 }
 
 export async function handleProviderRegistry(
+  dependencies: ProviderRouteDependencies,
   response: ServerResponse,
 ): Promise<void> {
-  sendJson(response, 200, { providers: listProductProviders() });
+  const productProviders = listProductProviders();
+
+  try {
+    const runtimeConfig = await dependencies.runtimeClient.getProviderConfig();
+    sendJson(response, 200, { providers: mergeProviderRegistry(productProviders, runtimeConfig) });
+  } catch {
+    sendJson(response, 200, { providers: productProviders });
+  }
 }
 
 export async function handleProviderModels(

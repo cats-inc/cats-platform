@@ -256,6 +256,7 @@ export async function activateChannelSessions(
     try {
       const session = await runtimeClient.createSession({
         provider: nextState.globalOrchestrator.executionTarget.provider,
+        instance: nextState.globalOrchestrator.executionTarget.instance,
         model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
         workspaceMode,
@@ -328,6 +329,7 @@ export async function activateChannelSessions(
     try {
       const session = await runtimeClient.createSession({
         provider: pal.execution.target.provider,
+        instance: pal.execution.target.instance,
         model: pal.execution.target.model,
         cwd: spawnCwd,
         workspaceMode,

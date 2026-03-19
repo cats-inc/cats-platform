@@ -43,16 +43,24 @@ provider workstream does not need to keep editing the full chat shell.
 1. `cats-inc` shall expose `GET /api/providers`.
 2. `GET /api/providers` shall return the product-supported provider families
    that can be shown in setup and cat-creation flows.
-3. `cats-inc` shall expose `GET /api/providers/{provider}/models`.
-4. `GET /api/providers/{provider}/models` shall call `cats-runtime`
+3. `GET /api/providers` may include runtime-backed instance metadata such as
+   `defaultInstance`, `defaultBackend`, and `instances[]` when available.
+4. `cats-inc` shall expose `GET /api/providers/{provider}/models`.
+5. `GET /api/providers/{provider}/models` shall call `cats-runtime`
    server-side when the runtime catalog route is available.
-5. The renderer shall not be required to call `cats-runtime` directly.
-6. When runtime model lookup fails for transport or availability reasons,
+6. The renderer shall not be required to call `cats-runtime` directly.
+7. Provider/model form state shall honor the runtime catalog's `defaultModel`
+   instead of keeping a stale renderer seed when the runtime returns a
+   different default for the selected provider target.
+8. The renderer may pass an optional `instance` query through the product API
+   so instance-specific model catalogs can be consumed without direct runtime
+   calls.
+9. When runtime model lookup fails for transport or availability reasons,
    `cats-inc` may fall back to a curated static product list for that provider
    and include warnings.
-7. Unknown provider families shall return a client error instead of an empty
+10. Unknown provider families shall return a client error instead of an empty
    success response.
-8. The provider/model form UI shall live in an extracted renderer component
+11. The provider/model form UI shall live in an extracted renderer component
    rather than being duplicated inline across setup and cat-creation screens.
 
 ### Non-Functional Requirements
@@ -79,6 +87,17 @@ Illustrative response:
       "id": "claude",
       "label": "Claude-CLI",
       "defaultModel": "claude-opus-4-6",
+      "defaultInstance": "native",
+      "defaultBackend": "cli",
+      "instances": [
+        {
+          "id": "native",
+          "label": "cli/native",
+          "target": "cli/native",
+          "backend": "cli",
+          "default": true
+        }
+      ],
       "modelsPath": "/api/providers/claude/models"
     }
   ]
@@ -86,7 +105,8 @@ Illustrative response:
 ```
 
 This route is product-owned. It tells the renderer which provider families
-`cats-inc` supports in its UI.
+`cats-inc` supports in its UI and may also surface runtime-backed instance
+metadata for instance-aware forms.
 
 ### `GET /api/providers/{provider}/models`
 
@@ -109,6 +129,9 @@ Illustrative response:
 }
 ```
 
+The route may be queried as `GET /api/providers/{provider}/models?instance=...`
+when the selected provider family exposes more than one runtime instance.
+
 The product route may proxy the runtime result directly or fall back to curated
 static product data when runtime discovery is unavailable.
 
@@ -119,6 +142,8 @@ static product data when runtime discovery is unavailable.
 - The extracted provider/model UI component is a seam, not the final async UI.
   It gives the provider workstream one place to update once it switches to
   product-API-fed options.
+- Provider family selection and provider instance selection are both product-UI
+  concerns; runtime still owns discovery and per-target model catalogs.
 - Static fallback is a safety net, not the future source of truth.
 - `src/shared/providerCatalog.ts` is a transitional compatibility layer. The
   long-term goal is to shrink duplicated model tables until `cats-inc` no

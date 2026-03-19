@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createTelegramRelay } from '../dist-server/transports/telegram/relay.js';
-import { InMemoryTelegramRelayStore } from '../dist-server/transports/telegram/store.js';
+import {
+  FileBackedTelegramRelayStore,
+  InMemoryTelegramRelayStore,
+} from '../dist-server/transports/telegram/store.js';
 
 function createContext(overrides = {}) {
   return {
@@ -158,4 +164,24 @@ test('telegram relay bounds retained update ids while keeping a high-water statu
 
   const status = relay.getStatus(context);
   assert.equal(status.lastProcessedUpdateId, 103);
+});
+
+test('file-backed telegram relay store restores bindings and dedupe markers after restart', () => {
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-inc-telegram-store-'));
+  const statePath = path.join(stateDir, 'telegram-relay.json');
+  const firstStore = new FileBackedTelegramRelayStore(statePath, 4);
+
+  firstStore.upsertBinding({
+    telegramChatId: '12345',
+    conversationId: 'telegram:12345',
+    createdAt: '2026-03-19T00:00:00.000Z',
+    updatedAt: '2026-03-19T00:00:00.000Z',
+  });
+  firstStore.markProcessedUpdate(101);
+
+  const secondStore = new FileBackedTelegramRelayStore(statePath, 4);
+  assert.equal(secondStore.getBinding('12345')?.conversationId, 'telegram:12345');
+  assert.equal(secondStore.getBindingByConversationId('telegram:12345')?.telegramChatId, '12345');
+  assert.equal(secondStore.hasProcessedUpdate(101), true);
+  assert.equal(secondStore.getLastProcessedUpdateId(), 101);
 });

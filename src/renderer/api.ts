@@ -62,8 +62,13 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
   if (globalOrchestrator && !asRecord(globalOrchestrator.executionTarget)) {
     globalOrchestrator.executionTarget = {
       provider: readString(globalOrchestrator.provider, 'claude'),
+      instance: readNullableString(globalOrchestrator.instance),
       model: readNullableString(globalOrchestrator.model),
     };
+  }
+  const orchestratorExecutionTarget = asRecord(globalOrchestrator?.executionTarget);
+  if (orchestratorExecutionTarget && orchestratorExecutionTarget.instance === undefined) {
+    orchestratorExecutionTarget.instance = readNullableString(globalOrchestrator?.instance);
   }
 
   if (globalOrchestrator && !asRecord(globalOrchestrator.memory)) {
@@ -85,6 +90,7 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
       cwd: readNullableString(orchestratorSession?.cwd),
       lastError: readNullableString(orchestratorSession?.lastError),
       provider: readNullableString(executionTarget?.provider) ?? 'claude',
+      instance: readNullableString(executionTarget?.instance),
       model: readNullableString(executionTarget?.model),
       startedAt: null,
       lastUsedAt: null,
@@ -100,8 +106,13 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
     if (!asRecord(pal.defaultExecutionTarget)) {
       pal.defaultExecutionTarget = {
         provider: readString(pal.provider, 'claude'),
+        instance: readNullableString(pal.instance),
         model: readNullableString(pal.model),
       };
+    }
+    const defaultExecutionTarget = asRecord(pal.defaultExecutionTarget);
+    if (defaultExecutionTarget && defaultExecutionTarget.instance === undefined) {
+      defaultExecutionTarget.instance = readNullableString(pal.instance);
     }
     if (!asRecord(pal.memory)) {
       pal.memory = {
@@ -134,6 +145,7 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
           execution: {
             target: {
               provider: readString(target?.provider, readString(member.provider, 'claude')),
+              instance: readNullableString(target?.instance ?? member.instance),
               model: readNullableString(target?.model ?? member.model),
             },
             lease: {
@@ -142,6 +154,7 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
               cwd: readNullableString(lease?.cwd ?? asRecord(member.session)?.cwd),
               lastError: readNullableString(lease?.lastError ?? asRecord(member.session)?.lastError),
               provider: readNullableString(lease?.provider) ?? readString(target?.provider, readString(member.provider, 'claude')),
+              instance: readNullableString(lease?.instance ?? target?.instance ?? member.instance),
               model: readNullableString(lease?.model ?? target?.model ?? member.model),
               startedAt: readNullableString(lease?.startedAt),
               lastUsedAt: readNullableString(lease?.lastUsedAt),
@@ -168,6 +181,7 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
               archivedAt: readNullableString(member.leftAt),
               defaultExecutionTarget: {
                 provider: readString(member.provider, 'claude'),
+                instance: readNullableString(member.instance),
                 model: readNullableString(member.model),
               },
               memory: asRecord(member.memory) ?? {
@@ -263,7 +277,27 @@ export async function fetchProviders(): Promise<ProductProviderDescriptor[]> {
   }
 
   const payload = (await response.json()) as { providers?: ProductProviderDescriptor[] };
-  return Array.isArray(payload.providers) ? payload.providers : [];
+  if (!Array.isArray(payload.providers)) {
+    return [];
+  }
+
+  return payload.providers.map((provider) => ({
+    id: provider.id,
+    label: provider.label,
+    defaultModel: provider.defaultModel ?? null,
+    defaultInstance: provider.defaultInstance ?? null,
+    defaultBackend: provider.defaultBackend ?? null,
+    instances: Array.isArray(provider.instances)
+      ? provider.instances.map((instance) => ({
+          id: instance.id,
+          label: instance.label,
+          target: instance.target ?? null,
+          backend: instance.backend ?? null,
+          default: Boolean(instance.default),
+        }))
+      : [],
+    modelsPath: provider.modelsPath,
+  }));
 }
 
 export async function fetchProviderModels(
@@ -570,6 +604,7 @@ export async function completeSetup(
     ownerDisplayName: string;
     bossCatName: string;
     bossCatProvider: string;
+    bossCatInstance?: string;
     bossCatModel?: string;
   },
   signal?: AbortSignal,

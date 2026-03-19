@@ -170,6 +170,7 @@ function createPalRecord(input: CreateWorkspacePalInput, nowIso: string): Worksp
     avatarColor: null,
     defaultExecutionTarget: {
       provider,
+      instance: normalizeOptionalText(input.instance),
       model: normalizeOptionalText(input.model),
     },
     memory: createEmptyMemoryCheckpoint(),
@@ -180,6 +181,7 @@ function createAssignmentRecord(
   pal: WorkspacePal,
   input: {
     provider?: string;
+    instance?: string | null;
     model?: string | null;
     roles?: string[];
   },
@@ -196,6 +198,10 @@ function createAssignmentRecord(
     execution: {
       target: {
         provider: input.provider?.trim() || pal.defaultExecutionTarget.provider,
+        instance:
+          input.instance === undefined
+            ? pal.defaultExecutionTarget.instance
+            : normalizeOptionalText(input.instance),
         model:
           input.model === undefined
             ? pal.defaultExecutionTarget.model
@@ -400,6 +406,7 @@ export function assignPalToChannel(
         pal,
         {
           provider: input.provider,
+          instance: input.instance,
           model: input.model,
           roles: input.roles,
         },
@@ -429,12 +436,17 @@ export function assignPalToChannel(
 
   const nextRoles = normalizeList(input.roles);
   const nextProvider = input.provider?.trim() || existing.execution.target.provider;
+  const nextInstance =
+    input.instance === undefined
+      ? existing.execution.target.instance
+      : normalizeOptionalText(input.instance);
   const nextModel =
     input.model === undefined
       ? existing.execution.target.model
       : normalizeOptionalText(input.model);
   const targetChanged =
     existing.execution.target.provider !== nextProvider
+    || existing.execution.target.instance !== nextInstance
     || existing.execution.target.model !== nextModel;
 
   existing.status = 'active';
@@ -442,6 +454,7 @@ export function assignPalToChannel(
   existing.roles = nextRoles.length > 0 ? nextRoles : (existing.roles.length > 0 ? existing.roles : pal.roles);
   existing.execution.target = {
     provider: nextProvider,
+    instance: nextInstance,
     model: nextModel,
   };
 
@@ -520,6 +533,9 @@ export function updateGlobalOrchestrator(
     ...nextState.globalOrchestrator,
     executionTarget: {
       provider: input.provider.trim() || nextState.globalOrchestrator.executionTarget.provider,
+      instance:
+        normalizeOptionalText(input.instance)
+        ?? nextState.globalOrchestrator.executionTarget.instance,
       model: normalizeOptionalText(input.model),
     },
     systemPrompt:

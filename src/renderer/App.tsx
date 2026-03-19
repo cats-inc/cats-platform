@@ -27,7 +27,7 @@ import {
   deleteGlobalPal,
 } from './api';
 import { ProviderModelFields } from './components/ProviderModelFields';
-import { getDefaultModel, getProviderDisplayName } from './providerCatalog';
+import { getProviderDisplayName } from './providerCatalog';
 
 type LoadState =
   | { status: 'loading' }
@@ -39,6 +39,7 @@ type Surface = 'chats' | 'settings';
 interface PalFormState {
   name: string;
   provider: string;
+  instance: string;
   model: string;
 }
 
@@ -46,16 +47,22 @@ function emptyPalForm(): PalFormState {
   return {
     name: '',
     provider: 'claude',
-    model: getDefaultModel('claude'),
+    instance: '',
+    model: '',
   };
 }
 
 
 function executionLabel(pal: WorkspacePal): string {
   const name = getProviderDisplayName(pal.defaultExecutionTarget.provider);
-  return pal.defaultExecutionTarget.model
-    ? `${name} / ${pal.defaultExecutionTarget.model}`
-    : name;
+  const parts = [name];
+  if (pal.defaultExecutionTarget.instance) {
+    parts.push(pal.defaultExecutionTarget.instance);
+  }
+  if (pal.defaultExecutionTarget.model) {
+    parts.push(pal.defaultExecutionTarget.model);
+  }
+  return parts.join(' / ');
 }
 
 function createDraftChannelTitle(body: string, existingCount: number): string {
@@ -256,7 +263,8 @@ function SetupWizard({
   const [ownerName, setOwnerName] = useState('');
   const [bossCatName, setBossCatName] = useState('Smelly');
   const [provider, setProvider] = useState('claude');
-  const [model, setModel] = useState(getDefaultModel('claude'));
+  const [instance, setInstance] = useState('');
+  const [model, setModel] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
 
@@ -267,6 +275,7 @@ function SetupWizard({
         ownerDisplayName: ownerName.trim(),
         bossCatName: bossCatName.trim() || 'Smelly',
         bossCatProvider: provider,
+        bossCatInstance: instance || undefined,
         bossCatModel: model || undefined,
       });
       onComplete(result);
@@ -329,12 +338,13 @@ function SetupWizard({
             </label>
             <ProviderModelFields
               provider={provider}
+              instance={instance}
               model={model}
-              onProviderChange={(nextProvider, defaultModel) => {
-                setProvider(nextProvider);
-                setModel(defaultModel);
+              onTargetChange={(target) => {
+                setProvider(target.provider);
+                setInstance(target.instance);
+                setModel(target.model);
               }}
-              onModelChange={setModel}
             />
             <div className="setupRuntimeStatus">
               <span
@@ -360,7 +370,7 @@ function SetupWizard({
               </button>
               <button
                 className="primaryButton"
-                disabled={!bossCatName.trim() || busy}
+                disabled={!bossCatName.trim() || !model.trim() || busy}
                 type="button"
                 onClick={() => void handleComplete()}
               >
@@ -516,7 +526,8 @@ export default function App() {
       const payload = await createGlobalPal({
         name: palForm.name,
         provider: palForm.provider,
-        model: palForm.model || getDefaultModel(palForm.provider),
+        instance: palForm.instance || undefined,
+        model: palForm.model || undefined,
       });
       startTransition(() => {
         setState({ status: 'ready', payload });
@@ -543,7 +554,8 @@ export default function App() {
       const created = await createGlobalPal({
         name: trimmedName,
         provider: palForm.provider,
-        model: palForm.model || getDefaultModel(palForm.provider),
+        instance: palForm.instance || undefined,
+        model: palForm.model || undefined,
       });
       startTransition(() => setState({ status: 'ready', payload: created }));
 
@@ -558,6 +570,7 @@ export default function App() {
       const assigned = await assignPalToWorkspaceChannel(channelId, {
         palId: newPal.id,
         provider: newPal.defaultExecutionTarget.provider,
+        instance: newPal.defaultExecutionTarget.instance ?? undefined,
         model: newPal.defaultExecutionTarget.model ?? undefined,
       });
       startTransition(() => {
@@ -583,6 +596,7 @@ export default function App() {
       const payload = await assignPalToWorkspaceChannel(channelId, {
         palId: pal.id,
         provider: pal.defaultExecutionTarget.provider,
+        instance: pal.defaultExecutionTarget.instance ?? undefined,
         model: pal.defaultExecutionTarget.model ?? undefined,
       });
       startTransition(() => {
@@ -814,18 +828,19 @@ export default function App() {
       </label>
       <ProviderModelFields
         provider={palForm.provider}
+        instance={palForm.instance}
         model={palForm.model}
-        onProviderChange={(provider, defaultModel) =>
+        onTargetChange={(target) =>
           setPalForm({
             ...palForm,
-            provider,
-            model: defaultModel,
+            provider: target.provider,
+            instance: target.instance,
+            model: target.model,
           })}
-        onModelChange={(model) => setPalForm({ ...palForm, model })}
       />
       <button
         className="primaryButton"
-        disabled={!palForm.name.trim() || !palForm.provider.trim()}
+        disabled={!palForm.name.trim() || !palForm.provider.trim() || !palForm.model.trim()}
         type="submit"
       >
         {busy === 'pal:create' || busy === 'pal:create-assign'

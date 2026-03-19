@@ -87,6 +87,9 @@ function formatSharedContext(
   }
 
   lines.push(`Global orchestrator provider: ${orchestrator.executionTarget.provider}`);
+  if (orchestrator.executionTarget.instance) {
+    lines.push(`Global orchestrator instance: ${orchestrator.executionTarget.instance}`);
+  }
   if (orchestrator.executionTarget.model) {
     lines.push(`Global orchestrator model: ${orchestrator.executionTarget.model}`);
   }

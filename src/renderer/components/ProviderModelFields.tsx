@@ -1,31 +1,50 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   createStaticProviderModelCatalog,
-  getDefaultModel,
   getProviderDisplayName,
   listProductProviders,
   type ProductProviderDescriptor,
+  type ProductProviderInstanceDescriptor,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog';
+import {
+  resolveCatalogTargetSelection,
+  resolveSelectedProviderInstance,
+  type ProviderTargetSelection,
+} from '../../shared/providerSelection';
 import { fetchProviderModels, fetchProviders } from '../api';
 
 interface ProviderModelFieldsProps {
   provider: string;
+  instance: string;
   model: string;
-  onProviderChange: (provider: string, defaultModel: string) => void;
-  onModelChange: (model: string) => void;
+  onTargetChange: (target: ProviderTargetSelection) => void;
+}
+
+function createFallbackProvider(provider: string): ProductProviderDescriptor {
+  return {
+    id: provider as ProductProviderDescriptor['id'],
+    label: getProviderDisplayName(provider),
+    defaultModel: null,
+    defaultInstance: null,
+    defaultBackend: null,
+    instances: [],
+    modelsPath: `/api/providers/${provider}/models`,
+  };
 }
 
 export function ProviderModelFields({
   provider,
+  instance,
   model,
-  onProviderChange,
-  onModelChange,
+  onTargetChange,
 }: ProviderModelFieldsProps) {
   const [providers, setProviders] = useState<ProductProviderDescriptor[]>(() => listProductProviders());
   const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
     createStaticProviderModelCatalog(provider),
   );
+  const manualModelTargetKey = useRef<string | null>(null);
+  const previousTargetKey = useRef<string>('');
 
   useEffect(() => {
     let cancelled = false;
@@ -43,12 +62,39 @@ export function ProviderModelFields({
     };
   }, []);
 
+  const providerOptions = providers.some((option) => option.id === provider)
+    ? providers
+    : [createFallbackProvider(provider), ...providers];
+  const selectedProvider =
+    providerOptions.find((option) => option.id === provider) ?? createFallbackProvider(provider);
+  const resolvedInstance = resolveSelectedProviderInstance(selectedProvider, instance);
+  const targetKey = `${provider}::${resolvedInstance}`;
+
+  useEffect(() => {
+    if (previousTargetKey.current !== targetKey) {
+      previousTargetKey.current = targetKey;
+      manualModelTargetKey.current = null;
+    }
+  }, [targetKey]);
+
+  useEffect(() => {
+    if (resolvedInstance !== instance) {
+      onTargetChange({
+        provider,
+        instance: resolvedInstance,
+        model,
+      });
+    }
+  }, [instance, model, onTargetChange, provider, resolvedInstance]);
+
   useEffect(() => {
     let cancelled = false;
 
-    setCatalog(createStaticProviderModelCatalog(provider));
+    setCatalog(createStaticProviderModelCatalog(provider, {
+      instance: resolvedInstance || null,
+    }));
 
-    void fetchProviderModels(provider)
+    void fetchProviderModels(provider, resolvedInstance || null)
       .then((nextCatalog) => {
         if (!cancelled) {
           setCatalog(nextCatalog);
@@ -56,42 +102,50 @@ export function ProviderModelFields({
       })
       .catch(() => {
         if (!cancelled) {
-          setCatalog(createStaticProviderModelCatalog(provider));
+          setCatalog(createStaticProviderModelCatalog(provider, {
+            instance: resolvedInstance || null,
+          }));
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [provider]);
+  }, [provider, resolvedInstance]);
 
   useEffect(() => {
     if (catalog.models.length === 0) {
       return;
     }
 
-    const hasCurrentModel = catalog.models.some((option) => option.id === model);
-    if (hasCurrentModel) {
-      return;
-    }
-
-    const nextModel = catalog.models.find((option) => option.default)?.id || catalog.models[0]?.id;
-    if (nextModel) {
-      onModelChange(nextModel);
-    }
-  }, [catalog, model, onModelChange]);
-
-  const providerOptions = providers.some((option) => option.id === provider)
-    ? providers
-    : [
-      {
-        id: provider as ProductProviderDescriptor['id'],
-        label: getProviderDisplayName(provider),
-        defaultModel: getDefaultModel(provider) || null,
-        modelsPath: `/api/providers/${provider}/models`,
+    const nextTarget = resolveCatalogTargetSelection({
+      target: {
+        provider,
+        instance: resolvedInstance,
+        model,
       },
-      ...providers,
-    ];
+      catalog,
+      preserveCurrentModel: manualModelTargetKey.current === targetKey,
+    });
+
+    if (
+      nextTarget.instance !== instance
+      || nextTarget.model !== model
+    ) {
+      onTargetChange(nextTarget);
+    }
+  }, [catalog, instance, model, onTargetChange, provider, resolvedInstance, targetKey]);
+
+  const instanceOptions = selectedProvider.instances.some((option) => option.id === resolvedInstance)
+    ? selectedProvider.instances
+    : resolvedInstance
+      ? [{
+          id: resolvedInstance,
+          label: resolvedInstance,
+          target: resolvedInstance,
+          backend: null,
+        }, ...selectedProvider.instances]
+      : selectedProvider.instances;
 
   return (
     <>
@@ -101,10 +155,15 @@ export function ProviderModelFields({
           className="textInput"
           value={provider}
           onChange={(event) => {
-            const nextProvider = event.target.value;
-            const defaultModel = providerOptions.find((option) => option.id === nextProvider)?.defaultModel
-              || getDefaultModel(nextProvider);
-            onProviderChange(nextProvider, defaultModel || '');
+            const nextProvider = providerOptions.find((option) => option.id === event.target.value)
+              ?? createFallbackProvider(event.target.value);
+            const nextInstance = resolveSelectedProviderInstance(nextProvider, '');
+            manualModelTargetKey.current = null;
+            onTargetChange({
+              provider: nextProvider.id,
+              instance: nextInstance,
+              model: '',
+            });
           }}
         >
           {providerOptions.map((option) => (
@@ -114,12 +173,42 @@ export function ProviderModelFields({
           ))}
         </select>
       </label>
+      {instanceOptions.length > 1 ? (
+        <label className="fieldLabel">
+          <span>Instance</span>
+          <select
+            className="textInput"
+            value={resolvedInstance}
+            onChange={(event) => {
+              manualModelTargetKey.current = null;
+              onTargetChange({
+                provider,
+                instance: event.target.value,
+                model: '',
+              });
+            }}
+          >
+            {instanceOptions.map((option: ProductProviderInstanceDescriptor) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <label className="fieldLabel">
         <span>Model</span>
         <select
           className="textInput"
           value={model}
-          onChange={(event) => onModelChange(event.target.value)}
+          onChange={(event) => {
+            manualModelTargetKey.current = targetKey;
+            onTargetChange({
+              provider,
+              instance: resolvedInstance,
+              model: event.target.value,
+            });
+          }}
         >
           {catalog.models.map((option) => (
             <option key={option.id} value={option.id}>

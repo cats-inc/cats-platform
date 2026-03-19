@@ -44,10 +44,12 @@ worker cats as direct Telegram senders.
 5. The relay shall keep dedupe state for processed update ids.
 6. The relay shall maintain a mapping seam between Telegram chats and internal
    conversation ids, even if the first slice uses placeholder mappings.
-7. Telegram inbound traffic shall conceptually enter through the `Boss Cat`.
-8. Worker cats shall remain internal orchestration resources; they shall not
+7. Relay dedupe state and chat-to-conversation bindings should survive process
+   restart so webhook retries do not rely on process-local memory only.
+8. Telegram inbound traffic shall conceptually enter through the `Boss Cat`.
+9. Worker cats shall remain internal orchestration resources; they shall not
    appear as separate Telegram senders in the MVP.
-9. Transport status and receipts shall be separate from the main transcript.
+10. Transport status and receipts shall be separate from the main transcript.
 
 ### Non-Functional Requirements
 
@@ -107,6 +109,8 @@ Illustrative response:
 - The MVP relay is a transport seam first, not the completed Telegram feature.
 - A placeholder conversation mapping is acceptable in the first slice because
   it gives the Telegram workstream a stable place to swap in real mapping logic.
+- Persisting relay state in a transport-side sidecar store is acceptable for the
+  MVP as long as it remains separate from the main transcript model.
 - The same transport seam can later support LINE with a sibling transport
   package instead of embedding platform-specific branching into chat handlers.
 

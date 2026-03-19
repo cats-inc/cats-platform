@@ -10,6 +10,14 @@ export interface ProviderCatalogEntry {
   default?: boolean;
 }
 
+export interface ProductProviderInstanceDescriptor {
+  id: string;
+  label: string;
+  target: string | null;
+  backend: string | null;
+  default?: boolean;
+}
+
 export interface ProviderCatalogCacheMetadata {
   servedFromCache: boolean;
   cachedAt: string | null;
@@ -113,6 +121,9 @@ export interface ProductProviderDescriptor {
   id: ProductProviderId;
   label: string;
   defaultModel: string | null;
+  defaultInstance: string | null;
+  defaultBackend: string | null;
+  instances: ProductProviderInstanceDescriptor[];
   modelsPath: string;
 }
 
@@ -151,8 +162,20 @@ export function listProductProviders(): ProductProviderDescriptor[] {
     id: provider,
     label: getProviderDisplayName(provider),
     defaultModel: getDefaultModel(provider) || null,
+    defaultInstance: null,
+    defaultBackend: null,
+    instances: [],
     modelsPath: `/api/providers/${provider}/models`,
   }));
+}
+
+export function resolveProviderCatalogDefaultModel(catalog: ProviderModelCatalog): string {
+  return (
+    catalog.defaultModel
+    || catalog.models.find((model) => model.default)?.id
+    || catalog.models[0]?.id
+    || ''
+  );
 }
 
 export function createStaticProviderModelCatalog(

@@ -46,6 +46,7 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
     ],
     executionTarget: {
       provider: 'claude',
+      instance: null,
       model: null,
     },
     systemPrompt:

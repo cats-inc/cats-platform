@@ -89,6 +89,10 @@ function normalizeExecutionTarget(
 
   return {
     provider,
+    instance:
+      readNullableString(targetRecord?.instance)
+      ?? readNullableString(legacyOwner?.instance)
+      ?? fallbackTarget.instance,
     model:
       readNullableString(targetRecord?.model)
       ?? readNullableString(legacyOwner?.model)
@@ -222,7 +226,7 @@ function normalizeWorkspacePal(rawPal: unknown): WorkspacePal | null {
   const defaultExecutionTarget = normalizeExecutionTarget(
     palRecord.defaultExecutionTarget,
     palRecord,
-    { provider: 'claude', model: null },
+    { provider: 'claude', instance: null, model: null },
   );
   const rawStatus = readString(palRecord.status, 'active');
 
@@ -288,7 +292,7 @@ function ensureLegacyPalFromMember(
   const execution = normalizeExecutionState(
     memberRecord.execution ?? memberRecord,
     memberRecord,
-    { provider: 'claude', model: null },
+    { provider: 'claude', instance: null, model: null },
   );
   const rawStatus = readString(memberRecord.status, 'active');
 
@@ -401,7 +405,7 @@ function normalizeChannel(
     orchestratorLease: normalizeExecutionLease(
       channelRecord.orchestratorLease ?? channelRecord.orchestratorSession,
       null,
-      { provider: 'claude', model: null },
+      { provider: 'claude', instance: null, model: null },
     ),
     palAssignments,
     messages,

@@ -23,6 +23,52 @@ function createRuntimeStub() {
         service: 'cats-runtime',
       };
     },
+    async getProviderConfig() {
+      return {
+        claude: {
+          defaultInstance: 'native',
+          defaultBackend: 'cli',
+          instances: [
+            {
+              id: 'native',
+              target: 'cli/native',
+              backend: 'cli',
+              command: 'claude',
+              runner: null,
+              runtime: null,
+              transport: null,
+              model: null,
+            },
+          ],
+        },
+        codex: {
+          defaultInstance: 'agent/bridge',
+          defaultBackend: 'agent',
+          instances: [
+            {
+              id: 'agent/bridge',
+              target: 'agent/bridge',
+              backend: 'agent',
+              command: null,
+              runner: null,
+              runtime: null,
+              transport: null,
+              model: null,
+            },
+            {
+              id: 'ubuntu',
+              target: 'cli/ubuntu',
+              backend: 'cli',
+              command: 'codex',
+              runner: 'wsl',
+              runtime: null,
+              transport: null,
+              model: null,
+            },
+          ],
+        },
+      };
+    },
     async getProviderModels(provider) {
       return {
         provider,
@@ -73,7 +119,7 @@ async function withServer(runtimeClient, callback, workspaceStore = new MemoryWo
   }
 }
 
-test('GET /api/providers returns product provider registry', async () => {
+test('GET /api/providers returns product provider registry with runtime instance metadata', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/providers`);
     assert.equal(response.status, 200);
@@ -82,6 +128,12 @@ test('GET /api/providers returns product provider registry', async () => {
     assert.ok(Array.isArray(payload.providers));
     assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
     assert.ok(payload.providers.every((provider) => typeof provider.modelsPath === 'string'));
+    const claude = payload.providers.find((provider) => provider.id === 'claude');
+    assert.equal(claude.defaultInstance, 'native');
+    assert.equal(claude.instances[0].id, 'native');
+    const codex = payload.providers.find((provider) => provider.id === 'codex');
+    assert.equal(codex.defaultInstance, 'agent/bridge');
+    assert.equal(codex.instances.length, 2);
   });
 });
 

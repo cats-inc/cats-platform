@@ -1,3 +1,6 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+
 import type { TelegramConversationBinding } from './contracts.js';
 
 export interface TelegramRelayStore {
@@ -10,18 +13,25 @@ export interface TelegramRelayStore {
   getLastProcessedUpdateId(): number | null;
 }
 
-export class InMemoryTelegramRelayStore implements TelegramRelayStore {
-  private readonly processedUpdateOrder: number[] = [];
+interface PersistedTelegramRelayState {
+  version: 1;
+  bindings: TelegramConversationBinding[];
+  processedUpdateIds: number[];
+  lastProcessedUpdateId: number | null;
+}
 
-  private readonly bindingsByChatId = new Map<string, TelegramConversationBinding>();
+class BaseTelegramRelayStore implements TelegramRelayStore {
+  protected readonly processedUpdateOrder: number[] = [];
 
-  private readonly bindingsByConversationId = new Map<string, TelegramConversationBinding>();
+  protected readonly bindingsByChatId = new Map<string, TelegramConversationBinding>();
 
-  private readonly processedUpdateIds = new Set<number>();
+  protected readonly bindingsByConversationId = new Map<string, TelegramConversationBinding>();
 
-  private lastProcessedUpdateId: number | null = null;
+  protected readonly processedUpdateIds = new Set<number>();
 
-  constructor(private readonly maxProcessedUpdates = 2048) {}
+  protected lastProcessedUpdateId: number | null = null;
+
+  constructor(protected readonly maxProcessedUpdates = 2048) {}
 
   getBinding(chatId: string): TelegramConversationBinding | null {
     return this.bindingsByChatId.get(chatId) ?? null;
@@ -36,6 +46,22 @@ export class InMemoryTelegramRelayStore implements TelegramRelayStore {
   }
 
   upsertBinding(binding: TelegramConversationBinding): void {
+    this.upsertBindingInMemory(binding);
+  }
+
+  hasProcessedUpdate(updateId: number): boolean {
+    return this.processedUpdateIds.has(updateId);
+  }
+
+  markProcessedUpdate(updateId: number): void {
+    this.markProcessedUpdateInMemory(updateId);
+  }
+
+  getLastProcessedUpdateId(): number | null {
+    return this.lastProcessedUpdateId;
+  }
+
+  protected upsertBindingInMemory(binding: TelegramConversationBinding): void {
     const previousBinding = this.bindingsByChatId.get(binding.telegramChatId);
     if (previousBinding && previousBinding.conversationId !== binding.conversationId) {
       this.bindingsByConversationId.delete(previousBinding.conversationId);
@@ -45,11 +71,7 @@ export class InMemoryTelegramRelayStore implements TelegramRelayStore {
     this.bindingsByConversationId.set(binding.conversationId, binding);
   }
 
-  hasProcessedUpdate(updateId: number): boolean {
-    return this.processedUpdateIds.has(updateId);
-  }
-
-  markProcessedUpdate(updateId: number): void {
+  protected markProcessedUpdateInMemory(updateId: number): void {
     if (this.processedUpdateIds.has(updateId)) {
       return;
     }
@@ -69,7 +91,152 @@ export class InMemoryTelegramRelayStore implements TelegramRelayStore {
     }
   }
 
-  getLastProcessedUpdateId(): number | null {
-    return this.lastProcessedUpdateId;
+  protected serialize(): PersistedTelegramRelayState {
+    return {
+      version: 1,
+      bindings: this.listBindings(),
+      processedUpdateIds: [...this.processedUpdateOrder],
+      lastProcessedUpdateId: this.lastProcessedUpdateId,
+    };
   }
+
+  protected hydrate(payload: PersistedTelegramRelayState): void {
+    for (const binding of payload.bindings) {
+      this.upsertBindingInMemory(binding);
+    }
+    for (const updateId of payload.processedUpdateIds) {
+      this.markProcessedUpdateInMemory(updateId);
+    }
+    this.lastProcessedUpdateId = payload.lastProcessedUpdateId;
+  }
+}
+
+function asPersistedState(payload: unknown, maxProcessedUpdates: number): PersistedTelegramRelayState {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return {
+      version: 1,
+      bindings: [],
+      processedUpdateIds: [],
+      lastProcessedUpdateId: null,
+    };
+  }
+
+  const record = payload as Record<string, unknown>;
+  const bindings = Array.isArray(record.bindings)
+    ? record.bindings
+        .map((rawBinding) => {
+          if (!rawBinding || typeof rawBinding !== 'object' || Array.isArray(rawBinding)) {
+            return null;
+          }
+
+          const binding = rawBinding as Record<string, unknown>;
+          const telegramChatId = typeof binding.telegramChatId === 'string'
+            ? binding.telegramChatId.trim()
+            : '';
+          const conversationId = typeof binding.conversationId === 'string'
+            ? binding.conversationId.trim()
+            : '';
+
+          if (!telegramChatId || !conversationId) {
+            return null;
+          }
+
+          return {
+            telegramChatId,
+            conversationId,
+            createdAt: typeof binding.createdAt === 'string' ? binding.createdAt : new Date().toISOString(),
+            updatedAt: typeof binding.updatedAt === 'string' ? binding.updatedAt : new Date().toISOString(),
+          } satisfies TelegramConversationBinding;
+        })
+        .filter((binding): binding is TelegramConversationBinding => binding !== null)
+    : [];
+  const processedUpdateIds = Array.isArray(record.processedUpdateIds)
+    ? record.processedUpdateIds
+        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+        .slice(-maxProcessedUpdates)
+    : [];
+
+  return {
+    version: 1,
+    bindings,
+    processedUpdateIds,
+    lastProcessedUpdateId:
+      typeof record.lastProcessedUpdateId === 'number' && Number.isFinite(record.lastProcessedUpdateId)
+        ? record.lastProcessedUpdateId
+        : null,
+  };
+}
+
+export class InMemoryTelegramRelayStore extends BaseTelegramRelayStore {}
+
+export class FileBackedTelegramRelayStore extends BaseTelegramRelayStore {
+  constructor(
+    private readonly statePath: string,
+    maxProcessedUpdates = 2048,
+  ) {
+    super(maxProcessedUpdates);
+    this.hydrate(this.readPersistedState());
+  }
+
+  override upsertBinding(binding: TelegramConversationBinding): void {
+    this.upsertBindingInMemory(binding);
+    this.persist();
+  }
+
+  override markProcessedUpdate(updateId: number): void {
+    const alreadyProcessed = this.processedUpdateIds.has(updateId);
+    this.markProcessedUpdateInMemory(updateId);
+    if (!alreadyProcessed) {
+      this.persist();
+    }
+  }
+
+  private readPersistedState(): PersistedTelegramRelayState {
+    if (!existsSync(this.statePath)) {
+      return {
+        version: 1,
+        bindings: [],
+        processedUpdateIds: [],
+        lastProcessedUpdateId: null,
+      };
+    }
+
+    try {
+      return asPersistedState(
+        JSON.parse(readFileSync(this.statePath, 'utf8')),
+        this.maxProcessedUpdates,
+      );
+    } catch {
+      return {
+        version: 1,
+        bindings: [],
+        processedUpdateIds: [],
+        lastProcessedUpdateId: null,
+      };
+    }
+  }
+
+  private persist(): void {
+    const directory = path.dirname(this.statePath);
+    mkdirSync(directory, { recursive: true });
+
+    const nextBody = JSON.stringify(this.serialize(), null, 2);
+    writeFileSync(this.statePath, nextBody, 'utf8');
+  }
+}
+
+export function resolveTelegramRelayStatePath(workspaceStatePath: string): string {
+  const parsed = path.parse(workspaceStatePath);
+  const extension = parsed.ext || '.json';
+  return path.join(parsed.dir, `${parsed.name}.telegram-relay${extension}`);
+}
+
+export function createFileBackedTelegramRelayStore(
+  workspaceStatePath: string,
+  maxProcessedUpdates = 2048,
+): TelegramRelayStore {
+  return new FileBackedTelegramRelayStore(
+    resolveTelegramRelayStatePath(workspaceStatePath),
+    maxProcessedUpdates,
+  );
 }

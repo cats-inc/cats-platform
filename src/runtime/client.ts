@@ -3,6 +3,25 @@ import {
   type ProviderModelCatalog,
 } from '../shared/providerCatalog.js';
 
+export interface RuntimeProviderInstanceConfig {
+  id: string;
+  target: string | null;
+  backend: string | null;
+  command: string | null;
+  runner: string | null;
+  runtime: string | null;
+  transport: string | null;
+  model: string | null;
+}
+
+export interface RuntimeProviderConfigEntry {
+  defaultInstance: string | null;
+  defaultBackend: string | null;
+  instances: RuntimeProviderInstanceConfig[];
+}
+
+export type RuntimeProviderConfigRegistry = Record<string, RuntimeProviderConfigEntry>;
+
 export interface RuntimeHealthPayload {
   service?: string;
   status?: string;
@@ -35,6 +54,7 @@ export interface RuntimeMessageResult {
 
 export interface RuntimeSessionCreateInput {
   provider: string;
+  instance?: string | null;
   model?: string | null;
   cwd?: string | null;
   workspaceMode?: 'shared' | null;
@@ -42,6 +62,7 @@ export interface RuntimeSessionCreateInput {
 
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
+  getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
   getProviderModels(provider: string, instance?: string | null): Promise<ProviderModelCatalog>;
   createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo>;
   sendMessage(sessionId: string, content: string): Promise<RuntimeMessageResult>;
@@ -72,6 +93,89 @@ function readErrorText(body: string, fallback: string): string {
   } catch {
     return trimmed;
   }
+}
+
+function normalizeRuntimeProviderConfigRegistry(payload: unknown): RuntimeProviderConfigRegistry {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return {};
+  }
+
+  const root = payload as Record<string, unknown>;
+  const providers = root.providers;
+  if (!providers || typeof providers !== 'object' || Array.isArray(providers)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(providers)
+      .map(([provider, rawEntry]) => {
+        if (!rawEntry || typeof rawEntry !== 'object' || Array.isArray(rawEntry)) {
+          return null;
+        }
+
+        const entry = rawEntry as Record<string, unknown>;
+        const rawInstances = Array.isArray(entry.instances) ? entry.instances : [];
+        return [
+          provider,
+          {
+            defaultInstance:
+              typeof entry.defaultInstance === 'string' && entry.defaultInstance.trim().length > 0
+                ? entry.defaultInstance
+                : null,
+            defaultBackend:
+              typeof entry.defaultBackend === 'string' && entry.defaultBackend.trim().length > 0
+                ? entry.defaultBackend
+                : null,
+            instances: rawInstances
+              .map((rawInstance) => {
+                if (!rawInstance || typeof rawInstance !== 'object' || Array.isArray(rawInstance)) {
+                  return null;
+                }
+
+                const instance = rawInstance as Record<string, unknown>;
+                const id = typeof instance.id === 'string' ? instance.id.trim() : '';
+                if (!id) {
+                  return null;
+                }
+
+                return {
+                  id,
+                  target:
+                    typeof instance.target === 'string' && instance.target.trim().length > 0
+                      ? instance.target
+                      : null,
+                  backend:
+                    typeof instance.backend === 'string' && instance.backend.trim().length > 0
+                      ? instance.backend
+                      : null,
+                  command:
+                    typeof instance.command === 'string' && instance.command.trim().length > 0
+                      ? instance.command
+                      : null,
+                  runner:
+                    typeof instance.runner === 'string' && instance.runner.trim().length > 0
+                      ? instance.runner
+                      : null,
+                  runtime:
+                    typeof instance.runtime === 'string' && instance.runtime.trim().length > 0
+                      ? instance.runtime
+                      : null,
+                  transport:
+                    typeof instance.transport === 'string' && instance.transport.trim().length > 0
+                      ? instance.transport
+                      : null,
+                  model:
+                    typeof instance.model === 'string' && instance.model.trim().length > 0
+                      ? instance.model
+                      : null,
+                };
+              })
+              .filter((instance): instance is RuntimeProviderInstanceConfig => instance !== null),
+          } satisfies RuntimeProviderConfigEntry,
+        ] as const;
+      })
+      .filter((entry): entry is readonly [string, RuntimeProviderConfigEntry] => entry !== null),
+  );
 }
 
 async function readNdjsonResponse(response: Response): Promise<RuntimeMessageResult> {
@@ -204,6 +308,26 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
   }
 
+  async getProviderConfig(): Promise<RuntimeProviderConfigRegistry> {
+    const response = await fetch(`${this.baseUrl}/providers/config`, {
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new RuntimeRequestError(
+        readErrorText(rawBody, `Failed to fetch provider config (${response.status})`),
+        response.status,
+      );
+    }
+
+    return normalizeRuntimeProviderConfigRegistry(await response.json());
+  }
+
   async getProviderModels(
     provider: string,
     instance?: string | null,
@@ -238,6 +362,9 @@ export class CatsRuntimeClient implements RuntimeClient {
       permissionMode: 'skip',
     };
 
+    if (input.instance?.trim()) {
+      payload.instance = input.instance.trim();
+    }
     if (input.model?.trim()) {
       payload.model = input.model.trim();
     }

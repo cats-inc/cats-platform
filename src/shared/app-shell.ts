@@ -34,6 +34,7 @@ export interface ParticipantSessionSummary {
 
 export interface ExecutionTargetSummary {
   provider: string;
+  instance: string | null;
   model: string | null;
 }
 
@@ -219,6 +220,7 @@ export interface AppShellPayload {
 export interface PalDraftInput {
   name: string;
   provider: string;
+  instance?: string;
   model?: string;
   roles?: string[];
   skillProfile?: string;
@@ -230,6 +232,7 @@ export interface CreateWorkspacePalInput extends PalDraftInput {}
 export interface AssignChannelPalInput {
   palId: string;
   provider?: string;
+  instance?: string;
   model?: string;
   roles?: string[];
 }
@@ -257,6 +260,7 @@ export interface CreateWorkspaceChannelInput {
 
 export interface UpdateGlobalOrchestratorInput {
   provider: string;
+  instance?: string;
   model?: string;
   systemPrompt?: string;
   skillProfile?: string;
