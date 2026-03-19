@@ -1,4 +1,4 @@
-const UUID_PATTERN =
+export const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 export const NEW_CHAT_PATH = '/new';
@@ -26,15 +26,14 @@ export function isOpaqueChannelId(channelId: string): boolean {
 }
 
 export function slugifyChannelLabel(value: string): string {
-  return (
-    value
-      .trim()
-      .toLowerCase()
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-  );
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || 'chat';
 }
 
 export function createChannelExportFilename(title: string, fallbackId: string): string {

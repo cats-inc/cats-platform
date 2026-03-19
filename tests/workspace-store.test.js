@@ -13,10 +13,8 @@ import {
   exportChannel,
   updateGlobalOrchestrator,
 } from '../dist-server/workspace/model.js';
+import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
 import { FileWorkspaceStore } from '../dist-server/workspace/store.js';
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 test('FileWorkspaceStore persists configured channels, pals, assignments, and messages to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-'));

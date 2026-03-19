@@ -19,6 +19,10 @@ export function resolveSelectedProviderInstance(
     return normalizedRequested;
   }
 
+  if (normalizedRequested && provider.instances.length > 0) {
+    console.warn(`Unknown provider instance "${normalizedRequested}" for ${provider.id}, falling back to default`);
+  }
+
   return provider.defaultInstance ?? provider.instances[0]?.id ?? '';
 }
 

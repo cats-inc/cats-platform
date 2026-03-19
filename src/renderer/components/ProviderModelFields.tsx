@@ -75,17 +75,10 @@ export function ProviderModelFields({
       previousTargetKey.current = targetKey;
       manualModelTargetKey.current = null;
     }
-  }, [targetKey]);
-
-  useEffect(() => {
     if (resolvedInstance !== instance) {
-      onTargetChange({
-        provider,
-        instance: resolvedInstance,
-        model,
-      });
+      onTargetChange({ provider, instance: resolvedInstance, model });
     }
-  }, [instance, model, onTargetChange, provider, resolvedInstance]);
+  }, [instance, model, onTargetChange, provider, resolvedInstance, targetKey]);
 
   useEffect(() => {
     let cancelled = false;

@@ -10,6 +10,7 @@ import {
   resolveAppEntryPath,
   resolveDefaultChatPath,
   SETUP_PATH,
+  slugifyChannelLabel,
 } from '../dist-server/shared/channelPaths.js';
 
 test('resolveDefaultChatPath falls back to the dedicated new-chat route', () => {
@@ -39,4 +40,10 @@ test('new-chat route detection and export filenames remain title-based', () => {
     createChannelExportFilename('Ops Radar', '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae'),
     'channel-ops-radar.json',
   );
+});
+
+test('slugifyChannelLabel falls back to chat for non-Latin input', () => {
+  assert.equal(slugifyChannelLabel('日常對話'), 'chat');
+  assert.equal(slugifyChannelLabel('   '), 'chat');
+  assert.equal(slugifyChannelLabel('Hello World'), 'hello-world');
 });

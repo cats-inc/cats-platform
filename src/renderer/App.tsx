@@ -439,6 +439,15 @@ export default function App() {
   const routeChannelExists = Boolean(
     routeChannelId && readyWorkspace?.channels.some((channel) => channel.id === routeChannelId),
   );
+  const routeChannelTitle = routeChannelId
+    ? readyWorkspace?.channels.find((channel) => channel.id === routeChannelId)?.title ?? null
+    : null;
+
+  useEffect(() => {
+    document.title = routeChannelTitle
+      ? `${presentChannelTitle(routeChannelTitle)} - Cats Chat`
+      : 'Cats Chat';
+  }, [routeChannelTitle]);
 
   useEffect(() => {
     if (!accountMenuOpen && !overflowMenuOpenId) return;
@@ -1052,10 +1061,10 @@ export default function App() {
 
       <main className="canvas">
         <Routes>
-        <Route
-          path="/"
-          element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
-        />
+          <Route
+            path="/"
+            element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
+          />
           <Route
             path="/setup"
             element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
