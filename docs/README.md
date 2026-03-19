@@ -48,9 +48,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current suite-foundation context |
 | [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Boss Cat`, `Boss Chat`, `Direct Cat Chat`, skill profiles, runtime skill manifests, MCP profiles, preview surfaces, sleep/wake lifecycle, transport inboxes, `Cats Core v1`, bot bindings, approvals, and owner profile |
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
-| [specs/](./specs/) | Complete | Feature specifications, including suite-foundation work, primary-orchestrator/setup-wizard behavior, provider and transport seams, the new chat sleep/wake lifecycle, Telegram inbox-to-room routing, direct-Cat routing behavior, skill profile/runtime skill-manifest ownership, embedded preview surfaces, and contextual MCP/lazy tool activation |
+| [specs/](./specs/) | Complete | Feature specifications, including suite-foundation work, primary-orchestrator/setup-wizard behavior, packaged setup/provider-installation direction, provider and transport seams, the new chat sleep/wake lifecycle, Telegram inbox-to-room routing, direct-Cat routing behavior, skill profile/runtime skill-manifest ownership, embedded preview surfaces, and contextual MCP/lazy tool activation |
 | [plans/](./plans/) | Complete | Implementation plans, including suite-foundation work, self-hosted npm app packaging, parallel-workstream seams, and the new chat sleep/wake lifecycle plan |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, frozen parallel-delivery ownership boundaries, the accepted chat sleep/wake lifecycle direction, the Telegram inbox transport model, the direct-Cat routing model, product-vs-runtime skill ownership, normalized preview-surface rendering, and MCP intent/runtime tool-delivery ownership |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, packaged host ownership of provider installation, frozen parallel-delivery ownership boundaries, the accepted chat sleep/wake lifecycle direction, the Telegram inbox transport model, the direct-Cat routing model, product-vs-runtime skill ownership, normalized preview-surface rendering, and MCP intent/runtime tool-delivery ownership |
 
 **Legend**: Complete | Partial | Template
 
@@ -96,4 +96,4 @@ The main suite-foundation docs are current, but these areas still need dedicated
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-20*

@@ -1,0 +1,330 @@
+# SPEC-023: Packaged Setup Wizard and Provider Installation
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| **Status** | Draft (Pending Review) |
+| **Owner** | Codex |
+| **Reviewer** | User / packaging workstream |
+
+## Summary
+
+`cats-inc` needs a first-run experience that feels closer to a normal desktop
+product than to a developer bootstrap checklist.
+
+The target experience is:
+
+1. install the Cats app as a packaged product
+2. open it directly without preinstalling Node.js or Python
+3. complete a guided setup wizard
+4. optionally install local CLI providers from inside that wizard
+5. enter a ready chat experience with at least one usable provider path
+
+The key architectural constraint is that **app installation** and
+**provider installation** are different concerns.
+
+- the Cats product itself must be runnable before any optional CLI provider is
+  installed
+- API-backed providers are the recommended low-friction baseline
+- CLI providers are optional capability expansions that the setup wizard may
+  detect, install, verify, or defer
+
+This spec defines the user-facing setup flow and the cross-project integration
+shape among `cats-inc`, `cats-runtime`, and `environment-bootstrap`.
+
+## Goals
+
+- let packaged Cats builds open successfully without requiring a preinstalled
+  local dev stack
+- keep the first usable path as short as possible for non-technical or lightly
+  technical users
+- make CLI provider installation a guided optional step instead of a manual
+  prerequisite
+- organize provider choices as capability packs first, with per-provider detail
+  only when needed
+- keep long-running setup steps resumable across restarts, reboots, or first
+  launches of WSL/Docker-backed tooling
+- reuse hard-won `environment-bootstrap` install and verification knowledge
+  without exposing its developer-oriented top-level orchestration directly
+
+## Non-Goals
+
+- shipping every supported CLI provider in the first packaged release
+- requiring all users to install WSL, Docker, or local models up front
+- turning `cats-runtime` into the installer/process owner for provider setup
+- exposing `environment-bootstrap` developer scripts directly as the product UI
+- replacing the broader settings experience after first-run setup completes
+
+## User Stories
+
+- As a new user, I want the Cats app to open after installation without asking
+  me to install developer runtimes first.
+- As a new user, I want the setup wizard to recommend the fastest path to a
+  usable first chat.
+- As a power user, I want to opt into local CLI providers from the wizard
+  without manually hunting for install commands.
+- As a returning user whose setup was interrupted by a restart, Docker startup,
+  or WSL user creation, I want the wizard to resume instead of starting over.
+
+## Requirements
+
+### Functional Requirements
+
+1. Packaged Cats builds shall launch a first-run setup experience without
+   requiring users to preinstall Node.js or Python.
+2. The setup wizard shall be able to load even when no CLI provider is
+   installed locally.
+3. The setup wizard shall separate:
+   - product bootstrap
+   - provider selection
+   - provider installation
+   - provider verification
+   - Boss Cat initialization
+4. The setup wizard shall present at least one low-friction baseline provider
+   path that does not require CLI installation. API-backed providers are the
+   default recommended baseline.
+5. CLI provider installation shall be optional and skippable.
+6. The wizard shall organize provider selection primarily through capability
+   packs, with advanced per-provider control available when needed.
+7. The first packaged slice shall support these capability-pack directions:
+   - `API Baseline (Recommended)` for API-key-backed Claude, OpenAI, and Gemini
+   - `Native CLI Pack` for the most stable cross-platform native CLI providers
+   - additional packs such as local-model or WSL-heavy flows may be deferred
+8. The setup flow shall perform a local provider scan before offering installs
+   so already-installed tools can be reused.
+9. The provider scan shall report at least these states per provider:
+   - `not_installed`
+   - `installed`
+   - `auth_required`
+   - `ready`
+   - `failed`
+10. Completing setup shall require at least one usable provider path to be
+    ready, whether API-backed or CLI-backed.
+11. The renderer shall not invoke shell commands or installation scripts
+    directly.
+12. The packaged host shall orchestrate provider install, verify, and resume
+    actions and expose structured progress/results back to the renderer.
+13. Provider installation may trigger UAC, sudo, relaunch, reboot, WSL
+    initialization, or first-run service startup. The setup flow shall be able
+    to record and resume across those interruptions.
+14. The final setup result shall persist:
+    - setup completion status
+    - selected provider mode or capability pack choices
+    - discovered/installed provider readiness state
+    - Boss Cat selection and initial execution target
+15. The wizard shall finish by opening the user into a ready chat entry flow.
+
+### Cross-Project Requirements
+
+1. `cats-runtime` shall remain the authority for provider family topology and
+   provider-install metadata consumed by product hosts.
+2. `environment-bootstrap` shall remain the source of install/check/upgrade
+   script knowledge, but the packaged Cats app shall reuse only the relevant
+   provider-level primitives, not its full developer-facing orchestration.
+3. The packaged host shall map runtime-owned provider install metadata onto the
+   bundled execution assets it uses for actual installation and verification.
+4. `cats-runtime` shall not execute provider-install scripts itself as part of
+   the first packaged setup flow.
+5. The install/check primitives reused from `environment-bootstrap` shall be
+   invocable in a GUI-safe, non-interactive mode.
+6. The packaged setup flow shall rely on structured install/check outcomes
+   rather than parsing human-oriented terminal output.
+
+### Non-Functional Requirements
+
+- the baseline setup path should minimize steps before the first usable chat
+- long-running install work should surface clear progress and actionable
+  failure states
+- setup should be resumable and idempotent wherever practical
+- platform privilege prompts should be host-managed rather than left to ad hoc
+  script interactions
+- the product must not require users to understand `environment-bootstrap`
+  terminology, script names, or subproject boundaries
+
+## Design Overview
+
+```text
+Packaged app install
+        |
+        v
+  Launch Cats app
+        |
+        v
+  First-run wizard
+        |
+        +--> Welcome / locale / owner basics
+        +--> System scan
+        +--> Choose setup mode or capability pack
+        +--> API provider setup (recommended baseline)
+        +--> Optional CLI provider install + verify
+        +--> Boss Cat setup
+        +--> Finish
+        |
+        v
+   Ready chat entry
+```
+
+## Proposed Wizard Flow
+
+### Step 1: Welcome
+
+- explain that Cats can run immediately with API providers and can optionally
+  add local CLI providers later
+- collect minimal owner-facing settings such as display name and language
+
+### Step 2: System Scan
+
+- detect current OS/platform conditions
+- detect already-installed providers
+- detect blockers such as missing WSL distro, unavailable Docker daemon, or
+  missing auth state where relevant
+
+### Step 3: Choose Setup Mode
+
+Recommended choices:
+
+- `API Baseline (Recommended)`
+- `Hybrid`
+- `CLI Enhanced`
+
+Advanced view may expand to explicit capability packs or individual providers.
+
+### Step 4: Provider Setup
+
+#### API Baseline
+
+- collect API keys or equivalent credentials for supported API-backed providers
+- recommend this as the fastest route to a usable first chat
+
+#### Optional CLI Provider Setup
+
+- show already-detected providers first
+- show installable providers grouped by capability pack
+- run host-managed install and verification actions
+- allow deferred setup for providers that are not required for the first use
+
+### Step 5: Boss Cat Setup
+
+- pick or create the first Boss Cat
+- choose its initial execution target from the now-ready provider options
+
+### Step 6: Finish
+
+- persist setup completion
+- open the first ready chat surface
+
+## Capability Pack Direction
+
+### First Packaged Slice
+
+- `API Baseline (Recommended)`
+  - Claude API
+  - OpenAI API
+  - Gemini API
+- `Native CLI Pack`
+  - Claude Code
+  - Cursor Agent when already installed or available on the current platform
+
+### Later Packs
+
+- `Local Model Pack`
+  - Ollama and local-model helpers
+- `WSL / Power User Pack`
+  - Kiro, Goose, Junie, and other tooling with heavier local prerequisites
+
+## Installer and Runtime Boundary
+
+The packaged setup flow should follow this ownership split:
+
+- `cats-inc` renderer
+  - displays the wizard
+  - renders provider choices, progress, and errors
+- packaged host (future Electron main)
+  - executes install/check actions
+  - manages UAC/sudo/relaunch/restart flow
+  - persists resumable setup state
+- `cats-runtime`
+  - remains the runtime/provider topology authority
+  - exposes provider metadata and later runtime readiness
+- `environment-bootstrap`
+  - supplies reusable provider install/check/upgrade knowledge and scripts
+
+## Reuse Direction for `environment-bootstrap`
+
+The packaged Cats product should reuse:
+
+- provider-level install logic
+- provider-level verification logic
+- platform-specific edge-case handling already solved in those scripts
+- shared knowledge about auth, PATH, shell, WSL, Docker, and encoding edge
+  cases
+
+The packaged Cats product should not reuse:
+
+- `Full-Install.ps1`
+- `full-install.sh`
+- other developer-facing top-level bootstrap orchestration as the direct
+  end-user flow
+
+## Installer Asset Contract Direction
+
+The bundled provider install/check assets used by the packaged host should
+support a machine-readable execution contract, whether by adapting
+`environment-bootstrap` scripts directly or by wrapping them in Cats-specific
+shim scripts.
+
+Preferred contract direction:
+
+- `--check-only` for detection without installation
+- `--non-interactive` as the default mode when invoked by the GUI
+- structured JSON output for status, version, warnings, and actionable failure
+  details
+- stable outcome mapping for success, restart-required, auth-required, and
+  failure cases
+
+The goal is to let the host surface progress and recovery guidance without
+teaching the renderer or the user about the underlying script topology.
+
+## Resume and Interruption Handling
+
+The setup system should treat these as normal, resumable events rather than as
+terminal failures:
+
+- app relaunch after a packaged installer finishes
+- system restart or required relaunch
+- first-time WSL distro initialization
+- Docker daemon warm-up
+- privilege elevation round-trips
+- auth-required states after install succeeds
+
+## Dependencies
+
+- [SPEC-012](./SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md)
+- [SPEC-013](./SPEC-013-provider-catalog-consumption-and-ui-seam.md)
+- [ADR-003](../decisions/003-electron-host-manages-local-services.md)
+- [ADR-013](../decisions/013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
+- [cats-runtime ADR-009](../../../cats-runtime/docs/decisions/009-keep-cats-runtime-separately-packageable-with-app-managed-local-startup.md)
+- [environment-bootstrap README](../../../environment-bootstrap/README.md)
+
+## Open Questions
+
+- Should the first packaged consumer path require one API provider to be
+  configured before it allows CLI-only completion, or should any ready provider
+  path be sufficient?
+- Which provider install states should be persisted by the app host versus
+  re-derived on every launch?
+- Should the first packaged slice support explicit per-provider advanced
+  toggles, or should it start with pack-only choices plus a hidden advanced
+  panel?
+
+## References
+
+- [Architecture](../architecture.md)
+- [Deployment](../deployment.md)
+- [ROADMAP](../../ROADMAP.md)
+
+---
+
+*Created: 2026-03-20*
+*Author: Codex*
