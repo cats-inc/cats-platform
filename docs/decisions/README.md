@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [022-own-workspace-delivery-policy-in-product](./022-own-workspace-delivery-policy-in-product.md) | Own workspace delivery policy in product | Accepted | 2026-03-20 |
 | [021-keep-packaged-setup-and-provider-installation-in-the-host](./021-keep-packaged-setup-and-provider-installation-in-the-host.md) | Keep packaged setup and provider installation in the host | Accepted | 2026-03-20 |
 | [020-own-mcp-intent-in-product-and-tool-delivery-in-runtime](./020-own-mcp-intent-in-product-and-tool-delivery-in-runtime.md) | Own MCP intent in product and tool delivery in runtime | Accepted | 2026-03-19 |
 | [019-normalize-runtime-previews-as-surfaces-not-provider-iframes](./019-normalize-runtime-previews-as-surfaces-not-provider-iframes.md) | Normalize runtime previews as surfaces, not provider iframes | Accepted | 2026-03-19 |
