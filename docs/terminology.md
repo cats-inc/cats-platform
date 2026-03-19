@@ -39,6 +39,7 @@
 | Skill profile | A product-owned capability mapping that decides which runtime skill names should be requested for a Cat in a given room or transport context. |
 | Runtime skill catalog | The `cats-runtime` hosted catalog of execution-ready `SKILL.md` packages that can be validated, resolved, and mounted into sessions. |
 | Runtime skill manifest | The product-to-runtime request payload that carries requested skill names plus optional context metadata for one session or wake flow. |
+| Preview surface | A normalized product-facing reference to a preview-capable runtime output, such as a local service URL or HTML artifact, that `cats-inc` may choose to embed inline or open externally. |
 | Actor / Resource | The broader `Cats Core v1` term for a human, orchestrator, worker, stakeholder, virtual friend, or other reusable participant. |
 | Execution target | The provider/model preference selected for a pal or orchestrator in one context. |
 | Execution lease | The currently active runtime session metadata used to execute work through a provider. |

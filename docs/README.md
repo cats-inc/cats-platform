@@ -46,11 +46,11 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | Document | Status | Description |
 |----------|--------|-------------|
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current suite-foundation context |
-| [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Boss Cat`, `Boss Chat`, `Direct Cat Chat`, skill profiles, runtime skill manifests, sleep/wake lifecycle, transport inboxes, `Cats Core v1`, bot bindings, approvals, and owner profile |
+| [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Boss Cat`, `Boss Chat`, `Direct Cat Chat`, skill profiles, runtime skill manifests, preview surfaces, sleep/wake lifecycle, transport inboxes, `Cats Core v1`, bot bindings, approvals, and owner profile |
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
-| [specs/](./specs/) | Complete | Feature specifications, including suite-foundation work, primary-orchestrator/setup-wizard behavior, provider and transport seams, the new chat sleep/wake lifecycle, Telegram inbox-to-room routing, direct-Cat routing behavior, and skill profile/runtime skill-manifest ownership |
+| [specs/](./specs/) | Complete | Feature specifications, including suite-foundation work, primary-orchestrator/setup-wizard behavior, provider and transport seams, the new chat sleep/wake lifecycle, Telegram inbox-to-room routing, direct-Cat routing behavior, skill profile/runtime skill-manifest ownership, and embedded preview surfaces |
 | [plans/](./plans/) | Complete | Implementation plans, including suite-foundation work, self-hosted npm app packaging, parallel-workstream seams, and the new chat sleep/wake lifecycle plan |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, frozen parallel-delivery ownership boundaries, the accepted chat sleep/wake lifecycle direction, the Telegram inbox transport model, the direct-Cat routing model, and product-vs-runtime skill ownership |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, frozen parallel-delivery ownership boundaries, the accepted chat sleep/wake lifecycle direction, the Telegram inbox transport model, the direct-Cat routing model, product-vs-runtime skill ownership, and normalized preview-surface rendering |
 
 **Legend**: Complete | Partial | Template
 
