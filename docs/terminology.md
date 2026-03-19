@@ -25,6 +25,11 @@
 | Primary Orchestrator Cat | The formal product and domain term for the Cat selected as the default public orchestrator. In UI copy, this should usually be presented as `Boss Cat`. |
 | Cat registry | The workspace-level list of reusable cats that can be assigned into one or more chats. |
 | Cat assignment | The channel-scoped record that decides whether a workspace cat is active in one chat and which execution target it should use there. |
+| Awake | The user-facing lifecycle state for a Cat that currently has an active runtime session in one chat. |
+| Sleeping | The user-facing lifecycle state for a Cat that still belongs to a chat but does not currently have an active runtime session there. |
+| Waking up | The user-facing lifecycle state for a Cat whose wake request is in progress. |
+| Put to sleep | Closing a chat-scoped runtime session without removing the Cat from the chat. |
+| Active chat limit | The maximum number of chats in which a given class of Cat is allowed to stay awake at once. The first slice should configure this separately for `Boss Cat` and `Other Cats`. |
 | Actor / Resource | The broader `Cats Core v1` term for a human, orchestrator, worker, stakeholder, virtual friend, or other reusable participant. |
 | Execution target | The provider/model preference selected for a pal or orchestrator in one context. |
 | Execution lease | The currently active runtime session metadata used to execute work through a provider. |

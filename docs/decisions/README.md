@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [015-adopt-cat-sleep-wake-lifecycle-for-chat-sessions](./015-adopt-cat-sleep-wake-lifecycle-for-chat-sessions.md) | Adopt cat sleep/wake lifecycle for chat sessions | Accepted | 2026-03-19 |
 | [014-freeze-parallel-delivery-boundaries-for-provider-telegram-and-chat-workstreams](./014-freeze-parallel-delivery-boundaries-for-provider-telegram-and-chat-workstreams.md) | Freeze parallel delivery boundaries for provider, Telegram, and chat workstreams | Accepted | 2026-03-19 |
 | [012-keep-cat-naming-in-product-apis-and-neutral-terms-in-system-apis](./012-keep-cat-naming-in-product-apis-and-neutral-terms-in-system-apis.md) | Keep Cat naming in product APIs and neutral terms in system APIs | Accepted | 2026-03-19 |
 | [011-model-primary-orchestrator-as-visible-cat](./011-model-primary-orchestrator-as-visible-cat.md) | Model the primary orchestrator as a visible Cat | Accepted | 2026-03-19 |

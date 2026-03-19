@@ -46,11 +46,11 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | Document | Status | Description |
 |----------|--------|-------------|
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current suite-foundation context |
-| [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Cats Core v1`, bot bindings, approvals, and owner profile |
+| [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Boss Cat`, sleep/wake lifecycle, `Cats Core v1`, bot bindings, approvals, and owner profile |
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `cats-inc` |
-| [specs/](./specs/) | Complete | Feature specifications, including suite-foundation work, primary-orchestrator/setup-wizard behavior, and the new provider-catalog, Telegram-relay, and capability-registry seams |
-| [plans/](./plans/) | Complete | Implementation plans, including suite-foundation work, self-hosted npm app packaging, and the new parallel-workstream ownership and seam plan |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, the proposed self-hosted npm app distribution direction, and frozen parallel-delivery ownership boundaries |
+| [specs/](./specs/) | Complete | Feature specifications, including suite-foundation work, primary-orchestrator/setup-wizard behavior, provider and transport seams, and the new chat sleep/wake lifecycle |
+| [plans/](./plans/) | Complete | Implementation plans, including suite-foundation work, self-hosted npm app packaging, parallel-workstream seams, and the new chat sleep/wake lifecycle plan |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, frozen parallel-delivery ownership boundaries, and the accepted chat sleep/wake lifecycle direction |
 
 **Legend**: Complete | Partial | Template
 
