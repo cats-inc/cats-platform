@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-022](./SPEC-022-cats-memory-layering-and-ownership.md) | Cats Memory Layering and Ownership | Draft (Pending Review) | - |
 | [SPEC-021](./SPEC-021-contextual-mcp-profiles-and-lazy-tool-activation.md) | Contextual MCP Profiles and Lazy Tool Activation | Draft (Pending Review) | - |
 | [SPEC-020](./SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md) | Embedded Preview Surfaces for Runtime Artifacts and Services | Draft (Pending Review) | - |
 | [SPEC-019](./SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md) | Product Skill Profiles and Runtime Skill Manifests | Draft (Pending Review) | - |

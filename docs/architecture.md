@@ -130,6 +130,26 @@ directly to individual workers.
   a preview-ready artifact pane, contextual pal assignment, settings-hosted
   pal management, channel setup, and global orchestrator editing
 
+## Memory Layering Direction
+
+`cats-inc` should treat memory as four product-facing layers above provider
+continuity.
+
+- **Provider-native continuity** stays behind `cats-runtime` and exists to help
+  resume sessions correctly when a backend requires its own thread/session
+  state.
+- **Evidence transcript backup** is the canonical Cats-owned record for chats,
+  worker traces, transport events, tool activity, and artifacts.
+- **Working and durable memory** covers room summaries, sleep/wake checkpoints,
+  Cat memory, owner preferences, and other structured cross-session context.
+- **Archive/RAG projection** is a downstream retrieval surface for future
+  `Cats Work` search and recall.
+
+This means agent-native transcripts are useful, but they are not the only
+durable memory of the product. The product should ingest, normalize, and own
+its own memory layers even when a backend such as OpenClaw also keeps session
+history.
+
 ### Workspace Shell Model
 
 - **Purpose**: Describe the current product contract shared by server and
