@@ -41,3 +41,9 @@ export function createChannelExportFilename(title: string, fallbackId: string): 
   const slug = slugifyChannelLabel(title);
   return `channel-${slug || fallbackId}.json`;
 }
+
+export function escapeContentDispositionFilename(filename: string): string {
+  return filename
+    .replace(/[\r\n]+/g, '')
+    .replace(/["\\]/g, '\\$&');
+}

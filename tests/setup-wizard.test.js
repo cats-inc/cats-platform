@@ -28,6 +28,23 @@ function createRuntimeStub() {
         service: 'cats-runtime',
       };
     },
+    async getProviderConfig() {
+      return {};
+    },
+    async getProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: `${provider}-default`,
+        source: 'config',
+        cache: null,
+        models: [
+          { id: `${provider}-default`, label: `${provider} default`, default: true },
+        ],
+        warnings: [],
+      };
+    },
     async createSession(input) {
       const session = {
         id: `session-${nextSession++}`,

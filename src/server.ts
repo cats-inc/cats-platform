@@ -15,6 +15,9 @@ import type {
   UpdateSelectedChannelInput,
   WorkspaceState,
 } from './shared/app-shell.js';
+import {
+  escapeContentDispositionFilename,
+} from './shared/channelPaths.js';
 import { MemoryWorkspaceStore, type WorkspaceStore } from './workspace/store.js';
 import {
   appendMessage,
@@ -633,8 +636,9 @@ async function handleChannelExport(
   try {
     const state = await dependencies.workspaceStore.read();
     const payload = exportChannel(state, channelId);
+    const filename = escapeContentDispositionFilename(buildChannelExportFilename(state, channelId));
     sendJson(response, 200, payload, {
-      'content-disposition': `attachment; filename="${buildChannelExportFilename(state, channelId)}"`,
+      'content-disposition': `attachment; filename="${filename}"`,
     });
   } catch (error) {
     sendJson(response, errorStatusCode(error), {
@@ -1153,8 +1157,9 @@ async function handleRestGetExport(
     requireValidWorkspaceId(workspaceId);
     const state = await dependencies.workspaceStore.read();
     const payload = exportChannel(state, channelId);
+    const filename = escapeContentDispositionFilename(buildChannelExportFilename(state, channelId));
     sendJson(response, 200, payload, {
-      'content-disposition': `attachment; filename="${buildChannelExportFilename(state, channelId)}"`,
+      'content-disposition': `attachment; filename="${filename}"`,
     });
   } catch (error) {
     handleRestError(response, error);

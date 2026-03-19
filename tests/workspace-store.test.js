@@ -295,6 +295,36 @@ test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor',
   assert.ok(bossCatActor.roles.includes('boss_cat'));
 });
 
+test('updateGlobalOrchestrator preserves the existing model when model is omitted', async () => {
+  const store = new FileWorkspaceStore(
+    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'),
+  );
+  let state = await store.read();
+
+  state = updateGlobalOrchestrator(
+    state,
+    {
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-opus-4-6',
+    },
+    new Date('2026-03-19T00:00:00.000Z'),
+  );
+
+  state = updateGlobalOrchestrator(
+    state,
+    {
+      provider: 'claude',
+      telegramBotName: 'smelly_bot',
+    },
+    new Date('2026-03-19T00:01:00.000Z'),
+  );
+
+  assert.equal(state.globalOrchestrator.executionTarget.instance, 'native');
+  assert.equal(state.globalOrchestrator.executionTarget.model, 'claude-opus-4-6');
+  assert.equal(state.globalOrchestrator.telegramBotName, 'smelly_bot');
+});
+
 test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', async () => {
   const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'));
   let state = await store.read();

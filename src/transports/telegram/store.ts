@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import type { TelegramConversationBinding } from './contracts.js';
@@ -221,7 +222,19 @@ export class FileBackedTelegramRelayStore extends BaseTelegramRelayStore {
     mkdirSync(directory, { recursive: true });
 
     const nextBody = JSON.stringify(this.serialize(), null, 2);
-    writeFileSync(this.statePath, nextBody, 'utf8');
+    const tempPath = path.join(
+      directory,
+      `.${path.basename(this.statePath)}.${process.pid}.${randomUUID()}.tmp`,
+    );
+
+    try {
+      writeFileSync(tempPath, nextBody, 'utf8');
+      renameSync(tempPath, this.statePath);
+    } finally {
+      if (existsSync(tempPath)) {
+        rmSync(tempPath, { force: true });
+      }
+    }
   }
 }
 

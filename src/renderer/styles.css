@@ -68,6 +68,27 @@ textarea {
   padding: 32px;
 }
 
+.bootShell {
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.bootSpinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid rgba(196, 101, 58, 0.16);
+  border-top-color: rgba(196, 101, 58, 0.72);
+  animation: bootSpin 0.72s linear infinite;
+}
+
+@keyframes bootSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .claudeShell {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);

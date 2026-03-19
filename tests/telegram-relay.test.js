@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -184,4 +184,5 @@ test('file-backed telegram relay store restores bindings and dedupe markers afte
   assert.equal(secondStore.getBindingByConversationId('telegram:12345')?.telegramChatId, '12345');
   assert.equal(secondStore.hasProcessedUpdate(101), true);
   assert.equal(secondStore.getLastProcessedUpdateId(), 101);
+  assert.deepEqual(readdirSync(stateDir), ['telegram-relay.json']);
 });

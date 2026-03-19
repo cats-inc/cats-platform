@@ -516,7 +516,10 @@ export function updateGlobalOrchestrator(
       instance:
         normalizeOptionalText(input.instance)
         ?? nextState.globalOrchestrator.executionTarget.instance,
-      model: normalizeOptionalText(input.model),
+      model:
+        input.model === undefined
+          ? nextState.globalOrchestrator.executionTarget.model
+          : normalizeOptionalText(input.model),
     },
     systemPrompt:
       input.systemPrompt?.trim() || nextState.globalOrchestrator.systemPrompt,

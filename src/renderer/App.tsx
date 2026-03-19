@@ -271,6 +271,14 @@ function appendOptimisticUserMessage(
   return next;
 }
 
+function BootShell() {
+  return (
+    <div className="screen bootShell" aria-label="Loading Cats Chat">
+      <div className="bootSpinner" aria-hidden="true" />
+    </div>
+  );
+}
+
 function SetupWizard({
   payload,
   onComplete,
@@ -425,6 +433,12 @@ export default function App() {
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [greeting] = useState(pickGreeting);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const readyWorkspace = state.status === 'ready' ? state.payload.workspace : null;
+  const selectedChannelId = readyWorkspace?.selectedChannelId ?? null;
+  const selectedChannelViewId = readyWorkspace?.selectedChannel?.id ?? null;
+  const routeChannelExists = Boolean(
+    routeChannelId && readyWorkspace?.channels.some((channel) => channel.id === routeChannelId),
+  );
 
   useEffect(() => {
     if (!accountMenuOpen && !overflowMenuOpenId) return;
@@ -487,11 +501,9 @@ export default function App() {
 
   useEffect(() => {
     if (state.status !== 'ready' || !routeChannelId) return;
-    const { selectedChannelId, selectedChannel } = state.payload.workspace;
-    if (selectedChannelId === routeChannelId && selectedChannel?.id === routeChannelId) return;
+    if (selectedChannelId === routeChannelId && selectedChannelViewId === routeChannelId) return;
 
-    const exists = state.payload.workspace.channels.some(ch => ch.id === routeChannelId);
-    if (!exists) {
+    if (!routeChannelExists) {
       navigate(resolveDefaultChatPath(selectedChannelId), { replace: true });
       return;
     }
@@ -510,7 +522,14 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [navigate, routeChannelId, state]);
+  }, [
+    navigate,
+    routeChannelExists,
+    routeChannelId,
+    selectedChannelId,
+    selectedChannelViewId,
+    state.status,
+  ]);
 
   function onOpenChatsOverview(): void {
     if (state.status !== 'ready') {
@@ -781,14 +800,7 @@ export default function App() {
   }
 
   if (state.status === 'loading') {
-    return (
-      <div className="screen screenCentered">
-        <div className="loadingPanel">
-          <p className="eyebrow">Cats Inc</p>
-          <h1>Chat</h1>
-        </div>
-      </div>
-    );
+    return <BootShell />;
   }
 
   if (state.status === 'error') {
@@ -1339,12 +1351,7 @@ export default function App() {
               </div>
               </>
             ) : (
-              <div className="screen screenCentered">
-                <div className="loadingPanel">
-                  <p className="eyebrow">Cats Inc</p>
-                  <h1>Chat</h1>
-                </div>
-              </div>
+              <BootShell />
             )
           } />
           <Route
