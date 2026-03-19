@@ -45,8 +45,8 @@ shape among `cats-inc`, `cats-runtime`, and `environment-bootstrap`.
   only when needed
 - keep long-running setup steps resumable across restarts, reboots, or first
   launches of WSL/Docker-backed tooling
-- reuse hard-won `environment-bootstrap` install and verification knowledge
-  without exposing its developer-oriented top-level orchestration directly
+- port relevant install and compatibility knowledge into shipped Cats code and
+  assets without making `environment-bootstrap` a product dependency
 
 ## Non-Goals
 
@@ -121,15 +121,15 @@ shape among `cats-inc`, `cats-runtime`, and `environment-bootstrap`.
 
 1. `cats-runtime` shall remain the authority for provider family topology and
    provider-install metadata consumed by product hosts.
-2. `environment-bootstrap` shall remain the source of install/check/upgrade
-   script knowledge, but the packaged Cats app shall reuse only the relevant
-   provider-level primitives, not its full developer-facing orchestration.
+2. `environment-bootstrap` may remain an internal knowledge source, but the
+   packaged Cats app shall ship product-owned install/check implementations or
+   bundled assets rather than depend on the bootstrap repo directly.
 3. The packaged host shall map runtime-owned provider install metadata onto the
    bundled execution assets it uses for actual installation and verification.
 4. `cats-runtime` shall not execute provider-install scripts itself as part of
    the first packaged setup flow.
-5. The install/check primitives reused from `environment-bootstrap` shall be
-   invocable in a GUI-safe, non-interactive mode.
+5. Product-owned install/check assets derived from internal bootstrap knowledge
+   shall be invocable in a GUI-safe, non-interactive mode.
 6. The packaged setup flow shall rely on structured install/check outcomes
    rather than parsing human-oriented terminal output.
 
@@ -259,21 +259,24 @@ The packaged setup flow should follow this ownership split:
   - persists resumable setup state
 - `cats-runtime`
   - remains the runtime/provider topology authority
-  - exposes provider metadata and later runtime readiness
+  - exposes provider metadata, lightweight setup/diagnostics APIs, and runtime
+    readiness
 - `environment-bootstrap`
-  - supplies reusable provider install/check/upgrade knowledge and scripts
+  - remains an internal knowledge source and experiment repo, not a shipped
+    product dependency
 
-## Reuse Direction for `environment-bootstrap`
+## Knowledge Porting Direction from `environment-bootstrap`
 
-The packaged Cats product should reuse:
+The packaged Cats product should port or reimplement:
 
-- provider-level install logic
-- provider-level verification logic
-- platform-specific edge-case handling already solved in those scripts
+- provider-level install logic that has proven stable
+- provider-level verification logic that has proven stable
+- platform-specific edge-case handling already learned from internal bootstrap
+  work
 - shared knowledge about auth, PATH, shell, WSL, Docker, and encoding edge
   cases
 
-The packaged Cats product should not reuse:
+The packaged Cats product should not depend directly on:
 
 - `Full-Install.ps1`
 - `full-install.sh`
@@ -283,9 +286,9 @@ The packaged Cats product should not reuse:
 ## Installer Asset Contract Direction
 
 The bundled provider install/check assets used by the packaged host should
-support a machine-readable execution contract, whether by adapting
-`environment-bootstrap` scripts directly or by wrapping them in Cats-specific
-shim scripts.
+support a machine-readable execution contract. Those assets may be handwritten
+for Cats or derived from internal bootstrap knowledge, but they should ship as
+product-owned code or bundled scripts.
 
 Preferred contract direction:
 

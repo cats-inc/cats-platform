@@ -22,9 +22,9 @@ At the same time, the current architecture already fixes several boundaries:
 - the renderer is React/Vite and should not become a shell/process manager
 - `cats-inc` remains the product-facing boundary
 - `cats-runtime` remains the runtime boundary
-- `environment-bootstrap` now contains valuable provider install/check logic
-  and platform edge-case knowledge, but its top-level scripts are still
-  developer-oriented orchestration
+- `environment-bootstrap` remains a useful internal knowledge source for
+  provider install/check behavior and platform edge cases, but it is not a
+  shipped product dependency
 
 That leaves a packaging/setup question:
 
@@ -51,13 +51,16 @@ This decision includes:
    - it does not spawn shell commands or provider scripts directly
 3. `cats-runtime` remains the runtime boundary and does not become the owner of
    provider installation execution.
+   - this does not prevent `cats-runtime` from exposing standalone setup,
+     diagnostics, or lightweight dashboard settings for direct runtime users
 4. App installation and provider installation are separate concerns.
    - the Cats product must be able to open before optional CLI providers are
      installed
    - API-backed providers remain the recommended baseline path
-5. `environment-bootstrap` is reused at the provider-primitive level rather
-   than by exposing its full developer-facing install orchestration directly to
-   end users.
+5. Relevant install and compatibility knowledge may be ported from
+   `environment-bootstrap` into product-owned code or bundled assets, rather
+   than exposing the bootstrap repo or its top-level scripts directly to end
+   users.
 6. Long-running and interruptible setup actions such as UAC elevation, sudo,
    relaunch, restart, Docker warm-up, or first WSL boot are host-managed flows
    that must be resumable.
@@ -69,8 +72,8 @@ This decision includes:
 - preserves the current renderer/product/runtime boundaries
 - keeps shell execution and privilege handling out of the renderer
 - avoids overloading `cats-runtime` with installer responsibilities
-- allows the packaged product to reuse `environment-bootstrap` knowledge
-  without inheriting its developer-oriented UX directly
+- allows the packaged product to port internal bootstrap knowledge without
+  inheriting bootstrap-repo coupling or developer-oriented UX directly
 - gives one place to manage resume, restart, and privileged setup behavior
 
 ### Negative
@@ -128,6 +131,7 @@ End-User Setup Flow
 - [ADR-013](./013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
 - [SPEC-023](../specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md)
 - [cats-runtime ADR-009](../../../cats-runtime/docs/decisions/009-keep-cats-runtime-separately-packageable-with-app-managed-local-startup.md)
+- [cats-runtime ADR-014](../../../cats-runtime/docs/decisions/014-keep-lightweight-provider-setup-and-diagnostics-in-cats-runtime.md)
 - [environment-bootstrap README](../../../environment-bootstrap/README.md)
 
 ---
