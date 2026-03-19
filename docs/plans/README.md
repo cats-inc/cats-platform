@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-016](./PLAN-016-dynamic-room-workflow-orchestration.md) | Dynamic Room Workflow Orchestration | Draft (Pending Review) | [SPEC-026](../specs/SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) |
 | [PLAN-015](./PLAN-015-chat-session-sleep-wake-lifecycle.md) | Chat Session Sleep/Wake Lifecycle | Approved | [SPEC-016](../specs/SPEC-016-chat-session-sleep-wake-lifecycle.md) |
 | [PLAN-014](./PLAN-014-parallel-workstream-ownership-and-integration-seams.md) | Parallel Workstream Ownership and Integration Seams | Draft (Ready for Specialist Handoff) | [SPEC-013](../specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md), [SPEC-014](../specs/SPEC-014-telegram-boss-cat-relay-mvp.md), [SPEC-015](../specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md) |
 | [PLAN-012](./PLAN-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) | First-Run Setup Wizard and Boss Cat Bootstrap | Draft (Pending Review) | [SPEC-012](../specs/SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) |
@@ -72,6 +73,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-20*
 
 *See also: [specs/](../specs/) for feature specifications*

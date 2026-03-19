@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [024-separate-explicit-mentions-from-dynamic-room-workflow](./024-separate-explicit-mentions-from-dynamic-room-workflow.md) | Separate explicit mentions from dynamic room workflow | Accepted | 2026-03-20 |
 | [023-own-budget-policy-and-cost-control-in-product](./023-own-budget-policy-and-cost-control-in-product.md) | Own budget policy and cost control in product | Accepted | 2026-03-20 |
 | [022-own-workspace-delivery-policy-in-product](./022-own-workspace-delivery-policy-in-product.md) | Own workspace delivery policy in product | Accepted | 2026-03-20 |
 | [021-keep-packaged-setup-and-provider-installation-in-the-host](./021-keep-packaged-setup-and-provider-installation-in-the-host.md) | Keep packaged setup and provider installation in the host | Accepted | 2026-03-20 |
