@@ -215,6 +215,15 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: High
 - **Status**: Planned
 
+### FR-028: Multi-Layer Memory Ownership
+
+- **Description**: The product shall separate provider-native continuity,
+  evidence transcript backup, Cat/owner durable memory, and archive/RAG
+  retrieval into distinct layers with explicit ownership between `cats-inc` and
+  `cats-runtime`.
+- **Priority**: High
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -258,15 +267,22 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 - Product services MUST continue to talk to `cats-runtime`, not provider CLIs
   directly
+
+### NFR-008: Memory Layer Separation
+
+- Provider-native transcripts SHOULD be treated as continuity aids rather than
+  the only durable product memory
+- Evidence transcript backup, durable Cat/owner memory, and archive/RAG
+  retrieval MUST remain logically distinct even if they share storage
 - MCP should supplement the runtime boundary for orchestrators, not replace the
   direct product API used by app services
 
-### NFR-008: Transport Agnosticism
+### NFR-009: Transport Agnosticism
 
 - External transport platforms such as Telegram and LINE SHOULD map to shared
   conversation and bot-binding records rather than separate one-off schemas
 
-### NFR-009: Packaged Local Experience
+### NFR-010: Packaged Local Experience
 
 - The first public packaging path SHOULD feel like native software rather than
   a manual dev stack
@@ -275,7 +291,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - Tauri or Flutter SHOULD NOT be introduced into the primary suite path unless
   the desktop Node-sidecar assumptions change materially
 
-### NFR-010: Workflow Hierarchy
+### NFR-011: Workflow Hierarchy
 
 - High-frequency chat actions SHOULD stay in chat context instead of being
   displaced into management-first navigation
