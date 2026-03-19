@@ -100,7 +100,9 @@ shape among `cats-inc`, `cats-runtime`, and `environment-bootstrap`.
    - `ready`
    - `failed`
 10. Completing setup shall require at least one usable provider path to be
-    ready, whether API-backed or CLI-backed.
+   ready, whether API-backed or CLI-backed.
+    - the flow shall not require an API provider if a CLI-backed provider path
+      is already ready
 11. The renderer shall not invoke shell commands or installation scripts
     directly.
 12. The packaged host shall orchestrate provider install, verify, and resume
@@ -185,8 +187,8 @@ Packaged app install
 Recommended choices:
 
 - `API Baseline (Recommended)`
-- `Hybrid`
-- `CLI Enhanced`
+- `API + Local CLI`
+- `Local CLI Only`
 
 Advanced view may expand to explicit capability packs or individual providers.
 
@@ -213,6 +215,17 @@ Advanced view may expand to explicit capability packs or individual providers.
 
 - persist setup completion
 - open the first ready chat surface
+
+## Post-Setup Provider Management
+
+Completing the first-run wizard should not be the only way to manage providers.
+After setup, the product should expose a provider-management entry from
+Settings or an equivalent product-owned management surface so users can:
+
+- add providers they skipped during first run
+- repair or re-verify existing providers
+- upgrade provider tooling through the same host-managed execution path
+- revisit deferred capability packs without rerunning the entire wizard
 
 ## Capability Pack Direction
 
@@ -309,9 +322,6 @@ terminal failures:
 
 ## Open Questions
 
-- Should the first packaged consumer path require one API provider to be
-  configured before it allows CLI-only completion, or should any ready provider
-  path be sufficient?
 - Which provider install states should be persisted by the app host versus
   re-derived on every launch?
 - Should the first packaged slice support explicit per-provider advanced

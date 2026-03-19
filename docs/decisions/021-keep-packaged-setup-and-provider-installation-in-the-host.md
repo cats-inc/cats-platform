@@ -133,4 +133,4 @@ End-User Setup Flow
 ---
 
 *Accepted: 2026-03-20*
-*Accepted by: user direction captured through Codex*
+*Decision makers: user + Codex*
