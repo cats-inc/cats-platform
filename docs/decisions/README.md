@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [020-own-mcp-intent-in-product-and-tool-delivery-in-runtime](./020-own-mcp-intent-in-product-and-tool-delivery-in-runtime.md) | Own MCP intent in product and tool delivery in runtime | Accepted | 2026-03-19 |
 | [019-normalize-runtime-previews-as-surfaces-not-provider-iframes](./019-normalize-runtime-previews-as-surfaces-not-provider-iframes.md) | Normalize runtime previews as surfaces, not provider iframes | Accepted | 2026-03-19 |
 | [018-separate-product-skill-intent-from-runtime-skill-hosting](./018-separate-product-skill-intent-from-runtime-skill-hosting.md) | Separate product skill intent from runtime skill hosting | Accepted | 2026-03-19 |
 | [017-allow-direct-cat-chat-and-move-routing-into-system-layer](./017-allow-direct-cat-chat-and-move-routing-into-system-layer.md) | Allow direct Cat chat and move routing into the system layer | Accepted | 2026-03-19 |

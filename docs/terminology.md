@@ -40,6 +40,9 @@
 | Runtime skill catalog | The `cats-runtime` hosted catalog of execution-ready `SKILL.md` packages that can be validated, resolved, and mounted into sessions. |
 | Runtime skill manifest | The product-to-runtime request payload that carries requested skill names plus optional context metadata for one session or wake flow. |
 | Preview surface | A normalized product-facing reference to a preview-capable runtime output, such as a local service URL or HTML artifact, that `cats-inc` may choose to embed inline or open externally. |
+| MCP profile | A product-owned tool capability posture that decides what class of MCP/tools a Cat should receive in a given room or transport context. |
+| Tool intent manifest | The product-to-runtime request payload that expresses desired tool access in stable logical terms such as profile id, allowlist, or lazy tool groups. |
+| Lazy tool activation | A runtime strategy that realizes the smallest useful tool surface at first and activates additional tool groups or MCP-backed servers only when needed. |
 | Actor / Resource | The broader `Cats Core v1` term for a human, orchestrator, worker, stakeholder, virtual friend, or other reusable participant. |
 | Execution target | The provider/model preference selected for a pal or orchestrator in one context. |
 | Execution lease | The currently active runtime session metadata used to execute work through a provider. |
