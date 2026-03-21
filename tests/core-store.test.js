@@ -210,3 +210,128 @@ test('core model helpers persist owner profile, task approvals, and system recor
   assert.equal(approvals.length, 1);
   assert.equal(approvals[0].taskId, 'task-system-1');
 });
+
+test('writeApprovalDecision preserves the first terminal decision timestamp and rejects invalid transitions', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-system-approval',
+      title: 'Approval state machine',
+      status: 'pending_approval',
+    },
+    new Date('2026-03-21T01:00:00.000Z'),
+  ).core;
+
+  core = writeApprovalDecision(
+    core,
+    {
+      taskId: 'task-system-approval',
+      status: 'pending',
+      requestedByActorId: 'actor-orchestrator-global',
+    },
+    new Date('2026-03-21T01:01:00.000Z'),
+  ).core;
+
+  core = writeApprovalDecision(
+    core,
+    {
+      taskId: 'task-system-approval',
+      status: 'approved',
+      decidedByActorId: 'actor-owner',
+    },
+    new Date('2026-03-21T01:02:00.000Z'),
+  ).core;
+
+  const firstDecisionAt = core.tasks[0].approval.decidedAt;
+  assert.equal(firstDecisionAt, '2026-03-21T01:02:00.000Z');
+
+  core = writeApprovalDecision(
+    core,
+    {
+      taskId: 'task-system-approval',
+      status: 'approved',
+      decidedByActorId: 'actor-owner',
+    },
+    new Date('2026-03-21T01:03:00.000Z'),
+  ).core;
+
+  assert.equal(core.tasks[0].approval.decidedAt, firstDecisionAt);
+
+  assert.throws(
+    () => writeApprovalDecision(
+      core,
+      {
+        taskId: 'task-system-approval',
+        status: 'pending',
+      },
+      new Date('2026-03-21T01:04:00.000Z'),
+    ),
+    /Approval transition not allowed/,
+  );
+
+  let rejectedCore = createDefaultCoreState();
+  rejectedCore = upsertCoreTask(
+    rejectedCore,
+    {
+      id: 'task-system-reject',
+      title: 'Rejected review',
+      status: 'pending_approval',
+    },
+    new Date('2026-03-21T01:05:00.000Z'),
+  ).core;
+  rejectedCore = writeApprovalDecision(
+    rejectedCore,
+    {
+      taskId: 'task-system-reject',
+      status: 'pending',
+    },
+    new Date('2026-03-21T01:06:00.000Z'),
+  ).core;
+  rejectedCore = writeApprovalDecision(
+    rejectedCore,
+    {
+      taskId: 'task-system-reject',
+      status: 'rejected',
+      decidedByActorId: 'actor-owner',
+    },
+    new Date('2026-03-21T01:07:00.000Z'),
+  ).core;
+
+  assert.equal(rejectedCore.tasks[0].status, 'pending_approval');
+  assert.equal(rejectedCore.tasks[0].approval.status, 'rejected');
+});
+
+test('upsertCoreCheckpoint keeps completed checkpoints consistent with completedAt', () => {
+  let core = createDefaultCoreState();
+
+  const completed = upsertCoreCheckpoint(
+    core,
+    {
+      id: 'checkpoint-complete-1',
+      label: 'done',
+      status: 'completed',
+      completedAt: null,
+    },
+    new Date('2026-03-21T02:00:00.000Z'),
+  );
+  core = completed.core;
+
+  assert.equal(core.checkpoints[0].status, 'completed');
+  assert.equal(core.checkpoints[0].completedAt, '2026-03-21T02:00:00.000Z');
+
+  assert.throws(
+    () => upsertCoreCheckpoint(
+      core,
+      {
+        id: 'checkpoint-open-1',
+        label: 'still-open',
+        status: 'open',
+        completedAt: '2026-03-21T02:05:00.000Z',
+      },
+      new Date('2026-03-21T02:06:00.000Z'),
+    ),
+    /completedAt can only be set when status is completed/,
+  );
+});

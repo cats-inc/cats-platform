@@ -317,6 +317,66 @@ test('core write APIs persist owner profile, tasks, approvals, traces, checkpoin
   }, workspaceStore);
 });
 
+test('core approval write returns 409 for invalid terminal-to-pending transition', async () => {
+  const workspaceStore = new MemoryWorkspaceStore();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-system-invalid-transition',
+          title: 'Invalid transition guard',
+          status: 'pending_approval',
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const pendingResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-system-invalid-transition',
+        status: 'pending',
+      }),
+    });
+    assert.equal(pendingResponse.status, 200);
+
+    const approvedResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-system-invalid-transition',
+        status: 'approved',
+        decidedByActorId: 'actor-owner',
+      }),
+    });
+    assert.equal(approvedResponse.status, 200);
+
+    const invalidResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-system-invalid-transition',
+        status: 'pending',
+      }),
+    });
+    assert.equal(invalidResponse.status, 409);
+    const invalidPayload = await invalidResponse.json();
+    assert.equal(invalidPayload.error.code, 'approval_transition_invalid');
+  }, workspaceStore);
+});
+
 test('GET /api/work and /api/code expose dedicated placeholder surfaces', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const workResponse = await fetch(`${baseUrl}/api/work`);

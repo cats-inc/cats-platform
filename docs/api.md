@@ -556,8 +556,11 @@ Semantics:
 
 - `pending` defaults the task status to `pending_approval`
 - `approved` defaults the task status to `approved`
-- `rejected` defaults the task status back to `draft`
+- `rejected` preserves the current task status unless the caller overrides it
 - callers may override the task status explicitly with `taskStatus`
+- `approved` and `rejected` are terminal in this first slice; callers may
+  repeat the same terminal decision idempotently, but may not move that task
+  back to `pending`
 
 ### List Core Runs
 
@@ -920,7 +923,10 @@ Errors use a minimal payload:
 
 ```json
 {
-  "error": "Human-readable message"
+  "error": {
+    "code": "bad_request",
+    "message": "Human-readable message"
+  }
 }
 ```
 

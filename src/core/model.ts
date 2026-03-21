@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
+import {
+  CoreConflictError,
+  CoreNotFoundError,
+  CoreValidationError,
+} from './errors.js';
 import type {
   CoreApprovalDecisionOptionRecord,
   CoreApprovalQueueItem,
@@ -77,6 +82,13 @@ const DEFAULT_APPROVAL_DECISION_OPTIONS: CoreApprovalDecisionOptionRecord[] = [
     description: 'Do not allow the plan to proceed.',
   },
 ];
+
+const ALLOWED_APPROVAL_TRANSITIONS: Record<CoreApprovalStatus, readonly CoreApprovalStatus[]> = {
+  not_requested: ['not_requested', 'pending', 'approved', 'rejected'],
+  pending: ['pending', 'approved', 'rejected'],
+  approved: ['approved'],
+  rejected: ['rejected'],
+};
 
 function createOwnerActor(ownerProfile: OwnerProfileRecord): CoreActorRecord {
   return {
@@ -181,7 +193,7 @@ function normalizeMetadata(metadata: CoreRecordMetadata | null | undefined): Cor
 
 function normalizeNullableString(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
-    return value === null ? null : null;
+    return null;
   }
 
   const normalized = value.trim();
@@ -317,7 +329,7 @@ export function upsertCoreTask(
   const title = input.title.trim();
 
   if (!title) {
-    throw new Error('Task title is required');
+    throw new CoreValidationError('Task title is required', 'task_title_required');
   }
 
   const taskId = normalizeNullableString(input.id) ?? `task-${randomUUID()}`;
@@ -392,7 +404,10 @@ export function patchOwnerProfile(
   const nowIso = now.toISOString();
   const displayName = patch.displayName?.trim();
   if (patch.displayName !== undefined && !displayName) {
-    throw new Error('Owner profile displayName is required');
+    throw new CoreValidationError(
+      'Owner profile displayName is required',
+      'owner_profile_display_name_required',
+    );
   }
 
   const ownerProfile: OwnerProfileRecord = {
@@ -441,7 +456,14 @@ export function writeApprovalDecision(
   const nowIso = now.toISOString();
   const task = core.tasks.find((candidate) => candidate.id === input.taskId);
   if (!task) {
-    throw new Error(`Task not found: ${input.taskId}`);
+    throw new CoreNotFoundError(`Task not found: ${input.taskId}`, 'task_not_found');
+  }
+
+  if (!ALLOWED_APPROVAL_TRANSITIONS[task.approval.status].includes(input.status)) {
+    throw new CoreConflictError(
+      `Approval transition not allowed: ${task.approval.status} -> ${input.status}`,
+      'approval_transition_invalid',
+    );
   }
 
   const nextTaskStatus = input.taskStatus
@@ -449,20 +471,33 @@ export function writeApprovalDecision(
       ? 'pending_approval'
       : input.status === 'approved'
         ? 'approved'
-        : 'draft');
+        : task.status);
   const requestedByActorId = normalizeNullableString(input.requestedByActorId);
   const decidedByActorId = normalizeNullableString(input.decidedByActorId);
+  const existingApproval = task.approval;
+  const nextRequestedAt = input.status === 'pending'
+    ? (existingApproval.status === 'pending'
+      ? existingApproval.requestedAt ?? nowIso
+      : nowIso)
+    : existingApproval.requestedAt;
+  const nextDecidedAt = input.status === 'approved' || input.status === 'rejected'
+    ? (existingApproval.status === input.status
+      ? existingApproval.decidedAt ?? nowIso
+      : nowIso)
+    : null;
   const nextTask: CoreTaskRecord = {
     ...task,
     status: nextTaskStatus,
     approval: {
       status: input.status,
-      requestedAt: input.status === 'pending'
-        ? nowIso
-        : task.approval.requestedAt,
-      decidedAt: input.status === 'pending' ? null : nowIso,
-      decidedByActorId: input.status === 'pending' ? null : decidedByActorId,
-      notes: normalizeNullableString(input.notes),
+      requestedAt: nextRequestedAt,
+      decidedAt: nextDecidedAt,
+      decidedByActorId: input.status === 'pending'
+        ? null
+        : (decidedByActorId ?? existingApproval.decidedByActorId),
+      notes: input.notes === undefined
+        ? existingApproval.notes
+        : normalizeNullableString(input.notes),
     },
     orchestratorActorId:
       requestedByActorId
@@ -496,7 +531,7 @@ export function upsertCoreRun(
   const title = input.title.trim();
 
   if (!title) {
-    throw new Error('Run title is required');
+    throw new CoreValidationError('Run title is required', 'run_title_required');
   }
 
   const runId = normalizeNullableString(input.id) ?? `run-${randomUUID()}`;
@@ -569,12 +604,12 @@ export function appendCoreTrace(
   const message = input.message.trim();
 
   if (!message) {
-    throw new Error('Trace message is required');
+    throw new CoreValidationError('Trace message is required', 'trace_message_required');
   }
 
   const traceId = input.traceId.trim();
   if (!traceId) {
-    throw new Error('Trace traceId is required');
+    throw new CoreValidationError('Trace traceId is required', 'trace_trace_id_required');
   }
 
   const recordId = normalizeNullableString(input.id) ?? `trace-${randomUUID()}`;
@@ -631,12 +666,27 @@ export function upsertCoreCheckpoint(
   const label = input.label.trim();
 
   if (!label) {
-    throw new Error('Checkpoint label is required');
+    throw new CoreValidationError(
+      'Checkpoint label is required',
+      'checkpoint_label_required',
+    );
   }
 
   const checkpointId = normalizeNullableString(input.id) ?? `checkpoint-${randomUUID()}`;
   const existing = core.checkpoints.find((checkpoint) => checkpoint.id === checkpointId);
   const status = input.status ?? existing?.status ?? 'open';
+  const explicitCompletedAt = input.completedAt === undefined
+    ? undefined
+    : normalizeNullableString(input.completedAt);
+  if (status !== 'completed' && explicitCompletedAt) {
+    throw new CoreValidationError(
+      'checkpoint.completedAt can only be set when status is completed',
+      'checkpoint_completed_at_invalid',
+    );
+  }
+  const completedAt = status === 'completed'
+    ? explicitCompletedAt ?? existing?.completedAt ?? nowIso
+    : null;
   const checkpoint: CoreCheckpointRecord = {
     id: checkpointId,
     label,
@@ -662,10 +712,7 @@ export function upsertCoreCheckpoint(
         ? existing?.summary ?? null
         : normalizeNullableString(input.summary),
     createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
-    completedAt:
-      input.completedAt === undefined
-        ? (status === 'completed' ? existing?.completedAt ?? nowIso : existing?.completedAt ?? null)
-        : normalizeNullableString(input.completedAt),
+    completedAt,
     updatedAt: nowIso,
     metadata:
       input.metadata === undefined
@@ -697,7 +744,7 @@ export function upsertCoreOutcome(
   const title = input.title.trim();
 
   if (!title) {
-    throw new Error('Outcome title is required');
+    throw new CoreValidationError('Outcome title is required', 'outcome_title_required');
   }
 
   const outcomeId = normalizeNullableString(input.id) ?? `outcome-${randomUUID()}`;

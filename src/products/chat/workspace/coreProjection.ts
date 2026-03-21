@@ -68,12 +68,16 @@ function createOwnerActor(ownerProfile: OwnerProfileRecord): CoreActorRecord {
 }
 
 function createOrchestratorActor(workspace: WorkspaceState): CoreActorRecord {
+  const roles = workspace.globalOrchestrator.notes.length > 0
+    ? ['orchestrator', 'coordinator']
+    : ['orchestrator'];
+
   return {
     id: GLOBAL_ORCHESTRATOR_ACTOR_ID,
     name: 'Orchestrator',
     kind: 'orchestrator',
     status: 'active',
-    roles: ['orchestrator', ...workspace.globalOrchestrator.notes.map(() => 'coordinator')].slice(0, 2),
+    roles,
     skillProfile: workspace.globalOrchestrator.skillProfile,
     mcpProfile: workspace.globalOrchestrator.mcpProfile,
     defaultExecutionTarget: structuredClone(workspace.globalOrchestrator.executionTarget),

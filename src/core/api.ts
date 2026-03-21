@@ -1,3 +1,7 @@
+import {
+  CoreApiError,
+  CoreValidationError,
+} from './errors.js';
 import type { CoreStore } from './store.js';
 import type {
   CoreApprovalStatus,
@@ -86,7 +90,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function readRequiredString(value: unknown, fieldName: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(`${fieldName} is required`);
+    throw new CoreValidationError(`${fieldName} is required`);
   }
 
   return value;
@@ -97,7 +101,7 @@ function readOptionalString(value: unknown, fieldName: string): string | undefin
     return undefined;
   }
   if (typeof value !== 'string') {
-    throw new Error(`${fieldName} must be a string`);
+    throw new CoreValidationError(`${fieldName} must be a string`);
   }
 
   return value;
@@ -114,7 +118,7 @@ function readNullableString(
     return null;
   }
   if (typeof value !== 'string') {
-    throw new Error(`${fieldName} must be a string or null`);
+    throw new CoreValidationError(`${fieldName} must be a string or null`);
   }
 
   return value;
@@ -125,7 +129,7 @@ function readStringArray(value: unknown, fieldName: string): string[] | undefine
     return undefined;
   }
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
-    throw new Error(`${fieldName} must be an array of strings`);
+    throw new CoreValidationError(`${fieldName} must be an array of strings`);
   }
 
   return value;
@@ -141,7 +145,7 @@ function readMetadata(
 
   const metadata = asRecord(value);
   if (!metadata) {
-    throw new Error(`${fieldName} must be an object`);
+    throw new CoreValidationError(`${fieldName} must be an object`);
   }
 
   return metadata;
@@ -156,7 +160,9 @@ function readEnumValue<T extends string>(
     return undefined;
   }
   if (typeof value !== 'string' || !allowed.includes(value as T)) {
-    throw new Error(`${fieldName} must be one of: ${allowed.join(', ')}`);
+    throw new CoreValidationError(
+      `${fieldName} must be one of: ${allowed.join(', ')}`,
+    );
   }
 
   return value as T;
@@ -168,7 +174,7 @@ async function readObjectBody(
   const body = await readJsonBody<unknown>(context.request);
   const record = asRecord(body);
   if (!record) {
-    throw new Error('Request body must be a JSON object');
+    throw new CoreValidationError('Request body must be a JSON object');
   }
 
   return record;
@@ -181,7 +187,7 @@ async function readWrappedBody(
   const body = await readObjectBody(context);
   const wrapped = asRecord(body[key]);
   if (!wrapped) {
-    throw new Error(`${key} payload is required`);
+    throw new CoreValidationError(`${key} payload is required`);
   }
 
   return wrapped;
@@ -205,14 +211,17 @@ function handleCoreError(
   context: RouteContext<CoreApiDependencies>,
   error: unknown,
 ): void {
-  const message = error instanceof Error ? error.message : 'Unknown error';
-
-  if (message.startsWith('Task not found:')) {
-    sendCoreError(context, 404, 'task_not_found', message);
+  if (error instanceof CoreApiError) {
+    sendCoreError(context, error.statusCode, error.code, error.message);
     return;
   }
 
-  sendCoreError(context, 400, 'bad_request', message);
+  if (error instanceof SyntaxError) {
+    sendCoreError(context, 400, 'invalid_json', 'Request body must be valid JSON');
+    return;
+  }
+
+  sendCoreError(context, 500, 'internal_error', 'Internal server error');
 }
 
 async function handleCoreState(
@@ -530,13 +539,14 @@ async function handleCoreApprovalWrite(
       },
     );
     const persisted = await context.dependencies.workspaceStore.writeCore(next.core);
+    const persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
     const queueItem = buildApprovalQueue(persisted).find(
       (candidate) => candidate.taskId === next.task.id,
     ) ?? null;
 
     sendJson(context.response, 200, {
-      task: next.task,
-      approval: next.task.approval,
+      task: persistedTask ?? next.task,
+      approval: (persistedTask ?? next.task).approval,
       queueItem,
     });
   } catch (error) {
