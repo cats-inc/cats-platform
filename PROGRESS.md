@@ -70,6 +70,13 @@
 - [x] Workspace pals can be assigned into persisted channels and reached through basic mentions
 - [x] Channels can export their transcript and configuration as JSON
 
+Known follow-ups:
+
+- Routing-engine deferred items remain tracked in
+  `docs/plans/PLAN-016-dynamic-room-workflow-orchestration.md`, including
+  sequential fan-out wake semantics, the optional shared `roomRouting`
+  compatibility seam, and longer-cycle detection beyond direct anti-ping-pong.
+
 ---
 
 ### WP-3: Suite Foundation Planning

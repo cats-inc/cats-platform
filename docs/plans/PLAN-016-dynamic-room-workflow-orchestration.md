@@ -98,6 +98,18 @@ Current M1 landing notes:
 - Durable trace/checkpoint persistence and branch-based workflow remain future
   slices tied to the Team 3/Team 4 dependencies in the spec.
 
+Deferred M1 follow-ups still intentionally open:
+
+- Session wake still happens sequentially inside fan-out paths because the
+  current wake flow also establishes shared channel `cwd` and writes lease
+  state; parallel wake should wait until that seam is split cleanly.
+- `roomRouting` remains optional at the shared contract boundary as a
+  compatibility seam even though normalized workspace state now guarantees it
+  for live channels.
+- `anti_ping_pong` currently detects direct `A -> B -> A -> B` loops only;
+  longer cycles still rely on `maxTargetVisitsPerTurn` and
+  `maxDispatchesPerTurn` guards until a broader cycle detector is justified.
+
 ### Phase 4: Room Workflow State and Event-Driven Replanning
 
 - [ ] Introduce room workflow state separate from mention-routing output.
