@@ -763,14 +763,29 @@ export default function App() {
           title: createDraftChannelTitle(body, initialPayload.workspace.channels.length),
           topic: createDraftChannelTopic(body),
           skipBossCatGreeting: true,
+          repoPath: draftCwd ?? undefined,
         });
         channelId = createdPayload.workspace.selectedChannelId;
         if (!channelId) {
           throw new Error('No chat is available for sending messages.');
         }
-        rollbackPayload = createdPayload;
+
+        let latestPayload = createdPayload;
+        for (const palId of draftCatIds) {
+          const pal = initialPayload.workspace.pals.find((p) => p.id === palId);
+          if (pal) {
+            latestPayload = await assignPalToWorkspaceChannel(channelId, {
+              palId: pal.id,
+              provider: pal.defaultExecutionTarget.provider,
+              instance: pal.defaultExecutionTarget.instance ?? undefined,
+              model: pal.defaultExecutionTarget.model ?? undefined,
+            });
+          }
+        }
+
+        rollbackPayload = latestPayload;
         rollbackPath = buildChannelPath(channelId);
-        payload = appendOptimisticUserMessage(createdPayload, channelId, body);
+        payload = appendOptimisticUserMessage(latestPayload, channelId, body);
         setState({ status: 'ready', payload });
         navigate(rollbackPath, { replace: true });
       } else {
@@ -796,6 +811,13 @@ export default function App() {
       setComposerDraft('');
       setFeedback('');
       navigate(buildChannelPath(channelId), { replace: true });
+
+      if (wasDraftingNewChat) {
+        setDraftCwd(null);
+        setDraftCatIds([]);
+        setDraftFiles([]);
+        setDraftIncludeBossCat(true);
+      }
     } catch (error) {
       setState({ status: 'ready', payload: rollbackPayload });
       setComposerDraft(body);
