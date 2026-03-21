@@ -43,6 +43,7 @@ import {
   createWorkspaceChannel,
   deleteWorkspaceChannel,
   fetchAppShell,
+  removePalFromWorkspaceChannel,
   sendWorkspaceMessage,
   updateSelectedChannel,
   updateVerbosePreference,
@@ -733,6 +734,25 @@ export default function App() {
     }
   }
 
+  async function onRemoveAssignedPal(pal: WorkspacePal): Promise<void> {
+    if (state.status !== 'ready') return;
+    const channelId = state.payload.workspace.selectedChannelId;
+    if (!channelId) return;
+
+    setBusy(`pal:remove:${pal.id}`);
+    try {
+      const payload = await removePalFromWorkspaceChannel(channelId, pal.id);
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setFeedback('');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to remove cat.');
+    } finally {
+      setBusy('');
+    }
+  }
+
   async function onResetSetup(): Promise<void> {
     if (!window.confirm('This will erase all chats, cats, and settings. Continue?')) {
       return;
@@ -1010,6 +1030,7 @@ export default function App() {
   const activeAssignedPals =
     selectedChannel?.assignedPals.filter((pal) => pal.status === 'active') ?? [];
   const activePalIds = new Set(activeAssignedPals.map((pal) => pal.palId));
+  const assignedPalIds = new Set(selectedChannel?.assignedPals.map((pal) => pal.palId) ?? []);
   const bossCatName = resolveBossCatName(payload) ?? 'Orchestrator';
   const bossCatAvatarColor = payload.workspace.pals.find(
     (pal) => pal.id === payload.workspace.bossCatId,
@@ -1019,11 +1040,10 @@ export default function App() {
   const assignablePalCount = payload.workspace.pals.filter(
     (pal) => pal.status === 'active' && pal.id !== payload.workspace.bossCatId,
   ).length;
-  const unassignedPals = payload.workspace.pals.filter(
+  const selectablePals = payload.workspace.pals.filter(
     (pal) =>
       pal.status === 'active'
-      && pal.id !== payload.workspace.bossCatId
-      && !activePalIds.has(pal.id),
+      && pal.id !== payload.workspace.bossCatId,
   );
   const draftPalIds = new Set(draftCatIds);
   const hasConversationStarted =
@@ -1723,7 +1743,7 @@ export default function App() {
                                 <circle cx="8" cy="5" r="3" />
                                 <path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5" />
                               </svg>
-                              Invite a Cat
+                              Add cat to chat
                             </button>
                           </div>
                         ) : null}
@@ -1865,31 +1885,40 @@ export default function App() {
 
           {addPalTab === 'existing' ? (
             <div className="addPalList">
-              {unassignedPals.length > 0 ? (
-                unassignedPals.map((pal) => (
+              {selectablePals.length > 0 ? (
+                selectablePals.map((pal) => (
                   <div key={pal.id} className="addPalItem">
                     <div>
                       <strong>{pal.name}</strong>
                       <p>{executionLabel(pal)}</p>
                     </div>
-                    {showingNewChatDraft ? (
-                      <button
-                        className={draftPalIds.has(pal.id) ? 'addPalAssignButton addPalRemoveButton' : 'addPalAssignButton'}
-                        type="button"
-                        onClick={() => toggleDraftCat(pal.id)}
-                      >
-                        {draftPalIds.has(pal.id) ? 'Remove' : 'Add'}
-                      </button>
-                    ) : (
-                      <button
-                        className="addPalAssignButton"
-                        type="button"
-                        disabled={busy === `pal:assign:${pal.id}`}
-                        onClick={() => void onAssignExistingPal(pal)}
-                      >
-                        {busy === `pal:assign:${pal.id}` ? 'Adding...' : 'Add'}
-                      </button>
-                    )}
+                    {(() => {
+                      const included = showingNewChatDraft
+                        ? draftPalIds.has(pal.id)
+                        : assignedPalIds.has(pal.id);
+                      const isAdding = busy === `pal:assign:${pal.id}`;
+                      const isRemoving = busy === `pal:remove:${pal.id}`;
+                      return (
+                        <button
+                          className={included ? 'addPalAssignButton addPalRemoveButton' : 'addPalAssignButton'}
+                          type="button"
+                          disabled={isAdding || isRemoving}
+                          onClick={() => {
+                            if (showingNewChatDraft) {
+                              toggleDraftCat(pal.id);
+                              return;
+                            }
+                            if (included) {
+                              void onRemoveAssignedPal(pal);
+                              return;
+                            }
+                            void onAssignExistingPal(pal);
+                          }}
+                        >
+                          {isAdding ? 'Adding...' : isRemoving ? 'Removing...' : included ? 'Remove' : 'Add'}
+                        </button>
+                      );
+                    })()}
                   </div>
                 ))
               ) : (
