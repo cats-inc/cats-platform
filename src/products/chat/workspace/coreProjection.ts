@@ -161,6 +161,12 @@ function createTaskFromChannel(
   };
 }
 
+function preserveCoreOwnedTasks(existingTasks: CoreTaskRecord[]): CoreTaskRecord[] {
+  return existingTasks
+    .filter((task) => !task.id.startsWith('task-channel-'))
+    .map((task) => structuredClone(task));
+}
+
 function createArchiveMetadata(
   channel: WorkspaceChannelState,
   conversationId: string,
@@ -241,6 +247,7 @@ export function syncCoreStateWithWorkspace(
       existingTasks.get(`task-channel-${channel.id}`) ?? null,
     ),
   );
+  const preservedTasks = preserveCoreOwnedTasks(existingCore.tasks ?? []);
   const archives = workspace.channels.map((channel) =>
     createArchiveMetadata(
       channel,
@@ -259,7 +266,11 @@ export function syncCoreStateWithWorkspace(
     },
     actors: [ownerActor, orchestratorActor, ...palActors],
     conversations,
-    tasks,
+    tasks: [...tasks, ...preservedTasks],
+    runs: structuredClone(existingCore.runs ?? []),
+    traces: structuredClone(existingCore.traces ?? []),
+    checkpoints: structuredClone(existingCore.checkpoints ?? []),
+    outcomes: structuredClone(existingCore.outcomes ?? []),
     botBindings: syncBotBindings(workspace, existingCore.botBindings ?? []),
     archives,
   };

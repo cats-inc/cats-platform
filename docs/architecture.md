@@ -147,8 +147,9 @@ tests and imports do not have to move all at once.
   plus archive/RAG pipelines planned
 - **Responsibilities**: Load defaults, persist channels, workspace pals, channel
   assignments, transcript messages, execution targets, execution leases, pal
-  memory checkpoints, and the derived `Cats Core v1` records that wrap the
-  phase-2 workspace model
+  memory checkpoints, core-owned owner/task/run/trace/checkpoint/outcome
+  records, and the derived `Cats Core v1` records that wrap the phase-2
+  workspace model
 
 ### Workspace Runtime Actions
 
@@ -353,8 +354,9 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
 - Current implementation is still a phase-2 chat shell with file-backed state,
   global orchestrator settings, pal assignments, a system-layer routing engine
   with continuation loop/fan-out/guards, and transcript export.
-- `Cats Core v1` now exists as a first in-tree contract and read-only API
-  surface derived from the current workspace model.
+- `Cats Core v1` now exists as a first in-tree contract plus a minimal neutral
+  write substrate for owner profile, tasks, approvals, runs, traces,
+  checkpoints, and orchestration outcomes.
 - `Cats Work` is a planned sibling surface, not a shipped UI in the current
   codebase.
 - The current execution path keeps full Chat and Work desktop surfaces on the

@@ -1,4 +1,8 @@
-export const CATS_CORE_STATE_VERSION = 1 as const;
+export const CATS_CORE_STATE_VERSION = 2 as const;
+
+export interface CoreRecordMetadata {
+  [key: string]: unknown;
+}
 
 export interface ExecutionTargetSummary {
   provider: string;
@@ -124,6 +128,89 @@ export interface CoreTaskRecord {
   updatedAt: string;
 }
 
+export type CoreRunStatus =
+  | 'queued'
+  | 'running'
+  | 'blocked'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface CoreRunRecord {
+  id: string;
+  title: string;
+  status: CoreRunStatus;
+  conversationId: string | null;
+  taskId: string | null;
+  parentRunId: string | null;
+  orchestratorActorId: string | null;
+  traceId: string | null;
+  summary: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type CoreTraceKind =
+  | 'note'
+  | 'status'
+  | 'dispatch'
+  | 'approval'
+  | 'checkpoint'
+  | 'outcome'
+  | 'error';
+
+export interface CoreTraceRecord {
+  id: string;
+  traceId: string;
+  kind: CoreTraceKind;
+  conversationId: string | null;
+  runId: string | null;
+  taskId: string | null;
+  actorId: string | null;
+  message: string;
+  createdAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type CoreCheckpointStatus = 'open' | 'completed' | 'cancelled';
+
+export interface CoreCheckpointRecord {
+  id: string;
+  label: string;
+  status: CoreCheckpointStatus;
+  conversationId: string | null;
+  runId: string | null;
+  taskId: string | null;
+  sourceTraceId: string | null;
+  summary: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type CoreOrchestrationOutcomeStatus =
+  | 'succeeded'
+  | 'blocked'
+  | 'failed'
+  | 'cancelled';
+
+export interface CoreOrchestrationOutcomeRecord {
+  id: string;
+  title: string;
+  status: CoreOrchestrationOutcomeStatus;
+  conversationId: string | null;
+  runId: string | null;
+  taskId: string | null;
+  summary: string | null;
+  recordedAt: string;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
 export type BotBindingPlatform = 'telegram' | 'line';
 
 export interface BotBindingRecord {
@@ -166,6 +253,10 @@ export interface CatsCoreState {
   actors: CoreActorRecord[];
   conversations: CoreConversationRecord[];
   tasks: CoreTaskRecord[];
+  runs: CoreRunRecord[];
+  traces: CoreTraceRecord[];
+  checkpoints: CoreCheckpointRecord[];
+  outcomes: CoreOrchestrationOutcomeRecord[];
   botBindings: BotBindingRecord[];
   archives: ArchiveMetadataRecord[];
 }

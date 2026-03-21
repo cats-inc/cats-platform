@@ -24,7 +24,12 @@ import type {
   ArchiveMetadataRecord,
   BotBindingRecord,
   CatsCoreState,
+  CoreCheckpointRecord,
+  CoreOrchestrationOutcomeRecord,
+  CoreRecordMetadata,
+  CoreRunRecord,
   CoreTaskRecord,
+  CoreTraceRecord,
   OwnerProfileRecord,
 } from '../../../core/types.js';
 import type { CoreStore } from '../../../core/store.js';
@@ -88,6 +93,10 @@ function readStringArray(value: unknown): string[] {
   }
 
   return value.filter((item): item is string => typeof item === 'string');
+}
+
+function normalizeMetadata(value: unknown): CoreRecordMetadata {
+  return asRecord(value) ?? {};
 }
 
 function normalizeExecutionTarget(
@@ -689,6 +698,136 @@ function normalizeCoreTask(rawTask: unknown): CoreTaskRecord | null {
   };
 }
 
+function normalizeCoreRun(rawRun: unknown): CoreRunRecord | null {
+  const runRecord = asRecord(rawRun);
+  if (!runRecord) {
+    return null;
+  }
+
+  const rawStatus = readString(runRecord.status, 'queued');
+  const status = (
+    rawStatus === 'queued'
+    || rawStatus === 'running'
+    || rawStatus === 'blocked'
+    || rawStatus === 'completed'
+    || rawStatus === 'failed'
+    || rawStatus === 'cancelled'
+  )
+    ? rawStatus
+    : 'queued';
+
+  return {
+    id: readString(runRecord.id, randomUUID()),
+    title: readString(runRecord.title, 'Untitled run'),
+    status,
+    conversationId: readNullableString(runRecord.conversationId),
+    taskId: readNullableString(runRecord.taskId),
+    parentRunId: readNullableString(runRecord.parentRunId),
+    orchestratorActorId: readNullableString(runRecord.orchestratorActorId),
+    traceId: readNullableString(runRecord.traceId),
+    summary: readNullableString(runRecord.summary),
+    createdAt: readString(runRecord.createdAt, new Date().toISOString()),
+    startedAt: readNullableString(runRecord.startedAt),
+    completedAt: readNullableString(runRecord.completedAt),
+    updatedAt: readString(runRecord.updatedAt, new Date().toISOString()),
+    metadata: normalizeMetadata(runRecord.metadata),
+  };
+}
+
+function normalizeCoreTrace(rawTrace: unknown): CoreTraceRecord | null {
+  const traceRecord = asRecord(rawTrace);
+  if (!traceRecord) {
+    return null;
+  }
+
+  const rawKind = readString(traceRecord.kind, 'note');
+  const kind = (
+    rawKind === 'note'
+    || rawKind === 'status'
+    || rawKind === 'dispatch'
+    || rawKind === 'approval'
+    || rawKind === 'checkpoint'
+    || rawKind === 'outcome'
+    || rawKind === 'error'
+  )
+    ? rawKind
+    : 'note';
+
+  return {
+    id: readString(traceRecord.id, randomUUID()),
+    traceId: readString(traceRecord.traceId),
+    kind,
+    conversationId: readNullableString(traceRecord.conversationId),
+    runId: readNullableString(traceRecord.runId),
+    taskId: readNullableString(traceRecord.taskId),
+    actorId: readNullableString(traceRecord.actorId),
+    message: readString(traceRecord.message),
+    createdAt: readString(traceRecord.createdAt, new Date().toISOString()),
+    metadata: normalizeMetadata(traceRecord.metadata),
+  };
+}
+
+function normalizeCoreCheckpoint(rawCheckpoint: unknown): CoreCheckpointRecord | null {
+  const checkpointRecord = asRecord(rawCheckpoint);
+  if (!checkpointRecord) {
+    return null;
+  }
+
+  const rawStatus = readString(checkpointRecord.status, 'open');
+  const status = (
+    rawStatus === 'open'
+    || rawStatus === 'completed'
+    || rawStatus === 'cancelled'
+  )
+    ? rawStatus
+    : 'open';
+
+  return {
+    id: readString(checkpointRecord.id, randomUUID()),
+    label: readString(checkpointRecord.label, 'Checkpoint'),
+    status,
+    conversationId: readNullableString(checkpointRecord.conversationId),
+    runId: readNullableString(checkpointRecord.runId),
+    taskId: readNullableString(checkpointRecord.taskId),
+    sourceTraceId: readNullableString(checkpointRecord.sourceTraceId),
+    summary: readNullableString(checkpointRecord.summary),
+    createdAt: readString(checkpointRecord.createdAt, new Date().toISOString()),
+    completedAt: readNullableString(checkpointRecord.completedAt),
+    updatedAt: readString(checkpointRecord.updatedAt, new Date().toISOString()),
+    metadata: normalizeMetadata(checkpointRecord.metadata),
+  };
+}
+
+function normalizeCoreOutcome(rawOutcome: unknown): CoreOrchestrationOutcomeRecord | null {
+  const outcomeRecord = asRecord(rawOutcome);
+  if (!outcomeRecord) {
+    return null;
+  }
+
+  const rawStatus = readString(outcomeRecord.status, 'succeeded');
+  const status = (
+    rawStatus === 'succeeded'
+    || rawStatus === 'blocked'
+    || rawStatus === 'failed'
+    || rawStatus === 'cancelled'
+  )
+    ? rawStatus
+    : 'succeeded';
+
+  return {
+    id: readString(outcomeRecord.id, randomUUID()),
+    title: readString(outcomeRecord.title, 'Outcome'),
+    status,
+    conversationId: readNullableString(outcomeRecord.conversationId),
+    runId: readNullableString(outcomeRecord.runId),
+    taskId: readNullableString(outcomeRecord.taskId),
+    summary: readNullableString(outcomeRecord.summary),
+    recordedAt: readString(outcomeRecord.recordedAt, new Date().toISOString()),
+    updatedAt: readString(outcomeRecord.updatedAt, new Date().toISOString()),
+    metadata: normalizeMetadata(outcomeRecord.metadata),
+  };
+}
+
 function normalizeBotBinding(
   rawBinding: unknown,
   workspace: WorkspaceState,
@@ -861,6 +1000,26 @@ function normalizePersistedWorkspaceSnapshot(rawState: unknown): PersistedWorksp
         .map((task) => normalizeCoreTask(task))
         .filter((task): task is CoreTaskRecord => task !== null)
     : [];
+  const runs = Array.isArray(stateRecord.runs)
+    ? stateRecord.runs
+        .map((run) => normalizeCoreRun(run))
+        .filter((run): run is CoreRunRecord => run !== null)
+    : [];
+  const traces = Array.isArray(stateRecord.traces)
+    ? stateRecord.traces
+        .map((trace) => normalizeCoreTrace(trace))
+        .filter((trace): trace is CoreTraceRecord => trace !== null)
+    : [];
+  const checkpoints = Array.isArray(stateRecord.checkpoints)
+    ? stateRecord.checkpoints
+        .map((checkpoint) => normalizeCoreCheckpoint(checkpoint))
+        .filter((checkpoint): checkpoint is CoreCheckpointRecord => checkpoint !== null)
+    : [];
+  const outcomes = Array.isArray(stateRecord.outcomes)
+    ? stateRecord.outcomes
+        .map((outcome) => normalizeCoreOutcome(outcome))
+        .filter((outcome): outcome is CoreOrchestrationOutcomeRecord => outcome !== null)
+    : [];
   const botBindings = Array.isArray(stateRecord.botBindings)
     ? stateRecord.botBindings
         .map((binding) => normalizeBotBinding(binding, workspace))
@@ -875,6 +1034,10 @@ function normalizePersistedWorkspaceSnapshot(rawState: unknown): PersistedWorksp
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
     tasks,
+    runs,
+    traces,
+    checkpoints,
+    outcomes,
     botBindings,
     archives,
   });

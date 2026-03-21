@@ -134,11 +134,15 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
-    assert.equal(statePayload.version, 1);
+    assert.equal(statePayload.version, 2);
     assert.equal(statePayload.ownerProfile.actorId, 'actor-owner');
     assert.ok(Array.isArray(statePayload.actors));
     assert.ok(Array.isArray(statePayload.conversations));
     assert.ok(Array.isArray(statePayload.tasks));
+    assert.ok(Array.isArray(statePayload.runs));
+    assert.ok(Array.isArray(statePayload.traces));
+    assert.ok(Array.isArray(statePayload.checkpoints));
+    assert.ok(Array.isArray(statePayload.outcomes));
 
     const actorsResponse = await fetch(`${baseUrl}/api/core/actors`);
     assert.equal(actorsResponse.status, 200);
@@ -157,6 +161,160 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
     const ownerProfilePayload = await ownerProfileResponse.json();
     assert.equal(ownerProfilePayload.ownerProfile.displayName, 'Owner');
   });
+});
+
+test('core write APIs persist owner profile, tasks, approvals, traces, checkpoints, runs, and outcomes', async () => {
+  const workspaceStore = new MemoryWorkspaceStore();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const ownerProfileResponse = await fetch(`${baseUrl}/api/core/owner-profile`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        displayName: 'Boss Owner',
+        decisionPreferences: ['show options first'],
+      }),
+    });
+    assert.equal(ownerProfileResponse.status, 200);
+    const ownerProfilePayload = await ownerProfileResponse.json();
+    assert.equal(ownerProfilePayload.ownerProfile.displayName, 'Boss Owner');
+
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-system-1',
+          title: 'Approve orchestrator dispatch',
+          conversationId: 'conversation-system-1',
+          summary: 'Core-owned approval task for Team 2.',
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+    const taskPayload = await taskResponse.json();
+    assert.equal(taskPayload.task.id, 'task-system-1');
+
+    const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-system-1',
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+        notes: 'Need approval before dispatch.',
+      }),
+    });
+    assert.equal(approvalResponse.status, 200);
+    const approvalPayload = await approvalResponse.json();
+    assert.equal(approvalPayload.task.approval.status, 'pending');
+    assert.equal(approvalPayload.queueItem.taskId, 'task-system-1');
+
+    const traceResponse = await fetch(`${baseUrl}/api/core/traces`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        trace: {
+          id: 'trace-record-1',
+          traceId: 'trace-system-1',
+          kind: 'dispatch',
+          conversationId: 'conversation-system-1',
+          taskId: 'task-system-1',
+          message: 'Dispatch recorded.',
+        },
+      }),
+    });
+    assert.equal(traceResponse.status, 201);
+    const tracePayload = await traceResponse.json();
+    assert.equal(tracePayload.trace.id, 'trace-record-1');
+
+    const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        checkpoint: {
+          id: 'checkpoint-system-1',
+          label: 'owner-gate',
+          status: 'open',
+          conversationId: 'conversation-system-1',
+          taskId: 'task-system-1',
+          sourceTraceId: 'trace-record-1',
+          summary: 'Waiting for owner decision.',
+        },
+      }),
+    });
+    assert.equal(checkpointResponse.status, 201);
+    const checkpointPayload = await checkpointResponse.json();
+    assert.equal(checkpointPayload.checkpoint.id, 'checkpoint-system-1');
+
+    const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-system-1',
+          title: 'Dispatch run',
+          status: 'running',
+          conversationId: 'conversation-system-1',
+          taskId: 'task-system-1',
+          traceId: 'trace-system-1',
+        },
+      }),
+    });
+    assert.equal(runResponse.status, 201);
+    const runPayload = await runResponse.json();
+    assert.equal(runPayload.run.id, 'run-system-1');
+
+    const outcomeResponse = await fetch(`${baseUrl}/api/core/outcomes`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        outcome: {
+          id: 'outcome-system-1',
+          title: 'Blocked for owner',
+          status: 'blocked',
+          conversationId: 'conversation-system-1',
+          runId: 'run-system-1',
+          taskId: 'task-system-1',
+          summary: 'Still awaiting owner approval.',
+        },
+      }),
+    });
+    assert.equal(outcomeResponse.status, 201);
+    const outcomePayload = await outcomeResponse.json();
+    assert.equal(outcomePayload.outcome.id, 'outcome-system-1');
+
+    const approvalsListResponse = await fetch(`${baseUrl}/api/core/approvals`);
+    assert.equal(approvalsListResponse.status, 200);
+    const approvalsListPayload = await approvalsListResponse.json();
+    assert.equal(approvalsListPayload.approvals.length, 1);
+
+    const stateResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(stateResponse.status, 200);
+    const statePayload = await stateResponse.json();
+    assert.equal(statePayload.ownerProfile.displayName, 'Boss Owner');
+    assert.ok(statePayload.tasks.some((task) => task.id === 'task-system-1'));
+    assert.ok(statePayload.runs.some((run) => run.id === 'run-system-1'));
+    assert.ok(statePayload.traces.some((trace) => trace.id === 'trace-record-1'));
+    assert.ok(
+      statePayload.checkpoints.some((checkpoint) => checkpoint.id === 'checkpoint-system-1'),
+    );
+    assert.ok(statePayload.outcomes.some((outcome) => outcome.id === 'outcome-system-1'));
+  }, workspaceStore);
 });
 
 test('GET /api/work and /api/code expose dedicated placeholder surfaces', async () => {

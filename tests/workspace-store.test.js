@@ -77,7 +77,7 @@ test('FileWorkspaceStore persists configured channels, pals, assignments, and me
   const parsedState = JSON.parse(rawState);
   const createdChannel = parsedState.workspace.channels.find((channel) => channel.id === channelId);
 
-  assert.equal(parsedState.version, 1);
+  assert.equal(parsedState.version, 2);
   assert.match(parsedState.workspace.selectedChannelId, UUID_PATTERN);
   assert.equal(parsedState.workspace.selectedChannelId, channelId);
   assert.equal(parsedState.workspace.pals.length, 2);
@@ -292,6 +292,131 @@ test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor',
   assert.equal(telegramBinding.bossCatActorId, `actor-pal-${state.bossCatId}`);
   assert.ok(bossCatActor);
   assert.ok(bossCatActor.roles.includes('boss_cat'));
+});
+
+test('FileWorkspaceStore preserves core-owned task, run, trace, checkpoint, and outcome records', async () => {
+  const statePath = path.join(
+    await mkdtemp(path.join(os.tmpdir(), 'cats-store-core-')),
+    'workspace-state.json',
+  );
+  const store = new FileWorkspaceStore(statePath);
+  const initialCore = await store.readCore();
+
+  await store.writeCore({
+    ...initialCore,
+    ownerProfile: {
+      ...initialCore.ownerProfile,
+      displayName: 'Boss Owner',
+      updatedAt: '2026-03-21T01:00:00.000Z',
+    },
+    tasks: [
+      ...initialCore.tasks,
+      {
+        id: 'task-system-1',
+        title: 'Review system checkpoint',
+        status: 'pending_approval',
+        conversationId: 'conversation-system-1',
+        ownerActorId: 'actor-owner',
+        orchestratorActorId: 'actor-orchestrator-global',
+        assignedActorIds: [],
+        summary: 'Persistent system-owned task.',
+        approval: {
+          status: 'pending',
+          requestedAt: '2026-03-21T01:01:00.000Z',
+          decidedAt: null,
+          decidedByActorId: null,
+          notes: 'Persist me across reloads.',
+        },
+        createdAt: '2026-03-21T01:00:00.000Z',
+        updatedAt: '2026-03-21T01:01:00.000Z',
+      },
+    ],
+    runs: [
+      {
+        id: 'run-system-1',
+        title: 'System run',
+        status: 'running',
+        conversationId: 'conversation-system-1',
+        taskId: 'task-system-1',
+        parentRunId: null,
+        orchestratorActorId: 'actor-orchestrator-global',
+        traceId: 'trace-system-1',
+        summary: 'Running core-owned orchestration.',
+        createdAt: '2026-03-21T01:02:00.000Z',
+        startedAt: '2026-03-21T01:02:00.000Z',
+        completedAt: null,
+        updatedAt: '2026-03-21T01:02:00.000Z',
+        metadata: { source: 'team-3' },
+      },
+    ],
+    traces: [
+      {
+        id: 'trace-record-1',
+        traceId: 'trace-system-1',
+        kind: 'dispatch',
+        conversationId: 'conversation-system-1',
+        runId: 'run-system-1',
+        taskId: 'task-system-1',
+        actorId: 'actor-orchestrator-global',
+        message: 'Dispatch recorded in core store.',
+        createdAt: '2026-03-21T01:03:00.000Z',
+        metadata: { step: 'dispatch' },
+      },
+    ],
+    checkpoints: [
+      {
+        id: 'checkpoint-system-1',
+        label: 'owner-gate',
+        status: 'open',
+        conversationId: 'conversation-system-1',
+        runId: 'run-system-1',
+        taskId: 'task-system-1',
+        sourceTraceId: 'trace-record-1',
+        summary: 'Awaiting owner approval.',
+        createdAt: '2026-03-21T01:04:00.000Z',
+        completedAt: null,
+        updatedAt: '2026-03-21T01:04:00.000Z',
+        metadata: { gate: true },
+      },
+    ],
+    outcomes: [
+      {
+        id: 'outcome-system-1',
+        title: 'Blocked for owner',
+        status: 'blocked',
+        conversationId: 'conversation-system-1',
+        runId: 'run-system-1',
+        taskId: 'task-system-1',
+        summary: 'Waiting for decision.',
+        recordedAt: '2026-03-21T01:05:00.000Z',
+        updatedAt: '2026-03-21T01:05:00.000Z',
+        metadata: { severity: 'info' },
+      },
+    ],
+  });
+
+  const reloadedStore = new FileWorkspaceStore(statePath);
+  let workspace = await reloadedStore.read();
+  workspace = createChannel(
+    workspace,
+    {
+      title: 'Chat Channel',
+      topic: 'Ensure workspace writes preserve core-owned records.',
+    },
+    new Date('2026-03-21T01:06:00.000Z'),
+  );
+  await reloadedStore.write(workspace);
+
+  const reloadedCore = await reloadedStore.readCore();
+
+  assert.equal(reloadedCore.version, 2);
+  assert.equal(reloadedCore.ownerProfile.displayName, 'Boss Owner');
+  assert.ok(reloadedCore.tasks.some((task) => task.id === 'task-system-1'));
+  assert.ok(reloadedCore.tasks.some((task) => task.id.startsWith('task-channel-')));
+  assert.equal(reloadedCore.runs[0].id, 'run-system-1');
+  assert.equal(reloadedCore.traces[0].id, 'trace-record-1');
+  assert.equal(reloadedCore.checkpoints[0].id, 'checkpoint-system-1');
+  assert.equal(reloadedCore.outcomes[0].id, 'outcome-system-1');
 });
 
 test('updateGlobalOrchestrator preserves the existing model when model is omitted', async () => {

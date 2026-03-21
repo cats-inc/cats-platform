@@ -8,17 +8,18 @@ The current Phase 2 API provides:
 
 - service and runtime reachability health
 - an explicit bootstrap payload for the chat renderer shell
-- a derived `Cats Core v1` read surface for shared suite contracts
+- a derived `Cats Core v1` read and write surface for shared suite contracts
 - a file-backed workspace mutation surface
 - a workspace-level pal registry plus channel-scoped pal assignment
 - runtime-backed channel activation and message routing
 - transcript export for later ingestion
 
-The current server now exposes the first read-only `Cats Core v1` routes so
-parallel Chat and Work workstreams can consume the same actor, conversation,
-task, approval, and owner-profile contract. Write-side approval, escalation, and
-transport APIs now have first seam routes for provider catalog consumption and a
-Telegram relay skeleton, while full transport delivery remains future work.
+The current server now exposes the first neutral `Cats Core v1` write-side
+substrate so parallel Chat and Work workstreams can persist the same actor,
+conversation, task, approval, owner-profile, run, trace, checkpoint, and
+orchestration-outcome records. This slice is intentionally minimal: it favors
+durable system records and stable write seams over a full live orchestration or
+approval UX.
 
 Current route ownership:
 
@@ -403,9 +404,12 @@ store. The payload includes:
 - `actors`
 - `conversations`
 - `tasks`
+- `runs`
+- `traces`
+- `checkpoints`
+- `outcomes`
 - `botBindings`
 - `archives`
-- `workspace`
 
 ### List Core Actors
 
@@ -449,6 +453,44 @@ Returns:
 }
 ```
 
+### Create or Upsert Core Task
+
+```text
+POST /api/core/tasks
+```
+
+Request body:
+
+```json
+{
+  "task": {
+    "id": "task-system-1",
+    "title": "Approve orchestrator dispatch",
+    "conversationId": "conversation-system-1",
+    "summary": "Product-owned task for the system layer."
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "task": {
+    "id": "task-system-1",
+    "status": "draft"
+  },
+  "created": true
+}
+```
+
+Semantics:
+
+- caller-supplied `id` makes the write idempotent
+- a missing `id` creates a new generated task id
+- channel-derived `task-channel-*` records remain workspace-owned projections;
+  Team 2 should use distinct ids for system-owned tasks
+
 ### List Core Approvals
 
 ```text
@@ -477,13 +519,91 @@ owner approval:
 }
 ```
 
-The current slice is intentionally read-only. It defines the approval data
-shape and retrieval seam without implementing a full approval loop UI.
+### Write Approval Decision
+
+```text
+POST /api/core/approvals
+```
+
+Request body:
+
+```json
+{
+  "taskId": "task-system-1",
+  "status": "pending",
+  "requestedByActorId": "actor-orchestrator-global",
+  "notes": "Need owner confirmation before dispatch."
+}
+```
+
+Response:
+
+```json
+{
+  "task": {
+    "id": "task-system-1"
+  },
+  "approval": {
+    "status": "pending"
+  },
+  "queueItem": {
+    "taskId": "task-system-1"
+  }
+}
+```
+
+Semantics:
+
+- `pending` defaults the task status to `pending_approval`
+- `approved` defaults the task status to `approved`
+- `rejected` defaults the task status back to `draft`
+- callers may override the task status explicitly with `taskStatus`
+
+### List Core Runs
+
+```text
+GET /api/core/runs
+POST /api/core/runs
+```
+
+`POST` upserts durable orchestration run records. Caller-supplied `run.id`
+keeps the write idempotent.
+
+### List Core Traces
+
+```text
+GET /api/core/traces
+POST /api/core/traces
+```
+
+`POST` appends or upserts provider-agnostic system trace events. This is the
+first minimal `trace append` seam intended for Team 2.
+
+### List Core Checkpoints
+
+```text
+GET /api/core/checkpoints
+POST /api/core/checkpoints
+```
+
+`POST` writes durable checkpoint records. This is the first minimal
+`checkpoint write` seam intended for Team 2.
+
+### List Core Outcomes
+
+```text
+GET /api/core/outcomes
+POST /api/core/outcomes
+```
+
+`POST` writes durable orchestration outcome records for blocked, succeeded,
+failed, or cancelled system work.
 
 ### Get Owner Profile
 
 ```text
 GET /api/core/owner-profile
+PATCH /api/core/owner-profile
 ```
 
 Returns:
@@ -496,6 +616,15 @@ Returns:
   }
 }
 ```
+
+`PATCH` persists owner preference updates. Supported fields are:
+
+- `displayName`
+- `avatarColor`
+- `summary`
+- `communicationPreferences`
+- `decisionPreferences`
+- `escalationPreferences`
 
 ### Persist Selected Channel
 
@@ -745,11 +874,11 @@ Abbreviated example response:
 }
 ```
 
-## Planned Shared-Core API Families
+## Shared-Core API Families
 
-The following families are planned but not implemented today. They are listed
-here so Chat and Work planning can converge on one surface instead of diverging
-into separate private schemas.
+The first neutral core families now exist as in-tree product APIs. Additional
+read models such as explicit bot-binding and archive endpoints can layer on top
+of these seams later without inventing a second schema.
 
 - `/api/core/actors`
   - shared human, orchestrator, worker, stakeholder, and virtual-friend
@@ -760,11 +889,19 @@ into separate private schemas.
 - `/api/core/bot-bindings`
   - one external bot or transport identity mapped to one orchestrator
 - `/api/core/tasks`
-  - product-owned task, run, approval, escalation, and takeover state
+  - durable task records plus the first task write seam
+- `/api/core/runs`
+  - durable orchestration run records
+- `/api/core/traces`
+  - append-only system trace records
+- `/api/core/checkpoints`
+  - durable checkpoint write seam
+- `/api/core/outcomes`
+  - durable orchestration outcome records
 - `/api/core/approvals`
-  - approval queue projection derived from shared core tasks
+  - approval queue projection plus approval decision write seam
 - `/api/core/owner-profile`
-  - structured owner preferences and collaboration rules
+  - structured owner preferences and collaboration rules, including persistence
 - `/api/core/archive`
   - archive eligibility and downstream RAG handoff metadata
 

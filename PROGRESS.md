@@ -95,7 +95,7 @@ Known follow-ups:
 | Document `cats-runtime` direct API and MCP facade responsibilities | [x] | Runtime boundary planning now distinguishes app APIs from orchestrator tool use |
 | Freeze the suite desktop stance | [x] | Electron plus React/TypeScript remains the current path; Tauri and Flutter are not on the active route |
 | Annotate exploratory Paperclip control-plane documents | [ ] | Existing research remains in-tree but needs explicit exploratory labels everywhere it appears |
-| Land the first implementation slices for shared storage and contracts | [x] | `src/shared/core.ts`, `src/core/model.ts`, the core-backed workspace store, and `/api/core/*` routes are now in-tree |
+| Land the first implementation slices for shared storage and contracts | [x] | `src/shared/core.ts`, `src/core/model.ts`, the core-backed workspace store, and `/api/core/*` read/write routes are now in-tree |
 | Land the suite-host first slice through Work/Code placeholders | [x] | `src/app/*`, `src/core/*`, `src/products/*`, route ownership, and placeholder Work/Code surfaces are now in place |
 | Finish validation-only Phase 8A passes | [x] | Server route coverage, suite route-map coverage, and architecture/progress doc sync are now in place |
 
@@ -214,8 +214,10 @@ Known follow-ups:
   workspace-prefixed REST, and canonical Chat route handling
 - `src/app/renderer/*` now owns the suite-level renderer entry and routing
 - `src/core/*` is now the shared core seam rather than a Chat-derived contract
-- `src/core/api.ts` now owns the shared-core HTTP seam, including the first
-  approval queue projection
+- `src/core/api.ts` now owns the shared-core HTTP seam, including durable
+  owner-profile, task, approval, run, trace, checkpoint, and outcome writes
+- `src/products/chat/workspace/store.ts` now preserves core-owned system
+  records across file-backed reloads and later workspace syncs
 - `src/products/chat/*` now owns the current Chat implementation
 - `src/products/work/*` and `src/products/code/*` now own dedicated placeholder
   API and renderer surfaces
