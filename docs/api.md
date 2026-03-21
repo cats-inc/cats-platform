@@ -558,9 +558,17 @@ Semantics:
 - `approved` defaults the task status to `approved`
 - `rejected` preserves the current task status unless the caller overrides it
 - callers may override the task status explicitly with `taskStatus`
+- the first write may go directly from `not_requested` to `approved` or
+  `rejected` when the caller is persisting an already-made owner decision and
+  does not need a separate pending request step
 - `approved` and `rejected` are terminal in this first slice; callers may
   repeat the same terminal decision idempotently, but may not move that task
   back to `pending`
+- in the current Phase 1 contract, `approval.status` is the source of truth for
+  the owner decision state; if a caller rejects a task and also wants the task
+  lifecycle to move somewhere explicit such as `draft` or `archived`, it should
+  send `taskStatus` in the same request rather than relying on an implicit
+  fallback
 
 ### List Core Runs
 
