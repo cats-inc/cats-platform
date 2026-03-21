@@ -230,7 +230,9 @@ export async function persistDeletedChannel(
   await closeSessionIds(context.dependencies.runtimeClient, [
     channel.orchestratorLease.sessionId,
     ...channel.palAssignments.map(
-      (assignment) => assignment.execution.lease.sessionId,
+      (assignment) => assignment.status === 'removed'
+        ? null
+        : assignment.execution.lease.sessionId,
     ),
   ]);
 
