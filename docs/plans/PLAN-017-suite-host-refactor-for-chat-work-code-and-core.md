@@ -122,8 +122,8 @@ Current transitional modules after phases 1-3:
   modules until deeper relocation.
 - `src/shared/core.ts` remains as an explicit compatibility adapter that
   re-exports `src/core/types.ts`.
-- `src/shared/app-shell.ts` is still transitional and remains Chat-biased until
-  the later split described in ADR-025.
+- `src/shared/app-shell.ts` remains as an explicit compatibility shim while the
+  real Chat-specific contracts move under `src/products/chat/api/contracts.ts`.
 
 ### Phase 4: Reverse the Current Dependency Direction
 
@@ -165,10 +165,10 @@ Current transitional modules after Phase 4:
 ### Phase 5: Demote Workspace Modules into the Chat Slice
 
 - [x] Move current `src/workspace/*` under `src/products/chat/workspace/*`.
-- [ ] Move Chat-specific API handlers out of the top-level server area into
+- [x] Move Chat-specific API handlers out of the top-level server area into
       `src/products/chat/api/*`.
 - [x] Move Chat renderer concerns under `src/products/chat/renderer/*`.
-- [ ] Rename transitional types and modules where needed so Chat-specific code
+- [x] Rename transitional types and modules where needed so Chat-specific code
       is no longer presented as suite-wide code.
 
 **Deliverables**: current Chat functionality now clearly lives in the Chat
@@ -180,14 +180,15 @@ Current transitional modules during Phase 5:
   the real Chat implementation from `src/products/chat/workspace/*`.
 - `src/renderer/*` now acts as an explicit compatibility shim that re-exports
   the real Chat renderer implementation from `src/products/chat/renderer/*`.
-- `src/server.ts` still owns most Chat-specific route handlers until the
-  `products/chat/api/*` extraction is complete.
+- `src/products/chat/api/*` now owns Chat setup, legacy compatibility, and
+  canonical/public Chat routes; `src/server.ts` remains only as a top-level
+  compatibility re-export.
 
 ### Phase 6: Turn Top-Level Server and Renderer into Assemblers
 
 - [x] Replace the current top-level `server.ts` role with an app-level assembly
       module that wires product-slice routes together.
-- [ ] Split Chat routes from top-level server composition.
+- [x] Split Chat routes from top-level server composition.
 - [x] Replace the current single-surface renderer shape with an app-level
       router that can host Chat, Work, and Code roots.
 - [x] Keep one renderer bundle and one top-level entry in the first slice.
@@ -202,9 +203,8 @@ Current transitional modules during Phase 6:
 - `src/renderer/main.tsx` and `src/renderer/App.tsx` are now explicit
   compatibility shims that re-export the suite-level renderer entry from
   `src/app/renderer/*`.
-- `src/app/server/index.ts` now owns the suite-level server assembly, but still
-  contains most Chat-specific route handling until the `products/chat/api/*`
-  extraction is complete.
+- `src/app/server/index.ts` now owns suite-level server assembly only; Chat
+  route handling lives under `src/products/chat/api/*`.
 - `src/app/renderer/App.tsx` now reserves suite slots for `Cats Work` and
   `Cats Code`, while still routing all existing non-Work/non-Code paths into
   the Chat product slice.
@@ -265,17 +265,15 @@ Current validation state after Phase 8A:
 
 Remaining work after Phase 8A:
 
-- extract Chat-specific route handlers from `src/app/server/index.ts` into
-  `src/products/chat/api/*` to finish the Phase 6 split
-- rename or split more Chat-biased contracts such as `src/shared/app-shell.ts`
-  so they no longer read as suite-wide contracts
 - remove transitional re-export shims in `src/workspace/*`,
   `src/renderer/*`, and `src/server.ts` only after the app/server and
   Chat-route ownership boundaries are stable
+- decide when the `src/shared/app-shell.ts` compatibility shim can be removed
+  after downstream imports move to the split contracts
 - add a fuller renderer-level test harness later if route-level behavior needs
   richer assertions than the current route-map coverage
-- update API docs again once Chat route-module extraction changes ownership and
-  import paths
+- extend the approval seam from the current read-only `GET /api/core/approvals`
+  projection into full owner-decision workflows later
 
 ## Candidate Code Areas
 

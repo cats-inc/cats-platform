@@ -75,6 +75,34 @@ export interface CoreApprovalRecord {
   notes: string | null;
 }
 
+export type CoreApprovalKind = 'dispatch_plan';
+
+export type CoreApprovalDecisionAction = 'approve' | 'revise' | 'reject';
+
+export interface CoreApprovalDecisionOptionRecord {
+  action: CoreApprovalDecisionAction;
+  label: string;
+  description: string;
+}
+
+export interface CoreApprovalQueueItem {
+  id: string;
+  kind: CoreApprovalKind;
+  taskId: string;
+  conversationId: string | null;
+  status: CoreApprovalStatus;
+  title: string;
+  summary: string | null;
+  requestedByActorId: string | null;
+  requestedForActorId: string;
+  requestedAt: string | null;
+  decidedAt: string | null;
+  decidedByActorId: string | null;
+  notes: string | null;
+  requiresOwnerDecision: boolean;
+  decisionOptions: CoreApprovalDecisionOptionRecord[];
+}
+
 export type CoreTaskStatus =
   | 'draft'
   | 'pending_approval'

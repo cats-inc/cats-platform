@@ -1,4 +1,6 @@
 import type {
+  CoreApprovalDecisionOptionRecord,
+  CoreApprovalQueueItem,
   CatsCoreState,
   CoreActorRecord,
   ExecutionTargetSummary,
@@ -43,6 +45,24 @@ export function createDefaultOwnerProfile(updatedAt: string = new Date().toISOSt
     updatedAt,
   };
 }
+
+const DEFAULT_APPROVAL_DECISION_OPTIONS: CoreApprovalDecisionOptionRecord[] = [
+  {
+    action: 'approve',
+    label: 'Approve',
+    description: 'Allow the orchestrator plan to proceed.',
+  },
+  {
+    action: 'revise',
+    label: 'Request revision',
+    description: 'Send the plan back for refinement before execution.',
+  },
+  {
+    action: 'reject',
+    label: 'Reject',
+    description: 'Do not allow the plan to proceed.',
+  },
+];
 
 function createOwnerActor(ownerProfile: OwnerProfileRecord): CoreActorRecord {
   return {
@@ -97,4 +117,24 @@ export function createDefaultCoreState(): CatsCoreState {
     botBindings: [],
     archives: [],
   };
+}
+
+export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[] {
+  return core.tasks.map((task) => ({
+    id: `approval-${task.id}`,
+    kind: 'dispatch_plan',
+    taskId: task.id,
+    conversationId: task.conversationId,
+    status: task.approval.status,
+    title: task.title,
+    summary: task.summary,
+    requestedByActorId: task.orchestratorActorId,
+    requestedForActorId: task.ownerActorId,
+    requestedAt: task.approval.requestedAt,
+    decidedAt: task.approval.decidedAt,
+    decidedByActorId: task.approval.decidedByActorId,
+    notes: task.approval.notes,
+    requiresOwnerDecision: task.approval.status === 'pending',
+    decisionOptions: DEFAULT_APPROVAL_DECISION_OPTIONS.map((option) => ({ ...option })),
+  }));
 }

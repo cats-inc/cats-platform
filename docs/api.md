@@ -16,9 +16,16 @@ The current Phase 2 API provides:
 
 The current server now exposes the first read-only `Cats Core v1` routes so
 parallel Chat and Work workstreams can consume the same actor, conversation,
-task, and owner-profile contract. Write-side approval, escalation, and
+task, approval, and owner-profile contract. Write-side approval, escalation, and
 transport APIs now have first seam routes for provider catalog consumption and a
 Telegram relay skeleton, while full transport delivery remains future work.
+
+Current route ownership:
+
+- `src/app/server/index.ts` is the suite-level assembler only.
+- `src/core/api.ts` owns `/api/core/*`.
+- `src/products/chat/api/*` owns Chat setup, legacy compatibility routes,
+  workspace-prefixed REST routes, and canonical Chat routes.
 
 ## Migration Status
 
@@ -416,6 +423,36 @@ Returns:
 }
 ```
 
+### List Core Approvals
+
+```text
+GET /api/core/approvals
+```
+
+Returns a product-owned approval queue seam derived from current core tasks:
+
+```json
+{
+  "approvals": [
+    {
+      "id": "approval-task-channel-123",
+      "kind": "dispatch_plan",
+      "taskId": "task-channel-123",
+      "status": "not_requested",
+      "requestedForActorId": "actor-owner",
+      "requestedByActorId": "actor-orchestrator-global",
+      "requiresOwnerDecision": false,
+      "decisionOptions": [
+        { "action": "approve", "label": "Approve" }
+      ]
+    }
+  ]
+}
+```
+
+The current slice is intentionally read-only. It defines the approval data
+shape and retrieval seam without implementing a full approval loop UI.
+
 ### Get Owner Profile
 
 ```text
@@ -697,6 +734,8 @@ into separate private schemas.
   - one external bot or transport identity mapped to one orchestrator
 - `/api/core/tasks`
   - product-owned task, run, approval, escalation, and takeover state
+- `/api/core/approvals`
+  - approval queue projection derived from shared core tasks
 - `/api/core/owner-profile`
   - structured owner preferences and collaboration rules
 - `/api/core/archive`
@@ -751,4 +790,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-21*

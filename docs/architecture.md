@@ -281,10 +281,11 @@ temporary and should not be treated as final ownership boundaries:
   the real suite renderer entry from `src/app/renderer/*`
 - `src/workspace/*` is still a compatibility shim over
   `src/products/chat/workspace/*`
-- `src/shared/app-shell.ts` still carries Chat-biased contracts and should
-  eventually be split further once Chat API extraction is complete
-- `src/app/server/index.ts` still contains most Chat-specific route handlers
-  until those move under `src/products/chat/api/*`
+- `src/shared/app-shell.ts` is now a compatibility shim that re-exports
+  `src/shared/suite-contract.ts` and `src/products/chat/api/contracts.ts`
+- `src/products/chat/api/*` now owns Chat setup, legacy compatibility, and
+  canonical/public Chat HTTP contracts, while `src/app/server/index.ts` stays
+  assembly-only
 
 ## Current Chat Navigation Direction
 

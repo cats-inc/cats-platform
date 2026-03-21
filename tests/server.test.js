@@ -143,6 +143,12 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
     assert.ok(actorsPayload.actors.some((actor) => actor.kind === 'owner'));
     assert.ok(actorsPayload.actors.some((actor) => actor.kind === 'orchestrator'));
 
+    const approvalsResponse = await fetch(`${baseUrl}/api/core/approvals`);
+    assert.equal(approvalsResponse.status, 200);
+    const approvalsPayload = await approvalsResponse.json();
+    assert.ok(Array.isArray(approvalsPayload.approvals));
+    assert.equal(approvalsPayload.approvals.length, 0);
+
     const ownerProfileResponse = await fetch(`${baseUrl}/api/core/owner-profile`);
     assert.equal(ownerProfileResponse.status, 200);
     const ownerProfilePayload = await ownerProfileResponse.json();
@@ -334,6 +340,22 @@ test('workspace API covers chat setup, activation, messaging, global pals, assig
       tasksPayload.tasks.some(
         (task) => task.conversationId === `conversation-channel-${channelId}`,
       ),
+    );
+
+    const approvalsResponse = await fetch(`${baseUrl}/api/core/approvals`);
+    assert.equal(approvalsResponse.status, 200);
+    const approvalsPayload = await approvalsResponse.json();
+    const channelApproval = approvalsPayload.approvals.find(
+      (approval) => approval.taskId === `task-channel-${channelId}`,
+    );
+    assert.ok(channelApproval);
+    assert.equal(channelApproval.kind, 'dispatch_plan');
+    assert.equal(channelApproval.status, 'not_requested');
+    assert.equal(channelApproval.requiresOwnerDecision, false);
+    assert.equal(channelApproval.requestedForActorId, 'actor-owner');
+    assert.equal(channelApproval.requestedByActorId, 'actor-orchestrator-global');
+    assert.ok(
+      channelApproval.decisionOptions.some((option) => option.action === 'approve'),
     );
 
     const exportResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/export`);

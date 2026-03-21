@@ -203,20 +203,24 @@
 #### Landed in the current refactor slice
 
 - `src/app/server/index.ts` now owns the app-level HTTP assembly
+- `src/products/chat/api/*` now owns Chat setup, legacy compatibility,
+  workspace-prefixed REST, and canonical Chat route handling
 - `src/app/renderer/*` now owns the suite-level renderer entry and routing
 - `src/core/*` is now the shared core seam rather than a Chat-derived contract
+- `src/core/api.ts` now owns the shared-core HTTP seam, including the first
+  approval queue projection
 - `src/products/chat/*` now owns the current Chat implementation
 - `src/products/work/*` and `src/products/code/*` now own dedicated placeholder
   API and renderer surfaces
+- `src/shared/app-shell.ts` is now a compatibility shim over shared suite
+  envelope types and Chat-specific contracts
 - validation coverage now includes `/api/work`, `/api/code`, and the current
   suite route map
 
 #### Remaining Items
 
-- [ ] Extract Chat-specific route handlers out of `src/app/server/index.ts` into `src/products/chat/api/*`
-- [ ] Split or rename `src/shared/app-shell.ts` so Chat-biased contracts are not presented as suite-wide contracts
 - [ ] Remove temporary shims in `src/server.ts`, `src/renderer/*`, and `src/workspace/*` when ownership boundaries stabilize
-- [ ] Update `docs/api.md` to reflect app-level route ownership after the Chat API extraction lands
+- [ ] Decide when the `src/shared/app-shell.ts` compatibility shim can be removed after downstream imports migrate
 
 ---
 
