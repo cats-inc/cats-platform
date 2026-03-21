@@ -12,6 +12,16 @@ interface TelegramRouteDependencies {
   telegramRelay: TelegramRelay;
 }
 
+class TelegramWebhookRequestError extends Error {
+  constructor(
+    readonly statusCode: number,
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
   const body = JSON.stringify(payload, null, 2);
   response.writeHead(statusCode, {
@@ -32,19 +42,73 @@ function sendRestError(
   });
 }
 
-async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
+function isJsonContentType(contentType: string | undefined): boolean {
+  if (!contentType) {
+    return true;
+  }
+
+  const normalized = contentType.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+  return normalized === 'application/json' || normalized.endsWith('+json');
+}
+
+async function readTelegramWebhookBody(
+  request: IncomingMessage,
+  dependencies: TelegramRouteDependencies,
+): Promise<TelegramWebhookUpdate> {
+  const ingressConfig = dependencies.telegramRelay.getIngressConfig();
+  if (!isJsonContentType(request.headers['content-type'])) {
+    throw new TelegramWebhookRequestError(
+      415,
+      'telegram_webhook_requires_json',
+      'Telegram webhook requests must use application/json.',
+    );
+  }
+
+  if (
+    ingressConfig.secretToken
+    && request.headers['x-telegram-bot-api-secret-token'] !== ingressConfig.secretToken
+  ) {
+    throw new TelegramWebhookRequestError(
+      401,
+      'invalid_telegram_webhook_secret',
+      'Telegram webhook secret token is invalid.',
+    );
+  }
+
   const chunks: Buffer[] = [];
+  let totalBytes = 0;
 
   for await (const chunk of request) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    const buffer = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+    totalBytes += buffer.byteLength;
+    if (totalBytes > ingressConfig.maxBodyBytes) {
+      throw new TelegramWebhookRequestError(
+        413,
+        'telegram_webhook_too_large',
+        `Telegram webhook body exceeds ${ingressConfig.maxBodyBytes} bytes.`,
+      );
+    }
+    chunks.push(buffer);
   }
 
   const rawBody = Buffer.concat(chunks).toString('utf-8').trim();
   if (!rawBody) {
-    throw new Error('Request body is required');
+    throw new TelegramWebhookRequestError(
+      400,
+      'invalid_telegram_update',
+      'Request body is required',
+    );
   }
 
-  return JSON.parse(rawBody) as T;
+  try {
+    return JSON.parse(rawBody) as TelegramWebhookUpdate;
+  } catch {
+    throw new TelegramWebhookRequestError(
+      400,
+      'invalid_telegram_update',
+      'Telegram webhook body must be valid JSON.',
+    );
+  }
 }
 
 function resolveBossCatName(chatState: ChatState): string | null {
@@ -95,17 +159,32 @@ export async function handleTelegramStatus(
   });
 }
 
+export async function handleTelegramDiagnostics(
+  response: ServerResponse,
+  dependencies: TelegramRouteDependencies,
+): Promise<void> {
+  const context = await readTelegramContext(dependencies.chatStore);
+  sendJson(response, 200, {
+    telegram: dependencies.telegramRelay.getDiagnostics(context),
+  });
+}
+
 export async function handleTelegramWebhook(
   request: IncomingMessage,
   response: ServerResponse,
   dependencies: TelegramRouteDependencies,
 ): Promise<void> {
   try {
-    const update = await readJsonBody<TelegramWebhookUpdate>(request);
+    const update = await readTelegramWebhookBody(request, dependencies);
     const context = await readTelegramContext(dependencies.chatStore);
     const receipt = dependencies.telegramRelay.receiveUpdate({ update, context });
     sendJson(response, 202, { receipt });
   } catch (error) {
+    if (error instanceof TelegramWebhookRequestError) {
+      sendRestError(response, error.statusCode, error.code, error.message);
+      return;
+    }
+
     sendRestError(
       response,
       400,
@@ -114,4 +193,3 @@ export async function handleTelegramWebhook(
     );
   }
 }
-

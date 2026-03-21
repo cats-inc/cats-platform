@@ -102,12 +102,18 @@ function createRuntimeStub() {
   };
 }
 
-async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+async function withServer(
+  runtimeClient,
+  callback,
+  chatStore = new MemoryChatStore(),
+  extraDependencies = {},
+) {
   const server = createServer({
     config: baseConfig,
     runtimeClient,
     chatStore,
     now: () => new Date('2026-03-19T00:00:00.000Z'),
+    ...extraDependencies,
   });
 
   server.listen(0, '127.0.0.1');
@@ -126,12 +132,19 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   }
 }
 
-async function withServerConfig(runtimeClient, config, chatStore, callback) {
+async function withServerConfig(
+  runtimeClient,
+  config,
+  chatStore,
+  callback,
+  extraDependencies = {},
+) {
   const server = createServer({
     config,
     runtimeClient,
     chatStore,
     now: () => new Date('2026-03-19T00:00:00.000Z'),
+    ...extraDependencies,
   });
 
   server.listen(0, '127.0.0.1');
@@ -284,7 +297,11 @@ test('telegram status reports unbound relay before bot binding is configured', a
     assert.equal(payload.telegram.botBinding, null);
     assert.equal(payload.telegram.mappedConversationCount, 0);
     assert.equal(payload.telegram.lastProcessedUpdateId, null);
+    assert.equal(payload.telegram.publicIdentityMode, 'boss_cat_single_identity');
+    assert.equal(payload.telegram.diagnosticsPath, '/api/transports/telegram/diagnostics');
     assert.equal(payload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
+    assert.equal(payload.telegram.ingress.acceptedUpdates, 0);
+    assert.equal(payload.telegram.delivery.status, 'not_configured');
   });
 });
 
@@ -336,6 +353,7 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
     const payload = await response.json();
     assert.equal(payload.telegram.status, 'unbound');
     assert.equal(payload.telegram.botBinding, null);
+    assert.equal(payload.telegram.publicIdentityMode, 'boss_cat_single_identity');
   } finally {
     server.close();
     await once(server, 'close');
@@ -354,8 +372,11 @@ test('telegram status reports Boss Cat binding after Telegram ingress is configu
     assert.equal(payload.telegram.bossCatName, 'Smelly');
     assert.equal(payload.telegram.botBinding.botName, 'smelly_bot');
     assert.equal(payload.telegram.webhookPath, '/api/transports/telegram/webhook');
+    assert.equal(payload.telegram.diagnosticsPath, '/api/transports/telegram/diagnostics');
     assert.equal(payload.telegram.roomRouting.transportConversationMode, 'transport_inbox');
     assert.equal(payload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
+    assert.equal(payload.telegram.ingress.secretTokenConfigured, false);
+    assert.equal(payload.telegram.delivery.status, 'not_configured');
   });
 });
 
@@ -384,6 +405,7 @@ test('telegram webhook accepts updates, dedupes ids, and keeps chat mapping stat
     assert.equal(acceptedPayload.receipt.bossCatName, 'Smelly');
     assert.equal(acceptedPayload.receipt.mappedConversationId, 'telegram:12345');
     assert.equal(acceptedPayload.receipt.roomRouting.roomRoutingStatus, 'placeholder');
+    assert.equal(acceptedPayload.receipt.messageSummary.textPreview, 'hello from telegram');
 
     const duplicateResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
       method: 'POST',
@@ -403,6 +425,9 @@ test('telegram webhook accepts updates, dedupes ids, and keeps chat mapping stat
     const statusPayload = await statusResponse.json();
     assert.equal(statusPayload.telegram.mappedConversationCount, 1);
     assert.equal(statusPayload.telegram.lastProcessedUpdateId, 101);
+    assert.equal(statusPayload.telegram.ingress.acceptedUpdates, 1);
+    assert.equal(statusPayload.telegram.ingress.ignoredUpdates, 1);
+    assert.equal(statusPayload.telegram.ingress.lastReceipt.reason, 'duplicate_update');
   });
 });
 
@@ -428,7 +453,143 @@ test('telegram webhook ignores unsupported updates and keeps routing placeholder
     const statusPayload = await statusResponse.json();
     assert.equal(statusPayload.telegram.mappedConversationCount, 0);
     assert.equal(statusPayload.telegram.lastProcessedUpdateId, null);
+    assert.equal(statusPayload.telegram.ingress.acceptedUpdates, 0);
+    assert.equal(statusPayload.telegram.ingress.ignoredUpdates, 1);
   });
+});
+
+test('telegram diagnostics exposes binding and dedupe state outside the main transcript model', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await configureTelegramBossCat(baseUrl);
+
+    await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        update_id: 101,
+        message: {
+          message_id: 88,
+          caption: 'photo update',
+          chat: { id: 12345, type: 'private', username: 'boss_inbox' },
+          photo: [{ file_id: 'photo-1', width: 640, height: 640 }],
+        },
+      }),
+    });
+
+    const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+    assert.equal(diagnosticsResponse.status, 200);
+
+    const payload = await diagnosticsResponse.json();
+    assert.equal(payload.telegram.status, 'bound');
+    assert.equal(payload.telegram.dedupe.retainedUpdateCount, 1);
+    assert.equal(payload.telegram.bindings.length, 1);
+    assert.equal(payload.telegram.bindings[0].telegramChatId, '12345');
+    assert.deepEqual(payload.telegram.bindings[0].lastInboundAttachmentKinds, ['photo']);
+    assert.equal(payload.telegram.ingress.lastReceipt.messageSummary.attachmentCount, 1);
+  });
+});
+
+test('telegram webhook hardening rejects non-json requests', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await configureTelegramBossCat(baseUrl);
+
+    const response = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: 'not json',
+    });
+    assert.equal(response.status, 415);
+
+    const payload = await response.json();
+    assert.equal(payload.error.code, 'telegram_webhook_requires_json');
+  });
+});
+
+test('telegram webhook hardening enforces the configured secret token', async () => {
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      await configureTelegramBossCat(baseUrl);
+
+      const unauthorizedResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          update_id: 101,
+          message: {
+            message_id: 88,
+            text: 'hello from telegram',
+            chat: { id: 12345, type: 'private' },
+          },
+        }),
+      });
+      assert.equal(unauthorizedResponse.status, 401);
+      const unauthorizedPayload = await unauthorizedResponse.json();
+      assert.equal(unauthorizedPayload.error.code, 'invalid_telegram_webhook_secret');
+
+      const authorizedResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-telegram-bot-api-secret-token': 'top-secret',
+        },
+        body: JSON.stringify({
+          update_id: 101,
+          message: {
+            message_id: 88,
+            text: 'hello from telegram',
+            chat: { id: 12345, type: 'private' },
+          },
+        }),
+      });
+      assert.equal(authorizedResponse.status, 202);
+
+      const statusResponse = await fetch(`${baseUrl}/api/transports/telegram`);
+      const statusPayload = await statusResponse.json();
+      assert.equal(statusPayload.telegram.ingress.secretTokenConfigured, true);
+      assert.equal(statusPayload.telegram.ingress.acceptedUpdates, 1);
+    },
+    undefined,
+    {
+      telegramRelay: createTelegramRelay({
+        webhookSecretToken: 'top-secret',
+        now: () => new Date('2026-03-19T00:00:00.000Z'),
+      }),
+    },
+  );
+});
+
+test('telegram webhook hardening rejects oversized webhook bodies before relay handling', async () => {
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      await configureTelegramBossCat(baseUrl);
+
+      const response = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          update_id: 101,
+          message: {
+            message_id: 88,
+            text: 'x'.repeat(4096),
+            chat: { id: 12345, type: 'private' },
+          },
+        }),
+      });
+      assert.equal(response.status, 413);
+
+      const payload = await response.json();
+      assert.equal(payload.error.code, 'telegram_webhook_too_large');
+    },
+    undefined,
+    {
+      telegramRelay: createTelegramRelay({
+        maxBodyBytes: 128,
+        now: () => new Date('2026-03-19T00:00:00.000Z'),
+      }),
+    },
+  );
 });
 
 test('telegram relay state survives restart with file-backed chat storage', async () => {
@@ -475,6 +636,7 @@ test('telegram relay state survives restart with file-backed chat storage', asyn
       assert.equal(statusPayload.telegram.mappedConversationCount, 1);
       assert.equal(statusPayload.telegram.lastProcessedUpdateId, 101);
       assert.equal(statusPayload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
+      assert.equal(statusPayload.telegram.ingress.acceptedUpdates, 1);
 
       const duplicateResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
         method: 'POST',
@@ -494,7 +656,11 @@ test('telegram relay state survives restart with file-backed chat storage', asyn
       assert.equal(duplicatePayload.receipt.status, 'ignored');
       assert.equal(duplicatePayload.receipt.reason, 'duplicate_update');
       assert.equal(duplicatePayload.receipt.mappedConversationId, 'telegram:12345');
+
+      const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+      const diagnosticsPayload = await diagnosticsResponse.json();
+      assert.equal(diagnosticsPayload.telegram.bindings[0].conversationId, 'telegram:12345');
+      assert.equal(diagnosticsPayload.telegram.ingress.ignoredUpdates, 1);
     },
   );
 });
-

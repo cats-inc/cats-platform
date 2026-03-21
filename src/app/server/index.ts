@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import type { AppConfig } from '../../config.js';
 import { routeCoreApi } from '../../core/api.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
+import { createTelegramBotApiDeliveryClient } from '../../platform/transports/telegram/delivery.js';
 import {
   createTelegramRelay,
   type TelegramRelay,
@@ -35,6 +36,7 @@ import {
   handleProviderRegistry,
 } from '../../server/routes/providers.js';
 import {
+  handleTelegramDiagnostics,
   handleTelegramStatus,
   handleTelegramWebhook,
 } from '../../server/routes/telegram.js';
@@ -284,6 +286,18 @@ async function routeRequest(
     return;
   }
 
+  if (url.pathname === '/api/transports/telegram/diagnostics') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return;
+    }
+    await handleTelegramDiagnostics(response, {
+      chatStore: dependencies.chatStore,
+      telegramRelay: dependencies.telegramRelay,
+    });
+    return;
+  }
+
   if (url.pathname === '/api/transports/telegram/webhook') {
     if (method !== 'POST') {
       sendMethodNotAllowed(response, ['POST']);
@@ -332,10 +346,24 @@ export function createServer(dependencies: ServerDependencies) {
 }
 
 function createDefaultTelegramRelay(dependencies: ServerDependencies): TelegramRelay {
+  const webhookSecretToken = process.env.CATS_TELEGRAM_WEBHOOK_SECRET?.trim() || null;
+  const botToken = process.env.CATS_TELEGRAM_BOT_TOKEN?.trim() || null;
+  const parsedMaxBodyBytes = Number.parseInt(
+    process.env.CATS_TELEGRAM_WEBHOOK_MAX_BYTES ?? '',
+    10,
+  );
+
   return createTelegramRelay({
     now: dependencies.now,
     store: dependencies.chatStore instanceof MemoryChatStore
       ? new InMemoryTelegramRelayStore()
       : createFileBackedTelegramRelayStore(dependencies.config.chatStatePath),
+    webhookSecretToken,
+    maxBodyBytes: Number.isFinite(parsedMaxBodyBytes) ? parsedMaxBodyBytes : undefined,
+    deliveryClient: botToken
+      ? createTelegramBotApiDeliveryClient({
+          botToken,
+        })
+      : null,
   });
 }

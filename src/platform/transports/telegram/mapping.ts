@@ -1,5 +1,6 @@
 import type {
   TelegramConversationBinding,
+  TelegramNormalizedMessageSummary,
   TelegramRoomRoutingSeam,
 } from './contracts.js';
 import type { TelegramRelayStore } from './store.js';
@@ -32,9 +33,15 @@ export interface TelegramConversationMappingResult {
 export interface TelegramConversationMapper {
   describeRoomRouting(): TelegramRoomRoutingSeam;
   getBindingCount(): number;
+  listBindings(): TelegramConversationBinding[];
   resolveChatConversation(input: {
     chatId: string;
     acceptedAt: string;
+    chatType: string;
+    chatTitle: string | null;
+    chatUsername: string | null;
+    messageId: string | null;
+    messageSummary: TelegramNormalizedMessageSummary | null;
   }): TelegramConversationMappingResult;
 }
 
@@ -50,17 +57,38 @@ export function createTelegramConversationMapper(
       return store.listBindings().length;
     },
 
+    listBindings(): TelegramConversationBinding[] {
+      return store.listBindings();
+    },
+
     resolveChatConversation({
       chatId,
       acceptedAt,
+      chatType,
+      chatTitle,
+      chatUsername,
+      messageId,
+      messageSummary,
     }: {
       chatId: string;
       acceptedAt: string;
+      chatType: string;
+      chatTitle: string | null;
+      chatUsername: string | null;
+      messageId: string | null;
+      messageSummary: TelegramNormalizedMessageSummary | null;
     }): TelegramConversationMappingResult {
       const existingBinding = store.getBinding(chatId);
       const binding: TelegramConversationBinding = existingBinding
         ? {
             ...existingBinding,
+            telegramChatType: chatType || existingBinding.telegramChatType,
+            telegramChatTitle: chatTitle,
+            telegramChatUsername: chatUsername,
+            lastInboundMessageId: messageId,
+            lastInboundAt: acceptedAt,
+            lastInboundTextPreview: messageSummary?.textPreview ?? null,
+            lastInboundAttachmentKinds: messageSummary?.attachmentKinds ?? [],
             updatedAt: acceptedAt,
           }
         : {
@@ -69,6 +97,15 @@ export function createTelegramConversationMapper(
             transportConversationMode: 'transport_inbox',
             roomRoutingStatus: 'placeholder',
             linkedRoomId: null,
+            telegramChatType: chatType,
+            telegramChatTitle: chatTitle,
+            telegramChatUsername: chatUsername,
+            lastInboundMessageId: messageId,
+            lastInboundAt: acceptedAt,
+            lastInboundTextPreview: messageSummary?.textPreview ?? null,
+            lastInboundAttachmentKinds: messageSummary?.attachmentKinds ?? [],
+            lastOutboundMessageId: null,
+            lastOutboundAt: null,
             createdAt: acceptedAt,
             updatedAt: acceptedAt,
           };

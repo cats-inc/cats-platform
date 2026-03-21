@@ -58,7 +58,11 @@ Development: http://127.0.0.1:8181
 
 ## Authentication
 
-No inbound auth is implemented yet.
+No general inbound auth is implemented yet.
+
+Telegram webhook ingress may optionally enforce the standard
+`x-telegram-bot-api-secret-token` header when
+`CATS_TELEGRAM_WEBHOOK_SECRET` is configured.
 
 ## Canonical Public API (SPEC-009)
 
@@ -205,21 +209,45 @@ POST /api/shell/open-folder
 
 ```text
 GET  /api/transports/telegram
+GET  /api/transports/telegram/diagnostics
 POST /api/transports/telegram/webhook
 ```
 
 - `GET /api/transports/telegram` returns Telegram relay status for the current
   `Boss Cat` binding.
-  The payload includes durable mapping counts, the last processed Telegram
-  update id, and a `roomRouting` object that explicitly marks room routing as a
-  placeholder seam rather than a finalized orchestration policy.
+  The payload includes:
+  - `publicIdentityMode: "boss_cat_single_identity"`
+  - durable mapping counts
+  - `diagnosticsPath`
+  - the last processed Telegram update id
+  - ingress summaries (`secretTokenConfigured`, `maxBodyBytes`,
+    accepted/ignored counters, last receipt)
+  - delivery summaries (`status`, supported operations, counters, last receipt)
+  - a `roomRouting` object that explicitly marks room routing as a placeholder
+    seam rather than a finalized orchestration policy
+- `GET /api/transports/telegram/diagnostics` returns the transport-owned
+  diagnostics model.
+  The payload includes dedupe window stats, durable chat-to-conversation
+  bindings, last ingress/delivery receipts, and other transport-only state that
+  intentionally stays outside the main chat transcript.
 - `POST /api/transports/telegram/webhook` is the Telegram ingress seam used by
   the future Boss Cat bridge.
-  The current slice returns transport receipts, persists dedupe and
-  inbox-to-conversation mapping state outside chat core, and ignores
-  unsupported/non-private updates with explicit transport reasons.
-  It does not yet create or continue real `Cats Chat` rooms, mirror transcripts
-  back into Telegram, or send outbound Telegram messages.
+  The current slice:
+  - requires JSON payloads
+  - optionally enforces `x-telegram-bot-api-secret-token`
+  - rejects oversized bodies using the transport-owned byte limit
+  - returns transport receipts with normalized message summaries
+  - persists dedupe and inbox-to-conversation mapping state outside chat core
+  - ignores unsupported, bot-authored, or non-private updates with explicit
+    transport reasons
+  - does not yet create or continue real `Cats Chat` rooms or invent routing
+    policy
+
+The outbound transport seam lives under `src/platform/transports/telegram/*`
+and supports transport-level `send`, `reply`, `edit`, and `delete` operations.
+When `CATS_TELEGRAM_BOT_TOKEN` is configured, the default server wiring enables
+the Telegram Bot API delivery client; otherwise the seam stays visible in
+status/diagnostics as `not_configured`.
 
 ### Orchestrator
 

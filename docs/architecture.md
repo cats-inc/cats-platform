@@ -90,6 +90,13 @@ tests and imports do not have to move all at once.
 - **Technology**: TypeScript + `process.env`
 - **Responsibilities**: Resolve app port, host, and `cats-runtime` settings
 
+Telegram transport also supports a small transport-owned env surface that stays
+below product orchestration policy:
+
+- `CATS_TELEGRAM_WEBHOOK_SECRET`
+- `CATS_TELEGRAM_WEBHOOK_MAX_BYTES`
+- `CATS_TELEGRAM_BOT_TOKEN`
+
 ### Presentation Surfaces
 
 - **Purpose**: Expose product behavior through dedicated Chat, Work, and
@@ -101,6 +108,29 @@ tests and imports do not have to move all at once.
   orchestrator safely. For Chat, high-frequency actions such as adding a cat
   should stay in current-chat context, while reusable registry management lives
   under Settings.
+
+### Telegram Transport Layer
+
+- **Purpose**: Keep Telegram as a transport-owned Boss Cat inbox seam without
+  leaking routing or reply policy into HTTP assembly
+- **Technology**: `src/platform/transports/telegram/*`, a durable relay
+  sidecar store, and an optional Telegram Bot API delivery client
+- **Responsibilities**:
+  - harden webhook ingress with JSON checks, optional secret-token validation,
+    and bounded body size
+  - durably dedupe update ids and retain chat-to-conversation bindings outside
+    the main transcript model
+  - normalize inbound message/media summaries for transport receipts and later
+    system-layer consumers
+  - expose transport-level status and diagnostics, including dedupe counters,
+    bindings, and last ingress/delivery receipts
+  - provide outbound `send` / `reply` / `edit` / `delete` delivery seams
+    without inventing product policy
+
+The current server wiring stays intentionally thin: `src/app/server/index.ts`
+only instantiates the relay, sidecar store, and optional Bot API client.
+`src/server/routes/telegram.ts` owns the HTTP adapter, while transport state
+stays in `src/platform/transports/telegram/*`.
 
 ### Cats Core v1
 
@@ -317,11 +347,14 @@ primary operator workflow. See
 5. If work needs execution, the product server can call `cats-runtime`
    directly, or an orchestrator can use the planned MCP facade for runtime
    tools.
-6. The product server persists operational transcript, approval, actor, and
+6. Transport relays persist transport-only dedupe, binding, and delivery
+   diagnostics in sidecar state rather than hiding them inside room
+   transcripts.
+7. The product server persists operational transcript, approval, actor, and
    artifact state to product-owned storage.
-7. Archived data later flows into archive/RAG pipelines without replacing the
+8. Archived data later flows into archive/RAG pipelines without replacing the
    operational DB or approval state.
-8. In built mode, the server also serves the static renderer bundle.
+9. In built mode, the server also serves the static renderer bundle.
 
 ## Planned Desktop Topology
 
@@ -443,8 +476,6 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-22*
-
-
 
 
 

@@ -1,20 +1,39 @@
 import type { BotBindingRecord } from '../../../core/types.js';
 
 export type TelegramRelayMode = 'boss-cat-ingress';
+export type TelegramPublicIdentityMode = 'boss_cat_single_identity';
 
 export type TelegramTransportConversationMode = 'transport_inbox';
 
 export type TelegramRoomRoutingStatus = 'placeholder';
+export type TelegramAttachmentKind =
+  | 'photo'
+  | 'document'
+  | 'audio'
+  | 'voice'
+  | 'video'
+  | 'video_note'
+  | 'animation'
+  | 'sticker'
+  | 'location'
+  | 'contact';
+export type TelegramDeliveryOperation = 'send' | 'reply' | 'edit' | 'delete';
+export type TelegramDeliveryStatus = 'configured' | 'not_configured';
+export type TelegramDeliveryResult = 'sent' | 'edited' | 'deleted' | 'failed';
 
 export interface TelegramWebhookUpdate {
   update_id?: number;
   message?: TelegramMessagePayload;
   edited_message?: TelegramMessagePayload;
+  channel_post?: TelegramMessagePayload;
+  edited_channel_post?: TelegramMessagePayload;
 }
 
 export interface TelegramMessagePayload {
   message_id?: number;
   text?: string;
+  caption?: string;
+  date?: number;
   chat?: {
     id?: number | string;
     type?: string;
@@ -28,6 +47,106 @@ export interface TelegramMessagePayload {
     last_name?: string;
     username?: string;
   };
+  reply_to_message?: {
+    message_id?: number;
+  };
+  photo?: TelegramPhotoSizePayload[];
+  document?: TelegramDocumentPayload;
+  audio?: TelegramAudioPayload;
+  voice?: TelegramVoicePayload;
+  video?: TelegramVideoPayload;
+  video_note?: TelegramVideoNotePayload;
+  animation?: TelegramAnimationPayload;
+  sticker?: TelegramStickerPayload;
+  location?: TelegramLocationPayload;
+  contact?: TelegramContactPayload;
+}
+
+export interface TelegramFilePayload {
+  file_id?: string;
+  file_unique_id?: string;
+  file_size?: number;
+  mime_type?: string;
+}
+
+export interface TelegramPhotoSizePayload extends TelegramFilePayload {
+  width?: number;
+  height?: number;
+}
+
+export interface TelegramDocumentPayload extends TelegramFilePayload {
+  file_name?: string;
+}
+
+export interface TelegramAudioPayload extends TelegramDocumentPayload {
+  duration?: number;
+}
+
+export interface TelegramVoicePayload extends TelegramFilePayload {
+  duration?: number;
+}
+
+export interface TelegramVideoPayload extends TelegramFilePayload {
+  width?: number;
+  height?: number;
+  duration?: number;
+}
+
+export interface TelegramVideoNotePayload extends TelegramFilePayload {
+  length?: number;
+  duration?: number;
+}
+
+export interface TelegramAnimationPayload extends TelegramFilePayload {
+  width?: number;
+  height?: number;
+  duration?: number;
+  file_name?: string;
+}
+
+export interface TelegramStickerPayload extends TelegramFilePayload {
+  width?: number;
+  height?: number;
+  emoji?: string;
+}
+
+export interface TelegramLocationPayload {
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface TelegramContactPayload {
+  phone_number?: string;
+  first_name?: string;
+  last_name?: string;
+  user_id?: number | string;
+}
+
+export interface TelegramNormalizedAttachment {
+  kind: TelegramAttachmentKind;
+  fileId: string | null;
+  fileUniqueId: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  width: number | null;
+  height: number | null;
+  durationSeconds: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  phoneNumber: string | null;
+  displayName: string | null;
+}
+
+export interface TelegramNormalizedMessageSummary {
+  isEdited: boolean;
+  senderId: string | null;
+  senderDisplayName: string | null;
+  senderUsername: string | null;
+  textPreview: string | null;
+  attachmentCount: number;
+  attachmentKinds: TelegramAttachmentKind[];
+  replyToMessageId: string | null;
 }
 
 export interface TelegramRoomRoutingSeam {
@@ -43,6 +162,15 @@ export interface TelegramConversationBinding {
   transportConversationMode: TelegramTransportConversationMode;
   roomRoutingStatus: TelegramRoomRoutingStatus;
   linkedRoomId: string | null;
+  telegramChatType: string;
+  telegramChatTitle: string | null;
+  telegramChatUsername: string | null;
+  lastInboundMessageId: string | null;
+  lastInboundAt: string | null;
+  lastInboundTextPreview: string | null;
+  lastInboundAttachmentKinds: TelegramAttachmentKind[];
+  lastOutboundMessageId: string | null;
+  lastOutboundAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -64,11 +192,30 @@ export interface TelegramRelayStatus {
     platform: 'telegram';
     botName: string;
   } | null;
+  publicIdentityMode: TelegramPublicIdentityMode;
   mappedConversationCount: number;
   lastProcessedUpdateId: number | null;
   webhookPath: string;
+  diagnosticsPath: string;
   relayMode: TelegramRelayMode;
   roomRouting: TelegramRoomRoutingSeam;
+  ingress: {
+    secretTokenConfigured: boolean;
+    maxBodyBytes: number;
+    acceptedUpdates: number;
+    ignoredUpdates: number;
+    lastReceipt: TelegramWebhookReceipt | null;
+  };
+  delivery: {
+    status: TelegramDeliveryStatus;
+    supportedOperations: TelegramDeliveryOperation[];
+    sentCount: number;
+    repliedCount: number;
+    editedCount: number;
+    deletedCount: number;
+    failedCount: number;
+    lastReceipt: TelegramDeliveryReceipt | null;
+  };
   note: string;
 }
 
@@ -82,10 +229,92 @@ export interface TelegramWebhookReceipt {
   bossCatId: string | null;
   bossCatName: string | null;
   mappedConversationId: string | null;
+  messageSummary: TelegramNormalizedMessageSummary | null;
   roomRouting: TelegramRoomRoutingSeam;
   reason?:
     | 'telegram_not_bound_to_boss_cat'
     | 'duplicate_update'
     | 'unsupported_update'
-    | 'unsupported_chat_type';
+    | 'unsupported_chat_type'
+    | 'message_from_bot';
+}
+
+export interface TelegramWebhookIngressDiagnostics {
+  secretTokenConfigured: boolean;
+  maxBodyBytes: number;
+  acceptedUpdates: number;
+  ignoredUpdates: number;
+  lastReceipt: TelegramWebhookReceipt | null;
+}
+
+export interface TelegramDeliveryRequest {
+  operation: TelegramDeliveryOperation;
+  conversationId?: string | null;
+  chatId?: string | null;
+  messageId?: string | null;
+  replyToMessageId?: string | null;
+  text?: string | null;
+  parseMode?: 'HTML' | 'MarkdownV2' | null;
+  disableLinkPreview?: boolean;
+}
+
+export interface TelegramDeliveryReceipt {
+  platform: 'telegram';
+  operation: TelegramDeliveryOperation;
+  status: TelegramDeliveryResult;
+  deliveredAt: string;
+  deliveryId: string;
+  chatId: string | null;
+  conversationId: string | null;
+  messageId: string | null;
+  replyToMessageId: string | null;
+  bossCatId: string | null;
+  bossCatName: string | null;
+  textPreview: string | null;
+  reason?:
+    | 'telegram_not_bound_to_boss_cat'
+    | 'delivery_client_not_configured'
+    | 'conversation_not_mapped'
+    | 'chat_id_required'
+    | 'message_id_required'
+    | 'text_required'
+    | 'telegram_api_error';
+  errorMessage?: string | null;
+}
+
+export interface TelegramDeliveryDiagnostics {
+  status: TelegramDeliveryStatus;
+  supportedOperations: TelegramDeliveryOperation[];
+  sentCount: number;
+  repliedCount: number;
+  editedCount: number;
+  deletedCount: number;
+  failedCount: number;
+  lastReceipt: TelegramDeliveryReceipt | null;
+}
+
+export interface TelegramRelayDiagnostics {
+  platform: 'telegram';
+  status: 'bound' | 'unbound';
+  publicIdentityMode: TelegramPublicIdentityMode;
+  bossCatId: string | null;
+  bossCatName: string | null;
+  botBinding: {
+    id: string;
+    platform: 'telegram';
+    botName: string;
+  } | null;
+  relayMode: TelegramRelayMode;
+  webhookPath: string;
+  diagnosticsPath: string;
+  lastProcessedUpdateId: number | null;
+  dedupe: {
+    retainedUpdateCount: number;
+    maxRetainedUpdateCount: number;
+  };
+  roomRouting: TelegramRoomRoutingSeam;
+  ingress: TelegramWebhookIngressDiagnostics;
+  delivery: TelegramDeliveryDiagnostics;
+  bindings: TelegramConversationBinding[];
+  note: string;
 }
