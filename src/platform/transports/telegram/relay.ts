@@ -63,12 +63,6 @@ function pickMessage(
   if (update.edited_message) {
     return { message: update.edited_message, isEdited: true };
   }
-  if (update.channel_post) {
-    return { message: update.channel_post, isEdited: false };
-  }
-  if (update.edited_channel_post) {
-    return { message: update.edited_channel_post, isEdited: true };
-  }
   return { message: null, isEdited: false };
 }
 

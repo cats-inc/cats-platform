@@ -25,8 +25,6 @@ export interface TelegramWebhookUpdate {
   update_id?: number;
   message?: TelegramMessagePayload;
   edited_message?: TelegramMessagePayload;
-  channel_post?: TelegramMessagePayload;
-  edited_channel_post?: TelegramMessagePayload;
 }
 
 export interface TelegramMessagePayload {
