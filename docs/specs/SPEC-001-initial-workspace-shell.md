@@ -36,7 +36,7 @@ exposes runtime-aware health and an explicit bootstrap workspace shell payload.
 
 ## Acceptance Criteria
 
-- `cats-inc/` exists as a Node/TS subproject
+- `cats/` exists as a Node/TS subproject
 - The service builds with TypeScript
 - Automated tests verify the health and shell endpoints
 

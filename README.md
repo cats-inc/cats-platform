@@ -21,7 +21,7 @@ The current slices are:
 
 ## Current Status
 
-- [x] Bootstrap `cats-inc/` from `project-bootstrap`
+- [x] Bootstrap `cats/` from `project-bootstrap`
 - [x] Establish `cats-runtime` as the only runtime boundary
 - [x] Add a minimal Node/TypeScript HTTP entrypoint and smoke tests
 - [x] Choose `React/Vite` as the initial renderer approach
@@ -47,7 +47,7 @@ The current implementation closes the main product gaps versus
 ## Quick Start
 
 ```bash
-cd cats-inc
+cd cats
 cp .env.example .env
 npm install
 npm run dev:server
@@ -89,7 +89,7 @@ See [docs/](./docs/) for project details:
 ## Project Structure
 
 ```text
-cats-inc/
+cats/
 ├── src/server*    # Node/TS app core and runtime-facing API
 ├── src/renderer/  # React/Vite workspace shell
 ├── src/shared/    # Types shared by server and renderer

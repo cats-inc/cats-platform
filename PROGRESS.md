@@ -30,7 +30,7 @@
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Create `cats-inc/` with bootstrap preset | [x] | Used external `project-bootstrap` source |
+| Create `cats/` with bootstrap preset | [x] | Used external `project-bootstrap` source |
 | Replace template metadata and docs | [x] | README, AGENTS, API, architecture, services |
 | Add minimal `cats-runtime` client and server | [x] | No extra runtime dependencies |
 | Add smoke tests for the app shell | [x] | Uses `node:test` against built output |
