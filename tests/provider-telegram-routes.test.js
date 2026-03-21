@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
-import { MemoryWorkspaceStore } from '../dist-server/workspace/store.js';
+import {
+  FileWorkspaceStore,
+  MemoryWorkspaceStore,
+} from '../dist-server/workspace/store.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -97,7 +103,10 @@ function createRuntimeStub() {
 
 async function withServer(runtimeClient, callback, workspaceStore = new MemoryWorkspaceStore()) {
   const server = createServer({
-    config: baseConfig,
+    config: {
+      ...baseConfig,
+      workspaceStatePath: baseConfig.workspaceStatePath,
+    },
     runtimeClient,
     workspaceStore,
     now: () => new Date('2026-03-19T00:00:00.000Z'),
@@ -119,7 +128,54 @@ async function withServer(runtimeClient, callback, workspaceStore = new MemoryWo
   }
 }
 
-test('GET /api/providers returns product provider registry with runtime instance metadata', async () => {
+async function withServerConfig(runtimeClient, config, workspaceStore, callback) {
+  const server = createServer({
+    config,
+    runtimeClient,
+    workspaceStore,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to resolve test server address');
+  }
+
+  try {
+    await callback(`http://127.0.0.1:${address.port}`);
+  } finally {
+    server.close();
+    await once(server, 'close');
+  }
+}
+
+async function configureTelegramBossCat(baseUrl) {
+  const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      ownerDisplayName: 'Kenny',
+      bossCatName: 'Smelly',
+      bossCatProvider: 'claude',
+    }),
+  });
+  assert.equal(setupResponse.status, 200);
+
+  const orchestratorResponse = await fetch(`${baseUrl}/api/orchestrator`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      provider: 'claude',
+      telegramBotName: 'smelly_bot',
+    }),
+  });
+  assert.equal(orchestratorResponse.status, 200);
+}
+
+test('GET /api/providers returns the runtime-backed provider registry', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/providers`);
     assert.equal(response.status, 200);
@@ -179,7 +235,7 @@ test('GET /api/providers/:provider/models forwards the optional instance query',
   assert.deepEqual(calls, [{ provider: 'codex', instance: 'agent/bridge' }]);
 });
 
-test('GET /api/providers/:provider/models falls back to static data on runtime failure', async () => {
+test('GET /api/providers/:provider/models falls back to static data', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.getProviderModels = async () => {
     throw new Error('runtime unavailable');
@@ -206,31 +262,13 @@ test('telegram status reports unbound relay before bot binding is configured', a
     assert.equal(payload.telegram.botBinding, null);
     assert.equal(payload.telegram.mappedConversationCount, 0);
     assert.equal(payload.telegram.lastProcessedUpdateId, null);
+    assert.equal(payload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
   });
 });
 
-test('telegram status reports Boss Cat binding once bot webhook ingress is configured', async () => {
+test('telegram status reports Boss Cat binding after Telegram ingress is configured', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
-        bossCatProvider: 'claude',
-      }),
-    });
-    assert.equal(setupResponse.status, 200);
-
-    const orchestratorResponse = await fetch(`${baseUrl}/api/orchestrator`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'claude',
-        telegramBotName: 'smelly_bot',
-      }),
-    });
-    assert.equal(orchestratorResponse.status, 200);
+    await configureTelegramBossCat(baseUrl);
 
     const statusResponse = await fetch(`${baseUrl}/api/transports/telegram`);
     assert.equal(statusResponse.status, 200);
@@ -240,31 +278,14 @@ test('telegram status reports Boss Cat binding once bot webhook ingress is confi
     assert.equal(payload.telegram.bossCatName, 'Smelly');
     assert.equal(payload.telegram.botBinding.botName, 'smelly_bot');
     assert.equal(payload.telegram.webhookPath, '/api/transports/telegram/webhook');
+    assert.equal(payload.telegram.roomRouting.transportConversationMode, 'transport_inbox');
+    assert.equal(payload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
   });
 });
 
-test('telegram webhook accepts inbound updates, dedupes update ids, and keeps chat mapping in relay state', async () => {
+test('telegram webhook accepts updates, dedupes ids, and keeps chat mapping state', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
-        bossCatProvider: 'claude',
-      }),
-    });
-    assert.equal(setupResponse.status, 200);
-
-    const orchestratorResponse = await fetch(`${baseUrl}/api/orchestrator`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'claude',
-        telegramBotName: 'smelly_bot',
-      }),
-    });
-    assert.equal(orchestratorResponse.status, 200);
+    await configureTelegramBossCat(baseUrl);
 
     const webhookBody = {
       update_id: 101,
@@ -286,6 +307,7 @@ test('telegram webhook accepts inbound updates, dedupes update ids, and keeps ch
     assert.equal(acceptedPayload.receipt.status, 'accepted');
     assert.equal(acceptedPayload.receipt.bossCatName, 'Smelly');
     assert.equal(acceptedPayload.receipt.mappedConversationId, 'telegram:12345');
+    assert.equal(acceptedPayload.receipt.roomRouting.roomRoutingStatus, 'placeholder');
 
     const duplicateResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
       method: 'POST',
@@ -306,4 +328,96 @@ test('telegram webhook accepts inbound updates, dedupes update ids, and keeps ch
     assert.equal(statusPayload.telegram.mappedConversationCount, 1);
     assert.equal(statusPayload.telegram.lastProcessedUpdateId, 101);
   });
+});
+
+test('telegram webhook ignores unsupported updates and keeps routing placeholder', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await configureTelegramBossCat(baseUrl);
+
+    const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        update_id: 101,
+      }),
+    });
+    assert.equal(webhookResponse.status, 202);
+
+    const payload = await webhookResponse.json();
+    assert.equal(payload.receipt.status, 'ignored');
+    assert.equal(payload.receipt.reason, 'unsupported_update');
+    assert.equal(payload.receipt.roomRouting.roomRoutingStatus, 'placeholder');
+
+    const statusResponse = await fetch(`${baseUrl}/api/transports/telegram`);
+    const statusPayload = await statusResponse.json();
+    assert.equal(statusPayload.telegram.mappedConversationCount, 0);
+    assert.equal(statusPayload.telegram.lastProcessedUpdateId, null);
+  });
+});
+
+test('telegram relay state survives restart with file-backed workspace storage', async () => {
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-telegram-routes-'));
+  const workspaceStatePath = path.join(stateDir, 'workspace.json');
+  const config = {
+    ...baseConfig,
+    workspaceStatePath,
+  };
+
+  await withServerConfig(
+    createRuntimeStub(),
+    config,
+    new FileWorkspaceStore(workspaceStatePath),
+    async (baseUrl) => {
+      await configureTelegramBossCat(baseUrl);
+
+      const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          update_id: 101,
+          message: {
+            message_id: 88,
+            text: 'hello from telegram',
+            chat: { id: 12345, type: 'private' },
+          },
+        }),
+      });
+      assert.equal(webhookResponse.status, 202);
+    },
+  );
+
+  await withServerConfig(
+    createRuntimeStub(),
+    config,
+    new FileWorkspaceStore(workspaceStatePath),
+    async (baseUrl) => {
+      const statusResponse = await fetch(`${baseUrl}/api/transports/telegram`);
+      assert.equal(statusResponse.status, 200);
+
+      const statusPayload = await statusResponse.json();
+      assert.equal(statusPayload.telegram.status, 'bound');
+      assert.equal(statusPayload.telegram.mappedConversationCount, 1);
+      assert.equal(statusPayload.telegram.lastProcessedUpdateId, 101);
+      assert.equal(statusPayload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
+
+      const duplicateResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          update_id: 101,
+          message: {
+            message_id: 89,
+            text: 'retry after restart',
+            chat: { id: 12345, type: 'private' },
+          },
+        }),
+      });
+      assert.equal(duplicateResponse.status, 202);
+
+      const duplicatePayload = await duplicateResponse.json();
+      assert.equal(duplicatePayload.receipt.status, 'ignored');
+      assert.equal(duplicatePayload.receipt.reason, 'duplicate_update');
+      assert.equal(duplicatePayload.receipt.mappedConversationId, 'telegram:12345');
+    },
+  );
 });

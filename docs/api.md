@@ -164,9 +164,16 @@ POST /api/transports/telegram/webhook
 
 - `GET /api/transports/telegram` returns Telegram relay status for the current
   `Boss Cat` binding.
+  The payload includes durable mapping counts, the last processed Telegram
+  update id, and a `roomRouting` object that explicitly marks room routing as a
+  placeholder seam rather than a finalized orchestration policy.
 - `POST /api/transports/telegram/webhook` is the Telegram ingress seam used by
-  the future Boss Cat bridge. The current slice returns transport receipts; it
-  does not yet deliver full Telegram-to-chat behavior.
+  the future Boss Cat bridge.
+  The current slice returns transport receipts, persists dedupe and
+  inbox-to-conversation mapping state outside chat core, and ignores
+  unsupported/non-private updates with explicit transport reasons.
+  It does not yet create or continue real `Cats Chat` rooms, mirror transcripts
+  back into Telegram, or send outbound Telegram messages.
 
 ### Orchestrator
 

@@ -116,7 +116,7 @@
 | Add operator-grade chat activity and split-view surfaces | [ ] | Current renderer remains phase-2 shell quality |
 | Rework pal information architecture around current-chat `Add pal` | [ ] | Registry stays global, but the main entry should move into chat context |
 | Add interactive delegation and owner approval loop | [ ] | Dispatch planning before worker execution is not implemented yet |
-| Add Telegram and LINE orchestrator entrypoints | [ ] | External transport path still needs bot binding and relay logic |
+| Add Telegram and LINE orchestrator entrypoints | [ ] | Telegram status/webhook seam, durable dedupe, and placeholder inbox mapping are now landed; outbound delivery, LINE, and room-routing policy remain pending |
 | Add escalation and takeover support | [ ] | HITL flows are defined in planning only |
 | Ship desktop-safe packaging and onboarding | [ ] | Electron host exists only as an ADR today |
 | Revisit limited mobile companion scope | [ ] | Mobile is not a full primary shell in the current plan |
@@ -126,7 +126,7 @@
 - [ ] Operators can approve or redirect orchestrator plans before dispatch
 - [ ] Operators can add an existing or new pal from the active chat without
       going through a first-level registry page
-- [ ] External transport channels can route through a single orchestrator bot
+- [ ] External transport channels can route through a single orchestrator bot end to end; Telegram ingress seam is landed but outbound and room policy are still pending
 - [ ] Desktop packaging can start local services with guided setup
 
 ---

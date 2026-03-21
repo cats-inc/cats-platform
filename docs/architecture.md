@@ -359,6 +359,9 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
   codebase.
 - The current execution path keeps full Chat and Work desktop surfaces on the
   same React/TypeScript renderer stack under Electron.
+- The current server now exposes a Telegram transport seam with dedicated
+  status/webhook routes, durable dedupe state, and placeholder
+  inbox-to-conversation mapping owned outside the chat transcript model.
 - Flutter and Tauri are not part of the active implementation route.
 - Paperclip-derived control-plane documents remain exploratory and are not the
   active implementation plan.
@@ -373,7 +376,8 @@ still intentionally deferred:
 - richer orchestrator automation than explicit runtime activation plus basic
   `@mention` routing
 - shared-core write APIs, approval models, and stronger storage boundaries
-- Telegram/LINE transport relays, escalation, and takeover behavior
+- full Telegram/LINE outbound delivery, room-routing policy, escalation, and
+  takeover behavior above the current relay seam
 - desktop host lifecycle management and tray-driven UX implementation
 - `Cats Work` product surfaces above the shared core
 - any limited mobile companion scope, which is intentionally secondary to the
@@ -423,4 +427,4 @@ still intentionally deferred:
 
 ---
 
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-21*

@@ -235,15 +235,7 @@ async function routeRequest(
 export function createServer(dependencies: ServerDependencies) {
   const resolvedDependencies: ResolvedServerDependencies = {
     ...dependencies,
-    telegramRelay: dependencies.telegramRelay ?? createTelegramRelay({
-      now: dependencies.now,
-      store:
-        dependencies.workspaceStore instanceof MemoryWorkspaceStore
-          ? new InMemoryTelegramRelayStore()
-          : createFileBackedTelegramRelayStore(
-              dependencies.config.workspaceStatePath,
-            ),
-    }),
+    telegramRelay: dependencies.telegramRelay ?? createDefaultTelegramRelay(dependencies),
   };
 
   return createHttpServer((request, response) => {
@@ -255,5 +247,14 @@ export function createServer(dependencies: ServerDependencies) {
         },
       });
     });
+  });
+}
+
+function createDefaultTelegramRelay(dependencies: ServerDependencies): TelegramRelay {
+  return createTelegramRelay({
+    now: dependencies.now,
+    store: dependencies.workspaceStore instanceof MemoryWorkspaceStore
+      ? new InMemoryTelegramRelayStore()
+      : createFileBackedTelegramRelayStore(dependencies.config.workspaceStatePath),
   });
 }

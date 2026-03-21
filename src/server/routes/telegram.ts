@@ -69,15 +69,19 @@ async function readTelegramContext(
   ]);
   const bossCatId = workspace.bossCatId;
   const bossCatActorId = bossCatId ? createPalActorId(bossCatId) : null;
+  const activeTelegramBindings = core.botBindings.filter((binding) =>
+    binding.platform === 'telegram'
+    && binding.status === 'active',
+  );
+  const botBinding = bossCatActorId
+    ? activeTelegramBindings.find((binding) => binding.bossCatActorId === bossCatActorId) ?? null
+    : activeTelegramBindings[0] ?? null;
 
   return {
     bossCatId,
     bossCatName: resolveBossCatName(workspace),
     bossCatActorId,
-    botBinding: core.botBindings.find((binding) =>
-      binding.platform === 'telegram'
-      && binding.status === 'active',
-    ) ?? null,
+    botBinding,
   };
 }
 

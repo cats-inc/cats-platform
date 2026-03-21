@@ -4,11 +4,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createTelegramRelay } from '../dist-server/transports/telegram/relay.js';
+import {
+  createTelegramConversationMapper,
+  TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE,
+} from '../dist-server/platform/transports/telegram/mapping.js';
+import { createTelegramRelay } from '../dist-server/platform/transports/telegram/relay.js';
 import {
   FileBackedTelegramRelayStore,
   InMemoryTelegramRelayStore,
-} from '../dist-server/transports/telegram/store.js';
+} from '../dist-server/platform/transports/telegram/store.js';
 
 function createContext(overrides = {}) {
   return {
@@ -29,7 +33,26 @@ function createContext(overrides = {}) {
   };
 }
 
-test('telegram relay reports unbound when the bot binding does not front the current Boss Cat', () => {
+test('telegram conversation mapper keeps a durable placeholder room-routing seam', () => {
+  const store = new InMemoryTelegramRelayStore();
+  const mapper = createTelegramConversationMapper(store);
+
+  const mapping = mapper.resolveChatConversation({
+    chatId: '12345',
+    acceptedAt: '2026-03-19T00:00:00.000Z',
+  });
+
+  assert.equal(mapping.created, true);
+  assert.equal(mapping.binding.conversationId, 'telegram:12345');
+  assert.equal(mapping.binding.transportConversationMode, 'transport_inbox');
+  assert.equal(mapping.binding.roomRoutingStatus, 'placeholder');
+  assert.equal(mapping.binding.linkedRoomId, null);
+  assert.equal(mapping.roomRouting.transportConversationMode, 'transport_inbox');
+  assert.equal(mapping.roomRouting.roomRoutingStatus, 'placeholder');
+  assert.equal(mapping.roomRouting.note, TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE);
+});
+
+test('telegram relay reports unbound when binding does not front the current Boss Cat', () => {
   const relay = createTelegramRelay();
 
   const status = relay.getStatus(createContext({
@@ -38,6 +61,7 @@ test('telegram relay reports unbound when the bot binding does not front the cur
 
   assert.equal(status.status, 'unbound');
   assert.equal(status.botBinding, null);
+  assert.equal(status.roomRouting.roomRoutingStatus, 'placeholder');
 });
 
 test('telegram relay dedupes exact update ids and keeps the chat-to-conversation seam', () => {
@@ -61,7 +85,9 @@ test('telegram relay dedupes exact update ids and keeps the chat-to-conversation
 
   assert.equal(accepted.status, 'accepted');
   assert.equal(accepted.mappedConversationId, 'telegram:12345');
+  assert.equal(accepted.roomRouting.roomRoutingStatus, 'placeholder');
   assert.equal(store.getBinding('12345')?.conversationId, 'telegram:12345');
+  assert.equal(store.getBinding('12345')?.linkedRoomId, null);
   assert.equal(
     store.getBindingByConversationId('telegram:12345')?.telegramChatId,
     '12345',
@@ -84,7 +110,52 @@ test('telegram relay dedupes exact update ids and keeps the chat-to-conversation
   assert.equal(duplicate.mappedConversationId, 'telegram:12345');
 });
 
-test('telegram relay accepts older unseen update ids while keeping the highest processed marker', () => {
+test('telegram relay ignores unsupported updates without polluting dedupe or mappings', () => {
+  const store = new InMemoryTelegramRelayStore();
+  const relay = createTelegramRelay({
+    store,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+
+  const receipt = relay.receiveUpdate({
+    update: {
+      update_id: 101,
+    },
+    context: createContext(),
+  });
+
+  assert.equal(receipt.status, 'ignored');
+  assert.equal(receipt.reason, 'unsupported_update');
+  assert.equal(store.getLastProcessedUpdateId(), null);
+  assert.equal(store.listBindings().length, 0);
+});
+
+test('telegram relay ignores non-private chats and keeps Boss Cat public-only', () => {
+  const store = new InMemoryTelegramRelayStore();
+  const relay = createTelegramRelay({
+    store,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+
+  const receipt = relay.receiveUpdate({
+    update: {
+      update_id: 101,
+      message: {
+        message_id: 88,
+        text: 'hello from a group',
+        chat: { id: 12345, type: 'group' },
+      },
+    },
+    context: createContext(),
+  });
+
+  assert.equal(receipt.status, 'ignored');
+  assert.equal(receipt.reason, 'unsupported_chat_type');
+  assert.equal(store.getLastProcessedUpdateId(), null);
+  assert.equal(store.listBindings().length, 0);
+});
+
+test('telegram relay accepts older unseen update ids and keeps the high-water marker', () => {
   const relay = createTelegramRelay({
     now: () => new Date('2026-03-19T00:00:00.000Z'),
   });
@@ -174,6 +245,9 @@ test('file-backed telegram relay store restores bindings and dedupe markers afte
   firstStore.upsertBinding({
     telegramChatId: '12345',
     conversationId: 'telegram:12345',
+    transportConversationMode: 'transport_inbox',
+    roomRoutingStatus: 'placeholder',
+    linkedRoomId: null,
     createdAt: '2026-03-19T00:00:00.000Z',
     updatedAt: '2026-03-19T00:00:00.000Z',
   });
@@ -181,7 +255,11 @@ test('file-backed telegram relay store restores bindings and dedupe markers afte
 
   const secondStore = new FileBackedTelegramRelayStore(statePath, 4);
   assert.equal(secondStore.getBinding('12345')?.conversationId, 'telegram:12345');
-  assert.equal(secondStore.getBindingByConversationId('telegram:12345')?.telegramChatId, '12345');
+  assert.equal(secondStore.getBinding('12345')?.roomRoutingStatus, 'placeholder');
+  assert.equal(
+    secondStore.getBindingByConversationId('telegram:12345')?.telegramChatId,
+    '12345',
+  );
   assert.equal(secondStore.hasProcessedUpdate(101), true);
   assert.equal(secondStore.getLastProcessedUpdateId(), 101);
   assert.deepEqual(readdirSync(stateDir), ['telegram-relay.json']);

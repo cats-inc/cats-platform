@@ -58,11 +58,11 @@ The main rule is simple:
 
 ### Phase 3: Telegram Relay MVP
 
-- [ ] Add Telegram relay status route
-- [ ] Add Telegram webhook ingress route
-- [ ] Persist update dedupe state and Telegram chat mapping through the relay
-- [ ] Bind Telegram ingress to the `Boss Cat` as the single visible identity
-- [ ] Keep worker cats internal to orchestration
+- [x] Add Telegram relay status route
+- [x] Add Telegram webhook ingress route
+- [x] Persist update dedupe state and Telegram chat mapping through the relay
+- [x] Bind Telegram ingress to the `Boss Cat` as the single visible identity
+- [x] Keep worker cats internal to orchestration
 
 ### Phase 4: Capability Registry and Multi-Cat Validation
 
@@ -100,8 +100,10 @@ The main rule is simple:
 | Date | Update |
 |------|--------|
 | 2026-03-19 | Plan created to coordinate provider, Telegram, and capability workstreams after cats-runtime catalog direction landed |
+| 2026-03-21 | Telegram Phase 3 seam landed under `src/platform/transports/telegram/` with status/webhook routes, durable dedupe, and placeholder inbox-to-conversation mapping; real room-routing policy stays deferred to Phase 5 |
 
 ---
 
 *Created: 2026-03-19*
+*Last updated: 2026-03-21*
 *Author: Codex*
