@@ -17,5 +17,12 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/renderer/**/*", "node_modules", "dist", "dist-server", "tests"]
+  "exclude": [
+    "src/renderer/**/*",
+    "src/products/*/renderer/**/*",
+    "node_modules",
+    "dist",
+    "dist-server",
+    "tests"
+  ]
 }

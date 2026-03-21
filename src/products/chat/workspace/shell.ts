@@ -1,0 +1,46 @@
+import type { AppConfig } from '../../../config.js';
+import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
+import type { AppShellPayload, WorkspaceState } from '../../../shared/app-shell.js';
+import { summarizeState } from './model.js';
+
+export function createAppShell(
+  config: AppConfig,
+  runtime: RuntimeStatusSummary,
+  workspace: WorkspaceState,
+  now: Date = new Date(),
+  setup?: { setupCompleteAt: string | null; ownerDisplayName: string; ownerAvatarColor: string | null },
+): AppShellPayload {
+  const summary = summarizeState(workspace);
+
+  return {
+    app: {
+      name: 'cats',
+      stage: 'phase-2-shell',
+      runtimeBoundary: 'cats-runtime',
+    },
+    workspace: {
+      id: workspace.id,
+      name: workspace.name,
+      selectedChannelId: workspace.selectedChannelId,
+      bossCatId: workspace.bossCatId,
+      pals: summary.pals,
+      channels: summary.channels,
+      selectedChannel: summary.selectedChannel,
+      globalOrchestrator: {
+        ...summary.globalOrchestrator,
+        status: runtime.reachable ? 'ready' : 'warming',
+      },
+      capabilities: workspace.capabilities,
+      showVerboseMessages: workspace.showVerboseMessages,
+    },
+    runtime,
+    metadata: {
+      generatedAt: now.toISOString(),
+      host: config.host,
+      port: config.port,
+    },
+    setupCompleteAt: setup?.setupCompleteAt ?? null,
+    ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
+    ownerAvatarColor: setup?.ownerAvatarColor ?? null,
+  };
+}

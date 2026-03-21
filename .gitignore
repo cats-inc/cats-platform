@@ -26,6 +26,8 @@ dist/
 *.tgz
 !src/workspace/
 !src/workspace/**
+!src/products/chat/workspace/
+!src/products/chat/workspace/**
 
 # === Environment ===
 .env

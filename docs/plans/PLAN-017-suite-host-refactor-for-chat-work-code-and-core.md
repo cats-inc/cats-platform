@@ -164,15 +164,24 @@ Current transitional modules after Phase 4:
 
 ### Phase 5: Demote Workspace Modules into the Chat Slice
 
-- [ ] Move current `src/workspace/*` under `src/products/chat/workspace/*`.
+- [x] Move current `src/workspace/*` under `src/products/chat/workspace/*`.
 - [ ] Move Chat-specific API handlers out of the top-level server area into
       `src/products/chat/api/*`.
-- [ ] Move Chat renderer concerns under `src/products/chat/renderer/*`.
+- [x] Move Chat renderer concerns under `src/products/chat/renderer/*`.
 - [ ] Rename transitional types and modules where needed so Chat-specific code
       is no longer presented as suite-wide code.
 
 **Deliverables**: current Chat functionality now clearly lives in the Chat
 product slice.
+
+Current transitional modules during Phase 5:
+
+- `src/workspace/*` now acts as an explicit compatibility shim that re-exports
+  the real Chat implementation from `src/products/chat/workspace/*`.
+- `src/renderer/*` now acts as an explicit compatibility shim that re-exports
+  the real Chat renderer implementation from `src/products/chat/renderer/*`.
+- `src/server.ts` still owns most Chat-specific route handlers until the
+  `products/chat/api/*` extraction is complete.
 
 ### Phase 6: Turn Top-Level Server and Renderer into Assemblers
 

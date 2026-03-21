@@ -1,1 +1,2 @@
-export const CHAT_RENDERER_SLICE = 'chat';
+export { default as ChatApp } from './App';
+export * from './api';
