@@ -429,7 +429,8 @@ Returns:
 GET /api/core/approvals
 ```
 
-Returns a product-owned approval queue seam derived from current core tasks:
+Returns a product-owned approval queue seam for tasks that are actually pending
+owner approval:
 
 ```json
 {

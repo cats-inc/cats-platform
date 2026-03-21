@@ -120,7 +120,11 @@ export function createDefaultCoreState(): CatsCoreState {
 }
 
 export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[] {
-  return core.tasks.map((task) => ({
+  return core.tasks
+    .filter((task) =>
+      task.status === 'pending_approval' || task.approval.status === 'pending',
+    )
+    .map((task) => ({
     id: `approval-${task.id}`,
     kind: 'dispatch_plan',
     taskId: task.id,
@@ -136,5 +140,5 @@ export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[]
     notes: task.approval.notes,
     requiresOwnerDecision: task.approval.status === 'pending',
     decisionOptions: DEFAULT_APPROVAL_DECISION_OPTIONS.map((option) => ({ ...option })),
-  }));
+    }));
 }

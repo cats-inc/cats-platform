@@ -345,18 +345,7 @@ test('workspace API covers chat setup, activation, messaging, global pals, assig
     const approvalsResponse = await fetch(`${baseUrl}/api/core/approvals`);
     assert.equal(approvalsResponse.status, 200);
     const approvalsPayload = await approvalsResponse.json();
-    const channelApproval = approvalsPayload.approvals.find(
-      (approval) => approval.taskId === `task-channel-${channelId}`,
-    );
-    assert.ok(channelApproval);
-    assert.equal(channelApproval.kind, 'dispatch_plan');
-    assert.equal(channelApproval.status, 'not_requested');
-    assert.equal(channelApproval.requiresOwnerDecision, false);
-    assert.equal(channelApproval.requestedForActorId, 'actor-owner');
-    assert.equal(channelApproval.requestedByActorId, 'actor-orchestrator-global');
-    assert.ok(
-      channelApproval.decisionOptions.some((option) => option.action === 'approve'),
-    );
+    assert.equal(approvalsPayload.approvals.length, 0);
 
     const exportResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/export`);
     assert.equal(exportResponse.status, 200);

@@ -1,10 +1,10 @@
-import type { WorkspaceStore } from '../products/chat/workspace/store.js';
+import type { CoreStore } from './store.js';
 import type { RouteContext } from '../shared/http.js';
 import { sendJson, sendMethodNotAllowed } from '../shared/http.js';
 import { buildApprovalQueue } from './model.js';
 
 export interface CoreApiDependencies {
-  workspaceStore: Pick<WorkspaceStore, 'readCore'>;
+  workspaceStore: Pick<CoreStore, 'readCore'>;
 }
 
 async function handleCoreState(
