@@ -46,6 +46,8 @@ The key rule is:
 7. Group chats may contain multiple Cats, but each chat still has one lead Cat.
 8. Telegram bot bindings may target different Cats, while the current
    `Boss Cat` remains the default public transport identity.
+9. If the current `Boss Cat` has not been explicitly named yet, UI surfaces
+   should use `Boss Cat` as the fallback display name.
 
 ## Progressive Disclosure Model
 
@@ -55,6 +57,7 @@ The product should still feel immediately familiar:
 
 - sidebar shows `+ New Chat`, `Recents`, and `Settings`
 - the environment already has a default `Boss Cat`
+- the fallback display name is `Boss Cat` until the user renames it
 - `Recents` items may show the default Boss Cat avatar even if the user has not
   personalized it yet
 
@@ -69,6 +72,8 @@ Once the user names or personalizes the default `Boss Cat`:
 - a lightweight sidebar Cat presence may appear
 - the product may prompt `Rename your Boss Cat` or `Personalize your Boss Cat`
   after early successful chats, but it must remain optional
+- if there is still only one Cat, new chats effectively remain single-Cat chats
+  with that named `Boss Cat`
 
 ### Stage 2: Multiple Cats
 
@@ -108,6 +113,9 @@ If the product has more than one Cat, the sidebar may also show `My Cats`.
 - the place for detailed editing, archive, or system administration
 
 Those remain under `Settings > Cats`.
+
+If only one Cat exists, a dedicated `My Cats` roster is optional rather than
+required because the main chat flows already point at that Cat.
 
 ### View Mode
 
@@ -151,6 +159,10 @@ Each recent item should show:
 
 `+ New Chat` should open directly into a fresh chat composer with the current
 `Boss Cat` already selected.
+
+If there is only one Cat in the environment, this is effectively the user's
+direct chat with that Cat even if the product still labels the default mode as
+`Boss Chat`.
 
 ### If multiple Cats exist
 
@@ -251,6 +263,9 @@ Required setup steps:
 3. user name / owner name
 4. enter the app
 
+Provider/model selection still belongs in setup. What setup should avoid is
+forcing Cat naming or persona design before first use.
+
 The setup wizard should not require:
 
 - creating a custom Cat
@@ -258,7 +273,9 @@ The setup wizard should not require:
 - designing memory/persona before first use
 
 If no Cat exists after setup readiness is complete, the system should
-auto-provision a neutral default `Boss Cat`.
+auto-provision a neutral default `Boss Cat` using the provider/model target
+selected during setup, or the current environment default if setup chose a
+single default runtime target.
 
 After entry, the product may gently offer:
 
@@ -298,6 +315,21 @@ The UI direction assumes product state can represent at least:
 
 This spec does not require those exact field names to be the final API, but the
 concepts must exist.
+
+## Implementation Note
+
+The current implementation is still largely `channel`- and
+`channel-assignment`-based.
+
+- current persisted state and APIs still center on channel records plus cat
+  assignment records
+- `leadCatId`, explicit per-chat mode, and participant-first room metadata are
+  target concepts, not fully landed source-of-truth fields yet
+- shipping this spec will require an incremental migration layer rather than a
+  single global rename from `channel` to `chat`
+
+In other words, this spec defines the target product model and UI behavior, not
+the claim that the underlying store has already been fully renamed or migrated.
 
 ## Acceptance Criteria
 

@@ -26,8 +26,7 @@
 | Primary Orchestrator Cat | The formal product and domain term for the Cat selected as the default public orchestrator. In UI copy, this should usually be presented as `Boss Cat`. |
 | Boss Chat | The default conversation mode where unmentioned turns route first to `Boss Cat`, which can then coordinate or involve other Cats. |
 | Direct Cat Chat | A conversation mode where one chosen Cat is the room's lead participant and unmentioned turns default to that Cat rather than to `Boss Cat`. |
-| Group chat | A chat with more than one Cat participant, while still having one lead Cat for default reply behavior. |
-| Family chat | An informal multi-Cat companion chat. It is a kind of group chat, not a separate runtime mode. |
+| Group chat | A chat with more than one Cat participant, while still having one lead Cat for default reply behavior. Informal "family chat" companion usage is a kind of group chat, not a separate runtime mode. |
 | My Cats | A lightweight sidebar roster for quick Cat access and direct-chat entry. It is not the full registry management surface. |
 | Chat view mode | The sidebar list mode used to organize chats, such as `Latest`, `By Cat`, or `By Chat Type`. |
 | Cat registry | The chat-global list of reusable cats that can be assigned into one or more chats. Full management lives under `Settings > Cats`. |
@@ -55,7 +54,6 @@
 | Execution lease | The currently active runtime session metadata used to execute work through a provider. |
 | Memory checkpoint | Product-owned summary data, facts, and open loops that should survive session restarts or provider changes. |
 | Owner profile | Structured product-owned memory for the boss or owner, including tone, preferences, escalation thresholds, and decision style. |
-| Bot binding | The record that maps one external bot or transport identity to one orchestrator-facing product identity. |
 | Approval loop | The product state where an owner must approve, redirect, or reject a proposed action before dispatch or reply. |
 | Escalation | Routing a sensitive or uncertain request into an owner-facing review path. |
 | Takeover | Letting the owner speak through the orchestrator or bot identity for one interaction. |

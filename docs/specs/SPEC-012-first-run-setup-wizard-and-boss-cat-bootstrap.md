@@ -69,8 +69,8 @@ That wizard should:
   Cat before first chat use.
 - If no Cat exists when setup reaches completion, the product shall
   auto-provision one neutral default `Boss Cat`.
-- The setup flow may allow provider and model confirmation for the initial
-  default `Boss Cat`, but provider choice must not require Cat identity design.
+- The setup flow shall still capture or confirm the provider/model target needed
+  for first use, but provider choice must not require Cat identity design.
 - Optional transport setup such as Telegram or LINE bindings shall be deferrable
   or skippable in the first version.
 - Completing setup shall leave the environment with:
@@ -124,6 +124,8 @@ First chat with Boss Cat
 - check whether the runtime is reachable
 - display as "Cats Runtime" in the UI (not the internal identifier `cats-runtime`)
 - if it is not ready, explain the issue and provide a guided remediation path
+- capture or confirm the provider/model target that the initial default
+  `Boss Cat` will use after bootstrap
 
 ### Step 3: Owner Profile
 
@@ -135,6 +137,7 @@ First chat with Boss Cat
 
 - ensure the environment has one current `Boss Cat`
 - auto-provision a neutral default `Boss Cat` if none exists
+- use the provider/model target chosen during setup or the environment default
 - do not force Cat naming, memory authoring, or full persona configuration here
 
 ### Step 5: Done
@@ -145,6 +148,9 @@ First chat with Boss Cat
   - rename your Boss Cat
   - add another Cat
   - personalize memory
+
+When the Boss Cat has not been explicitly named yet, the UI fallback display
+name should remain `Boss Cat`.
 
 ## Routing Direction
 
