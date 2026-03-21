@@ -12,9 +12,9 @@ import {
   deleteChannel,
   exportChannel,
   updateGlobalOrchestrator,
-} from '../dist-server/workspace/model.js';
+} from '../dist-server/chat/model.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
-import { FileChatStore } from '../dist-server/workspace/store.js';
+import { FileChatStore } from '../dist-server/chat/store.js';
 
 test('FileChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));

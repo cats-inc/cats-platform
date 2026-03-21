@@ -37,7 +37,7 @@ worker cats as direct Telegram senders.
 
 1. `cats` shall expose `GET /api/transports/telegram`.
 2. The status route shall report whether a Telegram bot binding exists for the
-   current workspace and which `Boss Cat` it would front.
+   current chat shell and which `Boss Cat` it would front.
 3. `cats` shall expose `POST /api/transports/telegram/webhook`.
 4. The webhook route shall accept Telegram updates and route them through a
    dedicated relay component rather than directly into chat handlers.
@@ -137,3 +137,4 @@ Illustrative response:
 
 *Created: 2026-03-19*
 *Author: Codex*
+

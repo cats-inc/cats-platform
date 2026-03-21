@@ -31,7 +31,7 @@ Budget policy should follow the same pattern.
 `cats-runtime` should know usage facts, cooldowns, and blocked states. But the
 questions below are product/control-plane questions:
 
-- how much budget should a workspace, Cat, or provider get?
+- how much budget should a chat, Cat, or provider get?
 - is a limit soft or hard?
 - when a limit is exceeded, should the system warn, pause, downgrade, or ask
   for approval?
@@ -63,7 +63,7 @@ cost-control surfaces.
 
 4. Cats Work or later operator surfaces may present war-room budget views.
    - current runtime/dashboard inspection does not block richer product views
-   - the product remains free to aggregate by Cat, workspace, provider, or
+   - the product remains free to aggregate by Cat, chat, provider, or
      work item above the runtime boundary
 
 5. `cats` should not absorb provider-specific rate-limit parsing or token
@@ -121,7 +121,7 @@ plane rewrite
 
 ## References
 
-- [ADR-022](./022-own-workspace-delivery-policy-in-product.md)
+- [ADR-022](./022-own-chat-delivery-policy-in-product.md)
 - [ADR-020](./020-own-mcp-intent-in-product-and-tool-delivery-in-runtime.md)
 - [SPEC-005](../specs/SPEC-005-company-control-plane-evolution.md)
 - [cats-runtime ADR-017](../../../cats-runtime/docs/decisions/017-own-usage-metering-rate-limit-detection-and-execution-guardrails.md)
@@ -131,3 +131,6 @@ plane rewrite
 
 *Accepted: 2026-03-20*
 *Decision makers: user + Codex*
+
+
+

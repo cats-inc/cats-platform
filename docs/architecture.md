@@ -72,7 +72,7 @@ Current ownership:
 - `src/app/server/*` owns top-level HTTP composition
 - `src/app/renderer/*` owns top-level suite routing
 - `src/core/*` owns shared Cats Core contracts and persistence seams
-- `src/products/chat/*` owns Chat-specific workspace, routing, and renderer
+- `src/products/chat/*` owns Chat-specific state, routing, and renderer
   behavior
 - `src/products/work/*` owns Work placeholder surfaces and future Work-specific
   APIs/UI
@@ -81,7 +81,7 @@ Current ownership:
 - `src/platform/*` owns runtime, persistence, and transport infrastructure
 
 The product is still in a transitional state: top-level compatibility shims
-remain at `src/server.ts`, `src/renderer/*`, and `src/workspace/*` so existing
+remain at `src/server.ts`, `src/renderer/*`, and `src/chat/*` so existing
 tests and imports do not have to move all at once.
 
 ### Configuration Layer
@@ -107,7 +107,7 @@ tests and imports do not have to move all at once.
 - **Purpose**: Provide the shared domain model used by both `Cats Chat` and
   `Cats Work`
 - **Technology**: Shared TypeScript contracts plus a co-hosted product API and
-  core-backed workspace store today, with room to grow into a stronger service
+  core-backed chat store today, with room to grow into a stronger service
   boundary later
 - **Responsibilities**:
   - identity and actor/resource records
@@ -139,21 +139,21 @@ tests and imports do not have to move all at once.
   routes, Work/Code placeholder routes, runtime-facing routes, and built
   renderer files
 
-### Workspace Store and Future Shared Storage
+### Chat Store and Future Shared Storage
 
-- **Purpose**: Persist the current workspace shell while preparing for a
+- **Purpose**: Persist the current chat shell while preparing for a
   stronger operational store
 - **Technology**: Core-backed JSON file inside `config/` today; operational DB
   plus archive/RAG pipelines planned
-- **Responsibilities**: Load defaults, persist channels, workspace cats, channel
+- **Responsibilities**: Load defaults, persist channels, chat-global cats, channel
   assignments, transcript messages, execution targets, execution leases, cat
   memory checkpoints, core-owned owner/task/run/trace/checkpoint/outcome
   records, and the derived `Cats Core v1` records that wrap the phase-2
-  workspace model
+  chat model
 
-### Workspace Runtime Actions
+### Chat Runtime Actions
 
-- **Purpose**: Translate workspace-level channel actions into `cats-runtime`
+- **Purpose**: Translate chat-level channel actions into `cats-runtime`
   session calls
 - **Technology**: Native `fetch` through the runtime client
 - **Responsibilities**: Activate channel sessions, route mention-driven
@@ -188,12 +188,12 @@ durable memory of the product. The product should ingest, normalize, and own
 its own memory layers even when a backend such as OpenClaw also keeps session
 history.
 
-### Workspace Shell Model
+### Chat Shell Model
 
 - **Purpose**: Describe the current product contract shared by server and
   renderer while a stronger suite-wide contract is designed
 - **Technology**: Plain TypeScript data structures
-- **Responsibilities**: Expose workspace, cat registry, cat assignment, message,
+- **Responsibilities**: Expose chat state, cat registry, cat assignment, message,
   session, and capability state
 
 ## Cat Identity and Execution
@@ -201,7 +201,7 @@ history.
 `Cats` now treats teammate identity and runtime execution as separate
 concerns.
 
-- `Workspace cat registry` covers reusable teammate identity, default execution
+- `Global cat registry` covers reusable teammate identity, default execution
   settings, and long-lived memory
 - `Channel cat assignment` covers whether a cat is active in one chat plus any
   channel-specific role or provider override
@@ -280,8 +280,8 @@ temporary and should not be treated as final ownership boundaries:
   `src/app/server/index.ts`
 - `src/renderer/App.tsx` and `src/renderer/main.tsx` are shims that re-export
   the real suite renderer entry from `src/app/renderer/*`
-- `src/workspace/*` is still a compatibility shim over
-  `src/products/chat/workspace/*`
+- `src/chat/*` is still a compatibility shim over
+  `src/products/chat/state/*`
 - `src/shared/app-shell.ts` is now a compatibility shim that re-exports
   `src/shared/suite-contract.ts` and `src/products/chat/api/contracts.ts`
 - `src/products/chat/api/*` now owns Chat setup, legacy compatibility, and
@@ -296,7 +296,7 @@ The current planning direction for Chat information architecture is:
 - move the reusable cat registry under `Settings > Cats`
 - use the left-panel account area as the entry to Settings
 
-This keeps workspace resources global without making registry administration the
+This keeps chat-global resources reusable without making registry administration the
 primary operator workflow. See
 [ADR-009](./decisions/009-prefer-chat-contextual-cat-entry-and-settings-registry.md).
 
@@ -306,7 +306,7 @@ primary operator workflow. See
    server.
 2. The product server asks the runtime client for current `cats-runtime`
    health.
-3. The product server merges runtime health with persisted workspace or
+3. The product server merges runtime health with persisted chat or
    shared-core state.
 4. `Cats Chat`, `Cats Work`, or a transport relay requests product actions
    through the same product server boundary.
@@ -370,11 +370,11 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
 
 ## Current Gaps
 
-The main `agent-workspace-poc` parity gaps are now closed, but these areas are
-still intentionally deferred:
+The main phase-2 chat-core gaps are now closed, but these areas are still
+intentionally deferred:
 
 - live streaming or push-based renderer updates
-- split-view workspace panes beyond the current chat-first layout
+- split-view panes beyond the current chat-first layout
 - durable workflow trace/checkpoint storage and branch-based orchestration above
   the current in-memory room routing loop
 - shared-core write APIs, approval models, and stronger storage boundaries
@@ -420,7 +420,7 @@ still intentionally deferred:
 - [ADR-004](./decisions/004-separate-cat-identity-from-provider-execution.md):
   keep cat identity separate from provider execution and memory leases
 - [ADR-005](./decisions/005-use-chat-cat-registry-and-channel-assignments.md):
-  keep reusable cats at workspace scope and channel-specific overrides in assignments
+  keep reusable cats at chat-global scope and channel-specific overrides in assignments
 - [ADR-007](./decisions/007-establish-cats-core-v1-for-chat-and-work.md):
   introduce `Cats Core v1` as the shared contract layer for `Cats Chat` and
   `Cats Work`
@@ -430,4 +430,22 @@ still intentionally deferred:
 ---
 
 *Last updated: 2026-03-21*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

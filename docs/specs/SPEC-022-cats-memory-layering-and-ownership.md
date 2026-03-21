@@ -344,7 +344,7 @@ The most suitable contemporary technical pattern for Cats is:
 - [ ] Which working-memory checkpoints belong in `cats-runtime` history versus
       only in `cats` product stores?
 - [ ] When `Cats Work` launches, should archive retrieval be one shared corpus
-      or segmented by workspace, transport, or privacy domain?
+      or segmented by chat, transport, or privacy domain?
 - [ ] What is the first implementation slice: transcript normalization,
       Cat-memory store, or archive export pipeline?
 

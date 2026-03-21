@@ -24,7 +24,7 @@ That wizard should:
 ## Goals
 
 - Give new users a guided first-run path instead of dropping them into an
-  uninitialized workspace.
+  uninitialized chat.
 - Prefer onboarding and readiness setup over account-auth language such as
   `login`.
 - Establish one initial `Boss Cat` before normal chat usage begins.
@@ -172,3 +172,4 @@ First chat with Boss Cat
 ---
 
 *Last updated: 2026-03-19*
+

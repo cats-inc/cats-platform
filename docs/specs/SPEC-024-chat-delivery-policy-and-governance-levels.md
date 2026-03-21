@@ -1,4 +1,4 @@
-# SPEC-024: Workspace Delivery Policy and Governance Levels
+# SPEC-024: Chat Delivery Policy and Governance Levels
 
 ## Metadata
 
@@ -10,7 +10,7 @@
 
 ## Summary
 
-Cats workspaces need an explicit product-owned way to describe how work outputs
+Cats chats and rooms need an explicit product-owned way to describe how work outputs
 should be delivered.
 
 Some tasks are artifact-only and should never require Git. Others should stop
@@ -24,21 +24,21 @@ already live above runtime execution.
 
 - make delivery governance explicit and inspectable in the product layer
 - support artifact-only, Git-backed, and CI/preview-gated work without forcing
-  one workflow on all workspaces
-- let Boss Cat and system-layer flows choose delivery strictness per workspace
+  one workflow on all chats
+- let Boss Cat and system-layer flows choose delivery strictness per chat
   or work item
 - map product-owned delivery policy into stable runtime-facing delivery intents
 
 ## Non-Goals
 
-- turning workspace substrate tools into delivery-governance tools
-- requiring every workspace to use Git or GitHub
+- turning runtime substrate tools into delivery-governance tools
+- requiring every chat to use Git or GitHub
 - encoding provider-specific git/CI commands directly in product code
 - defining the full operator UI for every future delivery surface
 
 ## User Stories
 
-- As a Boss Cat, I want a lightweight workspace to allow artifact-only output
+- As a Boss Cat, I want a lightweight chat to allow artifact-only output
   without blocking on repo workflows.
 - As an owner, I want higher-risk repo work to require stronger gates such as
   push, PR, checks, previews, or manual approval.
@@ -51,8 +51,8 @@ already live above runtime execution.
 
 ### Functional Requirements
 
-1. `cats` shall own a product-visible `WorkspaceDeliveryPolicy` concept.
-2. Delivery policy shall be distinct from workspace substrate profile,
+1. `cats` shall own a product-visible `ChatDeliveryPolicy` concept.
+2. Delivery policy shall be distinct from runtime substrate profile,
    `SkillProfile`, and MCP/tool-profile concepts.
 3. The product shall support at least these delivery-policy modes:
    - `artifact_only`
@@ -65,7 +65,7 @@ already live above runtime execution.
    - `owner_approval_required`
    - `publish_artifact_required`
 5. The product shall support an effective-policy model with at least:
-   - workspace default policy
+   - chat default policy
    - optional task/work-item override
    - optional transport or room-mode tightening
 6. Boss Cat or system-layer flows shall be able to choose or tighten delivery
@@ -74,17 +74,17 @@ already live above runtime execution.
    silently relax it.
 8. Any explicit override that weakens an already-effective governance gate
    shall require owner approval.
-9. Delivery policy shall be able to express non-repo workspaces cleanly.
-10. Delivery policy shall be able to express repo-backed workspaces without
+9. Delivery policy shall be able to express non-repo chats cleanly.
+10. Delivery policy shall be able to express repo-backed chats without
     forcing CI when the policy only requires local commit or push.
 11. `cats` shall resolve effective delivery policy into a runtime-facing
     delivery intent or manifest before runtime delivery actions are requested.
 12. The runtime-facing delivery manifest shall refer to stable action or
     capability identifiers rather than backend-specific commands.
-13. Product state should retain enough metadata to explain why a workspace or
+13. Product state should retain enough metadata to explain why a chat or
     task currently has its effective policy.
     At minimum, that explanation should be able to reflect:
-    - workspace default
+    - chat default
     - task override
     - room/transport tightening
     - approved exception
@@ -107,12 +107,12 @@ already live above runtime execution.
 
 ### Product Layer
 
-- `WorkspaceDeliveryPolicy`
+- `ChatDeliveryPolicy`
   - named policy mode
   - governance gates
   - optional rationale
-- `WorkspaceDeliveryBinding`
-  - workspace default policy
+- `ChatDeliveryBinding`
+  - chat default policy
   - scope metadata
 - `DeliveryPolicyOverride`
   - task/work-item or room/transport tightening
@@ -139,7 +139,7 @@ type DeliveryMode =
   | 'pr_with_checks'
   | 'deploy_preview';
 
-interface WorkspaceDeliveryPolicy {
+interface ChatDeliveryPolicy {
   id: string;
   mode: DeliveryMode;
   gates?: Array<
@@ -151,9 +151,9 @@ interface WorkspaceDeliveryPolicy {
 }
 
 interface EffectiveDeliveryPolicy {
-  policy: WorkspaceDeliveryPolicy;
+  policy: ChatDeliveryPolicy;
   source:
-    | 'workspace_default'
+    | 'chat_default'
     | 'task_override'
     | 'room_tightening'
     | 'approved_exception';
@@ -168,7 +168,7 @@ interface RuntimeDeliveryManifest {
   requestedActions: string[];
   gates: string[];
   context: {
-    workspaceId?: string;
+    chatId?: string;
     taskId?: string;
     roomMode?: string;
     transport?: string | null;
@@ -180,7 +180,7 @@ interface RuntimeDeliveryManifest {
 ## Product Rules
 
 1. Delivery policy is product-owned intent, not a runtime-owned inference.
-2. Delivery policy is not the same as workspace substrate. A workspace may have
+2. Delivery policy is not the same as runtime substrate. A chat may have
    full AAIF collaboration substrate and still use `artifact_only`.
 3. Delivery policy should be resolved before the product asks runtime to
    finalize or publish work.
@@ -191,7 +191,7 @@ interface RuntimeDeliveryManifest {
 
 ## Dependencies
 
-- [ADR-022](../decisions/022-own-workspace-delivery-policy-in-product.md)
+- [ADR-022](../decisions/022-own-chat-delivery-policy-in-product.md)
 - [SPEC-019](./SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md)
 - [SPEC-015](./SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md)
 - [SPEC-020](./SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
@@ -199,7 +199,7 @@ interface RuntimeDeliveryManifest {
 
 ## Open Questions
 
-- [ ] Should delivery policy bind first to workspace records, work items, or
+- [ ] Should delivery policy bind first to chat records, work items, or
       both together in the first product slice?
 - [ ] Should `deploy_preview` imply `push_branch`, or should the product keep
       those as separately requested actions even when they often co-occur?
@@ -218,3 +218,22 @@ interface RuntimeDeliveryManifest {
 *Created: 2026-03-20*
 *Author: Codex*
 *Related Plan: TBD*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

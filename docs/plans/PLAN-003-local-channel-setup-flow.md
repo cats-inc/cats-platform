@@ -2,15 +2,15 @@
 
 ## Scope
 
-Deliver the first writable workspace setup slice by adding local channel
+Deliver the first writable chat setup slice by adding local channel
 creation across store, server API, renderer, tests, and docs.
 
 ## Tasks
 
-1. Extend the shared workspace contract with a channel-creation input.
-2. Add channel-creation support to the workspace store with file-backed persistence.
-3. Expose a new workspace API for creating channels and returning the app-shell payload.
-4. Add a renderer form that creates a channel and updates the selected workspace view.
+1. Extend the shared chat contract with a channel-creation input.
+2. Add channel-creation support to the chat store with file-backed persistence.
+3. Expose a new chat API for creating channels and returning the app-shell payload.
+4. Add a renderer form that creates a channel and updates the selected chat view.
 5. Update tests and documentation for the new slice.
 
 ## Validation
@@ -28,3 +28,8 @@ creation across store, server API, renderer, tests, and docs.
 ---
 
 *Last updated: 2026-03-11*
+
+
+
+
+

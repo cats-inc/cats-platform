@@ -3,8 +3,8 @@ import { once } from 'node:events';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
-import { MemoryChatStore } from '../dist-server/workspace/store.js';
-import { resolveOrchestratorDisplayName } from '../dist-server/workspace/model.js';
+import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { resolveOrchestratorDisplayName } from '../dist-server/chat/model.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -51,7 +51,7 @@ function createRuntimeStub() {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? 'C:/workspace/runtime',
+        cwd: input.cwd ?? 'C:/chat/runtime',
       };
       this.createdSessions.push({ ...input, id: session.id });
       return session;
@@ -333,7 +333,7 @@ test('after setup + activate, system messages use boss cat name and have verbosi
     assert.ok(orchMessage.body.includes('將將'), 'Should use boss cat name in session message');
     assert.ok(!orchMessage.body.includes('Orchestrator'), 'Should not use "Orchestrator" in session message');
     assert.ok(
-      orchMessage.body.includes('(cwd: C:/workspace/runtime).'),
+      orchMessage.body.includes('(cwd: C:/chat/runtime).'),
       'Should include runtime cwd in the session message',
     );
 

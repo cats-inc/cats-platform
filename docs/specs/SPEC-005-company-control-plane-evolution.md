@@ -10,11 +10,11 @@ parallel-track plan.
 
 Evolve `cats` from a chat-first phase-2 shell into a broader company
 control plane informed by the strongest Paperclip concepts: company-scoped work
-hierarchy, explicit operator governance, workspace and execution modeling, and
+hierarchy, explicit operator governance, project-root and execution modeling, and
 output-first product surfaces.
 
 This evolution must stay incremental. `cats` keeps `cats-runtime` as its
-only execution boundary, preserves compatibility with the current workspace
+only execution boundary, preserves compatibility with the current chat
 shell where practical, and develops its own product model instead of copying
 Paperclip packages or schemas directly.
 
@@ -31,7 +31,7 @@ Paperclip packages or schemas directly.
 ### Functional Requirements
 
 - `cats` must introduce explicit product objects above channels, including
-  company or workspace root scope, goals, projects, work items, activity,
+  company or organization root scope, goals, projects, work items, activity,
   approvals, costs, and outputs.
 - Chat channels must be attachable to work objects instead of remaining the
   only top-level operator entity.
@@ -39,8 +39,7 @@ Paperclip packages or schemas directly.
   model with ownership and reporting context.
 - Runtime executions, run history, and artifacts must be visible through
   product-owned read models hydrated from `cats-runtime`.
-- `cats` must distinguish durable project workspaces from transient
-  execution workspaces.
+- `cats` must distinguish durable project roots from transient execution roots.
 - Operator surfaces must follow progressive disclosure: summary first, then
   checklist or state detail, then raw transcript or tool output.
 - The future architecture must leave room for plugins and alternate entrypoints
@@ -52,7 +51,7 @@ Paperclip packages or schemas directly.
   orchestration, or database schema packages.
 - Each rewrite phase must be shippable without breaking the current phase-2
   chat flows.
-- Existing local workspace state must have a compatibility or migration story.
+- Existing local chat state must have a compatibility or migration story.
 - Runtime-specific provider details must remain behind `cats-runtime`.
 
 ## Out of Scope
@@ -70,7 +69,7 @@ Paperclip packages or schemas directly.
 - A first implementation slice can land without breaking current chat-channel
   setup, activation, or transcript flows.
 - The resulting product model supports a compatibility layer from today's
-  workspace state into future control-plane objects.
+  chat state into future control-plane objects.
 - New operator surfaces can be added without moving runtime adapter or session
   ownership into `cats`.
 

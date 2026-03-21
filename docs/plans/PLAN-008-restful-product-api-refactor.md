@@ -19,11 +19,12 @@ The main objective is not just to rename routes. The goal is to separate:
 
 ### Phase 1: Contract Extraction and Compatibility Baseline
 
-- [x] Introduce canonical resource DTOs for workspace, preferences, channel,
+- [x] Introduce canonical resource DTOs for chat-scope resources, preferences,
+      channel,
       message, cat, cat assignment, orchestrator, export, and activation
       payloads.
 - [x] Decide the authoritative `workspaceId` strategy for the current single
-      workspace implementation. → `"default"` is the only supported workspaceId.
+      chat-scope implementation. → `"default"` is the only supported workspaceId.
 - [x] Freeze the legacy-to-target route mapping in `docs/api.md`.
 - [x] Keep `GET /api/app-shell` available and document it as a read-only
       compatibility view. Also added `GET /api/views/app-shell` alias.
@@ -48,7 +49,7 @@ baseline.
 
 - [x] Add `POST /api/workspaces/{workspaceId}/channels`.
 - [x] Add `PATCH /api/workspaces/{workspaceId}/preferences` – server-side
-      selection persistence retained as workspace preference.
+      selection persistence retained as chat preference.
 - [ ] Add `PATCH /api/workspaces/{workspaceId}/channels/{channelId}` – deferred,
       channel metadata editing not yet exposed in the renderer.
 - [x] Add `DELETE /api/workspaces/{workspaceId}/channels/{channelId}`.
@@ -77,7 +78,7 @@ baseline.
 - [ ] Split the renderer API layer into independent resource clients — deferred,
       single-file mutate-then-refetch approach is sufficient for now.
 - [ ] Decide whether selected-chat persistence stays server-side or becomes
-      local renderer state — deferred, stays as server-side workspace preference.
+      local renderer state — deferred, stays as server-side chat preference.
 
 **Deliverables**: renderer calls canonical REST endpoints; further resource
 client decomposition deferred.
@@ -98,21 +99,21 @@ client decomposition deferred.
 | Area | Action | Why |
 |------|--------|-----|
 | `src/server.ts` | Refactor heavily | Current route table is where legacy action routes and new resource routes will coexist |
-| `src/workspace/model.ts` | Reuse and extend | Existing resource logic already exists here for channels, cats, assignments, messages, and orchestrator updates |
-| `src/workspace/store.ts` | Reuse and possibly extend | Store already syncs workspace and `Cats Core v1`; resource reads should build on it |
-| `src/workspace/shell.ts` | Reclassify | Keep as read-model composer, not mutation contract owner |
+| `src/chat/model.ts` | Reuse and extend | Existing resource logic already exists here for channels, cats, assignments, messages, and orchestrator updates |
+| `src/chat/store.ts` | Reuse and possibly extend | Store already syncs chat state and `Cats Core v1`; resource reads should build on it |
+| `src/chat/shell.ts` | Reclassify | Keep as read-model composer, not mutation contract owner |
 | `src/shared/app-shell.ts` | Narrow responsibility | Keep app-shell/read-model types, but stop using them as the default mutation DTOs |
 | `src/shared/core.ts` | Review alignment | Ensure REST resources still map cleanly into `Cats Core v1` contracts |
 | `src/renderer/api.ts` | Split or replace | Current client assumes most mutations return `AppShellPayload` |
 | `src/renderer/App.tsx` | Refactor | Current UI flow assumes full-shell mutation responses and server-managed selection |
 | `tests/server.test.js` | Expand | Add resource-route coverage and legacy compatibility coverage |
-| `tests/workspace-store.test.js` | Review | Keep store-level behavior stable while endpoints change |
+| `tests/chat-store.test.js` | Review | Keep store-level behavior stable while endpoints change |
 | `docs/api.md` | Update | Mark canonical REST routes and deprecated legacy routes |
 
 ## Technical Decisions to Preserve
 
 - Keep `cats-runtime` as the only runtime boundary.
-- Keep the current workspace/core store as the shared persistence source during
+- Keep the current chat-state/core store as the shared persistence source during
   the first migration.
 - Treat app-shell as a read model, not the primary resource contract.
 - Model activation as an operation resource instead of a plain controller verb.
@@ -132,7 +133,7 @@ client decomposition deferred.
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Dual API surface increases temporary complexity | High | Keep legacy routes as thin adapters and centralize shared domain logic in the workspace/core modules |
+| Dual API surface increases temporary complexity | High | Keep legacy routes as thin adapters and centralize shared domain logic in the chat-state/core modules |
 | Renderer migration stalls halfway | High | Land resource reads first, then switch one mutation flow at a time |
 | Selection persistence becomes a design trap | Medium | Decide early whether it belongs in preferences or only in local UI state |
 | Activation semantics are over-designed too early | Medium | Start with synchronous operation resources and only move to async polling if needed |
@@ -149,4 +150,5 @@ client decomposition deferred.
 ---
 
 *Last updated: 2026-03-18*
+
 

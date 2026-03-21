@@ -6,9 +6,9 @@ import {
   buildChannelView,
   createChannel,
   createCat,
-} from '../dist-server/workspace/model.js';
-import { routeChannelMessage } from '../dist-server/workspace/runtimeActions.js';
-import { MemoryChatStore } from '../dist-server/workspace/store.js';
+} from '../dist-server/chat/model.js';
+import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
+import { MemoryChatStore } from '../dist-server/chat/store.js';
 
 function createRuntimeStub(responder) {
   let nextSession = 1;
@@ -46,7 +46,7 @@ function createRuntimeStub(responder) {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? 'C:/workspace/runtime',
+        cwd: input.cwd ?? 'C:/chat/runtime',
       };
       this.createdSessions.push({ ...input, id: session.id });
       return session;

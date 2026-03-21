@@ -7,9 +7,9 @@ Accepted
 ## Context
 
 `cats` is intended to become the flagship product shell for the cats
-initiative. The prior `agent-workspace-poc` proved valuable product behavior,
-but it was built directly on top of `agent-fleet`. The monorepo direction now
-requires upper-layer product apps to depend on `cats-runtime` instead.
+initiative. Earlier prototypes were built directly on top of `agent-fleet`.
+The monorepo direction now requires upper-layer product apps to depend on
+`cats-runtime` instead.
 
 ## Decision
 

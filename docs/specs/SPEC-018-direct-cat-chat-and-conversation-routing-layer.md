@@ -168,7 +168,7 @@ Dispatch
 
 ## Design Notes
 
-- The current code already parses explicit mentions in the workspace layer, but
+- The current code already parses explicit mentions in the chat-state layer, but
   this spec upgrades that into a clearer product-owned routing contract.
 - This spec does not forbid prompts from suggesting collaboration. It forbids
   prompts from being the only thing enforcing explicit target resolution.
@@ -193,3 +193,4 @@ Dispatch
 
 *Created: 2026-03-19*
 *Author: Codex*
+

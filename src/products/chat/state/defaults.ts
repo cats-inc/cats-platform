@@ -31,7 +31,7 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
     status: 'warming',
     nextFocus: 'Bring chats online, route @mentions, and keep transcripts ready to export',
     entrypoints: ['web', 'desktop', 'telegram'],
-    referenceProjects: ['agent-workspace-poc', 'crew-chat-poc', 'cats-runtime'],
+    referenceProjects: ['crew-chat-poc', 'cats-runtime'],
     notes: [
       'Keep runtime concerns behind cats-runtime.',
       'Chat setup should stay lightweight and explicit.',

@@ -5,7 +5,7 @@ import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../
 import {
   activateChannelSessions,
   routeChannelMessage,
-} from '../workspace/runtimeActions.js';
+} from '../state/runtimeActions.js';
 import {
   buildChannelView,
   requireChannel,
@@ -13,7 +13,7 @@ import {
   selectChannel,
   toChannelSummary,
   updateGlobalOrchestrator,
-} from '../workspace/model.js';
+} from '../state/model.js';
 import type {
   AssignChannelCatInput,
   CreateChatChannelInput,

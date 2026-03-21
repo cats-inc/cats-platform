@@ -50,7 +50,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 |------|-------|--------|--------------|
 | [SPEC-026](./SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) | Explicit Mentions and Dynamic Room Workflow Orchestration | Draft (Pending Review) | [PLAN-016](../plans/PLAN-016-dynamic-room-workflow-orchestration.md) |
 | [SPEC-025](./SPEC-025-budget-policy-override-flows-and-war-room-dashboard.md) | Budget Policy, Override Flows, and War-Room Dashboard | Draft (Pending Review) | - |
-| [SPEC-024](./SPEC-024-workspace-delivery-policy-and-governance-levels.md) | Workspace Delivery Policy and Governance Levels | Draft (Pending Review) | - |
+| [SPEC-024](./SPEC-024-chat-delivery-policy-and-governance-levels.md) | Chat Delivery Policy and Governance Levels | Draft (Pending Review) | - |
 | [SPEC-023](./SPEC-023-packaged-setup-wizard-and-provider-installation.md) | Packaged Setup Wizard and Provider Installation | Draft (Pending Review) | - |
 | [SPEC-022](./SPEC-022-cats-memory-layering-and-ownership.md) | Cats Memory Layering and Ownership | Draft (Pending Review) | - |
 | [SPEC-021](./SPEC-021-contextual-mcp-profiles-and-lazy-tool-activation.md) | Contextual MCP Profiles and Lazy Tool Activation | Draft (Pending Review) | - |
@@ -70,10 +70,10 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-007](./SPEC-007-chat-contextual-cat-entry.md) | Chat-Contextual Cat Entry | Draft (Pending Review) | [PLAN-007](../plans/PLAN-007-chat-contextual-cat-entry.md) |
 | [SPEC-006](./SPEC-006-cats-core-v1-and-suite-foundation.md) | Cats Core v1 and Suite Foundation | Approved | [PLAN-006](../plans/PLAN-006-cats-core-v1-and-suite-foundation.md) |
 | [SPEC-005](./SPEC-005-company-control-plane-evolution.md) | Company Control Plane Evolution | Draft (Exploratory, Unreviewed) | [PLAN-005](../plans/PLAN-005-company-control-plane-evolution.md) |
-| [SPEC-004](./SPEC-004-runtime-workspace-core.md) | Runtime Workspace Core | Implemented | [PLAN-004](../plans/PLAN-004-runtime-workspace-core.md) |
+| [SPEC-004](./SPEC-004-runtime-chat-core.md) | Runtime Chat Core | Implemented | [PLAN-004](../plans/PLAN-004-runtime-chat-core.md) |
 | [SPEC-003](./SPEC-003-local-channel-setup-flow.md) | Local Channel Setup Flow | Implemented | [PLAN-003](../plans/PLAN-003-local-channel-setup-flow.md) |
-| [SPEC-002](./SPEC-002-workspace-renderer-shell.md) | Workspace Renderer Shell | Implemented | [PLAN-002](../plans/PLAN-002-workspace-renderer-shell.md) |
-| [SPEC-001](./SPEC-001-initial-workspace-shell.md) | Initial Workspace Shell | Implemented | [PLAN-001](../plans/PLAN-001-initial-workspace-shell.md) |
+| [SPEC-002](./SPEC-002-chat-renderer-shell.md) | Chat Renderer Shell | Implemented | [PLAN-002](../plans/PLAN-002-chat-renderer-shell.md) |
+| [SPEC-001](./SPEC-001-initial-chat-shell.md) | Initial Chat Shell | Implemented | [PLAN-001](../plans/PLAN-001-initial-chat-shell.md) |
 | [000-template](./000-template.md) | Template | - | - |
 <!-- Add new specs above this line -->
 
@@ -88,4 +88,8 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 *Last updated: 2026-03-20*
 
 *See also: [plans/](../plans/) for implementation plans*
+
+
+
+
 

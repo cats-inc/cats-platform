@@ -81,11 +81,11 @@ To sync skills after changes:
 - Main app port: `CATS_INC_PORT` (default `8181`)
 - Renderer dev port: `5173`
 - Runtime dependency: `CATS_RUNTIME_BASE_URL` (default `http://127.0.0.1:3110`)
-- Core modules: `src/config.ts`, `src/runtime/client.ts`, `src/workspace/shell.ts`,
+- Core modules: `src/config.ts`, `src/runtime/client.ts`, `src/chat/shell.ts`,
   `src/server.ts`, `src/renderer/App.tsx`
 - Test command: `npm test`
-- Product direction: rebuild `agent-workspace-poc` behavior on Node/TS while
-  keeping `cats-runtime` as the only runtime boundary
+- Product direction: build the Node/TS suite product directly around
+  `cats-runtime` as the only runtime boundary
 
 ### Working Product Memory
 
@@ -111,7 +111,7 @@ working memory for Codex, not yet a ratified product spec or ADR.
   escalation, takeover handoff, and owner-facing option presentation before
   dispatch.
 - Inside the main app, users should still be able to chat directly with
-  non-orchestrator pals/resources. The "single orchestrator bot" constraint is
+  non-orchestrator cats/resources. The "single orchestrator bot" constraint is
   mainly for external messaging transports like Telegram or LINE.
 - Worker conversations, user conversations, and external transport transcripts
   should be persisted. Operational search should be available from the app, and

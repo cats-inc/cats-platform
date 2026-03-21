@@ -14,8 +14,9 @@ product direction well:
 too close to the planned `Cats Work` product line and risks creating confusing
 phrases across API docs, product copy, and future multi-surface work.
 
-This spec defines a controlled naming refresh for the **public surface only**.
-It intentionally avoids visual redesign and avoids a broad internal refactor.
+This spec defines a controlled naming refresh for the public surface first,
+without turning the effort into a visual redesign. Internal cleanup may follow
+when it removes product confusion without destabilizing the app.
 
 ## Goals
 
@@ -24,16 +25,15 @@ It intentionally avoids visual redesign and avoids a broad internal refactor.
 - Remove `workspace / workspaces` from the canonical public API surface.
 - Preserve compatibility through legacy aliases during migration.
 - Keep the existing UI structure, layout, styling, and CSS hooks intact.
-- Avoid forcing an immediate rename of internal `workspace` and `cat`
-  implementation types.
+- Avoid forcing an unrelated UI or architecture rewrite just to complete naming
+  cleanup.
 
 ## Non-Goals
 
 - Redesigning the UI
 - Reflowing layout, spacing, panels, or responsive behavior
 - Renaming CSS class names just to match new product language
-- Moving or renaming `src/workspace/` in this slice
-- Renaming every internal `Workspace*` or `Cat*` type in this slice
+- Moving or renaming `src/chat/` in this slice
 - Removing legacy route aliases immediately
 
 ## Naming Decisions
@@ -129,15 +129,11 @@ Accepted direction for this slice:
 
 - public routes, docs, and labels use `Cat / Cats`
 - public routes stop using `workspace / workspaces`
-- internal modules may continue using:
-  - `src/workspace/`
-  - `WorkspaceState`
-  - `ChatCat`
-  - `ChannelCatAssignment`
-  - related store and shell helpers
+- internal cleanup should be done opportunistically where the old names now
+  mislead product or platform work
 
-This keeps the rename manageable and avoids destabilizing persistence and core
-sync logic in the same change.
+This keeps the rename manageable while still allowing targeted cleanup when the
+legacy terminology becomes more confusing than the rename churn.
 
 ## Migration Direction
 
@@ -159,10 +155,10 @@ sync logic in the same change.
 - keep view bootstrap behavior stable
 - avoid broad component restructuring
 
-### Step 4: Deferred Internal Cleanup
+### Step 4: Targeted Internal Cleanup
 
-- only after public naming stabilizes, evaluate whether internal `workspace`
-  and `cat` names should be cleaned up
+- after public naming stabilizes, remove the most misleading internal legacy
+  names in stores, contracts, and docs
 
 ## Acceptance Criteria
 
@@ -181,8 +177,8 @@ sync logic in the same change.
 - Should `GET /api/app-shell` remain unchanged during this rename, or should
   its payload labels also shift to `cats` while preserving a compatibility
   adapter?
-- After the public rename lands, is a second pass to rename internal
-  `Workspace*` and `Cat*` types worth the churn?
+- After the public rename lands, which remaining internal legacy names are
+  still confusing enough to justify cleanup?
 
 ## References
 
@@ -195,4 +191,5 @@ sync logic in the same change.
 ---
 
 *Last updated: 2026-03-18*
+
 

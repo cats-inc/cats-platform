@@ -22,7 +22,7 @@ can coexist with room-based chat, but must not replace the room model.
 ## Goals
 
 - keep Telegram as one clean operator-to-`Boss Cat` entry thread
-- preserve `Cats Chat` rooms as the canonical multi-topic workspace units
+- preserve `Cats Chat` rooms as the canonical multi-topic chat units
 - allow `Boss Cat` to continue existing rooms or create new rooms from Telegram
 - ensure new rooms created from Telegram appear naturally in `Recents`
 - keep worker Cats internal to room orchestration rather than direct Telegram
@@ -119,7 +119,7 @@ Telegram private chat
 - Telegram is allowed to stay concise and summary-oriented even when large room
   work is happening elsewhere.
 
-### Rooms as Canonical Workspaces
+### Rooms as Canonical Chats
 
 - Long-running or topic-specific work should live in normal `Cats Chat` rooms.
 - `Recents` should continue to mean "real rooms I can open and inspect".
@@ -207,3 +207,5 @@ Telegram private chat
 
 *Created: 2026-03-19*
 *Author: Codex*
+
+

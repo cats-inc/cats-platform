@@ -12,7 +12,7 @@ entry back into the active chat.
 
 ### Phase 1: Information Architecture
 
-- [ ] Remove `Cats` from first-level workspace navigation.
+- [ ] Remove `Cats` from first-level chat navigation.
 - [ ] Introduce a `Settings` destination reached from the left-panel account
       menu.
 - [ ] Define `Settings > Cats` as the reusable cat registry surface.
@@ -24,7 +24,7 @@ entry back into the active chat.
 
 - [ ] Add a chat-contextual side sheet or modal for `Add cat`.
 - [ ] Make `Choose existing` the default path.
-- [ ] Support assigning an existing workspace cat to the current chat.
+- [ ] Support assigning an existing global cat to the current chat.
 - [ ] Keep roster feedback visible after assignment.
 
 **Deliverables**: current-chat add/assign flow.
@@ -53,7 +53,7 @@ entry back into the active chat.
 - [ ] Update renderer copy so "cat registry" and "add cat to this chat" are not
       conflated.
 - [ ] Add tests for the new navigation and contextual create/assign sequence.
-- [ ] Ensure the shared data model remains workspace registry plus channel
+- [ ] Ensure the shared data model remains global cat registry plus channel
       assignment.
 
 **Deliverables**: aligned copy, tests, and stable semantics.
@@ -91,4 +91,7 @@ entry back into the active chat.
 ---
 
 *Last updated: 2026-03-17*
+
+
+
 

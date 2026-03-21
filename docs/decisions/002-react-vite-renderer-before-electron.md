@@ -9,11 +9,11 @@ Accepted
 `cats` will likely become a desktop-installable product later, but the UI
 and workflow model are not stable enough to justify an Electron shell yet.
 What the project needs now is a renderer that can express the multi-channel
-workspace model quickly while keeping future desktop packaging possible.
+chat model quickly while keeping future desktop packaging possible.
 
 ## Decision
 
-`cats` will use a React/Vite renderer for the current workspace shell. The
+`cats` will use a React/Vite renderer for the current chat shell. The
 Node server remains the runtime-facing boundary. Electron is deferred until tray
 behavior, sidecar lifecycle, and installer concerns are concrete enough to
 validate.
@@ -35,9 +35,12 @@ host-process concerns too early.
 
 ### Stay on Server-Only JSON
 
-Rejected because Phase 2 needs a real workspace shell to pressure-test the
+Rejected because Phase 2 needs a real chat shell to pressure-test the
 product shape.
 
 ---
 
 *Decision date: 2026-03-11*
+
+
+

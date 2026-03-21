@@ -67,8 +67,8 @@ function createOwnerActor(ownerProfile: OwnerProfileRecord): CoreActorRecord {
   };
 }
 
-function createOrchestratorActor(workspace: ChatState): CoreActorRecord {
-  const roles = workspace.globalOrchestrator.notes.length > 0
+function createOrchestratorActor(chat: ChatState): CoreActorRecord {
+  const roles = chat.globalOrchestrator.notes.length > 0
     ? ['orchestrator', 'coordinator']
     : ['orchestrator'];
 
@@ -78,14 +78,14 @@ function createOrchestratorActor(workspace: ChatState): CoreActorRecord {
     kind: 'orchestrator',
     status: 'active',
     roles,
-    skillProfile: workspace.globalOrchestrator.skillProfile,
-    mcpProfile: workspace.globalOrchestrator.mcpProfile,
-    defaultExecutionTarget: structuredClone(workspace.globalOrchestrator.executionTarget),
-    memory: structuredClone(workspace.globalOrchestrator.memory),
+    skillProfile: chat.globalOrchestrator.skillProfile,
+    mcpProfile: chat.globalOrchestrator.mcpProfile,
+    defaultExecutionTarget: structuredClone(chat.globalOrchestrator.executionTarget),
+    memory: structuredClone(chat.globalOrchestrator.memory),
     source: 'global_orchestrator',
     sourceId: 'global',
-    createdAt: workspace.globalOrchestrator.updatedAt,
-    updatedAt: workspace.globalOrchestrator.updatedAt,
+    createdAt: chat.globalOrchestrator.updatedAt,
+    updatedAt: chat.globalOrchestrator.updatedAt,
     archivedAt: null,
   };
 }
@@ -191,13 +191,13 @@ function createArchiveMetadata(
 }
 
 function syncBotBindings(
-  workspace: ChatState,
+  chat: ChatState,
   existingBindings: BotBindingRecord[],
 ): BotBindingRecord[] {
   const preservedLineBindings = existingBindings.filter((binding) => binding.platform === 'line');
-  const telegramBotName = workspace.globalOrchestrator.telegramBotName?.trim();
-  const bossCatActorId = workspace.bossCatId
-    ? createCatActorId(workspace.bossCatId)
+  const telegramBotName = chat.globalOrchestrator.telegramBotName?.trim();
+  const bossCatActorId = chat.bossCatId
+    ? createCatActorId(chat.bossCatId)
     : null;
 
   if (!telegramBotName || !bossCatActorId) {
@@ -205,7 +205,7 @@ function syncBotBindings(
   }
 
   const existingTelegram = existingBindings.find((binding) => binding.platform === 'telegram');
-  const updatedAt = workspace.globalOrchestrator.updatedAt;
+  const updatedAt = chat.globalOrchestrator.updatedAt;
 
   return [
     ...preservedLineBindings,
@@ -222,18 +222,18 @@ function syncBotBindings(
   ];
 }
 
-export function syncCoreStateWithWorkspace(
-  workspace: ChatState,
+export function syncCoreStateWithChatState(
+  chat: ChatState,
   existingCore: Partial<CatsCoreState> = createDefaultCoreState(),
 ): CatsCoreState {
   const updatedAt = new Date().toISOString();
   const ownerProfile = existingCore.ownerProfile ?? createDefaultOwnerProfile(updatedAt);
   const ownerActor = createOwnerActor(ownerProfile);
-  const orchestratorActor = createOrchestratorActor(workspace);
-  const catActors = workspace.cats.map((cat) => createCatActor(cat, workspace.bossCatId));
+  const orchestratorActor = createOrchestratorActor(chat);
+  const catActors = chat.cats.map((cat) => createCatActor(cat, chat.bossCatId));
   const existingTasks = new Map((existingCore.tasks ?? []).map((task) => [task.id, task]));
   const existingArchives = new Map((existingCore.archives ?? []).map((archive) => [archive.id, archive]));
-  const conversations = workspace.channels.map((channel) =>
+  const conversations = chat.channels.map((channel) =>
     createConversationFromChannel(
       channel,
       [
@@ -243,7 +243,7 @@ export function syncCoreStateWithWorkspace(
       ],
     ),
   );
-  const tasks = workspace.channels.map((channel) =>
+  const tasks = chat.channels.map((channel) =>
     createTaskFromChannel(
       channel,
       ownerProfile.actorId,
@@ -252,7 +252,7 @@ export function syncCoreStateWithWorkspace(
     ),
   );
   const preservedTasks = preserveCoreOwnedTasks(existingCore.tasks ?? []);
-  const archives = workspace.channels.map((channel) =>
+  const archives = chat.channels.map((channel) =>
     createArchiveMetadata(
       channel,
       `conversation-channel-${channel.id}`,
@@ -275,7 +275,7 @@ export function syncCoreStateWithWorkspace(
     traces: structuredClone(existingCore.traces ?? []),
     checkpoints: structuredClone(existingCore.checkpoints ?? []),
     outcomes: structuredClone(existingCore.outcomes ?? []),
-    botBindings: syncBotBindings(workspace, existingCore.botBindings ?? []),
+    botBindings: syncBotBindings(chat, existingCore.botBindings ?? []),
     archives,
   };
 }

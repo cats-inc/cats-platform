@@ -12,7 +12,7 @@ Accepted
 [ADR-005](./005-use-chat-cat-registry-and-channel-assignments.md) settled
 the product model for reusable cats:
 
-- cats live at workspace scope
+- cats live in a global chat registry
 - channel usage lives in explicit assignments
 - a renderer can hydrate assigned cats for convenience
 
@@ -37,7 +37,7 @@ The product should distinguish:
 
 - `chat-time action`: add or assign a cat to the current chat
 - `resource management`: review, create, edit, archive, or inspect reusable
-  cats across the workspace
+  cats across chats
 
 ## Decision
 
@@ -59,7 +59,7 @@ From this point forward, the planned UX is:
    - the surface should support search and clear assignment calls to action
 
 4. `Create new` inside the chat flow should remain available.
-   - creating from context should still save a reusable workspace cat
+   - creating from context should still save a reusable global cat
    - after creation, the new cat should be assigned to the current chat as part
      of the same flow
 
@@ -141,4 +141,7 @@ From this point forward, the planned UX is:
 
 *Accepted: 2026-03-17*
 *Accepted by: user direction captured through Codex*
+
+
+
 

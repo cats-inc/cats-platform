@@ -72,7 +72,7 @@ curated assets.
 ### Phase 3: First-Run Bootstrap
 
 - [ ] Implement startup-time detection for missing config/state prerequisites.
-- [ ] Create or suggest default local paths for workspace state, app config,
+- [ ] Create or suggest default local paths for chat state, app config,
       and other product-owned files.
 - [ ] Add a technical first-run flow that emits actionable setup guidance
       instead of raw crashes when prerequisites are missing.
@@ -123,7 +123,7 @@ npm delivery path.
 | `src/server.ts` | Review lightly | Confirm server creation remains the app bootstrap core |
 | `src/config.ts` | Modify | Support first-run path resolution and managed-runtime config |
 | `src/runtime/` | Expand | Add runtime supervision/attachment helpers |
-| `src/workspace/store.ts` | Review | Ensure default state-path behavior matches first-run bootstrap |
+| `src/chat/store.ts` | Review | Ensure default state-path behavior matches first-run bootstrap |
 | `tests/` | Expand | Cover CLI and runtime-readiness behavior |
 | `docs/setup-guide.md` | Update | Document install and first-run flows |
 | `docs/deployment.md` | Update | Record npm self-hosted distribution as a first-class path |
@@ -164,3 +164,5 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-19*
+
+

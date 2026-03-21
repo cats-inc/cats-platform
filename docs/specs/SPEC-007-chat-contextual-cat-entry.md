@@ -5,7 +5,7 @@ Status: Draft (Pending Review)
 ## Summary
 
 Reframe cat UX so the primary operator action is "add cat to this chat" while
-preserving the reusable workspace cat registry under `Settings > Cats`.
+preserving the reusable global cat registry under `Settings > Cats`.
 
 ## Goals
 
@@ -23,10 +23,10 @@ preserving the reusable workspace cat registry under `Settings > Cats`.
 - The selected chat should expose a clear `Add cat` entry point without
   requiring navigation to a separate registry page first.
 - The Add cat surface should support two paths:
-  - choosing an existing workspace cat
-  - creating a new reusable workspace cat
+  - choosing an existing global cat
+  - creating a new reusable global cat
 - Creating a new cat from chat context should:
-  - save the reusable cat to the workspace registry
+  - save the reusable cat to the global registry
   - assign it to the current chat in the same flow
 - A global `Settings` area should exist and be reachable from the left-panel
   account menu.
@@ -43,7 +43,7 @@ preserving the reusable workspace cat registry under `Settings > Cats`.
 - The design should not imply that cats are chat-local throwaway entities.
 - Advanced configuration should stay available without making the common
   creation path heavy.
-- The change should preserve compatibility with the current workspace store and
+- The change should preserve compatibility with the current chat store and
   `Cats Core v1` actor/resource direction.
 
 ## UX Direction
@@ -87,4 +87,9 @@ preserving the reusable workspace cat registry under `Settings > Cats`.
 ---
 
 *Last updated: 2026-03-17*
+
+
+
+
+
 

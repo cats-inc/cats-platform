@@ -94,7 +94,7 @@ To sync skills after changes:
 
 #### Cats 產品生態系定位
 
-cats 是 Cats Inc 生態系的旗艦產品套件（Chat + Work + Code + Core），取代 agent-workspace-poc 作為長期產品基礎。
+cats 是 Cats Inc 生態系的旗艦產品套件（Chat + Work + Code + Core）。
 
 #### 產品線規劃
 

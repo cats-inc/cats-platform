@@ -42,11 +42,11 @@ war-room dashboard.
 
 ## User Stories
 
-- As an owner, I want to set spending or quota guardrails for a workspace, Cat,
+- As an owner, I want to set spending or quota guardrails for a chat, Cat,
   provider, or overall environment.
 - As a Boss Cat, I want warnings before dispatching expensive or risky work.
 - As an operator, I want a war-room view that shows current burn, alerts, and
-  blocked states across active Cats and workspaces.
+  blocked states across active Cats and chats.
 - As a specialist Cat, I want policy outcomes to be clear when a task is paused
   or requires approval due to budget or quota.
 
@@ -59,7 +59,7 @@ war-room dashboard.
    provider-native output.
 3. Budget policy scopes should be able to include at least:
    - global
-   - workspace
+   - chat
    - Cat
    - provider family or provider instance
    - work item or task when that model exists
@@ -88,7 +88,7 @@ war-room dashboard.
 11. The first dashboard slice should leave room for at least:
     - current usage totals
     - burn or trend summaries
-    - top-spending Cats or workspaces
+    - top-spending Cats or chats
     - provider usage distribution
     - rate-limit / cooldown alerts
     - blocked or approval-pending states
@@ -97,7 +97,7 @@ war-room dashboard.
 13. Budget policy should integrate with existing or planned approval,
     escalation, and takeover flows.
 14. Budget policy should remain compatible with artifact-only and low-governance
-    work; not every workspace requires the same strictness.
+    work; not every chat requires the same strictness.
 15. Product read models should be able to distinguish exact vs estimated
     telemetry when runtime does not have exact provider cost data.
 
@@ -140,7 +140,7 @@ Illustrative product-owned types:
 ```ts
 type BudgetScope =
   | 'global'
-  | 'workspace'
+  | 'chat'
   | 'cat'
   | 'provider'
   | 'task';
@@ -185,7 +185,7 @@ The dashboard should be able to show:
 
 - current total spend or usage
 - active burn rate and recent trend
-- per-Cat and per-workspace breakdowns
+- per-Cat and per-chat breakdowns
 - provider mix and cooldown/rate-limit incidents
 - hard-limit blocks, approval queues, and active overrides
 
@@ -196,13 +196,13 @@ telemetry and product approval records rather than from direct provider APIs.
 
 - [ADR-023](../decisions/023-own-budget-policy-and-cost-control-in-product.md)
 - [SPEC-005](./SPEC-005-company-control-plane-evolution.md)
-- [SPEC-024](./SPEC-024-workspace-delivery-policy-and-governance-levels.md)
+- [SPEC-024](./SPEC-024-chat-delivery-policy-and-governance-levels.md)
 - [cats-runtime SPEC-010](../../../cats-runtime/docs/specs/SPEC-010-usage-metering-rate-limit-detection-and-execution-guardrails.md)
 
 ## Open Questions
 
 - [ ] Which budget scopes should ship first in the current chat-first product:
-      workspace only, or workspace plus provider and Cat?
+      chat only, or chat plus provider and Cat?
 - [ ] Should provider downgrade behavior be part of first-slice policy, or
       should the first slice limit itself to warnings, blocking, and override?
 - [ ] How much of the first war-room view should live in chat-adjacent surfaces
@@ -219,3 +219,6 @@ telemetry and product approval records rather than from direct provider APIs.
 *Created: 2026-03-20*
 *Author: Codex*
 *Related Plan: TBD*
+
+
+

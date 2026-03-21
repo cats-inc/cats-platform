@@ -30,7 +30,7 @@ problems appear quickly:
 
 We also reviewed Manus' recent `Agents` launch as a market reference. Manus
 appears to treat Telegram as an external agent entrypoint exposed via a
-top-level `Agents` surface, not as a direct mirror of all workspace chats.
+top-level `Agents` surface, not as a direct mirror of all chat rooms.
 That pattern is useful, but `cats` has a stronger room-native product
 direction and should not flatten its multi-room model into one transport
 thread.
@@ -157,3 +157,4 @@ mirror.
 
 *Accepted: 2026-03-19*
 *Accepted by: user direction captured through Codex*
+

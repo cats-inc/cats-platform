@@ -97,7 +97,7 @@ chats.
   - delete chat
   - remove Cat from chat
   - change execution target for that chat participant
-  - reset setup / wipe workspace state
+  - reset setup / wipe chat state
 - The following actions shall not immediately put a chat to sleep on their own:
   - browser refresh
   - navigating to another page
@@ -214,3 +214,4 @@ availability should be represented honestly.
 ---
 
 *Last updated: 2026-03-19*
+

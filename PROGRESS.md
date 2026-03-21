@@ -9,8 +9,8 @@
 | Bootstrap | Completed | Subproject created from `project-bootstrap` with Node.js preset |
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
-| Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global pals, assignments, transcript, and orchestrator surfaces |
-| Workspace Product Features | Completed | Runtime-backed setup, global pal registry, channel assignment, live mention continuation routing, transcript export, and execution-aware state landed |
+| Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
+| Chat Product Features | Completed | Runtime-backed setup, global cat registry, channel assignment, live mention continuation routing, transcript export, and execution-aware state landed |
 | Suite Foundation Planning | In Progress | The suite-host refactor now has core-owned state direction, app-level server/renderer assembly, and dedicated Work/Code placeholder slices, but Chat API extraction and cleanup remain |
 | Documentation | In Progress | Architecture, progress, and plan docs now reflect the suite-host layout and compatibility seams, but API/cleanup follow-up remains |
 | Cats Chat Launch Track | Not Started | Chat launch features such as approvals, escalation, takeover, and desktop packaging remain ahead |
@@ -43,7 +43,7 @@
 
 ---
 
-### WP-2: Workspace Shell Delivery
+### WP-2: Chat Shell Delivery
 
 **Status**: Completed
 **Assigned**: Codex
@@ -55,19 +55,19 @@
 | Task | Status | Notes |
 |------|--------|-------|
 | Choose renderer approach | [x] | React/Vite first, Electron deferred |
-| Add initial multi-channel workspace UI shell | [x] | Sidebar, channel cards, orchestrator and runtime panels |
-| Add persistent workspace shell storage | [x] | File-backed shell state now includes selected and created channels |
+| Add initial multi-channel chat UI shell | [x] | Sidebar, channel cards, orchestrator and runtime panels |
+| Add persistent chat-shell storage | [x] | File-backed chat state now includes selected and created channels |
 | Implement orchestrator and channel setup UX | [x] | Channel setup, global orchestrator editing, and runtime activation all landed |
-| Add runtime-backed message, pal, and export flows | [x] | Global pal registry, channel assignment, continuation loop routing, fan-out, guards, and transcript export now exist |
+| Add runtime-backed message, cat, and export flows | [x] | Global cat registry, channel assignment, continuation loop routing, fan-out, guards, and transcript export now exist |
 
 #### Acceptance Criteria
 
-- [x] Users can switch among persisted workspace channels
+- [x] Users can switch among persisted chat channels
 - [x] Selected channel survives reloads through local state persistence
 - [x] Users can create planned channels and keep them across reloads
 - [x] Product shell can bootstrap runtime-backed sessions through `cats-runtime`
 - [x] Channel state is persisted beyond in-memory process lifetime
-- [x] Workspace pals can be assigned into persisted channels and reached through basic mentions
+- [x] Global cats can be assigned into persisted channels and reached through basic mentions
 - [x] Channels can export their transcript and configuration as JSON
 
 Known follow-ups:
@@ -95,7 +95,7 @@ Known follow-ups:
 | Document `cats-runtime` direct API and MCP facade responsibilities | [x] | Runtime boundary planning now distinguishes app APIs from orchestrator tool use |
 | Freeze the suite desktop stance | [x] | Electron plus React/TypeScript remains the current path; Tauri and Flutter are not on the active route |
 | Annotate exploratory Paperclip control-plane documents | [ ] | Existing research remains in-tree but needs explicit exploratory labels everywhere it appears |
-| Land the first implementation slices for shared storage and contracts | [x] | `src/shared/core.ts`, `src/core/model.ts`, the core-backed workspace store, and `/api/core/*` read/write routes are now in-tree |
+| Land the first implementation slices for shared storage and contracts | [x] | `src/shared/core.ts`, `src/core/model.ts`, the core-backed chat-state store, and `/api/core/*` read/write routes are now in-tree |
 | Land the suite-host first slice through Work/Code placeholders | [x] | `src/app/*`, `src/core/*`, `src/products/*`, route ownership, and placeholder Work/Code surfaces are now in place |
 | Finish validation-only Phase 8A passes | [x] | Server route coverage, suite route-map coverage, and architecture/progress doc sync are now in place |
 
@@ -121,7 +121,7 @@ Known follow-ups:
 | Task | Status | Notes |
 |------|--------|-------|
 | Add operator-grade chat activity and split-view surfaces | [ ] | Current renderer remains phase-2 shell quality |
-| Rework pal information architecture around current-chat `Add pal` | [ ] | Registry stays global, but the main entry should move into chat context |
+| Rework cat information architecture around current-chat `Add cat` | [ ] | Registry stays global, but the main entry should move into chat context |
 | Add interactive delegation and owner approval loop | [ ] | Dispatch planning before worker execution is not implemented yet |
 | Add Telegram and LINE orchestrator entrypoints | [ ] | Telegram status/webhook seam, durable dedupe, and placeholder inbox mapping are now landed; outbound delivery, LINE, and room-routing policy remain pending |
 | Add escalation and takeover support | [ ] | HITL flows are defined in planning only |
@@ -131,7 +131,7 @@ Known follow-ups:
 #### Acceptance Criteria
 
 - [ ] Operators can approve or redirect orchestrator plans before dispatch
-- [ ] Operators can add an existing or new pal from the active chat without
+- [ ] Operators can add an existing or new cat from the active chat without
       going through a first-level registry page
 - [ ] External transport channels can route through a single orchestrator bot end to end; Telegram ingress seam is landed but outbound and room policy are still pending
 - [ ] Desktop packaging can start local services with guided setup
@@ -177,7 +177,7 @@ Known follow-ups:
 #### Remaining Items
 
 - [x] Decide the concrete frontend rendering approach for the product UI
-- [x] Replace the placeholder app shell with the real workspace model
+- [x] Replace the placeholder app shell with the real chat model
 - [x] Add persistence and transcript export paths
 - [ ] Suite-foundation and launch-track follow-up work continues in WP-3 through WP-5
 
@@ -192,15 +192,15 @@ Known follow-ups:
   Tauri are outside the current execution path
 - Keep the Node server as the API and future desktop-safe integration boundary
 - Serve built static assets from the Node server after `npm run build`
-- Keep workspace persistence local and inspectable while runtime work stays behind `cats-runtime`
-- Keep pal identity and memory separate from provider execution leases
+- Keep chat-state persistence local and inspectable while runtime work stays behind `cats-runtime`
+- Keep cat identity and memory separate from provider execution leases
 
 #### Remaining Items
 
-- [x] Replace static shell selection with persisted workspace state
-- [x] Add a local channel setup flow with persisted workspace updates
+- [x] Replace static shell selection with persisted chat state
+- [x] Add a local channel setup flow with persisted chat-state updates
 - [x] Add runtime-backed channel actions and composer flows
-- [x] Add a basic mention model, global pal registry, and transcript export
+- [x] Add a basic mention model, global cat registry, and transcript export
 - [ ] Suite-foundation and launch-track follow-up work continues in WP-3 through WP-5
 
 ### WP-3: Suite Foundation Planning
@@ -211,13 +211,13 @@ Known follow-ups:
 
 - `src/app/server/index.ts` now owns the app-level HTTP assembly
 - `src/products/chat/api/*` now owns Chat setup, legacy compatibility,
-  workspace-prefixed REST, and canonical Chat route handling
+  chat-prefixed REST compatibility, and canonical Chat route handling
 - `src/app/renderer/*` now owns the suite-level renderer entry and routing
 - `src/core/*` is now the shared core seam rather than a Chat-derived contract
 - `src/core/api.ts` now owns the shared-core HTTP seam, including durable
   owner-profile, task, approval, run, trace, checkpoint, and outcome writes
-- `src/products/chat/workspace/store.ts` now preserves core-owned system
-  records across file-backed reloads and later workspace syncs
+- `src/products/chat/state/store.ts` now preserves core-owned system
+  records across file-backed reloads and later chat-state syncs
 - `src/products/chat/*` now owns the current Chat implementation
 - `src/products/work/*` and `src/products/code/*` now own dedicated placeholder
   API and renderer surfaces
@@ -228,7 +228,7 @@ Known follow-ups:
 
 #### Remaining Items
 
-- [ ] Remove temporary shims in `src/server.ts`, `src/renderer/*`, and `src/workspace/*` when ownership boundaries stabilize
+- [ ] Remove temporary shims in `src/server.ts`, `src/renderer/*`, and `src/chat/*` when ownership boundaries stabilize
 - [ ] Decide when the `src/shared/app-shell.ts` compatibility shim can be removed after downstream imports migrate
 
 ---

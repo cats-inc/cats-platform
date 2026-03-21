@@ -48,9 +48,9 @@ objects above the channel layer.
 **Deliverables**: `cats` gains board-level visibility and control-plane
 surfaces instead of only chat views.
 
-### Phase 4: Workspaces, Execution, and Outputs
+### Phase 4: Project Roots, Execution, and Outputs
 
-- [ ] Model durable project workspaces separately from execution workspaces.
+- [ ] Model durable project roots separately from transient execution roots.
 - [ ] Attach runtime sessions, services, artifacts, previews, and work outputs
       to projects and work items.
 - [ ] Add execution history surfaces hydrated from `cats-runtime`.
@@ -74,7 +74,7 @@ future modules.
 | Area | Action | Why |
 |------|--------|-----|
 | `src/shared/app-shell.ts` | Modify | Expand the shared product contract beyond channels and cats |
-| `src/workspace/` | Refactor | Split phase-2 chat state from future control-plane domain state |
+| `src/chat/` | Refactor | Split phase-2 chat state from future control-plane domain state |
 | `src/server.ts` and route modules | Modify | Add higher-level operator APIs without leaking runtime internals |
 | `src/renderer/` | Modify | Add control-plane surfaces above the current chat shell |
 | `tests/` | Expand | Cover compatibility, migration, and new operator views |
@@ -84,7 +84,7 @@ future modules.
 
 - `npm test` stays green for every implementation slice
 - `npm run build` stays green for both server and renderer
-- Legacy workspace fixtures continue to load through the compatibility layer
+- Existing chat-state fixtures continue to load through the compatibility layer
 - Manual verification covers both the old chat loop and the new control-plane
   surfaces during migration
 
@@ -101,4 +101,5 @@ future modules.
 ---
 
 *Last updated: 2026-03-16*
+
 

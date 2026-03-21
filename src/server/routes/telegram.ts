@@ -4,7 +4,7 @@ import { createCatActorId } from '../../core/model.js';
 import type { BotBindingRecord } from '../../core/types.js';
 import type { TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
-import type { ChatStore } from '../../products/chat/workspace/store.js';
+import type { ChatStore } from '../../products/chat/state/store.js';
 import type { ChatState } from '../../shared/app-shell.js';
 
 interface TelegramRouteDependencies {

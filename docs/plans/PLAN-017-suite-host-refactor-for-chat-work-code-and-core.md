@@ -10,8 +10,8 @@ Implement the first structural refactor slice required by
 This plan covers:
 
 - establishing a suite-host code skeleton inside `cats`
-- reversing the current `workspace -> core` dependency direction
-- demoting current workspace modules into a Chat-specific product slice
+- reversing the current `chat -> core` dependency direction
+- demoting current chat-state modules into a Chat-specific product slice
 - splitting top-level app composition from product-slice logic
 - creating placeholder `Work` and `Code` entry surfaces so parallel development
   can begin safely
@@ -28,7 +28,7 @@ This plan does not cover:
 
 - Keep `cats-runtime` as the only runtime boundary.
 - Do not let Chat-specific DTOs remain the shared suite contract.
-- Do not let `Work` or `Code` depend directly on current Chat/workspace schema.
+- Do not let `Work` or `Code` depend directly on current Chat-state schema.
 - Keep the first slice focused on structure and ownership boundaries.
 - Preserve existing Chat behavior as much as possible while moving code.
 
@@ -46,7 +46,7 @@ src/
   products/
     chat/
       api/
-      workspace/
+      state/
       renderer/
     work/
       api/
@@ -102,7 +102,7 @@ taxonomy for every feature.
       `src/core/types.ts`.
 - [x] Introduce `src/core/store.ts` as the shared core persistence boundary.
 - [x] Define the first neutral core read/write API that does not require Chat
-      workspace types as input.
+      chat-state types as input.
 - [x] Keep compatibility adapters temporarily where existing code still expects
       older imports.
 
@@ -114,8 +114,8 @@ Current transitional modules after phases 1-3:
 - `src/server.ts` is still the top-level Chat-first assembler, but now imports
   Chat/runtime/transport code through the new compatibility slices where
   practical.
-- `src/workspace/*` remains the implementation home for Chat behavior and is
-  surfaced through `src/products/chat/workspace/*` re-export modules until
+- `src/chat/*` remains the implementation home for Chat behavior and is
+  surfaced through `src/products/chat/state/*` re-export modules until
   Phase 5 relocation.
 - `src/runtime/*` and `src/transports/*` remain the implementation home for
   infrastructure code and are surfaced through `src/platform/*` re-export
@@ -127,13 +127,13 @@ Current transitional modules after phases 1-3:
 
 ### Phase 4: Reverse the Current Dependency Direction
 
-- [x] Stop treating `workspace` state as the suite-wide source of truth.
-- [x] Replace current `syncCoreStateWithWorkspace(...)`-style ownership with:
+- [x] Stop treating chat state as the suite-wide source of truth.
+- [x] Replace current `syncCoreStateWithChatState(...)`-style ownership with:
       - core-owned persisted state
       - Chat projection builders derived from core plus Chat-local state
 - [x] Decide what remains shared core state versus what becomes Chat-local
       workflow state.
-- [x] Keep a temporary compatibility layer so existing workspace-oriented tests
+- [x] Keep a temporary compatibility layer so existing chat-state-oriented tests
       continue passing while assertions are migrated incrementally toward
       core-owned state and projection-based behavior.
 - [x] Keep migration compatibility logic explicit and temporary.
@@ -152,19 +152,19 @@ they are individually migrated to core-based assertions.
 
 Current transitional modules after Phase 4:
 
-- `src/products/chat/workspace/coreProjection.ts` owns the Chat-specific
-  `workspace -> core` projection logic that previously lived under
+- `src/products/chat/state/coreProjection.ts` owns the Chat-specific
+  `chat -> core` projection logic that previously lived under
   `src/core/model.ts`.
-- `src/workspace/store.ts` now persists a temporary `{ ...core, workspace }`
+- `src/chat/store.ts` now persists a temporary `{ ...core, chat }`
   compatibility envelope so existing Chat flows and tests can continue to read
-  and write workspace state while `readCore()` remains Chat-independent.
+  and write chat state while `readCore()` remains Chat-independent.
 - `src/shared/app-shell.ts` still re-exports a small set of core types for
   compatibility with older Chat modules, but `src/core/*` no longer imports
-  Chat/workspace types.
+  Chat/chat-state types.
 
-### Phase 5: Demote Workspace Modules into the Chat Slice
+### Phase 5: Demote Chat-State Modules into the Chat Slice
 
-- [x] Move current `src/workspace/*` under `src/products/chat/workspace/*`.
+- [x] Move current `src/chat/*` under `src/products/chat/state/*`.
 - [x] Move Chat-specific API handlers out of the top-level server area into
       `src/products/chat/api/*`.
 - [x] Move Chat renderer concerns under `src/products/chat/renderer/*`.
@@ -176,8 +176,8 @@ product slice.
 
 Current transitional modules during Phase 5:
 
-- `src/workspace/*` now acts as an explicit compatibility shim that re-exports
-  the real Chat implementation from `src/products/chat/workspace/*`.
+- `src/chat/*` now acts as an explicit compatibility shim that re-exports
+  the real Chat implementation from `src/products/chat/state/*`.
 - `src/renderer/*` now acts as an explicit compatibility shim that re-exports
   the real Chat renderer implementation from `src/products/chat/renderer/*`.
 - `src/products/chat/api/*` now owns Chat setup, legacy compatibility, and
@@ -265,7 +265,7 @@ Current validation state after Phase 8A:
 
 Remaining work after Phase 8A:
 
-- remove transitional re-export shims in `src/workspace/*`,
+- remove transitional re-export shims in `src/chat/*`,
   `src/renderer/*`, and `src/server.ts` only after the app/server and
   Chat-route ownership boundaries are stable
 - decide when the `src/shared/app-shell.ts` compatibility shim can be removed
@@ -281,8 +281,8 @@ Remaining work after Phase 8A:
 |------|--------|-----|
 | `src/shared/core.ts` | Move/split | Shared core contracts should live under `core/*` |
 | `src/core/model.ts` | Preserve and adapt | Existing core derivation logic is the starting point for core-owned state operations |
-| `src/workspace/store.ts` | Refactor heavily | This file currently preserves the reversed dependency direction |
-| `src/workspace/*` | Relocate | These modules are Chat-specific, not suite-level |
+| `src/chat/store.ts` | Refactor heavily | This file currently preserves the reversed dependency direction |
+| `src/chat/*` | Relocate | These modules are Chat-specific, not suite-level |
 | `src/shared/app-shell.ts` | Split | Current app-shell contracts are Chat view-models rather than suite-neutral contracts |
 | `src/server.ts` | Break apart | It is currently a monolithic server and a collision point for future surfaces |
 | `src/renderer/App.tsx` | Break apart | It is currently a monolithic Chat app and a collision point for future surfaces |
@@ -295,7 +295,7 @@ Remaining work after Phase 8A:
 - Current Chat routes still work after relocation.
 - Top-level app routing can mount Chat, Work, and Code roots without requiring
   three separate apps.
-- `Cats Core` can be read and written without going through Chat workspace DTOs.
+- `Cats Core` can be read and written without going through Chat-state DTOs.
 - Chat-specific read models are derived from shared core plus Chat-local state,
   not the other way around.
 - Work and Code contributors can add code to dedicated directories without
@@ -317,10 +317,18 @@ Use this when delegating implementation:
 
 > Implement the first slice of ADR-025. Convert `cats` from a chat-shell-
 > first structure into a suite host with core-owned product projections. Reverse
-> the current `workspace -> core` dependency direction, move current workspace
+> the current `chat -> core` dependency direction, move current chat-state
 > modules into the Chat slice, and add placeholder Work/Code surfaces without
 > changing the `cats-runtime` boundary.
 
 ---
 
 *Last updated: 2026-03-21*
+
+
+
+
+
+
+
+

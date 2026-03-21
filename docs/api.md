@@ -9,8 +9,8 @@ The current Phase 2 API provides:
 - service and runtime reachability health
 - an explicit bootstrap payload for the chat renderer shell
 - a derived `Cats Core v1` read and write surface for shared suite contracts
-- a file-backed workspace mutation surface
-- a workspace-level cat registry plus channel-scoped cat assignment
+- a file-backed chat mutation surface
+- a chat-global cat registry plus channel-scoped cat assignment
 - runtime-backed channel activation and message routing
 - transcript export for later ingestion
 
@@ -25,26 +25,22 @@ Current route ownership:
 
 - `src/app/server/index.ts` is the suite-level assembler only.
 - `src/core/api.ts` owns `/api/core/*`.
-- `src/products/chat/api/*` owns Chat setup, legacy compatibility routes,
-  workspace-prefixed REST routes, and canonical Chat routes.
+- `src/products/chat/api/*` owns Chat setup and canonical Chat routes.
 
 ## Migration Status
 
 The public naming refresh (SPEC-009 / PLAN-009) is now implemented. The
 canonical public API uses `/api/cats`, `/api/channels`, `/api/preferences`,
-and `/api/orchestrator` routes without workspace prefixes.
+and `/api/orchestrator` routes.
 
 - **Canonical**: public routes at `/api/cats`, `/api/channels/*`,
   `/api/preferences`, `/api/orchestrator`
-- **Compatibility (workspace-prefixed)**: `/api/workspaces/default/*` and
-  `/api/cats` routes remain active as aliases
-- **Compatibility (legacy)**: `/api/workspace/*` routes still work and return
-  `AppShellPayload`
+- **Bootstrap read model**: `GET /api/app-shell` and `GET /api/views/app-shell`
+  remain available for renderer bootstrap
 - **Read model**: `GET /api/app-shell` and `GET /api/views/app-shell` remain
   available for renderer bootstrap
 
-New client code should target the canonical public routes. Workspace-prefixed
-and legacy routes will be deprecated once migration is confirmed complete.
+New client code should target the canonical public routes.
 
 References:
 
@@ -241,8 +237,8 @@ Codes: `chat_not_found`, `channel_not_found`, `cat_not_found`,
 
 ## Removed Compatibility Routes
 
-The previously documented workspace-prefixed and phase-2 compatibility routes
-have been removed. The supported public surface is now:
+The previously documented phase-2 compatibility routes have been removed. The
+supported public surface is now:
 
 - `/api/cats`
 - `/api/channels/*`
@@ -252,8 +248,7 @@ have been removed. The supported public surface is now:
 - `/api/views/app-shell`
 - `/health`
 
-Clients should not target `/api/workspaces/*`, `/api/workspace/*`, or other
-older compatibility aliases.
+Clients should not target older compatibility aliases.
 
 Returns local service state plus current `cats-runtime` reachability.
 
@@ -279,7 +274,7 @@ Example response:
 GET /api/core
 ```
 
-Returns the full derived `Cats Core v1` state currently backed by the workspace
+Returns the full derived `Cats Core v1` state currently backed by the chat
 store. The payload includes:
 
 - `version`
@@ -371,7 +366,7 @@ Semantics:
 
 - caller-supplied `id` makes the write idempotent
 - a missing `id` creates a new generated task id
-- channel-derived `task-channel-*` records remain workspace-owned projections;
+- channel-derived `task-channel-*` records remain chat-owned projections;
   Team 2 should use distinct ids for system-owned tasks
 
 ### List Core Approvals
@@ -520,10 +515,10 @@ Returns:
 - `decisionPreferences`
 - `escalationPreferences`
 
-### Persist Selected Channel
+### Update Preferences
 
 ```text
-POST /api/workspace/selection
+PATCH /api/preferences
 ```
 
 Request body:
@@ -534,12 +529,12 @@ Request body:
 }
 ```
 
-Returns the updated app-shell payload on success.
+Returns the updated preferences payload on success.
 
-### Create Workspace Channel
+### Create Channel
 
 ```text
-POST /api/workspace/channels
+POST /api/channels
 ```
 
 Request body:
@@ -566,31 +561,31 @@ Request body:
 Behavior:
 
 - trims title and topic before persistence
-- creates a new persisted channel in the local workspace store
-- promotes any draft `cats` into the workspace-level cat registry
+- creates a new persisted channel in the local chat store
+- promotes any draft `cats` into the chat-global cat registry
 - creates channel assignments for those cats in the new chat
 - selects the new channel immediately
 - returns the updated app-shell payload
 
-### Delete Workspace Channel
+### Delete Channel
 
 ```text
-DELETE /api/workspace/channels/{id}
+DELETE /api/channels/{id}
 ```
 
 Behavior:
 
-- removes the selected chat from the local workspace store
+- removes the selected chat from the local chat store
 - best-effort closes any orchestrator and cat runtime sessions still attached to
   that chat
 - falls back to the next most recent remaining chat, or clears selection if no
   chats remain
 - returns the updated app-shell payload
 
-### Create Workspace Cat
+### Create Cat
 
 ```text
-POST /api/workspace/cats
+POST /api/cats
 ```
 
 Request body:
@@ -604,13 +599,13 @@ Request body:
 }
 ```
 
-Creates a reusable workspace-level cat and returns the updated app-shell
+Creates a reusable chat-global cat and returns the updated app-shell
 payload.
 
-### Assign Workspace Cat to a Channel
+### Assign Cat to a Channel
 
 ```text
-POST /api/workspace/channels/{id}/cats
+POST /api/channels/{id}/cats
 ```
 
 Request body:
@@ -627,34 +622,24 @@ Request body:
 Behavior:
 
 - creates or updates the channel-scoped cat assignment
-- keeps the workspace cat identity and memory checkpoint intact
+- keeps the chat-global cat identity and memory checkpoint intact
 - stores the channel-specific execution target on the assignment
 - if the assignment already had an active lease and the target changes, the
   server best-effort closes the prior runtime session before returning
 
-### Remove Workspace Cat from a Channel
+### Remove Cat from a Channel
 
 ```text
-DELETE /api/workspace/channels/{id}/cats/{catId}
+DELETE /api/channels/{id}/cats/{catId}
 ```
 
 Marks the channel assignment as removed and best-effort closes its active
 execution lease.
 
-### Legacy Compatibility Aliases
-
-```text
-POST /api/workspace/channels/{id}/members
-DELETE /api/workspace/channels/{id}/members/{memberId}
-```
-
-These aliases still work for older clients and stored state. They now route
-through the workspace-cat model internally.
-
 ### Activate Channel
 
 ```text
-POST /api/workspace/channels/{id}/activate
+POST /api/channels/{id}/activate
 ```
 
 Creates channel-scoped runtime sessions for the global orchestrator and active
@@ -678,7 +663,7 @@ assigned cats, records execution leases, then returns:
 ### Send Channel Message
 
 ```text
-POST /api/workspace/channels/{id}/messages
+POST /api/channels/{id}/messages
 ```
 
 Request body:
@@ -708,7 +693,7 @@ orchestrator surface.
 ### Export Channel
 
 ```text
-GET /api/workspace/channels/{id}/export
+GET /api/channels/{id}/export
 ```
 
 Returns a JSON attachment containing the current orchestrator settings, raw
@@ -731,7 +716,7 @@ Abbreviated example response:
     "stage": "phase-2-shell",
     "runtimeBoundary": "cats-runtime"
   },
-  "workspace": {
+  "chat": {
     "id": "default",
     "name": "Chat",
     "selectedChannelId": "",
@@ -826,7 +811,7 @@ Errors use a minimal payload:
 | Status | Meaning |
 |--------|---------|
 | `200` | Request handled successfully |
-| `404` | Unknown route or workspace entity |
+| `404` | Unknown route or chat entity |
 | `405` | Unsupported method |
 | `503` | Runtime dependency unavailable for health checks |
 
@@ -834,20 +819,18 @@ Errors use a minimal payload:
 
 - the `cats` app does not talk to `agent-fleet` directly
 - The renderer consumes this endpoint over a Vite proxy during development
-- Workspace shell state is currently persisted to a local JSON file
-- Persisted cat state separates workspace identity, channel assignment,
+- Chat shell state is currently persisted to a local JSON file
+- Persisted cat state separates chat-global identity, channel assignment,
   execution targets, execution leases, and provider-agnostic memory checkpoints
-- Workspace mutations now cover selection, chat setup, global cat registry,
+- Chat mutations now cover selection, chat setup, global cat registry,
   channel deletion, channel assignment, activation, messaging, orchestrator
   editing, and export
-- Legacy `/members` routes remain available as compatibility aliases during
-  migration
 - Runtime responses are currently delivered as request/response completions; the
   API does not expose live push or WebSocket streaming yet
 - Future session and channel APIs should extend this contract without leaking
   backend-specific transport details
 - Planned shared-core APIs should be added as new route families rather than
-  overloading the current phase-2 workspace routes with unrelated concerns
+  overloading the current chat routes with unrelated concerns
 
 ---
 

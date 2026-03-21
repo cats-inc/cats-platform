@@ -6,8 +6,8 @@ Accepted
 
 ## Context
 
-`cats` is still iterating on the workspace product model, so the project
-correctly deferred Electron during the first renderer and workspace-core
+`cats` is still iterating on the chat product model, so the project
+correctly deferred Electron during the first renderer and chat-core
 delivery phases.
 
 That said, the long-term product target still includes desktop-installable
@@ -123,3 +123,5 @@ that already fit Electron.
 ---
 
 *Decision date: 2026-03-11*
+
+

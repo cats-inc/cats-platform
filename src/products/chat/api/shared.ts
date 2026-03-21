@@ -18,10 +18,10 @@ import {
   resolveOrchestratorDisplayName,
   setChannelCatLease,
   setChannelChatCwd,
-} from '../workspace/model.js';
-import { formatSessionStartedMessage } from '../workspace/runtimeMessages.js';
-import { createAppShell } from '../workspace/shell.js';
-import type { ChatStore } from '../workspace/store.js';
+} from '../state/model.js';
+import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
+import { createAppShell } from '../state/shell.js';
+import type { ChatStore } from '../state/store.js';
 import type {
   AppShellPayload,
   AssignChannelCatInput,

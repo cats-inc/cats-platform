@@ -119,9 +119,9 @@ longer fail only because they were sleeping.
 | Area | Action | Why |
 |------|--------|-----|
 | `src/shared/app-shell.ts` | Extend | Expose user-facing presence status and settings fields |
-| `src/workspace/model.ts` | Modify | Keep assignment, wake, sleep, and target-change state coherent |
-| `src/workspace/runtimeActions.ts` | Refactor | Implement wake-on-entry, wake-on-join, wake-before-route, and sleep policy |
-| `src/workspace/store.ts` | Extend | Persist lifecycle settings and any new chat-presence fields |
+| `src/chat/model.ts` | Modify | Keep assignment, wake, sleep, and target-change state coherent |
+| `src/chat/runtimeActions.ts` | Refactor | Implement wake-on-entry, wake-on-join, wake-before-route, and sleep policy |
+| `src/chat/store.ts` | Extend | Persist lifecycle settings and any new chat-presence fields |
 | `src/server.ts` | Extend | Add or refine APIs used by wake/sleep flows |
 | `src/renderer/App.tsx` | Refactor carefully | Trigger wake on real-chat entry and render product-facing presence states |
 | `src/renderer/api.ts` | Extend | Support any new wake/sleep or settings APIs |
@@ -162,3 +162,4 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-19*
+

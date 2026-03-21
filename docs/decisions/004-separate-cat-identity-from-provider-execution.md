@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-`cats` started with a simple workspace model where each channel member
+`cats` started with a simple chat model where each channel member
 stored `provider`, `model`, and live `session` state directly on the same
 record. That was sufficient for the first runtime-backed chat shell, but it
 creates the wrong long-term boundary for the product.
@@ -71,13 +71,13 @@ global orchestrator path.
   provider-specific feature.
 - Runtime scheduling can later optimize for budget, latency, or availability
   without rewriting the cat model again.
-- Exported workspace data becomes a better handoff format for future memory,
+- Exported chat data becomes a better handoff format for future memory,
   reporting, and project-management modules.
 
 ### Negative
 
 - The schema becomes more explicit and slightly more verbose.
-- Existing local workspace state requires migration into the new shape.
+- Existing local chat state requires migration into the new shape.
 - UI and API code must deal with identity data and execution data separately.
 
 ### Neutral
@@ -85,7 +85,7 @@ global orchestrator path.
 - Provider-native threads or conversations may still be used, but only as
   disposable execution context.
 - The first implementation step may still keep cat records channel-local before
-  a later workspace-wide cat registry is introduced.
+  a later global chat cat registry is introduced.
 
 ## Alternatives Considered
 
@@ -123,4 +123,8 @@ global orchestrator path.
 
 *Decision made: 2026-03-13*
 *Decision makers: Codex + user direction*
+
+
+
+
 

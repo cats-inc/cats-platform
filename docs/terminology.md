@@ -25,8 +25,8 @@
 | Primary Orchestrator Cat | The formal product and domain term for the Cat selected as the default public orchestrator. In UI copy, this should usually be presented as `Boss Cat`. |
 | Boss Chat | The default conversation mode where unmentioned turns route first to `Boss Cat`, which can then coordinate or involve other Cats. |
 | Direct Cat Chat | A conversation mode where one chosen Cat is the room's lead participant and unmentioned turns default to that Cat rather than to `Boss Cat`. |
-| Cat registry | The workspace-level list of reusable cats that can be assigned into one or more chats. |
-| Cat assignment | The channel-scoped record that decides whether a workspace cat is active in one chat and which execution target it should use there. |
+| Cat registry | The chat-global list of reusable cats that can be assigned into one or more chats. |
+| Cat assignment | The channel-scoped record that decides whether a chat-global cat is active in one chat and which execution target it should use there. |
 | Awake | The user-facing lifecycle state for a Cat that currently has an active runtime session in one chat. |
 | Sleeping | The user-facing lifecycle state for a Cat that still belongs to a chat but does not currently have an active runtime session there. |
 | Waking up | The user-facing lifecycle state for a Cat whose wake request is in progress. |

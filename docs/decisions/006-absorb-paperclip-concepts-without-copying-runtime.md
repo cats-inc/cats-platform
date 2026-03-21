@@ -16,7 +16,7 @@ control-plane expansion.
 
 ## Context
 
-`cats` currently ships a chat-first workspace shell above `cats-runtime`.
+`cats` currently ships a chat-first product shell above `cats-runtime`.
 That phase-2 shell is useful, but it is still too low-level to become the full
 Cats product.
 
@@ -79,7 +79,7 @@ From this point on:
 - `cats` now needs its own control-plane domain model instead of relying on
   Paperclip's existing one.
 - Some Paperclip concepts need translation because current Cats terms such as
-  cat, workspace, and channel do not align one-to-one with Paperclip's agent,
+  cat, chat, and channel do not align one-to-one with Paperclip's agent,
   company, and issue language.
 
 ### Neutral
@@ -97,7 +97,7 @@ From this point on:
   choices; weakens the `cats-runtime` boundary.
 - **Why rejected**: It solves breadth by collapsing the current architecture.
 
-### Alternative 2: Keep `cats` as only a chat-first workspace shell
+### Alternative 2: Keep `cats` as only a chat-first product shell
 
 - **Pros**: Smallest product surface and least rewrite pressure.
 - **Cons**: Leaves goals, work, approvals, outputs, and operator visibility
@@ -124,4 +124,6 @@ From this point on:
 
 *Proposed: 2026-03-16*
 *Proposed by: Codex from user-requested Paperclip study*
+
+
 

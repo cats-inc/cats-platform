@@ -13,7 +13,7 @@ Proposed
 `cats` is the current flagship suite app for the cats suite. Its root
 package already behaves more like an application than a reusable library:
 
-- the package entrypoint boots config, runtime client, workspace store, and the
+- the package entrypoint boots config, runtime client, chat store, and the
   HTTP server
 - the built server is responsible for serving the renderer bundle
 - the app depends on `cats-runtime` as its only runtime boundary
@@ -135,3 +135,4 @@ This decision includes:
 
 *Proposed: 2026-03-19*
 *Proposed by: Codex from user direction*
+

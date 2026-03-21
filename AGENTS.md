@@ -77,8 +77,9 @@ If an agent realizes it has violated a MUST/MUST NOT directive:
 
 **Purpose**: Shared planning and product application repo for the cats suite.
 
-**Background**: `agent-workspace-poc` proved the workspace concept but is a
-Python POC directly coupled to `agent-fleet`. `cats` now carries two jobs:
+**Background**: Earlier exploratory chat prototypes proved useful product ideas
+but were directly coupled to lower-level runtime backends. `cats` now carries
+two jobs:
 it is the current Node.js/TypeScript product shell, and it is the planning home
 for shared `Cats Core v1` contracts that both `Cats Chat` and `Cats Work` must
 reuse. The project MUST continue to depend on `cats-runtime` as its runtime
@@ -87,7 +88,7 @@ boundary.
 **Key Features**:
 - Shared `Cats Core v1` domain contracts for actors, channels, approvals,
   owner profile, and archive metadata
-- Chat-first workspace shell above runtime-backed agent sessions
+- Chat-first product shell above runtime-backed agent sessions
 - Planned `Cats Work` surfaces that reuse the same shared product contracts
 - Runtime integration through `cats-runtime` direct APIs, with a planned MCP
   facade for orchestrator-style tool use

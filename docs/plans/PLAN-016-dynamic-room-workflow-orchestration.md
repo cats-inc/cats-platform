@@ -89,10 +89,10 @@ spreads across routing, runtime integration, and renderer code.
 
 Current M1 landing notes:
 
-- `workspace/runtimeActions.ts` now runs a live continuation loop that parses
+- `chat/runtimeActions.ts` now runs a live continuation loop that parses
   agent reply `@mentions` and schedules follow-up dispatches in the system
   layer.
-- `workspace.roomRouting.lastOutcome` now records resolved targets, dispatch
+- `chat.roomRouting.lastOutcome` now records resolved targets, dispatch
   order, unresolved mentions, checkpoint events, and guard outcomes for the
   latest room turn.
 - Durable trace/checkpoint persistence and branch-based workflow remain future
@@ -104,7 +104,7 @@ Deferred M1 follow-ups still intentionally open:
   current wake flow also establishes shared channel `cwd` and writes lease
   state; parallel wake should wait until that seam is split cleanly.
 - `roomRouting` remains optional at the shared contract boundary as a
-  compatibility seam even though normalized workspace state now guarantees it
+  compatibility seam even though normalized chat state now guarantees it
   for live channels.
 - `anti_ping_pong` currently detects direct `A -> B -> A -> B` loops only;
   longer cycles still rely on `maxTargetVisitsPerTurn` and
@@ -194,9 +194,9 @@ the room is waiting on.
 | Area | Action | Why |
 |------|--------|-----|
 | `src/shared/app-shell.ts` | Extend | Carry room workflow, branch status, and per-turn orchestration state into the read model |
-| `src/workspace/model.ts` | Extend | Persist workflow policy, checkpoints, branch lineage, and target status |
-| `src/workspace/runtimeActions.ts` | Refactor heavily | Replace serial dispatch with fan-out, workflow events, and branch strategy selection |
-| `src/workspace/prompts.ts` | Demote routing guidance | Keep prompts as presentation/context consumers instead of routing owners |
+| `src/chat/model.ts` | Extend | Persist workflow policy, checkpoints, branch lineage, and target status |
+| `src/chat/runtimeActions.ts` | Refactor heavily | Replace serial dispatch with fan-out, workflow events, and branch strategy selection |
+| `src/chat/prompts.ts` | Demote routing guidance | Keep prompts as presentation/context consumers instead of routing owners |
 | `src/runtime/client.ts` | Extend | Add fork and any future context-transplant request support |
 | `src/server.ts` | Extend | Surface partial orchestration state and incremental completion outcomes |
 | `src/renderer/App.tsx` | Extend carefully | Show per-target status and converge state without turning chat into noise |
@@ -239,3 +239,7 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-20*
+
+
+
+

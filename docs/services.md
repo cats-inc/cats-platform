@@ -31,7 +31,7 @@ Port numbers should be configurable via environment variables so developers can 
 |----------|---------|---------|-------|
 | `CATS_HOST` | `127.0.0.1` | `cats` HTTP app | Use `0.0.0.0` in containers; `CATS_INC_HOST` remains accepted temporarily |
 | `CATS_PORT` | `8181` | `cats` HTTP app | Main local app port; `CATS_INC_PORT` remains accepted temporarily |
-| `CATS_STATE_PATH` | empty | Workspace store | Defaults to `config/chat-state.local.json`; `CATS_INC_STATE_PATH` remains accepted temporarily |
+| `CATS_STATE_PATH` | empty | Chat store | Defaults to `config/chat-state.local.json`; `CATS_INC_STATE_PATH` remains accepted temporarily |
 | `CATS_RUNTIME_BASE_URL` | `http://127.0.0.1:3110` | Runtime client | Points to `cats-runtime` |
 | `CATS_RUNTIME_API_KEY` | empty | Runtime client | Optional bearer token for `cats-runtime` |
 

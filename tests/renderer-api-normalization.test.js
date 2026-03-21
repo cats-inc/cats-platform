@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
-test('renderer app-shell normalizer does not reference the legacy workspace global', async () => {
+test('renderer app-shell normalizer does not reference the legacy pre-rename identifier', async () => {
   const source = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/api.ts'),
     'utf8',

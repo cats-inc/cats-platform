@@ -52,7 +52,7 @@ npm start
 ```
 
 The built Node server serves the static UI from `dist/`.
-By default local workspace state is stored in `config/chat-state.local.json`.
+By default local chat state is stored in `config/chat-state.local.json`.
 That file now holds channels, cats, execution targets, execution lease
 metadata, memory checkpoints, and transcripts.
 The checked-in starter state is empty, so the renderer does not open with any

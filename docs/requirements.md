@@ -5,8 +5,7 @@
 ## Overview
 
 `Cats` should become the shared suite foundation for the cats initiative.
-It will rebuild the useful product behavior from `agent-workspace-poc`, but it
-must do so on a new Node.js/TypeScript stack, through `cats-runtime`, and with
+It must do so on a Node.js/TypeScript stack, through `cats-runtime`, and with
 shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 `Cats Work`.
 
@@ -19,37 +18,37 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: High
 - **Status**: Completed
 
-### FR-002: Workspace Shell Contract
+### FR-002: Chat Shell Contract
 
-- **Description**: The app shall expose an initial workspace shell payload that
+- **Description**: The app shall expose an initial chat shell payload that
   makes future channels, orchestrator controls, and capability flags explicit.
 - **Priority**: High
 - **Status**: Completed
 
 ### FR-003: Product Rebuild Direction
 
-- **Description**: The app shall treat `agent-workspace-poc` as a behavior
-  reference rather than a long-term product base.
+- **Description**: The app shall define its product behavior directly in
+  `cats` rather than inheriting architecture from earlier prototypes.
 - **Priority**: High
 - **Status**: Completed
 
-### FR-004: Multi-Channel Workspace
+### FR-004: Multi-Channel Chat
 
 - **Description**: The product shall support many persistent channels under one
-  workspace model.
+  chat shell model.
 - **Priority**: High
 - **Status**: Completed
 
 ### FR-005: Renderer Shell
 
 - **Description**: The product shall provide a renderer shell that makes the
-  multi-channel workspace visible without forcing an Electron dependency yet.
+  multi-channel chat visible without forcing an Electron dependency yet.
 - **Priority**: High
 - **Status**: Completed
 
-### FR-006: Local Workspace Persistence
+### FR-006: Local Chat Persistence
 
-- **Description**: The product shall persist essential workspace shell state
+- **Description**: The product shall persist essential chat shell state
   locally so channel selection and local channel setup survive reloads.
 - **Priority**: High
 - **Status**: Completed
@@ -77,7 +76,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 ### FR-010: Global Cat Management and Export
 
-- **Description**: The product shall support a workspace-level cat registry,
+- **Description**: The product shall support a chat-global cat registry,
   channel-specific cat assignment or removal, and export the current channel
   transcript for later ingestion.
 - **Priority**: High
@@ -100,7 +99,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 ### FR-013: Alternate Entrypoints
 
 - **Description**: The product shall support desktop-host and non-web
-  entrypoints such as Telegram once the core workspace contract stabilizes.
+  entrypoints such as Telegram once the core chat contract stabilizes.
 - **Priority**: Medium
 - **Status**: Planned
 
@@ -247,7 +246,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 ### NFR-004: Local Persistence Safety
 
-- Workspace shell persistence should use a simple local file path first
+- Chat shell persistence should use a simple local file path first
 - The default persistence location should remain inside the project boundary
 
 ### NFR-005: Provider Portability
@@ -304,7 +303,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 **As an** operator,
 **I want to** see whether the app can reach `cats-runtime`,
-**So that** I can tell whether workspace actions are safe to start.
+**So that** I can tell whether chat actions are safe to start.
 
 **Acceptance Criteria**:
 - [x] `/health` reports local service status
@@ -313,18 +312,18 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 ### US-002: Product Team Bootstrap
 
 **As a** product developer,
-**I want to** see the intended workspace shell contract early,
+**I want to** see the intended chat shell contract early,
 **So that** later UI work does not collapse back into a single-room chat model.
 
 **Acceptance Criteria**:
-- [x] `/api/app-shell` returns workspace and orchestrator metadata
+- [x] `/api/app-shell` returns chat and orchestrator metadata
 - [x] The payload names future capabilities explicitly
 
-### US-003: Operator Workspace Shell
+### US-003: Operator Chat Shell
 
 **As an** operator,
 **I want to** see channels, orchestrator state, and runtime health in one UI,
-**So that** I can reason about the current workspace state while richer
+**So that** I can reason about the current chat state while richer
 automation is still evolving.
 
 **Acceptance Criteria**:
@@ -335,8 +334,8 @@ automation is still evolving.
 ### US-004: Operator Creates a Channel
 
 **As an** operator,
-**I want to** create a new planned workspace channel locally,
-**So that** I can shape the workspace before deciding when to activate runtime
+**I want to** create a new planned chat channel locally,
+**So that** I can shape the chat before deciding when to activate runtime
 sessions.
 
 **Acceptance Criteria**:
@@ -352,13 +351,13 @@ sessions.
 
 **Acceptance Criteria**:
 - [x] Channel activation creates runtime sessions through `cats-runtime`
-- [x] Session metadata is persisted back into the workspace store
+- [x] Session metadata is persisted back into the chat store
 
 ### US-006: Operator Routes Work with Mentions
 
 **As an** operator,
 **I want to** send a channel message and mention specific teammates,
-**So that** work can be routed explicitly without leaving the workspace.
+**So that** work can be routed explicitly without leaving the chat.
 
 **Acceptance Criteria**:
 - [x] User messages are persisted to the transcript
@@ -379,7 +378,7 @@ sessions.
 
 **As an** operator,
 **I want to** see richer activity and channel lifecycle state,
-**So that** I can tell what the workspace is doing without relying only on
+**So that** I can tell what the chat is doing without relying only on
 request completion banners.
 
 **Acceptance Criteria**:
@@ -462,7 +461,7 @@ screen first.
 
 **Acceptance Criteria**:
 - [ ] The active chat exposes a visible `Add cat` entry point
-- [ ] The default add flow lets the operator choose an existing workspace cat
+- [ ] The default add flow lets the operator choose an existing chat-global cat
 - [ ] Successful assignment updates the current chat roster without requiring a
       separate registry visit
 
@@ -481,7 +480,6 @@ screen first.
 
 - The stack for this subproject is Node.js/TypeScript
 - `cats-runtime` is the mandatory runtime boundary
-- `agent-workspace-poc` remains the reference for product behavior
 - `crew-chat-poc` remains the reference for `cats-runtime` integration style
 - cat identity and cat memory must not be modeled as permanent provider-bound
   records

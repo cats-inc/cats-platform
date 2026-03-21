@@ -65,7 +65,7 @@ for the planned desktop host model.
 |----------|----------|-------------|
 | `CATS_HOST` | Yes | Host interface to bind (`CATS_INC_HOST` remains a compatibility alias) |
 | `CATS_PORT` | Yes | Service port (`CATS_INC_PORT` remains a compatibility alias) |
-| `CATS_STATE_PATH` | No | Workspace-state file path (`CATS_INC_STATE_PATH` remains a compatibility alias) |
+| `CATS_STATE_PATH` | No | Chat-state file path (`CATS_INC_STATE_PATH` remains a compatibility alias) |
 | `CATS_RUNTIME_BASE_URL` | Yes | Upstream runtime URL |
 | `CATS_RUNTIME_API_KEY` | No | Optional bearer token for `cats-runtime` |
 

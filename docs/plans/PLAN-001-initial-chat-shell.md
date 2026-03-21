@@ -1,4 +1,4 @@
-# PLAN-001: Initial Workspace Shell
+# PLAN-001: Initial Chat Shell
 
 ## Scope
 
@@ -29,3 +29,4 @@ boundary and a minimal HTTP contract.
 ---
 
 *Last updated: 2026-03-11*
+

@@ -51,7 +51,7 @@ import {
   createDefaultCoreState,
   createCatActorId,
 } from '../../../core/model.js';
-import { syncCoreStateWithWorkspace } from './coreProjection.js';
+import { syncCoreStateWithChatState } from './coreProjection.js';
 
 export interface ChatStore extends CoreStore {
   read(): Promise<ChatState>;
@@ -724,7 +724,7 @@ function normalizeCoreOutcome(rawOutcome: unknown): CoreOrchestrationOutcomeReco
 
 function normalizeBotBinding(
   rawBinding: unknown,
-  workspace: ChatState,
+  chat: ChatState,
 ): BotBindingRecord | null {
   const bindingRecord = asRecord(rawBinding);
   if (!bindingRecord) {
@@ -745,7 +745,7 @@ function normalizeBotBinding(
     orchestratorActorId: readString(bindingRecord.orchestratorActorId),
     bossCatActorId:
       readNullableString(bindingRecord.bossCatActorId)
-      ?? (workspace.bossCatId ? createCatActorId(workspace.bossCatId) : null),
+      ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
     status: rawStatus === 'disabled' ? 'disabled' : 'active',
     createdAt: readString(bindingRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(bindingRecord.updatedAt, new Date().toISOString()),
@@ -850,18 +850,18 @@ function normalizePersistedChatSnapshot(rawState: unknown): PersistedChatSnapsho
   const stateRecord = asRecord(rawState);
   if (!stateRecord) {
     const chat = createDefaultChatState();
-    return buildPersistedChatSnapshot(chat, syncCoreStateWithWorkspace(chat, fallback));
+    return buildPersistedChatSnapshot(chat, syncCoreStateWithChatState(chat, fallback));
   }
 
   const chatRecord = asRecord(stateRecord.chat);
   if (!chatRecord) {
     if (looksLikeChatState(stateRecord)) {
       const chat = normalizeChatState(stateRecord);
-      return buildPersistedChatSnapshot(chat, syncCoreStateWithWorkspace(chat, fallback));
+      return buildPersistedChatSnapshot(chat, syncCoreStateWithChatState(chat, fallback));
     }
 
     const chat = createDefaultChatState();
-    return buildPersistedChatSnapshot(chat, syncCoreStateWithWorkspace(chat, fallback));
+    return buildPersistedChatSnapshot(chat, syncCoreStateWithChatState(chat, fallback));
   }
 
   const chat = normalizeChatState(chatRecord);
@@ -901,7 +901,7 @@ function normalizePersistedChatSnapshot(rawState: unknown): PersistedChatSnapsho
         .map((archive) => normalizeArchiveMetadata(archive))
         .filter((archive): archive is ArchiveMetadataRecord => archive !== null)
     : [];
-  const normalized = syncCoreStateWithWorkspace(chat, {
+  const normalized = syncCoreStateWithChatState(chat, {
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
     tasks,
@@ -936,7 +936,7 @@ export class FileChatStore implements ChatStore {
       return normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
     } catch {
       const chat = createDefaultChatState();
-      const core = syncCoreStateWithWorkspace(chat, createDefaultCoreState());
+      const core = syncCoreStateWithChatState(chat, createDefaultCoreState());
       const snapshot = buildPersistedChatSnapshot(chat, core);
       await writePersistedChatSnapshot(this.filePath, snapshot);
       return snapshot;
@@ -952,22 +952,22 @@ export class FileChatStore implements ChatStore {
   }
 
   async write(state: ChatState): Promise<ChatState> {
-    const nextWorkspace = structuredClone(state);
-    const nextCore = syncCoreStateWithWorkspace(nextWorkspace, await this.readCore());
+    const nextChatState = structuredClone(state);
+    const nextCore = syncCoreStateWithChatState(nextChatState, await this.readCore());
     await writePersistedChatSnapshot(
       this.filePath,
-      buildPersistedChatSnapshot(nextWorkspace, nextCore),
+      buildPersistedChatSnapshot(nextChatState, nextCore),
     );
-    return structuredClone(nextWorkspace);
+    return structuredClone(nextChatState);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
     const snapshot = await this.readPersistedSnapshot();
-    const nextWorkspace = structuredClone(snapshot.chat);
-    const nextCore = syncCoreStateWithWorkspace(nextWorkspace, structuredClone(state));
+    const nextChatState = structuredClone(snapshot.chat);
+    const nextCore = syncCoreStateWithChatState(nextChatState, structuredClone(state));
     await writePersistedChatSnapshot(
       this.filePath,
-      buildPersistedChatSnapshot(nextWorkspace, nextCore),
+      buildPersistedChatSnapshot(nextChatState, nextCore),
     );
     return structuredClone(nextCore);
   }
@@ -995,12 +995,12 @@ export class MemoryChatStore implements ChatStore {
 
   async write(state: ChatState): Promise<ChatState> {
     this.chatState = structuredClone(state);
-    this.coreState = syncCoreStateWithWorkspace(this.chatState, this.coreState);
+    this.coreState = syncCoreStateWithChatState(this.chatState, this.coreState);
     return structuredClone(this.chatState);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
-    this.coreState = syncCoreStateWithWorkspace(this.chatState, structuredClone(state));
+    this.coreState = syncCoreStateWithChatState(this.chatState, structuredClone(state));
     return structuredClone(this.coreState);
   }
 }

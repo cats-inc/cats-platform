@@ -7,7 +7,7 @@ planned channels from the renderer and persist them locally.
 
 ## Goals
 
-- Let the workspace grow beyond hard-coded default channels
+- Let the chat grow beyond hard-coded default channels
 - Keep setup behavior behind the existing Node server boundary
 - Persist created channels before runtime-backed session flows exist
 
@@ -16,8 +16,8 @@ planned channels from the renderer and persist them locally.
 ### Functional Requirements
 
 - Renderer exposes a form for creating a planned channel
-- Server accepts channel-creation requests through a workspace API
-- Local workspace storage persists newly created channels and selects them
+- Server accepts channel-creation requests through a chat API
+- Local chat storage persists newly created channels and selects them
 
 ### Non-Functional Requirements
 
@@ -34,10 +34,13 @@ planned channels from the renderer and persist them locally.
 
 ## Acceptance Criteria
 
-- `POST /api/workspace/channels` returns an updated app-shell payload
+- `POST /api/channels` returns an updated app-shell payload
 - Reloading the app preserves created channels
 - Renderer can create and select a new planned channel without manual JSON edits
 
 ---
 
 *Last updated: 2026-03-11*
+
+
+

@@ -4,10 +4,9 @@
 
 ## Overview
 
-`Cats` is the long-term Node.js/TypeScript flagship suite application that will
-replace `agent-workspace-poc` as the main product shell. It keeps
-`agent-workspace-poc` as a behavior reference, but it talks to `cats-runtime`
-instead of binding directly to `agent-fleet`.
+`Cats` is the long-term Node.js/TypeScript flagship suite application for the
+Cats suite. It talks to `cats-runtime` as its execution boundary and keeps the
+product model in this repo rather than inheriting it from earlier prototypes.
 
 `Cats Inc` remains the umbrella brand. `Cats` is the suite product name, and
 `cats-runtime` remains the runtime boundary.
@@ -18,10 +17,10 @@ The current slices are:
   kept as a compatibility alias)
 - a `cats-runtime` health and app-shell API
 - a chat-first `React/Vite` renderer with modal setup tools and a preview-ready side pane
-- file-backed workspace, pal execution, and transcript persistence
+- file-backed chat state, cat execution, and transcript persistence
 - runtime-backed channel activation and routed messaging through `cats-runtime`
 - a global orchestrator surface, basic `@mention` routing, and transcript export
-- provider-agnostic pal memory checkpoints plus channel-scoped execution leases
+- provider-agnostic cat memory checkpoints plus channel-scoped execution leases
 
 ## Current Status
 
@@ -29,21 +28,21 @@ The current slices are:
 - [x] Establish `cats-runtime` as the only runtime boundary
 - [x] Add a minimal Node/TypeScript HTTP entrypoint and smoke tests
 - [x] Choose `React/Vite` as the initial renderer approach
-- [x] Add the first multi-channel workspace UI shell
-- [x] Add initial file-backed workspace state persistence
+- [x] Add the first multi-channel chat UI shell
+- [x] Add initial file-backed chat-state persistence
 - [x] Add local channel setup and persistence
 - [x] Add basic runtime-backed channel operations
-- [x] Add a global pal registry, chat assignment, mention routing, and transcript export
-- [x] Separate pal identity and memory from provider-specific execution state
-- [ ] Add productization layers beyond the current Phase 2 workspace core
+- [x] Add a global cat registry, chat assignment, mention routing, and transcript export
+- [x] Separate cat identity and memory from provider-specific execution state
+- [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open
 
-The current implementation closes the main product gaps versus
-`agent-workspace-poc`, but several Phase 3 items remain:
+The current implementation has closed the main phase-2 product gaps, but
+several Phase 3 items remain:
 
 - richer orchestrator automation beyond explicit `@mention` routing
-- split-view workspace surfaces for chat plus preview/debug context
+- split-view chat surfaces for preview/debug context
 - operator-grade activity indicators and better live runtime state
 - offline transcript normalization and ingestion handoff hooks
 - desktop host and alternate entrypoints such as Telegram or tray-driven flows
@@ -65,10 +64,10 @@ Default endpoints:
 - Renderer dev server: `http://127.0.0.1:5173`
 - Runtime dependency: `http://127.0.0.1:3110`
 
-The workspace shell persists local state, including created channels,
-workspace-level pals, channel pal assignments, execution targets, execution
+The chat shell persists local state, including created channels,
+global cats, channel cat assignments, execution targets, execution
 lease metadata, memory checkpoints, and transcripts, to
-`config/workspace-state.local.json` unless `CATS_STATE_PATH` overrides it.
+`config/chat-state.local.json` unless `CATS_STATE_PATH` overrides it.
 `CATS_INC_STATE_PATH` is still accepted as a temporary compatibility alias.
 
 For a built run:
@@ -95,8 +94,8 @@ See [docs/](./docs/) for project details:
 
 ```text
 cats/
-├── src/server*    # Node/TS app core and runtime-facing API
-├── src/renderer/  # React/Vite workspace shell
+├── src/app/       # Suite-level server and renderer assembly
+├── src/products/  # Product slices such as Cats Chat
 ├── src/shared/    # Types shared by server and renderer
 ├── tests/         # Node built-in test runner coverage
 ├── docs/          # Product, API, architecture, and delivery docs

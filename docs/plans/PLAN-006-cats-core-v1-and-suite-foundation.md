@@ -27,7 +27,7 @@ fixtures.
 
 - [x] Define which routes or modules belong to shared-core product APIs.
 - [x] Define the first storage abstraction that can evolve beyond the current
-      file-backed workspace state.
+      file-backed chat state.
 - [x] Keep operational search, approval state, and owner profile product-owned.
 
 **Deliverables**: first product-facing shared-core API map and storage seam.
@@ -67,7 +67,7 @@ fixtures.
 | Area | Action | Why |
 |------|--------|-----|
 | `src/shared/` | Expand | Host shared contract types before extraction is necessary |
-| `src/workspace/` | Refactor | Map phase-2 workspace terms into broader shared-core terms |
+| `src/chat/` | Refactor | Map phase-2 chat-state terms into broader shared-core terms |
 | `src/server.ts` and route modules | Modify | Add shared-core product APIs and preserve runtime boundaries |
 | `src/renderer/` | Expand | Support Chat and later Work surfaces above shared contracts |
 | `tests/` | Expand | Add contract fixtures and migration coverage |
@@ -96,4 +96,7 @@ fixtures.
 ---
 
 *Last updated: 2026-03-16*
+
+
+
 

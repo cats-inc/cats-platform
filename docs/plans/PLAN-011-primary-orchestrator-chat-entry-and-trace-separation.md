@@ -60,7 +60,7 @@ semantics.
 
 ### Phase 2: Store and API Seams
 
-- [ ] Extend the workspace or core-backed store to persist the selected
+- [ ] Extend the chat or core-backed store to persist the selected
       `Primary Orchestrator Cat`.
 - [ ] Preserve compatibility with the current global-orchestrator settings while
       the new model lands.
@@ -129,11 +129,11 @@ ownership semantics.
 
 | Area | Action | Why |
 |------|--------|-----|
-| `src/shared/app-shell.ts` | Review / extend | Current workspace and orchestrator contract needs a primary-orchestrator seam |
+| `src/shared/app-shell.ts` | Review / extend | Current chat and orchestrator contract needs a primary-orchestrator seam |
 | `src/shared/core.ts` | Extend | Orchestration run and event records likely belong near shared product contracts |
 | `src/core/model.ts` | Extend | Keep Cats Core mappings aligned with visible-orchestrator and system-trace separation |
-| `src/workspace/store.ts` | Modify | Persist primary orchestrator selection and any first activity records |
-| `src/workspace/model.ts` | Refactor | Change new-chat and participant semantics around the primary orchestrator |
+| `src/chat/store.ts` | Modify | Persist primary orchestrator selection and any first activity records |
+| `src/chat/model.ts` | Refactor | Change new-chat and participant semantics around the primary orchestrator |
 | `src/server.ts` | Extend | Add primary-orchestrator and activity-read APIs while preserving compatibility |
 | `src/renderer/App.tsx` | Refactor carefully | Add settings section, orchestrator-first new-chat flow, and activity panel |
 | `src/renderer/api.ts` | Extend | Support primary-orchestrator selection and activity reads |
@@ -173,3 +173,6 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-19*
+
+
+

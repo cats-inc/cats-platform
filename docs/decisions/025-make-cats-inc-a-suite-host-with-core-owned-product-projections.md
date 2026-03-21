@@ -34,13 +34,13 @@ older chat-shell-first architecture.
 Today, the dependency direction is effectively:
 
 ```text
-workspace/chat state -> syncCoreStateWithWorkspace(...) -> Cats Core state
+chat state -> syncCoreStateWithChatState(...) -> Cats Core state
 ```
 
 This causes three structural problems.
 
-1. Shared suite state is still defined by the Chat/workspace model.
-   `Cats Core` is currently derived from `workspace` state rather than acting
+1. Shared suite state is still defined by the current Chat-state model.
+   `Cats Core` is currently derived from chat state rather than acting
    as the source of truth.
 
 2. `Chat`-specific DTOs still look like suite-level contracts.
@@ -56,7 +56,7 @@ This causes three structural problems.
 If `Cats Work` and `Cats Code` begin implementation without first correcting
 this structure, they will either:
 
-- depend on Chat/workspace schema directly, or
+- depend on Chat-state schema directly, or
 - invent parallel state models that drift away from the shared core
 
 Neither outcome is acceptable.
@@ -80,9 +80,9 @@ Cats Core state -> Chat projection
 `Chat` may still keep product-local workflow state, but it must no longer act
 as the suite-wide state owner from which `Cats Core` is derived.
 
-### 2. `workspace/*` is demoted to a Chat product slice
+### 2. `chat/*` is demoted to a Chat product slice
 
-The current `workspace` modules are a valid first implementation of Chat state,
+The current `chat` modules are a valid first implementation of Chat state,
 but they are no longer suite-level modules.
 
 They will be treated as `Chat` product logic and moved under a Chat-specific
@@ -116,7 +116,7 @@ src/
   products/
     chat/
       api/
-      workspace/
+      state/
       renderer/
     work/
       api/
@@ -185,7 +185,7 @@ This ADR does not move product-line concerns into `cats-runtime`.
 
 ## Alternatives Considered
 
-### Alternative 1: Keep the current Chat/workspace-first structure and let Work/Code adapt later
+### Alternative 1: Keep the current Chat-state-first structure and let Work/Code adapt later
 
 - **Pros**: no immediate refactor cost
 - **Cons**: Work and Code would either depend on Chat DTOs or fork parallel
@@ -231,4 +231,5 @@ This ADR does not move product-line concerns into `cats-runtime`.
 
 *Accepted: 2026-03-21*  
 *Decision makers: user + Codex*
+
 

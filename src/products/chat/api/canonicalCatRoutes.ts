@@ -1,5 +1,5 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { buildChannelView, requireCat } from '../workspace/model.js';
+import { buildChannelView, requireCat } from '../state/model.js';
 import type { AssignChannelCatInput, CreateCatInput } from './contracts.js';
 import {
   handleCanonicalCatError,

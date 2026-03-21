@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
-import { MemoryChatStore } from '../dist-server/workspace/store.js';
+import { MemoryChatStore } from '../dist-server/chat/store.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -51,7 +51,7 @@ function createRuntimeStub() {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? 'C:/workspace/runtime',
+        cwd: input.cwd ?? 'C:/chat/runtime',
       };
       this.createdSessions.push({ ...input, id: session.id });
       return session;

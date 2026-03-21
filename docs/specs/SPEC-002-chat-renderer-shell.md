@@ -1,4 +1,4 @@
-# SPEC-002: Workspace Renderer Shell
+# SPEC-002: Chat Renderer Shell
 
 ## Summary
 
@@ -7,7 +7,7 @@ the existing app-shell API.
 
 ## Goals
 
-- Make the multi-channel workspace visible
+- Make the multi-channel chat visible
 - Keep `cats-runtime` behind the Node server boundary
 - Avoid premature Electron packaging
 
@@ -41,3 +41,5 @@ the existing app-shell API.
 ---
 
 *Last updated: 2026-03-11*
+
+

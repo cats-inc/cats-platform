@@ -22,8 +22,7 @@ This plan is explicitly **not** a visual refresh plan.
 - Do not change UI visual style.
 - Do not rename CSS classes purely for naming consistency.
 - Do not restructure DOM unless strictly required for a data-binding update.
-- Do not broad-rename internal `workspace` and `cat` implementation symbols in
-  the same slice.
+- Do not treat naming cleanup as a UI redesign excuse.
 
 ## Phases
 
@@ -35,7 +34,7 @@ This plan is explicitly **not** a visual refresh plan.
       no canonical `workspace / workspaces` root.
 - [x] Define canonical route replacements for all currently exposed public
       REST endpoints.
-- [x] Document which internal names remain intentionally unchanged for now.
+- [x] Document the compatibility boundary while public naming stabilizes.
 
 **Deliverables**: approved glossary and rename boundary.
 
@@ -44,7 +43,7 @@ This plan is explicitly **not** a visual refresh plan.
 - [x] Update `docs/terminology.md` to reflect `Cat / Cats`.
 - [x] Update `docs/api.md` so canonical routes use `/api/cats`, `/api/channels`,
       `/api/preferences`, and `/api/orchestrator`.
-- [ ] Update related planning docs that are meant to guide future work:
+- [x] Update related planning docs that are meant to guide future work:
       - `SPEC-007`
       - `PLAN-007`
       - `SPEC-008`
@@ -130,7 +129,7 @@ This plan is explicitly **not** a visual refresh plan.
 | Public and internal names diverge awkwardly for a while | Medium | Accept temporary divergence and document it explicitly |
 | Route rename breaks existing clients | High | Keep old routes as aliases until migration is confirmed complete |
 | Payload rename creates too much churn in one slice | Medium | Allow route-first migration with payload adapters if needed |
-| `workspace` still leaks through read-model payloads or docs | Medium | Audit app-shell docs and terminology docs before calling the slice complete |
+| Legacy `workspace` naming still leaks through compatibility docs | Medium | Keep narrowing active product docs while leaving explicit route-history docs clear |
 
 ## Suggested Handoff Instruction
 
@@ -139,8 +138,8 @@ Use this when delegating implementation:
 > Implement SPEC-009 / PLAN-009. Rename the public surface from `Cat/Cats` to
 > `Cat/Cats`, and remove `workspace/workspaces` from canonical public API
 > routes. Keep compatibility aliases. Do not change UI style, layout, class
-> names, or DOM structure unless strictly necessary for wiring. Internal
-> `workspace` and `cat` implementation names may remain for now.
+> names, or DOM structure unless strictly necessary for wiring. If a remaining
+> internal legacy name causes product confusion, clean it up in the same pass.
 
 ---
 

@@ -1,7 +1,7 @@
 import { loadConfig } from './config.js';
 import { createServer } from './app/server/index.js';
 import { CatsRuntimeClient } from './platform/runtime/client.js';
-import { FileChatStore } from './products/chat/workspace/store.js';
+import { FileChatStore } from './products/chat/state/store.js';
 
 const config = loadConfig();
 const runtimeClient = new CatsRuntimeClient(config.runtimeBaseUrl, {

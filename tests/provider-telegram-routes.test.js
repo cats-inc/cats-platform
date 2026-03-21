@@ -10,7 +10,7 @@ import { createServer } from '../dist-server/server.js';
 import {
   FileChatStore,
   MemoryChatStore,
-} from '../dist-server/workspace/store.js';
+} from '../dist-server/chat/store.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -433,7 +433,7 @@ test('telegram webhook ignores unsupported updates and keeps routing placeholder
 
 test('telegram relay state survives restart with file-backed chat storage', async () => {
   const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-telegram-routes-'));
-  const chatStatePath = path.join(stateDir, 'workspace.json');
+  const chatStatePath = path.join(stateDir, 'chat.json');
   const config = {
     ...baseConfig,
     chatStatePath,

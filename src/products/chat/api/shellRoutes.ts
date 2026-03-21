@@ -6,7 +6,7 @@ import {
   type ChatApiRouteContext,
   nowFrom,
 } from './shared.js';
-import { selectChannel } from '../workspace/model.js';
+import { selectChannel } from '../state/model.js';
 
 async function handleAppShell(
   context: ChatApiRouteContext,

@@ -50,7 +50,7 @@ delivery remains runtime-owned.
    - runtime skill selections sent to `cats-runtime`
    - MCP/tool exposure metadata
 4. The registry shall allow cats with no explicit profile to fall back to a
-   workspace-default capability set.
+   chat-default capability set.
 5. `Boss Cat` assignment logic shall be able to consult this registry when
    choosing which cat to add or route work toward.
 6. Runtime skill delivery shall remain inside `cats-runtime`; `cats`

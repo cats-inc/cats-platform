@@ -1,4 +1,4 @@
-# ADR-022: Own Workspace Delivery Policy in Product
+# ADR-022: Own Chat Delivery Policy in Product
 
 > Keep delivery governance as a product-owned control-plane concept in
 > `cats`, while `cats-runtime` owns the executable delivery primitives used
@@ -25,7 +25,7 @@ Cats work does not always end in the same kind of output:
 This raises a boundary question similar to earlier skill, tool, and preview
 decisions:
 
-- who decides whether a given workspace or task needs Git at all?
+- who decides whether a given chat, room, or task needs Git at all?
 - who decides whether push, PR, CI, preview, or manual review are required?
 - who actually performs the git/CI/preview actions when they are needed?
 
@@ -41,24 +41,24 @@ That pattern has already been adopted for:
 - MCP/tool intent vs runtime tool delivery
 - preview rendering policy vs runtime preview surfaces
 
-Delivery governance belongs to the same family. It reflects workspace risk,
+Delivery governance belongs to the same family. It reflects chat risk,
 task type, owner preference, and product-level control, not only low-level
 runtime capability.
 
 ## Decision
 
-`cats` will own workspace delivery policy as a product/control-plane
+`cats` will own chat delivery policy as a product/control-plane
 concept, and `cats-runtime` will own the executable delivery primitives that
 realize approved policy.
 
 1. `cats` owns delivery intent.
    - whether the work is artifact-only or repo-backed
    - whether commit, push, PR, CI, preview, or manual review are required
-   - whether a stricter workflow should apply for a specific workspace, room,
+   - whether a stricter workflow should apply for a specific chat, room,
      or work item
 
-2. Delivery policy is distinct from workspace substrate policy.
-   - workspace substrate tools establish AAIF collaboration rules and project
+2. Delivery policy is distinct from runtime substrate policy.
+   - runtime substrate tools establish AAIF collaboration rules and project
      memory entry points
    - delivery policy governs how work outputs should be finalized or handed off
    - these concerns should not be collapsed into one substrate profile
@@ -76,7 +76,7 @@ realize approved policy.
 
 5. `cats-runtime` should not infer delivery governance on its own.
    - runtime may report capabilities, warnings, or blocked states
-   - runtime should not decide that a workspace now requires PRs or CI simply
+   - runtime should not decide that a chat now requires PRs or CI simply
      because those capabilities are available
 
 6. Effective delivery policy should be inspectable and approval-aware.
@@ -107,17 +107,17 @@ realize approved policy.
 
 ### Neutral
 
-- This ADR does not require every workspace to use Git.
+- This ADR does not require every chat to use Git.
 - This ADR does not require the first slice to support every forge or CI
   vendor.
-- This ADR does not require CI template scaffolding to be part of workspace
+- This ADR does not require CI template scaffolding to be part of chat
   substrate generation.
 
 ## Alternatives Considered
 
-### Alternative 1: Put delivery governance inside workspace substrate profiles
+### Alternative 1: Put delivery governance inside runtime substrate profiles
 
-- **Pros**: one place for workspace setup knobs
+- **Pros**: one place for chat setup knobs
 - **Cons**: mixes collaboration substrate with output governance and inflates
   substrate-tool scope
 - **Why rejected**: AAIF collaboration substrate and delivery governance are
@@ -128,12 +128,12 @@ realize approved policy.
 - **Pros**: less product configuration
 - **Cons**: runtime would infer policy from capability instead of approved
   product intent
-- **Why rejected**: workspace risk and owner preference are product concerns
+- **Why rejected**: chat risk and owner preference are product concerns
 
 ### Alternative 3: Keep delivery decisions entirely manual and ad hoc
 
 - **Pros**: smallest design surface
-- **Cons**: inconsistent behavior across workspaces, weaker approvals, and no
+- **Cons**: inconsistent behavior across chats, weaker approvals, and no
   reusable control-plane model
 - **Why rejected**: the suite needs explicit, inspectable delivery governance
 
@@ -150,3 +150,13 @@ realize approved policy.
 
 *Accepted: 2026-03-20*
 *Decision makers: user + Codex*
+
+
+
+
+
+
+
+
+
+

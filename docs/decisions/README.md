@@ -43,7 +43,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [025-make-cats-inc-a-suite-host-with-core-owned-product-projections](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) | Make cats a suite host with core-owned product projections | Accepted | 2026-03-21 |
 | [024-separate-explicit-mentions-from-dynamic-room-workflow](./024-separate-explicit-mentions-from-dynamic-room-workflow.md) | Separate explicit mentions from dynamic room workflow | Accepted | 2026-03-20 |
 | [023-own-budget-policy-and-cost-control-in-product](./023-own-budget-policy-and-cost-control-in-product.md) | Own budget policy and cost control in product | Accepted | 2026-03-20 |
-| [022-own-workspace-delivery-policy-in-product](./022-own-workspace-delivery-policy-in-product.md) | Own workspace delivery policy in product | Accepted | 2026-03-20 |
+| [022-own-chat-delivery-policy-in-product](./022-own-chat-delivery-policy-in-product.md) | Own chat delivery policy in product | Accepted | 2026-03-20 |
 | [021-keep-packaged-setup-and-provider-installation-in-the-host](./021-keep-packaged-setup-and-provider-installation-in-the-host.md) | Keep packaged setup and provider installation in the host | Accepted | 2026-03-20 |
 | [020-own-mcp-intent-in-product-and-tool-delivery-in-runtime](./020-own-mcp-intent-in-product-and-tool-delivery-in-runtime.md) | Own MCP intent in product and tool delivery in runtime | Accepted | 2026-03-19 |
 | [019-normalize-runtime-previews-as-surfaces-not-provider-iframes](./019-normalize-runtime-previews-as-surfaces-not-provider-iframes.md) | Normalize runtime previews as surfaces, not provider iframes | Accepted | 2026-03-19 |
@@ -64,7 +64,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [002-react-vite-renderer-before-electron](./002-react-vite-renderer-before-electron.md) | Use a React/Vite renderer before adding Electron | Accepted | 2026-03-11 |
 | [003-electron-host-manages-local-services](./003-electron-host-manages-local-services.md) | Use Electron as a thin desktop host around local services | Accepted | 2026-03-11 |
 | [004-separate-cat-identity-from-provider-execution](./004-separate-cat-identity-from-provider-execution.md) | Separate cat identity from provider execution | Accepted | 2026-03-13 |
-| [005-use-workspace-cat-registry-and-channel-assignments](./005-use-chat-cat-registry-and-channel-assignments.md) | Use a workspace cat registry with channel assignments | Accepted | 2026-03-13 |
+| [005-use-chat-cat-registry-and-channel-assignments](./005-use-chat-cat-registry-and-channel-assignments.md) | Use a global cat registry with channel assignments | Accepted | 2026-03-13 |
 <!-- Add new ADRs above this line -->
 
 ## For AI Agents
@@ -78,4 +78,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 *Last updated: 2026-03-21*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*
+
+
 

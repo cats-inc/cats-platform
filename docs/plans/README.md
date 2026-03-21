@@ -60,10 +60,10 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 | [PLAN-007](./PLAN-007-chat-contextual-cat-entry.md) | Chat-Contextual Cat Entry | Draft (Pending Review) | [SPEC-007](../specs/SPEC-007-chat-contextual-cat-entry.md) |
 | [PLAN-006](./PLAN-006-cats-core-v1-and-suite-foundation.md) | Cats Core v1 and Suite Foundation | Approved | [SPEC-006](../specs/SPEC-006-cats-core-v1-and-suite-foundation.md) |
 | [PLAN-005](./PLAN-005-company-control-plane-evolution.md) | Company Control Plane Evolution | Draft (Exploratory, Unreviewed) | [SPEC-005](../specs/SPEC-005-company-control-plane-evolution.md) |
-| [PLAN-004](./PLAN-004-runtime-workspace-core.md) | Runtime Workspace Core | Completed | [SPEC-004](../specs/SPEC-004-runtime-workspace-core.md) |
+| [PLAN-004](./PLAN-004-runtime-chat-core.md) | Runtime Chat Core | Completed | [SPEC-004](../specs/SPEC-004-runtime-chat-core.md) |
 | [PLAN-003](./PLAN-003-local-channel-setup-flow.md) | Local Channel Setup Flow | Completed | [SPEC-003](../specs/SPEC-003-local-channel-setup-flow.md) |
-| [PLAN-002](./PLAN-002-workspace-renderer-shell.md) | Workspace Renderer Shell | Completed | [SPEC-002](../specs/SPEC-002-workspace-renderer-shell.md) |
-| [PLAN-001](./PLAN-001-initial-workspace-shell.md) | Initial Workspace Shell | Completed | [SPEC-001](../specs/SPEC-001-initial-workspace-shell.md) |
+| [PLAN-002](./PLAN-002-chat-renderer-shell.md) | Chat Renderer Shell | Completed | [SPEC-002](../specs/SPEC-002-chat-renderer-shell.md) |
+| [PLAN-001](./PLAN-001-initial-chat-shell.md) | Initial Chat Shell | Completed | [SPEC-001](../specs/SPEC-001-initial-chat-shell.md) |
 | [000-template](./000-template.md) | Template | - | - |
 <!-- Add new plans above this line -->
 
@@ -78,4 +78,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 *Last updated: 2026-03-21*
 
 *See also: [specs/](../specs/) for feature specifications*
+
+
+
 

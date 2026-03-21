@@ -21,7 +21,7 @@ import { routeChatApi } from '../../products/chat/api/index.js';
 import {
   MemoryChatStore,
   type ChatStore,
-} from '../../products/chat/workspace/store.js';
+} from '../../products/chat/state/store.js';
 import { handleCodePlaceholder } from '../../products/code/api/index.js';
 import { handleWorkPlaceholder } from '../../products/work/api/index.js';
 import {

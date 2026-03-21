@@ -79,7 +79,7 @@ Additional rules:
 
 - `cats` remains the current repo and app shell even if the public product
   naming later changes.
-- The current file-backed workspace state can still exist during migration as
+- The current file-backed chat state can still exist during migration as
   long as it maps cleanly to the shared contracts.
 
 ## Alternatives Considered
@@ -116,4 +116,5 @@ Additional rules:
 
 *Accepted: 2026-03-16*
 *Accepted by: user direction captured through Codex*
+
 

@@ -1,15 +1,15 @@
-# SPEC-001: Initial Workspace Shell
+# SPEC-001: Initial Chat Shell
 
 ## Summary
 
 Create the first runnable `cats` slice as a Node.js/TypeScript service that
-exposes runtime-aware health and an explicit bootstrap workspace shell payload.
+exposes runtime-aware health and an explicit bootstrap chat shell payload.
 
 ## Goals
 
 - Bootstrap the new `cats` subproject with real project metadata
 - Prove `cats` depends on `cats-runtime`
-- Publish a minimal app-level contract that keeps the future workspace shape
+- Publish a minimal app-level contract that keeps the future chat shape
   explicit
 
 ## Requirements
@@ -17,7 +17,7 @@ exposes runtime-aware health and an explicit bootstrap workspace shell payload.
 ### Functional Requirements
 
 - `GET /health` returns app health plus `cats-runtime` reachability
-- `GET /api/app-shell` returns a bootstrap workspace payload
+- `GET /api/app-shell` returns a bootstrap chat payload
 - The payload makes channels, global orchestrator state, and planned
   capabilities visible
 
@@ -43,3 +43,7 @@ exposes runtime-aware health and an explicit bootstrap workspace shell payload.
 ---
 
 *Last updated: 2026-03-11*
+
+
+
+

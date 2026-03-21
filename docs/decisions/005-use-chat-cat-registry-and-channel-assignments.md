@@ -1,4 +1,4 @@
-# ADR-005: Use a Workspace Cat Registry with Channel Assignments
+# ADR-005: Use a Global Cat Registry with Channel Assignments
 
 > Configure reusable cats once, then decide channel-specific execution where
 > they are used.
@@ -23,7 +23,7 @@ That left three product problems:
 The product direction is now clearer:
 
 - `Cats Inc` is the parent suite and `Chat` is only one module
-- a `Cat` should feel like a reusable teammate across the whole workspace
+- a `Cat` should feel like a reusable teammate across the whole chat product
 - the same cat may be assigned to many chats with different providers or models
 - removing a cat from one chat must not delete the cat itself
 - future modules such as projects or reports should be able to reuse the same
@@ -31,16 +31,16 @@ The product direction is now clearer:
 
 ## Decision
 
-`cats` will keep cats at workspace scope and keep channel usage in a
+`cats` will keep cats in a global chat registry and keep channel usage in a
 separate assignment layer.
 
 The product model will use:
 
-1. `workspace.cats`
+1. `chat.cats`
    - the reusable cat registry
    - stores identity, default execution target, and long-lived memory
 2. `channel.catAssignments`
-   - the channel-scoped relationship between one chat and one workspace cat
+   - the channel-scoped relationship between one chat and one global cat
    - stores active or removed state, channel roles, execution target overrides,
      and the current execution lease
 3. `channel.assignedCats`
@@ -50,7 +50,7 @@ From this point on:
 
 - the global `Cats` surface is the place to create or review cats
 - channel setup may still draft cats, but creation promotes them into the
-  workspace registry first
+  global registry first
 - channel-level actions operate on assignments, not on independent cat copies
 - legacy `members` payloads and routes remain supported only as compatibility
   aliases during migration
@@ -68,7 +68,7 @@ From this point on:
 
 - The schema and UI gain another explicit layer to manage.
 - Existing local state needs migration from channel-local members.
-- API and renderer code must hydrate assignments against the workspace registry.
+- API and renderer code must hydrate assignments against the global registry.
 
 ### Neutral
 
@@ -112,4 +112,11 @@ From this point on:
 
 *Decision made: 2026-03-13*
 *Decision makers: Codex + user direction*
+
+
+
+
+
+
+
 

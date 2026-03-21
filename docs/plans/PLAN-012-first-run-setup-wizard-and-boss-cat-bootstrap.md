@@ -108,7 +108,7 @@ binding plan, or a full desktop-packaging plan.
 |------|--------|-----|
 | `src/shared/app-shell.ts` | Review / extend | Current shell contract needs setup readiness or onboarding state |
 | `src/shared/core.ts` | Review | Owner profile and Boss Cat bootstrap need clean shared-core alignment |
-| `src/workspace/store.ts` | Modify | Persist onboarding state and setup completion |
+| `src/chat/store.ts` | Modify | Persist onboarding state and setup completion |
 | `src/server.ts` | Extend | Add or refine setup-related reads and writes |
 | `src/renderer/App.tsx` | Refactor carefully | Add setup routing, setup shell, and first-run gating |
 | `src/renderer/api.ts` | Extend | Support onboarding writes and readiness checks |
@@ -147,3 +147,4 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-19*
+

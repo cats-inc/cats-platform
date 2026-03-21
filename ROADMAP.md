@@ -20,10 +20,10 @@ contracts.
 - [x] Ship a minimal HTTP app shell and health surface
 - [x] Choose `React/Vite` as the initial renderer approach
 
-### Phase 2: Workspace Core
+### Phase 2: Chat Core
 
-- [x] Multi-channel workspace shell
-- [x] Initial file-backed workspace state
+- [x] Multi-channel chat shell
+- [x] Initial file-backed chat state
 - [x] Local channel creation flow
 - [x] Channel creation flow with team/runtime setup
 - [x] Global orchestrator surface
@@ -48,10 +48,10 @@ contracts.
 ### Phase 4: Cats Chat Launch Track
 
 - [ ] Offline transcript normalization and ingestion handoff hooks
-- [ ] Split-view workspace canvas for chat plus preview and debug surfaces
+- [ ] Split-view chat canvas with preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
-- [ ] Shift pal UX to a chat-contextual `Add pal` flow while moving registry
-      administration into `Settings > Pals`
+- [ ] Shift cat UX to a chat-contextual `Add cat` flow while moving registry
+      administration into `Settings > Cats`
 - [ ] Desktop host and tray lifecycle management above the existing Node server boundary
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
@@ -73,7 +73,7 @@ contracts.
 
 - [ ] Add company, goal, project, and work-item objects above chat channels
 - [ ] Add operator inbox, approval, activity, and cost surfaces
-- [ ] Add explicit project workspace, execution workspace, and output models
+- [ ] Add explicit project roots, execution roots, and output models
 - [ ] Keep extension and plugin seams outside the core control-plane rewrite
 
 ## Future Considerations

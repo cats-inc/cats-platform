@@ -5,7 +5,7 @@
 ## Overview
 
 The current focus is smoke and integration coverage around the Node server and
-shared app-shell contract. The renderer now drives real workspace flows, but it
+shared app-shell contract. The renderer now drives real chat flows, but it
 is still covered indirectly through server and state integration tests. The
 Telegram transport seam is also covered directly at the platform-module level
 so dedupe, durable mapping, and webhook behavior can advance without touching
@@ -17,7 +17,7 @@ chat-core tests.
 
 - **Location**: `tests/*.test.js`
 - **Framework**: `node:test`
-- **Scope**: Built server endpoints, runtime-backed workspace mutations, and
+- **Scope**: Built server endpoints, runtime-backed chat mutations, and
   file-backed store behavior, including Telegram status/webhook routes and
   restart durability for relay state
 
@@ -25,7 +25,7 @@ chat-core tests.
 
 - **Location**: `tests/` or `tests/unit/`
 - **Framework**: `node:test`
-- **Scope**: Pure workspace, orchestration, persistence modules, and transport
+- **Scope**: Pure chat-state, orchestration, persistence modules, and transport
   seams such as Telegram dedupe/mapping without booting the full server
 
 ### Future Renderer Tests
@@ -58,7 +58,7 @@ the CI workflow does not yet build the Vite bundle.
 ## Mocking Guidelines
 
 - Prefer in-process stub objects for runtime clients
-- Prefer local temp directories for file-backed workspace store coverage
+- Prefer local temp directories for file-backed chat-store coverage
 - Avoid heavy mocking libraries unless the product surface grows enough to need
   them
 
