@@ -549,6 +549,37 @@ export async function activateWorkspaceChannel(
   return { appShell, results: activation.results };
 }
 
+export interface BrowseDirectoryEntry {
+  name: string;
+  path: string;
+}
+
+export interface BrowseDirectoriesResult {
+  current: string;
+  parent: string;
+  entries: BrowseDirectoryEntry[];
+  error?: string;
+}
+
+export async function browseDirectories(
+  targetPath?: string,
+  signal?: AbortSignal,
+): Promise<BrowseDirectoriesResult> {
+  const query = targetPath ? `?path=${encodeURIComponent(targetPath)}` : '';
+  const response = await fetch(`/api/shell/browse${query}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+  return expectJson<BrowseDirectoriesResult>(
+    response,
+    `directory browse returned ${response.status}`,
+    signal,
+  );
+}
+
 export async function openFolderInExplorer(folderPath: string): Promise<void> {
   await fetch('/api/shell/open-folder', {
     method: 'POST',

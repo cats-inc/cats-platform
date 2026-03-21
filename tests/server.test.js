@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -397,6 +397,43 @@ test('GET /api/work and /api/code expose dedicated placeholder surfaces', async 
     assert.equal(codePayload.summary.ownerActorId, 'actor-owner');
     assert.ok(codePayload.extensionPoints.futureRoutes.includes('/api/code/previews'));
   });
+});
+
+test('GET /api/shell/browse lists subdirectories for the folder browser modal', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cats-folder-browser-'));
+  const alphaDir = path.join(root, 'alpha');
+  const betaDir = path.join(root, 'beta');
+  const hiddenDir = path.join(root, '.hidden');
+  const filePath = path.join(root, 'notes.txt');
+
+  await mkdir(alphaDir);
+  await mkdir(betaDir);
+  await mkdir(hiddenDir);
+  await writeFile(filePath, 'not a directory');
+
+  try {
+    await withServer(createRuntimeStub(), async (baseUrl) => {
+      const response = await fetch(
+        `${baseUrl}/api/shell/browse?path=${encodeURIComponent(root)}`,
+      );
+      assert.equal(response.status, 200);
+
+      const payload = await response.json();
+      assert.equal(payload.current, root);
+      assert.equal(payload.parent, path.dirname(root));
+      assert.equal(payload.error, undefined);
+      assert.deepEqual(
+        payload.entries.map((entry) => entry.name),
+        ['alpha', 'beta'],
+      );
+      assert.deepEqual(
+        payload.entries.map((entry) => entry.path),
+        [alphaDir, betaDir],
+      );
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('workspace API covers chat setup, activation, messaging, global pals, assignments, and export', async () => {

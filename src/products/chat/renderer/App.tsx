@@ -35,6 +35,8 @@ import type {
 import {
   activateWorkspaceChannel,
   assignPalToWorkspaceChannel,
+  browseDirectories,
+  type BrowseDirectoryEntry,
   completeSetup,
   createGlobalPal,
   resetSetup,
@@ -446,6 +448,13 @@ export default function App() {
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
   const [channelPlusMenuOpen, setChannelPlusMenuOpen] = useState(false);
+  const [folderBrowserOpen, setFolderBrowserOpen] = useState(false);
+  const [folderBrowsePath, setFolderBrowsePath] = useState('');
+  const [folderBrowseCurrentPath, setFolderBrowseCurrentPath] = useState('');
+  const [folderBrowseParentPath, setFolderBrowseParentPath] = useState('');
+  const [folderBrowseEntries, setFolderBrowseEntries] = useState<BrowseDirectoryEntry[]>([]);
+  const [folderBrowseLoading, setFolderBrowseLoading] = useState(false);
+  const [folderBrowseError, setFolderBrowseError] = useState('');
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -491,6 +500,17 @@ export default function App() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [accountMenuOpen, overflowMenuOpenId, plusMenuOpen, channelPlusMenuOpen]);
+
+  useEffect(() => {
+    if (!folderBrowserOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setFolderBrowserOpen(false);
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [folderBrowserOpen]);
 
   useEffect(() => {
     writeSidebarOpenPreference(
@@ -743,6 +763,27 @@ export default function App() {
     setDraftFiles([]);
   }
 
+  const loadFolderBrowse = useCallback(async (targetPath?: string): Promise<void> => {
+    setFolderBrowseLoading(true);
+    setFolderBrowseError('');
+    try {
+      const result = await browseDirectories(targetPath);
+      setFolderBrowseCurrentPath(result.current);
+      setFolderBrowseParentPath(result.parent);
+      setFolderBrowsePath(result.current);
+      setFolderBrowseEntries(result.entries);
+      setFolderBrowseError(result.error ?? '');
+    } catch (error) {
+      setFolderBrowseError(error instanceof Error ? error.message : 'Failed to load folders.');
+      setFolderBrowseEntries([]);
+      if (targetPath) {
+        setFolderBrowsePath(targetPath);
+      }
+    } finally {
+      setFolderBrowseLoading(false);
+    }
+  }, []);
+
   async function submitComposerMessage(): Promise<void> {
     if (state.status !== 'ready') return;
 
@@ -870,14 +911,22 @@ export default function App() {
   }
 
   async function handlePickFolder(): Promise<void> {
-    try {
-      if ('showDirectoryPicker' in window) {
-        const handle = await (window as unknown as { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> }).showDirectoryPicker();
-        setDraftCwd(handle.name);
-      }
-    } catch {
-      // User cancelled or API not available
+    setFolderBrowsePath(draftCwd ?? '');
+    setFolderBrowserOpen(true);
+    await loadFolderBrowse(draftCwd ?? undefined);
+  }
+
+  function closeFolderBrowser(): void {
+    setFolderBrowserOpen(false);
+    setFolderBrowseError('');
+  }
+
+  function selectBrowsedFolder(): void {
+    if (!folderBrowseCurrentPath || folderBrowseError) {
+      return;
     }
+    setDraftCwd(folderBrowseCurrentPath);
+    setFolderBrowserOpen(false);
   }
 
   function toggleDraftCat(palId: string): void {
@@ -1856,6 +1905,127 @@ export default function App() {
           ) : (
             <div className="addPalCreate">{palCreationForm}</div>
           )}
+        </div>
+      ) : null}
+      {folderBrowserOpen ? (
+        <div
+          className="folderBrowserOverlay"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeFolderBrowser();
+            }
+          }}
+        >
+          <div
+            className="folderBrowserModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="folder-browser-title"
+          >
+            <div className="folderBrowserHeader">
+              <div>
+                <h2 id="folder-browser-title">Select working directory</h2>
+                <p>Choose the folder that should become this chat&apos;s runtime workspace.</p>
+              </div>
+              <button
+                className="folderBrowserClose"
+                type="button"
+                onClick={closeFolderBrowser}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="folderBrowserPathRow">
+              <input
+                className="folderBrowserPathInput"
+                type="text"
+                value={folderBrowsePath}
+                onChange={(event) => setFolderBrowsePath(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void loadFolderBrowse(folderBrowsePath);
+                  }
+                }}
+                placeholder="Enter a path or browse below"
+              />
+              <button
+                className="folderBrowserPathButton"
+                type="button"
+                onClick={() => void loadFolderBrowse(folderBrowsePath)}
+                disabled={folderBrowseLoading}
+              >
+                Go
+              </button>
+            </div>
+            <div className="folderBrowserToolbar">
+              <button
+                className="folderBrowserNavButton"
+                type="button"
+                onClick={() => void loadFolderBrowse(folderBrowseParentPath)}
+                disabled={folderBrowseLoading || !folderBrowseParentPath || folderBrowseParentPath === folderBrowseCurrentPath}
+              >
+                Up one level
+              </button>
+              <button
+                className="folderBrowserNavButton"
+                type="button"
+                onClick={() => void loadFolderBrowse(folderBrowseCurrentPath)}
+                disabled={folderBrowseLoading || !folderBrowseCurrentPath}
+              >
+                Refresh
+              </button>
+              <span className="folderBrowserCurrentPath" title={folderBrowseCurrentPath}>
+                {folderBrowseCurrentPath || 'Loading...'}
+              </span>
+            </div>
+            <div className="folderBrowserList" role="list">
+              {folderBrowseLoading ? (
+                <div className="folderBrowserStatus">Loading folders…</div>
+              ) : folderBrowseEntries.length > 0 ? (
+                folderBrowseEntries.map((entry) => (
+                  <button
+                    key={entry.path}
+                    className="folderBrowserEntry"
+                    type="button"
+                    onClick={() => void loadFolderBrowse(entry.path)}
+                    role="listitem"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                    </svg>
+                    <span>{entry.name}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="folderBrowserStatus">
+                  {folderBrowseError || 'No subdirectories in this folder.'}
+                </div>
+              )}
+            </div>
+            {folderBrowseError ? (
+              <p className="folderBrowserError">{folderBrowseError}</p>
+            ) : null}
+            <div className="folderBrowserFooter">
+              <button
+                className="folderBrowserSecondaryButton"
+                type="button"
+                onClick={closeFolderBrowser}
+              >
+                Cancel
+              </button>
+              <button
+                className="folderBrowserPrimaryButton"
+                type="button"
+                onClick={selectBrowsedFolder}
+                disabled={!folderBrowseCurrentPath || Boolean(folderBrowseError)}
+              >
+                Use this folder
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

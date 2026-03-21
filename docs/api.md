@@ -175,6 +175,19 @@ GET /api/providers/{provider}/models
   fall back to curated static data with warnings when runtime lookup is
   unavailable.
 
+### Shell Helpers
+
+```text
+GET  /api/shell/browse
+POST /api/shell/open-folder
+```
+
+- `GET /api/shell/browse` powers the in-app working-directory picker. It
+  returns `{ current, parent, entries, error? }`, where `entries` contains
+  subdirectories only.
+- `POST /api/shell/open-folder` asks the local host OS to reveal a validated
+  directory path in the native file explorer.
+
 ### Transport Relays
 
 ```text

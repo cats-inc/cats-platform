@@ -1793,6 +1793,198 @@ textarea {
   color: var(--muted);
 }
 
+.folderBrowserOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 18, 13, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.folderBrowserModal {
+  display: flex;
+  width: min(720px, 100%);
+  max-height: min(78vh, 720px);
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid rgba(125, 110, 83, 0.16);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(250, 246, 240, 0.98) 100%);
+  box-shadow: 0 28px 80px rgba(52, 38, 20, 0.18);
+}
+
+.folderBrowserHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.folderBrowserHeader h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.folderBrowserHeader p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.folderBrowserClose {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.folderBrowserClose:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.folderBrowserPathRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.folderBrowserPathInput {
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text);
+  font: inherit;
+}
+
+.folderBrowserPathInput:focus {
+  outline: none;
+  border-color: rgba(158, 125, 66, 0.42);
+  box-shadow: 0 0 0 3px rgba(191, 160, 107, 0.14);
+}
+
+.folderBrowserPathButton,
+.folderBrowserNavButton,
+.folderBrowserSecondaryButton,
+.folderBrowserPrimaryButton {
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.folderBrowserPathButton,
+.folderBrowserNavButton,
+.folderBrowserSecondaryButton {
+  padding: 10px 14px;
+  background: rgba(121, 101, 68, 0.1);
+  color: var(--text);
+}
+
+.folderBrowserPathButton:hover,
+.folderBrowserNavButton:hover,
+.folderBrowserSecondaryButton:hover {
+  background: rgba(121, 101, 68, 0.16);
+}
+
+.folderBrowserPathButton:disabled,
+.folderBrowserNavButton:disabled,
+.folderBrowserPrimaryButton:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.folderBrowserToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.folderBrowserCurrentPath {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folderBrowserList {
+  min-height: 240px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.folderBrowserEntry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.folderBrowserEntry:hover {
+  background: rgba(121, 101, 68, 0.12);
+}
+
+.folderBrowserEntry svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.folderBrowserStatus,
+.folderBrowserError {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.folderBrowserError {
+  padding: 0 4px;
+  color: #8f4f3f;
+}
+
+.folderBrowserFooter {
+  display: flex;
+  justify-content: end;
+  gap: 10px;
+}
+
+.folderBrowserPrimaryButton {
+  padding: 10px 16px;
+  background: #3e5f43;
+  color: #f7f2ea;
+}
+
+.folderBrowserPrimaryButton:hover {
+  background: #35533a;
+}
+
 .composerCwdChip {
   display: flex;
   align-items: center;

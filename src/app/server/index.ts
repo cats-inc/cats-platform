@@ -1,7 +1,8 @@
 import { createServer as createHttpServer } from 'node:http';
 import type { IncomingMessage } from 'node:http';
-import { exec } from 'node:child_process';
-import { access, readFile, stat } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { access, readFile, readdir, stat } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -143,6 +144,50 @@ async function routeRequest(
     return;
   }
 
+  if (url.pathname === '/api/shell/browse') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return;
+    }
+    const requestedPath = url.searchParams.get('path')?.trim() ?? '';
+    const resolvedPath = path.resolve(requestedPath || os.homedir());
+    const payload = {
+      current: resolvedPath,
+      parent: path.dirname(resolvedPath),
+      entries: [] as Array<{ name: string; path: string }>,
+      error: undefined as string | undefined,
+    };
+
+    try {
+      const targetStats = await stat(resolvedPath);
+      if (!targetStats.isDirectory()) {
+        payload.error = `Not a directory: ${resolvedPath}`;
+        sendJson(response, 200, payload);
+        return;
+      }
+
+      const directoryEntries = await readdir(resolvedPath, { withFileTypes: true });
+      payload.entries = directoryEntries
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+        .sort((left, right) => left.name.localeCompare(right.name))
+        .map((entry) => ({
+          name: entry.name,
+          path: path.join(resolvedPath, entry.name),
+        }));
+      sendJson(response, 200, payload);
+      return;
+    } catch (error) {
+      const code = typeof error === 'object' && error && 'code' in error
+        ? String(error.code)
+        : '';
+      payload.error = code === 'ENOENT'
+        ? `Not a directory: ${resolvedPath}`
+        : `Cannot read directory: ${resolvedPath}`;
+      sendJson(response, 200, payload);
+      return;
+    }
+  }
+
   if (url.pathname === '/api/shell/open-folder') {
     if (method !== 'POST') {
       sendMethodNotAllowed(response, ['POST']);
@@ -161,13 +206,16 @@ async function routeRequest(
         sendJson(response, 400, { error: 'path is not a directory' });
         return;
       }
-      const platform = process.platform;
-      const cmd = platform === 'win32'
-        ? `explorer "${folderPath}"`
-        : platform === 'darwin'
-          ? `open "${folderPath}"`
-          : `xdg-open "${folderPath}"`;
-      exec(cmd);
+      const [command, args] = process.platform === 'win32'
+        ? ['explorer', [folderPath]]
+        : process.platform === 'darwin'
+          ? ['open', [folderPath]]
+          : ['xdg-open', [folderPath]];
+      const child = spawn(command, args, {
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
       sendJson(response, 200, { opened: folderPath });
     } catch {
       sendJson(response, 400, { error: 'failed to open folder' });
