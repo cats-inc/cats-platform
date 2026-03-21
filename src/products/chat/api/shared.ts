@@ -16,6 +16,8 @@ import {
   requirePal,
   removePalFromChannel,
   resolveOrchestratorDisplayName,
+  setChannelPalLease,
+  setChannelWorkspaceCwd,
 } from '../workspace/model.js';
 import { createAppShell } from '../workspace/shell.js';
 import type { WorkspaceStore } from '../workspace/store.js';
@@ -298,6 +300,101 @@ export async function persistAssignmentUpdate(
         },
         now,
         { metadata: { event: 'session_close_failed', palId: input.palId } },
+      ).state;
+    }
+  }
+
+  if (targetChanged && updatedAssignment) {
+    nextState = setChannelPalLease(nextState, channelId, input.palId, {
+      sessionId: null,
+      status: 'not_started',
+      cwd: null,
+      lastError: null,
+      provider: updatedAssignment.execution.target.provider,
+      model: updatedAssignment.execution.target.model,
+      startedAt: null,
+      lastUsedAt: null,
+    }, now);
+  }
+
+  const refreshedChannel = requireChannel(nextState, channelId);
+  const updatedPal = refreshedChannel.palAssignments.find(
+    (candidate) => candidate.palId === input.palId,
+  );
+  const spawnCwd = (
+    refreshedChannel.repoPath
+    ?? refreshedChannel.workspaceCwd
+    ?? refreshedChannel.orchestratorLease.cwd
+    ?? null
+  );
+  const needsSession = updatedPal
+    && !updatedPal.execution.lease.sessionId
+    && (isNew || targetChanged)
+    && Boolean(spawnCwd);
+
+  if (needsSession) {
+    try {
+      const session = await context.dependencies.runtimeClient.createSession({
+        provider: updatedPal.execution.target.provider,
+        instance: updatedPal.execution.target.instance,
+        model: updatedPal.execution.target.model,
+        cwd: spawnCwd,
+        workspaceMode: spawnCwd ? 'shared' : undefined,
+      });
+      const timestamp = now.toISOString();
+      nextState = setChannelPalLease(nextState, channelId, input.palId, {
+        sessionId: session.id,
+        status: session.status === 'ready' ? 'ready' : 'initializing',
+        cwd: session.cwd,
+        lastError: null,
+        provider: session.provider,
+        model: session.model,
+        startedAt: timestamp,
+        lastUsedAt: timestamp,
+      }, now);
+      if (!spawnCwd && session.cwd) {
+        nextState = setChannelWorkspaceCwd(nextState, channelId, session.cwd, now);
+      }
+      const pal = requirePal(nextState, input.palId);
+      nextState = appendMessage(
+        nextState,
+        channelId,
+        {
+          senderKind: 'system',
+          senderName: 'Runtime',
+          body: `${pal.name} connected to cats-runtime session ${session.id}.`,
+        },
+        now,
+        {
+          metadata: {
+            event: 'session_started',
+            targetKind: 'pal',
+            targetId: input.palId,
+            sessionId: session.id,
+            verbosity: 'verbose',
+          },
+        },
+      ).state;
+    } catch (sessionError) {
+      const pal = requirePal(nextState, input.palId);
+      nextState = appendMessage(
+        nextState,
+        channelId,
+        {
+          senderKind: 'system',
+          senderName: 'Runtime',
+          body: `Failed to start ${pal.name}: ${
+            sessionError instanceof Error ? sessionError.message : 'Unknown runtime error'
+          }`,
+        },
+        now,
+        {
+          metadata: {
+            event: 'session_start_failed',
+            targetKind: 'pal',
+            targetId: input.palId,
+          },
+        },
       ).state;
     }
   }
