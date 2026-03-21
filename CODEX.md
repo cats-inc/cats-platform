@@ -89,11 +89,11 @@ To sync skills after changes:
 
 ### Working Product Memory
 
-These notes capture the current user direction for `cats-inc`. They are
+These notes capture the current user direction for `cats`. They are
 working memory for Codex, not yet a ratified product spec or ADR.
 
-- The current `cats-inc` repo name is likely temporary and may later conflict
-  with the intended broader brand or GitHub org/user rename.
+- The suite now uses `cats` as the flagship product/repo name under the
+  `Cats Inc` umbrella brand, with a later public repo target of `cats-inc/cats`.
 - The first real product line is a chat product, not a narrow "one-man digital
   company" shell. It should feel like a general chat app that also supports
   agent orchestration.
