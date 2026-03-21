@@ -553,7 +553,9 @@ POST /api/core/activities
 ```
 
 `POST` appends shared activity records for status changes, approval events,
-artifact writes, and other product-owned system events.
+artifact writes, and other product-owned system events. Activity ids are
+append-only in this first slice: reusing an existing `activity.id` returns a
+conflict instead of mutating the old record.
 
 ### List Core Approval Bindings
 
@@ -563,7 +565,8 @@ POST /api/core/approval-bindings
 ```
 
 `POST` binds a task-backed approval record to a reusable subject such as a
-project, work item, task, run, artifact, or conversation.
+project, work item, task, run, artifact, or conversation. The referenced
+`approvalTaskId` must already exist in `/api/core/tasks`.
 
 ### Get Owner Profile
 

@@ -212,6 +212,12 @@ function readNullableNumber(
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new CoreValidationError(`${fieldName} must be a number or null`);
   }
+  if (value < 0) {
+    throw new CoreValidationError(
+      `${fieldName} must be a non-negative number or null`,
+      'bad_request',
+    );
+  }
 
   return value;
 }

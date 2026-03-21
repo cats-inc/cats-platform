@@ -369,3 +369,35 @@ test('shared core write helpers persist reusable project, work-item, artifact, a
   assert.equal(core.approvalBindings.length, 1);
   assert.equal(core.approvalBindings[0].approvalTaskId, fixtures.task.id);
 });
+
+test('appendCoreActivity rejects duplicate activity ids and approval bindings require an existing task', () => {
+  const fixtures = createSharedCoreFixtureBundle();
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(core, fixtures.task, new Date('2026-03-21T04:00:00.000Z')).core;
+  core = appendCoreActivity(
+    core,
+    fixtures.activity,
+    new Date('2026-03-21T04:01:00.000Z'),
+  ).core;
+
+  assert.throws(
+    () =>
+      appendCoreActivity(
+        core,
+        fixtures.activity,
+        new Date('2026-03-21T04:02:00.000Z'),
+      ),
+    /Activity already exists/,
+  );
+
+  assert.throws(
+    () =>
+      upsertCoreApprovalBinding(
+        createDefaultCoreState(),
+        fixtures.approvalBinding,
+        new Date('2026-03-21T04:03:00.000Z'),
+      ),
+    /Task not found/,
+  );
+});

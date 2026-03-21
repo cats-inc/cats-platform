@@ -174,7 +174,7 @@ function normalizeStringArray(values: string[] | undefined): string[] {
   );
 }
 
-function normalizeNullableNumber(value: number | null | undefined): number | null {
+function normalizeArtifactSizeBytes(value: number | null | undefined): number | null {
   if (value === null || value === undefined) {
     return null;
   }
@@ -1120,7 +1120,7 @@ export function upsertCoreArtifact(
     sizeBytes:
       input.sizeBytes === undefined
         ? existing?.sizeBytes ?? null
-        : normalizeNullableNumber(input.sizeBytes),
+        : normalizeArtifactSizeBytes(input.sizeBytes),
     summary:
       input.summary === undefined
         ? existing?.summary ?? null
@@ -1165,57 +1165,44 @@ export function appendCoreActivity(
 
   const activityId = normalizeNullableString(input.id) ?? `activity-${randomUUID()}`;
   const existing = core.activities.find((activity) => activity.id === activityId);
+  if (existing) {
+    throw new CoreConflictError(
+      `Activity already exists: ${activityId}`,
+      'activity_already_exists',
+    );
+  }
   const activity: CoreActivityRecord = {
     id: activityId,
     kind: input.kind,
-    actorId:
-      input.actorId === undefined
-        ? existing?.actorId ?? null
-        : normalizeNullableString(input.actorId),
-    projectId:
-      input.projectId === undefined
-        ? existing?.projectId ?? null
-        : normalizeNullableString(input.projectId),
+    actorId: input.actorId === undefined ? null : normalizeNullableString(input.actorId),
+    projectId: input.projectId === undefined ? null : normalizeNullableString(input.projectId),
     workItemId:
-      input.workItemId === undefined
-        ? existing?.workItemId ?? null
-        : normalizeNullableString(input.workItemId),
+      input.workItemId === undefined ? null : normalizeNullableString(input.workItemId),
     conversationId:
       input.conversationId === undefined
-        ? existing?.conversationId ?? null
+        ? null
         : normalizeNullableString(input.conversationId),
-    taskId:
-      input.taskId === undefined
-        ? existing?.taskId ?? null
-        : normalizeNullableString(input.taskId),
-    runId:
-      input.runId === undefined
-        ? existing?.runId ?? null
-        : normalizeNullableString(input.runId),
+    taskId: input.taskId === undefined ? null : normalizeNullableString(input.taskId),
+    runId: input.runId === undefined ? null : normalizeNullableString(input.runId),
     artifactId:
       input.artifactId === undefined
-        ? existing?.artifactId ?? null
+        ? null
         : normalizeNullableString(input.artifactId),
     message,
-    createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
-    metadata:
-      input.metadata === undefined
-        ? normalizeMetadata(existing?.metadata)
-        : normalizeMetadata(input.metadata),
+    createdAt: input.createdAt ?? nowIso,
+    metadata: normalizeMetadata(input.metadata),
   };
-
-  const { records, created } = replaceById(core.activities, activity);
 
   return {
     core: touchCoreState(
       {
         ...core,
-        activities: records,
+        activities: [...core.activities, activity],
       },
       nowIso,
     ),
     activity,
-    created,
+    created: true,
   };
 }
 
@@ -1243,6 +1230,12 @@ export function upsertCoreApprovalBinding(
     throw new CoreValidationError(
       'approvalBinding.subjectId is required',
       'approval_binding_subject_id_required',
+    );
+  }
+  if (!core.tasks.some((task) => task.id === approvalTaskId)) {
+    throw new CoreNotFoundError(
+      `Task not found: ${approvalTaskId}`,
+      'task_not_found',
     );
   }
 

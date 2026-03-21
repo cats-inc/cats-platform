@@ -388,6 +388,75 @@ test('core approval write returns 409 for invalid terminal-to-pending transition
   }, chatStore);
 });
 
+test('core artifact and activity writes enforce non-negative sizeBytes and append-only ids', async () => {
+  const chatStore = new MemoryChatStore();
+  const fixtures = createSharedCoreFixtureBundle();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const artifactResponse = await fetch(`${baseUrl}/api/core/artifacts`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        artifact: {
+          ...fixtures.artifact,
+          id: 'artifact-invalid-size',
+          sizeBytes: -1,
+        },
+      }),
+    });
+    assert.equal(artifactResponse.status, 400);
+
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ task: fixtures.task }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const firstActivityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ activity: fixtures.activity }),
+    });
+    assert.equal(firstActivityResponse.status, 201);
+
+    const duplicateActivityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ activity: fixtures.activity }),
+    });
+    assert.equal(duplicateActivityResponse.status, 409);
+    const duplicateActivityPayload = await duplicateActivityResponse.json();
+    assert.equal(duplicateActivityPayload.error.code, 'activity_already_exists');
+  }, chatStore);
+});
+
+test('core approval bindings require an existing approval task', async () => {
+  const chatStore = new MemoryChatStore();
+  const fixtures = createSharedCoreFixtureBundle();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/core/approval-bindings`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ approvalBinding: fixtures.approvalBinding }),
+    });
+    assert.equal(response.status, 404);
+    const payload = await response.json();
+    assert.equal(payload.error.code, 'task_not_found');
+  }, chatStore);
+});
+
 test('GET /api/work and /api/code expose dedicated placeholder surfaces', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const workResponse = await fetch(`${baseUrl}/api/work`);
