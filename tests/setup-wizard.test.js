@@ -335,6 +335,10 @@ test('after setup + activate, system messages use boss cat name and have verbosi
     assert.ok(orchMessage, 'Orchestrator session_started message should exist');
     assert.ok(orchMessage.body.includes('將將'), 'Should use boss cat name in session message');
     assert.ok(!orchMessage.body.includes('Orchestrator'), 'Should not use "Orchestrator" in session message');
+    assert.ok(
+      orchMessage.body.includes('(cwd: C:/workspace/runtime).'),
+      'Should include runtime cwd in the session message',
+    );
 
     // All session_started messages should have verbosity: 'verbose'
     for (const msg of sessionStartedMessages) {

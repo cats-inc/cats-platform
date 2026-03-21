@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
@@ -375,4 +378,196 @@ test('workspace API covers chat setup, activation, messaging, global pals, assig
     const tasksAfterDeletePayload = await tasksAfterDelete.json();
     assert.equal(tasksAfterDeletePayload.tasks.length, 0);
   }, workspaceStore);
+});
+
+test('assigning a cat to a channel immediately creates a runtime session in the channel cwd', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Session Spawn',
+        topic: 'Verify assignment spawns a session.',
+        repoPath: 'C:/repo/cats',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Agent-Spawn',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const assignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${catId}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(assignResponse.status, 201);
+    const assignPayload = await assignResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.createdSessions[0].cwd, 'C:/repo/cats');
+    assert.equal(assignPayload.cat.execution.lease.sessionId, 'session-1');
+    assert.equal(assignPayload.cat.execution.lease.cwd, 'C:/repo/cats');
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+    const sessionStartedMessage = channelPayload.channel.messages.find(
+      (message) => message.metadata?.event === 'session_started' && message.metadata?.targetId === catId,
+    );
+    assert.ok(sessionStartedMessage);
+    assert.equal(
+      sessionStartedMessage.body,
+      'Agent-Spawn connected to cats-runtime session session-1 (cwd: C:/repo/cats).',
+    );
+  });
+});
+
+test('assigning a cat without a channel cwd defers session creation until Boss Cat activation establishes one', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Deferred Session Spawn',
+        topic: 'Wait for Boss Cat to anchor the workspace first.',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Agent-Deferred',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const assignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${catId}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(assignResponse.status, 201);
+    const assignPayload = await assignResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 0);
+    assert.equal(assignPayload.cat.execution.lease.sessionId, null);
+    assert.equal(assignPayload.cat.execution.lease.cwd, null);
+
+    const activateResponse = await fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
+      method: 'POST',
+    });
+    assert.equal(activateResponse.status, 200);
+    const activatePayload = await activateResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 2);
+    assert.equal(runtimeClient.createdSessions[0].cwd, null);
+    assert.equal(runtimeClient.createdSessions[1].cwd, 'C:/workspace/runtime');
+    assert.equal(activatePayload.activation.results[0].targetKind, 'orchestrator');
+    assert.equal(activatePayload.activation.results[1].targetKind, 'pal');
+  });
+});
+
+test('attachment uploads sanitize names and avoid overwriting earlier files', async () => {
+  const runtimeClient = createRuntimeStub();
+  const tempWorkspace = await mkdtemp(path.join(os.tmpdir(), 'cats-attachments-'));
+
+  try {
+    await withServer(runtimeClient, async (baseUrl) => {
+      const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'Attachment Uploads',
+          topic: 'Verify unique attachment names.',
+          repoPath: tempWorkspace,
+          skipBossCatGreeting: true,
+        }),
+      });
+      assert.equal(createChannelResponse.status, 201);
+      const createChannelPayload = await createChannelResponse.json();
+      const channelId = createChannelPayload.channel.id;
+
+      const uploadResponse = await fetch(`${baseUrl}/api/channels/${channelId}/attachments`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          files: [
+            { name: 'notes.txt', data: Buffer.from('first').toString('base64') },
+            { name: '../notes.txt', data: Buffer.from('second').toString('base64') },
+            { name: '..', data: Buffer.from('third').toString('base64') },
+          ],
+        }),
+      });
+      assert.equal(uploadResponse.status, 200);
+      const uploadPayload = await uploadResponse.json();
+
+      assert.deepEqual(
+        uploadPayload.attachments.map((attachment) => attachment.relativePath),
+        [
+          '.cats-attachments/notes.txt',
+          '.cats-attachments/notes-2.txt',
+          '.cats-attachments/attachment',
+        ],
+      );
+
+      const firstContent = await readFile(path.join(tempWorkspace, '.cats-attachments', 'notes.txt'), 'utf8');
+      const secondContent = await readFile(path.join(tempWorkspace, '.cats-attachments', 'notes-2.txt'), 'utf8');
+      const thirdContent = await readFile(path.join(tempWorkspace, '.cats-attachments', 'attachment'), 'utf8');
+
+      assert.equal(firstContent, 'first');
+      assert.equal(secondContent, 'second');
+      assert.equal(thirdContent, 'third');
+    });
+  } finally {
+    await rm(tempWorkspace, { recursive: true, force: true });
+  }
 });

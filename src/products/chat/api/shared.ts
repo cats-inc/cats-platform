@@ -19,6 +19,7 @@ import {
   setChannelPalLease,
   setChannelWorkspaceCwd,
 } from '../workspace/model.js';
+import { formatSessionStartedMessage } from '../workspace/runtimeMessages.js';
 import { createAppShell } from '../workspace/shell.js';
 import type { WorkspaceStore } from '../workspace/store.js';
 import type {
@@ -362,7 +363,7 @@ export async function persistAssignmentUpdate(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `${pal.name} connected to cats-runtime session ${session.id}.`,
+          body: formatSessionStartedMessage(pal.name, session),
         },
         now,
         {

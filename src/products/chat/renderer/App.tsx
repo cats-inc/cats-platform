@@ -443,7 +443,6 @@ export default function App() {
   const [draftCwd, setDraftCwd] = useState<string | null>(null);
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
-  const [draftIncludeBossCat, setDraftIncludeBossCat] = useState(true);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -732,7 +731,6 @@ export default function App() {
     setDraftCwd(null);
     setDraftCatIds([]);
     setDraftFiles([]);
-    setDraftIncludeBossCat(true);
   }
 
   async function submitComposerMessage(): Promise<void> {
@@ -824,7 +822,6 @@ export default function App() {
         setDraftCwd(null);
         setDraftCatIds([]);
         setDraftFiles([]);
-        setDraftIncludeBossCat(true);
       }
     } catch (error) {
       setState({ status: 'ready', payload: rollbackPayload });
@@ -860,14 +857,18 @@ export default function App() {
   }
 
   async function handlePickFolder(): Promise<void> {
-    try {
-      if ('showDirectoryPicker' in window) {
-        const handle = await (window as unknown as { showDirectoryPicker(): Promise<{ name: string }> }).showDirectoryPicker();
-        setDraftCwd(handle.name);
-      }
-    } catch {
-      // User cancelled or API not available
+    const enteredPath = window.prompt(
+      'Enter the full local working directory path for this chat.\n'
+      + 'Examples: C:\\repo\\cats, /Users/name/repo, /home/name/repo',
+      draftCwd ?? '',
+    );
+
+    if (enteredPath === null) {
+      return;
     }
+
+    const normalized = enteredPath.trim().replace(/^['"]|['"]$/g, '');
+    setDraftCwd(normalized || null);
   }
 
   function toggleDraftCat(palId: string): void {
@@ -1441,12 +1442,7 @@ export default function App() {
                       onKeyDown={(event) => void onComposerKeyDown(event)}
                     />
                     <div className="composerBottomRow">
-                      <button className="composerPlusButton" type="button" aria-label="Attach">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M8 3v10" />
-                          <path d="M3 8h10" />
-                        </svg>
-                      </button>
+                      <div className="composerLeftGroup" aria-hidden="true" />
                       <button
                         className="composerSendButton"
                         disabled={!composerDraft.trim() || busy === 'message:send'}
@@ -1594,7 +1590,7 @@ export default function App() {
                         </span>
                       ) : null}
                       {(() => {
-                        const showBoss = draftIncludeBossCat && Boolean(payload.workspace.bossCatId);
+                        const showBoss = Boolean(payload.workspace.bossCatId);
                         const totalCats = (showBoss ? 1 : 0) + draftCatIds.length;
                         if (totalCats === 0) return null;
                         return (
@@ -1608,16 +1604,6 @@ export default function App() {
                                 >
                                   {palInitials(bossCatName)}
                                 </div>
-                                {totalCats > 1 ? (
-                                  <button
-                                    className="composerStackRemove"
-                                    type="button"
-                                    onClick={() => setDraftIncludeBossCat(false)}
-                                    aria-label={`Remove ${bossCatName}`}
-                                  >
-                                    ×
-                                  </button>
-                                ) : null}
                               </div>
                             ) : null}
                             {draftCatIds.map((id) => {

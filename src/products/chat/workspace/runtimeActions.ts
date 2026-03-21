@@ -26,6 +26,7 @@ import {
   buildOrchestratorRewritePrompt,
   buildPalPrompt,
 } from './prompts.js';
+import { formatSessionStartedMessage } from './runtimeMessages.js';
 
 function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionStatus {
   switch (status) {
@@ -272,7 +273,7 @@ export async function activateChannelSessions(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `${orchestratorDisplayName} connected to cats-runtime session ${session.id}.`,
+          body: formatSessionStartedMessage(orchestratorDisplayName, session),
         },
         now,
         {
@@ -345,7 +346,7 @@ export async function activateChannelSessions(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `${pal.name} connected to cats-runtime session ${session.id}.`,
+          body: formatSessionStartedMessage(pal.name, session),
         },
         now,
         {
