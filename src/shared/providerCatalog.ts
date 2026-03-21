@@ -55,7 +55,7 @@ export const PRODUCT_PROVIDER_ORDER = [
 export type ProductProviderId = (typeof PRODUCT_PROVIDER_ORDER)[number];
 
 export const PAL_PROVIDER_ORDER = PRODUCT_PROVIDER_ORDER;
-export type PalProviderId = ProductProviderId;
+export type CatProviderId = ProductProviderId;
 
 export const PRODUCT_PROVIDER_MODELS: Record<ProductProviderId, ProviderModelOption[]> = {
   claude: [

@@ -44,7 +44,7 @@ This causes three structural problems.
    as the source of truth.
 
 2. `Chat`-specific DTOs still look like suite-level contracts.
-   Files such as `src/shared/app-shell.ts` describe selected-channel, pals,
+   Files such as `src/shared/app-shell.ts` describe selected-channel, cats,
    boss-cat, and global-orchestrator state. Those are valid Chat read-model
    concepts, but they are not neutral suite-level contracts for Work or Code.
 
@@ -231,3 +231,4 @@ This ADR does not move product-line concerns into `cats-runtime`.
 
 *Accepted: 2026-03-21*  
 *Decision makers: user + Codex*
+

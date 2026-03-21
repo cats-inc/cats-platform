@@ -1,12 +1,12 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { buildChannelView, requirePal } from '../workspace/model.js';
-import type { AssignChannelPalInput, CreateWorkspacePalInput } from './contracts.js';
+import { buildChannelView, requireCat } from '../workspace/model.js';
+import type { AssignChannelCatInput, CreateCatInput } from './contracts.js';
 import {
   handleCanonicalCatError,
-  mapAssignmentToCat,
-  persistAssignmentRemoval,
-  persistAssignmentUpdate,
-  persistCreatedPal,
+  mapChannelCat,
+  persistCatAssignmentRemoval,
+  persistCatAssignmentUpdate,
+  persistCreatedCat,
   persistDeletedCat,
   type ChatApiRouteContext,
 } from './shared.js';
@@ -15,8 +15,8 @@ async function handleCanonicalListCats(
   context: ChatApiRouteContext,
 ): Promise<void> {
   try {
-    const state = await context.dependencies.workspaceStore.read();
-    sendJson(context.response, 200, { cats: state.pals });
+    const state = await context.dependencies.chatStore.read();
+    sendJson(context.response, 200, { cats: state.cats });
   } catch (error) {
     handleCanonicalCatError(context, error);
   }
@@ -26,9 +26,9 @@ async function handleCanonicalCreateCat(
   context: ChatApiRouteContext,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<CreateWorkspacePalInput>(context.request);
-    const persisted = await persistCreatedPal(context, body);
-    sendJson(context.response, 201, { cat: persisted.pals[0] });
+    const body = await readJsonBody<CreateCatInput>(context.request);
+    const persisted = await persistCreatedCat(context, body);
+    sendJson(context.response, 201, { cat: persisted.cats[0] });
   } catch (error) {
     handleCanonicalCatError(context, error);
   }
@@ -39,8 +39,8 @@ async function handleCanonicalGetCat(
   catId: string,
 ): Promise<void> {
   try {
-    const state = await context.dependencies.workspaceStore.read();
-    sendJson(context.response, 200, { cat: requirePal(state, catId) });
+    const state = await context.dependencies.chatStore.read();
+    sendJson(context.response, 200, { cat: requireCat(state, catId) });
   } catch (error) {
     handleCanonicalCatError(context, error);
   }
@@ -64,11 +64,11 @@ async function handleCanonicalListChannelCats(
 ): Promise<void> {
   try {
     const view = buildChannelView(
-      await context.dependencies.workspaceStore.read(),
+      await context.dependencies.chatStore.read(),
       channelId,
     );
     sendJson(context.response, 200, {
-      cats: view.assignedPals.map(mapAssignmentToCat),
+      cats: view.assignedCats.map(mapChannelCat),
     });
   } catch (error) {
     handleCanonicalCatError(context, error);
@@ -81,18 +81,18 @@ async function handleCanonicalAssignChannelCat(
   catId: string,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<Omit<AssignChannelPalInput, 'palId'>>(
+    const body = await readJsonBody<Omit<AssignChannelCatInput, 'catId'>>(
       context.request,
     );
-    const { persisted, isNew } = await persistAssignmentUpdate(context, channelId, {
-      palId: catId,
+    const { persisted, isNew } = await persistCatAssignmentUpdate(context, channelId, {
+      catId: catId,
       ...body,
     });
-    const assignment = buildChannelView(persisted, channelId).assignedPals.find(
-      (candidate) => candidate.palId === catId,
+    const assignment = buildChannelView(persisted, channelId).assignedCats.find(
+      (candidate) => candidate.catId === catId,
     );
     sendJson(context.response, isNew ? 201 : 200, {
-      cat: assignment ? mapAssignmentToCat(assignment) : null,
+      cat: assignment ? mapChannelCat(assignment) : null,
     });
   } catch (error) {
     handleCanonicalCatError(context, error);
@@ -105,7 +105,7 @@ async function handleCanonicalRemoveChannelCat(
   catId: string,
 ): Promise<void> {
   try {
-    await persistAssignmentRemoval(context, channelId, catId);
+    await persistCatAssignmentRemoval(context, channelId, catId);
     sendJson(context.response, 200, { removed: true, channelId, catId });
   } catch (error) {
     handleCanonicalCatError(context, error);

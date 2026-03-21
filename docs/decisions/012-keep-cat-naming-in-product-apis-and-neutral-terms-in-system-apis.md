@@ -74,7 +74,7 @@ again would create extra rename work without improving product clarity.
 
 ### Positive
 
-- The project avoids unnecessary churn after the `Pal -> Cat` rename.
+- The project avoids unnecessary churn after the `Cat -> Cat` rename.
 - Product APIs stay understandable to product developers and future UI work.
 - Shared-core and orchestration layers can stay semantically broader than the
   chat UI.
@@ -134,3 +134,4 @@ core
 
 *Accepted: 2026-03-19*
 *Accepted by: user direction captured through Codex*
+

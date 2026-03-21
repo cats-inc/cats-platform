@@ -1,16 +1,16 @@
 import type { AppConfig } from '../../../config.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
-import type { AppShellPayload, WorkspaceState } from '../../../shared/app-shell.js';
+import type { AppShellPayload, ChatState } from '../../../shared/app-shell.js';
 import { summarizeState } from './model.js';
 
 export function createAppShell(
   config: AppConfig,
   runtime: RuntimeStatusSummary,
-  workspace: WorkspaceState,
+  chat: ChatState,
   now: Date = new Date(),
   setup?: { setupCompleteAt: string | null; ownerDisplayName: string; ownerAvatarColor: string | null },
 ): AppShellPayload {
-  const summary = summarizeState(workspace);
+  const summary = summarizeState(chat);
 
   return {
     app: {
@@ -18,20 +18,20 @@ export function createAppShell(
       stage: 'phase-2-shell',
       runtimeBoundary: 'cats-runtime',
     },
-    workspace: {
-      id: workspace.id,
-      name: workspace.name,
-      selectedChannelId: workspace.selectedChannelId,
-      bossCatId: workspace.bossCatId,
-      pals: summary.pals,
+    chat: {
+      id: chat.id,
+      name: chat.name,
+      selectedChannelId: chat.selectedChannelId,
+      bossCatId: chat.bossCatId,
+      cats: summary.cats,
       channels: summary.channels,
       selectedChannel: summary.selectedChannel,
       globalOrchestrator: {
         ...summary.globalOrchestrator,
         status: runtime.reachable ? 'ready' : 'warming',
       },
-      capabilities: workspace.capabilities,
-      showVerboseMessages: workspace.showVerboseMessages,
+      capabilities: chat.capabilities,
+      showVerboseMessages: chat.showVerboseMessages,
     },
     runtime,
     metadata: {
@@ -44,3 +44,4 @@ export function createAppShell(
     ownerAvatarColor: setup?.ownerAvatarColor ?? null,
   };
 }
+

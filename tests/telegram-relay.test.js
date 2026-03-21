@@ -18,13 +18,13 @@ function createContext(overrides = {}) {
   return {
     bossCatId: 'cat-smelly',
     bossCatName: 'Smelly',
-    bossCatActorId: 'actor-pal-cat-smelly',
+    bossCatActorId: 'actor-cat-cat-smelly',
     botBinding: {
       id: 'bot-binding-telegram-global',
       platform: 'telegram',
       botName: 'smelly_bot',
       orchestratorActorId: 'actor-orchestrator-global',
-      bossCatActorId: 'actor-pal-cat-smelly',
+      bossCatActorId: 'actor-cat-cat-smelly',
       status: 'active',
       createdAt: '2026-03-19T00:00:00.000Z',
       updatedAt: '2026-03-19T00:00:00.000Z',
@@ -56,7 +56,7 @@ test('telegram relay reports unbound when binding does not front the current Bos
   const relay = createTelegramRelay();
 
   const status = relay.getStatus(createContext({
-    bossCatActorId: 'actor-pal-cat-other',
+    bossCatActorId: 'actor-cat-cat-other',
   }));
 
   assert.equal(status.status, 'unbound');
@@ -265,8 +265,8 @@ test('file-backed telegram relay store restores bindings and dedupe markers afte
   assert.deepEqual(readdirSync(stateDir), ['telegram-relay.json']);
 });
 
-test('file-backed telegram relay store hydrates legacy v1 relay state', () => {
-  const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-telegram-store-legacy-'));
+test('file-backed telegram relay store ignores incomplete persisted relay state', () => {
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-telegram-store-invalid-'));
   const statePath = path.join(stateDir, 'telegram-relay.json');
 
   writeFileSync(statePath, JSON.stringify({
@@ -284,8 +284,7 @@ test('file-backed telegram relay store hydrates legacy v1 relay state', () => {
   }, null, 2));
 
   const store = new FileBackedTelegramRelayStore(statePath, 4);
-  assert.equal(store.getBinding('12345')?.transportConversationMode, 'transport_inbox');
-  assert.equal(store.getBinding('12345')?.roomRoutingStatus, 'placeholder');
-  assert.equal(store.getBinding('12345')?.linkedRoomId, null);
+  assert.equal(store.getBinding('12345'), null);
   assert.equal(store.getLastProcessedUpdateId(), 101);
 });
+

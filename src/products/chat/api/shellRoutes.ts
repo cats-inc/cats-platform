@@ -24,11 +24,11 @@ async function handleSelectionUpdate(
   try {
     const body = await readJsonBody<UpdateSelectedChannelInput>(context.request);
     const nextState = selectChannel(
-      await context.dependencies.workspaceStore.read(),
+      await context.dependencies.chatStore.read(),
       body.selectedChannelId,
       nowFrom(context.dependencies),
     );
-    const persisted = await context.dependencies.workspaceStore.write(nextState);
+    const persisted = await context.dependencies.chatStore.write(nextState);
     sendJson(
       context.response,
       200,
@@ -39,7 +39,7 @@ async function handleSelectionUpdate(
       error:
         error instanceof Error
           ? error.message
-          : 'Failed to update workspace selection',
+          : 'Failed to update chat selection',
     });
   }
 }
@@ -62,15 +62,6 @@ export async function routeChatShellApi(
       return true;
     }
     await handleAppShell(context);
-    return true;
-  }
-
-  if (context.url.pathname === '/api/workspace/selection') {
-    if (context.method !== 'POST') {
-      sendMethodNotAllowed(context.response, ['POST']);
-      return true;
-    }
-    await handleSelectionUpdate(context);
     return true;
   }
 

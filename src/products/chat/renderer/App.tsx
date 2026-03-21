@@ -27,27 +27,27 @@ import {
 } from '../../../shared/sidebarPreference';
 import type {
   AppShellPayload,
-  WorkspaceChannelSummary,
-  WorkspaceChannelView,
-  WorkspaceMessage,
-  WorkspacePal,
+  ChatChannelSummary,
+  ChatChannelView,
+  ChatMessage,
+  ChatCat,
 } from '../../../shared/app-shell';
 import {
-  activateWorkspaceChannel,
-  assignPalToWorkspaceChannel,
+  activateChatChannel,
+  assignCatToChannelApi,
   browseDirectories,
   type BrowseDirectoryEntry,
   completeSetup,
-  createGlobalPal,
+  createGlobalCat,
   resetSetup,
-  createWorkspaceChannel,
-  deleteWorkspaceChannel,
+  createChatChannel,
+  deleteChatChannel,
   fetchAppShell,
-  removePalFromWorkspaceChannel,
-  sendWorkspaceMessage,
+  removeCatFromChannelApi,
+  sendChatMessage,
   updateSelectedChannel,
   updateVerbosePreference,
-  deleteGlobalPal,
+  deleteGlobalCat,
   openFolderInExplorer,
   uploadChannelAttachments,
 } from './api';
@@ -61,14 +61,14 @@ type LoadState =
 
 type Surface = 'chats' | 'settings';
 
-interface PalFormState {
+interface CatFormState {
   name: string;
   provider: string;
   instance: string;
   model: string;
 }
 
-function emptyPalForm(): PalFormState {
+function emptyCatForm(): CatFormState {
   return {
     name: '',
     provider: 'claude',
@@ -78,14 +78,14 @@ function emptyPalForm(): PalFormState {
 }
 
 
-function executionLabel(pal: WorkspacePal): string {
-  const name = getProviderDisplayName(pal.defaultExecutionTarget.provider);
+function executionLabel(cat: ChatCat): string {
+  const name = getProviderDisplayName(cat.defaultExecutionTarget.provider);
   const parts = [name];
-  if (pal.defaultExecutionTarget.instance) {
-    parts.push(pal.defaultExecutionTarget.instance);
+  if (cat.defaultExecutionTarget.instance) {
+    parts.push(cat.defaultExecutionTarget.instance);
   }
-  if (pal.defaultExecutionTarget.model) {
-    parts.push(pal.defaultExecutionTarget.model);
+  if (cat.defaultExecutionTarget.model) {
+    parts.push(cat.defaultExecutionTarget.model);
   }
   return parts.join(' / ');
 }
@@ -121,7 +121,7 @@ function presentChannelTitle(title: string): string {
   return title.trim() === 'Untitled chat' ? 'New chat' : title;
 }
 
-function palInitials(name: string): string {
+function catInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
@@ -148,14 +148,14 @@ function pickGreeting(): string {
 }
 
 function resolveBossCatName(payload: AppShellPayload): string | null {
-  if (!payload.workspace.bossCatId) {
+  if (!payload.chat.bossCatId) {
     return null;
   }
 
-  return payload.workspace.pals.find((pal) => pal.id === payload.workspace.bossCatId)?.name ?? null;
+  return payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId)?.name ?? null;
 }
 
-type SelectedChannelView = NonNullable<AppShellPayload['workspace']['selectedChannel']>;
+type SelectedChannelView = NonNullable<AppShellPayload['chat']['selectedChannel']>;
 
 function createEmptyParticipantLease(): SelectedChannelView['orchestratorLease'] {
   return {
@@ -175,7 +175,7 @@ function createOptimisticUserMessage(
   body: string,
   senderName: string,
   createdAt: string,
-): WorkspaceMessage {
+): ChatMessage {
   return {
     id: `optimistic-${crypto.randomUUID()}`,
     channelId,
@@ -195,53 +195,53 @@ function createOptimisticDraftPayload(
 ): { payload: AppShellPayload; channelId: string } {
   const createdAt = new Date().toISOString();
   const channelId = `draft-${crypto.randomUUID()}`;
-  const title = createDraftChannelTitle(body, payload.workspace.channels.length);
+  const title = createDraftChannelTitle(body, payload.chat.channels.length);
   const topic = createDraftChannelTopic(body);
   const message = createOptimisticUserMessage(channelId, body, payload.ownerDisplayName, createdAt);
-  const channelSummary: WorkspaceChannelSummary = {
+  const channelSummary: ChatChannelSummary = {
     id: channelId,
     title,
     topic,
     status: 'planned',
     unreadCount: 0,
-    palCount: 0,
-    activePalCount: 0,
+    catCount: 0,
+    activeCatCount: 0,
     repoPath: null,
-    workspaceCwd: null,
+    chatCwd: null,
     lastMessageAt: createdAt,
     lastActivatedAt: null,
   };
-  const selectedChannel: WorkspaceChannelView = {
+  const selectedChannel: ChatChannelView = {
     id: channelId,
     title,
     topic,
     status: 'planned',
     unreadCount: 0,
     repoPath: null,
-    workspaceCwd: null,
+    chatCwd: null,
     language: null,
     responseLanguage: 'en',
     formationMode: 'manual',
-    skillProfile: 'workspace-default',
-    mcpProfile: 'workspace-memory',
+    skillProfile: 'chat-default',
+    mcpProfile: 'chat-memory',
     orchestratorRoles: [],
     createdAt,
     updatedAt: createdAt,
     lastMessageAt: createdAt,
     lastActivatedAt: null,
     orchestratorLease: createEmptyParticipantLease(),
-    palAssignments: [],
+    catAssignments: [],
     messages: [message],
-    assignedPals: [],
+    assignedCats: [],
   };
 
   return {
     channelId,
     payload: {
       ...structuredClone(payload),
-      workspace: {
-        ...structuredClone(payload.workspace),
-        channels: [channelSummary, ...structuredClone(payload.workspace.channels)],
+      chat: {
+        ...structuredClone(payload.chat),
+        channels: [channelSummary, ...structuredClone(payload.chat.channels)],
         selectedChannelId: channelId,
         selectedChannel,
       },
@@ -260,8 +260,8 @@ function appendOptimisticUserMessage(
 ): AppShellPayload {
   const createdAt = new Date().toISOString();
   const next = structuredClone(payload);
-  const selectedChannel = next.workspace.selectedChannel;
-  const channelSummary = next.workspace.channels.find((channel) => channel.id === channelId);
+  const selectedChannel = next.chat.selectedChannel;
+  const channelSummary = next.chat.channels.find((channel) => channel.id === channelId);
 
   if (!selectedChannel || selectedChannel.id !== channelId || !channelSummary) {
     throw new Error('No chat is available for optimistic updates.');
@@ -276,7 +276,7 @@ function appendOptimisticUserMessage(
 
   channelSummary.lastMessageAt = createdAt;
   channelSummary.unreadCount = 0;
-  next.workspace.selectedChannelId = channelId;
+  next.chat.selectedChannelId = channelId;
   next.metadata.generatedAt = createdAt;
 
   return next;
@@ -432,11 +432,11 @@ export default function App() {
 
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [composerDraft, setComposerDraft] = useState('');
-  const [palForm, setPalForm] = useState<PalFormState>(emptyPalForm);
+  const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [busy, setBusy] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [addPalOpen, setAddPalOpen] = useState(false);
-  const [addPalTab, setAddPalTab] = useState<'existing' | 'new'>('existing');
+  const [addCatOpen, setAddCatOpen] = useState(false);
+  const [addCatTab, setAddCatTab] = useState<'existing' | 'new'>('existing');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     readSidebarOpenPreference(typeof window === 'undefined' ? null : window.localStorage),
@@ -461,14 +461,14 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const channelPlusMenuRef = useRef<HTMLDivElement>(null);
   const channelFileInputRef = useRef<HTMLInputElement>(null);
-  const readyWorkspace = state.status === 'ready' ? state.payload.workspace : null;
-  const selectedChannelId = readyWorkspace?.selectedChannelId ?? null;
-  const selectedChannelViewId = readyWorkspace?.selectedChannel?.id ?? null;
+  const readyChat = state.status === 'ready' ? state.payload.chat : null;
+  const selectedChannelId = readyChat?.selectedChannelId ?? null;
+  const selectedChannelViewId = readyChat?.selectedChannel?.id ?? null;
   const routeChannelExists = Boolean(
-    routeChannelId && readyWorkspace?.channels.some((channel) => channel.id === routeChannelId),
+    routeChannelId && readyChat?.channels.some((channel) => channel.id === routeChannelId),
   );
   const routeChannelTitle = routeChannelId
-    ? readyWorkspace?.channels.find((channel) => channel.id === routeChannelId)?.title ?? null
+    ? readyChat?.channels.find((channel) => channel.id === routeChannelId)?.title ?? null
     : null;
 
   useEffect(() => {
@@ -590,9 +590,9 @@ export default function App() {
       return;
     }
 
-    navigate(resolveDefaultChatPath(state.payload.workspace.selectedChannelId));
+    navigate(resolveDefaultChatPath(state.payload.chat.selectedChannelId));
     setFeedback('');
-    setAddPalOpen(false);
+    setAddCatOpen(false);
   }
 
   function onToggleSidebar(): void {
@@ -621,7 +621,7 @@ export default function App() {
   function onSelect(channelId: string): void {
     navigate(buildChannelPath(channelId));
     setFeedback('');
-    setAddPalOpen(false);
+    setAddCatOpen(false);
     setChannelFiles([]);
     setChannelPlusMenuOpen(false);
   }
@@ -629,13 +629,13 @@ export default function App() {
   async function onDeleteChannel(channelId: string): Promise<void> {
     setBusy(`channel:delete:${channelId}`);
     try {
-      const payload = await deleteWorkspaceChannel(channelId);
+      const payload = await deleteChatChannel(channelId);
       startTransition(() => {
         setState({ status: 'ready', payload });
-        setAddPalOpen(false);
+        setAddCatOpen(false);
         setFeedback('');
       });
-      navigate(resolveDefaultChatPath(payload.workspace.selectedChannelId));
+      navigate(resolveDefaultChatPath(payload.chat.selectedChannelId));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
     } finally {
@@ -643,19 +643,19 @@ export default function App() {
     }
   }
 
-  async function onCreatePal(event: FormEvent<HTMLFormElement>): Promise<void> {
+  async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    setBusy('pal:create');
+    setBusy('cat:create');
     try {
-      const payload = await createGlobalPal({
-        name: palForm.name,
-        provider: palForm.provider,
-        instance: palForm.instance || undefined,
-        model: palForm.model || undefined,
+      const payload = await createGlobalCat({
+        name: catForm.name,
+        provider: catForm.provider,
+        instance: catForm.instance || undefined,
+        model: catForm.model || undefined,
       });
       startTransition(() => {
         setState({ status: 'ready', payload });
-        setPalForm(emptyPalForm());
+        setCatForm(emptyCatForm());
         setFeedback('Cat saved.');
       });
     } catch (error) {
@@ -665,42 +665,42 @@ export default function App() {
     }
   }
 
-  async function onCreateAndAssignPal(event: FormEvent<HTMLFormElement>): Promise<void> {
+  async function onCreateAndAssignCat(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (state.status !== 'ready') return;
-    const channelId = state.payload.workspace.selectedChannelId;
+    const channelId = state.payload.chat.selectedChannelId;
     if (!channelId) return;
 
-    setBusy('pal:create-assign');
+    setBusy('cat:create-assign');
     try {
-      const trimmedName = palForm.name.trim();
-      const previousIds = new Set(state.payload.workspace.pals.map((p) => p.id));
-      const created = await createGlobalPal({
+      const trimmedName = catForm.name.trim();
+      const previousIds = new Set(state.payload.chat.cats.map((p) => p.id));
+      const created = await createGlobalCat({
         name: trimmedName,
-        provider: palForm.provider,
-        instance: palForm.instance || undefined,
-        model: palForm.model || undefined,
+        provider: catForm.provider,
+        instance: catForm.instance || undefined,
+        model: catForm.model || undefined,
       });
       startTransition(() => setState({ status: 'ready', payload: created }));
 
-      const newPal = created.workspace.pals.find((p) => !previousIds.has(p.id));
-      if (!newPal) {
-        setPalForm(emptyPalForm());
+      const newCat = created.chat.cats.find((p) => !previousIds.has(p.id));
+      if (!newCat) {
+        setCatForm(emptyCatForm());
         setFeedback('Cat created. Open "Choose existing" to assign it.');
         setBusy('');
         return;
       }
 
-      const assigned = await assignPalToWorkspaceChannel(channelId, {
-        palId: newPal.id,
-        provider: newPal.defaultExecutionTarget.provider,
-        instance: newPal.defaultExecutionTarget.instance ?? undefined,
-        model: newPal.defaultExecutionTarget.model ?? undefined,
+      const assigned = await assignCatToChannelApi(channelId, {
+        catId: newCat.id,
+        provider: newCat.defaultExecutionTarget.provider,
+        instance: newCat.defaultExecutionTarget.instance ?? undefined,
+        model: newCat.defaultExecutionTarget.model ?? undefined,
       });
       startTransition(() => {
         setState({ status: 'ready', payload: assigned });
-        setPalForm(emptyPalForm());
-        setAddPalOpen(false);
+        setCatForm(emptyCatForm());
+        setAddCatOpen(false);
         setFeedback('');
       });
     } catch (error) {
@@ -710,18 +710,18 @@ export default function App() {
     }
   }
 
-  async function onAssignExistingPal(pal: WorkspacePal): Promise<void> {
+  async function onAssignExistingCat(cat: ChatCat): Promise<void> {
     if (state.status !== 'ready') return;
-    const channelId = state.payload.workspace.selectedChannelId;
+    const channelId = state.payload.chat.selectedChannelId;
     if (!channelId) return;
 
-    setBusy(`pal:assign:${pal.id}`);
+    setBusy(`cat:assign:${cat.id}`);
     try {
-      const payload = await assignPalToWorkspaceChannel(channelId, {
-        palId: pal.id,
-        provider: pal.defaultExecutionTarget.provider,
-        instance: pal.defaultExecutionTarget.instance ?? undefined,
-        model: pal.defaultExecutionTarget.model ?? undefined,
+      const payload = await assignCatToChannelApi(channelId, {
+        catId: cat.id,
+        provider: cat.defaultExecutionTarget.provider,
+        instance: cat.defaultExecutionTarget.instance ?? undefined,
+        model: cat.defaultExecutionTarget.model ?? undefined,
       });
       startTransition(() => {
         setState({ status: 'ready', payload });
@@ -734,14 +734,14 @@ export default function App() {
     }
   }
 
-  async function onRemoveAssignedPal(pal: WorkspacePal): Promise<void> {
+  async function onRemoveAssignedCat(cat: ChatCat): Promise<void> {
     if (state.status !== 'ready') return;
-    const channelId = state.payload.workspace.selectedChannelId;
+    const channelId = state.payload.chat.selectedChannelId;
     if (!channelId) return;
 
-    setBusy(`pal:remove:${pal.id}`);
+    setBusy(`cat:remove:${cat.id}`);
     try {
-      const payload = await removePalFromWorkspaceChannel(channelId, pal.id);
+      const payload = await removeCatFromChannelApi(channelId, cat.id);
       startTransition(() => {
         setState({ status: 'ready', payload });
         setFeedback('');
@@ -776,7 +776,7 @@ export default function App() {
     navigate(NEW_CHAT_PATH);
     setComposerDraft('');
     setFeedback('');
-    setAddPalOpen(false);
+    setAddCatOpen(false);
     setPlusMenuOpen(false);
     setDraftCwd(null);
     setDraftCatIds([]);
@@ -816,7 +816,7 @@ export default function App() {
     const wasDraftingNewChat = showingNewChatDraft;
     let payload = initialPayload;
     let rollbackPayload = initialPayload;
-    let channelId = wasDraftingNewChat ? '' : initialPayload.workspace.selectedChannelId;
+    let channelId = wasDraftingNewChat ? '' : initialPayload.chat.selectedChannelId;
     let rollbackPath = wasDraftingNewChat ? NEW_CHAT_PATH : location.pathname;
 
     setBusy('message:send');
@@ -829,26 +829,26 @@ export default function App() {
         setComposerDraft('');
         navigate(buildChannelPath(optimisticDraft.channelId), { replace: true });
 
-        const createdPayload = await createWorkspaceChannel({
-          title: createDraftChannelTitle(body, initialPayload.workspace.channels.length),
+        const createdPayload = await createChatChannel({
+          title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
           topic: createDraftChannelTopic(body),
           skipBossCatGreeting: true,
           repoPath: draftCwd ?? undefined,
         });
-        channelId = createdPayload.workspace.selectedChannelId;
+        channelId = createdPayload.chat.selectedChannelId;
         if (!channelId) {
           throw new Error('No chat is available for sending messages.');
         }
 
         let latestPayload = createdPayload;
-        for (const palId of draftCatIds) {
-          const pal = initialPayload.workspace.pals.find((p) => p.id === palId);
-          if (pal) {
-            latestPayload = await assignPalToWorkspaceChannel(channelId, {
-              palId: pal.id,
-              provider: pal.defaultExecutionTarget.provider,
-              instance: pal.defaultExecutionTarget.instance ?? undefined,
-              model: pal.defaultExecutionTarget.model ?? undefined,
+        for (const catId of draftCatIds) {
+          const cat = initialPayload.chat.cats.find((p) => p.id === catId);
+          if (cat) {
+            latestPayload = await assignCatToChannelApi(channelId, {
+              catId: cat.id,
+              provider: cat.defaultExecutionTarget.provider,
+              instance: cat.defaultExecutionTarget.instance ?? undefined,
+              model: cat.defaultExecutionTarget.model ?? undefined,
             });
           }
         }
@@ -871,8 +871,8 @@ export default function App() {
         throw new Error('No chat is available for sending messages.');
       }
 
-      if (!payload.workspace.selectedChannel?.orchestratorLease.sessionId) {
-        const activation = await activateWorkspaceChannel(channelId);
+      if (!payload.chat.selectedChannel?.orchestratorLease.sessionId) {
+        const activation = await activateChatChannel(channelId);
         rollbackPayload = activation.appShell;
       }
 
@@ -884,7 +884,7 @@ export default function App() {
         messageBody = `[Attached files in working directory:]\n${refs}\n\n${body}`;
       }
 
-      const dispatch = await sendWorkspaceMessage(channelId, { body: messageBody });
+      const dispatch = await sendChatMessage(channelId, { body: messageBody });
       setState({ status: 'ready', payload: dispatch.appShell });
       setComposerDraft('');
       setFeedback('');
@@ -949,31 +949,31 @@ export default function App() {
     setFolderBrowserOpen(false);
   }
 
-  function toggleDraftCat(palId: string): void {
+  function toggleDraftCat(catId: string): void {
     setDraftCatIds((prev) =>
-      prev.includes(palId) ? prev.filter((id) => id !== palId) : [...prev, palId],
+      prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId],
     );
   }
 
-  async function onCreateAndDraftPal(event: FormEvent<HTMLFormElement>): Promise<void> {
+  async function onCreateAndDraftCat(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (state.status !== 'ready') return;
-    setBusy('pal:create-assign');
+    setBusy('cat:create-assign');
     try {
-      const previousIds = new Set(state.payload.workspace.pals.map((p) => p.id));
-      const created = await createGlobalPal({
-        name: palForm.name.trim(),
-        provider: palForm.provider,
-        instance: palForm.instance || undefined,
-        model: palForm.model || undefined,
+      const previousIds = new Set(state.payload.chat.cats.map((p) => p.id));
+      const created = await createGlobalCat({
+        name: catForm.name.trim(),
+        provider: catForm.provider,
+        instance: catForm.instance || undefined,
+        model: catForm.model || undefined,
       });
       startTransition(() => setState({ status: 'ready', payload: created }));
-      const newPal = created.workspace.pals.find((p) => !previousIds.has(p.id));
-      if (newPal) {
-        setDraftCatIds((prev) => [...prev, newPal.id]);
+      const newCat = created.chat.cats.find((p) => !previousIds.has(p.id));
+      if (newCat) {
+        setDraftCatIds((prev) => [...prev, newCat.id]);
       }
-      setPalForm(emptyPalForm());
-      setAddPalOpen(false);
+      setCatForm(emptyCatForm());
+      setAddCatOpen(false);
       setFeedback('');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to create cat.');
@@ -1023,42 +1023,42 @@ export default function App() {
     ? 'settings' : 'chats';
 
   const selectedChannel = routeChannelId
-    && payload.workspace.selectedChannel?.id === routeChannelId
-    ? payload.workspace.selectedChannel
+    && payload.chat.selectedChannel?.id === routeChannelId
+    ? payload.chat.selectedChannel
     : null;
 
-  const activeAssignedPals =
-    selectedChannel?.assignedPals.filter((pal) => pal.status === 'active') ?? [];
-  const activePalIds = new Set(activeAssignedPals.map((pal) => pal.palId));
-  const assignedPalIds = new Set(selectedChannel?.assignedPals.map((pal) => pal.palId) ?? []);
+  const activeAssignedCats =
+    selectedChannel?.assignedCats.filter((cat) => cat.status === 'active') ?? [];
+  const activeCatIds = new Set(activeAssignedCats.map((cat) => cat.catId));
+  const assignedCatIds = new Set(selectedChannel?.assignedCats.map((cat) => cat.catId) ?? []);
   const bossCatName = resolveBossCatName(payload) ?? 'Orchestrator';
-  const bossCatAvatarColor = payload.workspace.pals.find(
-    (pal) => pal.id === payload.workspace.bossCatId,
+  const bossCatAvatarColor = payload.chat.cats.find(
+    (cat) => cat.id === payload.chat.bossCatId,
   )?.avatarColor ?? null;
-  const showBossCatAvatar = Boolean(payload.workspace.bossCatId)
-    && !activeAssignedPals.some((pal) => pal.palId === payload.workspace.bossCatId);
-  const assignablePalCount = payload.workspace.pals.filter(
-    (pal) => pal.status === 'active' && pal.id !== payload.workspace.bossCatId,
+  const showBossCatAvatar = Boolean(payload.chat.bossCatId)
+    && !activeAssignedCats.some((cat) => cat.catId === payload.chat.bossCatId);
+  const assignableCatCount = payload.chat.cats.filter(
+    (cat) => cat.status === 'active' && cat.id !== payload.chat.bossCatId,
   ).length;
-  const selectablePals = payload.workspace.pals.filter(
-    (pal) =>
-      pal.status === 'active'
-      && pal.id !== payload.workspace.bossCatId,
+  const selectableCats = payload.chat.cats.filter(
+    (cat) =>
+      cat.status === 'active'
+      && cat.id !== payload.chat.bossCatId,
   );
-  const draftPalIds = new Set(draftCatIds);
+  const draftCatIdSet = new Set(draftCatIds);
   const hasConversationStarted =
     selectedChannel?.messages.some((message) => message.senderKind !== 'system') ?? false;
 
-  const palCreationForm = (
+  const catCreationForm = (
     <form
       className="stackForm"
       onSubmit={(event) => {
         if (surface === 'settings') {
-          void onCreatePal(event);
+          void onCreateCat(event);
         } else if (showingNewChatDraft) {
-          void onCreateAndDraftPal(event);
+          void onCreateAndDraftCat(event);
         } else {
-          void onCreateAndAssignPal(event);
+          void onCreateAndAssignCat(event);
         }
       }}
     >
@@ -1066,18 +1066,18 @@ export default function App() {
         <span>Name</span>
         <input
           className="textInput"
-          value={palForm.name}
-          onChange={(event) => setPalForm({ ...palForm, name: event.target.value })}
+          value={catForm.name}
+          onChange={(event) => setCatForm({ ...catForm, name: event.target.value })}
           placeholder="Ops reviewer"
         />
       </label>
       <ProviderModelFields
-        provider={palForm.provider}
-        instance={palForm.instance}
-        model={palForm.model}
+        provider={catForm.provider}
+        instance={catForm.instance}
+        model={catForm.model}
         onTargetChange={(target) =>
-          setPalForm({
-            ...palForm,
+          setCatForm({
+            ...catForm,
             provider: target.provider,
             instance: target.instance,
             model: target.model,
@@ -1085,10 +1085,10 @@ export default function App() {
       />
       <button
         className="primaryButton"
-        disabled={!palForm.name.trim() || !palForm.provider.trim() || !palForm.model.trim()}
+        disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim()}
         type="submit"
       >
-        {busy === 'pal:create' || busy === 'pal:create-assign'
+        {busy === 'cat:create' || busy === 'cat:create-assign'
           ? 'Saving...'
           : surface === 'settings'
             ? 'Save Cat'
@@ -1145,7 +1145,7 @@ export default function App() {
             </button>
           </nav>
 
-          <nav className="navGroup navGroupWorkspace" aria-label="Workspace">
+          <nav className="navGroup navGroupChat" aria-label="Chat">
             <button
               className={surface === 'chats' ? 'navItem navItemActive' : 'navItem'}
               onClick={onOpenChatsOverview}
@@ -1159,8 +1159,8 @@ export default function App() {
           <section className="recentSection">
             <p className="sectionLabel">Recents</p>
             <div className="recentList">
-              {payload.workspace.channels.length > 0 ? (
-                payload.workspace.channels.map((channel) => (
+              {payload.chat.channels.length > 0 ? (
+                payload.chat.channels.map((channel) => (
                   <article
                     key={channel.id}
                     className={
@@ -1218,7 +1218,7 @@ export default function App() {
             onClick={() => setAccountMenuOpen(!accountMenuOpen)}
             aria-label="Account menu"
           >
-            <div className="profileBadge">{palInitials(payload.ownerDisplayName)}</div>
+            <div className="profileBadge">{catInitials(payload.ownerDisplayName)}</div>
             <div className="sidebarFooterMeta">
               <strong>{payload.ownerDisplayName}</strong>
             </div>
@@ -1231,7 +1231,7 @@ export default function App() {
                 onClick={() => {
                   navigate('/settings/general');
                   setAccountMenuOpen(false);
-                  setAddPalOpen(false);
+                  setAddCatOpen(false);
                   setFeedback('');
                 }}
               >
@@ -1280,12 +1280,12 @@ export default function App() {
                       type="button"
                       className="toggleRow"
                       onClick={async () => {
-                        const show = !payload.workspace.showVerboseMessages;
+                        const show = !payload.chat.showVerboseMessages;
                         setState({
                           status: 'ready',
                           payload: {
                             ...payload,
-                            workspace: { ...payload.workspace, showVerboseMessages: show },
+                            chat: { ...payload.chat, showVerboseMessages: show },
                           },
                         });
                         try {
@@ -1296,14 +1296,14 @@ export default function App() {
                             status: 'ready',
                             payload: {
                               ...payload,
-                              workspace: { ...payload.workspace, showVerboseMessages: !show },
+                              chat: { ...payload.chat, showVerboseMessages: !show },
                             },
                           });
                           setFeedback(err instanceof Error ? err.message : 'Failed to update preference');
                         }
                       }}
                     >
-                      <span className={payload.workspace.showVerboseMessages ? 'toggleDot toggleDotOn' : 'toggleDot'} />
+                      <span className={payload.chat.showVerboseMessages ? 'toggleDot toggleDotOn' : 'toggleDot'} />
                       <span>Show verbose messages</span>
                     </button>
                   </div>
@@ -1322,80 +1322,80 @@ export default function App() {
                 <div className="viewIntro">
                   <h1>Cats</h1>
                   <p className="heroNote">
-                    Manage reusable cats across your workspace. Add them to any chat from the chat
+                    Manage reusable cats across your saved cats. Add them to any chat from the chat
                     view.
                   </p>
                   {feedback ? <p className="feedbackText">{feedback}</p> : null}
                 </div>
 
-                <div className="palsLayout">
+                <div className="catsLayout">
                   <section className="contentCard">
                     <div className="contentCardHeader">
                       <div>
                         <p className="sectionLabel">Registry</p>
-                        <h2>{payload.workspace.pals.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
+                        <h2>{payload.chat.cats.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
                       </div>
-                      <span className="countBadge">{payload.workspace.pals.length}</span>
+                      <span className="countBadge">{payload.chat.cats.length}</span>
                     </div>
 
-                    <div className="palList">
-                      {payload.workspace.pals.length > 0 ? (
-                        [...payload.workspace.pals]
+                    <div className="catList">
+                      {payload.chat.cats.length > 0 ? (
+                        [...payload.chat.cats]
                           .sort((a, b) => {
-                            const aIsBoss = a.id === payload.workspace.bossCatId ? 0 : 1;
-                            const bIsBoss = b.id === payload.workspace.bossCatId ? 0 : 1;
+                            const aIsBoss = a.id === payload.chat.bossCatId ? 0 : 1;
+                            const bIsBoss = b.id === payload.chat.bossCatId ? 0 : 1;
                             return aIsBoss - bIsBoss;
                           })
-                          .map((pal) => {
-                            const isBossCat = pal.id === payload.workspace.bossCatId;
+                          .map((cat) => {
+                            const isBossCat = cat.id === payload.chat.bossCatId;
                             return (
-                              <article key={pal.id} className="palCard">
-                                <div className="palCardTop">
+                              <article key={cat.id} className="catCard">
+                                <div className="catCardTop">
                                   <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                      <strong>{pal.name}</strong>
+                                      <strong>{cat.name}</strong>
                                       {isBossCat ? <span className="statusChip statusChipAccent">Boss Cat</span> : null}
                                     </div>
-                                    <p>{executionLabel(pal)}</p>
+                                    <p>{executionLabel(cat)}</p>
                                   </div>
                                   <div style={{ display: 'flex', alignSelf: 'start', alignItems: 'center', gap: 8 }}>
                                     <span
                                       className={
-                                        pal.status === 'active'
+                                        cat.status === 'active'
                                           ? 'statusChip statusChipReady'
                                           : 'statusChip statusChipMuted'
                                       }
                                     >
-                                      {pal.status}
+                                      {cat.status}
                                     </span>
                                     {!isBossCat ? (
                                       <button
                                         className="chromeButton"
                                         type="button"
-                                        disabled={busy === `pal:delete:${pal.id}`}
+                                        disabled={busy === `cat:delete:${cat.id}`}
                                         onClick={async () => {
-                                          setBusy(`pal:delete:${pal.id}`);
+                                          setBusy(`cat:delete:${cat.id}`);
                                           setFeedback('');
                                           try {
-                                            const next = await deleteGlobalPal(pal.id);
+                                            const next = await deleteGlobalCat(cat.id);
                                             setState({ status: 'ready', payload: next });
-                                            setFeedback(`${pal.name} deleted.`);
+                                            setFeedback(`${cat.name} deleted.`);
                                           } catch (err) {
                                             setFeedback(err instanceof Error ? err.message : 'Failed to delete cat');
                                           } finally {
                                             setBusy('');
                                           }
                                         }}
-                                        title={`Delete ${pal.name}`}
+                                        title={`Delete ${cat.name}`}
                                       >
                                         ✕
                                       </button>
                                     ) : null}
                                   </div>
                                 </div>
-                                <div className="palMeta">
-                                  <span>{pal.skillProfile ?? 'No skill profile'}</span>
-                                  <span>{pal.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
+                                <div className="catMeta">
+                                  <span>{cat.skillProfile ?? 'No skill profile'}</span>
+                                  <span>{cat.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
                                 </div>
                               </article>
                             );
@@ -1415,7 +1415,7 @@ export default function App() {
                         <h2>New cat</h2>
                       </div>
                     </div>
-                    {palCreationForm}
+                    {catCreationForm}
                   </section>
                 </div>
               </div>
@@ -1454,24 +1454,24 @@ export default function App() {
               <header className="channelTopBar">
                 <div className="rosterAvatars">
                   {showBossCatAvatar ? (
-                    <div className="palAvatar palAvatarOrch" title={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
-                      {palInitials(bossCatName)}
+                    <div className="catAvatar catAvatarOrch" title={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
+                      {catInitials(bossCatName)}
                     </div>
                   ) : null}
-                  {activeAssignedPals.map((pal) => (
-                    <div key={pal.palId} className="palAvatar" title={pal.name} style={pal.avatarColor ? { background: pal.avatarColor } : undefined}>
-                      {palInitials(pal.name)}
+                  {activeAssignedCats.map((cat) => (
+                    <div key={cat.catId} className="catAvatar" title={cat.name} style={cat.avatarColor ? { background: cat.avatarColor } : undefined}>
+                      {catInitials(cat.name)}
                     </div>
                   ))}
                 </div>
                 <button
-                  className="addPalButton"
+                  className="addCatButton"
                   type="button"
                   onClick={() => {
-                    setAddPalOpen(!addPalOpen);
-                    setAddPalTab('existing');
+                    setAddCatOpen(!addCatOpen);
+                    setAddCatTab('existing');
                     setFeedback('');
-                    setPalForm(emptyPalForm());
+                    setCatForm(emptyCatForm());
                   }}
                 >
                   +
@@ -1485,7 +1485,7 @@ export default function App() {
                   {hasConversationStarted ? (
                     <section className="transcriptPanel">
                       <div className="transcriptList">
-                        {selectedChannel.messages.filter((msg) => payload.workspace.showVerboseMessages || msg.metadata?.verbosity !== 'verbose').map((message) => (
+                        {selectedChannel.messages.filter((msg) => payload.chat.showVerboseMessages || msg.metadata?.verbosity !== 'verbose').map((message) => (
                           <article key={message.id} className={messageTone(message.senderKind)}>
                             {message.senderKind !== 'user' ? (
                               <div className="transcriptMessageTop">
@@ -1586,7 +1586,7 @@ export default function App() {
                           ) : null}
                         </div>
                         {(() => {
-                          const cwd = selectedChannel.repoPath ?? selectedChannel.workspaceCwd;
+                          const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
                           if (!cwd) return null;
                           return (
                             <span
@@ -1640,7 +1640,7 @@ export default function App() {
           } />
           <Route
             path="/chats"
-            element={<Navigate to={resolveDefaultChatPath(payload.workspace.selectedChannelId)} replace />}
+            element={<Navigate to={resolveDefaultChatPath(payload.chat.selectedChannelId)} replace />}
           />
           <Route path={NEW_CHAT_PATH} element={
             <div className="viewShell viewShellDraft">
@@ -1733,9 +1733,9 @@ export default function App() {
                               type="button"
                               onClick={() => {
                                 setPlusMenuOpen(false);
-                                setAddPalOpen(true);
-                                setAddPalTab('existing');
-                                setPalForm(emptyPalForm());
+                                setAddCatOpen(true);
+                                setAddCatTab('existing');
+                                setCatForm(emptyCatForm());
                                 setFeedback('');
                               }}
                             >
@@ -1768,7 +1768,7 @@ export default function App() {
                         </span>
                       ) : null}
                       {(() => {
-                        const showBoss = Boolean(payload.workspace.bossCatId);
+                        const showBoss = Boolean(payload.chat.bossCatId);
                         const totalCats = (showBoss ? 1 : 0) + draftCatIds.length;
                         if (totalCats === 0) return null;
                         return (
@@ -1776,32 +1776,32 @@ export default function App() {
                             {showBoss ? (
                               <div className="composerStackItem">
                                 <div
-                                  className="palAvatar composerStackAvatar"
+                                  className="catAvatar composerStackAvatar"
                                   title={bossCatName}
                                   style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}
                                 >
-                                  {palInitials(bossCatName)}
+                                  {catInitials(bossCatName)}
                                 </div>
                               </div>
                             ) : null}
                             {draftCatIds.map((id) => {
-                              const pal = payload.workspace.pals.find((p) => p.id === id);
-                              if (!pal) return null;
+                              const cat = payload.chat.cats.find((p) => p.id === id);
+                              if (!cat) return null;
                               return (
                                 <div key={id} className="composerStackItem">
                                   <div
-                                    className="palAvatar composerStackAvatar"
-                                    title={pal.name}
-                                    style={pal.avatarColor ? { background: pal.avatarColor } : undefined}
+                                    className="catAvatar composerStackAvatar"
+                                    title={cat.name}
+                                    style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
                                   >
-                                    {palInitials(pal.name)}
+                                    {catInitials(cat.name)}
                                   </div>
                                   {totalCats > 1 ? (
                                     <button
                                       className="composerStackRemove"
                                       type="button"
                                       onClick={() => toggleDraftCat(id)}
-                                      aria-label={`Remove ${pal.name}`}
+                                      aria-label={`Remove ${cat.name}`}
                                     >
                                       ×
                                     </button>
@@ -1850,32 +1850,32 @@ export default function App() {
         </Routes>
       </main>
 
-      {addPalOpen && (selectedChannel || showingNewChatDraft) ? (
-        <div className="addPalPanel">
-          <div className="addPalPanelHeader">
+      {addCatOpen && (selectedChannel || showingNewChatDraft) ? (
+        <div className="addCatPanel">
+          <div className="addCatPanelHeader">
             <h2>Add cat to chat</h2>
             <button
-              className="addPalClose"
+              className="addCatClose"
               type="button"
-              onClick={() => setAddPalOpen(false)}
+              onClick={() => setAddCatOpen(false)}
               aria-label="Close"
             >
               x
             </button>
           </div>
 
-          <div className="addPalTabs">
+          <div className="addCatTabs">
             <button
-              className={addPalTab === 'existing' ? 'addPalTab addPalTabActive' : 'addPalTab'}
+              className={addCatTab === 'existing' ? 'addCatTab addCatTabActive' : 'addCatTab'}
               type="button"
-              onClick={() => setAddPalTab('existing')}
+              onClick={() => setAddCatTab('existing')}
             >
               Choose existing
             </button>
             <button
-              className={addPalTab === 'new' ? 'addPalTab addPalTabActive' : 'addPalTab'}
+              className={addCatTab === 'new' ? 'addCatTab addCatTabActive' : 'addCatTab'}
               type="button"
-              onClick={() => setAddPalTab('new')}
+              onClick={() => setAddCatTab('new')}
             >
               Create new
             </button>
@@ -1883,36 +1883,36 @@ export default function App() {
 
           {feedback ? <p className="feedbackText">{feedback}</p> : null}
 
-          {addPalTab === 'existing' ? (
-            <div className="addPalList">
-              {selectablePals.length > 0 ? (
-                selectablePals.map((pal) => (
-                  <div key={pal.id} className="addPalItem">
+          {addCatTab === 'existing' ? (
+            <div className="addCatList">
+              {selectableCats.length > 0 ? (
+                selectableCats.map((cat) => (
+                  <div key={cat.id} className="addCatItem">
                     <div>
-                      <strong>{pal.name}</strong>
-                      <p>{executionLabel(pal)}</p>
+                      <strong>{cat.name}</strong>
+                      <p>{executionLabel(cat)}</p>
                     </div>
                     {(() => {
                       const included = showingNewChatDraft
-                        ? draftPalIds.has(pal.id)
-                        : assignedPalIds.has(pal.id);
-                      const isAdding = busy === `pal:assign:${pal.id}`;
-                      const isRemoving = busy === `pal:remove:${pal.id}`;
+                        ? draftCatIdSet.has(cat.id)
+                        : assignedCatIds.has(cat.id);
+                      const isAdding = busy === `cat:assign:${cat.id}`;
+                      const isRemoving = busy === `cat:remove:${cat.id}`;
                       return (
                         <button
-                          className={included ? 'addPalAssignButton addPalRemoveButton' : 'addPalAssignButton'}
+                          className={included ? 'addCatAssignButton addCatRemoveButton' : 'addCatAssignButton'}
                           type="button"
                           disabled={isAdding || isRemoving}
                           onClick={() => {
                             if (showingNewChatDraft) {
-                              toggleDraftCat(pal.id);
+                              toggleDraftCat(cat.id);
                               return;
                             }
                             if (included) {
-                              void onRemoveAssignedPal(pal);
+                              void onRemoveAssignedCat(cat);
                               return;
                             }
-                            void onAssignExistingPal(pal);
+                            void onAssignExistingCat(cat);
                           }}
                         >
                           {isAdding ? 'Adding...' : isRemoving ? 'Removing...' : included ? 'Remove' : 'Add'}
@@ -1924,7 +1924,7 @@ export default function App() {
               ) : (
                 <div className="emptyStateCard">
                   <p>
-                    {assignablePalCount === 0
+                    {assignableCatCount === 0
                       ? 'No other cats yet. Create one first.'
                       : 'All cats are already in this chat.'}
                   </p>
@@ -1932,7 +1932,7 @@ export default function App() {
               )}
             </div>
           ) : (
-            <div className="addPalCreate">{palCreationForm}</div>
+            <div className="addCatCreate">{catCreationForm}</div>
           )}
         </div>
       ) : null}
@@ -1955,7 +1955,7 @@ export default function App() {
             <div className="folderBrowserHeader">
               <div>
                 <h2 id="folder-browser-title">Select working directory</h2>
-                <p>Choose the folder that should become this chat&apos;s runtime workspace.</p>
+                <p>Choose the folder that should become this chat&apos;s working directory.</p>
               </div>
               <button
                 className="folderBrowserClose"
@@ -2060,3 +2060,7 @@ export default function App() {
     </div>
   );
 }
+
+
+
+

@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type {
-  ChannelPalAssignment,
+  ChannelCatAssignment,
   ExecutionTargetSummary,
   GlobalOrchestratorSummary,
   MemoryCheckpointSummary,
@@ -14,11 +14,11 @@ import type {
   RoomRoutingOutcome,
   RoomRoutingParticipantRef,
   RoomRoutingState,
-  WorkspaceCapabilities,
-  WorkspaceChannelState,
-  WorkspaceMessage,
-  WorkspacePal,
-  WorkspaceState,
+  ChatCapabilities,
+  ChatChannelState,
+  ChatMessage,
+  ChatCat,
+  ChatState,
 } from '../../../shared/app-shell.js';
 import type {
   ArchiveMetadataRecord,
@@ -33,9 +33,8 @@ import type {
   OwnerProfileRecord,
 } from '../../../core/types.js';
 import type { CoreStore } from '../../../core/store.js';
-import { isOpaqueChannelId } from '../../../shared/channelPaths.js';
 import {
-  createDefaultWorkspaceState,
+  createDefaultChatState,
   createEmptyExecutionLease,
   createEmptyMemoryCheckpoint,
 } from './defaults.js';
@@ -50,17 +49,17 @@ import {
 } from './roomRouting.js';
 import {
   createDefaultCoreState,
-  createPalActorId,
+  createCatActorId,
 } from '../../../core/model.js';
 import { syncCoreStateWithWorkspace } from './coreProjection.js';
 
-export interface WorkspaceStore extends CoreStore {
-  read(): Promise<WorkspaceState>;
-  write(state: WorkspaceState): Promise<WorkspaceState>;
+export interface ChatStore extends CoreStore {
+  read(): Promise<ChatState>;
+  write(state: ChatState): Promise<ChatState>;
 }
 
-interface PersistedWorkspaceSnapshot extends CatsCoreState {
-  workspace: WorkspaceState;
+interface PersistedChatSnapshot extends CatsCoreState {
+  chat: ChatState;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -101,50 +100,27 @@ function normalizeMetadata(value: unknown): CoreRecordMetadata {
 
 function normalizeExecutionTarget(
   rawTarget: unknown,
-  legacyOwner: Record<string, unknown> | null,
   fallbackTarget: ExecutionTargetSummary,
 ): ExecutionTargetSummary {
   const targetRecord = asRecord(rawTarget);
   const provider =
-    readString(targetRecord?.provider, readString(legacyOwner?.provider, fallbackTarget.provider)).trim()
+    readString(targetRecord?.provider, fallbackTarget.provider).trim()
     || fallbackTarget.provider;
 
   return {
     provider,
-    instance:
-      readNullableString(targetRecord?.instance)
-      ?? readNullableString(legacyOwner?.instance)
-      ?? fallbackTarget.instance,
-    model:
-      readNullableString(targetRecord?.model)
-      ?? readNullableString(legacyOwner?.model)
-      ?? fallbackTarget.model,
+    instance: readNullableString(targetRecord?.instance) ?? fallbackTarget.instance,
+    model: readNullableString(targetRecord?.model) ?? fallbackTarget.model,
   };
 }
 
 function normalizeExecutionLease(
   rawLease: unknown,
-  legacyOwner: Record<string, unknown> | null,
   fallbackTarget: ExecutionTargetSummary,
 ): ParticipantExecutionLease {
   const defaultLease = createEmptyExecutionLease();
   const leaseRecord = asRecord(rawLease);
-  const legacySession = asRecord(legacyOwner?.session);
-  const rawLeaseStatus = readString(leaseRecord?.status);
-  const source = leaseRecord && (
-    leaseRecord.sessionId !== undefined
-    || leaseRecord.cwd !== undefined
-    || leaseRecord.lastError !== undefined
-    || rawLeaseStatus === 'not_started'
-    || rawLeaseStatus === 'initializing'
-    || rawLeaseStatus === 'ready'
-    || rawLeaseStatus === 'error'
-    || rawLeaseStatus === 'closed'
-    || rawLeaseStatus === 'removed'
-  )
-    ? leaseRecord
-    : (legacySession ?? leaseRecord);
-  const rawStatus = readString(source?.status, defaultLease.status);
+  const rawStatus = readString(leaseRecord?.status, defaultLease.status);
   const status = (
     rawStatus === 'ready'
     || rawStatus === 'initializing'
@@ -157,20 +133,14 @@ function normalizeExecutionLease(
     : defaultLease.status;
 
   return {
-    sessionId: readNullableString(source?.sessionId),
+    sessionId: readNullableString(leaseRecord?.sessionId),
     status,
-    cwd: readNullableString(source?.cwd),
-    lastError: readNullableString(source?.lastError),
-    provider:
-      readNullableString(source?.provider)
-      ?? readNullableString(legacyOwner?.provider)
-      ?? fallbackTarget.provider,
-    model:
-      readNullableString(source?.model)
-      ?? readNullableString(legacyOwner?.model)
-      ?? fallbackTarget.model,
-    startedAt: readNullableString(source?.startedAt),
-    lastUsedAt: readNullableString(source?.lastUsedAt),
+    cwd: readNullableString(leaseRecord?.cwd),
+    lastError: readNullableString(leaseRecord?.lastError),
+    provider: readNullableString(leaseRecord?.provider) ?? fallbackTarget.provider,
+    model: readNullableString(leaseRecord?.model) ?? fallbackTarget.model,
+    startedAt: readNullableString(leaseRecord?.startedAt),
+    lastUsedAt: readNullableString(leaseRecord?.lastUsedAt),
   };
 }
 
@@ -187,13 +157,11 @@ function normalizeMemoryCheckpoint(rawMemory: unknown): MemoryCheckpointSummary 
 
 function normalizeExecutionState(
   rawExecution: unknown,
-  legacyOwner: Record<string, unknown> | null,
   fallbackTarget: ExecutionTargetSummary,
 ): ParticipantExecutionState {
   const executionRecord = asRecord(rawExecution);
   const target = normalizeExecutionTarget(
     executionRecord?.target ?? rawExecution,
-    legacyOwner,
     fallbackTarget,
   );
 
@@ -201,13 +169,12 @@ function normalizeExecutionState(
     target,
     lease: normalizeExecutionLease(
       executionRecord?.lease ?? rawExecution,
-      legacyOwner,
       target,
     ),
   };
 }
 
-function normalizeMessage(rawMessage: unknown, channelId: string): WorkspaceMessage {
+function normalizeMessage(rawMessage: unknown, channelId: string): ChatMessage {
   const messageRecord = asRecord(rawMessage);
   const usageRecord = asRecord(messageRecord?.usage);
   const rawSenderKind = readString(messageRecord?.senderKind, 'system');
@@ -246,7 +213,7 @@ function normalizeRoomRoutingParticipant(rawParticipant: unknown): RoomRoutingPa
   }
 
   const rawKind = readString(participantRecord.participantKind);
-  const participantKind = rawKind === 'pal' ? 'pal' : rawKind === 'orchestrator'
+  const participantKind = rawKind === 'cat' ? 'cat' : rawKind === 'orchestrator'
     ? 'orchestrator'
     : null;
 
@@ -333,7 +300,7 @@ function normalizeRoomRoutingOutcome(rawOutcome: unknown): RoomRoutingOutcome | 
     turnId: readString(outcomeRecord.turnId, randomUUID()),
     mode: normalizeRoomRoutingMode(outcomeRecord.mode, 'boss_chat'),
     sourceMessageId: readString(outcomeRecord.sourceMessageId),
-    sourceSenderKind: sourceSenderKind as WorkspaceMessage['senderKind'],
+    sourceSenderKind: sourceSenderKind as ChatMessage['senderKind'],
     sourceSenderName: readString(outcomeRecord.sourceSenderName, 'Chat'),
     status: normalizeRoomRoutingTurnStatus(outcomeRecord.status, 'idle'),
     resolvedTargets: Array.isArray(outcomeRecord.resolvedTargets)
@@ -384,41 +351,40 @@ function normalizeRoomRouting(rawRoomRouting: unknown): RoomRoutingState {
   };
 }
 
-function normalizeWorkspacePal(rawPal: unknown): WorkspacePal | null {
-  const palRecord = asRecord(rawPal);
-  if (!palRecord) {
+function normalizeChatCat(rawCat: unknown): ChatCat | null {
+  const catRecord = asRecord(rawCat);
+  if (!catRecord) {
     return null;
   }
 
   const defaultExecutionTarget = normalizeExecutionTarget(
-    palRecord.defaultExecutionTarget,
-    palRecord,
+    catRecord.defaultExecutionTarget,
     { provider: 'claude', instance: null, model: null },
   );
-  const rawStatus = readString(palRecord.status, 'active');
+  const rawStatus = readString(catRecord.status, 'active');
 
   return {
-    id: readString(palRecord.id, randomUUID()),
-    name: readString(palRecord.name, 'Pal'),
-    roles: readStringArray(palRecord.roles),
-    skillProfile: readNullableString(palRecord.skillProfile),
-    mcpProfile: readNullableString(palRecord.mcpProfile),
+    id: readString(catRecord.id, randomUUID()),
+    name: readString(catRecord.name, 'Cat'),
+    roles: readStringArray(catRecord.roles),
+    skillProfile: readNullableString(catRecord.skillProfile),
+    mcpProfile: readNullableString(catRecord.mcpProfile),
     status: rawStatus === 'archived' ? 'archived' : 'active',
-    createdAt: readString(palRecord.createdAt, new Date().toISOString()),
-    updatedAt: readString(palRecord.updatedAt, new Date().toISOString()),
-    archivedAt: readNullableString(palRecord.archivedAt),
-    avatarColor: readNullableString(palRecord.avatarColor),
+    createdAt: readString(catRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(catRecord.updatedAt, new Date().toISOString()),
+    archivedAt: readNullableString(catRecord.archivedAt),
+    avatarColor: readNullableString(catRecord.avatarColor),
     defaultExecutionTarget,
-    memory: asRecord(palRecord.memory)
-      ? normalizeMemoryCheckpoint(palRecord.memory)
+    memory: asRecord(catRecord.memory)
+      ? normalizeMemoryCheckpoint(catRecord.memory)
       : createEmptyMemoryCheckpoint(),
   };
 }
 
 function normalizeChannelAssignment(
   rawAssignment: unknown,
-  fallbackPal: WorkspacePal,
-): ChannelPalAssignment | null {
+  fallbackCat: ChatCat,
+): ChannelCatAssignment | null {
   const assignmentRecord = asRecord(rawAssignment);
   if (!assignmentRecord) {
     return null;
@@ -427,12 +393,11 @@ function normalizeChannelAssignment(
   const rawStatus = readString(assignmentRecord.status, 'active');
   const execution = normalizeExecutionState(
     assignmentRecord.execution,
-    assignmentRecord,
-    fallbackPal.defaultExecutionTarget,
+    fallbackCat.defaultExecutionTarget,
   );
 
   return {
-    palId: readString(assignmentRecord.palId, fallbackPal.id),
+    catId: readString(assignmentRecord.catId, fallbackCat.id),
     status: rawStatus === 'removed' ? 'removed' : 'active',
     roles: readStringArray(assignmentRecord.roles),
     joinedAt: readString(assignmentRecord.joinedAt, new Date().toISOString()),
@@ -441,53 +406,10 @@ function normalizeChannelAssignment(
   };
 }
 
-function ensureLegacyPalFromMember(
-  rawMember: unknown,
-  palsById: Map<string, WorkspacePal>,
-): WorkspacePal | null {
-  const memberRecord = asRecord(rawMember);
-  if (!memberRecord) {
-    return null;
-  }
-
-  const palId = readString(memberRecord.id, randomUUID());
-  const existing = palsById.get(palId);
-  if (existing) {
-    return existing;
-  }
-
-  const execution = normalizeExecutionState(
-    memberRecord.execution ?? memberRecord,
-    memberRecord,
-    { provider: 'claude', instance: null, model: null },
-  );
-  const rawStatus = readString(memberRecord.status, 'active');
-
-  const pal: WorkspacePal = {
-    id: palId,
-    name: readString(memberRecord.name, 'Pal'),
-    roles: readStringArray(memberRecord.roles),
-    skillProfile: readNullableString(memberRecord.skillProfile),
-    mcpProfile: readNullableString(memberRecord.mcpProfile),
-    status: rawStatus === 'removed' ? 'archived' : 'active',
-    createdAt: readString(memberRecord.joinedAt, new Date().toISOString()),
-    updatedAt: readString(memberRecord.joinedAt, new Date().toISOString()),
-    archivedAt: readNullableString(memberRecord.leftAt),
-    avatarColor: readNullableString(memberRecord.avatarColor),
-    defaultExecutionTarget: execution.target,
-    memory: asRecord(memberRecord.memory)
-      ? normalizeMemoryCheckpoint(memberRecord.memory)
-      : createEmptyMemoryCheckpoint(),
-  };
-
-  palsById.set(pal.id, pal);
-  return pal;
-}
-
 function normalizeChannel(
   rawChannel: unknown,
-  palsById: Map<string, WorkspacePal>,
-): WorkspaceChannelState | null {
+  catsById: Map<string, ChatCat>,
+): ChatChannelState | null {
   const channelRecord = asRecord(rawChannel);
   if (!channelRecord) {
     return null;
@@ -509,43 +431,17 @@ function normalizeChannel(
     : 'manual';
   const channelId = readString(channelRecord.id, randomUUID());
 
-  const palAssignments = Array.isArray(channelRecord.palAssignments)
-    ? channelRecord.palAssignments
+  const catAssignments = Array.isArray(channelRecord.catAssignments)
+    ? channelRecord.catAssignments
         .map((assignment) => {
           const assignmentRecord = asRecord(assignment);
-          const palId = readString(assignmentRecord?.palId, '');
-          const fallbackPal = palId && palsById.has(palId)
-            ? palsById.get(palId) ?? null
+          const catId = readString(assignmentRecord?.catId, '');
+          const fallbackCat = catId && catsById.has(catId)
+            ? catsById.get(catId) ?? null
             : null;
-          return fallbackPal ? normalizeChannelAssignment(assignmentRecord, fallbackPal) : null;
+          return fallbackCat ? normalizeChannelAssignment(assignmentRecord, fallbackCat) : null;
         })
-        .filter((assignment): assignment is ChannelPalAssignment => assignment !== null)
-    : Array.isArray(channelRecord.members)
-      ? channelRecord.members
-          .map((member) => {
-            const pal = ensureLegacyPalFromMember(member, palsById);
-            if (!pal) {
-              return null;
-            }
-
-            const memberRecord = asRecord(member);
-            const execution = normalizeExecutionState(
-              memberRecord?.execution ?? memberRecord,
-              memberRecord,
-              pal.defaultExecutionTarget,
-            );
-            const rawMemberStatus = readString(memberRecord?.status, 'active');
-
-            return {
-              palId: pal.id,
-              status: rawMemberStatus === 'removed' ? 'removed' : 'active',
-              roles: readStringArray(memberRecord?.roles),
-              joinedAt: readString(memberRecord?.joinedAt, new Date().toISOString()),
-              leftAt: readNullableString(memberRecord?.leftAt),
-              execution,
-            };
-          })
-          .filter((assignment): assignment is ChannelPalAssignment => assignment !== null)
+        .filter((assignment): assignment is ChannelCatAssignment => assignment !== null)
       : [];
   const messages = Array.isArray(channelRecord.messages)
     ? channelRecord.messages.map((message) => normalizeMessage(message, channelId))
@@ -558,30 +454,29 @@ function normalizeChannel(
     status,
     unreadCount: readNumber(channelRecord.unreadCount),
     repoPath: readNullableString(channelRecord.repoPath),
-    workspaceCwd: readNullableString(channelRecord.workspaceCwd),
+    chatCwd: readNullableString(channelRecord.chatCwd),
     language: readNullableString(channelRecord.language),
     responseLanguage: readString(channelRecord.responseLanguage, 'en'),
     formationMode,
-    skillProfile: readNullableString(channelRecord.skillProfile) ?? 'workspace-default',
-    mcpProfile: readNullableString(channelRecord.mcpProfile) ?? 'workspace-memory',
+    skillProfile: readNullableString(channelRecord.skillProfile) ?? 'chat-default',
+    mcpProfile: readNullableString(channelRecord.mcpProfile) ?? 'chat-memory',
     orchestratorRoles: readStringArray(channelRecord.orchestratorRoles),
     createdAt: readString(channelRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(channelRecord.updatedAt, new Date().toISOString()),
     lastMessageAt: readNullableString(channelRecord.lastMessageAt),
     lastActivatedAt: readNullableString(channelRecord.lastActivatedAt),
     orchestratorLease: normalizeExecutionLease(
-      channelRecord.orchestratorLease ?? channelRecord.orchestratorSession,
-      null,
+      channelRecord.orchestratorLease,
       { provider: 'claude', instance: null, model: null },
     ),
-    palAssignments,
+    catAssignments,
     messages,
     roomRouting: normalizeRoomRouting(channelRecord.roomRouting),
   };
 }
 
-function normalizeCapabilities(rawCapabilities: unknown): WorkspaceCapabilities {
-  const fallback = createDefaultWorkspaceState().capabilities;
+function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilities {
+  const fallback = createDefaultChatState().capabilities;
   const capabilitiesRecord = asRecord(rawCapabilities);
 
   return {
@@ -601,11 +496,10 @@ function normalizeCapabilities(rawCapabilities: unknown): WorkspaceCapabilities 
 }
 
 function normalizeGlobalOrchestrator(rawOrchestrator: unknown): GlobalOrchestratorSummary {
-  const fallback = createDefaultWorkspaceState().globalOrchestrator;
+  const fallback = createDefaultChatState().globalOrchestrator;
   const orchestratorRecord = asRecord(rawOrchestrator);
   const executionTarget = normalizeExecutionTarget(
     orchestratorRecord?.executionTarget,
-    orchestratorRecord,
     fallback.executionTarget,
   );
 
@@ -830,7 +724,7 @@ function normalizeCoreOutcome(rawOutcome: unknown): CoreOrchestrationOutcomeReco
 
 function normalizeBotBinding(
   rawBinding: unknown,
-  workspace: WorkspaceState,
+  workspace: ChatState,
 ): BotBindingRecord | null {
   const bindingRecord = asRecord(rawBinding);
   if (!bindingRecord) {
@@ -851,7 +745,7 @@ function normalizeBotBinding(
     orchestratorActorId: readString(bindingRecord.orchestratorActorId),
     bossCatActorId:
       readNullableString(bindingRecord.bossCatActorId)
-      ?? (workspace.bossCatId ? createPalActorId(workspace.bossCatId) : null),
+      ?? (workspace.bossCatId ? createCatActorId(workspace.bossCatId) : null),
     status: rawStatus === 'disabled' ? 'disabled' : 'active',
     createdAt: readString(bindingRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(bindingRecord.updatedAt, new Date().toISOString()),
@@ -877,123 +771,100 @@ function normalizeArchiveMetadata(rawArchive: unknown): ArchiveMetadataRecord | 
     id: readString(archiveRecord.id, randomUUID()),
     sourceConversationId: readString(archiveRecord.sourceConversationId),
     sourceChannelId: readNullableString(archiveRecord.sourceChannelId),
-    exportFormat: 'workspace-channel-json',
+    exportFormat: 'chat-channel-json',
     status,
     lastExportedAt: readNullableString(archiveRecord.lastExportedAt),
     updatedAt: readString(archiveRecord.updatedAt, new Date().toISOString()),
   };
 }
 
-function normalizeWorkspaceState(rawState: unknown): WorkspaceState {
-  const fallback = createDefaultWorkspaceState();
+function looksLikeChatState(rawState: Record<string, unknown>): boolean {
+  return Array.isArray(rawState.cats)
+    && Array.isArray(rawState.channels)
+    && typeof rawState.selectedChannelId === 'string';
+}
+
+function normalizeChatState(rawState: unknown): ChatState {
+  const fallback = createDefaultChatState();
   const stateRecord = asRecord(rawState);
   if (!stateRecord) {
     return fallback;
   }
-  const workspaceRecord = asRecord(stateRecord.workspace);
-  const sourceRecord = workspaceRecord ?? stateRecord;
 
-  const normalizedPals = Array.isArray(sourceRecord.pals)
-    ? sourceRecord.pals
-        .map((pal) => normalizeWorkspacePal(pal))
-        .filter((pal): pal is WorkspacePal => pal !== null)
+  const normalizedCats = Array.isArray(stateRecord.cats)
+    ? stateRecord.cats
+        .map((cat) => normalizeChatCat(cat))
+        .filter((cat): cat is ChatCat => cat !== null)
     : [];
-  const palsById = new Map(normalizedPals.map((pal) => [pal.id, pal]));
-  const normalizedChannels = Array.isArray(sourceRecord.channels)
-    ? sourceRecord.channels
-        .map((channel) => normalizeChannel(channel, palsById))
-        .filter((channel): channel is WorkspaceChannelState => channel !== null)
+  const catsById = new Map(normalizedCats.map((cat) => [cat.id, cat]));
+  const normalizedChannels = Array.isArray(stateRecord.channels)
+    ? stateRecord.channels
+        .map((channel) => normalizeChannel(channel, catsById))
+        .filter((channel): channel is ChatChannelState => channel !== null)
     : fallback.channels;
-  const { channels, migratedChannelIds } = migrateLegacyChannelIds(normalizedChannels);
   const rawSelectedChannelId = readString(
-    sourceRecord.selectedChannelId,
-    channels[0]?.id ?? fallback.selectedChannelId,
+    stateRecord.selectedChannelId,
+    normalizedChannels[0]?.id ?? fallback.selectedChannelId,
   );
-  const selectedChannelId = migratedChannelIds.get(rawSelectedChannelId) ?? rawSelectedChannelId;
 
   return {
-    id: readString(sourceRecord.id, fallback.id),
-    name: readString(sourceRecord.name, fallback.name),
-    selectedChannelId: channels.some((channel) => channel.id === selectedChannelId)
-      ? selectedChannelId
-      : channels[0]?.id ?? fallback.selectedChannelId,
-    bossCatId: readNullableString(sourceRecord.bossCatId),
-    pals: Array.from(palsById.values()),
-    channels: channels.length > 0 ? channels : fallback.channels,
-    globalOrchestrator: normalizeGlobalOrchestrator(sourceRecord.globalOrchestrator),
-    capabilities: normalizeCapabilities(sourceRecord.capabilities),
-    showVerboseMessages: readBoolean(sourceRecord.showVerboseMessages, false),
+    id: readString(stateRecord.id, fallback.id),
+    name: readString(stateRecord.name, fallback.name),
+    selectedChannelId: normalizedChannels.some((channel) => channel.id === rawSelectedChannelId)
+      ? rawSelectedChannelId
+      : normalizedChannels[0]?.id ?? fallback.selectedChannelId,
+    bossCatId: readNullableString(stateRecord.bossCatId),
+    cats: Array.from(catsById.values()),
+    channels: normalizedChannels.length > 0 ? normalizedChannels : fallback.channels,
+    globalOrchestrator: normalizeGlobalOrchestrator(stateRecord.globalOrchestrator),
+    capabilities: normalizeCapabilities(stateRecord.capabilities),
+    showVerboseMessages: readBoolean(stateRecord.showVerboseMessages, false),
   };
 }
 
-function migrateLegacyChannelIds(
-  channels: WorkspaceChannelState[],
-): {
-  channels: WorkspaceChannelState[];
-  migratedChannelIds: Map<string, string>;
-} {
-  const migratedChannelIds = new Map<string, string>();
-  const assignedChannelIds = new Set<string>();
-  const nextChannels = channels.map((channel) => {
-    const needsOpaqueId = !isOpaqueChannelId(channel.id) || assignedChannelIds.has(channel.id);
-    const nextChannelId = needsOpaqueId ? randomUUID() : channel.id;
-    assignedChannelIds.add(nextChannelId);
-
-    if (nextChannelId === channel.id) {
-      return channel;
-    }
-
-    migratedChannelIds.set(channel.id, nextChannelId);
-    return {
-      ...channel,
-      id: nextChannelId,
-      messages: channel.messages.map((message) => ({
-        ...message,
-        channelId: nextChannelId,
-      })),
-    };
-  });
-
-  return {
-    channels: nextChannels,
-    migratedChannelIds,
-  };
-}
-
-function extractCoreState(snapshot: PersistedWorkspaceSnapshot): CatsCoreState {
-  const { workspace: _workspace, ...core } = snapshot;
+function extractCoreState(snapshot: PersistedChatSnapshot): CatsCoreState {
+  const { chat: _chat, ...core } = snapshot;
   return core;
 }
 
-function buildPersistedWorkspaceSnapshot(
-  workspace: WorkspaceState,
+function buildPersistedChatSnapshot(
+  chat: ChatState,
   core: CatsCoreState,
-): PersistedWorkspaceSnapshot {
+): PersistedChatSnapshot {
   return {
     ...structuredClone(core),
-    workspace: structuredClone(workspace),
+    chat: structuredClone(chat),
   };
 }
 
-async function writePersistedWorkspaceSnapshot(
+async function writePersistedChatSnapshot(
   filePath: string,
-  snapshot: PersistedWorkspaceSnapshot,
+  snapshot: PersistedChatSnapshot,
 ): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf-8');
 }
 
-function normalizePersistedWorkspaceSnapshot(rawState: unknown): PersistedWorkspaceSnapshot {
+function normalizePersistedChatSnapshot(rawState: unknown): PersistedChatSnapshot {
   const fallback = createDefaultCoreState();
   const stateRecord = asRecord(rawState);
-  const workspace = normalizeWorkspaceState(rawState);
-
-  if (!stateRecord || !asRecord(stateRecord.workspace)) {
-    return buildPersistedWorkspaceSnapshot(
-      workspace,
-      syncCoreStateWithWorkspace(workspace, fallback),
-    );
+  if (!stateRecord) {
+    const chat = createDefaultChatState();
+    return buildPersistedChatSnapshot(chat, syncCoreStateWithWorkspace(chat, fallback));
   }
+
+  const chatRecord = asRecord(stateRecord.chat);
+  if (!chatRecord) {
+    if (looksLikeChatState(stateRecord)) {
+      const chat = normalizeChatState(stateRecord);
+      return buildPersistedChatSnapshot(chat, syncCoreStateWithWorkspace(chat, fallback));
+    }
+
+    const chat = createDefaultChatState();
+    return buildPersistedChatSnapshot(chat, syncCoreStateWithWorkspace(chat, fallback));
+  }
+
+  const chat = normalizeChatState(chatRecord);
 
   const tasks = Array.isArray(stateRecord.tasks)
     ? stateRecord.tasks
@@ -1022,7 +893,7 @@ function normalizePersistedWorkspaceSnapshot(rawState: unknown): PersistedWorksp
     : [];
   const botBindings = Array.isArray(stateRecord.botBindings)
     ? stateRecord.botBindings
-        .map((binding) => normalizeBotBinding(binding, workspace))
+        .map((binding) => normalizeBotBinding(binding, chat))
         .filter((binding): binding is BotBindingRecord => binding !== null)
     : [];
   const archives = Array.isArray(stateRecord.archives)
@@ -1030,7 +901,7 @@ function normalizePersistedWorkspaceSnapshot(rawState: unknown): PersistedWorksp
         .map((archive) => normalizeArchiveMetadata(archive))
         .filter((archive): archive is ArchiveMetadataRecord => archive !== null)
     : [];
-  const normalized = syncCoreStateWithWorkspace(workspace, {
+  const normalized = syncCoreStateWithWorkspace(chat, {
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
     tasks,
@@ -1042,7 +913,7 @@ function normalizePersistedWorkspaceSnapshot(rawState: unknown): PersistedWorksp
     archives,
   });
 
-  return buildPersistedWorkspaceSnapshot(workspace, {
+  return buildPersistedChatSnapshot(chat, {
     ...normalized,
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     updatedAt: readString(stateRecord.updatedAt, normalized.updatedAt),
@@ -1056,80 +927,80 @@ function normalizePersistedWorkspaceSnapshot(rawState: unknown): PersistedWorksp
   });
 }
 
-export class FileWorkspaceStore implements WorkspaceStore {
+export class FileChatStore implements ChatStore {
   constructor(private readonly filePath: string) {}
 
-  private async readPersistedSnapshot(): Promise<PersistedWorkspaceSnapshot> {
+  private async readPersistedSnapshot(): Promise<PersistedChatSnapshot> {
     try {
       const raw = await readFile(this.filePath, 'utf-8');
-      return normalizePersistedWorkspaceSnapshot(JSON.parse(raw) as unknown);
+      return normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
     } catch {
-      const workspace = createDefaultWorkspaceState();
-      const core = syncCoreStateWithWorkspace(workspace, createDefaultCoreState());
-      const snapshot = buildPersistedWorkspaceSnapshot(workspace, core);
-      await writePersistedWorkspaceSnapshot(this.filePath, snapshot);
+      const chat = createDefaultChatState();
+      const core = syncCoreStateWithWorkspace(chat, createDefaultCoreState());
+      const snapshot = buildPersistedChatSnapshot(chat, core);
+      await writePersistedChatSnapshot(this.filePath, snapshot);
       return snapshot;
     }
   }
 
-  async read(): Promise<WorkspaceState> {
-    return structuredClone((await this.readPersistedSnapshot()).workspace);
+  async read(): Promise<ChatState> {
+    return structuredClone((await this.readPersistedSnapshot()).chat);
   }
 
   async readCore(): Promise<CatsCoreState> {
     return structuredClone(extractCoreState(await this.readPersistedSnapshot()));
   }
 
-  async write(state: WorkspaceState): Promise<WorkspaceState> {
+  async write(state: ChatState): Promise<ChatState> {
     const nextWorkspace = structuredClone(state);
     const nextCore = syncCoreStateWithWorkspace(nextWorkspace, await this.readCore());
-    await writePersistedWorkspaceSnapshot(
+    await writePersistedChatSnapshot(
       this.filePath,
-      buildPersistedWorkspaceSnapshot(nextWorkspace, nextCore),
+      buildPersistedChatSnapshot(nextWorkspace, nextCore),
     );
     return structuredClone(nextWorkspace);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
     const snapshot = await this.readPersistedSnapshot();
-    const nextWorkspace = structuredClone(snapshot.workspace);
+    const nextWorkspace = structuredClone(snapshot.chat);
     const nextCore = syncCoreStateWithWorkspace(nextWorkspace, structuredClone(state));
-    await writePersistedWorkspaceSnapshot(
+    await writePersistedChatSnapshot(
       this.filePath,
-      buildPersistedWorkspaceSnapshot(nextWorkspace, nextCore),
+      buildPersistedChatSnapshot(nextWorkspace, nextCore),
     );
     return structuredClone(nextCore);
   }
 }
 
-export class MemoryWorkspaceStore implements WorkspaceStore {
-  private workspaceState: WorkspaceState;
+export class MemoryChatStore implements ChatStore {
+  private chatState: ChatState;
   private coreState: CatsCoreState;
 
   constructor(
-    initialState: WorkspaceState | CatsCoreState | PersistedWorkspaceSnapshot = createDefaultWorkspaceState(),
+    initialState: ChatState | CatsCoreState | PersistedChatSnapshot = createDefaultChatState(),
   ) {
-    const snapshot = normalizePersistedWorkspaceSnapshot(initialState);
-    this.workspaceState = snapshot.workspace;
+    const snapshot = normalizePersistedChatSnapshot(initialState);
+    this.chatState = snapshot.chat;
     this.coreState = extractCoreState(snapshot);
   }
 
-  async read(): Promise<WorkspaceState> {
-    return structuredClone(this.workspaceState);
+  async read(): Promise<ChatState> {
+    return structuredClone(this.chatState);
   }
 
   async readCore(): Promise<CatsCoreState> {
     return structuredClone(this.coreState);
   }
 
-  async write(state: WorkspaceState): Promise<WorkspaceState> {
-    this.workspaceState = structuredClone(state);
-    this.coreState = syncCoreStateWithWorkspace(this.workspaceState, this.coreState);
-    return structuredClone(this.workspaceState);
+  async write(state: ChatState): Promise<ChatState> {
+    this.chatState = structuredClone(state);
+    this.coreState = syncCoreStateWithWorkspace(this.chatState, this.coreState);
+    return structuredClone(this.chatState);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
-    this.coreState = syncCoreStateWithWorkspace(this.workspaceState, structuredClone(state));
+    this.coreState = syncCoreStateWithWorkspace(this.chatState, structuredClone(state));
     return structuredClone(this.coreState);
   }
 }

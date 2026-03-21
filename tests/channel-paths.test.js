@@ -19,7 +19,7 @@ test('resolveDefaultChatPath falls back to the dedicated new-chat route', () => 
   assert.equal(resolveDefaultChatPath(undefined), NEW_CHAT_PATH);
 });
 
-test('resolveAppEntryPath routes setup and initialized workspaces to the correct entry page', () => {
+test('resolveAppEntryPath routes setup and initialized chats to the correct entry page', () => {
   assert.equal(resolveAppEntryPath(null), SETUP_PATH);
   assert.equal(resolveAppEntryPath(undefined), SETUP_PATH);
   assert.equal(resolveAppEntryPath('2026-03-19T00:00:00.000Z'), NEW_CHAT_PATH);
@@ -51,3 +51,4 @@ test('slugifyChannelLabel falls back to chat for non-Latin input', () => {
   assert.equal(slugifyChannelLabel('   '), 'chat');
   assert.equal(slugifyChannelLabel('Hello World'), 'hello-world');
 });
+

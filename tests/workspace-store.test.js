@@ -6,20 +6,20 @@ import test from 'node:test';
 
 import {
   appendMessage,
-  assignPalToChannel,
+  assignCatToChannel,
   createChannel,
-  createWorkspacePal,
+  createCat,
   deleteChannel,
   exportChannel,
   updateGlobalOrchestrator,
 } from '../dist-server/workspace/model.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
-import { FileWorkspaceStore } from '../dist-server/workspace/store.js';
+import { FileChatStore } from '../dist-server/workspace/store.js';
 
-test('FileWorkspaceStore persists configured channels, pals, assignments, and messages to disk', async () => {
+test('FileChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
-  const statePath = path.join(tempDir, 'workspace-state.json');
-  const store = new FileWorkspaceStore(statePath);
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const store = new FileChatStore(statePath);
 
   let state = await store.read();
   state = createChannel(
@@ -27,7 +27,7 @@ test('FileWorkspaceStore persists configured channels, pals, assignments, and me
     {
       title: 'Ops Radar',
       topic: 'Track runtime regressions before shipping the desktop shell.',
-      pals: [
+      cats: [
         {
           name: 'Agent-1',
           provider: 'claude',
@@ -39,7 +39,7 @@ test('FileWorkspaceStore persists configured channels, pals, assignments, and me
   );
 
   const channelId = state.selectedChannelId;
-  state = createWorkspacePal(
+  state = createCat(
     state,
     {
       name: 'Agent-2',
@@ -49,11 +49,11 @@ test('FileWorkspaceStore persists configured channels, pals, assignments, and me
     new Date('2026-03-11T00:00:00.000Z'),
   );
 
-  state = assignPalToChannel(
+  state = assignCatToChannel(
     state,
     channelId,
     {
-      palId: state.pals[0].id,
+      catId: state.cats[0].id,
       provider: 'gemini',
       roles: ['reviewer'],
     },
@@ -75,24 +75,24 @@ test('FileWorkspaceStore persists configured channels, pals, assignments, and me
 
   const rawState = await readFile(statePath, 'utf-8');
   const parsedState = JSON.parse(rawState);
-  const createdChannel = parsedState.workspace.channels.find((channel) => channel.id === channelId);
+  const createdChannel = parsedState.chat.channels.find((channel) => channel.id === channelId);
 
   assert.equal(parsedState.version, 2);
-  assert.match(parsedState.workspace.selectedChannelId, UUID_PATTERN);
-  assert.equal(parsedState.workspace.selectedChannelId, channelId);
-  assert.equal(parsedState.workspace.pals.length, 2);
+  assert.match(parsedState.chat.selectedChannelId, UUID_PATTERN);
+  assert.equal(parsedState.chat.selectedChannelId, channelId);
+  assert.equal(parsedState.chat.cats.length, 2);
   assert.ok(parsedState.ownerProfile);
   assert.ok(Array.isArray(parsedState.actors));
   assert.ok(Array.isArray(parsedState.conversations));
   assert.ok(Array.isArray(parsedState.tasks));
   assert.ok(createdChannel);
-  assert.equal(createdChannel.palAssignments.length, 2);
-  assert.equal(createdChannel.palAssignments[0].execution.target.provider, 'claude');
+  assert.equal(createdChannel.catAssignments.length, 2);
+  assert.equal(createdChannel.catAssignments[0].execution.target.provider, 'claude');
   assert.equal(createdChannel.messages.at(-1).mentions[0], 'Agent-1');
 });
 
-test('exportChannel returns assigned pals with the selected transcript', async () => {
-  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'));
+test('exportChannel returns assigned cats with the selected transcript', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   const initialState = await store.read();
   const state = createChannel(
     initialState,
@@ -106,127 +106,12 @@ test('exportChannel returns assigned pals with the selected transcript', async (
 
   assert.equal(payload.channel.id, state.selectedChannelId);
   assert.equal(payload.orchestrator.mode, 'global');
-  assert.ok(Array.isArray(payload.assignedPals));
+  assert.ok(Array.isArray(payload.assignedCats));
   assert.ok(Array.isArray(payload.channel.messages));
 });
 
-test('FileWorkspaceStore migrates legacy provider-bound records into global pals plus assignments', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
-  const statePath = path.join(tempDir, 'workspace-state.json');
-  await writeFile(
-    statePath,
-    `${JSON.stringify({
-      id: 'default',
-      name: 'Chat',
-      selectedChannelId: 'legacy-room',
-      channels: [
-        {
-          id: 'legacy-room',
-          title: 'Legacy Room',
-          topic: 'Migrate the old local state shape.',
-          status: 'configured',
-          unreadCount: 0,
-          repoPath: 'C:/repo/cats',
-          workspaceCwd: 'C:/repo/cats',
-          language: 'TypeScript',
-          responseLanguage: 'en',
-          formationMode: 'manual',
-          skillProfile: 'workspace-default',
-          mcpProfile: 'workspace-memory',
-          orchestratorRoles: ['coder'],
-          createdAt: '2026-03-11T00:00:00.000Z',
-          updatedAt: '2026-03-11T00:00:00.000Z',
-          lastMessageAt: '2026-03-11T00:00:00.000Z',
-          lastActivatedAt: null,
-          orchestratorSession: {
-            sessionId: 'orch-1',
-            status: 'ready',
-            cwd: 'C:/repo/cats',
-            lastError: null,
-          },
-          members: [
-            {
-              id: 'pal-1',
-              name: 'Agent-1',
-              provider: 'claude',
-              model: 'claude-sonnet',
-              roles: ['coder'],
-              skillProfile: null,
-              mcpProfile: null,
-              status: 'active',
-              joinedAt: '2026-03-11T00:00:00.000Z',
-              leftAt: null,
-              session: {
-                sessionId: 'pal-session-1',
-                status: 'ready',
-                cwd: 'C:/repo/cats',
-                lastError: null,
-              },
-            },
-          ],
-          messages: [
-            {
-              id: 'message-1',
-              channelId: 'legacy-room',
-              senderKind: 'user',
-              senderName: 'Owner',
-              body: 'Please migrate this chat id.',
-              mentions: [],
-              metadata: {},
-              usage: null,
-              createdAt: '2026-03-11T00:00:00.000Z',
-            },
-          ],
-        },
-      ],
-      globalOrchestrator: {
-        mode: 'global',
-        status: 'ready',
-        nextFocus: 'Keep the migration stable.',
-        entrypoints: ['web'],
-        referenceProjects: ['cats-runtime'],
-        notes: ['Legacy test fixture'],
-        provider: 'claude',
-        model: 'claude-opus-4-6',
-        systemPrompt: 'Coordinate the migration.',
-        skillProfile: 'aaif-a2a-default',
-        mcpProfile: 'workspace-memory',
-        telegramBotName: null,
-        updatedAt: '2026-03-11T00:00:00.000Z',
-      },
-      capabilities: {
-        multiChannel: true,
-        persistence: 'file-backed',
-        mentions: 'basic',
-        splitView: 'planned',
-        transcriptExport: true,
-        participantManagement: 'basic',
-        runtimeSessions: true,
-      },
-    }, null, 2)}\n`,
-    'utf-8',
-  );
-
-  const store = new FileWorkspaceStore(statePath);
-  const state = await store.read();
-  const migratedChannelId = state.channels[0].id;
-
-  assert.equal(state.pals.length, 1);
-  assert.match(migratedChannelId, UUID_PATTERN);
-  assert.notEqual(migratedChannelId, 'legacy-room');
-  assert.equal(state.selectedChannelId, migratedChannelId);
-  assert.equal(state.globalOrchestrator.executionTarget.provider, 'claude');
-  assert.equal(state.globalOrchestrator.executionTarget.model, 'claude-opus-4-6');
-  assert.equal(state.channels[0].orchestratorLease.sessionId, 'orch-1');
-  assert.equal(state.channels[0].messages[0].channelId, migratedChannelId);
-  assert.equal(state.channels[0].palAssignments[0].palId, 'pal-1');
-  assert.equal(state.channels[0].palAssignments[0].execution.target.provider, 'claude');
-  assert.equal(state.channels[0].palAssignments[0].execution.target.model, 'claude-sonnet');
-  assert.equal(state.channels[0].palAssignments[0].execution.lease.sessionId, 'pal-session-1');
-});
-
-test('WorkspaceStore exposes a derived Cats Core view that stays in sync with workspace state', async () => {
-  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'));
+test('ChatStore exposes a derived Cats Core view that stays in sync with chat state', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
 
   state = createChannel(
@@ -234,7 +119,7 @@ test('WorkspaceStore exposes a derived Cats Core view that stays in sync with wo
     {
       title: 'Owner Loop',
       topic: 'Validate owner approvals before dispatch.',
-      pals: [
+      cats: [
         {
           name: 'Planner',
           provider: 'claude',
@@ -247,10 +132,10 @@ test('WorkspaceStore exposes a derived Cats Core view that stays in sync with wo
 
   await store.write(state);
   const core = await store.readCore();
-  const workspace = await store.read();
+  const chatState = await store.read();
   const channelId = state.selectedChannelId;
 
-  assert.equal(workspace.selectedChannelId, channelId);
+  assert.equal(chatState.selectedChannelId, channelId);
   assert.equal(core.ownerProfile.actorId, 'actor-owner');
   assert.ok(core.actors.some((actor) => actor.kind === 'owner'));
   assert.ok(core.actors.some((actor) => actor.kind === 'orchestrator'));
@@ -259,11 +144,11 @@ test('WorkspaceStore exposes a derived Cats Core view that stays in sync with wo
   assert.ok(core.tasks.some((task) => task.conversationId === `conversation-channel-${channelId}`));
 });
 
-test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor', async () => {
-  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'));
+test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
 
-  state = createWorkspacePal(
+  state = createCat(
     state,
     {
       name: 'Smelly',
@@ -272,7 +157,7 @@ test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor',
     },
     new Date('2026-03-19T00:00:00.000Z'),
   );
-  state.bossCatId = state.pals[0].id;
+  state.bossCatId = state.cats[0].id;
   state = updateGlobalOrchestrator(
     state,
     {
@@ -289,17 +174,17 @@ test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor',
 
   assert.ok(telegramBinding);
   assert.equal(telegramBinding.botName, 'smelly_bot');
-  assert.equal(telegramBinding.bossCatActorId, `actor-pal-${state.bossCatId}`);
+  assert.equal(telegramBinding.bossCatActorId, `actor-cat-${state.bossCatId}`);
   assert.ok(bossCatActor);
   assert.ok(bossCatActor.roles.includes('boss_cat'));
 });
 
-test('FileWorkspaceStore preserves core-owned task, run, trace, checkpoint, and outcome records', async () => {
+test('FileChatStore preserves core-owned task, run, trace, checkpoint, and outcome records', async () => {
   const statePath = path.join(
     await mkdtemp(path.join(os.tmpdir(), 'cats-store-core-')),
-    'workspace-state.json',
+    'chat-state.json',
   );
-  const store = new FileWorkspaceStore(statePath);
+  const store = new FileChatStore(statePath);
   const initialCore = await store.readCore();
 
   await store.writeCore({
@@ -395,17 +280,17 @@ test('FileWorkspaceStore preserves core-owned task, run, trace, checkpoint, and 
     ],
   });
 
-  const reloadedStore = new FileWorkspaceStore(statePath);
-  let workspace = await reloadedStore.read();
-  workspace = createChannel(
-    workspace,
+  const reloadedStore = new FileChatStore(statePath);
+  let chatState = await reloadedStore.read();
+  chatState = createChannel(
+    chatState,
     {
       title: 'Chat Channel',
-      topic: 'Ensure workspace writes preserve core-owned records.',
+      topic: 'Ensure chat writes preserve core-owned records.',
     },
     new Date('2026-03-21T01:06:00.000Z'),
   );
-  await reloadedStore.write(workspace);
+  await reloadedStore.write(chatState);
 
   const reloadedCore = await reloadedStore.readCore();
 
@@ -420,8 +305,8 @@ test('FileWorkspaceStore preserves core-owned task, run, trace, checkpoint, and 
 });
 
 test('updateGlobalOrchestrator preserves the existing model when model is omitted', async () => {
-  const store = new FileWorkspaceStore(
-    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'),
+  const store = new FileChatStore(
+    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'),
   );
   let state = await store.read();
 
@@ -449,11 +334,11 @@ test('updateGlobalOrchestrator preserves the existing model when model is omitte
   assert.equal(state.globalOrchestrator.telegramBotName, 'smelly_bot');
 });
 
-test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', async () => {
-  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'));
+test('ChatStore rebinds Telegram bot bindings when the Boss Cat changes', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
 
-  state = createWorkspacePal(
+  state = createCat(
     state,
     {
       name: 'Smelly',
@@ -462,7 +347,7 @@ test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', a
     },
     new Date('2026-03-19T00:00:00.000Z'),
   );
-  const firstBossCatId = state.pals[0].id;
+  const firstBossCatId = state.cats[0].id;
   state.bossCatId = firstBossCatId;
   state = updateGlobalOrchestrator(
     state,
@@ -472,7 +357,7 @@ test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', a
     },
     new Date('2026-03-19T00:01:00.000Z'),
   );
-  state = createWorkspacePal(
+  state = createCat(
     state,
     {
       name: 'Bossy',
@@ -481,7 +366,7 @@ test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', a
     },
     new Date('2026-03-19T00:02:00.000Z'),
   );
-  const secondBossCatId = state.pals.find((pal) => pal.id !== firstBossCatId)?.id;
+  const secondBossCatId = state.cats.find((cat) => cat.id !== firstBossCatId)?.id;
   assert.ok(secondBossCatId);
 
   state.bossCatId = secondBossCatId;
@@ -493,7 +378,7 @@ test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', a
   const secondBossCatActor = core.actors.find((actor) => actor.sourceId === secondBossCatId);
 
   assert.ok(telegramBinding);
-  assert.equal(telegramBinding.bossCatActorId, `actor-pal-${secondBossCatId}`);
+  assert.equal(telegramBinding.bossCatActorId, `actor-cat-${secondBossCatId}`);
   assert.ok(firstBossCatActor);
   assert.ok(secondBossCatActor);
   assert.equal(firstBossCatActor.roles.includes('boss_cat'), false);
@@ -502,8 +387,8 @@ test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', a
 
 test('deleteChannel removes the selected chat and falls back to the next recent chat', async () => {
   let state = createChannel(
-    await new FileWorkspaceStore(
-      path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'),
+    await new FileChatStore(
+      path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'),
     ).read(),
     {
       title: 'First Chat',
@@ -535,8 +420,8 @@ test('deleteChannel removes the selected chat and falls back to the next recent 
 });
 
 test('createChannel defaults empty draft fields to a neutral new-chat label', async () => {
-  const initialState = await new FileWorkspaceStore(
-    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'),
+  const initialState = await new FileChatStore(
+    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'),
   ).read();
 
   const state = createChannel(
@@ -552,3 +437,5 @@ test('createChannel defaults empty draft fields to a neutral new-chat label', as
   assert.equal(state.channels[0].topic, '');
   assert.match(state.channels[0].id, UUID_PATTERN);
 });
+
+

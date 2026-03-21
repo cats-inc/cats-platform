@@ -24,7 +24,7 @@ archive metadata.
 - The suite must define shared records for identity, actors/resources,
   permissions, conversations, bot bindings, tasks/runs, approvals, owner
   profile, and archive metadata.
-- `Cats Chat` must use those shared records rather than treating channel or pal
+- `Cats Chat` must use those shared records rather than treating channel or cat
   state as a private, one-off schema.
 - `Cats Work` must use those shared records rather than inventing a separate
   work-only identity or conversation model.
@@ -70,3 +70,4 @@ archive metadata.
 ---
 
 *Last updated: 2026-03-16*
+

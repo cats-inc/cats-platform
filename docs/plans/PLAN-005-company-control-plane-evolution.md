@@ -18,7 +18,7 @@ governance, and outputs.
 ### Phase 1: Product Model and Compatibility Layer
 
 - [ ] Define the top-level product objects and their relationships.
-- [ ] Map current channels, pals, leases, and transcripts into a compatibility
+- [ ] Map current channels, cats, leases, and transcripts into a compatibility
       layer for the new model.
 - [ ] Introduce a store abstraction so the control-plane model can outgrow the
       current flat JSON shape safely.
@@ -31,7 +31,7 @@ that can wrap the current phase-2 shell.
 - [ ] Add goal, project, and work-item objects above channels.
 - [ ] Attach chat threads and transcripts to work instead of using channels as
       the only root object.
-- [ ] Extend the pal registry into a broader org or roster model with ownership
+- [ ] Extend the cat registry into a broader org or roster model with ownership
       context.
 
 **Deliverables**: chat remains functional, but operators can now navigate work
@@ -73,7 +73,7 @@ future modules.
 
 | Area | Action | Why |
 |------|--------|-----|
-| `src/shared/app-shell.ts` | Modify | Expand the shared product contract beyond channels and pals |
+| `src/shared/app-shell.ts` | Modify | Expand the shared product contract beyond channels and cats |
 | `src/workspace/` | Refactor | Split phase-2 chat state from future control-plane domain state |
 | `src/server.ts` and route modules | Modify | Add higher-level operator APIs without leaking runtime internals |
 | `src/renderer/` | Modify | Add control-plane surfaces above the current chat shell |
@@ -101,3 +101,4 @@ future modules.
 ---
 
 *Last updated: 2026-03-16*
+

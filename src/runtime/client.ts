@@ -57,7 +57,7 @@ export interface RuntimeSessionCreateInput {
   instance?: string | null;
   model?: string | null;
   cwd?: string | null;
-  workspaceMode?: 'shared' | null;
+  sharingMode?: 'shared' | null;
 }
 
 export interface RuntimeClient {
@@ -371,8 +371,8 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (input.cwd?.trim()) {
       payload.cwd = input.cwd.trim();
     }
-    if (input.workspaceMode) {
-      payload.workspaceMode = input.workspaceMode;
+    if (input.sharingMode) {
+      payload.workspaceMode = input.sharingMode;
     }
 
     const response = await fetch(`${this.baseUrl}/sessions`, {
@@ -443,3 +443,4 @@ export class CatsRuntimeClient implements RuntimeClient {
     };
   }
 }
+

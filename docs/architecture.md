@@ -98,7 +98,7 @@ tests and imports do not have to move all at once.
   relays for Telegram and LINE; optional mobile companion later if needed
 - **Responsibilities**: Render chat and work views, surface approvals,
   ownership, activity, and allow external transport messages to reach the
-  orchestrator safely. For Chat, high-frequency actions such as adding a pal
+  orchestrator safely. For Chat, high-frequency actions such as adding a cat
   should stay in current-chat context, while reusable registry management lives
   under Settings.
 
@@ -145,8 +145,8 @@ tests and imports do not have to move all at once.
   stronger operational store
 - **Technology**: Core-backed JSON file inside `config/` today; operational DB
   plus archive/RAG pipelines planned
-- **Responsibilities**: Load defaults, persist channels, workspace pals, channel
-  assignments, transcript messages, execution targets, execution leases, pal
+- **Responsibilities**: Load defaults, persist channels, workspace cats, channel
+  assignments, transcript messages, execution targets, execution leases, cat
   memory checkpoints, core-owned owner/task/run/trace/checkpoint/outcome
   records, and the derived `Cats Core v1` records that wrap the phase-2
   workspace model
@@ -165,8 +165,8 @@ tests and imports do not have to move all at once.
   into dedicated Chat and Work experiences
 - **Technology**: React + Vite
 - **Responsibilities**: Render channels, runtime status, transcript composer,
-  a preview-ready artifact pane, contextual pal assignment, settings-hosted
-  pal management, channel setup, and global orchestrator editing
+  a preview-ready artifact pane, contextual cat assignment, settings-hosted
+  cat management, channel setup, and global orchestrator editing
 
 ## Memory Layering Direction
 
@@ -193,17 +193,17 @@ history.
 - **Purpose**: Describe the current product contract shared by server and
   renderer while a stronger suite-wide contract is designed
 - **Technology**: Plain TypeScript data structures
-- **Responsibilities**: Expose workspace, pal registry, pal assignment, message,
+- **Responsibilities**: Expose workspace, cat registry, cat assignment, message,
   session, and capability state
 
-## Pal Identity and Execution
+## Cat Identity and Execution
 
 `Cats` now treats teammate identity and runtime execution as separate
 concerns.
 
-- `Workspace pal registry` covers reusable teammate identity, default execution
+- `Workspace cat registry` covers reusable teammate identity, default execution
   settings, and long-lived memory
-- `Channel pal assignment` covers whether a pal is active in one chat plus any
+- `Channel cat assignment` covers whether a cat is active in one chat plus any
   channel-specific role or provider override
 - `Execution target` covers which provider/model should be used in a given
   channel assignment
@@ -211,14 +211,14 @@ concerns.
 - `Memory checkpoint` covers product-owned summary data that should survive
   session restarts or provider changes
 
-This boundary matters because the same pal may need different providers in
+This boundary matters because the same cat may need different providers in
 different channels, and cross-session continuity must belong to `cats`
 rather than to any one provider's native thread model. See
-[ADR-004](./decisions/004-separate-pal-identity-from-provider-execution.md)
+[ADR-004](./decisions/004-separate-cat-identity-from-provider-execution.md)
 and
-[ADR-005](./decisions/005-use-workspace-pal-registry-and-channel-assignments.md).
+[ADR-005](./decisions/005-use-chat-cat-registry-and-channel-assignments.md).
 
-Under the accepted suite direction, this existing pal model is expected to
+Under the accepted suite direction, this existing cat model is expected to
 evolve into the broader `Cats Core v1` actor/resource model rather than being
 discarded outright.
 
@@ -292,13 +292,13 @@ temporary and should not be treated as final ownership boundaries:
 
 The current planning direction for Chat information architecture is:
 
-- keep `Add pal` as a current-chat action
-- move the reusable pal registry under `Settings > Pals`
+- keep `Add cat` as a current-chat action
+- move the reusable cat registry under `Settings > Cats`
 - use the left-panel account area as the entry to Settings
 
 This keeps workspace resources global without making registry administration the
 primary operator workflow. See
-[ADR-009](./decisions/009-prefer-chat-contextual-pal-entry-and-settings-registry.md).
+[ADR-009](./decisions/009-prefer-chat-contextual-cat-entry-and-settings-registry.md).
 
 ## Data Flow
 
@@ -352,7 +352,7 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
 ## Current Implementation vs Planned Evolution
 
 - Current implementation is still a phase-2 chat shell with file-backed state,
-  global orchestrator settings, pal assignments, a system-layer routing engine
+  global orchestrator settings, cat assignments, a system-layer routing engine
   with continuation loop/fan-out/guards, and transcript export.
 - `Cats Core v1` now exists as a first in-tree contract plus a minimal neutral
   write substrate for owner profile, tasks, approvals, runs, traces,
@@ -417,10 +417,10 @@ still intentionally deferred:
   as the only runtime boundary
 - [ADR-002](./decisions/002-react-vite-renderer-before-electron.md): use
   React/Vite before adding a desktop shell
-- [ADR-004](./decisions/004-separate-pal-identity-from-provider-execution.md):
-  keep pal identity separate from provider execution and memory leases
-- [ADR-005](./decisions/005-use-workspace-pal-registry-and-channel-assignments.md):
-  keep reusable pals at workspace scope and channel-specific overrides in assignments
+- [ADR-004](./decisions/004-separate-cat-identity-from-provider-execution.md):
+  keep cat identity separate from provider execution and memory leases
+- [ADR-005](./decisions/005-use-chat-cat-registry-and-channel-assignments.md):
+  keep reusable cats at workspace scope and channel-specific overrides in assignments
 - [ADR-007](./decisions/007-establish-cats-core-v1-for-chat-and-work.md):
   introduce `Cats Core v1` as the shared contract layer for `Cats Chat` and
   `Cats Work`
@@ -430,3 +430,4 @@ still intentionally deferred:
 ---
 
 *Last updated: 2026-03-21*
+

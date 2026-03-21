@@ -17,7 +17,7 @@ test('loadConfig prefers canonical CATS_* variables over compatibility aliases',
 
   assert.equal(config.host, '0.0.0.0');
   assert.equal(config.port, 9191);
-  assert.equal(config.workspaceStatePath, 'C:/state/cats.json');
+  assert.equal(config.chatStatePath, 'C:/state/cats.json');
   assert.equal(config.runtimeBaseUrl, 'http://127.0.0.1:3110');
   assert.equal(config.runtimeApiKey, 'token');
 });
@@ -32,5 +32,5 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases', () => {
 
   assert.equal(config.host, '127.0.0.2');
   assert.equal(config.port, 8282);
-  assert.equal(config.workspaceStatePath, 'C:/state/legacy.json');
+  assert.equal(config.chatStatePath, 'C:/state/legacy.json');
 });

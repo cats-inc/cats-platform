@@ -51,11 +51,11 @@ families such as:
 - `/api/workspaces/{workspaceId}/channels`
 - `/api/workspaces/{workspaceId}/channels/{channelId}`
 - `/api/workspaces/{workspaceId}/channels/{channelId}/messages`
-- `/api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}`
+- `/api/workspaces/{workspaceId}/channels/{channelId}/cat-assignments/{catId}`
 - `/api/workspaces/{workspaceId}/orchestrator`
 - `/api/workspaces/{workspaceId}/preferences`
-- `/api/pals`
-- `/api/pals/{palId}`
+- `/api/cats`
+- `/api/cats/{catId}`
 - `/api/workspaces/{workspaceId}/channels/{channelId}/activations`
 - `/api/workspaces/{workspaceId}/channels/{channelId}/exports/latest`
 - `/api/core/*`
@@ -180,3 +180,4 @@ until the renderer and tests are fully cut over.
 
 *Accepted: 2026-03-18*
 *Accepted by: user direction captured through Codex*
+

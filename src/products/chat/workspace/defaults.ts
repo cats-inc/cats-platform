@@ -1,8 +1,8 @@
 import type {
   ParticipantExecutionLease,
   GlobalOrchestratorSummary,
-  WorkspaceCapabilities,
-  WorkspaceState,
+  ChatCapabilities,
+  ChatState,
 } from '../../../shared/app-shell.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
 import { createEmptyMemoryCheckpoint } from '../../../core/model.js';
@@ -35,7 +35,7 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
     notes: [
       'Keep runtime concerns behind cats-runtime.',
       'Chat setup should stay lightweight and explicit.',
-      'Messages, pals, memory checkpoints, and exports should be first-class local data.',
+      'Messages, cats, memory checkpoints, and exports should be first-class local data.',
     ],
     executionTarget: {
       provider: 'claude',
@@ -47,14 +47,14 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
       'module. Keep team chats clear, respect explicit @mentions, and tell the user who ' +
       'should act next.',
     skillProfile: 'aaif-a2a-default',
-    mcpProfile: 'workspace-memory',
+    mcpProfile: 'chat-memory',
     memory: createEmptyMemoryCheckpoint(),
     telegramBotName: null,
     updatedAt,
   };
 }
 
-function createCapabilities(): WorkspaceCapabilities {
+function createCapabilities(): ChatCapabilities {
   return {
     multiChannel: true,
     persistence: 'file-backed',
@@ -66,7 +66,7 @@ function createCapabilities(): WorkspaceCapabilities {
   };
 }
 
-export function createDefaultWorkspaceState(): WorkspaceState {
+export function createDefaultChatState(): ChatState {
   const createdAt = isoNow();
 
   return {
@@ -74,7 +74,7 @@ export function createDefaultWorkspaceState(): WorkspaceState {
     name: 'Chat',
     selectedChannelId: '',
     bossCatId: null,
-    pals: [],
+    cats: [],
     channels: [],
     globalOrchestrator: createDefaultOrchestrator(createdAt),
     capabilities: createCapabilities(),

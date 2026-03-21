@@ -166,7 +166,7 @@ The activity or trace panel should contain:
 
 - [ADR-007](../decisions/007-establish-cats-core-v1-for-chat-and-work.md)
 - [ADR-008](../decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md)
-- [ADR-009](../decisions/009-prefer-chat-contextual-pal-entry-and-settings-registry.md)
+- [ADR-009](../decisions/009-prefer-chat-contextual-cat-entry-and-settings-registry.md)
 - [ADR-011](../decisions/011-model-primary-orchestrator-as-visible-cat.md)
 - current chat routing and settings surfaces
 
@@ -189,3 +189,4 @@ The activity or trace panel should contain:
 ---
 
 *Last updated: 2026-03-19*
+

@@ -4,44 +4,44 @@ import { escapeContentDispositionFilename } from '../../../shared/channelPaths.j
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import {
   appendMessage,
-  assignPalToChannel,
+  assignCatToChannel,
   buildChannelExportFilename,
   buildChannelView,
   createChannel,
-  createWorkspacePal,
+  createCat,
   deleteChannel,
-  deletePal,
+  deleteCat,
   exportChannel,
   requireChannel,
-  requirePal,
-  removePalFromChannel,
+  requireCat,
+  removeCatFromChannel,
   resolveOrchestratorDisplayName,
-  setChannelPalLease,
-  setChannelWorkspaceCwd,
+  setChannelCatLease,
+  setChannelChatCwd,
 } from '../workspace/model.js';
 import { formatSessionStartedMessage } from '../workspace/runtimeMessages.js';
 import { createAppShell } from '../workspace/shell.js';
-import type { WorkspaceStore } from '../workspace/store.js';
+import type { ChatStore } from '../workspace/store.js';
 import type {
   AppShellPayload,
-  AssignChannelPalInput,
-  CreateWorkspaceChannelInput,
-  CreateWorkspacePalInput,
-  WorkspaceChannelPal,
-  WorkspaceState,
+  AssignChannelCatInput,
+  CreateChatChannelInput,
+  CreateCatInput,
+  ChatChannelCat,
+  ChatState,
 } from './contracts.js';
 
 export interface ChatApiDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
-  workspaceStore: WorkspaceStore;
+  chatStore: ChatStore;
   now?: () => Date;
 }
 
 export type ChatApiRouteContext = RouteContext<ChatApiDependencies>;
 
 export const CHAT_API_SLICE = 'chat';
-export const DEFAULT_WORKSPACE_ID = 'default';
+export const DEFAULT_CHAT_SCOPE_ID = 'default';
 
 export function nowFrom(dependencies: ChatApiDependencies): Date {
   return dependencies.now?.() ?? new Date();
@@ -51,8 +51,8 @@ export function errorStatusCode(error: unknown): number {
   const message = error instanceof Error ? error.message : '';
   if (
     message.startsWith('Channel not found:')
-    || message.startsWith('Pal not found:')
-    || message.startsWith('Channel pal assignment not found:')
+    || message.startsWith('Cat not found:')
+    || message.startsWith('Channel cat assignment not found:')
   ) {
     return 404;
   }
@@ -83,19 +83,19 @@ export function handleRestError(
 ): void {
   const message = error instanceof Error ? error.message : 'Unknown error';
 
-  if (message.startsWith('Workspace not found:')) {
-    sendRestError(context, 404, 'workspace_not_found', message);
+  if (message.startsWith('Chat not found:')) {
+    sendRestError(context, 404, 'chat_not_found', message);
     return;
   }
   if (message.startsWith('Channel not found:')) {
     sendRestError(context, 404, 'channel_not_found', message);
     return;
   }
-  if (message.startsWith('Pal not found:')) {
-    sendRestError(context, 404, 'pal_not_found', message);
+  if (message.startsWith('Cat not found:')) {
+    sendRestError(context, 404, 'cat_not_found', message);
     return;
   }
-  if (message.startsWith('Channel pal assignment not found:')) {
+  if (message.startsWith('Channel cat assignment not found:')) {
     sendRestError(context, 404, 'assignment_not_found', message);
     return;
   }
@@ -109,22 +109,22 @@ export function handleCanonicalCatError(
 ): void {
   const message = error instanceof Error ? error.message : 'Unknown error';
 
-  if (message.startsWith('Pal not found:')) {
+  if (message.startsWith('Cat not found:')) {
     sendRestError(
       context,
       404,
       'cat_not_found',
-      message.replace('Pal not found:', 'Cat not found:'),
+      message.replace('Cat not found:', 'Cat not found:'),
     );
     return;
   }
-  if (message.startsWith('Channel pal assignment not found:')) {
+  if (message.startsWith('Channel cat assignment not found:')) {
     sendRestError(
       context,
       404,
       'cat_not_found',
       message.replace(
-        'Channel pal assignment not found:',
+        'Channel cat assignment not found:',
         'Cat not found in channel:',
       ),
     );
@@ -134,23 +134,23 @@ export function handleCanonicalCatError(
   handleRestError(context, error);
 }
 
-export function requireValidWorkspaceId(workspaceId: string): void {
-  if (workspaceId !== DEFAULT_WORKSPACE_ID) {
-    throw new Error(`Workspace not found: ${workspaceId}`);
+export function requireValidChatScopeId(chatScopeId: string): void {
+  if (chatScopeId !== DEFAULT_CHAT_SCOPE_ID) {
+    throw new Error(`Chat not found: ${chatScopeId}`);
   }
 }
 
 function seedBossCatGreeting(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
   now: Date,
-): WorkspaceState {
+): ChatState {
   if (!state.bossCatId) {
     return state;
   }
 
   const channel = requireChannel(state, channelId);
-  if (channel.palAssignments.length > 0 || channel.messages.length > 0) {
+  if (channel.catAssignments.length > 0 || channel.messages.length > 0) {
     return state;
   }
 
@@ -161,7 +161,7 @@ function seedBossCatGreeting(
     {
       senderKind: 'orchestrator',
       senderName: bossCatName,
-      body: `Meow! I'm ${bossCatName}, your Boss Cat. What shall we work on?`,
+      body: `Meow! I'm ${bossCatName}, your Boss Cat. What should we chat about?`,
     },
     now,
   ).state;
@@ -169,10 +169,10 @@ function seedBossCatGreeting(
 
 export async function buildAppShellPayload(
   dependencies: ChatApiDependencies,
-  state?: Awaited<ReturnType<WorkspaceStore['read']>>,
+  state?: Awaited<ReturnType<ChatStore['read']>>,
 ): Promise<AppShellPayload> {
-  const core = await dependencies.workspaceStore.readCore();
-  const resolvedState = state ?? await dependencies.workspaceStore.read();
+  const core = await dependencies.chatStore.readCore();
+  const resolvedState = state ?? await dependencies.chatStore.read();
   const runtime = await dependencies.runtimeClient.getHealth();
 
   return createAppShell(
@@ -190,11 +190,11 @@ export async function buildAppShellPayload(
 
 export async function persistCreatedChannel(
   context: ChatApiRouteContext,
-  input: CreateWorkspaceChannelInput,
-): Promise<WorkspaceState> {
+  input: CreateChatChannelInput,
+): Promise<ChatState> {
   const now = nowFrom(context.dependencies);
   let nextState = createChannel(
-    await context.dependencies.workspaceStore.read(),
+    await context.dependencies.chatStore.read(),
     input,
     now,
   );
@@ -203,7 +203,7 @@ export async function persistCreatedChannel(
     nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
   }
 
-  return context.dependencies.workspaceStore.write(nextState);
+  return context.dependencies.chatStore.write(nextState);
 }
 
 async function closeSessionIds(
@@ -224,46 +224,46 @@ export async function persistDeletedChannel(
   context: ChatApiRouteContext,
   channelId: string,
 ): Promise<void> {
-  const currentState = await context.dependencies.workspaceStore.read();
+  const currentState = await context.dependencies.chatStore.read();
   const channel = requireChannel(currentState, channelId);
 
   await closeSessionIds(context.dependencies.runtimeClient, [
     channel.orchestratorLease.sessionId,
-    ...channel.palAssignments.map(
+    ...channel.catAssignments.map(
       (assignment) => assignment.status === 'removed'
         ? null
         : assignment.execution.lease.sessionId,
     ),
   ]);
 
-  await context.dependencies.workspaceStore.write(
+  await context.dependencies.chatStore.write(
     deleteChannel(currentState, channelId),
   );
 }
 
-export async function persistCreatedPal(
+export async function persistCreatedCat(
   context: ChatApiRouteContext,
-  input: CreateWorkspacePalInput,
-): Promise<WorkspaceState> {
-  const nextState = createWorkspacePal(
-    await context.dependencies.workspaceStore.read(),
+  input: CreateCatInput,
+): Promise<ChatState> {
+  const nextState = createCat(
+    await context.dependencies.chatStore.read(),
     input,
     nowFrom(context.dependencies),
   );
 
-  return context.dependencies.workspaceStore.write(nextState);
+  return context.dependencies.chatStore.write(nextState);
 }
 
-export async function persistAssignmentUpdate(
+export async function persistCatAssignmentUpdate(
   context: ChatApiRouteContext,
   channelId: string,
-  input: AssignChannelPalInput,
-): Promise<{ persisted: WorkspaceState; isNew: boolean }> {
+  input: AssignChannelCatInput,
+): Promise<{ persisted: ChatState; isNew: boolean }> {
   const now = nowFrom(context.dependencies);
-  const currentState = await context.dependencies.workspaceStore.read();
+  const currentState = await context.dependencies.chatStore.read();
   const currentChannel = requireChannel(currentState, channelId);
-  const existingAssignment = currentChannel.palAssignments.find(
-    (candidate) => candidate.palId === input.palId,
+  const existingAssignment = currentChannel.catAssignments.find(
+    (candidate) => candidate.catId === input.catId,
   );
   const isNew = !existingAssignment;
   const previousSessionId = existingAssignment?.execution.lease.sessionId ?? null;
@@ -271,10 +271,10 @@ export async function persistAssignmentUpdate(
   const previousInstance = existingAssignment?.execution.target.instance ?? null;
   const previousModel = existingAssignment?.execution.target.model ?? null;
 
-  let nextState = assignPalToChannel(currentState, channelId, input, now);
+  let nextState = assignCatToChannel(currentState, channelId, input, now);
   const updatedChannel = requireChannel(nextState, channelId);
-  const updatedAssignment = updatedChannel.palAssignments.find(
-    (candidate) => candidate.palId === input.palId,
+  const updatedAssignment = updatedChannel.catAssignments.find(
+    (candidate) => candidate.catId === input.catId,
   );
   const targetChanged = Boolean(
     existingAssignment
@@ -290,25 +290,25 @@ export async function persistAssignmentUpdate(
     try {
       await context.dependencies.runtimeClient.closeSession(previousSessionId);
     } catch (closeError) {
-      const pal = requirePal(nextState, input.palId);
+      const cat = requireCat(nextState, input.catId);
       nextState = appendMessage(
         nextState,
         channelId,
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `Failed to close ${pal.name}'s previous session cleanly: ${
+          body: `Failed to close ${cat.name}'s previous session cleanly: ${
             closeError instanceof Error ? closeError.message : 'Unknown runtime error'
           }`,
         },
         now,
-        { metadata: { event: 'session_close_failed', palId: input.palId } },
+        { metadata: { event: 'session_close_failed', catId: input.catId } },
       ).state;
     }
   }
 
   if (targetChanged && updatedAssignment) {
-    nextState = setChannelPalLease(nextState, channelId, input.palId, {
+    nextState = setChannelCatLease(nextState, channelId, input.catId, {
       sessionId: null,
       status: 'not_started',
       cwd: null,
@@ -321,31 +321,31 @@ export async function persistAssignmentUpdate(
   }
 
   const refreshedChannel = requireChannel(nextState, channelId);
-  const updatedPal = refreshedChannel.palAssignments.find(
-    (candidate) => candidate.palId === input.palId,
+  const updatedCat = refreshedChannel.catAssignments.find(
+    (candidate) => candidate.catId === input.catId,
   );
   const spawnCwd = (
     refreshedChannel.repoPath
-    ?? refreshedChannel.workspaceCwd
+    ?? refreshedChannel.chatCwd
     ?? refreshedChannel.orchestratorLease.cwd
     ?? null
   );
-  const needsSession = updatedPal
-    && !updatedPal.execution.lease.sessionId
+  const needsSession = updatedCat
+    && !updatedCat.execution.lease.sessionId
     && (isNew || targetChanged)
     && Boolean(spawnCwd);
 
   if (needsSession) {
     try {
       const session = await context.dependencies.runtimeClient.createSession({
-        provider: updatedPal.execution.target.provider,
-        instance: updatedPal.execution.target.instance,
-        model: updatedPal.execution.target.model,
+        provider: updatedCat.execution.target.provider,
+        instance: updatedCat.execution.target.instance,
+        model: updatedCat.execution.target.model,
         cwd: spawnCwd,
-        workspaceMode: spawnCwd ? 'shared' : undefined,
+        sharingMode: spawnCwd ? 'shared' : undefined,
       });
       const timestamp = now.toISOString();
-      nextState = setChannelPalLease(nextState, channelId, input.palId, {
+      nextState = setChannelCatLease(nextState, channelId, input.catId, {
         sessionId: session.id,
         status: session.status === 'ready' ? 'ready' : 'initializing',
         cwd: session.cwd,
@@ -356,37 +356,37 @@ export async function persistAssignmentUpdate(
         lastUsedAt: timestamp,
       }, now);
       if (!spawnCwd && session.cwd) {
-        nextState = setChannelWorkspaceCwd(nextState, channelId, session.cwd, now);
+        nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
-      const pal = requirePal(nextState, input.palId);
+      const cat = requireCat(nextState, input.catId);
       nextState = appendMessage(
         nextState,
         channelId,
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: formatSessionStartedMessage(pal.name, session),
+          body: formatSessionStartedMessage(cat.name, session),
         },
         now,
         {
           metadata: {
             event: 'session_started',
-            targetKind: 'pal',
-            targetId: input.palId,
+            targetKind: 'cat',
+            targetId: input.catId,
             sessionId: session.id,
             verbosity: 'verbose',
           },
         },
       ).state;
     } catch (sessionError) {
-      const pal = requirePal(nextState, input.palId);
+      const cat = requireCat(nextState, input.catId);
       nextState = appendMessage(
         nextState,
         channelId,
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `Failed to start ${pal.name}: ${
+          body: `Failed to start ${cat.name}: ${
             sessionError instanceof Error ? sessionError.message : 'Unknown runtime error'
           }`,
         },
@@ -394,8 +394,8 @@ export async function persistAssignmentUpdate(
         {
           metadata: {
             event: 'session_start_failed',
-            targetKind: 'pal',
-            targetId: input.palId,
+            targetKind: 'cat',
+            targetId: input.catId,
           },
         },
       ).state;
@@ -403,28 +403,28 @@ export async function persistAssignmentUpdate(
   }
 
   return {
-    persisted: await context.dependencies.workspaceStore.write(nextState),
+    persisted: await context.dependencies.chatStore.write(nextState),
     isNew,
   };
 }
 
-export async function persistAssignmentRemoval(
+export async function persistCatAssignmentRemoval(
   context: ChatApiRouteContext,
   channelId: string,
-  palId: string,
+  catId: string,
 ): Promise<void> {
-  const currentState = await context.dependencies.workspaceStore.read();
+  const currentState = await context.dependencies.chatStore.read();
   const channel = requireChannel(currentState, channelId);
-  const assignment = channel.palAssignments.find(
-    (candidate) => candidate.palId === palId,
+  const assignment = channel.catAssignments.find(
+    (candidate) => candidate.catId === catId,
   );
   if (!assignment) {
-    throw new Error(`Channel pal assignment not found: ${palId}`);
+    throw new Error(`Channel cat assignment not found: ${catId}`);
   }
 
-  const pal = requirePal(currentState, palId);
+  const cat = requireCat(currentState, catId);
   const now = nowFrom(context.dependencies);
-  let nextState = removePalFromChannel(currentState, channelId, palId, now);
+  let nextState = removeCatFromChannel(currentState, channelId, catId, now);
 
   if (assignment.execution.lease.sessionId) {
     try {
@@ -438,22 +438,22 @@ export async function persistAssignmentRemoval(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `Failed to close ${pal.name}'s session cleanly: ${
+          body: `Failed to close ${cat.name}'s session cleanly: ${
             closeError instanceof Error ? closeError.message : 'Unknown runtime error'
           }`,
         },
         now,
-        { metadata: { event: 'session_close_failed', palId } },
+        { metadata: { event: 'session_close_failed', catId } },
       ).state;
     }
   }
 
-  await context.dependencies.workspaceStore.write(nextState);
+  await context.dependencies.chatStore.write(nextState);
 }
 
-export function mapAssignmentToCat(assignment: WorkspaceChannelPal) {
+export function mapChannelCat(assignment: ChatChannelCat) {
   return {
-    catId: assignment.palId,
+    catId: assignment.catId,
     name: assignment.name,
     roles: structuredClone(assignment.roles),
     skillProfile: assignment.skillProfile,
@@ -469,7 +469,7 @@ export function mapAssignmentToCat(assignment: WorkspaceChannelPal) {
 
 export function sendChannelExport(
   context: ChatApiRouteContext,
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
 ): void {
   const payload = exportChannel(state, channelId);
@@ -486,6 +486,8 @@ export async function persistDeletedCat(
   context: ChatApiRouteContext,
   catId: string,
 ): Promise<void> {
-  const nextState = deletePal(await context.dependencies.workspaceStore.read(), catId);
-  await context.dependencies.workspaceStore.write(nextState);
+  const nextState = deleteCat(await context.dependencies.chatStore.read(), catId);
+  await context.dependencies.chatStore.write(nextState);
 }
+
+

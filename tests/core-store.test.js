@@ -65,7 +65,7 @@ test('buildApprovalQueue only surfaces tasks that are actually pending approval'
       conversationId: 'conversation-1',
       ownerActorId: 'actor-owner',
       orchestratorActorId: 'actor-orchestrator-global',
-      assignedActorIds: ['actor-pal-1'],
+      assignedActorIds: ['actor-cat-1'],
       summary: 'Needs owner decision',
       approval: {
         status: 'pending',
@@ -84,7 +84,7 @@ test('buildApprovalQueue only surfaces tasks that are actually pending approval'
       conversationId: 'conversation-2',
       ownerActorId: 'actor-owner',
       orchestratorActorId: 'actor-orchestrator-global',
-      assignedActorIds: ['actor-pal-2'],
+      assignedActorIds: ['actor-cat-2'],
       summary: 'Approval should not stay queued once work has started',
       approval: {
         status: 'pending',

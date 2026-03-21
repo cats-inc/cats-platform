@@ -11,25 +11,25 @@ export function pickAvatarColor(index: number): string {
 }
 
 import type {
-  AssignChannelPalInput,
+  AssignChannelCatInput,
   ChannelExportPayload,
-  ChannelPalAssignment,
-  CreateWorkspaceChannelInput,
-  CreateWorkspacePalInput,
+  ChannelCatAssignment,
+  CreateCatInput,
+  CreateChatChannelInput,
   GlobalOrchestratorSummary,
   MessageUsageSummary,
   ParticipantExecutionLease,
   ParticipantSessionStatus,
   SendChannelMessageInput,
-  WorkspaceChannelPal,
-  WorkspaceChannelState,
-  WorkspaceChannelStatus,
-  WorkspaceChannelSummary,
-  WorkspaceChannelView,
-  WorkspaceMessage,
-  WorkspaceMessageSenderKind,
-  WorkspacePal,
-  WorkspaceState,
+  ChatChannelCat,
+  ChatChannelState,
+  ChatChannelStatus,
+  ChatChannelSummary,
+  ChatChannelView,
+  ChatMessage,
+  ChatMessageSenderKind,
+  ChatCat,
+  ChatState,
   UpdateGlobalOrchestratorInput,
 } from '../../../shared/app-shell.js';
 import { createChannelExportFilename } from '../../../shared/channelPaths.js';
@@ -41,15 +41,15 @@ import {
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
 
-export function resolveOrchestratorDisplayName(state: WorkspaceState): string {
+export function resolveOrchestratorDisplayName(state: ChatState): string {
   if (state.bossCatId) {
-    const pal = state.pals.find((candidate) => candidate.id === state.bossCatId);
-    if (pal) return pal.name;
+    const cat = state.cats.find((candidate) => candidate.id === state.bossCatId);
+    if (cat) return cat.name;
   }
   return ORCHESTRATOR_NAME;
 }
 
-function cloneState(state: WorkspaceState): WorkspaceState {
+function cloneState(state: ChatState): ChatState {
   return structuredClone(state);
 }
 
@@ -77,11 +77,11 @@ function normalizeLeadParticipantId(value: string | undefined): string | null {
   return normalized ? normalized : null;
 }
 
-function findChannelIndex(state: WorkspaceState, channelId: string): number {
+function findChannelIndex(state: ChatState, channelId: string): number {
   return state.channels.findIndex((channel) => channel.id === channelId);
 }
 
-export function requireChannel(state: WorkspaceState, channelId: string): WorkspaceChannelState {
+export function requireChannel(state: ChatState, channelId: string): ChatChannelState {
   const channel = state.channels.find((candidate) => candidate.id === channelId);
   if (!channel) {
     throw new Error(`Channel not found: ${channelId}`);
@@ -90,28 +90,28 @@ export function requireChannel(state: WorkspaceState, channelId: string): Worksp
   return channel;
 }
 
-export function requirePal(state: WorkspaceState, palId: string): WorkspacePal {
-  const pal = state.pals.find((candidate) => candidate.id === palId);
-  if (!pal) {
-    throw new Error(`Pal not found: ${palId}`);
+export function requireCat(state: ChatState, catId: string): ChatCat {
+  const cat = state.cats.find((candidate) => candidate.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
   }
 
-  return pal;
+  return cat;
 }
 
-function activePalCount(channel: WorkspaceChannelState): number {
-  return channel.palAssignments.filter((assignment) => assignment.status === 'active').length;
+function activeCatCount(channel: ChatChannelState): number {
+  return channel.catAssignments.filter((assignment) => assignment.status === 'active').length;
 }
 
 function createMessageRecord(
   channelId: string,
-  senderKind: WorkspaceMessageSenderKind,
+  senderKind: ChatMessageSenderKind,
   senderName: string,
   body: string,
   createdAt: string,
   metadata: Record<string, unknown>,
   usage: MessageUsageSummary | null,
-): WorkspaceMessage {
+): ChatMessage {
   return {
     id: randomUUID(),
     channelId,
@@ -126,8 +126,8 @@ function createMessageRecord(
 }
 
 function applyMessageToChannel(
-  channel: WorkspaceChannelState,
-  message: WorkspaceMessage,
+  channel: ChatChannelState,
+  message: ChatMessage,
   nowIso: string,
 ): void {
   channel.messages.push(message);
@@ -135,15 +135,15 @@ function applyMessageToChannel(
   channel.lastMessageAt = nowIso;
 }
 
-function createPalRecord(input: CreateWorkspacePalInput, nowIso: string): WorkspacePal {
+function createCatRecord(input: CreateCatInput, nowIso: string): ChatCat {
   const name = input.name.trim();
   const provider = input.provider.trim();
 
   if (!name) {
-    throw new Error('Pal name is required');
+    throw new Error('Cat name is required');
   }
   if (!provider) {
-    throw new Error('Pal provider is required');
+    throw new Error('Cat provider is required');
   }
 
   return {
@@ -167,7 +167,7 @@ function createPalRecord(input: CreateWorkspacePalInput, nowIso: string): Worksp
 }
 
 function createAssignmentRecord(
-  pal: WorkspacePal,
+  cat: ChatCat,
   input: {
     provider?: string;
     instance?: string | null;
@@ -175,25 +175,25 @@ function createAssignmentRecord(
     roles?: string[];
   },
   nowIso: string,
-): ChannelPalAssignment {
+): ChannelCatAssignment {
   const roles = normalizeList(input.roles);
 
   return {
-    palId: pal.id,
+    catId: cat.id,
     status: 'active',
-    roles: roles.length > 0 ? roles : pal.roles,
+    roles: roles.length > 0 ? roles : cat.roles,
     joinedAt: nowIso,
     leftAt: null,
     execution: {
       target: {
-        provider: input.provider?.trim() || pal.defaultExecutionTarget.provider,
+        provider: input.provider?.trim() || cat.defaultExecutionTarget.provider,
         instance:
           input.instance === undefined
-            ? pal.defaultExecutionTarget.instance
+            ? cat.defaultExecutionTarget.instance
             : normalizeOptionalText(input.instance),
         model:
           input.model === undefined
-            ? pal.defaultExecutionTarget.model
+            ? cat.defaultExecutionTarget.model
             : normalizeOptionalText(input.model),
       },
       lease: createEmptyExecutionLease(),
@@ -201,29 +201,29 @@ function createAssignmentRecord(
   };
 }
 
-function hydrateChannelPal(
-  pal: WorkspacePal,
-  assignment: ChannelPalAssignment,
-): WorkspaceChannelPal {
+function hydrateChannelCat(
+  cat: ChatCat,
+  assignment: ChannelCatAssignment,
+): ChatChannelCat {
   return {
-    palId: pal.id,
-    name: pal.name,
-    roles: assignment.roles.length > 0 ? structuredClone(assignment.roles) : structuredClone(pal.roles),
-    skillProfile: pal.skillProfile,
-    mcpProfile: pal.mcpProfile,
+    catId: cat.id,
+    name: cat.name,
+    roles: assignment.roles.length > 0 ? structuredClone(assignment.roles) : structuredClone(cat.roles),
+    skillProfile: cat.skillProfile,
+    mcpProfile: cat.mcpProfile,
     status: assignment.status,
     joinedAt: assignment.joinedAt,
     leftAt: assignment.leftAt,
-    avatarColor: pal.avatarColor,
+    avatarColor: cat.avatarColor,
     execution: structuredClone(assignment.execution),
-    memory: structuredClone(pal.memory),
+    memory: structuredClone(cat.memory),
   };
 }
 
 export function buildChannelView(
-  state: WorkspaceState,
-  channelOrId: WorkspaceChannelState | string,
-): WorkspaceChannelView {
+  state: ChatState,
+  channelOrId: ChatChannelState | string,
+): ChatChannelView {
   const channel =
     typeof channelOrId === 'string' ? requireChannel(state, channelOrId) : channelOrId;
   const clonedChannel = structuredClone(channel);
@@ -231,15 +231,15 @@ export function buildChannelView(
   return {
     ...clonedChannel,
     roomRouting: clonedChannel.roomRouting ?? createDefaultRoomRoutingState(),
-    assignedPals: channel.palAssignments
-      .filter((assignment) => state.pals.some((p) => p.id === assignment.palId))
+    assignedCats: channel.catAssignments
+      .filter((assignment) => state.cats.some((p) => p.id === assignment.catId))
       .map((assignment) =>
-        hydrateChannelPal(requirePal(state, assignment.palId), assignment),
+        hydrateChannelCat(requireCat(state, assignment.catId), assignment),
       ),
   };
 }
 
-export function toChannelSummary(channel: WorkspaceChannelState): WorkspaceChannelSummary {
+export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   return {
     id: channel.id,
@@ -247,10 +247,10 @@ export function toChannelSummary(channel: WorkspaceChannelState): WorkspaceChann
     topic: channel.topic,
     status: channel.status,
     unreadCount: channel.unreadCount,
-    palCount: channel.palAssignments.length,
-    activePalCount: activePalCount(channel),
+    catCount: channel.catAssignments.length,
+    activeCatCount: activeCatCount(channel),
     repoPath: channel.repoPath,
-    workspaceCwd: channel.workspaceCwd,
+    chatCwd: channel.chatCwd,
     lastMessageAt: channel.lastMessageAt,
     lastActivatedAt: channel.lastActivatedAt,
     roomMode: roomRouting.mode,
@@ -263,10 +263,10 @@ export function toChannelSummary(channel: WorkspaceChannelState): WorkspaceChann
 }
 
 export function selectChannel(
-  state: WorkspaceState,
+  state: ChatState,
   selectedChannelId: string,
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, selectedChannelId);
   nextState.selectedChannelId = selectedChannelId;
@@ -276,9 +276,9 @@ export function selectChannel(
 }
 
 export function deleteChannel(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   const index = findChannelIndex(nextState, channelId);
   if (index === -1) {
@@ -294,64 +294,64 @@ export function deleteChannel(
   return nextState;
 }
 
-export function createWorkspacePal(
-  state: WorkspaceState,
-  input: CreateWorkspacePalInput,
+export function createCat(
+  state: ChatState,
+  input: CreateCatInput,
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
-  const pal = createPalRecord(input, isoAt(now));
-  if (!pal.avatarColor) {
-    pal.avatarColor = pickAvatarColor(nextState.pals.length);
+  const cat = createCatRecord(input, isoAt(now));
+  if (!cat.avatarColor) {
+    cat.avatarColor = pickAvatarColor(nextState.cats.length);
   }
-  nextState.pals.unshift(pal);
+  nextState.cats.unshift(cat);
   return nextState;
 }
 
-export function deletePal(
-  state: WorkspaceState,
-  palId: string,
-): WorkspaceState {
+export function deleteCat(
+  state: ChatState,
+  catId: string,
+): ChatState {
   const nextState = cloneState(state);
-  const palIndex = nextState.pals.findIndex((p) => p.id === palId);
-  if (palIndex === -1) {
-    throw new Error(`Pal not found: ${palId}`);
+  const catIndex = nextState.cats.findIndex((p) => p.id === catId);
+  if (catIndex === -1) {
+    throw new Error(`Cat not found: ${catId}`);
   }
-  if (nextState.bossCatId === palId) {
+  if (nextState.bossCatId === catId) {
     throw new Error('Cannot delete Boss Cat');
   }
-  nextState.pals.splice(palIndex, 1);
+  nextState.cats.splice(catIndex, 1);
   for (const channel of nextState.channels) {
-    channel.palAssignments = channel.palAssignments.filter((a) => a.palId !== palId);
+    channel.catAssignments = channel.catAssignments.filter((a) => a.catId !== catId);
   }
   return nextState;
 }
 
 export function createChannel(
-  state: WorkspaceState,
-  input: CreateWorkspaceChannelInput,
+  state: ChatState,
+  input: CreateChatChannelInput,
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const title = input.title.trim() || 'New chat';
   const topic = input.topic.trim();
   const channelId = createChannelId();
-  const catDrafts = input.cats ?? input.pals ?? [];
-  const createdPals = catDrafts.map((palInput) => createPalRecord(palInput, nowIso));
+  const catDrafts = input.cats ?? input.cats ?? [];
+  const createdCats = catDrafts.map((palInput) => createCatRecord(palInput, nowIso));
   const requestedLeadParticipantId = normalizeLeadParticipantId(input.leadParticipantId);
   const defaultLeadParticipantId = requestedLeadParticipantId
     ?? (
-      input.roomMode === 'direct_cat_chat' && createdPals.length === 1
-        ? createdPals[0]?.id ?? null
+      input.roomMode === 'direct_cat_chat' && createdCats.length === 1
+        ? createdCats[0]?.id ?? null
         : null
     );
 
-  nextState.pals.unshift(...createdPals);
+  nextState.cats.unshift(...createdCats);
 
-  const palAssignments = createdPals.map((pal, index) =>
+  const catAssignments = createdCats.map((cat, index) =>
     createAssignmentRecord(
-      pal,
+      cat,
       {
         provider: catDrafts[index]?.provider,
         model: catDrafts[index]?.model,
@@ -361,26 +361,26 @@ export function createChannel(
     ),
   );
 
-  const channel: WorkspaceChannelState = {
+  const channel: ChatChannelState = {
     id: channelId,
     title,
     topic,
-    status: palAssignments.length > 0 ? 'configured' : 'planned',
+    status: catAssignments.length > 0 ? 'configured' : 'planned',
     unreadCount: 0,
     repoPath: normalizeOptionalText(input.repoPath),
-    workspaceCwd: null,
+    chatCwd: null,
     language: normalizeOptionalText(input.language),
     responseLanguage: normalizeOptionalText(input.responseLanguage) ?? 'en',
     formationMode: input.formationMode ?? 'manual',
-    skillProfile: normalizeOptionalText(input.skillProfile) ?? 'workspace-default',
-    mcpProfile: normalizeOptionalText(input.mcpProfile) ?? 'workspace-memory',
+    skillProfile: normalizeOptionalText(input.skillProfile) ?? 'chat-default',
+    mcpProfile: normalizeOptionalText(input.mcpProfile) ?? 'chat-memory',
     orchestratorRoles: normalizeList(input.orchestratorRoles),
     createdAt: nowIso,
     updatedAt: nowIso,
     lastMessageAt: nowIso,
     lastActivatedAt: null,
     orchestratorLease: createEmptyExecutionLease(),
-    palAssignments,
+    catAssignments,
     messages: [],
     roomRouting: createDefaultRoomRoutingState({
       mode: input.roomMode,
@@ -393,26 +393,26 @@ export function createChannel(
   return nextState;
 }
 
-export function assignPalToChannel(
-  state: WorkspaceState,
+export function assignCatToChannel(
+  state: ChatState,
   channelId: string,
-  input: AssignChannelPalInput,
+  input: AssignChannelCatInput,
   now: Date = new Date(),
-): WorkspaceState {
-  if (state.bossCatId && input.palId === state.bossCatId) {
+): ChatState {
+  if (state.bossCatId && input.catId === state.bossCatId) {
     throw new Error('Boss Cat is already the default chat entrypoint');
   }
 
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
-  const pal = requirePal(nextState, input.palId);
-  const existing = channel.palAssignments.find((candidate) => candidate.palId === input.palId);
+  const cat = requireCat(nextState, input.catId);
+  const existing = channel.catAssignments.find((candidate) => candidate.catId === input.catId);
 
   if (!existing) {
-    channel.palAssignments.push(
+    channel.catAssignments.push(
       createAssignmentRecord(
-        pal,
+        cat,
         {
           provider: input.provider,
           instance: input.instance,
@@ -433,9 +433,9 @@ export function assignPalToChannel(
         channelId,
         'system',
         'Chat',
-        `${pal.name} joined the chat.`,
+        `${cat.name} joined the chat.`,
         nowIso,
-        { event: 'pal_assigned', palId: pal.id },
+        { event: 'cat_assigned', catId: cat.id },
         null,
       ),
       nowIso,
@@ -460,7 +460,7 @@ export function assignPalToChannel(
 
   existing.status = 'active';
   existing.leftAt = null;
-  existing.roles = nextRoles.length > 0 ? nextRoles : (existing.roles.length > 0 ? existing.roles : pal.roles);
+  existing.roles = nextRoles.length > 0 ? nextRoles : (existing.roles.length > 0 ? existing.roles : cat.roles);
   existing.execution.target = {
     provider: nextProvider,
     instance: nextInstance,
@@ -480,12 +480,12 @@ export function assignPalToChannel(
       'system',
       'Chat',
       targetChanged
-        ? `${pal.name}'s chat assignment was updated. Reactivate the chat to use the new provider target.`
-        : `${pal.name}'s chat assignment is ready.`,
+        ? `${cat.name}'s chat assignment was updated. Reactivate the chat to use the new provider target.`
+        : `${cat.name}'s chat assignment is ready.`,
       nowIso,
       {
-        event: targetChanged ? 'pal_assignment_updated' : 'pal_assignment_reused',
-        palId: pal.id,
+        event: targetChanged ? 'cat_assignment_updated' : 'cat_assignment_reused',
+        catId: cat.id,
       },
       null,
     ),
@@ -495,35 +495,35 @@ export function assignPalToChannel(
   return nextState;
 }
 
-export function removePalFromChannel(
-  state: WorkspaceState,
+export function removeCatFromChannel(
+  state: ChatState,
   channelId: string,
-  palId: string,
+  catId: string,
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
-  const assignment = channel.palAssignments.find((candidate) => candidate.palId === palId);
+  const assignment = channel.catAssignments.find((candidate) => candidate.catId === catId);
 
   if (!assignment) {
-    throw new Error(`Channel pal assignment not found: ${palId}`);
+    throw new Error(`Channel cat assignment not found: ${catId}`);
   }
 
   assignment.status = 'removed';
   assignment.leftAt = nowIso;
   assignment.execution.lease.status = 'removed';
 
-  const pal = requirePal(nextState, palId);
+  const cat = requireCat(nextState, catId);
   applyMessageToChannel(
     channel,
     createMessageRecord(
       channelId,
       'system',
       'Chat',
-      `${pal.name} left the chat.`,
+      `${cat.name} left the chat.`,
       nowIso,
-      { event: 'pal_removed', palId },
+      { event: 'pal_removed', catId },
       null,
     ),
     nowIso,
@@ -533,10 +533,10 @@ export function removePalFromChannel(
 }
 
 export function updateGlobalOrchestrator(
-  state: WorkspaceState,
+  state: ChatState,
   input: UpdateGlobalOrchestratorInput,
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   nextState.globalOrchestrator = {
     ...nextState.globalOrchestrator,
@@ -561,10 +561,10 @@ export function updateGlobalOrchestrator(
 }
 
 export function appendMessage(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
   input: SendChannelMessageInput & {
-    senderKind: WorkspaceMessageSenderKind;
+    senderKind: ChatMessageSenderKind;
     senderName: string;
   },
   now: Date = new Date(),
@@ -573,7 +573,7 @@ export function appendMessage(
     usage?: MessageUsageSummary | null;
     incrementUnread?: boolean;
   } = {},
-): { state: WorkspaceState; message: WorkspaceMessage } {
+): { state: ChatState; message: ChatMessage } {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
@@ -623,11 +623,11 @@ function updateExecutionLease(
 }
 
 export function setChannelOrchestratorLease(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
   leaseUpdate: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
   channel.orchestratorLease = updateExecutionLease(channel.orchestratorLease, leaseUpdate);
@@ -635,19 +635,19 @@ export function setChannelOrchestratorLease(
   return nextState;
 }
 
-export function setChannelPalLease(
-  state: WorkspaceState,
+export function setChannelCatLease(
+  state: ChatState,
   channelId: string,
-  palId: string,
+  catId: string,
   leaseUpdate: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
-  const assignment = channel.palAssignments.find((candidate) => candidate.palId === palId);
+  const assignment = channel.catAssignments.find((candidate) => candidate.catId === catId);
 
   if (!assignment) {
-    throw new Error(`Channel pal assignment not found: ${palId}`);
+    throw new Error(`Channel cat assignment not found: ${catId}`);
   }
 
   assignment.execution.lease = updateExecutionLease(assignment.execution.lease, leaseUpdate);
@@ -656,11 +656,11 @@ export function setChannelPalLease(
 }
 
 export function setChannelStatus(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
-  status: WorkspaceChannelStatus,
+  status: ChatChannelStatus,
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
   channel.status = status;
@@ -671,25 +671,25 @@ export function setChannelStatus(
   return nextState;
 }
 
-export function setChannelWorkspaceCwd(
-  state: WorkspaceState,
+export function setChannelChatCwd(
+  state: ChatState,
   channelId: string,
-  workspaceCwd: string | null,
+  chatCwd: string | null,
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
-  channel.workspaceCwd = normalizeOptionalText(workspaceCwd);
+  channel.chatCwd = normalizeOptionalText(chatCwd);
   channel.updatedAt = isoAt(now);
   return nextState;
 }
 
 export function setChannelRoomRouting(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
-  roomRouting: NonNullable<WorkspaceChannelState['roomRouting']>,
+  roomRouting: NonNullable<ChatChannelState['roomRouting']>,
   now: Date = new Date(),
-): WorkspaceState {
+): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
   channel.roomRouting = structuredClone(roomRouting);
@@ -701,40 +701,40 @@ export function parseMentions(text: string): string[] {
   return Array.from(new Set(text.match(/(?<!\w)@([A-Za-z0-9._-]+)/gu)?.map((value) => value.slice(1)) ?? []));
 }
 
-export function exportChannel(state: WorkspaceState, channelId: string): ChannelExportPayload {
+export function exportChannel(state: ChatState, channelId: string): ChannelExportPayload {
   const channel = requireChannel(state, channelId);
 
   return {
     exportedAt: new Date().toISOString(),
     orchestrator: structuredClone(state.globalOrchestrator),
     channel: structuredClone(channel),
-    assignedPals: buildChannelView(state, channel).assignedPals,
+    assignedCats: buildChannelView(state, channel).assignedCats,
   };
 }
 
-export function buildChannelExportFilename(state: WorkspaceState, channelId: string): string {
+export function buildChannelExportFilename(state: ChatState, channelId: string): string {
   const channel = requireChannel(state, channelId);
   return createChannelExportFilename(channel.title, channel.id);
 }
 
-export function summarizeState(state: WorkspaceState): {
-  pals: WorkspacePal[];
-  channels: WorkspaceChannelSummary[];
-  selectedChannel: WorkspaceChannelView | null;
+export function summarizeState(state: ChatState): {
+  cats: ChatCat[];
+  channels: ChatChannelSummary[];
+  selectedChannel: ChatChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
 } {
   const selectedChannelState =
     state.channels.find((channel) => channel.id === state.selectedChannelId) ?? null;
 
   return {
-    pals: structuredClone(state.pals),
+    cats: structuredClone(state.cats),
     channels: state.channels.map((channel) => toChannelSummary(channel)),
     selectedChannel: selectedChannelState ? buildChannelView(state, selectedChannelState) : null,
     globalOrchestrator: structuredClone(state.globalOrchestrator),
   };
 }
 
-export function replaceState(state: WorkspaceState, channel: WorkspaceChannelState): WorkspaceState {
+export function replaceState(state: ChatState, channel: ChatChannelState): ChatState {
   const nextState = cloneState(state);
   const index = findChannelIndex(nextState, channel.id);
   if (index === -1) {
@@ -743,3 +743,4 @@ export function replaceState(state: WorkspaceState, channel: WorkspaceChannelSta
   nextState.channels[index] = structuredClone(channel);
   return nextState;
 }
+

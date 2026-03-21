@@ -128,24 +128,34 @@ function toBinding(rawBinding: unknown): TelegramConversationBinding | null {
   const conversationId = typeof binding.conversationId === 'string'
     ? binding.conversationId.trim()
     : '';
+  const transportConversationMode = binding.transportConversationMode;
+  const roomRoutingStatus = binding.roomRoutingStatus;
+  const linkedRoomId = binding.linkedRoomId;
+  const createdAt = binding.createdAt;
+  const updatedAt = binding.updatedAt;
 
-  if (!telegramChatId || !conversationId) {
+  if (
+    !telegramChatId
+    || !conversationId
+    || transportConversationMode !== 'transport_inbox'
+    || roomRoutingStatus !== 'placeholder'
+    || !(typeof linkedRoomId === 'string' || linkedRoomId === null)
+    || typeof createdAt !== 'string'
+    || typeof updatedAt !== 'string'
+  ) {
     return null;
   }
 
   return {
     telegramChatId,
     conversationId,
-    transportConversationMode: 'transport_inbox',
-    roomRoutingStatus: 'placeholder',
-    linkedRoomId:
-      typeof binding.linkedRoomId === 'string' && binding.linkedRoomId.trim().length > 0
-        ? binding.linkedRoomId
-        : null,
-    createdAt:
-      typeof binding.createdAt === 'string' ? binding.createdAt : new Date().toISOString(),
-    updatedAt:
-      typeof binding.updatedAt === 'string' ? binding.updatedAt : new Date().toISOString(),
+    transportConversationMode,
+    roomRoutingStatus,
+    linkedRoomId: typeof linkedRoomId === 'string' && linkedRoomId.trim().length > 0
+      ? linkedRoomId
+      : null,
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -250,18 +260,18 @@ export class FileBackedTelegramRelayStore extends BaseTelegramRelayStore {
   }
 }
 
-export function resolveTelegramRelayStatePath(workspaceStatePath: string): string {
-  const parsed = path.parse(workspaceStatePath);
+export function resolveTelegramRelayStatePath(chatStatePath: string): string {
+  const parsed = path.parse(chatStatePath);
   const extension = parsed.ext || '.json';
   return path.join(parsed.dir, `${parsed.name}.telegram-relay${extension}`);
 }
 
 export function createFileBackedTelegramRelayStore(
-  workspaceStatePath: string,
+  chatStatePath: string,
   maxProcessedUpdates = 2048,
 ): TelegramRelayStore {
   return new FileBackedTelegramRelayStore(
-    resolveTelegramRelayStatePath(workspaceStatePath),
+    resolveTelegramRelayStatePath(chatStatePath),
     maxProcessedUpdates,
   );
 }

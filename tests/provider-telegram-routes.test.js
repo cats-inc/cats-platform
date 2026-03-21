@@ -8,8 +8,8 @@ import test from 'node:test';
 import { createTelegramRelay } from '../dist-server/platform/transports/telegram/relay.js';
 import { createServer } from '../dist-server/server.js';
 import {
-  FileWorkspaceStore,
-  MemoryWorkspaceStore,
+  FileChatStore,
+  MemoryChatStore,
 } from '../dist-server/workspace/store.js';
 
 const baseConfig = {
@@ -17,7 +17,7 @@ const baseConfig = {
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  workspaceStatePath: 'unused-for-tests',
+  chatStatePath: 'unused-for-tests',
 };
 
 function createRuntimeStub() {
@@ -102,11 +102,11 @@ function createRuntimeStub() {
   };
 }
 
-async function withServer(runtimeClient, callback, workspaceStore = new MemoryWorkspaceStore()) {
+async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const server = createServer({
     config: baseConfig,
     runtimeClient,
-    workspaceStore,
+    chatStore,
     now: () => new Date('2026-03-19T00:00:00.000Z'),
   });
 
@@ -126,11 +126,11 @@ async function withServer(runtimeClient, callback, workspaceStore = new MemoryWo
   }
 }
 
-async function withServerConfig(runtimeClient, config, workspaceStore, callback) {
+async function withServerConfig(runtimeClient, config, chatStore, callback) {
   const server = createServer({
     config,
     runtimeClient,
-    workspaceStore,
+    chatStore,
     now: () => new Date('2026-03-19T00:00:00.000Z'),
   });
 
@@ -289,11 +289,11 @@ test('telegram status reports unbound relay before bot binding is configured', a
 });
 
 test('telegram status ignores orphaned Telegram bindings when Boss Cat is missing', async () => {
-  const workspaceStore = {
+  const chatStore = {
     async read() {
       return {
         bossCatId: null,
-        pals: [],
+        cats: [],
       };
     },
     async readCore() {
@@ -304,7 +304,7 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
             platform: 'telegram',
             botName: 'smelly_bot',
             orchestratorActorId: 'actor-orchestrator-global',
-            bossCatActorId: 'actor-pal-cat-smelly',
+            bossCatActorId: 'actor-cat-cat-smelly',
             status: 'active',
             createdAt: '2026-03-19T00:00:00.000Z',
             updatedAt: '2026-03-19T00:00:00.000Z',
@@ -316,7 +316,7 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
   const server = createServer({
     config: baseConfig,
     runtimeClient: createRuntimeStub(),
-    workspaceStore,
+    chatStore,
     telegramRelay: createTelegramRelay(),
     now: () => new Date('2026-03-19T00:00:00.000Z'),
   });
@@ -431,18 +431,18 @@ test('telegram webhook ignores unsupported updates and keeps routing placeholder
   });
 });
 
-test('telegram relay state survives restart with file-backed workspace storage', async () => {
+test('telegram relay state survives restart with file-backed chat storage', async () => {
   const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-telegram-routes-'));
-  const workspaceStatePath = path.join(stateDir, 'workspace.json');
+  const chatStatePath = path.join(stateDir, 'workspace.json');
   const config = {
     ...baseConfig,
-    workspaceStatePath,
+    chatStatePath,
   };
 
   await withServerConfig(
     createRuntimeStub(),
     config,
-    new FileWorkspaceStore(workspaceStatePath),
+    new FileChatStore(chatStatePath),
     async (baseUrl) => {
       await configureTelegramBossCat(baseUrl);
 
@@ -465,7 +465,7 @@ test('telegram relay state survives restart with file-backed workspace storage',
   await withServerConfig(
     createRuntimeStub(),
     config,
-    new FileWorkspaceStore(workspaceStatePath),
+    new FileChatStore(chatStatePath),
     async (baseUrl) => {
       const statusResponse = await fetch(`${baseUrl}/api/transports/telegram`);
       assert.equal(statusResponse.status, 200);
@@ -497,3 +497,4 @@ test('telegram relay state survives restart with file-backed workspace storage',
     },
   );
 });
+

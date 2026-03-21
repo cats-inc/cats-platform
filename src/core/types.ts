@@ -36,7 +36,7 @@ export interface CoreActorRecord {
   mcpProfile: string | null;
   defaultExecutionTarget: ExecutionTargetSummary | null;
   memory: MemoryCheckpointSummary;
-  source: 'owner_profile' | 'global_orchestrator' | 'workspace_pal';
+  source: 'owner_profile' | 'global_orchestrator' | 'chat_cat';
   sourceId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -44,7 +44,7 @@ export interface CoreActorRecord {
 }
 
 export type CoreConversationKind =
-  | 'workspace_channel'
+  | 'chat_channel'
   | 'direct_message'
   | 'external_transport'
   | 'private_escalation';
@@ -228,7 +228,7 @@ export interface ArchiveMetadataRecord {
   id: string;
   sourceConversationId: string;
   sourceChannelId: string | null;
-  exportFormat: 'workspace-channel-json';
+  exportFormat: 'chat-channel-json';
   status: 'not_ready' | 'ready_for_archive' | 'archived';
   lastExportedAt: string | null;
   updatedAt: string;

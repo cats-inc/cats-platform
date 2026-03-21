@@ -1,14 +1,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import { createPalActorId } from '../../core/model.js';
+import { createCatActorId } from '../../core/model.js';
 import type { BotBindingRecord } from '../../core/types.js';
 import type { TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
-import type { WorkspaceStore } from '../../products/chat/workspace/store.js';
-import type { WorkspaceState } from '../../shared/app-shell.js';
+import type { ChatStore } from '../../products/chat/workspace/store.js';
+import type { ChatState } from '../../shared/app-shell.js';
 
 interface TelegramRouteDependencies {
-  workspaceStore: WorkspaceStore;
+  chatStore: ChatStore;
   telegramRelay: TelegramRelay;
 }
 
@@ -47,28 +47,28 @@ async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
   return JSON.parse(rawBody) as T;
 }
 
-function resolveBossCatName(workspace: WorkspaceState): string | null {
-  if (!workspace.bossCatId) {
+function resolveBossCatName(chatState: ChatState): string | null {
+  if (!chatState.bossCatId) {
     return null;
   }
 
-  return workspace.pals.find((pal) => pal.id === workspace.bossCatId)?.name ?? null;
+  return chatState.cats.find((cat) => cat.id === chatState.bossCatId)?.name ?? null;
 }
 
 async function readTelegramContext(
-  workspaceStore: WorkspaceStore,
+  chatStore: ChatStore,
 ): Promise<{
   bossCatId: string | null;
   bossCatName: string | null;
   bossCatActorId: string | null;
   botBinding: BotBindingRecord | null;
 }> {
-  const [core, workspace] = await Promise.all([
-    workspaceStore.readCore(),
-    workspaceStore.read(),
+  const [core, chatState] = await Promise.all([
+    chatStore.readCore(),
+    chatStore.read(),
   ]);
-  const bossCatId = workspace.bossCatId;
-  const bossCatActorId = bossCatId ? createPalActorId(bossCatId) : null;
+  const bossCatId = chatState.bossCatId;
+  const bossCatActorId = bossCatId ? createCatActorId(bossCatId) : null;
   const activeTelegramBindings = core.botBindings.filter((binding) =>
     binding.platform === 'telegram'
     && binding.status === 'active',
@@ -79,7 +79,7 @@ async function readTelegramContext(
 
   return {
     bossCatId,
-    bossCatName: resolveBossCatName(workspace),
+    bossCatName: resolveBossCatName(chatState),
     bossCatActorId,
     botBinding,
   };
@@ -89,7 +89,7 @@ export async function handleTelegramStatus(
   response: ServerResponse,
   dependencies: TelegramRouteDependencies,
 ): Promise<void> {
-  const context = await readTelegramContext(dependencies.workspaceStore);
+  const context = await readTelegramContext(dependencies.chatStore);
   sendJson(response, 200, {
     telegram: dependencies.telegramRelay.getStatus(context),
   });
@@ -102,7 +102,7 @@ export async function handleTelegramWebhook(
 ): Promise<void> {
   try {
     const update = await readJsonBody<TelegramWebhookUpdate>(request);
-    const context = await readTelegramContext(dependencies.workspaceStore);
+    const context = await readTelegramContext(dependencies.chatStore);
     const receipt = dependencies.telegramRelay.receiveUpdate({ update, context });
     sendJson(response, 202, { receipt });
   } catch (error) {
@@ -114,3 +114,4 @@ export async function handleTelegramWebhook(
     );
   }
 }
+

@@ -10,7 +10,7 @@ routes. What it does not have yet is a fully product-facing REST contract.
 
 Today, the API is still centered on `AppShellPayload` and controller-style
 workspace actions. This spec defines the next contract shape: resource-oriented
-routes for workspaces, channels, messages, pals, assignments, preferences,
+routes for workspaces, channels, messages, cats, assignments, preferences,
 orchestrator state, and operation resources, while keeping the current app
 shell as a read-only compatibility view during migration.
 
@@ -57,9 +57,9 @@ for `Cats Chat`, `Cats Work`, or future Telegram/LINE transport relays.
   - workspace preferences
   - channels
   - channel messages
-  - channel pal assignments
+  - channel cat assignments
   - workspace/global orchestrator state
-  - reusable pals
+  - reusable cats
   - channel activation operations
   - export/read-only archive payloads
 - The product server shall keep `GET /api/app-shell` available during migration
@@ -104,15 +104,15 @@ The target API should be organized around these families:
 - `DELETE /api/workspaces/{workspaceId}/channels/{channelId}`
 - `GET /api/workspaces/{workspaceId}/channels/{channelId}/messages`
 - `POST /api/workspaces/{workspaceId}/channels/{channelId}/messages`
-- `GET /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments`
-- `PUT /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}`
-- `DELETE /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}`
+- `GET /api/workspaces/{workspaceId}/channels/{channelId}/cat-assignments`
+- `PUT /api/workspaces/{workspaceId}/channels/{channelId}/cat-assignments/{catId}`
+- `DELETE /api/workspaces/{workspaceId}/channels/{channelId}/cat-assignments/{catId}`
 - `GET /api/workspaces/{workspaceId}/orchestrator`
 - `PATCH /api/workspaces/{workspaceId}/orchestrator`
-- `GET /api/pals`
-- `POST /api/pals`
-- `GET /api/pals/{palId}`
-- `PATCH /api/pals/{palId}`
+- `GET /api/cats`
+- `POST /api/cats`
+- `GET /api/cats/{catId}`
+- `PATCH /api/cats/{catId}`
 - `POST /api/workspaces/{workspaceId}/channels/{channelId}/activations`
 - `GET /api/workspaces/{workspaceId}/channels/{channelId}/exports/latest`
 - existing `GET /api/core/*` routes remain in place
@@ -125,9 +125,9 @@ The target API should be organized around these families:
 | `POST /api/workspace/selection` | UI action, not resource-oriented | move to `PATCH /api/workspaces/{workspaceId}/preferences` or local renderer state |
 | `POST /api/workspace/channels` | missing workspace resource context | `POST /api/workspaces/{workspaceId}/channels` |
 | `DELETE /api/workspace/channels/{id}` | missing workspace context | `DELETE /api/workspaces/{workspaceId}/channels/{channelId}` |
-| `POST /api/workspace/pals` | registry resource hidden behind workspace action naming | `POST /api/pals` |
-| `POST /api/workspace/channels/{id}/pals` | create/update assignment is not idempotent | `PUT /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}` |
-| `DELETE /api/workspace/channels/{id}/pals/{palId}` | legacy naming | `DELETE /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}` |
+| `POST /api/workspace/cats` | registry resource hidden behind workspace action naming | `POST /api/cats` |
+| `POST /api/workspace/channels/{id}/cats` | create/update assignment is not idempotent | `PUT /api/workspaces/{workspaceId}/channels/{channelId}/cat-assignments/{catId}` |
+| `DELETE /api/workspace/channels/{id}/cats/{catId}` | legacy naming | `DELETE /api/workspaces/{workspaceId}/channels/{channelId}/cat-assignments/{catId}` |
 | `POST /api/workspace/channels/{id}/members` | compatibility alias | deprecate after assignment routes are live |
 | `DELETE /api/workspace/channels/{id}/members/{memberId}` | compatibility alias | deprecate after assignment routes are live |
 | `POST /api/workspace/channels/{id}/activate` | root action verb | `POST /api/workspaces/{workspaceId}/channels/{channelId}/activations` |
@@ -216,7 +216,7 @@ Accepted direction:
 ### Cats Core Alignment
 
 The REST refactor should not create a second parallel schema. Resource payloads
-for channels, pals, tasks, actors, and owner profile should continue to map
+for channels, cats, tasks, actors, and owner profile should continue to map
 cleanly into the current `Cats Core v1` state and store.
 
 ## Migration Strategy
@@ -264,3 +264,4 @@ cleanly into the current `Cats Core v1` state and store.
 ---
 
 *Last updated: 2026-03-18*
+

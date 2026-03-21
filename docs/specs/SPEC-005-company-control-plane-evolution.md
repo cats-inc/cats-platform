@@ -35,7 +35,7 @@ Paperclip packages or schemas directly.
   approvals, costs, and outputs.
 - Chat channels must be attachable to work objects instead of remaining the
   only top-level operator entity.
-- The current pal registry must be able to grow into a broader roster or org
+- The current cat registry must be able to grow into a broader roster or org
   model with ownership and reporting context.
 - Runtime executions, run history, and artifacts must be visible through
   product-owned read models hydrated from `cats-runtime`.
@@ -77,3 +77,4 @@ Paperclip packages or schemas directly.
 ---
 
 *Last updated: 2026-03-16*
+

@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
-import { MemoryWorkspaceStore } from '../dist-server/workspace/store.js';
+import { MemoryChatStore } from '../dist-server/workspace/store.js';
 import { resolveOrchestratorDisplayName } from '../dist-server/workspace/model.js';
 
 const baseConfig = {
@@ -11,7 +11,7 @@ const baseConfig = {
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  workspaceStatePath: 'unused-for-tests',
+  chatStatePath: 'unused-for-tests',
 };
 
 function createRuntimeStub() {
@@ -71,11 +71,11 @@ function createRuntimeStub() {
   };
 }
 
-async function withServer(runtimeClient, callback, workspaceStore = new MemoryWorkspaceStore()) {
+async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const server = createServer({
     config: baseConfig,
     runtimeClient,
-    workspaceStore,
+    chatStore,
     now: () => new Date('2026-03-19T00:00:00.000Z'),
   });
 
@@ -95,7 +95,7 @@ async function withServer(runtimeClient, callback, workspaceStore = new MemoryWo
   }
 }
 
-test('GET /api/app-shell returns setupCompleteAt: null for uninitialized workspace', async () => {
+test('GET /api/app-shell returns setupCompleteAt: null for uninitialized chat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(response.status, 200);
@@ -103,7 +103,7 @@ test('GET /api/app-shell returns setupCompleteAt: null for uninitialized workspa
     const payload = await response.json();
     assert.equal(payload.setupCompleteAt, null);
     assert.equal(payload.ownerDisplayName, 'Owner');
-    assert.equal(payload.workspace.bossCatId, null);
+    assert.equal(payload.chat.bossCatId, null);
   });
 });
 
@@ -129,17 +129,17 @@ test('POST /api/setup/complete creates Boss Cat and marks setup done without cre
     assert.equal(payload.ownerDisplayName, 'Kenny');
 
     // Boss Cat was created
-    assert.ok(payload.workspace.bossCatId);
-    assert.ok(payload.workspace.pals.length >= 1);
-    const bossCat = payload.workspace.pals.find((p) => p.id === payload.workspace.bossCatId);
+    assert.ok(payload.chat.bossCatId);
+    assert.ok(payload.chat.cats.length >= 1);
+    const bossCat = payload.chat.cats.find((p) => p.id === payload.chat.bossCatId);
     assert.equal(bossCat?.defaultExecutionTarget.instance, 'native');
 
     // No channel created — user navigates to New Chat instead
-    assert.equal(payload.workspace.channels.length, 0);
-    assert.equal(payload.workspace.selectedChannelId, '');
+    assert.equal(payload.chat.channels.length, 0);
+    assert.equal(payload.chat.selectedChannelId, '');
 
     // Orchestrator executionTarget matches Boss Cat config
-    const orch = payload.workspace.globalOrchestrator;
+    const orch = payload.chat.globalOrchestrator;
     assert.equal(orch.executionTarget.provider, 'claude');
     assert.equal(orch.executionTarget.instance, 'native');
     assert.equal(orch.executionTarget.model, 'claude-opus-4-6');
@@ -194,12 +194,12 @@ test('after setup complete, GET /api/app-shell reflects initialized state', asyn
     const payload = await response.json();
     assert.ok(payload.setupCompleteAt);
     assert.equal(payload.ownerDisplayName, 'Kenny');
-    assert.ok(payload.workspace.bossCatId);
-    assert.equal(payload.workspace.channels.length, 0);
+    assert.ok(payload.chat.bossCatId);
+    assert.equal(payload.chat.channels.length, 0);
   });
 });
 
-test('POST /api/setup/reset clears setup state and returns clean workspace', async () => {
+test('POST /api/setup/reset clears setup state and returns clean chat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup first
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
@@ -223,9 +223,9 @@ test('POST /api/setup/reset clears setup state and returns clean workspace', asy
     const payload = await resetResponse.json();
     assert.equal(payload.setupCompleteAt, null);
     assert.equal(payload.ownerDisplayName, 'Owner');
-    assert.equal(payload.workspace.bossCatId, null);
-    assert.deepEqual(payload.workspace.pals, []);
-    assert.deepEqual(payload.workspace.channels, []);
+    assert.equal(payload.chat.bossCatId, null);
+    assert.deepEqual(payload.chat.cats, []);
+    assert.deepEqual(payload.chat.channels, []);
   });
 });
 
@@ -243,8 +243,8 @@ test('POST /api/setup/complete defaults Boss Cat name to Smelly if empty', async
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    const bossCat = payload.workspace.pals.find(
-      (p) => p.id === payload.workspace.bossCatId,
+    const bossCat = payload.chat.cats.find(
+      (p) => p.id === payload.chat.bossCatId,
     );
     assert.ok(bossCat);
     assert.equal(bossCat.name, 'Smelly');
@@ -257,12 +257,12 @@ test('resolveOrchestratorDisplayName returns boss cat name when set, Orchestrato
     name: 'Chat',
     selectedChannelId: '',
     bossCatId: 'cat-1',
-    pals: [
+    cats: [
       { id: 'cat-1', name: '將將', roles: [], skillProfile: null, mcpProfile: null, status: 'active', createdAt: '', updatedAt: '', archivedAt: null, defaultExecutionTarget: { provider: 'claude', instance: null, model: null }, memory: { updatedAt: null, content: null } },
     ],
     channels: [],
     globalOrchestrator: { mode: 'global', status: 'ready', executionTarget: { provider: 'claude', instance: null, model: null }, systemPrompt: '', skillProfile: null, mcpProfile: null, telegramBotName: null, updatedAt: '' },
-    capabilities: { maxChannels: 50, maxPalsPerChannel: 10, supportedProviders: [] },
+    capabilities: { maxChannels: 50, maxCatsPerChannel: 10, supportedProviders: [] },
   };
 
   assert.equal(resolveOrchestratorDisplayName(state), '將將');
@@ -271,7 +271,7 @@ test('resolveOrchestratorDisplayName returns boss cat name when set, Orchestrato
   const stateNoBoss = { ...state, bossCatId: null };
   assert.equal(resolveOrchestratorDisplayName(stateNoBoss), 'Orchestrator');
 
-  // When bossCatId points to a missing pal, falls back to 'Orchestrator'
+  // When bossCatId points to a missing cat, falls back to 'Orchestrator'
   const stateMissing = { ...state, bossCatId: 'nonexistent' };
   assert.equal(resolveOrchestratorDisplayName(stateMissing), 'Orchestrator');
 });
@@ -300,7 +300,7 @@ test('after setup + activate, system messages use boss cat name and have verbosi
     });
     assert.ok(createResponse.status === 200 || createResponse.status === 201);
     const createPayload = await createResponse.json();
-    const channelId = createPayload.workspace?.selectedChannelId ?? createPayload.channel?.id;
+    const channelId = createPayload.chat?.selectedChannelId ?? createPayload.channel?.id;
 
     // Activate channel sessions
     const activateResponse = await fetch(
@@ -398,7 +398,7 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
     });
     assert.ok(createChannelResponse.status === 200 || createChannelResponse.status === 201);
     const createChannelPayload = await createChannelResponse.json();
-    const channelId = createChannelPayload.workspace?.selectedChannelId ?? createChannelPayload.channel?.id;
+    const channelId = createChannelPayload.chat?.selectedChannelId ?? createChannelPayload.channel?.id;
 
     const activateResponse = await fetch(
       `${baseUrl}/api/channels/${channelId}/activations`,
@@ -447,7 +447,7 @@ test('POST /api/channels seeds Boss Cat greeting without assigning Boss Cat as a
     });
     assert.equal(setupResponse.status, 200);
     const setupPayload = await setupResponse.json();
-    const bossCatId = setupPayload.workspace.bossCatId;
+    const bossCatId = setupPayload.chat.bossCatId;
 
     // Create a new channel with no cats
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
@@ -460,7 +460,7 @@ test('POST /api/channels seeds Boss Cat greeting without assigning Boss Cat as a
 
     // Boss Cat should stay implicit instead of becoming an assigned worker.
     assert.equal(
-      createPayload.channel.assignedPals.some((p) => p.palId === bossCatId),
+      createPayload.channel.assignedCats.some((p) => p.catId === bossCatId),
       false,
       'Boss Cat should stay implicit in the new channel',
     );
@@ -523,7 +523,7 @@ test('POST /api/channels does NOT auto-assign when cats are explicitly provided'
     });
     assert.equal(setupResponse.status, 200);
     const setupPayload = await setupResponse.json();
-    const bossCatId = setupPayload.workspace.bossCatId;
+    const bossCatId = setupPayload.chat.bossCatId;
 
     // Create a new channel with explicit cats
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
@@ -539,12 +539,12 @@ test('POST /api/channels does NOT auto-assign when cats are explicitly provided'
     const createPayload = await createResponse.json();
 
     // Boss Cat should NOT be auto-assigned (explicit cats provided)
-    const hasBossCat = createPayload.channel.assignedPals.some((p) => p.palId === bossCatId);
+    const hasBossCat = createPayload.channel.assignedCats.some((p) => p.catId === bossCatId);
     assert.equal(hasBossCat, false, 'Boss Cat should not be auto-assigned when cats are explicitly provided');
 
     // Should have the explicit cat instead
     assert.ok(
-      createPayload.channel.assignedPals.some((p) => p.name === 'Custom-Agent'),
+      createPayload.channel.assignedCats.some((p) => p.name === 'Custom-Agent'),
       'Explicit cat should be assigned',
     );
     assert.equal(
@@ -570,7 +570,7 @@ test('Boss Cat cannot be assigned as a regular chat participant', async () => {
     });
     assert.equal(setupResponse.status, 200);
     const setupPayload = await setupResponse.json();
-    const bossCatId = setupPayload.workspace.bossCatId;
+    const bossCatId = setupPayload.chat.bossCatId;
 
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
@@ -593,3 +593,5 @@ test('Boss Cat cannot be assigned as a regular chat participant', async () => {
     assert.equal(assignPayload.error.message, 'Boss Cat is already the default chat entrypoint');
   });
 });
+
+

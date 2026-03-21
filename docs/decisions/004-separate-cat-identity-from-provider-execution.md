@@ -1,6 +1,6 @@
-# ADR-004: Separate Pal Identity from Provider Execution
+# ADR-004: Separate Cat Identity from Provider Execution
 
-> Keep pal memory portable across sessions and providers.
+> Keep cat memory portable across sessions and providers.
 
 ## Status
 
@@ -16,16 +16,16 @@ creates the wrong long-term boundary for the product.
 The product direction is now clearer:
 
 - `Cats Inc` is a suite, and `Chat` is one module inside it
-- a `Pal` is a reusable teammate identity, not a runtime vendor selection
-- the same pal may use different providers in different channels
+- a `Cat` is a reusable teammate identity, not a runtime vendor selection
+- the same cat may use different providers in different channels
 - provider choice may change over time based on budget, latency, availability,
   or task type
 - cross-session memory must survive provider changes
 
-If `provider` stays attached to the pal identity itself, we get the opposite of
+If `provider` stays attached to the cat identity itself, we get the opposite of
 that design:
 
-- pals become implicitly locked to one provider/model pair
+- cats become implicitly locked to one provider/model pair
 - session continuity depends on provider-native thread/session semantics
 - memory inheritance becomes provider-local instead of product-owned
 - future scheduling across eight CLI providers becomes harder to implement
@@ -33,14 +33,14 @@ that design:
 ## Decision
 
 `cats` will treat provider execution as a replaceable channel-scoped lease,
-not as part of pal identity.
+not as part of cat identity.
 
 The product model will move toward four distinct concepts:
 
-1. `Pal identity`
+1. `Cat identity`
    - stable teammate identity, roles, tone, and long-lived metadata
 2. `Channel-scoped execution target`
-   - the preferred provider/model for that pal in one channel
+   - the preferred provider/model for that cat in one channel
 3. `Execution lease`
    - the currently active provider session, including runtime status and lease
      metadata
@@ -50,7 +50,7 @@ The product model will move toward four distinct concepts:
 
 For the current `cats` phase, this means:
 
-- move provider/model out of the pal identity fields
+- move provider/model out of the cat identity fields
 - store provider/model under explicit execution settings instead
 - persist execution lease metadata separately from identity metadata
 - add product-owned memory checkpoint fields that are independent from any one
@@ -58,19 +58,19 @@ For the current `cats` phase, this means:
 - treat provider-native session state as an optimization, not the source of
   truth
 
-This decision applies to pals first, and it also sets the direction for the
+This decision applies to cats first, and it also sets the direction for the
 global orchestrator path.
 
 ## Consequences
 
 ### Positive
 
-- The same pal can be scheduled differently per channel without changing who
-  that pal is.
+- The same cat can be scheduled differently per channel without changing who
+  that cat is.
 - Cross-session continuity becomes a `cats` responsibility instead of a
   provider-specific feature.
 - Runtime scheduling can later optimize for budget, latency, or availability
-  without rewriting the pal model again.
+  without rewriting the cat model again.
 - Exported workspace data becomes a better handoff format for future memory,
   reporting, and project-management modules.
 
@@ -84,12 +84,12 @@ global orchestrator path.
 
 - Provider-native threads or conversations may still be used, but only as
   disposable execution context.
-- The first implementation step may still keep pal records channel-local before
-  a later workspace-wide pal registry is introduced.
+- The first implementation step may still keep cat records channel-local before
+  a later workspace-wide cat registry is introduced.
 
 ## Alternatives Considered
 
-### Alternative 1: Keep provider/model directly on the pal record
+### Alternative 1: Keep provider/model directly on the cat record
 
 - **Pros**: Smallest immediate change; simple to reason about in a single chat.
 - **Cons**: Couples identity to vendor choice; blocks provider portability;
@@ -97,7 +97,7 @@ global orchestrator path.
 - **Why rejected**: It does not match the product direction or the future
   scheduler model.
 
-### Alternative 2: Bind every pal to one permanent provider, but allow channel overrides later
+### Alternative 2: Bind every cat to one permanent provider, but allow channel overrides later
 
 - **Pros**: Keeps a "default provider" concept for fast setup.
 - **Cons**: Still introduces an identity-level provider assumption that future
@@ -123,3 +123,4 @@ global orchestrator path.
 
 *Decision made: 2026-03-13*
 *Decision makers: Codex + user direction*
+

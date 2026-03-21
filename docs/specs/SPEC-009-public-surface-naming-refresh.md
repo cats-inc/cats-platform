@@ -7,10 +7,10 @@ Status: Draft (Pending Review)
 `cats` currently exposes two public naming choices that no longer fit the
 product direction well:
 
-- `Pal / Pals`
+- `Cat / Cats`
 - `workspace / workspaces`
 
-`Pal / Pals` feels serviceable but not brand-aligned, while `workspace` is now
+`Cat / Cats` feels serviceable but not brand-aligned, while `workspace` is now
 too close to the planned `Cats Work` product line and risks creating confusing
 phrases across API docs, product copy, and future multi-surface work.
 
@@ -19,12 +19,12 @@ It intentionally avoids visual redesign and avoids a broad internal refactor.
 
 ## Goals
 
-- Rename public `Pal / Pals` language to `Cat / Cats`.
+- Rename public `Cat / Cats` language to `Cat / Cats`.
 - Do not use `Paw / Paws` as the primary product noun.
 - Remove `workspace / workspaces` from the canonical public API surface.
 - Preserve compatibility through legacy aliases during migration.
 - Keep the existing UI structure, layout, styling, and CSS hooks intact.
-- Avoid forcing an immediate rename of internal `workspace` and `pal`
+- Avoid forcing an immediate rename of internal `workspace` and `cat`
   implementation types.
 
 ## Non-Goals
@@ -33,15 +33,15 @@ It intentionally avoids visual redesign and avoids a broad internal refactor.
 - Reflowing layout, spacing, panels, or responsive behavior
 - Renaming CSS class names just to match new product language
 - Moving or renaming `src/workspace/` in this slice
-- Renaming every internal `Workspace*` or `Pal*` type in this slice
+- Renaming every internal `Workspace*` or `Cat*` type in this slice
 - Removing legacy route aliases immediately
 
 ## Naming Decisions
 
 ### Public Product Nouns
 
-- `Pal` becomes `Cat`
-- `Pals` becomes `Cats`
+- `Cat` becomes `Cat`
+- `Cats` becomes `Cats`
 - `Paw / Paws` is rejected as the primary domain noun
 
 Reasoning:
@@ -68,11 +68,11 @@ Reasoning:
 
 Examples:
 
-- `Add pal` → `Add cat`
-- `Pals` → `Cats`
-- `Saved pals` → `Cats`
-- `pal registry` → `Cats` or `Cats registry`
-- `Assign pal` → `Add cat` or `Assign cat`, depending on context
+- `Add cat` → `Add cat`
+- `Cats` → `Cats`
+- `Saved cats` → `Cats`
+- `cat registry` → `Cats` or `Cats registry`
+- `Assign cat` → `Add cat` or `Assign cat`, depending on context
 
 ### Canonical API Routes
 
@@ -95,8 +95,8 @@ Recommended canonical route family:
 The following route families should remain temporarily available as
 compatibility aliases:
 
-- `/api/pals`
-- `/api/pals/{palId}`
+- `/api/cats`
+- `/api/cats/{catId}`
 - `/api/workspaces/default/...`
 - earlier `/api/workspace/...` compatibility routes already preserved from the
   REST migration
@@ -105,10 +105,10 @@ compatibility aliases:
 
 Examples:
 
-- `{ pal: ... }` → `{ cat: ... }`
-- `{ pals: [...] }` → `{ cats: [...] }`
-- `palId` → `catId`
-- `palAssignments` → `cats` or `channelCats`, depending on the final DTO shape
+- `{ cat: ... }` → `{ cat: ... }`
+- `{ cats: [...] }` → `{ cats: [...] }`
+- `catId` → `catId`
+- `catAssignments` → `cats` or `channelCats`, depending on the final DTO shape
 
 ## Hard Constraints
 
@@ -132,8 +132,8 @@ Accepted direction for this slice:
 - internal modules may continue using:
   - `src/workspace/`
   - `WorkspaceState`
-  - `WorkspacePal`
-  - `ChannelPalAssignment`
+  - `ChatCat`
+  - `ChannelCatAssignment`
   - related store and shell helpers
 
 This keeps the rename manageable and avoids destabilizing persistence and core
@@ -162,11 +162,11 @@ sync logic in the same change.
 ### Step 4: Deferred Internal Cleanup
 
 - only after public naming stabilizes, evaluate whether internal `workspace`
-  and `pal` names should be cleaned up
+  and `cat` names should be cleaned up
 
 ## Acceptance Criteria
 
-- Public UI text uses `Cat / Cats` instead of `Pal / Pals`.
+- Public UI text uses `Cat / Cats` instead of `Cat / Cats`.
 - No public-facing primary noun uses `Paw / Paws`.
 - Canonical API docs no longer present `workspace / workspaces` as the public
   route root.
@@ -182,7 +182,7 @@ sync logic in the same change.
   its payload labels also shift to `cats` while preserving a compatibility
   adapter?
 - After the public rename lands, is a second pass to rename internal
-  `Workspace*` and `Pal*` types worth the churn?
+  `Workspace*` and `Cat*` types worth the churn?
 
 ## References
 
@@ -195,3 +195,4 @@ sync logic in the same change.
 ---
 
 *Last updated: 2026-03-18*
+

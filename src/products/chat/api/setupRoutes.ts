@@ -1,7 +1,7 @@
 import { createDefaultCoreState } from '../../../core/model.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { createDefaultWorkspaceState } from '../workspace/defaults.js';
-import { createWorkspacePal } from '../workspace/model.js';
+import { createDefaultChatState } from '../workspace/defaults.js';
+import { createCat } from '../workspace/model.js';
 import type { SetupCompleteInput } from './contracts.js';
 import {
   buildAppShellPayload,
@@ -17,8 +17,8 @@ async function handleSetupComplete(
   try {
     const body = await readJsonBody<SetupCompleteInput>(context.request);
     const now = nowFrom(context.dependencies);
-    let core = await context.dependencies.workspaceStore.readCore();
-    let workspace = await context.dependencies.workspaceStore.read();
+    let core = await context.dependencies.chatStore.readCore();
+    let chatState = await context.dependencies.chatStore.read();
 
     if (core.setupCompleteAt) {
       sendRestError(
@@ -30,9 +30,9 @@ async function handleSetupComplete(
       return;
     }
 
-    const previousPalIds = new Set(workspace.pals.map((pal) => pal.id));
-    workspace = createWorkspacePal(
-      workspace,
+    const previousCatIds = new Set(chatState.cats.map((cat) => cat.id));
+    chatState = createCat(
+      chatState,
       {
         name: body.bossCatName.trim() || 'Smelly',
         provider: body.bossCatProvider,
@@ -42,20 +42,20 @@ async function handleSetupComplete(
       now,
     );
 
-    const bossCat = workspace.pals.find((pal) => !previousPalIds.has(pal.id));
+    const bossCat = chatState.cats.find((cat) => !previousCatIds.has(cat.id));
     if (!bossCat) {
       sendRestError(context, 500, 'internal_error', 'Failed to create Boss Cat');
       return;
     }
 
-    workspace = {
-      ...workspace,
+    chatState = {
+      ...chatState,
       bossCatId: bossCat.id,
     };
-    workspace = {
-      ...workspace,
+    chatState = {
+      ...chatState,
       globalOrchestrator: {
-        ...workspace.globalOrchestrator,
+        ...chatState.globalOrchestrator,
         executionTarget: {
           provider: body.bossCatProvider,
           instance: body.bossCatInstance?.trim() || null,
@@ -75,8 +75,8 @@ async function handleSetupComplete(
       },
     };
 
-    await context.dependencies.workspaceStore.write(workspace);
-    await context.dependencies.workspaceStore.writeCore(core);
+    await context.dependencies.chatStore.write(chatState);
+    await context.dependencies.chatStore.writeCore(core);
     sendJson(
       context.response,
       200,
@@ -91,8 +91,8 @@ async function handleSetupReset(
   context: ChatApiRouteContext,
 ): Promise<void> {
   try {
-    await context.dependencies.workspaceStore.write(createDefaultWorkspaceState());
-    await context.dependencies.workspaceStore.writeCore(createDefaultCoreState());
+    await context.dependencies.chatStore.write(createDefaultChatState());
+    await context.dependencies.chatStore.writeCore(createDefaultCoreState());
     sendJson(
       context.response,
       200,
@@ -126,3 +126,4 @@ export async function routeSetupApi(
 
   return false;
 }
+

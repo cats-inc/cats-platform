@@ -20,7 +20,7 @@ The main objective is not just to rename routes. The goal is to separate:
 ### Phase 1: Contract Extraction and Compatibility Baseline
 
 - [x] Introduce canonical resource DTOs for workspace, preferences, channel,
-      message, pal, pal assignment, orchestrator, export, and activation
+      message, cat, cat assignment, orchestrator, export, and activation
       payloads.
 - [x] Decide the authoritative `workspaceId` strategy for the current single
       workspace implementation. → `"default"` is the only supported workspaceId.
@@ -38,9 +38,9 @@ baseline.
 - [x] Add `GET /api/workspaces/{workspaceId}/channels`.
 - [x] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}`.
 - [x] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/messages`.
-- [x] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments`.
+- [x] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/cat-assignments`.
 - [x] Add `GET /api/workspaces/{workspaceId}/orchestrator`.
-- [x] Add `GET /api/pals` and `GET /api/pals/{palId}`.
+- [x] Add `GET /api/cats` and `GET /api/cats/{catId}`.
 
 **Deliverables**: read-only resource surface with tests.
 
@@ -53,10 +53,10 @@ baseline.
       channel metadata editing not yet exposed in the renderer.
 - [x] Add `DELETE /api/workspaces/{workspaceId}/channels/{channelId}`.
 - [x] Add `POST /api/workspaces/{workspaceId}/channels/{channelId}/messages`.
-- [x] Add `PUT /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}`.
-- [x] Add `DELETE /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}`.
+- [x] Add `PUT /api/workspaces/{workspaceId}/channels/{channelId}/cat-assignments/{catId}`.
+- [x] Add `DELETE /api/workspaces/{workspaceId}/channels/{channelId}/cat-assignments/{catId}`.
 - [x] Add `PATCH /api/workspaces/{workspaceId}/orchestrator`.
-- [x] Add `POST /api/pals`. `PATCH /api/pals/{palId}` deferred (no UI need yet).
+- [x] Add `POST /api/cats`. `PATCH /api/cats/{catId}` deferred (no UI need yet).
 - [x] Add `POST /api/workspaces/{workspaceId}/channels/{channelId}/activations`.
 - [x] Add `GET /api/workspaces/{workspaceId}/channels/{channelId}/exports/latest`.
 - [x] Legacy routes kept as compatibility adapters over the same store/runtime logic.
@@ -69,7 +69,7 @@ baseline.
       REST endpoints instead of legacy routes.
 - [x] Adopt mutate-then-refetch pattern: mutations call REST endpoints, then
       re-fetch `GET /api/app-shell` for consistent state. App.tsx unchanged.
-- [x] Move `palId` from request body to URL path for pal-assignment endpoints.
+- [x] Move `catId` from request body to URL path for cat-assignment endpoints.
 - [x] Handle structured error responses (`{ error: { code, message } }`)
       alongside legacy string errors in `readErrorMessage`.
 - [x] Guard re-fetch failures after committed mutations to prevent false error
@@ -98,7 +98,7 @@ client decomposition deferred.
 | Area | Action | Why |
 |------|--------|-----|
 | `src/server.ts` | Refactor heavily | Current route table is where legacy action routes and new resource routes will coexist |
-| `src/workspace/model.ts` | Reuse and extend | Existing resource logic already exists here for channels, pals, assignments, messages, and orchestrator updates |
+| `src/workspace/model.ts` | Reuse and extend | Existing resource logic already exists here for channels, cats, assignments, messages, and orchestrator updates |
 | `src/workspace/store.ts` | Reuse and possibly extend | Store already syncs workspace and `Cats Core v1`; resource reads should build on it |
 | `src/workspace/shell.ts` | Reclassify | Keep as read-model composer, not mutation contract owner |
 | `src/shared/app-shell.ts` | Narrow responsibility | Keep app-shell/read-model types, but stop using them as the default mutation DTOs |
@@ -122,7 +122,7 @@ client decomposition deferred.
 
 - Resource reads work without fetching the full app shell.
 - Resource mutations return targeted payloads instead of `AppShellPayload`.
-- The renderer can complete create chat, create pal, assign pal, activate, and
+- The renderer can complete create chat, create cat, assign cat, activate, and
   send-message flows using the new resource contracts.
 - `GET /api/app-shell` can remain for bootstrap while no longer being required
   as the mutation contract.
@@ -149,3 +149,4 @@ client decomposition deferred.
 ---
 
 *Last updated: 2026-03-18*
+

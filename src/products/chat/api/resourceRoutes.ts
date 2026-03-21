@@ -9,28 +9,28 @@ import {
 import {
   buildChannelView,
   requireChannel,
-  requirePal,
+  requireCat,
   selectChannel,
   toChannelSummary,
   updateGlobalOrchestrator,
 } from '../workspace/model.js';
 import type {
-  AssignChannelPalInput,
-  CreateWorkspaceChannelInput,
-  CreateWorkspacePalInput,
+  AssignChannelCatInput,
+  CreateChatChannelInput,
+  CreateCatInput,
   SendChannelMessageInput,
   UpdateGlobalOrchestratorInput,
 } from './contracts.js';
 import {
-  DEFAULT_WORKSPACE_ID,
+  DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
   nowFrom,
-  persistAssignmentRemoval,
-  persistAssignmentUpdate,
+  persistCatAssignmentRemoval,
+  persistCatAssignmentUpdate,
   persistCreatedChannel,
-  persistCreatedPal,
+  persistCreatedCat,
   persistDeletedChannel,
-  requireValidWorkspaceId,
+  requireValidChatScopeId,
   sendRestError,
   sendChannelExport,
   type ChatApiRouteContext,
@@ -83,20 +83,20 @@ async function resolveUniqueAttachmentName(
   }
 }
 
-async function handleRestGetWorkspace(
+async function handleRestGetChat(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
-    const state = await context.dependencies.workspaceStore.read();
+    requireValidChatScopeId(chatScopeId);
+    const state = await context.dependencies.chatStore.read();
     sendJson(context.response, 200, {
-      workspace: {
+      chat: {
         id: state.id,
         name: state.name,
         selectedChannelId: state.selectedChannelId,
         channelCount: state.channels.length,
-        palCount: state.pals.length,
+        catCount: state.cats.length,
         capabilities: state.capabilities,
       },
     });
@@ -107,11 +107,11 @@ async function handleRestGetWorkspace(
 
 async function handleRestGetPreferences(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
-    const state = await context.dependencies.workspaceStore.read();
+    requireValidChatScopeId(chatScopeId);
+    const state = await context.dependencies.chatStore.read();
     sendJson(context.response, 200, {
       preferences: {
         selectedChannelId: state.selectedChannelId,
@@ -125,15 +125,15 @@ async function handleRestGetPreferences(
 
 async function handleRestUpdatePreferences(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
+    requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<{
       selectedChannelId?: string;
       showVerboseMessages?: boolean;
     }>(context.request);
-    let nextState = await context.dependencies.workspaceStore.read();
+    let nextState = await context.dependencies.chatStore.read();
 
     if (body.selectedChannelId !== undefined) {
       nextState = selectChannel(
@@ -150,7 +150,7 @@ async function handleRestUpdatePreferences(
       };
     }
 
-    const persisted = await context.dependencies.workspaceStore.write(nextState);
+    const persisted = await context.dependencies.chatStore.write(nextState);
     sendJson(context.response, 200, {
       preferences: {
         selectedChannelId: persisted.selectedChannelId,
@@ -164,11 +164,11 @@ async function handleRestUpdatePreferences(
 
 async function handleRestListChannels(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
-    const state = await context.dependencies.workspaceStore.read();
+    requireValidChatScopeId(chatScopeId);
+    const state = await context.dependencies.chatStore.read();
     sendJson(context.response, 200, {
       channels: state.channels.map((channel) => toChannelSummary(channel)),
     });
@@ -179,11 +179,11 @@ async function handleRestListChannels(
 
 async function handleRestCreateChannel(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
-    const body = await readJsonBody<CreateWorkspaceChannelInput>(context.request);
+    requireValidChatScopeId(chatScopeId);
+    const body = await readJsonBody<CreateChatChannelInput>(context.request);
     const persisted = await persistCreatedChannel(context, body);
     const createdChannelId = persisted.selectedChannelId;
     if (!createdChannelId) {
@@ -199,12 +199,12 @@ async function handleRestCreateChannel(
 
 async function handleRestGetChannel(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
-    const state = await context.dependencies.workspaceStore.read();
+    requireValidChatScopeId(chatScopeId);
+    const state = await context.dependencies.chatStore.read();
     sendJson(context.response, 200, {
       channel: buildChannelView(state, channelId),
     });
@@ -215,11 +215,11 @@ async function handleRestGetChannel(
 
 async function handleRestDeleteChannel(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
+    requireValidChatScopeId(chatScopeId);
     await persistDeletedChannel(context, channelId);
     sendJson(context.response, 200, { deleted: true, channelId });
   } catch (error) {
@@ -229,12 +229,12 @@ async function handleRestDeleteChannel(
 
 async function handleRestListMessages(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
-    const state = await context.dependencies.workspaceStore.read();
+    requireValidChatScopeId(chatScopeId);
+    const state = await context.dependencies.chatStore.read();
     sendJson(context.response, 200, {
       messages: requireChannel(state, channelId).messages,
     });
@@ -245,13 +245,13 @@ async function handleRestListMessages(
 
 async function handleRestSendMessage(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
+    requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<SendChannelMessageInput>(context.request);
-    const stateBefore = await context.dependencies.workspaceStore.read();
+    const stateBefore = await context.dependencies.chatStore.read();
     const messageCountBefore = requireChannel(stateBefore, channelId).messages.length;
     const dispatch = await routeChannelMessage(
       stateBefore,
@@ -260,7 +260,7 @@ async function handleRestSendMessage(
       context.dependencies.runtimeClient,
       nowFrom(context.dependencies),
     );
-    const persisted = await context.dependencies.workspaceStore.write(
+    const persisted = await context.dependencies.chatStore.write(
       dispatch.state,
     );
     const userMessage =
@@ -280,11 +280,11 @@ async function handleRestSendMessage(
 
 async function handleRestUploadAttachments(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
+    requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<{
       files: Array<{ name: string; data: string }>;
     }>(context.request);
@@ -299,9 +299,9 @@ async function handleRestUploadAttachments(
       return;
     }
 
-    const state = await context.dependencies.workspaceStore.read();
+    const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
-    const cwd = channel.repoPath ?? channel.workspaceCwd;
+    const cwd = channel.repoPath ?? channel.chatCwd;
 
     if (!cwd) {
       sendRestError(
@@ -339,58 +339,58 @@ async function handleRestUploadAttachments(
   }
 }
 
-async function handleRestListPalAssignments(
+async function handleRestListCatAssignments(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
-    const state = await context.dependencies.workspaceStore.read();
+    requireValidChatScopeId(chatScopeId);
+    const state = await context.dependencies.chatStore.read();
     sendJson(context.response, 200, {
-      palAssignments: buildChannelView(state, channelId).assignedPals,
+      catAssignments: buildChannelView(state, channelId).assignedCats,
     });
   } catch (error) {
     handleRestError(context, error);
   }
 }
 
-async function handleRestAssignPal(
+async function handleRestAssignCat(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
-  palId: string,
+  catId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
-    const body = await readJsonBody<Omit<AssignChannelPalInput, 'palId'>>(
+    requireValidChatScopeId(chatScopeId);
+    const body = await readJsonBody<Omit<AssignChannelCatInput, 'catId'>>(
       context.request,
     );
-    const { persisted, isNew } = await persistAssignmentUpdate(context, channelId, {
-      palId,
+    const { persisted, isNew } = await persistCatAssignmentUpdate(context, channelId, {
+      catId,
       ...body,
     });
-    const assignment = buildChannelView(persisted, channelId).assignedPals.find(
-      (candidate) => candidate.palId === palId,
+    const assignment = buildChannelView(persisted, channelId).assignedCats.find(
+      (candidate) => candidate.catId === catId,
     );
     sendJson(context.response, isNew ? 201 : 200, {
-      palAssignment: assignment,
+      catAssignment: assignment,
     });
   } catch (error) {
     handleRestError(context, error);
   }
 }
 
-async function handleRestRemovePalAssignment(
+async function handleRestRemoveCatAssignment(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
-  palId: string,
+  catId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
-    await persistAssignmentRemoval(context, channelId, palId);
-    sendJson(context.response, 200, { removed: true, channelId, palId });
+    requireValidChatScopeId(chatScopeId);
+    await persistCatAssignmentRemoval(context, channelId, catId);
+    sendJson(context.response, 200, { removed: true, channelId, catId });
   } catch (error) {
     handleRestError(context, error);
   }
@@ -398,12 +398,12 @@ async function handleRestRemovePalAssignment(
 
 async function handleRestGetOrchestrator(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
+    requireValidChatScopeId(chatScopeId);
     const [state, runtime] = await Promise.all([
-      context.dependencies.workspaceStore.read(),
+      context.dependencies.chatStore.read(),
       context.dependencies.runtimeClient.getHealth(),
     ]);
     sendJson(context.response, 200, {
@@ -419,20 +419,20 @@ async function handleRestGetOrchestrator(
 
 async function handleRestUpdateOrchestrator(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
+    requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<UpdateGlobalOrchestratorInput>(
       context.request,
     );
     const nextState = updateGlobalOrchestrator(
-      await context.dependencies.workspaceStore.read(),
+      await context.dependencies.chatStore.read(),
       body,
       nowFrom(context.dependencies),
     );
     const [persisted, runtime] = await Promise.all([
-      context.dependencies.workspaceStore.write(nextState),
+      context.dependencies.chatStore.write(nextState),
       context.dependencies.runtimeClient.getHealth(),
     ]);
     sendJson(context.response, 200, {
@@ -446,36 +446,36 @@ async function handleRestUpdateOrchestrator(
   }
 }
 
-async function handleRestListPals(
+async function handleRestListCats(
   context: ChatApiRouteContext,
 ): Promise<void> {
   try {
-    const state = await context.dependencies.workspaceStore.read();
-    sendJson(context.response, 200, { pals: state.pals });
+    const state = await context.dependencies.chatStore.read();
+    sendJson(context.response, 200, { cats: state.cats });
   } catch (error) {
     handleRestError(context, error);
   }
 }
 
-async function handleRestCreatePal(
+async function handleRestCreateCat(
   context: ChatApiRouteContext,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<CreateWorkspacePalInput>(context.request);
-    const persisted = await persistCreatedPal(context, body);
-    sendJson(context.response, 201, { pal: persisted.pals[0] });
+    const body = await readJsonBody<CreateCatInput>(context.request);
+    const persisted = await persistCreatedCat(context, body);
+    sendJson(context.response, 201, { cat: persisted.cats[0] });
   } catch (error) {
     handleRestError(context, error);
   }
 }
 
-async function handleRestGetPal(
+async function handleRestGetCat(
   context: ChatApiRouteContext,
-  palId: string,
+  catId: string,
 ): Promise<void> {
   try {
-    const state = await context.dependencies.workspaceStore.read();
-    sendJson(context.response, 200, { pal: requirePal(state, palId) });
+    const state = await context.dependencies.chatStore.read();
+    sendJson(context.response, 200, { cat: requireCat(state, catId) });
   } catch (error) {
     handleRestError(context, error);
   }
@@ -483,19 +483,19 @@ async function handleRestGetPal(
 
 async function handleRestActivateChannel(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
+    requireValidChatScopeId(chatScopeId);
     const now = nowFrom(context.dependencies);
     const activation = await activateChannelSessions(
-      await context.dependencies.workspaceStore.read(),
+      await context.dependencies.chatStore.read(),
       channelId,
       context.dependencies.runtimeClient,
       now,
     );
-    await context.dependencies.workspaceStore.write(activation.state);
+    await context.dependencies.chatStore.write(activation.state);
     sendJson(context.response, 200, {
       activation: {
         channelId,
@@ -510,14 +510,14 @@ async function handleRestActivateChannel(
 
 async function handleRestGetExport(
   context: ChatApiRouteContext,
-  workspaceId: string,
+  chatScopeId: string,
   channelId: string,
 ): Promise<void> {
   try {
-    requireValidWorkspaceId(workspaceId);
+    requireValidChatScopeId(chatScopeId);
     sendChannelExport(
       context,
-      await context.dependencies.workspaceStore.read(),
+      await context.dependencies.chatStore.read(),
       channelId,
     );
   } catch (error) {
@@ -530,11 +530,11 @@ export async function routeChatResourceApi(
 ): Promise<boolean> {
   if (context.url.pathname === '/api/preferences') {
     if (context.method === 'GET') {
-      await handleRestGetPreferences(context, DEFAULT_WORKSPACE_ID);
+      await handleRestGetPreferences(context, DEFAULT_CHAT_SCOPE_ID);
       return true;
     }
     if (context.method === 'PATCH') {
-      await handleRestUpdatePreferences(context, DEFAULT_WORKSPACE_ID);
+      await handleRestUpdatePreferences(context, DEFAULT_CHAT_SCOPE_ID);
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'PATCH']);
@@ -543,11 +543,11 @@ export async function routeChatResourceApi(
 
   if (context.url.pathname === '/api/orchestrator') {
     if (context.method === 'GET') {
-      await handleRestGetOrchestrator(context, DEFAULT_WORKSPACE_ID);
+      await handleRestGetOrchestrator(context, DEFAULT_CHAT_SCOPE_ID);
       return true;
     }
     if (context.method === 'PATCH') {
-      await handleRestUpdateOrchestrator(context, DEFAULT_WORKSPACE_ID);
+      await handleRestUpdateOrchestrator(context, DEFAULT_CHAT_SCOPE_ID);
       return true;
     }
     sendMethodNotAllowed(context.response, ORCHESTRATOR_ALLOWED_METHODS);
@@ -556,24 +556,24 @@ export async function routeChatResourceApi(
 
   if (context.url.pathname === '/api/channels') {
     if (context.method === 'GET') {
-      await handleRestListChannels(context, DEFAULT_WORKSPACE_ID);
+      await handleRestListChannels(context, DEFAULT_CHAT_SCOPE_ID);
       return true;
     }
     if (context.method === 'POST') {
-      await handleRestCreateChannel(context, DEFAULT_WORKSPACE_ID);
+      await handleRestCreateChannel(context, DEFAULT_CHAT_SCOPE_ID);
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
     return true;
   }
 
-  if (context.url.pathname === '/api/pals') {
+  if (context.url.pathname === '/api/cats') {
     if (context.method === 'GET') {
-      await handleRestListPals(context);
+      await handleRestListCats(context);
       return true;
     }
     if (context.method === 'POST') {
-      await handleRestCreatePal(context);
+      await handleRestCreateCat(context);
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
@@ -588,7 +588,7 @@ export async function routeChatResourceApi(
     if (context.method === 'GET') {
       await handleRestListMessages(
         context,
-        DEFAULT_WORKSPACE_ID,
+        DEFAULT_CHAT_SCOPE_ID,
         canonicalChannelMessagesMatch[0],
       );
       return true;
@@ -596,7 +596,7 @@ export async function routeChatResourceApi(
     if (context.method === 'POST') {
       await handleRestSendMessage(
         context,
-        DEFAULT_WORKSPACE_ID,
+        DEFAULT_CHAT_SCOPE_ID,
         canonicalChannelMessagesMatch[0],
       );
       return true;
@@ -616,7 +616,7 @@ export async function routeChatResourceApi(
     }
     await handleRestUploadAttachments(
       context,
-      DEFAULT_WORKSPACE_ID,
+      DEFAULT_CHAT_SCOPE_ID,
       canonicalChannelAttachmentsMatch[0],
     );
     return true;
@@ -633,7 +633,7 @@ export async function routeChatResourceApi(
     }
     await handleRestActivateChannel(
       context,
-      DEFAULT_WORKSPACE_ID,
+      DEFAULT_CHAT_SCOPE_ID,
       canonicalChannelActivationsMatch[0],
     );
     return true;
@@ -650,7 +650,7 @@ export async function routeChatResourceApi(
     }
     await handleRestGetExport(
       context,
-      DEFAULT_WORKSPACE_ID,
+      DEFAULT_CHAT_SCOPE_ID,
       canonicalChannelExportMatch[0],
     );
     return true;
@@ -664,7 +664,7 @@ export async function routeChatResourceApi(
     if (context.method === 'GET') {
       await handleRestGetChannel(
         context,
-        DEFAULT_WORKSPACE_ID,
+        DEFAULT_CHAT_SCOPE_ID,
         canonicalChannelDetailMatch[0],
       );
       return true;
@@ -672,7 +672,7 @@ export async function routeChatResourceApi(
     if (context.method === 'DELETE') {
       await handleRestDeleteChannel(
         context,
-        DEFAULT_WORKSPACE_ID,
+        DEFAULT_CHAT_SCOPE_ID,
         canonicalChannelDetailMatch[0],
       );
       return true;
@@ -681,210 +681,20 @@ export async function routeChatResourceApi(
     return true;
   }
 
-  const restPalDetailMatch = matchRoute(
+  const restCatDetailMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/pals\/([^/]+)$/u,
+    /^\/api\/cats\/([^/]+)$/u,
   );
-  if (restPalDetailMatch) {
+  if (restCatDetailMatch) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
     }
-    await handleRestGetPal(context, restPalDetailMatch[0]);
-    return true;
-  }
-
-  const restPalAssignmentDetailMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/pal-assignments\/([^/]+)$/u,
-  );
-  if (restPalAssignmentDetailMatch) {
-    if (context.method === 'PUT') {
-      await handleRestAssignPal(
-        context,
-        restPalAssignmentDetailMatch[0],
-        restPalAssignmentDetailMatch[1],
-        restPalAssignmentDetailMatch[2],
-      );
-      return true;
-    }
-    if (context.method === 'DELETE') {
-      await handleRestRemovePalAssignment(
-        context,
-        restPalAssignmentDetailMatch[0],
-        restPalAssignmentDetailMatch[1],
-        restPalAssignmentDetailMatch[2],
-      );
-      return true;
-    }
-    sendMethodNotAllowed(context.response, ['PUT', 'DELETE']);
-    return true;
-  }
-
-  const restPalAssignmentsMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/pal-assignments$/u,
-  );
-  if (restPalAssignmentsMatch) {
-    if (context.method !== 'GET') {
-      sendMethodNotAllowed(context.response, ['GET']);
-      return true;
-    }
-    await handleRestListPalAssignments(
-      context,
-      restPalAssignmentsMatch[0],
-      restPalAssignmentsMatch[1],
-    );
-    return true;
-  }
-
-  const restActivationsMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/activations$/u,
-  );
-  if (restActivationsMatch) {
-    if (context.method !== 'POST') {
-      sendMethodNotAllowed(context.response, ['POST']);
-      return true;
-    }
-    await handleRestActivateChannel(
-      context,
-      restActivationsMatch[0],
-      restActivationsMatch[1],
-    );
-    return true;
-  }
-
-  const restExportMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/exports\/latest$/u,
-  );
-  if (restExportMatch) {
-    if (context.method !== 'GET') {
-      sendMethodNotAllowed(context.response, ['GET']);
-      return true;
-    }
-    await handleRestGetExport(
-      context,
-      restExportMatch[0],
-      restExportMatch[1],
-    );
-    return true;
-  }
-
-  const restMessagesMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)\/messages$/u,
-  );
-  if (restMessagesMatch) {
-    if (context.method === 'GET') {
-      await handleRestListMessages(
-        context,
-        restMessagesMatch[0],
-        restMessagesMatch[1],
-      );
-      return true;
-    }
-    if (context.method === 'POST') {
-      await handleRestSendMessage(
-        context,
-        restMessagesMatch[0],
-        restMessagesMatch[1],
-      );
-      return true;
-    }
-    sendMethodNotAllowed(context.response, ['GET', 'POST']);
-    return true;
-  }
-
-  const restChannelDetailMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)\/channels\/([^/]+)$/u,
-  );
-  if (restChannelDetailMatch) {
-    if (context.method === 'GET') {
-      await handleRestGetChannel(
-        context,
-        restChannelDetailMatch[0],
-        restChannelDetailMatch[1],
-      );
-      return true;
-    }
-    if (context.method === 'DELETE') {
-      await handleRestDeleteChannel(
-        context,
-        restChannelDetailMatch[0],
-        restChannelDetailMatch[1],
-      );
-      return true;
-    }
-    sendMethodNotAllowed(context.response, ['GET', 'DELETE']);
-    return true;
-  }
-
-  const restChannelsMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)\/channels$/u,
-  );
-  if (restChannelsMatch) {
-    if (context.method === 'GET') {
-      await handleRestListChannels(context, restChannelsMatch[0]);
-      return true;
-    }
-    if (context.method === 'POST') {
-      await handleRestCreateChannel(context, restChannelsMatch[0]);
-      return true;
-    }
-    sendMethodNotAllowed(context.response, ['GET', 'POST']);
-    return true;
-  }
-
-  const restPreferencesMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)\/preferences$/u,
-  );
-  if (restPreferencesMatch) {
-    if (context.method === 'GET') {
-      await handleRestGetPreferences(context, restPreferencesMatch[0]);
-      return true;
-    }
-    if (context.method === 'PATCH') {
-      await handleRestUpdatePreferences(context, restPreferencesMatch[0]);
-      return true;
-    }
-    sendMethodNotAllowed(context.response, ['GET', 'PATCH']);
-    return true;
-  }
-
-  const restOrchestratorMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)\/orchestrator$/u,
-  );
-  if (restOrchestratorMatch) {
-    if (context.method === 'GET') {
-      await handleRestGetOrchestrator(context, restOrchestratorMatch[0]);
-      return true;
-    }
-    if (context.method === 'PATCH') {
-      await handleRestUpdateOrchestrator(context, restOrchestratorMatch[0]);
-      return true;
-    }
-    sendMethodNotAllowed(context.response, ['GET', 'PATCH']);
-    return true;
-  }
-
-  const restWorkspaceMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/workspaces\/([^/]+)$/u,
-  );
-  if (restWorkspaceMatch) {
-    if (context.method !== 'GET') {
-      sendMethodNotAllowed(context.response, ['GET']);
-      return true;
-    }
-    await handleRestGetWorkspace(context, restWorkspaceMatch[0]);
+    await handleRestGetCat(context, restCatDetailMatch[0]);
     return true;
   }
 
   return false;
 }
+
+

@@ -19,8 +19,8 @@ import {
 } from '../../platform/transports/telegram/store.js';
 import { routeChatApi } from '../../products/chat/api/index.js';
 import {
-  MemoryWorkspaceStore,
-  type WorkspaceStore,
+  MemoryChatStore,
+  type ChatStore,
 } from '../../products/chat/workspace/store.js';
 import { handleCodePlaceholder } from '../../products/code/api/index.js';
 import { handleWorkPlaceholder } from '../../products/work/api/index.js';
@@ -42,7 +42,7 @@ import {
 export interface ServerDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
-  workspaceStore: WorkspaceStore;
+  chatStore: ChatStore;
   telegramRelay?: TelegramRelay;
   now?: () => Date;
 }
@@ -232,7 +232,7 @@ async function routeRequest(
       sendMethodNotAllowed(response, ['GET']);
       return;
     }
-    handleWorkPlaceholder(response, await dependencies.workspaceStore.readCore());
+    handleWorkPlaceholder(response, await dependencies.chatStore.readCore());
     return;
   }
 
@@ -241,7 +241,7 @@ async function routeRequest(
       sendMethodNotAllowed(response, ['GET']);
       return;
     }
-    handleCodePlaceholder(response, await dependencies.workspaceStore.readCore());
+    handleCodePlaceholder(response, await dependencies.chatStore.readCore());
     return;
   }
 
@@ -278,7 +278,7 @@ async function routeRequest(
       return;
     }
     await handleTelegramStatus(response, {
-      workspaceStore: dependencies.workspaceStore,
+      chatStore: dependencies.chatStore,
       telegramRelay: dependencies.telegramRelay,
     });
     return;
@@ -290,7 +290,7 @@ async function routeRequest(
       return;
     }
     await handleTelegramWebhook(request, response, {
-      workspaceStore: dependencies.workspaceStore,
+      chatStore: dependencies.chatStore,
       telegramRelay: dependencies.telegramRelay,
     });
     return;
@@ -334,8 +334,8 @@ export function createServer(dependencies: ServerDependencies) {
 function createDefaultTelegramRelay(dependencies: ServerDependencies): TelegramRelay {
   return createTelegramRelay({
     now: dependencies.now,
-    store: dependencies.workspaceStore instanceof MemoryWorkspaceStore
+    store: dependencies.chatStore instanceof MemoryChatStore
       ? new InMemoryTelegramRelayStore()
-      : createFileBackedTelegramRelayStore(dependencies.config.workspaceStatePath),
+      : createFileBackedTelegramRelayStore(dependencies.config.chatStatePath),
   });
 }

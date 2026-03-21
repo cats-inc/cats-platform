@@ -64,7 +64,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 ### FR-008: Runtime-Backed Channel Activation
 
 - **Description**: The product shall create channel-scoped orchestrator and
-  assigned pal sessions through `cats-runtime`.
+  assigned cat sessions through `cats-runtime`.
 - **Priority**: High
 - **Status**: Completed
 
@@ -75,10 +75,10 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: High
 - **Status**: Completed
 
-### FR-010: Global Pal Management and Export
+### FR-010: Global Cat Management and Export
 
-- **Description**: The product shall support a workspace-level pal registry,
-  channel-specific pal assignment or removal, and export the current channel
+- **Description**: The product shall support a workspace-level cat registry,
+  channel-specific cat assignment or removal, and export the current channel
   transcript for later ingestion.
 - **Priority**: High
 - **Status**: Completed
@@ -104,9 +104,9 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: Medium
 - **Status**: Planned
 
-### FR-014: Provider-Agnostic Pal Execution
+### FR-014: Provider-Agnostic Cat Execution
 
-- **Description**: The product shall let a pal keep its identity and local
+- **Description**: The product shall let a cat keep its identity and local
   memory while using different providers or models across channels and
   sessions.
 - **Priority**: High
@@ -199,18 +199,18 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: Medium
 - **Status**: Planned
 
-### FR-026: Chat-Contextual Add Pal Flow
+### FR-026: Chat-Contextual Add Cat Flow
 
-- **Description**: The product shall make `Add pal to this chat` the primary
-  pal-entry workflow inside the active chat surface rather than requiring a
+- **Description**: The product shall make `Add cat to this chat` the primary
+  cat-entry workflow inside the active chat surface rather than requiring a
   registry-first navigation step.
 - **Priority**: High
 - **Status**: Planned
 
-### FR-027: Settings-Hosted Pal Registry
+### FR-027: Settings-Hosted Cat Registry
 
-- **Description**: The product shall keep the reusable pal registry as a global
-  management surface under `Settings > Pals`, reachable from the left-panel
+- **Description**: The product shall keep the reusable cat registry as a global
+  management surface under `Settings > Cats`, reachable from the left-panel
   account menu, while still allowing direct `Create new` there.
 - **Priority**: High
 - **Status**: Planned
@@ -252,8 +252,8 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 ### NFR-005: Provider Portability
 
-- Long-lived pal memory MUST remain product-owned rather than provider-owned
-- Provider-native sessions should be replaceable without redefining pal
+- Long-lived cat memory MUST remain product-owned rather than provider-owned
+- Provider-native sessions should be replaceable without redefining cat
   identity
 
 ### NFR-006: Shared Contract Stability
@@ -347,7 +347,7 @@ sessions.
 ### US-005: Operator Activates a Channel
 
 **As an** operator,
-**I want to** start runtime sessions for the orchestrator and assigned pals,
+**I want to** start runtime sessions for the orchestrator and assigned cats,
 **So that** channel work moves beyond local setup into real execution.
 
 **Acceptance Criteria**:
@@ -362,7 +362,7 @@ sessions.
 
 **Acceptance Criteria**:
 - [x] User messages are persisted to the transcript
-- [x] Basic `@mention` parsing resolves orchestrator and active assigned pals
+- [x] Basic `@mention` parsing resolves orchestrator and active assigned cats
 - [x] Runtime responses are persisted with usage metadata
 
 ### US-007: Operator Exports a Transcript
@@ -453,29 +453,29 @@ shift,
   React/TypeScript renderer path
 - [ ] Tray, windowing, and local packaging behave consistently across the suite
 
-### US-015: Operator Adds an Existing Pal from the Current Chat
+### US-015: Operator Adds an Existing Cat from the Current Chat
 
 **As an** operator,
-**I want to** add an existing pal from inside the active chat,
+**I want to** add an existing cat from inside the active chat,
 **So that** I can keep working in context instead of switching to a registry
 screen first.
 
 **Acceptance Criteria**:
-- [ ] The active chat exposes a visible `Add pal` entry point
-- [ ] The default add flow lets the operator choose an existing workspace pal
+- [ ] The active chat exposes a visible `Add cat` entry point
+- [ ] The default add flow lets the operator choose an existing workspace cat
 - [ ] Successful assignment updates the current chat roster without requiring a
       separate registry visit
 
 ### US-016: Operator Manages the Registry from Settings
 
 **As an** operator,
-**I want to** manage reusable pals from Settings,
+**I want to** manage reusable cats from Settings,
 **So that** the registry stays global without crowding the main chat workflow.
 
 **Acceptance Criteria**:
 - [ ] A `Settings` entry is reachable from the left-panel account menu
-- [ ] `Settings > Pals` exposes the reusable registry
-- [ ] `Settings > Pals` still supports direct `Create new`
+- [ ] `Settings > Cats` exposes the reusable registry
+- [ ] `Settings > Cats` still supports direct `Create new`
 
 ## Constraints
 
@@ -483,7 +483,7 @@ screen first.
 - `cats-runtime` is the mandatory runtime boundary
 - `agent-workspace-poc` remains the reference for product behavior
 - `crew-chat-poc` remains the reference for `cats-runtime` integration style
-- pal identity and pal memory must not be modeled as permanent provider-bound
+- cat identity and cat memory must not be modeled as permanent provider-bound
   records
 - `Cats Chat` and `Cats Work` are expected to launch from shared contracts,
   not from two unrelated product schemas
@@ -493,3 +493,4 @@ screen first.
 ---
 
 *Last updated: 2026-03-17*
+

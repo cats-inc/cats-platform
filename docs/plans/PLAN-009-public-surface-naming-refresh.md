@@ -9,7 +9,7 @@ Implement the public naming refresh defined in
 
 This plan is intentionally narrow:
 
-- rename public `Pal / Pals` to `Cat / Cats`
+- rename public `Cat / Cats` to `Cat / Cats`
 - remove `workspace / workspaces` from canonical public API routes
 - preserve compatibility aliases
 - avoid any UI redesign
@@ -22,7 +22,7 @@ This plan is explicitly **not** a visual refresh plan.
 - Do not change UI visual style.
 - Do not rename CSS classes purely for naming consistency.
 - Do not restructure DOM unless strictly required for a data-binding update.
-- Do not broad-rename internal `workspace` and `pal` implementation symbols in
+- Do not broad-rename internal `workspace` and `cat` implementation symbols in
   the same slice.
 
 ## Phases
@@ -67,7 +67,7 @@ This plan is explicitly **not** a visual refresh plan.
       - `/api/orchestrator`
       - `/api/channels/{channelId}/activations`
       - `/api/channels/{channelId}/exports/latest`
-- [x] Keep `/api/pals` and `/api/workspaces/default/...` as compatibility
+- [x] Keep `/api/cats` and `/api/workspaces/default/...` as compatibility
       aliases during migration.
 - [x] Decide whether canonical payloads return `cat/cats/catId` immediately, or
       whether route renaming lands first with payload adapters.
@@ -77,7 +77,7 @@ This plan is explicitly **not** a visual refresh plan.
 ### Phase 4: Renderer Client and Visible Label Migration
 
 - [x] Update `src/renderer/api.ts` to call the new canonical routes.
-- [x] Update visible text labels in `src/renderer/App.tsx` from `Pal / Pals` to
+- [x] Update visible text labels in `src/renderer/App.tsx` from `Cat / Cats` to
       `Cat / Cats`.
 - [x] Keep component structure and layout untouched.
 - [x] Keep CSS class names unchanged unless a strictly necessary bug fix forces
@@ -90,7 +90,7 @@ This plan is explicitly **not** a visual refresh plan.
 
 - [x] Add or update route tests for the new `/api/cats` and root-level route
       families.
-- [x] Preserve compatibility-route coverage for `/api/pals` and
+- [x] Preserve compatibility-route coverage for `/api/cats` and
       `/api/workspaces/default/...`.
 - [x] Add tests or assertions that the renderer-facing rename did not require
       DOM/class restructuring.
@@ -136,12 +136,13 @@ This plan is explicitly **not** a visual refresh plan.
 
 Use this when delegating implementation:
 
-> Implement SPEC-009 / PLAN-009. Rename the public surface from `Pal/Pals` to
+> Implement SPEC-009 / PLAN-009. Rename the public surface from `Cat/Cats` to
 > `Cat/Cats`, and remove `workspace/workspaces` from canonical public API
 > routes. Keep compatibility aliases. Do not change UI style, layout, class
 > names, or DOM structure unless strictly necessary for wiring. Internal
-> `workspace` and `pal` implementation names may remain for now.
+> `workspace` and `cat` implementation names may remain for now.
 
 ---
 
 *Last updated: 2026-03-18*
+

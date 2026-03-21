@@ -1,9 +1,9 @@
 import type {
   ActivateChannelResponse,
   AppShellPayload,
-  AssignChannelPalInput,
-  CreateWorkspaceChannelInput,
-  CreateWorkspacePalInput,
+  AssignChannelCatInput,
+  CreateChatChannelInput,
+  CreateCatInput,
   SendChannelMessageInput,
   SendChannelMessageResponse,
   UpdateGlobalOrchestratorInput,
@@ -56,8 +56,9 @@ function readStringArray(value: unknown): string[] {
 
 function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
   const nextPayload = structuredClone(payload) as AppShellPayload & Record<string, unknown>;
-  const workspace = asRecord(nextPayload.workspace);
-  const globalOrchestrator = asRecord(workspace?.globalOrchestrator);
+  const chatState = asRecord(nextPayload.chat) ?? {};
+  nextPayload.chat = chatState as AppShellPayload['chat'];
+  const globalOrchestrator = asRecord(chatState.globalOrchestrator);
 
   if (globalOrchestrator && !asRecord(globalOrchestrator.executionTarget)) {
     globalOrchestrator.executionTarget = {
@@ -80,15 +81,14 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
     };
   }
 
-  const selectedChannel = asRecord(workspace?.selectedChannel);
+  const selectedChannel = asRecord(chatState.selectedChannel);
   if (selectedChannel && !asRecord(selectedChannel.orchestratorLease)) {
-    const orchestratorSession = asRecord(selectedChannel.orchestratorSession);
     const executionTarget = asRecord(globalOrchestrator?.executionTarget);
     selectedChannel.orchestratorLease = {
-      sessionId: readNullableString(orchestratorSession?.sessionId),
-      status: readString(orchestratorSession?.status, 'not_started'),
-      cwd: readNullableString(orchestratorSession?.cwd),
-      lastError: readNullableString(orchestratorSession?.lastError),
+      sessionId: null,
+      status: 'not_started',
+      cwd: null,
+      lastError: null,
       provider: readNullableString(executionTarget?.provider) ?? 'claude',
       instance: readNullableString(executionTarget?.instance),
       model: readNullableString(executionTarget?.model),
@@ -97,134 +97,59 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
     };
   }
 
-  if (!Array.isArray(workspace?.pals)) {
-    workspace!.pals = [];
+  if (!Array.isArray(chatState.cats)) {
+    chatState.cats = [];
   }
 
-  const pals = (workspace?.pals as Array<Record<string, unknown>>).map((palValue) => {
-    const pal = asRecord(palValue) ?? {};
-    if (!asRecord(pal.defaultExecutionTarget)) {
-      pal.defaultExecutionTarget = {
-        provider: readString(pal.provider, 'claude'),
-        instance: readNullableString(pal.instance),
-        model: readNullableString(pal.model),
+  const cats = (chatState.cats as Array<Record<string, unknown>>).map((catValue) => {
+    const cat = asRecord(catValue) ?? {};
+    if (!asRecord(cat.defaultExecutionTarget)) {
+      cat.defaultExecutionTarget = {
+        provider: readString(cat.provider, 'claude'),
+        instance: readNullableString(cat.instance),
+        model: readNullableString(cat.model),
       };
     }
-    const defaultExecutionTarget = asRecord(pal.defaultExecutionTarget);
+    const defaultExecutionTarget = asRecord(cat.defaultExecutionTarget);
     if (defaultExecutionTarget && defaultExecutionTarget.instance === undefined) {
-      defaultExecutionTarget.instance = readNullableString(pal.instance);
+      defaultExecutionTarget.instance = readNullableString(cat.instance);
     }
-    if (!asRecord(pal.memory)) {
-      pal.memory = {
+    if (!asRecord(cat.memory)) {
+      cat.memory = {
         summary: null,
         facts: [],
         openLoops: [],
         updatedAt: null,
       };
     }
-    if (!Array.isArray(pal.roles)) {
-      pal.roles = readStringArray(pal.roles);
+    if (!Array.isArray(cat.roles)) {
+      cat.roles = readStringArray(cat.roles);
     }
-    return pal;
+    return cat;
   });
-  const palsById = new Map(pals.map((pal) => [readString(pal.id), pal]));
+  const catsById = new Map(cats.map((cat) => [readString(cat.id), cat]));
 
   if (selectedChannel) {
-    if (!Array.isArray(selectedChannel.palAssignments) && Array.isArray(selectedChannel.members)) {
-      selectedChannel.palAssignments = selectedChannel.members.map((memberValue) => {
-        const member = asRecord(memberValue) ?? {};
-        const execution = asRecord(member.execution);
-        const target = asRecord(execution?.target);
-        const lease = asRecord(execution?.lease);
-        return {
-          palId: readString(member.id),
-          status: readString(member.status, 'active'),
-          roles: Array.isArray(member.roles) ? member.roles : [],
-          joinedAt: readString(member.joinedAt),
-          leftAt: readNullableString(member.leftAt),
-          execution: {
-            target: {
-              provider: readString(target?.provider, readString(member.provider, 'claude')),
-              instance: readNullableString(target?.instance ?? member.instance),
-              model: readNullableString(target?.model ?? member.model),
-            },
-            lease: {
-              sessionId: readNullableString(lease?.sessionId ?? asRecord(member.session)?.sessionId),
-              status: readString(lease?.status ?? asRecord(member.session)?.status, 'not_started'),
-              cwd: readNullableString(lease?.cwd ?? asRecord(member.session)?.cwd),
-              lastError: readNullableString(lease?.lastError ?? asRecord(member.session)?.lastError),
-              provider: readNullableString(lease?.provider) ?? readString(target?.provider, readString(member.provider, 'claude')),
-              instance: readNullableString(lease?.instance ?? target?.instance ?? member.instance),
-              model: readNullableString(lease?.model ?? target?.model ?? member.model),
-              startedAt: readNullableString(lease?.startedAt),
-              lastUsedAt: readNullableString(lease?.lastUsedAt),
-            },
-          },
-        };
-      });
+    if (!Array.isArray(selectedChannel.catAssignments)) {
+      selectedChannel.catAssignments = [];
     }
 
-    if (!Array.isArray(selectedChannel.assignedPals)) {
-      if (Array.isArray(selectedChannel.members)) {
-        selectedChannel.assignedPals = selectedChannel.members.map((memberValue) => {
-          const member = asRecord(memberValue) ?? {};
-          if (!palsById.has(readString(member.id))) {
-            palsById.set(readString(member.id), {
-              id: readString(member.id),
-              name: readString(member.name, 'Pal'),
-              roles: Array.isArray(member.roles) ? member.roles : [],
-              skillProfile: readNullableString(member.skillProfile),
-              mcpProfile: readNullableString(member.mcpProfile),
-              status: readString(member.status, 'active') === 'removed' ? 'archived' : 'active',
-              createdAt: readString(member.joinedAt),
-              updatedAt: readString(member.joinedAt),
-              archivedAt: readNullableString(member.leftAt),
-              defaultExecutionTarget: {
-                provider: readString(member.provider, 'claude'),
-                instance: readNullableString(member.instance),
-                model: readNullableString(member.model),
-              },
-              memory: asRecord(member.memory) ?? {
-                summary: null,
-                facts: [],
-                openLoops: [],
-                updatedAt: null,
-              },
-            });
-          }
-          return {
-            palId: readString(member.id),
-            name: readString(member.name, 'Pal'),
-            roles: Array.isArray(member.roles) ? member.roles : [],
-            skillProfile: readNullableString(member.skillProfile),
-            mcpProfile: readNullableString(member.mcpProfile),
-            status: readString(member.status, 'active'),
-            joinedAt: readString(member.joinedAt),
-            leftAt: readNullableString(member.leftAt),
-            execution: member.execution,
-            memory: asRecord(member.memory) ?? {
-              summary: null,
-              facts: [],
-              openLoops: [],
-              updatedAt: null,
-            },
-          };
-        });
-      } else if (Array.isArray(selectedChannel.palAssignments)) {
-        selectedChannel.assignedPals = selectedChannel.palAssignments.map((assignmentValue) => {
+    if (!Array.isArray(selectedChannel.assignedCats)) {
+      if (Array.isArray(selectedChannel.catAssignments)) {
+        selectedChannel.assignedCats = selectedChannel.catAssignments.map((assignmentValue) => {
           const assignment = asRecord(assignmentValue) ?? {};
-          const pal = palsById.get(readString(assignment.palId)) ?? {};
+          const cat = catsById.get(readString(assignment.catId)) ?? {};
           return {
-            palId: readString(assignment.palId),
-            name: readString(pal.name, 'Pal'),
-            roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(pal.roles),
-            skillProfile: readNullableString(pal.skillProfile),
-            mcpProfile: readNullableString(pal.mcpProfile),
+            catId: readString(assignment.catId),
+            name: readString(cat.name, 'Cat'),
+            roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat.roles),
+            skillProfile: readNullableString(cat.skillProfile),
+            mcpProfile: readNullableString(cat.mcpProfile),
             status: readString(assignment.status, 'active'),
             joinedAt: readString(assignment.joinedAt),
             leftAt: readNullableString(assignment.leftAt),
             execution: assignment.execution,
-            memory: asRecord(pal.memory) ?? {
+            memory: asRecord(cat.memory) ?? {
               summary: null,
               facts: [],
               openLoops: [],
@@ -236,7 +161,7 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
     }
   }
 
-  workspace!.pals = Array.from(palsById.values());
+  chatState.cats = Array.from(catsById.values());
 
   if (nextPayload.setupCompleteAt === undefined) {
     (nextPayload as Record<string, unknown>).setupCompleteAt = null;
@@ -247,21 +172,21 @@ function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
   if (nextPayload.ownerAvatarColor === undefined) {
     (nextPayload as Record<string, unknown>).ownerAvatarColor = null;
   }
-  if (workspace && workspace.bossCatId === undefined) {
-    (workspace as Record<string, unknown>).bossCatId = null;
+  if (chatState.bossCatId === undefined) {
+    chatState.bossCatId = null;
   }
-  if (workspace && workspace.showVerboseMessages === undefined) {
-    (workspace as Record<string, unknown>).showVerboseMessages = false;
+  if (chatState.showVerboseMessages === undefined) {
+    chatState.showVerboseMessages = false;
   }
 
-  if (Array.isArray(workspace?.channels)) {
-    workspace.channels = workspace.channels.map((channelValue) => {
+  if (Array.isArray(chatState.channels)) {
+    chatState.channels = chatState.channels.map((channelValue) => {
       const channel = asRecord(channelValue) ?? {};
-      if (channel.palCount === undefined) {
-        channel.palCount = channel.memberCount ?? 0;
+      if (channel.catCount === undefined) {
+        channel.catCount = 0;
       }
-      if (channel.activePalCount === undefined) {
-        channel.activePalCount = channel.activeMemberCount ?? 0;
+      if (channel.activeCatCount === undefined) {
+        channel.activeCatCount = 0;
       }
       return channel;
     });
@@ -377,7 +302,7 @@ export async function updateSelectedChannel(
 
   return mutateAndRefetch(
     response,
-    `cats workspace selection returned ${response.status}`,
+    `cats chat selection returned ${response.status}`,
     signal,
   );
 }
@@ -403,7 +328,7 @@ export async function updateVerbosePreference(
   );
 }
 
-export async function deleteGlobalPal(
+export async function deleteGlobalCat(
   catId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
@@ -420,8 +345,8 @@ export async function deleteGlobalPal(
   );
 }
 
-export async function createWorkspaceChannel(
-  input: CreateWorkspaceChannelInput,
+export async function createChatChannel(
+  input: CreateChatChannelInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
   const response = await fetch('/api/channels', {
@@ -436,12 +361,12 @@ export async function createWorkspaceChannel(
 
   return mutateAndRefetch(
     response,
-    `cats workspace channel creation returned ${response.status}`,
+    `cats chat creation returned ${response.status}`,
     signal,
   );
 }
 
-export async function deleteWorkspaceChannel(
+export async function deleteChatChannel(
   channelId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
@@ -455,13 +380,13 @@ export async function deleteWorkspaceChannel(
 
   return mutateAndRefetch(
     response,
-    `cats workspace channel deletion returned ${response.status}`,
+    `cats chat deletion returned ${response.status}`,
     signal,
   );
 }
 
-export async function createGlobalPal(
-  input: CreateWorkspacePalInput,
+export async function createGlobalCat(
+  input: CreateCatInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
   const response = await fetch('/api/cats', {
@@ -476,18 +401,18 @@ export async function createGlobalPal(
 
   return mutateAndRefetch(
     response,
-    `cats workspace pal creation returned ${response.status}`,
+    `cats chat cat creation returned ${response.status}`,
     signal,
   );
 }
 
-export async function assignPalToWorkspaceChannel(
+export async function assignCatToChannelApi(
   channelId: string,
-  input: AssignChannelPalInput,
+  input: AssignChannelCatInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const { palId, ...assignmentBody } = input;
-  const response = await fetch(`/api/channels/${channelId}/cats/${palId}`, {
+  const { catId, ...assignmentBody } = input;
+  const response = await fetch(`/api/channels/${channelId}/cats/${catId}`, {
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
@@ -499,17 +424,17 @@ export async function assignPalToWorkspaceChannel(
 
   return mutateAndRefetch(
     response,
-    `cats channel pal assignment returned ${response.status}`,
+    `cats channel cat assignment returned ${response.status}`,
     signal,
   );
 }
 
-export async function removePalFromWorkspaceChannel(
+export async function removeCatFromChannelApi(
   channelId: string,
-  palId: string,
+  catId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/channels/${channelId}/cats/${palId}`, {
+  const response = await fetch(`/api/channels/${channelId}/cats/${catId}`, {
     method: 'DELETE',
     headers: {
       Accept: 'application/json',
@@ -519,12 +444,12 @@ export async function removePalFromWorkspaceChannel(
 
   return mutateAndRefetch(
     response,
-    `cats channel pal removal returned ${response.status}`,
+    `cats channel cat removal returned ${response.status}`,
     signal,
   );
 }
 
-export async function activateWorkspaceChannel(
+export async function activateChatChannel(
   channelId: string,
   signal?: AbortSignal,
 ): Promise<ActivateChannelResponse> {
@@ -622,7 +547,7 @@ export async function uploadChannelAttachments(
   return result.attachments;
 }
 
-export async function sendWorkspaceMessage(
+export async function sendChatMessage(
   channelId: string,
   input: SendChannelMessageInput,
   signal?: AbortSignal,
@@ -651,7 +576,7 @@ export async function sendWorkspaceMessage(
   return { appShell, results: dispatch.results };
 }
 
-export async function updateWorkspaceOrchestrator(
+export async function updateChatOrchestrator(
   input: UpdateGlobalOrchestratorInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
@@ -710,3 +635,7 @@ export async function resetSetup(signal?: AbortSignal): Promise<AppShellPayload>
     await expectJson<AppShellPayload>(response, `setup reset returned ${response.status}`),
   );
 }
+
+
+
+

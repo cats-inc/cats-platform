@@ -6,7 +6,7 @@ import type { SuiteHostEnvelope } from '../../../shared/suite-contract.js';
 
 export type { ExecutionTargetSummary, MemoryCheckpointSummary } from '../../../core/types.js';
 
-export type WorkspaceChannelStatus =
+export type ChatChannelStatus =
   | 'planned'
   | 'configured'
   | 'active'
@@ -23,7 +23,7 @@ export type ParticipantSessionStatus =
   | 'closed'
   | 'removed';
 
-export type WorkspaceMessageSenderKind = 'user' | 'agent' | 'system' | 'orchestrator';
+export type ChatMessageSenderKind = 'user' | 'agent' | 'system' | 'orchestrator';
 
 export type RoomRoutingMode = 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
 
@@ -65,7 +65,7 @@ export type RoomRoutingCheckpointKind =
   | 'runtime_error';
 
 export interface RoomRoutingParticipantRef {
-  participantKind: 'orchestrator' | 'pal';
+  participantKind: 'orchestrator' | 'cat';
   participantId: string;
   participantName: string;
 }
@@ -98,7 +98,7 @@ export interface RoomRoutingOutcome {
   turnId: string;
   mode: RoomRoutingMode;
   sourceMessageId: string;
-  sourceSenderKind: WorkspaceMessageSenderKind;
+  sourceSenderKind: ChatMessageSenderKind;
   sourceSenderName: string;
   status: RoomRoutingTurnStatus;
   resolvedTargets: RoomRoutingParticipantRef[];
@@ -147,7 +147,7 @@ export interface ParticipantExecutionState {
   lease: ParticipantExecutionLease;
 }
 
-export interface WorkspacePal {
+export interface ChatCat {
   id: string;
   name: string;
   roles: string[];
@@ -162,8 +162,8 @@ export interface WorkspacePal {
   memory: MemoryCheckpointSummary;
 }
 
-export interface ChannelPalAssignment {
-  palId: string;
+export interface ChannelCatAssignment {
+  catId: string;
   status: 'active' | 'removed';
   roles: string[];
   joinedAt: string;
@@ -171,8 +171,8 @@ export interface ChannelPalAssignment {
   execution: ParticipantExecutionState;
 }
 
-export interface WorkspaceChannelPal {
-  palId: string;
+export interface ChatChannelCat {
+  catId: string;
   name: string;
   roles: string[];
   skillProfile: string | null;
@@ -185,10 +185,10 @@ export interface WorkspaceChannelPal {
   memory: MemoryCheckpointSummary;
 }
 
-export interface WorkspaceMessage {
+export interface ChatMessage {
   id: string;
   channelId: string;
-  senderKind: WorkspaceMessageSenderKind;
+  senderKind: ChatMessageSenderKind;
   senderName: string;
   body: string;
   mentions: string[];
@@ -197,14 +197,14 @@ export interface WorkspaceMessage {
   createdAt: string;
 }
 
-export interface WorkspaceChannelState {
+export interface ChatChannelState {
   id: string;
   title: string;
   topic: string;
-  status: WorkspaceChannelStatus;
+  status: ChatChannelStatus;
   unreadCount: number;
   repoPath: string | null;
-  workspaceCwd: string | null;
+  chatCwd: string | null;
   language: string | null;
   responseLanguage: string;
   formationMode: ChannelFormationMode;
@@ -216,25 +216,25 @@ export interface WorkspaceChannelState {
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   orchestratorLease: ParticipantExecutionLease;
-  palAssignments: ChannelPalAssignment[];
-  messages: WorkspaceMessage[];
+  catAssignments: ChannelCatAssignment[];
+  messages: ChatMessage[];
   roomRouting?: RoomRoutingState;
 }
 
-export interface WorkspaceChannelView extends WorkspaceChannelState {
-  assignedPals: WorkspaceChannelPal[];
+export interface ChatChannelView extends ChatChannelState {
+  assignedCats: ChatChannelCat[];
 }
 
-export interface WorkspaceChannelSummary {
+export interface ChatChannelSummary {
   id: string;
   title: string;
   topic: string;
-  status: WorkspaceChannelStatus;
+  status: ChatChannelStatus;
   unreadCount: number;
-  palCount: number;
-  activePalCount: number;
+  catCount: number;
+  activeCatCount: number;
   repoPath: string | null;
-  workspaceCwd: string | null;
+  chatCwd: string | null;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   roomMode?: RoomRoutingMode;
@@ -258,7 +258,7 @@ export interface GlobalOrchestratorSummary {
   updatedAt: string;
 }
 
-export interface WorkspaceCapabilities {
+export interface ChatCapabilities {
   multiChannel: true;
   persistence: 'file-backed';
   mentions: 'basic';
@@ -268,36 +268,36 @@ export interface WorkspaceCapabilities {
   runtimeSessions: true;
 }
 
-export interface WorkspaceState {
+export interface ChatState {
   id: string;
   name: string;
   selectedChannelId: string;
   bossCatId: string | null;
-  pals: WorkspacePal[];
-  channels: WorkspaceChannelState[];
+  cats: ChatCat[];
+  channels: ChatChannelState[];
   globalOrchestrator: GlobalOrchestratorSummary;
-  capabilities: WorkspaceCapabilities;
+  capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
 }
 
-export interface WorkspaceShellState {
+export interface ChatShellState {
   id: string;
   name: string;
   selectedChannelId: string;
   bossCatId: string | null;
-  pals: WorkspacePal[];
-  channels: WorkspaceChannelSummary[];
-  selectedChannel: WorkspaceChannelView | null;
+  cats: ChatCat[];
+  channels: ChatChannelSummary[];
+  selectedChannel: ChatChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
-  capabilities: WorkspaceCapabilities;
+  capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
 }
 
 export interface AppShellPayload extends SuiteHostEnvelope {
-  workspace: WorkspaceShellState;
+  chat: ChatShellState;
 }
 
-export interface PalDraftInput {
+export interface CatDraftInput {
   name: string;
   provider: string;
   instance?: string;
@@ -307,10 +307,10 @@ export interface PalDraftInput {
   mcpProfile?: string;
 }
 
-export interface CreateWorkspacePalInput extends PalDraftInput {}
+export interface CreateCatInput extends CatDraftInput {}
 
-export interface AssignChannelPalInput {
-  palId: string;
+export interface AssignChannelCatInput {
+  catId: string;
   provider?: string;
   instance?: string;
   model?: string;
@@ -321,7 +321,7 @@ export interface UpdateSelectedChannelInput {
   selectedChannelId: string;
 }
 
-export interface CreateWorkspaceChannelInput {
+export interface CreateChatChannelInput {
   title: string;
   topic: string;
   repoPath?: string;
@@ -333,11 +333,9 @@ export interface CreateWorkspaceChannelInput {
   skillProfile?: string;
   mcpProfile?: string;
   orchestratorRoles?: string[];
-  cats?: PalDraftInput[];
+  cats?: CatDraftInput[];
   /** Internal UI affordance for the first user-sent turn in a newly created chat. */
   skipBossCatGreeting?: boolean;
-  /** @deprecated Use `cats` on canonical routes. Kept for legacy `/api/workspace/channels`. */
-  pals?: PalDraftInput[];
 }
 
 export interface UpdateGlobalOrchestratorInput {
@@ -356,7 +354,7 @@ export interface SendChannelMessageInput {
 }
 
 export interface ChannelActivationResult {
-  targetKind: 'orchestrator' | 'pal';
+  targetKind: 'orchestrator' | 'cat';
   targetId: string;
   targetName: string;
   status: 'started' | 'already_started' | 'error';
@@ -365,7 +363,7 @@ export interface ChannelActivationResult {
 }
 
 export interface ChannelDispatchResult {
-  targetKind: 'orchestrator' | 'pal';
+  targetKind: 'orchestrator' | 'cat';
   targetId: string;
   targetName: string;
   sessionId: string | null;
@@ -389,8 +387,8 @@ export interface SendChannelMessageResponse {
 export interface ChannelExportPayload {
   exportedAt: string;
   orchestrator: GlobalOrchestratorSummary;
-  channel: WorkspaceChannelState;
-  assignedPals: WorkspaceChannelPal[];
+  channel: ChatChannelState;
+  assignedCats: ChatChannelCat[];
 }
 
 export interface SetupCompleteInput {

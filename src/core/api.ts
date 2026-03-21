@@ -30,7 +30,7 @@ import {
 } from '../shared/http.js';
 
 export interface CoreApiDependencies {
-  workspaceStore: Pick<CoreStore, 'readCore' | 'writeCore'>;
+  chatStore: Pick<CoreStore, 'readCore' | 'writeCore'>;
 }
 
 const CORE_TASK_STATUSES = [
@@ -227,27 +227,27 @@ function handleCoreError(
 async function handleCoreState(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  sendJson(context.response, 200, await context.dependencies.workspaceStore.readCore());
+  sendJson(context.response, 200, await context.dependencies.chatStore.readCore());
 }
 
 async function handleCoreActors(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  const core = await context.dependencies.workspaceStore.readCore();
+  const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { actors: core.actors });
 }
 
 async function handleCoreConversations(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  const core = await context.dependencies.workspaceStore.readCore();
+  const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { conversations: core.conversations });
 }
 
 async function handleCoreTasks(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  const core = await context.dependencies.workspaceStore.readCore();
+  const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { tasks: core.tasks });
 }
 
@@ -258,7 +258,7 @@ async function handleCoreTaskWrite(
     const task = await readWrappedBody(context, 'task');
     const approval = asRecord(task.approval);
     const next = upsertCoreTask(
-      await context.dependencies.workspaceStore.readCore(),
+      await context.dependencies.chatStore.readCore(),
       {
         id: readOptionalString(task.id, 'task.id'),
         title: readRequiredString(task.title, 'task.title'),
@@ -296,7 +296,7 @@ async function handleCoreTaskWrite(
         createdAt: readOptionalString(task.createdAt, 'task.createdAt'),
       },
     );
-    const persisted = await context.dependencies.workspaceStore.writeCore(next.core);
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
     const persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
 
     sendJson(
@@ -315,7 +315,7 @@ async function handleCoreTaskWrite(
 async function handleCoreRuns(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  const core = await context.dependencies.workspaceStore.readCore();
+  const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { runs: core.runs });
 }
 
@@ -325,7 +325,7 @@ async function handleCoreRunWrite(
   try {
     const run = await readWrappedBody(context, 'run');
     const next = upsertCoreRun(
-      await context.dependencies.workspaceStore.readCore(),
+      await context.dependencies.chatStore.readCore(),
       {
         id: readOptionalString(run.id, 'run.id'),
         title: readRequiredString(run.title, 'run.title'),
@@ -345,7 +345,7 @@ async function handleCoreRunWrite(
         metadata: readMetadata(run.metadata, 'run.metadata'),
       },
     );
-    const persisted = await context.dependencies.workspaceStore.writeCore(next.core);
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
     const persistedRun = persisted.runs.find((candidate) => candidate.id === next.run.id);
 
     sendJson(
@@ -364,7 +364,7 @@ async function handleCoreRunWrite(
 async function handleCoreTraces(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  const core = await context.dependencies.workspaceStore.readCore();
+  const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { traces: core.traces });
 }
 
@@ -374,7 +374,7 @@ async function handleCoreTraceWrite(
   try {
     const trace = await readWrappedBody(context, 'trace');
     const next = appendCoreTrace(
-      await context.dependencies.workspaceStore.readCore(),
+      await context.dependencies.chatStore.readCore(),
       {
         id: readOptionalString(trace.id, 'trace.id'),
         traceId: readRequiredString(trace.traceId, 'trace.traceId'),
@@ -388,7 +388,7 @@ async function handleCoreTraceWrite(
         metadata: readMetadata(trace.metadata, 'trace.metadata'),
       },
     );
-    const persisted = await context.dependencies.workspaceStore.writeCore(next.core);
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
     const persistedTrace = persisted.traces.find((candidate) => candidate.id === next.trace.id);
 
     sendJson(
@@ -407,7 +407,7 @@ async function handleCoreTraceWrite(
 async function handleCoreCheckpoints(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  const core = await context.dependencies.workspaceStore.readCore();
+  const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { checkpoints: core.checkpoints });
 }
 
@@ -417,7 +417,7 @@ async function handleCoreCheckpointWrite(
   try {
     const checkpoint = await readWrappedBody(context, 'checkpoint');
     const next = upsertCoreCheckpoint(
-      await context.dependencies.workspaceStore.readCore(),
+      await context.dependencies.chatStore.readCore(),
       {
         id: readOptionalString(checkpoint.id, 'checkpoint.id'),
         label: readRequiredString(checkpoint.label, 'checkpoint.label'),
@@ -442,7 +442,7 @@ async function handleCoreCheckpointWrite(
         metadata: readMetadata(checkpoint.metadata, 'checkpoint.metadata'),
       },
     );
-    const persisted = await context.dependencies.workspaceStore.writeCore(next.core);
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
     const persistedCheckpoint = persisted.checkpoints.find(
       (candidate) => candidate.id === next.checkpoint.id,
     );
@@ -463,7 +463,7 @@ async function handleCoreCheckpointWrite(
 async function handleCoreOutcomes(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  const core = await context.dependencies.workspaceStore.readCore();
+  const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { outcomes: core.outcomes });
 }
 
@@ -473,7 +473,7 @@ async function handleCoreOutcomeWrite(
   try {
     const outcome = await readWrappedBody(context, 'outcome');
     const next = upsertCoreOutcome(
-      await context.dependencies.workspaceStore.readCore(),
+      await context.dependencies.chatStore.readCore(),
       {
         id: readOptionalString(outcome.id, 'outcome.id'),
         title: readRequiredString(outcome.title, 'outcome.title'),
@@ -489,7 +489,7 @@ async function handleCoreOutcomeWrite(
         metadata: readMetadata(outcome.metadata, 'outcome.metadata'),
       },
     );
-    const persisted = await context.dependencies.workspaceStore.writeCore(next.core);
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
     const persistedOutcome = persisted.outcomes.find(
       (candidate) => candidate.id === next.outcome.id,
     );
@@ -510,7 +510,7 @@ async function handleCoreOutcomeWrite(
 async function handleCoreApprovals(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  const core = await context.dependencies.workspaceStore.readCore();
+  const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { approvals: buildApprovalQueue(core) });
 }
 
@@ -520,7 +520,7 @@ async function handleCoreApprovalWrite(
   try {
     const approval = await readObjectBody(context);
     const next = writeApprovalDecision(
-      await context.dependencies.workspaceStore.readCore(),
+      await context.dependencies.chatStore.readCore(),
       {
         taskId: readRequiredString(approval.taskId, 'taskId'),
         status:
@@ -538,7 +538,7 @@ async function handleCoreApprovalWrite(
         taskStatus: readEnumValue(approval.taskStatus, 'taskStatus', CORE_TASK_STATUSES),
       },
     );
-    const persisted = await context.dependencies.workspaceStore.writeCore(next.core);
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
     const persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
     const queueItem = buildApprovalQueue(persisted).find(
       (candidate) => candidate.taskId === next.task.id,
@@ -557,7 +557,7 @@ async function handleCoreApprovalWrite(
 async function handleOwnerProfile(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
-  const core = await context.dependencies.workspaceStore.readCore();
+  const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { ownerProfile: core.ownerProfile });
 }
 
@@ -567,7 +567,7 @@ async function handleOwnerProfileWrite(
   try {
     const body = await readObjectBody(context);
     const next = patchOwnerProfile(
-      await context.dependencies.workspaceStore.readCore(),
+      await context.dependencies.chatStore.readCore(),
       {
         displayName: readOptionalString(body.displayName, 'displayName'),
         avatarColor: readNullableString(body.avatarColor, 'avatarColor'),
@@ -586,7 +586,7 @@ async function handleOwnerProfileWrite(
         ),
       },
     );
-    const persisted = await context.dependencies.workspaceStore.writeCore(next.core);
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
     sendJson(context.response, 200, {
       ownerProfile: persisted.ownerProfile,
     });

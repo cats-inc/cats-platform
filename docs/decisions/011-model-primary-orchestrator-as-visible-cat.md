@@ -151,7 +151,7 @@ state as one object
 
 - [ADR-007](./007-establish-cats-core-v1-for-chat-and-work.md)
 - [ADR-008](./008-expose-cats-runtime-via-direct-api-and-mcp-facade.md)
-- [ADR-009](./009-prefer-chat-contextual-pal-entry-and-settings-registry.md)
+- [ADR-009](./009-prefer-chat-contextual-cat-entry-and-settings-registry.md)
 - [Architecture](../architecture.md)
 - [Requirements](../requirements.md)
 - [SPEC-011](../specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md)
@@ -160,3 +160,4 @@ state as one object
 
 *Accepted: 2026-03-19*
 *Accepted by: user direction captured through Codex*
+

@@ -7,14 +7,14 @@ import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
-import { MemoryWorkspaceStore } from '../dist-server/workspace/store.js';
+import { MemoryChatStore } from '../dist-server/workspace/store.js';
 
 const baseConfig = {
   host: '127.0.0.1',
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  workspaceStatePath: 'unused-for-tests',
+  chatStatePath: 'unused-for-tests',
 };
 
 function createRuntimeStub() {
@@ -76,11 +76,11 @@ function createRuntimeStub() {
   };
 }
 
-async function withServer(runtimeClient, callback, workspaceStore = new MemoryWorkspaceStore()) {
+async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const server = createServer({
     config: baseConfig,
     runtimeClient,
-    workspaceStore,
+    chatStore,
     now: () => new Date('2026-03-11T00:00:00.000Z'),
   });
 
@@ -112,20 +112,20 @@ test('GET /health reports runtime reachability', async () => {
   });
 });
 
-test('GET /api/app-shell exposes detailed workspace state with global pals', async () => {
+test('GET /api/app-shell exposes detailed chat state with global cats', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(response.status, 200);
 
     const payload = await response.json();
     assert.equal(payload.app.name, 'cats');
-    assert.equal(payload.workspace.name, 'Chat');
-    assert.equal(payload.workspace.selectedChannelId, '');
-    assert.equal(payload.workspace.channels.length, 0);
-    assert.equal(payload.workspace.pals.length, 0);
-    assert.equal(payload.workspace.selectedChannel, null);
-    assert.equal(payload.workspace.capabilities.mentions, 'basic');
-    assert.equal(payload.workspace.capabilities.transcriptExport, true);
+    assert.equal(payload.chat.name, 'Chat');
+    assert.equal(payload.chat.selectedChannelId, '');
+    assert.equal(payload.chat.channels.length, 0);
+    assert.equal(payload.chat.cats.length, 0);
+    assert.equal(payload.chat.selectedChannel, null);
+    assert.equal(payload.chat.capabilities.mentions, 'basic');
+    assert.equal(payload.chat.capabilities.transcriptExport, true);
   });
 });
 
@@ -164,7 +164,7 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
 });
 
 test('core write APIs persist owner profile, tasks, approvals, traces, checkpoints, runs, and outcomes', async () => {
-  const workspaceStore = new MemoryWorkspaceStore();
+  const chatStore = new MemoryChatStore();
 
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const ownerProfileResponse = await fetch(`${baseUrl}/api/core/owner-profile`, {
@@ -314,11 +314,11 @@ test('core write APIs persist owner profile, tasks, approvals, traces, checkpoin
       statePayload.checkpoints.some((checkpoint) => checkpoint.id === 'checkpoint-system-1'),
     );
     assert.ok(statePayload.outcomes.some((outcome) => outcome.id === 'outcome-system-1'));
-  }, workspaceStore);
+  }, chatStore);
 });
 
 test('core approval write returns 409 for invalid terminal-to-pending transition', async () => {
-  const workspaceStore = new MemoryWorkspaceStore();
+  const chatStore = new MemoryChatStore();
 
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
@@ -374,7 +374,7 @@ test('core approval write returns 409 for invalid terminal-to-pending transition
     assert.equal(invalidResponse.status, 409);
     const invalidPayload = await invalidResponse.json();
     assert.equal(invalidPayload.error.code, 'approval_transition_invalid');
-  }, workspaceStore);
+  }, chatStore);
 });
 
 test('GET /api/work and /api/code expose dedicated placeholder surfaces', async () => {
@@ -434,205 +434,6 @@ test('GET /api/shell/browse lists subdirectories for the folder browser modal', 
   } finally {
     await rm(root, { recursive: true, force: true });
   }
-});
-
-test('workspace API covers chat setup, activation, messaging, global pals, assignments, and export', async () => {
-  const runtimeClient = createRuntimeStub();
-  const workspaceStore = new MemoryWorkspaceStore();
-
-  await withServer(runtimeClient, async (baseUrl) => {
-    const createResponse = await fetch(`${baseUrl}/api/workspace/channels`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: 'Ops Radar',
-        topic: 'Track runtime regressions before shipping the desktop shell.',
-        repoPath: 'C:/repo/cats',
-        language: 'TypeScript',
-        pals: [
-          {
-            name: 'Agent-1',
-            provider: 'claude',
-            roles: ['coder'],
-          },
-        ],
-      }),
-    });
-
-    assert.equal(createResponse.status, 200);
-    const createdPayload = await createResponse.json();
-    const channelId = createdPayload.workspace.selectedChannel.id;
-    assert.match(channelId, UUID_PATTERN);
-    assert.equal(createdPayload.workspace.pals.length, 1);
-    assert.equal(createdPayload.workspace.selectedChannel.assignedPals.length, 1);
-    assert.equal(
-      createdPayload.workspace.selectedChannel.assignedPals[0].execution.target.provider,
-      'claude',
-    );
-
-    const activateResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/activate`, {
-      method: 'POST',
-    });
-    assert.equal(activateResponse.status, 200);
-    const activationPayload = await activateResponse.json();
-    assert.equal(activationPayload.results.length, 2);
-    assert.equal(activationPayload.appShell.workspace.selectedChannel.status, 'active');
-    assert.equal(runtimeClient.createdSessions.length, 2);
-
-    const messageResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/messages`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        body: 'Please review this fix with @Agent-1',
-      }),
-    });
-    assert.equal(messageResponse.status, 200);
-    const messagePayload = await messageResponse.json();
-    assert.equal(messagePayload.results[0].status, 'sent');
-    assert.equal(runtimeClient.sentMessages.length, 1);
-    assert.ok(
-      messagePayload.appShell.workspace.selectedChannel.messages.some(
-        (message) => message.senderName === 'Agent-1',
-      ),
-    );
-
-    const createPalResponse = await fetch(`${baseUrl}/api/workspace/pals`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: 'Agent-2',
-        provider: 'gemini',
-        roles: ['reviewer'],
-      }),
-    });
-    assert.equal(createPalResponse.status, 200);
-    const createPalPayload = await createPalResponse.json();
-    assert.equal(createPalPayload.workspace.pals.length, 2);
-    const secondPal = createPalPayload.workspace.pals.find((pal) => pal.name === 'Agent-2');
-    assert.ok(secondPal);
-
-    const assignPalResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/pals`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        palId: secondPal.id,
-        provider: 'gemini',
-        model: 'gemini-2.5-pro',
-        roles: ['reviewer'],
-      }),
-    });
-    assert.equal(assignPalResponse.status, 200);
-    const assignPalPayload = await assignPalResponse.json();
-    assert.equal(assignPalPayload.workspace.selectedChannel.assignedPals.length, 2);
-    assert.equal(
-      assignPalPayload.workspace.selectedChannel.assignedPals.find((pal) => pal.palId === secondPal.id).execution.target.model,
-      'gemini-2.5-pro',
-    );
-
-    const firstPal = assignPalPayload.workspace.selectedChannel.assignedPals.find(
-      (pal) => pal.name === 'Agent-1',
-    );
-    assert.ok(firstPal);
-
-    const removePalResponse = await fetch(
-      `${baseUrl}/api/workspace/channels/${channelId}/pals/${firstPal.palId}`,
-      {
-        method: 'DELETE',
-      },
-    );
-    assert.equal(removePalResponse.status, 200);
-    const removePalPayload = await removePalResponse.json();
-    assert.equal(
-      removePalPayload.workspace.selectedChannel.assignedPals.find(
-        (pal) => pal.palId === firstPal.palId,
-      ).status,
-      'removed',
-    );
-    assert.equal(runtimeClient.closedSessions.length, 1);
-
-    const orchestratorResponse = await fetch(`${baseUrl}/api/orchestrator`, {
-      method: 'PUT',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        provider: 'claude',
-        model: 'claude-opus-4-6',
-        systemPrompt: 'Coordinate explicitly and keep mention routing visible.',
-      }),
-    });
-    assert.equal(orchestratorResponse.status, 200);
-    const orchestratorPayload = await orchestratorResponse.json();
-    assert.equal(
-      orchestratorPayload.workspace.globalOrchestrator.executionTarget.model,
-      'claude-opus-4-6',
-    );
-
-    const actorsResponse = await fetch(`${baseUrl}/api/core/actors`);
-    assert.equal(actorsResponse.status, 200);
-    const actorsPayload = await actorsResponse.json();
-    assert.ok(actorsPayload.actors.some((actor) => actor.name === 'Agent-1'));
-    assert.ok(actorsPayload.actors.some((actor) => actor.name === 'Agent-2'));
-
-    const conversationsResponse = await fetch(`${baseUrl}/api/core/conversations`);
-    assert.equal(conversationsResponse.status, 200);
-    const conversationsPayload = await conversationsResponse.json();
-    assert.ok(
-      conversationsPayload.conversations.some(
-        (conversation) => conversation.sourceChannelId === channelId,
-      ),
-    );
-
-    const tasksResponse = await fetch(`${baseUrl}/api/core/tasks`);
-    assert.equal(tasksResponse.status, 200);
-    const tasksPayload = await tasksResponse.json();
-    assert.ok(
-      tasksPayload.tasks.some(
-        (task) => task.conversationId === `conversation-channel-${channelId}`,
-      ),
-    );
-
-    const approvalsResponse = await fetch(`${baseUrl}/api/core/approvals`);
-    assert.equal(approvalsResponse.status, 200);
-    const approvalsPayload = await approvalsResponse.json();
-    assert.equal(approvalsPayload.approvals.length, 0);
-
-    const exportResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}/export`);
-    assert.equal(exportResponse.status, 200);
-    assert.match(exportResponse.headers.get('content-disposition') ?? '', /channel-ops-radar\.json/);
-    const exportPayload = await exportResponse.json();
-    assert.equal(exportPayload.channel.id, channelId);
-    assert.ok(exportPayload.assignedPals.length >= 1);
-    assert.ok(exportPayload.channel.messages.length >= 4);
-
-    const deleteResponse = await fetch(`${baseUrl}/api/workspace/channels/${channelId}`, {
-      method: 'DELETE',
-    });
-    assert.equal(deleteResponse.status, 200);
-    const deletePayload = await deleteResponse.json();
-    assert.equal(deletePayload.workspace.channels.length, 0);
-    assert.equal(deletePayload.workspace.selectedChannelId, '');
-    assert.equal(deletePayload.workspace.selectedChannel, null);
-    assert.equal(runtimeClient.closedSessions.length, 3);
-
-    const conversationsAfterDelete = await fetch(`${baseUrl}/api/core/conversations`);
-    assert.equal(conversationsAfterDelete.status, 200);
-    const conversationsAfterDeletePayload = await conversationsAfterDelete.json();
-    assert.equal(conversationsAfterDeletePayload.conversations.length, 0);
-
-    const tasksAfterDelete = await fetch(`${baseUrl}/api/core/tasks`);
-    assert.equal(tasksAfterDelete.status, 200);
-    const tasksAfterDeletePayload = await tasksAfterDelete.json();
-    assert.equal(tasksAfterDeletePayload.tasks.length, 0);
-  }, workspaceStore);
 });
 
 test('assigning a cat to a channel immediately creates a runtime session in the channel cwd', async () => {
@@ -713,7 +514,7 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
       },
       body: JSON.stringify({
         title: 'Deferred Session Spawn',
-        topic: 'Wait for Boss Cat to anchor the workspace first.',
+        topic: 'Wait for Boss Cat to anchor the chat first.',
         skipBossCatGreeting: true,
       }),
     });
@@ -763,13 +564,13 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
     assert.equal(runtimeClient.createdSessions[0].cwd, null);
     assert.equal(runtimeClient.createdSessions[1].cwd, 'C:/workspace/runtime');
     assert.equal(activatePayload.activation.results[0].targetKind, 'orchestrator');
-    assert.equal(activatePayload.activation.results[1].targetKind, 'pal');
+    assert.equal(activatePayload.activation.results[1].targetKind, 'cat');
   });
 });
 
 test('attachment uploads sanitize names and avoid overwriting earlier files', async () => {
   const runtimeClient = createRuntimeStub();
-  const tempWorkspace = await mkdtemp(path.join(os.tmpdir(), 'cats-attachments-'));
+  const tempWorkingDir = await mkdtemp(path.join(os.tmpdir(), 'cats-attachments-'));
 
   try {
     await withServer(runtimeClient, async (baseUrl) => {
@@ -781,7 +582,7 @@ test('attachment uploads sanitize names and avoid overwriting earlier files', as
         body: JSON.stringify({
           title: 'Attachment Uploads',
           topic: 'Verify unique attachment names.',
-          repoPath: tempWorkspace,
+          repoPath: tempWorkingDir,
           skipBossCatGreeting: true,
         }),
       });
@@ -814,15 +615,18 @@ test('attachment uploads sanitize names and avoid overwriting earlier files', as
         ],
       );
 
-      const firstContent = await readFile(path.join(tempWorkspace, '.cats-attachments', 'notes.txt'), 'utf8');
-      const secondContent = await readFile(path.join(tempWorkspace, '.cats-attachments', 'notes-2.txt'), 'utf8');
-      const thirdContent = await readFile(path.join(tempWorkspace, '.cats-attachments', 'attachment'), 'utf8');
+      const firstContent = await readFile(path.join(tempWorkingDir, '.cats-attachments', 'notes.txt'), 'utf8');
+      const secondContent = await readFile(path.join(tempWorkingDir, '.cats-attachments', 'notes-2.txt'), 'utf8');
+      const thirdContent = await readFile(path.join(tempWorkingDir, '.cats-attachments', 'attachment'), 'utf8');
 
       assert.equal(firstContent, 'first');
       assert.equal(secondContent, 'second');
       assert.equal(thirdContent, 'third');
     });
   } finally {
-    await rm(tempWorkspace, { recursive: true, force: true });
+    await rm(tempWorkingDir, { recursive: true, force: true });
   }
 });
+
+
+

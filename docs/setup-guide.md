@@ -52,8 +52,8 @@ npm start
 ```
 
 The built Node server serves the static UI from `dist/`.
-By default local workspace state is stored in `config/workspace-state.local.json`.
-That file now holds channels, pals, execution targets, execution lease
+By default local workspace state is stored in `config/chat-state.local.json`.
+That file now holds channels, cats, execution targets, execution lease
 metadata, memory checkpoints, and transcripts.
 The checked-in starter state is empty, so the renderer does not open with any
 default or mock chats.
@@ -80,7 +80,7 @@ Node server on port `8181`.
 
 **Solution**: Check whether `CATS_STATE_PATH` points to a writable file
 location. `CATS_INC_STATE_PATH` is still accepted as a compatibility alias. If
-unset, the app uses `config/workspace-state.local.json`.
+unset, the app uses `config/chat-state.local.json`.
 
 ### Issue 5: Channel activation fails immediately
 
@@ -91,3 +91,4 @@ errors are also persisted into the channel transcript.
 ---
 
 *Last updated: 2026-03-13*
+

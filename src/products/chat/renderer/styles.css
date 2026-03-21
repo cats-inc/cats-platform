@@ -145,7 +145,7 @@ textarea {
   gap: 1px;
 }
 
-.navGroupWorkspace {
+.navGroupChat {
   margin-top: 14px;
   display: none;
 }
@@ -218,7 +218,7 @@ textarea {
 }
 
 .recentList,
-.palList,
+.catList,
 .stackForm {
   display: grid;
   gap: 8px;
@@ -250,8 +250,8 @@ textarea {
 
 .recentTitleRow,
 .contentCardHeader,
-.palCardTop,
-.palMeta,
+.catCardTop,
+.catMeta,
 .composerFooter {
   display: flex;
   align-items: center;
@@ -260,7 +260,7 @@ textarea {
 }
 
 .recentItem strong,
-.palCard strong {
+.catCard strong {
   font-size: 0.92rem;
   font-weight: 600;
 }
@@ -269,7 +269,7 @@ textarea {
 .recentEmpty p,
 .sidebarFooter p,
 .heroNote,
-.palCard p,
+.catCard p,
 .emptyStateCard p,
 .feedbackText {
   margin: 4px 0 0;
@@ -350,7 +350,7 @@ textarea {
   margin: 90px auto 0;
 }
 
-.palsShell {
+.catsShell {
   display: grid;
   gap: 18px;
 }
@@ -617,7 +617,7 @@ textarea {
 }
 
 .composerMeta,
-.palMeta {
+.catMeta {
   color: var(--muted);
   font-size: 0.75rem;
 }
@@ -642,7 +642,7 @@ textarea {
   background: transparent;
 }
 
-.palsLayout {
+.catsLayout {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
   gap: 16px;
@@ -662,7 +662,7 @@ textarea {
   font-weight: 600;
 }
 
-.palCard {
+.catCard {
   display: grid;
   gap: 10px;
   padding: 14px;
@@ -946,7 +946,7 @@ textarea {
   color: var(--muted-soft);
 }
 
-/* Chat roster and Add pal button */
+/* Chat roster and Add cat button */
 
 .chatRoster {
   display: grid;
@@ -965,7 +965,7 @@ textarea {
   font-size: 0.82rem;
 }
 
-.addPalButton {
+.addCatButton {
   width: 32px;
   height: 32px;
   padding: 0;
@@ -980,7 +980,7 @@ textarea {
   place-items: center;
 }
 
-.addPalButton:hover {
+.addCatButton:hover {
   background: var(--accent-soft);
 }
 
@@ -999,9 +999,9 @@ textarea {
   color: var(--text);
 }
 
-/* Add pal side panel */
+/* Add cat side panel */
 
-.addPalPanel {
+.addCatPanel {
   position: fixed;
   top: 0;
   right: 0;
@@ -1018,19 +1018,19 @@ textarea {
   z-index: 20;
 }
 
-.addPalPanelHeader {
+.addCatPanelHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.addPalPanelHeader h2 {
+.addCatPanelHeader h2 {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
 }
 
-.addPalClose {
+.addCatClose {
   width: 28px;
   height: 28px;
   border: 1px solid var(--border);
@@ -1043,11 +1043,11 @@ textarea {
   place-items: center;
 }
 
-.addPalClose:hover {
+.addCatClose:hover {
   background: var(--panel-hover);
 }
 
-.addPalTabs {
+.addCatTabs {
   display: flex;
   gap: 0;
   border: 1px solid var(--border);
@@ -1055,7 +1055,7 @@ textarea {
   overflow: hidden;
 }
 
-.addPalTab {
+.addCatTab {
   flex: 1;
   padding: 8px 12px;
   border: 0;
@@ -1066,19 +1066,19 @@ textarea {
   cursor: pointer;
 }
 
-.addPalTabActive {
+.addCatTabActive {
   background: rgba(255, 255, 255, 0.9);
   color: var(--text);
   font-weight: 600;
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
-.addPalList {
+.addCatList {
   display: grid;
   gap: 8px;
 }
 
-.addPalItem {
+.addCatItem {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1089,18 +1089,18 @@ textarea {
   background: #fbfaf8;
 }
 
-.addPalItem strong {
+.addCatItem strong {
   font-size: 0.92rem;
   font-weight: 600;
 }
 
-.addPalItem p {
+.addCatItem p {
   margin: 2px 0 0;
   color: var(--muted);
   font-size: 0.78rem;
 }
 
-.addPalAssignButton {
+.addCatAssignButton {
   padding: 6px 14px;
   border: 0;
   border-radius: 10px;
@@ -1112,16 +1112,16 @@ textarea {
   white-space: nowrap;
 }
 
-.addPalAssignButton:disabled {
+.addCatAssignButton:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
-.addPalAssignButton:hover:not(:disabled) {
+.addCatAssignButton:hover:not(:disabled) {
   background: #333;
 }
 
-.addPalCreate {
+.addCatCreate {
   display: grid;
   gap: 8px;
 }
@@ -1140,11 +1140,11 @@ textarea {
     min-height: 60vh;
   }
 
-  .palsLayout {
+  .catsLayout {
     grid-template-columns: 1fr;
   }
 
-  .addPalPanel {
+  .addCatPanel {
     width: 100%;
   }
 }
@@ -1403,7 +1403,7 @@ textarea {
   flex-direction: column;
 }
 
-.palsShell {
+.catsShell {
   padding-bottom: 32px;
 }
 
@@ -1503,24 +1503,24 @@ textarea {
   align-items: center;
 }
 
-.rosterAvatars .palAvatar {
+.rosterAvatars .catAvatar {
   margin-left: -8px;
   transition: margin-left 0.2s ease;
 }
 
-.rosterAvatars .palAvatar:first-child {
+.rosterAvatars .catAvatar:first-child {
   margin-left: 0;
 }
 
-.rosterAvatars:hover .palAvatar {
+.rosterAvatars:hover .catAvatar {
   margin-left: 4px;
 }
 
-.rosterAvatars:hover .palAvatar:first-child {
+.rosterAvatars:hover .catAvatar:first-child {
   margin-left: 0;
 }
 
-.palAvatar {
+.catAvatar {
   display: grid;
   width: 28px;
   height: 28px;
@@ -2152,13 +2152,13 @@ textarea {
   text-overflow: ellipsis;
 }
 
-.addPalRemoveButton {
+.addCatRemoveButton {
   background: transparent;
   color: var(--muted);
   border: 1px solid var(--border);
 }
 
-.addPalRemoveButton:hover:not(:disabled) {
+.addCatRemoveButton:hover:not(:disabled) {
   background: var(--panel-hover);
   color: var(--text);
 }
@@ -2326,3 +2326,5 @@ textarea {
     padding: 20px;
   }
 }
+
+

@@ -31,8 +31,8 @@ import { CATS_CORE_STATE_VERSION } from './types.js';
 export const OWNER_ACTOR_ID = 'actor-owner';
 export const GLOBAL_ORCHESTRATOR_ACTOR_ID = 'actor-orchestrator-global';
 
-export function createPalActorId(palId: string): string {
-  return `actor-pal-${palId}`;
+export function createCatActorId(catId: string): string {
+  return `actor-cat-${catId}`;
 }
 
 export function createEmptyMemoryCheckpoint(): MemoryCheckpointSummary {
@@ -117,7 +117,7 @@ function createDefaultOrchestratorActor(updatedAt: string): CoreActorRecord {
     status: 'active',
     roles: ['orchestrator', 'coordinator'],
     skillProfile: 'aaif-a2a-default',
-    mcpProfile: 'workspace-memory',
+    mcpProfile: 'chat-memory',
     defaultExecutionTarget: createDefaultExecutionTarget(),
     memory: createEmptyMemoryCheckpoint(),
     source: 'global_orchestrator',

@@ -10,7 +10,7 @@ The current Phase 2 API provides:
 - an explicit bootstrap payload for the chat renderer shell
 - a derived `Cats Core v1` read and write surface for shared suite contracts
 - a file-backed workspace mutation surface
-- a workspace-level pal registry plus channel-scoped pal assignment
+- a workspace-level cat registry plus channel-scoped cat assignment
 - runtime-backed channel activation and message routing
 - transcript export for later ingestion
 
@@ -37,7 +37,7 @@ and `/api/orchestrator` routes without workspace prefixes.
 - **Canonical**: public routes at `/api/cats`, `/api/channels/*`,
   `/api/preferences`, `/api/orchestrator`
 - **Compatibility (workspace-prefixed)**: `/api/workspaces/default/*` and
-  `/api/pals` routes remain active as aliases
+  `/api/cats` routes remain active as aliases
 - **Compatibility (legacy)**: `/api/workspace/*` routes still work and return
   `AppShellPayload`
 - **Read model**: `GET /api/app-shell` and `GET /api/views/app-shell` remain
@@ -90,7 +90,7 @@ DELETE /api/channels/{channelId}
 - `GET` collection returns `{ channels: [...summaries] }`.
 - `POST` returns `201` with `{ channel: { ...view } }`.
 - `GET` detail returns
-  `{ channel: { ...view with messages, assignedPals, and roomRouting } }`.
+  `{ channel: { ...view with messages, assignedCats, and roomRouting } }`.
 - `DELETE` returns `{ deleted: true, channelId }`.
 
 Each channel now exposes a `roomRouting` read model with:
@@ -130,7 +130,7 @@ PUT    /api/channels/{channelId}/cats/{catId}
 DELETE /api/channels/{channelId}/cats/{catId}
 ```
 
-- `GET` returns `{ cats: [...hydrated] }` with `catId` keys instead of `palId`.
+- `GET` returns `{ cats: [...hydrated] }` with `catId` keys instead of `catId`.
 - `PUT` is idempotent: creates (`201`) or updates (`200`) an assignment.
   Returns `{ cat: { catId, ...hydrated } }`.
 - `DELETE` returns `{ removed: true, channelId, catId }`.
@@ -234,156 +234,26 @@ Canonical routes use structured errors:
 }
 ```
 
-Codes: `cat_not_found`, `channel_not_found`, `workspace_not_found`,
-`bad_request`.
+Codes: `chat_not_found`, `channel_not_found`, `cat_not_found`,
+`assignment_not_found`, `bad_request`.
 
 ---
 
-## Compatibility Endpoints (Workspace-Prefixed)
+## Removed Compatibility Routes
 
-> The routes below are the workspace-prefixed REST API. They still work and
-> will be maintained as aliases. New client code should use the canonical
-> public routes above.
+The previously documented workspace-prefixed and phase-2 compatibility routes
+have been removed. The supported public surface is now:
 
-### Workspace
+- `/api/cats`
+- `/api/channels/*`
+- `/api/preferences`
+- `/api/orchestrator`
+- `/api/app-shell`
+- `/api/views/app-shell`
+- `/health`
 
-```text
-GET /api/workspaces/{workspaceId}
-```
-
-Returns a workspace summary (id, name, selectedChannelId, channelCount,
-palCount, capabilities). Currently only `workspaceId = "default"` is supported.
-
-### Workspace Preferences
-
-```text
-GET  /api/workspaces/{workspaceId}/preferences
-PATCH /api/workspaces/{workspaceId}/preferences
-```
-
-`GET` returns `{ preferences: { selectedChannelId } }`.
-
-`PATCH` accepts `{ selectedChannelId }` and returns the updated preferences.
-
-### Channels
-
-```text
-GET  /api/workspaces/{workspaceId}/channels
-POST /api/workspaces/{workspaceId}/channels
-GET  /api/workspaces/{workspaceId}/channels/{channelId}
-DELETE /api/workspaces/{workspaceId}/channels/{channelId}
-```
-
-- `GET` collection returns `{ channels: [...summaries] }`.
-- `POST` returns `201` with `{ channel: { ...view } }`. No `AppShellPayload`.
-- `GET` detail returns `{ channel: { ...view with messages and assignedPals } }`.
-- `DELETE` returns `{ deleted: true, channelId }`. No `AppShellPayload`.
-
-### Channel Messages
-
-```text
-GET  /api/workspaces/{workspaceId}/channels/{channelId}/messages
-POST /api/workspaces/{workspaceId}/channels/{channelId}/messages
-```
-
-- `GET` returns `{ messages: [...] }`.
-- `POST` accepts `{ body, senderName? }` and returns
-  `{ message: { ...userMessage }, dispatch: { channelId, results } }`.
-  No `AppShellPayload`.
-
-### Channel Pal Assignments
-
-```text
-GET    /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments
-PUT    /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}
-DELETE /api/workspaces/{workspaceId}/channels/{channelId}/pal-assignments/{palId}
-```
-
-- `GET` returns `{ palAssignments: [...hydrated] }`.
-- `PUT` is idempotent: creates (`201`) or updates (`200`) an assignment.
-  Returns `{ palAssignment: { ...hydrated } }`.
-- `DELETE` returns `{ removed: true, channelId, palId }`.
-
-### Channel Activations
-
-```text
-POST /api/workspaces/{workspaceId}/channels/{channelId}/activations
-```
-
-Returns `{ activation: { channelId, startedAt, results } }`.
-No `AppShellPayload`.
-
-### Channel Export
-
-```text
-GET /api/workspaces/{workspaceId}/channels/{channelId}/exports/latest
-```
-
-Returns the export payload as a JSON attachment.
-
-### Orchestrator
-
-```text
-GET   /api/workspaces/{workspaceId}/orchestrator
-PATCH /api/workspaces/{workspaceId}/orchestrator
-```
-
-- `GET` returns `{ orchestrator: { ...state } }`.
-- `PATCH` accepts `{ provider, model?, systemPrompt?, ... }` and returns
-  `{ orchestrator: { ...updated } }`.
-
-### Pals
-
-```text
-GET  /api/pals
-POST /api/pals
-GET  /api/pals/{palId}
-```
-
-- `GET` collection returns `{ pals: [...] }`.
-- `POST` returns `201` with `{ pal: { ...created } }`.
-- `GET` detail returns `{ pal: { ... } }`.
-
-### View Read Model (Compatibility)
-
-```text
-GET /api/views/app-shell
-```
-
-Alias for `GET /api/app-shell`. Returns the full renderer bootstrap payload.
-
-### Error Shape (REST Routes)
-
-REST routes use structured errors:
-
-```json
-{
-  "error": {
-    "code": "channel_not_found",
-    "message": "Channel not found: 550e8400-e29b-41d4-a716-446655440000"
-  }
-}
-```
-
-Codes: `workspace_not_found`, `channel_not_found`, `pal_not_found`,
-`assignment_not_found`, `cat_not_found`, `bad_request`.
-
-Channel ids are opaque identifiers. Clients should not derive meaning from the
-id or assume it matches the chat title.
-
----
-
-## Legacy Compatibility Endpoints
-
-> The routes below are the phase-2 compatibility API. They still work and
-> return `AppShellPayload` for mutations. New client code should use the
-> canonical REST endpoints above.
-
-### Health
-
-```text
-GET /health
-```
+Clients should not target `/api/workspaces/*`, `/api/workspace/*`, or other
+older compatibility aliases.
 
 Returns local service state plus current `cats-runtime` reachability.
 
@@ -682,7 +552,7 @@ Request body:
   "language": "TypeScript",
   "responseLanguage": "zh-TW",
   "formationMode": "manual",
-  "pals": [
+  "cats": [
     {
       "name": "Agent-1",
       "provider": "claude",
@@ -697,8 +567,8 @@ Behavior:
 
 - trims title and topic before persistence
 - creates a new persisted channel in the local workspace store
-- promotes any draft `pals` into the workspace-level pal registry
-- creates channel assignments for those pals in the new chat
+- promotes any draft `cats` into the workspace-level cat registry
+- creates channel assignments for those cats in the new chat
 - selects the new channel immediately
 - returns the updated app-shell payload
 
@@ -711,16 +581,16 @@ DELETE /api/workspace/channels/{id}
 Behavior:
 
 - removes the selected chat from the local workspace store
-- best-effort closes any orchestrator and pal runtime sessions still attached to
+- best-effort closes any orchestrator and cat runtime sessions still attached to
   that chat
 - falls back to the next most recent remaining chat, or clears selection if no
   chats remain
 - returns the updated app-shell payload
 
-### Create Workspace Pal
+### Create Workspace Cat
 
 ```text
-POST /api/workspace/pals
+POST /api/workspace/cats
 ```
 
 Request body:
@@ -734,20 +604,20 @@ Request body:
 }
 ```
 
-Creates a reusable workspace-level pal and returns the updated app-shell
+Creates a reusable workspace-level cat and returns the updated app-shell
 payload.
 
-### Assign Workspace Pal to a Channel
+### Assign Workspace Cat to a Channel
 
 ```text
-POST /api/workspace/channels/{id}/pals
+POST /api/workspace/channels/{id}/cats
 ```
 
 Request body:
 
 ```json
 {
-  "palId": "pal-agent-2",
+  "catId": "cat-agent-2",
   "provider": "gemini",
   "model": "gemini-2.5-pro",
   "roles": ["reviewer"]
@@ -756,16 +626,16 @@ Request body:
 
 Behavior:
 
-- creates or updates the channel-scoped pal assignment
-- keeps the workspace pal identity and memory checkpoint intact
+- creates or updates the channel-scoped cat assignment
+- keeps the workspace cat identity and memory checkpoint intact
 - stores the channel-specific execution target on the assignment
 - if the assignment already had an active lease and the target changes, the
   server best-effort closes the prior runtime session before returning
 
-### Remove Workspace Pal from a Channel
+### Remove Workspace Cat from a Channel
 
 ```text
-DELETE /api/workspace/channels/{id}/pals/{palId}
+DELETE /api/workspace/channels/{id}/cats/{catId}
 ```
 
 Marks the channel assignment as removed and best-effort closes its active
@@ -779,7 +649,7 @@ DELETE /api/workspace/channels/{id}/members/{memberId}
 ```
 
 These aliases still work for older clients and stored state. They now route
-through the workspace-pal model internally.
+through the workspace-cat model internally.
 
 ### Activate Channel
 
@@ -788,15 +658,15 @@ POST /api/workspace/channels/{id}/activate
 ```
 
 Creates channel-scoped runtime sessions for the global orchestrator and active
-assigned pals, records execution leases, then returns:
+assigned cats, records execution leases, then returns:
 
 ```json
 {
   "appShell": { "...": "updated shell payload" },
   "results": [
     {
-      "targetKind": "pal",
-      "targetId": "pal-agent-1",
+      "targetKind": "cat",
+      "targetId": "cat-agent-1",
       "targetName": "Agent-1",
       "status": "started",
       "sessionId": "session-2"
@@ -822,7 +692,7 @@ Request body:
 Behavior:
 
 - persists the user message to the transcript
-- resolves `@mentions` against the orchestrator and active assigned pals
+- resolves `@mentions` against the orchestrator and active assigned cats
 - routes the prompt through `cats-runtime` sessions
 - persists runtime responses and token usage back into the channel transcript
 
@@ -842,7 +712,7 @@ GET /api/workspace/channels/{id}/export
 ```
 
 Returns a JSON attachment containing the current orchestrator settings, raw
-channel state, hydrated `assignedPals`, and full channel transcript.
+channel state, hydrated `assignedCats`, and full channel transcript.
 
 ### App Shell
 
@@ -865,7 +735,7 @@ Abbreviated example response:
     "id": "default",
     "name": "Chat",
     "selectedChannelId": "",
-    "pals": [],
+    "cats": [],
     "selectedChannel": null,
     "channels": [],
     "globalOrchestrator": {
@@ -965,9 +835,9 @@ Errors use a minimal payload:
 - the `cats` app does not talk to `agent-fleet` directly
 - The renderer consumes this endpoint over a Vite proxy during development
 - Workspace shell state is currently persisted to a local JSON file
-- Persisted pal state separates workspace identity, channel assignment,
+- Persisted cat state separates workspace identity, channel assignment,
   execution targets, execution leases, and provider-agnostic memory checkpoints
-- Workspace mutations now cover selection, chat setup, global pal registry,
+- Workspace mutations now cover selection, chat setup, global cat registry,
   channel deletion, channel assignment, activation, messaging, orchestrator
   editing, and export
 - Legacy `/members` routes remain available as compatibility aliases during
@@ -982,3 +852,4 @@ Errors use a minimal payload:
 ---
 
 *Last updated: 2026-03-21*
+

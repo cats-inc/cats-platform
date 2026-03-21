@@ -15,7 +15,7 @@ and the `cats-runtime` boundary.
 - [x] Define the initial shared record shapes for identity, actors/resources,
       permissions, conversations, bot bindings, tasks/runs, approvals, owner
       profile, and archive metadata.
-- [x] Define terminology mappings from current chat-shell terms such as pal,
+- [x] Define terminology mappings from current chat-shell terms such as cat,
       assignment, lease, and memory checkpoint into the broader shared model.
 - [x] Publish example payloads or fixtures that both Chat and Work teams can
       consume.
@@ -96,3 +96,4 @@ fixtures.
 ---
 
 *Last updated: 2026-03-16*
+

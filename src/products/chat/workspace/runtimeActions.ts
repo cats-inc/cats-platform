@@ -11,11 +11,11 @@ import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
   SendChannelMessageInput,
-  WorkspaceChannelPal,
-  WorkspaceChannelState,
-  WorkspaceChannelView,
-  WorkspaceMessage,
-  WorkspaceState,
+  ChatChannelCat,
+  ChatChannelState,
+  ChatChannelView,
+  ChatMessage,
+  ChatState,
 } from '../../../shared/app-shell.js';
 import type { RuntimeClient, RuntimeSessionInfo } from '../../../platform/runtime/client.js';
 import {
@@ -26,15 +26,15 @@ import {
   requireChannel,
   resolveOrchestratorDisplayName,
   setChannelOrchestratorLease,
-  setChannelPalLease,
+  setChannelCatLease,
   setChannelRoomRouting,
   setChannelStatus,
-  setChannelWorkspaceCwd,
+  setChannelChatCwd,
 } from './model.js';
 import {
   buildOrchestratorPrompt,
   buildOrchestratorRewritePrompt,
-  buildPalPrompt,
+  buildCatPrompt,
   MAX_PROMPT_RECENT_MESSAGES,
 } from './prompts.js';
 import {
@@ -57,7 +57,7 @@ interface TargetResolution {
 }
 
 interface DispatchFrame {
-  sourceMessage: WorkspaceMessage;
+  sourceMessage: ChatMessage;
   sourceParticipant: RoomRoutingParticipantRef | null;
   targets: RoutingTarget[];
   unresolved: string[];
@@ -91,20 +91,20 @@ function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionS
   }
 }
 
-function spawnCwdFor(channel: WorkspaceChannelState): string | null {
-  return channel.repoPath ?? channel.workspaceCwd ?? null;
+function spawnCwdFor(channel: ChatChannelState): string | null {
+  return channel.repoPath ?? channel.chatCwd ?? null;
 }
 
-function activeAssignedPals(channel: { assignedPals: WorkspaceChannelPal[] }) {
-  return channel.assignedPals.filter((pal) => pal.status === 'active');
+function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
+  return channel.assignedCats.filter((cat) => cat.status === 'active');
 }
 
 function shouldRewriteOrchestratorReply(
   content: string,
   orchestratorName: string,
-  channel: WorkspaceChannelView,
+  channel: ChatChannelView,
 ): boolean {
-  if (activeAssignedPals(channel).length > 0) {
+  if (activeAssignedCats(channel).length > 0) {
     return false;
   }
 
@@ -126,18 +126,18 @@ function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantRef {
 }
 
 function setStartedSession(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { palId: string },
+  target: 'orchestrator' | { catId: string },
   session: RuntimeSessionInfo,
   now: Date,
-): WorkspaceState {
+): ChatState {
   const timestamp = now.toISOString();
   if (typeof target !== 'string') {
-    return setChannelPalLease(
+    return setChannelCatLease(
       state,
       channelId,
-      target.palId,
+      target.catId,
       {
         sessionId: session.id,
         status: normalizeRuntimeStatus(session.status),
@@ -170,17 +170,17 @@ function setStartedSession(
 }
 
 function setErroredSession(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { palId: string },
+  target: 'orchestrator' | { catId: string },
   message: string,
   now: Date,
-): WorkspaceState {
+): ChatState {
   if (typeof target !== 'string') {
-    return setChannelPalLease(
+    return setChannelCatLease(
       state,
       channelId,
-      target.palId,
+      target.catId,
       {
         status: 'error',
         lastError: message,
@@ -201,16 +201,16 @@ function setErroredSession(
 }
 
 function setReadyAfterMessage(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { palId: string },
+  target: 'orchestrator' | { catId: string },
   now: Date,
-): WorkspaceState {
+): ChatState {
   if (typeof target !== 'string') {
-    return setChannelPalLease(
+    return setChannelCatLease(
       state,
       channelId,
-      target.palId,
+      target.catId,
       { status: 'ready', lastUsedAt: now.toISOString() },
       now,
     );
@@ -225,8 +225,8 @@ function setReadyAfterMessage(
 }
 
 function buildOrchestratorTarget(
-  state: WorkspaceState,
-  channel: WorkspaceChannelView,
+  state: ChatState,
+  channel: ChatChannelView,
 ): RoutingTarget {
   return {
     participantKind: 'orchestrator',
@@ -236,26 +236,26 @@ function buildOrchestratorTarget(
   };
 }
 
-function buildPalTarget(pal: WorkspaceChannelPal): RoutingTarget {
+function buildCatTarget(cat: ChatChannelCat): RoutingTarget {
   return {
-    participantKind: 'pal',
-    participantId: pal.palId,
-    participantName: pal.name,
-    sessionId: pal.execution.lease.sessionId,
+    participantKind: 'cat',
+    participantId: cat.catId,
+    participantName: cat.name,
+    sessionId: cat.execution.lease.sessionId,
   };
 }
 
 function resolveDefaultTarget(
-  state: WorkspaceState,
-  channel: WorkspaceChannelView,
+  state: ChatState,
+  channel: ChatChannelView,
 ): RoutingTarget {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   if (roomRouting.mode === 'direct_cat_chat' && roomRouting.leadParticipantId) {
-    const leadPal = activeAssignedPals(channel).find(
-      (pal) => pal.palId === roomRouting.leadParticipantId,
+    const leadCat = activeAssignedCats(channel).find(
+      (cat) => cat.catId === roomRouting.leadParticipantId,
     );
-    if (leadPal) {
-      return buildPalTarget(leadPal);
+    if (leadCat) {
+      return buildCatTarget(leadCat);
     }
   }
 
@@ -263,7 +263,7 @@ function resolveDefaultTarget(
 }
 
 function resolveTargets(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
   body: string,
   options: {
@@ -273,8 +273,8 @@ function resolveTargets(
 ): TargetResolution {
   const channel = buildChannelView(state, channelId);
   const mentionNames = parseMentions(body);
-  const activePals = activeAssignedPals(channel);
-  const palsByName = new Map(activePals.map((pal) => [pal.name.toLowerCase(), pal]));
+  const activeCats = activeAssignedCats(channel);
+  const catsByName = new Map(activeCats.map((cat) => [cat.name.toLowerCase(), cat]));
   const orchestratorTarget = buildOrchestratorTarget(state, channel);
   const orchestratorMentionAliases = new Set([
     ORCHESTRATOR_NAME.toLowerCase(),
@@ -301,14 +301,14 @@ function resolveTargets(
       continue;
     }
 
-    const pal = palsByName.get(normalizedMention);
-    if (!pal) {
+    const cat = catsByName.get(normalizedMention);
+    if (!cat) {
       unresolved.push(mentionName);
       continue;
     }
 
-    if (!targets.some((target) => target.participantId === pal.palId)) {
-      targets.push(buildPalTarget(pal));
+    if (!targets.some((target) => target.participantId === cat.catId)) {
+      targets.push(buildCatTarget(cat));
     }
   }
 
@@ -329,8 +329,8 @@ function mergeUnresolvedMentions(outcome: RoomRoutingOutcome, mentions: string[]
 }
 
 function createRoutingOutcome(
-  channel: WorkspaceChannelView,
-  sourceMessage: WorkspaceMessage,
+  channel: ChatChannelView,
+  sourceMessage: ChatMessage,
   resolution: TargetResolution,
   nowIso: string,
 ): RoomRoutingOutcome {
@@ -375,7 +375,7 @@ function addCheckpoint(
   return checkpoint;
 }
 
-function messageMatchesTarget(message: WorkspaceMessage, target: RoutingTarget): boolean {
+function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): boolean {
   if (target.participantKind === 'orchestrator') {
     return message.senderKind === 'orchestrator'
       && (
@@ -392,10 +392,10 @@ function messageMatchesTarget(message: WorkspaceMessage, target: RoutingTarget):
 }
 
 function sliceRecentContextForTarget(
-  channel: WorkspaceChannelView,
+  channel: ChatChannelView,
   target: RoutingTarget,
   sourceMessageId: string,
-): WorkspaceMessage[] {
+): ChatMessage[] {
   const sourceIndex = channel.messages.findIndex((message) => message.id === sourceMessageId);
   const boundedSourceIndex = sourceIndex === -1 ? channel.messages.length - 1 : sourceIndex;
   let lastOwnReplyIndex = -1;
@@ -413,7 +413,7 @@ function sliceRecentContextForTarget(
 }
 
 function describeRoutingReason(
-  channel: WorkspaceChannelView,
+  channel: ChatChannelView,
   sourceParticipant: RoomRoutingParticipantRef | null,
   trigger: RoomRoutingTrigger,
 ): string {
@@ -436,7 +436,7 @@ function describeRoutingReason(
 }
 
 function buildPromptForTarget(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
   request: DispatchRequest,
 ): string {
@@ -462,17 +462,17 @@ function buildPromptForTarget(
     );
   }
 
-  const pal = channel.assignedPals.find(
-    (candidate) => candidate.palId === request.target.participantId,
+  const cat = channel.assignedCats.find(
+    (candidate) => candidate.catId === request.target.participantId,
   );
-  if (!pal) {
-    throw new Error(`Target pal is no longer assigned to the selected chat: ${request.target.participantId}`);
+  if (!cat) {
+    throw new Error(`Target cat is no longer assigned to the selected chat: ${request.target.participantId}`);
   }
 
-  return buildPalPrompt(
+  return buildCatPrompt(
     channel,
     state.globalOrchestrator,
-    pal,
+    cat,
     request.sourceMessage,
     routingContext,
   );
@@ -494,13 +494,13 @@ function describeGuardReason(reason: Exclude<RoomRoutingGuardReason, null>): str
 }
 
 async function ensureTargetSession(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
   target: RoutingTarget,
   runtimeClient: RuntimeClient,
   now: Date,
 ): Promise<{
-  state: WorkspaceState;
+  state: ChatState;
   target: RoutingTarget;
   error: string | null;
 }> {
@@ -510,7 +510,7 @@ async function ensureTargetSession(
 
   const channel = buildChannelView(state, channelId);
   const spawnCwd = spawnCwdFor(requireChannel(state, channelId));
-  const workspaceMode = spawnCwd ? 'shared' : null;
+  const sharingMode = spawnCwd ? 'shared' : null;
   let nextState = state;
 
   try {
@@ -520,11 +520,11 @@ async function ensureTargetSession(
         instance: nextState.globalOrchestrator.executionTarget.instance,
         model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
-        workspaceMode,
+        sharingMode,
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
-        nextState = setChannelWorkspaceCwd(nextState, channelId, session.cwd, now);
+        nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
       nextState = appendMessage(
         nextState,
@@ -552,31 +552,31 @@ async function ensureTargetSession(
       };
     }
 
-    const pal = channel.assignedPals.find((candidate) => candidate.palId === target.participantId);
-    if (!pal) {
+    const cat = channel.assignedCats.find((candidate) => candidate.catId === target.participantId);
+    if (!cat) {
       return {
         state,
         target,
-        error: 'Target pal is no longer assigned to the selected chat.',
+        error: 'Target cat is no longer assigned to the selected chat.',
       };
     }
 
     const session = await runtimeClient.createSession({
-      provider: pal.execution.target.provider,
-      instance: pal.execution.target.instance,
-      model: pal.execution.target.model,
+      provider: cat.execution.target.provider,
+      instance: cat.execution.target.instance,
+      model: cat.execution.target.model,
       cwd: spawnCwd,
-      workspaceMode,
+      sharingMode,
     });
     nextState = setStartedSession(
       nextState,
       channelId,
-      { palId: target.participantId },
+      { catId: target.participantId },
       session,
       now,
     );
     if (!spawnCwd && session.cwd) {
-      nextState = setChannelWorkspaceCwd(nextState, channelId, session.cwd, now);
+      nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
     }
     nextState = appendMessage(
       nextState,
@@ -590,7 +590,7 @@ async function ensureTargetSession(
       {
         metadata: {
           event: 'session_started',
-          targetKind: 'pal',
+          targetKind: 'cat',
           targetId: target.participantId,
           sessionId: session.id,
           verbosity: 'verbose',
@@ -605,8 +605,8 @@ async function ensureTargetSession(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown runtime error';
-    nextState = target.participantKind === 'pal'
-      ? setErroredSession(nextState, channelId, { palId: target.participantId }, message, now)
+    nextState = target.participantKind === 'cat'
+      ? setErroredSession(nextState, channelId, { catId: target.participantId }, message, now)
       : setErroredSession(nextState, channelId, 'orchestrator', message, now);
     nextState = appendMessage(
       nextState,
@@ -630,7 +630,7 @@ async function ensureTargetSession(
 }
 
 async function executeDispatch(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
   request: DispatchRequest,
   runtimeClient: RuntimeClient,
@@ -737,16 +737,16 @@ function shouldBlockAntiPingPong(
 }
 
 export async function activateChannelSessions(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
   runtimeClient: RuntimeClient,
   now: Date = new Date(),
-): Promise<{ state: WorkspaceState; results: ChannelActivationResult[] }> {
+): Promise<{ state: ChatState; results: ChannelActivationResult[] }> {
   let nextState = state;
   let channelState = requireChannel(nextState, channelId);
   let channelView = buildChannelView(nextState, channelId);
   let spawnCwd = spawnCwdFor(channelState);
-  const workspaceMode = spawnCwd ? 'shared' : null;
+  const sharingMode = spawnCwd ? 'shared' : null;
   const orchestratorDisplayName = resolveOrchestratorDisplayName(nextState);
   const results: ChannelActivationResult[] = [];
 
@@ -765,12 +765,12 @@ export async function activateChannelSessions(
         instance: nextState.globalOrchestrator.executionTarget.instance,
         model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
-        workspaceMode,
+        sharingMode,
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
         spawnCwd = session.cwd;
-        nextState = setChannelWorkspaceCwd(nextState, channelId, session.cwd, now);
+        nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
       nextState = appendMessage(
         nextState,
@@ -825,30 +825,30 @@ export async function activateChannelSessions(
   }
 
   channelView = buildChannelView(nextState, channelId);
-  for (const pal of activeAssignedPals(channelView)) {
-    if (pal.execution.lease.sessionId) {
+  for (const cat of activeAssignedCats(channelView)) {
+    if (cat.execution.lease.sessionId) {
       results.push({
-        targetKind: 'pal',
-        targetId: pal.palId,
-        targetName: pal.name,
+        targetKind: 'cat',
+        targetId: cat.catId,
+        targetName: cat.name,
         status: 'already_started',
-        sessionId: pal.execution.lease.sessionId,
+        sessionId: cat.execution.lease.sessionId,
       });
       continue;
     }
 
     try {
       const session = await runtimeClient.createSession({
-        provider: pal.execution.target.provider,
-        instance: pal.execution.target.instance,
-        model: pal.execution.target.model,
+        provider: cat.execution.target.provider,
+        instance: cat.execution.target.instance,
+        model: cat.execution.target.model,
         cwd: spawnCwd,
-        workspaceMode,
+        sharingMode,
       });
-      nextState = setStartedSession(nextState, channelId, { palId: pal.palId }, session, now);
+      nextState = setStartedSession(nextState, channelId, { catId: cat.catId }, session, now);
       if (!spawnCwd && session.cwd) {
         spawnCwd = session.cwd;
-        nextState = setChannelWorkspaceCwd(nextState, channelId, session.cwd, now);
+        nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
       nextState = appendMessage(
         nextState,
@@ -856,50 +856,50 @@ export async function activateChannelSessions(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: formatSessionStartedMessage(pal.name, session),
+          body: formatSessionStartedMessage(cat.name, session),
         },
         now,
         {
           metadata: {
             event: 'session_started',
-            targetKind: 'pal',
-            targetId: pal.palId,
+            targetKind: 'cat',
+            targetId: cat.catId,
             sessionId: session.id,
             verbosity: 'verbose',
           },
         },
       ).state;
       results.push({
-        targetKind: 'pal',
-        targetId: pal.palId,
-        targetName: pal.name,
+        targetKind: 'cat',
+        targetId: cat.catId,
+        targetName: cat.name,
         status: 'started',
         sessionId: session.id,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown runtime error';
-      nextState = setErroredSession(nextState, channelId, { palId: pal.palId }, message, now);
+      nextState = setErroredSession(nextState, channelId, { catId: cat.catId }, message, now);
       nextState = appendMessage(
         nextState,
         channelId,
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `Failed to start ${pal.name}: ${message}`,
+          body: `Failed to start ${cat.name}: ${message}`,
         },
         now,
         {
           metadata: {
             event: 'session_start_failed',
-            targetKind: 'pal',
-            targetId: pal.palId,
+            targetKind: 'cat',
+            targetId: cat.catId,
           },
         },
       ).state;
       results.push({
-        targetKind: 'pal',
-        targetId: pal.palId,
-        targetName: pal.name,
+        targetKind: 'cat',
+        targetId: cat.catId,
+        targetName: cat.name,
         status: 'error',
         sessionId: null,
         error: message,
@@ -914,7 +914,7 @@ export async function activateChannelSessions(
   nextState = setChannelStatus(
     nextState,
     channelId,
-    hasStartedSession ? 'active' : channelState.palAssignments.length > 0 ? 'configured' : 'planned',
+    hasStartedSession ? 'active' : channelState.catAssignments.length > 0 ? 'configured' : 'planned',
     now,
   );
 
@@ -922,12 +922,12 @@ export async function activateChannelSessions(
 }
 
 export async function routeChannelMessage(
-  state: WorkspaceState,
+  state: ChatState,
   channelId: string,
   payload: SendChannelMessageInput,
   runtimeClient: RuntimeClient,
   now: Date = new Date(),
-): Promise<{ state: WorkspaceState; results: ChannelDispatchResult[] }> {
+): Promise<{ state: ChatState; results: ChannelDispatchResult[] }> {
   let nextState = appendMessage(
     state,
     channelId,
@@ -1234,8 +1234,8 @@ export async function routeChannelMessage(
       targetVisitCounts.set(targetKey, (targetVisitCounts.get(targetKey) ?? 0) + 1);
 
       if (execution.error) {
-        nextState = execution.target.participantKind === 'pal'
-          ? setChannelPalLease(
+        nextState = execution.target.participantKind === 'cat'
+          ? setChannelCatLease(
               nextState,
               channelId,
               execution.target.participantId,
@@ -1304,8 +1304,8 @@ export async function routeChannelMessage(
       nextState = setReadyAfterMessage(
         nextState,
         channelId,
-        execution.target.participantKind === 'pal'
-          ? { palId: execution.target.participantId }
+        execution.target.participantKind === 'cat'
+          ? { catId: execution.target.participantId }
           : 'orchestrator',
         now,
       );

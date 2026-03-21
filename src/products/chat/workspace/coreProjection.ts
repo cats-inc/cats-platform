@@ -15,20 +15,20 @@ import {
   createDefaultCoreState,
   createDefaultOwnerProfile,
   createEmptyMemoryCheckpoint,
-  createPalActorId,
+  createCatActorId,
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
 } from '../../../core/model.js';
 import type {
-  WorkspaceChannelState,
-  WorkspacePal,
-  WorkspaceState,
+  ChatChannelState,
+  ChatCat,
+  ChatState,
 } from '../../../shared/app-shell.js';
 
 function uniqueStrings(values: string[]): string[] {
   return values.filter((value, index) => value.length > 0 && values.indexOf(value) === index);
 }
 
-function mapChannelStatusToConversationStatus(channel: WorkspaceChannelState): CoreConversationStatus {
+function mapChannelStatusToConversationStatus(channel: ChatChannelState): CoreConversationStatus {
   if (channel.status === 'planned') {
     return 'planned';
   }
@@ -38,7 +38,7 @@ function mapChannelStatusToConversationStatus(channel: WorkspaceChannelState): C
   return 'active';
 }
 
-function mapChannelStatusToTaskStatus(channel: WorkspaceChannelState): CoreTaskStatus {
+function mapChannelStatusToTaskStatus(channel: ChatChannelState): CoreTaskStatus {
   if (channel.status === 'active' || channel.status === 'watching') {
     return 'in_progress';
   }
@@ -67,7 +67,7 @@ function createOwnerActor(ownerProfile: OwnerProfileRecord): CoreActorRecord {
   };
 }
 
-function createOrchestratorActor(workspace: WorkspaceState): CoreActorRecord {
+function createOrchestratorActor(workspace: ChatState): CoreActorRecord {
   const roles = workspace.globalOrchestrator.notes.length > 0
     ? ['orchestrator', 'coordinator']
     : ['orchestrator'];
@@ -90,37 +90,37 @@ function createOrchestratorActor(workspace: WorkspaceState): CoreActorRecord {
   };
 }
 
-function createPalActor(pal: WorkspacePal, bossCatId: string | null): CoreActorRecord {
-  const bossCatRoles = pal.id === bossCatId
+function createCatActor(cat: ChatCat, bossCatId: string | null): CoreActorRecord {
+  const bossCatRoles = cat.id === bossCatId
     ? ['boss_cat', 'primary_orchestrator']
     : [];
 
   return {
-    id: createPalActorId(pal.id),
-    name: pal.name,
+    id: createCatActorId(cat.id),
+    name: cat.name,
     kind: 'worker',
-    status: pal.status === 'archived' ? 'archived' : 'active',
-    roles: uniqueStrings([...bossCatRoles, ...structuredClone(pal.roles)]),
-    skillProfile: pal.skillProfile,
-    mcpProfile: pal.mcpProfile,
-    defaultExecutionTarget: structuredClone(pal.defaultExecutionTarget),
-    memory: structuredClone(pal.memory),
-    source: 'workspace_pal',
-    sourceId: pal.id,
-    createdAt: pal.createdAt,
-    updatedAt: pal.updatedAt,
-    archivedAt: pal.archivedAt,
+    status: cat.status === 'archived' ? 'archived' : 'active',
+    roles: uniqueStrings([...bossCatRoles, ...structuredClone(cat.roles)]),
+    skillProfile: cat.skillProfile,
+    mcpProfile: cat.mcpProfile,
+    defaultExecutionTarget: structuredClone(cat.defaultExecutionTarget),
+    memory: structuredClone(cat.memory),
+    source: 'chat_cat',
+    sourceId: cat.id,
+    createdAt: cat.createdAt,
+    updatedAt: cat.updatedAt,
+    archivedAt: cat.archivedAt,
   };
 }
 
 function createConversationFromChannel(
-  channel: WorkspaceChannelState,
+  channel: ChatChannelState,
   participantActorIds: string[],
 ): CoreConversationRecord {
   return {
     id: `conversation-channel-${channel.id}`,
     title: channel.title,
-    kind: 'workspace_channel',
+    kind: 'chat_channel',
     status: mapChannelStatusToConversationStatus(channel),
     participantActorIds: uniqueStrings(participantActorIds),
     sourceChannelId: channel.id,
@@ -133,7 +133,7 @@ function createConversationFromChannel(
 }
 
 function createTaskFromChannel(
-  channel: WorkspaceChannelState,
+  channel: ChatChannelState,
   ownerActorId: string,
   conversationId: string,
   existingTask: CoreTaskRecord | null,
@@ -157,7 +157,7 @@ function createTaskFromChannel(
     conversationId,
     ownerActorId,
     orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
-    assignedActorIds: channel.palAssignments.map((assignment) => `actor-pal-${assignment.palId}`),
+    assignedActorIds: channel.catAssignments.map((assignment) => `actor-cat-${assignment.catId}`),
     summary: channel.topic,
     approval,
     createdAt: channel.createdAt,
@@ -172,7 +172,7 @@ function preserveCoreOwnedTasks(existingTasks: CoreTaskRecord[]): CoreTaskRecord
 }
 
 function createArchiveMetadata(
-  channel: WorkspaceChannelState,
+  channel: ChatChannelState,
   conversationId: string,
   existingArchive: ArchiveMetadataRecord | null,
 ): ArchiveMetadataRecord {
@@ -180,7 +180,7 @@ function createArchiveMetadata(
     id: `archive-channel-${channel.id}`,
     sourceConversationId: conversationId,
     sourceChannelId: channel.id,
-    exportFormat: 'workspace-channel-json',
+    exportFormat: 'chat-channel-json',
     status: existingArchive?.status
       ?? (channel.messages.length > 0 || channel.status === 'archived'
         ? 'ready_for_archive'
@@ -191,13 +191,13 @@ function createArchiveMetadata(
 }
 
 function syncBotBindings(
-  workspace: WorkspaceState,
+  workspace: ChatState,
   existingBindings: BotBindingRecord[],
 ): BotBindingRecord[] {
   const preservedLineBindings = existingBindings.filter((binding) => binding.platform === 'line');
   const telegramBotName = workspace.globalOrchestrator.telegramBotName?.trim();
   const bossCatActorId = workspace.bossCatId
-    ? createPalActorId(workspace.bossCatId)
+    ? createCatActorId(workspace.bossCatId)
     : null;
 
   if (!telegramBotName || !bossCatActorId) {
@@ -223,14 +223,14 @@ function syncBotBindings(
 }
 
 export function syncCoreStateWithWorkspace(
-  workspace: WorkspaceState,
+  workspace: ChatState,
   existingCore: Partial<CatsCoreState> = createDefaultCoreState(),
 ): CatsCoreState {
   const updatedAt = new Date().toISOString();
   const ownerProfile = existingCore.ownerProfile ?? createDefaultOwnerProfile(updatedAt);
   const ownerActor = createOwnerActor(ownerProfile);
   const orchestratorActor = createOrchestratorActor(workspace);
-  const palActors = workspace.pals.map((pal) => createPalActor(pal, workspace.bossCatId));
+  const catActors = workspace.cats.map((cat) => createCatActor(cat, workspace.bossCatId));
   const existingTasks = new Map((existingCore.tasks ?? []).map((task) => [task.id, task]));
   const existingArchives = new Map((existingCore.archives ?? []).map((archive) => [archive.id, archive]));
   const conversations = workspace.channels.map((channel) =>
@@ -239,7 +239,7 @@ export function syncCoreStateWithWorkspace(
       [
         ownerProfile.actorId,
         GLOBAL_ORCHESTRATOR_ACTOR_ID,
-        ...channel.palAssignments.map((assignment) => `actor-pal-${assignment.palId}`),
+        ...channel.catAssignments.map((assignment) => `actor-cat-${assignment.catId}`),
       ],
     ),
   );
@@ -268,7 +268,7 @@ export function syncCoreStateWithWorkspace(
       ...ownerProfile,
       updatedAt: ownerProfile.updatedAt || updatedAt,
     },
-    actors: [ownerActor, orchestratorActor, ...palActors],
+    actors: [ownerActor, orchestratorActor, ...catActors],
     conversations,
     tasks: [...tasks, ...preservedTasks],
     runs: structuredClone(existingCore.runs ?? []),

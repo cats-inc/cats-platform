@@ -4,6 +4,6 @@ export {
   getProviderModels,
   PAL_PROVIDER_MODELS,
   PAL_PROVIDER_ORDER,
-  type PalProviderId,
+  type CatProviderId,
   type ProviderModelOption,
 } from '../../../shared/providerCatalog';

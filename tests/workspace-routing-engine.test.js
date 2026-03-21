@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  assignPalToChannel,
+  assignCatToChannel,
   buildChannelView,
   createChannel,
-  createWorkspacePal,
+  createCat,
 } from '../dist-server/workspace/model.js';
 import { routeChannelMessage } from '../dist-server/workspace/runtimeActions.js';
-import { MemoryWorkspaceStore } from '../dist-server/workspace/store.js';
+import { MemoryChatStore } from '../dist-server/workspace/store.js';
 
 function createRuntimeStub(responder) {
   let nextSession = 1;
@@ -77,11 +77,11 @@ function createDeferred() {
 }
 
 async function createChannelState() {
-  const store = new MemoryWorkspaceStore();
+  const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-21T00:00:00.000Z');
 
-  state = createWorkspacePal(
+  state = createCat(
     state,
     {
       name: 'Smelly',
@@ -90,10 +90,10 @@ async function createChannelState() {
     },
     now,
   );
-  const bossCatId = state.pals[0].id;
+  const bossCatId = state.cats[0].id;
   state = { ...state, bossCatId };
 
-  state = createWorkspacePal(
+  state = createCat(
     state,
     {
       name: 'Agent-1',
@@ -102,9 +102,9 @@ async function createChannelState() {
     },
     now,
   );
-  const agent1Id = state.pals[0].id;
+  const agent1Id = state.cats[0].id;
 
-  state = createWorkspacePal(
+  state = createCat(
     state,
     {
       name: 'Agent-2',
@@ -113,7 +113,7 @@ async function createChannelState() {
     },
     now,
   );
-  const agent2Id = state.pals[0].id;
+  const agent2Id = state.cats[0].id;
 
   state = createChannel(
     state,
@@ -126,21 +126,21 @@ async function createChannelState() {
   );
 
   const channelId = state.selectedChannelId;
-  state = assignPalToChannel(
+  state = assignCatToChannel(
     state,
     channelId,
     {
-      palId: agent1Id,
+      catId: agent1Id,
       provider: 'claude',
       roles: ['reviewer'],
     },
     now,
   );
-  state = assignPalToChannel(
+  state = assignCatToChannel(
     state,
     channelId,
     {
-      palId: agent2Id,
+      catId: agent2Id,
       provider: 'gemini',
       roles: ['implementer'],
     },

@@ -1,15 +1,15 @@
 import type {
   GlobalOrchestratorSummary,
   MemoryCheckpointSummary,
-  WorkspaceChannelPal,
-  WorkspaceChannelView,
-  WorkspaceMessage,
+  ChatChannelCat,
+  ChatChannelView,
+  ChatMessage,
 } from '../../../shared/app-shell.js';
 import { ORCHESTRATOR_NAME } from './model.js';
 
 export interface PromptRoutingContext {
   reason: string;
-  recentMessages?: WorkspaceMessage[];
+  recentMessages?: ChatMessage[];
   sourceParticipantName?: string | null;
 }
 
@@ -23,7 +23,7 @@ function languageInstruction(responseLanguage: string): string {
   return `Respond in ${responseLanguage}. Keep code, paths, and technical identifiers in English.`;
 }
 
-function formatRecentMessages(messages: WorkspaceMessage[]): string {
+function formatRecentMessages(messages: ChatMessage[]): string {
   const recent = messages.slice(-MAX_PROMPT_RECENT_MESSAGES);
   if (recent.length === 0) {
     return 'No prior chat messages.';
@@ -34,16 +34,16 @@ function formatRecentMessages(messages: WorkspaceMessage[]): string {
     .join('\n');
 }
 
-function formatPalRoster(channel: WorkspaceChannelView): string {
-  const activePals = channel.assignedPals.filter((pal) => pal.status === 'active');
-  if (activePals.length === 0) {
-    return 'No active pals in this chat yet.';
+function formatCatRoster(channel: ChatChannelView): string {
+  const activeCats = channel.assignedCats.filter((cat) => cat.status === 'active');
+  if (activeCats.length === 0) {
+    return 'No active cats in this chat yet.';
   }
 
-  return activePals
-    .map((pal) => {
-      const roleLabel = pal.roles.length > 0 ? pal.roles.join(', ') : 'general';
-      return `- ${pal.name} (${pal.execution.target.provider}${pal.execution.target.model ? ` / ${pal.execution.target.model}` : ''}; roles: ${roleLabel})`;
+  return activeCats
+    .map((cat) => {
+      const roleLabel = cat.roles.length > 0 ? cat.roles.join(', ') : 'general';
+      return `- ${cat.name} (${cat.execution.target.provider}${cat.execution.target.model ? ` / ${cat.execution.target.model}` : ''}; roles: ${roleLabel})`;
     })
     .join('\n');
 }
@@ -68,7 +68,7 @@ function formatMemoryCheckpoint(memory: MemoryCheckpointSummary): string {
 }
 
 function formatSharedContext(
-  channel: WorkspaceChannelView,
+  channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,
 ): string {
   const lines = [
@@ -81,8 +81,8 @@ function formatSharedContext(
   if (channel.repoPath) {
     lines.push(`Repo path: ${channel.repoPath}`);
   }
-  if (channel.workspaceCwd) {
-    lines.push(`Runtime cwd: ${channel.workspaceCwd}`);
+  if (channel.chatCwd) {
+    lines.push(`Runtime cwd: ${channel.chatCwd}`);
   }
   if (channel.language) {
     lines.push(`Project language: ${channel.language}`);
@@ -106,13 +106,13 @@ function formatSharedContext(
 }
 
 export function buildOrchestratorPrompt(
-  channel: WorkspaceChannelView,
+  channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,
-  sourceMessage: WorkspaceMessage,
+  sourceMessage: ChatMessage,
   orchestratorName = ORCHESTRATOR_NAME,
   routingContext?: PromptRoutingContext,
 ): string {
-  const activePalCount = channel.assignedPals.filter((pal) => pal.status === 'active').length;
+  const activeCatCount = channel.assignedCats.filter((cat) => cat.status === 'active').length;
   const recentMessages = routingContext?.recentMessages ?? channel.messages;
   const sourceLabel = sourceMessage.senderKind === 'user'
     ? 'Latest user message'
@@ -126,7 +126,7 @@ export function buildOrchestratorPrompt(
       ? `This handoff came from ${routingContext.sourceParticipantName}.`
       : 'This turn currently originates from the operator.',
     'When referring to teammates, mention them with @Name so Chat can route follow-up turns.',
-    activePalCount === 0
+    activeCatCount === 0
       ? 'There are no other active cats in this chat right now, so answer the user directly instead of delegating.'
       : 'If another active cat is better suited, you may mention that cat to involve them.',
     `Never address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
@@ -136,7 +136,7 @@ export function buildOrchestratorPrompt(
     `Global system prompt:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
     `Coordinator memory checkpoint:\n${formatMemoryCheckpoint(orchestrator.memory)}`,
-    `Active pals:\n${formatPalRoster(channel)}`,
+    `Active cats:\n${formatCatRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(recentMessages)}`,
     `${sourceLabel}:\n${sourceMessage.body}`,
     'Respond with the next useful contribution for the room.',
@@ -145,8 +145,8 @@ export function buildOrchestratorPrompt(
 }
 
 export function buildOrchestratorRewritePrompt(
-  channel: WorkspaceChannelView,
-  userMessage: WorkspaceMessage,
+  channel: ChatChannelView,
+  userMessage: ChatMessage,
   orchestratorName: string,
   draft: string,
 ): string {
@@ -162,22 +162,22 @@ export function buildOrchestratorRewritePrompt(
   ].join('\n\n');
 }
 
-export function buildPalPrompt(
-  channel: WorkspaceChannelView,
+export function buildCatPrompt(
+  channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,
-  pal: WorkspaceChannelPal,
-  sourceMessage: WorkspaceMessage,
+  cat: ChatChannelCat,
+  sourceMessage: ChatMessage,
   routingContext?: PromptRoutingContext,
 ): string {
-  const roleLabel = pal.roles.length > 0 ? pal.roles.join(', ') : 'general';
+  const roleLabel = cat.roles.length > 0 ? cat.roles.join(', ') : 'general';
   const recentMessages = routingContext?.recentMessages ?? channel.messages;
   const sourceLabel = sourceMessage.senderKind === 'user'
     ? 'Latest user message'
     : 'Latest routed handoff';
 
   return [
-    `You are ${pal.name}, a chat participant inside the Chat module for Cats Inc.`,
-    `Your provider is ${pal.execution.target.provider}${pal.execution.target.model ? ` and model ${pal.execution.target.model}` : ''}.`,
+    `You are ${cat.name}, a chat participant inside the Chat module for Cats Inc.`,
+    `Your provider is ${cat.execution.target.provider}${cat.execution.target.model ? ` and model ${cat.execution.target.model}` : ''}.`,
     `Your roles in this chat: ${roleLabel}.`,
     'The system layer has already routed this turn to you. Do not reinterpret target selection.',
     routingContext?.reason ?? 'System routing selected you for the current turn.',
@@ -189,8 +189,8 @@ export function buildPalPrompt(
     languageInstruction(channel.responseLanguage),
     `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
-    `Your memory checkpoint:\n${formatMemoryCheckpoint(pal.memory)}`,
-    `Channel roster:\n${formatPalRoster(channel)}`,
+    `Your memory checkpoint:\n${formatMemoryCheckpoint(cat.memory)}`,
+    `Channel roster:\n${formatCatRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(recentMessages)}`,
     `${sourceLabel}:\n${sourceMessage.body}`,
     'Reply with the work product or the next useful observation.',

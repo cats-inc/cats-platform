@@ -49,7 +49,7 @@ Additional rules:
    `cats`; it does not require a standalone service on day one.
 3. `Cats Core v1` must stay product-facing and minimal. It is not the home for
    provider adapters, CLI orchestration, or a full archive/RAG engine.
-4. Existing chat-shell terms such as pal, assignment, lease, and memory
+4. Existing chat-shell terms such as cat, assignment, lease, and memory
    checkpoint should evolve through compatibility mapping rather than a flag-day
    rewrite.
 5. Exploratory Paperclip-informed control-plane documents remain separate from
@@ -116,3 +116,4 @@ Additional rules:
 
 *Accepted: 2026-03-16*
 *Accepted by: user direction captured through Codex*
+

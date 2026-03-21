@@ -7,10 +7,10 @@ state into runtime-backed channel work with persisted transcripts.
 
 ## Tasks
 
-1. Expand the shared workspace contract to cover channels, workspace pals, channel assignments, sessions, messages, and export.
+1. Expand the shared workspace contract to cover channels, workspace cats, channel assignments, sessions, messages, and export.
 2. Replace the minimal store with full file-backed workspace persistence.
 3. Add runtime-backed channel activation and mention-routed messaging through `cats-runtime`.
-4. Extend the renderer with channel setup, global pal management, transcript, and orchestrator surfaces.
+4. Extend the renderer with channel setup, global cat management, transcript, and orchestrator surfaces.
 5. Update integration tests and documentation for the new workspace core.
 
 ## Validation
@@ -28,3 +28,4 @@ state into runtime-backed channel work with persisted transcripts.
 ---
 
 *Last updated: 2026-03-13*
+

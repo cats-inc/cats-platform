@@ -1,5 +1,4 @@
 import { routeCanonicalCatApi } from './canonicalCatRoutes.js';
-import { routeLegacyChatApi } from './legacyRoutes.js';
 import { routeChatResourceApi } from './resourceRoutes.js';
 import { routeChatShellApi } from './shellRoutes.js';
 import { routeSetupApi } from './setupRoutes.js';
@@ -20,10 +19,6 @@ export async function routeChatApi(
   }
 
   if (await routeSetupApi(context)) {
-    return true;
-  }
-
-  if (await routeLegacyChatApi(context)) {
     return true;
   }
 

@@ -76,7 +76,7 @@ keeping `cats-runtime` as the only execution boundary.
 | Paperclip surface | Evidence in local source | Why it exists | Cats Inc stance |
 |-------------------|--------------------------|---------------|-----------------|
 | Company and multi-company scope | `README.md`, `companies.ts`, `Companies.tsx`, `CompanySwitcher.tsx` | Separate orgs, budgets, and audit trails under one instance | Adopt later; start with a single local company/workspace root |
-| Agent org chart | `PRODUCT.md`, `agents.ts`, `OrgChart.tsx`, `SidebarAgents.tsx` | Model reporting lines and operational ownership | Adopt; grow current pal registry into an org roster |
+| Agent org chart | `PRODUCT.md`, `agents.ts`, `OrgChart.tsx`, `SidebarAgents.tsx` | Model reporting lines and operational ownership | Adopt; grow current cat registry into an org roster |
 | Goal, project, and issue hierarchy | `goals.ts`, `projects.ts`, `issues.ts`, `Goals.tsx`, `Projects.tsx`, `IssueDetail.tsx` | Keep execution tied to business intent | Adopt strongly; channels should attach to work, not replace it |
 | Issue comments and inbox | `IssueDetail.tsx`, `Inbox.tsx`, `issue_comments` schema | Keep discussion attached to work objects | Adapt; keep chat UX, but anchor it to work items |
 | Heartbeat runs and wakeups | `agents-runtime.md`, `heartbeat.ts`, `heartbeat_runs`, `agent_wakeup_requests` | Controlled autonomy with explicit operator visibility | Keep the idea, but hydrate it from `cats-runtime` rather than reimplementing Paperclip's runtime |
@@ -115,7 +115,7 @@ keeping `cats-runtime` as the only execution boundary.
   product root object.
 - Keep `cats-runtime` as the only execution boundary. `cats` should not
   absorb Paperclip's adapter registry, heartbeat runner, or embedded runtime.
-- Grow the current `workspace pal` model into a roster or org model instead of
+- Grow the current `workspace cat` model into a roster or org model instead of
   adopting Paperclip's agent schema directly.
 - Start local-first and single-company, then add multi-company packaging later
   if it becomes product-critical.
@@ -140,7 +140,7 @@ keeping `cats-runtime` as the only execution boundary.
 | Paperclip concept | Current Cats Inc primitive | Recommended Cats Inc target |
 |-------------------|----------------------------|-----------------------------|
 | Company | Workspace shell | Company or workspace root for the full control plane |
-| Agent employee | Workspace pal | Roster member with org, assignment, and execution views |
+| Agent employee | Workspace cat | Roster member with org, assignment, and execution views |
 | Goal | None | Initiative or goal object above projects and chats |
 | Project | Channel topic plus repo metadata | Project object with durable workspace and outputs |
 | Issue | Channel | Work item that can own one or more discussion threads |
@@ -214,7 +214,7 @@ early product and shared-core seams. The main gaps are:
    Add company, goal, project, work item, activity, approval, cost, and output
    concepts without breaking the current phase-2 shell.
 2. Add a compatibility layer from current chat state to the new model.
-   Current channels, pals, transcripts, and leases should still load cleanly.
+   Current channels, cats, transcripts, and leases should still load cleanly.
 3. Re-anchor chat under work.
    A chat becomes one work surface attached to a project or work item instead of
    the only top-level operator object.
@@ -277,3 +277,4 @@ migration is:
 *Created: 2026-03-16*
 *Updated: 2026-03-19*
 *Author: Codex*
+

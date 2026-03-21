@@ -54,7 +54,7 @@ From this point on:
    lifecycle, and provider-specific work.
 4. `cats` will not source-import Paperclip packages, schemas, runtime
    services, or adapter logic.
-5. Migration will begin from the current `pals`, channels, leases, and
+5. Migration will begin from the current `cats`, channels, leases, and
    transcripts model, using additive compatibility layers rather than a
    flag-day rewrite.
 6. Paperclip's plugin/runtime architecture is treated as later reference
@@ -79,7 +79,7 @@ From this point on:
 - `cats` now needs its own control-plane domain model instead of relying on
   Paperclip's existing one.
 - Some Paperclip concepts need translation because current Cats terms such as
-  pal, workspace, and channel do not align one-to-one with Paperclip's agent,
+  cat, workspace, and channel do not align one-to-one with Paperclip's agent,
   company, and issue language.
 
 ### Neutral
@@ -124,3 +124,4 @@ From this point on:
 
 *Proposed: 2026-03-16*
 *Proposed by: Codex from user-requested Paperclip study*
+

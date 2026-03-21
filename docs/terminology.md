@@ -20,7 +20,7 @@
 | Cats Work | The work and operations product surface in the Cats suite. |
 | Cats Core v1 | The shared product contract layer for identity, actors/resources, permissions, conversations, approvals, owner profile, and archive metadata. |
 | Chat | The current lightweight team conversation module inside the current shell; this term is gradually being made more explicit as `Cats Chat`. |
-| Cat | A reusable teammate identity used inside the current chat shell. A cat is not the same thing as a provider choice and is expected to evolve into the broader actor/resource model. `Pal` remains as an internal implementation term. |
+| Cat | A reusable teammate identity used inside the current chat shell. A cat is not the same thing as a provider choice and is expected to evolve into the broader actor/resource model. |
 | Boss Cat | The user-facing product term for the one visible public chat-entry Cat that leads new conversations and represents the default public orchestrator identity. |
 | Primary Orchestrator Cat | The formal product and domain term for the Cat selected as the default public orchestrator. In UI copy, this should usually be presented as `Boss Cat`. |
 | Boss Chat | The default conversation mode where unmentioned turns route first to `Boss Cat`, which can then coordinate or involve other Cats. |
@@ -44,7 +44,7 @@
 | Tool intent manifest | The product-to-runtime request payload that expresses desired tool access in stable logical terms such as profile id, allowlist, or lazy tool groups. |
 | Lazy tool activation | A runtime strategy that realizes the smallest useful tool surface at first and activates additional tool groups or MCP-backed servers only when needed. |
 | Actor / Resource | The broader `Cats Core v1` term for a human, orchestrator, worker, stakeholder, virtual friend, or other reusable participant. |
-| Execution target | The provider/model preference selected for a pal or orchestrator in one context. |
+| Execution target | The provider/model preference selected for a cat or orchestrator in one context. |
 | Execution lease | The currently active runtime session metadata used to execute work through a provider. |
 | Memory checkpoint | Product-owned summary data, facts, and open loops that should survive session restarts or provider changes. |
 | Owner profile | Structured product-owned memory for the boss or owner, including tone, preferences, escalation thresholds, and decision style. |
@@ -76,3 +76,4 @@
 ---
 
 Last updated: 2026-03-19
+
