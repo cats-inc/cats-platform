@@ -140,6 +140,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       }
 
       if (message.chat?.type !== 'private') {
+        // Unsupported chat types also stay outside the durable dedupe window
+        // so only accepted Boss Cat inbox traffic consumes retained ids.
         return {
           platform: 'telegram',
           status: 'ignored',
