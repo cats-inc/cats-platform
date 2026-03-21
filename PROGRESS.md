@@ -11,8 +11,8 @@
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global pals, assignments, transcript, and orchestrator surfaces |
 | Workspace Product Features | Completed | Basic runtime-backed setup, global pal registry, channel assignment, mention routing, transcript export, and execution-aware state landed |
-| Suite Foundation Planning | In Progress | `Cats Core v1` schema, compatibility mapping, core-backed store abstraction, and first read-only core APIs are now implemented while broader launch tracks remain open |
-| Documentation | In Progress | Core status and product docs are being realigned around the shared suite foundation and newly landed core-backed implementation seams |
+| Suite Foundation Planning | In Progress | The suite-host refactor now has core-owned state direction, app-level server/renderer assembly, and dedicated Work/Code placeholder slices, but Chat API extraction and cleanup remain |
+| Documentation | In Progress | Architecture, progress, and plan docs now reflect the suite-host layout and compatibility seams, but API/cleanup follow-up remains |
 | Cats Chat Launch Track | Not Started | Chat launch features such as approvals, escalation, takeover, and desktop packaging remain ahead |
 | Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
@@ -89,6 +89,8 @@
 | Freeze the suite desktop stance | [x] | Electron plus React/TypeScript remains the current path; Tauri and Flutter are not on the active route |
 | Annotate exploratory Paperclip control-plane documents | [ ] | Existing research remains in-tree but needs explicit exploratory labels everywhere it appears |
 | Land the first implementation slices for shared storage and contracts | [x] | `src/shared/core.ts`, `src/core/model.ts`, the core-backed workspace store, and `/api/core/*` routes are now in-tree |
+| Land the suite-host first slice through Work/Code placeholders | [x] | `src/app/*`, `src/core/*`, `src/products/*`, route ownership, and placeholder Work/Code surfaces are now in place |
+| Finish validation-only Phase 8A passes | [x] | Server route coverage, suite route-map coverage, and architecture/progress doc sync are now in place |
 
 #### Acceptance Criteria
 
@@ -96,6 +98,7 @@
 - [x] `Cats Core v1` scope is explicit enough for Chat and Work teams to share a contract
 - [x] The runtime boundary is documented as direct product API plus planned MCP facade
 - [x] The first implementation slices for shared storage and shared-core APIs are landed and covered by tests
+- [x] Work and Code now have dedicated placeholder slices that can accept parallel development without modifying Chat modules
 
 ---
 
@@ -193,6 +196,28 @@
 - [x] Add a basic mention model, global pal registry, and transcript export
 - [ ] Suite-foundation and launch-track follow-up work continues in WP-3 through WP-5
 
+### WP-3: Suite Foundation Planning
+
+**Most recent progress**: 2026-03-21
+
+#### Landed in the current refactor slice
+
+- `src/app/server/index.ts` now owns the app-level HTTP assembly
+- `src/app/renderer/*` now owns the suite-level renderer entry and routing
+- `src/core/*` is now the shared core seam rather than a Chat-derived contract
+- `src/products/chat/*` now owns the current Chat implementation
+- `src/products/work/*` and `src/products/code/*` now own dedicated placeholder
+  API and renderer surfaces
+- validation coverage now includes `/api/work`, `/api/code`, and the current
+  suite route map
+
+#### Remaining Items
+
+- [ ] Extract Chat-specific route handlers out of `src/app/server/index.ts` into `src/products/chat/api/*`
+- [ ] Split or rename `src/shared/app-shell.ts` so Chat-biased contracts are not presented as suite-wide contracts
+- [ ] Remove temporary shims in `src/server.ts`, `src/renderer/*`, and `src/workspace/*` when ownership boundaries stabilize
+- [ ] Update `docs/api.md` to reflect app-level route ownership after the Chat API extraction lands
+
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-21*

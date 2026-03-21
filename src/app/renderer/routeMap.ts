@@ -1,0 +1,41 @@
+export type SuiteSurfaceId = 'chat' | 'work' | 'code';
+
+export interface SuiteSurfaceRoute {
+  surface: SuiteSurfaceId;
+  routePrefix: string;
+  apiBase: string | null;
+  placeholder: boolean;
+}
+
+export const SUITE_SURFACE_ROUTES: Record<SuiteSurfaceId, SuiteSurfaceRoute> = {
+  chat: {
+    surface: 'chat',
+    routePrefix: '/',
+    apiBase: null,
+    placeholder: false,
+  },
+  work: {
+    surface: 'work',
+    routePrefix: '/work',
+    apiBase: '/api/work',
+    placeholder: true,
+  },
+  code: {
+    surface: 'code',
+    routePrefix: '/code',
+    apiBase: '/api/code',
+    placeholder: true,
+  },
+};
+
+export function resolveSuiteSurfaceForPath(pathname: string): SuiteSurfaceId {
+  if (pathname === '/work' || pathname.startsWith('/work/')) {
+    return 'work';
+  }
+
+  if (pathname === '/code' || pathname.startsWith('/code/')) {
+    return 'code';
+  }
+
+  return 'chat';
+}

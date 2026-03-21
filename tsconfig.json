@@ -13,6 +13,12 @@
     "noEmit": true,
     "types": ["vite/client"]
   },
-  "include": ["src/renderer/**/*", "src/shared/**/*", "vite.config.ts"],
+  "include": [
+    "src/renderer/**/*",
+    "src/app/renderer/**/*",
+    "src/products/*/renderer/**/*",
+    "src/shared/**/*",
+    "vite.config.ts"
+  ],
   "exclude": ["node_modules", "dist", "dist-server", "tests"]
 }

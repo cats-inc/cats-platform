@@ -48,6 +48,42 @@ directly to individual workers.
 
 ## Components
 
+## Current Suite-Host Code Layout
+
+The current first-slice code layout now follows the suite-host split accepted
+in ADR-025:
+
+```text
+src/
+  app/
+    server/
+    renderer/
+  core/
+  products/
+    chat/
+    work/
+    code/
+  platform/
+  shared/
+```
+
+Current ownership:
+
+- `src/app/server/*` owns top-level HTTP composition
+- `src/app/renderer/*` owns top-level suite routing
+- `src/core/*` owns shared Cats Core contracts and persistence seams
+- `src/products/chat/*` owns Chat-specific workspace, routing, and renderer
+  behavior
+- `src/products/work/*` owns Work placeholder surfaces and future Work-specific
+  APIs/UI
+- `src/products/code/*` owns Code placeholder surfaces and future
+  project/preview/build APIs/UI
+- `src/platform/*` owns runtime, persistence, and transport infrastructure
+
+The product is still in a transitional state: top-level compatibility shims
+remain at `src/server.ts`, `src/renderer/*`, and `src/workspace/*` so existing
+tests and imports do not have to move all at once.
+
 ### Configuration Layer
 
 - **Purpose**: Centralize environment parsing and defaults
@@ -100,7 +136,8 @@ directly to individual workers.
   built static assets
 - **Technology**: Native `node:http`
 - **Responsibilities**: Serve `/health`, `/api/app-shell`, shared-core product
-  routes, runtime-facing routes, and built renderer files
+  routes, Work/Code placeholder routes, runtime-facing routes, and built
+  renderer files
 
 ### Workspace Store and Future Shared Storage
 
@@ -222,11 +259,32 @@ Active routes:
 
 Persisted `channelId` values are opaque ids rather than title-derived slugs.
 
-Reserved (not yet implemented): `/work/*`, `/tools/*`.
+Reserved (not yet implemented): `/tools/*`.
+
+`/work/*` and `/code/*` now resolve to dedicated suite placeholder surfaces
+rather than inline placeholder JSX. These roots are intentionally minimal, but
+they already give future Work and Code development their own renderer entry
+points without colliding with Chat implementation files.
 
 Browser back/forward and page refresh preserve the current surface. The server's
 SPA fallback (`tryServeWebAsset`) serves `index.html` for extensionless paths,
 enabling deep links in built mode.
+
+## Current Compatibility Seams
+
+The suite-host refactor is intentionally incremental. These seams are still
+temporary and should not be treated as final ownership boundaries:
+
+- `src/server.ts` is a shim that re-exports the real app-level assembler from
+  `src/app/server/index.ts`
+- `src/renderer/App.tsx` and `src/renderer/main.tsx` are shims that re-export
+  the real suite renderer entry from `src/app/renderer/*`
+- `src/workspace/*` is still a compatibility shim over
+  `src/products/chat/workspace/*`
+- `src/shared/app-shell.ts` still carries Chat-biased contracts and should
+  eventually be split further once Chat API extraction is complete
+- `src/app/server/index.ts` still contains most Chat-specific route handlers
+  until those move under `src/products/chat/api/*`
 
 ## Current Chat Navigation Direction
 

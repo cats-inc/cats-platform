@@ -16,7 +16,7 @@ These important documents live in the project root:
 | Document | Status | Description |
 |----------|--------|-------------|
 | [requirements.md](./requirements.md) | Complete | Requirements for the current shell plus the accepted `Cats Core v1`, Chat, and Work planning direction |
-| [architecture.md](./architecture.md) | Complete | Current implementation architecture plus the planned shared-core suite topology and current chat navigation direction |
+| [architecture.md](./architecture.md) | Complete | Current implementation architecture, the landed suite-host code layout, the shared-core suite topology, and the current compatibility seams |
 | [api.md](./api.md) | Complete | Current API surface plus the approved RESTful migration direction and shared-core/runtime-boundary notes |
 
 ## Development Guides
@@ -84,6 +84,8 @@ When working on this project:
 The main suite-foundation docs are current, but these areas still need dedicated passes:
 
 - implementation details for desktop packaging and later-stage transport delivery behavior
+- app-level API ownership cleanup after Chat route handlers move into `products/chat/api/*`
+- removal of temporary compatibility shims once suite-host ownership boundaries stabilize
 - project-specific security notes beyond the inherited template
 - A2A and automation references once cross-agent workflows stabilize
 
@@ -96,4 +98,4 @@ The main suite-foundation docs are current, but these areas still need dedicated
 
 ---
 
-*Last updated: 2026-03-20*
+*Last updated: 2026-03-21*

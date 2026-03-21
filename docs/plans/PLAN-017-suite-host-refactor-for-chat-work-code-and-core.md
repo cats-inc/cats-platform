@@ -252,6 +252,31 @@ Current placeholder modules after Phase 7:
 **Deliverables**: stable structure, preserved Chat behavior, and documented next
 steps for Work and Code teams.
 
+Current validation state after Phase 8A:
+
+- `core-store` coverage is already in place through `tests/core-store.test.js`.
+- top-level route composition now has direct coverage through
+  `/api/work` and `/api/code` server tests.
+- renderer route composition now has direct coverage through
+  `tests/suite-routing.test.js`, which validates the suite route map and
+  current Work/Code placeholder ownership.
+- architecture, progress, and docs index files have been updated to reflect the
+  current suite-host layout and the still-temporary compatibility seams.
+
+Remaining work after Phase 8A:
+
+- extract Chat-specific route handlers from `src/app/server/index.ts` into
+  `src/products/chat/api/*` to finish the Phase 6 split
+- rename or split more Chat-biased contracts such as `src/shared/app-shell.ts`
+  so they no longer read as suite-wide contracts
+- remove transitional re-export shims in `src/workspace/*`,
+  `src/renderer/*`, and `src/server.ts` only after the app/server and
+  Chat-route ownership boundaries are stable
+- add a fuller renderer-level test harness later if route-level behavior needs
+  richer assertions than the current route-map coverage
+- update API docs again once Chat route-module extraction changes ownership and
+  import paths
+
 ## Candidate Code Areas
 
 | Area | Action | Why |
