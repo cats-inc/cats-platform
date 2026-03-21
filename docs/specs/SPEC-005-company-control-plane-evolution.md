@@ -8,12 +8,12 @@ parallel-track plan.
 
 ## Summary
 
-Evolve `cats-inc` from a chat-first phase-2 shell into a broader company
+Evolve `cats` from a chat-first phase-2 shell into a broader company
 control plane informed by the strongest Paperclip concepts: company-scoped work
 hierarchy, explicit operator governance, workspace and execution modeling, and
 output-first product surfaces.
 
-This evolution must stay incremental. `cats-inc` keeps `cats-runtime` as its
+This evolution must stay incremental. `cats` keeps `cats-runtime` as its
 only execution boundary, preserves compatibility with the current workspace
 shell where practical, and develops its own product model instead of copying
 Paperclip packages or schemas directly.
@@ -30,7 +30,7 @@ Paperclip packages or schemas directly.
 
 ### Functional Requirements
 
-- `cats-inc` must introduce explicit product objects above channels, including
+- `cats` must introduce explicit product objects above channels, including
   company or workspace root scope, goals, projects, work items, activity,
   approvals, costs, and outputs.
 - Chat channels must be attachable to work objects instead of remaining the
@@ -39,7 +39,7 @@ Paperclip packages or schemas directly.
   model with ownership and reporting context.
 - Runtime executions, run history, and artifacts must be visible through
   product-owned read models hydrated from `cats-runtime`.
-- `cats-inc` must distinguish durable project workspaces from transient
+- `cats` must distinguish durable project workspaces from transient
   execution workspaces.
 - Operator surfaces must follow progressive disclosure: summary first, then
   checklist or state detail, then raw transcript or tool output.
@@ -48,7 +48,7 @@ Paperclip packages or schemas directly.
 
 ### Non-Functional Requirements
 
-- `cats-inc` must not import or depend on Paperclip runtime code, adapter
+- `cats` must not import or depend on Paperclip runtime code, adapter
   orchestration, or database schema packages.
 - Each rewrite phase must be shippable without breaking the current phase-2
   chat flows.
@@ -61,7 +61,7 @@ Paperclip packages or schemas directly.
 - Forking, skinning, or embedding Paperclip
 - Building a full plugin marketplace in the first rewrite phases
 - Full enterprise multi-tenant auth or SaaS packaging
-- Turning `cats-inc` into a pull-request review product
+- Turning `cats` into a pull-request review product
 
 ## Acceptance Criteria
 
@@ -72,7 +72,7 @@ Paperclip packages or schemas directly.
 - The resulting product model supports a compatibility layer from today's
   workspace state into future control-plane objects.
 - New operator surfaces can be added without moving runtime adapter or session
-  ownership into `cats-inc`.
+  ownership into `cats`.
 
 ---
 

@@ -106,7 +106,7 @@ Each template includes:
 - Budget allocation suggestions
 
 This is the crew-chat-poc model (tag-based roles, NEXT: directive
-delegation, quality gates) productized into the cats-inc shell.
+delegation, quality gates) productized into the Cats shell.
 
 **Prototype reference**: `crew-chat-poc/` in the monorepo demonstrates the
 core mechanics:
@@ -202,10 +202,10 @@ All three lines consume these capabilities identically.
 - Preference and workspace state
 - Memory layer (when implemented)
 
-### cats-inc (shared product shell)
+### Cats (shared product shell)
 
 The three lines do not need to be three separate applications. They can be
-**three modes or setup templates within one cats-inc shell**:
+**three modes or setup templates within one Cats shell**:
 
 - Same renderer, same server, same runtime client
 - Different default skill profiles loaded at setup time
@@ -259,7 +259,7 @@ YAML configurations for different team compositions.
 ### Primarily Chat + Work
 
 - Room workflow and dynamic orchestration (ADR-024, SPEC-026)
-- Explicit mention routing (ADR-017 cats-inc)
+- Explicit mention routing (ADR-017 cats)
 - Session fork and context transplant (SPEC-011 runtime)
 - Budget policy and war-room dashboard (ADR-023, SPEC-025)
 - Workspace substrate tools (ADR-015, SPEC-008)
@@ -286,7 +286,7 @@ YAML configurations for different team compositions.
 
 ### 1. Cats Chat first
 
-**Why**: Simplest product skin. Validates that cats-runtime + cats-inc
+**Why**: Simplest product skin. Validates that cats-runtime + Cats
 integration works end-to-end. Lowest orchestration complexity means fewer
 moving parts to debug. Transport channel (Telegram) integration provides
 immediate tangible value.

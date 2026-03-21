@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-`cats-inc` is now making `Boss Cat` the visible public orchestrator identity,
+`cats` is now making `Boss Cat` the visible public orchestrator identity,
 and Telegram is the first planned external bot channel behind that identity.
 
 That creates a structural tension:
@@ -31,13 +31,13 @@ problems appear quickly:
 We also reviewed Manus' recent `Agents` launch as a market reference. Manus
 appears to treat Telegram as an external agent entrypoint exposed via a
 top-level `Agents` surface, not as a direct mirror of all workspace chats.
-That pattern is useful, but `cats-inc` has a stronger room-native product
+That pattern is useful, but `cats` has a stronger room-native product
 direction and should not flatten its multi-room model into one transport
 thread.
 
 ## Decision
 
-`cats-inc` will treat Telegram as a `Boss Cat` inbox transport, not as a room
+`cats` will treat Telegram as a `Boss Cat` inbox transport, not as a room
 mirror.
 
 1. One Telegram bot thread represents one operator-to-`Boss Cat` inbox.
@@ -76,7 +76,7 @@ mirror.
 
 8. The current single-`Boss Cat` rule remains a product simplification, not a
    permanent architectural cap.
-   - today, one `cats-inc` environment still exposes one default public
+   - today, one `cats` environment still exposes one default public
      `Boss Cat`
    - future slices may allow multiple public `Boss Cat` identities
    - each additional public `Boss Cat` should own its own transport inbox and
@@ -117,7 +117,7 @@ mirror.
 
 - **Pros**: Simple initial mapping; fewer routing records
 - **Cons**: Topic sprawl, poor multi-Cat readability, weak fit for `Recents`
-- **Why rejected**: `cats-inc` is explicitly room-first
+- **Why rejected**: `cats` is explicitly room-first
 
 ### Alternative 2: Mirror every internal room back into the same Telegram thread
 

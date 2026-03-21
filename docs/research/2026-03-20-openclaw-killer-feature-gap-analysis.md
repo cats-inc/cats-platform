@@ -68,7 +68,7 @@ Plus smart response chunking:
 
 **What Cats has**:
 
-- cats-inc ADR-016 treats Telegram as Boss Cat inbox, not room mirror
+- cats ADR-016 treats Telegram as Boss Cat inbox, not room mirror
 - @mention-based routing dispatches messages to specific Cats
 - No defined behavior for "user sends another message while Cat is
   thinking"
@@ -114,7 +114,7 @@ A sophisticated two-tier memory system:
 
 - ADR-012 (cats-runtime) defines memory layering: evidence transcript,
   durable memory, retrieval
-- cats-inc CLAUDE.md mentions RAG archive with embeddings
+- cats CLAUDE.md mentions RAG archive with embeddings
 - personal-rag-system is listed as a future archive backend
 - No implementation of any memory layer beyond basic transcript storage
 
@@ -160,7 +160,7 @@ context window rolled."
 
 **What Cats has**:
 
-- cats-inc ADR-016 describes Telegram as Boss Cat inbox
+- cats ADR-016 describes Telegram as Boss Cat inbox
 - Mentions "Know Your Boss" concept (Cat should recognize owner)
 - Mentions stakeholder scenarios (owner + BOT + stakeholder in channel)
 - No defined access control mechanism for transport channels
@@ -303,7 +303,7 @@ User-accessible commands within the chat:
 
 **What Cats has**:
 
-- cats-inc has no in-transport command system
+- cats has no in-transport command system
 - Workspace settings are managed through the web UI, not through chat
 
 **What is missing**:
@@ -336,8 +336,8 @@ session management.
 
 **What Cats has**:
 
-- cats-inc ADR-016: Telegram as Boss Cat inbox
-- cats-inc terminology mentions LINE integration
+- cats ADR-016: Telegram as Boss Cat inbox
+- cats terminology mentions LINE integration
 - Transport handling is specific to Telegram (relay routes, webhook ingress)
 - No general-purpose transport abstraction
 
@@ -524,7 +524,7 @@ follow-ons that harden the experience.
 - [Paperclip Control-Plane Analysis](./paperclip-control-plane-analysis.md)
 - [OpenClaw Memory Layering Benchmark](./2026-03-19-openclaw-memory-layering-benchmark.md)
 - [cats-runtime Paperclip Gap Assessment](../../../cats-runtime/docs/research/2026-03-19-paperclip-gap-assessment.md)
-- [cats-inc ADR-016 Telegram as Boss Cat Inbox](../decisions/016-treat-telegram-as-boss-cat-inbox-not-room-mirror.md)
+- [cats ADR-016 Telegram as Boss Cat Inbox](../decisions/016-treat-telegram-as-boss-cat-inbox-not-room-mirror.md)
 - [cats-runtime ADR-012 Memory Layering](../../../cats-runtime/docs/decisions/012-separate-evidence-memory-and-retrieval-layers.md)
 
 ---

@@ -4,7 +4,7 @@ Status: Draft (Pending Review)
 
 ## Summary
 
-`cats-inc` already has a functioning Node HTTP server, a chat-first React
+`cats` already has a functioning Node HTTP server, a chat-first React
 renderer, a file-backed workspace store, and the first read-only `Cats Core v1`
 routes. What it does not have yet is a fully product-facing REST contract.
 
@@ -18,7 +18,7 @@ shell as a read-only compatibility view during migration.
 
 As of 2026-03-18:
 
-- latest `cats-inc` commit on `main` is `d575ebd`
+- latest `cats` commit on `main` is `d575ebd`
 - `npm test` passes locally with 11 passing tests and 0 failures
 - the server exposes `/health`, `/api/app-shell`, `/api/core/*`, and multiple
   `/api/workspace/*` mutation routes
@@ -35,7 +35,7 @@ for `Cats Chat`, `Cats Work`, or future Telegram/LINE transport relays.
 
 - Make resource nouns the primary product API contract.
 - Separate renderer read models from authoritative write/read resources.
-- Keep `cats-runtime` behind the `cats-inc` product boundary.
+- Keep `cats-runtime` behind the `cats` product boundary.
 - Preserve incremental migration without breaking the current renderer.
 - Reuse one API shape across Chat, Work, and external transport entrypoints.
 - Keep the API aligned with the existing `Cats Core v1` direction.

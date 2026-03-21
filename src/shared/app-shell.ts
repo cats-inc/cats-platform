@@ -201,7 +201,7 @@ export interface WorkspaceShellState {
 
 export interface AppShellPayload {
   app: {
-    name: 'cats-inc';
+    name: 'cats';
     stage: 'phase-2-shell';
     runtimeBoundary: 'cats-runtime';
   };

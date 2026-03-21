@@ -228,7 +228,7 @@ test('REST API full lifecycle: create pal, create channel, activate, message, as
       body: JSON.stringify({
         title: 'Ops Radar',
         topic: 'Track regressions.',
-        repoPath: 'C:/repo/cats-inc',
+        repoPath: 'C:/repo/cats',
         language: 'TypeScript',
         pals: [
           { name: 'Inline-Agent', provider: 'gemini', roles: ['reviewer'] },
@@ -522,7 +522,7 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
       body: JSON.stringify({
         title: 'Ops Radar',
         topic: 'Track regressions.',
-        repoPath: 'C:/repo/cats-inc',
+        repoPath: 'C:/repo/cats',
         language: 'TypeScript',
         cats: [
           { name: 'Inline-Agent', provider: 'gemini', roles: ['reviewer'] },

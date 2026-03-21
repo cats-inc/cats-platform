@@ -18,7 +18,7 @@
 ## Overview
 
 This plan turns the new provider, Telegram, and capability directions into a
-parallelizable work map for `cats-inc`.
+parallelizable work map for `cats`.
 
 The main rule is simple:
 
@@ -75,7 +75,7 @@ The main rule is simple:
 
 - [ ] Update product forms to consume product provider APIs by default
 - [ ] Reduce duplicated provider/model fallback data once runtime-backed reads
-      are stable enough to stop treating `cats-inc` as a second catalog owner
+      are stable enough to stop treating `cats` as a second catalog owner
 - [ ] Add real Telegram conversation/channel mapping
 - [ ] Add capability-aware assignment heuristics for `Boss Cat`
 - [ ] Update docs and tests once all three workstreams converge

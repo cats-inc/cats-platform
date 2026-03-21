@@ -2,7 +2,7 @@
 
 ## Summary
 
-Add the first writable channel-setup path to `cats-inc` so operators can create
+Add the first writable channel-setup path to `cats` so operators can create
 planned channels from the renderer and persist them locally.
 
 ## Goals

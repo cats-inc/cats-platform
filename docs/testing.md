@@ -1,6 +1,6 @@
 # Testing Strategy
 
-> Testing approach, standards, and procedures for `cats-inc`.
+> Testing approach, standards, and procedures for `Cats`.
 
 ## Overview
 

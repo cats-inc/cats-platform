@@ -40,7 +40,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
 | [026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand](./026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md) | Use cats as the flagship suite name under cats-inc brand | Accepted | 2026-03-21 |
-| [025-make-cats-inc-a-suite-host-with-core-owned-product-projections](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) | Make cats-inc a suite host with core-owned product projections | Accepted | 2026-03-21 |
+| [025-make-cats-inc-a-suite-host-with-core-owned-product-projections](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) | Make cats a suite host with core-owned product projections | Accepted | 2026-03-21 |
 | [024-separate-explicit-mentions-from-dynamic-room-workflow](./024-separate-explicit-mentions-from-dynamic-room-workflow.md) | Separate explicit mentions from dynamic room workflow | Accepted | 2026-03-20 |
 | [023-own-budget-policy-and-cost-control-in-product](./023-own-budget-policy-and-cost-control-in-product.md) | Own budget policy and cost control in product | Accepted | 2026-03-20 |
 | [022-own-workspace-delivery-policy-in-product](./022-own-workspace-delivery-policy-in-product.md) | Own workspace delivery policy in product | Accepted | 2026-03-20 |
@@ -54,7 +54,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [014-freeze-parallel-delivery-boundaries-for-provider-telegram-and-chat-workstreams](./014-freeze-parallel-delivery-boundaries-for-provider-telegram-and-chat-workstreams.md) | Freeze parallel delivery boundaries for provider, Telegram, and chat workstreams | Accepted | 2026-03-19 |
 | [012-keep-cat-naming-in-product-apis-and-neutral-terms-in-system-apis](./012-keep-cat-naming-in-product-apis-and-neutral-terms-in-system-apis.md) | Keep Cat naming in product APIs and neutral terms in system APIs | Accepted | 2026-03-19 |
 | [011-model-primary-orchestrator-as-visible-cat](./011-model-primary-orchestrator-as-visible-cat.md) | Model the primary orchestrator as a visible Cat | Accepted | 2026-03-19 |
-| [013-ship-cats-inc-as-an-executable-self-hosted-npm-app](./013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md) | Ship `cats-inc` as an executable self-hosted npm app | Proposed | 2026-03-19 |
+| [013-ship-cats-inc-as-an-executable-self-hosted-npm-app](./013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md) | Ship `cats` as an executable self-hosted npm app | Proposed | 2026-03-19 |
 | [010-separate-read-model-app-shell-from-restful-resource-apis](./010-separate-read-model-app-shell-from-restful-resource-apis.md) | Separate read-model app shell from RESTful resource APIs | Accepted | 2026-03-18 |
 | [009-prefer-chat-contextual-pal-entry-and-settings-registry](./009-prefer-chat-contextual-pal-entry-and-settings-registry.md) | Prefer chat-contextual pal entry and a Settings-hosted registry | Accepted | 2026-03-17 |
 | [008-expose-cats-runtime-via-direct-api-and-mcp-facade](./008-expose-cats-runtime-via-direct-api-and-mcp-facade.md) | Expose `cats-runtime` via direct API and MCP facade | Accepted | 2026-03-16 |

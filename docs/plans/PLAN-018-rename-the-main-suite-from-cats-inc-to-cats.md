@@ -44,10 +44,10 @@ This plan does not cover:
 
 ### Phase 1: Freeze the Naming Contract
 
-- [ ] Freeze the canonical naming matrix for brand, repo, package, executable,
+- [x] Freeze the canonical naming matrix for brand, repo, package, executable,
       and runtime.
-- [ ] Freeze which old names remain temporarily accepted as compatibility names.
-- [ ] Audit current references to `cats-inc` in:
+- [x] Freeze which old names remain temporarily accepted as compatibility names.
+- [x] Audit current references to `cats-inc` in:
       - `package.json`
       - root docs
       - API and deployment docs
@@ -58,26 +58,26 @@ This plan does not cover:
 
 ### Phase 2: Documentation and Product Language Migration
 
-- [ ] Update `README.md` to present the main product as `Cats`.
-- [ ] Update architecture, API, setup, deployment, and services docs so they
+- [x] Update `README.md` to present the main product as `Cats`.
+- [x] Update architecture, API, setup, deployment, and services docs so they
       distinguish:
       - umbrella brand `Cats Inc`
       - suite product `Cats`
       - runtime `cats-runtime`
-- [ ] Update planning docs that still treat `cats-inc` as the canonical suite
+- [x] Update planning docs that still treat `cats-inc` as the canonical suite
       name when they are really referring to the flagship product.
-- [ ] Keep historical notes readable where older repo/package names matter.
+- [x] Keep historical notes readable where older repo/package names matter.
 
 **Deliverables**: public docs stop conflating the brand and the suite repo.
 
 ### Phase 3: Package and Executable Rename
 
-- [ ] Change `package.json` package name from `cats-inc` to `cats` when the
+- [x] Change `package.json` package name from `cats-inc` to `cats` when the
       actual package migration is executed.
-- [ ] Decide the canonical executable command name (`cats`).
-- [ ] Update packaging docs and executable-install guidance that currently say
+- [x] Decide the canonical executable command name (`cats`).
+- [x] Update packaging docs and executable-install guidance that currently say
       `npx cats-inc`, `npm install -g cats-inc`, or similar.
-- [ ] Reconcile [ADR-013](../decisions/013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
+- [x] Reconcile [ADR-013](../decisions/013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
       and [PLAN-013](./PLAN-013-self-hosted-npm-app-packaging.md) with the new
       package name.
 
@@ -85,15 +85,15 @@ This plan does not cover:
 
 ### Phase 4: Public Runtime and App Metadata Alignment
 
-- [ ] Update public payloads or app-shell metadata that currently identify the
+- [x] Update public payloads or app-shell metadata that currently identify the
       app as `cats-inc` when they are meant to name the flagship suite.
-- [ ] Decide which service identifiers remain operational/internal versus
+- [x] Decide which service identifiers remain operational/internal versus
       product-facing.
-- [ ] Decide whether environment variables keep temporary compatibility aliases
+- [x] Decide whether environment variables keep temporary compatibility aliases
       such as:
       - canonical `CATS_*`
       - compatibility `CATS_INC_*`
-- [ ] Document the compatibility and eventual cleanup rule explicitly.
+- [x] Document the compatibility and eventual cleanup rule explicitly.
 
 **Deliverables**: public metadata and runtime-facing naming stop leaking the old
 suite name unintentionally.
@@ -103,26 +103,27 @@ suite name unintentionally.
 - [ ] Rename the main GitHub repo from `cats-inc` to `cats` when the owner/org
       move is ready.
 - [ ] Update remote URLs, badges, repository references, and clone/setup docs.
-- [ ] Confirm the intended final public shape:
+- [x] Confirm the intended final public shape:
 
 ```text
 cats-inc/cats
 cats-inc/cats-runtime
 ```
 
-- [ ] Document any transitional local-folder expectations if the filesystem path
-      stays `cats-inc/` during migration.
+- [x] Document transitional local-folder expectations for the monorepo phase:
+      - the local subproject folder is now `cats/`
+      - the future public repo target remains `cats-inc/cats`
 
 **Deliverables**: repo identity matches the naming contract.
 
 ### Phase 6: Validation and Cleanup
 
-- [ ] Validate that docs, package metadata, and public help text align on the
+- [x] Validate that docs, package metadata, and public help text align on the
       same naming model.
-- [ ] Add or update tests where user-facing metadata is asserted.
-- [ ] Keep explicit notes for any internal code identifiers intentionally left
+- [x] Add or update tests where user-facing metadata is asserted.
+- [x] Keep explicit notes for any internal code identifiers intentionally left
       untouched until later refactor slices.
-- [ ] Log what still says `cats-inc` by design versus by accident.
+- [x] Log what still says `cats-inc` by design versus by accident.
 
 **Deliverables**: a controlled rename with documented leftovers rather than
 half-migrated naming drift.
@@ -131,16 +132,43 @@ half-migrated naming drift.
 
 | Area | Action | Why |
 |------|--------|-----|
-| `package.json` | Modify later | Package/executable name currently still equals `cats-inc` |
-| `README.md` | Update | Main suite identity is still presented as `cats-inc` |
-| `docs/api.md` | Review and update | Public payloads currently still include `cats-inc` app identifiers |
-| `docs/architecture.md` | Update carefully | Distinguish suite host identity from historical repo name |
-| `docs/deployment.md` | Update | Packaging and install guidance currently assumes the old suite name |
-| `docs/setup-guide.md` | Update | Quick-start and folder naming still reference `cats-inc` |
-| `docs/services.md` | Review | Decide which service labels stay operational and which become product-facing |
-| `docs/decisions/013-*` | Update or supersede | Packaging guidance currently assumes `cats-inc` as the app/package name |
-| `docs/plans/PLAN-013-*` | Update | Self-hosted npm packaging guidance must match the renamed package |
-| source metadata strings | Review | `app.name`, health payloads, and display labels may need public rename treatment |
+| `package.json` | Updated | Package/executable name now uses `cats` |
+| `README.md` | Updated | Main suite identity now presents `Cats` as the flagship product |
+| `docs/api.md` | Updated | Public payloads now identify the suite as `cats` |
+| `docs/architecture.md` | Updated | Suite host identity now distinguishes brand, product, and runtime |
+| `docs/deployment.md` | Updated | Packaging and install guidance now uses the renamed suite |
+| `docs/setup-guide.md` | Updated | Quick-start and folder naming now reflect `cats/` plus compatibility notes |
+| `docs/services.md` | Updated | Product-facing service labels now use `cats`; `CATS_INC_*` stays compatibility-only |
+| `docs/decisions/013-*` | Updated in place | Packaging guidance now assumes `cats` as the app/package name while keeping existing ADR filename |
+| `docs/plans/PLAN-013-*` | Updated | Self-hosted npm packaging guidance now matches the renamed package |
+| source metadata strings | Updated | `app.name`, health payloads, display labels, and sidebar storage key now use `cats` |
+
+## Current Compatibility and Intentional Leftovers
+
+The current `cats-inc` strings that remain after this slice are intentional:
+
+- rename-decision/history documents such as ADR-026 and PLAN-018, where the old
+  name must be described explicitly
+- existing ADR/PLAN filenames and markdown link targets such as
+  `013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md` and
+  `025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md`
+- future public repo layout references such as `cats-inc/cats` and
+  `cats-inc/cats-runtime`
+- temporary compatibility aliases `CATS_INC_*`
+
+The current audit found no accidental `cats-inc` leftovers in:
+
+- `cats/src`
+- `cats/tests`
+- public product docs that define the current suite/runtime contract
+
+Operational/product-facing naming is now:
+
+- product name: `Cats`
+- package/executable: `cats`
+- public app metadata: `cats`
+- public health/service identifier: `cats`
+- compatibility aliases: `CATS_INC_*` only, pending future cleanup
 
 ## Validation
 

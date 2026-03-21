@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-`cats-inc` is still iterating on the workspace product model, so the project
+`cats` is still iterating on the workspace product model, so the project
 correctly deferred Electron during the first renderer and workspace-core
 delivery phases.
 
@@ -22,7 +22,7 @@ must not move into a browser renderer process.
 Later discussion revisited Tauri and Flutter as alternatives. Under the current
 topology, those options do not improve the primary desktop path:
 
-- both `cats-inc` and `cats-runtime` still need Node-friendly sidecar
+- both `cats` and `cats-runtime` still need Node-friendly sidecar
   supervision
 - Electron already matches the chosen React/Vite renderer stack
 - introducing Rust- or Dart-based hosts would add another runtime or language
@@ -34,20 +34,20 @@ boundary decisions.
 
 ## Decision
 
-When `cats-inc` grows a desktop-installable shell, it will use Electron as a
+When `cats` grows a desktop-installable shell, it will use Electron as a
 thin desktop host with this default process topology:
 
 ```text
 Electron main
   ├─ owns tray, windows, auto-start, updates, and process supervision
   ├─ starts cats-runtime as a managed local process
-  ├─ starts cats-inc as a managed local process
-  └─ loads a BrowserWindow from the local cats-inc URL
+  ├─ starts cats as a managed local process
+  └─ loads a BrowserWindow from the local cats URL
 
 Renderer (React/Vite bundle inside BrowserWindow)
-  └─ talks only to cats-inc
+  └─ talks only to cats
 
-cats-inc Node server
+cats Node server
   └─ talks only to cats-runtime over loopback HTTP
 
 cats-runtime
@@ -57,7 +57,7 @@ cats-runtime
 Implementation guidance:
 
 - Keep the current React/Vite renderer model for the desktop UI.
-- Keep `cats-inc` as the product-facing Node server boundary.
+- Keep `cats` as the product-facing Node server boundary.
 - Keep `cats-runtime` out of the renderer entirely.
 - Start with `cats-runtime` as a managed sidecar process, not an in-renderer or
   preload import.
@@ -69,7 +69,7 @@ Implementation guidance:
 
 ### Positive
 
-- Preserves the current `cats-inc -> cats-runtime` contract with minimal
+- Preserves the current `cats -> cats-runtime` contract with minimal
   product-layer rewrites
 - Keeps CLI spawning, WSL handling, and native session discovery in a Node-safe
   process boundary
@@ -82,7 +82,7 @@ Implementation guidance:
 
 - Desktop packaging will still involve more than one local process
 - The Electron host must supervise readiness, shutdown ordering, and crash
-  recovery for both `cats-inc` and `cats-runtime`
+  recovery for both `cats` and `cats-runtime`
 - Loopback ports and local service discovery need an explicit desktop startup
   contract
 
@@ -106,7 +106,7 @@ desktop behavior that a normal web deployment cannot satisfy well.
 ### Replace Electron with Tauri Under the Current Sidecar Topology
 
 Rejected because the current product package still needs to supervise Node-based
-`cats-inc` and `cats-runtime` processes. Tauri can run sidecars, but doing so
+`cats` and `cats-runtime` processes. Tauri can run sidecars, but doing so
 would add packaging complexity without removing the Node runtime assumptions
 that already fit Electron.
 
@@ -114,11 +114,11 @@ that already fit Electron.
 
 - Add a desktop-host implementation phase under Phase 3 productization
 - Define a local readiness contract for Electron to wait on `cats-runtime` and
-  `cats-inc`
-- Revisit whether `cats-inc` and `cats-runtime` should keep fixed ports or move
+  `cats`
+- Revisit whether `cats` and `cats-runtime` should keep fixed ports or move
   to host-selected local ports for desktop packaging
 - Decide whether a runtime/debug window is a second BrowserWindow backed by
-  `cats-inc`, `cats-runtime`, or both
+  `cats`, `cats-runtime`, or both
 
 ---
 

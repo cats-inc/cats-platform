@@ -1,7 +1,7 @@
 # Deployment Guide
 
 > Deployment procedures and infrastructure documentation for the current
-> `cats-inc` slice and the planned packaged Cats suite topology.
+> The current `Cats` suite app and the planned packaged Cats suite topology.
 
 ## Environments
 
@@ -41,15 +41,15 @@ documented:
 
 - Electron `main` owns tray, windows, startup, and process supervision
 - `cats-runtime` runs as a managed local process
-- `cats-inc` runs as a managed local process and hosts the first `Cats Core v1`
+- `cats` runs as a managed local process and hosts the first `Cats Core v1`
   APIs or modules
 - The BrowserWindow loads local `Cats Chat` and `Cats Work` URLs from
-  `cats-inc`
+  `cats`
 - The renderer does not talk to provider CLIs or spawn local runtimes directly
 - The packaged experience should guide owner profile, model credentials, and
   optional bot-binding setup rather than requiring terminal steps
 - Tauri is not the current path because the desktop package still needs to
-  supervise Node-based `cats-inc` and `cats-runtime` sidecars
+  supervise Node-based `cats` and `cats-runtime` sidecars
 - Mobile is not part of the first packaged primary product surface; if added
   later, treat it as companion scope
 
@@ -63,8 +63,9 @@ for the planned desktop host model.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `CATS_INC_HOST` | Yes | Host interface to bind |
-| `CATS_INC_PORT` | Yes | Service port |
+| `CATS_HOST` | Yes | Host interface to bind (`CATS_INC_HOST` remains a compatibility alias) |
+| `CATS_PORT` | Yes | Service port (`CATS_INC_PORT` remains a compatibility alias) |
+| `CATS_STATE_PATH` | No | Workspace-state file path (`CATS_INC_STATE_PATH` remains a compatibility alias) |
 | `CATS_RUNTIME_BASE_URL` | Yes | Upstream runtime URL |
 | `CATS_RUNTIME_API_KEY` | No | Optional bearer token for `cats-runtime` |
 

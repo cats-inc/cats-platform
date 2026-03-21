@@ -5,7 +5,7 @@
 - **Date**: 2026-03-20
 - **Author**: Codex
 - **Context**: Follow-up product-positioning note after the 2026-03-20
-  architecture/spec/ADR pass across `cats-inc` and `cats-runtime`, plus
+  architecture/spec/ADR pass across `cats` and `cats-runtime`, plus
   re-review of `crew-chat-poc/`, Paperclip, and OpenClaw.
 
 ## Purpose

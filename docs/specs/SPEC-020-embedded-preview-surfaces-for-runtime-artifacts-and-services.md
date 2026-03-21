@@ -10,12 +10,12 @@
 
 ## Summary
 
-`cats-inc` should be able to show preview-capable runtime outputs in place,
+`cats` should be able to show preview-capable runtime outputs in place,
 including some outputs produced by CLI-backed providers. The correct contract is
 not "provider returns iframe HTML". The correct contract is:
 
 - `cats-runtime` reports normalized preview-capable surfaces
-- `cats-inc` decides whether and how to render them inline
+- `cats` decides whether and how to render them inline
 
 This spec defines that product/runtime direction.
 
@@ -26,7 +26,7 @@ This spec defines that product/runtime direction.
 - let CLI-backed providers participate when they can expose previewable outputs
 - keep preview support backend-neutral across `cli`, `api`/`local`, and
   `agent`
-- preserve product-owned rendering and safety policy in `cats-inc`
+- preserve product-owned rendering and safety policy in `cats`
 
 ## Non-Goals
 
@@ -38,7 +38,7 @@ This spec defines that product/runtime direction.
 ## User Stories
 
 - As an operator, I want a Cat to generate a local preview or HTML report and
-  let me inspect it directly inside `cats-inc`.
+  let me inspect it directly inside `cats`.
 - As an operator, I want the app to decide whether something can be safely
   embedded instead of blindly trusting provider output.
 - As a runtime integrator, I want one normalized way to surface previewable
@@ -58,7 +58,7 @@ This spec defines that product/runtime direction.
    previewable service URL or previewable artifact from that run.
 4. Providers and adapters shall not be required to emit raw iframe HTML as part
    of the public contract.
-5. `cats-inc` shall decide whether a preview surface is:
+5. `cats` shall decide whether a preview surface is:
    - embedded inline
    - opened externally
    - shown as a download/open artifact
@@ -66,14 +66,14 @@ This spec defines that product/runtime direction.
 6. The first slice should prioritize these embed-friendly cases:
    - local service URL intended for preview
    - HTML artifact intended for preview
-7. `cats-inc` should expose preview surfaces in a dedicated pane, panel, or
+7. `cats` should expose preview surfaces in a dedicated pane, panel, or
    split-view surface rather than mixing full preview payloads into the main
    transcript.
 8. Preview surfaces should remain associated with the room/run that produced
    them.
 9. If a surface is not safe or suitable for inline embedding, the UI shall fall
    back gracefully instead of failing the run.
-10. Runtime session/history surfaces should keep enough metadata for `cats-inc`
+10. Runtime session/history surfaces should keep enough metadata for `cats`
     to reference surfaced previews later.
 
 ### Non-Functional Requirements
@@ -176,7 +176,7 @@ Expected product behavior:
 - This spec deliberately avoids promising that every runtime output will become
   an inline iframe.
 - The existing `cats-runtime` contract already has the seeds of this model via
-  `outputDir`, `artifacts`, `summary`, and `services`; `cats-inc` still needs a
+  `outputDir`, `artifacts`, `summary`, and `services`; `cats` still needs a
   richer read model and UI to consume it.
 - The preview pane should complement the chat transcript rather than turn the
   transcript into an HTML dump or browser tab emulator.
@@ -190,12 +190,12 @@ Expected product behavior:
 
 ## Open Questions
 
-- [ ] Should preview surfaces be persisted directly in the `cats-inc` read
+- [ ] Should preview surfaces be persisted directly in the `cats` read
       model, or derived lazily from runtime history/session metadata in the
       first slice?
 - [ ] What is the minimum allowlist/sandbox policy for inline iframe rendering
       of local preview URLs?
-- [ ] Should `cats-inc` expose one generic preview pane first, or specialized
+- [ ] Should `cats` expose one generic preview pane first, or specialized
       viewers by media type from the start?
 
 ## References

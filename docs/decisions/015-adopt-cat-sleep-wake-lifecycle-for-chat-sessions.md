@@ -9,7 +9,7 @@ Accepted
 
 ## Context
 
-`cats-inc` now has a clear `Boss Cat` entry identity, but chat-session behavior
+`cats` now has a clear `Boss Cat` entry identity, but chat-session behavior
 is still explained in low-level runtime terms such as "activate" and
 "sessionId".
 
@@ -34,7 +34,7 @@ clearly.
 
 ## Decision
 
-`cats-inc` will describe chat-session lifecycle using a `sleep / wake` product
+`cats` will describe chat-session lifecycle using a `sleep / wake` product
 model layered on top of runtime sessions.
 
 1. Product-facing lifecycle language will use cat-native terms.

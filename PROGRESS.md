@@ -1,6 +1,6 @@
 # Progress
 
-> Implementation status and work package tracking for `cats-inc`.
+> Implementation status and work package tracking for `Cats`.
 
 ## Current Status
 
@@ -160,7 +160,7 @@
 
 #### Key Decisions
 
-- `cats-inc` is treated as the flagship product shell, not a direct port target
+- `Cats` is treated as the flagship product shell, not a direct port target
 - `cats-runtime` is the stable runtime boundary for this app
 - Phase 1 uses only built-in Node APIs to keep the first slice dependency-light
 

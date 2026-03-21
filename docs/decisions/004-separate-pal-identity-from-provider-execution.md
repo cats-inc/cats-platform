@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-`cats-inc` started with a simple workspace model where each channel member
+`cats` started with a simple workspace model where each channel member
 stored `provider`, `model`, and live `session` state directly on the same
 record. That was sufficient for the first runtime-backed chat shell, but it
 creates the wrong long-term boundary for the product.
@@ -32,7 +32,7 @@ that design:
 
 ## Decision
 
-`cats-inc` will treat provider execution as a replaceable channel-scoped lease,
+`cats` will treat provider execution as a replaceable channel-scoped lease,
 not as part of pal identity.
 
 The product model will move toward four distinct concepts:
@@ -48,7 +48,7 @@ The product model will move toward four distinct concepts:
    - product-owned summaries, facts, and open loops that survive session or
      provider changes
 
-For the current `cats-inc` phase, this means:
+For the current `cats` phase, this means:
 
 - move provider/model out of the pal identity fields
 - store provider/model under explicit execution settings instead
@@ -67,7 +67,7 @@ global orchestrator path.
 
 - The same pal can be scheduled differently per channel without changing who
   that pal is.
-- Cross-session continuity becomes a `cats-inc` responsibility instead of a
+- Cross-session continuity becomes a `cats` responsibility instead of a
   provider-specific feature.
 - Runtime scheduling can later optimize for budget, latency, or availability
   without rewriting the pal model again.
@@ -110,7 +110,7 @@ global orchestrator path.
 - **Pros**: Less product-side memory work in the short term.
 - **Cons**: Behavior differs by provider, portability is poor, and switching
   providers loses continuity.
-- **Why rejected**: `cats-inc` needs provider-agnostic continuity and budget
+- **Why rejected**: `cats` needs provider-agnostic continuity and budget
   routing, not provider-local persistence.
 
 ## References

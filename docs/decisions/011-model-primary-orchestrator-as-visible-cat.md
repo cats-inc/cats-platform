@@ -9,7 +9,7 @@ Accepted
 
 ## Context
 
-`cats-inc` is now firmly a chat-first product. That creates a product-level
+`cats` is now firmly a chat-first product. That creates a product-level
 constraint:
 
 - a user opening `+ New Chat` expects to be talking to someone
@@ -29,7 +29,7 @@ This creates an easy modeling trap:
 
 The product also wants a simple initial rule:
 
-- one default public orchestrator per `cats-inc` environment
+- one default public orchestrator per `cats` environment
 - no hard architectural ban on future internal active orchestrators
 
 The decision therefore needs to settle both user-facing identity and internal
@@ -37,7 +37,7 @@ system boundaries.
 
 ## Decision
 
-`cats-inc` will use a two-layer orchestrator model with one visible public
+`cats` will use a two-layer orchestrator model with one visible public
 entry identity.
 
 Terminology rule:
@@ -45,7 +45,7 @@ Terminology rule:
 - `Primary Orchestrator Cat` is the formal product and domain term
 - `Boss Cat` is the preferred user-facing UI term
 
-1. Each `cats-inc` environment has exactly one `Primary Orchestrator Cat`.
+1. Each `cats` environment has exactly one `Primary Orchestrator Cat`.
    - this is the default public orchestrator for the environment
    - this is the identity shown to users in chat
    - this is the identity used for public bot bindings such as Telegram and

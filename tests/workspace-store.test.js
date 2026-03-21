@@ -17,7 +17,7 @@ import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
 import { FileWorkspaceStore } from '../dist-server/workspace/store.js';
 
 test('FileWorkspaceStore persists configured channels, pals, assignments, and messages to disk', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'workspace-state.json');
   const store = new FileWorkspaceStore(statePath);
 
@@ -92,7 +92,7 @@ test('FileWorkspaceStore persists configured channels, pals, assignments, and me
 });
 
 test('exportChannel returns assigned pals with the selected transcript', async () => {
-  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'));
+  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'));
   const initialState = await store.read();
   const state = createChannel(
     initialState,
@@ -111,7 +111,7 @@ test('exportChannel returns assigned pals with the selected transcript', async (
 });
 
 test('FileWorkspaceStore migrates legacy provider-bound records into global pals plus assignments', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'workspace-state.json');
   await writeFile(
     statePath,
@@ -126,8 +126,8 @@ test('FileWorkspaceStore migrates legacy provider-bound records into global pals
           topic: 'Migrate the old local state shape.',
           status: 'configured',
           unreadCount: 0,
-          repoPath: 'C:/repo/cats-inc',
-          workspaceCwd: 'C:/repo/cats-inc',
+          repoPath: 'C:/repo/cats',
+          workspaceCwd: 'C:/repo/cats',
           language: 'TypeScript',
           responseLanguage: 'en',
           formationMode: 'manual',
@@ -141,7 +141,7 @@ test('FileWorkspaceStore migrates legacy provider-bound records into global pals
           orchestratorSession: {
             sessionId: 'orch-1',
             status: 'ready',
-            cwd: 'C:/repo/cats-inc',
+            cwd: 'C:/repo/cats',
             lastError: null,
           },
           members: [
@@ -159,7 +159,7 @@ test('FileWorkspaceStore migrates legacy provider-bound records into global pals
               session: {
                 sessionId: 'pal-session-1',
                 status: 'ready',
-                cwd: 'C:/repo/cats-inc',
+                cwd: 'C:/repo/cats',
                 lastError: null,
               },
             },
@@ -226,7 +226,7 @@ test('FileWorkspaceStore migrates legacy provider-bound records into global pals
 });
 
 test('WorkspaceStore exposes a derived Cats Core view that stays in sync with workspace state', async () => {
-  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'));
+  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'));
   let state = await store.read();
 
   state = createChannel(
@@ -259,7 +259,7 @@ test('WorkspaceStore exposes a derived Cats Core view that stays in sync with wo
 });
 
 test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor', async () => {
-  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'));
+  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'));
   let state = await store.read();
 
   state = createWorkspacePal(
@@ -295,7 +295,7 @@ test('WorkspaceStore syncs Telegram bot bindings to the current Boss Cat actor',
 
 test('updateGlobalOrchestrator preserves the existing model when model is omitted', async () => {
   const store = new FileWorkspaceStore(
-    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'),
+    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'),
   );
   let state = await store.read();
 
@@ -324,7 +324,7 @@ test('updateGlobalOrchestrator preserves the existing model when model is omitte
 });
 
 test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', async () => {
-  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'));
+  const store = new FileWorkspaceStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'));
   let state = await store.read();
 
   state = createWorkspacePal(
@@ -377,7 +377,7 @@ test('WorkspaceStore rebinds Telegram bot bindings when the Boss Cat changes', a
 test('deleteChannel removes the selected chat and falls back to the next recent chat', async () => {
   let state = createChannel(
     await new FileWorkspaceStore(
-      path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'),
+      path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'),
     ).read(),
     {
       title: 'First Chat',
@@ -410,7 +410,7 @@ test('deleteChannel removes the selected chat and falls back to the next recent 
 
 test('createChannel defaults empty draft fields to a neutral new-chat label', async () => {
   const initialState = await new FileWorkspaceStore(
-    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-inc-store-')), 'workspace-state.json'),
+    path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'workspace-state.json'),
   ).read();
 
   const state = createChannel(

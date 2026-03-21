@@ -10,7 +10,7 @@
 
 ## Summary
 
-`cats-inc` needs a dedicated Telegram transport seam so a single public
+`cats` needs a dedicated Telegram transport seam so a single public
 `Boss Cat` can later bridge Telegram inbound and outbound traffic without
 entangling transport logic with the web-chat transcript flow.
 
@@ -20,7 +20,7 @@ worker cats as direct Telegram senders.
 
 ## Goals
 
-- establish Telegram as a dedicated transport layer in `cats-inc`
+- establish Telegram as a dedicated transport layer in `cats`
 - keep Telegram's visible identity mapped to the `Boss Cat`
 - add webhook ingress and relay status seams for the Telegram workstream
 - preserve clean separation between transcript messages and transport logs
@@ -35,10 +35,10 @@ worker cats as direct Telegram senders.
 
 ### Functional Requirements
 
-1. `cats-inc` shall expose `GET /api/transports/telegram`.
+1. `cats` shall expose `GET /api/transports/telegram`.
 2. The status route shall report whether a Telegram bot binding exists for the
    current workspace and which `Boss Cat` it would front.
-3. `cats-inc` shall expose `POST /api/transports/telegram/webhook`.
+3. `cats` shall expose `POST /api/transports/telegram/webhook`.
 4. The webhook route shall accept Telegram updates and route them through a
    dedicated relay component rather than directly into chat handlers.
 5. The relay shall keep dedupe state for processed update ids.

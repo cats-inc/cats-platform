@@ -4,7 +4,7 @@ Status: Draft (Pending Review)
 
 ## Summary
 
-`cats-inc` is moving toward a native-feeling, desktop-first product experience.
+`cats` is moving toward a native-feeling, desktop-first product experience.
 That means the first-run experience should not assume the operator already
 understands channels, cat registry structure, runtime dependencies, or transport
 bindings.

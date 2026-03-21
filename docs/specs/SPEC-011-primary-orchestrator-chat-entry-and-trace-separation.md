@@ -4,7 +4,7 @@ Status: Approved
 
 ## Summary
 
-`cats-inc` now has enough chat, routing, and Cats registry structure to decide
+`cats` now has enough chat, routing, and Cats registry structure to decide
 how the orchestrator should appear in the product.
 
 The agreed direction is:
@@ -61,7 +61,7 @@ Terminology rule:
 - The operator shall be able to create a new Cat and assign it as the
   `Primary Orchestrator Cat` in the same settings flow.
 - Exactly one `Primary Orchestrator Cat` shall be active as the default public
-  orchestrator per `cats-inc` environment.
+  orchestrator per `cats` environment.
 - Public bot bindings such as Telegram and LINE@ shall attach to that primary
   orchestrator identity.
 - `+ New Chat` and equivalent draft-chat entry flows shall start a conversation
@@ -88,7 +88,7 @@ Terminology rule:
 - Trace visibility should help operators reason about work without requiring
   them to read raw logs in the main conversation.
 - The design should remain compatible with `Cats Core v1`, product-owned
-  approvals, and the existing `cats-inc -> cats-runtime` boundary.
+  approvals, and the existing `cats -> cats-runtime` boundary.
 - The initial UI should prefer simple explicit labels over abstract system
   jargon.
 

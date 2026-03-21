@@ -1,6 +1,6 @@
-# ADR-013: Ship `cats-inc` as an Executable Self-Hosted npm App
+# ADR-013: Ship `cats` as an Executable Self-Hosted npm App
 
-> Prioritize `npx cats-inc` style distribution for technical self-hosted trials
+> Prioritize `npx cats` style distribution for technical self-hosted trials
 > and open-source collaboration, while keeping Electron as a later wrapper
 > around the same local services.
 
@@ -10,7 +10,7 @@ Proposed
 
 ## Context
 
-`cats-inc` is the current product-facing app shell for the cats suite. Its root
+`cats` is the current flagship suite app for the cats suite. Its root
 package already behaves more like an application than a reusable library:
 
 - the package entrypoint boots config, runtime client, workspace store, and the
@@ -22,7 +22,7 @@ At the same time, recent product direction clarified a near-term distribution
 goal:
 
 - technical users should be able to try the product quickly with a
-  self-hosted command such as `npx cats-inc`
+  self-hosted command such as `npx cats`
 - the codebase should be easy to share for open-source collaboration before a
   polished desktop wrapper exists
 
@@ -31,27 +31,27 @@ the packaged desktop experience is built. That decision remains valid, but it
 does not solve the shorter-term need for a lightweight, reviewable, technical
 distribution path.
 
-Treating the root `cats-inc` package as a general-purpose npm library would
+Treating the root `cats` package as a general-purpose npm library would
 conflict with its current shape and its product role:
 
 - the root package is not a stable SDK surface
 - the renderer and server are shipped together as one product shell
 - product trial and contribution workflows care more about fast local startup
-  than about importing `cats-inc` into another application
+  than about importing `cats` into another application
 
 The project needs a written distribution stance so review can happen before
 implementation starts.
 
 ## Decision
 
-`cats-inc` will be positioned first as an executable self-hosted npm app
+`cats` will be positioned first as an executable self-hosted npm app
 package, not as a general-purpose library package.
 
 This decision includes:
 
-1. The primary public technical distribution target is `npx cats-inc` (and
-   equivalent install + run flows such as `npm install -g cats-inc`).
-2. The root `cats-inc` package is application-first. It may expose small
+1. The primary public technical distribution target is `npx cats` (and
+   equivalent install + run flows such as `npm install -g cats`).
+2. The root `cats` package is application-first. It may expose small
    programmatic helpers for tests or internal composition, but that is
    secondary to the executable app experience.
 3. The published app package should include the built server and built renderer
@@ -67,7 +67,7 @@ This decision includes:
    service topology rather than block the first npm-based self-hosted release.
 7. If reusable library surfaces are needed later, they should be extracted into
    separate packages such as shared-core or runtime-client packages instead of
-   forcing the root `cats-inc` package to serve two masters.
+   forcing the root `cats` package to serve two masters.
 
 ## Consequences
 
@@ -83,7 +83,7 @@ This decision includes:
 
 ### Negative
 
-- `cats-inc` now needs explicit packaging work such as executable entrypoints,
+- `cats` now needs explicit packaging work such as executable entrypoints,
   published asset curation, and first-run bootstrap behavior.
 - One-command startup increases pressure to define how local `cats-runtime`
   readiness, shutdown, and version compatibility are handled.
@@ -93,14 +93,14 @@ This decision includes:
 ### Neutral
 
 - This decision does not remove Electron from the roadmap.
-- This decision does not require `cats-inc` to absorb `cats-runtime`
+- This decision does not require `cats` to absorb `cats-runtime`
   implementation details.
 - This decision does not prevent separate container or hosted deployment paths
   later.
 
 ## Alternatives Considered
 
-### Alternative 1: Treat `cats-inc` Primarily as a Reusable npm Library
+### Alternative 1: Treat `cats` Primarily as a Reusable npm Library
 
 - **Pros**: Cleaner story for `import`-based reuse.
 - **Cons**: Conflicts with the current app-first package shape and does not
@@ -116,7 +116,7 @@ This decision includes:
 - **Why rejected**: `npx`-style distribution is a smaller and faster path for
   technical users, and it remains compatible with later Electron work.
 
-### Alternative 3: Keep `cats-inc` as a Repo-Only Dev App
+### Alternative 3: Keep `cats` as a Repo-Only Dev App
 
 - **Pros**: Lowest short-term packaging effort.
 - **Cons**: Keeps trial and contribution friction high because users must clone

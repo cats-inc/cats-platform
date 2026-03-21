@@ -10,7 +10,7 @@
 
 ## Summary
 
-The Cats suite needs a memory architecture that spans both `cats-inc` and
+The Cats suite needs a memory architecture that spans both `cats` and
 `cats-runtime` without confusing provider-native continuity, product transcript
 backup, cross-session Cat memory, and future archive/RAG retrieval.
 
@@ -28,7 +28,7 @@ The key rule is:
 
 ## Goals
 
-- define a suite-wide memory layering model for `cats-inc` and `cats-runtime`
+- define a suite-wide memory layering model for `cats` and `cats-runtime`
 - preserve full chat/session backups independent of any one agent backend
 - let the same Cat keep memory across sessions, channels, and provider changes
 - prepare `Cats Work` for all-session archive search and RAG without coupling
@@ -63,7 +63,7 @@ The key rule is:
 
 1. The Cats suite shall treat memory as a multi-layer system rather than one
    transcript store.
-2. `cats-inc` shall own canonical product transcript backup for user-visible and
+2. `cats` shall own canonical product transcript backup for user-visible and
    transport-visible conversations.
 3. `cats-runtime` shall emit or persist normalized runtime evidence for session
    execution, including turn events, tool activity, artifacts, and provider
@@ -90,7 +90,7 @@ The key rule is:
 
 ### Non-Functional Requirements
 
-- **Boundary integrity**: `cats-inc` remains the product owner of durable memory
+- **Boundary integrity**: `cats` remains the product owner of durable memory
   semantics; `cats-runtime` remains the runtime boundary for execution.
 - **Portability**: long-lived Cat memory must survive provider swaps.
 - **Auditability**: evidence transcripts must preserve enough detail for replay,
@@ -218,7 +218,7 @@ Rule:
 User / transport message
         |
         v
-cats-inc conversation + routing layer
+cats conversation + routing layer
         |
         v
 cats-runtime session execution
@@ -244,7 +244,7 @@ product post-turn pipeline
 - expose checkpoint-worthy metadata to upstream products
 - avoid claiming ownership of long-lived product memory semantics
 
-### `cats-inc` responsibilities
+### `cats` responsibilities
 
 - own product transcript backup across chats, rooms, transports, and worker
   traces
@@ -329,8 +329,8 @@ The most suitable contemporary technical pattern for Cats is:
 
 ## Dependencies
 
-- [cats-inc Architecture](../architecture.md)
-- [cats-inc Requirements](../requirements.md)
+- [cats Architecture](../architecture.md)
+- [cats Requirements](../requirements.md)
 - [ADR-007: Establish Cats Core v1 for Chat and Work](../decisions/007-establish-cats-core-v1-for-chat-and-work.md)
 - [ADR-008: Expose cats-runtime via direct API and MCP facade](../decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md)
 - [cats-runtime Architecture](../../../cats-runtime/docs/architecture.md)
@@ -342,7 +342,7 @@ The most suitable contemporary technical pattern for Cats is:
 - [ ] Should durable Cat memory updates be fully automated at turn-end, or gated
       through confidence thresholds and review queues for some categories?
 - [ ] Which working-memory checkpoints belong in `cats-runtime` history versus
-      only in `cats-inc` product stores?
+      only in `cats` product stores?
 - [ ] When `Cats Work` launches, should archive retrieval be one shared corpus
       or segmented by workspace, transport, or privacy domain?
 - [ ] What is the first implementation slice: transcript normalization,

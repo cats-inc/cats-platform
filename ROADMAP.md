@@ -1,12 +1,12 @@
 # Roadmap
 
-> Long-term product milestones for `cats-inc`.
+> Long-term product milestones for `Cats`.
 
 ## Vision
 
 Build the cats suite around a shared `Cats Core v1` foundation, with
 `Cats Chat` and `Cats Work` as separate product surfaces above
-`cats-runtime`. The current `cats-inc` codebase still starts from a
+`cats-runtime`. The current `cats` codebase still starts from a
 Node.js/TypeScript chat shell, but the roadmap now assumes parallel product
 tracks that reuse the same actors, conversations, approvals, and owner-memory
 contracts.
@@ -36,8 +36,8 @@ contracts.
       permissions, conversations, bot bindings, tasks/approvals, owner profile,
       and archive metadata
 - [x] Keep the full desktop suite on one `Electron + React/TypeScript` path
-      while `cats-inc` and `cats-runtime` remain Node sidecars
-- [ ] Define how `cats-inc` hosts or exposes shared `Cats Core v1` services for
+      while `cats` and `cats-runtime` remain Node sidecars
+- [ ] Define how `cats` hosts or exposes shared `Cats Core v1` services for
       both `Cats Chat` and `Cats Work`
 - [ ] Define the split between `cats-runtime` direct product APIs and the
       planned MCP facade for orchestrator tool use
@@ -78,7 +78,7 @@ contracts.
 
 ## Future Considerations
 
-- Thin Electron host that manages local `cats-inc` and `cats-runtime` services
+- Thin Electron host that manages local `cats` and `cats-runtime` services
 - Shared desktop host that can open both `Cats Chat` and `Cats Work`
 - Richer memory retrieval loops through structured owner profile plus archive RAG
 - Optional Chat mobile companion after the shared desktop suite stabilizes

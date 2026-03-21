@@ -110,7 +110,7 @@ a managed agent with:
 Cats now has the architectural pieces for packaged setup and runtime
 diagnostics, especially:
 
-- packaged host-owned setup in `cats-inc`
+- packaged host-owned setup in `cats`
 - lightweight provider setup/diagnostics in `cats-runtime`
 - provider compatibility/evidence direction
 
@@ -137,7 +137,7 @@ the CLI is only half-installed.
 
 **Recommended ownership**
 
-- `cats-inc`: `Add Local Cat` UX and operator flow
+- `cats`: `Add Local Cat` UX and operator flow
 - `cats-runtime`: probe/test/fingerprint/readiness APIs and local-target binding
 
 ### 2. Runtime-Managed Skills That Actually Execute
@@ -175,7 +175,7 @@ This is one of the most direct gaps between:
 
 **Recommended ownership**
 
-- `cats-inc`: decide which skill profile a Cat should request
+- `cats`: decide which skill profile a Cat should request
 - `cats-runtime`: resolve, materialize, inject, and report which skills were
   actually applied
 
@@ -365,10 +365,10 @@ Paperclip without importing Paperclip's broader company-control-plane scope.
 - [Paperclip Control-Plane Analysis](./paperclip-control-plane-analysis.md)
 - [cats-runtime Paperclip Gap Assessment](../../../cats-runtime/docs/research/2026-03-19-paperclip-gap-assessment.md)
 - [cats-runtime Runtime-Managed Skills v0](../../../cats-runtime/docs/specs/SPEC-005-runtime-managed-skills-v0.md)
-- [cats-inc Capability Registry and Skill/MCP Mapping](../specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md)
-- [cats-inc Chat Session Sleep/Wake Lifecycle](../specs/SPEC-016-chat-session-sleep-wake-lifecycle.md)
-- [cats-inc Product Skill Profiles and Runtime Skill Manifests](../specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md)
-- [cats-inc Packaged Setup Wizard and Provider Installation](../specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md)
+- [cats Capability Registry and Skill/MCP Mapping](../specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md)
+- [cats Chat Session Sleep/Wake Lifecycle](../specs/SPEC-016-chat-session-sleep-wake-lifecycle.md)
+- [cats Product Skill Profiles and Runtime Skill Manifests](../specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md)
+- [cats Packaged Setup Wizard and Provider Installation](../specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md)
 - [cats-runtime Provider Compatibility and Evidence Engine](../../../cats-runtime/docs/specs/SPEC-007-provider-compatibility-and-evidence-engine.md)
 - [cats-runtime Usage Metering and Execution Guardrails](../../../cats-runtime/docs/specs/SPEC-010-usage-metering-rate-limit-detection-and-execution-guardrails.md)
 

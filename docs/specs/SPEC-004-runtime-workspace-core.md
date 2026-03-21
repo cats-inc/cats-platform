@@ -4,7 +4,7 @@
 
 Close the main product gap with `agent-workspace-poc` by adding runtime-backed
 channel activation, routed messaging, pal management, orchestrator editing, and
-transcript export to `cats-inc`.
+transcript export to `cats`.
 
 ## Goals
 

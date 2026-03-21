@@ -1,6 +1,6 @@
 # Setup Guide
 
-> Environment setup and installation instructions for `cats-inc`.
+> Environment setup and installation instructions for `Cats`.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@
 ### 1. Prepare the project
 
 ```bash
-cd cats-inc
+cd cats
 cp .env.example .env
 ```
 
@@ -78,8 +78,9 @@ Node server on port `8181`.
 
 ### Issue 4: Channel selection or creation does not persist
 
-**Solution**: Check whether `CATS_INC_STATE_PATH` points to a writable file
-location. If unset, the app uses `config/workspace-state.local.json`.
+**Solution**: Check whether `CATS_STATE_PATH` points to a writable file
+location. `CATS_INC_STATE_PATH` is still accepted as a compatibility alias. If
+unset, the app uses `config/workspace-state.local.json`.
 
 ### Issue 5: Channel activation fails immediately
 

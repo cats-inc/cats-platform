@@ -9,7 +9,7 @@ Accepted
 
 ## Context
 
-`cats-runtime` is already the accepted runtime boundary for `cats-inc`.
+`cats-runtime` is already the accepted runtime boundary for `cats`.
 However, the suite now needs two different ways to use runtime capabilities:
 
 - product services need stable, explicit, app-controlled APIs for health,
@@ -27,7 +27,7 @@ orchestrator agents lose a clean tool boundary.
 `cats-runtime` will support two complementary access modes:
 
 1. **Direct product API**
-   - used by `cats-inc`, `Cats Chat`, `Cats Work`, desktop host processes, and
+   - used by `cats`, `Cats Chat`, `Cats Work`, desktop host processes, and
      other product-owned services
 2. **MCP facade**
    - used by orchestrator-style agents as a tool surface when they need runtime

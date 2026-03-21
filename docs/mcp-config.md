@@ -37,11 +37,11 @@ adapters or CLI details.
 ## Current Project Stance
 
 - `cats-runtime` remains the main runtime boundary for all product code.
-- `cats-inc` product services should continue to call `cats-runtime` through
+- `cats` product services should continue to call `cats-runtime` through
   direct HTTP or SDK-style APIs.
 - A future `cats-runtime` MCP facade should expose a curated tool set for
   orchestrators.
-- `cats-inc` should not require MCP just to render Chat or Work surfaces.
+- `cats` should not require MCP just to render Chat or Work surfaces.
 
 ## Planned MCP Tool Scope
 
@@ -55,7 +55,7 @@ The exact tool names are still to be finalized, but the intended scope is:
 - safe escalation or approval handoff hooks where runtime context is needed
 
 MCP should not become a back door around product-owned permissions,
-conversations, or approval state. Those remain inside `cats-inc` and
+conversations, or approval state. Those remain inside `cats` and
 `Cats Core v1`.
 
 ## Configuration

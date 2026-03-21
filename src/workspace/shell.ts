@@ -14,7 +14,7 @@ export function createAppShell(
 
   return {
     app: {
-      name: 'cats-inc',
+      name: 'cats',
       stage: 'phase-2-shell',
       runtimeBoundary: 'cats-runtime',
     },

@@ -339,7 +339,7 @@ export async function fetchAppShell(signal?: AbortSignal): Promise<AppShellPaylo
   });
 
   return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(response, `cats-inc app shell returned ${response.status}`),
+    await expectJson<AppShellPayload>(response, `cats app shell returned ${response.status}`),
   );
 }
 
@@ -377,7 +377,7 @@ export async function updateSelectedChannel(
 
   return mutateAndRefetch(
     response,
-    `cats-inc workspace selection returned ${response.status}`,
+    `cats workspace selection returned ${response.status}`,
     signal,
   );
 }
@@ -398,7 +398,7 @@ export async function updateVerbosePreference(
 
   return mutateAndRefetch(
     response,
-    `cats-inc verbose preference update returned ${response.status}`,
+    `cats verbose preference update returned ${response.status}`,
     signal,
   );
 }
@@ -415,7 +415,7 @@ export async function deleteGlobalPal(
 
   return mutateAndRefetch(
     response,
-    `cats-inc cat deletion returned ${response.status}`,
+    `cats cat deletion returned ${response.status}`,
     signal,
   );
 }
@@ -436,7 +436,7 @@ export async function createWorkspaceChannel(
 
   return mutateAndRefetch(
     response,
-    `cats-inc workspace channel creation returned ${response.status}`,
+    `cats workspace channel creation returned ${response.status}`,
     signal,
   );
 }
@@ -455,7 +455,7 @@ export async function deleteWorkspaceChannel(
 
   return mutateAndRefetch(
     response,
-    `cats-inc workspace channel deletion returned ${response.status}`,
+    `cats workspace channel deletion returned ${response.status}`,
     signal,
   );
 }
@@ -476,7 +476,7 @@ export async function createGlobalPal(
 
   return mutateAndRefetch(
     response,
-    `cats-inc workspace pal creation returned ${response.status}`,
+    `cats workspace pal creation returned ${response.status}`,
     signal,
   );
 }
@@ -499,7 +499,7 @@ export async function assignPalToWorkspaceChannel(
 
   return mutateAndRefetch(
     response,
-    `cats-inc channel pal assignment returned ${response.status}`,
+    `cats channel pal assignment returned ${response.status}`,
     signal,
   );
 }
@@ -519,7 +519,7 @@ export async function removePalFromWorkspaceChannel(
 
   return mutateAndRefetch(
     response,
-    `cats-inc channel pal removal returned ${response.status}`,
+    `cats channel pal removal returned ${response.status}`,
     signal,
   );
 }
@@ -538,7 +538,7 @@ export async function activateWorkspaceChannel(
 
   const { activation } = await expectJson<{
     activation: { channelId: string; startedAt: string; results: ActivateChannelResponse['results'] };
-  }>(response, `cats-inc channel activation returned ${response.status}`);
+  }>(response, `cats channel activation returned ${response.status}`);
 
   let appShell: AppShellPayload;
   try {
@@ -567,7 +567,7 @@ export async function sendWorkspaceMessage(
   const { dispatch } = await expectJson<{
     message: unknown;
     dispatch: { channelId: string; results: SendChannelMessageResponse['results'] };
-  }>(response, `cats-inc channel messaging returned ${response.status}`);
+  }>(response, `cats channel messaging returned ${response.status}`);
 
   let appShell: AppShellPayload;
   try {
@@ -594,7 +594,7 @@ export async function updateWorkspaceOrchestrator(
 
   return mutateAndRefetch(
     response,
-    `cats-inc orchestrator update returned ${response.status}`,
+    `cats orchestrator update returned ${response.status}`,
     signal,
   );
 }

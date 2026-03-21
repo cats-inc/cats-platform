@@ -11,7 +11,7 @@ and
 
 This plan covers the first implementation path for:
 
-- one visible `Primary Orchestrator Cat` per `cats-inc` environment
+- one visible `Primary Orchestrator Cat` per `cats` environment
 - `+ New Chat` starting as a conversation with that Cat
 - keeping orchestration runs and events as system-layer records
 - separating main transcript dialogue from orchestration activity or trace

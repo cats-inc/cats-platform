@@ -2,7 +2,7 @@
 
 ## Summary
 
-Add the first operator-facing renderer for `cats-inc` using React/Vite, fed by
+Add the first operator-facing renderer for `cats` using React/Vite, fed by
 the existing app-shell API.
 
 ## Goals

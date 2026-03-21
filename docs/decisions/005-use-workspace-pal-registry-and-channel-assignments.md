@@ -31,7 +31,7 @@ The product direction is now clearer:
 
 ## Decision
 
-`cats-inc` will keep pals at workspace scope and keep channel usage in a
+`cats` will keep pals at workspace scope and keep channel usage in a
 separate assignment layer.
 
 The product model will use:

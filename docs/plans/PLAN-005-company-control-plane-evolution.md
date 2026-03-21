@@ -8,7 +8,7 @@ parallel-track plan.
 
 ## Scope
 
-Incrementally rewrite `cats-inc` to absorb Paperclip's company-control-plane
+Incrementally rewrite `cats` to absorb Paperclip's company-control-plane
 concepts without copying Paperclip's runtime, server, or schema. The end state
 is a Cats-owned control plane where chat is one module attached to work,
 governance, and outputs.
@@ -45,7 +45,7 @@ objects above the channel layer.
 - [ ] Add governance actions and budget-aware control points where the work
       graph requires them.
 
-**Deliverables**: `cats-inc` gains board-level visibility and control-plane
+**Deliverables**: `cats` gains board-level visibility and control-plane
 surfaces instead of only chat views.
 
 ### Phase 4: Workspaces, Execution, and Outputs
@@ -66,7 +66,7 @@ still needs review or follow-up.
 - [ ] Revisit multi-company packaging and reusable company templates only after
       the core control plane is stable.
 
-**Deliverables**: `cats-inc` keeps a thin core while leaving room for richer
+**Deliverables**: `cats` keeps a thin core while leaving room for richer
 future modules.
 
 ## Candidate Code Areas
@@ -93,7 +93,7 @@ future modules.
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Control-plane scope becomes too broad too early | High | Land phases independently and keep chat working throughout |
-| Runtime concerns leak upward into `cats-inc` | High | Keep `cats-runtime` contract tests and ADR-001 as a hard boundary |
+| Runtime concerns leak upward into `cats` | High | Keep `cats-runtime` contract tests and ADR-001 as a hard boundary |
 | Current JSON state becomes too brittle | Medium | Introduce a store abstraction before large model growth |
 | Product language becomes confusing during migration | Medium | Define stable terminology before broad UI changes |
 | Plugin ambitions bloat early phases | Medium | Keep plugins and alternate entrypoints explicitly in Phase 5 |

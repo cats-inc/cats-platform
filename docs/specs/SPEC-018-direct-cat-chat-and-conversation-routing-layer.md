@@ -10,7 +10,7 @@
 
 ## Summary
 
-`cats-inc` should support two first-class conversation modes:
+`cats` should support two first-class conversation modes:
 
 - `Boss Chat`: the default orchestrated conversation mode
 - `Direct Cat Chat`: a direct room with one chosen Cat as the lead participant

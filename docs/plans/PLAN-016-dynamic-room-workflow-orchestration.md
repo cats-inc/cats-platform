@@ -31,7 +31,7 @@ This plan does not cover:
 
 - Keep explicit mention routing deterministic and product-owned.
 - Do not move workflow policy into prompt wording.
-- Preserve the `cats-inc -> cats-runtime` boundary.
+- Preserve the `cats -> cats-runtime` boundary.
 - Do not require the operator to see or edit every room workflow detail in the
   first slice.
 - Do not interleave multiple Cats' raw token streams directly into one
@@ -111,7 +111,7 @@ pointing from `Boss Cat`.
 
 ### Phase 5: Runtime Branching Integration
 
-- [ ] Extend `cats-inc` runtime client with branch primitives needed from
+- [ ] Extend `cats` runtime client with branch primitives needed from
       `cats-runtime`, including native session fork.
 - [ ] Add branch-strategy selection logic:
       - prefer native fork when the provider/session supports it and the child

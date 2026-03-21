@@ -44,7 +44,7 @@ The product therefore needs a clearer rule:
 
 ## Decision
 
-`cats-inc` will separate explicit mention semantics from dynamic room workflow
+`cats` will separate explicit mention semantics from dynamic room workflow
 orchestration.
 
 1. Explicit mention semantics remain deterministic product logic.
@@ -93,7 +93,7 @@ orchestration.
 
 ### Negative
 
-- `cats-inc` needs another explicit system-layer model: room workflow state.
+- `cats` needs another explicit system-layer model: room workflow state.
 - The product must track branch/converge state rather than only immediate
   routing outcomes.
 - Some current "mention teammates when needed" prompt guidance will need to be

@@ -384,11 +384,11 @@ specialist orchestration.**
 ## References
 
 - [OpenClaw Memory Layering Benchmark](./2026-03-19-openclaw-memory-layering-benchmark.md)
-- [cats-inc SPEC-014: Telegram Boss Cat Relay MVP](../specs/SPEC-014-telegram-boss-cat-relay-mvp.md)
-- [cats-inc SPEC-017: Telegram Inbox and Room Routing](../specs/SPEC-017-telegram-inbox-and-room-routing.md)
-- [cats-inc SPEC-018: Direct Cat Chat and Conversation Routing Layer](../specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md)
-- [cats-inc SPEC-019: Product Skill Profiles and Runtime Skill Manifests](../specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md)
-- [cats-inc SPEC-022: Cats Memory Layering and Ownership](../specs/SPEC-022-cats-memory-layering-and-ownership.md)
+- [cats SPEC-014: Telegram Boss Cat Relay MVP](../specs/SPEC-014-telegram-boss-cat-relay-mvp.md)
+- [cats SPEC-017: Telegram Inbox and Room Routing](../specs/SPEC-017-telegram-inbox-and-room-routing.md)
+- [cats SPEC-018: Direct Cat Chat and Conversation Routing Layer](../specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md)
+- [cats SPEC-019: Product Skill Profiles and Runtime Skill Manifests](../specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md)
+- [cats SPEC-022: Cats Memory Layering and Ownership](../specs/SPEC-022-cats-memory-layering-and-ownership.md)
 - [cats-runtime ADR-006: Agent Backend and Shared Runtime Contracts](../../../cats-runtime/docs/decisions/006-agent-backend-and-shared-runtime-contracts.md)
 - [cats-runtime SPEC-005: Runtime-Managed Skills v0](../../../cats-runtime/docs/specs/SPEC-005-runtime-managed-skills-v0.md)
 - [cats-runtime SPEC-008: Workspace Substrate Init, Audit, and Update](../../../cats-runtime/docs/specs/SPEC-008-workspace-substrate-init-audit-and-update.md)

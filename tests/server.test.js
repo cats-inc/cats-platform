@@ -103,7 +103,7 @@ test('GET /health reports runtime reachability', async () => {
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.service, 'cats-inc');
+    assert.equal(payload.service, 'cats');
     assert.equal(payload.status, 'ok');
     assert.equal(payload.runtime.service, 'cats-runtime');
   });
@@ -115,7 +115,7 @@ test('GET /api/app-shell exposes detailed workspace state with global pals', asy
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.app.name, 'cats-inc');
+    assert.equal(payload.app.name, 'cats');
     assert.equal(payload.workspace.name, 'Chat');
     assert.equal(payload.workspace.selectedChannelId, '');
     assert.equal(payload.workspace.channels.length, 0);
@@ -163,7 +163,7 @@ test('workspace API covers chat setup, activation, messaging, global pals, assig
       body: JSON.stringify({
         title: 'Ops Radar',
         topic: 'Track runtime regressions before shipping the desktop shell.',
-        repoPath: 'C:/repo/cats-inc',
+        repoPath: 'C:/repo/cats',
         language: 'TypeScript',
         pals: [
           {

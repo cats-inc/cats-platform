@@ -10,27 +10,27 @@
 
 ## Summary
 
-`cats-inc` should stop treating renderer-maintained provider/model tables as the
+`cats` should stop treating renderer-maintained provider/model tables as the
 authoritative source of model availability.
 
-`cats-runtime` now owns provider-model catalog discovery. `cats-inc` should
+`cats-runtime` now owns provider-model catalog discovery. `cats` should
 consume that catalog server-side, expose a stable product API for the renderer,
 and isolate provider/model form rendering behind a dedicated UI seam so the
 provider workstream does not need to keep editing the full chat shell.
 
 ## Goals
 
-- align `cats-inc` with the runtime-owned provider catalog direction
+- align `cats` with the runtime-owned provider catalog direction
 - expose a stable product API for provider list and provider-model reads
 - keep the renderer off direct runtime HTTP calls
 - extract provider/model form UI out of `App.tsx`
 - allow static fallback when runtime catalog lookups are unavailable
-- treat `cats-inc` static provider/model data as transitional fallback only,
+- treat `cats` static provider/model data as transitional fallback only,
   not as the long-term source of truth
 
 ## Non-Goals
 
-- making `cats-inc` the owner of model discovery
+- making `cats` the owner of model discovery
 - requiring a runtime aggregate provider-model endpoint in the first slice
 - rewriting every existing provider/model form to use live async fetching in the
   same commit
@@ -40,12 +40,12 @@ provider workstream does not need to keep editing the full chat shell.
 
 ### Functional Requirements
 
-1. `cats-inc` shall expose `GET /api/providers`.
+1. `cats` shall expose `GET /api/providers`.
 2. `GET /api/providers` shall return the product-supported provider families
    that can be shown in setup and cat-creation flows.
 3. `GET /api/providers` may include runtime-backed instance metadata such as
    `defaultInstance`, `defaultBackend`, and `instances[]` when available.
-4. `cats-inc` shall expose `GET /api/providers/{provider}/models`.
+4. `cats` shall expose `GET /api/providers/{provider}/models`.
 5. `GET /api/providers/{provider}/models` shall call `cats-runtime`
    server-side when the runtime catalog route is available.
 6. The renderer shall not be required to call `cats-runtime` directly.
@@ -56,7 +56,7 @@ provider workstream does not need to keep editing the full chat shell.
    so instance-specific model catalogs can be consumed without direct runtime
    calls.
 9. When runtime model lookup fails for transport or availability reasons,
-   `cats-inc` may fall back to a curated static product list for that provider
+   `cats` may fall back to a curated static product list for that provider
    and include warnings.
 10. Unknown provider families shall return a client error instead of an empty
    success response.
@@ -105,7 +105,7 @@ Illustrative response:
 ```
 
 This route is product-owned. It tells the renderer which provider families
-`cats-inc` supports in its UI and may also surface runtime-backed instance
+`cats` supports in its UI and may also surface runtime-backed instance
 metadata for instance-aware forms.
 
 ### `GET /api/providers/{provider}/models`
@@ -146,7 +146,7 @@ static product data when runtime discovery is unavailable.
   concerns; runtime still owns discovery and per-target model catalogs.
 - Static fallback is a safety net, not the future source of truth.
 - `src/shared/providerCatalog.ts` is a transitional compatibility layer. The
-  long-term goal is to shrink duplicated model tables until `cats-inc` no
+  long-term goal is to shrink duplicated model tables until `cats` no
   longer maintains its own authoritative provider-model copy.
 
 ## Dependencies

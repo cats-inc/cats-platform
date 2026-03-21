@@ -2,13 +2,13 @@
 
 ## Summary
 
-Create the first runnable `cats-inc` slice as a Node.js/TypeScript service that
+Create the first runnable `cats` slice as a Node.js/TypeScript service that
 exposes runtime-aware health and an explicit bootstrap workspace shell payload.
 
 ## Goals
 
-- Bootstrap the new `cats-inc` subproject with real project metadata
-- Prove `cats-inc` depends on `cats-runtime`
+- Bootstrap the new `cats` subproject with real project metadata
+- Prove `cats` depends on `cats-runtime`
 - Publish a minimal app-level contract that keeps the future workspace shape
   explicit
 

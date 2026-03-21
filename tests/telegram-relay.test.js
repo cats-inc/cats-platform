@@ -167,7 +167,7 @@ test('telegram relay bounds retained update ids while keeping a high-water statu
 });
 
 test('file-backed telegram relay store restores bindings and dedupe markers after restart', () => {
-  const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-inc-telegram-store-'));
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-telegram-store-'));
   const statePath = path.join(stateDir, 'telegram-relay.json');
   const firstStore = new FileBackedTelegramRelayStore(statePath, 4);
 

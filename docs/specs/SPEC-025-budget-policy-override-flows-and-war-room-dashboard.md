@@ -14,7 +14,7 @@ Cats needs a product-owned budget and cost-control model that sits above
 runtime telemetry.
 
 `cats-runtime` should report usage, rate-limit incidents, and guardrail states.
-`cats-inc` should decide how those facts turn into owner policy:
+`cats` should decide how those facts turn into owner policy:
 
 - warnings
 - approval requests
@@ -36,7 +36,7 @@ war-room dashboard.
 ## Non-Goals
 
 - reimplementing provider token accounting in product code
-- moving runtime rate-limit parsing or cooldown logic into `cats-inc`
+- moving runtime rate-limit parsing or cooldown logic into `cats`
 - requiring the first slice to ship a full multi-company finance module
 - replacing runtime dashboards as the source of execution facts
 
@@ -54,7 +54,7 @@ war-room dashboard.
 
 ### Functional Requirements
 
-1. `cats-inc` shall define a product-owned budget-policy model.
+1. `cats` shall define a product-owned budget-policy model.
 2. Budget policy shall consume runtime telemetry rather than re-parsing
    provider-native output.
 3. Budget policy scopes should be able to include at least:
@@ -84,7 +84,7 @@ war-room dashboard.
 9. Budget policy should be able to react to both:
    - usage accumulation
    - rate-limit or quota incidents reported by runtime
-10. `cats-inc` shall be able to present operator-facing cost-control reads.
+10. `cats` shall be able to present operator-facing cost-control reads.
 11. The first dashboard slice should leave room for at least:
     - current usage totals
     - burn or trend summaries

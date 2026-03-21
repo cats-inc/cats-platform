@@ -1,7 +1,7 @@
 # ADR-022: Own Workspace Delivery Policy in Product
 
 > Keep delivery governance as a product-owned control-plane concept in
-> `cats-inc`, while `cats-runtime` owns the executable delivery primitives used
+> `cats`, while `cats-runtime` owns the executable delivery primitives used
 > to realize that policy.
 
 ## Status
@@ -31,7 +31,7 @@ decisions:
 
 The accepted Cats architecture already establishes a pattern:
 
-- `cats-inc` owns product intent, approvals, room policy, and operator-visible
+- `cats` owns product intent, approvals, room policy, and operator-visible
   control-plane state
 - `cats-runtime` owns executable runtime behavior behind stable interfaces
 
@@ -47,11 +47,11 @@ runtime capability.
 
 ## Decision
 
-`cats-inc` will own workspace delivery policy as a product/control-plane
+`cats` will own workspace delivery policy as a product/control-plane
 concept, and `cats-runtime` will own the executable delivery primitives that
 realize approved policy.
 
-1. `cats-inc` owns delivery intent.
+1. `cats` owns delivery intent.
    - whether the work is artifact-only or repo-backed
    - whether commit, push, PR, CI, preview, or manual review are required
    - whether a stricter workflow should apply for a specific workspace, room,
@@ -70,7 +70,7 @@ realize approved policy.
      supported
    - machine-readable execution results and capability gaps
 
-4. `cats-inc` should not directly encode backend-specific git/CI mechanics.
+4. `cats` should not directly encode backend-specific git/CI mechanics.
    - it should request approved delivery intent through stable policy/manifests
    - it should not become a second git host, CI adapter, or process manager
 

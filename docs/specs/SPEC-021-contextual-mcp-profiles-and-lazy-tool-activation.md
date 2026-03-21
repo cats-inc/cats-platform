@@ -10,7 +10,7 @@
 
 ## Summary
 
-`cats-inc` should decide which tool capability set a Cat needs in a given
+`cats` should decide which tool capability set a Cat needs in a given
 product context, while `cats-runtime` should efficiently realize that request
 without eagerly loading every available tool or MCP server at session start.
 
@@ -26,7 +26,7 @@ This spec defines that split.
 ## Non-Goals
 
 - implementing the full MCP facade in this document alone
-- exposing backend-specific tool flags in `cats-inc`
+- exposing backend-specific tool flags in `cats`
 - requiring all providers to support identical tool behavior
 - turning the product into a direct MCP process manager
 
@@ -43,14 +43,14 @@ This spec defines that split.
 
 ### Functional Requirements
 
-1. `cats-inc` shall support product-owned `mcpProfile` selection for Cats,
+1. `cats` shall support product-owned `mcpProfile` selection for Cats,
    channels, and contextual overrides.
 2. `mcpProfile` resolution should consider at least:
    - Cat identity or role
    - room mode
    - transport context
    - optional channel override
-3. `cats-inc` shall resolve product context into a runtime-facing tool request
+3. `cats` shall resolve product context into a runtime-facing tool request
    or tool manifest before session create or wake.
 4. The runtime-facing request should express tool intent without encoding
    provider-specific CLI flags or transport details.
@@ -74,7 +74,7 @@ This spec defines that split.
     - realized tool set
     - lazy activations
     - warnings or unsupported capabilities
-12. Product services in `cats-inc` should continue to use direct runtime APIs.
+12. Product services in `cats` should continue to use direct runtime APIs.
     MCP remains an orchestrator/tool surface, not the primary app API path.
 
 ### Non-Functional Requirements
@@ -107,7 +107,7 @@ This spec defines that split.
 ## Flow
 
 ```text
-cats-inc context
+cats context
   (cat + room mode + transport + overrides)
         |
         v
@@ -180,7 +180,7 @@ Notes:
   `allowedTools`, local tool runtime, and provider-specific allow/trust
   translation. This spec raises that into an explicit product/runtime boundary
   contract.
-- The first slice can be pragmatic: `cats-inc` may resolve to a narrow
+- The first slice can be pragmatic: `cats` may resolve to a narrow
   `allowedTools` list plus profile id, while runtime handles the rest.
 - Full lazy MCP server lifecycle may arrive incrementally; the ownership split
   should be fixed now even if realization starts with simpler caching.
@@ -199,7 +199,7 @@ Notes:
 - [ ] Should the first runtime-facing manifest be only `allowedTools`, or
       should `requiredCapabilities` and `lazyGroups` ship in the first slice?
 - [ ] Which tool groups deserve eager activation versus lazy activation first?
-- [ ] How much lazy activation state should become visible in `cats-inc`
+- [ ] How much lazy activation state should become visible in `cats`
       activity or debug surfaces?
 
 ## References

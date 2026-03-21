@@ -9,7 +9,7 @@ Accepted
 
 ## Context
 
-`cats-inc` began as a chat-first Node.js/TypeScript shell above
+`cats` began as a chat-first Node.js/TypeScript shell above
 `cats-runtime`. That remains the current implementation, but the product
 direction has tightened:
 
@@ -46,7 +46,7 @@ Additional rules:
 1. `Cats Chat` and `Cats Work` must both build on `Cats Core v1` rather than
    creating separate schemas for shared entities.
 2. `Cats Core v1` may start as shared modules and product APIs inside
-   `cats-inc`; it does not require a standalone service on day one.
+   `cats`; it does not require a standalone service on day one.
 3. `Cats Core v1` must stay product-facing and minimal. It is not the home for
    provider adapters, CLI orchestration, or a full archive/RAG engine.
 4. Existing chat-shell terms such as pal, assignment, lease, and memory
@@ -77,7 +77,7 @@ Additional rules:
 
 ### Neutral
 
-- `cats-inc` remains the current repo and app shell even if the public product
+- `cats` remains the current repo and app shell even if the public product
   naming later changes.
 - The current file-backed workspace state can still exist during migration as
   long as it maps cleanly to the shared contracts.

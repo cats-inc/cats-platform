@@ -1,4 +1,4 @@
-export const SIDEBAR_OPEN_STORAGE_KEY = 'cats-inc.sidebar-open';
+export const SIDEBAR_OPEN_STORAGE_KEY = 'cats.sidebar-open';
 
 interface SidebarPreferenceStorage {
   getItem(key: string): string | null;

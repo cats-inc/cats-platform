@@ -1,6 +1,6 @@
 # ADR-010: Separate Read-Model App Shell from RESTful Resource APIs
 
-> Make `cats-inc`'s HTTP surface resource-oriented while keeping the current
+> Make `cats`'s HTTP surface resource-oriented while keeping the current
 > phase-2 shell available as a compatibility read model during migration.
 
 ## Status
@@ -9,7 +9,7 @@ Accepted
 
 ## Context
 
-As of 2026-03-18, `cats-inc` already exposes a useful HTTP surface:
+As of 2026-03-18, `cats` already exposes a useful HTTP surface:
 
 - `GET /health`
 - `GET /api/app-shell`
@@ -40,7 +40,7 @@ At the same time, several constraints must stay intact:
 
 ## Decision
 
-`cats-inc` will adopt a two-lane HTTP model.
+`cats` will adopt a two-lane HTTP model.
 
 ### 1. Resource APIs become the authoritative contract
 
@@ -107,7 +107,7 @@ If server persistence is not required, the renderer may own that state locally.
 
 ### 5. Migration is additive first, removal later
 
-`cats-inc` should add the RESTful resource surface before removing legacy
+`cats` should add the RESTful resource surface before removing legacy
 workspace-action endpoints. Legacy routes may stay as compatibility adapters
 until the renderer and tests are fully cut over.
 
@@ -122,7 +122,7 @@ until the renderer and tests are fully cut over.
 - The current app shell can remain as a read model without forcing every client
   to use it as the source of truth.
 - The design stays compatible with `Cats Core v1` and the current
-  `cats-inc -> cats-runtime` boundary.
+  `cats -> cats-runtime` boundary.
 
 ### Negative
 
@@ -164,7 +164,7 @@ until the renderer and tests are fully cut over.
 - **Pros**: Simpler renderer bootstrapping.
 - **Cons**: Poor fit for future multi-surface clients and weak semantics for
   ownership, partial updates, and testing.
-- **Why rejected**: `cats-inc` is now a product server, not just a renderer
+- **Why rejected**: `cats` is now a product server, not just a renderer
   bootstrap endpoint.
 
 ## References

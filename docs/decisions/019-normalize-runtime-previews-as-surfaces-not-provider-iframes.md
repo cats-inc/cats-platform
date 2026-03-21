@@ -1,7 +1,7 @@
 # ADR-019: Normalize Runtime Previews as Surfaces, Not Provider Iframes
 
 > Treat in-place previews as normalized runtime-reported surfaces and let
-> `cats-inc` decide rendering, instead of letting providers emit raw iframe
+> `cats` decide rendering, instead of letting providers emit raw iframe
 > payloads directly.
 
 ## Status
@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-`cats-inc` is moving toward richer room-native work, and some tasks will
+`cats` is moving toward richer room-native work, and some tasks will
 eventually produce outputs that are better shown in place than only as text:
 
 - web previews
@@ -25,7 +25,7 @@ The current stack already contains useful groundwork:
   `services` concepts
 - the `agent` backend already anticipates surfaced runtime services and preview
   URLs
-- `cats-inc` architecture documents already leave room for a preview-ready pane
+- `cats` architecture documents already leave room for a preview-ready pane
 
 However, there is not yet a formal product/runtime rule for how in-place
 preview should work across providers, especially CLI-backed providers.
@@ -43,11 +43,11 @@ That is the wrong contract boundary because:
 What the stack actually needs is:
 
 - a normalized preview-surface model from runtime
-- a product-owned rendering decision in `cats-inc`
+- a product-owned rendering decision in `cats`
 
 ## Decision
 
-`cats-inc` and `cats-runtime` will treat in-place preview as a normalized
+`cats` and `cats-runtime` will treat in-place preview as a normalized
 surface contract, not as provider-returned iframe markup.
 
 1. Providers and runtime adapters should report preview-capable outputs as
@@ -62,7 +62,7 @@ surface contract, not as provider-returned iframe markup.
      service URL, HTML artifact, or equivalent preview target
    - `agent` backends may surface services and artifacts more directly
 
-3. `cats-inc` owns rendering policy.
+3. `cats` owns rendering policy.
    - decide whether a surface is shown inline
    - decide whether inline rendering uses an iframe
    - decide whether the safer fallback is open-in-browser, download, or summary
@@ -77,7 +77,7 @@ surface contract, not as provider-returned iframe markup.
    - explicit unsupported/unsafe fallback for other cases
 
 6. Security policy belongs above the provider layer.
-   - `cats-inc` should apply allowlists, sandboxing, and/or proxy serving as
+   - `cats` should apply allowlists, sandboxing, and/or proxy serving as
      needed
    - not every reported surface must be embedded inline
 
@@ -86,7 +86,7 @@ surface contract, not as provider-returned iframe markup.
 ### Positive
 
 - The contract works across `cli`, `api`/`local`, and `agent` backends.
-- `cats-inc` keeps control over UI and safety policy.
+- `cats` keeps control over UI and safety policy.
 - CLI providers can participate without pretending they natively know what an
   iframe is.
 - Artifact and service surfacing remain useful even when inline embedding is
@@ -95,7 +95,7 @@ surface contract, not as provider-returned iframe markup.
 ### Negative
 
 - The team must define another normalized contract above raw provider output.
-- `cats-inc` needs a preview pane/read model instead of just transcript text.
+- `cats` needs a preview pane/read model instead of just transcript text.
 - Some providers will only support summary/download flows at first.
 
 ### Neutral

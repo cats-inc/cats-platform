@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-`cats-inc` has already decided that `Boss Cat` is the default visible public
+`cats` has already decided that `Boss Cat` is the default visible public
 entry identity for new conversations. That solves the "who am I talking to?"
 question for the main product entry flow.
 
@@ -34,7 +34,7 @@ compliance for basic target resolution.
 
 ## Decision
 
-`cats-inc` will support both `Boss Chat` and `Direct Cat Chat`, and conversation
+`cats` will support both `Boss Chat` and `Direct Cat Chat`, and conversation
 routing will be owned by a shared system-layer routing model.
 
 1. `Boss Cat` remains the default product entry identity.
@@ -73,7 +73,7 @@ routing will be owned by a shared system-layer routing model.
 
 ### Positive
 
-- Operators can use `cats-inc` both as an orchestrated room product and as a
+- Operators can use `cats` both as an orchestrated room product and as a
   direct specialist-chat UI.
 - Direct specialist chats become easier to reason about and closer to the
   mental model of a chosen CLI session.

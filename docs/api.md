@@ -1,6 +1,6 @@
 # API Specification
 
-> Public HTTP surface for the current `cats-inc` chat shell.
+> Public HTTP surface for the current `Cats` suite app shell.
 
 ## Overview
 
@@ -344,7 +344,7 @@ Example response:
 
 ```json
 {
-  "service": "cats-inc",
+  "service": "cats",
   "status": "ok",
   "timestamp": "2026-03-11T12:34:56.000Z",
   "runtime": {
@@ -640,7 +640,7 @@ Abbreviated example response:
 ```json
 {
   "app": {
-    "name": "cats-inc",
+    "name": "cats",
     "stage": "phase-2-shell",
     "runtimeBoundary": "cats-runtime"
   },
@@ -732,7 +732,7 @@ Errors use a minimal payload:
 
 ## Notes
 
-- `cats-inc` does not talk to `agent-fleet` directly
+- the `cats` app does not talk to `agent-fleet` directly
 - The renderer consumes this endpoint over a Vite proxy during development
 - Workspace shell state is currently persisted to a local JSON file
 - Persisted pal state separates workspace identity, channel assignment,

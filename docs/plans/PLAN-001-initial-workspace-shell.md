@@ -2,12 +2,12 @@
 
 ## Scope
 
-Deliver the first runnable `cats-inc` slice that establishes the project
+Deliver the first runnable `cats` slice that establishes the project
 boundary and a minimal HTTP contract.
 
 ## Tasks
 
-1. Replace bootstrap placeholders with `cats-inc` project metadata.
+1. Replace bootstrap placeholders with `cats` project metadata.
 2. Add configuration parsing for app and runtime settings.
 3. Add a `cats-runtime` client for health retrieval.
 4. Add HTTP handlers for `/health` and `/api/app-shell`.

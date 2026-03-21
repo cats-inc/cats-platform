@@ -41,7 +41,7 @@ The product should distinguish:
 
 ## Decision
 
-`cats-inc` should keep the shared pal registry model from ADR-005, but change
+`cats` should keep the shared pal registry model from ADR-005, but change
 the product entry points.
 
 From this point forward, the planned UX is:

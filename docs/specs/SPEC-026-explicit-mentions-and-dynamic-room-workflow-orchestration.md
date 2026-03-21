@@ -64,7 +64,7 @@ context transplant, but it does not own room policy.
 
 ### Functional Requirements
 
-1. `cats-inc` shall distinguish explicit mention routing from room workflow
+1. `cats` shall distinguish explicit mention routing from room workflow
    orchestration.
 2. Explicit individual mentions shall be deterministic product-owned routing
    decisions.
@@ -164,7 +164,7 @@ context transplant, but it does not own room policy.
     - waiting_for_converge
 31. The first slice shall remain event-driven and shall not require a general
     heartbeat or timer scheduler.
-32. The implementation shall preserve the `cats-inc -> cats-runtime` boundary.
+32. The implementation shall preserve the `cats -> cats-runtime` boundary.
 
 ### Non-Functional Requirements
 

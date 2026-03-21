@@ -9,7 +9,7 @@ Accepted
 
 ## Context
 
-`cats-inc` already made a deliberate public naming move:
+`cats` already made a deliberate public naming move:
 
 - public product language uses `Cat / Cats`
 - canonical product routes use `/api/cats` and `/api/channels/{id}/cats`
@@ -35,7 +35,7 @@ again would create extra rename work without improving product clarity.
 
 ## Decision
 
-`cats-inc` will use layered naming based on API ownership and audience.
+`cats` will use layered naming based on API ownership and audience.
 
 1. Product-facing APIs and product-facing routes keep `Cat` naming.
    - examples:

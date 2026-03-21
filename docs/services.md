@@ -7,21 +7,21 @@
 
 | Service Name | Port | Protocol | Description | Start Command |
 |--------------|------|----------|-------------|---------------|
-| `cats-inc` HTTP app | 8181 | TCP | Product-facing app shell and health endpoints | `npm start` |
-| `cats-inc` Vite dev server | 5173 | TCP | Renderer development server with `/api` proxy | `npm run dev:web` |
+| `cats` HTTP app | 8181 | TCP | Product-facing app shell and health endpoints | `npm start` |
+| `cats` Vite dev server | 5173 | TCP | Renderer development server with `/api` proxy | `npm run dev:web` |
 
 ## Planned Shared Service Boundaries
 
 - `Cats Core v1` is a required shared contract for `Cats Chat` and
   `Cats Work`, but it does not have a dedicated network port yet. The current
-  planning assumption is that it starts co-hosted inside `cats-inc` until a
+  planning assumption is that it starts co-hosted inside `cats` until a
   stronger boundary is needed.
 - `cats-runtime` remains the upstream runtime dependency for this project. Its
   direct API remains the primary app-facing boundary, while a future MCP facade
   is intended for orchestrator-style tool use rather than for general app
   routing.
 - Do not assign a standalone `Cats Core` port until the implementation proves
-  that co-hosting inside `cats-inc` blocks team parallelism or packaging.
+  that co-hosting inside `cats` blocks team parallelism or packaging.
 
 ## Environment Variables
 
@@ -29,9 +29,9 @@ Port numbers should be configurable via environment variables so developers can 
 
 | Variable | Default | Service | Notes |
 |----------|---------|---------|-------|
-| `CATS_INC_HOST` | `127.0.0.1` | `cats-inc` HTTP app | Use `0.0.0.0` in containers |
-| `CATS_INC_PORT` | `8181` | `cats-inc` HTTP app | Main local app port |
-| `CATS_INC_STATE_PATH` | empty | Workspace store | Defaults to `config/workspace-state.local.json` for channels, workspace pals, assignments, execution leases, and transcripts |
+| `CATS_HOST` | `127.0.0.1` | `cats` HTTP app | Use `0.0.0.0` in containers; `CATS_INC_HOST` remains accepted temporarily |
+| `CATS_PORT` | `8181` | `cats` HTTP app | Main local app port; `CATS_INC_PORT` remains accepted temporarily |
+| `CATS_STATE_PATH` | empty | Workspace store | Defaults to `config/workspace-state.local.json`; `CATS_INC_STATE_PATH` remains accepted temporarily |
 | `CATS_RUNTIME_BASE_URL` | `http://127.0.0.1:3110` | Runtime client | Points to `cats-runtime` |
 | `CATS_RUNTIME_API_KEY` | empty | Runtime client | Optional bearer token for `cats-runtime` |
 

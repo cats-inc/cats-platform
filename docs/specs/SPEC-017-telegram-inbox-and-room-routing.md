@@ -180,7 +180,7 @@ Telegram private chat
 - `SPEC-014` defines the Telegram relay seam; this spec defines the product
   behavior that seam must eventually support.
 - Inspiration from Manus is useful at the transport-entry level, especially the
-  idea of a higher-level `Agent` surface, but `cats-inc` should keep room-based
+  idea of a higher-level `Agent` surface, but `cats` should keep room-based
   chat as the canonical work model.
 - This spec intentionally keeps Telegram summary-first. If a later slice wants
   selective transcript mirroring, that must be an explicit additive policy.

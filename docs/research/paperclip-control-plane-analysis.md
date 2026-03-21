@@ -2,17 +2,17 @@
 
 Status: Unreviewed notes
 
-> Scope note for current `cats-inc`: this document preserves a broader
+> Scope note for current `cats`: this document preserves a broader
 > Paperclip-to-Cats product analysis. Sections discussing company root scope,
 > org charts, goals, projects, work items, approvals, budgets, and broader
 > control-plane evolution are currently not applicable to the chat-only
-> `cats-inc` product line. Keep those sections as reference notes only unless a
+> `cats` product line. Keep those sections as reference notes only unless a
 > future product split explicitly revives them.
 
 ## Purpose
 
 Study the local `paperclip/` submodule and extract the product concepts,
-functional seams, and migration risks that should inform the next `cats-inc`
+functional seams, and migration risks that should inform the next `cats`
 rewrite phases.
 
 ## Local Sources Reviewed
@@ -40,9 +40,9 @@ heartbeats, and explicit workspace/runtime objects. Agents are treated as
 employees inside an org chart. Chat-like interaction exists mainly as comments,
 threads, and optional extension surfaces attached to work objects.
 
-This is the main lesson for `cats-inc`: the current chat-first workspace shell
+This is the main lesson for `cats`: the current chat-first workspace shell
 is a useful module, but it is too low-level to be the whole product. The next
-rewrite phases should move `cats-inc` upward into a control plane that owns
+rewrite phases should move `cats` upward into a control plane that owns
 organization, work, governance, outputs, and operator visibility while still
 keeping `cats-runtime` as the only execution boundary.
 
@@ -91,7 +91,7 @@ keeping `cats-runtime` as the only execution boundary.
 
 ## What Cats Inc Should Keep
 
-> Temporarily not applicable note: in the current chat-only `cats-inc` scope,
+> Temporarily not applicable note: in the current chat-only `cats` scope,
 > the most relevant items in this section are transcript UX, operator
 > visibility, execution history, and output presentation. The broader
 > control-plane recommendations are reference-only for now.
@@ -108,12 +108,12 @@ keeping `cats-runtime` as the only execution boundary.
 ## What Cats Inc Should Adapt
 
 > Temporarily not applicable note: this section contains cross-product
-> exploration. For the current `cats-inc` scope, do not interpret company/org
+> exploration. For the current `cats` scope, do not interpret company/org
 > expansion ideas here as active roadmap commitments.
 
 - Keep chat as a first-class module, but stop treating chat channels as the
   product root object.
-- Keep `cats-runtime` as the only execution boundary. `cats-inc` should not
+- Keep `cats-runtime` as the only execution boundary. `cats` should not
   absorb Paperclip's adapter registry, heartbeat runner, or embedded runtime.
 - Grow the current `workspace pal` model into a roster or org model instead of
   adopting Paperclip's agent schema directly.
@@ -125,8 +125,8 @@ keeping `cats-runtime` as the only execution boundary.
 ## What Cats Inc Should Delay or Avoid
 
 - Do not fork or skin Paperclip as the product base.
-- Do not import Paperclip packages or copy its database schema into `cats-inc`.
-- Do not move adapter execution or heartbeat scheduling into `cats-inc`.
+- Do not import Paperclip packages or copy its database schema into `cats`.
+- Do not move adapter execution or heartbeat scheduling into `cats`.
 - Do not make plugin runtime, marketplace, or template distribution a first
   rewrite milestone.
 - Do not let chat become the only way operators understand work once richer
@@ -155,10 +155,10 @@ keeping `cats-runtime` as the only execution boundary.
 
 ## Current State Gap Matrix (2026-03-19)
 
-The current `cats-runtime` and `cats-inc` comparison against `paperclip` is more
+The current `cats-runtime` and `cats` comparison against `paperclip` is more
 precise than a raw feature checklist.
 
-`cats-runtime` already has a real execution runtime. `cats-inc` already has
+`cats-runtime` already has a real execution runtime. `cats` already has
 early product and shared-core seams. The main gaps are:
 
 - runtime-managed skills
@@ -177,7 +177,7 @@ early product and shared-core seams. The main gaps are:
 - Do not copy Paperclip's scheduler ownership, run-store DB model, company
   workflow semantics, or budget and approval orchestration into
   `cats-runtime`.
-- Keep `cats-runtime` as the execution boundary and let `cats-inc` own
+- Keep `cats-runtime` as the execution boundary and let `cats` own
   approvals, owner profile, conversations, and operator-facing control-plane
   state.
 - Treat Paperclip's plugin SDK as a later extension seam, not the first Cats
@@ -206,7 +206,7 @@ early product and shared-core seams. The main gaps are:
 
 ## Recommended Rewrite Sequence
 
-> Temporarily not applicable note: this sequence is not the active `cats-inc`
+> Temporarily not applicable note: this sequence is not the active `cats`
 > implementation plan while the product remains chat-only. Preserve it as
 > exploratory reference only.
 
@@ -225,7 +225,7 @@ early product and shared-core seams. The main gaps are:
    Distinguish durable project workspaces from execution workspaces and link
    runtime sessions to artifacts, previews, and other outputs.
 6. Add extension seams later.
-   Only after the control plane is stable should `cats-inc` grow plugin,
+   Only after the control plane is stable should `cats` grow plugin,
    alternate entrypoint, or template distribution seams.
 
 ## Current Recommended Implementation Order (2026-03-19)
@@ -236,7 +236,7 @@ rewrite sequence above.
 1. Add `runtime-managed skills v0` to `cats-runtime`.
    Resolve `skillProfile` into explicit skill packages and adapter injection
    rules before expanding orchestration.
-2. Connect `cats-inc` metadata to runtime execution.
+2. Connect `cats` metadata to runtime execution.
    Promote `skillProfile` and `mcpProfile` from prompt-level metadata into
    explicit runtime request and orchestration inputs.
 3. Add execution workspace and runtime-services modeling to `cats-runtime`.
@@ -245,13 +245,13 @@ rewrite sequence above.
 4. Define the first curated MCP facade for orchestrators.
    Expose a small, product-safe tool set without bypassing product-owned
    permissions, approvals, or bot bindings.
-5. Land product-side control-plane writes in `cats-inc`.
+5. Land product-side control-plane writes in `cats`.
    Add approval, activity, execution-history, and cost surfaces above the same
    runtime boundary.
 
 ## Open Questions
 
-- What should the top-level root object be called in `cats-inc`: company,
+- What should the top-level root object be called in `cats`: company,
   workspace, studio, or something else?
 - Should the next persistence step be a store abstraction over JSON, or should
   the rewrite move directly to SQLite?
@@ -264,13 +264,13 @@ rewrite sequence above.
 
 Use Paperclip as a product reference, not as an implementation dependency.
 
-The right migration is not "copy Paperclip into `cats-inc`." The right
+The right migration is not "copy Paperclip into `cats`." The right
 migration is:
 
 - absorb its best company-control-plane concepts,
 - preserve the existing `cats-runtime` execution boundary,
 - keep the current chat shell as one module,
-- and rewrite `cats-inc` into its own product model incrementally.
+- and rewrite `cats` into its own product model incrementally.
 
 ---
 

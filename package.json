@@ -1,7 +1,7 @@
 {
-  "name": "cats-inc",
+  "name": "cats",
   "version": "0.1.0",
-  "description": "Next-generation cats workspace product backed by cats-runtime.",
+  "description": "Flagship Cats suite app backed by cats-runtime.",
   "type": "module",
   "main": "dist-server/index.js",
   "types": "dist-server/index.d.ts",

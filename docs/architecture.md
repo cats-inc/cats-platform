@@ -1,10 +1,10 @@
 # System Architecture
 
-> Technical architecture and design decisions for `cats-inc`.
+> Technical architecture and design decisions for `Cats`.
 
 ## Overview
 
-`cats-inc` is now both the current product-facing application layer and the
+`Cats` is now both the current product-facing application layer and the
 planning home for the shared Cats suite contracts. The current implementation
 is still a split architecture: a Node server owns product and runtime-facing
 APIs, and a React/Vite renderer owns the operator-facing shell. The accepted
@@ -22,7 +22,7 @@ the same shared domain model.
                └──────────────┬─────────────────┘
                               ▼
 ┌────────────────────────────────────────────────────────────┐
-│                    cats-inc product server                 │
+│                     cats product server                    │
 │  product APIs + suite orchestration + shared app services  │
 └──────────────┬───────────────────────────────┬─────────────┘
                │                               │
@@ -132,7 +132,7 @@ directly to individual workers.
 
 ## Memory Layering Direction
 
-`cats-inc` should treat memory as four product-facing layers above provider
+`Cats` should treat memory as four product-facing layers above provider
 continuity.
 
 - **Provider-native continuity** stays behind `cats-runtime` and exists to help
@@ -160,7 +160,7 @@ history.
 
 ## Pal Identity and Execution
 
-`cats-inc` now treats teammate identity and runtime execution as separate
+`Cats` now treats teammate identity and runtime execution as separate
 concerns.
 
 - `Workspace pal registry` covers reusable teammate identity, default execution
@@ -174,7 +174,7 @@ concerns.
   session restarts or provider changes
 
 This boundary matters because the same pal may need different providers in
-different channels, and cross-session continuity must belong to `cats-inc`
+different channels, and cross-session continuity must belong to `cats`
 rather than to any one provider's native thread model. See
 [ADR-004](./decisions/004-separate-pal-identity-from-provider-execution.md)
 and
@@ -267,14 +267,14 @@ The future desktop shape is now decided even though it is not implemented yet:
 Electron main
   ├─ tray + window lifecycle
   ├─ starts cats-runtime
-  ├─ starts cats-inc
+  ├─ starts cats
   ├─ manages local onboarding and settings
-  └─ loads Chat and Work windows from cats-inc
+  └─ loads Chat and Work windows from cats
 
 BrowserWindow renderer
   └─ React/Vite Chat and Work UIs
 
-cats-inc
+cats
   ├─ product HTTP boundary over cats-runtime
   └─ co-hosted Cats Core v1 APIs or modules
 
@@ -284,7 +284,7 @@ cats-runtime
 ```
 
 This keeps subprocess-backed runtime work out of the renderer and preserves the
-existing `cats-inc -> cats-runtime` boundary for desktop packaging. See
+existing `cats -> cats-runtime` boundary for desktop packaging. See
 [ADR-003](./decisions/003-electron-host-manages-local-services.md),
 [ADR-007](./decisions/007-establish-cats-core-v1-for-chat-and-work.md), and
 [ADR-008](./decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md).
@@ -332,7 +332,7 @@ still intentionally deferred:
 
 ## Design Patterns
 
-- Hexagonal boundary at the runtime edge: `cats-inc` depends on a runtime client
+- Hexagonal boundary at the runtime edge: `cats` depends on a runtime client
   interface, not `agent-fleet`
 - Shared domain contracts before product-surface specialization
 - Direct product APIs plus MCP tool access for orchestrators

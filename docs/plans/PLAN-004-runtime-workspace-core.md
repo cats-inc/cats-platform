@@ -2,7 +2,7 @@
 
 ## Scope
 
-Deliver a complete Phase 2 workspace core by moving `cats-inc` from shell-only
+Deliver a complete Phase 2 workspace core by moving `cats` from shell-only
 state into runtime-backed channel work with persisted transcripts.
 
 ## Tasks

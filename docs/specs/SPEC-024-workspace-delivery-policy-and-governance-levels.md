@@ -51,7 +51,7 @@ already live above runtime execution.
 
 ### Functional Requirements
 
-1. `cats-inc` shall own a product-visible `WorkspaceDeliveryPolicy` concept.
+1. `cats` shall own a product-visible `WorkspaceDeliveryPolicy` concept.
 2. Delivery policy shall be distinct from workspace substrate profile,
    `SkillProfile`, and MCP/tool-profile concepts.
 3. The product shall support at least these delivery-policy modes:
@@ -77,7 +77,7 @@ already live above runtime execution.
 9. Delivery policy shall be able to express non-repo workspaces cleanly.
 10. Delivery policy shall be able to express repo-backed workspaces without
     forcing CI when the policy only requires local commit or push.
-11. `cats-inc` shall resolve effective delivery policy into a runtime-facing
+11. `cats` shall resolve effective delivery policy into a runtime-facing
     delivery intent or manifest before runtime delivery actions are requested.
 12. The runtime-facing delivery manifest shall refer to stable action or
     capability identifiers rather than backend-specific commands.
@@ -89,7 +89,7 @@ already live above runtime execution.
     - room/transport tightening
     - approved exception
 14. Delivery policy should integrate with approval and takeover flows already
-    planned in `cats-inc`.
+    planned in `cats`.
 15. Delivery policy should be visible to later settings or operator surfaces.
 
 ### Non-Functional Requirements

@@ -1,10 +1,10 @@
 # Requirements Specification
 
-> Initial product and implementation requirements for `cats-inc`.
+> Initial product and implementation requirements for `Cats`.
 
 ## Overview
 
-`cats-inc` should become the shared suite foundation for the cats initiative.
+`Cats` should become the shared suite foundation for the cats initiative.
 It will rebuild the useful product behavior from `agent-workspace-poc`, but it
 must do so on a new Node.js/TypeScript stack, through `cats-runtime`, and with
 shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
@@ -219,7 +219,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 - **Description**: The product shall separate provider-native continuity,
   evidence transcript backup, Cat/owner durable memory, and archive/RAG
-  retrieval into distinct layers with explicit ownership between `cats-inc` and
+  retrieval into distinct layers with explicit ownership between `cats` and
   `cats-runtime`.
 - **Priority**: High
 - **Status**: Planned
@@ -228,7 +228,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 ### NFR-001: Explicit Boundaries
 
-- `cats-inc` MUST NOT source-import `agent-fleet` internals
+- `cats` MUST NOT source-import `agent-fleet` internals
 - Runtime transport concerns should stay behind a dedicated client module
 
 ### NFR-002: Operator Visibility
@@ -243,7 +243,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - Product surfaces should avoid frontend stack fragmentation while the suite
   foundation is still forming
 - The default desktop path is Electron plus React/TypeScript while
-  `cats-runtime` and `cats-inc` remain Node-based local services
+  `cats-runtime` and `cats` remain Node-based local services
 
 ### NFR-004: Local Persistence Safety
 

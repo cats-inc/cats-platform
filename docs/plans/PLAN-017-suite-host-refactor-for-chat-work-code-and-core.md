@@ -9,7 +9,7 @@ Implement the first structural refactor slice required by
 
 This plan covers:
 
-- establishing a suite-host code skeleton inside `cats-inc`
+- establishing a suite-host code skeleton inside `cats`
 - reversing the current `workspace -> core` dependency direction
 - demoting current workspace modules into a Chat-specific product slice
 - splitting top-level app composition from product-slice logic
@@ -21,7 +21,7 @@ This plan does not cover:
 - shipping full `Cats Work` product functionality
 - shipping full `Cats Code` product functionality
 - introducing new `cats-runtime` architecture
-- splitting `cats-inc` into multiple npm packages
+- splitting `cats` into multiple npm packages
 - multiple renderer bundles or multiple Vite apps
 
 ## Hard Constraints
@@ -227,7 +227,7 @@ steps for Work and Code teams.
 
 Use this when delegating implementation:
 
-> Implement the first slice of ADR-025. Convert `cats-inc` from a chat-shell-
+> Implement the first slice of ADR-025. Convert `cats` from a chat-shell-
 > first structure into a suite host with core-owned product projections. Reverse
 > the current `workspace -> core` dependency direction, move current workspace
 > modules into the Chat slice, and add placeholder Work/Code surfaces without

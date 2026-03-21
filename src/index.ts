@@ -13,7 +13,7 @@ const server = createServer({ config, runtimeClient, workspaceStore });
 
 server.listen(config.port, config.host, () => {
   console.log(
-    `cats-inc listening on http://${config.host}:${config.port} ` +
+    `cats listening on http://${config.host}:${config.port} ` +
       `(runtime: ${config.runtimeBaseUrl})`,
   );
 });

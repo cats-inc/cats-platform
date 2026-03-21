@@ -249,7 +249,7 @@ async function handleHealth(
   const statusCode = runtime.reachable ? 200 : 503;
 
   sendJson(response, statusCode, {
-    service: 'cats-inc',
+    service: 'cats',
     status,
     timestamp: now.toISOString(),
     runtime,

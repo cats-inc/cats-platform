@@ -10,7 +10,7 @@
 
 ## Summary
 
-`cats-inc` needs a first-run experience that feels closer to a normal desktop
+`cats` needs a first-run experience that feels closer to a normal desktop
 product than to a developer bootstrap checklist.
 
 The target experience is:
@@ -31,7 +31,7 @@ The key architectural constraint is that **app installation** and
   detect, install, verify, or defer
 
 This spec defines the user-facing setup flow and the cross-project integration
-shape among `cats-inc`, `cats-runtime`, and `environment-bootstrap`.
+shape among `cats`, `cats-runtime`, and `environment-bootstrap`.
 
 ## Goals
 
@@ -250,7 +250,7 @@ Settings or an equivalent product-owned management surface so users can:
 
 The packaged setup flow should follow this ownership split:
 
-- `cats-inc` renderer
+- `cats` renderer
   - displays the wizard
   - renders provider choices, progress, and errors
 - packaged host (future Electron main)

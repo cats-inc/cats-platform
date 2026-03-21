@@ -4,7 +4,7 @@ Status: Draft (Pending Review)
 
 ## Summary
 
-`cats-inc` currently exposes two public naming choices that no longer fit the
+`cats` currently exposes two public naming choices that no longer fit the
 product direction well:
 
 - `Pal / Pals`
@@ -46,7 +46,7 @@ It intentionally avoids visual redesign and avoids a broad internal refactor.
 
 Reasoning:
 
-- `Cat / Cats` aligns with `Cats Chat`, `cats-inc`, and the broader suite brand
+- `Cat / Cats` aligns with `Cats Chat`, `cats`, and the broader suite brand
 - `Paw / Paws` reads more like a body-part metaphor than a reusable actor or
   teammate resource
 

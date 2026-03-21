@@ -10,7 +10,7 @@
 
 ## Summary
 
-`cats-inc` already stores `skillProfile` and `mcpProfile` on cats and channels,
+`cats` already stores `skillProfile` and `mcpProfile` on cats and channels,
 but those fields are still mostly labels. The product now needs a clearer
 capability registry that can explain:
 
@@ -32,14 +32,14 @@ delivery remains runtime-owned.
 ## Non-Goals
 
 - building a general plugin marketplace
-- making `cats-inc` the owner of runtime skill delivery mechanics
+- making `cats` the owner of runtime skill delivery mechanics
 - fully implementing delegation policies in this specification
 
 ## Requirements
 
 ### Functional Requirements
 
-1. `cats-inc` shall define a capability-registry seam that maps product-level
+1. `cats` shall define a capability-registry seam that maps product-level
    cat profiles to runtime skill selections and MCP profiles.
 2. The registry shall support at least:
    - cat-level default capability declarations
@@ -53,7 +53,7 @@ delivery remains runtime-owned.
    workspace-default capability set.
 5. `Boss Cat` assignment logic shall be able to consult this registry when
    choosing which cat to add or route work toward.
-6. Runtime skill delivery shall remain inside `cats-runtime`; `cats-inc`
+6. Runtime skill delivery shall remain inside `cats-runtime`; `cats`
    provides mappings, not backend-specific skill materialization.
 
 ### Non-Functional Requirements
@@ -81,7 +81,7 @@ Suggested mapping layers:
 4. `MCP profile`
    - which tool surface is intended for that cat
 
-This lets `cats-inc` stay opinionated about product behavior while still
+This lets `cats` stay opinionated about product behavior while still
 delegating runtime-owned execution details outward.
 
 ## Dependencies

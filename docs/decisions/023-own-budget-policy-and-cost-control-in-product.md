@@ -1,7 +1,7 @@
 # ADR-023: Own Budget Policy and Cost Control in Product
 
 > Keep budget policy, override rules, and operator-facing cost control inside
-> `cats-inc`, while `cats-runtime` provides the metering and rate-limit
+> `cats`, while `cats-runtime` provides the metering and rate-limit
 > telemetry needed to enforce those policies.
 
 ## Status
@@ -37,14 +37,14 @@ questions below are product/control-plane questions:
   for approval?
 - how should this appear in a Cats Work war-room or operator dashboard?
 
-Those concerns belong in `cats-inc`.
+Those concerns belong in `cats`.
 
 ## Decision
 
-`cats-inc` will own budget policy, approval/override behavior, and operator
+`cats` will own budget policy, approval/override behavior, and operator
 cost-control surfaces.
 
-1. `cats-inc` owns budget policy semantics.
+1. `cats` owns budget policy semantics.
    - budget scopes
    - soft vs hard limits
    - escalation and approval behavior
@@ -66,7 +66,7 @@ cost-control surfaces.
    - the product remains free to aggregate by Cat, workspace, provider, or
      work item above the runtime boundary
 
-5. `cats-inc` should not absorb provider-specific rate-limit parsing or token
+5. `cats` should not absorb provider-specific rate-limit parsing or token
    accounting logic that properly belongs in runtime adapters.
 
 ## Consequences

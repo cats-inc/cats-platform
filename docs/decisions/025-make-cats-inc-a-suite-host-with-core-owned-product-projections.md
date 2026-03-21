@@ -1,7 +1,7 @@
-# ADR-025: Make cats-inc a Suite Host with Core-Owned Product Projections
+# ADR-025: Make cats a Suite Host with Core-Owned Product Projections
 
 > Keep `Cats Chat`, `Cats Work`, `Cats Code`, and `Cats Core` inside
-> `cats-inc`, but reverse the current dependency direction so shared core state
+> `cats`, but reverse the current dependency direction so shared core state
 > becomes the source of truth and product surfaces consume projections instead
 > of defining suite-wide schema.
 
@@ -28,7 +28,7 @@ That direction is already visible in the planning and research docs:
 - `cats-runtime` remains the only runtime boundary and should not absorb
   product-surface concerns
 
-However, the current implementation shape inside `cats-inc` still reflects the
+However, the current implementation shape inside `cats` still reflects the
 older chat-shell-first architecture.
 
 Today, the dependency direction is effectively:
@@ -63,7 +63,7 @@ Neither outcome is acceptable.
 
 ## Decision
 
-`cats-inc` will remain the single suite host for `Cats Chat`, `Cats Work`,
+`cats` will remain the single suite host for `Cats Chat`, `Cats Work`,
 `Cats Code`, and `Cats Core`, but the internal code structure will shift from
 `chat-shell-first` to `suite-host + shared-core + product-slice projections`.
 
@@ -100,7 +100,7 @@ Instead:
 - cross-product utilities stay under `shared/*` only if they are genuinely
   product-neutral
 
-### 4. `cats-inc` adopts a suite-host skeleton
+### 4. `cats` adopts a suite-host skeleton
 
 The target first-slice code shape is:
 
@@ -179,7 +179,7 @@ This ADR does not move product-line concerns into `cats-runtime`.
 ### Neutral
 
 - This ADR does not require multiple Vite entry points.
-- This ADR does not require turning `cats-inc` into a monorepo-within-a-repo.
+- This ADR does not require turning `cats` into a monorepo-within-a-repo.
 - This ADR does not require `Cats Work` and `Cats Code` to ship immediately.
 - This ADR does not remove the current Chat-first product priority.
 

@@ -1,6 +1,6 @@
 # ADR-020: Own MCP Intent in Product and Tool Delivery in Runtime
 
-> Keep `cats-inc` responsible for which tool capabilities a Cat should get,
+> Keep `cats` responsible for which tool capabilities a Cat should get,
 > while `cats-runtime` remains responsible for tool registry, provider
 > adaptation, and lazy activation of the actual tool surface.
 
@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-`cats-inc` already carries `mcpProfile` as a product-side field, and
+`cats` already carries `mcpProfile` as a product-side field, and
 `cats-runtime` already carries the first real execution-time tool machinery:
 
 - runtime-hosted local tools
@@ -40,10 +40,10 @@ That means MCP/tool management needs the same split as skills:
 
 ## Decision
 
-`cats-inc` will own MCP/tool intent, and `cats-runtime` will own actual tool
+`cats` will own MCP/tool intent, and `cats-runtime` will own actual tool
 delivery, provider adaptation, and lazy activation.
 
-1. `cats-inc` owns `mcpProfile` as a product concept.
+1. `cats` owns `mcpProfile` as a product concept.
    - which Cats or room modes need which tool capability class
    - which transport contexts require tighter or looser tool access
    - which product policies constrain tool use
@@ -56,7 +56,7 @@ delivery, provider adaptation, and lazy activation.
    - `allowedTools` enforcement
    - lazy activation strategy
 
-3. `cats-inc` should not directly manage MCP server processes or provider tool
+3. `cats` should not directly manage MCP server processes or provider tool
    bootstrap.
    - it should request tool intent through stable profiles or manifests
    - it should not become a second runtime or process supervisor
@@ -76,13 +76,13 @@ delivery, provider adaptation, and lazy activation.
    - CLI flags such as `--allowedTools` or provider-native trust settings are
      runtime concerns
    - API/local tool schemas are runtime concerns
-   - `cats-inc` should not encode those backend-specific shapes
+   - `cats` should not encode those backend-specific shapes
 
 ## Consequences
 
 ### Positive
 
-- Product role design stays in `cats-inc`.
+- Product role design stays in `cats`.
 - Runtime efficiency and provider adaptation stay in `cats-runtime`.
 - CLI-backed providers can avoid wasteful eager tool loading.
 - One `mcpProfile` can map to different backend/provider realizations without
@@ -103,7 +103,7 @@ delivery, provider adaptation, and lazy activation.
 
 ## Alternatives Considered
 
-### Alternative 1: Let `cats-inc` manage MCP servers directly
+### Alternative 1: Let `cats` manage MCP servers directly
 
 - **Pros**: product can see and control everything
 - **Cons**: turns product shell into process/runtime manager

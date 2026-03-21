@@ -16,9 +16,9 @@ Summary:
   - optional semantic recall over durable memory and sanitized session exports through QMD
   - hook-driven memory flushes before `/new` or compaction boundaries
 - This is a strong reference pattern because it avoids treating one transcript as the only memory surface.
-- OpenClaw still centers the gateway-owned session model. That is correct for a runtime, but it is not enough for the Cats suite because `cats-inc` must also preserve product-level channel transcripts, cross-session Cat memory, external transport archives, and future `Cats Work` RAG corpora.
+- OpenClaw still centers the gateway-owned session model. That is correct for a runtime, but it is not enough for the Cats suite because `cats` must also preserve product-level channel transcripts, cross-session Cat memory, external transport archives, and future `Cats Work` RAG corpora.
 Relevance:
-- The Cats suite needs a memory model that spans both `cats-inc` and `cats-runtime`.
+- The Cats suite needs a memory model that spans both `cats` and `cats-runtime`.
 - The design should borrow OpenClaw's layered separation, but move canonical ownership of user/product memory into Cats-owned stores rather than leaving it inside any single provider or runtime transcript.
 Action Items:
 - Define a Cats memory architecture spec that separates evidence transcripts, derived memory, and retrieval corpora.
@@ -33,7 +33,7 @@ inside that history. This is useful for continuity and replay, but it does not
 replace durable memory files or semantic retrieval.
 
 **Cats implication**: `cats-runtime` should preserve normalized evidence
-transcripts, but `cats-inc` should own the durable product memory models that
+transcripts, but `cats` should own the durable product memory models that
 survive backend swaps, transport changes, and session resets.
 
 ### 2. Durable memory should be explicitly written, not assumed to exist in context
@@ -137,7 +137,7 @@ Role:
 - canonical audit, replay, backup, and export surface
 
 Owner:
-- `cats-inc` owns product transcript semantics
+- `cats` owns product transcript semantics
 - `cats-runtime` emits normalized runtime evidence for session execution
 
 ### L2. Session and channel working-memory layer
@@ -211,7 +211,7 @@ ownership model.
 
 - `cats-runtime` should keep provider-native continuity and normalized runtime
   transcript evidence.
-- `cats-inc` should own the canonical multi-layer product memory system.
+- `cats` should own the canonical multi-layer product memory system.
 - Future archive/RAG flows should ingest from Cats-owned transcript and memory
   projections, not directly from provider-native transcript stores.
 - Agent/provider transcripts should be treated as **supporting continuity

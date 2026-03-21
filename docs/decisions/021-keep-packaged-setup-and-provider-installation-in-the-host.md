@@ -20,7 +20,7 @@ The product direction is now explicit:
 At the same time, the current architecture already fixes several boundaries:
 
 - the renderer is React/Vite and should not become a shell/process manager
-- `cats-inc` remains the product-facing boundary
+- `cats` remains the product-facing boundary
 - `cats-runtime` remains the runtime boundary
 - `environment-bootstrap` remains a useful internal knowledge source for
   provider install/check behavior and platform edge cases, but it is not a

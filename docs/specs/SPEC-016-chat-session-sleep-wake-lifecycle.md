@@ -4,7 +4,7 @@ Status: Approved
 
 ## Summary
 
-`cats-inc` should stop making chat-session lifecycle feel like a hidden runtime
+`cats` should stop making chat-session lifecycle feel like a hidden runtime
 implementation detail.
 
 The product will describe chat participation using a cat-native model:
@@ -110,7 +110,7 @@ chats.
   terminology in user-facing surfaces.
 - The implementation should preserve the existing per-chat isolation model so one
   chat does not accidentally leak runtime state into another.
-- Session lifecycle should remain compatible with the current `cats-inc ->
+- Session lifecycle should remain compatible with the current `cats ->
   cats-runtime` boundary.
 - The first slice should optimize for predictable behavior over maximum
   configurability.

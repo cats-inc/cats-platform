@@ -4,7 +4,7 @@ Status: Draft (Pending Review)
 
 ## Summary
 
-`cats-inc` now has a more RESTful product API, but the renderer still behaves
+`cats` now has a more RESTful product API, but the renderer still behaves
 like a single-shell app driven mostly by in-memory UI state plus a server-side
 `selectedChannelId`.
 

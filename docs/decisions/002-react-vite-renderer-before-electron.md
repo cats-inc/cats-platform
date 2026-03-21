@@ -6,14 +6,14 @@ Accepted
 
 ## Context
 
-`cats-inc` will likely become a desktop-installable product later, but the UI
+`cats` will likely become a desktop-installable product later, but the UI
 and workflow model are not stable enough to justify an Electron shell yet.
 What the project needs now is a renderer that can express the multi-channel
 workspace model quickly while keeping future desktop packaging possible.
 
 ## Decision
 
-`cats-inc` will use a React/Vite renderer for the current workspace shell. The
+`cats` will use a React/Vite renderer for the current workspace shell. The
 Node server remains the runtime-facing boundary. Electron is deferred until tray
 behavior, sidecar lifecycle, and installer concerns are concrete enough to
 validate.

@@ -39,7 +39,7 @@
 | Skill profile | A product-owned capability mapping that decides which runtime skill names should be requested for a Cat in a given room or transport context. |
 | Runtime skill catalog | The `cats-runtime` hosted catalog of execution-ready `SKILL.md` packages that can be validated, resolved, and mounted into sessions. |
 | Runtime skill manifest | The product-to-runtime request payload that carries requested skill names plus optional context metadata for one session or wake flow. |
-| Preview surface | A normalized product-facing reference to a preview-capable runtime output, such as a local service URL or HTML artifact, that `cats-inc` may choose to embed inline or open externally. |
+| Preview surface | A normalized product-facing reference to a preview-capable runtime output, such as a local service URL or HTML artifact, that `cats` may choose to embed inline or open externally. |
 | MCP profile | A product-owned tool capability posture that decides what class of MCP/tools a Cat should receive in a given room or transport context. |
 | Tool intent manifest | The product-to-runtime request payload that expresses desired tool access in stable logical terms such as profile id, allowlist, or lazy tool groups. |
 | Lazy tool activation | A runtime strategy that realizes the smallest useful tool surface at first and activates additional tool groups or MCP-backed servers only when needed. |
@@ -54,7 +54,7 @@
 | Takeover | Letting the owner speak through the orchestrator or bot identity for one interaction. |
 | Operational search | Full-text or structured retrieval over live product-owned conversation and task records. |
 | Archive / RAG | The later-stage pipeline that stores archived transcripts or artifacts for embeddings and cross-chat retrieval. |
-| Runtime boundary | The stable service seam between `cats-inc` and `cats-runtime`. |
+| Runtime boundary | The stable service seam between `cats` and `cats-runtime`. |
 
 ## Roles
 

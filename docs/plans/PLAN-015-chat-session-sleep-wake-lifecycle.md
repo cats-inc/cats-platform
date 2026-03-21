@@ -29,7 +29,7 @@ This plan does not cover:
 - Do not require manual operator "activation" steps for normal chat use.
 - Keep session isolation scoped per chat; do not collapse all Boss Cat chats into
   one shared session.
-- Preserve the current `cats-inc -> cats-runtime` boundary.
+- Preserve the current `cats -> cats-runtime` boundary.
 - Do not let "joined the chat" continue to mean "visually present but not really
   available."
 

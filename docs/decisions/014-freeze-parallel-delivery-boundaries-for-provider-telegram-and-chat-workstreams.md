@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-`cats-inc` is about to advance through three parallel workstreams:
+`cats` is about to advance through three parallel workstreams:
 
 1. provider/model catalog consumption and related UI updates
 2. Telegram bridging for the `Boss Cat`
@@ -28,7 +28,7 @@ new runtime catalog direction:
 - `cats-runtime` SPEC-004
 - `cats-runtime` PLAN-005
 
-`cats-inc` also already has the first shared-core shapes for bot bindings,
+`cats` also already has the first shared-core shapes for bot bindings,
 `skillProfile`, and `mcpProfile`, but it does not yet have clean seams for a
 Telegram relay, provider catalog consumption, or a capability registry that can
 evolve independently from chat rendering.
@@ -38,16 +38,16 @@ collide in the same files and recreate the same integration decisions.
 
 ## Decision
 
-`cats-inc` will freeze parallel-delivery boundaries before expanding the three
+`cats` will freeze parallel-delivery boundaries before expanding the three
 workstreams.
 
 This decision includes:
 
 1. Provider/model discovery remains runtime-owned.
-   `cats-inc` may expose product APIs for provider selection, but it must
+   `cats` may expose product APIs for provider selection, but it must
    consume runtime catalog data server-side rather than re-own discovery in the
    renderer.
-2. `cats-inc` will keep product-facing `Cat` terminology in product APIs and
+2. `cats` will keep product-facing `Cat` terminology in product APIs and
    routes, while provider catalog and Telegram relay internals may use more
    neutral system terms where needed.
 3. Telegram integration will land behind a dedicated transport seam under
@@ -108,7 +108,7 @@ This decision includes:
 
 ### Negative
 
-- `cats-inc` temporarily carries extra seam files before full feature rollout
+- `cats` temporarily carries extra seam files before full feature rollout
 - some work will feel indirect because product APIs and transport routes are
   added before full end-user functionality lands
 

@@ -10,7 +10,7 @@
 
 ## Summary
 
-`cats-inc` should own which skills a Cat ought to use in a given product
+`cats` should own which skills a Cat ought to use in a given product
 context, while `cats-runtime` should own how execution-ready `SKILL.md`
 packages are validated, hosted, and attached to sessions.
 
@@ -19,7 +19,7 @@ separate.
 
 ## Goals
 
-- let `cats-inc` bind Cats, room modes, and transport contexts to reusable
+- let `cats` bind Cats, room modes, and transport contexts to reusable
   skill profiles
 - let `cats-runtime` remain the canonical host for execution-ready `SKILL.md`
   packages
@@ -30,7 +30,7 @@ separate.
 ## Non-Goals
 
 - building the full skill authoring UI in this slice
-- turning `cats-inc` into a second runtime skill catalog
+- turning `cats` into a second runtime skill catalog
 - replacing product routing or policy with skill content
 - designing a marketplace or public package distribution model
 
@@ -47,7 +47,7 @@ separate.
 
 ### Functional Requirements
 
-1. `cats-inc` shall support product-owned `SkillProfile` definitions.
+1. `cats` shall support product-owned `SkillProfile` definitions.
 2. A `SkillProfile` shall be able to map product context into runtime skill
    requests.
 3. Product context for skill resolution should include at least:
@@ -55,7 +55,7 @@ separate.
    - room mode
    - transport context
    - optional channel-level overrides
-4. `cats-inc` shall resolve product context into a runtime-facing skill request
+4. `cats` shall resolve product context into a runtime-facing skill request
    manifest before session creation or wake.
 5. The runtime-facing manifest shall refer to skills by stable runtime-facing
    identifiers, not arbitrary product-local file paths.
@@ -65,13 +65,13 @@ separate.
    materializing, and delivering requested skills to adapters.
 8. `cats-runtime` should report back requested, resolved, applied, skipped, and
    warned skill state in session metadata or API responses.
-9. `cats-inc` shall keep product-owned routing, wake/sleep, transport binding,
+9. `cats` shall keep product-owned routing, wake/sleep, transport binding,
    and approval policy outside of skill package contents.
 10. `Boss Cat` skill usage shall be profile-driven and contextual.
     - example: `boss_web_room`
     - example: `boss_telegram_inbox`
     - example: `boss_room_summary`
-11. `cats-inc` may later support authoring or curating product-managed skills,
+11. `cats` may later support authoring or curating product-managed skills,
     but execution-ready publication should flow into the runtime catalog before
     runtime use.
 12. Repo-native skills discovered from the target repository should be treated
@@ -79,7 +79,7 @@ separate.
 
 ### Non-Functional Requirements
 
-- **Boundary integrity**: `cats-inc` should not become a parallel runtime skill
+- **Boundary integrity**: `cats` should not become a parallel runtime skill
   host
 - **Determinism**: the same Cat + context should resolve to the same requested
   skill manifest unless explicitly overridden
@@ -114,7 +114,7 @@ separate.
 ## Flow
 
 ```text
-cats-inc product context
+cats product context
   (cat + room mode + transport + overrides)
         |
         v
@@ -177,7 +177,7 @@ Notes:
 ### Repo-Native Skills
 
 - Repo-native skill discovery should remain possible.
-- Those skills are not owned by `cats-inc`, even when a room is product-owned.
+- Those skills are not owned by `cats`, even when a room is product-owned.
 - The runtime should be the place that merges repo-native and runtime-catalog
   skill availability for execution.
 
@@ -186,7 +186,7 @@ Notes:
 - This spec complements, not replaces, `SPEC-015`. `SPEC-015` defines capability
   registry direction; this spec fixes where execution-ready skill packages
   actually live and how the request crosses the runtime boundary.
-- The safest initial rule is: `cats-inc` resolves profile -> requested skill
+- The safest initial rule is: `cats` resolves profile -> requested skill
   names; `cats-runtime` resolves skill names -> real packages.
 - If later product-managed skill authoring exists, publication into
   `cats-runtime` should be an explicit sync/publish step.
@@ -202,7 +202,7 @@ Notes:
 
 ## Open Questions
 
-- [ ] Should `cats-inc` support version pinning or content fingerprints in the
+- [ ] Should `cats` support version pinning or content fingerprints in the
       runtime skill manifest, or leave that entirely to runtime resolution in
       the first slice?
 - [ ] What is the smallest publish/sync workflow that lets product-authored

@@ -10,7 +10,7 @@
 
 ## Project Context
 
-- `cats-inc` is the current product shell and planning repo for the cats suite
+- `cats` is the current product shell and planning repo for the Cats suite
 - `agent-workspace-poc` is a behavior reference, not a base to keep scaling
 - `crew-chat-poc` is the best local reference for how upper-layer apps should
   talk to `cats-runtime`

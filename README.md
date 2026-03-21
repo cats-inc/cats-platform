@@ -1,17 +1,21 @@
-# cats-inc
+# Cats
 
-> Chat is the lightweight team conversation module for Cats Inc.
+> The flagship suite app from Cats Inc.
 
 ## Overview
 
-`cats-inc` is the long-term Node.js/TypeScript product application that will
+`Cats` is the long-term Node.js/TypeScript flagship suite application that will
 replace `agent-workspace-poc` as the main product shell. It keeps
 `agent-workspace-poc` as a behavior reference, but it talks to `cats-runtime`
 instead of binding directly to `agent-fleet`.
 
+`Cats Inc` remains the umbrella brand. `Cats` is the suite product name, and
+`cats-runtime` remains the runtime boundary.
+
 The current slices are:
 
-- a Node app/runtime core on `CATS_INC_PORT` (default `8181`)
+- a Node app/runtime core on `CATS_PORT` (default `8181`, with `CATS_INC_PORT`
+  kept as a compatibility alias)
 - a `cats-runtime` health and app-shell API
 - a chat-first `React/Vite` renderer with modal setup tools and a preview-ready side pane
 - file-backed workspace, pal execution, and transcript persistence
@@ -64,7 +68,8 @@ Default endpoints:
 The workspace shell persists local state, including created channels,
 workspace-level pals, channel pal assignments, execution targets, execution
 lease metadata, memory checkpoints, and transcripts, to
-`config/workspace-state.local.json` unless `CATS_INC_STATE_PATH` overrides it.
+`config/workspace-state.local.json` unless `CATS_STATE_PATH` overrides it.
+`CATS_INC_STATE_PATH` is still accepted as a temporary compatibility alias.
 
 For a built run:
 
