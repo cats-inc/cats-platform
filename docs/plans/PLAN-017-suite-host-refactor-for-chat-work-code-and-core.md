@@ -117,6 +117,9 @@ contracts and store boundary.
       - Chat projection builders derived from core plus Chat-local state
 - [ ] Decide what remains shared core state versus what becomes Chat-local
       workflow state.
+- [ ] Keep a temporary compatibility layer so existing workspace-oriented tests
+      continue passing while assertions are migrated incrementally toward
+      core-owned state and projection-based behavior.
 - [ ] Keep migration compatibility logic explicit and temporary.
 
 **Deliverables**: the suite now follows:
@@ -128,6 +131,8 @@ Cats Core -> Chat projection
 ```
 
 instead of the reverse.
+Existing tests should continue passing against compatibility adapters until
+they are individually migrated to core-based assertions.
 
 ### Phase 5: Demote Workspace Modules into the Chat Slice
 
