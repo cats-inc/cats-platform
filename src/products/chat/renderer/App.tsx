@@ -857,18 +857,14 @@ export default function App() {
   }
 
   async function handlePickFolder(): Promise<void> {
-    const enteredPath = window.prompt(
-      'Enter the full local working directory path for this chat.\n'
-      + 'Examples: C:\\repo\\cats, /Users/name/repo, /home/name/repo',
-      draftCwd ?? '',
-    );
-
-    if (enteredPath === null) {
-      return;
+    try {
+      if ('showDirectoryPicker' in window) {
+        const handle = await (window as unknown as { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> }).showDirectoryPicker();
+        setDraftCwd(handle.name);
+      }
+    } catch {
+      // User cancelled or API not available
     }
-
-    const normalized = enteredPath.trim().replace(/^['"]|['"]$/g, '');
-    setDraftCwd(normalized || null);
   }
 
   function toggleDraftCat(palId: string): void {
