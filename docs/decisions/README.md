@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [025-make-cats-inc-a-suite-host-with-core-owned-product-projections](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) | Make cats-inc a suite host with core-owned product projections | Accepted | 2026-03-21 |
 | [024-separate-explicit-mentions-from-dynamic-room-workflow](./024-separate-explicit-mentions-from-dynamic-room-workflow.md) | Separate explicit mentions from dynamic room workflow | Accepted | 2026-03-20 |
 | [023-own-budget-policy-and-cost-control-in-product](./023-own-budget-policy-and-cost-control-in-product.md) | Own budget policy and cost control in product | Accepted | 2026-03-20 |
 | [022-own-workspace-delivery-policy-in-product](./022-own-workspace-delivery-policy-in-product.md) | Own workspace delivery policy in product | Accepted | 2026-03-20 |
@@ -73,6 +74,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-03-20*
+*Last updated: 2026-03-21*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*
