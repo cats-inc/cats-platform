@@ -16,10 +16,10 @@ The current Phase 2 API provides:
 
 The current server now exposes the first neutral `Cats Core v1` write-side
 substrate so parallel Chat and Work workstreams can persist the same actor,
-conversation, task, approval, owner-profile, run, trace, checkpoint, and
-orchestration-outcome records. This slice is intentionally minimal: it favors
-durable system records and stable write seams over a full live orchestration or
-approval UX.
+conversation, project, work-item, task, approval-binding, owner-profile, run,
+trace, checkpoint, orchestration-outcome, artifact, and activity records. This
+slice is intentionally minimal: it favors durable system records and stable
+write seams over a full live orchestration or approval UX.
 
 Current route ownership:
 
@@ -298,11 +298,16 @@ store. The payload includes:
 - `ownerProfile`
 - `actors`
 - `conversations`
+- `projects`
+- `workItems`
 - `tasks`
 - `runs`
 - `traces`
 - `checkpoints`
 - `outcomes`
+- `artifacts`
+- `activities`
+- `approvalBindings`
 - `botBindings`
 - `archives`
 
@@ -333,6 +338,25 @@ Returns:
   "conversations": []
 }
 ```
+
+### List Core Projects
+
+```text
+GET /api/core/projects
+POST /api/core/projects
+```
+
+`POST` upserts reusable suite-level project records.
+
+### List Core Work Items
+
+```text
+GET /api/core/work-items
+POST /api/core/work-items
+```
+
+`POST` upserts reusable work-item records linked to projects, conversations, or
+tasks without depending on chat-local state shapes.
 
 ### List Core Tasks
 
@@ -510,6 +534,36 @@ POST /api/core/outcomes
 `POST` writes durable orchestration outcome records for blocked, succeeded,
 failed, or cancelled system work. Chat room-turn outcomes are likewise
 projected into this collection during chat-state persistence.
+
+### List Core Artifacts
+
+```text
+GET /api/core/artifacts
+POST /api/core/artifacts
+```
+
+`POST` writes headless artifact references that Chat, Work, and Code can all
+reuse without leaking runtime/provider details into core.
+
+### List Core Activities
+
+```text
+GET /api/core/activities
+POST /api/core/activities
+```
+
+`POST` appends shared activity records for status changes, approval events,
+artifact writes, and other product-owned system events.
+
+### List Core Approval Bindings
+
+```text
+GET /api/core/approval-bindings
+POST /api/core/approval-bindings
+```
+
+`POST` binds a task-backed approval record to a reusable subject such as a
+project, work item, task, run, artifact, or conversation.
 
 ### Get Owner Profile
 
@@ -788,6 +842,10 @@ of these seams later without inventing a second schema.
 - `/api/core/conversations`
   - chat threads, work threads, transport-linked threads, and private
     escalation channels
+- `/api/core/projects`
+  - shared project containers above chat-local channels
+- `/api/core/work-items`
+  - reusable work records that can point at conversations, tasks, or projects
 - `/api/core/bot-bindings`
   - one external bot or transport identity mapped to one orchestrator
 - `/api/core/tasks`
@@ -800,12 +858,26 @@ of these seams later without inventing a second schema.
   - durable checkpoint write seam
 - `/api/core/outcomes`
   - durable orchestration outcome records
+- `/api/core/artifacts`
+  - durable references to outputs, previews, datasets, reports, or exports
+- `/api/core/activities`
+  - product-owned status and audit-style events above raw transcript logs
+- `/api/core/approval-bindings`
+  - shared approval-to-subject bindings for owner decisions or future gates
 - `/api/core/approvals`
   - approval queue projection plus approval decision write seam
 - `/api/core/owner-profile`
   - structured owner preferences and collaboration rules, including persistence
 - `/api/core/archive`
   - archive eligibility and downstream RAG handoff metadata
+
+## Shared Fixture Module
+
+`src/shared/coreFixtures.ts` now publishes a small reusable example bundle for
+`project`, `workItem`, `task`, `run`, `trace`, `checkpoint`, `outcome`,
+`artifact`, `activity`, `approvalBinding`, and `ownerProfilePatch` payloads.
+Team 2 and future Work/Code slices can import the same examples through
+`src/shared/core.ts` instead of inventing product-specific DTOs.
 
 ## Planned Runtime Access Split
 
@@ -857,4 +929,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-03-21*
+*Last updated: 2026-03-22*

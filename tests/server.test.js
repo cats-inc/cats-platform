@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
+import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
 
 const baseConfig = {
@@ -134,15 +135,20 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
-    assert.equal(statePayload.version, 2);
+    assert.equal(statePayload.version, 3);
     assert.equal(statePayload.ownerProfile.actorId, 'actor-owner');
     assert.ok(Array.isArray(statePayload.actors));
     assert.ok(Array.isArray(statePayload.conversations));
+    assert.ok(Array.isArray(statePayload.projects));
+    assert.ok(Array.isArray(statePayload.workItems));
     assert.ok(Array.isArray(statePayload.tasks));
     assert.ok(Array.isArray(statePayload.runs));
     assert.ok(Array.isArray(statePayload.traces));
     assert.ok(Array.isArray(statePayload.checkpoints));
     assert.ok(Array.isArray(statePayload.outcomes));
+    assert.ok(Array.isArray(statePayload.artifacts));
+    assert.ok(Array.isArray(statePayload.activities));
+    assert.ok(Array.isArray(statePayload.approvalBindings));
 
     const actorsResponse = await fetch(`${baseUrl}/api/core/actors`);
     assert.equal(actorsResponse.status, 200);
@@ -163,8 +169,9 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
   });
 });
 
-test('core write APIs persist owner profile, tasks, approvals, traces, checkpoints, runs, and outcomes', async () => {
+test('core write APIs persist shared project, work, approval, trace, artifact, and owner records', async () => {
   const chatStore = new MemoryChatStore();
+  const fixtures = createSharedCoreFixtureBundle();
 
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const ownerProfileResponse = await fetch(`${baseUrl}/api/core/owner-profile`, {
@@ -186,117 +193,112 @@ test('core write APIs persist owner profile, tasks, approvals, traces, checkpoin
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        task: {
-          id: 'task-system-1',
-          title: 'Approve orchestrator dispatch',
-          conversationId: 'conversation-system-1',
-          summary: 'Core-owned approval task for Team 2.',
-        },
-      }),
+      body: JSON.stringify({ task: fixtures.task }),
     });
     assert.equal(taskResponse.status, 201);
     const taskPayload = await taskResponse.json();
-    assert.equal(taskPayload.task.id, 'task-system-1');
+    assert.equal(taskPayload.task.id, fixtures.task.id);
+
+    const projectResponse = await fetch(`${baseUrl}/api/core/projects`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ project: fixtures.project }),
+    });
+    assert.equal(projectResponse.status, 201);
+
+    const workItemResponse = await fetch(`${baseUrl}/api/core/work-items`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ workItem: fixtures.workItem }),
+    });
+    assert.equal(workItemResponse.status, 201);
 
     const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        taskId: 'task-system-1',
-        status: 'pending',
-        requestedByActorId: 'actor-orchestrator-global',
-        notes: 'Need approval before dispatch.',
-      }),
+      body: JSON.stringify(fixtures.approvalDecision),
     });
     assert.equal(approvalResponse.status, 200);
     const approvalPayload = await approvalResponse.json();
     assert.equal(approvalPayload.task.approval.status, 'pending');
-    assert.equal(approvalPayload.queueItem.taskId, 'task-system-1');
+    assert.equal(approvalPayload.queueItem.taskId, fixtures.task.id);
 
     const traceResponse = await fetch(`${baseUrl}/api/core/traces`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        trace: {
-          id: 'trace-record-1',
-          traceId: 'trace-system-1',
-          kind: 'dispatch',
-          conversationId: 'conversation-system-1',
-          taskId: 'task-system-1',
-          message: 'Dispatch recorded.',
-        },
-      }),
+      body: JSON.stringify({ trace: fixtures.trace }),
     });
     assert.equal(traceResponse.status, 201);
     const tracePayload = await traceResponse.json();
-    assert.equal(tracePayload.trace.id, 'trace-record-1');
+    assert.equal(tracePayload.trace.id, fixtures.trace.id);
 
     const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        checkpoint: {
-          id: 'checkpoint-system-1',
-          label: 'owner-gate',
-          status: 'open',
-          conversationId: 'conversation-system-1',
-          taskId: 'task-system-1',
-          sourceTraceId: 'trace-record-1',
-          summary: 'Waiting for owner decision.',
-        },
-      }),
+      body: JSON.stringify({ checkpoint: fixtures.checkpoint }),
     });
     assert.equal(checkpointResponse.status, 201);
     const checkpointPayload = await checkpointResponse.json();
-    assert.equal(checkpointPayload.checkpoint.id, 'checkpoint-system-1');
+    assert.equal(checkpointPayload.checkpoint.id, fixtures.checkpoint.id);
 
     const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        run: {
-          id: 'run-system-1',
-          title: 'Dispatch run',
-          status: 'running',
-          conversationId: 'conversation-system-1',
-          taskId: 'task-system-1',
-          traceId: 'trace-system-1',
-        },
-      }),
+      body: JSON.stringify({ run: fixtures.run }),
     });
     assert.equal(runResponse.status, 201);
     const runPayload = await runResponse.json();
-    assert.equal(runPayload.run.id, 'run-system-1');
+    assert.equal(runPayload.run.id, fixtures.run.id);
 
     const outcomeResponse = await fetch(`${baseUrl}/api/core/outcomes`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        outcome: {
-          id: 'outcome-system-1',
-          title: 'Blocked for owner',
-          status: 'blocked',
-          conversationId: 'conversation-system-1',
-          runId: 'run-system-1',
-          taskId: 'task-system-1',
-          summary: 'Still awaiting owner approval.',
-        },
-      }),
+      body: JSON.stringify({ outcome: fixtures.outcome }),
     });
     assert.equal(outcomeResponse.status, 201);
     const outcomePayload = await outcomeResponse.json();
-    assert.equal(outcomePayload.outcome.id, 'outcome-system-1');
+    assert.equal(outcomePayload.outcome.id, fixtures.outcome.id);
+
+    const artifactResponse = await fetch(`${baseUrl}/api/core/artifacts`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ artifact: fixtures.artifact }),
+    });
+    assert.equal(artifactResponse.status, 201);
+
+    const activityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ activity: fixtures.activity }),
+    });
+    assert.equal(activityResponse.status, 201);
+
+    const approvalBindingResponse = await fetch(`${baseUrl}/api/core/approval-bindings`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ approvalBinding: fixtures.approvalBinding }),
+    });
+    assert.equal(approvalBindingResponse.status, 201);
 
     const approvalsListResponse = await fetch(`${baseUrl}/api/core/approvals`);
     assert.equal(approvalsListResponse.status, 200);
@@ -307,13 +309,22 @@ test('core write APIs persist owner profile, tasks, approvals, traces, checkpoin
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
     assert.equal(statePayload.ownerProfile.displayName, 'Boss Owner');
-    assert.ok(statePayload.tasks.some((task) => task.id === 'task-system-1'));
-    assert.ok(statePayload.runs.some((run) => run.id === 'run-system-1'));
-    assert.ok(statePayload.traces.some((trace) => trace.id === 'trace-record-1'));
+    assert.ok(statePayload.projects.some((project) => project.id === fixtures.project.id));
+    assert.ok(statePayload.workItems.some((workItem) => workItem.id === fixtures.workItem.id));
+    assert.ok(statePayload.tasks.some((task) => task.id === fixtures.task.id));
+    assert.ok(statePayload.runs.some((run) => run.id === fixtures.run.id));
+    assert.ok(statePayload.traces.some((trace) => trace.id === fixtures.trace.id));
     assert.ok(
-      statePayload.checkpoints.some((checkpoint) => checkpoint.id === 'checkpoint-system-1'),
+      statePayload.checkpoints.some((checkpoint) => checkpoint.id === fixtures.checkpoint.id),
     );
-    assert.ok(statePayload.outcomes.some((outcome) => outcome.id === 'outcome-system-1'));
+    assert.ok(statePayload.outcomes.some((outcome) => outcome.id === fixtures.outcome.id));
+    assert.ok(statePayload.artifacts.some((artifact) => artifact.id === fixtures.artifact.id));
+    assert.ok(statePayload.activities.some((activity) => activity.id === fixtures.activity.id));
+    assert.ok(
+      statePayload.approvalBindings.some(
+        (approvalBinding) => approvalBinding.id === fixtures.approvalBinding.id,
+      ),
+    );
   }, chatStore);
 });
 

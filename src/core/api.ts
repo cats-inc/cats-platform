@@ -4,23 +4,35 @@ import {
 } from './errors.js';
 import type { CoreStore } from './store.js';
 import type {
+  CoreActivityKind,
+  CoreApprovalBindingKind,
+  CoreApprovalBindingSubjectKind,
   CoreApprovalStatus,
+  CoreArtifactKind,
+  CoreArtifactStatus,
   CoreCheckpointStatus,
   CoreOrchestrationOutcomeStatus,
+  CoreProjectStatus,
   CoreRecordMetadata,
   CoreRunStatus,
   CoreTaskStatus,
   CoreTraceKind,
+  CoreWorkItemStatus,
 } from './types.js';
 import type { RouteContext } from '../shared/http.js';
 import {
+  appendCoreActivity,
   appendCoreTrace,
   buildApprovalQueue,
   patchOwnerProfile,
+  upsertCoreApprovalBinding,
+  upsertCoreArtifact,
   upsertCoreCheckpoint,
   upsertCoreOutcome,
+  upsertCoreProject,
   upsertCoreRun,
   upsertCoreTask,
+  upsertCoreWorkItem,
   writeApprovalDecision,
 } from './model.js';
 import {
@@ -38,6 +50,9 @@ const CORE_TASK_STATUSES = [
   'pending_approval',
   'approved',
   'in_progress',
+  'blocked',
+  'completed',
+  'cancelled',
   'archived',
 ] as const satisfies readonly CoreTaskStatus[];
 
@@ -80,6 +95,66 @@ const CORE_OUTCOME_STATUSES = [
   'cancelled',
 ] as const satisfies readonly CoreOrchestrationOutcomeStatus[];
 
+const CORE_PROJECT_STATUSES = [
+  'planned',
+  'active',
+  'paused',
+  'archived',
+] as const satisfies readonly CoreProjectStatus[];
+
+const CORE_WORK_ITEM_STATUSES = [
+  'draft',
+  'planned',
+  'ready',
+  'in_progress',
+  'blocked',
+  'completed',
+  'cancelled',
+  'archived',
+] as const satisfies readonly CoreWorkItemStatus[];
+
+const CORE_ARTIFACT_KINDS = [
+  'document',
+  'report',
+  'build',
+  'preview',
+  'attachment',
+  'transcript_export',
+  'dataset',
+] as const satisfies readonly CoreArtifactKind[];
+
+const CORE_ARTIFACT_STATUSES = [
+  'draft',
+  'ready',
+  'published',
+  'archived',
+] as const satisfies readonly CoreArtifactStatus[];
+
+const CORE_ACTIVITY_KINDS = [
+  'note',
+  'status_change',
+  'approval_requested',
+  'approval_decided',
+  'artifact_recorded',
+  'checkpoint_recorded',
+  'work_item_updated',
+] as const satisfies readonly CoreActivityKind[];
+
+const CORE_APPROVAL_BINDING_KINDS = [
+  'owner_decision',
+  'review_gate',
+  'release_gate',
+] as const satisfies readonly CoreApprovalBindingKind[];
+
+const CORE_APPROVAL_BINDING_SUBJECT_KINDS = [
+  'project',
+  'work_item',
+  'task',
+  'run',
+  'artifact',
+  'conversation',
+] as const satisfies readonly CoreApprovalBindingSubjectKind[];
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
@@ -119,6 +194,23 @@ function readNullableString(
   }
   if (typeof value !== 'string') {
     throw new CoreValidationError(`${fieldName} must be a string or null`);
+  }
+
+  return value;
+}
+
+function readNullableNumber(
+  value: unknown,
+  fieldName: string,
+): number | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new CoreValidationError(`${fieldName} must be a number or null`);
   }
 
   return value;
@@ -242,6 +334,109 @@ async function handleCoreConversations(
 ): Promise<void> {
   const core = await context.dependencies.chatStore.readCore();
   sendJson(context.response, 200, { conversations: core.conversations });
+}
+
+async function handleCoreProjects(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  const core = await context.dependencies.chatStore.readCore();
+  sendJson(context.response, 200, { projects: core.projects });
+}
+
+async function handleCoreProjectWrite(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  try {
+    const project = await readWrappedBody(context, 'project');
+    const next = upsertCoreProject(
+      await context.dependencies.chatStore.readCore(),
+      {
+        id: readOptionalString(project.id, 'project.id'),
+        title: readRequiredString(project.title, 'project.title'),
+        status: readEnumValue(
+          project.status,
+          'project.status',
+          CORE_PROJECT_STATUSES,
+        ),
+        ownerActorId: readOptionalString(project.ownerActorId, 'project.ownerActorId'),
+        summary: readNullableString(project.summary, 'project.summary'),
+        repoPath: readNullableString(project.repoPath, 'project.repoPath'),
+        primaryConversationId: readNullableString(
+          project.primaryConversationId,
+          'project.primaryConversationId',
+        ),
+        createdAt: readOptionalString(project.createdAt, 'project.createdAt'),
+        metadata: readMetadata(project.metadata, 'project.metadata'),
+      },
+    );
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persistedProject = persisted.projects.find(
+      (candidate) => candidate.id === next.project.id,
+    );
+
+    sendJson(context.response, next.created ? 201 : 200, {
+      project: persistedProject ?? next.project,
+      created: next.created,
+    });
+  } catch (error) {
+    handleCoreError(context, error);
+  }
+}
+
+async function handleCoreWorkItems(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  const core = await context.dependencies.chatStore.readCore();
+  sendJson(context.response, 200, { workItems: core.workItems });
+}
+
+async function handleCoreWorkItemWrite(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  try {
+    const workItem = await readWrappedBody(context, 'workItem');
+    const next = upsertCoreWorkItem(
+      await context.dependencies.chatStore.readCore(),
+      {
+        id: readOptionalString(workItem.id, 'workItem.id'),
+        title: readRequiredString(workItem.title, 'workItem.title'),
+        status: readEnumValue(
+          workItem.status,
+          'workItem.status',
+          CORE_WORK_ITEM_STATUSES,
+        ),
+        projectId: readNullableString(workItem.projectId, 'workItem.projectId'),
+        conversationId: readNullableString(
+          workItem.conversationId,
+          'workItem.conversationId',
+        ),
+        taskId: readNullableString(workItem.taskId, 'workItem.taskId'),
+        parentWorkItemId: readNullableString(
+          workItem.parentWorkItemId,
+          'workItem.parentWorkItemId',
+        ),
+        ownerActorId: readOptionalString(workItem.ownerActorId, 'workItem.ownerActorId'),
+        assignedActorIds: readStringArray(
+          workItem.assignedActorIds,
+          'workItem.assignedActorIds',
+        ),
+        summary: readNullableString(workItem.summary, 'workItem.summary'),
+        createdAt: readOptionalString(workItem.createdAt, 'workItem.createdAt'),
+        metadata: readMetadata(workItem.metadata, 'workItem.metadata'),
+      },
+    );
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persistedWorkItem = persisted.workItems.find(
+      (candidate) => candidate.id === next.workItem.id,
+    );
+
+    sendJson(context.response, next.created ? 201 : 200, {
+      workItem: persistedWorkItem ?? next.workItem,
+      created: next.created,
+    });
+  } catch (error) {
+    handleCoreError(context, error);
+  }
 }
 
 async function handleCoreTasks(
@@ -507,6 +702,186 @@ async function handleCoreOutcomeWrite(
   }
 }
 
+async function handleCoreArtifacts(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  const core = await context.dependencies.chatStore.readCore();
+  sendJson(context.response, 200, { artifacts: core.artifacts });
+}
+
+async function handleCoreArtifactWrite(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  try {
+    const artifact = await readWrappedBody(context, 'artifact');
+    const next = upsertCoreArtifact(
+      await context.dependencies.chatStore.readCore(),
+      {
+        id: readOptionalString(artifact.id, 'artifact.id'),
+        title: readRequiredString(artifact.title, 'artifact.title'),
+        kind: readEnumValue(artifact.kind, 'artifact.kind', CORE_ARTIFACT_KINDS),
+        status: readEnumValue(
+          artifact.status,
+          'artifact.status',
+          CORE_ARTIFACT_STATUSES,
+        ),
+        projectId: readNullableString(artifact.projectId, 'artifact.projectId'),
+        workItemId: readNullableString(artifact.workItemId, 'artifact.workItemId'),
+        conversationId: readNullableString(
+          artifact.conversationId,
+          'artifact.conversationId',
+        ),
+        taskId: readNullableString(artifact.taskId, 'artifact.taskId'),
+        runId: readNullableString(artifact.runId, 'artifact.runId'),
+        path: readNullableString(artifact.path, 'artifact.path'),
+        mimeType: readNullableString(artifact.mimeType, 'artifact.mimeType'),
+        sizeBytes: readNullableNumber(artifact.sizeBytes, 'artifact.sizeBytes'),
+        summary: readNullableString(artifact.summary, 'artifact.summary'),
+        createdAt: readOptionalString(artifact.createdAt, 'artifact.createdAt'),
+        metadata: readMetadata(artifact.metadata, 'artifact.metadata'),
+      },
+    );
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persistedArtifact = persisted.artifacts.find(
+      (candidate) => candidate.id === next.artifact.id,
+    );
+
+    sendJson(context.response, next.created ? 201 : 200, {
+      artifact: persistedArtifact ?? next.artifact,
+      created: next.created,
+    });
+  } catch (error) {
+    handleCoreError(context, error);
+  }
+}
+
+async function handleCoreActivities(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  const core = await context.dependencies.chatStore.readCore();
+  sendJson(context.response, 200, { activities: core.activities });
+}
+
+async function handleCoreActivityWrite(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  try {
+    const activity = await readWrappedBody(context, 'activity');
+    const next = appendCoreActivity(
+      await context.dependencies.chatStore.readCore(),
+      {
+        id: readOptionalString(activity.id, 'activity.id'),
+        kind:
+          readEnumValue(activity.kind, 'activity.kind', CORE_ACTIVITY_KINDS)
+          ?? 'note',
+        actorId: readNullableString(activity.actorId, 'activity.actorId'),
+        projectId: readNullableString(activity.projectId, 'activity.projectId'),
+        workItemId: readNullableString(activity.workItemId, 'activity.workItemId'),
+        conversationId: readNullableString(
+          activity.conversationId,
+          'activity.conversationId',
+        ),
+        taskId: readNullableString(activity.taskId, 'activity.taskId'),
+        runId: readNullableString(activity.runId, 'activity.runId'),
+        artifactId: readNullableString(activity.artifactId, 'activity.artifactId'),
+        message: readRequiredString(activity.message, 'activity.message'),
+        createdAt: readOptionalString(activity.createdAt, 'activity.createdAt'),
+        metadata: readMetadata(activity.metadata, 'activity.metadata'),
+      },
+    );
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persistedActivity = persisted.activities.find(
+      (candidate) => candidate.id === next.activity.id,
+    );
+
+    sendJson(context.response, next.created ? 201 : 200, {
+      activity: persistedActivity ?? next.activity,
+      created: next.created,
+    });
+  } catch (error) {
+    handleCoreError(context, error);
+  }
+}
+
+async function handleCoreApprovalBindings(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  const core = await context.dependencies.chatStore.readCore();
+  sendJson(context.response, 200, { approvalBindings: core.approvalBindings });
+}
+
+async function handleCoreApprovalBindingWrite(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  try {
+    const approvalBinding = await readWrappedBody(context, 'approvalBinding');
+    const next = upsertCoreApprovalBinding(
+      await context.dependencies.chatStore.readCore(),
+      {
+        id: readOptionalString(approvalBinding.id, 'approvalBinding.id'),
+        kind: readEnumValue(
+          approvalBinding.kind,
+          'approvalBinding.kind',
+          CORE_APPROVAL_BINDING_KINDS,
+        ),
+        approvalTaskId: readRequiredString(
+          approvalBinding.approvalTaskId,
+          'approvalBinding.approvalTaskId',
+        ),
+        subjectKind:
+          readEnumValue(
+            approvalBinding.subjectKind,
+            'approvalBinding.subjectKind',
+            CORE_APPROVAL_BINDING_SUBJECT_KINDS,
+          ) ?? 'task',
+        subjectId: readRequiredString(
+          approvalBinding.subjectId,
+          'approvalBinding.subjectId',
+        ),
+        projectId: readNullableString(
+          approvalBinding.projectId,
+          'approvalBinding.projectId',
+        ),
+        workItemId: readNullableString(
+          approvalBinding.workItemId,
+          'approvalBinding.workItemId',
+        ),
+        conversationId: readNullableString(
+          approvalBinding.conversationId,
+          'approvalBinding.conversationId',
+        ),
+        requestedByActorId: readNullableString(
+          approvalBinding.requestedByActorId,
+          'approvalBinding.requestedByActorId',
+        ),
+        requestedForActorId: readOptionalString(
+          approvalBinding.requestedForActorId,
+          'approvalBinding.requestedForActorId',
+        ),
+        createdAt: readOptionalString(
+          approvalBinding.createdAt,
+          'approvalBinding.createdAt',
+        ),
+        metadata: readMetadata(
+          approvalBinding.metadata,
+          'approvalBinding.metadata',
+        ),
+      },
+    );
+    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persistedApprovalBinding = persisted.approvalBindings.find(
+      (candidate) => candidate.id === next.approvalBinding.id,
+    );
+
+    sendJson(context.response, next.created ? 201 : 200, {
+      approvalBinding: persistedApprovalBinding ?? next.approvalBinding,
+      created: next.created,
+    });
+  } catch (error) {
+    handleCoreError(context, error);
+  }
+}
+
 async function handleCoreApprovals(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
@@ -625,6 +1000,32 @@ export async function routeCoreApi(
     return true;
   }
 
+  if (context.url.pathname === '/api/core/projects') {
+    if (context.method === 'GET') {
+      await handleCoreProjects(context);
+      return true;
+    }
+    if (context.method === 'POST') {
+      await handleCoreProjectWrite(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/core/work-items') {
+    if (context.method === 'GET') {
+      await handleCoreWorkItems(context);
+      return true;
+    }
+    if (context.method === 'POST') {
+      await handleCoreWorkItemWrite(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
   if (context.url.pathname === '/api/core/tasks') {
     if (context.method === 'GET') {
       await handleCoreTasks(context);
@@ -684,6 +1085,45 @@ export async function routeCoreApi(
     }
     if (context.method === 'POST') {
       await handleCoreOutcomeWrite(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/core/artifacts') {
+    if (context.method === 'GET') {
+      await handleCoreArtifacts(context);
+      return true;
+    }
+    if (context.method === 'POST') {
+      await handleCoreArtifactWrite(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/core/activities') {
+    if (context.method === 'GET') {
+      await handleCoreActivities(context);
+      return true;
+    }
+    if (context.method === 'POST') {
+      await handleCoreActivityWrite(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/core/approval-bindings') {
+    if (context.method === 'GET') {
+      await handleCoreApprovalBindings(context);
+      return true;
+    }
+    if (context.method === 'POST') {
+      await handleCoreApprovalBindingWrite(context);
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);

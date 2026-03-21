@@ -14,6 +14,7 @@ import {
   updateGlobalOrchestrator,
 } from '../dist-server/chat/model.js';
 import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
+import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
 import { FileChatStore } from '../dist-server/chat/store.js';
 
@@ -78,7 +79,7 @@ test('FileChatStore persists configured channels, cats, assignments, and message
   const parsedState = JSON.parse(rawState);
   const createdChannel = parsedState.chat.channels.find((channel) => channel.id === channelId);
 
-  assert.equal(parsedState.version, 2);
+  assert.equal(parsedState.version, 3);
   assert.match(parsedState.chat.selectedChannelId, UUID_PATTERN);
   assert.equal(parsedState.chat.selectedChannelId, channelId);
   assert.equal(parsedState.chat.cats.length, 2);
@@ -313,7 +314,8 @@ test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', asyn
   assert.ok(bossCatActor.roles.includes('boss_cat'));
 });
 
-test('FileChatStore preserves core-owned task, run, trace, checkpoint, and outcome records', async () => {
+test('FileChatStore preserves core-owned shared records across reloads and chat projection sync', async () => {
+  const fixtures = createSharedCoreFixtureBundle();
   const statePath = path.join(
     await mkdtemp(path.join(os.tmpdir(), 'cats-store-core-')),
     'chat-state.json',
@@ -328,6 +330,42 @@ test('FileChatStore preserves core-owned task, run, trace, checkpoint, and outco
       displayName: 'Boss Owner',
       updatedAt: '2026-03-21T01:00:00.000Z',
     },
+    actors: [
+      ...initialCore.actors,
+      {
+        id: 'actor-stakeholder-1',
+        name: 'Stakeholder',
+        kind: 'stakeholder',
+        status: 'active',
+        roles: ['observer'],
+        skillProfile: null,
+        mcpProfile: null,
+        defaultExecutionTarget: null,
+        memory: { summary: null, facts: [], openLoops: [], updatedAt: null },
+        source: 'core_record',
+        sourceId: 'stakeholder-1',
+        createdAt: '2026-03-21T01:00:00.000Z',
+        updatedAt: '2026-03-21T01:00:00.000Z',
+        archivedAt: null,
+      },
+    ],
+    conversations: [
+      {
+        id: 'conversation-system-1',
+        title: 'System Thread',
+        kind: 'work_thread',
+        status: 'active',
+        participantActorIds: ['actor-owner', 'actor-stakeholder-1'],
+        sourceChannelId: null,
+        repoPath: 'C:/repo/one-man-digital-company',
+        responseLanguage: 'en',
+        createdAt: '2026-03-21T01:00:00.000Z',
+        updatedAt: '2026-03-21T01:00:00.000Z',
+        lastMessageAt: null,
+      },
+    ],
+    projects: [fixtures.project],
+    workItems: [fixtures.workItem],
     tasks: [
       ...initialCore.tasks,
       {
@@ -412,6 +450,9 @@ test('FileChatStore preserves core-owned task, run, trace, checkpoint, and outco
         metadata: { severity: 'info' },
       },
     ],
+    artifacts: [fixtures.artifact],
+    activities: [fixtures.activity],
+    approvalBindings: [fixtures.approvalBinding],
   });
 
   const reloadedStore = new FileChatStore(statePath);
@@ -428,14 +469,27 @@ test('FileChatStore preserves core-owned task, run, trace, checkpoint, and outco
 
   const reloadedCore = await reloadedStore.readCore();
 
-  assert.equal(reloadedCore.version, 2);
+  assert.equal(reloadedCore.version, 3);
   assert.equal(reloadedCore.ownerProfile.displayName, 'Boss Owner');
+  assert.ok(reloadedCore.actors.some((actor) => actor.id === 'actor-stakeholder-1'));
+  assert.ok(
+    reloadedCore.conversations.some(
+      (conversation) => conversation.id === 'conversation-system-1',
+    ),
+  );
+  assert.ok(reloadedCore.projects.some((project) => project.id === fixtures.project.id));
+  assert.ok(
+    reloadedCore.workItems.some((workItem) => workItem.id === fixtures.workItem.id),
+  );
   assert.ok(reloadedCore.tasks.some((task) => task.id === 'task-system-1'));
   assert.ok(reloadedCore.tasks.some((task) => task.id.startsWith('task-channel-')));
   assert.equal(reloadedCore.runs[0].id, 'run-system-1');
   assert.equal(reloadedCore.traces[0].id, 'trace-record-1');
   assert.equal(reloadedCore.checkpoints[0].id, 'checkpoint-system-1');
   assert.equal(reloadedCore.outcomes[0].id, 'outcome-system-1');
+  assert.equal(reloadedCore.artifacts[0].id, fixtures.artifact.id);
+  assert.equal(reloadedCore.activities[0].id, fixtures.activity.id);
+  assert.equal(reloadedCore.approvalBindings[0].id, fixtures.approvalBinding.id);
 });
 
 test('updateGlobalOrchestrator preserves the existing model when model is omitted', async () => {

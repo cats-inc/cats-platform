@@ -416,6 +416,35 @@ function createWorkflowOutcome(
   };
 }
 
+function preserveCoreOwnedActors(existingActors: CoreActorRecord[]): CoreActorRecord[] {
+  return existingActors
+    .filter((actor) => actor.source === 'core_record')
+    .map((actor) => structuredClone(actor));
+}
+
+function preserveCoreOwnedConversations(
+  existingConversations: CoreConversationRecord[],
+): CoreConversationRecord[] {
+  return existingConversations
+    .filter(
+      (conversation) =>
+        conversation.sourceChannelId === null
+        && !conversation.id.startsWith('conversation-channel-'),
+    )
+    .map((conversation) => structuredClone(conversation));
+}
+
+function preserveCoreOwnedArchives(
+  existingArchives: ArchiveMetadataRecord[],
+): ArchiveMetadataRecord[] {
+  return existingArchives
+    .filter(
+      (archive) =>
+        archive.sourceChannelId === null && !archive.id.startsWith('archive-channel-'),
+    )
+    .map((archive) => structuredClone(archive));
+}
+
 function createArchiveMetadata(
   channel: ChatChannelState,
   conversationId: string,
@@ -476,8 +505,12 @@ export function syncCoreStateWithChatState(
   const ownerActor = createOwnerActor(ownerProfile);
   const orchestratorActor = createOrchestratorActor(chat);
   const catActors = chat.cats.map((cat) => createCatActor(cat, chat.bossCatId));
+  const preservedActors = preserveCoreOwnedActors(existingCore.actors ?? []);
   const existingTasks = new Map((existingCore.tasks ?? []).map((task) => [task.id, task]));
   const existingArchives = new Map((existingCore.archives ?? []).map((archive) => [archive.id, archive]));
+  const preservedConversations = preserveCoreOwnedConversations(
+    existingCore.conversations ?? [],
+  );
   const conversations = chat.channels.map((channel) =>
     createConversationFromChannel(
       channel,
@@ -501,6 +534,7 @@ export function syncCoreStateWithChatState(
   const preservedTraces = preserveCoreOwnedTraces(existingCore.traces ?? []);
   const preservedCheckpoints = preserveCoreOwnedCheckpoints(existingCore.checkpoints ?? []);
   const preservedOutcomes = preserveCoreOwnedOutcomes(existingCore.outcomes ?? []);
+  const preservedArchives = preserveCoreOwnedArchives(existingCore.archives ?? []);
   const archives = chat.channels.map((channel) =>
     createArchiveMetadata(
       channel,
@@ -536,14 +570,19 @@ export function syncCoreStateWithChatState(
       ...ownerProfile,
       updatedAt: ownerProfile.updatedAt || updatedAt,
     },
-    actors: [ownerActor, orchestratorActor, ...catActors],
-    conversations,
+    actors: [ownerActor, orchestratorActor, ...catActors, ...preservedActors],
+    conversations: [...conversations, ...preservedConversations],
+    projects: structuredClone(existingCore.projects ?? []),
+    workItems: structuredClone(existingCore.workItems ?? []),
     tasks: [...tasks, ...preservedTasks],
     runs: [...workflowRuns, ...preservedRuns],
     traces: [...workflowTraces, ...preservedTraces],
     checkpoints: [...workflowCheckpoints, ...preservedCheckpoints],
     outcomes: [...workflowOutcomes, ...preservedOutcomes],
+    artifacts: structuredClone(existingCore.artifacts ?? []),
+    activities: structuredClone(existingCore.activities ?? []),
+    approvalBindings: structuredClone(existingCore.approvalBindings ?? []),
     botBindings: syncBotBindings(chat, existingCore.botBindings ?? []),
-    archives,
+    archives: [...archives, ...preservedArchives],
   };
 }

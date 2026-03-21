@@ -1,4 +1,4 @@
-export const CATS_CORE_STATE_VERSION = 2 as const;
+export const CATS_CORE_STATE_VERSION = 3 as const;
 
 export interface CoreRecordMetadata {
   [key: string]: unknown;
@@ -22,9 +22,16 @@ export type CoreActorKind =
   | 'orchestrator'
   | 'worker'
   | 'stakeholder'
-  | 'bot';
+  | 'bot'
+  | 'resource';
 
 export type CoreActorStatus = 'active' | 'archived';
+
+export type CoreActorSource =
+  | 'owner_profile'
+  | 'global_orchestrator'
+  | 'chat_cat'
+  | 'core_record';
 
 export interface CoreActorRecord {
   id: string;
@@ -36,7 +43,7 @@ export interface CoreActorRecord {
   mcpProfile: string | null;
   defaultExecutionTarget: ExecutionTargetSummary | null;
   memory: MemoryCheckpointSummary;
-  source: 'owner_profile' | 'global_orchestrator' | 'chat_cat';
+  source: CoreActorSource;
   sourceId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -47,7 +54,9 @@ export type CoreConversationKind =
   | 'chat_channel'
   | 'direct_message'
   | 'external_transport'
-  | 'private_escalation';
+  | 'private_escalation'
+  | 'work_thread'
+  | 'code_thread';
 
 export type CoreConversationStatus = 'planned' | 'active' | 'archived';
 
@@ -63,6 +72,47 @@ export interface CoreConversationRecord {
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
+}
+
+export type CoreProjectStatus = 'planned' | 'active' | 'paused' | 'archived';
+
+export interface CoreProjectRecord {
+  id: string;
+  title: string;
+  status: CoreProjectStatus;
+  ownerActorId: string;
+  summary: string | null;
+  repoPath: string | null;
+  primaryConversationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type CoreWorkItemStatus =
+  | 'draft'
+  | 'planned'
+  | 'ready'
+  | 'in_progress'
+  | 'blocked'
+  | 'completed'
+  | 'cancelled'
+  | 'archived';
+
+export interface CoreWorkItemRecord {
+  id: string;
+  title: string;
+  status: CoreWorkItemStatus;
+  projectId: string | null;
+  conversationId: string | null;
+  taskId: string | null;
+  parentWorkItemId: string | null;
+  ownerActorId: string;
+  assignedActorIds: string[];
+  summary: string | null;
+  createdAt: string;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
 }
 
 export type CoreApprovalStatus =
@@ -107,11 +157,43 @@ export interface CoreApprovalQueueItem {
   decisionOptions: CoreApprovalDecisionOptionRecord[];
 }
 
+export type CoreApprovalBindingKind =
+  | 'owner_decision'
+  | 'review_gate'
+  | 'release_gate';
+
+export type CoreApprovalBindingSubjectKind =
+  | 'project'
+  | 'work_item'
+  | 'task'
+  | 'run'
+  | 'artifact'
+  | 'conversation';
+
+export interface CoreApprovalBindingRecord {
+  id: string;
+  kind: CoreApprovalBindingKind;
+  approvalTaskId: string;
+  subjectKind: CoreApprovalBindingSubjectKind;
+  subjectId: string;
+  projectId: string | null;
+  workItemId: string | null;
+  conversationId: string | null;
+  requestedByActorId: string | null;
+  requestedForActorId: string;
+  createdAt: string;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
 export type CoreTaskStatus =
   | 'draft'
   | 'pending_approval'
   | 'approved'
   | 'in_progress'
+  | 'blocked'
+  | 'completed'
+  | 'cancelled'
   | 'archived';
 
 export interface CoreTaskRecord {
@@ -211,6 +293,60 @@ export interface CoreOrchestrationOutcomeRecord {
   metadata: CoreRecordMetadata;
 }
 
+export type CoreArtifactKind =
+  | 'document'
+  | 'report'
+  | 'build'
+  | 'preview'
+  | 'attachment'
+  | 'transcript_export'
+  | 'dataset';
+
+export type CoreArtifactStatus = 'draft' | 'ready' | 'published' | 'archived';
+
+export interface CoreArtifactRecord {
+  id: string;
+  title: string;
+  kind: CoreArtifactKind;
+  status: CoreArtifactStatus;
+  projectId: string | null;
+  workItemId: string | null;
+  conversationId: string | null;
+  taskId: string | null;
+  runId: string | null;
+  path: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  summary: string | null;
+  createdAt: string;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type CoreActivityKind =
+  | 'note'
+  | 'status_change'
+  | 'approval_requested'
+  | 'approval_decided'
+  | 'artifact_recorded'
+  | 'checkpoint_recorded'
+  | 'work_item_updated';
+
+export interface CoreActivityRecord {
+  id: string;
+  kind: CoreActivityKind;
+  actorId: string | null;
+  projectId: string | null;
+  workItemId: string | null;
+  conversationId: string | null;
+  taskId: string | null;
+  runId: string | null;
+  artifactId: string | null;
+  message: string;
+  createdAt: string;
+  metadata: CoreRecordMetadata;
+}
+
 export type BotBindingPlatform = 'telegram' | 'line';
 
 export interface BotBindingRecord {
@@ -252,11 +388,16 @@ export interface CatsCoreState {
   ownerProfile: OwnerProfileRecord;
   actors: CoreActorRecord[];
   conversations: CoreConversationRecord[];
+  projects: CoreProjectRecord[];
+  workItems: CoreWorkItemRecord[];
   tasks: CoreTaskRecord[];
   runs: CoreRunRecord[];
   traces: CoreTraceRecord[];
   checkpoints: CoreCheckpointRecord[];
   outcomes: CoreOrchestrationOutcomeRecord[];
+  artifacts: CoreArtifactRecord[];
+  activities: CoreActivityRecord[];
+  approvalBindings: CoreApprovalBindingRecord[];
   botBindings: BotBindingRecord[];
   archives: ArchiveMetadataRecord[];
 }

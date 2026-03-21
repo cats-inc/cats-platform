@@ -6,13 +6,25 @@ import {
   CoreValidationError,
 } from './errors.js';
 import type {
+  CatsCoreState,
+  CoreActivityKind,
+  CoreActivityRecord,
+  CoreActorRecord,
+  CoreApprovalBindingKind,
+  CoreApprovalBindingRecord,
+  CoreApprovalBindingSubjectKind,
   CoreApprovalDecisionOptionRecord,
   CoreApprovalQueueItem,
   CoreApprovalStatus,
+  CoreArtifactKind,
+  CoreArtifactRecord,
+  CoreArtifactStatus,
   CoreCheckpointRecord,
   CoreCheckpointStatus,
   CoreOrchestrationOutcomeRecord,
   CoreOrchestrationOutcomeStatus,
+  CoreProjectRecord,
+  CoreProjectStatus,
   CoreRecordMetadata,
   CoreRunRecord,
   CoreRunStatus,
@@ -20,8 +32,8 @@ import type {
   CoreTaskStatus,
   CoreTraceKind,
   CoreTraceRecord,
-  CatsCoreState,
-  CoreActorRecord,
+  CoreWorkItemRecord,
+  CoreWorkItemStatus,
   ExecutionTargetSummary,
   MemoryCheckpointSummary,
   OwnerProfileRecord,
@@ -52,7 +64,9 @@ function createDefaultExecutionTarget(): ExecutionTargetSummary {
   };
 }
 
-export function createDefaultOwnerProfile(updatedAt: string = new Date().toISOString()): OwnerProfileRecord {
+export function createDefaultOwnerProfile(
+  updatedAt: string = new Date().toISOString(),
+): OwnerProfileRecord {
   return {
     actorId: OWNER_ACTOR_ID,
     displayName: 'Owner',
@@ -83,7 +97,10 @@ const DEFAULT_APPROVAL_DECISION_OPTIONS: CoreApprovalDecisionOptionRecord[] = [
   },
 ];
 
-const ALLOWED_APPROVAL_TRANSITIONS: Record<CoreApprovalStatus, readonly CoreApprovalStatus[]> = {
+const ALLOWED_APPROVAL_TRANSITIONS: Record<
+  CoreApprovalStatus,
+  readonly CoreApprovalStatus[]
+> = {
   not_requested: ['not_requested', 'pending', 'approved', 'rejected'],
   pending: ['pending', 'approved', 'rejected'],
   approved: ['approved'],
@@ -128,62 +145,9 @@ function createDefaultOrchestratorActor(updatedAt: string): CoreActorRecord {
   };
 }
 
-export function createDefaultCoreState(): CatsCoreState {
-  const updatedAt = new Date().toISOString();
-  const ownerProfile = createDefaultOwnerProfile(updatedAt);
-
-  return {
-    version: CATS_CORE_STATE_VERSION,
-    updatedAt,
-    setupCompleteAt: null,
-    ownerProfile,
-    actors: [createOwnerActor(ownerProfile), createDefaultOrchestratorActor(updatedAt)],
-    conversations: [],
-    tasks: [],
-    runs: [],
-    traces: [],
-    checkpoints: [],
-    outcomes: [],
-    botBindings: [],
-    archives: [],
-  };
-}
-
-export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[] {
-  return core.tasks
-    .filter((task) =>
-      task.status === 'pending_approval' && task.approval.status === 'pending',
-    )
-    .map((task) => ({
-    id: `approval-${task.id}`,
-    kind: 'dispatch_plan',
-    taskId: task.id,
-    conversationId: task.conversationId,
-    status: task.approval.status,
-    title: task.title,
-    summary: task.summary,
-    requestedByActorId: task.orchestratorActorId,
-    requestedForActorId: task.ownerActorId,
-    requestedAt: task.approval.requestedAt,
-    decidedAt: task.approval.decidedAt,
-    decidedByActorId: task.approval.decidedByActorId,
-    notes: task.approval.notes,
-    requiresOwnerDecision: task.approval.status === 'pending',
-    decisionOptions: DEFAULT_APPROVAL_DECISION_OPTIONS.map((option) => ({ ...option })),
-    }));
-}
-
-function touchCoreState(
-  core: CatsCoreState,
-  updatedAt: string,
-): CatsCoreState {
-  return {
-    ...core,
-    updatedAt,
-  };
-}
-
-function normalizeMetadata(metadata: CoreRecordMetadata | null | undefined): CoreRecordMetadata {
+function normalizeMetadata(
+  metadata: CoreRecordMetadata | null | undefined,
+): CoreRecordMetadata {
   if (!metadata) {
     return {};
   }
@@ -205,7 +169,23 @@ function normalizeStringArray(values: string[] | undefined): string[] {
     return [];
   }
 
-  return values.filter((value, index) => value.length > 0 && values.indexOf(value) === index);
+  return values.filter(
+    (value, index) => value.trim().length > 0 && values.indexOf(value) === index,
+  );
+}
+
+function normalizeNullableNumber(value: number | null | undefined): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (!Number.isFinite(value) || value < 0) {
+    throw new CoreValidationError(
+      'sizeBytes must be a non-negative number',
+      'artifact_size_bytes_invalid',
+    );
+  }
+
+  return value;
 }
 
 function replaceById<T extends { id: string }>(
@@ -226,6 +206,113 @@ function replaceById<T extends { id: string }>(
     records: nextRecords,
     created: false,
   };
+}
+
+function touchCoreState(core: CatsCoreState, updatedAt: string): CatsCoreState {
+  return {
+    ...core,
+    version: CATS_CORE_STATE_VERSION,
+    updatedAt,
+  };
+}
+
+function replaceOwnerActor(
+  actors: CoreActorRecord[],
+  ownerProfile: OwnerProfileRecord,
+): CoreActorRecord[] {
+  const ownerActor = createOwnerActor(ownerProfile);
+  const ownerIndex = actors.findIndex((actor) => actor.id === ownerProfile.actorId);
+
+  if (ownerIndex === -1) {
+    return [ownerActor, ...structuredClone(actors)];
+  }
+
+  const nextActors = structuredClone(actors);
+  nextActors[ownerIndex] = ownerActor;
+  return nextActors;
+}
+
+export function createDefaultCoreState(): CatsCoreState {
+  const updatedAt = new Date().toISOString();
+  const ownerProfile = createDefaultOwnerProfile(updatedAt);
+
+  return {
+    version: CATS_CORE_STATE_VERSION,
+    updatedAt,
+    setupCompleteAt: null,
+    ownerProfile,
+    actors: [
+      createOwnerActor(ownerProfile),
+      createDefaultOrchestratorActor(updatedAt),
+    ],
+    conversations: [],
+    projects: [],
+    workItems: [],
+    tasks: [],
+    runs: [],
+    traces: [],
+    checkpoints: [],
+    outcomes: [],
+    artifacts: [],
+    activities: [],
+    approvalBindings: [],
+    botBindings: [],
+    archives: [],
+  };
+}
+
+export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[] {
+  return core.tasks
+    .filter(
+      (task) =>
+        task.status === 'pending_approval' && task.approval.status === 'pending',
+    )
+    .map((task) => ({
+      id: `approval-${task.id}`,
+      kind: 'dispatch_plan',
+      taskId: task.id,
+      conversationId: task.conversationId,
+      status: task.approval.status,
+      title: task.title,
+      summary: task.summary,
+      requestedByActorId: task.orchestratorActorId,
+      requestedForActorId: task.ownerActorId,
+      requestedAt: task.approval.requestedAt,
+      decidedAt: task.approval.decidedAt,
+      decidedByActorId: task.approval.decidedByActorId,
+      notes: task.approval.notes,
+      requiresOwnerDecision: task.approval.status === 'pending',
+      decisionOptions: DEFAULT_APPROVAL_DECISION_OPTIONS.map((option) => ({
+        ...option,
+      })),
+    }));
+}
+
+export interface CoreProjectWriteInput {
+  id?: string;
+  title: string;
+  status?: CoreProjectStatus;
+  ownerActorId?: string;
+  summary?: string | null;
+  repoPath?: string | null;
+  primaryConversationId?: string | null;
+  createdAt?: string;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreWorkItemWriteInput {
+  id?: string;
+  title: string;
+  status?: CoreWorkItemStatus;
+  projectId?: string | null;
+  conversationId?: string | null;
+  taskId?: string | null;
+  parentWorkItemId?: string | null;
+  ownerActorId?: string;
+  assignedActorIds?: string[];
+  summary?: string | null;
+  createdAt?: string;
+  metadata?: CoreRecordMetadata;
 }
 
 export interface CoreTaskWriteInput {
@@ -318,6 +405,183 @@ export interface CoreOutcomeWriteInput {
   summary?: string | null;
   recordedAt?: string;
   metadata?: CoreRecordMetadata;
+}
+
+export interface CoreArtifactWriteInput {
+  id?: string;
+  title: string;
+  kind?: CoreArtifactKind;
+  status?: CoreArtifactStatus;
+  projectId?: string | null;
+  workItemId?: string | null;
+  conversationId?: string | null;
+  taskId?: string | null;
+  runId?: string | null;
+  path?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
+  summary?: string | null;
+  createdAt?: string;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreActivityWriteInput {
+  id?: string;
+  kind: CoreActivityKind;
+  actorId?: string | null;
+  projectId?: string | null;
+  workItemId?: string | null;
+  conversationId?: string | null;
+  taskId?: string | null;
+  runId?: string | null;
+  artifactId?: string | null;
+  message: string;
+  createdAt?: string;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreApprovalBindingWriteInput {
+  id?: string;
+  kind?: CoreApprovalBindingKind;
+  approvalTaskId: string;
+  subjectKind: CoreApprovalBindingSubjectKind;
+  subjectId: string;
+  projectId?: string | null;
+  workItemId?: string | null;
+  conversationId?: string | null;
+  requestedByActorId?: string | null;
+  requestedForActorId?: string;
+  createdAt?: string;
+  metadata?: CoreRecordMetadata;
+}
+
+export function upsertCoreProject(
+  core: CatsCoreState,
+  input: CoreProjectWriteInput,
+  now: Date = new Date(),
+): { core: CatsCoreState; project: CoreProjectRecord; created: boolean } {
+  const nowIso = now.toISOString();
+  const title = input.title.trim();
+
+  if (!title) {
+    throw new CoreValidationError('Project title is required', 'project_title_required');
+  }
+
+  const projectId = normalizeNullableString(input.id) ?? `project-${randomUUID()}`;
+  const existing = core.projects.find((project) => project.id === projectId);
+  const project: CoreProjectRecord = {
+    id: projectId,
+    title,
+    status: input.status ?? existing?.status ?? 'planned',
+    ownerActorId:
+      normalizeNullableString(input.ownerActorId)
+      ?? existing?.ownerActorId
+      ?? core.ownerProfile.actorId,
+    summary:
+      input.summary === undefined
+        ? existing?.summary ?? null
+        : normalizeNullableString(input.summary),
+    repoPath:
+      input.repoPath === undefined
+        ? existing?.repoPath ?? null
+        : normalizeNullableString(input.repoPath),
+    primaryConversationId:
+      input.primaryConversationId === undefined
+        ? existing?.primaryConversationId ?? null
+        : normalizeNullableString(input.primaryConversationId),
+    createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
+    updatedAt: nowIso,
+    metadata:
+      input.metadata === undefined
+        ? normalizeMetadata(existing?.metadata)
+        : normalizeMetadata(input.metadata),
+  };
+
+  const { records, created } = replaceById(core.projects, project);
+
+  return {
+    core: touchCoreState(
+      {
+        ...core,
+        projects: records,
+      },
+      nowIso,
+    ),
+    project,
+    created,
+  };
+}
+
+export function upsertCoreWorkItem(
+  core: CatsCoreState,
+  input: CoreWorkItemWriteInput,
+  now: Date = new Date(),
+): { core: CatsCoreState; workItem: CoreWorkItemRecord; created: boolean } {
+  const nowIso = now.toISOString();
+  const title = input.title.trim();
+
+  if (!title) {
+    throw new CoreValidationError(
+      'Work item title is required',
+      'work_item_title_required',
+    );
+  }
+
+  const workItemId = normalizeNullableString(input.id) ?? `work-item-${randomUUID()}`;
+  const existing = core.workItems.find((workItem) => workItem.id === workItemId);
+  const workItem: CoreWorkItemRecord = {
+    id: workItemId,
+    title,
+    status: input.status ?? existing?.status ?? 'draft',
+    projectId:
+      input.projectId === undefined
+        ? existing?.projectId ?? null
+        : normalizeNullableString(input.projectId),
+    conversationId:
+      input.conversationId === undefined
+        ? existing?.conversationId ?? null
+        : normalizeNullableString(input.conversationId),
+    taskId:
+      input.taskId === undefined
+        ? existing?.taskId ?? null
+        : normalizeNullableString(input.taskId),
+    parentWorkItemId:
+      input.parentWorkItemId === undefined
+        ? existing?.parentWorkItemId ?? null
+        : normalizeNullableString(input.parentWorkItemId),
+    ownerActorId:
+      normalizeNullableString(input.ownerActorId)
+      ?? existing?.ownerActorId
+      ?? core.ownerProfile.actorId,
+    assignedActorIds:
+      input.assignedActorIds === undefined
+        ? structuredClone(existing?.assignedActorIds ?? [])
+        : normalizeStringArray(input.assignedActorIds),
+    summary:
+      input.summary === undefined
+        ? existing?.summary ?? null
+        : normalizeNullableString(input.summary),
+    createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
+    updatedAt: nowIso,
+    metadata:
+      input.metadata === undefined
+        ? normalizeMetadata(existing?.metadata)
+        : normalizeMetadata(input.metadata),
+  };
+
+  const { records, created } = replaceById(core.workItems, workItem);
+
+  return {
+    core: touchCoreState(
+      {
+        ...core,
+        workItems: records,
+      },
+      nowIso,
+    ),
+    workItem,
+    created,
+  };
 }
 
 export function upsertCoreTask(
@@ -441,6 +705,7 @@ export function patchOwnerProfile(
       {
         ...core,
         ownerProfile,
+        actors: replaceOwnerActor(core.actors, ownerProfile),
       },
       nowIso,
     ),
@@ -466,7 +731,8 @@ export function writeApprovalDecision(
     );
   }
 
-  const nextTaskStatus = input.taskStatus
+  const nextTaskStatus =
+    input.taskStatus
     ?? (input.status === 'pending'
       ? 'pending_approval'
       : input.status === 'approved'
@@ -475,16 +741,18 @@ export function writeApprovalDecision(
   const requestedByActorId = normalizeNullableString(input.requestedByActorId);
   const decidedByActorId = normalizeNullableString(input.decidedByActorId);
   const existingApproval = task.approval;
-  const nextRequestedAt = input.status === 'pending'
-    ? (existingApproval.status === 'pending'
-      ? existingApproval.requestedAt ?? nowIso
-      : nowIso)
-    : existingApproval.requestedAt;
-  const nextDecidedAt = input.status === 'approved' || input.status === 'rejected'
-    ? (existingApproval.status === input.status
-      ? existingApproval.decidedAt ?? nowIso
-      : nowIso)
-    : null;
+  const nextRequestedAt =
+    input.status === 'pending'
+      ? existingApproval.status === 'pending'
+        ? existingApproval.requestedAt ?? nowIso
+        : nowIso
+      : existingApproval.requestedAt;
+  const nextDecidedAt =
+    input.status === 'approved' || input.status === 'rejected'
+      ? existingApproval.status === input.status
+        ? existingApproval.decidedAt ?? nowIso
+        : nowIso
+      : null;
   const nextTask: CoreTaskRecord = {
     ...task,
     status: nextTaskStatus,
@@ -492,12 +760,14 @@ export function writeApprovalDecision(
       status: input.status,
       requestedAt: nextRequestedAt,
       decidedAt: nextDecidedAt,
-      decidedByActorId: input.status === 'pending'
-        ? null
-        : (decidedByActorId ?? existingApproval.decidedByActorId),
-      notes: input.notes === undefined
-        ? existingApproval.notes
-        : normalizeNullableString(input.notes),
+      decidedByActorId:
+        input.status === 'pending'
+          ? null
+          : decidedByActorId ?? existingApproval.decidedByActorId,
+      notes:
+        input.notes === undefined
+          ? existingApproval.notes
+          : normalizeNullableString(input.notes),
     },
     orchestratorActorId:
       requestedByActorId
@@ -672,21 +942,26 @@ export function upsertCoreCheckpoint(
     );
   }
 
-  const checkpointId = normalizeNullableString(input.id) ?? `checkpoint-${randomUUID()}`;
-  const existing = core.checkpoints.find((checkpoint) => checkpoint.id === checkpointId);
+  const checkpointId =
+    normalizeNullableString(input.id) ?? `checkpoint-${randomUUID()}`;
+  const existing = core.checkpoints.find(
+    (checkpoint) => checkpoint.id === checkpointId,
+  );
   const status = input.status ?? existing?.status ?? 'open';
-  const explicitCompletedAt = input.completedAt === undefined
-    ? undefined
-    : normalizeNullableString(input.completedAt);
+  const explicitCompletedAt =
+    input.completedAt === undefined
+      ? undefined
+      : normalizeNullableString(input.completedAt);
   if (status !== 'completed' && explicitCompletedAt) {
     throw new CoreValidationError(
       'checkpoint.completedAt can only be set when status is completed',
       'checkpoint_completed_at_invalid',
     );
   }
-  const completedAt = status === 'completed'
-    ? explicitCompletedAt ?? existing?.completedAt ?? nowIso
-    : null;
+  const completedAt =
+    status === 'completed'
+      ? explicitCompletedAt ?? existing?.completedAt ?? nowIso
+      : null;
   const checkpoint: CoreCheckpointRecord = {
     id: checkpointId,
     label,
@@ -788,6 +1063,239 @@ export function upsertCoreOutcome(
       nowIso,
     ),
     outcome,
+    created,
+  };
+}
+
+export function upsertCoreArtifact(
+  core: CatsCoreState,
+  input: CoreArtifactWriteInput,
+  now: Date = new Date(),
+): { core: CatsCoreState; artifact: CoreArtifactRecord; created: boolean } {
+  const nowIso = now.toISOString();
+  const title = input.title.trim();
+
+  if (!title) {
+    throw new CoreValidationError(
+      'Artifact title is required',
+      'artifact_title_required',
+    );
+  }
+
+  const artifactId = normalizeNullableString(input.id) ?? `artifact-${randomUUID()}`;
+  const existing = core.artifacts.find((artifact) => artifact.id === artifactId);
+  const artifact: CoreArtifactRecord = {
+    id: artifactId,
+    title,
+    kind: input.kind ?? existing?.kind ?? 'document',
+    status: input.status ?? existing?.status ?? 'draft',
+    projectId:
+      input.projectId === undefined
+        ? existing?.projectId ?? null
+        : normalizeNullableString(input.projectId),
+    workItemId:
+      input.workItemId === undefined
+        ? existing?.workItemId ?? null
+        : normalizeNullableString(input.workItemId),
+    conversationId:
+      input.conversationId === undefined
+        ? existing?.conversationId ?? null
+        : normalizeNullableString(input.conversationId),
+    taskId:
+      input.taskId === undefined
+        ? existing?.taskId ?? null
+        : normalizeNullableString(input.taskId),
+    runId:
+      input.runId === undefined
+        ? existing?.runId ?? null
+        : normalizeNullableString(input.runId),
+    path:
+      input.path === undefined
+        ? existing?.path ?? null
+        : normalizeNullableString(input.path),
+    mimeType:
+      input.mimeType === undefined
+        ? existing?.mimeType ?? null
+        : normalizeNullableString(input.mimeType),
+    sizeBytes:
+      input.sizeBytes === undefined
+        ? existing?.sizeBytes ?? null
+        : normalizeNullableNumber(input.sizeBytes),
+    summary:
+      input.summary === undefined
+        ? existing?.summary ?? null
+        : normalizeNullableString(input.summary),
+    createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
+    updatedAt: nowIso,
+    metadata:
+      input.metadata === undefined
+        ? normalizeMetadata(existing?.metadata)
+        : normalizeMetadata(input.metadata),
+  };
+
+  const { records, created } = replaceById(core.artifacts, artifact);
+
+  return {
+    core: touchCoreState(
+      {
+        ...core,
+        artifacts: records,
+      },
+      nowIso,
+    ),
+    artifact,
+    created,
+  };
+}
+
+export function appendCoreActivity(
+  core: CatsCoreState,
+  input: CoreActivityWriteInput,
+  now: Date = new Date(),
+): { core: CatsCoreState; activity: CoreActivityRecord; created: boolean } {
+  const nowIso = now.toISOString();
+  const message = input.message.trim();
+
+  if (!message) {
+    throw new CoreValidationError(
+      'Activity message is required',
+      'activity_message_required',
+    );
+  }
+
+  const activityId = normalizeNullableString(input.id) ?? `activity-${randomUUID()}`;
+  const existing = core.activities.find((activity) => activity.id === activityId);
+  const activity: CoreActivityRecord = {
+    id: activityId,
+    kind: input.kind,
+    actorId:
+      input.actorId === undefined
+        ? existing?.actorId ?? null
+        : normalizeNullableString(input.actorId),
+    projectId:
+      input.projectId === undefined
+        ? existing?.projectId ?? null
+        : normalizeNullableString(input.projectId),
+    workItemId:
+      input.workItemId === undefined
+        ? existing?.workItemId ?? null
+        : normalizeNullableString(input.workItemId),
+    conversationId:
+      input.conversationId === undefined
+        ? existing?.conversationId ?? null
+        : normalizeNullableString(input.conversationId),
+    taskId:
+      input.taskId === undefined
+        ? existing?.taskId ?? null
+        : normalizeNullableString(input.taskId),
+    runId:
+      input.runId === undefined
+        ? existing?.runId ?? null
+        : normalizeNullableString(input.runId),
+    artifactId:
+      input.artifactId === undefined
+        ? existing?.artifactId ?? null
+        : normalizeNullableString(input.artifactId),
+    message,
+    createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
+    metadata:
+      input.metadata === undefined
+        ? normalizeMetadata(existing?.metadata)
+        : normalizeMetadata(input.metadata),
+  };
+
+  const { records, created } = replaceById(core.activities, activity);
+
+  return {
+    core: touchCoreState(
+      {
+        ...core,
+        activities: records,
+      },
+      nowIso,
+    ),
+    activity,
+    created,
+  };
+}
+
+export function upsertCoreApprovalBinding(
+  core: CatsCoreState,
+  input: CoreApprovalBindingWriteInput,
+  now: Date = new Date(),
+): {
+  core: CatsCoreState;
+  approvalBinding: CoreApprovalBindingRecord;
+  created: boolean;
+} {
+  const nowIso = now.toISOString();
+  const approvalTaskId = input.approvalTaskId.trim();
+  const subjectId = input.subjectId.trim();
+
+  if (!approvalTaskId) {
+    throw new CoreValidationError(
+      'approvalBinding.approvalTaskId is required',
+      'approval_binding_task_id_required',
+    );
+  }
+
+  if (!subjectId) {
+    throw new CoreValidationError(
+      'approvalBinding.subjectId is required',
+      'approval_binding_subject_id_required',
+    );
+  }
+
+  const approvalBindingId =
+    normalizeNullableString(input.id) ?? `approval-binding-${randomUUID()}`;
+  const existing = core.approvalBindings.find(
+    (binding) => binding.id === approvalBindingId,
+  );
+  const approvalBinding: CoreApprovalBindingRecord = {
+    id: approvalBindingId,
+    kind: input.kind ?? existing?.kind ?? 'owner_decision',
+    approvalTaskId,
+    subjectKind: input.subjectKind,
+    subjectId,
+    projectId:
+      input.projectId === undefined
+        ? existing?.projectId ?? null
+        : normalizeNullableString(input.projectId),
+    workItemId:
+      input.workItemId === undefined
+        ? existing?.workItemId ?? null
+        : normalizeNullableString(input.workItemId),
+    conversationId:
+      input.conversationId === undefined
+        ? existing?.conversationId ?? null
+        : normalizeNullableString(input.conversationId),
+    requestedByActorId:
+      input.requestedByActorId === undefined
+        ? existing?.requestedByActorId ?? GLOBAL_ORCHESTRATOR_ACTOR_ID
+        : normalizeNullableString(input.requestedByActorId),
+    requestedForActorId:
+      normalizeNullableString(input.requestedForActorId)
+      ?? existing?.requestedForActorId
+      ?? core.ownerProfile.actorId,
+    createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
+    updatedAt: nowIso,
+    metadata:
+      input.metadata === undefined
+        ? normalizeMetadata(existing?.metadata)
+        : normalizeMetadata(input.metadata),
+  };
+
+  const { records, created } = replaceById(core.approvalBindings, approvalBinding);
+
+  return {
+    core: touchCoreState(
+      {
+        ...core,
+        approvalBindings: records,
+      },
+      nowIso,
+    ),
+    approvalBinding,
     created,
   };
 }

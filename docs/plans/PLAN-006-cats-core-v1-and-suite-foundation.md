@@ -29,8 +29,31 @@ fixtures.
 - [x] Define the first storage abstraction that can evolve beyond the current
       file-backed chat state.
 - [x] Keep operational search, approval state, and owner profile product-owned.
+- [x] Land the first reusable headless record families for project, work item,
+      artifact, activity, approval binding, and owner-profile persistence.
 
 **Deliverables**: first product-facing shared-core API map and storage seam.
+
+### Current Implementation Notes
+
+- `src/core/*` now exposes minimal write paths for:
+  - project
+  - work item
+  - task
+  - approval decision
+  - approval binding
+  - run
+  - trace
+  - checkpoint
+  - outcome
+  - artifact
+  - activity
+  - owner profile
+- `src/products/chat/state/coreProjection.ts` and
+  `src/products/chat/state/store.ts` now keep the boundary explicit between
+  chat-owned projections and durable core-owned source-of-truth records.
+- `src/shared/coreFixtures.ts` now publishes a reusable example payload bundle
+  so Chat / Work / Code follow-up slices can share one contract vocabulary.
 
 ### Phase 3: Runtime Boundary Refinement
 
@@ -95,8 +118,7 @@ fixtures.
 
 ---
 
-*Last updated: 2026-03-16*
-
+*Last updated: 2026-03-22*
 
 
 

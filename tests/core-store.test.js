@@ -4,15 +4,21 @@ import test from 'node:test';
 import { MemoryCoreStore } from '../dist-server/core/store.js';
 import {
   appendCoreTrace,
+  appendCoreActivity,
   buildApprovalQueue,
   createDefaultCoreState,
   patchOwnerProfile,
+  upsertCoreApprovalBinding,
+  upsertCoreArtifact,
   upsertCoreCheckpoint,
   upsertCoreOutcome,
+  upsertCoreProject,
   upsertCoreRun,
   upsertCoreTask,
+  upsertCoreWorkItem,
   writeApprovalDecision,
 } from '../dist-server/core/model.js';
+import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
 
 test('MemoryCoreStore exposes a neutral read/write boundary for Cats Core state', async () => {
   const initialState = createDefaultCoreState();
@@ -334,4 +340,32 @@ test('upsertCoreCheckpoint keeps completed checkpoints consistent with completed
     ),
     /completedAt can only be set when status is completed/,
   );
+});
+
+test('shared core write helpers persist reusable project, work-item, artifact, activity, and approval-binding records', () => {
+  const fixtures = createSharedCoreFixtureBundle();
+  let core = createDefaultCoreState();
+
+  core = upsertCoreProject(core, fixtures.project, new Date('2026-03-21T03:00:00.000Z')).core;
+  core = upsertCoreWorkItem(core, fixtures.workItem, new Date('2026-03-21T03:01:00.000Z')).core;
+  core = upsertCoreTask(core, fixtures.task, new Date('2026-03-21T03:02:00.000Z')).core;
+  core = upsertCoreRun(core, fixtures.run, new Date('2026-03-21T03:03:00.000Z')).core;
+  core = upsertCoreArtifact(core, fixtures.artifact, new Date('2026-03-21T03:04:00.000Z')).core;
+  core = appendCoreActivity(core, fixtures.activity, new Date('2026-03-21T03:05:00.000Z')).core;
+  core = upsertCoreApprovalBinding(
+    core,
+    fixtures.approvalBinding,
+    new Date('2026-03-21T03:06:00.000Z'),
+  ).core;
+
+  assert.equal(core.projects.length, 1);
+  assert.equal(core.projects[0].id, fixtures.project.id);
+  assert.equal(core.workItems.length, 1);
+  assert.equal(core.workItems[0].projectId, fixtures.project.id);
+  assert.equal(core.artifacts.length, 1);
+  assert.equal(core.artifacts[0].workItemId, fixtures.workItem.id);
+  assert.equal(core.activities.length, 1);
+  assert.equal(core.activities[0].artifactId, fixtures.artifact.id);
+  assert.equal(core.approvalBindings.length, 1);
+  assert.equal(core.approvalBindings[0].approvalTaskId, fixtures.task.id);
 });

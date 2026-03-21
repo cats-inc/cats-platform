@@ -11,8 +11,8 @@
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
 | Chat Product Features | Completed | Runtime-backed setup, global cat registry, channel assignment, live mention continuation routing, transcript export, and execution-aware state landed |
-| Suite Foundation Planning | In Progress | The suite-host refactor now has core-owned state direction, app-level server/renderer assembly, and dedicated Work/Code placeholder slices, but Chat API extraction and cleanup remain |
-| Documentation | In Progress | Architecture, progress, and plan docs now reflect the suite-host layout and compatibility seams, but API/cleanup follow-up remains |
+| Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records, but compatibility-shim cleanup and later control-plane slices remain |
+| Documentation | In Progress | Architecture, progress, API, and plan docs now reflect the shared-core write substrate, fixture bundle, and projection boundary, but broader launch-track docs still remain |
 | Cats Chat Launch Track | Not Started | Chat launch features such as approvals, escalation, takeover, and desktop packaging remain ahead |
 | Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
@@ -215,9 +215,15 @@ Known follow-ups:
 - `src/app/renderer/*` now owns the suite-level renderer entry and routing
 - `src/core/*` is now the shared core seam rather than a Chat-derived contract
 - `src/core/api.ts` now owns the shared-core HTTP seam, including durable
-  owner-profile, task, approval, run, trace, checkpoint, and outcome writes
+  owner-profile, project, work-item, task, approval, approval-binding, run,
+  trace, checkpoint, outcome, artifact, and activity writes
+- `src/shared/coreFixtures.ts` now publishes reusable example payloads for Chat,
+  Work, and Code follow-up teams through `src/shared/core.ts`
 - `src/products/chat/state/store.ts` now preserves core-owned system
   records across file-backed reloads and later chat-state syncs
+- `src/products/chat/state/coreProjection.ts` now preserves core-owned actors,
+  conversations, projects, work items, artifacts, activities, approval
+  bindings, and archive metadata while still deriving chat-owned projections
 - `src/products/chat/*` now owns the current Chat implementation
 - `src/products/work/*` and `src/products/code/*` now own dedicated placeholder
   API and renderer surfaces
@@ -233,4 +239,4 @@ Known follow-ups:
 
 ---
 
-*Last updated: 2026-03-21*
+*Last updated: 2026-03-22*

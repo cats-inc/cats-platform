@@ -112,10 +112,11 @@ tests and imports do not have to move all at once.
 - **Responsibilities**:
   - identity and actor/resource records
   - conversation and channel records
+  - project and work-item records
   - bot bindings for Telegram or LINE entrypoints
-  - task, run, approval, and escalation records
+  - task, run, approval-binding, and escalation records
   - owner profile and preference memory
-  - artifact and archive metadata
+  - artifact, activity, and archive metadata
 
 ### Runtime Client and Runtime Boundary
 
@@ -148,8 +149,9 @@ tests and imports do not have to move all at once.
 - **Responsibilities**: Load defaults, persist channels, chat-global cats, channel
   assignments, transcript messages, execution targets, execution leases, cat
   memory checkpoints, room-workflow turn/event state, core-owned
-  owner/task/run/trace/checkpoint/outcome records, and the derived
-  `Cats Core v1` records that wrap the phase-2 chat model
+  actor/conversation/project/work-item/task/run/trace/checkpoint/outcome/
+  artifact/activity/approval-binding records, and the derived `Cats Core v1`
+  records that wrap the phase-2 chat model
 
 ### Chat Runtime Actions
 
@@ -358,8 +360,12 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
   with continuation loop/fan-out/guards, a separate room-workflow read model,
   and transcript export.
 - `Cats Core v1` now exists as a first in-tree contract plus a minimal neutral
-  write substrate for owner profile, tasks, approvals, runs, traces,
-  checkpoints, and orchestration outcomes.
+  write substrate for owner profile, actors, conversations, projects,
+  work items, tasks, approvals, approval bindings, runs, traces, checkpoints,
+  orchestration outcomes, artifacts, and activities.
+- `src/products/chat/state/coreProjection.ts` now makes the boundary explicit:
+  chat-derived actors/conversations/tasks/archives are projections, while
+  core-owned records survive chat sync and file-backed reload.
 - Chat room-workflow turns, system events, checkpoints, and outcomes now
   project into core-backed run/trace/checkpoint/outcome records when chat
   state is persisted.
@@ -381,10 +387,10 @@ intentionally deferred:
 
 - live streaming or push-based renderer updates
 - split-view panes beyond the current chat-first layout
+- richer control-plane semantics above the current minimal shared-core write API
+  set, plus stronger storage boundaries beyond the current JSON-backed store
 - richer branch/converge orchestration beyond the current event-driven room
   workflow loop
-- approval UX and stronger storage boundaries above the now-landed core
-  write substrate
 - full Telegram/LINE outbound delivery, room-routing policy, escalation, and
   takeover behavior above the current relay seam
 - desktop host lifecycle management and tray-driven UX implementation
@@ -436,9 +442,7 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-03-21*
-
-
+*Last updated: 2026-03-22*
 
 
 

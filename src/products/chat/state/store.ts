@@ -28,12 +28,19 @@ import type {
   ArchiveMetadataRecord,
   BotBindingRecord,
   CatsCoreState,
+  CoreActivityRecord,
+  CoreActorRecord,
+  CoreApprovalBindingRecord,
+  CoreArtifactRecord,
   CoreCheckpointRecord,
+  CoreConversationRecord,
   CoreOrchestrationOutcomeRecord,
+  CoreProjectRecord,
   CoreRecordMetadata,
   CoreRunRecord,
   CoreTaskRecord,
   CoreTraceRecord,
+  CoreWorkItemRecord,
   OwnerProfileRecord,
 } from '../../../core/types.js';
 import type { CoreStore } from '../../../core/store.js';
@@ -678,6 +685,171 @@ function normalizeOwnerProfile(rawOwnerProfile: unknown): OwnerProfileRecord {
   };
 }
 
+function normalizeCoreActor(rawActor: unknown): CoreActorRecord | null {
+  const actorRecord = asRecord(rawActor);
+  if (!actorRecord) {
+    return null;
+  }
+
+  const rawKind = readString(actorRecord.kind, 'worker');
+  const kind = (
+    rawKind === 'owner'
+    || rawKind === 'orchestrator'
+    || rawKind === 'worker'
+    || rawKind === 'stakeholder'
+    || rawKind === 'bot'
+    || rawKind === 'resource'
+  )
+    ? rawKind
+    : 'worker';
+  const rawStatus = readString(actorRecord.status, 'active');
+  const status = rawStatus === 'archived' ? 'archived' : 'active';
+  const rawSource = readString(actorRecord.source, 'core_record');
+  const source = (
+    rawSource === 'owner_profile'
+    || rawSource === 'global_orchestrator'
+    || rawSource === 'chat_cat'
+    || rawSource === 'core_record'
+  )
+    ? rawSource
+    : 'core_record';
+
+  return {
+    id: readString(actorRecord.id, randomUUID()),
+    name: readString(actorRecord.name, 'Actor'),
+    kind,
+    status,
+    roles: readStringArray(actorRecord.roles),
+    skillProfile: readNullableString(actorRecord.skillProfile),
+    mcpProfile: readNullableString(actorRecord.mcpProfile),
+    defaultExecutionTarget: actorRecord.defaultExecutionTarget === null
+      ? null
+      : asRecord(actorRecord.defaultExecutionTarget)
+        ? normalizeExecutionTarget(actorRecord.defaultExecutionTarget, {
+            provider: 'claude',
+            instance: null,
+            model: null,
+          })
+        : null,
+    memory: asRecord(actorRecord.memory)
+      ? normalizeMemoryCheckpoint(actorRecord.memory)
+      : createEmptyMemoryCheckpoint(),
+    source,
+    sourceId: readNullableString(actorRecord.sourceId),
+    createdAt: readString(actorRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(actorRecord.updatedAt, new Date().toISOString()),
+    archivedAt: readNullableString(actorRecord.archivedAt),
+  };
+}
+
+function normalizeCoreConversation(rawConversation: unknown): CoreConversationRecord | null {
+  const conversationRecord = asRecord(rawConversation);
+  if (!conversationRecord) {
+    return null;
+  }
+
+  const rawKind = readString(conversationRecord.kind, 'work_thread');
+  const kind = (
+    rawKind === 'chat_channel'
+    || rawKind === 'direct_message'
+    || rawKind === 'external_transport'
+    || rawKind === 'private_escalation'
+    || rawKind === 'work_thread'
+    || rawKind === 'code_thread'
+  )
+    ? rawKind
+    : 'work_thread';
+  const rawStatus = readString(conversationRecord.status, 'planned');
+  const status = (
+    rawStatus === 'planned'
+    || rawStatus === 'active'
+    || rawStatus === 'archived'
+  )
+    ? rawStatus
+    : 'planned';
+
+  return {
+    id: readString(conversationRecord.id, randomUUID()),
+    title: readString(conversationRecord.title, 'Untitled conversation'),
+    kind,
+    status,
+    participantActorIds: readStringArray(conversationRecord.participantActorIds),
+    sourceChannelId: readNullableString(conversationRecord.sourceChannelId),
+    repoPath: readNullableString(conversationRecord.repoPath),
+    responseLanguage: readString(conversationRecord.responseLanguage, 'en'),
+    createdAt: readString(conversationRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(conversationRecord.updatedAt, new Date().toISOString()),
+    lastMessageAt: readNullableString(conversationRecord.lastMessageAt),
+  };
+}
+
+function normalizeCoreProject(rawProject: unknown): CoreProjectRecord | null {
+  const projectRecord = asRecord(rawProject);
+  if (!projectRecord) {
+    return null;
+  }
+
+  const rawStatus = readString(projectRecord.status, 'planned');
+  const status = (
+    rawStatus === 'planned'
+    || rawStatus === 'active'
+    || rawStatus === 'paused'
+    || rawStatus === 'archived'
+  )
+    ? rawStatus
+    : 'planned';
+
+  return {
+    id: readString(projectRecord.id, randomUUID()),
+    title: readString(projectRecord.title, 'Untitled project'),
+    status,
+    ownerActorId: readString(projectRecord.ownerActorId),
+    summary: readNullableString(projectRecord.summary),
+    repoPath: readNullableString(projectRecord.repoPath),
+    primaryConversationId: readNullableString(projectRecord.primaryConversationId),
+    createdAt: readString(projectRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(projectRecord.updatedAt, new Date().toISOString()),
+    metadata: normalizeMetadata(projectRecord.metadata),
+  };
+}
+
+function normalizeCoreWorkItem(rawWorkItem: unknown): CoreWorkItemRecord | null {
+  const workItemRecord = asRecord(rawWorkItem);
+  if (!workItemRecord) {
+    return null;
+  }
+
+  const rawStatus = readString(workItemRecord.status, 'draft');
+  const status = (
+    rawStatus === 'draft'
+    || rawStatus === 'planned'
+    || rawStatus === 'ready'
+    || rawStatus === 'in_progress'
+    || rawStatus === 'blocked'
+    || rawStatus === 'completed'
+    || rawStatus === 'cancelled'
+    || rawStatus === 'archived'
+  )
+    ? rawStatus
+    : 'draft';
+
+  return {
+    id: readString(workItemRecord.id, randomUUID()),
+    title: readString(workItemRecord.title, 'Untitled work item'),
+    status,
+    projectId: readNullableString(workItemRecord.projectId),
+    conversationId: readNullableString(workItemRecord.conversationId),
+    taskId: readNullableString(workItemRecord.taskId),
+    parentWorkItemId: readNullableString(workItemRecord.parentWorkItemId),
+    ownerActorId: readString(workItemRecord.ownerActorId),
+    assignedActorIds: readStringArray(workItemRecord.assignedActorIds),
+    summary: readNullableString(workItemRecord.summary),
+    createdAt: readString(workItemRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(workItemRecord.updatedAt, new Date().toISOString()),
+    metadata: normalizeMetadata(workItemRecord.metadata),
+  };
+}
+
 function normalizeCoreTask(rawTask: unknown): CoreTaskRecord | null {
   const taskRecord = asRecord(rawTask);
   if (!taskRecord) {
@@ -691,6 +863,9 @@ function normalizeCoreTask(rawTask: unknown): CoreTaskRecord | null {
     || rawStatus === 'pending_approval'
     || rawStatus === 'approved'
     || rawStatus === 'in_progress'
+    || rawStatus === 'blocked'
+    || rawStatus === 'completed'
+    || rawStatus === 'cancelled'
     || rawStatus === 'archived'
   )
     ? rawStatus
@@ -856,6 +1031,137 @@ function normalizeCoreOutcome(rawOutcome: unknown): CoreOrchestrationOutcomeReco
   };
 }
 
+function normalizeCoreArtifact(rawArtifact: unknown): CoreArtifactRecord | null {
+  const artifactRecord = asRecord(rawArtifact);
+  if (!artifactRecord) {
+    return null;
+  }
+
+  const rawKind = readString(artifactRecord.kind, 'document');
+  const kind = (
+    rawKind === 'document'
+    || rawKind === 'report'
+    || rawKind === 'build'
+    || rawKind === 'preview'
+    || rawKind === 'attachment'
+    || rawKind === 'transcript_export'
+    || rawKind === 'dataset'
+  )
+    ? rawKind
+    : 'document';
+  const rawStatus = readString(artifactRecord.status, 'draft');
+  const status = (
+    rawStatus === 'draft'
+    || rawStatus === 'ready'
+    || rawStatus === 'published'
+    || rawStatus === 'archived'
+  )
+    ? rawStatus
+    : 'draft';
+
+  return {
+    id: readString(artifactRecord.id, randomUUID()),
+    title: readString(artifactRecord.title, 'Untitled artifact'),
+    kind,
+    status,
+    projectId: readNullableString(artifactRecord.projectId),
+    workItemId: readNullableString(artifactRecord.workItemId),
+    conversationId: readNullableString(artifactRecord.conversationId),
+    taskId: readNullableString(artifactRecord.taskId),
+    runId: readNullableString(artifactRecord.runId),
+    path: readNullableString(artifactRecord.path),
+    mimeType: readNullableString(artifactRecord.mimeType),
+    sizeBytes: typeof artifactRecord.sizeBytes === 'number'
+      && Number.isFinite(artifactRecord.sizeBytes)
+      ? artifactRecord.sizeBytes
+      : null,
+    summary: readNullableString(artifactRecord.summary),
+    createdAt: readString(artifactRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(artifactRecord.updatedAt, new Date().toISOString()),
+    metadata: normalizeMetadata(artifactRecord.metadata),
+  };
+}
+
+function normalizeCoreActivity(rawActivity: unknown): CoreActivityRecord | null {
+  const activityRecord = asRecord(rawActivity);
+  if (!activityRecord) {
+    return null;
+  }
+
+  const rawKind = readString(activityRecord.kind, 'note');
+  const kind = (
+    rawKind === 'note'
+    || rawKind === 'status_change'
+    || rawKind === 'approval_requested'
+    || rawKind === 'approval_decided'
+    || rawKind === 'artifact_recorded'
+    || rawKind === 'checkpoint_recorded'
+    || rawKind === 'work_item_updated'
+  )
+    ? rawKind
+    : 'note';
+
+  return {
+    id: readString(activityRecord.id, randomUUID()),
+    kind,
+    actorId: readNullableString(activityRecord.actorId),
+    projectId: readNullableString(activityRecord.projectId),
+    workItemId: readNullableString(activityRecord.workItemId),
+    conversationId: readNullableString(activityRecord.conversationId),
+    taskId: readNullableString(activityRecord.taskId),
+    runId: readNullableString(activityRecord.runId),
+    artifactId: readNullableString(activityRecord.artifactId),
+    message: readString(activityRecord.message),
+    createdAt: readString(activityRecord.createdAt, new Date().toISOString()),
+    metadata: normalizeMetadata(activityRecord.metadata),
+  };
+}
+
+function normalizeCoreApprovalBinding(
+  rawApprovalBinding: unknown,
+): CoreApprovalBindingRecord | null {
+  const approvalBindingRecord = asRecord(rawApprovalBinding);
+  if (!approvalBindingRecord) {
+    return null;
+  }
+
+  const rawKind = readString(approvalBindingRecord.kind, 'owner_decision');
+  const kind = (
+    rawKind === 'owner_decision'
+    || rawKind === 'review_gate'
+    || rawKind === 'release_gate'
+  )
+    ? rawKind
+    : 'owner_decision';
+  const rawSubjectKind = readString(approvalBindingRecord.subjectKind, 'task');
+  const subjectKind = (
+    rawSubjectKind === 'project'
+    || rawSubjectKind === 'work_item'
+    || rawSubjectKind === 'task'
+    || rawSubjectKind === 'run'
+    || rawSubjectKind === 'artifact'
+    || rawSubjectKind === 'conversation'
+  )
+    ? rawSubjectKind
+    : 'task';
+
+  return {
+    id: readString(approvalBindingRecord.id, randomUUID()),
+    kind,
+    approvalTaskId: readString(approvalBindingRecord.approvalTaskId),
+    subjectKind,
+    subjectId: readString(approvalBindingRecord.subjectId),
+    projectId: readNullableString(approvalBindingRecord.projectId),
+    workItemId: readNullableString(approvalBindingRecord.workItemId),
+    conversationId: readNullableString(approvalBindingRecord.conversationId),
+    requestedByActorId: readNullableString(approvalBindingRecord.requestedByActorId),
+    requestedForActorId: readString(approvalBindingRecord.requestedForActorId),
+    createdAt: readString(approvalBindingRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(approvalBindingRecord.updatedAt, new Date().toISOString()),
+    metadata: normalizeMetadata(approvalBindingRecord.metadata),
+  };
+}
+
 function normalizeBotBinding(
   rawBinding: unknown,
   chat: ChatState,
@@ -999,6 +1305,26 @@ function normalizePersistedChatSnapshot(rawState: unknown): PersistedChatSnapsho
   }
 
   const chat = normalizeChatState(chatRecord);
+  const actors = Array.isArray(stateRecord.actors)
+    ? stateRecord.actors
+        .map((actor) => normalizeCoreActor(actor))
+        .filter((actor): actor is CoreActorRecord => actor !== null)
+    : [];
+  const conversations = Array.isArray(stateRecord.conversations)
+    ? stateRecord.conversations
+        .map((conversation) => normalizeCoreConversation(conversation))
+        .filter((conversation): conversation is CoreConversationRecord => conversation !== null)
+    : [];
+  const projects = Array.isArray(stateRecord.projects)
+    ? stateRecord.projects
+        .map((project) => normalizeCoreProject(project))
+        .filter((project): project is CoreProjectRecord => project !== null)
+    : [];
+  const workItems = Array.isArray(stateRecord.workItems)
+    ? stateRecord.workItems
+        .map((workItem) => normalizeCoreWorkItem(workItem))
+        .filter((workItem): workItem is CoreWorkItemRecord => workItem !== null)
+    : [];
 
   const tasks = Array.isArray(stateRecord.tasks)
     ? stateRecord.tasks
@@ -1025,6 +1351,24 @@ function normalizePersistedChatSnapshot(rawState: unknown): PersistedChatSnapsho
         .map((outcome) => normalizeCoreOutcome(outcome))
         .filter((outcome): outcome is CoreOrchestrationOutcomeRecord => outcome !== null)
     : [];
+  const artifacts = Array.isArray(stateRecord.artifacts)
+    ? stateRecord.artifacts
+        .map((artifact) => normalizeCoreArtifact(artifact))
+        .filter((artifact): artifact is CoreArtifactRecord => artifact !== null)
+    : [];
+  const activities = Array.isArray(stateRecord.activities)
+    ? stateRecord.activities
+        .map((activity) => normalizeCoreActivity(activity))
+        .filter((activity): activity is CoreActivityRecord => activity !== null)
+    : [];
+  const approvalBindings = Array.isArray(stateRecord.approvalBindings)
+    ? stateRecord.approvalBindings
+        .map((approvalBinding) => normalizeCoreApprovalBinding(approvalBinding))
+        .filter(
+          (approvalBinding): approvalBinding is CoreApprovalBindingRecord =>
+            approvalBinding !== null,
+        )
+    : [];
   const botBindings = Array.isArray(stateRecord.botBindings)
     ? stateRecord.botBindings
         .map((binding) => normalizeBotBinding(binding, chat))
@@ -1038,11 +1382,18 @@ function normalizePersistedChatSnapshot(rawState: unknown): PersistedChatSnapsho
   const normalized = syncCoreStateWithChatState(chat, {
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
+    actors,
+    conversations,
+    projects,
+    workItems,
     tasks,
     runs,
     traces,
     checkpoints,
     outcomes,
+    artifacts,
+    activities,
+    approvalBindings,
     botBindings,
     archives,
   });
