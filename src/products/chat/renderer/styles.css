@@ -1813,6 +1813,15 @@ textarea {
   text-overflow: ellipsis;
 }
 
+.composerCwdClickable {
+  cursor: pointer;
+}
+
+.composerCwdClickable:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
 .composerChipClose {
   display: grid;
   width: 16px;

@@ -45,6 +45,7 @@ import {
   updateSelectedChannel,
   updateVerbosePreference,
   deleteGlobalPal,
+  openFolderInExplorer,
   uploadChannelAttachments,
 } from './api';
 import { ProviderModelFields } from './components/ProviderModelFields';
@@ -443,9 +444,13 @@ export default function App() {
   const [draftCwd, setDraftCwd] = useState<string | null>(null);
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
+  const [channelFiles, setChannelFiles] = useState<File[]>([]);
+  const [channelPlusMenuOpen, setChannelPlusMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const channelPlusMenuRef = useRef<HTMLDivElement>(null);
+  const channelFileInputRef = useRef<HTMLInputElement>(null);
   const readyWorkspace = state.status === 'ready' ? state.payload.workspace : null;
   const selectedChannelId = readyWorkspace?.selectedChannelId ?? null;
   const selectedChannelViewId = readyWorkspace?.selectedChannel?.id ?? null;
@@ -463,7 +468,7 @@ export default function App() {
   }, [routeChannelTitle]);
 
   useEffect(() => {
-    if (!accountMenuOpen && !overflowMenuOpenId && !plusMenuOpen) return;
+    if (!accountMenuOpen && !overflowMenuOpenId && !plusMenuOpen && !channelPlusMenuOpen) return;
     function handleClick(e: MouseEvent) {
       const target = e.target as Node;
       if (accountMenuOpen && accountMenuRef.current && !accountMenuRef.current.contains(target)) {
@@ -479,10 +484,13 @@ export default function App() {
       if (plusMenuOpen && plusMenuRef.current && !plusMenuRef.current.contains(target)) {
         setPlusMenuOpen(false);
       }
+      if (channelPlusMenuOpen && channelPlusMenuRef.current && !channelPlusMenuRef.current.contains(target)) {
+        setChannelPlusMenuOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [accountMenuOpen, overflowMenuOpenId, plusMenuOpen]);
+  }, [accountMenuOpen, overflowMenuOpenId, plusMenuOpen, channelPlusMenuOpen]);
 
   useEffect(() => {
     writeSidebarOpenPreference(
@@ -593,6 +601,8 @@ export default function App() {
     navigate(buildChannelPath(channelId));
     setFeedback('');
     setAddPalOpen(false);
+    setChannelFiles([]);
+    setChannelPlusMenuOpen(false);
   }
 
   async function onDeleteChannel(channelId: string): Promise<void> {
@@ -806,8 +816,9 @@ export default function App() {
       }
 
       let messageBody = body;
-      if (wasDraftingNewChat && draftFiles.length > 0) {
-        const attachments = await uploadChannelAttachments(channelId, draftFiles);
+      const filesToUpload = wasDraftingNewChat ? draftFiles : channelFiles;
+      if (filesToUpload.length > 0) {
+        const attachments = await uploadChannelAttachments(channelId, filesToUpload);
         const refs = attachments.map((a) => `- ${a.relativePath}`).join('\n');
         messageBody = `[Attached files in working directory:]\n${refs}\n\n${body}`;
       }
@@ -822,6 +833,8 @@ export default function App() {
         setDraftCwd(null);
         setDraftCatIds([]);
         setDraftFiles([]);
+      } else {
+        setChannelFiles([]);
       }
     } catch (error) {
       setState({ status: 'ready', payload: rollbackPayload });
@@ -1429,6 +1442,41 @@ export default function App() {
                     }
                     onSubmit={(event) => void onSendMessage(event)}
                   >
+                    {channelFiles.length > 0 ? (
+                      <div className="composerAttachments">
+                        {channelFiles.map((file, index) => {
+                          const isImage = file.type.startsWith('image/');
+                          return (
+                            <div key={`${file.name}-${file.size}-${index}`} className="attachmentCard">
+                              <button
+                                className="attachmentRemove"
+                                type="button"
+                                onClick={() => setChannelFiles((prev) => prev.filter((_, i) => i !== index))}
+                                aria-label={`Remove ${file.name}`}
+                              >
+                                ×
+                              </button>
+                              {isImage ? (
+                                <img
+                                  className="attachmentPreview"
+                                  src={URL.createObjectURL(file)}
+                                  alt={file.name}
+                                  onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+                                />
+                              ) : (
+                                <div className="attachmentFileIcon">
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <path d="M14 2v6h6" />
+                                  </svg>
+                                </div>
+                              )}
+                              <span className="attachmentName">{file.name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                     <textarea
                       className="composerInput"
                       rows={1}
@@ -1438,7 +1486,55 @@ export default function App() {
                       onKeyDown={(event) => void onComposerKeyDown(event)}
                     />
                     <div className="composerBottomRow">
-                      <div className="composerLeftGroup" aria-hidden="true" />
+                      <div className="composerLeftGroup">
+                        <div className="composerPlusWrapper" ref={channelPlusMenuRef}>
+                          <button
+                            className="composerPlusButton"
+                            type="button"
+                            aria-label="Attach"
+                            onClick={() => setChannelPlusMenuOpen(!channelPlusMenuOpen)}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M8 3v10" />
+                              <path d="M3 8h10" />
+                            </svg>
+                          </button>
+                          {channelPlusMenuOpen ? (
+                            <div className="composerPlusMenu">
+                              <button
+                                className="composerPlusMenuItem"
+                                type="button"
+                                onClick={() => { channelFileInputRef.current?.click(); setChannelPlusMenuOpen(false); }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
+                                  <path d="M8 2v8" />
+                                  <path d="M4 6l4-4 4 4" />
+                                </svg>
+                                Add photos and files
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                        {(() => {
+                          const cwd = selectedChannel.repoPath ?? selectedChannel.workspaceCwd;
+                          if (!cwd) return null;
+                          return (
+                            <span
+                              className="composerCwdChip composerCwdClickable"
+                              title={cwd}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => void openFolderInExplorer(cwd)}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                              </svg>
+                              <span>{truncatePath(cwd)}</span>
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <button
                         className="composerSendButton"
                         disabled={!composerDraft.trim() || busy === 'message:send'}
@@ -1451,6 +1547,20 @@ export default function App() {
                         </svg>
                       </button>
                     </div>
+                    <input
+                      ref={channelFileInputRef}
+                      type="file"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={(event) => {
+                        const input = event.currentTarget;
+                        if (input.files && input.files.length > 0) {
+                          const selected = Array.from(input.files);
+                          setChannelFiles((prev) => [...prev, ...selected]);
+                        }
+                        input.value = '';
+                      }}
+                    />
                   </form>
                 </section>
               </div>
@@ -1537,7 +1647,7 @@ export default function App() {
                                 <path d="M8 2v8" />
                                 <path d="M4 6l4-4 4 4" />
                               </svg>
-                              新增照片和檔案
+                              Add photos and files
                             </button>
                             <button
                               className="composerPlusMenuItem"
@@ -1547,7 +1657,7 @@ export default function App() {
                               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
                               </svg>
-                              指定本機資料夾
+                              Set working directory
                             </button>
                             <button
                               className="composerPlusMenuItem"
@@ -1564,13 +1674,16 @@ export default function App() {
                                 <circle cx="8" cy="5" r="3" />
                                 <path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5" />
                               </svg>
-                              增加 Cat
+                              Invite a Cat
                             </button>
                           </div>
                         ) : null}
                       </div>
                       {draftCwd ? (
-                        <span className="composerCwdChip" title={draftCwd}>
+                        <span
+                          className="composerCwdChip"
+                          title={draftCwd}
+                        >
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
                           </svg>

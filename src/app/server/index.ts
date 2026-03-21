@@ -1,6 +1,7 @@
 import { createServer as createHttpServer } from 'node:http';
 import type { IncomingMessage } from 'node:http';
-import { access, readFile } from 'node:fs/promises';
+import { exec } from 'node:child_process';
+import { access, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -139,6 +140,38 @@ async function routeRequest(
       return;
     }
     await handleHealth(dependencies, response);
+    return;
+  }
+
+  if (url.pathname === '/api/shell/open-folder') {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return;
+    }
+    try {
+      const { readJsonBody } = await import('../../shared/http.js');
+      const body = await readJsonBody<{ path: string }>(request);
+      const folderPath = body.path?.trim();
+      if (!folderPath) {
+        sendJson(response, 400, { error: 'path is required' });
+        return;
+      }
+      const stats = await stat(folderPath);
+      if (!stats.isDirectory()) {
+        sendJson(response, 400, { error: 'path is not a directory' });
+        return;
+      }
+      const platform = process.platform;
+      const cmd = platform === 'win32'
+        ? `explorer "${folderPath}"`
+        : platform === 'darwin'
+          ? `open "${folderPath}"`
+          : `xdg-open "${folderPath}"`;
+      exec(cmd);
+      sendJson(response, 200, { opened: folderPath });
+    } catch {
+      sendJson(response, 400, { error: 'failed to open folder' });
+    }
     return;
   }
 

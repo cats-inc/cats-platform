@@ -549,6 +549,14 @@ export async function activateWorkspaceChannel(
   return { appShell, results: activation.results };
 }
 
+export async function openFolderInExplorer(folderPath: string): Promise<void> {
+  await fetch('/api/shell/open-folder', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ path: folderPath }),
+  });
+}
+
 export async function uploadChannelAttachments(
   channelId: string,
   files: File[],
