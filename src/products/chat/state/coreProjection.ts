@@ -284,6 +284,8 @@ function toCoreCheckpointStatus(event: RoomWorkflowEvent): CoreCheckpointStatus 
 function toCoreOutcomeStatus(
   status: RoomWorkflowTurn['status'],
 ): CoreOrchestrationOutcomeRecord['status'] {
+  // Core projections follow the room-workflow vocabulary (`failed`) rather
+  // than the legacy explicit-routing outcome vocabulary (`error`).
   switch (status) {
     case 'completed':
       return 'succeeded';

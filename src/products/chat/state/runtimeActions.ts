@@ -496,14 +496,52 @@ function updateWorkflowTarget(
   turn: RoomWorkflowTurn,
   targetStateId: string,
   nowIso: string,
-  update: Partial<RoomWorkflowTargetState> & { status?: RoomWorkflowTargetStatus },
+  update: Partial<RoomWorkflowTargetState>,
 ): RoomWorkflowTargetState | null {
   const targetStatus = turn.targetStatuses.find((target) => target.id === targetStateId);
   if (!targetStatus) {
     return null;
   }
 
-  Object.assign(targetStatus, update);
+  if (update.dispatchId !== undefined) {
+    targetStatus.dispatchId = update.dispatchId;
+  }
+  if (update.participant !== undefined) {
+    targetStatus.participant = update.participant;
+  }
+  if (update.source !== undefined) {
+    targetStatus.source = update.source;
+  }
+  if (update.sourceMessageId !== undefined) {
+    targetStatus.sourceMessageId = update.sourceMessageId;
+  }
+  if (update.trigger !== undefined) {
+    targetStatus.trigger = update.trigger;
+  }
+  if (update.mentionNames !== undefined) {
+    targetStatus.mentionNames = update.mentionNames;
+  }
+  if (update.depth !== undefined) {
+    targetStatus.depth = update.depth;
+  }
+  if (update.status !== undefined) {
+    targetStatus.status = update.status;
+  }
+  if (update.queuedAt !== undefined) {
+    targetStatus.queuedAt = update.queuedAt;
+  }
+  if (update.startedAt !== undefined) {
+    targetStatus.startedAt = update.startedAt;
+  }
+  if (update.completedAt !== undefined) {
+    targetStatus.completedAt = update.completedAt;
+  }
+  if (update.responseMessageId !== undefined) {
+    targetStatus.responseMessageId = update.responseMessageId;
+  }
+  if (update.error !== undefined) {
+    targetStatus.error = update.error;
+  }
   turn.updatedAt = nowIso;
   return targetStatus;
 }
@@ -538,7 +576,36 @@ function updateDispatch(
     return;
   }
 
-  Object.assign(dispatch, update);
+  if (update.sourceMessageId !== undefined) {
+    dispatch.sourceMessageId = update.sourceMessageId;
+  }
+  if (update.source !== undefined) {
+    dispatch.source = update.source;
+  }
+  if (update.target !== undefined) {
+    dispatch.target = update.target;
+  }
+  if (update.trigger !== undefined) {
+    dispatch.trigger = update.trigger;
+  }
+  if (update.status !== undefined) {
+    dispatch.status = update.status;
+  }
+  if (update.mentionNames !== undefined) {
+    dispatch.mentionNames = update.mentionNames;
+  }
+  if (update.responseMessageId !== undefined) {
+    dispatch.responseMessageId = update.responseMessageId;
+  }
+  if (update.startedAt !== undefined) {
+    dispatch.startedAt = update.startedAt;
+  }
+  if (update.completedAt !== undefined) {
+    dispatch.completedAt = update.completedAt;
+  }
+  if (update.error !== undefined) {
+    dispatch.error = update.error;
+  }
 }
 
 function createRoomRoutingSnapshot(
@@ -640,6 +707,35 @@ function finalizeWorkflowTurn(
   workflow.activeTurn = null;
   workflow.turnHistory.unshift(structuredClone(turn));
   pruneWorkflowHistory(workflow);
+}
+
+function deriveTerminalTurnStatuses(
+  outcome: RoomRoutingOutcome,
+  guardReason: RoomRoutingGuardReason,
+): {
+  outcomeStatus: RoomRoutingOutcome['status'];
+  workflowStatus: RoomWorkflowStatus;
+} {
+  if (guardReason) {
+    return {
+      outcomeStatus: 'blocked',
+      workflowStatus: 'blocked',
+    };
+  }
+
+  if (outcome.dispatches.some((dispatch) => dispatch.status === 'completed')) {
+    return {
+      outcomeStatus: 'completed',
+      workflowStatus: 'completed',
+    };
+  }
+
+  // `lastOutcome` keeps the legacy routing vocabulary (`error`) while the
+  // room-workflow layer and core projections use workflow vocabulary (`failed`).
+  return {
+    outcomeStatus: 'error',
+    workflowStatus: 'failed',
+  };
 }
 
 function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): boolean {
@@ -1257,15 +1353,6 @@ export async function routeChannelMessage(
     null,
     initialResolution.targets.map((target) => toParticipantRef(target)),
   );
-  nextState = applyRoomRoutingSnapshot(
-    nextState,
-    channelId,
-    baseRoomRouting,
-    workflow,
-    outcome,
-    latestCheckpoint,
-    now,
-  );
 
   if (initialResolution.unresolved.length > 0) {
     mergeUnresolvedMentions(outcome, initialResolution.unresolved);
@@ -1285,15 +1372,6 @@ export async function routeChannelMessage(
         },
       },
     ).state;
-    nextState = applyRoomRoutingSnapshot(
-      nextState,
-      channelId,
-      baseRoomRouting,
-      workflow,
-      outcome,
-      latestCheckpoint,
-      now,
-    );
   }
 
   if (initialResolution.targets.length === 0) {
@@ -1599,15 +1677,6 @@ export async function routeChannelMessage(
         allowedRequests.map((request) => toParticipantRef(request.target)),
       );
     }
-    nextState = applyRoomRoutingSnapshot(
-      nextState,
-      channelId,
-      baseRoomRouting,
-      workflow,
-      outcome,
-      latestCheckpoint,
-      now,
-    );
 
     const readyRequests: DispatchRequest[] = [];
     for (const request of allowedRequests) {
@@ -1709,15 +1778,6 @@ export async function routeChannelMessage(
             },
           },
         ),
-      );
-      nextState = applyRoomRoutingSnapshot(
-        nextState,
-        channelId,
-        baseRoomRouting,
-        workflow,
-        outcome,
-        latestCheckpoint,
-        now,
       );
     }
 
@@ -1909,15 +1969,6 @@ export async function routeChannelMessage(
         trigger: execution.trigger,
         dispatchDepth: execution.depth,
       });
-      nextState = applyRoomRoutingSnapshot(
-        nextState,
-        channelId,
-        baseRoomRouting,
-        workflow,
-        outcome,
-        latestCheckpoint,
-        now,
-      );
 
       const continuationResolution = resolveTargets(nextState, channelId, responseMessage.body, {
         allowDefaultTarget: false,
@@ -1994,16 +2045,9 @@ export async function routeChannelMessage(
   activeTurn.guard = guardReason;
   activeTurn.continuationCount = outcome.continuationCount;
   activeTurn.dispatchCount = outcome.totalDispatchCount;
-  outcome.status = guardReason
-    ? 'blocked'
-    : outcome.dispatches.some((dispatch) => dispatch.status === 'completed')
-      ? 'completed'
-      : 'error';
-  activeTurn.status = guardReason
-    ? 'blocked'
-    : outcome.dispatches.some((dispatch) => dispatch.status === 'completed')
-      ? 'completed'
-      : 'failed';
+  const terminalStatuses = deriveTerminalTurnStatuses(outcome, guardReason);
+  outcome.status = terminalStatuses.outcomeStatus;
+  activeTurn.status = terminalStatuses.workflowStatus;
   outcome.completedAt = nowIso;
   activeTurn.completedAt = nowIso;
   activeTurn.updatedAt = nowIso;
