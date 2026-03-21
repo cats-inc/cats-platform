@@ -42,8 +42,8 @@ the same shared domain model.
 └───────────────────────────┘        └───────────────────────────┘
 
 Third-party transports such as Telegram and LINE route through the product
-server and a single orchestrator-facing bot binding rather than talking
-directly to individual workers.
+server and explicit Cat-owned bot bindings rather than talking directly to
+individual workers.
 ```
 
 ## Components
@@ -106,8 +106,9 @@ below product orchestration policy:
 - **Responsibilities**: Render chat and work views, surface approvals,
   ownership, activity, and allow external transport messages to reach the
   orchestrator safely. For Chat, high-frequency actions such as adding a cat
-  should stay in current-chat context, while reusable registry management lives
-  under Settings.
+  should stay in current-chat context, `Recents` should remain the primary
+  sidebar surface, a lightweight `My Cats` roster may coexist for quick direct
+  chat entry, and reusable registry management lives under Settings.
 
 ### Telegram Transport Layer
 
@@ -200,7 +201,8 @@ stays in `src/platform/transports/telegram/*`.
 - **Technology**: React + Vite
 - **Responsibilities**: Render channels, runtime status, transcript composer,
   a preview-ready artifact pane, contextual cat assignment, settings-hosted
-  cat management, channel setup, and global orchestrator editing
+  cat management, topic-first recents with Cat avatar markers, lightweight
+  direct-chat entry for `My Cats`, channel setup, and global Boss Cat editing
 
 ## Memory Layering Direction
 
@@ -232,10 +234,10 @@ history.
 
 ## Cat Identity and Execution
 
-`Cats` now treats teammate identity and runtime execution as separate
+`Cats` now treats Cat identity/persona and runtime execution as separate
 concerns.
 
-- `Global cat registry` covers reusable teammate identity, default execution
+- `Global cat registry` covers reusable Cat identity, default execution
   settings, and long-lived memory
 - `Channel cat assignment` covers whether a cat is active in one chat plus any
   channel-specific role or provider override
@@ -476,7 +478,6 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-22*
-
 
 
 

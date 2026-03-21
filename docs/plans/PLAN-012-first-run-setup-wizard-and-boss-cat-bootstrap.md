@@ -1,6 +1,6 @@
 # PLAN-012: First-Run Setup Wizard and Boss Cat Bootstrap
 
-Status: Draft (Pending Review)
+Status: Draft (Aligned with SPEC-027)
 
 ## Scope
 
@@ -14,7 +14,7 @@ This plan covers the first implementation path for:
 - routing the operator into `/setup`
 - capturing minimal owner profile data
 - checking `cats-runtime` readiness
-- creating or selecting the initial `Boss Cat`
+- auto-provisioning the initial neutral default `Boss Cat` when needed
 - finishing in a ready first chat
 
 This plan is explicitly **not** a full authentication plan, a full transport
@@ -26,6 +26,7 @@ binding plan, or a full desktop-packaging plan.
   explicitly changes the product model.
 - Do not require users to understand channel registry, Cats registry, or
   orchestration internals before they can complete setup.
+- Do not require users to create, choose, or name a custom Cat during setup.
 - Keep transport setup optional or deferrable in the first slice.
 - Keep the setup path compatible with current route-driven navigation.
 - Keep `cats-runtime` as the only runtime boundary.
@@ -51,7 +52,7 @@ binding plan, or a full desktop-packaging plan.
       progress.
 - [ ] Add or refine product APIs needed to write:
       - owner profile basics
-      - Boss Cat selection or creation
+      - default Boss Cat bootstrap or later assignment
       - first-run completion state
 - [ ] Reuse or extend runtime-health APIs for the setup readiness check.
 - [ ] Keep setup writes compatible with the current Cats registry and Boss Cat
@@ -74,21 +75,23 @@ binding plan, or a full desktop-packaging plan.
 ### Phase 4: Wizard Steps
 
 - [ ] Add the Welcome step.
-- [ ] Add the Owner Profile step.
 - [ ] Add the Runtime Check step with clear remediation messaging.
-- [ ] Add the Boss Cat Setup step:
-      - choose existing Cat
-      - or create a new Cat and set it as Boss Cat
-      - confirm provider and model
+- [ ] Add the Owner Profile step.
+- [ ] Add the default Boss Cat bootstrap step:
+      - ensure one current Boss Cat exists
+      - auto-provision a neutral default Boss Cat when needed
+      - do not require Cat naming or full personalization
 
 **Deliverables**: guided setup flow with the core onboarding steps in place.
 
 ### Phase 5: Completion and First Chat Bootstrap
 
 - [ ] Mark setup complete only after the minimum required state exists.
-- [ ] Create or open the first ready conversation path with the Boss Cat.
+- [ ] Create or open the first ready conversation path with the current
+      Boss Cat.
 - [ ] Route the operator directly into that first chat after setup.
-- [ ] Allow the Boss Cat to greet the user on first entry after completion.
+- [ ] Optionally offer post-setup prompts such as renaming the Boss Cat or
+      adding another Cat without blocking first use.
 
 **Deliverables**: smooth first-run handoff into normal product usage.
 
@@ -108,10 +111,10 @@ binding plan, or a full desktop-packaging plan.
 |------|--------|-----|
 | `src/shared/app-shell.ts` | Review / extend | Current shell contract needs setup readiness or onboarding state |
 | `src/shared/core.ts` | Review | Owner profile and Boss Cat bootstrap need clean shared-core alignment |
-| `src/chat/store.ts` | Modify | Persist onboarding state and setup completion |
-| `src/server.ts` | Extend | Add or refine setup-related reads and writes |
-| `src/renderer/App.tsx` | Refactor carefully | Add setup routing, setup shell, and first-run gating |
-| `src/renderer/api.ts` | Extend | Support onboarding writes and readiness checks |
+| `src/products/chat/state/store.ts` | Modify | Persist onboarding state and setup completion |
+| `src/app/server/index.ts` | Extend | Add or refine setup-related reads and writes |
+| `src/products/chat/renderer/App.tsx` | Refactor carefully | Add setup routing, setup shell, and first-run gating |
+| `src/products/chat/renderer/api.ts` | Extend | Support onboarding writes and readiness checks |
 | `tests/` | Expand | Cover route gating, setup persistence, and Boss Cat bootstrap |
 | `docs/` | Update | Keep onboarding direction aligned once implementation begins |
 
@@ -121,7 +124,8 @@ binding plan, or a full desktop-packaging plan.
 - The setup flow does not read like an auth or SaaS login flow.
 - The operator can finish setup without understanding internal orchestration
   structure.
-- Setup completion leaves the app with a Boss Cat and a usable first chat path.
+- Setup completion leaves the app with a current Boss Cat and a usable first
+  chat path.
 - Returning app launches skip setup once initialization is complete.
 
 ## Risks
@@ -131,7 +135,7 @@ binding plan, or a full desktop-packaging plan.
 | Setup state becomes too simplistic and blocks future resumable onboarding | Medium | Prefer a structured readiness model if the first implementation needs more than one required step |
 | Runtime remediation becomes too technical for new users | High | Keep the first wizard copy simple and defer advanced diagnostics to later support surfaces |
 | First-run flow becomes too long and discouraging | High | Make transport setup skippable and keep the required path minimal |
-| Boss Cat setup becomes a hidden proxy for broader Cat registry complexity | Medium | Limit the step to create/select + provider/model confirmation only |
+| Setup quietly becomes a hidden proxy for broader Cat registry complexity | Medium | Keep Cat naming and richer personalization out of the required setup path |
 | Setup and normal settings start to duplicate each other too early | Medium | Treat setup as the first-run path, not a replacement for the later settings system |
 
 ## Suggested Handoff Instruction
@@ -140,11 +144,12 @@ Use this when delegating implementation:
 
 > Implement SPEC-012 / PLAN-012. Add a first-run setup wizard at `/setup`
 > instead of a login-first flow. Detect uninitialized local environments, guide
-> the operator through welcome, owner profile, runtime check, and Boss Cat
-> setup, then land them directly in the first ready chat. Keep transport setup
-> optional and preserve the existing `cats-runtime` boundary.
+> the operator through welcome, runtime readiness, and owner profile, then
+> auto-provision a neutral default Boss Cat if needed and land them directly in
+> the first ready chat. Keep transport setup optional and preserve the existing
+> `cats-runtime` boundary.
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-22*
 

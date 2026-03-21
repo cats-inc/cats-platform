@@ -1,11 +1,17 @@
 # SPEC-007: Chat-Contextual Cat Entry
 
-Status: Draft (Pending Review)
+Status: Draft (Narrowed by SPEC-027)
 
 ## Summary
 
-Reframe cat UX so the primary operator action is "add cat to this chat" while
-preserving the reusable global cat registry under `Settings > Cats`.
+Define the contextual `Add cat` flow inside the broader chat-first information
+architecture settled by [SPEC-027](./SPEC-027-chat-first-information-architecture-and-default-boss-cat.md).
+
+This spec is intentionally narrower than the overall chat IA:
+
+- `Recents` remains the main chat surface
+- a lightweight `My Cats` roster may still exist for quick direct-chat entry
+- the full reusable registry remains under `Settings > Cats`
 
 ## Goals
 
@@ -15,6 +21,7 @@ preserving the reusable global cat registry under `Settings > Cats`.
   `Settings`
 - Preserve direct `Create new` entry both from chat context and from
   `Settings > Cats`
+- Keep `Add cat to this chat` distinct from `Chat with this cat`
 
 ## Requirements
 
@@ -34,6 +41,8 @@ preserving the reusable global cat registry under `Settings > Cats`.
   - create new
   - review registry
   - future edit/archive/inspect flows
+- A lightweight `My Cats` roster may coexist with `Recents`, but it shall not
+  replace `Settings > Cats` as the management surface.
 - The top-level navigation should stop treating `Cats` as a first-class peer of
   active chat work.
 
@@ -80,13 +89,14 @@ preserving the reusable global cat registry under `Settings > Cats`.
 - The agreed information architecture is:
   - chat-first Add cat flow
   - Settings-hosted Cats registry
+  - optional lightweight `My Cats` roster for quick entry
   - account-menu entry for Settings
-- The spec remains compatible with ADR-005 and does not replace the shared cat
-  registry model.
+- The spec remains compatible with ADR-005 and SPEC-027 and does not replace
+  the shared cat registry model.
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-22*
 
 
 

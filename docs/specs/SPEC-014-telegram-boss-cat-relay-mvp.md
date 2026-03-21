@@ -10,18 +10,21 @@
 
 ## Summary
 
-`cats` needs a dedicated Telegram transport seam so a single public
-`Boss Cat` can later bridge Telegram inbound and outbound traffic without
+`cats` needs a dedicated Telegram transport seam so Cat-owned public bot
+bindings can later bridge Telegram inbound and outbound traffic without
 entangling transport logic with the web-chat transcript flow.
+
+The first slice may still begin with one default `Boss Cat` binding, but the
+model must not hardcode one Telegram bot for the whole environment forever.
 
 The first slice should add the relay structure, status route, and webhook
 ingress seam. It should not yet change the existing web chat behavior or expose
-worker cats as direct Telegram senders.
+arbitrary worker cats as direct Telegram senders.
 
 ## Goals
 
 - establish Telegram as a dedicated transport layer in `cats`
-- keep Telegram's visible identity mapped to the `Boss Cat`
+- support Telegram bot bindings as Cat-owned public identities
 - add webhook ingress and relay status seams for the Telegram workstream
 - preserve clean separation between transcript messages and transport logs
 
@@ -36,8 +39,8 @@ worker cats as direct Telegram senders.
 ### Functional Requirements
 
 1. `cats` shall expose `GET /api/transports/telegram`.
-2. The status route shall report whether a Telegram bot binding exists for the
-   current chat shell and which `Boss Cat` it would front.
+2. The status route shall report whether Telegram bot bindings exist for the
+   current chat shell and which Cat each binding fronts.
 3. `cats` shall expose `POST /api/transports/telegram/webhook`.
 4. The webhook route shall accept Telegram updates and route them through a
    dedicated relay component rather than directly into chat handlers.
@@ -46,10 +49,14 @@ worker cats as direct Telegram senders.
    conversation ids, even if the first slice uses placeholder mappings.
 7. Relay dedupe state and chat-to-conversation bindings should survive process
    restart so webhook retries do not rely on process-local memory only.
-8. Telegram inbound traffic shall conceptually enter through the `Boss Cat`.
-9. Worker cats shall remain internal orchestration resources; they shall not
-   appear as separate Telegram senders in the MVP.
-10. Transport status and receipts shall be separate from the main transcript.
+8. Telegram inbound traffic shall conceptually enter through the Cat bound to
+   that specific bot binding.
+9. The first MVP may front only the default `Boss Cat`, but the persisted model
+   must leave room for multiple bindings later.
+10. Internal worker cats that are not explicitly bot-bound shall remain
+    internal orchestration resources; they shall not appear as separate
+    Telegram senders in the MVP.
+11. Transport status and receipts shall be separate from the main transcript.
 
 ### Non-Functional Requirements
 
@@ -68,12 +75,13 @@ Illustrative response:
   "telegram": {
     "platform": "telegram",
     "status": "bound",
-    "bossCatId": "cat-smelly",
-    "bossCatName": "Smelly",
+    "catId": "cat-boss-cat",
+    "catName": "Boss Cat",
+    "isBossCat": true,
     "botBinding": {
       "id": "bot-binding-telegram-global",
       "platform": "telegram",
-      "botName": "smelly_bot"
+      "botName": "boss_cat_bot"
     },
     "mappedConversationCount": 0,
     "lastProcessedUpdateId": null,
@@ -97,8 +105,8 @@ Illustrative response:
     "updateId": 101,
     "chatId": "12345",
     "messageId": "88",
-    "bossCatId": "cat-smelly",
-    "bossCatName": "Smelly",
+    "catId": "cat-boss-cat",
+    "catName": "Boss Cat",
     "mappedConversationId": "telegram:12345"
   }
 }
@@ -120,6 +128,7 @@ Illustrative response:
 - [SPEC-012](./SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md)
 - [ADR-011](../decisions/011-model-primary-orchestrator-as-visible-cat.md)
 - [ADR-014](../decisions/014-freeze-parallel-delivery-boundaries-for-provider-telegram-and-chat-workstreams.md)
+- [ADR-028](../decisions/028-allow-multiple-public-bot-bindings-with-one-boss-cat.md)
 
 ## Open Questions
 
@@ -137,4 +146,5 @@ Illustrative response:
 
 *Created: 2026-03-19*
 *Author: Codex*
+*Last updated: 2026-03-22*
 

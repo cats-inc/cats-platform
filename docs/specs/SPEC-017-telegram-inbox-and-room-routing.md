@@ -10,62 +10,65 @@
 
 ## Summary
 
-Telegram should be treated as a single external inbox where the operator talks
-to `Boss Cat`, while `Cats Chat` remains the canonical place for topic rooms and
-multi-Cat collaboration.
+Telegram should be treated as one external inbox per bot binding, while
+`Cats Chat` remains the canonical place for topic rooms and multi-Cat
+collaboration.
 
-This spec defines how one Telegram thread can safely drive many internal rooms
-without collapsing all work into one transcript. It also captures the future UI
-direction hinted by products like Manus: a higher-level agent/channel surface
-can coexist with room-based chat, but must not replace the room model.
+This spec defines how one Telegram thread owned by one bot-bound Cat can safely
+drive many internal rooms without collapsing all work into one transcript. It
+also captures the future UI direction hinted by products like Manus: a
+higher-level agent/channel surface can coexist with room-based chat, but must
+not replace the room model.
 
 ## Goals
 
-- keep Telegram as one clean operator-to-`Boss Cat` entry thread
+- keep each Telegram bot as one clean operator-to-one-Cat entry thread
 - preserve `Cats Chat` rooms as the canonical multi-topic chat units
-- allow `Boss Cat` to continue existing rooms or create new rooms from Telegram
+- allow the bound Cat or product system layer to continue existing rooms or
+  create new rooms from Telegram
 - ensure new rooms created from Telegram appear naturally in `Recents`
-- keep worker Cats internal to room orchestration rather than direct Telegram
-  senders
+- keep non-bot-bound worker Cats internal to room orchestration rather than
+  direct Telegram senders
 
 ## Non-Goals
 
 - shipping the full Telegram bridge in this document alone
 - mirroring every internal room message back into Telegram
-- exposing worker Cats as individual Telegram identities
+- exposing every internal worker Cat as a Telegram identity by default
 - finalizing the full future `Agent` tab navigation implementation
 
 ## User Stories
 
-- As an operator, I want to message one Telegram bot and let `Boss Cat` decide
-  whether to answer directly or organize the work into a dedicated room.
+- As an operator, I want to message one Telegram bot tied to one Cat and let
+  that Cat or the system decide whether to answer directly or organize the work
+  into a dedicated room.
 - As an operator, I want complex topics to become separate rooms in `Recents`
   instead of disappearing into one endless Telegram thread.
-- As an operator, I want `Boss Cat` to tell me when it opened or continued a
-  room so I can follow the work in the app.
+- As an operator, I want the Cat I am messaging to tell me when it opened or
+  continued a room so I can follow the work in the app.
 
 ## Requirements
 
 ### Functional Requirements
 
-1. A Telegram private chat bound to `Boss Cat` shall be treated as a transport
-   inbox, not as the canonical transcript for all work.
+1. A Telegram private chat bound to one Cat identity shall be treated as a
+   transport inbox, not as the canonical transcript for all work.
 2. `Cats Chat` rooms shall remain the canonical units for topic work and
    multi-Cat collaboration.
 3. One Telegram inbox may relate to many internal rooms over time.
-4. For each inbound Telegram message, `Boss Cat` shall be able to choose one of
-   these routing modes:
+4. For each inbound Telegram message, the bound Cat plus the product routing
+   layer shall be able to choose one of these routing modes:
    - reply directly in Telegram
    - continue a known internal room
    - propose or create a new internal room
-5. If `Boss Cat` continues an existing room, the system shall record or reuse a
+5. If the binding continues an existing room, the system shall record or reuse a
    binding between the Telegram inbox context and that internal room.
-6. If `Boss Cat` creates a new room from Telegram, that room shall appear in
+6. If the binding creates a new room from Telegram, that room shall appear in
    `Cats Chat Recents` as a normal room.
 7. A room created from Telegram may be created with pre-assigned Cats selected
-   by `Boss Cat`.
-8. Worker Cats shall remain internal room participants and shall not appear as
-   separate Telegram senders.
+   by the bound Cat or system policy.
+8. Non-bot-bound worker Cats shall remain internal room participants and shall
+   not appear as separate Telegram senders.
 9. Telegram responses for room-backed work shall default to concise summaries,
    questions, approvals, or milestone updates instead of full transcript
    mirroring.
@@ -76,10 +79,12 @@ can coexist with room-based chat, but must not replace the room model.
     the wrong room.
 12. The first slice should support operator-visible room creation from Telegram
     even before a dedicated `Agent` tab ships.
-13. The current transport model shall not assume that one Telegram inbox model
-    permanently forbids future multi-`Boss Cat`, multi-bot expansion.
-14. If later slices add multiple public `Boss Cat` identities, each one should
-    have its own explicit bot binding and inbox scope.
+13. The current transport model shall allow multiple Telegram bots in one
+    environment.
+14. Each Telegram bot binding shall own its own explicit inbox scope.
+15. The global `Boss Cat` role shall remain singular even when multiple
+    Telegram bot bindings exist.
+16. A non-`Boss Cat` Cat may still own a Telegram bot binding.
 
 ### Non-Functional Requirements
 
@@ -96,7 +101,7 @@ can coexist with room-based chat, but must not replace the room model.
 Telegram private chat
         |
         v
- Boss Cat inbox
+ Cat-bound inbox
         |
         +--> direct Telegram reply
         |
@@ -113,7 +118,8 @@ Telegram private chat
 
 ### Telegram as Inbox
 
-- Telegram should feel like one always-available front door to `Boss Cat`.
+- Telegram should feel like one always-available front door to the Cat bound to
+  that bot.
 - The operator should not have to understand room ids, bindings, or internal
   orchestration terms.
 - Telegram is allowed to stay concise and summary-oriented even when large room
@@ -128,7 +134,7 @@ Telegram private chat
 
 ### Room Creation Behavior
 
-- For obvious new topics, `Boss Cat` may propose a new room immediately.
+- For obvious new topics, the bound Cat may propose a new room immediately.
 - The early slice should bias toward explicit confirmation when room creation is
   costly, surprising, or ambiguous.
 - After creation, Telegram should receive a short note such as:
@@ -138,10 +144,10 @@ Telegram private chat
 
 ### Existing Room Continuation
 
-- If a Telegram message clearly continues a known topic, `Boss Cat` may route it
+- If a Telegram message clearly continues a known topic, the bound Cat may route it
   into that room.
-- If multiple candidate rooms are plausible, `Boss Cat` should ask rather than
-  silently guess.
+- If multiple candidate rooms are plausible, the bound Cat or system layer
+  should ask rather than silently guess.
 - Future slices may maintain a stronger "active room" pointer for faster
   routing, but ambiguity rules should remain conservative.
 
@@ -155,16 +161,16 @@ Telegram private chat
 
 ### Future Slice
 
-- The product may add a top-level `Agent` surface alongside room-native chat.
+- The product may add a top-level `Agent` or `Bots` surface alongside
+  room-native chat.
 - That surface should manage:
   - Telegram and LINE channel bindings
   - inbox state
   - bot health and policy
   - references into spawned or continued rooms
 - The future `Agent` surface should complement `Recents`, not replace it.
-- A later slice may also support multiple public `Boss Cat` identities, each
-  paired with its own Telegram or LINE bot, as long as inbox ownership and room
-  routing remain explicit.
+- A later slice may support multiple Cat-bound Telegram or LINE bots in one
+  environment, as long as inbox ownership and room routing remain explicit.
 
 ## Dependencies
 
@@ -174,6 +180,7 @@ Telegram private chat
 - [ADR-011](../decisions/011-model-primary-orchestrator-as-visible-cat.md)
 - [ADR-015](../decisions/015-adopt-cat-sleep-wake-lifecycle-for-chat-sessions.md)
 - [ADR-016](../decisions/016-treat-telegram-as-boss-cat-inbox-not-room-mirror.md)
+- [ADR-028](../decisions/028-allow-multiple-public-bot-bindings-with-one-boss-cat.md)
 
 ## Design Notes
 
@@ -191,7 +198,7 @@ Telegram private chat
       message text, an operator-confirmed title, or Boss Cat synthesis?
 - [ ] Should the web app show a visible "created from Telegram" note inside the
       new room, or keep that provenance in transport metadata only?
-- [ ] What is the smallest acceptable confirmation UX for "Boss Cat wants to
+- [ ] What is the smallest acceptable confirmation UX for "this Cat wants to
       open a new room" inside Telegram itself?
 
 ## References
@@ -207,5 +214,6 @@ Telegram private chat
 
 *Created: 2026-03-19*
 *Author: Codex*
+*Last updated: 2026-03-22*
 
 

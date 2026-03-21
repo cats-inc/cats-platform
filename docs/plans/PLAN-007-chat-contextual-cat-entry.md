@@ -1,18 +1,21 @@
 # PLAN-007: Chat-Contextual Cat Entry
 
-Status: Draft (Pending Review)
+Status: Draft (Aligned with SPEC-027)
 
 ## Scope
 
-Translate the cat information-architecture decision into an implementation path
-that keeps the shared cat registry intact while moving the primary operator
-entry back into the active chat.
+Translate the contextual Add-cat decision into an implementation path that
+keeps the shared cat registry intact while fitting inside the broader
+chat-first IA defined by
+[SPEC-027](../specs/SPEC-027-chat-first-information-architecture-and-default-boss-cat.md).
 
 ## Phases
 
 ### Phase 1: Information Architecture
 
-- [ ] Remove `Cats` from first-level chat navigation.
+- [ ] Keep `Recents` as the primary sidebar surface.
+- [ ] Allow an optional lightweight `My Cats` roster for quick direct-chat
+      entry without turning it into the full registry.
 - [ ] Introduce a `Settings` destination reached from the left-panel account
       menu.
 - [ ] Define `Settings > Cats` as the reusable cat registry surface.
@@ -62,9 +65,9 @@ entry back into the active chat.
 
 | Area | Action | Why |
 |------|--------|-----|
-| `src/renderer/App.tsx` | Refactor | Move `Cats` out of primary nav and introduce settings plus contextual Add cat flows |
-| `src/renderer/styles.css` | Modify | Support account menu, settings shell, and contextual Add cat panel |
-| `src/renderer/api.ts` | Reuse / extend | Compose global cat creation and channel assignment flows |
+| `src/products/chat/renderer/App.tsx` | Refactor | Keep Recents primary while introducing contextual Add cat flows, lightweight Cats roster behavior, and settings entry |
+| `src/products/chat/renderer/styles.css` | Modify | Support account menu, settings shell, and contextual Add cat panel |
+| `src/products/chat/renderer/api.ts` | Reuse / extend | Compose global cat creation and channel assignment flows |
 | `src/shared/app-shell.ts` | Review | Confirm the existing payload is sufficient for contextual Add cat UI |
 | `tests/` | Expand | Add coverage for the new IA and creation/assignment behavior |
 | `docs/` | Update | Keep IA, requirements, and roadmap consistent |
@@ -76,6 +79,7 @@ entry back into the active chat.
 - Operators can create a new cat from the active chat and see it assigned
   immediately afterward.
 - Operators can still manage the registry from `Settings > Cats`.
+- A lightweight `My Cats` roster can exist without replacing the registry.
 - No planning document implies that reusable cat management must stay in
   first-level navigation.
 
@@ -90,7 +94,7 @@ entry back into the active chat.
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-22*
 
 
 

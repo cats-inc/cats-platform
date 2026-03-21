@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-027](./SPEC-027-chat-first-information-architecture-and-default-boss-cat.md) | Chat-First Information Architecture and Default Boss Cat | Approved | - |
 | [SPEC-026](./SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) | Explicit Mentions and Dynamic Room Workflow Orchestration | Draft (Pending Review) | [PLAN-016](../plans/PLAN-016-dynamic-room-workflow-orchestration.md) |
 | [SPEC-025](./SPEC-025-budget-policy-override-flows-and-war-room-dashboard.md) | Budget Policy, Override Flows, and War-Room Dashboard | Draft (Pending Review) | - |
 | [SPEC-024](./SPEC-024-chat-delivery-policy-and-governance-levels.md) | Chat Delivery Policy and Governance Levels | Draft (Pending Review) | - |
@@ -62,12 +63,12 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-015](./SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md) | Cat Capability Registry and Runtime Skill/MCP Mapping | Draft (Ready for Specialist Handoff) | [PLAN-014](../plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md) |
 | [SPEC-014](./SPEC-014-telegram-boss-cat-relay-mvp.md) | Telegram Boss Cat Relay MVP | Draft (Ready for Specialist Handoff) | [PLAN-014](../plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md) |
 | [SPEC-013](./SPEC-013-provider-catalog-consumption-and-ui-seam.md) | Provider Catalog Consumption and UI Seam | Draft (Ready for Specialist Handoff) | [PLAN-014](../plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md) |
-| [SPEC-012](./SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) | First-Run Setup Wizard and Boss Cat Bootstrap | Draft (Pending Review) | [PLAN-012](../plans/PLAN-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) |
+| [SPEC-012](./SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) | First-Run Setup Wizard and Boss Cat Bootstrap | Draft (Aligned with SPEC-027) | [PLAN-012](../plans/PLAN-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) |
 | [SPEC-011](./SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md) | Primary Orchestrator Chat Entry and Trace Separation | Approved | [PLAN-011](../plans/PLAN-011-primary-orchestrator-chat-entry-and-trace-separation.md) |
 | [SPEC-010](./SPEC-010-full-site-routing-and-url-driven-navigation.md) | Full-Site Routing and URL-Driven Navigation | Draft (Pending Review) | [PLAN-010](../plans/PLAN-010-full-site-routing-and-url-driven-navigation.md) |
 | [SPEC-009](./SPEC-009-public-surface-naming-refresh.md) | Public-Surface Naming Refresh | Draft (Pending Review) | [PLAN-009](../plans/PLAN-009-public-surface-naming-refresh.md) |
 | [SPEC-008](./SPEC-008-restful-product-api-refactor.md) | RESTful Product API Refactor | Draft (Pending Review) | [PLAN-008](../plans/PLAN-008-restful-product-api-refactor.md) |
-| [SPEC-007](./SPEC-007-chat-contextual-cat-entry.md) | Chat-Contextual Cat Entry | Draft (Pending Review) | [PLAN-007](../plans/PLAN-007-chat-contextual-cat-entry.md) |
+| [SPEC-007](./SPEC-007-chat-contextual-cat-entry.md) | Chat-Contextual Cat Entry | Draft (Narrowed by SPEC-027) | [PLAN-007](../plans/PLAN-007-chat-contextual-cat-entry.md) |
 | [SPEC-006](./SPEC-006-cats-core-v1-and-suite-foundation.md) | Cats Core v1 and Suite Foundation | Approved | [PLAN-006](../plans/PLAN-006-cats-core-v1-and-suite-foundation.md) |
 | [SPEC-005](./SPEC-005-company-control-plane-evolution.md) | Company Control Plane Evolution | Draft (Exploratory, Unreviewed) | [PLAN-005](../plans/PLAN-005-company-control-plane-evolution.md) |
 | [SPEC-004](./SPEC-004-runtime-chat-core.md) | Runtime Chat Core | Implemented | [PLAN-004](../plans/PLAN-004-runtime-chat-core.md) |
@@ -85,7 +86,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-03-20*
+*Last updated: 2026-03-22*
 
 *See also: [plans/](../plans/) for implementation plans*
 

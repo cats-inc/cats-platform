@@ -7,6 +7,11 @@
 
 Accepted
 
+> Clarified by [ADR-028](./028-allow-multiple-public-bot-bindings-with-one-boss-cat.md):
+> one environment still has one current `Boss Cat`, but external bot bindings
+> may front other Cats too. `Boss Cat` remains the default public orchestrator,
+> not the only Cat allowed to have a transport identity.
+
 ## Context
 
 `cats` is now firmly a chat-first product. That creates a product-level
@@ -48,8 +53,8 @@ Terminology rule:
 1. Each `cats` environment has exactly one `Primary Orchestrator Cat`.
    - this is the default public orchestrator for the environment
    - this is the identity shown to users in chat
-   - this is the identity used for public bot bindings such as Telegram and
-     LINE@
+   - this is the default identity used for public bot bindings such as
+     Telegram and LINE@ when a more specific Cat binding is not chosen
    - user-facing surfaces should usually label this role as `Boss Cat`
 
 2. `+ New Chat` starts a conversation with that `Primary Orchestrator Cat`.
@@ -91,7 +96,8 @@ Terminology rule:
 - The chat product keeps a stable "who am I talking to?" answer.
 - The product gets a short, memorable UI term without losing a precise domain
   term.
-- Telegram and LINE@ bindings have one clear public orchestrator target.
+- Telegram and LINE@ bindings have one clear default public orchestrator
+  target.
 - Engineering still gets explicit orchestration records instead of burying all
   system state inside a chat persona object.
 - The transcript stays readable while advanced debugging remains available.
@@ -152,6 +158,7 @@ state as one object
 - [ADR-007](./007-establish-cats-core-v1-for-chat-and-work.md)
 - [ADR-008](./008-expose-cats-runtime-via-direct-api-and-mcp-facade.md)
 - [ADR-009](./009-prefer-chat-contextual-cat-entry-and-settings-registry.md)
+- [ADR-028](./028-allow-multiple-public-bot-bindings-with-one-boss-cat.md)
 - [Architecture](../architecture.md)
 - [Requirements](../requirements.md)
 - [SPEC-011](../specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md)

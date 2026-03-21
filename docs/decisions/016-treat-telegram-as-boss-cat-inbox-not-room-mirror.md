@@ -8,6 +8,10 @@
 
 Accepted
 
+> Clarified by [ADR-028](./028-allow-multiple-public-bot-bindings-with-one-boss-cat.md):
+> the transport rule here still applies per bot-bound inbox, but the product is
+> no longer limited to one Telegram bot for the whole environment.
+
 ## Context
 
 `cats` is now making `Boss Cat` the visible public orchestrator identity,

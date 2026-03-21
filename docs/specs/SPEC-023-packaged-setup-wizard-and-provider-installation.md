@@ -206,10 +206,12 @@ Advanced view may expand to explicit capability packs or individual providers.
 - run host-managed install and verification actions
 - allow deferred setup for providers that are not required for the first use
 
-### Step 5: Boss Cat Setup
+### Step 5: Default Boss Cat Bootstrap
 
-- pick or create the first Boss Cat
+- ensure the environment has one current Boss Cat
+- auto-provision a neutral default Boss Cat if needed
 - choose its initial execution target from the now-ready provider options
+- defer Cat naming or deeper personalization until after first entry
 
 ### Step 6: Finish
 
@@ -341,3 +343,4 @@ terminal failures:
 
 *Created: 2026-03-20*
 *Author: Codex*
+*Last updated: 2026-03-22*

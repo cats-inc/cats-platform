@@ -16,7 +16,8 @@ creates the wrong long-term boundary for the product.
 The product direction is now clearer:
 
 - `Cats Inc` is a suite, and `Chat` is one module inside it
-- a `Cat` is a reusable teammate identity, not a runtime vendor selection
+- a `Cat` is a reusable named participant/persona, not a runtime vendor
+  selection
 - the same cat may use different providers in different channels
 - provider choice may change over time based on budget, latency, availability,
   or task type
@@ -38,7 +39,7 @@ not as part of cat identity.
 The product model will move toward four distinct concepts:
 
 1. `Cat identity`
-   - stable teammate identity, roles, tone, and long-lived metadata
+   - stable Cat identity, roles, tone, and long-lived metadata
 2. `Channel-scoped execution target`
    - the preferred provider/model for that cat in one channel
 3. `Execution lease`

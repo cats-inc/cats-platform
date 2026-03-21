@@ -129,8 +129,8 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 ### FR-017: External Orchestrator Bot Entry Points
 
 - **Description**: The product shall support Telegram and LINE style entry
-  points where a single orchestrator-facing bot relays and summarizes work from
-  hidden workers.
+  points where one or more Cat-bound bots relay and summarize work from hidden
+  workers, while keeping one global `Boss Cat` as the default lead role.
 - **Priority**: High
 - **Status**: Planned
 
@@ -394,7 +394,9 @@ request completion banners.
 internal worker topology.
 
 **Acceptance Criteria**:
-- [ ] One external bot can map to one orchestrator binding
+- [ ] One external bot can map to one explicit bot binding
+- [ ] One environment can support multiple bot bindings without requiring
+      multiple Boss Cats
 - [ ] Worker detail can be summarized or relayed without exposing every worker
   as a public participant
 

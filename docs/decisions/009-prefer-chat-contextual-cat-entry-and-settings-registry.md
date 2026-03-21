@@ -7,6 +7,11 @@
 
 Accepted
 
+> Clarified by [ADR-027](./027-adopt-chat-first-information-architecture-with-default-boss-cat.md):
+> `Recents` stays the primary chat surface, a lightweight `My Cats` roster may
+> still appear in the sidebar, and `Settings > Cats` remains the full
+> management registry.
+
 ## Context
 
 [ADR-005](./005-use-chat-cat-registry-and-channel-assignments.md) settled
