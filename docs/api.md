@@ -88,8 +88,17 @@ DELETE /api/channels/{channelId}
 
 - `GET` collection returns `{ channels: [...summaries] }`.
 - `POST` returns `201` with `{ channel: { ...view } }`.
-- `GET` detail returns `{ channel: { ...view with messages and assignedPals } }`.
+- `GET` detail returns
+  `{ channel: { ...view with messages, assignedPals, and roomRouting } }`.
 - `DELETE` returns `{ deleted: true, channelId }`.
+
+Each channel now exposes a `roomRouting` read model with:
+
+- `mode` and `leadParticipantId` for default-target resolution
+- guard limits such as `maxContinuations` and `maxDispatchesPerTurn`
+- `lastOutcome` for the most recent room turn, including resolved targets,
+  unresolved mentions, dispatch records, guard reason, and checkpoint events
+- `lastCheckpoint` for the latest room-level routing event
 
 ### Channel Messages
 
@@ -101,6 +110,16 @@ POST /api/channels/{channelId}/messages
 - `GET` returns `{ messages: [...] }`.
 - `POST` accepts `{ body, senderName? }` and returns
   `{ message: { ...userMessage }, dispatch: { channelId, results } }`.
+- `dispatch.results` now covers the whole live routing loop for that user turn,
+  not just the first target. A single `POST` may therefore include:
+  - the default Boss Cat dispatch
+  - explicit multi-target fan-out dispatches
+  - continuation dispatches triggered by later agent `@mentions`
+
+Assistant transcript messages created by the routing engine carry structured
+metadata such as `turnId`, `sourceMessageId`, `routingTrigger`, and
+`dispatchDepth` so clients can correlate visible replies with room-level
+`roomRouting.lastOutcome` state.
 
 ### Channel Cats
 

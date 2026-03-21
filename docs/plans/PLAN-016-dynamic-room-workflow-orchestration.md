@@ -61,31 +61,42 @@ spreads across routing, runtime integration, and renderer code.
 
 ### Phase 2: Extract Routing Outcomes from Prompt Guidance
 
-- [ ] Refactor routing code so explicit single-target and multi-target decisions
+- [x] Refactor routing code so explicit single-target and multi-target decisions
       are represented as structured system-layer outcomes.
-- [ ] Keep prompts as consumers of routing outcomes rather than owners of
+- [x] Keep prompts as consumers of routing outcomes rather than owners of
       routing truth.
-- [ ] Preserve unresolved-mention reporting.
-- [ ] Keep current direct-chat and Boss-chat semantics compatible with
+- [x] Preserve unresolved-mention reporting.
+- [x] Keep current direct-chat and Boss-chat semantics compatible with
       [SPEC-018](../specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md).
 
 **Deliverables**: explicit mention routing model that is ready for fan-out.
 
 ### Phase 3: Parallel Explicit Multi-Target Fan-Out
 
-- [ ] Replace serial multi-target dispatch with parallel target execution where
+- [x] Replace serial multi-target dispatch with parallel target execution where
       policy allows.
-- [ ] Add per-target status tracking for one user turn:
+- [x] Add per-target status tracking for one user turn:
       - pending
       - running
       - completed
       - failed
 - [ ] Persist partial branch or target status before all targets finish.
-- [ ] Return or surface completed replies in finish order instead of mention
+- [x] Return or surface completed replies in finish order instead of mention
       order.
-- [ ] Keep first-slice transcript insertion as one stable reply per target.
+- [x] Keep first-slice transcript insertion as one stable reply per target.
 
 **Deliverables**: `@Cat_A @Cat_B` now behaves like real parallel fan-out.
+
+Current M1 landing notes:
+
+- `workspace/runtimeActions.ts` now runs a live continuation loop that parses
+  agent reply `@mentions` and schedules follow-up dispatches in the system
+  layer.
+- `workspace.roomRouting.lastOutcome` now records resolved targets, dispatch
+  order, unresolved mentions, checkpoint events, and guard outcomes for the
+  latest room turn.
+- Durable trace/checkpoint persistence and branch-based workflow remain future
+  slices tied to the Team 3/Team 4 dependencies in the spec.
 
 ### Phase 4: Room Workflow State and Event-Driven Replanning
 

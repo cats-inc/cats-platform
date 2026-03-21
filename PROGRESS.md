@@ -10,7 +10,7 @@
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global pals, assignments, transcript, and orchestrator surfaces |
-| Workspace Product Features | Completed | Basic runtime-backed setup, global pal registry, channel assignment, mention routing, transcript export, and execution-aware state landed |
+| Workspace Product Features | Completed | Runtime-backed setup, global pal registry, channel assignment, live mention continuation routing, transcript export, and execution-aware state landed |
 | Suite Foundation Planning | In Progress | The suite-host refactor now has core-owned state direction, app-level server/renderer assembly, and dedicated Work/Code placeholder slices, but Chat API extraction and cleanup remain |
 | Documentation | In Progress | Architecture, progress, and plan docs now reflect the suite-host layout and compatibility seams, but API/cleanup follow-up remains |
 | Cats Chat Launch Track | Not Started | Chat launch features such as approvals, escalation, takeover, and desktop packaging remain ahead |
@@ -58,7 +58,7 @@
 | Add initial multi-channel workspace UI shell | [x] | Sidebar, channel cards, orchestrator and runtime panels |
 | Add persistent workspace shell storage | [x] | File-backed shell state now includes selected and created channels |
 | Implement orchestrator and channel setup UX | [x] | Channel setup, global orchestrator editing, and runtime activation all landed |
-| Add runtime-backed message, pal, and export flows | [x] | Global pal registry, channel assignment, mention routing, and transcript export now exist |
+| Add runtime-backed message, pal, and export flows | [x] | Global pal registry, channel assignment, continuation loop routing, fan-out, guards, and transcript export now exist |
 
 #### Acceptance Criteria
 

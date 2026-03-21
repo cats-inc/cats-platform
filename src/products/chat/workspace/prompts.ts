@@ -7,6 +7,12 @@ import type {
 } from '../../../shared/app-shell.js';
 import { ORCHESTRATOR_NAME } from './model.js';
 
+export interface PromptRoutingContext {
+  reason: string;
+  recentMessages?: WorkspaceMessage[];
+  sourceParticipantName?: string | null;
+}
+
 function languageInstruction(responseLanguage: string): string {
   if (!responseLanguage || responseLanguage === 'en') {
     return 'Respond in English unless the user explicitly asks for another language.';
@@ -100,15 +106,23 @@ function formatSharedContext(
 export function buildOrchestratorPrompt(
   channel: WorkspaceChannelView,
   orchestrator: GlobalOrchestratorSummary,
-  userMessage: WorkspaceMessage,
+  sourceMessage: WorkspaceMessage,
   orchestratorName = ORCHESTRATOR_NAME,
+  routingContext?: PromptRoutingContext,
 ): string {
   const activePalCount = channel.assignedPals.filter((pal) => pal.status === 'active').length;
+  const recentMessages = routingContext?.recentMessages ?? channel.messages;
+  const sourceLabel = sourceMessage.senderKind === 'user'
+    ? 'Latest user message'
+    : 'Latest routed handoff';
 
   return [
     `You are ${orchestratorName}, the visible Boss Cat and chat coordinator for Cats Inc.`,
-    'You coordinate who should act next inside this chat. Respect explicit @mentions.',
-    'If the user explicitly mentions a teammate, assume they want that teammate involved.',
+    'The system layer has already routed this turn to you. Do not reinterpret target selection.',
+    routingContext?.reason ?? 'System routing selected you as the current turn owner.',
+    routingContext?.sourceParticipantName
+      ? `This handoff came from ${routingContext.sourceParticipantName}.`
+      : 'This turn currently originates from the operator.',
     'When referring to teammates, mention them with @Name so Chat can route follow-up turns.',
     activePalCount === 0
       ? 'There are no other active cats in this chat right now, so answer the user directly instead of delegating.'
@@ -121,9 +135,10 @@ export function buildOrchestratorPrompt(
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
     `Coordinator memory checkpoint:\n${formatMemoryCheckpoint(orchestrator.memory)}`,
     `Active pals:\n${formatPalRoster(channel)}`,
-    `Recent messages:\n${formatRecentMessages(channel.messages)}`,
-    `Latest user message:\n${userMessage.body}`,
-    'Respond directly to the user. Be concise, explicit about who should act, and mention teammates when needed.',
+    `Recent messages:\n${formatRecentMessages(recentMessages)}`,
+    `${sourceLabel}:\n${sourceMessage.body}`,
+    'Respond with the next useful contribution for the room.',
+    'If another teammate should continue after you, mention them explicitly with @Name. Otherwise, answer without a handoff mention.',
   ].join('\n\n');
 }
 
@@ -149,14 +164,24 @@ export function buildPalPrompt(
   channel: WorkspaceChannelView,
   orchestrator: GlobalOrchestratorSummary,
   pal: WorkspaceChannelPal,
-  userMessage: WorkspaceMessage,
+  sourceMessage: WorkspaceMessage,
+  routingContext?: PromptRoutingContext,
 ): string {
   const roleLabel = pal.roles.length > 0 ? pal.roles.join(', ') : 'general';
+  const recentMessages = routingContext?.recentMessages ?? channel.messages;
+  const sourceLabel = sourceMessage.senderKind === 'user'
+    ? 'Latest user message'
+    : 'Latest routed handoff';
 
   return [
     `You are ${pal.name}, a chat participant inside the Chat module for Cats Inc.`,
     `Your provider is ${pal.execution.target.provider}${pal.execution.target.model ? ` and model ${pal.execution.target.model}` : ''}.`,
     `Your roles in this chat: ${roleLabel}.`,
+    'The system layer has already routed this turn to you. Do not reinterpret target selection.',
+    routingContext?.reason ?? 'System routing selected you for the current turn.',
+    routingContext?.sourceParticipantName
+      ? `This handoff came from ${routingContext.sourceParticipantName}.`
+      : 'This turn currently originates from the operator.',
     'Work inside the current chat context and answer as a teammate, not as the orchestrator.',
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
@@ -164,8 +189,9 @@ export function buildPalPrompt(
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
     `Your memory checkpoint:\n${formatMemoryCheckpoint(pal.memory)}`,
     `Channel roster:\n${formatPalRoster(channel)}`,
-    `Recent messages:\n${formatRecentMessages(channel.messages)}`,
-    `Latest routed message:\n${userMessage.body}`,
-    'Reply with the work product or the next useful observation. Mention teammates with @Name only when needed.',
+    `Recent messages:\n${formatRecentMessages(recentMessages)}`,
+    `${sourceLabel}:\n${sourceMessage.body}`,
+    'Reply with the work product or the next useful observation.',
+    'If another teammate should continue after you, mention them explicitly with @Name. Otherwise, answer without a handoff mention.',
   ].join('\n\n');
 }

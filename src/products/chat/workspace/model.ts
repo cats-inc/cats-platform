@@ -34,6 +34,10 @@ import type {
 } from '../../../shared/app-shell.js';
 import { createChannelExportFilename } from '../../../shared/channelPaths.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from './defaults.js';
+import {
+  createDefaultRoomRoutingState,
+  resolveRoomRoutingState,
+} from './roomRouting.js';
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
 
@@ -66,6 +70,11 @@ function normalizeList(values: string[] | undefined): string[] {
 
 function createChannelId(): string {
   return randomUUID();
+}
+
+function normalizeLeadParticipantId(value: string | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
 }
 
 function findChannelIndex(state: WorkspaceState, channelId: string): number {
@@ -220,6 +229,7 @@ export function buildChannelView(
 
   return {
     ...structuredClone(channel),
+    roomRouting: resolveRoomRoutingState(channel.roomRouting),
     assignedPals: channel.palAssignments
       .filter((assignment) => state.pals.some((p) => p.id === assignment.palId))
       .map((assignment) =>
@@ -229,6 +239,7 @@ export function buildChannelView(
 }
 
 export function toChannelSummary(channel: WorkspaceChannelState): WorkspaceChannelSummary {
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   return {
     id: channel.id,
     title: channel.title,
@@ -241,6 +252,12 @@ export function toChannelSummary(channel: WorkspaceChannelState): WorkspaceChann
     workspaceCwd: channel.workspaceCwd,
     lastMessageAt: channel.lastMessageAt,
     lastActivatedAt: channel.lastActivatedAt,
+    roomMode: roomRouting.mode,
+    routingStatus: roomRouting.lastOutcome?.status ?? 'idle',
+    lastRoutingAt:
+      roomRouting.lastOutcome?.completedAt
+      ?? roomRouting.lastCheckpoint?.createdAt
+      ?? null,
   };
 }
 
@@ -321,6 +338,13 @@ export function createChannel(
   const channelId = createChannelId();
   const catDrafts = input.cats ?? input.pals ?? [];
   const createdPals = catDrafts.map((palInput) => createPalRecord(palInput, nowIso));
+  const requestedLeadParticipantId = normalizeLeadParticipantId(input.leadParticipantId);
+  const defaultLeadParticipantId = requestedLeadParticipantId
+    ?? (
+      input.roomMode === 'direct_cat_chat' && createdPals.length === 1
+        ? createdPals[0]?.id ?? null
+        : null
+    );
 
   nextState.pals.unshift(...createdPals);
 
@@ -357,6 +381,10 @@ export function createChannel(
     orchestratorLease: createEmptyExecutionLease(),
     palAssignments,
     messages: [],
+    roomRouting: createDefaultRoomRoutingState({
+      mode: input.roomMode,
+      leadParticipantId: defaultLeadParticipantId,
+    }),
   };
 
   nextState.channels.unshift(channel);
@@ -651,6 +679,19 @@ export function setChannelWorkspaceCwd(
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
   channel.workspaceCwd = normalizeOptionalText(workspaceCwd);
+  channel.updatedAt = isoAt(now);
+  return nextState;
+}
+
+export function setChannelRoomRouting(
+  state: WorkspaceState,
+  channelId: string,
+  roomRouting: NonNullable<WorkspaceChannelState['roomRouting']>,
+  now: Date = new Date(),
+): WorkspaceState {
+  const nextState = cloneState(state);
+  const channel = requireChannel(nextState, channelId);
+  channel.roomRouting = structuredClone(roomRouting);
   channel.updatedAt = isoAt(now);
   return nextState;
 }

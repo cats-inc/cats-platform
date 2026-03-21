@@ -9,6 +9,11 @@ import type {
   MemoryCheckpointSummary,
   ParticipantExecutionLease,
   ParticipantExecutionState,
+  RoomRoutingCheckpoint,
+  RoomRoutingDispatch,
+  RoomRoutingOutcome,
+  RoomRoutingParticipantRef,
+  RoomRoutingState,
   WorkspaceCapabilities,
   WorkspaceChannelState,
   WorkspaceMessage,
@@ -29,6 +34,15 @@ import {
   createEmptyExecutionLease,
   createEmptyMemoryCheckpoint,
 } from './defaults.js';
+import {
+  createDefaultRoomRoutingState,
+  normalizeRoomRoutingCheckpointKind,
+  normalizeRoomRoutingDispatchStatus,
+  normalizeRoomRoutingGuardReason,
+  normalizeRoomRoutingMode,
+  normalizeRoomRoutingTrigger,
+  normalizeRoomRoutingTurnStatus,
+} from './roomRouting.js';
 import {
   createDefaultCoreState,
   createPalActorId,
@@ -213,6 +227,149 @@ function normalizeMessage(rawMessage: unknown, channelId: string): WorkspaceMess
         }
       : null,
     createdAt: readString(messageRecord?.createdAt, new Date().toISOString()),
+  };
+}
+
+function normalizeRoomRoutingParticipant(rawParticipant: unknown): RoomRoutingParticipantRef | null {
+  const participantRecord = asRecord(rawParticipant);
+  if (!participantRecord) {
+    return null;
+  }
+
+  const rawKind = readString(participantRecord.participantKind);
+  const participantKind = rawKind === 'pal' ? 'pal' : rawKind === 'orchestrator'
+    ? 'orchestrator'
+    : null;
+
+  if (!participantKind) {
+    return null;
+  }
+
+  const participantId = readString(participantRecord.participantId);
+  const participantName = readString(participantRecord.participantName);
+  if (!participantId || !participantName) {
+    return null;
+  }
+
+  return {
+    participantKind,
+    participantId,
+    participantName,
+  };
+}
+
+function normalizeRoomRoutingDispatch(rawDispatch: unknown): RoomRoutingDispatch | null {
+  const dispatchRecord = asRecord(rawDispatch);
+  if (!dispatchRecord) {
+    return null;
+  }
+
+  const target = normalizeRoomRoutingParticipant(dispatchRecord.target);
+  if (!target) {
+    return null;
+  }
+
+  return {
+    id: readString(dispatchRecord.id, randomUUID()),
+    sourceMessageId: readString(dispatchRecord.sourceMessageId),
+    source: normalizeRoomRoutingParticipant(dispatchRecord.source),
+    target,
+    trigger: normalizeRoomRoutingTrigger(dispatchRecord.trigger, 'continuation_mention'),
+    status: normalizeRoomRoutingDispatchStatus(dispatchRecord.status, 'completed'),
+    mentionNames: readStringArray(dispatchRecord.mentionNames),
+    responseMessageId: readNullableString(dispatchRecord.responseMessageId),
+    startedAt: readString(dispatchRecord.startedAt, new Date().toISOString()),
+    completedAt: readNullableString(dispatchRecord.completedAt),
+    error: readNullableString(dispatchRecord.error),
+  };
+}
+
+function normalizeRoomRoutingCheckpoint(rawCheckpoint: unknown): RoomRoutingCheckpoint | null {
+  const checkpointRecord = asRecord(rawCheckpoint);
+  if (!checkpointRecord) {
+    return null;
+  }
+
+  return {
+    id: readString(checkpointRecord.id, randomUUID()),
+    kind: normalizeRoomRoutingCheckpointKind(checkpointRecord.kind, 'turn_started'),
+    message: readString(checkpointRecord.message),
+    actor: normalizeRoomRoutingParticipant(checkpointRecord.actor),
+    sourceMessageId: readNullableString(checkpointRecord.sourceMessageId),
+    targets: Array.isArray(checkpointRecord.targets)
+      ? checkpointRecord.targets
+          .map((target) => normalizeRoomRoutingParticipant(target))
+          .filter((target): target is RoomRoutingParticipantRef => target !== null)
+      : [],
+    createdAt: readString(checkpointRecord.createdAt, new Date().toISOString()),
+  };
+}
+
+function normalizeRoomRoutingOutcome(rawOutcome: unknown): RoomRoutingOutcome | null {
+  const outcomeRecord = asRecord(rawOutcome);
+  if (!outcomeRecord) {
+    return null;
+  }
+
+  return {
+    turnId: readString(outcomeRecord.turnId, randomUUID()),
+    mode: normalizeRoomRoutingMode(outcomeRecord.mode, 'boss_chat'),
+    sourceMessageId: readString(outcomeRecord.sourceMessageId),
+    sourceSenderKind: (
+      readString(outcomeRecord.sourceSenderKind, 'system') === 'user'
+      || readString(outcomeRecord.sourceSenderKind, 'system') === 'agent'
+      || readString(outcomeRecord.sourceSenderKind, 'system') === 'orchestrator'
+      || readString(outcomeRecord.sourceSenderKind, 'system') === 'system'
+    )
+      ? readString(outcomeRecord.sourceSenderKind, 'system') as WorkspaceMessage['senderKind']
+      : 'system',
+    sourceSenderName: readString(outcomeRecord.sourceSenderName, 'Chat'),
+    status: normalizeRoomRoutingTurnStatus(outcomeRecord.status, 'idle'),
+    resolvedTargets: Array.isArray(outcomeRecord.resolvedTargets)
+      ? outcomeRecord.resolvedTargets
+          .map((target) => normalizeRoomRoutingParticipant(target))
+          .filter((target): target is RoomRoutingParticipantRef => target !== null)
+      : [],
+    unresolvedMentions: readStringArray(outcomeRecord.unresolvedMentions),
+    dispatches: Array.isArray(outcomeRecord.dispatches)
+      ? outcomeRecord.dispatches
+          .map((dispatch) => normalizeRoomRoutingDispatch(dispatch))
+          .filter((dispatch): dispatch is RoomRoutingDispatch => dispatch !== null)
+      : [],
+    checkpoints: Array.isArray(outcomeRecord.checkpoints)
+      ? outcomeRecord.checkpoints
+          .map((checkpoint) => normalizeRoomRoutingCheckpoint(checkpoint))
+          .filter((checkpoint): checkpoint is RoomRoutingCheckpoint => checkpoint !== null)
+      : [],
+    continuationCount: readNumber(outcomeRecord.continuationCount),
+    totalDispatchCount: readNumber(outcomeRecord.totalDispatchCount),
+    guard: normalizeRoomRoutingGuardReason(outcomeRecord.guard),
+    startedAt: readString(outcomeRecord.startedAt, new Date().toISOString()),
+    completedAt: readNullableString(outcomeRecord.completedAt),
+  };
+}
+
+function normalizeRoomRouting(rawRoomRouting: unknown): RoomRoutingState {
+  const roomRoutingRecord = asRecord(rawRoomRouting);
+  const fallback = createDefaultRoomRoutingState();
+
+  return {
+    mode: normalizeRoomRoutingMode(roomRoutingRecord?.mode, fallback.mode),
+    leadParticipantId: readNullableString(roomRoutingRecord?.leadParticipantId),
+    maxContinuations: readNumber(
+      roomRoutingRecord?.maxContinuations,
+      fallback.maxContinuations,
+    ),
+    maxDispatchesPerTurn: readNumber(
+      roomRoutingRecord?.maxDispatchesPerTurn,
+      fallback.maxDispatchesPerTurn,
+    ),
+    maxTargetVisitsPerTurn: readNumber(
+      roomRoutingRecord?.maxTargetVisitsPerTurn,
+      fallback.maxTargetVisitsPerTurn,
+    ),
+    lastOutcome: normalizeRoomRoutingOutcome(roomRoutingRecord?.lastOutcome),
+    lastCheckpoint: normalizeRoomRoutingCheckpoint(roomRoutingRecord?.lastCheckpoint),
   };
 }
 
@@ -408,6 +565,7 @@ function normalizeChannel(
     ),
     palAssignments,
     messages,
+    roomRouting: normalizeRoomRouting(channelRecord.roomRouting),
   };
 }
 

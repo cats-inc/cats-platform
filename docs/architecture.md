@@ -351,8 +351,8 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
 ## Current Implementation vs Planned Evolution
 
 - Current implementation is still a phase-2 chat shell with file-backed state,
-  global orchestrator settings, pal assignments, mention routing, and transcript
-  export.
+  global orchestrator settings, pal assignments, a system-layer routing engine
+  with continuation loop/fan-out/guards, and transcript export.
 - `Cats Core v1` now exists as a first in-tree contract and read-only API
   surface derived from the current workspace model.
 - `Cats Work` is a planned sibling surface, not a shipped UI in the current
@@ -373,8 +373,8 @@ still intentionally deferred:
 
 - live streaming or push-based renderer updates
 - split-view workspace panes beyond the current chat-first layout
-- richer orchestrator automation than explicit runtime activation plus basic
-  `@mention` routing
+- durable workflow trace/checkpoint storage and branch-based orchestration above
+  the current in-memory room routing loop
 - shared-core write APIs, approval models, and stronger storage boundaries
 - full Telegram/LINE outbound delivery, room-routing policy, escalation, and
   takeover behavior above the current relay seam

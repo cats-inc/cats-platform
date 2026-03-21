@@ -25,6 +25,103 @@ export type ParticipantSessionStatus =
 
 export type WorkspaceMessageSenderKind = 'user' | 'agent' | 'system' | 'orchestrator';
 
+export type RoomRoutingMode = 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
+
+export type RoomRoutingTrigger =
+  | 'room_default'
+  | 'explicit_mention'
+  | 'continuation_mention';
+
+export type RoomRoutingTurnStatus =
+  | 'idle'
+  | 'running'
+  | 'completed'
+  | 'blocked'
+  | 'error';
+
+export type RoomRoutingDispatchStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'skipped'
+  | 'error'
+  | 'blocked';
+
+export type RoomRoutingGuardReason =
+  | 'max_continuations'
+  | 'max_dispatches'
+  | 'max_target_visits'
+  | 'anti_ping_pong'
+  | null;
+
+export type RoomRoutingCheckpointKind =
+  | 'turn_started'
+  | 'fan_out'
+  | 'continuation'
+  | 'loop_guard'
+  | 'anti_ping_pong'
+  | 'no_targets'
+  | 'completed'
+  | 'runtime_error';
+
+export interface RoomRoutingParticipantRef {
+  participantKind: 'orchestrator' | 'pal';
+  participantId: string;
+  participantName: string;
+}
+
+export interface RoomRoutingDispatch {
+  id: string;
+  sourceMessageId: string;
+  source: RoomRoutingParticipantRef | null;
+  target: RoomRoutingParticipantRef;
+  trigger: RoomRoutingTrigger;
+  status: RoomRoutingDispatchStatus;
+  mentionNames: string[];
+  responseMessageId: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  error: string | null;
+}
+
+export interface RoomRoutingCheckpoint {
+  id: string;
+  kind: RoomRoutingCheckpointKind;
+  message: string;
+  actor: RoomRoutingParticipantRef | null;
+  sourceMessageId: string | null;
+  targets: RoomRoutingParticipantRef[];
+  createdAt: string;
+}
+
+export interface RoomRoutingOutcome {
+  turnId: string;
+  mode: RoomRoutingMode;
+  sourceMessageId: string;
+  sourceSenderKind: WorkspaceMessageSenderKind;
+  sourceSenderName: string;
+  status: RoomRoutingTurnStatus;
+  resolvedTargets: RoomRoutingParticipantRef[];
+  unresolvedMentions: string[];
+  dispatches: RoomRoutingDispatch[];
+  checkpoints: RoomRoutingCheckpoint[];
+  continuationCount: number;
+  totalDispatchCount: number;
+  guard: RoomRoutingGuardReason;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export interface RoomRoutingState {
+  mode: RoomRoutingMode;
+  leadParticipantId: string | null;
+  maxContinuations: number;
+  maxDispatchesPerTurn: number;
+  maxTargetVisitsPerTurn: number;
+  lastOutcome: RoomRoutingOutcome | null;
+  lastCheckpoint: RoomRoutingCheckpoint | null;
+}
+
 export interface MessageUsageSummary {
   inputTokens: number;
   outputTokens: number;
@@ -121,6 +218,7 @@ export interface WorkspaceChannelState {
   orchestratorLease: ParticipantExecutionLease;
   palAssignments: ChannelPalAssignment[];
   messages: WorkspaceMessage[];
+  roomRouting?: RoomRoutingState;
 }
 
 export interface WorkspaceChannelView extends WorkspaceChannelState {
@@ -139,6 +237,9 @@ export interface WorkspaceChannelSummary {
   workspaceCwd: string | null;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
+  roomMode?: RoomRoutingMode;
+  routingStatus?: RoomRoutingTurnStatus;
+  lastRoutingAt?: string | null;
 }
 
 export interface GlobalOrchestratorSummary {
@@ -227,6 +328,8 @@ export interface CreateWorkspaceChannelInput {
   language?: string;
   responseLanguage?: string;
   formationMode?: ChannelFormationMode;
+  roomMode?: RoomRoutingMode;
+  leadParticipantId?: string;
   skillProfile?: string;
   mcpProfile?: string;
   orchestratorRoles?: string[];
@@ -268,6 +371,9 @@ export interface ChannelDispatchResult {
   sessionId: string | null;
   status: 'sent' | 'skipped' | 'error';
   error?: string;
+  sourceMessageId?: string;
+  trigger?: RoomRoutingTrigger;
+  dispatchDepth?: number;
 }
 
 export interface ActivateChannelResponse {
