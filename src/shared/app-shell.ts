@@ -1,4 +1,6 @@
 import type { RuntimeStatusSummary } from '../platform/runtime/client.js';
+import type { ExecutionTargetSummary, MemoryCheckpointSummary } from '../core/types.js';
+export type { ExecutionTargetSummary, MemoryCheckpointSummary } from '../core/types.js';
 
 export type WorkspaceChannelStatus =
   | 'planned'
@@ -32,24 +34,11 @@ export interface ParticipantSessionSummary {
   lastError: string | null;
 }
 
-export interface ExecutionTargetSummary {
-  provider: string;
-  instance: string | null;
-  model: string | null;
-}
-
 export interface ParticipantExecutionLease extends ParticipantSessionSummary {
   provider: string | null;
   model: string | null;
   startedAt: string | null;
   lastUsedAt: string | null;
-}
-
-export interface MemoryCheckpointSummary {
-  summary: string | null;
-  facts: string[];
-  openLoops: string[];
-  updatedAt: string | null;
 }
 
 export interface ParticipantExecutionState {

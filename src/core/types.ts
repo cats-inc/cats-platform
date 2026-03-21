@@ -1,10 +1,17 @@
-import type {
-  ExecutionTargetSummary,
-  MemoryCheckpointSummary,
-  WorkspaceState,
-} from '../shared/app-shell.js';
-
 export const CATS_CORE_STATE_VERSION = 1 as const;
+
+export interface ExecutionTargetSummary {
+  provider: string;
+  instance: string | null;
+  model: string | null;
+}
+
+export interface MemoryCheckpointSummary {
+  summary: string | null;
+  facts: string[];
+  openLoops: string[];
+  updatedAt: string | null;
+}
 
 export type CoreActorKind =
   | 'owner'
@@ -133,5 +140,4 @@ export interface CatsCoreState {
   tasks: CoreTaskRecord[];
   botBindings: BotBindingRecord[];
   archives: ArchiveMetadataRecord[];
-  workspace: WorkspaceState;
 }

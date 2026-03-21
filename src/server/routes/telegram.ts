@@ -63,13 +63,16 @@ async function readTelegramContext(
   bossCatActorId: string | null;
   botBinding: BotBindingRecord | null;
 }> {
-  const core = await workspaceStore.readCore();
-  const bossCatId = core.workspace.bossCatId;
+  const [core, workspace] = await Promise.all([
+    workspaceStore.readCore(),
+    workspaceStore.read(),
+  ]);
+  const bossCatId = workspace.bossCatId;
   const bossCatActorId = bossCatId ? createPalActorId(bossCatId) : null;
 
   return {
     bossCatId,
-    bossCatName: resolveBossCatName(core.workspace),
+    bossCatName: resolveBossCatName(workspace),
     bossCatActorId,
     botBinding: core.botBindings.find((binding) =>
       binding.platform === 'telegram'

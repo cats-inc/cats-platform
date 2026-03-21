@@ -32,12 +32,16 @@ import {
 import {
   createDefaultCoreState,
   createPalActorId,
-  syncCoreStateWithWorkspace,
 } from '../core/model.js';
+import { syncCoreStateWithWorkspace } from '../products/chat/workspace/coreProjection.js';
 
 export interface WorkspaceStore extends CoreStore {
   read(): Promise<WorkspaceState>;
   write(state: WorkspaceState): Promise<WorkspaceState>;
+}
+
+interface PersistedWorkspaceSnapshot extends CatsCoreState {
+  workspace: WorkspaceState;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -657,13 +661,39 @@ function migrateLegacyChannelIds(
   };
 }
 
-function normalizeCoreState(rawState: unknown): CatsCoreState {
+function extractCoreState(snapshot: PersistedWorkspaceSnapshot): CatsCoreState {
+  const { workspace: _workspace, ...core } = snapshot;
+  return core;
+}
+
+function buildPersistedWorkspaceSnapshot(
+  workspace: WorkspaceState,
+  core: CatsCoreState,
+): PersistedWorkspaceSnapshot {
+  return {
+    ...structuredClone(core),
+    workspace: structuredClone(workspace),
+  };
+}
+
+async function writePersistedWorkspaceSnapshot(
+  filePath: string,
+  snapshot: PersistedWorkspaceSnapshot,
+): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf-8');
+}
+
+function normalizePersistedWorkspaceSnapshot(rawState: unknown): PersistedWorkspaceSnapshot {
   const fallback = createDefaultCoreState();
   const stateRecord = asRecord(rawState);
   const workspace = normalizeWorkspaceState(rawState);
 
   if (!stateRecord || !asRecord(stateRecord.workspace)) {
-    return syncCoreStateWithWorkspace(workspace, fallback);
+    return buildPersistedWorkspaceSnapshot(
+      workspace,
+      syncCoreStateWithWorkspace(workspace, fallback),
+    );
   }
 
   const tasks = Array.isArray(stateRecord.tasks)
@@ -689,7 +719,7 @@ function normalizeCoreState(rawState: unknown): CatsCoreState {
     archives,
   });
 
-  return {
+  return buildPersistedWorkspaceSnapshot(workspace, {
     ...normalized,
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     updatedAt: readString(stateRecord.updatedAt, normalized.updatedAt),
@@ -700,74 +730,83 @@ function normalizeCoreState(rawState: unknown): CatsCoreState {
         normalized.ownerProfile.updatedAt,
       ),
     },
-  };
+  });
 }
 
 export class FileWorkspaceStore implements WorkspaceStore {
   constructor(private readonly filePath: string) {}
 
-  async read(): Promise<WorkspaceState> {
-    return (await this.readCore()).workspace;
-  }
-
-  async readCore(): Promise<CatsCoreState> {
+  private async readPersistedSnapshot(): Promise<PersistedWorkspaceSnapshot> {
     try {
       const raw = await readFile(this.filePath, 'utf-8');
-      return normalizeCoreState(JSON.parse(raw) as unknown);
+      return normalizePersistedWorkspaceSnapshot(JSON.parse(raw) as unknown);
     } catch {
-      const fallback = createDefaultCoreState();
-      await this.writeCore(fallback);
-      return fallback;
+      const workspace = createDefaultWorkspaceState();
+      const core = syncCoreStateWithWorkspace(workspace, createDefaultCoreState());
+      const snapshot = buildPersistedWorkspaceSnapshot(workspace, core);
+      await writePersistedWorkspaceSnapshot(this.filePath, snapshot);
+      return snapshot;
     }
   }
 
+  async read(): Promise<WorkspaceState> {
+    return structuredClone((await this.readPersistedSnapshot()).workspace);
+  }
+
+  async readCore(): Promise<CatsCoreState> {
+    return structuredClone(extractCoreState(await this.readPersistedSnapshot()));
+  }
+
   async write(state: WorkspaceState): Promise<WorkspaceState> {
-    const nextCore = syncCoreStateWithWorkspace(
-      structuredClone(state),
-      await this.readCore(),
+    const nextWorkspace = structuredClone(state);
+    const nextCore = syncCoreStateWithWorkspace(nextWorkspace, await this.readCore());
+    await writePersistedWorkspaceSnapshot(
+      this.filePath,
+      buildPersistedWorkspaceSnapshot(nextWorkspace, nextCore),
     );
-    await this.writeCore(nextCore);
-    return structuredClone(nextCore.workspace);
+    return structuredClone(nextWorkspace);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
-    const nextState = syncCoreStateWithWorkspace(
-      structuredClone(state.workspace),
-      structuredClone(state),
+    const snapshot = await this.readPersistedSnapshot();
+    const nextWorkspace = structuredClone(snapshot.workspace);
+    const nextCore = syncCoreStateWithWorkspace(nextWorkspace, structuredClone(state));
+    await writePersistedWorkspaceSnapshot(
+      this.filePath,
+      buildPersistedWorkspaceSnapshot(nextWorkspace, nextCore),
     );
-    await mkdir(path.dirname(this.filePath), { recursive: true });
-    await writeFile(this.filePath, `${JSON.stringify(nextState, null, 2)}\n`, 'utf-8');
-    return structuredClone(nextState);
+    return structuredClone(nextCore);
   }
 }
 
 export class MemoryWorkspaceStore implements WorkspaceStore {
-  private state: CatsCoreState;
+  private workspaceState: WorkspaceState;
+  private coreState: CatsCoreState;
 
-  constructor(initialState: WorkspaceState | CatsCoreState = createDefaultWorkspaceState()) {
-    this.state = 'workspace' in initialState
-      ? normalizeCoreState(initialState)
-      : syncCoreStateWithWorkspace(structuredClone(initialState));
+  constructor(
+    initialState: WorkspaceState | CatsCoreState | PersistedWorkspaceSnapshot = createDefaultWorkspaceState(),
+  ) {
+    const snapshot = normalizePersistedWorkspaceSnapshot(initialState);
+    this.workspaceState = snapshot.workspace;
+    this.coreState = extractCoreState(snapshot);
   }
 
   async read(): Promise<WorkspaceState> {
-    return structuredClone(this.state.workspace);
+    return structuredClone(this.workspaceState);
   }
 
   async readCore(): Promise<CatsCoreState> {
-    return structuredClone(this.state);
+    return structuredClone(this.coreState);
   }
 
   async write(state: WorkspaceState): Promise<WorkspaceState> {
-    this.state = syncCoreStateWithWorkspace(structuredClone(state), this.state);
-    return structuredClone(this.state.workspace);
+    this.workspaceState = structuredClone(state);
+    this.coreState = syncCoreStateWithWorkspace(this.workspaceState, this.coreState);
+    return structuredClone(this.workspaceState);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
-    this.state = syncCoreStateWithWorkspace(
-      structuredClone(state.workspace),
-      structuredClone(state),
-    );
-    return structuredClone(this.state);
+    this.coreState = syncCoreStateWithWorkspace(this.workspaceState, structuredClone(state));
+    return structuredClone(this.coreState);
   }
 }

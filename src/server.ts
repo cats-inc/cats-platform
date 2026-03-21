@@ -46,6 +46,7 @@ import {
 import { activateChannelSessions, routeChannelMessage } from './products/chat/workspace/runtimeActions.js';
 import { createAppShell } from './products/chat/workspace/shell.js';
 import { createDefaultCoreState } from './core/model.js';
+import { createDefaultWorkspaceState } from './workspace/defaults.js';
 import { handleProviderModels, handleProviderRegistry } from './server/routes/providers.js';
 import { handleTelegramStatus, handleTelegramWebhook } from './server/routes/telegram.js';
 
@@ -229,7 +230,7 @@ async function buildAppShell(
   state?: Awaited<ReturnType<WorkspaceStore['read']>>,
 ): Promise<ReturnType<typeof createAppShell>> {
   const core = await dependencies.workspaceStore.readCore();
-  const resolvedState = state ?? core.workspace;
+  const resolvedState = state ?? await dependencies.workspaceStore.read();
   const runtime = await dependencies.runtimeClient.getHealth();
   const now = dependencies.now?.() ?? new Date();
   return createAppShell(dependencies.config, runtime, resolvedState, now, {
@@ -1389,13 +1390,12 @@ async function handleSetupComplete(
     const now = dependencies.now?.() ?? new Date();
 
     let core = await dependencies.workspaceStore.readCore();
+    let workspace = await dependencies.workspaceStore.read();
 
     if (core.setupCompleteAt) {
       sendRestError(response, 409, 'already_complete', 'Setup has already been completed');
       return;
     }
-
-    let workspace = core.workspace;
 
     // Create Boss Cat
     const prevPalIds = new Set(workspace.pals.map((p) => p.id));
@@ -1443,7 +1443,6 @@ async function handleSetupComplete(
     // Finalize core state
     core = {
       ...core,
-      workspace,
       setupCompleteAt: now.toISOString(),
       ownerProfile: {
         ...core.ownerProfile,
@@ -1453,6 +1452,7 @@ async function handleSetupComplete(
       },
     };
 
+    await dependencies.workspaceStore.write(workspace);
     await dependencies.workspaceStore.writeCore(core);
     sendJson(response, 200, await buildAppShell(dependencies));
   } catch (error) {
@@ -1466,6 +1466,7 @@ async function handleSetupReset(
   dependencies: ServerDependencies,
 ): Promise<void> {
   try {
+    await dependencies.workspaceStore.write(createDefaultWorkspaceState());
     const core = createDefaultCoreState();
     await dependencies.workspaceStore.writeCore(core);
     sendJson(response, 200, await buildAppShell(dependencies));

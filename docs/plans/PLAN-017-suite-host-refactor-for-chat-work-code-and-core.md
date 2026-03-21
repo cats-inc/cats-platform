@@ -127,16 +127,16 @@ Current transitional modules after phases 1-3:
 
 ### Phase 4: Reverse the Current Dependency Direction
 
-- [ ] Stop treating `workspace` state as the suite-wide source of truth.
-- [ ] Replace current `syncCoreStateWithWorkspace(...)`-style ownership with:
+- [x] Stop treating `workspace` state as the suite-wide source of truth.
+- [x] Replace current `syncCoreStateWithWorkspace(...)`-style ownership with:
       - core-owned persisted state
       - Chat projection builders derived from core plus Chat-local state
-- [ ] Decide what remains shared core state versus what becomes Chat-local
+- [x] Decide what remains shared core state versus what becomes Chat-local
       workflow state.
-- [ ] Keep a temporary compatibility layer so existing workspace-oriented tests
+- [x] Keep a temporary compatibility layer so existing workspace-oriented tests
       continue passing while assertions are migrated incrementally toward
       core-owned state and projection-based behavior.
-- [ ] Keep migration compatibility logic explicit and temporary.
+- [x] Keep migration compatibility logic explicit and temporary.
 
 **Deliverables**: the suite now follows:
 
@@ -149,6 +149,18 @@ Cats Core -> Chat projection
 instead of the reverse.
 Existing tests should continue passing against compatibility adapters until
 they are individually migrated to core-based assertions.
+
+Current transitional modules after Phase 4:
+
+- `src/products/chat/workspace/coreProjection.ts` owns the Chat-specific
+  `workspace -> core` projection logic that previously lived under
+  `src/core/model.ts`.
+- `src/workspace/store.ts` now persists a temporary `{ ...core, workspace }`
+  compatibility envelope so existing Chat flows and tests can continue to read
+  and write workspace state while `readCore()` remains Chat-independent.
+- `src/shared/app-shell.ts` still re-exports a small set of core types for
+  compatibility with older Chat modules, but `src/core/*` no longer imports
+  Chat/workspace types.
 
 ### Phase 5: Demote Workspace Modules into the Chat Slice
 

@@ -1,10 +1,12 @@
 import type {
-  MemoryCheckpointSummary,
   ParticipantExecutionLease,
   GlobalOrchestratorSummary,
   WorkspaceCapabilities,
   WorkspaceState,
 } from '../shared/app-shell.js';
+import type { MemoryCheckpointSummary } from '../core/types.js';
+import { createEmptyMemoryCheckpoint } from '../core/model.js';
+export { createEmptyMemoryCheckpoint };
 
 function isoNow(): string {
   return new Date().toISOString();
@@ -20,15 +22,6 @@ export function createEmptyExecutionLease(): ParticipantExecutionLease {
     model: null,
     startedAt: null,
     lastUsedAt: null,
-  };
-}
-
-export function createEmptyMemoryCheckpoint(): MemoryCheckpointSummary {
-  return {
-    summary: null,
-    facts: [],
-    openLoops: [],
-    updatedAt: null,
   };
 }
 

@@ -247,9 +247,10 @@ test('WorkspaceStore exposes a derived Cats Core view that stays in sync with wo
 
   await store.write(state);
   const core = await store.readCore();
+  const workspace = await store.read();
   const channelId = state.selectedChannelId;
 
-  assert.equal(core.workspace.selectedChannelId, channelId);
+  assert.equal(workspace.selectedChannelId, channelId);
   assert.equal(core.ownerProfile.actorId, 'actor-owner');
   assert.ok(core.actors.some((actor) => actor.kind === 'owner'));
   assert.ok(core.actors.some((actor) => actor.kind === 'orchestrator'));
