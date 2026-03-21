@@ -22,7 +22,7 @@ export interface TelegramRelayStore {
 }
 
 interface PersistedTelegramRelayState {
-  version: 2;
+  version: 1;
   bindings: TelegramConversationBinding[];
   processedUpdateIds: number[];
   lastProcessedUpdateId: number | null;
@@ -98,7 +98,7 @@ class BaseTelegramRelayStore implements TelegramRelayStore {
 
   protected serialize(): PersistedTelegramRelayState {
     return {
-      version: 2,
+      version: 1,
       bindings: this.listBindings(),
       processedUpdateIds: [...this.processedUpdateOrder],
       lastProcessedUpdateId: this.lastProcessedUpdateId,
@@ -151,7 +151,7 @@ function toBinding(rawBinding: unknown): TelegramConversationBinding | null {
 
 function emptyPersistedState(): PersistedTelegramRelayState {
   return {
-    version: 2,
+    version: 1,
     bindings: [],
     processedUpdateIds: [],
     lastProcessedUpdateId: null,
@@ -179,7 +179,7 @@ function asPersistedState(
     : [];
 
   return {
-    version: 2,
+    version: 1,
     bindings,
     processedUpdateIds,
     lastProcessedUpdateId:

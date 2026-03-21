@@ -75,7 +75,7 @@ async function readTelegramContext(
   );
   const botBinding = bossCatActorId
     ? activeTelegramBindings.find((binding) => binding.bossCatActorId === bossCatActorId) ?? null
-    : activeTelegramBindings[0] ?? null;
+    : null;
 
   return {
     bossCatId,

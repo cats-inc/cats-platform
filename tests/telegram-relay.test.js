@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -263,4 +263,29 @@ test('file-backed telegram relay store restores bindings and dedupe markers afte
   assert.equal(secondStore.hasProcessedUpdate(101), true);
   assert.equal(secondStore.getLastProcessedUpdateId(), 101);
   assert.deepEqual(readdirSync(stateDir), ['telegram-relay.json']);
+});
+
+test('file-backed telegram relay store hydrates legacy v1 relay state', () => {
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-telegram-store-legacy-'));
+  const statePath = path.join(stateDir, 'telegram-relay.json');
+
+  writeFileSync(statePath, JSON.stringify({
+    version: 1,
+    bindings: [
+      {
+        telegramChatId: '12345',
+        conversationId: 'telegram:12345',
+        createdAt: '2026-03-19T00:00:00.000Z',
+        updatedAt: '2026-03-19T00:00:00.000Z',
+      },
+    ],
+    processedUpdateIds: [101],
+    lastProcessedUpdateId: 101,
+  }, null, 2));
+
+  const store = new FileBackedTelegramRelayStore(statePath, 4);
+  assert.equal(store.getBinding('12345')?.transportConversationMode, 'transport_inbox');
+  assert.equal(store.getBinding('12345')?.roomRoutingStatus, 'placeholder');
+  assert.equal(store.getBinding('12345')?.linkedRoomId, null);
+  assert.equal(store.getLastProcessedUpdateId(), 101);
 });

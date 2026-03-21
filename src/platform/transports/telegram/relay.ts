@@ -122,6 +122,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       }
 
       if (!message || !chatId) {
+        // Unsupported updates stay outside the durable dedupe window so the
+        // relay only retains ids for accepted Boss Cat inbox traffic.
         return {
           platform: 'telegram',
           status: 'ignored',

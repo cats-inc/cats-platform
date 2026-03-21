@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { createTelegramRelay } from '../dist-server/platform/transports/telegram/relay.js';
 import { createServer } from '../dist-server/server.js';
 import {
   FileWorkspaceStore,
@@ -103,10 +104,7 @@ function createRuntimeStub() {
 
 async function withServer(runtimeClient, callback, workspaceStore = new MemoryWorkspaceStore()) {
   const server = createServer({
-    config: {
-      ...baseConfig,
-      workspaceStatePath: baseConfig.workspaceStatePath,
-    },
+    config: baseConfig,
     runtimeClient,
     workspaceStore,
     now: () => new Date('2026-03-19T00:00:00.000Z'),
@@ -173,6 +171,30 @@ async function configureTelegramBossCat(baseUrl) {
     }),
   });
   assert.equal(orchestratorResponse.status, 200);
+}
+
+function createCoreState(overrides = {}) {
+  return {
+    version: 1,
+    updatedAt: '2026-03-19T00:00:00.000Z',
+    setupCompleteAt: null,
+    ownerProfile: {
+      actorId: 'actor-owner',
+      displayName: 'Owner',
+      avatarColor: null,
+      summary: null,
+      communicationPreferences: [],
+      decisionPreferences: [],
+      escalationPreferences: [],
+      updatedAt: '2026-03-19T00:00:00.000Z',
+    },
+    actors: [],
+    conversations: [],
+    tasks: [],
+    botBindings: [],
+    archives: [],
+    ...overrides,
+  };
 }
 
 test('GET /api/providers returns the runtime-backed provider registry', async () => {
@@ -264,6 +286,60 @@ test('telegram status reports unbound relay before bot binding is configured', a
     assert.equal(payload.telegram.lastProcessedUpdateId, null);
     assert.equal(payload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
   });
+});
+
+test('telegram status ignores orphaned Telegram bindings when Boss Cat is missing', async () => {
+  const workspaceStore = {
+    async read() {
+      return {
+        bossCatId: null,
+        pals: [],
+      };
+    },
+    async readCore() {
+      return createCoreState({
+        botBindings: [
+          {
+            id: 'bot-binding-telegram-global',
+            platform: 'telegram',
+            botName: 'smelly_bot',
+            orchestratorActorId: 'actor-orchestrator-global',
+            bossCatActorId: 'actor-pal-cat-smelly',
+            status: 'active',
+            createdAt: '2026-03-19T00:00:00.000Z',
+            updatedAt: '2026-03-19T00:00:00.000Z',
+          },
+        ],
+      });
+    },
+  };
+  const server = createServer({
+    config: baseConfig,
+    runtimeClient: createRuntimeStub(),
+    workspaceStore,
+    telegramRelay: createTelegramRelay(),
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to resolve test server address');
+  }
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/transports/telegram`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.telegram.status, 'unbound');
+    assert.equal(payload.telegram.botBinding, null);
+  } finally {
+    server.close();
+    await once(server, 'close');
+  }
 });
 
 test('telegram status reports Boss Cat binding after Telegram ingress is configured', async () => {
