@@ -298,6 +298,7 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
     const sendMessagePayload = await sendMessageResponse.json();
     assert.equal(sendMessagePayload.message.body, 'Hello from canonical route');
     assert.ok(sendMessagePayload.dispatch);
+    assert.ok(sendMessagePayload.dispatch.results[0].turnId);
 
     // GET /api/channels/:cid/messages – list messages
     const listMessagesResponse = await fetch(
@@ -306,6 +307,19 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
     assert.equal(listMessagesResponse.status, 200);
     const listMessagesPayload = await listMessagesResponse.json();
     assert.ok(listMessagesPayload.messages.length >= 2);
+
+    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(appShellResponse.status, 200);
+    const appShellPayload = await appShellResponse.json();
+    assert.equal(
+      appShellPayload.chat.selectedChannel.roomRouting.workflow.turnHistory[0].status,
+      'completed',
+    );
+    assert.ok(
+      appShellPayload.chat.selectedChannel.roomRouting.workflow.eventHistory.some(
+        (event) => event.kind === 'outcome',
+      ),
+    );
 
     // PUT /api/channels/:cid/cats/:catId – assign cat
     const assignCatResponse = await fetch(
@@ -430,4 +444,3 @@ test('PATCH /api/preferences accepts showVerboseMessages and persists it', async
     assert.equal(getPayload.preferences.showVerboseMessages, true);
   });
 });
-

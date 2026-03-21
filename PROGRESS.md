@@ -58,7 +58,7 @@
 | Add initial multi-channel chat UI shell | [x] | Sidebar, channel cards, orchestrator and runtime panels |
 | Add persistent chat-shell storage | [x] | File-backed chat state now includes selected and created channels |
 | Implement orchestrator and channel setup UX | [x] | Channel setup, global orchestrator editing, and runtime activation all landed |
-| Add runtime-backed message, cat, and export flows | [x] | Global cat registry, channel assignment, continuation loop routing, fan-out, guards, and transcript export now exist |
+| Add runtime-backed message, cat, and export flows | [x] | Global cat registry, channel assignment, continuation loop routing, fan-out, guards, room-workflow state, core-projected system records, and transcript export now exist |
 
 #### Acceptance Criteria
 
@@ -74,8 +74,8 @@ Known follow-ups:
 
 - Routing-engine deferred items remain tracked in
   `docs/plans/PLAN-016-dynamic-room-workflow-orchestration.md`, including
-  sequential fan-out wake semantics, the optional shared `roomRouting`
-  compatibility seam, and longer-cycle detection beyond direct anti-ping-pong.
+  sequential fan-out wake semantics, richer branch/converge behavior, and
+  longer-cycle detection beyond direct anti-ping-pong.
 
 ---
 

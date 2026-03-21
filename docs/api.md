@@ -93,9 +93,17 @@ Each channel now exposes a `roomRouting` read model with:
 
 - `mode` and `leadParticipantId` for default-target resolution
 - guard limits such as `maxContinuations` and `maxDispatchesPerTurn`
-- `lastOutcome` for the most recent room turn, including resolved targets,
-  unresolved mentions, dispatch records, guard reason, and checkpoint events
+- `lastOutcome` for the most recent explicit-routing outcome, including
+  resolved targets, unresolved mentions, dispatch records, guard reason, and
+  checkpoint events
 - `lastCheckpoint` for the latest room-level routing event
+- `workflow` for room-level system state, including:
+  - `activeTurn` while a room turn is still in flight
+  - `turnHistory` with completed/blocked/failed workflow turns
+  - `eventHistory` with first-class system events such as
+    `target_pending`, `target_running`, `target_completed`,
+    `guard_blocked`, `checkpoint`, and `outcome`
+  - `lastCheckpointEvent` and `lastOutcomeEvent` for quick renderer access
 
 ### Channel Messages
 
@@ -117,6 +125,15 @@ Assistant transcript messages created by the routing engine carry structured
 metadata such as `turnId`, `sourceMessageId`, `routingTrigger`, and
 `dispatchDepth` so clients can correlate visible replies with room-level
 `roomRouting.lastOutcome` state.
+
+Each `dispatch.results[]` item may also include:
+
+- `turnId`
+- `dispatchId`
+- `targetStatus`
+
+Those fields let the renderer correlate dispatch receipts with
+`roomRouting.workflow.targetStatuses` and `roomRouting.workflow.eventHistory`.
 
 ### Channel Cats
 
@@ -466,7 +483,10 @@ POST /api/core/traces
 ```
 
 `POST` appends or upserts provider-agnostic system trace events. This is the
-first minimal `trace append` seam intended for Team 2.
+first minimal `trace append` seam intended for Team 2. The current Chat system
+layer also projects room-workflow events into these core trace records through
+the chat store, so transcript bubbles are no longer the only durable system
+record.
 
 ### List Core Checkpoints
 
@@ -476,7 +496,9 @@ POST /api/core/checkpoints
 ```
 
 `POST` writes durable checkpoint records. This is the first minimal
-`checkpoint write` seam intended for Team 2.
+`checkpoint write` seam intended for Team 2. Chat room-workflow checkpoint
+events are also projected into this core collection when chat state is
+persisted.
 
 ### List Core Outcomes
 
@@ -486,7 +508,8 @@ POST /api/core/outcomes
 ```
 
 `POST` writes durable orchestration outcome records for blocked, succeeded,
-failed, or cancelled system work.
+failed, or cancelled system work. Chat room-turn outcomes are likewise
+projected into this collection during chat-state persistence.
 
 ### Get Owner Profile
 
@@ -835,4 +858,3 @@ Errors use a minimal payload:
 ---
 
 *Last updated: 2026-03-21*
-

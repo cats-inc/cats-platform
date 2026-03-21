@@ -6,11 +6,17 @@ import type {
   RoomRoutingState,
   RoomRoutingTrigger,
   RoomRoutingTurnStatus,
+  RoomWorkflowEventKind,
+  RoomWorkflowState,
+  RoomWorkflowStatus,
+  RoomWorkflowTargetStatus,
 } from '../../../shared/app-shell.js';
 
 export const DEFAULT_MAX_ROUTING_CONTINUATIONS = 6;
 export const DEFAULT_MAX_ROUTING_DISPATCHES = 12;
 export const DEFAULT_MAX_ROUTING_TARGET_VISITS = 2;
+export const DEFAULT_WORKFLOW_TURN_HISTORY_LIMIT = 12;
+export const DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT = 64;
 
 const ROOM_ROUTING_MODES = new Set<RoomRoutingMode>([
   'boss_chat',
@@ -59,6 +65,46 @@ const ROOM_ROUTING_GUARDS = new Set<Exclude<RoomRoutingGuardReason, null>>([
   'anti_ping_pong',
 ]);
 
+const ROOM_WORKFLOW_STATUSES = new Set<RoomWorkflowStatus>([
+  'idle',
+  'pending',
+  'running',
+  'completed',
+  'blocked',
+  'failed',
+]);
+
+const ROOM_WORKFLOW_TARGET_STATUSES = new Set<RoomWorkflowTargetStatus>([
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'blocked',
+]);
+
+const ROOM_WORKFLOW_EVENT_KINDS = new Set<RoomWorkflowEventKind>([
+  'turn_started',
+  'fan_out',
+  'target_pending',
+  'target_running',
+  'target_completed',
+  'target_failed',
+  'target_blocked',
+  'checkpoint',
+  'guard_blocked',
+  'outcome',
+]);
+
+export function createDefaultRoomWorkflowState(): RoomWorkflowState {
+  return {
+    activeTurn: null,
+    turnHistory: [],
+    eventHistory: [],
+    lastCheckpointEvent: null,
+    lastOutcomeEvent: null,
+  };
+}
+
 export function createDefaultRoomRoutingState(
   overrides: {
     mode?: RoomRoutingMode;
@@ -73,6 +119,7 @@ export function createDefaultRoomRoutingState(
     maxTargetVisitsPerTurn: DEFAULT_MAX_ROUTING_TARGET_VISITS,
     lastOutcome: null,
     lastCheckpoint: null,
+    workflow: createDefaultRoomWorkflowState(),
   };
 }
 
@@ -80,6 +127,12 @@ export function resolveRoomRoutingState(
   roomRouting: RoomRoutingState | null | undefined,
 ): RoomRoutingState {
   return roomRouting ? structuredClone(roomRouting) : createDefaultRoomRoutingState();
+}
+
+export function resolveRoomWorkflowState(
+  workflow: RoomWorkflowState | null | undefined,
+): RoomWorkflowState {
+  return workflow ? structuredClone(workflow) : createDefaultRoomWorkflowState();
 }
 
 export function normalizeRoomRoutingMode(
@@ -137,4 +190,34 @@ export function normalizeRoomRoutingGuardReason(
     && ROOM_ROUTING_GUARDS.has(value as Exclude<RoomRoutingGuardReason, null>)
     ? value as Exclude<RoomRoutingGuardReason, null>
     : null;
+}
+
+export function normalizeRoomWorkflowStatus(
+  value: unknown,
+  fallback: RoomWorkflowStatus = 'idle',
+): RoomWorkflowStatus {
+  return typeof value === 'string'
+    && ROOM_WORKFLOW_STATUSES.has(value as RoomWorkflowStatus)
+    ? value as RoomWorkflowStatus
+    : fallback;
+}
+
+export function normalizeRoomWorkflowTargetStatus(
+  value: unknown,
+  fallback: RoomWorkflowTargetStatus = 'pending',
+): RoomWorkflowTargetStatus {
+  return typeof value === 'string'
+    && ROOM_WORKFLOW_TARGET_STATUSES.has(value as RoomWorkflowTargetStatus)
+    ? value as RoomWorkflowTargetStatus
+    : fallback;
+}
+
+export function normalizeRoomWorkflowEventKind(
+  value: unknown,
+  fallback: RoomWorkflowEventKind = 'turn_started',
+): RoomWorkflowEventKind {
+  return typeof value === 'string'
+    && ROOM_WORKFLOW_EVENT_KINDS.has(value as RoomWorkflowEventKind)
+    ? value as RoomWorkflowEventKind
+    : fallback;
 }

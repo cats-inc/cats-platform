@@ -92,11 +92,14 @@ Current M1 landing notes:
 - `chat/runtimeActions.ts` now runs a live continuation loop that parses
   agent reply `@mentions` and schedules follow-up dispatches in the system
   layer.
-- `chat.roomRouting.lastOutcome` now records resolved targets, dispatch
-  order, unresolved mentions, checkpoint events, and guard outcomes for the
-  latest room turn.
-- Durable trace/checkpoint persistence and branch-based workflow remain future
-  slices tied to the Team 3/Team 4 dependencies in the spec.
+- `chat.roomRouting.lastOutcome` now stays scoped to explicit routing output
+  for the latest room turn.
+- `chat.roomRouting.workflow` now carries first-class room-workflow state:
+  active turn status, per-target pending/running/completed/failed state,
+  system event history, checkpoint events, and final outcome events.
+- Chat-store persistence now projects room-workflow turns/events into core
+  `runs`, `traces`, `checkpoints`, and `outcomes`, so transcript bubbles are
+  no longer the only durable system record for Team 2 flows.
 
 Deferred M1 follow-ups still intentionally open:
 
@@ -106,13 +109,16 @@ Deferred M1 follow-ups still intentionally open:
 - `roomRouting` remains optional at the shared contract boundary as a
   compatibility seam even though normalized chat state now guarantees it
   for live channels.
+- Partial state is now maintained in the room-workflow read model, but the
+  current HTTP write path still persists the channel snapshot after the full
+  route completes rather than streaming intermediate writes to the store.
 - `anti_ping_pong` currently detects direct `A -> B -> A -> B` loops only;
   longer cycles still rely on `maxTargetVisitsPerTurn` and
   `maxDispatchesPerTurn` guards until a broader cycle detector is justified.
 
 ### Phase 4: Room Workflow State and Event-Driven Replanning
 
-- [ ] Introduce room workflow state separate from mention-routing output.
+- [x] Introduce room workflow state separate from mention-routing output.
 - [ ] Define a normalized workflow-recommendation envelope that can be attached
       to or derived from a completed checkpoint.
 - [ ] Allow `Boss Cat` or the system layer to set or update workflow state when:
@@ -178,7 +184,7 @@ the room is waiting on.
 
 ### Phase 8: Validation and Documentation Sync
 
-- [ ] Add tests for explicit multi-target fan-out and completion-order reply
+- [x] Add tests for explicit multi-target fan-out and completion-order reply
       handling.
 - [ ] Add tests for workflow checkpoint completion triggering next-step routing.
 - [ ] Add tests for native fork selection when supported.
@@ -239,7 +245,6 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-20*
-
 
 
 

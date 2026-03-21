@@ -54,6 +54,21 @@ export type RoomRoutingGuardReason =
   | 'anti_ping_pong'
   | null;
 
+export type RoomWorkflowStatus =
+  | 'idle'
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'blocked'
+  | 'failed';
+
+export type RoomWorkflowTargetStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'blocked';
+
 export type RoomRoutingCheckpointKind =
   | 'turn_started'
   | 'fan_out'
@@ -63,6 +78,18 @@ export type RoomRoutingCheckpointKind =
   | 'no_targets'
   | 'completed'
   | 'runtime_error';
+
+export type RoomWorkflowEventKind =
+  | 'turn_started'
+  | 'fan_out'
+  | 'target_pending'
+  | 'target_running'
+  | 'target_completed'
+  | 'target_failed'
+  | 'target_blocked'
+  | 'checkpoint'
+  | 'guard_blocked'
+  | 'outcome';
 
 export interface RoomRoutingParticipantRef {
   participantKind: 'orchestrator' | 'cat';
@@ -112,6 +139,63 @@ export interface RoomRoutingOutcome {
   completedAt: string | null;
 }
 
+export interface RoomWorkflowTargetState {
+  id: string;
+  dispatchId: string | null;
+  participant: RoomRoutingParticipantRef;
+  source: RoomRoutingParticipantRef | null;
+  sourceMessageId: string;
+  trigger: RoomRoutingTrigger;
+  mentionNames: string[];
+  depth: number;
+  status: RoomWorkflowTargetStatus;
+  queuedAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  responseMessageId: string | null;
+  error: string | null;
+}
+
+export interface RoomWorkflowEvent {
+  id: string;
+  turnId: string;
+  kind: RoomWorkflowEventKind;
+  status: RoomWorkflowStatus;
+  message: string;
+  actor: RoomRoutingParticipantRef | null;
+  sourceMessageId: string | null;
+  targets: RoomRoutingParticipantRef[];
+  dispatchId: string | null;
+  checkpointId: string | null;
+  outcomeId: string | null;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface RoomWorkflowTurn {
+  id: string;
+  status: RoomWorkflowStatus;
+  sourceMessageId: string;
+  sourceSenderKind: ChatMessageSenderKind;
+  sourceSenderName: string;
+  guard: RoomRoutingGuardReason;
+  continuationCount: number;
+  dispatchCount: number;
+  targetStatuses: RoomWorkflowTargetState[];
+  events: RoomWorkflowEvent[];
+  startedAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+}
+
+export interface RoomWorkflowState {
+  activeTurn: RoomWorkflowTurn | null;
+  turnHistory: RoomWorkflowTurn[];
+  eventHistory: RoomWorkflowEvent[];
+  lastCheckpointEvent: RoomWorkflowEvent | null;
+  lastOutcomeEvent: RoomWorkflowEvent | null;
+}
+
 export interface RoomRoutingState {
   mode: RoomRoutingMode;
   leadParticipantId: string | null;
@@ -120,6 +204,7 @@ export interface RoomRoutingState {
   maxTargetVisitsPerTurn: number;
   lastOutcome: RoomRoutingOutcome | null;
   lastCheckpoint: RoomRoutingCheckpoint | null;
+  workflow: RoomWorkflowState;
 }
 
 export interface MessageUsageSummary {
@@ -368,6 +453,9 @@ export interface ChannelDispatchResult {
   targetName: string;
   sessionId: string | null;
   status: 'sent' | 'skipped' | 'error';
+  dispatchId?: string;
+  turnId?: string;
+  targetStatus?: RoomWorkflowTargetStatus;
   error?: string;
   sourceMessageId?: string;
   trigger?: RoomRoutingTrigger;

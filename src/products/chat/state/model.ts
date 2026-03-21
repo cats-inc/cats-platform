@@ -241,6 +241,17 @@ export function buildChannelView(
 
 export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const workflowStatus = roomRouting.workflow.activeTurn?.status
+    ?? roomRouting.workflow.lastOutcomeEvent?.status
+    ?? null;
+  const lastWorkflowAt = roomRouting.workflow.activeTurn?.updatedAt
+    ?? roomRouting.workflow.lastOutcomeEvent?.createdAt
+    ?? null;
+  const routingStatus = workflowStatus === 'pending'
+    ? 'running'
+    : workflowStatus === 'failed'
+      ? 'error'
+      : workflowStatus;
   return {
     id: channel.id,
     title: channel.title,
@@ -254,9 +265,10 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     lastMessageAt: channel.lastMessageAt,
     lastActivatedAt: channel.lastActivatedAt,
     roomMode: roomRouting.mode,
-    routingStatus: roomRouting.lastOutcome?.status ?? 'idle',
+    routingStatus: routingStatus ?? roomRouting.lastOutcome?.status ?? 'idle',
     lastRoutingAt:
-      roomRouting.lastOutcome?.completedAt
+      lastWorkflowAt
+      ?? roomRouting.lastOutcome?.completedAt
       ?? roomRouting.lastCheckpoint?.createdAt
       ?? null,
   };
@@ -743,4 +755,3 @@ export function replaceState(state: ChatState, channel: ChatChannelState): ChatS
   nextState.channels[index] = structuredClone(channel);
   return nextState;
 }
-

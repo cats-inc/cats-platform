@@ -10,6 +10,13 @@ import type {
   RoomRoutingOutcome,
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
+  RoomWorkflowEvent,
+  RoomWorkflowEventKind,
+  RoomWorkflowState,
+  RoomWorkflowStatus,
+  RoomWorkflowTargetState,
+  RoomWorkflowTargetStatus,
+  RoomWorkflowTurn,
   SendChannelMessageInput,
   ChatChannelCat,
   ChatChannelState,
@@ -41,7 +48,11 @@ import {
   DEFAULT_MAX_ROUTING_CONTINUATIONS,
   DEFAULT_MAX_ROUTING_DISPATCHES,
   DEFAULT_MAX_ROUTING_TARGET_VISITS,
+  DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT,
+  DEFAULT_WORKFLOW_TURN_HISTORY_LIMIT,
+  createDefaultRoomWorkflowState,
   resolveRoomRoutingState,
+  resolveRoomWorkflowState,
 } from './roomRouting.js';
 import { formatSessionStartedMessage } from './runtimeMessages.js';
 
@@ -68,6 +79,8 @@ interface DispatchFrame {
 
 interface DispatchRequest extends DispatchFrame {
   target: RoutingTarget;
+  dispatchId: string;
+  targetStateId: string;
 }
 
 interface DispatchExecution extends DispatchRequest {
@@ -373,6 +386,260 @@ function addCheckpoint(
   };
   outcome.checkpoints.push(checkpoint);
   return checkpoint;
+}
+
+function createWorkflowTurn(
+  sourceMessage: ChatMessage,
+  nowIso: string,
+): RoomWorkflowTurn {
+  return {
+    id: randomUUID(),
+    status: 'running',
+    sourceMessageId: sourceMessage.id,
+    sourceSenderKind: sourceMessage.senderKind,
+    sourceSenderName: sourceMessage.senderName,
+    guard: null,
+    continuationCount: 0,
+    dispatchCount: 0,
+    targetStatuses: [],
+    events: [],
+    startedAt: nowIso,
+    updatedAt: nowIso,
+    completedAt: null,
+  };
+}
+
+function createWorkflowEvent(
+  turnId: string,
+  kind: RoomWorkflowEventKind,
+  status: RoomWorkflowStatus,
+  message: string,
+  nowIso: string,
+  actor: RoomRoutingParticipantRef | null,
+  sourceMessageId: string | null,
+  targets: RoomRoutingParticipantRef[],
+  options: {
+    dispatchId?: string | null;
+    checkpointId?: string | null;
+    outcomeId?: string | null;
+    metadata?: Record<string, unknown>;
+  } = {},
+): RoomWorkflowEvent {
+  return {
+    id: randomUUID(),
+    turnId,
+    kind,
+    status,
+    message,
+    actor,
+    sourceMessageId,
+    targets,
+    dispatchId: options.dispatchId ?? null,
+    checkpointId: options.checkpointId ?? null,
+    outcomeId: options.outcomeId ?? null,
+    createdAt: nowIso,
+    metadata: options.metadata ? structuredClone(options.metadata) : {},
+  };
+}
+
+function pruneWorkflowHistory(workflow: RoomWorkflowState): void {
+  workflow.turnHistory = workflow.turnHistory.slice(0, DEFAULT_WORKFLOW_TURN_HISTORY_LIMIT);
+  workflow.eventHistory = workflow.eventHistory.slice(0, DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT);
+}
+
+function appendWorkflowEvent(
+  workflow: RoomWorkflowState,
+  turn: RoomWorkflowTurn,
+  event: RoomWorkflowEvent,
+): void {
+  turn.events.push(event);
+  turn.updatedAt = event.createdAt;
+  workflow.eventHistory.unshift(structuredClone(event));
+
+  if (event.kind === 'checkpoint' || event.kind === 'guard_blocked') {
+    workflow.lastCheckpointEvent = structuredClone(event);
+  }
+  if (event.kind === 'outcome') {
+    workflow.lastOutcomeEvent = structuredClone(event);
+  }
+
+  pruneWorkflowHistory(workflow);
+}
+
+function queueWorkflowTarget(
+  turn: RoomWorkflowTurn,
+  request: DispatchRequest,
+  nowIso: string,
+): RoomWorkflowTargetState {
+  const targetStatus: RoomWorkflowTargetState = {
+    id: request.targetStateId,
+    dispatchId: request.dispatchId,
+    participant: toParticipantRef(request.target),
+    source: request.sourceParticipant,
+    sourceMessageId: request.sourceMessage.id,
+    trigger: request.trigger,
+    mentionNames: structuredClone(request.mentionNames),
+    depth: request.depth,
+    status: 'pending',
+    queuedAt: nowIso,
+    startedAt: null,
+    completedAt: null,
+    responseMessageId: null,
+    error: null,
+  };
+  turn.targetStatuses.push(targetStatus);
+  turn.updatedAt = nowIso;
+  return targetStatus;
+}
+
+function updateWorkflowTarget(
+  turn: RoomWorkflowTurn,
+  targetStateId: string,
+  nowIso: string,
+  update: Partial<RoomWorkflowTargetState> & { status?: RoomWorkflowTargetStatus },
+): RoomWorkflowTargetState | null {
+  const targetStatus = turn.targetStatuses.find((target) => target.id === targetStateId);
+  if (!targetStatus) {
+    return null;
+  }
+
+  Object.assign(targetStatus, update);
+  turn.updatedAt = nowIso;
+  return targetStatus;
+}
+
+function createPendingDispatch(
+  outcome: RoomRoutingOutcome,
+  request: DispatchRequest,
+  nowIso: string,
+): void {
+  outcome.dispatches.push({
+    id: request.dispatchId,
+    sourceMessageId: request.sourceMessage.id,
+    source: request.sourceParticipant,
+    target: toParticipantRef(request.target),
+    trigger: request.trigger,
+    status: 'pending',
+    mentionNames: structuredClone(request.mentionNames),
+    responseMessageId: null,
+    startedAt: nowIso,
+    completedAt: null,
+    error: null,
+  });
+}
+
+function updateDispatch(
+  outcome: RoomRoutingOutcome,
+  dispatchId: string,
+  update: Partial<RoomRoutingOutcome['dispatches'][number]>,
+): void {
+  const dispatch = outcome.dispatches.find((candidate) => candidate.id === dispatchId);
+  if (!dispatch) {
+    return;
+  }
+
+  Object.assign(dispatch, update);
+}
+
+function createRoomRoutingSnapshot(
+  baseRoomRouting: ReturnType<typeof resolveRoomRoutingState>,
+  workflow: RoomWorkflowState,
+  outcome: RoomRoutingOutcome | null,
+  checkpoint: RoomRoutingCheckpoint | null,
+) {
+  return {
+    ...baseRoomRouting,
+    lastOutcome: outcome ? structuredClone(outcome) : null,
+    lastCheckpoint: checkpoint ? structuredClone(checkpoint) : null,
+    workflow: structuredClone(workflow),
+  };
+}
+
+function applyRoomRoutingSnapshot(
+  state: ChatState,
+  channelId: string,
+  baseRoomRouting: ReturnType<typeof resolveRoomRoutingState>,
+  workflow: RoomWorkflowState,
+  outcome: RoomRoutingOutcome | null,
+  checkpoint: RoomRoutingCheckpoint | null,
+  now: Date,
+): ChatState {
+  return setChannelRoomRouting(
+    state,
+    channelId,
+    createRoomRoutingSnapshot(baseRoomRouting, workflow, outcome, checkpoint),
+    now,
+  );
+}
+
+function workflowEventKindForCheckpoint(
+  kind: RoomRoutingCheckpoint['kind'],
+): RoomWorkflowEventKind {
+  return kind === 'loop_guard' || kind === 'anti_ping_pong'
+    ? 'guard_blocked'
+    : 'checkpoint';
+}
+
+function workflowStatusForCheckpoint(
+  kind: RoomRoutingCheckpoint['kind'],
+): RoomWorkflowStatus {
+  switch (kind) {
+    case 'completed':
+      return 'completed';
+    case 'loop_guard':
+    case 'anti_ping_pong':
+    case 'no_targets':
+      return 'blocked';
+    case 'runtime_error':
+      return 'failed';
+    default:
+      return 'running';
+  }
+}
+
+function addWorkflowCheckpoint(
+  outcome: RoomRoutingOutcome,
+  workflow: RoomWorkflowState,
+  turn: RoomWorkflowTurn,
+  kind: RoomRoutingCheckpoint['kind'],
+  message: string,
+  nowIso: string,
+  actor: RoomRoutingParticipantRef | null,
+  targets: RoomRoutingParticipantRef[] = [],
+  metadata: Record<string, unknown> = {},
+): RoomRoutingCheckpoint {
+  const checkpoint = addCheckpoint(outcome, kind, message, nowIso, actor, targets);
+  appendWorkflowEvent(
+    workflow,
+    turn,
+    createWorkflowEvent(
+      turn.id,
+      workflowEventKindForCheckpoint(kind),
+      workflowStatusForCheckpoint(kind),
+      message,
+      nowIso,
+      actor,
+      checkpoint.sourceMessageId,
+      targets,
+      {
+        checkpointId: checkpoint.id,
+        metadata: {
+          checkpointKind: kind,
+          ...metadata,
+        },
+      },
+    ),
+  );
+  return checkpoint;
+}
+
+function finalizeWorkflowTurn(
+  workflow: RoomWorkflowState,
+  turn: RoomWorkflowTurn,
+): void {
+  workflow.activeTurn = null;
+  workflow.turnHistory.unshift(structuredClone(turn));
+  pruneWorkflowHistory(workflow);
 }
 
 function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): boolean {
@@ -948,19 +1215,56 @@ export async function routeChannelMessage(
   const results: ChannelDispatchResult[] = [];
   const nowIso = now.toISOString();
   const channelRouting = requireChannel(nextState, channelId).roomRouting;
-  const roomRouting = resolveRoomRoutingState(channelRouting);
-  const maxContinuations = roomRouting.maxContinuations ?? DEFAULT_MAX_ROUTING_CONTINUATIONS;
-  const maxDispatches = roomRouting.maxDispatchesPerTurn ?? DEFAULT_MAX_ROUTING_DISPATCHES;
+  const baseRoomRouting = resolveRoomRoutingState(channelRouting);
+  const workflow = resolveRoomWorkflowState(baseRoomRouting.workflow);
+  const maxContinuations =
+    baseRoomRouting.maxContinuations ?? DEFAULT_MAX_ROUTING_CONTINUATIONS;
+  const maxDispatches =
+    baseRoomRouting.maxDispatchesPerTurn ?? DEFAULT_MAX_ROUTING_DISPATCHES;
   const maxTargetVisits =
-    roomRouting.maxTargetVisitsPerTurn ?? DEFAULT_MAX_ROUTING_TARGET_VISITS;
+    baseRoomRouting.maxTargetVisitsPerTurn ?? DEFAULT_MAX_ROUTING_TARGET_VISITS;
   const outcome = createRoutingOutcome(channelAfterUserMessage, userMessage, initialResolution, nowIso);
-  let latestCheckpoint = addCheckpoint(
+  const activeTurn = createWorkflowTurn(userMessage, nowIso);
+  activeTurn.id = outcome.turnId;
+  workflow.activeTurn = activeTurn;
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'turn_started',
+      'running',
+      'System routing started a new room turn.',
+      nowIso,
+      null,
+      userMessage.id,
+      initialResolution.targets.map((target) => toParticipantRef(target)),
+      {
+        metadata: {
+          trigger: initialResolution.trigger,
+          unresolvedMentions: structuredClone(initialResolution.unresolved),
+        },
+      },
+    ),
+  );
+  let latestCheckpoint = addWorkflowCheckpoint(
     outcome,
+    workflow,
+    activeTurn,
     'turn_started',
     'System routing started a new room turn.',
     nowIso,
     null,
     initialResolution.targets.map((target) => toParticipantRef(target)),
+  );
+  nextState = applyRoomRoutingSnapshot(
+    nextState,
+    channelId,
+    baseRoomRouting,
+    workflow,
+    outcome,
+    latestCheckpoint,
+    now,
   );
 
   if (initialResolution.unresolved.length > 0) {
@@ -981,11 +1285,22 @@ export async function routeChannelMessage(
         },
       },
     ).state;
+    nextState = applyRoomRoutingSnapshot(
+      nextState,
+      channelId,
+      baseRoomRouting,
+      workflow,
+      outcome,
+      latestCheckpoint,
+      now,
+    );
   }
 
   if (initialResolution.targets.length === 0) {
-    latestCheckpoint = addCheckpoint(
+    latestCheckpoint = addWorkflowCheckpoint(
       outcome,
+      workflow,
+      activeTurn,
       'no_targets',
       'No valid room targets were resolved for this turn.',
       nowIso,
@@ -993,6 +1308,9 @@ export async function routeChannelMessage(
     );
     outcome.status = 'blocked';
     outcome.completedAt = nowIso;
+    activeTurn.status = 'blocked';
+    activeTurn.completedAt = nowIso;
+    activeTurn.updatedAt = nowIso;
     nextState = appendMessage(
       nextState,
       channelId,
@@ -1006,14 +1324,34 @@ export async function routeChannelMessage(
         metadata: { event: 'routing_skipped' },
       },
     ).state;
-    nextState = setChannelRoomRouting(
+    appendWorkflowEvent(
+      workflow,
+      activeTurn,
+      createWorkflowEvent(
+        activeTurn.id,
+        'outcome',
+        'blocked',
+        'Room routing stopped because no valid targets were resolved.',
+        nowIso,
+        null,
+        userMessage.id,
+        [],
+        {
+          outcomeId: randomUUID(),
+          metadata: {
+            status: 'blocked',
+          },
+        },
+      ),
+    );
+    finalizeWorkflowTurn(workflow, activeTurn);
+    nextState = applyRoomRoutingSnapshot(
       nextState,
       channelId,
-      {
-        ...resolveRoomRoutingState(requireChannel(nextState, channelId).roomRouting),
-        lastOutcome: outcome,
-        lastCheckpoint: latestCheckpoint,
-      },
+      baseRoomRouting,
+      workflow,
+      outcome,
+      latestCheckpoint,
       now,
     );
     return { state: nextState, results };
@@ -1043,8 +1381,12 @@ export async function routeChannelMessage(
     for (const target of frame.targets) {
       if (outcome.totalDispatchCount >= maxDispatches) {
         guardReason = 'max_dispatches';
-        latestCheckpoint = addCheckpoint(
+        activeTurn.guard = guardReason;
+        activeTurn.status = 'blocked';
+        latestCheckpoint = addWorkflowCheckpoint(
           outcome,
+          workflow,
+          activeTurn,
           'loop_guard',
           `Room routing stopped after reaching ${describeGuardReason('max_dispatches')}.`,
           nowIso,
@@ -1054,24 +1396,74 @@ export async function routeChannelMessage(
         break;
       }
 
+      const request: DispatchRequest = {
+        ...frame,
+        target,
+        dispatchId: randomUUID(),
+        targetStateId: randomUUID(),
+      };
+      createPendingDispatch(outcome, request, nowIso);
+      queueWorkflowTarget(activeTurn, request, nowIso);
+      appendWorkflowEvent(
+        workflow,
+        activeTurn,
+        createWorkflowEvent(
+          activeTurn.id,
+          'target_pending',
+          'pending',
+          `${target.participantName} is pending dispatch for this room turn.`,
+          nowIso,
+          frame.sourceParticipant,
+          frame.sourceMessage.id,
+          [toParticipantRef(target)],
+          {
+            dispatchId: request.dispatchId,
+            metadata: {
+              depth: frame.depth,
+              trigger: frame.trigger,
+              mentionNames: structuredClone(frame.mentionNames),
+            },
+          },
+        ),
+      );
+
       const targetKey = participantKey(target);
       if ((targetVisitCounts.get(targetKey) ?? 0) >= maxTargetVisits) {
         const blockedError = `${target.participantName} already reached the per-turn revisit limit.`;
-        outcome.dispatches.push({
-          id: randomUUID(),
-          sourceMessageId: frame.sourceMessage.id,
-          source: frame.sourceParticipant,
-          target: toParticipantRef(target),
-          trigger: frame.trigger,
+        updateDispatch(outcome, request.dispatchId, {
           status: 'blocked',
-          mentionNames: structuredClone(frame.mentionNames),
-          responseMessageId: null,
-          startedAt: nowIso,
           completedAt: nowIso,
           error: blockedError,
         });
-        latestCheckpoint = addCheckpoint(
+        updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
+          status: 'blocked',
+          completedAt: nowIso,
+          error: blockedError,
+        });
+        appendWorkflowEvent(
+          workflow,
+          activeTurn,
+          createWorkflowEvent(
+            activeTurn.id,
+            'target_blocked',
+            'blocked',
+            blockedError,
+            nowIso,
+            frame.sourceParticipant,
+            frame.sourceMessage.id,
+            [toParticipantRef(target)],
+            {
+              dispatchId: request.dispatchId,
+              metadata: {
+                reason: 'max_target_visits',
+              },
+            },
+          ),
+        );
+        latestCheckpoint = addWorkflowCheckpoint(
           outcome,
+          workflow,
+          activeTurn,
           'loop_guard',
           `${target.participantName} was blocked after reaching ${describeGuardReason('max_target_visits')}.`,
           nowIso,
@@ -1087,6 +1479,9 @@ export async function routeChannelMessage(
           targetName: target.participantName,
           sessionId: target.sessionId,
           status: 'skipped',
+          dispatchId: request.dispatchId,
+          turnId: activeTurn.id,
+          targetStatus: 'blocked',
           error: blockedError,
           sourceMessageId: frame.sourceMessage.id,
           trigger: frame.trigger,
@@ -1100,21 +1495,40 @@ export async function routeChannelMessage(
         && shouldBlockAntiPingPong(frame.sourceParticipant, target, outcome.dispatches)
       ) {
         const blockedError = `Blocked a routing ping-pong between ${frame.sourceParticipant.participantName} and ${target.participantName}.`;
-        outcome.dispatches.push({
-          id: randomUUID(),
-          sourceMessageId: frame.sourceMessage.id,
-          source: frame.sourceParticipant,
-          target: toParticipantRef(target),
-          trigger: frame.trigger,
+        updateDispatch(outcome, request.dispatchId, {
           status: 'blocked',
-          mentionNames: structuredClone(frame.mentionNames),
-          responseMessageId: null,
-          startedAt: nowIso,
           completedAt: nowIso,
           error: blockedError,
         });
-        latestCheckpoint = addCheckpoint(
+        updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
+          status: 'blocked',
+          completedAt: nowIso,
+          error: blockedError,
+        });
+        appendWorkflowEvent(
+          workflow,
+          activeTurn,
+          createWorkflowEvent(
+            activeTurn.id,
+            'target_blocked',
+            'blocked',
+            blockedError,
+            nowIso,
+            frame.sourceParticipant,
+            frame.sourceMessage.id,
+            [toParticipantRef(target)],
+            {
+              dispatchId: request.dispatchId,
+              metadata: {
+                reason: 'anti_ping_pong',
+              },
+            },
+          ),
+        );
+        latestCheckpoint = addWorkflowCheckpoint(
           outcome,
+          workflow,
+          activeTurn,
           'anti_ping_pong',
           blockedError,
           nowIso,
@@ -1130,6 +1544,9 @@ export async function routeChannelMessage(
           targetName: target.participantName,
           sessionId: target.sessionId,
           status: 'skipped',
+          dispatchId: request.dispatchId,
+          turnId: activeTurn.id,
+          targetStatus: 'blocked',
           error: blockedError,
           sourceMessageId: frame.sourceMessage.id,
           trigger: frame.trigger,
@@ -1138,10 +1555,7 @@ export async function routeChannelMessage(
         continue;
       }
 
-      allowedRequests.push({
-        ...frame,
-        target,
-      });
+      allowedRequests.push(request);
     }
 
     if (guardReason === 'max_dispatches') {
@@ -1155,8 +1569,29 @@ export async function routeChannelMessage(
     }
 
     if (allowedRequests.length > 1) {
-      latestCheckpoint = addCheckpoint(
+      appendWorkflowEvent(
+        workflow,
+        activeTurn,
+        createWorkflowEvent(
+          activeTurn.id,
+          'fan_out',
+          'running',
+          `Fan-out scheduled ${allowedRequests.map((request) => request.target.participantName).join(', ')} in parallel.`,
+          nowIso,
+          frame.sourceParticipant,
+          frame.sourceMessage.id,
+          allowedRequests.map((request) => toParticipantRef(request.target)),
+          {
+            metadata: {
+              branchCount: allowedRequests.length,
+            },
+          },
+        ),
+      );
+      latestCheckpoint = addWorkflowCheckpoint(
         outcome,
+        workflow,
+        activeTurn,
         'fan_out',
         `Fan-out routed this step to ${allowedRequests.map((request) => request.target.participantName).join(', ')}.`,
         nowIso,
@@ -1164,6 +1599,15 @@ export async function routeChannelMessage(
         allowedRequests.map((request) => toParticipantRef(request.target)),
       );
     }
+    nextState = applyRoomRoutingSnapshot(
+      nextState,
+      channelId,
+      baseRoomRouting,
+      workflow,
+      outcome,
+      latestCheckpoint,
+      now,
+    );
 
     const readyRequests: DispatchRequest[] = [];
     for (const request of allowedRequests) {
@@ -1176,21 +1620,40 @@ export async function routeChannelMessage(
       );
       nextState = ensured.state;
       if (ensured.error) {
-        outcome.dispatches.push({
-          id: randomUUID(),
-          sourceMessageId: request.sourceMessage.id,
-          source: request.sourceParticipant,
-          target: toParticipantRef(request.target),
-          trigger: request.trigger,
+        updateDispatch(outcome, request.dispatchId, {
           status: 'error',
-          mentionNames: structuredClone(request.mentionNames),
-          responseMessageId: null,
-          startedAt: nowIso,
           completedAt: nowIso,
           error: ensured.error,
         });
-        latestCheckpoint = addCheckpoint(
+        updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
+          status: 'failed',
+          completedAt: nowIso,
+          error: ensured.error,
+        });
+        appendWorkflowEvent(
+          workflow,
+          activeTurn,
+          createWorkflowEvent(
+            activeTurn.id,
+            'target_failed',
+            'failed',
+            `Failed to wake ${request.target.participantName}: ${ensured.error}`,
+            nowIso,
+            request.sourceParticipant,
+            request.sourceMessage.id,
+            [toParticipantRef(request.target)],
+            {
+              dispatchId: request.dispatchId,
+              metadata: {
+                phase: 'wake',
+              },
+            },
+          ),
+        );
+        latestCheckpoint = addWorkflowCheckpoint(
           outcome,
+          workflow,
+          activeTurn,
           'runtime_error',
           `Failed to wake ${request.target.participantName}: ${ensured.error}`,
           nowIso,
@@ -1203,6 +1666,9 @@ export async function routeChannelMessage(
           targetName: request.target.participantName,
           sessionId: null,
           status: 'error',
+          dispatchId: request.dispatchId,
+          turnId: activeTurn.id,
+          targetStatus: 'failed',
           error: ensured.error,
           sourceMessageId: request.sourceMessage.id,
           trigger: request.trigger,
@@ -1215,6 +1681,44 @@ export async function routeChannelMessage(
         ...request,
         target: ensured.target,
       });
+      updateDispatch(outcome, request.dispatchId, {
+        status: 'running',
+        startedAt: nowIso,
+      });
+      updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
+        status: 'running',
+        startedAt: nowIso,
+      });
+      appendWorkflowEvent(
+        workflow,
+        activeTurn,
+        createWorkflowEvent(
+          activeTurn.id,
+          'target_running',
+          'running',
+          `${ensured.target.participantName} is running this room dispatch.`,
+          nowIso,
+          request.sourceParticipant,
+          request.sourceMessage.id,
+          [toParticipantRef(ensured.target)],
+          {
+            dispatchId: request.dispatchId,
+            metadata: {
+              depth: request.depth,
+              trigger: request.trigger,
+            },
+          },
+        ),
+      );
+      nextState = applyRoomRoutingSnapshot(
+        nextState,
+        channelId,
+        baseRoomRouting,
+        workflow,
+        outcome,
+        latestCheckpoint,
+        now,
+      );
     }
 
     if (readyRequests.length === 0) {
@@ -1230,6 +1734,7 @@ export async function routeChannelMessage(
 
     for (const execution of executions) {
       outcome.totalDispatchCount += 1;
+      activeTurn.dispatchCount = outcome.totalDispatchCount;
       const targetKey = participantKey(execution.target);
       targetVisitCounts.set(targetKey, (targetVisitCounts.get(targetKey) ?? 0) + 1);
 
@@ -1266,21 +1771,40 @@ export async function routeChannelMessage(
             },
           },
         ).state;
-        outcome.dispatches.push({
-          id: randomUUID(),
-          sourceMessageId: execution.sourceMessage.id,
-          source: execution.sourceParticipant,
-          target: toParticipantRef(execution.target),
-          trigger: execution.trigger,
+        updateDispatch(outcome, execution.dispatchId, {
           status: 'error',
-          mentionNames: structuredClone(execution.mentionNames),
-          responseMessageId: null,
-          startedAt: nowIso,
           completedAt: nowIso,
           error: execution.error,
         });
-        latestCheckpoint = addCheckpoint(
+        updateWorkflowTarget(activeTurn, execution.targetStateId, nowIso, {
+          status: 'failed',
+          completedAt: nowIso,
+          error: execution.error,
+        });
+        appendWorkflowEvent(
+          workflow,
+          activeTurn,
+          createWorkflowEvent(
+            activeTurn.id,
+            'target_failed',
+            'failed',
+            `Runtime delivery to ${execution.target.participantName} failed: ${execution.error}`,
+            nowIso,
+            execution.sourceParticipant,
+            execution.sourceMessage.id,
+            [toParticipantRef(execution.target)],
+            {
+              dispatchId: execution.dispatchId,
+              metadata: {
+                phase: 'dispatch',
+              },
+            },
+          ),
+        );
+        latestCheckpoint = addWorkflowCheckpoint(
           outcome,
+          workflow,
+          activeTurn,
           'runtime_error',
           `Runtime delivery to ${execution.target.participantName} failed: ${execution.error}`,
           nowIso,
@@ -1293,6 +1817,9 @@ export async function routeChannelMessage(
           targetName: execution.target.participantName,
           sessionId: execution.target.sessionId,
           status: 'error',
+          dispatchId: execution.dispatchId,
+          turnId: activeTurn.id,
+          targetStatus: 'failed',
           error: execution.error,
           sourceMessageId: execution.sourceMessage.id,
           trigger: execution.trigger,
@@ -1337,29 +1864,60 @@ export async function routeChannelMessage(
       );
       nextState = appendedResponse.state;
       const responseMessage = appendedResponse.message;
-      outcome.dispatches.push({
-        id: randomUUID(),
-        sourceMessageId: execution.sourceMessage.id,
-        source: execution.sourceParticipant,
-        target: toParticipantRef(execution.target),
-        trigger: execution.trigger,
+      updateDispatch(outcome, execution.dispatchId, {
         status: 'completed',
-        mentionNames: structuredClone(execution.mentionNames),
         responseMessageId: responseMessage.id,
-        startedAt: nowIso,
         completedAt: nowIso,
         error: null,
       });
+      updateWorkflowTarget(activeTurn, execution.targetStateId, nowIso, {
+        status: 'completed',
+        completedAt: nowIso,
+        responseMessageId: responseMessage.id,
+        error: null,
+      });
+      appendWorkflowEvent(
+        workflow,
+        activeTurn,
+        createWorkflowEvent(
+          activeTurn.id,
+          'target_completed',
+          'completed',
+          `${execution.target.participantName} completed this room dispatch.`,
+          nowIso,
+          execution.sourceParticipant,
+          execution.sourceMessage.id,
+          [toParticipantRef(execution.target)],
+          {
+            dispatchId: execution.dispatchId,
+            metadata: {
+              responseMessageId: responseMessage.id,
+            },
+          },
+        ),
+      );
       results.push({
         targetKind: execution.target.participantKind,
         targetId: execution.target.participantId,
         targetName: execution.target.participantName,
         sessionId: execution.target.sessionId,
         status: 'sent',
+        dispatchId: execution.dispatchId,
+        turnId: activeTurn.id,
+        targetStatus: 'completed',
         sourceMessageId: execution.sourceMessage.id,
         trigger: execution.trigger,
         dispatchDepth: execution.depth,
       });
+      nextState = applyRoomRoutingSnapshot(
+        nextState,
+        channelId,
+        baseRoomRouting,
+        workflow,
+        outcome,
+        latestCheckpoint,
+        now,
+      );
 
       const continuationResolution = resolveTargets(nextState, channelId, responseMessage.body, {
         allowDefaultTarget: false,
@@ -1371,8 +1929,10 @@ export async function routeChannelMessage(
 
       if (continuationResolution.targets.length === 0) {
         if (continuationResolution.unresolved.length > 0) {
-          latestCheckpoint = addCheckpoint(
+          latestCheckpoint = addWorkflowCheckpoint(
             outcome,
+            workflow,
+            activeTurn,
             'no_targets',
             `No valid continuation targets were resolved from ${execution.target.participantName}'s handoff.`,
             nowIso,
@@ -1384,8 +1944,12 @@ export async function routeChannelMessage(
 
       if (execution.depth + 1 > maxContinuations) {
         guardReason = 'max_continuations';
-        latestCheckpoint = addCheckpoint(
+        activeTurn.guard = guardReason;
+        activeTurn.status = 'blocked';
+        latestCheckpoint = addWorkflowCheckpoint(
           outcome,
+          workflow,
+          activeTurn,
           'loop_guard',
           `Room routing stopped after reaching ${describeGuardReason('max_continuations')}.`,
           nowIso,
@@ -1396,13 +1960,19 @@ export async function routeChannelMessage(
       }
 
       outcome.continuationCount += 1;
-      latestCheckpoint = addCheckpoint(
+      activeTurn.continuationCount = outcome.continuationCount;
+      latestCheckpoint = addWorkflowCheckpoint(
         outcome,
+        workflow,
+        activeTurn,
         'continuation',
         `${execution.target.participantName} handed the room forward to ${continuationResolution.targets.map((target) => target.participantName).join(', ')}.`,
         nowIso,
         toParticipantRef(execution.target),
         continuationResolution.targets.map((target) => toParticipantRef(target)),
+        {
+          mentionNames: structuredClone(continuationResolution.mentionNames),
+        },
       );
       queue.push({
         sourceMessage: responseMessage,
@@ -1421,14 +1991,26 @@ export async function routeChannelMessage(
   }
 
   outcome.guard = guardReason;
+  activeTurn.guard = guardReason;
+  activeTurn.continuationCount = outcome.continuationCount;
+  activeTurn.dispatchCount = outcome.totalDispatchCount;
   outcome.status = guardReason
     ? 'blocked'
     : outcome.dispatches.some((dispatch) => dispatch.status === 'completed')
       ? 'completed'
       : 'error';
+  activeTurn.status = guardReason
+    ? 'blocked'
+    : outcome.dispatches.some((dispatch) => dispatch.status === 'completed')
+      ? 'completed'
+      : 'failed';
   outcome.completedAt = nowIso;
-  latestCheckpoint = addCheckpoint(
+  activeTurn.completedAt = nowIso;
+  activeTurn.updatedAt = nowIso;
+  latestCheckpoint = addWorkflowCheckpoint(
     outcome,
+    workflow,
+    activeTurn,
     'completed',
     guardReason
       ? `Room routing stopped because it hit ${describeGuardReason(guardReason)}.`
@@ -1436,14 +2018,41 @@ export async function routeChannelMessage(
     nowIso,
     null,
   );
-  nextState = setChannelRoomRouting(
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'outcome',
+      activeTurn.status,
+      guardReason
+        ? `Room workflow ended in a blocked state because it hit ${describeGuardReason(guardReason)}.`
+        : activeTurn.status === 'completed'
+          ? 'Room workflow completed for this turn.'
+          : 'Room workflow ended with failures for this turn.',
+      nowIso,
+      null,
+      userMessage.id,
+      outcome.resolvedTargets,
+      {
+        outcomeId: randomUUID(),
+        metadata: {
+          guard: guardReason,
+          continuationCount: outcome.continuationCount,
+          totalDispatchCount: outcome.totalDispatchCount,
+          unresolvedMentions: structuredClone(outcome.unresolvedMentions),
+        },
+      },
+    ),
+  );
+  finalizeWorkflowTurn(workflow, activeTurn);
+  nextState = applyRoomRoutingSnapshot(
     nextState,
     channelId,
-    {
-      ...resolveRoomRoutingState(requireChannel(nextState, channelId).roomRouting),
-      lastOutcome: outcome,
-      lastCheckpoint: latestCheckpoint,
-    },
+    baseRoomRouting,
+    workflow,
+    outcome,
+    latestCheckpoint,
     now,
   );
 

@@ -147,9 +147,9 @@ tests and imports do not have to move all at once.
   plus archive/RAG pipelines planned
 - **Responsibilities**: Load defaults, persist channels, chat-global cats, channel
   assignments, transcript messages, execution targets, execution leases, cat
-  memory checkpoints, core-owned owner/task/run/trace/checkpoint/outcome
-  records, and the derived `Cats Core v1` records that wrap the phase-2
-  chat model
+  memory checkpoints, room-workflow turn/event state, core-owned
+  owner/task/run/trace/checkpoint/outcome records, and the derived
+  `Cats Core v1` records that wrap the phase-2 chat model
 
 ### Chat Runtime Actions
 
@@ -157,7 +157,9 @@ tests and imports do not have to move all at once.
   session calls
 - **Technology**: Native `fetch` through the runtime client
 - **Responsibilities**: Activate channel sessions, route mention-driven
-  messages, and persist runtime outcomes back into local transcripts
+  messages, run the continuation/fan-out/guard loop, maintain
+  provider-agnostic room-workflow turn/event state, and persist runtime
+  outcomes back into local transcripts
 
 ### Renderer Shell
 
@@ -353,10 +355,14 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
 
 - Current implementation is still a phase-2 chat shell with file-backed state,
   global orchestrator settings, cat assignments, a system-layer routing engine
-  with continuation loop/fan-out/guards, and transcript export.
+  with continuation loop/fan-out/guards, a separate room-workflow read model,
+  and transcript export.
 - `Cats Core v1` now exists as a first in-tree contract plus a minimal neutral
   write substrate for owner profile, tasks, approvals, runs, traces,
   checkpoints, and orchestration outcomes.
+- Chat room-workflow turns, system events, checkpoints, and outcomes now
+  project into core-backed run/trace/checkpoint/outcome records when chat
+  state is persisted.
 - `Cats Work` is a planned sibling surface, not a shipped UI in the current
   codebase.
 - The current execution path keeps full Chat and Work desktop surfaces on the
@@ -375,9 +381,10 @@ intentionally deferred:
 
 - live streaming or push-based renderer updates
 - split-view panes beyond the current chat-first layout
-- durable workflow trace/checkpoint storage and branch-based orchestration above
-  the current in-memory room routing loop
-- shared-core write APIs, approval models, and stronger storage boundaries
+- richer branch/converge orchestration beyond the current event-driven room
+  workflow loop
+- approval UX and stronger storage boundaries above the now-landed core
+  write substrate
 - full Telegram/LINE outbound delivery, room-routing policy, escalation, and
   takeover behavior above the current relay seam
 - desktop host lifecycle management and tray-driven UX implementation
@@ -430,7 +437,6 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-21*
-
 
 
 

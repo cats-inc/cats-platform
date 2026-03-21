@@ -195,11 +195,22 @@ test('explicit multi-target mentions fan out in parallel and persist replies in 
     ['Agent-2', 'Agent-1'],
   );
   assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 2);
-  assert.equal(
-    channel.roomRouting?.lastOutcome?.dispatches[0]?.target.participantName,
-    'Agent-2',
+  assert.deepEqual(
+    channel.roomRouting?.lastOutcome?.dispatches.map((dispatch) => dispatch.target.participantName),
+    ['Agent-1', 'Agent-2'],
   );
   assert.equal(dispatched.results[0].targetName, 'Agent-2');
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.status, 'completed');
+  assert.deepEqual(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.map((target) => target.status),
+    ['completed', 'completed'],
+  );
+  assert.ok(
+    channel.roomRouting?.workflow.eventHistory.some((event) => event.kind === 'fan_out'),
+  );
+  assert.ok(
+    channel.roomRouting?.workflow.eventHistory.some((event) => event.kind === 'outcome'),
+  );
 });
 
 test('room routing continues across agent mentions and auto-wakes targeted participants', async () => {
@@ -240,6 +251,19 @@ test('room routing continues across agent mentions and auto-wakes targeted parti
   assert.ok(
     channel.roomRouting?.lastOutcome?.checkpoints.some(
       (checkpoint) => checkpoint.kind === 'continuation',
+    ),
+  );
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.dispatchCount, 3);
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.continuationCount, 2);
+  assert.ok(
+    channel.roomRouting?.workflow.turnHistory[0]?.events.some(
+      (event) => event.kind === 'target_running',
+    ),
+  );
+  assert.ok(
+    channel.roomRouting?.workflow.turnHistory[0]?.events.some(
+      (event) => event.kind === 'checkpoint'
+        && event.metadata.checkpointKind === 'continuation',
     ),
   );
 });
@@ -289,5 +313,11 @@ test('anti-ping-pong blocks repeated back-and-forth and prompts only include per
       (dispatch) => dispatch.target.participantName === 'Agent-1',
     ).length,
     2,
+  );
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.guard, 'anti_ping_pong');
+  assert.ok(
+    channel.roomRouting?.workflow.eventHistory.some(
+      (event) => event.kind === 'guard_blocked',
+    ),
   );
 });

@@ -13,6 +13,7 @@ import {
   exportChannel,
   updateGlobalOrchestrator,
 } from '../dist-server/chat/model.js';
+import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
 import { FileChatStore } from '../dist-server/chat/store.js';
 
@@ -142,6 +143,139 @@ test('ChatStore exposes a derived Cats Core view that stays in sync with chat st
   assert.ok(core.actors.some((actor) => actor.name === 'Planner'));
   assert.ok(core.conversations.some((conversation) => conversation.sourceChannelId === channelId));
   assert.ok(core.tasks.some((task) => task.conversationId === `conversation-channel-${channelId}`));
+});
+
+test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes into core records', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  let state = await store.read();
+  const now = new Date('2026-03-22T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Smelly',
+      provider: 'claude',
+      roles: ['boss'],
+    },
+    now,
+  );
+  state.bossCatId = state.cats[0].id;
+
+  state = createCat(
+    state,
+    {
+      name: 'Agent-1',
+      provider: 'claude',
+      roles: ['reviewer'],
+    },
+    now,
+  );
+  const agentId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Workflow Projection',
+      topic: 'Project system workflow into core.',
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  state = assignCatToChannel(
+    state,
+    channelId,
+    {
+      catId: agentId,
+      provider: 'claude',
+      roles: ['reviewer'],
+    },
+    now,
+  );
+
+  const runtimeClient = {
+    async getHealth() {
+      return {
+        baseUrl: 'http://127.0.0.1:3110',
+        reachable: true,
+        status: 'ok',
+        service: 'cats-runtime',
+      };
+    },
+    async getProviderConfig() {
+      return {};
+    },
+    async getProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: `${provider}-default`,
+        source: 'config',
+        cache: null,
+        models: [
+          { id: `${provider}-default`, label: `${provider} default`, default: true },
+        ],
+        warnings: [],
+      };
+    },
+    sessionCount: 0,
+    async createSession(input) {
+      this.sessionCount += 1;
+      return {
+        id: `session-${this.sessionCount}`,
+        provider: input.provider,
+        model: input.model ?? null,
+        status: 'ready',
+        cwd: input.cwd ?? '/tmp/cats-chat-store',
+      };
+    },
+    async sendMessage(_sessionId, content) {
+      if (content.includes('You are Smelly')) {
+        return {
+          content: '@Agent-1 take first pass.',
+          inputTokens: 11,
+          outputTokens: 7,
+          tokensUsed: 18,
+        };
+      }
+      if (content.includes('You are Agent-1')) {
+        return {
+          content: 'Done.',
+          inputTokens: 10,
+          outputTokens: 6,
+          tokensUsed: 16,
+        };
+      }
+      throw new Error(`Unexpected prompt:\n${content}`);
+    },
+    async closeSession() {},
+  };
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Start the room workflow.' },
+    runtimeClient,
+    now,
+  );
+  await store.write(dispatched.state);
+  const core = await store.readCore();
+
+  assert.ok(core.runs.some((run) => run.id.startsWith(`run-room-routing-${channelId}-`)));
+  assert.ok(core.traces.some((trace) => trace.id.startsWith('trace-room-routing-')));
+  assert.ok(
+    core.checkpoints.some(
+      (checkpoint) => checkpoint.id.startsWith('checkpoint-room-routing-')
+        && checkpoint.metadata.checkpointKind === 'continuation',
+    ),
+  );
+  assert.ok(
+    core.outcomes.some(
+      (outcome) => outcome.id.startsWith('outcome-room-routing-')
+        && outcome.metadata.channelId === channelId,
+    ),
+  );
 });
 
 test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', async () => {
@@ -437,5 +571,4 @@ test('createChannel defaults empty draft fields to a neutral new-chat label', as
   assert.equal(state.channels[0].topic, '');
   assert.match(state.channels[0].id, UUID_PATTERN);
 });
-
 

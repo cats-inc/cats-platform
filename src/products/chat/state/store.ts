@@ -14,6 +14,10 @@ import type {
   RoomRoutingOutcome,
   RoomRoutingParticipantRef,
   RoomRoutingState,
+  RoomWorkflowEvent,
+  RoomWorkflowState,
+  RoomWorkflowTargetState,
+  RoomWorkflowTurn,
   ChatCapabilities,
   ChatChannelState,
   ChatMessage,
@@ -40,12 +44,18 @@ import {
 } from './defaults.js';
 import {
   createDefaultRoomRoutingState,
+  createDefaultRoomWorkflowState,
+  DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT,
+  DEFAULT_WORKFLOW_TURN_HISTORY_LIMIT,
   normalizeRoomRoutingCheckpointKind,
   normalizeRoomRoutingDispatchStatus,
   normalizeRoomRoutingGuardReason,
   normalizeRoomRoutingMode,
   normalizeRoomRoutingTrigger,
   normalizeRoomRoutingTurnStatus,
+  normalizeRoomWorkflowEventKind,
+  normalizeRoomWorkflowStatus,
+  normalizeRoomWorkflowTargetStatus,
 } from './roomRouting.js';
 import {
   createDefaultCoreState,
@@ -327,6 +337,129 @@ function normalizeRoomRoutingOutcome(rawOutcome: unknown): RoomRoutingOutcome | 
   };
 }
 
+function normalizeRoomWorkflowTarget(rawTarget: unknown): RoomWorkflowTargetState | null {
+  const targetRecord = asRecord(rawTarget);
+  if (!targetRecord) {
+    return null;
+  }
+
+  const participant = normalizeRoomRoutingParticipant(targetRecord.participant);
+  if (!participant) {
+    return null;
+  }
+
+  return {
+    id: readString(targetRecord.id, randomUUID()),
+    dispatchId: readNullableString(targetRecord.dispatchId),
+    participant,
+    source: normalizeRoomRoutingParticipant(targetRecord.source),
+    sourceMessageId: readString(targetRecord.sourceMessageId),
+    trigger: normalizeRoomRoutingTrigger(targetRecord.trigger, 'continuation_mention'),
+    mentionNames: readStringArray(targetRecord.mentionNames),
+    depth: readNumber(targetRecord.depth),
+    status: normalizeRoomWorkflowTargetStatus(targetRecord.status, 'pending'),
+    queuedAt: readString(targetRecord.queuedAt, new Date().toISOString()),
+    startedAt: readNullableString(targetRecord.startedAt),
+    completedAt: readNullableString(targetRecord.completedAt),
+    responseMessageId: readNullableString(targetRecord.responseMessageId),
+    error: readNullableString(targetRecord.error),
+  };
+}
+
+function normalizeRoomWorkflowEvent(rawEvent: unknown): RoomWorkflowEvent | null {
+  const eventRecord = asRecord(rawEvent);
+  if (!eventRecord) {
+    return null;
+  }
+
+  return {
+    id: readString(eventRecord.id, randomUUID()),
+    turnId: readString(eventRecord.turnId),
+    kind: normalizeRoomWorkflowEventKind(eventRecord.kind, 'turn_started'),
+    status: normalizeRoomWorkflowStatus(eventRecord.status, 'running'),
+    message: readString(eventRecord.message),
+    actor: normalizeRoomRoutingParticipant(eventRecord.actor),
+    sourceMessageId: readNullableString(eventRecord.sourceMessageId),
+    targets: Array.isArray(eventRecord.targets)
+      ? eventRecord.targets
+          .map((target) => normalizeRoomRoutingParticipant(target))
+          .filter((target): target is RoomRoutingParticipantRef => target !== null)
+      : [],
+    dispatchId: readNullableString(eventRecord.dispatchId),
+    checkpointId: readNullableString(eventRecord.checkpointId),
+    outcomeId: readNullableString(eventRecord.outcomeId),
+    createdAt: readString(eventRecord.createdAt, new Date().toISOString()),
+    metadata: asRecord(eventRecord.metadata) ?? {},
+  };
+}
+
+function normalizeRoomWorkflowTurn(rawTurn: unknown): RoomWorkflowTurn | null {
+  const turnRecord = asRecord(rawTurn);
+  if (!turnRecord) {
+    return null;
+  }
+
+  const rawSourceSenderKind = readString(turnRecord.sourceSenderKind, 'system');
+  const sourceSenderKind = (
+    rawSourceSenderKind === 'user'
+    || rawSourceSenderKind === 'agent'
+    || rawSourceSenderKind === 'orchestrator'
+    || rawSourceSenderKind === 'system'
+  )
+    ? rawSourceSenderKind
+    : 'system';
+
+  return {
+    id: readString(turnRecord.id, randomUUID()),
+    status: normalizeRoomWorkflowStatus(turnRecord.status, 'idle'),
+    sourceMessageId: readString(turnRecord.sourceMessageId),
+    sourceSenderKind: sourceSenderKind as ChatMessage['senderKind'],
+    sourceSenderName: readString(turnRecord.sourceSenderName, 'Chat'),
+    guard: normalizeRoomRoutingGuardReason(turnRecord.guard),
+    continuationCount: readNumber(turnRecord.continuationCount),
+    dispatchCount: readNumber(turnRecord.dispatchCount),
+    targetStatuses: Array.isArray(turnRecord.targetStatuses)
+      ? turnRecord.targetStatuses
+          .map((target) => normalizeRoomWorkflowTarget(target))
+          .filter((target): target is RoomWorkflowTargetState => target !== null)
+      : [],
+    events: Array.isArray(turnRecord.events)
+      ? turnRecord.events
+          .map((event) => normalizeRoomWorkflowEvent(event))
+          .filter((event): event is RoomWorkflowEvent => event !== null)
+      : [],
+    startedAt: readString(turnRecord.startedAt, new Date().toISOString()),
+    updatedAt: readString(
+      turnRecord.updatedAt,
+      readString(turnRecord.startedAt, new Date().toISOString()),
+    ),
+    completedAt: readNullableString(turnRecord.completedAt),
+  };
+}
+
+function normalizeRoomWorkflow(rawWorkflow: unknown): RoomWorkflowState {
+  const workflowRecord = asRecord(rawWorkflow);
+  const fallback = createDefaultRoomWorkflowState();
+
+  return {
+    activeTurn: normalizeRoomWorkflowTurn(workflowRecord?.activeTurn),
+    turnHistory: Array.isArray(workflowRecord?.turnHistory)
+      ? workflowRecord.turnHistory
+          .map((turn) => normalizeRoomWorkflowTurn(turn))
+          .filter((turn): turn is RoomWorkflowTurn => turn !== null)
+          .slice(0, DEFAULT_WORKFLOW_TURN_HISTORY_LIMIT)
+      : fallback.turnHistory,
+    eventHistory: Array.isArray(workflowRecord?.eventHistory)
+      ? workflowRecord.eventHistory
+          .map((event) => normalizeRoomWorkflowEvent(event))
+          .filter((event): event is RoomWorkflowEvent => event !== null)
+          .slice(0, DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT)
+      : fallback.eventHistory,
+    lastCheckpointEvent: normalizeRoomWorkflowEvent(workflowRecord?.lastCheckpointEvent),
+    lastOutcomeEvent: normalizeRoomWorkflowEvent(workflowRecord?.lastOutcomeEvent),
+  };
+}
+
 function normalizeRoomRouting(rawRoomRouting: unknown): RoomRoutingState {
   const roomRoutingRecord = asRecord(rawRoomRouting);
   const fallback = createDefaultRoomRoutingState();
@@ -348,6 +481,7 @@ function normalizeRoomRouting(rawRoomRouting: unknown): RoomRoutingState {
     ),
     lastOutcome: normalizeRoomRoutingOutcome(roomRoutingRecord?.lastOutcome),
     lastCheckpoint: normalizeRoomRoutingCheckpoint(roomRoutingRecord?.lastCheckpoint),
+    workflow: normalizeRoomWorkflow(roomRoutingRecord?.workflow),
   };
 }
 

@@ -4,10 +4,16 @@ import type {
   CatsCoreState,
   CoreActorRecord,
   CoreApprovalRecord,
+  CoreCheckpointRecord,
+  CoreCheckpointStatus,
   CoreConversationRecord,
   CoreConversationStatus,
+  CoreOrchestrationOutcomeRecord,
   CoreTaskRecord,
   CoreTaskStatus,
+  CoreTraceKind,
+  CoreTraceRecord,
+  CoreRunRecord,
   OwnerProfileRecord,
 } from '../../../core/types.js';
 import { CATS_CORE_STATE_VERSION } from '../../../core/types.js';
@@ -22,6 +28,9 @@ import type {
   ChatChannelState,
   ChatCat,
   ChatState,
+  RoomRoutingParticipantRef,
+  RoomWorkflowEvent,
+  RoomWorkflowTurn,
 } from '../../../shared/app-shell.js';
 
 function uniqueStrings(values: string[]): string[] {
@@ -171,6 +180,240 @@ function preserveCoreOwnedTasks(existingTasks: CoreTaskRecord[]): CoreTaskRecord
     .map((task) => structuredClone(task));
 }
 
+function preserveCoreOwnedRuns(existingRuns: CoreRunRecord[]): CoreRunRecord[] {
+  return existingRuns
+    .filter((run) => !run.id.startsWith('run-room-routing-'))
+    .map((run) => structuredClone(run));
+}
+
+function preserveCoreOwnedTraces(existingTraces: CoreTraceRecord[]): CoreTraceRecord[] {
+  return existingTraces
+    .filter((trace) => !trace.id.startsWith('trace-room-routing-'))
+    .map((trace) => structuredClone(trace));
+}
+
+function preserveCoreOwnedCheckpoints(
+  existingCheckpoints: CoreCheckpointRecord[],
+): CoreCheckpointRecord[] {
+  return existingCheckpoints
+    .filter((checkpoint) => !checkpoint.id.startsWith('checkpoint-room-routing-'))
+    .map((checkpoint) => structuredClone(checkpoint));
+}
+
+function preserveCoreOwnedOutcomes(
+  existingOutcomes: CoreOrchestrationOutcomeRecord[],
+): CoreOrchestrationOutcomeRecord[] {
+  return existingOutcomes
+    .filter((outcome) => !outcome.id.startsWith('outcome-room-routing-'))
+    .map((outcome) => structuredClone(outcome));
+}
+
+function actorIdForParticipant(
+  participant: RoomRoutingParticipantRef | null,
+): string | null {
+  if (!participant) {
+    return null;
+  }
+
+  return participant.participantKind === 'orchestrator'
+    ? GLOBAL_ORCHESTRATOR_ACTOR_ID
+    : createCatActorId(participant.participantId);
+}
+
+function collectWorkflowTurns(channel: ChatChannelState): RoomWorkflowTurn[] {
+  const workflow = channel.roomRouting?.workflow;
+  if (!workflow) {
+    return [];
+  }
+
+  return [
+    ...(workflow.activeTurn ? [structuredClone(workflow.activeTurn)] : []),
+    ...workflow.turnHistory.map((turn) => structuredClone(turn)),
+  ];
+}
+
+function toCoreRunStatus(status: RoomWorkflowTurn['status']): CoreRunRecord['status'] {
+  switch (status) {
+    case 'running':
+      return 'running';
+    case 'completed':
+      return 'completed';
+    case 'blocked':
+      return 'blocked';
+    case 'failed':
+      return 'failed';
+    case 'pending':
+      return 'queued';
+    case 'idle':
+    default:
+      return 'queued';
+  }
+}
+
+function toCoreTraceKind(event: RoomWorkflowEvent): CoreTraceKind {
+  if (event.kind === 'checkpoint') {
+    return event.metadata.approvalRequired || event.metadata.approvalStatus
+      ? 'approval'
+      : 'checkpoint';
+  }
+  if (event.kind === 'outcome') {
+    return 'outcome';
+  }
+  if (event.kind === 'target_failed' || event.kind === 'guard_blocked') {
+    return 'error';
+  }
+  if (event.kind === 'turn_started' || event.kind === 'fan_out') {
+    return 'status';
+  }
+  return 'dispatch';
+}
+
+function toCoreCheckpointStatus(event: RoomWorkflowEvent): CoreCheckpointStatus {
+  const metadataStatus = event.metadata.checkpointStatus;
+  if (
+    metadataStatus === 'open'
+    || metadataStatus === 'completed'
+    || metadataStatus === 'cancelled'
+  ) {
+    return metadataStatus;
+  }
+
+  return event.status === 'completed' ? 'completed' : 'open';
+}
+
+function toCoreOutcomeStatus(
+  status: RoomWorkflowTurn['status'],
+): CoreOrchestrationOutcomeRecord['status'] {
+  switch (status) {
+    case 'completed':
+      return 'succeeded';
+    case 'failed':
+      return 'failed';
+    case 'blocked':
+      return 'blocked';
+    default:
+      return 'blocked';
+  }
+}
+
+function createWorkflowRun(
+  channel: ChatChannelState,
+  turn: RoomWorkflowTurn,
+): CoreRunRecord {
+  const traceId = `trace-room-routing-${turn.id}`;
+  const summary = turn.events[turn.events.length - 1]?.message
+    ?? `${channel.title} room workflow turn`;
+
+  return {
+    id: `run-room-routing-${channel.id}-${turn.id}`,
+    title: `${channel.title} room turn`,
+    status: toCoreRunStatus(turn.status),
+    conversationId: `conversation-channel-${channel.id}`,
+    taskId: `task-channel-${channel.id}`,
+    parentRunId: null,
+    orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
+    traceId,
+    summary,
+    createdAt: turn.startedAt,
+    startedAt: turn.startedAt,
+    completedAt: turn.completedAt,
+    updatedAt: turn.updatedAt,
+    metadata: {
+      source: 'chat-room-workflow',
+      channelId: channel.id,
+      turnId: turn.id,
+      guard: turn.guard,
+      continuationCount: turn.continuationCount,
+      dispatchCount: turn.dispatchCount,
+      targetCount: turn.targetStatuses.length,
+    },
+  };
+}
+
+function createWorkflowTrace(
+  channel: ChatChannelState,
+  turn: RoomWorkflowTurn,
+  event: RoomWorkflowEvent,
+): CoreTraceRecord {
+  const runId = `run-room-routing-${channel.id}-${turn.id}`;
+  return {
+    id: `trace-room-routing-${event.id}`,
+    traceId: `trace-room-routing-${turn.id}`,
+    kind: toCoreTraceKind(event),
+    conversationId: `conversation-channel-${channel.id}`,
+    runId,
+    taskId: `task-channel-${channel.id}`,
+    actorId: actorIdForParticipant(event.actor),
+    message: event.message,
+    createdAt: event.createdAt,
+    metadata: {
+      source: 'chat-room-workflow',
+      channelId: channel.id,
+      turnId: turn.id,
+      eventKind: event.kind,
+      eventStatus: event.status,
+      targets: event.targets.map((target) => actorIdForParticipant(target)).filter(Boolean),
+      ...structuredClone(event.metadata),
+    },
+  };
+}
+
+function createWorkflowCheckpoint(
+  channel: ChatChannelState,
+  turn: RoomWorkflowTurn,
+  event: RoomWorkflowEvent,
+): CoreCheckpointRecord {
+  return {
+    id: `checkpoint-room-routing-${event.checkpointId ?? event.id}`,
+    label: `${channel.title} workflow checkpoint`,
+    status: toCoreCheckpointStatus(event),
+    conversationId: `conversation-channel-${channel.id}`,
+    runId: `run-room-routing-${channel.id}-${turn.id}`,
+    taskId: `task-channel-${channel.id}`,
+    sourceTraceId: `trace-room-routing-${event.id}`,
+    summary: event.message,
+    createdAt: event.createdAt,
+    completedAt: toCoreCheckpointStatus(event) === 'completed' ? event.createdAt : null,
+    updatedAt: event.createdAt,
+    metadata: {
+      source: 'chat-room-workflow',
+      channelId: channel.id,
+      turnId: turn.id,
+      eventKind: event.kind,
+      checkpointKind: event.metadata.checkpointKind ?? null,
+      ...structuredClone(event.metadata),
+    },
+  };
+}
+
+function createWorkflowOutcome(
+  channel: ChatChannelState,
+  turn: RoomWorkflowTurn,
+  event: RoomWorkflowEvent,
+): CoreOrchestrationOutcomeRecord {
+  return {
+    id: `outcome-room-routing-${event.outcomeId ?? event.id}`,
+    title: `${channel.title} room workflow outcome`,
+    status: toCoreOutcomeStatus(turn.status),
+    conversationId: `conversation-channel-${channel.id}`,
+    runId: `run-room-routing-${channel.id}-${turn.id}`,
+    taskId: `task-channel-${channel.id}`,
+    summary: event.message,
+    recordedAt: event.createdAt,
+    updatedAt: event.createdAt,
+    metadata: {
+      source: 'chat-room-workflow',
+      channelId: channel.id,
+      turnId: turn.id,
+      eventStatus: event.status,
+      guard: turn.guard,
+      continuationCount: turn.continuationCount,
+      dispatchCount: turn.dispatchCount,
+      ...structuredClone(event.metadata),
+    },
+  };
+}
+
 function createArchiveMetadata(
   channel: ChatChannelState,
   conversationId: string,
@@ -252,12 +495,35 @@ export function syncCoreStateWithChatState(
     ),
   );
   const preservedTasks = preserveCoreOwnedTasks(existingCore.tasks ?? []);
+  const preservedRuns = preserveCoreOwnedRuns(existingCore.runs ?? []);
+  const preservedTraces = preserveCoreOwnedTraces(existingCore.traces ?? []);
+  const preservedCheckpoints = preserveCoreOwnedCheckpoints(existingCore.checkpoints ?? []);
+  const preservedOutcomes = preserveCoreOwnedOutcomes(existingCore.outcomes ?? []);
   const archives = chat.channels.map((channel) =>
     createArchiveMetadata(
       channel,
       `conversation-channel-${channel.id}`,
       existingArchives.get(`archive-channel-${channel.id}`) ?? null,
     ),
+  );
+  const workflowTurns = chat.channels.flatMap((channel) =>
+    collectWorkflowTurns(channel).map((turn) => ({ channel, turn })),
+  );
+  const workflowRuns = workflowTurns.map(({ channel, turn }) =>
+    createWorkflowRun(channel, turn),
+  );
+  const workflowTraces = workflowTurns.flatMap(({ channel, turn }) =>
+    turn.events.map((event) => createWorkflowTrace(channel, turn, event)),
+  );
+  const workflowCheckpoints = workflowTurns.flatMap(({ channel, turn }) =>
+    turn.events
+      .filter((event) => event.kind === 'checkpoint')
+      .map((event) => createWorkflowCheckpoint(channel, turn, event)),
+  );
+  const workflowOutcomes = workflowTurns.flatMap(({ channel, turn }) =>
+    turn.events
+      .filter((event) => event.kind === 'outcome')
+      .map((event) => createWorkflowOutcome(channel, turn, event)),
   );
 
   return {
@@ -271,10 +537,10 @@ export function syncCoreStateWithChatState(
     actors: [ownerActor, orchestratorActor, ...catActors],
     conversations,
     tasks: [...tasks, ...preservedTasks],
-    runs: structuredClone(existingCore.runs ?? []),
-    traces: structuredClone(existingCore.traces ?? []),
-    checkpoints: structuredClone(existingCore.checkpoints ?? []),
-    outcomes: structuredClone(existingCore.outcomes ?? []),
+    runs: [...workflowRuns, ...preservedRuns],
+    traces: [...workflowTraces, ...preservedTraces],
+    checkpoints: [...workflowCheckpoints, ...preservedCheckpoints],
+    outcomes: [...workflowOutcomes, ...preservedOutcomes],
     botBindings: syncBotBindings(chat, existingCore.botBindings ?? []),
     archives,
   };
