@@ -107,7 +107,7 @@ test('GET /api/app-shell returns setupCompleteAt: null for uninitialized workspa
   });
 });
 
-test('POST /api/setup/complete creates Boss Cat, channel, and marks setup done', async () => {
+test('POST /api/setup/complete creates Boss Cat and marks setup done without creating a channel', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/setup/complete`, {
       method: 'POST',
@@ -134,20 +134,9 @@ test('POST /api/setup/complete creates Boss Cat, channel, and marks setup done',
     const bossCat = payload.workspace.pals.find((p) => p.id === payload.workspace.bossCatId);
     assert.equal(bossCat?.defaultExecutionTarget.instance, 'native');
 
-    // First channel was created
-    assert.ok(payload.workspace.channels.length >= 1);
-    assert.ok(payload.workspace.selectedChannelId);
-
-    // Greeting message exists in the selected channel
-    const selected = payload.workspace.selectedChannel;
-    assert.ok(selected);
-    assert.ok(selected.messages.length >= 1);
-    const greeting = selected.messages.find(
-      (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
-    );
-    assert.ok(greeting, 'Boss Cat greeting message should exist');
-    assert.ok(greeting.body.includes('Smelly'));
-    assert.equal(selected.assignedPals.length, 0, 'Boss Cat should stay implicit, not an assigned pal');
+    // No channel created — user navigates to New Chat instead
+    assert.equal(payload.workspace.channels.length, 0);
+    assert.equal(payload.workspace.selectedChannelId, '');
 
     // Orchestrator executionTarget matches Boss Cat config
     const orch = payload.workspace.globalOrchestrator;
@@ -206,7 +195,7 @@ test('after setup complete, GET /api/app-shell reflects initialized state', asyn
     assert.ok(payload.setupCompleteAt);
     assert.equal(payload.ownerDisplayName, 'Kenny');
     assert.ok(payload.workspace.bossCatId);
-    assert.ok(payload.workspace.channels.length >= 1);
+    assert.equal(payload.workspace.channels.length, 0);
   });
 });
 
@@ -302,8 +291,16 @@ test('after setup + activate, system messages use boss cat name and have verbosi
       }),
     });
     assert.equal(setupResponse.status, 200);
-    const setupPayload = await setupResponse.json();
-    const channelId = setupPayload.workspace.selectedChannelId;
+
+    // Create a channel explicitly (setup no longer creates one)
+    const createResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Test chat', topic: 'Test' }),
+    });
+    assert.ok(createResponse.status === 200 || createResponse.status === 201);
+    const createPayload = await createResponse.json();
+    const channelId = createPayload.workspace?.selectedChannelId ?? createPayload.channel?.id;
 
     // Activate channel sessions
     const activateResponse = await fetch(
@@ -392,8 +389,16 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
       }),
     });
     assert.equal(setupResponse.status, 200);
-    const setupPayload = await setupResponse.json();
-    const channelId = setupPayload.workspace.selectedChannelId;
+
+    // Create a channel explicitly (setup no longer creates one)
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Test chat', topic: 'Test' }),
+    });
+    assert.ok(createChannelResponse.status === 200 || createChannelResponse.status === 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.workspace?.selectedChannelId ?? createChannelPayload.channel?.id;
 
     const activateResponse = await fetch(
       `${baseUrl}/api/channels/${channelId}/activations`,

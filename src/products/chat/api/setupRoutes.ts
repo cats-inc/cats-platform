@@ -1,7 +1,7 @@
 import { createDefaultCoreState } from '../../../core/model.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { createDefaultWorkspaceState } from '../workspace/defaults.js';
-import { appendMessage, createChannel, createWorkspacePal } from '../workspace/model.js';
+import { createWorkspacePal } from '../workspace/model.js';
 import type { SetupCompleteInput } from './contracts.js';
 import {
   buildAppShellPayload,
@@ -52,26 +52,6 @@ async function handleSetupComplete(
       ...workspace,
       bossCatId: bossCat.id,
     };
-    workspace = createChannel(
-      workspace,
-      {
-        title: `Chat with ${bossCat.name}`,
-        topic: 'Your first conversation.',
-      },
-      now,
-    );
-
-    const channelId = workspace.selectedChannelId;
-    workspace = appendMessage(
-      workspace,
-      channelId,
-      {
-        senderKind: 'orchestrator',
-        senderName: bossCat.name,
-        body: `Meow! I'm ${bossCat.name}, your Boss Cat. What shall we work on?`,
-      },
-      now,
-    ).state;
     workspace = {
       ...workspace,
       globalOrchestrator: {

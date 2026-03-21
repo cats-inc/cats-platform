@@ -314,7 +314,7 @@ function SetupWizard({
         bossCatModel: model || undefined,
       });
       onComplete(result);
-      navigate(resolveDefaultChatPath(result.workspace.selectedChannelId), { replace: true });
+      navigate(NEW_CHAT_PATH, { replace: true });
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Setup failed.');
     } finally {
