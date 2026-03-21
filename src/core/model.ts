@@ -9,8 +9,8 @@ import type {
   CoreTaskRecord,
   CoreTaskStatus,
   OwnerProfileRecord,
-} from '../shared/core.js';
-import { CATS_CORE_STATE_VERSION } from '../shared/core.js';
+} from './types.js';
+import { CATS_CORE_STATE_VERSION } from './types.js';
 import type {
   WorkspaceChannelState,
   WorkspacePal,

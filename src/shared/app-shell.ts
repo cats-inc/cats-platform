@@ -1,4 +1,4 @@
-import type { RuntimeStatusSummary } from '../runtime/client.js';
+import type { RuntimeStatusSummary } from '../platform/runtime/client.js';
 
 export type WorkspaceChannelStatus =
   | 'planned'

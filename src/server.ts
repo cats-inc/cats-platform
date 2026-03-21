@@ -5,7 +5,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { AppConfig } from './config.js';
-import type { RuntimeClient } from './runtime/client.js';
+import type { RuntimeClient } from './platform/runtime/client.js';
+import { createTelegramRelay, type TelegramRelay } from './platform/transports/telegram/relay.js';
+import {
+  createFileBackedTelegramRelayStore,
+  InMemoryTelegramRelayStore,
+} from './platform/transports/telegram/store.js';
+import { MemoryWorkspaceStore, type WorkspaceStore } from './products/chat/workspace/store.js';
 import type {
   AssignChannelPalInput,
   CreateWorkspaceChannelInput,
@@ -18,7 +24,6 @@ import type {
 import {
   escapeContentDispositionFilename,
 } from './shared/channelPaths.js';
-import { MemoryWorkspaceStore, type WorkspaceStore } from './workspace/store.js';
 import {
   appendMessage,
   assignPalToChannel,
@@ -37,17 +42,12 @@ import {
   updateGlobalOrchestrator,
   pickAvatarColor,
   deletePal,
-} from './workspace/model.js';
-import { activateChannelSessions, routeChannelMessage } from './workspace/runtimeActions.js';
-import { createAppShell } from './workspace/shell.js';
+} from './products/chat/workspace/model.js';
+import { activateChannelSessions, routeChannelMessage } from './products/chat/workspace/runtimeActions.js';
+import { createAppShell } from './products/chat/workspace/shell.js';
 import { createDefaultCoreState } from './core/model.js';
 import { handleProviderModels, handleProviderRegistry } from './server/routes/providers.js';
 import { handleTelegramStatus, handleTelegramWebhook } from './server/routes/telegram.js';
-import { createTelegramRelay, type TelegramRelay } from './transports/telegram/relay.js';
-import {
-  createFileBackedTelegramRelayStore,
-  InMemoryTelegramRelayStore,
-} from './transports/telegram/store.js';
 
 export interface ServerDependencies {
   config: AppConfig;

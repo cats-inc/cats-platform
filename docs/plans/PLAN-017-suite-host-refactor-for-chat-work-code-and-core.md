@@ -68,46 +68,62 @@ taxonomy for every feature.
 
 ### Phase 1: Freeze Ownership Boundaries
 
-- [ ] Freeze the suite-host ownership split:
+- [x] Freeze the suite-host ownership split:
       - `core` owns shared suite truth
       - `products/chat` owns Chat-specific read models and workflow state
       - `products/work` owns Work-specific surfaces
       - `products/code` owns Code-specific surfaces
       - `platform` owns runtime, persistence, and transport infrastructure
-- [ ] Freeze the first-slice rule that `shared/` should only contain
+- [x] Freeze the first-slice rule that `shared/` should only contain
       product-neutral utilities.
-- [ ] Document any current modules that are still transitional rather than fully
+- [x] Document any current modules that are still transitional rather than fully
       relocated.
 
 **Deliverables**: a stable refactor map before files move.
 
 ### Phase 2: Establish the Skeleton Without Changing Behavior
 
-- [ ] Add the new top-level directories:
+- [x] Add the new top-level directories:
       - `src/app`
       - `src/core`
       - `src/products/chat`
       - `src/products/work`
       - `src/products/code`
       - `src/platform`
-- [ ] Introduce thin re-export modules where useful to keep the refactor
+- [x] Introduce thin re-export modules where useful to keep the refactor
       incremental rather than all-at-once.
-- [ ] Keep current entry points working during the migration.
+- [x] Keep current entry points working during the migration.
 
 **Deliverables**: code can start relocating without one giant disruptive move.
 
 ### Phase 3: Extract Shared Core Contracts and Persistence
 
-- [ ] Move current shared core contracts out of `src/shared/core.ts` into
+- [x] Move current shared core contracts out of `src/shared/core.ts` into
       `src/core/types.ts`.
-- [ ] Introduce `src/core/store.ts` as the shared core persistence boundary.
-- [ ] Define the first neutral core read/write API that does not require Chat
+- [x] Introduce `src/core/store.ts` as the shared core persistence boundary.
+- [x] Define the first neutral core read/write API that does not require Chat
       workspace types as input.
-- [ ] Keep compatibility adapters temporarily where existing code still expects
+- [x] Keep compatibility adapters temporarily where existing code still expects
       older imports.
 
 **Deliverables**: `Cats Core` becomes an explicit module with its own
 contracts and store boundary.
+
+Current transitional modules after phases 1-3:
+
+- `src/server.ts` is still the top-level Chat-first assembler, but now imports
+  Chat/runtime/transport code through the new compatibility slices where
+  practical.
+- `src/workspace/*` remains the implementation home for Chat behavior and is
+  surfaced through `src/products/chat/workspace/*` re-export modules until
+  Phase 5 relocation.
+- `src/runtime/*` and `src/transports/*` remain the implementation home for
+  infrastructure code and are surfaced through `src/platform/*` re-export
+  modules until deeper relocation.
+- `src/shared/core.ts` remains as an explicit compatibility adapter that
+  re-exports `src/core/types.ts`.
+- `src/shared/app-shell.ts` is still transitional and remains Chat-biased until
+  the later split described in ADR-025.
 
 ### Phase 4: Reverse the Current Dependency Direction
 

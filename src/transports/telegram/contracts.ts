@@ -1,4 +1,4 @@
-import type { BotBindingRecord } from '../../shared/core.js';
+import type { BotBindingRecord } from '../../core/types.js';
 
 export interface TelegramWebhookUpdate {
   update_id?: number;

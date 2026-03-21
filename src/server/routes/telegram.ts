@@ -1,11 +1,11 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { createPalActorId } from '../../core/model.js';
+import type { BotBindingRecord } from '../../core/types.js';
+import type { TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
+import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
+import type { WorkspaceStore } from '../../products/chat/workspace/store.js';
 import type { WorkspaceState } from '../../shared/app-shell.js';
-import type { BotBindingRecord } from '../../shared/core.js';
-import type { WorkspaceStore } from '../../workspace/store.js';
-import type { TelegramRelay } from '../../transports/telegram/relay.js';
-import type { TelegramWebhookUpdate } from '../../transports/telegram/contracts.js';
 
 interface TelegramRouteDependencies {
   workspaceStore: WorkspaceStore;

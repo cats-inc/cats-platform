@@ -11,7 +11,7 @@ import type {
   RuntimeProviderConfigRegistry,
   RuntimeRequestError,
   RuntimeClient,
-} from '../../runtime/client.js';
+} from '../../platform/runtime/client.js';
 
 interface ProviderRouteDependencies {
   runtimeClient: RuntimeClient;

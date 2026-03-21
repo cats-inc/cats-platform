@@ -21,7 +21,8 @@ import type {
   CatsCoreState,
   CoreTaskRecord,
   OwnerProfileRecord,
-} from '../shared/core.js';
+} from '../core/types.js';
+import type { CoreStore } from '../core/store.js';
 import { isOpaqueChannelId } from '../shared/channelPaths.js';
 import {
   createDefaultWorkspaceState,
@@ -34,16 +35,9 @@ import {
   syncCoreStateWithWorkspace,
 } from '../core/model.js';
 
-export interface WorkspaceStore {
+export interface WorkspaceStore extends CoreStore {
   read(): Promise<WorkspaceState>;
   write(state: WorkspaceState): Promise<WorkspaceState>;
-  readCore(): Promise<CatsCoreState>;
-  writeCore(state: CatsCoreState): Promise<CatsCoreState>;
-}
-
-export interface CoreStore {
-  readCore(): Promise<CatsCoreState>;
-  writeCore(state: CatsCoreState): Promise<CatsCoreState>;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
