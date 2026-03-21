@@ -673,6 +673,7 @@ test('canonical 405 for unsupported methods', async () => {
 
     const deleteOnOrchestrator = await fetch(`${baseUrl}/api/orchestrator`, { method: 'DELETE' });
     assert.equal(deleteOnOrchestrator.status, 405);
+    assert.equal(deleteOnOrchestrator.headers.get('allow'), 'GET, PATCH, PUT');
   });
 });
 

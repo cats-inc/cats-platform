@@ -439,10 +439,10 @@ owner approval:
       "id": "approval-task-channel-123",
       "kind": "dispatch_plan",
       "taskId": "task-channel-123",
-      "status": "not_requested",
+      "status": "pending",
       "requestedForActorId": "actor-owner",
       "requestedByActorId": "actor-orchestrator-global",
-      "requiresOwnerDecision": false,
+      "requiresOwnerDecision": true,
       "decisionOptions": [
         { "action": "approve", "label": "Approve" }
       ]

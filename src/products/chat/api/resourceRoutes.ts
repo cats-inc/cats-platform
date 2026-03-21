@@ -32,6 +32,8 @@ import {
   type ChatApiRouteContext,
 } from './shared.js';
 
+const ORCHESTRATOR_ALLOWED_METHODS = ['GET', 'PATCH', 'PUT'];
+
 async function handleRestGetWorkspace(
   context: ChatApiRouteContext,
   workspaceId: string,
@@ -134,8 +136,12 @@ async function handleRestCreateChannel(
     requireValidWorkspaceId(workspaceId);
     const body = await readJsonBody<CreateWorkspaceChannelInput>(context.request);
     const persisted = await persistCreatedChannel(context, body);
+    const createdChannelId = persisted.selectedChannelId;
+    if (!createdChannelId) {
+      throw new Error('Failed to select created channel');
+    }
     sendJson(context.response, 201, {
-      channel: buildChannelView(persisted, persisted.channels[0]),
+      channel: buildChannelView(persisted, createdChannelId),
     });
   } catch (error) {
     handleRestError(context, error);
@@ -434,7 +440,7 @@ export async function routeChatResourceApi(
       await handleRestUpdateOrchestrator(context, DEFAULT_WORKSPACE_ID);
       return true;
     }
-    sendMethodNotAllowed(context.response, ['GET', 'PATCH']);
+    sendMethodNotAllowed(context.response, ORCHESTRATOR_ALLOWED_METHODS);
     return true;
   }
 

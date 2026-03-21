@@ -122,7 +122,7 @@ export function createDefaultCoreState(): CatsCoreState {
 export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[] {
   return core.tasks
     .filter((task) =>
-      task.status === 'pending_approval' || task.approval.status === 'pending',
+      task.status === 'pending_approval' && task.approval.status === 'pending',
     )
     .map((task) => ({
     id: `approval-${task.id}`,

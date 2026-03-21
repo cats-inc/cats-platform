@@ -67,6 +67,25 @@ test('buildApprovalQueue only surfaces tasks that are actually pending approval'
       createdAt: '2026-03-21T00:00:00.000Z',
       updatedAt: '2026-03-21T00:01:00.000Z',
     },
+    {
+      id: 'task-stale-pending',
+      title: 'Stale pending approval task',
+      status: 'in_progress',
+      conversationId: 'conversation-2',
+      ownerActorId: 'actor-owner',
+      orchestratorActorId: 'actor-orchestrator-global',
+      assignedActorIds: ['actor-pal-2'],
+      summary: 'Approval should not stay queued once work has started',
+      approval: {
+        status: 'pending',
+        requestedAt: '2026-03-21T00:02:00.000Z',
+        decidedAt: null,
+        decidedByActorId: null,
+        notes: 'Stale approval marker',
+      },
+      createdAt: '2026-03-21T00:00:00.000Z',
+      updatedAt: '2026-03-21T00:02:00.000Z',
+    },
   );
 
   const approvals = buildApprovalQueue(core);
