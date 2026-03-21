@@ -35,6 +35,7 @@ import {
   buildOrchestratorPrompt,
   buildOrchestratorRewritePrompt,
   buildPalPrompt,
+  MAX_PROMPT_RECENT_MESSAGES,
 } from './prompts.js';
 import {
   DEFAULT_MAX_ROUTING_CONTINUATIONS,
@@ -75,7 +76,7 @@ interface DispatchExecution extends DispatchRequest {
   error: string | null;
 }
 
-const MAX_RECENT_CONTEXT_MESSAGES = 8;
+const MAX_RECENT_CONTEXT_MESSAGES = MAX_PROMPT_RECENT_MESSAGES;
 
 function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionStatus {
   switch (status) {
@@ -948,10 +949,10 @@ export async function routeChannelMessage(
   const nowIso = now.toISOString();
   const channelRouting = requireChannel(nextState, channelId).roomRouting;
   const roomRouting = resolveRoomRoutingState(channelRouting);
-  const maxContinuations = roomRouting.maxContinuations || DEFAULT_MAX_ROUTING_CONTINUATIONS;
-  const maxDispatches = roomRouting.maxDispatchesPerTurn || DEFAULT_MAX_ROUTING_DISPATCHES;
+  const maxContinuations = roomRouting.maxContinuations ?? DEFAULT_MAX_ROUTING_CONTINUATIONS;
+  const maxDispatches = roomRouting.maxDispatchesPerTurn ?? DEFAULT_MAX_ROUTING_DISPATCHES;
   const maxTargetVisits =
-    roomRouting.maxTargetVisitsPerTurn || DEFAULT_MAX_ROUTING_TARGET_VISITS;
+    roomRouting.maxTargetVisitsPerTurn ?? DEFAULT_MAX_ROUTING_TARGET_VISITS;
   const outcome = createRoutingOutcome(channelAfterUserMessage, userMessage, initialResolution, nowIso);
   let latestCheckpoint = addCheckpoint(
     outcome,

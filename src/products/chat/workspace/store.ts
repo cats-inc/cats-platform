@@ -310,19 +310,21 @@ function normalizeRoomRoutingOutcome(rawOutcome: unknown): RoomRoutingOutcome | 
   if (!outcomeRecord) {
     return null;
   }
+  const rawSourceSenderKind = readString(outcomeRecord.sourceSenderKind, 'system');
+  const sourceSenderKind = (
+    rawSourceSenderKind === 'user'
+    || rawSourceSenderKind === 'agent'
+    || rawSourceSenderKind === 'orchestrator'
+    || rawSourceSenderKind === 'system'
+  )
+    ? rawSourceSenderKind
+    : 'system';
 
   return {
     turnId: readString(outcomeRecord.turnId, randomUUID()),
     mode: normalizeRoomRoutingMode(outcomeRecord.mode, 'boss_chat'),
     sourceMessageId: readString(outcomeRecord.sourceMessageId),
-    sourceSenderKind: (
-      readString(outcomeRecord.sourceSenderKind, 'system') === 'user'
-      || readString(outcomeRecord.sourceSenderKind, 'system') === 'agent'
-      || readString(outcomeRecord.sourceSenderKind, 'system') === 'orchestrator'
-      || readString(outcomeRecord.sourceSenderKind, 'system') === 'system'
-    )
-      ? readString(outcomeRecord.sourceSenderKind, 'system') as WorkspaceMessage['senderKind']
-      : 'system',
+    sourceSenderKind: sourceSenderKind as WorkspaceMessage['senderKind'],
     sourceSenderName: readString(outcomeRecord.sourceSenderName, 'Chat'),
     status: normalizeRoomRoutingTurnStatus(outcomeRecord.status, 'idle'),
     resolvedTargets: Array.isArray(outcomeRecord.resolvedTargets)

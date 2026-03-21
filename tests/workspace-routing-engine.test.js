@@ -68,8 +68,12 @@ function usage(content) {
   };
 }
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function createDeferred() {
+  let resolve;
+  const promise = new Promise((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
 }
 
 async function createChannelState() {
@@ -148,25 +152,41 @@ async function createChannelState() {
 
 test('explicit multi-target mentions fan out in parallel and persist replies in completion order', async () => {
   const { state, channelId } = await createChannelState();
+  const agent1Reply = createDeferred();
+  const agent2Reply = createDeferred();
+  const bothRequested = createDeferred();
+  let agent1Requested = false;
+  let agent2Requested = false;
   const runtimeClient = createRuntimeStub(async ({ content }) => {
     if (content.includes('You are Agent-1')) {
-      await delay(25);
-      return usage('Agent-1 finished the review.');
+      agent1Requested = true;
+      if (agent2Requested) {
+        bothRequested.resolve();
+      }
+      return agent1Reply.promise;
     }
     if (content.includes('You are Agent-2')) {
-      await delay(5);
-      return usage('Agent-2 finished the review.');
+      agent2Requested = true;
+      if (agent1Requested) {
+        bothRequested.resolve();
+      }
+      return agent2Reply.promise;
     }
     throw new Error(`Unexpected prompt:\n${content}`);
   });
 
-  const dispatched = await routeChannelMessage(
+  const dispatchedPromise = routeChannelMessage(
     state,
     channelId,
     { body: '@Agent-1 @Agent-2 review this change.' },
     runtimeClient,
     new Date('2026-03-21T00:00:00.000Z'),
   );
+  await bothRequested.promise;
+  agent2Reply.resolve(usage('Agent-2 finished the review.'));
+  await Promise.resolve();
+  agent1Reply.resolve(usage('Agent-1 finished the review.'));
+  const dispatched = await dispatchedPromise;
   const channel = buildChannelView(dispatched.state, channelId);
   const replies = channel.messages.filter((message) => message.senderKind === 'agent');
 

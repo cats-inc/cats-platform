@@ -13,6 +13,8 @@ export interface PromptRoutingContext {
   sourceParticipantName?: string | null;
 }
 
+export const MAX_PROMPT_RECENT_MESSAGES = 8;
+
 function languageInstruction(responseLanguage: string): string {
   if (!responseLanguage || responseLanguage === 'en') {
     return 'Respond in English unless the user explicitly asks for another language.';
@@ -22,7 +24,7 @@ function languageInstruction(responseLanguage: string): string {
 }
 
 function formatRecentMessages(messages: WorkspaceMessage[]): string {
-  const recent = messages.slice(-6);
+  const recent = messages.slice(-MAX_PROMPT_RECENT_MESSAGES);
   if (recent.length === 0) {
     return 'No prior chat messages.';
   }

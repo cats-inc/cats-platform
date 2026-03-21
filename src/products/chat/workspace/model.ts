@@ -226,10 +226,11 @@ export function buildChannelView(
 ): WorkspaceChannelView {
   const channel =
     typeof channelOrId === 'string' ? requireChannel(state, channelOrId) : channelOrId;
+  const clonedChannel = structuredClone(channel);
 
   return {
-    ...structuredClone(channel),
-    roomRouting: resolveRoomRoutingState(channel.roomRouting),
+    ...clonedChannel,
+    roomRouting: clonedChannel.roomRouting ?? createDefaultRoomRoutingState(),
     assignedPals: channel.palAssignments
       .filter((assignment) => state.pals.some((p) => p.id === assignment.palId))
       .map((assignment) =>
