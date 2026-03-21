@@ -549,6 +549,40 @@ export async function activateWorkspaceChannel(
   return { appShell, results: activation.results };
 }
 
+export async function uploadChannelAttachments(
+  channelId: string,
+  files: File[],
+  signal?: AbortSignal,
+): Promise<Array<{ name: string; relativePath: string }>> {
+  const encoded = await Promise.all(
+    files.map(async (file) => {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return { name: file.name, data: btoa(binary) };
+    }),
+  );
+
+  const response = await fetch(`/api/channels/${channelId}/attachments`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ files: encoded }),
+    signal,
+  });
+
+  const result = await expectJson<{
+    attachments: Array<{ name: string; relativePath: string }>;
+  }>(response, `attachment upload returned ${response.status}`);
+
+  return result.attachments;
+}
+
 export async function sendWorkspaceMessage(
   channelId: string,
   input: SendChannelMessageInput,

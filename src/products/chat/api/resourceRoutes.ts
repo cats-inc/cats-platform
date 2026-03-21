@@ -1,3 +1,6 @@
+import { access, mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import {
   activateChannelSessions,
@@ -28,11 +31,57 @@ import {
   persistCreatedPal,
   persistDeletedChannel,
   requireValidWorkspaceId,
+  sendRestError,
   sendChannelExport,
   type ChatApiRouteContext,
 } from './shared.js';
 
 const ORCHESTRATOR_ALLOWED_METHODS = ['GET', 'PATCH', 'PUT'];
+
+function sanitizeAttachmentName(rawName: string): string {
+  const basename = path.basename(rawName).trim();
+  const normalized = basename
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    .replace(/[. ]+$/g, '');
+
+  if (!normalized || normalized === '.' || normalized === '..') {
+    return 'attachment';
+  }
+
+  return normalized;
+}
+
+async function resolveUniqueAttachmentName(
+  directory: string,
+  rawName: string,
+  reservedNames: Set<string>,
+): Promise<string> {
+  const sanitizedName = sanitizeAttachmentName(rawName);
+  const parsed = path.parse(sanitizedName);
+  const baseName = parsed.name || 'attachment';
+  const extension = parsed.ext;
+
+  let attempt = 0;
+  while (true) {
+    const candidate = attempt === 0
+      ? `${baseName}${extension}`
+      : `${baseName}-${attempt + 1}${extension}`;
+
+    if (reservedNames.has(candidate)) {
+      attempt += 1;
+      continue;
+    }
+
+    try {
+      await access(path.join(directory, candidate));
+      attempt += 1;
+      continue;
+    } catch {
+      reservedNames.add(candidate);
+      return candidate;
+    }
+  }
+}
 
 async function handleRestGetWorkspace(
   context: ChatApiRouteContext,
@@ -224,6 +273,67 @@ async function handleRestSendMessage(
         results: dispatch.results,
       },
     });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleRestUploadAttachments(
+  context: ChatApiRouteContext,
+  workspaceId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidWorkspaceId(workspaceId);
+    const body = await readJsonBody<{
+      files: Array<{ name: string; data: string }>;
+    }>(context.request);
+
+    if (!Array.isArray(body.files) || body.files.length === 0) {
+      sendRestError(
+        context,
+        400,
+        'attachments_required',
+        'No files provided.',
+      );
+      return;
+    }
+
+    const state = await context.dependencies.workspaceStore.read();
+    const channel = requireChannel(state, channelId);
+    const cwd = channel.repoPath ?? channel.workspaceCwd;
+
+    if (!cwd) {
+      sendRestError(
+        context,
+        409,
+        'channel_cwd_required',
+        'Channel has no working directory. Activate the channel first.',
+      );
+      return;
+    }
+
+    const attachDir = path.join(cwd, '.cats-attachments');
+    await mkdir(attachDir, { recursive: true });
+
+    const attachments: Array<{ name: string; relativePath: string }> = [];
+    const reservedNames = new Set<string>();
+
+    for (const file of body.files) {
+      const safeName = await resolveUniqueAttachmentName(
+        attachDir,
+        file.name,
+        reservedNames,
+      );
+      const filePath = path.join(attachDir, safeName);
+      await writeFile(filePath, Buffer.from(file.data, 'base64'));
+      attachments.push({
+        name: safeName,
+        relativePath: `.cats-attachments/${safeName}`,
+      });
+    }
+
+    sendJson(context.response, 200, { attachments });
   } catch (error) {
     handleRestError(context, error);
   }
@@ -492,6 +602,23 @@ export async function routeChatResourceApi(
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  const canonicalChannelAttachmentsMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/attachments$/u,
+  );
+  if (canonicalChannelAttachmentsMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleRestUploadAttachments(
+      context,
+      DEFAULT_WORKSPACE_ID,
+      canonicalChannelAttachmentsMatch[0],
+    );
     return true;
   }
 

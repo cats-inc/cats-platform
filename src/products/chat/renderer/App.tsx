@@ -45,6 +45,7 @@ import {
   updateSelectedChannel,
   updateVerbosePreference,
   deleteGlobalPal,
+  uploadChannelAttachments,
 } from './api';
 import { ProviderModelFields } from './components/ProviderModelFields';
 import { getProviderDisplayName } from './providerCatalog';
@@ -806,7 +807,14 @@ export default function App() {
         rollbackPayload = activation.appShell;
       }
 
-      const dispatch = await sendWorkspaceMessage(channelId, { body });
+      let messageBody = body;
+      if (wasDraftingNewChat && draftFiles.length > 0) {
+        const attachments = await uploadChannelAttachments(channelId, draftFiles);
+        const refs = attachments.map((a) => `- ${a.relativePath}`).join('\n');
+        messageBody = `[Attached files in working directory:]\n${refs}\n\n${body}`;
+      }
+
+      const dispatch = await sendWorkspaceMessage(channelId, { body: messageBody });
       setState({ status: 'ready', payload: dispatch.appShell });
       setComposerDraft('');
       setFeedback('');
