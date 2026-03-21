@@ -1739,6 +1739,229 @@ textarea {
   font-size: 0.75rem;
 }
 
+/* Composer plus menu and draft context */
+
+.composerLeftGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.composerPlusWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.composerPlusMenu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  min-width: 200px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 30;
+  padding: 4px;
+}
+
+.composerPlusMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.composerPlusMenuItem:hover {
+  background: var(--panel-hover);
+}
+
+.composerPlusMenuItem svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.composerCwdChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+}
+
+.composerCwdChip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composerChipClose {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-soft);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.composerChipClose:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composerAvatarStack {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.composerStackItem {
+  position: relative;
+}
+
+.composerStackAvatar {
+  width: 26px;
+  height: 26px;
+  font-size: 0.6rem;
+  border: 0;
+}
+
+.composerStackRemove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.6rem;
+  cursor: pointer;
+  display: none;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  z-index: 2;
+}
+
+.composerStackItem:hover .composerStackRemove {
+  display: grid;
+}
+
+.composerStackRemove:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+/* Attachment preview cards */
+
+.composerAttachments {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0 8px;
+  overflow-x: auto;
+}
+
+.attachmentCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 120px;
+  min-width: 120px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--canvas-bg);
+  overflow: hidden;
+}
+
+.attachmentRemove {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.attachmentCard:hover .attachmentRemove {
+  opacity: 1;
+}
+
+.attachmentRemove:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.attachmentPreview {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+}
+
+.attachmentFileIcon {
+  display: grid;
+  place-items: center;
+  height: 80px;
+  color: var(--muted-soft);
+}
+
+.attachmentName {
+  padding: 6px 8px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.addPalRemoveButton {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.addPalRemoveButton:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
 .viewIntro h1,
 .overviewHeader h1,
 .loadingPanel h1,

@@ -122,6 +122,12 @@ function palInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
+function truncatePath(fullPath: string, maxLen = 20): string {
+  const name = fullPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? fullPath;
+  if (name.length <= maxLen) return name;
+  return name.slice(0, maxLen - 3) + '...';
+}
+
 const GREETING_LINES = [
   "Meow. Ready when you are.",
   "Your cat hasn't napped yet.",
@@ -432,7 +438,14 @@ export default function App() {
   );
   const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [greeting] = useState(pickGreeting);
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [draftCwd, setDraftCwd] = useState<string | null>(null);
+  const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
+  const [draftFiles, setDraftFiles] = useState<File[]>([]);
+  const [draftIncludeBossCat, setDraftIncludeBossCat] = useState(true);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const readyWorkspace = state.status === 'ready' ? state.payload.workspace : null;
   const selectedChannelId = readyWorkspace?.selectedChannelId ?? null;
   const selectedChannelViewId = readyWorkspace?.selectedChannel?.id ?? null;
@@ -450,7 +463,7 @@ export default function App() {
   }, [routeChannelTitle]);
 
   useEffect(() => {
-    if (!accountMenuOpen && !overflowMenuOpenId) return;
+    if (!accountMenuOpen && !overflowMenuOpenId && !plusMenuOpen) return;
     function handleClick(e: MouseEvent) {
       const target = e.target as Node;
       if (accountMenuOpen && accountMenuRef.current && !accountMenuRef.current.contains(target)) {
@@ -463,10 +476,13 @@ export default function App() {
           setOverflowMenuOpenId(null);
         }
       }
+      if (plusMenuOpen && plusMenuRef.current && !plusMenuRef.current.contains(target)) {
+        setPlusMenuOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [accountMenuOpen, overflowMenuOpenId]);
+  }, [accountMenuOpen, overflowMenuOpenId, plusMenuOpen]);
 
   useEffect(() => {
     writeSidebarOpenPreference(
@@ -711,6 +727,11 @@ export default function App() {
     setComposerDraft('');
     setFeedback('');
     setAddPalOpen(false);
+    setPlusMenuOpen(false);
+    setDraftCwd(null);
+    setDraftCatIds([]);
+    setDraftFiles([]);
+    setDraftIncludeBossCat(true);
   }
 
   async function submitComposerMessage(): Promise<void> {
@@ -808,6 +829,50 @@ export default function App() {
     await submitComposerMessage();
   }
 
+  async function handlePickFolder(): Promise<void> {
+    try {
+      if ('showDirectoryPicker' in window) {
+        const handle = await (window as unknown as { showDirectoryPicker(): Promise<{ name: string }> }).showDirectoryPicker();
+        setDraftCwd(handle.name);
+      }
+    } catch {
+      // User cancelled or API not available
+    }
+  }
+
+  function toggleDraftCat(palId: string): void {
+    setDraftCatIds((prev) =>
+      prev.includes(palId) ? prev.filter((id) => id !== palId) : [...prev, palId],
+    );
+  }
+
+  async function onCreateAndDraftPal(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (state.status !== 'ready') return;
+    setBusy('pal:create-assign');
+    try {
+      const previousIds = new Set(state.payload.workspace.pals.map((p) => p.id));
+      const created = await createGlobalPal({
+        name: palForm.name.trim(),
+        provider: palForm.provider,
+        instance: palForm.instance || undefined,
+        model: palForm.model || undefined,
+      });
+      startTransition(() => setState({ status: 'ready', payload: created }));
+      const newPal = created.workspace.pals.find((p) => !previousIds.has(p.id));
+      if (newPal) {
+        setDraftCatIds((prev) => [...prev, newPal.id]);
+      }
+      setPalForm(emptyPalForm());
+      setAddPalOpen(false);
+      setFeedback('');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to create cat.');
+    } finally {
+      setBusy('');
+    }
+  }
+
   if (state.status === 'loading') {
     return <BootShell />;
   }
@@ -871,15 +936,22 @@ export default function App() {
       && pal.id !== payload.workspace.bossCatId
       && !activePalIds.has(pal.id),
   );
+  const draftPalIds = new Set(draftCatIds);
   const hasConversationStarted =
     selectedChannel?.messages.some((message) => message.senderKind !== 'system') ?? false;
 
   const palCreationForm = (
     <form
       className="stackForm"
-      onSubmit={(event) => (
-        surface === 'settings' ? void onCreatePal(event) : void onCreateAndAssignPal(event)
-      )}
+      onSubmit={(event) => {
+        if (surface === 'settings') {
+          void onCreatePal(event);
+        } else if (showingNewChatDraft) {
+          void onCreateAndDraftPal(event);
+        } else {
+          void onCreateAndAssignPal(event);
+        }
+      }}
     >
       <label className="fieldLabel">
         <span>Name</span>
@@ -911,7 +983,9 @@ export default function App() {
           ? 'Saving...'
           : surface === 'settings'
             ? 'Save Cat'
-            : 'Create & Add to Chat'}
+            : showingNewChatDraft
+              ? 'Create & Add'
+              : 'Create & Add to Chat'}
       </button>
     </form>
   );
@@ -1372,6 +1446,41 @@ export default function App() {
               <section className="draftShell">
                 <div className="draftGreeting"><h1>{greeting}</h1></div>
                 <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
+                  {draftFiles.length > 0 ? (
+                    <div className="composerAttachments">
+                      {draftFiles.map((file, index) => {
+                        const isImage = file.type.startsWith('image/');
+                        return (
+                          <div key={`${file.name}-${file.size}-${index}`} className="attachmentCard">
+                            <button
+                              className="attachmentRemove"
+                              type="button"
+                              onClick={() => setDraftFiles((prev) => prev.filter((_, i) => i !== index))}
+                              aria-label={`Remove ${file.name}`}
+                            >
+                              ×
+                            </button>
+                            {isImage ? (
+                              <img
+                                className="attachmentPreview"
+                                src={URL.createObjectURL(file)}
+                                alt={file.name}
+                                onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+                              />
+                            ) : (
+                              <div className="attachmentFileIcon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                  <path d="M14 2v6h6" />
+                                </svg>
+                              </div>
+                            )}
+                            <span className="attachmentName">{file.name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                   <textarea
                     className="composerInput"
                     rows={1}
@@ -1381,12 +1490,135 @@ export default function App() {
                     onKeyDown={(event) => void onComposerKeyDown(event)}
                   />
                   <div className="composerBottomRow">
-                    <button className="composerPlusButton" type="button" aria-label="Attach">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M8 3v10" />
-                        <path d="M3 8h10" />
-                      </svg>
-                    </button>
+                    <div className="composerLeftGroup">
+                      <div className="composerPlusWrapper" ref={plusMenuRef}>
+                        <button
+                          className="composerPlusButton"
+                          type="button"
+                          aria-label="Attach"
+                          onClick={() => setPlusMenuOpen(!plusMenuOpen)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 3v10" />
+                            <path d="M3 8h10" />
+                          </svg>
+                        </button>
+                        {plusMenuOpen ? (
+                          <div className="composerPlusMenu">
+                            <button
+                              className="composerPlusMenuItem"
+                              type="button"
+                              onClick={() => { fileInputRef.current?.click(); setPlusMenuOpen(false); }}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
+                                <path d="M8 2v8" />
+                                <path d="M4 6l4-4 4 4" />
+                              </svg>
+                              新增照片和檔案
+                            </button>
+                            <button
+                              className="composerPlusMenuItem"
+                              type="button"
+                              onClick={() => { void handlePickFolder(); setPlusMenuOpen(false); }}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                              </svg>
+                              指定本機資料夾
+                            </button>
+                            <button
+                              className="composerPlusMenuItem"
+                              type="button"
+                              onClick={() => {
+                                setPlusMenuOpen(false);
+                                setAddPalOpen(true);
+                                setAddPalTab('existing');
+                                setPalForm(emptyPalForm());
+                                setFeedback('');
+                              }}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="8" cy="5" r="3" />
+                                <path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5" />
+                              </svg>
+                              增加 Cat
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                      {draftCwd ? (
+                        <span className="composerCwdChip" title={draftCwd}>
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                          </svg>
+                          <span>{truncatePath(draftCwd)}</span>
+                          <button
+                            className="composerChipClose"
+                            type="button"
+                            onClick={() => setDraftCwd(null)}
+                            aria-label="Remove folder"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ) : null}
+                      {(() => {
+                        const showBoss = draftIncludeBossCat && Boolean(payload.workspace.bossCatId);
+                        const totalCats = (showBoss ? 1 : 0) + draftCatIds.length;
+                        if (totalCats === 0) return null;
+                        return (
+                          <div className="composerAvatarStack">
+                            {showBoss ? (
+                              <div className="composerStackItem">
+                                <div
+                                  className="palAvatar composerStackAvatar"
+                                  title={bossCatName}
+                                  style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}
+                                >
+                                  {palInitials(bossCatName)}
+                                </div>
+                                {totalCats > 1 ? (
+                                  <button
+                                    className="composerStackRemove"
+                                    type="button"
+                                    onClick={() => setDraftIncludeBossCat(false)}
+                                    aria-label={`Remove ${bossCatName}`}
+                                  >
+                                    ×
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
+                            {draftCatIds.map((id) => {
+                              const pal = payload.workspace.pals.find((p) => p.id === id);
+                              if (!pal) return null;
+                              return (
+                                <div key={id} className="composerStackItem">
+                                  <div
+                                    className="palAvatar composerStackAvatar"
+                                    title={pal.name}
+                                    style={pal.avatarColor ? { background: pal.avatarColor } : undefined}
+                                  >
+                                    {palInitials(pal.name)}
+                                  </div>
+                                  {totalCats > 1 ? (
+                                    <button
+                                      className="composerStackRemove"
+                                      type="button"
+                                      onClick={() => toggleDraftCat(id)}
+                                      aria-label={`Remove ${pal.name}`}
+                                    >
+                                      ×
+                                    </button>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
                     <button
                       className="composerSendButton"
                       disabled={!composerDraft.trim() || busy === 'message:send'}
@@ -1399,6 +1631,20 @@ export default function App() {
                       </svg>
                     </button>
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={(event) => {
+                      const input = event.currentTarget;
+                      if (input.files && input.files.length > 0) {
+                        const selected = Array.from(input.files);
+                        setDraftFiles((prev) => [...prev, ...selected]);
+                      }
+                      input.value = '';
+                    }}
+                  />
                 </form>
               </section>
             </div>
@@ -1410,7 +1656,7 @@ export default function App() {
         </Routes>
       </main>
 
-      {addPalOpen && selectedChannel ? (
+      {addPalOpen && (selectedChannel || showingNewChatDraft) ? (
         <div className="addPalPanel">
           <div className="addPalPanelHeader">
             <h2>Add cat to chat</h2>
@@ -1452,14 +1698,24 @@ export default function App() {
                       <strong>{pal.name}</strong>
                       <p>{executionLabel(pal)}</p>
                     </div>
-                    <button
-                      className="addPalAssignButton"
-                      type="button"
-                      disabled={busy === `pal:assign:${pal.id}`}
-                      onClick={() => void onAssignExistingPal(pal)}
-                    >
-                      {busy === `pal:assign:${pal.id}` ? 'Adding...' : 'Add'}
-                    </button>
+                    {showingNewChatDraft ? (
+                      <button
+                        className={draftPalIds.has(pal.id) ? 'addPalAssignButton addPalRemoveButton' : 'addPalAssignButton'}
+                        type="button"
+                        onClick={() => toggleDraftCat(pal.id)}
+                      >
+                        {draftPalIds.has(pal.id) ? 'Remove' : 'Add'}
+                      </button>
+                    ) : (
+                      <button
+                        className="addPalAssignButton"
+                        type="button"
+                        disabled={busy === `pal:assign:${pal.id}`}
+                        onClick={() => void onAssignExistingPal(pal)}
+                      >
+                        {busy === `pal:assign:${pal.id}` ? 'Adding...' : 'Add'}
+                      </button>
+                    )}
                   </div>
                 ))
               ) : (
