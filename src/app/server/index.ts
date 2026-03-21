@@ -58,6 +58,8 @@ import {
   handleTelegramStatus,
   handleTelegramWebhook,
 } from '../../server/routes/telegram.js';
+import { handleWorkPlaceholder } from '../../products/work/api/index.js';
+import { handleCodePlaceholder } from '../../products/code/api/index.js';
 
 export interface ServerDependencies {
   config: AppConfig;
@@ -1594,6 +1596,26 @@ function routeRequest(
       return Promise.resolve();
     }
     return handleOwnerProfile(response, dependencies);
+  }
+
+  if (url.pathname === '/api/work') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return dependencies.workspaceStore.readCore().then((core) => {
+      handleWorkPlaceholder(response, core);
+    });
+  }
+
+  if (url.pathname === '/api/code') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return Promise.resolve();
+    }
+    return dependencies.workspaceStore.readCore().then((core) => {
+      handleCodePlaceholder(response, core);
+    });
   }
 
   if (url.pathname === '/api/setup/complete') {

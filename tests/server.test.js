@@ -150,6 +150,28 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
   });
 });
 
+test('GET /api/work and /api/code expose dedicated placeholder surfaces', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const workResponse = await fetch(`${baseUrl}/api/work`);
+    assert.equal(workResponse.status, 200);
+    const workPayload = await workResponse.json();
+    assert.equal(workPayload.product.id, 'work');
+    assert.equal(workPayload.product.status, 'placeholder');
+    assert.equal(workPayload.product.routeBase, '/work');
+    assert.equal(workPayload.summary.ownerActorId, 'actor-owner');
+    assert.ok(workPayload.extensionPoints.futureRoutes.includes('/api/work/war-room'));
+
+    const codeResponse = await fetch(`${baseUrl}/api/code`);
+    assert.equal(codeResponse.status, 200);
+    const codePayload = await codeResponse.json();
+    assert.equal(codePayload.product.id, 'code');
+    assert.equal(codePayload.product.status, 'placeholder');
+    assert.equal(codePayload.product.routeBase, '/code');
+    assert.equal(codePayload.summary.ownerActorId, 'actor-owner');
+    assert.ok(codePayload.extensionPoints.futureRoutes.includes('/api/code/previews'));
+  });
+});
+
 test('workspace API covers chat setup, activation, messaging, global pals, assignments, and export', async () => {
   const runtimeClient = createRuntimeStub();
   const workspaceStore = new MemoryWorkspaceStore();

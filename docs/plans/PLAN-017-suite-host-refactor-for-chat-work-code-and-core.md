@@ -211,16 +211,30 @@ Current transitional modules during Phase 6:
 
 ### Phase 7: Add Work and Code Placeholders
 
-- [ ] Add empty or minimal `products/work/api` and `products/work/renderer`
+- [x] Add empty or minimal `products/work/api` and `products/work/renderer`
       entry modules.
-- [ ] Add empty or minimal `products/code/api` and `products/code/renderer`
+- [x] Add empty or minimal `products/code/api` and `products/code/renderer`
       entry modules.
-- [ ] Add placeholder routes and surfaces so new work can land in dedicated
+- [x] Add placeholder routes and surfaces so new work can land in dedicated
       locations without touching Chat modules.
-- [ ] Reserve extension points for later Work and Code projections from core.
+- [x] Reserve extension points for later Work and Code projections from core.
 
 **Deliverables**: parallel Work/Code development can begin without immediately
 colliding with Chat code.
+
+Current placeholder modules after Phase 7:
+
+- `src/products/work/api/*` now exposes a dedicated Work placeholder payload
+  derived from Cats Core, plus reserved future routes for team/workflow
+  surfaces.
+- `src/products/code/api/*` now exposes a dedicated Code placeholder payload
+  derived from Cats Core, plus reserved future routes for project/preview/build
+  surfaces.
+- `src/products/work/renderer/*` and `src/products/code/renderer/*` now mount
+  dedicated placeholder roots through the suite router instead of relying on
+  inline placeholder JSX in `src/app/renderer/App.tsx`.
+- `src/app/server/index.ts` still wires the placeholder routes directly until a
+  later route-module extraction completes the Phase 6 split.
 
 ### Phase 8: Validation and Cleanup
 
