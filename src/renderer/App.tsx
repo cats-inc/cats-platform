@@ -1,1 +1,1 @@
-export { default } from '../products/chat/renderer/App';
+export { default } from '../app/renderer/App';

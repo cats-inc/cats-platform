@@ -185,15 +185,29 @@ Current transitional modules during Phase 5:
 
 ### Phase 6: Turn Top-Level Server and Renderer into Assemblers
 
-- [ ] Replace the current top-level `server.ts` role with an app-level assembly
+- [x] Replace the current top-level `server.ts` role with an app-level assembly
       module that wires product-slice routes together.
 - [ ] Split Chat routes from top-level server composition.
-- [ ] Replace the current single-surface renderer shape with an app-level
+- [x] Replace the current single-surface renderer shape with an app-level
       router that can host Chat, Work, and Code roots.
-- [ ] Keep one renderer bundle and one top-level entry in the first slice.
+- [x] Keep one renderer bundle and one top-level entry in the first slice.
 
 **Deliverables**: top-level app modules compose product slices instead of
 owning Chat behavior directly.
+
+Current transitional modules during Phase 6:
+
+- `src/server.ts` is now an explicit compatibility shim that re-exports the
+  app-level assembler from `src/app/server/index.ts`.
+- `src/renderer/main.tsx` and `src/renderer/App.tsx` are now explicit
+  compatibility shims that re-export the suite-level renderer entry from
+  `src/app/renderer/*`.
+- `src/app/server/index.ts` now owns the suite-level server assembly, but still
+  contains most Chat-specific route handling until the `products/chat/api/*`
+  extraction is complete.
+- `src/app/renderer/App.tsx` now reserves suite slots for `Cats Work` and
+  `Cats Code`, while still routing all existing non-Work/non-Code paths into
+  the Chat product slice.
 
 ### Phase 7: Add Work and Code Placeholders
 

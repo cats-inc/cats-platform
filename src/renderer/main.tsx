@@ -1,1 +1,1 @@
-import '../products/chat/renderer/main';
+import '../app/renderer/main';
