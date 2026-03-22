@@ -7,6 +7,10 @@
  */
 
 import type {
+  RoomRouteBlockedReason,
+  RoomRouteDefaultTargetReason,
+  RoomRouteResolution,
+  RoomRouteResolutionMode,
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
   ChatChannelCat,
@@ -20,10 +24,18 @@ import {
 } from './model.js';
 import { parseMentions } from './mentionParsing.js';
 
-export type MentionRoutingMode = 'room_default' | 'explicit_single' | 'explicit_multi';
+export type MentionRoutingMode = RoomRouteResolutionMode;
 
 export interface RoutingTarget extends RoomRoutingParticipantRef {
   sessionId: string | null;
+}
+
+export interface RoomDefaultTargetResolution {
+  participant: RoomRoutingParticipantRef | null;
+  target: RoutingTarget | null;
+  defaultTargetReason: RoomRouteDefaultTargetReason | null;
+  blockedReason: RoomRouteBlockedReason | null;
+  note: string | null;
 }
 
 export interface MentionRouteResult {
@@ -37,6 +49,8 @@ export interface MentionRouteResult {
   trigger: RoomRoutingTrigger;
   /** Classification of the routing decision */
   routingMode: MentionRoutingMode;
+  /** Stable machine-readable routing resolution for this turn */
+  resolution: RoomRouteResolution;
 }
 
 function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
@@ -61,18 +75,84 @@ function buildCatTarget(cat: ChatChannelCat): RoutingTarget {
   };
 }
 
-function resolveDefaultTarget(state: ChatState, channel: ChatChannelView): RoutingTarget {
+function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantRef {
+  return {
+    participantKind: target.participantKind,
+    participantId: target.participantId,
+    participantName: target.participantName,
+  };
+}
+
+function buildDirectLeadParticipantRef(
+  state: ChatState,
+  leadParticipantId: string,
+): RoomRoutingParticipantRef {
+  const leadCatName = state.cats.find((cat) => cat.id === leadParticipantId)?.name
+    ?? 'Direct Cat';
+  return {
+    participantKind: 'cat',
+    participantId: leadParticipantId,
+    participantName: leadCatName,
+  };
+}
+
+export function resolveRoomDefaultRoutingTarget(
+  state: ChatState,
+  channelOrId: ChatChannelView | string,
+): RoomDefaultTargetResolution {
+  const channel = buildChannelView(state, channelOrId);
   const routing = channel.roomRouting ?? null;
 
   if (routing?.mode === 'direct_cat_chat' && routing.leadParticipantId) {
     const leadCat = activeAssignedCats(channel)
       .find((cat) => cat.catId === routing.leadParticipantId);
     if (leadCat) {
-      return buildCatTarget(leadCat);
+      const target = buildCatTarget(leadCat);
+      return {
+        participant: toParticipantRef(target),
+        target,
+        defaultTargetReason: 'direct_chat_lead',
+        blockedReason: null,
+        note: null,
+      };
     }
+
+    return {
+      participant: buildDirectLeadParticipantRef(state, routing.leadParticipantId),
+      target: null,
+      defaultTargetReason: 'direct_chat_lead',
+      blockedReason: 'missing_direct_chat_lead',
+      note: 'This direct chat no longer has an active lead Cat. Re-add the Cat or mention another participant explicitly.',
+    };
   }
 
-  return buildOrchestratorTarget(state, channel);
+  const target = buildOrchestratorTarget(state, channel);
+  return {
+    participant: toParticipantRef(target),
+    target,
+    defaultTargetReason: 'boss_chat_default',
+    blockedReason: null,
+    note: null,
+  };
+}
+
+function createRouteResolution(input: {
+  defaultTarget: RoomDefaultTargetResolution;
+  routingMode: MentionRoutingMode;
+  selectionKind: RoomRouteResolution['selectionKind'];
+  blockedReason?: RoomRouteBlockedReason | null;
+  fallbackTarget?: RoomRoutingParticipantRef | null;
+  note?: string | null;
+}): RoomRouteResolution {
+  return {
+    routingMode: input.routingMode,
+    selectionKind: input.selectionKind,
+    defaultTarget: input.defaultTarget.participant,
+    defaultTargetReason: input.defaultTarget.defaultTargetReason,
+    fallbackTarget: input.fallbackTarget ?? null,
+    blockedReason: input.blockedReason ?? null,
+    note: input.note ?? input.defaultTarget.note,
+  };
 }
 
 /**
@@ -99,6 +179,7 @@ export function resolveMentionRoute(
 ): MentionRouteResult {
   const channel = buildChannelView(state, channelId);
   const mentionNames = parseMentions(body);
+  const defaultTarget = resolveRoomDefaultRoutingTarget(state, channel);
   const activeCats = activeAssignedCats(channel);
   const catsByName = new Map(activeCats.map((cat) => [cat.name.toLowerCase(), cat]));
   const orchestratorTarget = buildOrchestratorTarget(state, channel);
@@ -110,12 +191,29 @@ export function resolveMentionRoute(
   const unresolved: string[] = [];
 
   if (mentionNames.length === 0) {
+    const targets = options.allowDefaultTarget && defaultTarget.target
+      ? [defaultTarget.target]
+      : [];
+    const resolution = targets.length > 0
+      ? createRouteResolution({
+          defaultTarget,
+          routingMode: 'room_default',
+          selectionKind: 'default_target',
+        })
+      : createRouteResolution({
+          defaultTarget,
+          routingMode: 'room_default',
+          selectionKind: 'blocked',
+          blockedReason: defaultTarget.blockedReason ?? 'no_valid_targets',
+          note: defaultTarget.note ?? 'No valid room targets were resolved for this turn.',
+        });
     return {
-      targets: options.allowDefaultTarget ? [resolveDefaultTarget(state, channel)] : [],
+      targets,
       unresolvedMentions: unresolved,
       parsedMentionNames: mentionNames,
       trigger: 'room_default',
       routingMode: 'room_default',
+      resolution,
     };
   }
 
@@ -153,5 +251,18 @@ export function resolveMentionRoute(
     parsedMentionNames: mentionNames,
     trigger: options.explicitTrigger,
     routingMode,
+    resolution: targets.length === 0
+      ? createRouteResolution({
+          defaultTarget,
+          routingMode,
+          selectionKind: 'blocked',
+          blockedReason: 'no_valid_targets',
+          note: 'No valid room targets matched the explicit mentions for this turn.',
+        })
+      : createRouteResolution({
+          defaultTarget,
+          routingMode,
+          selectionKind: 'explicit_mentions',
+        }),
   };
 }

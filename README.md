@@ -20,10 +20,11 @@ The current slices are:
   surfaces, and a preview-ready side pane
 - file-backed chat state, cat execution, and transcript persistence
 - runtime-backed channel activation, mode-aware sleep/wake entry, and routed messaging through `cats-runtime`
-- a global orchestrator surface, deterministic `@mention` handling, transcript
-  export, and visible presence states
-- `My Cats` private-lane entry that reopens an existing direct room or creates
-  the canonical direct room immediately when needed
+- a global orchestrator surface, direct-cat routing, deterministic `@mention`
+  handling, transcript export, visible presence states, and machine-readable
+  room-routing / wake-request state
+- `My Cats` private-lane entry that reopens an existing direct room or opens a
+  direct draft lane when needed
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - provider-agnostic cat memory checkpoints plus channel-scoped execution leases
 
@@ -41,8 +42,10 @@ The current slices are:
 - [x] Separate cat identity and memory from provider-specific execution state
 - [x] Add first-run `/setup` onboarding with default Boss Cat bootstrap and
       chat-first entry routing
-- [x] Land chat session sleep/wake lifecycle, direct Cat chat defaults, and room-header presence indicators
+- [x] Land chat session sleep/wake lifecycle, direct Cat chat defaults, stable
+      room-routing / wake semantics, and room-header presence indicators
 - [x] Land Cat-private room entry from `My Cats` plus Telegram binding markers
+      without auto-persisting new direct rooms
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open

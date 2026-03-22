@@ -112,16 +112,25 @@ Each channel now exposes a `roomRouting` read model with:
 
 - `mode` and `leadParticipantId` for default-target resolution
 - guard limits such as `maxContinuations` and `maxDispatchesPerTurn`
-- `lastOutcome` for the most recent explicit-routing outcome, including
-  resolved targets, unresolved mentions, dispatch records, guard reason, and
-  checkpoint events
+- `lastOutcome` for the most recent routed turn, including:
+  - `resolution` with stable machine-readable routing semantics
+    (`routingMode`, `selectionKind`, default-target reason, and any blocked
+    reason)
+  - resolved targets, unresolved mentions, dispatch records, guard reason, and
+    checkpoint events
 - `lastCheckpoint` for the latest room-level routing event
+- `lastWakeRequest` for the most recent room-entry or route-before-dispatch wake
+  decision
+- `wakeHistory` for recent wake requests with `trigger`, `reason`, `status`,
+  and any error text
 - `workflow` for room-level system state, including:
   - `activeTurn` while a room turn is still in flight
   - `turnHistory` with completed/blocked/failed workflow turns
   - `eventHistory` with first-class system events such as
     `target_pending`, `target_running`, `target_completed`,
     `guard_blocked`, `checkpoint`, and `outcome`
+  - `targetStatuses[].wakeRequestId` so wake decisions can be correlated back
+    to `wakeHistory`
   - `lastCheckpointEvent` and `lastOutcomeEvent` for quick renderer access
 
 ### Channel Messages
@@ -153,6 +162,8 @@ Each `dispatch.results[]` item may also include:
 
 Those fields let the renderer correlate dispatch receipts with
 `roomRouting.workflow.targetStatuses` and `roomRouting.workflow.eventHistory`.
+The richer route-resolution and wake-request contract lives in the persisted
+`roomRouting` read model rather than only in the transient dispatch response.
 
 ### Channel Cats
 
@@ -196,6 +207,9 @@ PATCH /api/preferences
   participant when that room is currently sleeping:
   - `boss_chat` wakes `Boss Cat`
   - `direct_cat_chat` wakes the room's lead Cat
+- If a `direct_cat_chat` no longer has an active lead Cat, the selection write
+  stays explicit and records a failed `roomRouting.lastWakeRequest` instead of
+  silently falling back to `Boss Cat`.
 - Renderer room-entry wake now goes through this explicit selection mutation so
   persisted-room wake keeps a write seam instead of piggybacking on app-shell
   reads.

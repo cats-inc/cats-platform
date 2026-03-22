@@ -6,6 +6,7 @@ import {
   buildChannelView,
   createChannel,
   createCat,
+  removeCatFromChannel,
 } from '../dist-server/chat/model.js';
 import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
@@ -195,6 +196,8 @@ test('explicit multi-target mentions fan out in parallel and persist replies in 
     ['Agent-2', 'Agent-1'],
   );
   assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 2);
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.routingMode, 'explicit_multi');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'explicit_mentions');
   assert.deepEqual(
     channel.roomRouting?.lastOutcome?.dispatches.map((dispatch) => dispatch.target.participantName),
     ['Agent-1', 'Agent-2'],
@@ -248,6 +251,14 @@ test('room routing continues across agent mentions and auto-wakes targeted parti
   assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 3);
   assert.equal(channel.roomRouting?.lastOutcome?.continuationCount, 2);
   assert.equal(channel.roomRouting?.lastOutcome?.guard, null);
+  assert.deepEqual(
+    channel.roomRouting?.wakeHistory.map((wake) => wake.reason),
+    ['workflow_continuation', 'workflow_continuation', 'room_default'],
+  );
+  assert.deepEqual(
+    channel.roomRouting?.wakeHistory.map((wake) => wake.status),
+    ['completed', 'completed', 'completed'],
+  );
   assert.ok(
     channel.roomRouting?.lastOutcome?.checkpoints.some(
       (checkpoint) => checkpoint.kind === 'continuation',
@@ -329,8 +340,78 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Smelly')), false);
   assert.equal(channel.orchestratorLease.sessionId, null);
   assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'default_target');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason, 'direct_chat_lead');
+  assert.equal(channel.roomRouting?.wakeHistory[0]?.reason, 'room_default');
+  assert.equal(channel.roomRouting?.wakeHistory[0]?.participant.participantId, companionId);
   assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
   assert.equal(channel.status, 'active');
+});
+
+test('direct cat chat blocks unmentioned turns when the lead cat is no longer assigned instead of falling back to Boss Cat', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Smelly',
+      provider: 'claude',
+      roles: ['boss'],
+    },
+    now,
+  );
+  state.bossCatId = state.cats[0].id;
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Talk directly to Companion.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  state = removeCatFromChannel(state, channelId, companionId, now);
+
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Handle this directly.' },
+    runtimeClient,
+    now,
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 0);
+  assert.equal(runtimeClient.sentMessages.length, 0);
+  assert.equal(channel.orchestratorLease.sessionId, null);
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'blocked');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.blockedReason, 'missing_direct_chat_lead');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantId, companionId);
+  assert.equal(channel.roomRouting?.wakeHistory.length, 0);
+  assert.match(channel.messages.at(-1)?.body ?? '', /no longer has an active lead Cat/i);
 });
 
 test('anti-ping-pong blocks repeated back-and-forth and prompts only include per-target recent context', async () => {

@@ -5,10 +5,12 @@ import type {
   ChannelDispatchResult,
   MessageUsageSummary,
   ParticipantSessionStatus,
+  RoomRouteResolution,
   RoomRoutingCheckpoint,
   RoomRoutingGuardReason,
   RoomRoutingOutcome,
   RoomRoutingParticipantRef,
+  RoomRoutingState,
   RoomRoutingTrigger,
   RoomWorkflowEvent,
   RoomWorkflowEventKind,
@@ -17,6 +19,9 @@ import type {
   RoomWorkflowTargetState,
   RoomWorkflowTargetStatus,
   RoomWorkflowTurn,
+  RoomWakeReason,
+  RoomWakeRequest,
+  RoomWakeTrigger,
   SendChannelMessageInput,
   ChatChannelCat,
   ChatChannelState,
@@ -35,7 +40,6 @@ import {
   appendMessage,
   buildChannelView,
   requireChannel,
-  resolveChannelEntryParticipant,
   resolveOrchestratorDisplayName,
   setChannelOrchestratorLease,
   setChannelCatLease,
@@ -44,11 +48,10 @@ import {
   setChannelChatCwd,
 } from './model.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
-import { parseMentions } from './mentionParsing.js';
 import {
+  resolveRoomDefaultRoutingTarget,
   resolveMentionRoute,
   type RoutingTarget,
-  type MentionRouteResult,
 } from './mentionRouter.js';
 import {
   buildOrchestratorPrompt,
@@ -62,19 +65,19 @@ import {
   DEFAULT_MAX_ROUTING_TARGET_VISITS,
   DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT,
   DEFAULT_WORKFLOW_TURN_HISTORY_LIMIT,
+  DEFAULT_WAKE_HISTORY_LIMIT,
   createDefaultRoomWorkflowState,
   resolveRoomRoutingState,
   resolveRoomWorkflowState,
 } from './roomRouting.js';
 import { formatSessionStartedMessage } from './runtimeMessages.js';
 
-// RoutingTarget and MentionRouteResult imported from mentionRouter.ts
-
 interface TargetResolution {
   targets: RoutingTarget[];
   unresolved: string[];
   mentionNames: string[];
   trigger: RoomRoutingTrigger;
+  resolution: RoomRouteResolution;
 }
 
 interface DispatchFrame {
@@ -381,23 +384,6 @@ function resolveSessionSkillManifestForTarget(
   });
 }
 
-function resolveDefaultTarget(
-  state: ChatState,
-  channel: ChatChannelView,
-): RoutingTarget {
-  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  if (roomRouting.mode === 'direct_cat_chat' && roomRouting.leadParticipantId) {
-    const leadCat = activeAssignedCats(channel).find(
-      (cat) => cat.catId === roomRouting.leadParticipantId,
-    );
-    if (leadCat) {
-      return buildCatTarget(leadCat);
-    }
-  }
-
-  return buildOrchestratorTarget(state, channel);
-}
-
 function resolveTargets(
   state: ChatState,
   channelId: string,
@@ -414,6 +400,7 @@ function resolveTargets(
     unresolved: result.unresolvedMentions,
     mentionNames: result.parsedMentionNames,
     trigger: result.trigger,
+    resolution: structuredClone(result.resolution),
   };
 }
 
@@ -439,6 +426,7 @@ function createRoutingOutcome(
     sourceSenderKind: sourceMessage.senderKind,
     sourceSenderName: sourceMessage.senderName,
     status: 'running',
+    resolution: structuredClone(resolution.resolution),
     resolvedTargets: resolution.targets.map((target) => toParticipantRef(target)),
     unresolvedMentions: structuredClone(resolution.unresolved),
     dispatches: [],
@@ -564,6 +552,7 @@ function queueWorkflowTarget(
     trigger: request.trigger,
     mentionNames: structuredClone(request.mentionNames),
     depth: request.depth,
+    wakeRequestId: null,
     status: 'pending',
     queuedAt: nowIso,
     startedAt: null,
@@ -607,6 +596,9 @@ function updateWorkflowTarget(
   }
   if (update.depth !== undefined) {
     targetStatus.depth = update.depth;
+  }
+  if (update.wakeRequestId !== undefined) {
+    targetStatus.wakeRequestId = update.wakeRequestId;
   }
   if (update.status !== undefined) {
     targetStatus.status = update.status;
@@ -721,6 +713,53 @@ function applyRoomRoutingSnapshot(
     createRoomRoutingSnapshot(baseRoomRouting, workflow, outcome, checkpoint),
     now,
   );
+}
+
+function resolveWakeReasonFromRoutingTrigger(trigger: RoomRoutingTrigger): RoomWakeReason {
+  switch (trigger) {
+    case 'explicit_mention':
+      return 'explicit_mention';
+    case 'continuation_mention':
+      return 'workflow_continuation';
+    case 'room_default':
+    default:
+      return 'room_default';
+  }
+}
+
+function pruneWakeHistory(roomRouting: RoomRoutingState): void {
+  roomRouting.wakeHistory = roomRouting.wakeHistory.slice(0, DEFAULT_WAKE_HISTORY_LIMIT);
+}
+
+function recordWakeRequest(
+  roomRouting: RoomRoutingState,
+  wakeRequest: RoomWakeRequest,
+): void {
+  roomRouting.lastWakeRequest = structuredClone(wakeRequest);
+  roomRouting.wakeHistory.unshift(structuredClone(wakeRequest));
+  pruneWakeHistory(roomRouting);
+}
+
+function createWakeRequest(
+  participant: RoomRoutingParticipantRef,
+  trigger: RoomWakeTrigger,
+  reason: RoomWakeReason,
+  sourceMessageId: string | null,
+  nowIso: string,
+  status: RoomWakeRequest['status'],
+  error: string | null = null,
+): RoomWakeRequest {
+  return {
+    id: randomUUID(),
+    participant,
+    trigger,
+    reason,
+    sourceMessageId,
+    status,
+    createdAt: nowIso,
+    completedAt: nowIso,
+    error,
+  };
 }
 
 function workflowEventKindForCheckpoint(
@@ -948,14 +987,39 @@ async function ensureTargetSession(
   target: RoutingTarget,
   runtimeClient: RuntimeClient,
   now: Date,
-  transport?: RuntimeTransportContext,
+  options: {
+    transport?: RuntimeTransportContext;
+    roomRouting?: RoomRoutingState | null;
+    wakeTrigger?: RoomWakeTrigger;
+    wakeReason?: RoomWakeReason;
+    sourceMessageId?: string | null;
+  } = {},
 ): Promise<{
   state: ChatState;
   target: RoutingTarget;
   error: string | null;
+  wakeRequest: RoomWakeRequest | null;
 }> {
+  const nowIso = now.toISOString();
+  const wakeTrigger = options.wakeTrigger ?? 'route_target';
+  const wakeReason = options.wakeReason ?? 'room_default';
+  const sourceMessageId = options.sourceMessageId ?? null;
+
   if (target.sessionId) {
-    return { state, target, error: null };
+    const wakeRequest = options.roomRouting
+      ? createWakeRequest(
+          toParticipantRef(target),
+          wakeTrigger,
+          wakeReason,
+          sourceMessageId,
+          nowIso,
+          'skipped',
+        )
+      : null;
+    if (options.roomRouting && wakeRequest) {
+      recordWakeRequest(options.roomRouting, wakeRequest);
+    }
+    return { state, target, error: null, wakeRequest };
   }
 
   const channel = buildChannelView(state, channelId);
@@ -972,8 +1036,13 @@ async function ensureTargetSession(
         model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
         sharingMode,
-        context: buildSessionContextForTarget(channel, target, transport),
-        skills: resolveSessionSkillManifestForTarget(nextState, channel, target, transport),
+        context: buildSessionContextForTarget(channel, target, options.transport),
+        skills: resolveSessionSkillManifestForTarget(
+          nextState,
+          channel,
+          target,
+          options.transport,
+        ),
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
@@ -998,19 +1067,48 @@ async function ensureTargetSession(
           incrementUnread: false,
         },
       ).state;
+      const wakeRequest = options.roomRouting
+        ? createWakeRequest(
+            toParticipantRef(target),
+            wakeTrigger,
+            wakeReason,
+            sourceMessageId,
+            nowIso,
+            'completed',
+          )
+        : null;
+      if (options.roomRouting && wakeRequest) {
+        recordWakeRequest(options.roomRouting, wakeRequest);
+      }
       return {
         state: nextState,
         target: { ...target, sessionId: session.id },
         error: null,
+        wakeRequest,
       };
     }
 
     const cat = channel.assignedCats.find((candidate) => candidate.catId === target.participantId);
     if (!cat) {
+      const wakeRequest = options.roomRouting
+        ? createWakeRequest(
+            toParticipantRef(target),
+            wakeTrigger,
+            wakeReason,
+            sourceMessageId,
+            nowIso,
+            'failed',
+            'Target cat is no longer assigned to the selected chat.',
+          )
+        : null;
+      if (options.roomRouting && wakeRequest) {
+        recordWakeRequest(options.roomRouting, wakeRequest);
+      }
       return {
         state,
         target,
         error: 'Target cat is no longer assigned to the selected chat.',
+        wakeRequest,
       };
     }
 
@@ -1020,8 +1118,13 @@ async function ensureTargetSession(
       model: cat.execution.target.model,
       cwd: spawnCwd,
       sharingMode,
-      context: buildSessionContextForTarget(channel, target, transport),
-      skills: resolveSessionSkillManifestForTarget(nextState, channel, target, transport),
+      context: buildSessionContextForTarget(channel, target, options.transport),
+      skills: resolveSessionSkillManifestForTarget(
+        nextState,
+        channel,
+        target,
+        options.transport,
+      ),
     });
     nextState = setStartedSession(
       nextState,
@@ -1053,10 +1156,24 @@ async function ensureTargetSession(
         incrementUnread: false,
       },
     ).state;
+    const wakeRequest = options.roomRouting
+      ? createWakeRequest(
+          toParticipantRef(target),
+          wakeTrigger,
+          wakeReason,
+          sourceMessageId,
+          nowIso,
+          'completed',
+        )
+      : null;
+    if (options.roomRouting && wakeRequest) {
+      recordWakeRequest(options.roomRouting, wakeRequest);
+    }
     return {
       state: nextState,
       target: { ...target, sessionId: session.id },
       error: null,
+      wakeRequest,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown runtime error';
@@ -1080,7 +1197,21 @@ async function ensureTargetSession(
         },
       },
     ).state;
-    return { state: nextState, target, error: message };
+    const wakeRequest = options.roomRouting
+      ? createWakeRequest(
+          toParticipantRef(target),
+          wakeTrigger,
+          wakeReason,
+          sourceMessageId,
+          nowIso,
+          'failed',
+          message,
+        )
+      : null;
+    if (options.roomRouting && wakeRequest) {
+      recordWakeRequest(options.roomRouting, wakeRequest);
+    }
+    return { state: nextState, target, error: message, wakeRequest };
   }
 }
 
@@ -1094,23 +1225,41 @@ export async function wakeChannelEntryParticipant(
   result: ChannelActivationResult | null;
 }> {
   let nextState = state;
-  const channel = buildChannelView(nextState, channelId);
-  const target = resolveDefaultTarget(nextState, channel);
-  const entryParticipant = resolveChannelEntryParticipant(nextState, channelId);
+  const roomRouting = resolveRoomRoutingState(requireChannel(nextState, channelId).roomRouting);
+  const defaultTarget = resolveRoomDefaultRoutingTarget(nextState, channelId);
 
-  if (entryParticipant.lifecycleState === 'awake' || entryParticipant.lifecycleState === 'waking_up') {
-    nextState = ensureChannelMarkedActive(nextState, channelId, now);
+  if (!defaultTarget.target) {
+    if (defaultTarget.participant) {
+      recordWakeRequest(
+        roomRouting,
+        createWakeRequest(
+          defaultTarget.participant,
+          'room_entry',
+          'room_entry',
+          null,
+          now.toISOString(),
+          'failed',
+          defaultTarget.note ?? 'No room entry participant could be woken.',
+        ),
+      );
+      nextState = setChannelRoomRouting(nextState, channelId, roomRouting, now);
+    }
     return {
       state: nextState,
-      result: {
-        targetKind: target.participantKind,
-        targetId: target.participantId,
-        targetName: target.participantName,
-        status: 'already_started',
-        sessionId: target.sessionId,
-      },
+      result: defaultTarget.participant
+        ? {
+            targetKind: defaultTarget.participant.participantKind,
+            targetId: defaultTarget.participant.participantId,
+            targetName: defaultTarget.participant.participantName,
+            status: 'error',
+            sessionId: null,
+            error: defaultTarget.note ?? 'No room entry participant could be woken.',
+          }
+        : null,
     };
   }
+
+  const target = defaultTarget.target;
 
   const ensured = await ensureTargetSession(
     nextState,
@@ -1118,8 +1267,14 @@ export async function wakeChannelEntryParticipant(
     target,
     runtimeClient,
     now,
+    {
+      roomRouting,
+      wakeTrigger: 'room_entry',
+      wakeReason: 'room_entry',
+    },
   );
   nextState = ensured.state;
+  nextState = setChannelRoomRouting(nextState, channelId, roomRouting, now);
 
   if (ensured.error) {
     return {
@@ -1142,7 +1297,7 @@ export async function wakeChannelEntryParticipant(
       targetKind: ensured.target.participantKind,
       targetId: ensured.target.participantId,
       targetName: ensured.target.participantName,
-      status: 'started',
+      status: ensured.wakeRequest?.status === 'skipped' ? 'already_started' : 'started',
       sessionId: ensured.target.sessionId,
     },
   };
@@ -1503,6 +1658,9 @@ export async function routeChannelMessage(
       {
         metadata: {
           trigger: initialResolution.trigger,
+          selectionKind: initialResolution.resolution.selectionKind,
+          defaultTargetReason: initialResolution.resolution.defaultTargetReason,
+          blockedReason: initialResolution.resolution.blockedReason,
           unresolvedMentions: structuredClone(initialResolution.unresolved),
         },
       },
@@ -1540,14 +1698,20 @@ export async function routeChannelMessage(
   }
 
   if (initialResolution.targets.length === 0) {
+    const blockedTargets = outcome.resolution.defaultTarget
+      ? [outcome.resolution.defaultTarget]
+      : [];
+    const blockedNote = outcome.resolution.note
+      ?? 'No routing targets matched this message. Mention someone or let the room default target handle it.';
     latestCheckpoint = addWorkflowCheckpoint(
       outcome,
       workflow,
       activeTurn,
       'no_targets',
-      'No valid room targets were resolved for this turn.',
+      blockedNote,
       nowIso,
       null,
+      blockedTargets,
     );
     outcome.status = 'blocked';
     outcome.completedAt = nowIso;
@@ -1560,11 +1724,15 @@ export async function routeChannelMessage(
       {
         senderKind: 'system',
         senderName: 'Chat',
-        body: 'No routing targets matched this message. Mention someone or let the room default target handle it.',
+        body: blockedNote,
       },
       now,
       {
-        metadata: { event: 'routing_skipped' },
+        metadata: {
+          event: 'routing_skipped',
+          blockedReason: outcome.resolution.blockedReason,
+          selectionKind: outcome.resolution.selectionKind,
+        },
       },
     ).state;
     appendWorkflowEvent(
@@ -1574,15 +1742,16 @@ export async function routeChannelMessage(
         activeTurn.id,
         'outcome',
         'blocked',
-        'Room routing stopped because no valid targets were resolved.',
+        blockedNote,
         nowIso,
         null,
         userMessage.id,
-        [],
+        blockedTargets,
         {
           outcomeId: randomUUID(),
           metadata: {
             status: 'blocked',
+            blockedReason: outcome.resolution.blockedReason,
           },
         },
       ),
@@ -1851,7 +2020,15 @@ export async function routeChannelMessage(
         request.target,
         runtimeClient,
         now,
-        options.transport,
+        {
+          transport: options.transport,
+          roomRouting: baseRoomRouting,
+          wakeTrigger: 'route_target',
+          wakeReason: request.trigger === 'continuation_mention'
+            ? 'workflow_continuation'
+            : resolveWakeReasonFromRoutingTrigger(request.trigger),
+          sourceMessageId: request.sourceMessage.id,
+        },
       );
       nextState = ensured.state;
       if (ensured.error) {
@@ -1861,6 +2038,7 @@ export async function routeChannelMessage(
           error: ensured.error,
         });
         updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
+          wakeRequestId: ensured.wakeRequest?.id ?? null,
           status: 'failed',
           completedAt: nowIso,
           error: ensured.error,
@@ -1922,6 +2100,7 @@ export async function routeChannelMessage(
         startedAt: nowIso,
       });
       updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
+        wakeRequestId: ensured.wakeRequest?.id ?? null,
         status: 'running',
         startedAt: nowIso,
       });
@@ -2250,6 +2429,9 @@ export async function routeChannelMessage(
         outcomeId: randomUUID(),
         metadata: {
           guard: guardReason,
+          selectionKind: outcome.resolution.selectionKind,
+          defaultTargetReason: outcome.resolution.defaultTargetReason,
+          blockedReason: outcome.resolution.blockedReason,
           continuationCount: outcome.continuationCount,
           totalDispatchCount: outcome.totalDispatchCount,
           unresolvedMentions: structuredClone(outcome.unresolvedMentions),

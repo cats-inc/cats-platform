@@ -692,6 +692,12 @@ test('PATCH /api/preferences wakes the selected Boss Chat entry participant', as
     assert.equal(runtimeClient.createdSessions.length, 1);
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
     assert.equal(channelPayload.channel.status, 'active');
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.reason, 'room_entry');
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.status, 'completed');
+    assert.equal(
+      channelPayload.channel.roomRouting.lastWakeRequest.participant.participantKind,
+      'orchestrator',
+    );
   });
 });
 
@@ -760,6 +766,88 @@ test('PATCH /api/preferences wakes the selected direct chat lead', async () => {
       'session-1',
     );
     assert.equal(channelPayload.channel.status, 'active');
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.reason, 'room_entry');
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.status, 'completed');
+    assert.equal(
+      channelPayload.channel.roomRouting.lastWakeRequest.participant.participantId,
+      catId,
+    );
+  });
+});
+
+test('PATCH /api/preferences does not fall back to Boss Cat when a direct chat lead is missing', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Companion Direct',
+        topic: 'Do not wake Boss Cat when the direct lead is gone.',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [catId],
+        leadParticipantId: catId,
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const removeResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${catId}`, {
+      method: 'DELETE',
+    });
+    assert.equal(removeResponse.status, 200);
+
+    const updatePrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+    assert.equal(updatePrefsResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 0);
+    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal(channelPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.reason, 'room_entry');
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.status, 'failed');
+    assert.equal(
+      channelPayload.channel.roomRouting.lastWakeRequest.participant.participantId,
+      catId,
+    );
+    assert.match(
+      channelPayload.channel.roomRouting.lastWakeRequest.error ?? '',
+      /active lead Cat/i,
+    );
   });
 });
 
@@ -821,6 +909,7 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
       null,
     );
     assert.equal(appShellPayload.chat.selectedChannel.status, 'configured');
+    assert.equal(appShellPayload.chat.selectedChannel.roomRouting.lastWakeRequest, null);
   });
 });
 

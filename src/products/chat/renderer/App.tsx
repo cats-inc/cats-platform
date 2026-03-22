@@ -744,34 +744,10 @@ export default function App() {
             onSelect(target.channelId);
             return;
           }
-
-          const cat = payload.chat.cats.find((c) => c.id === catId);
-          if (!cat) return;
-
           setFeedback('');
           setAddCatOpen(false);
           setPlusMenuOpen(false);
-          setBusy('channel:create');
-          try {
-            const created = await createChatChannel({
-              title: cat.name,
-              topic: `Direct chat with ${cat.name}`,
-              roomMode: 'direct_cat_chat',
-              participantCatIds: [catId],
-              leadParticipantId: catId,
-              skipBossCatGreeting: true,
-            });
-            const selectedChannelId = created.chat.selectedChannelId;
-            if (!selectedChannelId) {
-              throw new Error('Direct chat creation did not return a selected channel.');
-            }
-            startTransition(() => setState({ status: 'ready', payload: created }));
-            navigate(buildChannelPath(selectedChannelId));
-          } catch (error) {
-            setFeedback(error instanceof Error ? error.message : 'Failed to create direct chat.');
-          } finally {
-            setBusy('');
-          }
+          navigate(target.path);
         }}
       />
 

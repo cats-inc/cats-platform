@@ -32,6 +32,24 @@ export type RoomRoutingTrigger =
   | 'explicit_mention'
   | 'continuation_mention';
 
+export type RoomRouteResolutionMode =
+  | 'room_default'
+  | 'explicit_single'
+  | 'explicit_multi';
+
+export type RoomRouteSelectionKind =
+  | 'default_target'
+  | 'explicit_mentions'
+  | 'blocked';
+
+export type RoomRouteBlockedReason =
+  | 'missing_direct_chat_lead'
+  | 'no_valid_targets';
+
+export type RoomRouteDefaultTargetReason =
+  | 'boss_chat_default'
+  | 'direct_chat_lead';
+
 export type RoomRoutingTurnStatus =
   | 'idle'
   | 'running'
@@ -69,6 +87,16 @@ export type RoomWorkflowTargetStatus =
   | 'failed'
   | 'blocked';
 
+export type RoomWakeTrigger = 'room_entry' | 'route_target';
+
+export type RoomWakeReason =
+  | 'room_entry'
+  | 'room_default'
+  | 'explicit_mention'
+  | 'workflow_continuation';
+
+export type RoomWakeRequestStatus = 'skipped' | 'completed' | 'failed';
+
 export type RoomRoutingCheckpointKind =
   | 'turn_started'
   | 'fan_out'
@@ -97,6 +125,18 @@ export interface RoomRoutingParticipantRef {
   participantName: string;
 }
 
+export interface RoomWakeRequest {
+  id: string;
+  participant: RoomRoutingParticipantRef;
+  trigger: RoomWakeTrigger;
+  reason: RoomWakeReason;
+  sourceMessageId: string | null;
+  status: RoomWakeRequestStatus;
+  createdAt: string;
+  completedAt: string | null;
+  error: string | null;
+}
+
 export interface RoomRoutingDispatch {
   id: string;
   sourceMessageId: string;
@@ -121,6 +161,16 @@ export interface RoomRoutingCheckpoint {
   createdAt: string;
 }
 
+export interface RoomRouteResolution {
+  routingMode: RoomRouteResolutionMode;
+  selectionKind: RoomRouteSelectionKind;
+  defaultTarget: RoomRoutingParticipantRef | null;
+  defaultTargetReason: RoomRouteDefaultTargetReason | null;
+  fallbackTarget: RoomRoutingParticipantRef | null;
+  blockedReason: RoomRouteBlockedReason | null;
+  note: string | null;
+}
+
 export interface RoomRoutingOutcome {
   turnId: string;
   mode: RoomRoutingMode;
@@ -128,6 +178,7 @@ export interface RoomRoutingOutcome {
   sourceSenderKind: ChatMessageSenderKind;
   sourceSenderName: string;
   status: RoomRoutingTurnStatus;
+  resolution: RoomRouteResolution;
   resolvedTargets: RoomRoutingParticipantRef[];
   unresolvedMentions: string[];
   dispatches: RoomRoutingDispatch[];
@@ -148,6 +199,7 @@ export interface RoomWorkflowTargetState {
   trigger: RoomRoutingTrigger;
   mentionNames: string[];
   depth: number;
+  wakeRequestId: string | null;
   status: RoomWorkflowTargetStatus;
   queuedAt: string;
   startedAt: string | null;
@@ -204,6 +256,8 @@ export interface RoomRoutingState {
   maxTargetVisitsPerTurn: number;
   lastOutcome: RoomRoutingOutcome | null;
   lastCheckpoint: RoomRoutingCheckpoint | null;
+  lastWakeRequest: RoomWakeRequest | null;
+  wakeHistory: RoomWakeRequest[];
   workflow: RoomWorkflowState;
 }
 

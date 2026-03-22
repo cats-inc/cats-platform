@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  resolveSelectedChannelEntryLifecycle,
   shouldWakeRouteChannelOnEntry,
 } from '../dist-server/products/chat/shared/channelEntry.js';
 
@@ -53,4 +54,65 @@ test('renderer route entry does not wake when the route channel is missing', () 
     }),
     false,
   );
+});
+
+test('direct chat entry lifecycle stays null when the lead cat is missing instead of falling back to Boss Cat', () => {
+  const lifecycle = resolveSelectedChannelEntryLifecycle({
+    id: 'channel-1',
+    title: 'Companion Direct',
+    topic: '',
+    status: 'configured',
+    unreadCount: 0,
+    repoPath: null,
+    chatCwd: null,
+    language: null,
+    responseLanguage: 'en',
+    formationMode: 'manual',
+    skillProfile: null,
+    mcpProfile: null,
+    orchestratorRoles: [],
+    createdAt: '2026-03-23T00:00:00.000Z',
+    updatedAt: '2026-03-23T00:00:00.000Z',
+    lastMessageAt: null,
+    lastActivatedAt: null,
+    orchestratorLease: {
+      sessionId: null,
+      status: 'ready',
+      cwd: null,
+      lastError: null,
+      provider: 'claude',
+      model: null,
+      startedAt: null,
+      lastUsedAt: null,
+    },
+    catAssignments: [],
+    messages: [],
+    assignedCats: [],
+    roomRouting: {
+      mode: 'direct_cat_chat',
+      leadParticipantId: 'companion-cat',
+      maxContinuations: 6,
+      maxDispatchesPerTurn: 12,
+      maxTargetVisitsPerTurn: 2,
+      lastOutcome: null,
+      lastCheckpoint: null,
+      lastWakeRequest: null,
+      wakeHistory: [],
+      workflow: {
+        activeTurn: null,
+        turnHistory: [],
+        eventHistory: [],
+        lastCheckpointEvent: null,
+        lastOutcomeEvent: null,
+      },
+    },
+    workingMemory: {
+      summary: null,
+      facts: [],
+      openLoops: [],
+      updatedAt: null,
+    },
+  });
+
+  assert.equal(lifecycle, null);
 });

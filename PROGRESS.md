@@ -10,7 +10,7 @@
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
-| Chat Product Features | Completed | Runtime-backed setup, global cat registry, sleep/wake-aware room entry, direct private-room entry from `My Cats`, live mention continuation routing, transcript export, and execution-aware state landed |
+| Chat Product Features | Completed | Runtime-backed setup, global cat registry, first-run `/setup` onboarding, sleep/wake-aware room entry, direct-cat draft lanes from `My Cats`, stable room-routing / wake-request contracts, live mention continuation routing, transcript export, and execution-aware state landed |
 | Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records, but compatibility-shim cleanup and later control-plane slices remain |
 | Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private room entry, Telegram inbox MVP, runtime skill/guardrail seams, and shared-core projection boundary; broader launch-track docs still remain |
 | Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens or creates direct private rooms, and Telegram Boss Cat inbox MVP bridges webhook ingress into durable room routing and outbound replies, while approvals, escalation, takeover, and desktop packaging remain ahead |
@@ -58,8 +58,8 @@
 | Add initial multi-channel chat UI shell | [x] | Sidebar, channel cards, orchestrator and runtime panels |
 | Add persistent chat-shell storage | [x] | File-backed chat state now includes selected and created channels |
 | Implement orchestrator and channel setup UX | [x] | Channel setup, global orchestrator editing, and runtime activation all landed |
-| Add runtime-backed message, cat, and export flows | [x] | Global cat registry, channel assignment, continuation loop routing, fan-out, guards, room-workflow state, core-projected system records, and transcript export now exist |
-| Land chat lifecycle and direct routing productization | [x] | Persisted room entry now background-wakes the visible participant, direct rooms default to the lead cat, sleeping targets auto-wake on route, and the header shows sleeping/waking/awake presence |
+| Add runtime-backed message, cat, and export flows | [x] | Global cat registry, channel assignment, continuation loop routing, fan-out, guards, room-workflow state, stable route-resolution metadata, core-projected system records, and transcript export now exist |
+| Land chat lifecycle and direct routing productization | [x] | Persisted room entry now background-wakes the visible participant, direct rooms default to the lead cat, `My Cats` reopens or drafts direct lanes instead of auto-persisting them, sleeping targets auto-wake on route, and wake requests now carry machine-readable reason metadata |
 
 #### Acceptance Criteria
 

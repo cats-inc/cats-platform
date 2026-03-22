@@ -1,4 +1,8 @@
 import type {
+  RoomRouteBlockedReason,
+  RoomRouteDefaultTargetReason,
+  RoomRouteResolutionMode,
+  RoomRouteSelectionKind,
   RoomRoutingCheckpointKind,
   RoomRoutingDispatchStatus,
   RoomRoutingGuardReason,
@@ -10,6 +14,9 @@ import type {
   RoomWorkflowState,
   RoomWorkflowStatus,
   RoomWorkflowTargetStatus,
+  RoomWakeReason,
+  RoomWakeRequestStatus,
+  RoomWakeTrigger,
 } from '../../../shared/app-shell.js';
 
 export const DEFAULT_MAX_ROUTING_CONTINUATIONS = 6;
@@ -17,6 +24,7 @@ export const DEFAULT_MAX_ROUTING_DISPATCHES = 12;
 export const DEFAULT_MAX_ROUTING_TARGET_VISITS = 2;
 export const DEFAULT_WORKFLOW_TURN_HISTORY_LIMIT = 12;
 export const DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT = 64;
+export const DEFAULT_WAKE_HISTORY_LIMIT = 24;
 
 const ROOM_ROUTING_MODES = new Set<RoomRoutingMode>([
   'boss_chat',
@@ -27,6 +35,28 @@ const ROOM_ROUTING_TRIGGERS = new Set<RoomRoutingTrigger>([
   'room_default',
   'explicit_mention',
   'continuation_mention',
+]);
+
+const ROOM_ROUTE_RESOLUTION_MODES = new Set<RoomRouteResolutionMode>([
+  'room_default',
+  'explicit_single',
+  'explicit_multi',
+]);
+
+const ROOM_ROUTE_SELECTION_KINDS = new Set<RoomRouteSelectionKind>([
+  'default_target',
+  'explicit_mentions',
+  'blocked',
+]);
+
+const ROOM_ROUTE_BLOCKED_REASONS = new Set<RoomRouteBlockedReason>([
+  'missing_direct_chat_lead',
+  'no_valid_targets',
+]);
+
+const ROOM_ROUTE_DEFAULT_TARGET_REASONS = new Set<RoomRouteDefaultTargetReason>([
+  'boss_chat_default',
+  'direct_chat_lead',
 ]);
 
 const ROOM_ROUTING_TURN_STATUSES = new Set<RoomRoutingTurnStatus>([
@@ -94,6 +124,24 @@ const ROOM_WORKFLOW_EVENT_KINDS = new Set<RoomWorkflowEventKind>([
   'outcome',
 ]);
 
+const ROOM_WAKE_TRIGGERS = new Set<RoomWakeTrigger>([
+  'room_entry',
+  'route_target',
+]);
+
+const ROOM_WAKE_REASONS = new Set<RoomWakeReason>([
+  'room_entry',
+  'room_default',
+  'explicit_mention',
+  'workflow_continuation',
+]);
+
+const ROOM_WAKE_REQUEST_STATUSES = new Set<RoomWakeRequestStatus>([
+  'skipped',
+  'completed',
+  'failed',
+]);
+
 export function createDefaultRoomWorkflowState(): RoomWorkflowState {
   return {
     activeTurn: null,
@@ -118,6 +166,8 @@ export function createDefaultRoomRoutingState(
     maxTargetVisitsPerTurn: DEFAULT_MAX_ROUTING_TARGET_VISITS,
     lastOutcome: null,
     lastCheckpoint: null,
+    lastWakeRequest: null,
+    wakeHistory: [],
     workflow: createDefaultRoomWorkflowState(),
   };
 }
@@ -141,6 +191,44 @@ export function normalizeRoomRoutingMode(
   return typeof value === 'string' && ROOM_ROUTING_MODES.has(value as RoomRoutingMode)
     ? value as RoomRoutingMode
     : fallback;
+}
+
+export function normalizeRoomRouteResolutionMode(
+  value: unknown,
+  fallback: RoomRouteResolutionMode = 'room_default',
+): RoomRouteResolutionMode {
+  return typeof value === 'string'
+    && ROOM_ROUTE_RESOLUTION_MODES.has(value as RoomRouteResolutionMode)
+    ? value as RoomRouteResolutionMode
+    : fallback;
+}
+
+export function normalizeRoomRouteSelectionKind(
+  value: unknown,
+  fallback: RoomRouteSelectionKind = 'blocked',
+): RoomRouteSelectionKind {
+  return typeof value === 'string'
+    && ROOM_ROUTE_SELECTION_KINDS.has(value as RoomRouteSelectionKind)
+    ? value as RoomRouteSelectionKind
+    : fallback;
+}
+
+export function normalizeRoomRouteBlockedReason(
+  value: unknown,
+): RoomRouteBlockedReason | null {
+  return typeof value === 'string'
+    && ROOM_ROUTE_BLOCKED_REASONS.has(value as RoomRouteBlockedReason)
+    ? value as RoomRouteBlockedReason
+    : null;
+}
+
+export function normalizeRoomRouteDefaultTargetReason(
+  value: unknown,
+): RoomRouteDefaultTargetReason | null {
+  return typeof value === 'string'
+    && ROOM_ROUTE_DEFAULT_TARGET_REASONS.has(value as RoomRouteDefaultTargetReason)
+    ? value as RoomRouteDefaultTargetReason
+    : null;
 }
 
 export function normalizeRoomRoutingTrigger(
@@ -218,5 +306,35 @@ export function normalizeRoomWorkflowEventKind(
   return typeof value === 'string'
     && ROOM_WORKFLOW_EVENT_KINDS.has(value as RoomWorkflowEventKind)
     ? value as RoomWorkflowEventKind
+    : fallback;
+}
+
+export function normalizeRoomWakeTrigger(
+  value: unknown,
+  fallback: RoomWakeTrigger = 'route_target',
+): RoomWakeTrigger {
+  return typeof value === 'string'
+    && ROOM_WAKE_TRIGGERS.has(value as RoomWakeTrigger)
+    ? value as RoomWakeTrigger
+    : fallback;
+}
+
+export function normalizeRoomWakeReason(
+  value: unknown,
+  fallback: RoomWakeReason = 'room_default',
+): RoomWakeReason {
+  return typeof value === 'string'
+    && ROOM_WAKE_REASONS.has(value as RoomWakeReason)
+    ? value as RoomWakeReason
+    : fallback;
+}
+
+export function normalizeRoomWakeRequestStatus(
+  value: unknown,
+  fallback: RoomWakeRequestStatus = 'completed',
+): RoomWakeRequestStatus {
+  return typeof value === 'string'
+    && ROOM_WAKE_REQUEST_STATUSES.has(value as RoomWakeRequestStatus)
+    ? value as RoomWakeRequestStatus
     : fallback;
 }

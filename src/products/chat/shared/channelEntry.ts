@@ -41,6 +41,9 @@ export function resolveSelectedChannelEntryLifecycle(
         cat.status === 'active'
         && cat.catId === selectedChannel.roomRouting.leadParticipantId,
     );
+    if (!leadCat) {
+      return null;
+    }
     return resolveChatLifecycleState(leadCat?.execution.lease.status);
   }
 

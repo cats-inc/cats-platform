@@ -9,6 +9,7 @@ import type {
   MemoryCheckpointSummary,
   ParticipantExecutionLease,
   ParticipantExecutionState,
+  RoomRouteResolution,
   RoomRoutingCheckpoint,
   RoomRoutingDispatch,
   RoomRoutingOutcome,
@@ -18,6 +19,7 @@ import type {
   RoomWorkflowState,
   RoomWorkflowTargetState,
   RoomWorkflowTurn,
+  RoomWakeRequest,
   ChatCapabilities,
   ChatChannelState,
   ChatMessage,
@@ -53,14 +55,22 @@ import {
 import {
   createDefaultRoomRoutingState,
   createDefaultRoomWorkflowState,
+  DEFAULT_WAKE_HISTORY_LIMIT,
   DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT,
   DEFAULT_WORKFLOW_TURN_HISTORY_LIMIT,
+  normalizeRoomRouteBlockedReason,
+  normalizeRoomRouteDefaultTargetReason,
+  normalizeRoomRouteResolutionMode,
+  normalizeRoomRouteSelectionKind,
   normalizeRoomRoutingCheckpointKind,
   normalizeRoomRoutingDispatchStatus,
   normalizeRoomRoutingGuardReason,
   normalizeRoomRoutingMode,
   normalizeRoomRoutingTrigger,
   normalizeRoomRoutingTurnStatus,
+  normalizeRoomWakeReason,
+  normalizeRoomWakeRequestStatus,
+  normalizeRoomWakeTrigger,
   normalizeRoomWorkflowEventKind,
   normalizeRoomWorkflowStatus,
   normalizeRoomWorkflowTargetStatus,
@@ -252,6 +262,48 @@ function normalizeRoomRoutingParticipant(rawParticipant: unknown): RoomRoutingPa
   };
 }
 
+function normalizeRoomRouteResolution(rawResolution: unknown): RoomRouteResolution {
+  const resolutionRecord = asRecord(rawResolution);
+  return {
+    routingMode: normalizeRoomRouteResolutionMode(resolutionRecord?.routingMode, 'room_default'),
+    selectionKind: normalizeRoomRouteSelectionKind(
+      resolutionRecord?.selectionKind,
+      'blocked',
+    ),
+    defaultTarget: normalizeRoomRoutingParticipant(resolutionRecord?.defaultTarget),
+    defaultTargetReason: normalizeRoomRouteDefaultTargetReason(
+      resolutionRecord?.defaultTargetReason,
+    ),
+    fallbackTarget: normalizeRoomRoutingParticipant(resolutionRecord?.fallbackTarget),
+    blockedReason: normalizeRoomRouteBlockedReason(resolutionRecord?.blockedReason),
+    note: readNullableString(resolutionRecord?.note),
+  };
+}
+
+function normalizeRoomWakeRequest(rawWakeRequest: unknown): RoomWakeRequest | null {
+  const wakeRequestRecord = asRecord(rawWakeRequest);
+  if (!wakeRequestRecord) {
+    return null;
+  }
+
+  const participant = normalizeRoomRoutingParticipant(wakeRequestRecord.participant);
+  if (!participant) {
+    return null;
+  }
+
+  return {
+    id: readString(wakeRequestRecord.id, randomUUID()),
+    participant,
+    trigger: normalizeRoomWakeTrigger(wakeRequestRecord.trigger, 'route_target'),
+    reason: normalizeRoomWakeReason(wakeRequestRecord.reason, 'room_default'),
+    sourceMessageId: readNullableString(wakeRequestRecord.sourceMessageId),
+    status: normalizeRoomWakeRequestStatus(wakeRequestRecord.status, 'completed'),
+    createdAt: readString(wakeRequestRecord.createdAt, new Date().toISOString()),
+    completedAt: readNullableString(wakeRequestRecord.completedAt),
+    error: readNullableString(wakeRequestRecord.error),
+  };
+}
+
 function normalizeRoomRoutingDispatch(rawDispatch: unknown): RoomRoutingDispatch | null {
   const dispatchRecord = asRecord(rawDispatch);
   if (!dispatchRecord) {
@@ -321,6 +373,7 @@ function normalizeRoomRoutingOutcome(rawOutcome: unknown): RoomRoutingOutcome | 
     sourceSenderKind: sourceSenderKind as ChatMessage['senderKind'],
     sourceSenderName: readString(outcomeRecord.sourceSenderName, 'Chat'),
     status: normalizeRoomRoutingTurnStatus(outcomeRecord.status, 'idle'),
+    resolution: normalizeRoomRouteResolution(outcomeRecord.resolution),
     resolvedTargets: Array.isArray(outcomeRecord.resolvedTargets)
       ? outcomeRecord.resolvedTargets
           .map((target) => normalizeRoomRoutingParticipant(target))
@@ -365,6 +418,7 @@ function normalizeRoomWorkflowTarget(rawTarget: unknown): RoomWorkflowTargetStat
     trigger: normalizeRoomRoutingTrigger(targetRecord.trigger, 'continuation_mention'),
     mentionNames: readStringArray(targetRecord.mentionNames),
     depth: readNumber(targetRecord.depth),
+    wakeRequestId: readNullableString(targetRecord.wakeRequestId),
     status: normalizeRoomWorkflowTargetStatus(targetRecord.status, 'pending'),
     queuedAt: readString(targetRecord.queuedAt, new Date().toISOString()),
     startedAt: readNullableString(targetRecord.startedAt),
@@ -489,6 +543,13 @@ function normalizeRoomRouting(rawRoomRouting: unknown): RoomRoutingState {
     ),
     lastOutcome: normalizeRoomRoutingOutcome(roomRoutingRecord?.lastOutcome),
     lastCheckpoint: normalizeRoomRoutingCheckpoint(roomRoutingRecord?.lastCheckpoint),
+    lastWakeRequest: normalizeRoomWakeRequest(roomRoutingRecord?.lastWakeRequest),
+    wakeHistory: Array.isArray(roomRoutingRecord?.wakeHistory)
+      ? roomRoutingRecord.wakeHistory
+          .map((wakeRequest) => normalizeRoomWakeRequest(wakeRequest))
+          .filter((wakeRequest): wakeRequest is RoomWakeRequest => wakeRequest !== null)
+          .slice(0, DEFAULT_WAKE_HISTORY_LIMIT)
+      : fallback.wakeHistory,
     workflow: normalizeRoomWorkflow(roomRoutingRecord?.workflow),
   };
 }

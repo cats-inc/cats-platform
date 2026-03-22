@@ -208,8 +208,9 @@ transport state stays in `src/platform/transports/telegram/*`.
 - **Responsibilities**: Render channels, runtime status, transcript composer,
   a preview-ready artifact pane, contextual cat assignment, settings-hosted
   cat management, topic-first recents with Cat avatar markers, lightweight
-  `My Cats` private-room entry that reopens or creates the canonical direct
-  room, channel setup, and global Boss Cat editing
+  direct-chat entry for `My Cats`, channel setup, and global Boss Cat editing.
+  `My Cats` now reopens an existing direct room when one exists, or opens a
+  direct `/new` draft lane without creating a persisted room yet.
 
 ## Memory Layering Direction
 
@@ -237,7 +238,7 @@ history.
   renderer while a stronger suite-wide contract is designed
 - **Technology**: Plain TypeScript data structures
 - **Responsibilities**: Expose chat state, cat registry, cat assignment, message,
-  session, and capability state
+  session, capability, room-routing resolution, and wake-request state
 
 ## Cat Identity and Execution
 
@@ -400,7 +401,8 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
 - Current implementation is still a phase-2 chat shell with file-backed state,
   global orchestrator settings, cat assignments, a system-layer routing engine
   with continuation loop/fan-out/guards, a separate room-workflow read model,
-  and transcript export.
+  explicit route-resolution metadata, wake-request history, and transcript
+  export.
 - `Cats Core v1` now exists as a first in-tree contract plus a minimal neutral
   write substrate for owner profile, actors, conversations, projects,
   work items, tasks, approvals, approval bindings, runs, traces, checkpoints,
@@ -485,7 +487,6 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-23*
-
 
 
 
