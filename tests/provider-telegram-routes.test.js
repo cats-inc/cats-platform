@@ -562,8 +562,9 @@ test('telegram webhook returns 500 and records diagnostics when room persistence
       const messagesResponse = await fetch(`${baseUrl}/api/channels/${roomId}/messages`);
       assert.equal(messagesResponse.status, 200);
       const messagesPayload = await messagesResponse.json();
-      assert.ok(messagesPayload.messages.some((message) =>
-        message.senderKind === 'user' && message.body === 'hello from telegram'));
+      const inboundMessages = messagesPayload.messages.filter((message) =>
+        message.senderKind === 'user' && message.body === 'hello from telegram');
+      assert.equal(inboundMessages.length, 1);
       assert.ok(messagesPayload.messages.some((message) =>
         message.senderKind === 'system'
         && message.body.includes('Cats Chat could not process the room turn')));

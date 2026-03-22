@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../../shared/app-shell';
 import {
+  beginSettingsCatsTelegramScopeLoad,
   createSettingsCatsTelegramAutoLoader,
   createSettingsCatsTelegramScopeKey,
   fetchSettingsCatsTelegramSnapshot,
@@ -98,7 +99,7 @@ export function SettingsCats({
   }, [expandedCatId]);
 
   useEffect(() => {
-    const loadRun = telegramAutoLoader.loadForScope(telegramScopeKey, {
+    const loadRun = beginSettingsCatsTelegramScopeLoad(telegramAutoLoader, telegramScopeKey, {
       onStart() {
         setTelegramLoading(true);
         setTelegramError('');

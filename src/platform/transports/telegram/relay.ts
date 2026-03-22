@@ -58,7 +58,13 @@ export interface TelegramRelay {
     request: TelegramDeliveryRequest;
     context: TelegramRelayContext;
   }): Promise<TelegramDeliveryReceipt>;
-  recordDeliveryReceipt(receipt: TelegramDeliveryReceipt): void;
+  recordBridgeDispatchFailure(input: {
+    receipt: TelegramWebhookReceipt;
+    context: TelegramRelayContext;
+    binding: BotBindingRecord | null;
+    deliveredAt?: string | null;
+    errorMessage: string;
+  }): TelegramDeliveryReceipt;
 }
 
 interface TelegramRelayOptions {
@@ -124,6 +130,33 @@ function resolveStoredBinding(
   }
 
   return null;
+}
+
+function createBridgeDispatchFailureReceipt(input: {
+  receipt: TelegramWebhookReceipt;
+  context: TelegramRelayContext;
+  binding: BotBindingRecord | null;
+  deliveredAt: string;
+  errorMessage: string;
+}): TelegramDeliveryReceipt {
+  return {
+    platform: 'telegram',
+    operation: input.receipt.messageId ? 'reply' : 'send',
+    status: 'failed',
+    deliveredAt: input.deliveredAt,
+    deliveryId: randomUUID(),
+    chatId: input.receipt.chatId,
+    conversationId: input.receipt.mappedConversationId,
+    messageId: null,
+    replyToMessageId: input.receipt.messageId,
+    bindingId: input.binding?.id ?? input.receipt.bindingId ?? null,
+    botName: input.binding?.botName ?? input.receipt.botName ?? null,
+    bossCatId: input.context.bossCatId,
+    bossCatName: input.context.bossCatName,
+    textPreview: null,
+    reason: 'runtime_dispatch_failed',
+    errorMessage: input.errorMessage,
+  };
 }
 
 export function createTelegramRelay(options: TelegramRelayOptions = {}): TelegramRelay {
@@ -681,8 +714,13 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       }
     },
 
-    recordDeliveryReceipt(receipt: TelegramDeliveryReceipt): void {
+    recordBridgeDispatchFailure(input): TelegramDeliveryReceipt {
+      const receipt = createBridgeDispatchFailureReceipt({
+        ...input,
+        deliveredAt: readTelegramString(input.deliveredAt) ?? now().toISOString(),
+      });
       store.recordDeliveryReceipt(receipt);
+      return receipt;
     },
   };
 }

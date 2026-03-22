@@ -29,6 +29,14 @@ export interface SettingsCatsTelegramLoadRun {
   promise: Promise<void>;
 }
 
+export interface SettingsCatsTelegramAutoLoader<TStatus, TDiagnostics> {
+  loadForScope: (
+    scopeKey: string,
+    handlers: SettingsCatsTelegramLoadHandlers<TStatus, TDiagnostics>,
+  ) => SettingsCatsTelegramLoadRun;
+  resetScope: () => void;
+}
+
 function createNoopLoadRun(): SettingsCatsTelegramLoadRun {
   return {
     started: false,
@@ -97,13 +105,7 @@ function startSettingsCatsTelegramLoad<TStatus, TDiagnostics>(
 
 export function createSettingsCatsTelegramAutoLoader<TStatus, TDiagnostics>(
   fetchers: SettingsCatsTelegramFetchers<TStatus, TDiagnostics>,
-): {
-  loadForScope: (
-    scopeKey: string,
-    handlers: SettingsCatsTelegramLoadHandlers<TStatus, TDiagnostics>,
-  ) => SettingsCatsTelegramLoadRun;
-  resetScope: () => void;
-} {
+): SettingsCatsTelegramAutoLoader<TStatus, TDiagnostics> {
   let lastScopeKey: string | null = null;
 
   return {
@@ -118,6 +120,22 @@ export function createSettingsCatsTelegramAutoLoader<TStatus, TDiagnostics>(
 
     resetScope() {
       lastScopeKey = null;
+    },
+  };
+}
+
+export function beginSettingsCatsTelegramScopeLoad<TStatus, TDiagnostics>(
+  loader: SettingsCatsTelegramAutoLoader<TStatus, TDiagnostics>,
+  scopeKey: string,
+  handlers: SettingsCatsTelegramLoadHandlers<TStatus, TDiagnostics>,
+): SettingsCatsTelegramLoadRun {
+  const loadRun = loader.loadForScope(scopeKey, handlers);
+
+  return {
+    ...loadRun,
+    cancel() {
+      loadRun.cancel();
+      loader.resetScope();
     },
   };
 }

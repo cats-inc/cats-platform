@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import { createCatActorId } from '../../../core/model.js';
 import type { BotBindingRecord } from '../../../core/types.js';
 import type { ChatState, RoomRoutingMode } from '../../../shared/app-shell.js';
@@ -176,6 +174,26 @@ function buildTelegramReplyText(input: {
     : `${combined.slice(0, TELEGRAM_REPLY_LIMIT - 1)}…`;
 }
 
+function roomHasInboundMessage(input: {
+  state: ChatState;
+  roomId: string;
+  senderName: string;
+  inboundBody: string;
+  messageCountBeforeDispatch?: number | null;
+}): boolean {
+  const channel = requireChannel(input.state, input.roomId);
+  const messageStartIndex = input.messageCountBeforeDispatch == null
+    ? 0
+    : Math.max(0, input.messageCountBeforeDispatch);
+
+  return channel.messages
+    .slice(messageStartIndex)
+    .some((message) =>
+      message.senderKind === 'user'
+      && message.senderName === input.senderName
+      && message.body === input.inboundBody);
+}
+
 function describeBridgeFailure(error: unknown): string {
   if (error instanceof Error) {
     return readTelegramString(error.message) ?? 'Unexpected internal Telegram bridge error.';
@@ -226,33 +244,6 @@ function buildRecoveryState(input: {
   ).state;
 
   return refreshDerivedMemoryLayers(recoveryState, input.roomId, input.occurredAt);
-}
-
-function buildBridgeFailureReceipt(input: {
-  receipt: TelegramWebhookReceipt;
-  context: TelegramRelayContext;
-  binding: BotBindingRecord | null;
-  deliveredAt: string;
-  errorMessage: string;
-}): TelegramDeliveryReceipt {
-  return {
-    platform: 'telegram',
-    operation: input.receipt.messageId ? 'reply' : 'send',
-    status: 'failed',
-    deliveredAt: input.deliveredAt,
-    deliveryId: randomUUID(),
-    chatId: input.receipt.chatId,
-    conversationId: input.receipt.mappedConversationId,
-    messageId: null,
-    replyToMessageId: input.receipt.messageId,
-    bindingId: input.binding?.id ?? input.receipt.bindingId ?? null,
-    botName: input.binding?.botName ?? input.receipt.botName ?? null,
-    bossCatId: input.context.bossCatId,
-    bossCatName: input.context.bossCatName,
-    textPreview: null,
-    reason: 'runtime_dispatch_failed',
-    errorMessage: input.errorMessage,
-  };
 }
 
 export class TelegramWebhookBridgeError extends Error {
@@ -309,7 +300,8 @@ export async function bridgeTelegramWebhookToRoom(input: {
   let roomId = existingBinding?.linkedRoomId ?? null;
   let nextState = currentState;
   let roomCreated = false;
-  let dispatchStatePersisted = false;
+  let dispatchedState: ChatState | null = null;
+  let messageCountBeforeDispatch: number | null = null;
   const inboundBody = buildInboundBody(message);
 
   try {
@@ -354,7 +346,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
       linkedAt: timestamp.toISOString(),
     });
     const channelBeforeDispatch = requireChannel(nextState, roomId);
-    const messageCountBeforeDispatch = channelBeforeDispatch.messages.length;
+    messageCountBeforeDispatch = channelBeforeDispatch.messages.length;
     const dispatch = await routeChannelMessage(
       nextState,
       roomId,
@@ -366,11 +358,11 @@ export async function bridgeTelegramWebhookToRoom(input: {
       timestamp,
       { transport: 'telegram' },
     );
+    dispatchedState = dispatch.state;
     const persistedState = await input.chatStore.write(
       restoreSelection(dispatch.state, currentState.selectedChannelId),
     );
     nextState = persistedState;
-    dispatchStatePersisted = true;
 
     const replyText = buildTelegramReplyText({
       state: persistedState,
@@ -401,18 +393,26 @@ export async function bridgeTelegramWebhookToRoom(input: {
     };
   } catch (error) {
     const errorMessage = describeBridgeFailure(error);
+    let surfacedErrorMessage = errorMessage;
     if (roomId) {
+      const recoverySourceState = dispatchedState ?? nextState;
       try {
         nextState = await input.chatStore.write(
           restoreSelection(
             buildRecoveryState({
-              state: nextState,
+              state: recoverySourceState,
               roomId,
               senderName,
               inboundBody,
               occurredAt: timestamp,
               errorMessage,
-              includeInboundMessage: !dispatchStatePersisted,
+              includeInboundMessage: !roomHasInboundMessage({
+                state: recoverySourceState,
+                roomId,
+                senderName,
+                inboundBody,
+                messageCountBeforeDispatch,
+              }),
             }),
             currentState.selectedChannelId,
           ),
@@ -424,24 +424,23 @@ export async function bridgeTelegramWebhookToRoom(input: {
           roomId,
           linkedAt: timestamp.toISOString(),
         });
-      } catch {
-        // Keep the bridge error as the primary failure surfaced to the webhook caller.
+      } catch (recoveryError) {
+        surfacedErrorMessage =
+          `${errorMessage} Recovery write also failed: ${describeBridgeFailure(recoveryError)}`;
       }
     }
 
-    input.telegramRelay.recordDeliveryReceipt(
-      buildBridgeFailureReceipt({
-        receipt: input.receipt,
-        context: input.context,
-        binding: activeBinding,
-        deliveredAt: timestamp.toISOString(),
-        errorMessage,
-      }),
-    );
+    input.telegramRelay.recordBridgeDispatchFailure({
+      receipt: input.receipt,
+      context: input.context,
+      binding: activeBinding,
+      deliveredAt: timestamp.toISOString(),
+      errorMessage: surfacedErrorMessage,
+    });
 
     throw new TelegramWebhookBridgeError(
       'telegram_room_dispatch_failed',
-      `Telegram webhook was accepted, but Cats Chat could not process the room turn: ${errorMessage}`,
+      `Telegram webhook was accepted, but Cats Chat could not process the room turn: ${surfacedErrorMessage}`,
       roomId,
     );
   }

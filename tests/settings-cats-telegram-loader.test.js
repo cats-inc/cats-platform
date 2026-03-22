@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  beginSettingsCatsTelegramScopeLoad,
   createSettingsCatsTelegramAutoLoader,
   createSettingsCatsTelegramScopeKey,
   SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
@@ -152,6 +153,37 @@ test('settings cats telegram auto loader normalizes unknown load failures to the
   assert.deepEqual(events, [
     'start',
     `error:${SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE}`,
+    'finish',
+  ]);
+});
+
+test('settings cats telegram scope load resets loader scope during strict-mode style cleanup', async () => {
+  const calls = [];
+  const events = [];
+  const loader = createSettingsCatsTelegramAutoLoader({
+    async fetchStatus() {
+      calls.push('status');
+      return { id: 'status-1' };
+    },
+    async fetchDiagnostics() {
+      calls.push('diagnostics');
+      return { id: 'diagnostics-1' };
+    },
+  });
+
+  const firstRun = beginSettingsCatsTelegramScopeLoad(loader, 'scope-a', createHandlers(events));
+  firstRun.cancel();
+  await firstRun.promise;
+
+  const secondRun = beginSettingsCatsTelegramScopeLoad(loader, 'scope-a', createHandlers(events));
+  assert.equal(secondRun.started, true);
+  await secondRun.promise;
+
+  assert.deepEqual(calls, ['status', 'diagnostics', 'status', 'diagnostics']);
+  assert.deepEqual(events, [
+    'start',
+    'start',
+    'success:status-1:diagnostics-1',
     'finish',
   ]);
 });
