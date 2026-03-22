@@ -304,6 +304,7 @@ export interface ChatChannelState {
   catAssignments: ChannelCatAssignment[];
   messages: ChatMessage[];
   roomRouting?: RoomRoutingState;
+  workingMemory?: MemoryCheckpointSummary;
 }
 
 export interface ChatChannelView extends ChatChannelState {
@@ -370,9 +371,21 @@ export interface BotBindingSummary {
   id: string;
   platform: 'telegram' | 'line';
   botName: string;
-  boundCatId: string | null;
-  defaultRoomMode: string;
+  catId: string | null;
+  roomMode: string;
   status: 'active' | 'disabled';
+}
+
+export interface ChatBotBindingSummary {
+  id: string;
+  platform: 'telegram' | 'line';
+  botName: string;
+  catId: string | null;
+  catName: string | null;
+  roomMode: string;
+  isBossBinding: boolean;
+  status: 'active' | 'disabled';
+  updatedAt: string;
 }
 
 export interface ChatShellState {
@@ -386,7 +399,7 @@ export interface ChatShellState {
   globalOrchestrator: GlobalOrchestratorSummary;
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
-  botBindings: BotBindingSummary[];
+  botBindings: ChatBotBindingSummary[];
 }
 
 export interface AppShellPayload extends SuiteHostEnvelope {
@@ -498,4 +511,18 @@ export interface SetupCompleteInput {
   bossCatProvider: string;
   bossCatInstance?: string;
   bossCatModel?: string;
+}
+
+export interface CreateBotBindingInput {
+  platform: 'telegram' | 'line';
+  botName: string;
+  catId: string;
+  roomMode?: RoomRoutingMode;
+}
+
+export interface UpdateBotBindingInput {
+  botName?: string;
+  catId?: string;
+  roomMode?: RoomRoutingMode;
+  status?: 'active' | 'disabled';
 }

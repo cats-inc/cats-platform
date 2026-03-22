@@ -1179,22 +1179,25 @@ function normalizeBotBinding(
 
   const rawStatus = readString(bindingRecord.status, 'active');
 
+  const rawRoomMode = readString(bindingRecord.roomMode ?? bindingRecord.defaultRoomMode, 'boss_chat');
+  const roomMode: BotBindingRecord['roomMode'] =
+    rawRoomMode === 'direct_cat_chat' ? 'direct_cat_chat'
+      : rawRoomMode === 'transport_inbox' ? 'transport_inbox'
+        : 'boss_chat';
+
   return {
     id: readString(bindingRecord.id, randomUUID()),
     platform,
     botName: readString(bindingRecord.botName),
     orchestratorActorId: readString(bindingRecord.orchestratorActorId),
+    catActorId:
+      readNullableString(bindingRecord.catActorId)
+      ?? readNullableString(bindingRecord.boundCatActorId)
+      ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
     bossCatActorId:
       readNullableString(bindingRecord.bossCatActorId)
       ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
-    boundCatId: readNullableString(bindingRecord.boundCatId) ?? chat.bossCatId,
-    boundCatActorId: readNullableString(bindingRecord.boundCatActorId)
-      ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
-    botToken: readNullableString(bindingRecord.botToken),
-    webhookSecret: readNullableString(bindingRecord.webhookSecret),
-    defaultRoomMode: readString(bindingRecord.defaultRoomMode, 'boss_chat') === 'direct_cat_chat'
-      ? 'direct_cat_chat'
-      : 'boss_chat',
+    roomMode,
     status: rawStatus === 'disabled' ? 'disabled' : 'active',
     createdAt: readString(bindingRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(bindingRecord.updatedAt, new Date().toISOString()),

@@ -444,3 +444,143 @@ test('PATCH /api/preferences accepts showVerboseMessages and persists it', async
     assert.equal(getPayload.preferences.showVerboseMessages, true);
   });
 });
+
+test('POST /api/channels supports direct Cat chat with existingCatIds and initializes working memory', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        roles: ['companion'],
+        skillProfile: 'companion',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const companionCatId = createCatPayload.cat.id;
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: '',
+        topic: 'Private companion lane',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [companionCatId],
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+
+    const createChannelPayload = await createChannelResponse.json();
+    assert.equal(createChannelPayload.channel.title, 'Companion Direct Chat');
+    assert.equal(createChannelPayload.channel.assignedCats.length, 1);
+    assert.equal(createChannelPayload.channel.assignedCats[0].catId, companionCatId);
+    assert.equal(createChannelPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(createChannelPayload.channel.roomRouting.leadParticipantId, companionCatId);
+    assert.deepEqual(createChannelPayload.channel.workingMemory, {
+      summary: null,
+      facts: [],
+      openLoops: [],
+      updatedAt: null,
+    });
+    assert.equal(createChannelPayload.channel.messages.length, 0);
+  });
+});
+
+test('bot binding routes support multiple Telegram bots across Cats', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Boss Cat',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+    const setupPayload = await setupResponse.json();
+    const bossCatId = setupPayload.chat.bossCatId;
+
+    const createCompanionResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        skillProfile: 'companion',
+      }),
+    });
+    assert.equal(createCompanionResponse.status, 201);
+    const createCompanionPayload = await createCompanionResponse.json();
+    const companionCatId = createCompanionPayload.cat.id;
+
+    const bossBindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'boss_cat_bot',
+        catId: bossCatId,
+      }),
+    });
+    assert.equal(bossBindingResponse.status, 201);
+
+    const companionBindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'companion_bot',
+        catId: companionCatId,
+        roomMode: 'direct_cat_chat',
+      }),
+    });
+    assert.equal(companionBindingResponse.status, 201);
+    const companionBindingPayload = await companionBindingResponse.json();
+    const companionBindingId = companionBindingPayload.botBinding.id;
+
+    const listBindingsResponse = await fetch(`${baseUrl}/api/bot-bindings`);
+    assert.equal(listBindingsResponse.status, 200);
+    const listBindingsPayload = await listBindingsResponse.json();
+    assert.equal(listBindingsPayload.botBindings.length, 2);
+    assert.ok(listBindingsPayload.botBindings.some((binding) =>
+      binding.botName === 'boss_cat_bot'
+      && binding.isBossBinding === true
+      && binding.roomMode === 'boss_chat'));
+    assert.ok(listBindingsPayload.botBindings.some((binding) =>
+      binding.botName === 'companion_bot'
+      && binding.catId === companionCatId
+      && binding.roomMode === 'direct_cat_chat'));
+
+    const patchBindingResponse = await fetch(`${baseUrl}/api/bot-bindings/${companionBindingId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        roomMode: 'transport_inbox',
+        status: 'disabled',
+      }),
+    });
+    assert.equal(patchBindingResponse.status, 200);
+    const patchBindingPayload = await patchBindingResponse.json();
+    assert.equal(patchBindingPayload.botBinding.roomMode, 'transport_inbox');
+    assert.equal(patchBindingPayload.botBinding.status, 'disabled');
+
+    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(appShellResponse.status, 200);
+    const appShellPayload = await appShellResponse.json();
+    assert.equal(appShellPayload.chat.botBindings.length, 2);
+
+    const deleteBindingResponse = await fetch(`${baseUrl}/api/bot-bindings/${companionBindingId}`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteBindingResponse.status, 200);
+
+    const afterDeleteResponse = await fetch(`${baseUrl}/api/bot-bindings`);
+    const afterDeletePayload = await afterDeleteResponse.json();
+    assert.equal(afterDeletePayload.botBindings.length, 1);
+    assert.equal(afterDeletePayload.botBindings[0].botName, 'boss_cat_bot');
+  });
+});

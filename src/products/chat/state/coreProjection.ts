@@ -468,34 +468,47 @@ function syncBotBindings(
   chat: ChatState,
   existingBindings: BotBindingRecord[],
 ): BotBindingRecord[] {
-  const preservedLineBindings = existingBindings.filter((binding) => binding.platform === 'line');
+  const preservedBindings = existingBindings.map((binding) => structuredClone(binding));
   const telegramBotName = chat.globalOrchestrator.telegramBotName?.trim();
   const bossCatActorId = chat.bossCatId
     ? createCatActorId(chat.bossCatId)
     : null;
 
   if (!telegramBotName || !bossCatActorId) {
-    return preservedLineBindings;
+    return preservedBindings;
   }
 
-  const existingTelegram = existingBindings.find((binding) => binding.platform === 'telegram');
+  const existingTelegram = preservedBindings.find((binding) =>
+    binding.platform === 'telegram' && binding.botName === telegramBotName,
+  );
   const updatedAt = chat.globalOrchestrator.updatedAt;
 
+  if (existingTelegram) {
+    return preservedBindings.map((binding) =>
+      binding.id === existingTelegram.id
+        ? {
+            ...binding,
+            catActorId: binding.catActorId ?? bossCatActorId,
+            bossCatActorId,
+            roomMode: binding.roomMode ?? 'boss_chat',
+            updatedAt,
+          }
+        : binding,
+    );
+  }
+
   return [
-    ...preservedLineBindings,
+    ...preservedBindings,
     {
-      id: existingTelegram?.id ?? 'bot-binding-telegram-global',
+      id: 'bot-binding-telegram-global',
       platform: 'telegram',
       botName: telegramBotName,
       orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
+      catActorId: bossCatActorId,
       bossCatActorId,
-      boundCatId: existingTelegram?.boundCatId ?? chat.bossCatId,
-      boundCatActorId: existingTelegram?.boundCatActorId ?? bossCatActorId,
-      botToken: existingTelegram?.botToken ?? null,
-      webhookSecret: existingTelegram?.webhookSecret ?? null,
-      defaultRoomMode: existingTelegram?.defaultRoomMode ?? 'boss_chat',
+      roomMode: 'boss_chat',
       status: 'active',
-      createdAt: existingTelegram?.createdAt ?? updatedAt,
+      createdAt: updatedAt,
       updatedAt,
     },
   ];

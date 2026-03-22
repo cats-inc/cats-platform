@@ -295,9 +295,10 @@ test('telegram status reports unbound relay before bot binding is configured', a
     const payload = await response.json();
     assert.equal(payload.telegram.status, 'unbound');
     assert.equal(payload.telegram.botBinding, null);
+    assert.deepEqual(payload.telegram.availableBindings, []);
     assert.equal(payload.telegram.mappedConversationCount, 0);
     assert.equal(payload.telegram.lastProcessedUpdateId, null);
-    assert.equal(payload.telegram.publicIdentityMode, 'boss_cat_single_identity');
+    assert.equal(payload.telegram.publicIdentityMode, 'multi_cat_bindings_single_boss');
     assert.equal(payload.telegram.diagnosticsPath, '/api/transports/telegram/diagnostics');
     assert.equal(payload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
     assert.equal(payload.telegram.ingress.acceptedUpdates, 0);
@@ -351,9 +352,10 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.telegram.status, 'unbound');
-    assert.equal(payload.telegram.botBinding, null);
-    assert.equal(payload.telegram.publicIdentityMode, 'boss_cat_single_identity');
+    assert.equal(payload.telegram.status, 'bound');
+    assert.equal(payload.telegram.botBinding.botName, 'smelly_bot');
+    assert.equal(payload.telegram.availableBindings.length, 1);
+    assert.equal(payload.telegram.publicIdentityMode, 'multi_cat_bindings_single_boss');
   } finally {
     server.close();
     await once(server, 'close');

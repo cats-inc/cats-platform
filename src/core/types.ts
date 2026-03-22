@@ -377,24 +377,14 @@ export interface CoreActivityRecord {
 
 export type BotBindingPlatform = 'telegram' | 'line';
 
-export type BotBindingDefaultRoomMode = 'boss_chat' | 'direct_cat_chat';
-
 export interface BotBindingRecord {
   id: string;
   platform: BotBindingPlatform;
   botName: string;
   orchestratorActorId: string;
+  catActorId: string | null;
   bossCatActorId: string | null;
-  /** Which Cat this bot fronts (null = Boss Cat for backward compat) */
-  boundCatId: string | null;
-  /** Actor ID of the bound Cat */
-  boundCatActorId: string | null;
-  /** Per-binding bot token reference (null = use environment default) */
-  botToken: string | null;
-  /** Per-binding webhook secret for Telegram X-Telegram-Bot-Api-Secret-Token */
-  webhookSecret: string | null;
-  /** Default room mode for inbound messages from this bot */
-  defaultRoomMode: BotBindingDefaultRoomMode;
+  roomMode: 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
   status: 'active' | 'disabled';
   createdAt: string;
   updatedAt: string;

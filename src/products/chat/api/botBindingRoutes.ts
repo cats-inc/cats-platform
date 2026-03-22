@@ -1,88 +1,173 @@
+import { randomUUID } from 'node:crypto';
+
+import { GLOBAL_ORCHESTRATOR_ACTOR_ID, createCatActorId } from '../../../core/model.js';
+import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { createBotBinding, removeBotBinding } from '../../../core/model.js';
+import { requireCat } from '../state/model.js';
+import type {
+  CreateBotBindingInput,
+  UpdateBotBindingInput,
+} from './contracts.js';
 import {
-  buildAppShellPayload,
   handleRestError,
   nowFrom,
-  sendRestError,
   type ChatApiRouteContext,
 } from './shared.js';
 
-interface CreateBotBindingInput {
-  platform?: 'telegram' | 'line';
-  botName: string;
-  boundCatId: string;
-  botToken?: string | null;
-  webhookSecret?: string | null;
+function summarizeBinding(
+  binding: BotBindingRecord,
+  context: Awaited<ReturnType<ChatApiRouteContext['dependencies']['chatStore']['read']>>,
+) {
+  const cat = context.cats.find((candidate) =>
+    createCatActorId(candidate.id) === (binding.catActorId ?? binding.bossCatActorId),
+  ) ?? null;
+
+  return {
+    id: binding.id,
+    platform: binding.platform,
+    botName: binding.botName,
+    catId: cat?.id ?? null,
+    catName: cat?.name ?? null,
+    roomMode: binding.roomMode,
+    isBossBinding: Boolean(context.bossCatId && cat?.id === context.bossCatId),
+    status: binding.status,
+    updatedAt: binding.updatedAt,
+  };
 }
 
-async function handleListBotBindings(
-  context: ChatApiRouteContext,
-): Promise<void> {
-  try {
-    const core = await context.dependencies.chatStore.readCore();
-    sendJson(context.response, 200, { bindings: core.botBindings });
-  } catch (error) {
-    handleRestError(context, error);
-  }
+function createBindingRecord(
+  chat: Awaited<ReturnType<ChatApiRouteContext['dependencies']['chatStore']['read']>>,
+  input: CreateBotBindingInput,
+  nowIso: string,
+): BotBindingRecord {
+  const cat = requireCat(chat, input.catId);
+  const catActorId = createCatActorId(cat.id);
+  const isBossBinding = chat.bossCatId === cat.id;
+
+  return {
+    id: randomUUID(),
+    platform: input.platform,
+    botName: input.botName.trim(),
+    orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
+    catActorId,
+    bossCatActorId: isBossBinding ? catActorId : null,
+    roomMode: input.roomMode ?? (isBossBinding ? 'boss_chat' : 'direct_cat_chat'),
+    status: 'active',
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
 }
 
-async function handleCreateBotBinding(
-  context: ChatApiRouteContext,
-): Promise<void> {
-  try {
-    const body = await readJsonBody<CreateBotBindingInput>(context.request);
-    if (!body.botName?.trim()) {
-      sendRestError(context, 400, 'validation_error', 'botName is required');
-      return;
-    }
-    if (!body.boundCatId?.trim()) {
-      sendRestError(context, 400, 'validation_error', 'boundCatId is required');
-      return;
-    }
+function updateCoreBindings(
+  core: CatsCoreState,
+  update: (bindings: BotBindingRecord[]) => BotBindingRecord[],
+  nowIso: string,
+): CatsCoreState {
+  return {
+    ...core,
+    updatedAt: nowIso,
+    botBindings: update(core.botBindings.map((binding) => structuredClone(binding))),
+  };
+}
 
-    const now = nowFrom(context.dependencies);
-    let core = await context.dependencies.chatStore.readCore();
-    const result = createBotBinding(
-      core,
-      {
-        platform: body.platform ?? 'telegram',
-        botName: body.botName,
-        boundCatId: body.boundCatId,
-        botToken: body.botToken,
-        webhookSecret: body.webhookSecret,
-      },
-      now,
-    );
-    core = result.core;
-    await context.dependencies.chatStore.writeCore(core);
-    sendJson(
-      context.response,
-      201,
-      await buildAppShellPayload(context.dependencies),
-    );
-  } catch (error) {
-    handleRestError(context, error);
+async function handleListBotBindings(context: ChatApiRouteContext): Promise<void> {
+  const [chat, core] = await Promise.all([
+    context.dependencies.chatStore.read(),
+    context.dependencies.chatStore.readCore(),
+  ]);
+
+  sendJson(context.response, 200, {
+    botBindings: core.botBindings.map((binding) => summarizeBinding(binding, chat)),
+  });
+}
+
+async function handleCreateBotBinding(context: ChatApiRouteContext): Promise<void> {
+  const body = await readJsonBody<CreateBotBindingInput>(context.request);
+  const nowIso = nowFrom(context.dependencies).toISOString();
+  const [chat, core] = await Promise.all([
+    context.dependencies.chatStore.read(),
+    context.dependencies.chatStore.readCore(),
+  ]);
+
+  const binding = createBindingRecord(chat, body, nowIso);
+  const nextCore = updateCoreBindings(core, (bindings) => [...bindings, binding], nowIso);
+  const persisted = await context.dependencies.chatStore.writeCore(nextCore);
+
+  sendJson(context.response, 201, {
+    botBinding: summarizeBinding(
+      persisted.botBindings.find((candidate) => candidate.id === binding.id) ?? binding,
+      chat,
+    ),
+  });
+}
+
+async function handleUpdateBotBinding(
+  context: ChatApiRouteContext,
+  bindingId: string,
+): Promise<void> {
+  const body = await readJsonBody<UpdateBotBindingInput>(context.request);
+  const nowIso = nowFrom(context.dependencies).toISOString();
+  const [chat, core] = await Promise.all([
+    context.dependencies.chatStore.read(),
+    context.dependencies.chatStore.readCore(),
+  ]);
+  const existing = core.botBindings.find((binding) => binding.id === bindingId);
+  if (!existing) {
+    throw new Error(`Bot binding not found: ${bindingId}`);
   }
+
+  let catActorId = existing.catActorId ?? existing.bossCatActorId;
+  let bossCatActorId = existing.bossCatActorId;
+  let roomMode = body.roomMode ?? existing.roomMode;
+
+  if (body.catId !== undefined) {
+    const cat = requireCat(chat, body.catId);
+    catActorId = createCatActorId(cat.id);
+    bossCatActorId = chat.bossCatId === cat.id ? catActorId : null;
+    if (body.roomMode === undefined) {
+      roomMode = chat.bossCatId === cat.id ? 'boss_chat' : 'direct_cat_chat';
+    }
+  }
+
+  const nextCore = updateCoreBindings(core, (bindings) =>
+    bindings.map((binding) =>
+      binding.id === bindingId
+        ? {
+            ...binding,
+            botName: body.botName?.trim() || binding.botName,
+            catActorId,
+            bossCatActorId,
+            roomMode,
+            status: body.status ?? binding.status,
+            updatedAt: nowIso,
+          }
+        : binding,
+    ), nowIso);
+  const persisted = await context.dependencies.chatStore.writeCore(nextCore);
+  const updated = persisted.botBindings.find((binding) => binding.id === bindingId);
+
+  sendJson(context.response, 200, {
+    botBinding: summarizeBinding(updated ?? existing, chat),
+  });
 }
 
 async function handleDeleteBotBinding(
   context: ChatApiRouteContext,
   bindingId: string,
 ): Promise<void> {
-  try {
-    const now = nowFrom(context.dependencies);
-    let core = await context.dependencies.chatStore.readCore();
-    core = removeBotBinding(core, bindingId, now);
-    await context.dependencies.chatStore.writeCore(core);
-    sendJson(
-      context.response,
-      200,
-      await buildAppShellPayload(context.dependencies),
-    );
-  } catch (error) {
-    handleRestError(context, error);
+  const nowIso = nowFrom(context.dependencies).toISOString();
+  const core = await context.dependencies.chatStore.readCore();
+  if (!core.botBindings.some((binding) => binding.id === bindingId)) {
+    throw new Error(`Bot binding not found: ${bindingId}`);
   }
+
+  const nextCore = updateCoreBindings(
+    core,
+    (bindings) => bindings.filter((binding) => binding.id !== bindingId),
+    nowIso,
+  );
+  await context.dependencies.chatStore.writeCore(nextCore);
+  sendJson(context.response, 200, { deleted: true, bindingId });
 }
 
 export async function routeBotBindingApi(
@@ -94,25 +179,36 @@ export async function routeBotBindingApi(
       return true;
     }
     if (context.method === 'POST') {
-      await handleCreateBotBinding(context);
+      try {
+        await handleCreateBotBinding(context);
+      } catch (error) {
+        handleRestError(context, error);
+      }
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
     return true;
   }
 
-  const deleteMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/bot-bindings\/([^/]+)$/u,
-  );
-  if (deleteMatch) {
-    if (context.method === 'DELETE') {
-      await handleDeleteBotBinding(context, deleteMatch[0]);
-      return true;
-    }
-    sendMethodNotAllowed(context.response, ['DELETE']);
-    return true;
+  const bindingMatch = matchRoute(context.url.pathname, /^\/api\/bot-bindings\/([^/]+)$/u);
+  if (!bindingMatch) {
+    return false;
   }
 
-  return false;
+  const [bindingId] = bindingMatch;
+  try {
+    if (context.method === 'PATCH') {
+      await handleUpdateBotBinding(context, bindingId);
+      return true;
+    }
+    if (context.method === 'DELETE') {
+      await handleDeleteBotBinding(context, bindingId);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['PATCH', 'DELETE']);
+    return true;
+  } catch (error) {
+    handleRestError(context, error);
+    return true;
+  }
 }

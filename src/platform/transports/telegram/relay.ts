@@ -66,13 +66,10 @@ function pickMessage(
   return { message: null, isEdited: false };
 }
 
-function hasActiveBossCatBinding(context: TelegramRelayContext): boolean {
+function hasActiveDefaultBinding(context: TelegramRelayContext): boolean {
   return Boolean(
-    context.bossCatId
-    && context.bossCatActorId
-    && context.botBinding
-    && context.botBinding.status === 'active'
-    && context.botBinding.bossCatActorId === context.bossCatActorId,
+    context.defaultBotBinding
+    && context.defaultBotBinding.status === 'active',
   );
 }
 
@@ -86,14 +83,18 @@ function buildStatusNote(input: {
   }
 
   if (!input.boundToBossCat) {
-    return 'No Telegram bot binding is configured for the current Boss Cat.';
+    return 'No active Telegram bot binding is available for ingress.';
   }
 
   if (!input.deliveryConfigured) {
-    return 'Telegram ingress is wired to Boss Cat. Outbound delivery remains unconfigured.';
+    return input.context.botBindings.length > 1
+      ? 'Multiple Cat-bound Telegram bots are configured. One active binding is used for ingress and delivery is still unconfigured.'
+      : 'Telegram ingress is wired to the active Cat binding. Outbound delivery remains unconfigured.';
   }
 
-  return 'Telegram ingress and delivery are both pinned to the single public Boss Cat identity.';
+  return input.context.botBindings.length > 1
+    ? 'Telegram supports multiple Cat-bound bot bindings while keeping one default ingress path.'
+    : 'Telegram ingress and delivery are both pinned to the active Cat binding.';
 }
 
 function readString(value: string | null | undefined): string | null {
@@ -116,15 +117,24 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     status: 'bound' | 'unbound';
     note: string;
     botBinding: TelegramRelayStatus['botBinding'];
+    availableBindings: TelegramRelayStatus['availableBindings'];
   } {
-    const boundToBossCat = hasActiveBossCatBinding(context);
-    const botBinding = boundToBossCat && context.botBinding
+    const boundToBossCat = hasActiveDefaultBinding(context);
+    const botBinding = boundToBossCat && context.defaultBotBinding
       ? {
-          id: context.botBinding.id,
+          id: context.defaultBotBinding.id,
           platform: 'telegram' as const,
-          botName: context.botBinding.botName,
+          botName: context.defaultBotBinding.botName,
         }
       : null;
+    const availableBindings = context.botBindings.map((binding) => ({
+      id: binding.id,
+      platform: 'telegram' as const,
+      botName: binding.botName,
+      catActorId: binding.catActorId,
+      roomMode: binding.roomMode,
+      status: binding.status,
+    }));
 
     return {
       status: boundToBossCat ? 'bound' : 'unbound',
@@ -134,6 +144,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         deliveryConfigured: deliveryClient !== null,
       }),
       botBinding,
+      availableBindings,
     };
   }
 
@@ -181,7 +192,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       bossCatId: context.bossCatId,
       bossCatName: context.bossCatName,
       botBinding: base.botBinding,
-      publicIdentityMode: 'boss_cat_single_identity',
+      availableBindings: base.availableBindings,
+      publicIdentityMode: 'multi_cat_bindings_single_boss',
       mappedConversationCount: conversationMapper.getBindingCount(),
       lastProcessedUpdateId: store.getLastProcessedUpdateId(),
       webhookPath,
@@ -230,6 +242,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         bossCatId: status.bossCatId,
         bossCatName: status.bossCatName,
         botBinding: status.botBinding,
+        availableBindings: status.availableBindings,
         relayMode: status.relayMode,
         webhookPath: status.webhookPath,
         diagnosticsPath: status.diagnosticsPath,
@@ -260,7 +273,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       const chatId = message?.chat?.id != null ? String(message.chat.id) : null;
       const messageId = typeof message?.message_id === 'number' ? String(message.message_id) : null;
 
-      if (!hasActiveBossCatBinding(context)) {
+      if (!hasActiveDefaultBinding(context)) {
         const receipt = buildWebhookReceipt({
           context,
           acceptedAt,
@@ -401,7 +414,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         textPreview: normalizeTelegramDeliveryTextPreview(request.text),
       };
 
-      if (!hasActiveBossCatBinding(context)) {
+      if (!hasActiveDefaultBinding(context)) {
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
           status: 'failed',
@@ -537,7 +550,6 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
                 updatedAt: deliveredAt,
               }
             : {
-                botBindingId: null,
                 telegramChatId: chatId,
                 conversationId,
                 transportConversationMode: 'transport_inbox' as const,

@@ -412,12 +412,23 @@ export function createChannel(
 ): ChatState {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
-  const title = input.title.trim() || 'New chat';
   const topic = input.topic.trim();
   const channelId = createChannelId();
   const catDrafts = input.cats ?? input.cats ?? [];
   const createdCats = catDrafts.map((palInput) => createCatRecord(palInput, nowIso));
   const participantCatIds = input.participantCatIds ?? [];
+
+  // Auto-generate title for direct cat chats when title is empty
+  let title = input.title.trim();
+  if (!title && input.roomMode === 'direct_cat_chat') {
+    const singleCatName = createdCats.length === 1
+      ? createdCats[0]?.name
+      : participantCatIds.length === 1
+        ? nextState.cats.find((cat) => cat.id === participantCatIds[0])?.name
+        : null;
+    title = singleCatName ? `${singleCatName} Direct Chat` : 'New chat';
+  }
+  title = title || 'New chat';
   const requestedLeadParticipantId = normalizeLeadParticipantId(input.leadParticipantId);
   const defaultLeadParticipantId = requestedLeadParticipantId
     ?? (
@@ -474,6 +485,7 @@ export function createChannel(
       mode: input.roomMode,
       leadParticipantId: defaultLeadParticipantId,
     }),
+    workingMemory: createEmptyMemoryCheckpoint(),
   };
 
   nextState.channels.unshift(channel);

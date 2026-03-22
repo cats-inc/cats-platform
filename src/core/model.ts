@@ -1380,9 +1380,8 @@ export function createBotBinding(
   input: {
     platform: 'telegram' | 'line';
     botName: string;
-    boundCatId: string;
-    botToken?: string | null;
-    webhookSecret?: string | null;
+    catId: string;
+    roomMode?: 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
   },
   now: Date = new Date(),
 ): { core: CatsCoreState; binding: BotBindingRecord } {
@@ -1392,12 +1391,9 @@ export function createBotBinding(
     platform: input.platform,
     botName: input.botName.trim(),
     orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
-    bossCatActorId: createCatActorId(input.boundCatId),
-    boundCatId: input.boundCatId,
-    boundCatActorId: createCatActorId(input.boundCatId),
-    botToken: input.botToken?.trim() || null,
-    webhookSecret: input.webhookSecret?.trim() || null,
-    defaultRoomMode: 'direct_cat_chat',
+    catActorId: createCatActorId(input.catId),
+    bossCatActorId: null,
+    roomMode: input.roomMode ?? 'direct_cat_chat',
     status: 'active',
     createdAt: nowIso,
     updatedAt: nowIso,
