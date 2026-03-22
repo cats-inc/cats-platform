@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { BotBindingRecord } from '../../../core/types.js';
 import type {
+  TelegramConversationBinding,
   TelegramDeliveryReceipt,
   TelegramDeliveryRequest,
   TelegramMessagePayload,
@@ -14,6 +15,7 @@ import type {
 import type { TelegramDeliveryClient } from './delivery.js';
 import {
   createTelegramConversationMapper,
+  describeTelegramRoomRouting,
   type TelegramConversationMapper,
 } from './mapping.js';
 import {
@@ -31,6 +33,18 @@ export interface TelegramRelay {
   getIngressConfig(): TelegramWebhookIngressConfig;
   getStatus(context: TelegramRelayContext): TelegramRelayStatus;
   getDiagnostics(context: TelegramRelayContext): TelegramRelayDiagnostics;
+  resolveBinding(input: {
+    conversationId?: string | null;
+    chatId?: string | null;
+    bindingId?: string | null;
+  }): TelegramConversationBinding | null;
+  linkRoom(input: {
+    conversationId?: string | null;
+    chatId?: string | null;
+    bindingId?: string | null;
+    roomId: string;
+    linkedAt?: string | null;
+  }): TelegramConversationBinding | null;
   receiveUpdate(input: {
     update: TelegramWebhookUpdate;
     context: TelegramRelayContext;
@@ -105,6 +119,28 @@ function readString(value: string | null | undefined): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
+function resolveStoredBinding(
+  store: TelegramRelayStore,
+  input: {
+    conversationId?: string | null;
+    chatId?: string | null;
+    bindingId?: string | null;
+  },
+): TelegramConversationBinding | null {
+  const bindingId = readString(input.bindingId);
+  const conversationId = readString(input.conversationId);
+  if (conversationId) {
+    return store.getBindingByConversationId(conversationId);
+  }
+
+  const chatId = readString(input.chatId);
+  if (chatId) {
+    return store.getBinding(chatId, bindingId);
+  }
+
+  return null;
+}
+
 export function createTelegramRelay(options: TelegramRelayOptions = {}): TelegramRelay {
   const now = options.now ?? (() => new Date());
   const store = options.store ?? new InMemoryTelegramRelayStore();
@@ -122,6 +158,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       || context.botBindings.some((binding) =>
         binding.status === 'active' && resolveDeliveryClient?.(binding) !== null,
       );
+  const describeContextRoomRouting = (context: TelegramRelayContext): TelegramRelayStatus['roomRouting'] =>
+    conversationMapper.describeRoomRouting(context.selectedBotBinding?.id ?? null);
 
   function getBaseStatus(context: TelegramRelayContext): {
     status: 'bound' | 'unbound';
@@ -213,7 +251,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       webhookPath,
       diagnosticsPath,
       relayMode: 'boss-cat-ingress',
-      roomRouting: conversationMapper.describeRoomRouting(),
+      roomRouting: describeContextRoomRouting(context),
       ingress: {
         secretTokenConfigured: webhookSecretToken !== null,
         maxBodyBytes,
@@ -273,6 +311,26 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       };
     },
 
+    resolveBinding(input): TelegramConversationBinding | null {
+      return resolveStoredBinding(store, input);
+    },
+
+    linkRoom(input): TelegramConversationBinding | null {
+      const binding = resolveStoredBinding(store, input);
+      if (!binding) {
+        return null;
+      }
+
+      const nextBinding: TelegramConversationBinding = {
+        ...binding,
+        linkedRoomId: input.roomId,
+        roomRoutingStatus: 'linked_room',
+        updatedAt: readString(input.linkedAt) ?? now().toISOString(),
+      };
+      store.upsertBinding(nextBinding);
+      return nextBinding;
+    },
+
     receiveUpdate({
       update,
       context,
@@ -302,7 +360,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           message,
           isEdited: pickedMessage.isEdited,
           status: 'ignored',
-          roomRouting: conversationMapper.describeRoomRouting(),
+          roomRouting: describeContextRoomRouting(context),
           reason: 'telegram_not_bound_to_boss_cat',
         });
         store.recordIngressReceipt(receipt);
@@ -323,7 +381,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           message,
           isEdited: pickedMessage.isEdited,
           status: 'ignored',
-          roomRouting: conversationMapper.describeRoomRouting(),
+          roomRouting: describeContextRoomRouting(context),
           reason: 'duplicate_update',
         });
         store.recordIngressReceipt(receipt);
@@ -342,7 +400,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           message,
           isEdited: pickedMessage.isEdited,
           status: 'ignored',
-          roomRouting: conversationMapper.describeRoomRouting(),
+          roomRouting: describeContextRoomRouting(context),
           reason: 'unsupported_update',
         });
         store.recordIngressReceipt(receipt);
@@ -361,7 +419,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           message,
           isEdited: pickedMessage.isEdited,
           status: 'ignored',
-          roomRouting: conversationMapper.describeRoomRouting(),
+          roomRouting: describeContextRoomRouting(context),
           reason: 'message_from_bot',
         });
         store.recordIngressReceipt(receipt);
@@ -380,7 +438,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           message,
           isEdited: pickedMessage.isEdited,
           status: 'ignored',
-          roomRouting: conversationMapper.describeRoomRouting(),
+          roomRouting: describeContextRoomRouting(context),
           reason: 'unsupported_chat_type',
         });
         store.recordIngressReceipt(receipt);
@@ -416,7 +474,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         message,
         isEdited: pickedMessage.isEdited,
         status: 'accepted',
-        roomRouting: mapping.roomRouting,
+        roomRouting: describeTelegramRoomRouting(mapping.binding),
       });
       store.recordIngressReceipt(receipt);
       return receipt;

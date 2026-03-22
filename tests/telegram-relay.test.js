@@ -129,6 +129,42 @@ test('telegram relay dedupes exact update ids and keeps the chat-to-conversation
   assert.equal(duplicate.mappedConversationId, 'telegram:12345');
 });
 
+test('telegram relay can persist a linked room for the active transport inbox', () => {
+  const store = new InMemoryTelegramRelayStore();
+  const relay = createTelegramRelay({
+    store,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+  const context = createContext();
+
+  relay.receiveUpdate({
+    update: {
+      update_id: 101,
+      message: {
+        message_id: 88,
+        text: 'hello from telegram',
+        chat: { id: 12345, type: 'private' },
+      },
+    },
+    context,
+  });
+
+  const binding = relay.linkRoom({
+    conversationId: 'telegram:12345',
+    roomId: 'room-123',
+  });
+
+  assert.equal(binding?.linkedRoomId, 'room-123');
+  assert.equal(binding?.roomRoutingStatus, 'linked_room');
+
+  const status = relay.getStatus(context);
+  assert.equal(status.roomRouting.roomRoutingStatus, 'linked_room');
+  assert.equal(status.roomRouting.linkedRoomId, 'room-123');
+
+  const diagnostics = relay.getDiagnostics(context);
+  assert.equal(diagnostics.bindings[0].linkedRoomId, 'room-123');
+});
+
 test('telegram relay scopes conversation ids by the selected non-default binding', () => {
   const store = new InMemoryTelegramRelayStore();
   const relay = createTelegramRelay({

@@ -98,6 +98,12 @@ interface DispatchExecution extends DispatchRequest {
   error: string | null;
 }
 
+type RuntimeTransportContext = 'telegram' | 'web';
+
+interface RouteChannelMessageOptions {
+  transport?: RuntimeTransportContext;
+}
+
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_PROMPT_RECENT_MESSAGES;
 
 function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionStatus {
@@ -267,25 +273,31 @@ function buildCatTarget(cat: ChatChannelCat): RoutingTarget {
   };
 }
 
-function resolveTransportContext(channel: ChatChannelView): 'telegram' | 'web' {
-  return channel.roomRouting?.mode === 'transport_inbox' ? 'telegram' : 'web';
+function resolveTransportContext(
+  channel: ChatChannelView,
+  transport?: RuntimeTransportContext,
+): RuntimeTransportContext {
+  return transport ?? (channel.roomRouting?.mode === 'transport_inbox' ? 'telegram' : 'web');
 }
 
 function buildSessionContextForTarget(
   channel: ChatChannelView,
   target: RoutingTarget,
+  transport?: RuntimeTransportContext,
 ): {
   source: 'interactive';
   reason: string;
   labels: string[];
   metadata: Record<string, unknown>;
 } {
+  const resolvedTransport = resolveTransportContext(channel, transport);
   return {
     source: 'interactive',
     reason: `cats:${channel.roomRouting?.mode ?? 'boss_chat'}`,
     labels: [
       `channel:${channel.id}`,
       `room-mode:${channel.roomRouting?.mode ?? 'boss_chat'}`,
+      `transport:${resolvedTransport}`,
       `target:${target.participantKind}:${target.participantId}`,
     ],
     metadata: {
@@ -293,6 +305,7 @@ function buildSessionContextForTarget(
       channelTitle: channel.title,
       roomMode: channel.roomRouting?.mode ?? 'boss_chat',
       leadParticipantId: channel.roomRouting?.leadParticipantId ?? null,
+      transport: resolvedTransport,
       targetKind: target.participantKind,
       targetId: target.participantId,
     },
@@ -303,12 +316,14 @@ function resolveSessionSkillManifestForTarget(
   state: ChatState,
   channel: ChatChannelView,
   target: RoutingTarget,
+  transport?: RuntimeTransportContext,
 ): RuntimeSkillManifest | undefined {
+  const resolvedTransport = resolveTransportContext(channel, transport);
   if (target.participantKind === 'orchestrator') {
     return resolveSkillProfileManifest({
       profileId: state.globalOrchestrator.skillProfile,
       roomMode: channel.roomRouting?.mode ?? 'boss_chat',
-      transport: resolveTransportContext(channel),
+      transport: resolvedTransport,
       labels: ['participant:orchestrator'],
       metadata: {
         channelId: channel.id,
@@ -321,7 +336,7 @@ function resolveSessionSkillManifestForTarget(
     profileId: cat?.skillProfile,
     catId: cat?.catId ?? target.participantId,
     roomMode: channel.roomRouting?.mode ?? 'boss_chat',
-    transport: resolveTransportContext(channel),
+    transport: resolvedTransport,
     labels: ['participant:cat'],
     metadata: {
       channelId: channel.id,
@@ -835,6 +850,7 @@ function buildPromptForTarget(
   state: ChatState,
   channelId: string,
   request: DispatchRequest,
+  transport?: RuntimeTransportContext,
 ): string {
   const channel = buildChannelView(state, channelId);
   const recentMessages = sliceRecentContextForTarget(
@@ -846,6 +862,7 @@ function buildPromptForTarget(
     reason: describeRoutingReason(channel, request.sourceParticipant, request.trigger),
     recentMessages,
     sourceParticipantName: request.sourceParticipant?.participantName ?? null,
+    transport: resolveTransportContext(channel, transport),
   };
 
   if (request.target.participantKind === 'orchestrator') {
@@ -895,6 +912,7 @@ async function ensureTargetSession(
   target: RoutingTarget,
   runtimeClient: RuntimeClient,
   now: Date,
+  transport?: RuntimeTransportContext,
 ): Promise<{
   state: ChatState;
   target: RoutingTarget;
@@ -917,8 +935,8 @@ async function ensureTargetSession(
         model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
         sharingMode,
-        context: buildSessionContextForTarget(channel, target),
-        skills: resolveSessionSkillManifestForTarget(nextState, channel, target),
+        context: buildSessionContextForTarget(channel, target, transport),
+        skills: resolveSessionSkillManifestForTarget(nextState, channel, target, transport),
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
@@ -965,8 +983,8 @@ async function ensureTargetSession(
       model: cat.execution.target.model,
       cwd: spawnCwd,
       sharingMode,
-      context: buildSessionContextForTarget(channel, target),
-      skills: resolveSessionSkillManifestForTarget(nextState, channel, target),
+      context: buildSessionContextForTarget(channel, target, transport),
+      skills: resolveSessionSkillManifestForTarget(nextState, channel, target, transport),
     });
     nextState = setStartedSession(
       nextState,
@@ -1034,9 +1052,10 @@ async function executeDispatch(
   channelId: string,
   request: DispatchRequest,
   runtimeClient: RuntimeClient,
+  transport?: RuntimeTransportContext,
 ): Promise<DispatchExecution> {
   try {
-    const prompt = buildPromptForTarget(state, channelId, request);
+    const prompt = buildPromptForTarget(state, channelId, request, transport);
     const runtimeResult = await runtimeClient.sendMessage(
       request.target.sessionId ?? '',
       prompt,
@@ -1333,6 +1352,7 @@ export async function routeChannelMessage(
   payload: SendChannelMessageInput,
   runtimeClient: RuntimeClient,
   now: Date = new Date(),
+  options: RouteChannelMessageOptions = {},
 ): Promise<{ state: ChatState; results: ChannelDispatchResult[] }> {
   let nextState = appendMessage(
     state,
@@ -1730,6 +1750,7 @@ export async function routeChannelMessage(
         request.target,
         runtimeClient,
         now,
+        options.transport,
       );
       nextState = ensured.state;
       if (ensured.error) {
@@ -1832,7 +1853,7 @@ export async function routeChannelMessage(
     const stateSnapshot = nextState;
     const executions = await settleInCompletionOrder(
       readyRequests.map((request) =>
-        executeDispatch(stateSnapshot, channelId, request, runtimeClient),
+        executeDispatch(stateSnapshot, channelId, request, runtimeClient, options.transport),
       ),
     );
 

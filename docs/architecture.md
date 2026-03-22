@@ -115,7 +115,8 @@ below product orchestration policy:
 - **Purpose**: Keep Telegram as a transport-owned Boss Cat inbox seam without
   leaking routing or reply policy into HTTP assembly
 - **Technology**: `src/platform/transports/telegram/*`, a durable relay
-  sidecar store, and an optional Telegram Bot API delivery client
+  sidecar store, a transport-to-room bridge, and an optional Telegram Bot API
+  delivery client
 - **Responsibilities**:
   - harden webhook ingress with JSON checks, optional secret-token validation,
     and bounded body size
@@ -123,15 +124,19 @@ below product orchestration policy:
     the main transcript model
   - normalize inbound message/media summaries for transport receipts and later
     system-layer consumers
+  - link each Telegram inbox to one current canonical `Cats Chat` room while
+    keeping the transport binding, dedupe window, and linked-room pointer in
+    transport-owned state instead of general renderer state
+  - route accepted Telegram messages through the existing chat/runtime flow and
+    relay concise replies back to Telegram
   - expose transport-level status and diagnostics, including dedupe counters,
     bindings, and last ingress/delivery receipts
   - provide outbound `send` / `reply` / `edit` / `delete` delivery seams
-    without inventing product policy
 
 The current server wiring stays intentionally thin: `src/app/server/index.ts`
-only instantiates the relay, sidecar store, and optional Bot API client.
-`src/server/routes/telegram.ts` owns the HTTP adapter, while transport state
-stays in `src/platform/transports/telegram/*`.
+only instantiates the relay, sidecar store, bridge dependencies, and optional
+Bot API client. `src/server/routes/telegram.ts` owns the HTTP adapter, while
+transport state stays in `src/platform/transports/telegram/*`.
 
 ### Cats Core v1
 
@@ -477,9 +482,7 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-03-22*
-
-
+*Last updated: 2026-03-23*
 
 
 

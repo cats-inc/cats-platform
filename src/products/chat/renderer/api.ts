@@ -683,6 +683,99 @@ export async function deleteBotBindingApi(
   return mutateAndRefetch(response, `bot binding delete returned ${response.status}`, signal);
 }
 
+export interface TelegramTransportRoomRouting {
+  roomRoutingStatus: 'placeholder' | 'linked_room';
+  linkedRoomId: string | null;
+  note: string;
+}
+
+export interface TelegramTransportReceiptSummary {
+  status?: string;
+  reason?: string;
+  acceptedAt?: string;
+  deliveredAt?: string;
+  chatId?: string | null;
+  messageId?: string | null;
+  bindingId?: string | null;
+  errorMessage?: string | null;
+}
+
+export interface TelegramTransportBindingDiagnostics {
+  telegramChatId: string;
+  conversationId: string;
+  bindingId: string | null;
+  botName: string | null;
+  roomRoutingStatus: 'placeholder' | 'linked_room';
+  linkedRoomId: string | null;
+  telegramChatUsername: string | null;
+  lastInboundAt: string | null;
+  lastInboundTextPreview: string | null;
+  lastOutboundAt: string | null;
+  lastOutboundMessageId: string | null;
+}
+
+export interface TelegramTransportStatus {
+  platform: 'telegram';
+  status: 'bound' | 'unbound';
+  webhookPath: string;
+  diagnosticsPath: string;
+  roomRouting: TelegramTransportRoomRouting;
+  ingress: {
+    secretTokenConfigured: boolean;
+    maxBodyBytes: number;
+    acceptedUpdates: number;
+    ignoredUpdates: number;
+    lastReceipt: TelegramTransportReceiptSummary | null;
+  };
+  delivery: {
+    status: 'configured' | 'not_configured';
+    supportedOperations: string[];
+    sentCount: number;
+    repliedCount: number;
+    editedCount: number;
+    deletedCount: number;
+    failedCount: number;
+    lastReceipt: TelegramTransportReceiptSummary | null;
+  };
+  note: string;
+}
+
+export interface TelegramTransportDiagnostics extends TelegramTransportStatus {
+  dedupe: {
+    retainedUpdateCount: number;
+    maxRetainedUpdateCount: number;
+  };
+  bindings: TelegramTransportBindingDiagnostics[];
+}
+
+export async function fetchTelegramTransportStatus(
+  signal?: AbortSignal,
+): Promise<TelegramTransportStatus> {
+  const response = await fetch('/api/transports/telegram', {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  const payload = await expectJson<{ telegram: TelegramTransportStatus }>(
+    response,
+    `telegram transport status returned ${response.status}`,
+  );
+  return payload.telegram;
+}
+
+export async function fetchTelegramTransportDiagnostics(
+  signal?: AbortSignal,
+): Promise<TelegramTransportDiagnostics> {
+  const response = await fetch('/api/transports/telegram/diagnostics', {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  const payload = await expectJson<{ telegram: TelegramTransportDiagnostics }>(
+    response,
+    `telegram transport diagnostics returned ${response.status}`,
+  );
+  return payload.telegram;
+}
+
 export interface DurableMemoryItem {
   id: string;
   category: string;

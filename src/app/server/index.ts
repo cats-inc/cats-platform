@@ -282,6 +282,8 @@ async function routeRequest(
     await handleTelegramStatus(response, {
       chatStore: dependencies.chatStore,
       telegramRelay: dependencies.telegramRelay,
+      runtimeClient: dependencies.runtimeClient,
+      now: dependencies.now,
     });
     return;
   }
@@ -294,6 +296,8 @@ async function routeRequest(
     await handleTelegramDiagnostics(response, {
       chatStore: dependencies.chatStore,
       telegramRelay: dependencies.telegramRelay,
+      runtimeClient: dependencies.runtimeClient,
+      now: dependencies.now,
     });
     return;
   }
@@ -310,6 +314,8 @@ async function routeRequest(
     await handleTelegramWebhook(request, response, {
       chatStore: dependencies.chatStore,
       telegramRelay: dependencies.telegramRelay,
+      runtimeClient: dependencies.runtimeClient,
+      now: dependencies.now,
     }, telegramWebhookMatch[0]);
     return;
   }

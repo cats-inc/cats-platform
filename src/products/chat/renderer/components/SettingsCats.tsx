@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { AppShellPayload, ChatCat, BotBindingSummary } from '../../../../shared/app-shell';
+import type { AppShellPayload } from '../../../../shared/app-shell';
 import { executionLabel, emptyCatForm, type CatFormState } from '../chatUtils';
 import {
   createGlobalCat,
@@ -9,10 +9,14 @@ import {
   updateCatProfile,
   createBotBindingApi,
   deleteBotBindingApi,
+  fetchTelegramTransportDiagnostics,
+  fetchTelegramTransportStatus,
   listCatMemory,
   createCatMemory,
   deleteCatMemory,
   type DurableMemoryItem,
+  type TelegramTransportDiagnostics,
+  type TelegramTransportStatus,
 } from '../api';
 import { ProviderModelFields } from './ProviderModelFields';
 
@@ -24,6 +28,18 @@ const SKILL_PROFILES = [
 const MEMORY_CATEGORIES = [
   'preference', 'fact', 'policy', 'style', 'relationship', 'lesson',
 ];
+
+function formatTransportTimestamp(value: string | null | undefined): string {
+  if (!value) {
+    return '—';
+  }
+
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return value;
+  }
+}
 
 export interface SettingsCatsProps {
   payload: AppShellPayload;
@@ -50,6 +66,10 @@ export function SettingsCats({
   const [memoryForm, setMemoryForm] = useState({ category: 'fact', content: '' });
   const [catMemory, setCatMemory] = useState<DurableMemoryItem[]>([]);
   const [memoryLoading, setMemoryLoading] = useState(false);
+  const [telegramStatus, setTelegramStatus] = useState<TelegramTransportStatus | null>(null);
+  const [telegramDiagnostics, setTelegramDiagnostics] = useState<TelegramTransportDiagnostics | null>(null);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramError, setTelegramError] = useState('');
 
   useEffect(() => {
     if (!expandedCatId) return;
@@ -61,6 +81,37 @@ export function SettingsCats({
       .finally(() => { if (!cancelled) setMemoryLoading(false); });
     return () => { cancelled = true; };
   }, [expandedCatId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTelegramLoading(true);
+    setTelegramError('');
+    Promise.all([
+      fetchTelegramTransportStatus(),
+      fetchTelegramTransportDiagnostics(),
+    ])
+      .then(([status, diagnostics]) => {
+        if (cancelled) {
+          return;
+        }
+        setTelegramStatus(status);
+        setTelegramDiagnostics(diagnostics);
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        setTelegramStatus(null);
+        setTelegramDiagnostics(null);
+        setTelegramError(error instanceof Error ? error.message : 'Failed to load Telegram diagnostics.');
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTelegramLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [payload.chat.botBindings]);
 
   async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -187,6 +238,25 @@ export function SettingsCats({
     }
   }
 
+  async function onRefreshTelegramDiagnostics(): Promise<void> {
+    setTelegramLoading(true);
+    setTelegramError('');
+    try {
+      const [status, diagnostics] = await Promise.all([
+        fetchTelegramTransportStatus(),
+        fetchTelegramTransportDiagnostics(),
+      ]);
+      setTelegramStatus(status);
+      setTelegramDiagnostics(diagnostics);
+    } catch (error) {
+      setTelegramStatus(null);
+      setTelegramDiagnostics(null);
+      setTelegramError(error instanceof Error ? error.message : 'Failed to load Telegram diagnostics.');
+    } finally {
+      setTelegramLoading(false);
+    }
+  }
+
   const botBindings = payload.chat.botBindings ?? [];
 
   return (
@@ -209,6 +279,93 @@ export function SettingsCats({
           <section className="contentCard">
             <div className="contentCardHeader">
               <div>
+                <p className="sectionLabel">Transport</p>
+                <h2>Telegram inbox</h2>
+              </div>
+              <button
+                className="chromeButton"
+                type="button"
+                disabled={telegramLoading}
+                onClick={() => void onRefreshTelegramDiagnostics()}
+              >
+                {telegramLoading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+            {telegramError ? <p className="feedbackText">{telegramError}</p> : null}
+            {telegramStatus ? (
+              <div className="catDetailPanel" style={{ marginBottom: 24 }}>
+                <div className="catDetailSection">
+                  <p className="sectionLabel">Overview</p>
+                  <div className="catMeta">
+                    <span>{telegramStatus.status}</span>
+                    <span>{telegramStatus.delivery.status === 'configured' ? 'Delivery ready' : 'Delivery not configured'}</span>
+                    <span>{telegramStatus.roomRouting.roomRoutingStatus === 'linked_room' ? 'Room linked' : 'Room pending'}</span>
+                  </div>
+                  <p style={{ marginTop: 8 }}>{telegramStatus.note}</p>
+                  <p style={{ marginTop: 8, opacity: 0.7 }}>Webhook: {telegramStatus.webhookPath}</p>
+                  <p style={{ opacity: 0.7 }}>Diagnostics: {telegramStatus.diagnosticsPath}</p>
+                </div>
+                <div className="catDetailSection">
+                  <p className="sectionLabel">Ingress</p>
+                  <div className="catMeta">
+                    <span>Accepted {telegramStatus.ingress.acceptedUpdates}</span>
+                    <span>Ignored {telegramStatus.ingress.ignoredUpdates}</span>
+                    <span>{telegramStatus.ingress.secretTokenConfigured ? 'Secret configured' : 'No secret'}</span>
+                  </div>
+                  <p style={{ marginTop: 8, opacity: 0.7 }}>
+                    Last inbound: {formatTransportTimestamp(telegramStatus.ingress.lastReceipt?.acceptedAt)}
+                  </p>
+                  {telegramStatus.ingress.lastReceipt?.reason ? (
+                    <p style={{ opacity: 0.7 }}>Last inbound reason: {telegramStatus.ingress.lastReceipt.reason}</p>
+                  ) : null}
+                </div>
+                <div className="catDetailSection">
+                  <p className="sectionLabel">Delivery</p>
+                  <div className="catMeta">
+                    <span>Sent {telegramStatus.delivery.sentCount}</span>
+                    <span>Replies {telegramStatus.delivery.repliedCount}</span>
+                    <span>Failed {telegramStatus.delivery.failedCount}</span>
+                  </div>
+                  <p style={{ marginTop: 8, opacity: 0.7 }}>
+                    Last outbound: {formatTransportTimestamp(telegramStatus.delivery.lastReceipt?.deliveredAt)}
+                  </p>
+                  {telegramStatus.delivery.lastReceipt?.errorMessage ? (
+                    <p style={{ opacity: 0.7 }}>Last outbound error: {telegramStatus.delivery.lastReceipt.errorMessage}</p>
+                  ) : null}
+                </div>
+                {telegramDiagnostics ? (
+                  <div className="catDetailSection">
+                    <p className="sectionLabel">Bindings & dedupe</p>
+                    <div className="catMeta">
+                      <span>Tracked inboxes {telegramDiagnostics.bindings.length}</span>
+                      <span>Dedupe {telegramDiagnostics.dedupe.retainedUpdateCount}/{telegramDiagnostics.dedupe.maxRetainedUpdateCount}</span>
+                    </div>
+                    {telegramDiagnostics.bindings.length > 0 ? (
+                      <div className="memoryList" style={{ marginTop: 12 }}>
+                        {telegramDiagnostics.bindings.slice(0, 3).map((binding) => (
+                          <div key={binding.conversationId} className="memoryItem">
+                            <div>
+                              <strong>{binding.botName ? `@${binding.botName}` : binding.telegramChatId}</strong>
+                              <span style={{ marginLeft: 8, opacity: 0.7 }}>
+                                room {binding.linkedRoomId ?? 'pending'}
+                              </span>
+                            </div>
+                            <span style={{ opacity: 0.7 }}>
+                              {binding.lastInboundTextPreview ?? 'No inbound preview yet'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ marginTop: 8, opacity: 0.6 }}>No Telegram inbox bindings have received traffic yet.</p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="contentCardHeader">
+              <div>
                 <p className="sectionLabel">Registry</p>
                 <h2>{payload.chat.cats.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
               </div>
@@ -227,6 +384,9 @@ export function SettingsCats({
                     const isBossCat = cat.id === payload.chat.bossCatId;
                     const isExpanded = expandedCatId === cat.id;
                     const catBindings = botBindings.filter((binding) => binding.catId === cat.id);
+                    const catBindingDiagnostics = telegramDiagnostics?.bindings.filter((binding) =>
+                      binding.bindingId && catBindings.some((candidate) => candidate.id === binding.bindingId),
+                    ) ?? [];
 
                     return (
                       <article key={cat.id} className="catCard">
@@ -357,9 +517,29 @@ export function SettingsCats({
                                       <div>
                                         <strong>@{binding.botName}</strong>
                                         <span className="statusChip statusChipReady" style={{ marginLeft: 8 }}>{binding.status}</span>
+                                        <div style={{ marginTop: 6, opacity: 0.7 }}>
+                                          <div>Webhook: {binding.webhookPath}</div>
+                                          <div>Room mode: {binding.roomMode}</div>
+                                          <div>
+                                            Token {binding.hasBotToken ? 'configured' : 'missing'}
+                                            {' · '}
+                                            Secret {binding.hasWebhookSecret ? 'configured' : 'missing'}
+                                          </div>
+                                          {catBindingDiagnostics
+                                            .filter((diagnostic) => diagnostic.bindingId === binding.id)
+                                            .slice(0, 1)
+                                            .map((diagnostic) => (
+                                              <div key={diagnostic.conversationId}>
+                                                Inbox {diagnostic.telegramChatId}
+                                                {' · '}
+                                                Room {diagnostic.linkedRoomId ?? 'pending'}
+                                                {' · '}
+                                                Last inbound {formatTransportTimestamp(diagnostic.lastInboundAt)}
+                                              </div>
+                                            ))}
+                                        </div>
                                       </div>
                                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.8em', opacity: 0.6 }}>{binding.webhookPath}</span>
                                         <button
                                           className="chromeButton"
                                           type="button"
@@ -375,6 +555,11 @@ export function SettingsCats({
                               ) : (
                                 <p style={{ opacity: 0.6, marginBottom: 8 }}>No Telegram bot bound yet.</p>
                               )}
+                              {catBindings.length > 0 && catBindingDiagnostics.length === 0 ? (
+                                <p style={{ opacity: 0.6, marginBottom: 8 }}>
+                                  No webhook traffic has been recorded for this cat yet.
+                                </p>
+                              ) : null}
                               <div className="botBindingForm">
                                 <input
                                   className="textInput"

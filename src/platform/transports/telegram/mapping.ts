@@ -9,13 +9,27 @@ export const TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE =
   'Telegram ingress is durably mapped to transport inbox conversations. ' +
   'Room continuation and creation policy remains pending.';
 
-function createPlaceholderRoomRoutingSeam(
-  linkedRoomId: string | null = null,
+export const TELEGRAM_ROOM_ROUTING_LINKED_NOTE_PREFIX =
+  'Telegram inbox is linked to the current Cats Chat room';
+
+export function describeTelegramRoomRouting(
+  binding:
+    | Pick<TelegramConversationBinding, 'roomRoutingStatus' | 'linkedRoomId'>
+    | null,
 ): TelegramRoomRoutingSeam {
+  if (binding?.roomRoutingStatus === 'linked_room' && binding.linkedRoomId) {
+    return {
+      transportConversationMode: 'transport_inbox',
+      roomRoutingStatus: 'linked_room',
+      linkedRoomId: binding.linkedRoomId,
+      note: `${TELEGRAM_ROOM_ROUTING_LINKED_NOTE_PREFIX} ${binding.linkedRoomId}.`,
+    };
+  }
+
   return {
     transportConversationMode: 'transport_inbox',
     roomRoutingStatus: 'placeholder',
-    linkedRoomId,
+    linkedRoomId: binding?.linkedRoomId ?? null,
     note: TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE,
   };
 }
@@ -43,17 +57,17 @@ export interface TelegramConversationMappingResult {
 }
 
 export interface TelegramConversationMapper {
-  describeRoomRouting(): TelegramRoomRoutingSeam;
+  describeRoomRouting(bindingId?: string | null): TelegramRoomRoutingSeam;
   getBindingCount(): number;
   listBindings(): TelegramConversationBinding[];
-    resolveChatConversation(input: {
-      chatId: string;
-      acceptedAt: string;
-      bindingId?: string | null;
-      botName?: string | null;
-      chatType: string;
-      chatTitle: string | null;
-      chatUsername: string | null;
+  resolveChatConversation(input: {
+    chatId: string;
+    acceptedAt: string;
+    bindingId?: string | null;
+    botName?: string | null;
+    chatType: string;
+    chatTitle: string | null;
+    chatUsername: string | null;
     messageId: string | null;
     messageSummary: TelegramNormalizedMessageSummary | null;
   }): TelegramConversationMappingResult;
@@ -62,9 +76,20 @@ export interface TelegramConversationMapper {
 export function createTelegramConversationMapper(
   store: TelegramRelayStore,
 ): TelegramConversationMapper {
+  function findLatestBinding(bindingId?: string | null): TelegramConversationBinding | null {
+    const normalizedBindingId = typeof bindingId === 'string' && bindingId.trim().length > 0
+      ? bindingId.trim()
+      : null;
+
+    return store
+      .listBindings()
+      .find((binding) => (normalizedBindingId ? binding.bindingId === normalizedBindingId : true))
+      ?? null;
+  }
+
   return {
-    describeRoomRouting(): TelegramRoomRoutingSeam {
-      return createPlaceholderRoomRoutingSeam();
+    describeRoomRouting(bindingId?: string | null): TelegramRoomRoutingSeam {
+      return describeTelegramRoomRouting(findLatestBinding(bindingId));
     },
 
     getBindingCount(): number {
@@ -137,7 +162,7 @@ export function createTelegramConversationMapper(
       return {
         binding,
         created: existingBinding === null,
-        roomRouting: createPlaceholderRoomRoutingSeam(binding.linkedRoomId),
+        roomRouting: describeTelegramRoomRouting(binding),
       };
     },
   };

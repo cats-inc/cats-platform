@@ -2,6 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { createCatActorId } from '../../core/model.js';
 import type { BotBindingRecord } from '../../core/types.js';
+import type { RuntimeClient } from '../../platform/runtime/client.js';
+import { bridgeTelegramWebhookToRoom } from '../../platform/transports/telegram/bridge.js';
 import type { TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
@@ -10,6 +12,8 @@ import type { ChatState } from '../../shared/app-shell.js';
 interface TelegramRouteDependencies {
   chatStore: ChatStore;
   telegramRelay: TelegramRelay;
+  runtimeClient: RuntimeClient;
+  now?: () => Date;
 }
 
 class TelegramWebhookRequestError extends Error {
@@ -208,7 +212,18 @@ export async function handleTelegramWebhook(
       ?? context.defaultBotBinding?.webhookSecret
       ?? ingressConfig.secretToken,
     );
-    const receipt = dependencies.telegramRelay.receiveUpdate({ update, context });
+    let receipt = dependencies.telegramRelay.receiveUpdate({ update, context });
+    if (receipt.status === 'accepted') {
+      receipt = (await bridgeTelegramWebhookToRoom({
+        update,
+        receipt,
+        context,
+        chatStore: dependencies.chatStore,
+        runtimeClient: dependencies.runtimeClient,
+        telegramRelay: dependencies.telegramRelay,
+        now: dependencies.now,
+      })).receipt;
+    }
     sendJson(response, 202, { receipt });
   } catch (error) {
     if (error instanceof TelegramWebhookRequestError) {

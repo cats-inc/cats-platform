@@ -20,6 +20,7 @@ The current slices are:
 - file-backed chat state, cat execution, and transcript persistence
 - runtime-backed channel activation and routed messaging through `cats-runtime`
 - a global orchestrator surface, basic `@mention` routing, and transcript export
+- a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - provider-agnostic cat memory checkpoints plus channel-scoped execution leases
 
 ## Current Status
@@ -45,7 +46,7 @@ several Phase 3 items remain:
 - split-view chat surfaces for preview/debug context
 - operator-grade activity indicators and better live runtime state
 - offline transcript normalization and ingestion handoff hooks
-- desktop host and alternate entrypoints such as Telegram or tray-driven flows
+- desktop host, LINE entrypoints, and richer Telegram room-rotation policy
 
 ## Quick Start
 

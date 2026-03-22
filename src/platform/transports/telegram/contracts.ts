@@ -5,7 +5,7 @@ export type TelegramPublicIdentityMode = 'multi_cat_bindings_single_boss';
 
 export type TelegramTransportConversationMode = 'transport_inbox';
 
-export type TelegramRoomRoutingStatus = 'placeholder';
+export type TelegramRoomRoutingStatus = 'placeholder' | 'linked_room';
 export type TelegramAttachmentKind =
   | 'photo'
   | 'document'

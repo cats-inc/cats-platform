@@ -13,7 +13,7 @@
 | Chat Product Features | Completed | Runtime-backed setup, global cat registry, channel assignment, live mention continuation routing, transcript export, and execution-aware state landed |
 | Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records, but compatibility-shim cleanup and later control-plane slices remain |
 | Documentation | In Progress | Architecture, progress, API, and plan docs now reflect the shared-core write substrate, fixture bundle, and projection boundary, but broader launch-track docs still remain |
-| Cats Chat Launch Track | Not Started | Chat launch features such as approvals, escalation, takeover, and desktop packaging remain ahead |
+| Cats Chat Launch Track | In Progress | Telegram Boss Cat inbox MVP now bridges webhook ingress into durable room routing and outbound replies, while approvals, escalation, takeover, and desktop packaging remain ahead |
 | Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
@@ -111,7 +111,7 @@ Known follow-ups:
 
 ### WP-4: Cats Chat Launch Track
 
-**Status**: Not Started
+**Status**: In Progress
 **Assigned**: Codex
 **Priority**: P2
 **Depends on**: WP-3
@@ -123,7 +123,7 @@ Known follow-ups:
 | Add operator-grade chat activity and split-view surfaces | [ ] | Current renderer remains phase-2 shell quality |
 | Rework cat information architecture around current-chat `Add cat` | [ ] | Registry stays global, but the main entry should move into chat context |
 | Add interactive delegation and owner approval loop | [ ] | Dispatch planning before worker execution is not implemented yet |
-| Add Telegram and LINE orchestrator entrypoints | [ ] | Telegram status/webhook seam, durable dedupe, and placeholder inbox mapping are now landed; outbound delivery, LINE, and room-routing policy remain pending |
+| Add Telegram and LINE orchestrator entrypoints | [ ] | Telegram Boss Cat inbox MVP now lands webhook ingress, durable inbox-to-room mapping, room creation/continuation, transport diagnostics UI, and outbound replies; LINE and richer room-rotation policy remain pending |
 | Add escalation and takeover support | [ ] | HITL flows are defined in planning only |
 | Ship desktop-safe packaging and onboarding | [ ] | Electron host exists only as an ADR today |
 | Revisit limited mobile companion scope | [ ] | Mobile is not a full primary shell in the current plan |
@@ -133,7 +133,7 @@ Known follow-ups:
 - [ ] Operators can approve or redirect orchestrator plans before dispatch
 - [ ] Operators can add an existing or new cat from the active chat without
       going through a first-level registry page
-- [ ] External transport channels can route through a single orchestrator bot end to end; Telegram ingress seam is landed but outbound and room policy are still pending
+- [ ] External transport channels can route through a single orchestrator bot end to end; Telegram Boss Cat inbox MVP is landed, while LINE and richer multi-room policy still remain
 - [ ] Desktop packaging can start local services with guided setup
 
 ---
@@ -239,4 +239,4 @@ Known follow-ups:
 
 ---
 
-*Last updated: 2026-03-22*
+*Last updated: 2026-03-23*

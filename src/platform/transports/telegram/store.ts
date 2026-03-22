@@ -315,6 +315,14 @@ function readAttachmentKinds(value: unknown): TelegramAttachmentKind[] {
   );
 }
 
+function readRoomRoutingStatus(
+  value: unknown,
+): TelegramConversationBinding['roomRoutingStatus'] | null {
+  return value === 'linked_room' || value === 'placeholder'
+    ? value
+    : null;
+}
+
 function toRoomRouting(rawValue: unknown): TelegramWebhookReceipt['roomRouting'] | null {
   const record = asRecord(rawValue);
   if (!record) {
@@ -322,13 +330,13 @@ function toRoomRouting(rawValue: unknown): TelegramWebhookReceipt['roomRouting']
   }
 
   const transportConversationMode = record.transportConversationMode;
-  const roomRoutingStatus = record.roomRoutingStatus;
+  const roomRoutingStatus = readRoomRoutingStatus(record.roomRoutingStatus);
   const linkedRoomId = record.linkedRoomId;
   const note = readString(record.note);
 
   if (
     transportConversationMode !== 'transport_inbox'
-    || roomRoutingStatus !== 'placeholder'
+    || !roomRoutingStatus
     || !(typeof linkedRoomId === 'string' || linkedRoomId === null)
     || !note
   ) {
@@ -480,7 +488,7 @@ function toBinding(rawBinding: unknown): TelegramConversationBinding | null {
   const telegramChatId = readString(binding.telegramChatId);
   const conversationId = readString(binding.conversationId);
   const transportConversationMode = binding.transportConversationMode;
-  const roomRoutingStatus = binding.roomRoutingStatus;
+  const roomRoutingStatus = readRoomRoutingStatus(binding.roomRoutingStatus);
   const linkedRoomId = binding.linkedRoomId;
   const createdAt = readString(binding.createdAt);
   const updatedAt = readString(binding.updatedAt);
@@ -489,7 +497,7 @@ function toBinding(rawBinding: unknown): TelegramConversationBinding | null {
     !telegramChatId
     || !conversationId
     || transportConversationMode !== 'transport_inbox'
-    || roomRoutingStatus !== 'placeholder'
+    || !roomRoutingStatus
     || !(typeof linkedRoomId === 'string' || linkedRoomId === null || linkedRoomId === undefined)
     || !createdAt
     || !updatedAt

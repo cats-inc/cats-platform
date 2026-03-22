@@ -11,6 +11,7 @@ export interface PromptRoutingContext {
   reason: string;
   recentMessages?: ChatMessage[];
   sourceParticipantName?: string | null;
+  transport?: 'telegram' | 'web';
 }
 
 export const MAX_PROMPT_RECENT_MESSAGES = 8;
@@ -105,6 +106,20 @@ function formatSharedContext(
   return lines.join('\n');
 }
 
+function transportInstruction(
+  transport: PromptRoutingContext['transport'],
+): string | null {
+  if (transport !== 'telegram') {
+    return null;
+  }
+
+  return [
+    'The operator came in through Telegram.',
+    'Keep the reply concise, operator-facing, and suitable for a Telegram relay back to the owner.',
+    'Prefer short progress updates, clarifying questions, or direct answers over long transcript-style dumps.',
+  ].join(' ');
+}
+
 export function buildOrchestratorPrompt(
   channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,
@@ -117,6 +132,7 @@ export function buildOrchestratorPrompt(
   const sourceLabel = sourceMessage.senderKind === 'user'
     ? 'Latest user message'
     : 'Latest routed handoff';
+  const transportGuidance = transportInstruction(routingContext?.transport);
 
   return [
     `You are ${orchestratorName}, the visible Boss Cat and chat coordinator for Cats Inc.`,
@@ -131,6 +147,7 @@ export function buildOrchestratorPrompt(
       : 'If another active cat is better suited, you may mention that cat to involve them.',
     `Never address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
     'Never output internal routing notes, self-instructions, or coordinator scratchpad text.',
+    transportGuidance,
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
     `Global system prompt:\n${orchestrator.systemPrompt}`,
@@ -174,6 +191,7 @@ export function buildCatPrompt(
   const sourceLabel = sourceMessage.senderKind === 'user'
     ? 'Latest user message'
     : 'Latest routed handoff';
+  const transportGuidance = transportInstruction(routingContext?.transport);
 
   return [
     `You are ${cat.name}, a chat participant inside the Chat module for Cats Inc.`,
@@ -185,6 +203,7 @@ export function buildCatPrompt(
       ? `This handoff came from ${routingContext.sourceParticipantName}.`
       : 'This turn currently originates from the operator.',
     'Work inside the current chat context and answer as a teammate, not as the orchestrator.',
+    transportGuidance,
     'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
     languageInstruction(channel.responseLanguage),
     `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,
