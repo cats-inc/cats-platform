@@ -6,7 +6,9 @@
 
 The current focus is smoke and integration coverage around the Node server and
 shared app-shell contract. The renderer now drives real chat flows, but it
-is still covered indirectly through server and state integration tests. The
+is mostly covered through server and state integration tests, with a small set
+of direct renderer-adjacent regression tests for app-shell normalization,
+selected-channel typing, and persisted-room route-entry wake decisions. The
 Telegram transport seam is also covered directly at the platform-module level
 so dedupe, durable mapping, and webhook behavior can advance without touching
 chat-core tests. Current regression coverage also targets chat-entry wake

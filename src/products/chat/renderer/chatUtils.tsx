@@ -1,5 +1,9 @@
 import type { AppShellPayload, ChatCat, ChatChannelSummary } from '../../../shared/app-shell';
 import { getProviderDisplayName } from './providerCatalog';
+import {
+  normalizeSelectedChannelView,
+  type SelectedChannelView,
+} from '../shared/channelEntry';
 
 export type Surface = 'chats' | 'settings';
 
@@ -96,7 +100,7 @@ export function resolveBossCatName(payload: AppShellPayload): string | null {
   return payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId)?.name ?? null;
 }
 
-export type SelectedChannelView = NonNullable<AppShellPayload['chat']['selectedChannel']>;
+export type { SelectedChannelView } from '../shared/channelEntry';
 
 export function createEmptyParticipantLease(): SelectedChannelView['orchestratorLease'] {
   return {
@@ -152,7 +156,7 @@ export function createOptimisticDraftPayload(
     lastMessageAt: createdAt,
     lastActivatedAt: null,
   };
-  const selectedChannel = {
+  const selectedChannel = normalizeSelectedChannelView({
     id: channelId,
     title,
     topic,
@@ -174,7 +178,11 @@ export function createOptimisticDraftPayload(
     catAssignments: [] as never[],
     messages: [message],
     assignedCats: [] as never[],
-  };
+  });
+
+  if (!selectedChannel) {
+    throw new Error('Failed to normalize optimistic draft channel.');
+  }
 
   return {
     channelId,
@@ -184,7 +192,7 @@ export function createOptimisticDraftPayload(
         ...structuredClone(payload.chat),
         channels: [channelSummary, ...structuredClone(payload.chat.channels)],
         selectedChannelId: channelId,
-        selectedChannel: selectedChannel as AppShellPayload['chat']['selectedChannel'],
+        selectedChannel,
       },
       metadata: {
         ...structuredClone(payload.metadata),

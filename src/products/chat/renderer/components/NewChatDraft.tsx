@@ -12,8 +12,8 @@ export interface NewChatDraftProps {
   draftCwd: string | null;
   draftCatIds: string[];
   plusMenuOpen: boolean;
-  plusMenuRef: RefObject<HTMLDivElement | null>;
-  fileInputRef: RefObject<HTMLInputElement | null>;
+  plusMenuRef: RefObject<HTMLDivElement>;
+  fileInputRef: RefObject<HTMLInputElement>;
   bossCatName: string;
   bossCatAvatarColor: string | null;
   onComposerChange: (value: string) => void;

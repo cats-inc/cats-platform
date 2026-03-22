@@ -44,7 +44,6 @@ import {
 import {
   type CatFormState,
   type Surface,
-  type SelectedChannelView,
   emptyCatForm,
   resolveBossCatName,
   createOptimisticDraftPayload,
@@ -54,7 +53,11 @@ import {
   pickGreeting,
   BootShell,
 } from './chatUtils';
-import { resolveChatLifecycleState } from '../shared/lifecycle';
+import {
+  normalizeSelectedChannelView,
+  resolveSelectedChannelEntryLifecycle,
+  shouldWakeRouteChannelOnEntry,
+} from '../shared/channelEntry';
 
 import { SetupWizard } from './components/SetupWizard';
 import { Sidebar, type SidebarViewMode } from './components/Sidebar';
@@ -70,24 +73,6 @@ type LoadState =
   | { status: 'loading' }
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
-
-function resolveSelectedChannelEntryLifecycle(
-  selectedChannel: SelectedChannelView | null,
-): ReturnType<typeof resolveChatLifecycleState> | null {
-  if (!selectedChannel) {
-    return null;
-  }
-
-  const roomRouting = selectedChannel.roomRouting;
-  if (roomRouting?.mode === 'direct_cat_chat' && roomRouting.leadParticipantId) {
-    const leadCat = selectedChannel.assignedCats.find(
-      (cat) => cat.status === 'active' && cat.catId === roomRouting.leadParticipantId,
-    );
-    return resolveChatLifecycleState(leadCat?.execution.lease.status);
-  }
-
-  return resolveChatLifecycleState(selectedChannel.orchestratorLease.status);
-}
 
 export default function App() {
   const navigate = useNavigate();
@@ -130,11 +115,10 @@ export default function App() {
   const channelPlusMenuRef = useRef<HTMLDivElement>(null);
   const channelFileInputRef = useRef<HTMLInputElement>(null);
   const readyChat = state.status === 'ready' ? state.payload.chat : null;
+  const readySelectedChannel = normalizeSelectedChannelView(readyChat?.selectedChannel ?? null);
   const selectedChannelId = readyChat?.selectedChannelId ?? null;
-  const selectedChannelViewId = readyChat?.selectedChannel?.id ?? null;
-  const selectedChannelEntryLifecycle = resolveSelectedChannelEntryLifecycle(
-    readyChat?.selectedChannel ?? null,
-  );
+  const selectedChannelViewId = readySelectedChannel?.id ?? null;
+  const selectedChannelEntryLifecycle = resolveSelectedChannelEntryLifecycle(readySelectedChannel);
   const routeChannelExists = Boolean(
     routeChannelId && readyChat?.channels.some((channel) => channel.id === routeChannelId),
   );
@@ -234,12 +218,13 @@ export default function App() {
       return;
     }
 
-    if (
-      selectedChannelId === routeChannelId
-      && selectedChannelViewId === routeChannelId
-      && selectedChannelEntryLifecycle
-      && selectedChannelEntryLifecycle !== 'sleeping'
-    ) {
+    if (!shouldWakeRouteChannelOnEntry({
+      routeChannelId,
+      routeChannelExists,
+      selectedChannelId,
+      selectedChannelViewId,
+      entryLifecycleState: selectedChannelEntryLifecycle,
+    })) {
       return;
     }
 
@@ -676,8 +661,8 @@ export default function App() {
     ? 'settings' : 'chats';
 
   const selectedChannel = routeChannelId
-    && payload.chat.selectedChannel?.id === routeChannelId
-    ? payload.chat.selectedChannel
+    && readySelectedChannel?.id === routeChannelId
+    ? readySelectedChannel
     : null;
 
   const activeAssignedCats =

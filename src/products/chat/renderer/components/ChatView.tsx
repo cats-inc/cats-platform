@@ -1,10 +1,9 @@
 import type { FormEvent, KeyboardEvent, RefObject } from 'react';
 
-import type { AppShellPayload, ChatCat, ChannelCatAssignment } from '../../../../shared/app-shell';
+import type { AppShellPayload } from '../../../../shared/app-shell';
 import {
   catInitials,
   messageTone,
-  resolveBossCatName,
   truncatePath,
   type SelectedChannelView,
 } from '../chatUtils';
@@ -24,9 +23,9 @@ export interface ChatViewProps {
   greeting: string;
   channelFiles: File[];
   channelPlusMenuOpen: boolean;
-  channelPlusMenuRef: RefObject<HTMLDivElement | null>;
-  channelFileInputRef: RefObject<HTMLInputElement | null>;
-  activeAssignedCats: ChannelCatAssignment[];
+  channelPlusMenuRef: RefObject<HTMLDivElement>;
+  channelFileInputRef: RefObject<HTMLInputElement>;
+  activeAssignedCats: SelectedChannelView['assignedCats'];
   bossCatName: string;
   bossCatAvatarColor: string | null;
   showBossCatAvatar: boolean;
@@ -68,8 +67,8 @@ export function ChatView({
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
 
-  const roomMode = (selectedChannel as { roomRouting?: { mode?: string } }).roomRouting?.mode ?? 'boss_chat';
-  const leadParticipantId = (selectedChannel as { roomRouting?: { leadParticipantId?: string | null } }).roomRouting?.leadParticipantId ?? null;
+  const roomMode = selectedChannel.roomRouting.mode;
+  const leadParticipantId = selectedChannel.roomRouting.leadParticipantId;
   const leadCat = leadParticipantId
     ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
     : null;

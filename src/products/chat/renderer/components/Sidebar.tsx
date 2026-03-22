@@ -14,7 +14,7 @@ export interface SidebarProps {
   surface: Surface;
   routeChannelId: string | null;
   sidebarView: SidebarViewMode;
-  accountMenuRef: RefObject<HTMLDivElement | null>;
+  accountMenuRef: RefObject<HTMLDivElement>;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;

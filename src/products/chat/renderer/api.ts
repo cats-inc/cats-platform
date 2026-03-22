@@ -57,7 +57,7 @@ function readStringArray(value: unknown): string[] {
 function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
   const nextPayload = structuredClone(payload) as AppShellPayload & Record<string, unknown>;
   const chatState = asRecord(nextPayload.chat) ?? {};
-  nextPayload.chat = chatState as AppShellPayload['chat'];
+  nextPayload.chat = chatState as unknown as AppShellPayload['chat'];
   const globalOrchestrator = asRecord(chatState.globalOrchestrator);
 
   if (globalOrchestrator && !asRecord(globalOrchestrator.executionTarget)) {
@@ -501,7 +501,6 @@ export async function browseDirectories(
   return expectJson<BrowseDirectoriesResult>(
     response,
     `directory browse returned ${response.status}`,
-    signal,
   );
 }
 
