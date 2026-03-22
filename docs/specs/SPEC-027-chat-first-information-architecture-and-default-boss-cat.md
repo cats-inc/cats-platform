@@ -199,8 +199,9 @@ Direct Cat Chat semantics:
 - the main header should show the selected Cat clearly
 - clicking a Cat in `My Cats` resolves to that Cat's private lane
 - if a persisted direct thread already exists for that Cat, reopen it
-- otherwise open `/new?cat=<catId>` as a direct draft
-- clicking the roster entry alone must not create a persisted thread
+- otherwise create that Cat's canonical persisted private room immediately
+- `/new?cat=<catId>` may still exist as an explicit draft/deep-link route, but
+  it is not the default `My Cats` click path
 
 ## Group Chat
 
@@ -248,8 +249,7 @@ These are different actions and should remain different in copy and behavior.
 
 - opens that Cat's private lane
 - reuses an existing direct thread when one already exists
-- otherwise opens a direct `/new` draft and waits until first send to create a
-  persisted thread
+- otherwise creates the canonical direct thread immediately and opens it
 - does not silently add the Cat to the currently open thread
 
 ## Boss Cat Assignment
@@ -271,8 +271,8 @@ The first-run setup should remain minimal.
 Required setup steps:
 
 1. welcome
-2. provider/runtime setup or readiness
-3. user name / owner name
+2. user name / owner name, with optional Boss Cat rename
+3. provider/runtime setup or readiness
 4. enter the app
 
 Provider/model selection still belongs in setup. What setup should avoid is

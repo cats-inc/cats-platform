@@ -1,17 +1,17 @@
 # SPEC-012: First-Run Setup Wizard and Boss Cat Bootstrap
 
-Status: Draft (Aligned with SPEC-027)
+Status: In Progress (First Slice Landed)
 
 ## Summary
 
-`cats` is moving toward a native-feeling, desktop-first product experience.
-That means the first-run experience should not assume the operator already
-understands channels, cat registry structure, runtime dependencies, or transport
-bindings.
+`cats` now has a first delivered setup slice, but the overall onboarding
+contract still needs to stay explicit. The first-run experience should not
+assume the operator already understands channels, cat registry structure,
+runtime dependencies, or transport bindings.
 
-The current product shell can already load chats and settings, but it does not
-yet define how a brand-new environment should become ready. The proposed
-direction is to add a first-run setup wizard instead of a login-first flow.
+The current product shell now routes uninitialized environments to `/setup`
+instead of dropping them into the normal chat shell, and the first slice ships
+a three-screen wizard rather than a login-first flow.
 
 That wizard should:
 
@@ -103,8 +103,8 @@ Uninitialized app start
       /setup
         |
         +--> Welcome
-        +--> Runtime Check
-        +--> Owner Profile
+        +--> Owner Profile + Boss Cat naming
+        +--> Provider / Runtime
         +--> Default Boss Cat Bootstrap
         +--> Done
         |
@@ -121,19 +121,21 @@ Uninitialized app start
 - short explanation of what the product is
 - clear CTA to start setup
 
-### Step 2: Runtime Check / Provider Readiness
+### Step 2: Owner Profile and Boss Cat Naming
+
+- owner display name
+- optional Boss Cat display-name override, defaulting to `Boss Cat`
+- a short hint that the Boss Cat is the personal AI agent coordinating other
+  Cats
+- enough data to seed future `Know Your Boss` behavior later
+
+### Step 3: Runtime Check / Provider Readiness
 
 - check whether the runtime is reachable
 - display as "Cats Runtime" in the UI (not the internal identifier `cats-runtime`)
 - if it is not ready, explain the issue and provide a guided remediation path
 - capture or confirm the provider/model target that the initial default
   `Boss Cat` will use after bootstrap
-
-### Step 3: Owner Profile
-
-- owner display name
-- minimal initial preferences or defaults
-- enough data to seed future `Know Your Boss` behavior later
 
 ### Step 4: Default Boss Cat Bootstrap
 

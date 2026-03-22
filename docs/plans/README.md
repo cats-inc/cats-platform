@@ -51,10 +51,10 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 | [PLAN-016](./PLAN-016-dynamic-room-workflow-orchestration.md) | Dynamic Room Workflow Orchestration | Draft (Pending Review) | [SPEC-026](../specs/SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) |
 | [PLAN-015](./PLAN-015-chat-session-sleep-wake-lifecycle.md) | Chat Session Sleep/Wake Lifecycle | Approved | [SPEC-016](../specs/SPEC-016-chat-session-sleep-wake-lifecycle.md) |
 | [PLAN-014](./PLAN-014-parallel-workstream-ownership-and-integration-seams.md) | Parallel Workstream Ownership and Integration Seams | Draft (Ready for Specialist Handoff) | [SPEC-013](../specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md), [SPEC-014](../specs/SPEC-014-telegram-boss-cat-relay-mvp.md), [SPEC-015](../specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md) |
-| [PLAN-012](./PLAN-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) | First-Run Setup Wizard and Boss Cat Bootstrap | Draft (Pending Review) | [SPEC-012](../specs/SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) |
+| [PLAN-012](./PLAN-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) | First-Run Setup Wizard and Boss Cat Bootstrap | In Progress (First Slice Landed) | [SPEC-012](../specs/SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md) |
 | [PLAN-011](./PLAN-011-primary-orchestrator-chat-entry-and-trace-separation.md) | Primary Orchestrator Chat Entry and Trace Separation | Approved | [SPEC-011](../specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md) |
 | [PLAN-013](./PLAN-013-self-hosted-npm-app-packaging.md) | Self-Hosted npm App Packaging | Draft (Pending Review) | N/A |
-| [PLAN-010](./PLAN-010-full-site-routing-and-url-driven-navigation.md) | Full-Site Routing and URL-Driven Navigation | Draft (Ready for Specialist Handoff) | [SPEC-010](../specs/SPEC-010-full-site-routing-and-url-driven-navigation.md) |
+| [PLAN-010](./PLAN-010-full-site-routing-and-url-driven-navigation.md) | Full-Site Routing and URL-Driven Navigation | Implemented | [SPEC-010](../specs/SPEC-010-full-site-routing-and-url-driven-navigation.md) |
 | [PLAN-009](./PLAN-009-public-surface-naming-refresh.md) | Public-Surface Naming Refresh | Draft (Ready for Specialist Handoff) | [SPEC-009](../specs/SPEC-009-public-surface-naming-refresh.md) |
 | [PLAN-008](./PLAN-008-restful-product-api-refactor.md) | RESTful Product API Refactor | Draft (Ready for Specialist Handoff) | [SPEC-008](../specs/SPEC-008-restful-product-api-refactor.md) |
 | [PLAN-007](./PLAN-007-chat-contextual-cat-entry.md) | Chat-Contextual Cat Entry | Draft (Pending Review) | [SPEC-007](../specs/SPEC-007-chat-contextual-cat-entry.md) |
@@ -75,7 +75,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-03-21*
+*Last updated: 2026-03-23*
 
 *See also: [specs/](../specs/) for feature specifications*
 

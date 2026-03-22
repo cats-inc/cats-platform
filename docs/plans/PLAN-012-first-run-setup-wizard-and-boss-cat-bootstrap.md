@@ -1,6 +1,6 @@
 # PLAN-012: First-Run Setup Wizard and Boss Cat Bootstrap
 
-Status: Draft (Aligned with SPEC-027)
+Status: In Progress (First Slice Landed)
 
 ## Scope
 
@@ -36,13 +36,13 @@ binding plan, or a full desktop-packaging plan.
 
 ### Phase 1: Setup State and Readiness Contract
 
-- [ ] Define the minimum readiness conditions for a usable first-run state.
-- [ ] Decide how setup completion is persisted:
+- [x] Define the minimum readiness conditions for a usable first-run state.
+- [x] Decide how setup completion is persisted:
       - simple boolean
       - structured setup state
       - readiness checklist
 - [ ] Define the partial-setup resume behavior for interrupted onboarding.
-- [ ] Freeze the rule that uninitialized environments land in `/setup` instead
+- [x] Freeze the rule that uninitialized environments land in `/setup` instead
       of normal chat routes.
 
 **Deliverables**: approved readiness contract and route-gating rules.
@@ -63,22 +63,22 @@ binding plan, or a full desktop-packaging plan.
 
 ### Phase 3: Renderer Setup Shell and Routing
 
-- [ ] Add a `/setup` route and a setup-shell renderer surface.
-- [ ] Ensure uninitialized app starts land in setup instead of normal chat
+- [x] Add a `/setup` route and a setup-shell renderer surface.
+- [x] Ensure uninitialized app starts land in setup instead of normal chat
       entry.
-- [ ] Ensure setup-complete app starts bypass setup and enter normal chat
+- [x] Ensure setup-complete app starts bypass setup and enter normal chat
       routes.
-- [ ] Decide whether the first slice needs one route with internal steps or
+- [x] Decide whether the first slice needs one route with internal steps or
       multiple setup subroutes.
 
 **Deliverables**: routeable setup shell with correct gating behavior.
 
 ### Phase 4: Wizard Steps
 
-- [ ] Add the Welcome step.
-- [ ] Add the Runtime Check step with clear remediation messaging.
-- [ ] Add the Owner Profile step.
-- [ ] Add the default Boss Cat bootstrap step:
+- [x] Add the Welcome step.
+- [x] Add the Runtime Check step with clear remediation messaging.
+- [x] Add the Owner Profile step.
+- [x] Add the default Boss Cat bootstrap step:
       - ensure one current Boss Cat exists
       - auto-provision a neutral default Boss Cat when needed
       - do not require Cat naming or full personalization
@@ -87,11 +87,11 @@ binding plan, or a full desktop-packaging plan.
 
 ### Phase 5: Completion and First Chat Bootstrap
 
-- [ ] Mark setup complete only after the minimum required state exists.
-- [ ] Route the operator directly into `/new` after setup.
-- [ ] Keep the current `Boss Cat` as the default visible chat entrypoint in
+- [x] Mark setup complete only after the minimum required state exists.
+- [x] Route the operator directly into `/new` after setup.
+- [x] Keep the current `Boss Cat` as the default visible chat entrypoint in
       that draft flow.
-- [ ] Do not auto-create or auto-select a first persisted chat during setup.
+- [x] Do not auto-create or auto-select a first persisted chat during setup.
 - [ ] Optionally offer post-setup prompts such as renaming the Boss Cat or
       adding another Cat without blocking first use.
 
@@ -99,10 +99,10 @@ binding plan, or a full desktop-packaging plan.
 
 ### Phase 6: Validation and Cleanup
 
-- [ ] Add tests for setup gating when the environment is uninitialized.
-- [ ] Add tests for bypassing setup once initialization is complete.
-- [ ] Add tests for Boss Cat creation or selection during onboarding.
-- [ ] Update architecture, requirements, and progress docs once implementation
+- [x] Add tests for setup gating when the environment is uninitialized.
+- [x] Add tests for bypassing setup once initialization is complete.
+- [x] Add tests for Boss Cat creation or selection during onboarding.
+- [x] Update architecture, requirements, and progress docs once implementation
       starts landing.
 
 **Deliverables**: validated onboarding flow and aligned documentation.
@@ -146,9 +146,10 @@ Use this when delegating implementation:
 
 > Implement SPEC-012 / PLAN-012. Add a first-run setup wizard at `/setup`
 > instead of a login-first flow. Detect uninitialized local environments, guide
-> the operator through welcome, runtime readiness, and owner profile, then
-> auto-provision a neutral default Boss Cat if needed and land them directly in
-> the normal `/new` draft flow, without auto-creating a first persisted chat.
+> the operator through welcome, owner profile/Boss Cat naming, and runtime
+> readiness, then auto-provision a neutral default Boss Cat if needed and land
+> them directly in the normal `/new` draft flow, without auto-creating a first
+> persisted chat.
 > Keep transport setup optional and preserve the existing `cats-runtime`
 > boundary.
 

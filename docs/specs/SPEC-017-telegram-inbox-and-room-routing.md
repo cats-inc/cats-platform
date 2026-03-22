@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft (Pending Review) |
+| **Status** | In Progress (Boss Cat inbox MVP landed) |
 | **Owner** | Codex |
 | **Reviewer** | User / Telegram workstream |
 
@@ -12,7 +12,10 @@
 
 Telegram should be treated as one external inbox per bot binding, while
 `Cats Chat` remains the canonical place for topic rooms and multi-Cat
-collaboration.
+collaboration. The current implementation now ships the first Boss Cat inbox
+MVP with webhook ingress, durable room linking, diagnostics, and transport-owned
+outbound replies; this spec remains the broader product contract for follow-on
+room-rotation and multi-bot behavior.
 
 This spec defines how one Telegram thread owned by one bot-bound Cat can safely
 drive many internal rooms without collapsing all work into one transcript. It
@@ -223,4 +226,3 @@ Telegram private chat
 *Created: 2026-03-19*
 *Author: Codex*
 *Last updated: 2026-03-23*
-

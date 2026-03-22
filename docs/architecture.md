@@ -107,13 +107,14 @@ below product orchestration policy:
   ownership, activity, and allow external transport messages to reach the
   orchestrator safely. For Chat, high-frequency actions such as adding a cat
   should stay in current-chat context, `Recents` should remain the primary
-  sidebar surface, a lightweight `My Cats` roster may coexist for quick direct
-  chat entry, and reusable registry management lives under Settings.
+  sidebar surface, a lightweight `My Cats` roster may coexist for quick
+  private-room entry, and reusable registry management lives under Settings.
 
 ### Telegram Transport Layer
 
-- **Purpose**: Keep Telegram as a transport-owned Boss Cat inbox seam without
-  leaking routing or reply policy into HTTP assembly
+- **Purpose**: Keep Telegram as a transport-owned Cat inbox seam, with
+  `Boss Cat` as the default public identity, without leaking routing or reply
+  policy into HTTP assembly
 - **Technology**: `src/platform/transports/telegram/*`, a durable relay
   sidecar store, a transport-to-room bridge, and an optional Telegram Bot API
   delivery client
@@ -207,7 +208,8 @@ transport state stays in `src/platform/transports/telegram/*`.
 - **Responsibilities**: Render channels, runtime status, transcript composer,
   a preview-ready artifact pane, contextual cat assignment, settings-hosted
   cat management, topic-first recents with Cat avatar markers, lightweight
-  direct-chat entry for `My Cats`, channel setup, and global Boss Cat editing
+  `My Cats` private-room entry that reopens or creates the canonical direct
+  room, channel setup, and global Boss Cat editing
 
 ## Memory Layering Direction
 
@@ -483,7 +485,6 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-23*
-
 
 
 

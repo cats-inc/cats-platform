@@ -16,11 +16,14 @@ The current slices are:
 - a Node app/runtime core on `CATS_PORT` (default `8181`, with `CATS_INC_PORT`
   kept as a compatibility alias)
 - a `cats-runtime` health and app-shell API
-- a chat-first `React/Vite` renderer with modal setup tools and a preview-ready side pane
+- a chat-first `React/Vite` renderer with a route-gated setup wizard, settings
+  surfaces, and a preview-ready side pane
 - file-backed chat state, cat execution, and transcript persistence
-<<<<<<< HEAD
 - runtime-backed channel activation, mode-aware sleep/wake entry, and routed messaging through `cats-runtime`
-- a global orchestrator surface, direct-cat routing, deterministic `@mention` handling, transcript export, and visible presence states
+- a global orchestrator surface, deterministic `@mention` handling, transcript
+  export, and visible presence states
+- `My Cats` private-lane entry that reopens an existing direct room or creates
+  the canonical direct room immediately when needed
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - provider-agnostic cat memory checkpoints plus channel-scoped execution leases
 
@@ -36,7 +39,10 @@ The current slices are:
 - [x] Add basic runtime-backed channel operations
 - [x] Add a global cat registry, chat assignment, mention routing, and transcript export
 - [x] Separate cat identity and memory from provider-specific execution state
+- [x] Add first-run `/setup` onboarding with default Boss Cat bootstrap and
+      chat-first entry routing
 - [x] Land chat session sleep/wake lifecycle, direct Cat chat defaults, and room-header presence indicators
+- [x] Land Cat-private room entry from `My Cats` plus Telegram binding markers
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open
@@ -47,6 +53,8 @@ several Phase 3 items remain:
 - richer orchestrator automation beyond explicit `@mention` routing
 - split-view chat surfaces for preview/debug context
 - operator-grade activity indicators and better live runtime state
+- richer first-run remediation and packaged onboarding beyond the current
+  three-screen setup flow
 - offline transcript normalization and ingestion handoff hooks
 - desktop host, LINE entrypoints, and richer Telegram room-rotation policy
 

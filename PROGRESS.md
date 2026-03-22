@@ -10,10 +10,10 @@
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
-| Chat Product Features | Completed | Runtime-backed setup, global cat registry, sleep/wake-aware room entry, direct-cat draft lanes from `My Cats`, live mention continuation routing, transcript export, and execution-aware state landed |
+| Chat Product Features | Completed | Runtime-backed setup, global cat registry, sleep/wake-aware room entry, direct private-room entry from `My Cats`, live mention continuation routing, transcript export, and execution-aware state landed |
 | Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records, but compatibility-shim cleanup and later control-plane slices remain |
-| Documentation | In Progress | Architecture, progress, API, and plan docs now reflect the shared-core write substrate, fixture bundle, and projection boundary, but broader launch-track docs still remain |
-| Cats Chat Launch Track | In Progress | Telegram Boss Cat inbox MVP now bridges webhook ingress into durable room routing and outbound replies, while approvals, escalation, takeover, and desktop packaging remain ahead |
+| Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private room entry, Telegram inbox MVP, runtime skill/guardrail seams, and shared-core projection boundary; broader launch-track docs still remain |
+| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens or creates direct private rooms, and Telegram Boss Cat inbox MVP bridges webhook ingress into durable room routing and outbound replies, while approvals, escalation, takeover, and desktop packaging remain ahead |
 | Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
 **Legend**: Not Started | In Progress | Completed | Blocked

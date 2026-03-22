@@ -78,6 +78,21 @@ GET  /api/cats/{catId}
 - `POST` returns `201` with `{ cat: { ...created } }`.
 - `GET` detail returns `{ cat: { ... } }`.
 
+### Setup
+
+```text
+POST /api/setup/complete
+POST /api/setup/reset
+```
+
+- `POST /api/setup/complete` finishes first-run onboarding by:
+  - creating the current default `Boss Cat`
+  - persisting owner display-name updates
+  - persisting `setupCompleteAt`
+  - returning the refreshed `AppShellPayload`
+- `POST /api/setup/reset` clears chat/core state back to the uninitialized
+  first-run baseline and returns the refreshed `AppShellPayload`.
+
 ### Channels
 
 ```text
@@ -179,7 +194,7 @@ PATCH /api/preferences
 - `PATCH` accepts `{ selectedChannelId }` and returns the updated preferences.
 - Updating `selectedChannelId` also wakes the selected room's visible entry
   participant when that room is currently sleeping:
-  - `boss_chat` and `transport_inbox` wake `Boss Cat`
+  - `boss_chat` wakes `Boss Cat`
   - `direct_cat_chat` wakes the room's lead Cat
 - Renderer room-entry wake now goes through this explicit selection mutation so
   persisted-room wake keeps a write seam instead of piggybacking on app-shell
@@ -979,6 +994,9 @@ Errors use a minimal payload:
 - Chat mutations now cover selection, chat setup, global cat registry,
   channel deletion, channel assignment, activation, messaging, orchestrator
   editing, and export
+- `My Cats` private-room entry is a renderer behavior layered on top of the
+  canonical chat/channel APIs; the public API no longer models a separate
+  `transport_inbox` room mode
 - Runtime responses are currently delivered as request/response completions; the
   API does not expose live push or WebSocket streaming yet
 - Future session and channel APIs should extend this contract without leaking

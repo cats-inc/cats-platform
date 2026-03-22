@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft (Pending Review) |
+| **Status** | In Progress (First Slice Landed) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -58,8 +58,8 @@ shared routing layer owned by the product, not mainly by prompt conventions.
    chosen Cat.
 6. Selecting a Cat from `My Cats` shall resolve to that Cat's private lane.
    If a persisted `direct_cat_chat` room already exists for that Cat, the
-   product should reopen it. Otherwise the product shall open a direct `/new`
-   draft for that Cat without creating a persisted room yet.
+   product should reopen it. Otherwise the product shall create the canonical
+   direct room for that Cat and navigate there immediately.
 7. In `boss_chat`, an unmentioned operator turn shall default to `Boss Cat`.
 8. In `direct_cat_chat`, an unmentioned operator turn (or inbound transport
    message) shall default to the chosen lead Cat.
@@ -137,10 +137,10 @@ Dispatch
 - The operator should be able to start a direct room with one Cat from at least
   one obvious UI surface.
 - `My Cats` should behave like Cat-private lane selection, not like a button
-  that always creates a new persisted room.
+  that creates arbitrary duplicate rooms.
 - Clicking a Cat in `My Cats` should reopen that Cat's existing direct room
-  when one exists, or open `/new?cat=<catId>` when the private lane has not
-  been persisted yet.
+  when one exists, or create the canonical persisted direct room when the
+  private lane does not yet exist.
 - Once inside that room, the chosen Cat is the implicit counterpart.
 - `Boss Cat` is not required in the route for normal unmentioned turns.
 
@@ -179,9 +179,10 @@ Dispatch
   prompts from being the only thing enforcing explicit target resolution.
 - `Direct Cat Chat` should feel like a UI-native direct session with a chosen
   specialist, not like a hidden Boss Cat room wearing a different label.
-- The Cat-private lane and the persisted direct room are related but not
-  identical states. A private lane may exist first as a `/new` draft and become
-  persisted only after the first message is sent.
+- The Cat-private lane is the canonical persisted `direct_cat_chat` room used
+  for that Cat's one-to-one web and transport entry. The product may still
+  expose explicit `/new?cat=<catId>` drafts for deep links or future compose
+  flows, but that is no longer the primary `My Cats` behavior.
 
 ## Open Questions
 
@@ -202,4 +203,3 @@ Dispatch
 *Created: 2026-03-19*
 *Author: Codex*
 *Last updated: 2026-03-23*
-

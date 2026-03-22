@@ -83,8 +83,7 @@ default `Boss Cat`.
    - it should still show the current `Boss Cat` even when that is the only Cat
    - it exists for quick entry into direct chats and quick switching
    - selecting a Cat there should reopen an existing direct thread when one
-     exists, or open `/new?cat=<catId>` when it does not
-   - selecting a Cat there must not create a persisted thread by itself
+     exists, or create the canonical direct thread immediately when it does not
    - Cat-owned transport markers such as Telegram bindings may be shown there
    - it is not the full management registry
    - the reusable registry and full Cat management remain under `Settings > Cats`
