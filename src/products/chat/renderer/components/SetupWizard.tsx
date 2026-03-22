@@ -95,6 +95,53 @@ export function SetupWizard({
         {step === 2 ? (
           <div className="contentCard setupCard">
             <p className="eyebrow">Step 1 of 3</p>
+            <h1>What&apos;s your name?</h1>
+            <p className="heroNote">
+              Tell us your name, and give your Boss Cat a name if you&apos;d like.
+            </p>
+            <label className="fieldLabel">
+              <span>Your name</span>
+              <input
+                className="textInput"
+                value={ownerName}
+                onChange={(e) => setOwnerName(e.target.value)}
+                placeholder="Your display name"
+                autoFocus
+              />
+            </label>
+            <label className="fieldLabel">
+              <span>Boss Cat name</span>
+              <input
+                className="textInput"
+                value={bossCatName}
+                onChange={(e) => setBossCatName(e.target.value)}
+                placeholder="Boss Cat"
+              />
+            </label>
+            {feedback ? <p className="feedbackText">{feedback}</p> : null}
+            <div className="setupActions">
+              <button
+                className="setupBackButton"
+                type="button"
+                onClick={() => setStep(1)}
+              >
+                Back
+              </button>
+              <button
+                className="primaryButton"
+                disabled={!ownerName.trim()}
+                type="button"
+                onClick={() => setStep(3)}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {step === 3 ? (
+          <div className="contentCard setupCard">
+            <p className="eyebrow">Step 2 of 3</p>
             <h1>Choose your AI provider</h1>
             <p className="heroNote">
               Select the AI provider and model your Boss Cat will use. You can change this later.
@@ -127,60 +174,13 @@ export function SetupWizard({
               <button
                 className="setupBackButton"
                 type="button"
-                onClick={() => setStep(1)}
-              >
-                Back
-              </button>
-              <button
-                className="primaryButton"
-                disabled={!model.trim()}
-                type="button"
-                onClick={() => setStep(3)}
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {step === 3 ? (
-          <div className="contentCard setupCard">
-            <p className="eyebrow">Step 2 of 3</p>
-            <h1>Almost there</h1>
-            <p className="heroNote">
-              Tell us your name, and give your Boss Cat a name if you&apos;d like.
-            </p>
-            <label className="fieldLabel">
-              <span>Your name</span>
-              <input
-                className="textInput"
-                value={ownerName}
-                onChange={(e) => setOwnerName(e.target.value)}
-                placeholder="Your display name"
-                autoFocus
-              />
-            </label>
-            <label className="fieldLabel">
-              <span>Boss Cat name</span>
-              <input
-                className="textInput"
-                value={bossCatName}
-                onChange={(e) => setBossCatName(e.target.value)}
-                placeholder="Boss Cat"
-              />
-            </label>
-            {feedback ? <p className="feedbackText">{feedback}</p> : null}
-            <div className="setupActions">
-              <button
-                className="setupBackButton"
-                type="button"
                 onClick={() => setStep(2)}
               >
                 Back
               </button>
               <button
                 className="primaryButton"
-                disabled={!ownerName.trim()}
+                disabled={!model.trim()}
                 type="button"
                 onClick={() => setStep(4)}
               >
