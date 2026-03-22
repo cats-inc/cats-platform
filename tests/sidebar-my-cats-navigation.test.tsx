@@ -106,12 +106,17 @@ function createChannel(
   };
 }
 
-function createPayload(channels: ChatChannelSummary[]): AppShellPayload {
+function createRuntime(reachable: boolean, status = 'ok') {
+  return { baseUrl: 'http://localhost:3110', reachable, status, service: 'cats-runtime' };
+}
+
+function createPayload(channels: ChatChannelSummary[], runtime?: { baseUrl: string; reachable: boolean; status: string; service: string }): AppShellPayload {
   return {
     ownerDisplayName: 'Ken',
     setupCompleteAt: '2026-03-23T00:00:00.000Z',
     runtimeReachable: true,
     runtimeBaseUrl: 'http://localhost:8484',
+    ...(runtime ? { runtime } : {}),
     chat: {
       bossCatId: 'boss-cat',
       cats: [
@@ -350,4 +355,78 @@ test('clicking My Cats row still preserves existing navigation behavior with sta
   companionButton.props.onClick?.();
 
   assert.deepEqual(actions, [{ kind: 'select', channelId: 'direct-thread-1' }]);
+});
+
+// --- Runtime Footer Status Dot Tests ---
+
+function findRuntimeDotTitle(node: ReactNode): string | null {
+  if (!node) return null;
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findRuntimeDotTitle(child);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (!isValidElement(node)) return null;
+  const cls = typeof node.props.className === 'string' ? node.props.className : '';
+  if (cls.includes('runtimeStatusDot') && typeof node.props.title === 'string') {
+    return node.props.title;
+  }
+  const ch = node.props.children;
+  if (Array.isArray(ch)) {
+    for (const child of ch) {
+      const found = findRuntimeDotTitle(child);
+      if (found) return found;
+    }
+  } else if (ch) {
+    return findRuntimeDotTitle(ch);
+  }
+  return null;
+}
+
+test('no runtime health yet shows gray dot with unknown tooltip', () => {
+  const payload = createPayload([]);
+  const tree = createSidebarTree(payload, () => {});
+  const title = findRuntimeDotTitle(tree);
+  assert.equal(title, 'cats-runtime status unknown');
+});
+
+test('reachable healthy runtime shows green dot', () => {
+  const payload = createPayload([], createRuntime(true, 'ok'));
+  const tree = createSidebarTree(payload, () => {});
+  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime connected');
+});
+
+test('reachable degraded runtime shows yellow dot', () => {
+  const payload = createPayload([], createRuntime(true, 'degraded'));
+  const tree = createSidebarTree(payload, () => {});
+  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime degraded');
+});
+
+test('unreachable runtime shows red dot', () => {
+  const payload = createPayload([], createRuntime(false, 'error'));
+  const tree = createSidebarTree(payload, () => {});
+  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime unavailable');
+});
+
+test('changing selected chat does not affect footer runtime dot', () => {
+  const payload = createPayload(
+    [createChannel({ id: 'ch-1', title: 'Work' })],
+    createRuntime(true, 'ok'),
+  );
+  const tree = createSidebarTree(payload, () => {});
+  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime connected');
+});
+
+test('My Cats status dots and footer runtime dot coexist', () => {
+  const payload = createPayload(
+    [createChannel({
+      id: 'dl-1', title: 'Companion', leadCatId: 'companion-cat',
+      roomMode: 'direct_cat_chat', leadParticipantLeaseStatus: 'ready',
+    } as Partial<ChatChannelSummary> & { id: string; title: string })],
+    createRuntime(true, 'ok'),
+  );
+  const tree = createSidebarTree(payload, () => {});
+  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime connected');
 });

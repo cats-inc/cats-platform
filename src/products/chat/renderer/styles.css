@@ -1355,6 +1355,34 @@ textarea {
   flex: 0 0 28px;
 }
 
+.runtimeStatusDot {
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.runtimeStatusDot.isConnected {
+  background: #3da779;
+}
+
+.runtimeStatusDot.isDegraded {
+  background: #d4a030;
+}
+
+.runtimeStatusDot.isUnavailable {
+  background: #d04040;
+}
+
+.runtimeStatusDot.isUnknown {
+  background: #9e9890;
+}
+
+.sidebarCollapsed .runtimeStatusDot {
+  display: none;
+}
+
 .sidebarCollapsed .sidebarFooter {
   padding-left: 0;
   padding-right: 0;

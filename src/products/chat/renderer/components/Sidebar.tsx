@@ -35,6 +35,37 @@ export interface SidebarProps {
   onDirectChatCat: (catId: string) => void;
 }
 
+type RuntimeFooterStatus = 'unknown' | 'connected' | 'degraded' | 'unavailable';
+
+function resolveRuntimeFooterStatus(payload: AppShellPayload): RuntimeFooterStatus {
+  const rt = payload.runtime;
+  if (!rt || typeof rt.reachable !== 'boolean') return 'unknown';
+  if (!rt.reachable) return 'unavailable';
+  const status = typeof rt.status === 'string' ? rt.status.toLowerCase() : '';
+  if (status === 'ok' || status === 'healthy' || status === 'ready') return 'connected';
+  if (status === 'degraded' || status === 'warming' || status === 'starting') return 'degraded';
+  if (status === 'error' || status === 'unavailable' || status === 'failed') return 'unavailable';
+  return rt.reachable ? 'connected' : 'unknown';
+}
+
+function runtimeFooterStatusLabel(status: RuntimeFooterStatus): string {
+  switch (status) {
+    case 'connected': return 'cats-runtime connected';
+    case 'degraded': return 'cats-runtime degraded';
+    case 'unavailable': return 'cats-runtime unavailable';
+    default: return 'cats-runtime status unknown';
+  }
+}
+
+function runtimeFooterStatusClassName(status: RuntimeFooterStatus): string {
+  switch (status) {
+    case 'connected': return 'runtimeStatusDot isConnected';
+    case 'degraded': return 'runtimeStatusDot isDegraded';
+    case 'unavailable': return 'runtimeStatusDot isUnavailable';
+    default: return 'runtimeStatusDot isUnknown';
+  }
+}
+
 function isDirectCatChat(channel: ChatChannelSummary): boolean {
   return channel.roomMode === 'direct_cat_chat';
 }
@@ -370,6 +401,11 @@ export function Sidebar({
           <div className="sidebarFooterMeta">
             <strong>{payload.ownerDisplayName}</strong>
           </div>
+          <span
+            className={runtimeFooterStatusClassName(resolveRuntimeFooterStatus(payload))}
+            title={runtimeFooterStatusLabel(resolveRuntimeFooterStatus(payload))}
+            aria-label={runtimeFooterStatusLabel(resolveRuntimeFooterStatus(payload))}
+          />
         </button>
         {accountMenuOpen ? (
           <div className="accountMenu">
