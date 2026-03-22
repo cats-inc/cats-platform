@@ -2382,6 +2382,35 @@ textarea {
   background: var(--sidebar-active-bg);
 }
 
+.myCatAvatarWrap {
+  position: relative;
+}
+
+.myCatDot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--sidebar-bg);
+}
+
+.myCatDotAwake {
+  background: #3da779;
+}
+
+.myCatDotWaking {
+  background: #d4a030;
+}
+
+.myCatDotSleeping {
+  background: #9e9890;
+}
+
+.myCatDotError {
+  background: #d04040;
+}
 
 .myCatName {
   flex: 1;

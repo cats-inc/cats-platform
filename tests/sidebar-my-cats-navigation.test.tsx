@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isValidElement, type ReactNode, type RefObject } from 'react';
 
-import type { AppShellPayload, ChatChannelSummary } from '../src/shared/app-shell.ts';
+import type { AppShellPayload, ChatChannelSummary, ParticipantSessionStatus } from '../src/shared/app-shell.ts';
 import { buildNewChatPath } from '../src/shared/channelPaths.ts';
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
-import { resolveMyCatNavigationTarget } from '../src/products/chat/renderer/myCatNavigation.ts';
+import {
+  findDirectLaneForCat,
+  resolveMyCatNavigationTarget,
+  resolveMyCatStatusDot,
+} from '../src/products/chat/renderer/myCatNavigation.ts';
 
 function textContent(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
@@ -267,4 +271,83 @@ test('direct_cat_chat channels are excluded from the Recents list', () => {
     !rendered.some((ch) => ch.id === 'direct-thread'),
     'direct_cat_chat channel should not appear in Recents',
   );
+});
+
+// --- Status Dot Tests ---
+
+test('Cat with no existing direct lane shows no dot', () => {
+  const channels: ChatChannelSummary[] = [];
+  const lane = findDirectLaneForCat(channels, 'companion-cat');
+  assert.equal(lane, null);
+  assert.equal(resolveMyCatStatusDot(lane?.leadParticipantLeaseStatus), 'no_dot');
+});
+
+test('Cat with direct lane + ready shows awake (green)', () => {
+  const lane = createChannel({
+    id: 'dl-1', title: 'C', leadCatId: 'companion-cat', roomMode: 'direct_cat_chat',
+    leadParticipantLeaseStatus: 'ready',
+  } as Partial<ChatChannelSummary> & { id: string; title: string });
+  assert.equal(resolveMyCatStatusDot(lane.leadParticipantLeaseStatus), 'awake');
+});
+
+test('Cat with direct lane + initializing shows waking_up (yellow)', () => {
+  const lane = createChannel({
+    id: 'dl-2', title: 'C', leadCatId: 'companion-cat', roomMode: 'direct_cat_chat',
+    leadParticipantLeaseStatus: 'initializing',
+  } as Partial<ChatChannelSummary> & { id: string; title: string });
+  assert.equal(resolveMyCatStatusDot(lane.leadParticipantLeaseStatus), 'waking_up');
+});
+
+test('Cat with direct lane + not_started shows sleeping (gray)', () => {
+  const lane = createChannel({
+    id: 'dl-3', title: 'C', leadCatId: 'companion-cat', roomMode: 'direct_cat_chat',
+    leadParticipantLeaseStatus: 'not_started',
+  } as Partial<ChatChannelSummary> & { id: string; title: string });
+  assert.equal(resolveMyCatStatusDot(lane.leadParticipantLeaseStatus), 'sleeping');
+});
+
+test('Cat with direct lane + closed shows sleeping (gray)', () => {
+  assert.equal(resolveMyCatStatusDot('closed' as ParticipantSessionStatus), 'sleeping');
+});
+
+test('Cat with direct lane + removed shows sleeping (gray)', () => {
+  assert.equal(resolveMyCatStatusDot('removed' as ParticipantSessionStatus), 'sleeping');
+});
+
+test('Cat with direct lane + error shows error (red)', () => {
+  assert.equal(resolveMyCatStatusDot('error' as ParticipantSessionStatus), 'error');
+});
+
+test('Cat active in non-direct room only does not affect My Cats dot', () => {
+  const channels = [
+    createChannel({ id: 'boss-room', title: 'Work', leadCatId: 'companion-cat' }),
+  ];
+  const lane = findDirectLaneForCat(channels, 'companion-cat');
+  assert.equal(lane, null, 'boss_chat room should not be found as direct lane');
+  assert.equal(resolveMyCatStatusDot(lane?.leadParticipantLeaseStatus), 'no_dot');
+});
+
+test('clicking My Cats row still preserves existing navigation behavior with status dots', () => {
+  const payload = createPayload([
+    createChannel({
+      id: 'direct-thread-1',
+      title: 'Companion',
+      leadCatId: 'companion-cat',
+      roomMode: 'direct_cat_chat',
+      leadParticipantLeaseStatus: 'ready',
+    } as Partial<ChatChannelSummary> & { id: string; title: string }),
+  ]);
+  const actions: Array<{ kind: 'select'; channelId: string }> = [];
+
+  const tree = createSidebarTree(payload, (catId) => {
+    const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
+    if (target.kind === 'existing_channel') {
+      actions.push({ kind: 'select', channelId: target.channelId });
+    }
+  });
+
+  const companionButton = findMyCatButton(tree, 'Companion');
+  companionButton.props.onClick?.();
+
+  assert.deepEqual(actions, [{ kind: 'select', channelId: 'direct-thread-1' }]);
 });

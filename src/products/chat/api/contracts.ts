@@ -324,6 +324,7 @@ export interface ChatChannelSummary {
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   leadCatId?: string | null;
+  leadParticipantLeaseStatus?: ParticipantSessionStatus | null;
   roomMode?: RoomRoutingMode;
   routingStatus?: RoomRoutingTurnStatus;
   lastRoutingAt?: string | null;

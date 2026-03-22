@@ -2,6 +2,12 @@ import type { RefObject, MouseEvent as ReactMouseEvent } from 'react';
 
 import type { AppShellPayload, ChatChannelSummary } from '../../../../shared/app-shell';
 import { catInitials, presentChannelTitle, type Surface } from '../chatUtils';
+import {
+  findDirectLaneForCat,
+  resolveMyCatStatusDot,
+  statusDotClassName,
+  statusDotLabel,
+} from '../myCatNavigation';
 
 export type SidebarViewMode = 'latest' | 'by_cat' | 'by_chat_type';
 
@@ -296,6 +302,10 @@ export function Sidebar({
                   const isBoss = cat.id === payload.chat.bossCatId;
                   const isActive = activeMyCatId === cat.id;
                   const hasTelegramBinding = telegramBoundCatIds.has(cat.id);
+                  const directLane = findDirectLaneForCat(payload.chat.channels, cat.id);
+                  const dot = resolveMyCatStatusDot(directLane?.leadParticipantLeaseStatus);
+                  const dotClass = statusDotClassName(dot);
+                  const dotTitle = statusDotLabel(dot);
                   return (
                     <button
                       key={cat.id}
@@ -304,10 +314,11 @@ export function Sidebar({
                       onClick={() => onDirectChatCat(cat.id)}
                     >
                       <span
-                        className={isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar'}
+                        className={isBoss ? 'myCatAvatarWrap catAvatar catAvatarBoss' : 'myCatAvatarWrap catAvatar'}
                         style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
                       >
                         {catInitials(cat.name)}
+                        {dotClass ? <span className={dotClass} title={dotTitle} /> : null}
                       </span>
                       <span className="myCatName">{cat.name}</span>
                       <span className="myCatBadges">

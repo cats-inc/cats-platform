@@ -284,6 +284,17 @@ export function resolveChannelEntryParticipant(
   };
 }
 
+function resolveLeadParticipantLeaseStatus(
+  channel: ChatChannelState,
+): ParticipantSessionStatus | null {
+  const leadId = channel.roomRouting?.leadParticipantId;
+  if (!leadId) return null;
+  const assignment = channel.catAssignments.find(
+    (a) => a.catId === leadId && a.status === 'active',
+  );
+  return assignment?.execution.lease.status ?? null;
+}
+
 export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   const workflowStatus = roomRouting.workflow.activeTurn?.status
@@ -310,6 +321,7 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     lastMessageAt: channel.lastMessageAt,
     lastActivatedAt: channel.lastActivatedAt,
     leadCatId: channel.roomRouting?.leadParticipantId ?? null,
+    leadParticipantLeaseStatus: resolveLeadParticipantLeaseStatus(channel),
     roomMode: roomRouting.mode,
     routingStatus: routingStatus ?? roomRouting.lastOutcome?.status ?? 'idle',
     lastRoutingAt:
