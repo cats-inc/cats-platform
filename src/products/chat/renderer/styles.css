@@ -1656,7 +1656,8 @@ textarea {
 }
 
 .composerCardFresh {
-  margin-top: 0;
+  max-width: 680px;
+  margin: 0 auto;
 }
 
 .composerInput {
