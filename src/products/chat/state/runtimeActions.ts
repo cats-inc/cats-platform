@@ -310,10 +310,10 @@ function buildCatTarget(cat: ChatChannelCat): RoutingTarget {
 }
 
 function resolveTransportContext(
-  channel: ChatChannelView,
+  _channel: ChatChannelView,
   transport?: RuntimeTransportContext,
 ): RuntimeTransportContext {
-  return transport ?? (channel.roomRouting?.mode === 'transport_inbox' ? 'telegram' : 'web');
+  return transport ?? 'web';
 }
 
 function buildSessionContextForTarget(

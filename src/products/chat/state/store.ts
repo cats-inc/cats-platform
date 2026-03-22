@@ -1181,9 +1181,7 @@ function normalizeBotBinding(
 
   const rawRoomMode = readString(bindingRecord.roomMode ?? bindingRecord.defaultRoomMode, 'boss_chat');
   const roomMode: BotBindingRecord['roomMode'] =
-    rawRoomMode === 'direct_cat_chat' ? 'direct_cat_chat'
-      : rawRoomMode === 'transport_inbox' ? 'transport_inbox'
-        : 'boss_chat';
+    rawRoomMode === 'direct_cat_chat' ? 'direct_cat_chat' : 'boss_chat';
 
   return {
     id: readString(bindingRecord.id, randomUUID()),

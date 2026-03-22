@@ -19,7 +19,7 @@ export function describeTelegramRoomRouting(
 ): TelegramRoomRoutingSeam {
   if (binding?.roomRoutingStatus === 'linked_room' && binding.linkedRoomId) {
     return {
-      transportConversationMode: 'transport_inbox',
+      transportConversationMode: 'direct_cat_chat',
       roomRoutingStatus: 'linked_room',
       linkedRoomId: binding.linkedRoomId,
       note: `${TELEGRAM_ROOM_ROUTING_LINKED_NOTE_PREFIX} ${binding.linkedRoomId}.`,
@@ -27,7 +27,7 @@ export function describeTelegramRoomRouting(
   }
 
   return {
-    transportConversationMode: 'transport_inbox',
+    transportConversationMode: 'direct_cat_chat',
     roomRoutingStatus: 'placeholder',
     linkedRoomId: binding?.linkedRoomId ?? null,
     note: TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE,
@@ -141,7 +141,7 @@ export function createTelegramConversationMapper(
             conversationId: createScopedConversationId(chatId, bindingId),
             bindingId: bindingId ?? null,
             botName: botName ?? null,
-            transportConversationMode: 'transport_inbox',
+            transportConversationMode: 'direct_cat_chat',
             roomRoutingStatus: 'placeholder',
             linkedRoomId: null,
             telegramChatType: chatType,

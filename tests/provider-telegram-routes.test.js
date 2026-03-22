@@ -407,7 +407,7 @@ test('telegram status reports Boss Cat binding after Telegram ingress is configu
     assert.equal(payload.telegram.botBinding.botName, 'smelly_bot');
     assert.equal(payload.telegram.webhookPath, '/api/transports/telegram/webhook');
     assert.equal(payload.telegram.diagnosticsPath, '/api/transports/telegram/diagnostics');
-    assert.equal(payload.telegram.roomRouting.transportConversationMode, 'transport_inbox');
+    assert.equal(payload.telegram.roomRouting.transportConversationMode, 'direct_cat_chat');
     assert.equal(payload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
     assert.equal(payload.telegram.ingress.secretTokenConfigured, false);
     assert.equal(payload.telegram.delivery.status, 'not_configured');

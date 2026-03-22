@@ -1381,7 +1381,7 @@ export function createBotBinding(
     platform: 'telegram' | 'line';
     botName: string;
     catId: string;
-    roomMode?: 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
+    roomMode?: 'boss_chat' | 'direct_cat_chat';
   },
   now: Date = new Date(),
 ): { core: CatsCoreState; binding: BotBindingRecord } {

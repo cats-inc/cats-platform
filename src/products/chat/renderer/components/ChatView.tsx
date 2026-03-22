@@ -113,11 +113,9 @@ export function ChatView({
 
   const modeLabel = roomMode === 'direct_cat_chat'
     ? 'Direct chat'
-    : roomMode === 'transport_inbox'
-      ? 'Inbox'
-      : activeAssignedCats.length > 0
-        ? 'Group'
-        : 'Boss Chat';
+    : activeAssignedCats.length > 0
+      ? 'Group'
+      : 'Boss Chat';
 
   return (
     <>

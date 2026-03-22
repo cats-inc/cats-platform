@@ -677,7 +677,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
                 conversationId,
                 bindingId: deliveryBinding?.id ?? null,
                 botName: deliveryBinding?.botName ?? null,
-                transportConversationMode: 'transport_inbox' as const,
+                transportConversationMode: 'direct_cat_chat' as const,
                 roomRoutingStatus: 'placeholder' as const,
                 linkedRoomId: null,
                 telegramChatType: 'private',

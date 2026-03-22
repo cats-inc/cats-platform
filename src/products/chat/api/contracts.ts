@@ -25,7 +25,7 @@ export type ParticipantSessionStatus =
 
 export type ChatMessageSenderKind = 'user' | 'agent' | 'system' | 'orchestrator';
 
-export type RoomRoutingMode = 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
+export type RoomRoutingMode = 'boss_chat' | 'direct_cat_chat';
 
 export type RoomRoutingTrigger =
   | 'room_default'

@@ -3,7 +3,7 @@ import type { BotBindingRecord } from '../../../core/types.js';
 export type TelegramRelayMode = 'boss-cat-ingress';
 export type TelegramPublicIdentityMode = 'multi_cat_bindings_single_boss';
 
-export type TelegramTransportConversationMode = 'transport_inbox';
+export type TelegramTransportConversationMode = 'direct_cat_chat';
 
 export type TelegramRoomRoutingStatus = 'placeholder' | 'linked_room';
 export type TelegramAttachmentKind =
@@ -199,7 +199,7 @@ export interface TelegramRelayStatus {
     platform: 'telegram';
     botName: string;
     catActorId: string | null;
-    roomMode: TelegramTransportConversationMode | 'boss_chat' | 'direct_cat_chat';
+    roomMode: 'boss_chat' | 'direct_cat_chat';
     status: 'active' | 'disabled';
   }>;
   publicIdentityMode: TelegramPublicIdentityMode;
@@ -324,7 +324,7 @@ export interface TelegramRelayDiagnostics {
     platform: 'telegram';
     botName: string;
     catActorId: string | null;
-    roomMode: TelegramTransportConversationMode | 'boss_chat' | 'direct_cat_chat';
+    roomMode: 'boss_chat' | 'direct_cat_chat';
     status: 'active' | 'disabled';
   }>;
   relayMode: TelegramRelayMode;

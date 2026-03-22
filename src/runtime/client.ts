@@ -55,7 +55,7 @@ export interface RuntimeMessageResult {
 
 export interface RuntimeSkillManifestContext {
   catId?: string;
-  roomMode?: 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
+  roomMode?: 'boss_chat' | 'direct_cat_chat';
   transport?: 'telegram' | 'line' | 'web' | null;
   labels?: string[];
   metadata?: Record<string, unknown>;

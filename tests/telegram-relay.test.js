@@ -55,13 +55,13 @@ test('telegram conversation mapper keeps a durable placeholder room-routing seam
 
   assert.equal(mapping.created, true);
   assert.equal(mapping.binding.conversationId, 'telegram:12345');
-  assert.equal(mapping.binding.transportConversationMode, 'transport_inbox');
+  assert.equal(mapping.binding.transportConversationMode, 'direct_cat_chat');
   assert.equal(mapping.binding.roomRoutingStatus, 'placeholder');
   assert.equal(mapping.binding.linkedRoomId, null);
   assert.equal(mapping.binding.telegramChatType, 'private');
   assert.equal(mapping.binding.lastInboundMessageId, null);
   assert.deepEqual(mapping.binding.lastInboundAttachmentKinds, []);
-  assert.equal(mapping.roomRouting.transportConversationMode, 'transport_inbox');
+  assert.equal(mapping.roomRouting.transportConversationMode, 'direct_cat_chat');
   assert.equal(mapping.roomRouting.roomRoutingStatus, 'placeholder');
   assert.equal(mapping.roomRouting.note, TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE);
 });
@@ -416,7 +416,7 @@ test('file-backed telegram relay store restores bindings and dedupe markers afte
   firstStore.upsertBinding({
     telegramChatId: '12345',
     conversationId: 'telegram:12345',
-    transportConversationMode: 'transport_inbox',
+    transportConversationMode: 'direct_cat_chat',
     roomRoutingStatus: 'placeholder',
     linkedRoomId: null,
     createdAt: '2026-03-19T00:00:00.000Z',
@@ -620,7 +620,7 @@ test('file-backed telegram relay store restores ingress and delivery diagnostics
       replyToMessageId: null,
     },
     roomRouting: {
-      transportConversationMode: 'transport_inbox',
+      transportConversationMode: 'direct_cat_chat',
       roomRoutingStatus: 'placeholder',
       linkedRoomId: null,
       note: TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE,

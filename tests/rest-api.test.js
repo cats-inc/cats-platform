@@ -559,13 +559,13 @@ test('bot binding routes support multiple Telegram bots across Cats', async () =
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        roomMode: 'transport_inbox',
+        roomMode: 'direct_cat_chat',
         status: 'disabled',
       }),
     });
     assert.equal(patchBindingResponse.status, 200);
     const patchBindingPayload = await patchBindingResponse.json();
-    assert.equal(patchBindingPayload.botBinding.roomMode, 'transport_inbox');
+    assert.equal(patchBindingPayload.botBinding.roomMode, 'direct_cat_chat');
     assert.equal(patchBindingPayload.botBinding.status, 'disabled');
 
     const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);

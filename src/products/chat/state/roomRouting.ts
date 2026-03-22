@@ -21,7 +21,6 @@ export const DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT = 64;
 const ROOM_ROUTING_MODES = new Set<RoomRoutingMode>([
   'boss_chat',
   'direct_cat_chat',
-  'transport_inbox',
 ]);
 
 const ROOM_ROUTING_TRIGGERS = new Set<RoomRoutingTrigger>([
