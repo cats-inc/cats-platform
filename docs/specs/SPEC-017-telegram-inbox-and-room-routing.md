@@ -51,18 +51,18 @@ not replace the room model.
 
 ### Functional Requirements
 
-1. A Telegram private chat bound to one Cat identity shall be treated as a
-   transport inbox, not as the canonical transcript for all work.
+1. A Telegram bot binding shall deliver inbound messages into the bound Cat's
+   private lane (`direct_cat_chat`), not into a separate channel type.
 2. `Cats Chat` rooms shall remain the canonical units for topic work and
    multi-Cat collaboration.
-3. One Telegram inbox may relate to many internal rooms over time.
+3. One Cat's private lane may relate to many internal rooms over time.
 4. For each inbound Telegram message, the bound Cat plus the product routing
    layer shall be able to choose one of these routing modes:
-   - reply directly in Telegram
+   - reply directly in the private lane (and optionally echo to Telegram)
    - continue a known internal room
    - propose or create a new internal room
 5. If the binding continues an existing room, the system shall record or reuse a
-   binding between the Telegram inbox context and that internal room.
+   binding between the private lane context and that internal room.
 6. If the binding creates a new room from Telegram, that room shall appear in
    `Cats Chat Recents` as a normal room.
 7. A room created from Telegram may be created with pre-assigned Cats selected
@@ -81,12 +81,12 @@ not replace the room model.
     even before a dedicated `Agent` tab ships.
 13. The current transport model shall allow multiple Telegram bots in one
     environment.
-14. Each Telegram bot binding shall own its own explicit inbox scope.
+14. Each Telegram bot binding shall deliver into the bound Cat's private lane.
 15. The global `Boss Cat` role shall remain singular even when multiple
     Telegram bot bindings exist.
 16. A non-`Boss Cat` Cat may still own a Telegram bot binding.
-17. Telegram bot binding ownership shall attach to Cat identity, not to one
-    persisted direct room.
+17. Telegram bot binding ownership shall attach to Cat identity and deliver
+    into that Cat's private lane.
 18. The web product may surface Cat-owned Telegram binding state from the same
     `My Cats` roster used for Cat-private entry, while durable topic work still
     belongs in `Recents`.

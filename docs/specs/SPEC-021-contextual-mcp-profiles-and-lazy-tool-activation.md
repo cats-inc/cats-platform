@@ -138,7 +138,7 @@ interface ToolIntentManifest {
   lazyGroups?: string[];
   context?: {
     catId?: string;
-    roomMode?: 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
+    roomMode?: 'boss_chat' | 'direct_cat_chat';
     transport?: 'telegram' | 'line' | 'web' | null;
   };
   strict?: boolean;

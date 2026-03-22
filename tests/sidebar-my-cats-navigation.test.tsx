@@ -66,6 +66,23 @@ function findMyCatButton(node: ReactNode, catName: string): { props: { onClick?:
   return findMyCatButton(children, catName);
 }
 
+function collectChannelProps(node: ReactNode): Array<{ id: string; title: string }> {
+  const result: Array<{ id: string; title: string }> = [];
+  (function walk(n: ReactNode) {
+    if (!n) return;
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    if (!isValidElement(n)) return;
+    if (n.props.channel && typeof n.props.channel === 'object' && 'id' in n.props.channel) {
+      result.push({ id: n.props.channel.id, title: n.props.channel.title });
+      return;
+    }
+    const ch = n.props.children;
+    if (Array.isArray(ch)) ch.forEach(walk);
+    else if (ch) walk(ch);
+  })(node);
+  return result;
+}
+
 function createChannel(
   overrides: Partial<ChatChannelSummary> & { id: string; title: string },
 ): ChatChannelSummary {
@@ -226,4 +243,28 @@ test('clicking a My Cats entry with an existing direct thread reopens that threa
   assert.deepEqual(actions, [
     { kind: 'select', channelId: 'direct-thread-1' },
   ]);
+});
+
+test('direct_cat_chat channels are excluded from the Recents list', () => {
+  const payload = createPayload([
+    createChannel({ id: 'boss-thread', title: 'Daily standup' }),
+    createChannel({
+      id: 'direct-thread',
+      title: 'Companion',
+      leadCatId: 'companion-cat',
+      roomMode: 'direct_cat_chat',
+    } as Partial<ChatChannelSummary> & { id: string; title: string }),
+  ]);
+
+  const tree = createSidebarTree(payload, () => {});
+  const rendered = collectChannelProps(tree);
+
+  assert.ok(
+    rendered.some((ch) => ch.id === 'boss-thread'),
+    'boss_chat channel should appear in Recents',
+  );
+  assert.ok(
+    !rendered.some((ch) => ch.id === 'direct-thread'),
+    'direct_cat_chat channel should not appear in Recents',
+  );
 });

@@ -38,8 +38,8 @@
 | Waking up | The user-facing lifecycle state for a Cat whose wake request is in progress. |
 | Put to sleep | Closing a chat-scoped runtime session without removing the Cat from the chat. |
 | Active chat limit | The maximum number of chats in which a given class of Cat is allowed to stay awake at once. The first slice should configure this separately for `Boss Cat` and `Other Cats`. |
-| Transport inbox | One external bot-thread view owned by one bot binding, such as Telegram DM with `Boss Cat`, `將將`, or `醜醜`, that acts as an entry inbox rather than the canonical transcript for all room work. |
-| Spawned room | A normal `Cats Chat` room that `Boss Cat` created or continued from a transport inbox context so it can appear in `Recents` and hold canonical topic work. |
+| Transport binding | An external bot identity (e.g., Telegram bot) attached to a Cat's private lane (`direct_cat_chat`). Inbound messages from the transport deliver into that private lane, not into a separate channel type. |
+| Spawned room | A normal `Cats Chat` room that a Cat created or continued from a transport-bound private lane so it can appear in `Recents` and hold canonical topic work. |
 | Routing layer | The product-owned system layer that resolves mentions, default targets, wake-before-route behavior, and per-room routing mode before prompts are sent to runtime sessions. |
 | Lead participant | The default target participant for a room mode when an operator turn does not contain an explicit valid `@mention`. |
 | Skill profile | A product-owned capability mapping that decides which runtime skill names should be requested for a Cat in a given room or transport context. |

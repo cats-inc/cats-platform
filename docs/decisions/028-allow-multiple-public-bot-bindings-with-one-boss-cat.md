@@ -66,22 +66,22 @@ bindings.
    - public bot availability is a transport/persona choice, not proof of being
      the global household lead
 
-5. Transport default routing depends on the bound Cat and binding mode.
-   - a `Boss Cat` binding may default to `Boss Chat`
-   - a non-`Boss Cat` companion binding may default to `Direct Cat Chat`
-   - later bindings may explicitly target family/group-chat behavior if the
-     product chooses to support that
+5. Transport messages route into the bound Cat's private lane
+   (`direct_cat_chat`).
+   - there is no separate `transport_inbox` channel type
+   - each Cat has one private lane that receives both web and transport messages
+   - the private lane can optionally bind to Telegram (or not)
 
-6. Each bot binding owns its own external inbox and routing history.
-   - do not collapse all Telegram traffic into one environment-level inbox
-   - `將將_bot` and `醜醜_bot` are separate external entrypoints even if they
-     live in the same environment
+6. Each bot binding is a transport property of one Cat's private lane.
+   - `將將_bot` and `醜醜_bot` deliver into their respective Cat's private lane
+   - they are separate external entrypoints even if they live in the same
+     environment
 
 7. The product must separate these concepts cleanly:
    - global `Boss Cat`
    - Cat identity/persona
-   - transport bot binding
-   - transport inbox / room mapping
+   - transport bot binding (a property of the Cat, not a separate channel)
+   - private lane (the Cat's `direct_cat_chat` channel)
 
 ## Consequences
 

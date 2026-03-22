@@ -1,16 +1,22 @@
 # ADR-016: Treat Telegram as a Boss Cat Inbox, Not a Room Mirror
 
-> Model Telegram as one Boss Cat inbox that can route into many internal Cats
-> Chat rooms instead of trying to mirror all room traffic into one transport
-> transcript.
+> Model Telegram as an external entrypoint into a Cat's private lane
+> (`direct_cat_chat`) instead of trying to mirror all room traffic into one
+> transport transcript.
 
 ## Status
 
-Accepted
+Accepted (Revised 2026-03-23)
 
 > Clarified by [ADR-028](./028-allow-multiple-public-bot-bindings-with-one-boss-cat.md):
-> the transport rule here still applies per bot-bound inbox, but the product is
+> the transport rule here still applies per bot-bound Cat, but the product is
 > no longer limited to one Telegram bot for the whole environment.
+>
+> **Revision note (2026-03-23)**: `transport_inbox` is no longer a separate
+> `RoomRoutingMode`. Telegram binding is a property of a Cat's private lane
+> (`direct_cat_chat`). Inbound Telegram messages route into that lane, not
+> into a separate inbox channel. The core principle — Telegram is not a room
+> mirror — remains unchanged.
 
 ## Context
 
@@ -44,9 +50,12 @@ thread.
 `cats` will treat Telegram as a `Boss Cat` inbox transport, not as a room
 mirror.
 
-1. One Telegram bot thread represents one operator-to-`Boss Cat` inbox.
-   - it is an external transport conversation
-   - it is not the canonical home of all multi-topic work
+1. One Telegram bot thread delivers messages into the bound Cat's private lane
+   (`direct_cat_chat`).
+   - Telegram binding is a property of the Cat, not a separate channel type
+   - there is no separate `transport_inbox` routing mode
+   - the private lane is the single source of truth for that Cat's direct
+     conversation, whether the message arrived via web or Telegram
 
 2. `Cats Chat` rooms remain the canonical product units for topic-based work.
    - `Recents` continues to represent real internal rooms
@@ -83,25 +92,24 @@ mirror.
    - today, one `cats` environment still exposes one default public
      `Boss Cat`
    - future slices may allow multiple public `Boss Cat` identities
-   - each additional public `Boss Cat` should own its own transport inbox and
-     bot binding rather than sharing one ambiguous Telegram identity
+   - each additional public `Boss Cat` should own its own bot binding and
+     private lane rather than sharing one ambiguous Telegram identity
 
 ## Consequences
 
 ### Positive
 
-- Telegram stays clean as one personal entry thread with `Boss Cat`.
+- Telegram stays clean as one personal entry thread with the bound Cat.
 - `Cats Chat` keeps a clear topic-room mental model.
-- `Boss Cat` can create or continue multiple rooms without pretending Telegram
-  itself has many rooms.
-- Multi-Cat work remains inspectable in canonical room transcripts instead of a
-  compressed transport log.
+- The Cat's private lane is the single unified conversation regardless of
+  transport origin (web or Telegram).
+- No extra `transport_inbox` channel type simplifies the routing model.
 - The same model can extend to LINE and similar channels later.
 
 ### Negative
 
-- The system must track routing between one transport inbox and many internal
-  rooms.
+- The system must track which messages arrived via Telegram within the
+  unified private lane.
 - `Boss Cat` will need ambiguity-handling behavior for "is this a new topic or
   the previous room?"
 - Product surfaces must explain room creation and room references clearly so the

@@ -25,7 +25,7 @@ shared routing layer owned by the product, not mainly by prompt conventions.
 - keep `Boss Chat` as the default mode for `+ New Chat`
 - make mention handling and default-target rules deterministic
 - share one routing model across web rooms, direct specialist chats, and
-  transport inboxes
+  transport-bound private lanes
 
 ## Non-Goals
 
@@ -49,8 +49,8 @@ shared routing layer owned by the product, not mainly by prompt conventions.
 
 1. The product shall support at least these room modes:
    - `boss_chat`
-   - `direct_cat_chat`
-   - `transport_inbox` as a routing-layer mode for transport entrypoints
+   - `direct_cat_chat` (which may optionally bind to external transports such
+     as Telegram)
 2. Every persisted conversation shall have a routing mode.
 3. A room may also declare a lead participant for default target resolution.
 4. `+ New Chat` shall continue creating `boss_chat` rooms by default.
@@ -61,10 +61,8 @@ shared routing layer owned by the product, not mainly by prompt conventions.
    product should reopen it. Otherwise the product shall open a direct `/new`
    draft for that Cat without creating a persisted room yet.
 7. In `boss_chat`, an unmentioned operator turn shall default to `Boss Cat`.
-8. In `direct_cat_chat`, an unmentioned operator turn shall default to the
-   chosen lead Cat.
-9. In `transport_inbox`, an unmentioned inbound turn shall default to the bound
-   `Boss Cat`.
+8. In `direct_cat_chat`, an unmentioned operator turn (or inbound transport
+   message) shall default to the chosen lead Cat.
 10. Explicit `@mentions` shall be parsed and resolved by the routing layer
    before prompt construction.
 11. If an explicit `@mention` resolves to a valid room participant, that target
@@ -92,8 +90,7 @@ shared routing layer owned by the product, not mainly by prompt conventions.
 
 - `roomMode`
   - `boss_chat`
-  - `direct_cat_chat`
-  - `transport_inbox`
+  - `direct_cat_chat` (with optional transport binding)
 - `leadParticipantId`
   - the default non-mentioned target for that room mode
 - `resolvedTargets`
@@ -115,7 +112,6 @@ Parse explicit @mentions
                 use roomMode default target
                   - boss_chat -> Boss Cat
                   - direct_cat_chat -> lead Cat
-                  - transport_inbox -> bound Boss Cat
         |
         v
 Wake missing targets if needed

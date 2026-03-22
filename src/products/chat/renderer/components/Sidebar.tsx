@@ -29,11 +29,15 @@ export interface SidebarProps {
   onDirectChatCat: (catId: string) => void;
 }
 
+function isDirectCatChat(channel: ChatChannelSummary): boolean {
+  return channel.roomMode === 'direct_cat_chat';
+}
+
 function resolveCatForChannel(
   channel: ChatChannelSummary,
   payload: AppShellPayload,
 ): { name: string; avatarColor: string | null } | null {
-  const leadCatId = (channel as { leadCatId?: string | null }).leadCatId;
+  const leadCatId = channel.leadCatId;
   if (leadCatId) {
     const cat = payload.chat.cats.find((c) => c.id === leadCatId);
     if (cat) return { name: cat.name, avatarColor: cat.avatarColor };
@@ -47,7 +51,7 @@ function resolveCatForChannel(
 }
 
 function channelRoomMode(channel: ChatChannelSummary): string {
-  return (channel as { roomMode?: string | null }).roomMode ?? 'boss_chat';
+  return channel.roomMode ?? 'boss_chat';
 }
 
 function roomModeLabel(mode: string): string {
@@ -165,16 +169,18 @@ export function Sidebar({
     ));
   }
 
+  const recentsChannels = payload.chat.channels.filter((ch) => !isDirectCatChat(ch));
+
   function renderByLatest() {
-    return renderChannelList(payload.chat.channels);
+    return renderChannelList(recentsChannels);
   }
 
   function renderByCat() {
     const groups = new Map<string, { catName: string; channels: ChatChannelSummary[] }>();
     const ungrouped: ChatChannelSummary[] = [];
 
-    for (const channel of payload.chat.channels) {
-      const leadId = (channel as { leadCatId?: string | null }).leadCatId;
+    for (const channel of recentsChannels) {
+      const leadId = channel.leadCatId;
       if (leadId) {
         const cat = payload.chat.cats.find((c) => c.id === leadId);
         const key = leadId;
@@ -207,7 +213,7 @@ export function Sidebar({
 
   function renderByChatType() {
     const groups: Record<string, ChatChannelSummary[]> = {};
-    for (const channel of payload.chat.channels) {
+    for (const channel of recentsChannels) {
       const mode = channelRoomMode(channel);
       if (!groups[mode]) groups[mode] = [];
       groups[mode].push(channel);
