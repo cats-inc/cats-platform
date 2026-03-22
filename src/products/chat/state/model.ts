@@ -33,6 +33,10 @@ import type {
   UpdateGlobalOrchestratorInput,
 } from '../../../shared/app-shell.js';
 import { createChannelExportFilename } from '../../../shared/channelPaths.js';
+import {
+  resolveChatLifecycleState,
+  type ChatLifecycleState,
+} from '../shared/lifecycle.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from './defaults.js';
 import {
   createDefaultRoomRoutingState,
@@ -40,7 +44,7 @@ import {
 } from './roomRouting.js';
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
-export type ChatLifecycleState = 'sleeping' | 'waking_up' | 'awake';
+export type { ChatLifecycleState } from '../shared/lifecycle.js';
 
 export function resolveOrchestratorDisplayName(state: ChatState): string {
   if (state.bossCatId) {
@@ -81,14 +85,7 @@ function normalizeLeadParticipantId(value: string | undefined): string | null {
 export function resolveParticipantLifecycleState(
   lease: ParticipantExecutionLease,
 ): ChatLifecycleState {
-  switch (lease.status) {
-    case 'ready':
-      return 'awake';
-    case 'initializing':
-      return 'waking_up';
-    default:
-      return 'sleeping';
-  }
+  return resolveChatLifecycleState(lease.status);
 }
 
 function findChannelIndex(state: ChatState, channelId: string): number {

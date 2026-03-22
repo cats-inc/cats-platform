@@ -9,41 +9,11 @@ import {
   type SelectedChannelView,
 } from '../chatUtils';
 import { openFolderInExplorer } from '../api';
-
-type ParticipantLifecycleState = 'sleeping' | 'waking_up' | 'awake';
-
-function resolveLifecycleState(status: string | null | undefined): ParticipantLifecycleState {
-  switch (status) {
-    case 'ready':
-      return 'awake';
-    case 'initializing':
-      return 'waking_up';
-    default:
-      return 'sleeping';
-  }
-}
-
-function lifecycleLabel(state: ParticipantLifecycleState): string {
-  switch (state) {
-    case 'awake':
-      return 'Awake';
-    case 'waking_up':
-      return 'Waking up';
-    default:
-      return 'Sleeping';
-  }
-}
-
-function lifecycleClassName(state: ParticipantLifecycleState): string {
-  switch (state) {
-    case 'awake':
-      return 'isAwake';
-    case 'waking_up':
-      return 'isWaking';
-    default:
-      return 'isSleeping';
-  }
-}
+import {
+  chatLifecycleClassName,
+  chatLifecycleLabel,
+  resolveChatLifecycleState,
+} from '../../shared/lifecycle';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -103,13 +73,13 @@ export function ChatView({
   const leadCat = leadParticipantId
     ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
     : null;
-  const bossLifecycle = resolveLifecycleState(selectedChannel.orchestratorLease.status);
+  const bossLifecycle = resolveChatLifecycleState(selectedChannel.orchestratorLease.status);
   const presenceItems = roomMode === 'direct_cat_chat' && leadCat
     ? [
         {
           id: `cat:${leadCat.catId}`,
           name: leadCat.name,
-          state: resolveLifecycleState(leadCat.execution.lease.status),
+          state: resolveChatLifecycleState(leadCat.execution.lease.status),
           isEntry: true,
         },
         ...activeAssignedCats
@@ -117,7 +87,7 @@ export function ChatView({
           .map((cat) => ({
             id: `cat:${cat.catId}`,
             name: cat.name,
-            state: resolveLifecycleState(cat.execution.lease.status),
+            state: resolveChatLifecycleState(cat.execution.lease.status),
             isEntry: false,
           })),
       ]
@@ -131,7 +101,7 @@ export function ChatView({
         ...activeAssignedCats.map((cat) => ({
           id: `cat:${cat.catId}`,
           name: cat.name,
-          state: resolveLifecycleState(cat.execution.lease.status),
+          state: resolveChatLifecycleState(cat.execution.lease.status),
           isEntry: false,
         })),
       ];
@@ -182,8 +152,8 @@ export function ChatView({
             {roomMode === 'boss_chat' && activeAssignedCats.length > 0 && leadCat ? (
               <span className="channelLeadLabel">Lead: {leadCat.name}</span>
             ) : null}
-            <span className={`channelPresenceBadge ${lifecycleClassName(entryPresence.state)}`}>
-              {entryPresence.name} {lifecycleLabel(entryPresence.state)}
+            <span className={`channelPresenceBadge ${chatLifecycleClassName(entryPresence.state)}`}>
+              {entryPresence.name} {chatLifecycleLabel(entryPresence.state)}
             </span>
           </div>
           <div className="channelPresenceRow">
@@ -192,9 +162,9 @@ export function ChatView({
               .map((item) => (
                 <span
                   key={item.id}
-                  className={`channelPresencePill ${lifecycleClassName(item.state)}`}
+                  className={`channelPresencePill ${chatLifecycleClassName(item.state)}`}
                 >
-                  {item.name} {lifecycleLabel(item.state)}
+                  {item.name} {chatLifecycleLabel(item.state)}
                 </span>
               ))}
           </div>

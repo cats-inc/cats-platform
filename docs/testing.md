@@ -10,7 +10,8 @@ is still covered indirectly through server and state integration tests. The
 Telegram transport seam is also covered directly at the platform-module level
 so dedupe, durable mapping, and webhook behavior can advance without touching
 chat-core tests. Current regression coverage also targets chat-entry wake
-behavior, direct-cat default routing, and re-wake flows for sleeping room
+behavior through explicit selection mutations, read-only app-shell boot
+semantics, direct-cat default routing, and re-wake flows for sleeping room
 participants.
 
 ## Test Types

@@ -695,7 +695,7 @@ test('PATCH /api/preferences wakes the selected Boss Chat entry participant', as
   });
 });
 
-test('GET /api/app-shell wakes the selected direct chat lead when the route opens a persisted room', async () => {
+test('PATCH /api/preferences wakes the selected direct chat lead', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -739,20 +739,88 @@ test('GET /api/app-shell wakes the selected direct chat lead when the route open
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
 
+    const updatePrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+    assert.equal(updatePrefsResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(channelPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal(
+      channelPayload.channel.assignedCats[0].execution.lease.sessionId,
+      'session-1',
+    );
+    assert.equal(channelPayload.channel.status, 'active');
+  });
+});
+
+test('GET /api/app-shell stays read-only when booting a persisted room route', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Companion Direct',
+        topic: 'App shell reads should not wake runtime sessions.',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [catId],
+        leadParticipantId: catId,
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
     const appShellResponse = await fetch(`${baseUrl}/api/app-shell`, {
       headers: { 'x-cats-route-path': `/chats/${channelId}` },
     });
     assert.equal(appShellResponse.status, 200);
     const appShellPayload = await appShellResponse.json();
 
-    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.createdSessions.length, 0);
     assert.equal(appShellPayload.chat.selectedChannel.roomRouting.mode, 'direct_cat_chat');
     assert.equal(appShellPayload.chat.selectedChannel.orchestratorLease.sessionId, null);
     assert.equal(
       appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.sessionId,
-      'session-1',
+      null,
     );
-    assert.equal(appShellPayload.chat.selectedChannel.status, 'active');
+    assert.equal(appShellPayload.chat.selectedChannel.status, 'configured');
   });
 });
 

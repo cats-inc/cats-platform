@@ -181,6 +181,9 @@ PATCH /api/preferences
   participant when that room is currently sleeping:
   - `boss_chat` and `transport_inbox` wake `Boss Cat`
   - `direct_cat_chat` wakes the room's lead Cat
+- Renderer room-entry wake now goes through this explicit selection mutation so
+  persisted-room wake keeps a write seam instead of piggybacking on app-shell
+  reads.
 
 ### Providers
 
@@ -836,10 +839,9 @@ GET /api/app-shell
 
 Returns the current product shell contract.
 
-Renderer clients may send `x-cats-route-path: /chats/{channelId}` when booting a
-persisted room. When that header matches the currently selected room, the server
-may wake the room's visible entry participant before returning the app-shell
-payload so product entry feels present instead of dormant.
+`GET /api/app-shell` is read-only. Renderer boot may still follow it with
+`PATCH /api/preferences` when a persisted room route needs to select or wake its
+visible entry participant.
 
 Abbreviated example response:
 
