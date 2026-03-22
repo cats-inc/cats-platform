@@ -298,7 +298,11 @@ async function routeRequest(
     return;
   }
 
-  if (url.pathname === '/api/transports/telegram/webhook') {
+  const telegramWebhookMatch = matchRoute(
+    url.pathname,
+    /^\/api\/transports\/telegram\/webhook(?:\/([^/]+))?$/u,
+  );
+  if (telegramWebhookMatch) {
     if (method !== 'POST') {
       sendMethodNotAllowed(response, ['POST']);
       return;
@@ -306,7 +310,7 @@ async function routeRequest(
     await handleTelegramWebhook(request, response, {
       chatStore: dependencies.chatStore,
       telegramRelay: dependencies.telegramRelay,
-    });
+    }, telegramWebhookMatch[0] === 'undefined' ? undefined : telegramWebhookMatch[0]);
     return;
   }
 
@@ -352,6 +356,7 @@ function createDefaultTelegramRelay(dependencies: ServerDependencies): TelegramR
     process.env.CATS_TELEGRAM_WEBHOOK_MAX_BYTES ?? '',
     10,
   );
+  const deliveryClientCache = new Map<string, ReturnType<typeof createTelegramBotApiDeliveryClient>>();
 
   return createTelegramRelay({
     now: dependencies.now,
@@ -360,10 +365,20 @@ function createDefaultTelegramRelay(dependencies: ServerDependencies): TelegramR
       : createFileBackedTelegramRelayStore(dependencies.config.chatStatePath),
     webhookSecretToken,
     maxBodyBytes: Number.isFinite(parsedMaxBodyBytes) ? parsedMaxBodyBytes : undefined,
-    deliveryClient: botToken
-      ? createTelegramBotApiDeliveryClient({
-          botToken,
-        })
-      : null,
+    resolveDeliveryClient(binding) {
+      const resolvedToken = binding?.botToken?.trim() || botToken;
+      if (!resolvedToken) {
+        return null;
+      }
+      const existing = deliveryClientCache.get(resolvedToken);
+      if (existing) {
+        return existing;
+      }
+      const client = createTelegramBotApiDeliveryClient({
+        botToken: resolvedToken,
+      });
+      deliveryClientCache.set(resolvedToken, client);
+      return client;
+    },
   });
 }

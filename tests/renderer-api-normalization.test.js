@@ -21,3 +21,26 @@ test('renderer app-shell normalizer does not reference the legacy pre-rename ide
     'normalizeAppShellPayload should only use chatState after the rename',
   );
 });
+
+test('renderer bot binding client uses the catId contract instead of the removed boundCatId field', async () => {
+  const source = await readFile(
+    path.join(process.cwd(), 'src/products/chat/renderer/api.ts'),
+    'utf8',
+  );
+
+  assert.match(source, /catId:\s*string/u);
+  assert.equal(
+    source.includes('boundCatId'),
+    false,
+    'renderer bot binding client should not send the removed boundCatId field',
+  );
+});
+
+test('renderer cat memory client reads the single-record create response shape', async () => {
+  const source = await readFile(
+    path.join(process.cwd(), 'src/products/chat/renderer/api.ts'),
+    'utf8',
+  );
+
+  assert.match(source, /expectJson<\{\s*memory:\s*DurableMemoryItem\s*\}>/u);
+});

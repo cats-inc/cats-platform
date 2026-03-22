@@ -1393,6 +1393,8 @@ export function createBotBinding(
     orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
     catActorId: createCatActorId(input.catId),
     bossCatActorId: null,
+    botToken: null,
+    webhookSecret: null,
     roomMode: input.roomMode ?? 'direct_cat_chat',
     status: 'active',
     createdAt: nowIso,

@@ -14,6 +14,14 @@ import {
   type ChatApiRouteContext,
 } from './shared.js';
 
+function trimNullableString(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function summarizeBinding(
   binding: BotBindingRecord,
   context: Awaited<ReturnType<ChatApiRouteContext['dependencies']['chatStore']['read']>>,
@@ -32,6 +40,9 @@ function summarizeBinding(
     isBossBinding: Boolean(context.bossCatId && cat?.id === context.bossCatId),
     status: binding.status,
     updatedAt: binding.updatedAt,
+    webhookPath: `/api/transports/telegram/webhook/${binding.id}`,
+    hasBotToken: Boolean(binding.botToken),
+    hasWebhookSecret: Boolean(binding.webhookSecret),
   };
 }
 
@@ -51,6 +62,8 @@ function createBindingRecord(
     orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
     catActorId,
     bossCatActorId: isBossBinding ? catActorId : null,
+    botToken: trimNullableString(input.botToken),
+    webhookSecret: trimNullableString(input.webhookSecret),
     roomMode: input.roomMode ?? (isBossBinding ? 'boss_chat' : 'direct_cat_chat'),
     status: 'active',
     createdAt: nowIso,
@@ -137,6 +150,12 @@ async function handleUpdateBotBinding(
             botName: body.botName?.trim() || binding.botName,
             catActorId,
             bossCatActorId,
+            botToken: body.botToken === undefined
+              ? binding.botToken
+              : trimNullableString(body.botToken),
+            webhookSecret: body.webhookSecret === undefined
+              ? binding.webhookSecret
+              : trimNullableString(body.webhookSecret),
             roomMode,
             status: body.status ?? binding.status,
             updatedAt: nowIso,

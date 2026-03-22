@@ -131,7 +131,7 @@ export function SettingsCats({
     try {
       const result = await createBotBindingApi({
         botName: botForm.botName.trim(),
-        boundCatId: catId,
+        catId,
         botToken: botForm.botToken.trim() || undefined,
         webhookSecret: botForm.webhookSecret.trim() || undefined,
       });
@@ -162,11 +162,11 @@ export function SettingsCats({
     if (!memoryForm.content.trim()) return;
     onBusy('memory:create');
     try {
-      const items = await createCatMemory(catId, {
+      const item = await createCatMemory(catId, {
         category: memoryForm.category,
         content: memoryForm.content.trim(),
       });
-      setCatMemory(items);
+      setCatMemory((prev) => [item, ...prev.filter((existing) => existing.id !== item.id)]);
       setMemoryForm({ category: 'fact', content: '' });
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : 'Failed to save memory.');
@@ -226,7 +226,7 @@ export function SettingsCats({
                   .map((cat) => {
                     const isBossCat = cat.id === payload.chat.bossCatId;
                     const isExpanded = expandedCatId === cat.id;
-                    const catBindings = botBindings.filter((b) => b.boundCatId === cat.id);
+                    const catBindings = botBindings.filter((binding) => binding.catId === cat.id);
 
                     return (
                       <article key={cat.id} className="catCard">
@@ -359,7 +359,7 @@ export function SettingsCats({
                                         <span className="statusChip statusChipReady" style={{ marginLeft: 8 }}>{binding.status}</span>
                                       </div>
                                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.8em', opacity: 0.6 }}>/api/transports/telegram/webhook/{binding.id}</span>
+                                        <span style={{ fontSize: '0.8em', opacity: 0.6 }}>{binding.webhookPath}</span>
                                         <button
                                           className="chromeButton"
                                           type="button"

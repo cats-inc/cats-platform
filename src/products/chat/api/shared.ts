@@ -198,6 +198,9 @@ export async function buildAppShellPayload(
       isBossBinding: Boolean(resolvedState.bossCatId && matchedCat?.id === resolvedState.bossCatId),
       status: binding.status,
       updatedAt: binding.updatedAt,
+      webhookPath: `/api/transports/telegram/webhook/${binding.id}`,
+      hasBotToken: Boolean(binding.botToken),
+      hasWebhookSecret: Boolean(binding.webhookSecret),
     };
   });
 

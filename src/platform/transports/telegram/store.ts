@@ -32,7 +32,7 @@ export interface TelegramDeliveryStatsSnapshot {
 }
 
 export interface TelegramRelayStore {
-  getBinding(chatId: string): TelegramConversationBinding | null;
+  getBinding(chatId: string, bindingId?: string | null): TelegramConversationBinding | null;
   getBindingByConversationId(conversationId: string): TelegramConversationBinding | null;
   listBindings(): TelegramConversationBinding[];
   upsertBinding(binding: TelegramConversationBinding): void;
@@ -99,6 +99,13 @@ const DELIVERY_REASONS = new Set<NonNullable<TelegramDeliveryReceipt['reason']>>
   'telegram_api_error',
 ]);
 
+function createBindingKey(chatId: string, bindingId?: string | null): string {
+  const normalizedBindingId = typeof bindingId === 'string' && bindingId.trim().length > 0
+    ? bindingId.trim()
+    : 'default';
+  return `${normalizedBindingId}:${chatId}`;
+}
+
 class BaseTelegramRelayStore implements TelegramRelayStore {
   protected readonly processedUpdateOrder: number[] = [];
 
@@ -130,8 +137,8 @@ class BaseTelegramRelayStore implements TelegramRelayStore {
 
   constructor(protected readonly maxProcessedUpdates = 2048) {}
 
-  getBinding(chatId: string): TelegramConversationBinding | null {
-    return this.bindingsByChatId.get(chatId) ?? null;
+  getBinding(chatId: string, bindingId?: string | null): TelegramConversationBinding | null {
+    return this.bindingsByChatId.get(createBindingKey(chatId, bindingId)) ?? null;
   }
 
   getBindingByConversationId(conversationId: string): TelegramConversationBinding | null {
@@ -195,12 +202,13 @@ class BaseTelegramRelayStore implements TelegramRelayStore {
   }
 
   protected upsertBindingInMemory(binding: TelegramConversationBinding): void {
-    const previousBinding = this.bindingsByChatId.get(binding.telegramChatId);
+    const bindingKey = createBindingKey(binding.telegramChatId, binding.bindingId);
+    const previousBinding = this.bindingsByChatId.get(bindingKey);
     if (previousBinding && previousBinding.conversationId !== binding.conversationId) {
       this.bindingsByConversationId.delete(previousBinding.conversationId);
     }
 
-    this.bindingsByChatId.set(binding.telegramChatId, binding);
+    this.bindingsByChatId.set(bindingKey, binding);
     this.bindingsByConversationId.set(binding.conversationId, binding);
   }
 
@@ -400,6 +408,8 @@ function toWebhookReceipt(rawValue: unknown): TelegramWebhookReceipt | null {
     updateId: readNumber(record.updateId),
     chatId: readString(record.chatId),
     messageId: readString(record.messageId),
+    bindingId: readString(record.bindingId),
+    botName: readString(record.botName),
     bossCatId: readString(record.bossCatId),
     bossCatName: readString(record.bossCatName),
     mappedConversationId: readString(record.mappedConversationId),
@@ -451,6 +461,8 @@ function toDeliveryReceipt(rawValue: unknown): TelegramDeliveryReceipt | null {
     conversationId: readString(record.conversationId),
     messageId: readString(record.messageId),
     replyToMessageId: readString(record.replyToMessageId),
+    bindingId: readString(record.bindingId),
+    botName: readString(record.botName),
     bossCatId: readString(record.bossCatId),
     bossCatName: readString(record.bossCatName),
     textPreview: readString(record.textPreview),
@@ -488,6 +500,8 @@ function toBinding(rawBinding: unknown): TelegramConversationBinding | null {
   return {
     telegramChatId,
     conversationId,
+    bindingId: readString(binding.bindingId),
+    botName: readString(binding.botName),
     transportConversationMode,
     roomRoutingStatus,
     linkedRoomId: typeof linkedRoomId === 'string' && linkedRoomId.trim().length > 0

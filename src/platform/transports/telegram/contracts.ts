@@ -157,6 +157,8 @@ export interface TelegramRoomRoutingSeam {
 export interface TelegramConversationBinding {
   telegramChatId: string;
   conversationId: string;
+  bindingId: string | null;
+  botName: string | null;
   transportConversationMode: TelegramTransportConversationMode;
   roomRoutingStatus: TelegramRoomRoutingStatus;
   linkedRoomId: string | null;
@@ -179,6 +181,7 @@ export interface TelegramRelayContext {
   bossCatActorId: string | null;
   botBindings: BotBindingRecord[];
   defaultBotBinding: BotBindingRecord | null;
+  selectedBotBinding: BotBindingRecord | null;
 }
 
 export interface TelegramRelayStatus {
@@ -233,6 +236,8 @@ export interface TelegramWebhookReceipt {
   updateId: number | null;
   chatId: string | null;
   messageId: string | null;
+  bindingId: string | null;
+  botName: string | null;
   bossCatId: string | null;
   bossCatName: string | null;
   mappedConversationId: string | null;
@@ -275,6 +280,8 @@ export interface TelegramDeliveryReceipt {
   conversationId: string | null;
   messageId: string | null;
   replyToMessageId: string | null;
+  bindingId: string | null;
+  botName: string | null;
   bossCatId: string | null;
   bossCatName: string | null;
   textPreview: string | null;

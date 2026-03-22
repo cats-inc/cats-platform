@@ -384,6 +384,8 @@ export interface BotBindingRecord {
   orchestratorActorId: string;
   catActorId: string | null;
   bossCatActorId: string | null;
+  botToken: string | null;
+  webhookSecret: string | null;
   roomMode: 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
   status: 'active' | 'disabled';
   createdAt: string;

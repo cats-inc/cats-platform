@@ -374,6 +374,9 @@ export interface BotBindingSummary {
   catId: string | null;
   roomMode: string;
   status: 'active' | 'disabled';
+  webhookPath: string;
+  hasBotToken: boolean;
+  hasWebhookSecret: boolean;
 }
 
 export interface ChatBotBindingSummary {
@@ -386,6 +389,9 @@ export interface ChatBotBindingSummary {
   isBossBinding: boolean;
   status: 'active' | 'disabled';
   updatedAt: string;
+  webhookPath: string;
+  hasBotToken: boolean;
+  hasWebhookSecret: boolean;
 }
 
 export interface ChatShellState {
@@ -518,6 +524,8 @@ export interface CreateBotBindingInput {
   botName: string;
   catId: string;
   roomMode?: RoomRoutingMode;
+  botToken?: string;
+  webhookSecret?: string;
 }
 
 export interface UpdateBotBindingInput {
@@ -525,4 +533,6 @@ export interface UpdateBotBindingInput {
   catId?: string;
   roomMode?: RoomRoutingMode;
   status?: 'active' | 'disabled';
+  botToken?: string | null;
+  webhookSecret?: string | null;
 }

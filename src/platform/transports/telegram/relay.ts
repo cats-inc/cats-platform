@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { BotBindingRecord } from '../../../core/types.js';
 import type {
   TelegramDeliveryReceipt,
   TelegramDeliveryRequest,
@@ -49,6 +50,7 @@ interface TelegramRelayOptions {
   maxBodyBytes?: number;
   conversationMapper?: TelegramConversationMapper;
   deliveryClient?: TelegramDeliveryClient | null;
+  resolveDeliveryClient?: (binding: BotBindingRecord | null) => TelegramDeliveryClient | null;
 }
 
 const DEFAULT_MAX_BODY_BYTES = 256 * 1024;
@@ -66,11 +68,13 @@ function pickMessage(
   return { message: null, isEdited: false };
 }
 
+function resolveActiveBinding(context: TelegramRelayContext): BotBindingRecord | null {
+  const candidate = context.selectedBotBinding ?? context.defaultBotBinding;
+  return candidate?.status === 'active' ? candidate : null;
+}
+
 function hasActiveDefaultBinding(context: TelegramRelayContext): boolean {
-  return Boolean(
-    context.defaultBotBinding
-    && context.defaultBotBinding.status === 'active',
-  );
+  return context.defaultBotBinding?.status === 'active';
 }
 
 function buildStatusNote(input: {
@@ -112,6 +116,12 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     ? Math.max(1024, Number(options.maxBodyBytes))
     : DEFAULT_MAX_BODY_BYTES;
   const deliveryClient = options.deliveryClient ?? null;
+  const resolveDeliveryClient = options.resolveDeliveryClient;
+  const hasConfiguredDelivery = (context: TelegramRelayContext): boolean =>
+    deliveryClient !== null
+      || context.botBindings.some((binding) =>
+        binding.status === 'active' && resolveDeliveryClient?.(binding) !== null,
+      );
 
   function getBaseStatus(context: TelegramRelayContext): {
     status: 'bound' | 'unbound';
@@ -141,7 +151,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       note: buildStatusNote({
         context,
         boundToBossCat,
-        deliveryConfigured: deliveryClient !== null,
+        deliveryConfigured: hasConfiguredDelivery(context),
       }),
       botBinding,
       availableBindings,
@@ -150,6 +160,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
 
   function buildWebhookReceipt(input: {
     context: TelegramRelayContext;
+    binding: BotBindingRecord | null;
     acceptedAt: string;
     updateId: number | null;
     chatId: string | null;
@@ -172,6 +183,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       updateId: input.updateId,
       chatId: input.chatId,
       messageId: input.messageId,
+      bindingId: input.binding?.id ?? null,
+      botName: input.binding?.botName ?? null,
       bossCatId: input.context.bossCatId,
       bossCatName: input.context.bossCatName,
       mappedConversationId: input.mappedConversationId,
@@ -185,6 +198,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     const base = getBaseStatus(context);
     const ingress = store.getIngressStats();
     const delivery = store.getDeliveryStats();
+    const deliveryConfigured = hasConfiguredDelivery(context);
 
     return {
       platform: 'telegram',
@@ -208,7 +222,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         lastReceipt: ingress.lastReceipt,
       },
       delivery: {
-        status: deliveryClient ? 'configured' : 'not_configured',
+        status: deliveryConfigured ? 'configured' : 'not_configured',
         supportedOperations: [...SUPPORTED_DELIVERY_OPERATIONS],
         sentCount: delivery.sentCount,
         repliedCount: delivery.repliedCount,
@@ -272,10 +286,14 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       const message = pickedMessage.message;
       const chatId = message?.chat?.id != null ? String(message.chat.id) : null;
       const messageId = typeof message?.message_id === 'number' ? String(message.message_id) : null;
+      const activeBinding = resolveActiveBinding(context);
+      const scopedBindingId = context.selectedBotBinding?.id ?? null;
+      const scopedBotName = context.selectedBotBinding?.botName ?? activeBinding?.botName ?? null;
 
-      if (!hasActiveDefaultBinding(context)) {
+      if (!activeBinding) {
         const receipt = buildWebhookReceipt({
           context,
+          binding: null,
           acceptedAt,
           updateId,
           chatId,
@@ -294,11 +312,14 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       if (updateId !== null && store.hasProcessedUpdate(updateId)) {
         const receipt = buildWebhookReceipt({
           context,
+          binding: activeBinding,
           acceptedAt,
           updateId,
           chatId,
           messageId,
-          mappedConversationId: chatId ? store.getBinding(chatId)?.conversationId ?? null : null,
+          mappedConversationId: chatId
+            ? store.getBinding(chatId, scopedBindingId)?.conversationId ?? null
+            : null,
           message,
           isEdited: pickedMessage.isEdited,
           status: 'ignored',
@@ -312,6 +333,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       if (!message || !chatId) {
         const receipt = buildWebhookReceipt({
           context,
+          binding: activeBinding,
           acceptedAt,
           updateId,
           chatId,
@@ -330,6 +352,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       if (message.from?.is_bot === true) {
         const receipt = buildWebhookReceipt({
           context,
+          binding: activeBinding,
           acceptedAt,
           updateId,
           chatId,
@@ -348,6 +371,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       if (message.chat?.type !== 'private') {
         const receipt = buildWebhookReceipt({
           context,
+          binding: activeBinding,
           acceptedAt,
           updateId,
           chatId,
@@ -366,6 +390,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       const mapping = conversationMapper.resolveChatConversation({
         chatId,
         acceptedAt,
+        bindingId: scopedBindingId,
+        botName: scopedBotName,
         chatType: message.chat?.type ?? 'private',
         chatTitle: readString(message.chat?.title),
         chatUsername: readString(message.chat?.username),
@@ -381,6 +407,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
 
       const receipt = buildWebhookReceipt({
         context,
+        binding: activeBinding,
         acceptedAt,
         updateId,
         chatId,
@@ -408,13 +435,18 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         operation: request.operation,
         deliveredAt,
         deliveryId: randomUUID(),
+        bindingId: null as string | null,
+        botName: null as string | null,
         bossCatId: context.bossCatId,
         bossCatName: context.bossCatName,
         replyToMessageId: readString(request.replyToMessageId),
         textPreview: normalizeTelegramDeliveryTextPreview(request.text),
       };
+      const activeBinding = resolveActiveBinding(context);
+      const scopedBindingId = context.selectedBotBinding?.id ?? null;
+      const scopedBotName = context.selectedBotBinding?.botName ?? activeBinding?.botName ?? null;
 
-      if (!hasActiveDefaultBinding(context)) {
+      if (!activeBinding) {
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
           status: 'failed',
@@ -422,20 +454,6 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           conversationId: readString(request.conversationId),
           messageId: readString(request.messageId),
           reason: 'telegram_not_bound_to_boss_cat',
-          errorMessage: null,
-        };
-        store.recordDeliveryReceipt(receipt);
-        return receipt;
-      }
-
-      if (!deliveryClient) {
-        const receipt: TelegramDeliveryReceipt = {
-          ...baseReceipt,
-          status: 'failed',
-          chatId: readString(request.chatId),
-          conversationId: readString(request.conversationId),
-          messageId: readString(request.messageId),
-          reason: 'delivery_client_not_configured',
           errorMessage: null,
         };
         store.recordDeliveryReceipt(receipt);
@@ -487,11 +505,13 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         return receipt;
       }
 
-      let binding = request.chatId ? store.getBinding(request.chatId) : null;
+      let binding = request.chatId ? store.getBinding(request.chatId, scopedBindingId) : null;
       if (!binding && request.chatId) {
         binding = conversationMapper.resolveChatConversation({
           chatId: request.chatId,
           acceptedAt: deliveredAt,
+          bindingId: scopedBindingId,
+          botName: scopedBotName,
           chatType: 'private',
           chatTitle: null,
           chatUsername: null,
@@ -504,10 +524,32 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         binding = store.getBindingByConversationId(request.conversationId);
       }
 
+      const deliveryBinding = binding?.bindingId
+        ? context.botBindings.find((candidate) => candidate.id === binding.bindingId) ?? activeBinding
+        : activeBinding;
+      const activeDeliveryClient = resolveDeliveryClient?.(deliveryBinding ?? null) ?? deliveryClient;
+      if (!activeDeliveryClient) {
+        const receipt: TelegramDeliveryReceipt = {
+          ...baseReceipt,
+          bindingId: deliveryBinding?.id ?? null,
+          botName: deliveryBinding?.botName ?? null,
+          status: 'failed',
+          chatId: readString(request.chatId),
+          conversationId: binding?.conversationId ?? readString(request.conversationId),
+          messageId: readString(request.messageId),
+          reason: 'delivery_client_not_configured',
+          errorMessage: null,
+        };
+        store.recordDeliveryReceipt(receipt);
+        return receipt;
+      }
+
       const chatId = binding?.telegramChatId ?? readString(request.chatId);
       if (!chatId) {
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
+          bindingId: deliveryBinding?.id ?? null,
+          botName: deliveryBinding?.botName ?? null,
           status: 'failed',
           chatId: null,
           conversationId: binding?.conversationId ?? readString(request.conversationId),
@@ -522,7 +564,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       const conversationId = binding?.conversationId ?? `telegram:${chatId}`;
 
       try {
-        const result = await deliveryClient.deliver({
+        const result = await activeDeliveryClient.deliver({
           ...request,
           chatId,
         });
@@ -533,6 +575,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
             : 'sent';
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
+          bindingId: deliveryBinding?.id ?? null,
+          botName: deliveryBinding?.botName ?? null,
           status: result.ok ? status : 'failed',
           chatId,
           conversationId,
@@ -552,6 +596,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
             : {
                 telegramChatId: chatId,
                 conversationId,
+                bindingId: deliveryBinding?.id ?? null,
+                botName: deliveryBinding?.botName ?? null,
                 transportConversationMode: 'transport_inbox' as const,
                 roomRoutingStatus: 'placeholder' as const,
                 linkedRoomId: null,
@@ -575,6 +621,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       } catch (error) {
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
+          bindingId: deliveryBinding?.id ?? null,
+          botName: deliveryBinding?.botName ?? null,
           status: 'failed',
           chatId,
           conversationId,

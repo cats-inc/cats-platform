@@ -654,7 +654,7 @@ export async function updateCatProfile(
 export async function createBotBindingApi(
   input: {
     botName: string;
-    boundCatId: string;
+    catId: string;
     botToken?: string;
     webhookSecret?: string;
   },
@@ -707,15 +707,15 @@ export async function createCatMemory(
   catId: string,
   input: { category: string; content: string },
   signal?: AbortSignal,
-): Promise<DurableMemoryItem[]> {
+): Promise<DurableMemoryItem> {
   const response = await fetch(`/api/cats/${encodeURIComponent(catId)}/memory`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(input),
     signal,
   });
-  const data = await expectJson<{ records: DurableMemoryItem[] }>(response, `cat memory create returned ${response.status}`);
-  return data.records ?? [];
+  const data = await expectJson<{ memory: DurableMemoryItem }>(response, `cat memory create returned ${response.status}`);
+  return data.memory;
 }
 
 export async function deleteCatMemory(

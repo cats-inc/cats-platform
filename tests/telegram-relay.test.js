@@ -34,6 +34,7 @@ function createContext(overrides = {}) {
     bossCatActorId: 'actor-cat-cat-smelly',
     botBindings: [defaultBotBinding],
     defaultBotBinding,
+    selectedBotBinding: null,
     ...overrides,
   };
 }
@@ -126,6 +127,53 @@ test('telegram relay dedupes exact update ids and keeps the chat-to-conversation
   assert.equal(duplicate.status, 'ignored');
   assert.equal(duplicate.reason, 'duplicate_update');
   assert.equal(duplicate.mappedConversationId, 'telegram:12345');
+});
+
+test('telegram relay scopes conversation ids by the selected non-default binding', () => {
+  const store = new InMemoryTelegramRelayStore();
+  const relay = createTelegramRelay({
+    store,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+  const companionBinding = {
+    id: 'bot-binding-companion',
+    platform: 'telegram',
+    botName: 'companion_bot',
+    orchestratorActorId: 'actor-orchestrator-global',
+    catActorId: 'actor-cat-cat-companion',
+    bossCatActorId: null,
+    botToken: 'token-companion',
+    webhookSecret: 'secret-companion',
+    roomMode: 'direct_cat_chat',
+    status: 'active',
+    createdAt: '2026-03-19T00:00:00.000Z',
+    updatedAt: '2026-03-19T00:00:00.000Z',
+  };
+  const context = createContext({
+    botBindings: [createContext().defaultBotBinding, companionBinding],
+    selectedBotBinding: companionBinding,
+  });
+
+  const receipt = relay.receiveUpdate({
+    update: {
+      update_id: 101,
+      message: {
+        message_id: 88,
+        text: 'hello companion bot',
+        chat: { id: 12345, type: 'private' },
+      },
+    },
+    context,
+  });
+
+  assert.equal(receipt.status, 'accepted');
+  assert.equal(receipt.bindingId, 'bot-binding-companion');
+  assert.equal(receipt.mappedConversationId, 'telegram:bot-binding-companion:12345');
+  assert.equal(
+    store.getBinding('12345', 'bot-binding-companion')?.conversationId,
+    'telegram:bot-binding-companion:12345',
+  );
+  assert.equal(store.getBinding('12345'), null);
 });
 
 test('telegram relay ignores unsupported updates without polluting dedupe or mappings', () => {
@@ -451,6 +499,63 @@ test('telegram relay exposes outbound delivery diagnostics and updates bindings 
   assert.equal(diagnostics.delivery.deletedCount, 1);
   assert.equal(diagnostics.delivery.failedCount, 0);
   assert.equal(diagnostics.bindings[0].conversationId, 'telegram:12345');
+});
+
+test('telegram relay selects delivery clients per active binding when scoped bindings are used', async () => {
+  const store = new InMemoryTelegramRelayStore();
+  const calls = [];
+  const companionBinding = {
+    id: 'bot-binding-companion',
+    platform: 'telegram',
+    botName: 'companion_bot',
+    orchestratorActorId: 'actor-orchestrator-global',
+    catActorId: 'actor-cat-cat-companion',
+    bossCatActorId: null,
+    botToken: 'token-companion',
+    webhookSecret: 'secret-companion',
+    roomMode: 'direct_cat_chat',
+    status: 'active',
+    createdAt: '2026-03-19T00:00:00.000Z',
+    updatedAt: '2026-03-19T00:00:00.000Z',
+  };
+  const relay = createTelegramRelay({
+    store,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+    resolveDeliveryClient(binding) {
+      if (!binding) {
+        return null;
+      }
+      return {
+        async deliver(request) {
+          calls.push({ bindingId: binding.id, request });
+          return {
+            ok: true,
+            chatId: request.chatId,
+            messageId: '5001',
+          };
+        },
+      };
+    },
+  });
+  const context = createContext({
+    botBindings: [createContext().defaultBotBinding, companionBinding],
+    selectedBotBinding: companionBinding,
+  });
+
+  const receipt = await relay.deliver({
+    request: {
+      operation: 'send',
+      chatId: '12345',
+      text: 'hello from companion bot',
+    },
+    context,
+  });
+
+  assert.equal(receipt.status, 'sent');
+  assert.equal(receipt.bindingId, 'bot-binding-companion');
+  assert.equal(receipt.conversationId, 'telegram:bot-binding-companion:12345');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].bindingId, 'bot-binding-companion');
 });
 
 test('file-backed telegram relay store restores ingress and delivery diagnostics after restart', () => {

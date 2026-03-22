@@ -24,6 +24,18 @@ function createPlaceholderConversationId(chatId: string): string {
   return `telegram:${chatId}`;
 }
 
+function createScopedConversationId(
+  chatId: string,
+  bindingId?: string | null,
+): string {
+  const normalizedBindingId = typeof bindingId === 'string' && bindingId.trim().length > 0
+    ? bindingId.trim()
+    : null;
+  return normalizedBindingId
+    ? `telegram:${normalizedBindingId}:${chatId}`
+    : createPlaceholderConversationId(chatId);
+}
+
 export interface TelegramConversationMappingResult {
   binding: TelegramConversationBinding;
   created: boolean;
@@ -34,12 +46,14 @@ export interface TelegramConversationMapper {
   describeRoomRouting(): TelegramRoomRoutingSeam;
   getBindingCount(): number;
   listBindings(): TelegramConversationBinding[];
-  resolveChatConversation(input: {
-    chatId: string;
-    acceptedAt: string;
-    chatType: string;
-    chatTitle: string | null;
-    chatUsername: string | null;
+    resolveChatConversation(input: {
+      chatId: string;
+      acceptedAt: string;
+      bindingId?: string | null;
+      botName?: string | null;
+      chatType: string;
+      chatTitle: string | null;
+      chatUsername: string | null;
     messageId: string | null;
     messageSummary: TelegramNormalizedMessageSummary | null;
   }): TelegramConversationMappingResult;
@@ -64,6 +78,8 @@ export function createTelegramConversationMapper(
     resolveChatConversation({
       chatId,
       acceptedAt,
+      bindingId,
+      botName,
       chatType,
       chatTitle,
       chatUsername,
@@ -72,16 +88,20 @@ export function createTelegramConversationMapper(
     }: {
       chatId: string;
       acceptedAt: string;
+      bindingId?: string | null;
+      botName?: string | null;
       chatType: string;
       chatTitle: string | null;
       chatUsername: string | null;
       messageId: string | null;
       messageSummary: TelegramNormalizedMessageSummary | null;
     }): TelegramConversationMappingResult {
-      const existingBinding = store.getBinding(chatId);
+      const existingBinding = store.getBinding(chatId, bindingId);
       const binding: TelegramConversationBinding = existingBinding
         ? {
             ...existingBinding,
+            bindingId: bindingId ?? existingBinding.bindingId,
+            botName: botName ?? existingBinding.botName,
             telegramChatType: chatType || existingBinding.telegramChatType,
             telegramChatTitle: chatTitle,
             telegramChatUsername: chatUsername,
@@ -93,7 +113,9 @@ export function createTelegramConversationMapper(
           }
         : {
             telegramChatId: chatId,
-            conversationId: createPlaceholderConversationId(chatId),
+            conversationId: createScopedConversationId(chatId, bindingId),
+            bindingId: bindingId ?? null,
+            botName: botName ?? null,
             transportConversationMode: 'transport_inbox',
             roomRoutingStatus: 'placeholder',
             linkedRoomId: null,

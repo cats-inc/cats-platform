@@ -53,25 +53,13 @@ function isJsonContentType(contentType: string | undefined): boolean {
 
 async function readTelegramWebhookBody(
   request: IncomingMessage,
-  dependencies: TelegramRouteDependencies,
+  maxBodyBytes: number,
 ): Promise<TelegramWebhookUpdate> {
-  const ingressConfig = dependencies.telegramRelay.getIngressConfig();
   if (!isJsonContentType(request.headers['content-type'])) {
     throw new TelegramWebhookRequestError(
       415,
       'telegram_webhook_requires_json',
       'Telegram webhook requests must use application/json.',
-    );
-  }
-
-  if (
-    ingressConfig.secretToken
-    && request.headers['x-telegram-bot-api-secret-token'] !== ingressConfig.secretToken
-  ) {
-    throw new TelegramWebhookRequestError(
-      401,
-      'invalid_telegram_webhook_secret',
-      'Telegram webhook secret token is invalid.',
     );
   }
 
@@ -81,11 +69,11 @@ async function readTelegramWebhookBody(
   for await (const chunk of request) {
     const buffer = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
     totalBytes += buffer.byteLength;
-    if (totalBytes > ingressConfig.maxBodyBytes) {
+    if (totalBytes > maxBodyBytes) {
       throw new TelegramWebhookRequestError(
         413,
         'telegram_webhook_too_large',
-        `Telegram webhook body exceeds ${ingressConfig.maxBodyBytes} bytes.`,
+        `Telegram webhook body exceeds ${maxBodyBytes} bytes.`,
       );
     }
     chunks.push(buffer);
@@ -121,12 +109,14 @@ function resolveBossCatName(chatState: ChatState): string | null {
 
 async function readTelegramContext(
   chatStore: ChatStore,
+  selectedBindingId?: string,
 ): Promise<{
   bossCatId: string | null;
   bossCatName: string | null;
   bossCatActorId: string | null;
   botBindings: BotBindingRecord[];
   defaultBotBinding: BotBindingRecord | null;
+  selectedBotBinding: BotBindingRecord | null;
 }> {
   const [core, chatState] = await Promise.all([
     chatStore.readCore(),
@@ -143,6 +133,9 @@ async function readTelegramContext(
       binding.catActorId === bossCatActorId || binding.bossCatActorId === bossCatActorId,
     ) ?? activeTelegramBindings[0] ?? null
     : activeTelegramBindings[0] ?? null;
+  const selectedBotBinding = selectedBindingId
+    ? activeTelegramBindings.find((binding) => binding.id === selectedBindingId) ?? null
+    : null;
 
   return {
     bossCatId,
@@ -150,7 +143,24 @@ async function readTelegramContext(
     bossCatActorId,
     botBindings: activeTelegramBindings,
     defaultBotBinding,
+    selectedBotBinding,
   };
+}
+
+function validateTelegramWebhookSecret(
+  request: IncomingMessage,
+  expectedSecret: string | null,
+): void {
+  if (
+    expectedSecret
+    && request.headers['x-telegram-bot-api-secret-token'] !== expectedSecret
+  ) {
+    throw new TelegramWebhookRequestError(
+      401,
+      'invalid_telegram_webhook_secret',
+      'Telegram webhook secret token is invalid.',
+    );
+  }
 }
 
 export async function handleTelegramStatus(
@@ -177,10 +187,27 @@ export async function handleTelegramWebhook(
   request: IncomingMessage,
   response: ServerResponse,
   dependencies: TelegramRouteDependencies,
+  selectedBindingId?: string,
 ): Promise<void> {
   try {
-    const update = await readTelegramWebhookBody(request, dependencies);
-    const context = await readTelegramContext(dependencies.chatStore);
+    const ingressConfig = dependencies.telegramRelay.getIngressConfig();
+    const update = await readTelegramWebhookBody(request, ingressConfig.maxBodyBytes);
+    const context = await readTelegramContext(dependencies.chatStore, selectedBindingId);
+    if (selectedBindingId && !context.selectedBotBinding) {
+      sendRestError(
+        response,
+        404,
+        'telegram_binding_not_found',
+        `Telegram bot binding not found: ${selectedBindingId}`,
+      );
+      return;
+    }
+    validateTelegramWebhookSecret(
+      request,
+      context.selectedBotBinding?.webhookSecret
+      ?? context.defaultBotBinding?.webhookSecret
+      ?? ingressConfig.secretToken,
+    );
     const receipt = dependencies.telegramRelay.receiveUpdate({ update, context });
     sendJson(response, 202, { receipt });
   } catch (error) {

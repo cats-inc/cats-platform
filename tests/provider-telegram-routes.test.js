@@ -594,6 +594,84 @@ test('telegram webhook hardening rejects oversized webhook bodies before relay h
   );
 });
 
+test('telegram webhook routes can scope ingress to a specific bot binding path and secret', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await configureTelegramBossCat(baseUrl);
+
+    const createCompanionResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        skillProfile: 'companion',
+      }),
+    });
+    assert.equal(createCompanionResponse.status, 201);
+    const createCompanionPayload = await createCompanionResponse.json();
+
+    const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'companion_bot',
+        catId: createCompanionPayload.cat.id,
+        roomMode: 'direct_cat_chat',
+        webhookSecret: 'companion-secret',
+      }),
+    });
+    assert.equal(bindingResponse.status, 201);
+    const bindingPayload = await bindingResponse.json();
+    const bindingId = bindingPayload.botBinding.id;
+
+    const unauthorizedResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook/${bindingId}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        update_id: 101,
+        message: {
+          message_id: 88,
+          text: 'hello companion',
+          chat: { id: 12345, type: 'private' },
+        },
+      }),
+    });
+    assert.equal(unauthorizedResponse.status, 401);
+
+    const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook/${bindingId}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-telegram-bot-api-secret-token': 'companion-secret',
+      },
+      body: JSON.stringify({
+        update_id: 101,
+        message: {
+          message_id: 88,
+          text: 'hello companion',
+          chat: { id: 12345, type: 'private' },
+        },
+      }),
+    });
+    assert.equal(webhookResponse.status, 202);
+    const webhookPayload = await webhookResponse.json();
+    assert.equal(webhookPayload.receipt.status, 'accepted');
+    assert.equal(webhookPayload.receipt.bindingId, bindingId);
+    assert.equal(
+      webhookPayload.receipt.mappedConversationId,
+      `telegram:${bindingId}:12345`,
+    );
+
+    const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+    assert.equal(diagnosticsResponse.status, 200);
+    const diagnosticsPayload = await diagnosticsResponse.json();
+    assert.ok(diagnosticsPayload.telegram.bindings.some((binding) =>
+      binding.bindingId === bindingId
+      && binding.conversationId === `telegram:${bindingId}:12345`));
+  });
+});
+
 test('telegram relay state survives restart with file-backed chat storage', async () => {
   const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-telegram-routes-'));
   const chatStatePath = path.join(stateDir, 'chat.json');

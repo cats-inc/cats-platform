@@ -1197,6 +1197,8 @@ function normalizeBotBinding(
     bossCatActorId:
       readNullableString(bindingRecord.bossCatActorId)
       ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
+    botToken: readNullableString(bindingRecord.botToken),
+    webhookSecret: readNullableString(bindingRecord.webhookSecret),
     roomMode,
     status: rawStatus === 'disabled' ? 'disabled' : 'active',
     createdAt: readString(bindingRecord.createdAt, new Date().toISOString()),
