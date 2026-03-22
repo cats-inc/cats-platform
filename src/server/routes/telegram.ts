@@ -125,7 +125,8 @@ async function readTelegramContext(
   bossCatId: string | null;
   bossCatName: string | null;
   bossCatActorId: string | null;
-  botBinding: BotBindingRecord | null;
+  botBindings: BotBindingRecord[];
+  defaultBotBinding: BotBindingRecord | null;
 }> {
   const [core, chatState] = await Promise.all([
     chatStore.readCore(),
@@ -137,15 +138,18 @@ async function readTelegramContext(
     binding.platform === 'telegram'
     && binding.status === 'active',
   );
-  const botBinding = bossCatActorId
-    ? activeTelegramBindings.find((binding) => binding.bossCatActorId === bossCatActorId) ?? null
-    : null;
+  const defaultBotBinding = bossCatActorId
+    ? activeTelegramBindings.find((binding) =>
+      binding.catActorId === bossCatActorId || binding.bossCatActorId === bossCatActorId,
+    ) ?? activeTelegramBindings[0] ?? null
+    : activeTelegramBindings[0] ?? null;
 
   return {
     bossCatId,
     bossCatName: resolveBossCatName(chatState),
     bossCatActorId,
-    botBinding,
+    botBindings: activeTelegramBindings,
+    defaultBotBinding,
   };
 }
 

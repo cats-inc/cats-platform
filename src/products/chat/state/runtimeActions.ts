@@ -24,7 +24,12 @@ import type {
   ChatMessage,
   ChatState,
 } from '../../../shared/app-shell.js';
-import type { RuntimeClient, RuntimeSessionInfo } from '../../../platform/runtime/client.js';
+import type {
+  RuntimeClient,
+  RuntimeSessionInfo,
+  RuntimeSkillManifest,
+} from '../../../platform/runtime/client.js';
+import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import {
   ORCHESTRATOR_NAME,
   appendMessage,
@@ -37,6 +42,7 @@ import {
   setChannelStatus,
   setChannelChatCwd,
 } from './model.js';
+import { refreshDerivedMemoryLayers } from './memoryLayers.js';
 import { parseMentions } from './mentionParsing.js';
 import {
   resolveMentionRoute,
@@ -259,6 +265,69 @@ function buildCatTarget(cat: ChatChannelCat): RoutingTarget {
     participantName: cat.name,
     sessionId: cat.execution.lease.sessionId,
   };
+}
+
+function resolveTransportContext(channel: ChatChannelView): 'telegram' | 'web' {
+  return channel.roomRouting?.mode === 'transport_inbox' ? 'telegram' : 'web';
+}
+
+function buildSessionContextForTarget(
+  channel: ChatChannelView,
+  target: RoutingTarget,
+): {
+  source: 'interactive';
+  reason: string;
+  labels: string[];
+  metadata: Record<string, unknown>;
+} {
+  return {
+    source: 'interactive',
+    reason: `cats:${channel.roomRouting?.mode ?? 'boss_chat'}`,
+    labels: [
+      `channel:${channel.id}`,
+      `room-mode:${channel.roomRouting?.mode ?? 'boss_chat'}`,
+      `target:${target.participantKind}:${target.participantId}`,
+    ],
+    metadata: {
+      channelId: channel.id,
+      channelTitle: channel.title,
+      roomMode: channel.roomRouting?.mode ?? 'boss_chat',
+      leadParticipantId: channel.roomRouting?.leadParticipantId ?? null,
+      targetKind: target.participantKind,
+      targetId: target.participantId,
+    },
+  };
+}
+
+function resolveSessionSkillManifestForTarget(
+  state: ChatState,
+  channel: ChatChannelView,
+  target: RoutingTarget,
+): RuntimeSkillManifest | undefined {
+  if (target.participantKind === 'orchestrator') {
+    return resolveSkillProfileManifest({
+      profileId: state.globalOrchestrator.skillProfile,
+      roomMode: channel.roomRouting?.mode ?? 'boss_chat',
+      transport: resolveTransportContext(channel),
+      labels: ['participant:orchestrator'],
+      metadata: {
+        channelId: channel.id,
+      },
+    });
+  }
+
+  const cat = channel.assignedCats.find((candidate) => candidate.catId === target.participantId);
+  return resolveSkillProfileManifest({
+    profileId: cat?.skillProfile,
+    catId: cat?.catId ?? target.participantId,
+    roomMode: channel.roomRouting?.mode ?? 'boss_chat',
+    transport: resolveTransportContext(channel),
+    labels: ['participant:cat'],
+    metadata: {
+      channelId: channel.id,
+      catName: cat?.name ?? target.participantName,
+    },
+  });
 }
 
 function resolveDefaultTarget(
@@ -848,6 +917,8 @@ async function ensureTargetSession(
         model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
         sharingMode,
+        context: buildSessionContextForTarget(channel, target),
+        skills: resolveSessionSkillManifestForTarget(nextState, channel, target),
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
@@ -894,6 +965,8 @@ async function ensureTargetSession(
       model: cat.execution.target.model,
       cwd: spawnCwd,
       sharingMode,
+      context: buildSessionContextForTarget(channel, target),
+      skills: resolveSessionSkillManifestForTarget(nextState, channel, target),
     });
     nextState = setStartedSession(
       nextState,
@@ -1087,12 +1160,15 @@ export async function activateChannelSessions(
     });
   } else {
     try {
+      const orchestratorTarget = buildOrchestratorTarget(nextState, channelView);
       const session = await runtimeClient.createSession({
         provider: nextState.globalOrchestrator.executionTarget.provider,
         instance: nextState.globalOrchestrator.executionTarget.instance,
         model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
         sharingMode,
+        context: buildSessionContextForTarget(channelView, orchestratorTarget),
+        skills: resolveSessionSkillManifestForTarget(nextState, channelView, orchestratorTarget),
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
@@ -1165,12 +1241,15 @@ export async function activateChannelSessions(
     }
 
     try {
+      const catTarget = buildCatTarget(cat);
       const session = await runtimeClient.createSession({
         provider: cat.execution.target.provider,
         instance: cat.execution.target.instance,
         model: cat.execution.target.model,
         cwd: spawnCwd,
         sharingMode,
+        context: buildSessionContextForTarget(channelView, catTarget),
+        skills: resolveSessionSkillManifestForTarget(nextState, channelView, catTarget),
       });
       nextState = setStartedSession(nextState, channelId, { catId: cat.catId }, session, now);
       if (!spawnCwd && session.cwd) {
@@ -1265,6 +1344,7 @@ export async function routeChannelMessage(
     },
     now,
   ).state;
+  nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
 
   const channelAfterUserMessage = buildChannelView(nextState, channelId);
   const userMessage = channelAfterUserMessage.messages[channelAfterUserMessage.messages.length - 1];
@@ -1887,6 +1967,7 @@ export async function routeChannelMessage(
         },
       );
       nextState = appendedResponse.state;
+      nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
       const responseMessage = appendedResponse.message;
       updateDispatch(outcome, execution.dispatchId, {
         status: 'completed',

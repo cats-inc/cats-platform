@@ -43,6 +43,7 @@ export interface RuntimeSessionInfo {
   model: string | null;
   status: string;
   cwd: string | null;
+  skills?: RuntimeSessionSkillState;
 }
 
 export interface RuntimeMessageResult {
@@ -52,12 +53,74 @@ export interface RuntimeMessageResult {
   tokensUsed: number;
 }
 
+export interface RuntimeSkillManifestContext {
+  catId?: string;
+  roomMode?: 'boss_chat' | 'direct_cat_chat' | 'transport_inbox';
+  transport?: 'telegram' | 'line' | 'web' | null;
+  labels?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface RuntimeSkillManifest {
+  profileId?: string;
+  requestedSkills: string[];
+  context?: RuntimeSkillManifestContext;
+  strict?: boolean;
+}
+
+export interface RuntimeResolvedSkill {
+  id: string;
+  title: string;
+  status: 'resolved' | 'missing';
+  deliveryMode: 'instructions' | 'none';
+  source: 'runtime_catalog';
+  skillPath?: string;
+  warning?: string;
+}
+
+export interface RuntimeSessionSkillState {
+  profileId?: string;
+  requestedSkills: string[];
+  resolvedSkills: RuntimeResolvedSkill[];
+  strict: boolean;
+  warnings: string[];
+  appliedSkillIds: string[];
+  updatedAt: string;
+}
+
+export interface RuntimeSessionInvocationContext {
+  source?: 'interactive' | 'timer' | 'callback' | 'assignment' | 'automation';
+  reason?: string;
+  taskId?: string;
+  issueId?: string;
+  commentId?: string;
+  approvalId?: string;
+  workspace?: {
+    cwd?: string;
+    workspaceId?: string;
+    repoUrl?: string;
+    repoRef?: string;
+  };
+  labels?: string[];
+  metadata?: Record<string, unknown>;
+}
+
 export interface RuntimeSessionCreateInput {
   provider: string;
   instance?: string | null;
   model?: string | null;
   cwd?: string | null;
   sharingMode?: 'shared' | null;
+  instructions?: string | null;
+  context?: RuntimeSessionInvocationContext;
+  skills?: RuntimeSkillManifest;
+}
+
+export interface RuntimeSendMessageInput {
+  instructions?: string | null;
+  context?: RuntimeSessionInvocationContext;
+  outputDir?: string | null;
+  skills?: RuntimeSkillManifest;
 }
 
 export interface RuntimeClient {
@@ -65,7 +128,11 @@ export interface RuntimeClient {
   getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
   getProviderModels(provider: string, instance?: string | null): Promise<ProviderModelCatalog>;
   createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo>;
-  sendMessage(sessionId: string, content: string): Promise<RuntimeMessageResult>;
+  sendMessage(
+    sessionId: string,
+    content: string,
+    input?: RuntimeSendMessageInput,
+  ): Promise<RuntimeMessageResult>;
   closeSession(sessionId: string): Promise<void>;
 }
 
@@ -374,6 +441,15 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (input.sharingMode) {
       payload.workspaceMode = input.sharingMode;
     }
+    if (input.instructions?.trim()) {
+      payload.instructions = input.instructions.trim();
+    }
+    if (input.context) {
+      payload.context = input.context;
+    }
+    if (input.skills) {
+      payload.skills = input.skills;
+    }
 
     const response = await fetch(`${this.baseUrl}/sessions`, {
       method: 'POST',
@@ -398,10 +474,17 @@ export class CatsRuntimeClient implements RuntimeClient {
       model: typeof data.model === 'string' ? data.model : input.model?.trim() || null,
       status: typeof data.status === 'string' ? data.status : 'initializing',
       cwd: typeof data.cwd === 'string' ? data.cwd : input.cwd?.trim() || null,
+      skills: data.skills && typeof data.skills === 'object'
+        ? data.skills as RuntimeSessionSkillState
+        : undefined,
     };
   }
 
-  async sendMessage(sessionId: string, content: string): Promise<RuntimeMessageResult> {
+  async sendMessage(
+    sessionId: string,
+    content: string,
+    input?: RuntimeSendMessageInput,
+  ): Promise<RuntimeMessageResult> {
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/messages`, {
       method: 'POST',
       headers: {
@@ -409,7 +492,13 @@ export class CatsRuntimeClient implements RuntimeClient {
         'content-type': 'application/json',
         Accept: 'application/x-ndjson',
       },
-      body: JSON.stringify({ message: content }),
+      body: JSON.stringify({
+        message: content,
+        ...(input?.instructions?.trim() ? { instructions: input.instructions.trim() } : {}),
+        ...(input?.context ? { context: input.context } : {}),
+        ...(input?.outputDir?.trim() ? { outputDir: input.outputDir.trim() } : {}),
+        ...(input?.skills ? { skills: input.skills } : {}),
+      }),
     });
 
     if (!response.ok) {

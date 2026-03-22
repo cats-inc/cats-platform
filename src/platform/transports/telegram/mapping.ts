@@ -92,7 +92,6 @@ export function createTelegramConversationMapper(
             updatedAt: acceptedAt,
           }
         : {
-            botBindingId: null,
             telegramChatId: chatId,
             conversationId: createPlaceholderConversationId(chatId),
             transportConversationMode: 'transport_inbox',

@@ -1,4 +1,5 @@
 import type { AppConfig } from '../../../config.js';
+import { createCatActorId } from '../../../core/model.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import { escapeContentDispositionFilename } from '../../../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
@@ -99,6 +100,10 @@ export function handleRestError(
     sendRestError(context, 404, 'assignment_not_found', message);
     return;
   }
+  if (message.startsWith('Bot binding not found:')) {
+    sendRestError(context, 404, 'bot_binding_not_found', message);
+    return;
+  }
 
   sendRestError(context, 400, 'bad_request', message);
 }
@@ -174,6 +179,27 @@ export async function buildAppShellPayload(
   const core = await dependencies.chatStore.readCore();
   const resolvedState = state ?? await dependencies.chatStore.read();
   const runtime = await dependencies.runtimeClient.getHealth();
+  const botBindings = core.botBindings.map((binding) => {
+    const matchedCat = resolvedState.cats.find((cat) =>
+      binding.catActorId
+        ? createCatActorId(cat.id) === binding.catActorId
+        : binding.bossCatActorId
+          ? createCatActorId(cat.id) === binding.bossCatActorId
+          : false,
+    );
+
+    return {
+      id: binding.id,
+      platform: binding.platform,
+      botName: binding.botName,
+      catId: matchedCat?.id ?? null,
+      catName: matchedCat?.name ?? null,
+      roomMode: binding.roomMode ?? (matchedCat?.id === resolvedState.bossCatId ? 'boss_chat' : 'direct_cat_chat'),
+      isBossBinding: Boolean(resolvedState.bossCatId && matchedCat?.id === resolvedState.bossCatId),
+      status: binding.status,
+      updatedAt: binding.updatedAt,
+    };
+  });
 
   return createAppShell(
     dependencies.config,
@@ -184,8 +210,8 @@ export async function buildAppShellPayload(
       setupCompleteAt: core.setupCompleteAt,
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,
+      botBindings,
     },
-    core,
   );
 }
 

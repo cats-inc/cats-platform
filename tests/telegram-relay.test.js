@@ -15,20 +15,25 @@ import {
 } from '../dist-server/platform/transports/telegram/store.js';
 
 function createContext(overrides = {}) {
+  const defaultBotBinding = {
+    id: 'bot-binding-telegram-global',
+    platform: 'telegram',
+    botName: 'smelly_bot',
+    orchestratorActorId: 'actor-orchestrator-global',
+    catActorId: 'actor-cat-cat-smelly',
+    bossCatActorId: 'actor-cat-cat-smelly',
+    roomMode: 'boss_chat',
+    status: 'active',
+    createdAt: '2026-03-19T00:00:00.000Z',
+    updatedAt: '2026-03-19T00:00:00.000Z',
+  };
+
   return {
     bossCatId: 'cat-smelly',
     bossCatName: 'Smelly',
     bossCatActorId: 'actor-cat-cat-smelly',
-    botBinding: {
-      id: 'bot-binding-telegram-global',
-      platform: 'telegram',
-      botName: 'smelly_bot',
-      orchestratorActorId: 'actor-orchestrator-global',
-      bossCatActorId: 'actor-cat-cat-smelly',
-      status: 'active',
-      createdAt: '2026-03-19T00:00:00.000Z',
-      updatedAt: '2026-03-19T00:00:00.000Z',
-    },
+    botBindings: [defaultBotBinding],
+    defaultBotBinding,
     ...overrides,
   };
 }
@@ -60,15 +65,16 @@ test('telegram conversation mapper keeps a durable placeholder room-routing seam
   assert.equal(mapping.roomRouting.note, TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE);
 });
 
-test('telegram relay reports unbound when binding does not front the current Boss Cat', () => {
+test('telegram relay stays bound when a non-Boss Cat binding is the current ingress default', () => {
   const relay = createTelegramRelay();
 
   const status = relay.getStatus(createContext({
     bossCatActorId: 'actor-cat-cat-other',
   }));
 
-  assert.equal(status.status, 'unbound');
-  assert.equal(status.botBinding, null);
+  assert.equal(status.status, 'bound');
+  assert.equal(status.botBinding?.botName, 'smelly_bot');
+  assert.equal(status.availableBindings.length, 1);
   assert.equal(status.roomRouting.roomRoutingStatus, 'placeholder');
 });
 

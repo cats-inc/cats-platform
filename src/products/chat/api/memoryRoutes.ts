@@ -64,7 +64,7 @@ async function handleListCatMemory(
     const core = await context.dependencies.chatStore.readCore();
     const subjectId = createCatActorId(catId);
     const records = listDurableMemoryBySubject(core, 'cat', subjectId);
-    sendJson(context.response, 200, { memory: records });
+    sendJson(context.response, 200, { records });
   } catch (error) {
     handleRestError(context, error);
   }
@@ -174,7 +174,7 @@ async function handleListOwnerMemory(
   try {
     const core = await context.dependencies.chatStore.readCore();
     const records = listDurableMemoryBySubject(core, 'owner', OWNER_ACTOR_ID);
-    sendJson(context.response, 200, { memory: records });
+    sendJson(context.response, 200, { records });
   } catch (error) {
     handleRestError(context, error);
   }

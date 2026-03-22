@@ -1,7 +1,7 @@
 import type { BotBindingRecord } from '../../../core/types.js';
 
-export type TelegramRelayMode = 'boss-cat-ingress' | 'multi-cat-ingress';
-export type TelegramPublicIdentityMode = 'boss_cat_single_identity' | 'per_cat_identity';
+export type TelegramRelayMode = 'boss-cat-ingress';
+export type TelegramPublicIdentityMode = 'multi_cat_bindings_single_boss';
 
 export type TelegramTransportConversationMode = 'transport_inbox';
 
@@ -155,8 +155,6 @@ export interface TelegramRoomRoutingSeam {
 }
 
 export interface TelegramConversationBinding {
-  /** Which bot binding this conversation is scoped to (null = legacy/default) */
-  botBindingId: string | null;
   telegramChatId: string;
   conversationId: string;
   transportConversationMode: TelegramTransportConversationMode;
@@ -179,7 +177,8 @@ export interface TelegramRelayContext {
   bossCatId: string | null;
   bossCatName: string | null;
   bossCatActorId: string | null;
-  botBinding: BotBindingRecord | null;
+  botBindings: BotBindingRecord[];
+  defaultBotBinding: BotBindingRecord | null;
 }
 
 export interface TelegramRelayStatus {
@@ -192,6 +191,14 @@ export interface TelegramRelayStatus {
     platform: 'telegram';
     botName: string;
   } | null;
+  availableBindings: Array<{
+    id: string;
+    platform: 'telegram';
+    botName: string;
+    catActorId: string | null;
+    roomMode: TelegramTransportConversationMode | 'boss_chat' | 'direct_cat_chat';
+    status: 'active' | 'disabled';
+  }>;
   publicIdentityMode: TelegramPublicIdentityMode;
   mappedConversationCount: number;
   lastProcessedUpdateId: number | null;
@@ -304,6 +311,14 @@ export interface TelegramRelayDiagnostics {
     platform: 'telegram';
     botName: string;
   } | null;
+  availableBindings: Array<{
+    id: string;
+    platform: 'telegram';
+    botName: string;
+    catActorId: string | null;
+    roomMode: TelegramTransportConversationMode | 'boss_chat' | 'direct_cat_chat';
+    status: 'active' | 'disabled';
+  }>;
   relayMode: TelegramRelayMode;
   webhookPath: string;
   diagnosticsPath: string;
