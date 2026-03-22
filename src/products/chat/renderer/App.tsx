@@ -476,7 +476,7 @@ export default function App() {
     setFeedback('');
     try {
       if (wasDraftingNewChat) {
-        const optimisticDraft = createOptimisticDraftPayload(initialPayload, body);
+        const optimisticDraft = createOptimisticDraftPayload(initialPayload, body, draftLeadCatId);
         payload = optimisticDraft.payload;
         setState({ status: 'ready', payload });
         setComposerDraft('');

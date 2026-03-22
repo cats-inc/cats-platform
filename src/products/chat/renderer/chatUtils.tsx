@@ -137,6 +137,7 @@ export function createOptimisticUserMessage(
 export function createOptimisticDraftPayload(
   payload: AppShellPayload,
   body: string,
+  leadCatId?: string | null,
 ): { payload: AppShellPayload; channelId: string } {
   const createdAt = new Date().toISOString();
   const channelId = `draft-${crypto.randomUUID()}`;
@@ -155,6 +156,10 @@ export function createOptimisticDraftPayload(
     chatCwd: null,
     lastMessageAt: createdAt,
     lastActivatedAt: null,
+    ...(leadCatId ? {
+      roomMode: 'direct_cat_chat' as const,
+      leadCatId,
+    } : {}),
   };
   const selectedChannel = normalizeSelectedChannelView({
     id: channelId,
