@@ -214,7 +214,7 @@ export async function routeBotBindingApi(
     return false;
   }
 
-  const [bindingId] = bindingMatch;
+  const bindingId = bindingMatch[0]!;
   try {
     if (context.method === 'PATCH') {
       await handleUpdateBotBinding(context, bindingId);

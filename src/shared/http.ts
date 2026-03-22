@@ -63,11 +63,16 @@ export async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
   return JSON.parse(rawBody) as T;
 }
 
-export function matchRoute(pathname: string, pattern: RegExp): string[] | null {
+export function matchRoute(
+  pathname: string,
+  pattern: RegExp,
+): Array<string | undefined> | null {
   const match = pattern.exec(pathname);
   if (!match) {
     return null;
   }
 
-  return match.slice(1).map((value) => decodeURIComponent(value));
+  return match.slice(1).map((value) => (
+    value !== undefined ? decodeURIComponent(value) : undefined
+  ));
 }

@@ -268,7 +268,7 @@ async function routeRequest(
     await handleProviderModels(
       response,
       { runtimeClient: dependencies.runtimeClient },
-      providerModelsMatch[0],
+      providerModelsMatch[0]!,
       url.searchParams.get('instance'),
     );
     return;
@@ -310,7 +310,7 @@ async function routeRequest(
     await handleTelegramWebhook(request, response, {
       chatStore: dependencies.chatStore,
       telegramRelay: dependencies.telegramRelay,
-    }, telegramWebhookMatch[0] === 'undefined' ? undefined : telegramWebhookMatch[0]);
+    }, telegramWebhookMatch[0]);
     return;
   }
 

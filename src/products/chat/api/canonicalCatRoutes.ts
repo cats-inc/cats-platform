@@ -163,15 +163,15 @@ export async function routeCanonicalCatApi(
   );
   if (canonicalCatDetailMatch) {
     if (context.method === 'GET') {
-      await handleCanonicalGetCat(context, canonicalCatDetailMatch[0]);
+      await handleCanonicalGetCat(context, canonicalCatDetailMatch[0]!);
       return true;
     }
     if (context.method === 'PATCH') {
-      await handleCanonicalUpdateCat(context, canonicalCatDetailMatch[0]);
+      await handleCanonicalUpdateCat(context, canonicalCatDetailMatch[0]!);
       return true;
     }
     if (context.method === 'DELETE') {
-      await handleCanonicalDeleteCat(context, canonicalCatDetailMatch[0]);
+      await handleCanonicalDeleteCat(context, canonicalCatDetailMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'PATCH', 'DELETE']);
@@ -186,16 +186,16 @@ export async function routeCanonicalCatApi(
     if (context.method === 'PUT') {
       await handleCanonicalAssignChannelCat(
         context,
-        canonicalChannelCatDetailMatch[0],
-        canonicalChannelCatDetailMatch[1],
+        canonicalChannelCatDetailMatch[0]!,
+        canonicalChannelCatDetailMatch[1]!,
       );
       return true;
     }
     if (context.method === 'DELETE') {
       await handleCanonicalRemoveChannelCat(
         context,
-        canonicalChannelCatDetailMatch[0],
-        canonicalChannelCatDetailMatch[1],
+        canonicalChannelCatDetailMatch[0]!,
+        canonicalChannelCatDetailMatch[1]!,
       );
       return true;
     }
@@ -212,7 +212,7 @@ export async function routeCanonicalCatApi(
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
     }
-    await handleCanonicalListChannelCats(context, canonicalChannelCatsMatch[0]);
+    await handleCanonicalListChannelCats(context, canonicalChannelCatsMatch[0]!);
     return true;
   }
 

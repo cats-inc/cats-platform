@@ -589,7 +589,7 @@ export async function routeChatResourceApi(
       await handleRestListMessages(
         context,
         DEFAULT_CHAT_SCOPE_ID,
-        canonicalChannelMessagesMatch[0],
+        canonicalChannelMessagesMatch[0]!,
       );
       return true;
     }
@@ -597,7 +597,7 @@ export async function routeChatResourceApi(
       await handleRestSendMessage(
         context,
         DEFAULT_CHAT_SCOPE_ID,
-        canonicalChannelMessagesMatch[0],
+        canonicalChannelMessagesMatch[0]!,
       );
       return true;
     }
@@ -617,7 +617,7 @@ export async function routeChatResourceApi(
     await handleRestUploadAttachments(
       context,
       DEFAULT_CHAT_SCOPE_ID,
-      canonicalChannelAttachmentsMatch[0],
+      canonicalChannelAttachmentsMatch[0]!,
     );
     return true;
   }
@@ -634,7 +634,7 @@ export async function routeChatResourceApi(
     await handleRestActivateChannel(
       context,
       DEFAULT_CHAT_SCOPE_ID,
-      canonicalChannelActivationsMatch[0],
+      canonicalChannelActivationsMatch[0]!,
     );
     return true;
   }
@@ -651,7 +651,7 @@ export async function routeChatResourceApi(
     await handleRestGetExport(
       context,
       DEFAULT_CHAT_SCOPE_ID,
-      canonicalChannelExportMatch[0],
+      canonicalChannelExportMatch[0]!,
     );
     return true;
   }
@@ -665,7 +665,7 @@ export async function routeChatResourceApi(
       await handleRestGetChannel(
         context,
         DEFAULT_CHAT_SCOPE_ID,
-        canonicalChannelDetailMatch[0],
+        canonicalChannelDetailMatch[0]!,
       );
       return true;
     }
@@ -673,7 +673,7 @@ export async function routeChatResourceApi(
       await handleRestDeleteChannel(
         context,
         DEFAULT_CHAT_SCOPE_ID,
-        canonicalChannelDetailMatch[0],
+        canonicalChannelDetailMatch[0]!,
       );
       return true;
     }
@@ -690,7 +690,7 @@ export async function routeChatResourceApi(
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
     }
-    await handleRestGetCat(context, restCatDetailMatch[0]);
+    await handleRestGetCat(context, restCatDetailMatch[0]!);
     return true;
   }
 

@@ -240,11 +240,11 @@ export async function routeMemoryApi(
   );
   if (catMemoryItemMatch) {
     if (context.method === 'PUT') {
-      await handleUpdateCatMemory(context, catMemoryItemMatch[0], catMemoryItemMatch[1]);
+      await handleUpdateCatMemory(context, catMemoryItemMatch[0]!, catMemoryItemMatch[1]!);
       return true;
     }
     if (context.method === 'DELETE') {
-      await handleDeleteCatMemory(context, catMemoryItemMatch[0], catMemoryItemMatch[1]);
+      await handleDeleteCatMemory(context, catMemoryItemMatch[0]!, catMemoryItemMatch[1]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['PUT', 'DELETE']);
@@ -257,11 +257,11 @@ export async function routeMemoryApi(
   );
   if (catMemoryMatch) {
     if (context.method === 'GET') {
-      await handleListCatMemory(context, catMemoryMatch[0]);
+      await handleListCatMemory(context, catMemoryMatch[0]!);
       return true;
     }
     if (context.method === 'POST') {
-      await handleCreateCatMemory(context, catMemoryMatch[0]);
+      await handleCreateCatMemory(context, catMemoryMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
