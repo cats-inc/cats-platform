@@ -36,11 +36,13 @@ import {
   resetSetup,
   createChatChannel,
   deleteChatChannel,
+  fetchOperatorLoopSnapshot,
   fetchAppShell,
   removeCatFromChannelApi,
   sendChatMessage,
   updateSelectedChannel,
   uploadChannelAttachments,
+  writeCoreApprovalDecision,
 } from './api';
 
 import {
@@ -60,6 +62,7 @@ import {
   resolveSelectedChannelEntryLifecycle,
   shouldWakeRouteChannelOnEntry,
 } from '../shared/channelEntry';
+import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
 
 import { SetupWizard } from './components/SetupWizard';
 import { Sidebar, type SidebarViewMode } from './components/Sidebar';
@@ -76,6 +79,12 @@ type LoadState =
   | { status: 'loading' }
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
+
+type OperatorLoadState =
+  | { status: 'idle'; snapshot: null; message: string }
+  | { status: 'loading'; snapshot: ChatOperatorSnapshot | null; message: string }
+  | { status: 'ready'; snapshot: ChatOperatorSnapshot; message: string }
+  | { status: 'error'; snapshot: ChatOperatorSnapshot | null; message: string };
 
 export default function App() {
   const navigate = useNavigate();
@@ -105,6 +114,11 @@ export default function App() {
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
   const [channelPlusMenuOpen, setChannelPlusMenuOpen] = useState(false);
+  const [operatorState, setOperatorState] = useState<OperatorLoadState>({
+    status: 'idle',
+    snapshot: null,
+    message: '',
+  });
   const [folderBrowserOpen, setFolderBrowserOpen] = useState(false);
   const [folderBrowsePath, setFolderBrowsePath] = useState('');
   const [folderBrowseCurrentPath, setFolderBrowseCurrentPath] = useState('');
@@ -118,6 +132,7 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const channelPlusMenuRef = useRef<HTMLDivElement>(null);
   const channelFileInputRef = useRef<HTMLInputElement>(null);
+  const readyPayload = state.status === 'ready' ? state.payload : null;
   const readyChat = state.status === 'ready' ? state.payload.chat : null;
   const readySelectedChannel = normalizeSelectedChannelView(readyChat?.selectedChannel ?? null);
   const selectedChannelId = readyChat?.selectedChannelId ?? null;
@@ -129,6 +144,16 @@ export default function App() {
   const routeChannelTitle = routeChannelId
     ? readyChat?.channels.find((channel) => channel.id === routeChannelId)?.title ?? null
     : null;
+  const operatorRefreshKey = readyChat
+    ? [
+        readyChat.selectedChannelId,
+        readySelectedChannel?.id ?? '',
+        readySelectedChannel?.updatedAt ?? '',
+        readySelectedChannel?.messages.length ?? 0,
+        readySelectedChannel?.roomRouting.workflow.activeTurn?.updatedAt ?? '',
+        readyChat.channels.length,
+      ].join('|')
+    : '';
 
   // --- Effects ---
 
@@ -271,6 +296,48 @@ export default function App() {
     }
   }, [draftLeadCatId, navigate, showingNewChatDraft, state]);
 
+  useEffect(() => {
+    if (!readyPayload?.setupCompleteAt) {
+      setOperatorState({
+        status: 'idle',
+        snapshot: null,
+        message: '',
+      });
+      return;
+    }
+
+    const controller = new AbortController();
+    setOperatorState((current) => ({
+      status: 'loading',
+      snapshot: current.snapshot,
+      message: '',
+    }));
+
+    void fetchOperatorLoopSnapshot(controller.signal)
+      .then((snapshot) => {
+        if (!controller.signal.aborted) {
+          startTransition(() => {
+            setOperatorState({
+              status: 'ready',
+              snapshot,
+              message: '',
+            });
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setOperatorState((current) => ({
+            status: 'error',
+            snapshot: current.snapshot,
+            message: error instanceof Error ? error.message : 'Failed to load operator loop.',
+          }));
+        }
+      });
+
+    return () => controller.abort();
+  }, [operatorRefreshKey, readyPayload?.setupCompleteAt]);
+
   // --- Callbacks ---
 
   function updatePayload(payload: AppShellPayload): void {
@@ -321,6 +388,36 @@ export default function App() {
       navigate(resolveDefaultChatPath(payload.chat.selectedChannelId));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function onApprovalDecision(
+    taskId: string,
+    status: 'approved' | 'rejected',
+  ): Promise<void> {
+    if (!operatorState.snapshot) {
+      return;
+    }
+
+    setBusy(`approval:${taskId}:${status}`);
+    try {
+      const snapshot = await writeCoreApprovalDecision({
+        taskId,
+        status,
+        decidedByActorId: operatorState.snapshot.core.ownerProfile.actorId,
+      });
+      startTransition(() => {
+        setOperatorState({
+          status: 'ready',
+          snapshot,
+          message: '',
+        });
+        setFeedback('');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to update approval.');
     } finally {
       setBusy('');
     }
@@ -792,6 +889,9 @@ export default function App() {
               <ChatView
                 payload={payload}
                 selectedChannel={selectedChannel}
+                operatorSnapshot={operatorState.snapshot}
+                operatorLoading={operatorState.status === 'loading' && operatorState.snapshot === null}
+                operatorError={operatorState.status === 'error' ? operatorState.message : ''}
                 composerDraft={composerDraft}
                 busy={busy}
                 feedback={feedback}
@@ -817,6 +917,7 @@ export default function App() {
                 onToggleChannelPlusMenu={() => setChannelPlusMenuOpen(!channelPlusMenuOpen)}
                 onChannelFileSelect={() => { channelFileInputRef.current?.click(); setChannelPlusMenuOpen(false); }}
                 onChannelFilesChange={setChannelFiles}
+                onApprovalDecision={(taskId, status) => void onApprovalDecision(taskId, status)}
                 autoResize={autoResize}
               />
             ) : (

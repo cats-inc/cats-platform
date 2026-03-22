@@ -9,9 +9,15 @@ import type {
   UpdateGlobalOrchestratorInput,
 } from '../../../shared/app-shell';
 import type {
+  CatsCoreState,
+  CoreApprovalQueueItem,
+  CoreApprovalStatus,
+} from '../../../core/types';
+import type {
   ProductProviderDescriptor,
   ProviderModelCatalog,
 } from '../../../shared/providerCatalog';
+import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
 
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
@@ -283,6 +289,79 @@ async function mutateAndRefetch(
     return await fetchAppShell(signal);
   } catch {
     return fetchAppShell();
+  }
+}
+
+async function fetchCoreState(signal?: AbortSignal): Promise<CatsCoreState> {
+  const response = await fetch('/api/core', {
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+
+  return expectJson<CatsCoreState>(response, `cats core state returned ${response.status}`);
+}
+
+async function fetchCoreApprovals(signal?: AbortSignal): Promise<CoreApprovalQueueItem[]> {
+  const response = await fetch('/api/core/approvals', {
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+
+  const payload = await expectJson<{ approvals: CoreApprovalQueueItem[] }>(
+    response,
+    `cats core approvals returned ${response.status}`,
+  );
+
+  return payload.approvals;
+}
+
+export async function fetchOperatorLoopSnapshot(
+  signal?: AbortSignal,
+): Promise<ChatOperatorSnapshot> {
+  const [core, approvals] = await Promise.all([
+    fetchCoreState(signal),
+    fetchCoreApprovals(signal),
+  ]);
+
+  return {
+    core,
+    approvals,
+  };
+}
+
+export interface CoreApprovalDecisionInput {
+  taskId: string;
+  status: Exclude<CoreApprovalStatus, 'not_requested'>;
+  decidedByActorId?: string | null;
+  notes?: string | null;
+}
+
+export async function writeCoreApprovalDecision(
+  input: CoreApprovalDecisionInput,
+  signal?: AbortSignal,
+): Promise<ChatOperatorSnapshot> {
+  const response = await fetch('/api/core/approvals', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, `cats core approval returned ${response.status}`));
+  }
+
+  try {
+    return await fetchOperatorLoopSnapshot(signal);
+  } catch {
+    return fetchOperatorLoopSnapshot();
   }
 }
 

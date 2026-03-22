@@ -12,8 +12,8 @@
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
 | Chat Product Features | Completed | Runtime-backed setup, global cat registry, first-run `/setup` onboarding, sleep/wake-aware room entry, direct-cat draft lanes from `My Cats`, stable room-routing / wake-request contracts, live mention continuation routing, transcript export, and execution-aware state landed |
 | Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records, but compatibility-shim cleanup and later control-plane slices remain |
-| Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private room entry, Telegram inbox MVP, runtime skill/guardrail seams, and shared-core projection boundary; broader launch-track docs still remain |
-| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens or creates direct private rooms, and Telegram Boss Cat inbox MVP bridges webhook ingress into durable room routing and outbound replies, while approvals, escalation, takeover, and desktop packaging remain ahead |
+| Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private room entry, Telegram inbox MVP, runtime skill/guardrail seams, shared-core projection boundaries, and the operator-loop chat surfaces; broader launch-track docs still remain |
+| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens or creates direct private rooms, Telegram Boss Cat inbox MVP bridges webhook ingress into durable room routing and outbound replies, and Chat now surfaces operator-facing approvals, progress, activity, traces, and run inspection while escalation, takeover, and desktop packaging remain ahead |
 | Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
@@ -121,9 +121,9 @@ Known follow-ups:
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Add operator-grade chat activity and split-view surfaces | [ ] | Current renderer remains phase-2 shell quality |
+| Add operator-grade chat activity and split-view surfaces | [x] | Chat now exposes transcript-adjacent approvals, progress, activity, traces, and run inspection on top of the shared core read model |
 | Rework cat information architecture around current-chat `Add cat` | [ ] | Registry stays global, but the main entry should move into chat context |
-| Add interactive delegation and owner approval loop | [ ] | Dispatch planning before worker execution is not implemented yet |
+| Add interactive delegation and owner approval loop | [ ] | Minimal approve/reject actions now land through `/api/core/approvals`, but pre-dispatch planning, acknowledge/retry hooks, and automatic resume are still pending |
 | Add Telegram and LINE orchestrator entrypoints | [ ] | Telegram Boss Cat inbox MVP now lands webhook ingress, durable inbox-to-room mapping, room creation/continuation, transport diagnostics UI, and outbound replies; LINE and richer room-rotation policy remain pending |
 | Add escalation and takeover support | [ ] | HITL flows are defined in planning only |
 | Ship desktop-safe packaging and onboarding | [ ] | Electron host exists only as an ADR today |
@@ -131,6 +131,7 @@ Known follow-ups:
 
 #### Acceptance Criteria
 
+- [x] Operators can inspect pending approvals, progress, traces, and run state from the active chat
 - [ ] Operators can approve or redirect orchestrator plans before dispatch
 - [ ] Operators can add an existing or new cat from the active chat without
       going through a first-level registry page
@@ -206,7 +207,7 @@ Known follow-ups:
 
 ### WP-3: Suite Foundation Planning
 
-**Most recent progress**: 2026-03-21
+**Most recent progress**: 2026-03-23
 
 #### Landed in the current refactor slice
 
@@ -218,6 +219,9 @@ Known follow-ups:
 - `src/core/api.ts` now owns the shared-core HTTP seam, including durable
   owner-profile, project, work-item, task, approval, approval-binding, run,
   trace, checkpoint, outcome, artifact, and activity writes
+- `src/products/chat/shared/operatorLoop.ts` now assembles conversation-scoped
+  operator snapshots from the shared core so Chat can render approvals,
+  activity, trace, and run-inspector surfaces without extending app-shell
 - `src/shared/coreFixtures.ts` now publishes reusable example payloads for Chat,
   Work, and Code follow-up teams through `src/shared/core.ts`
 - `src/products/chat/state/store.ts` now preserves core-owned system
@@ -225,6 +229,9 @@ Known follow-ups:
 - `src/products/chat/state/coreProjection.ts` now preserves core-owned actors,
   conversations, projects, work items, artifacts, activities, approval
   bindings, and archive metadata while still deriving chat-owned projections
+- `src/products/chat/renderer/components/ChatView.tsx` now renders a
+  transcript-adjacent operator rail for pending approvals, progress, activity,
+  and run inspection while keeping the transcript readable
 - `src/products/chat/*` now owns the current Chat implementation
 - `src/products/work/*` and `src/products/code/*` now own dedicated placeholder
   API and renderer surfaces

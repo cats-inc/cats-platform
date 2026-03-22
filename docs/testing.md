@@ -13,8 +13,10 @@ Telegram transport seam is also covered directly at the platform-module level
 so dedupe, durable mapping, and webhook behavior can advance without touching
 chat-core tests. Current regression coverage also targets chat-entry wake
 behavior through explicit selection mutations, read-only app-shell boot
-semantics, direct-cat default routing, and re-wake flows for sleeping room
-participants.
+semantics, direct-cat default routing, re-wake flows for sleeping room
+participants, transcript-adjacent operator-loop wiring, conversation-scoped
+approval/run selection, and chat-workflow activity projection into the shared
+core read model.
 
 ## Test Types
 
@@ -38,7 +40,8 @@ participants.
 - **Location**: `src/renderer/**` or `tests/ui/`
 - **Framework**: TBD
 - **Scope**: Channel switching, runtime banners, orchestrator shell behavior,
-  and richer productization interactions
+  and richer operator-loop interactions such as approve/reject forms and
+  run-inspector DOM behavior
 
 ## Running Tests
 
@@ -77,4 +80,4 @@ the CI workflow does not yet build the Vite bundle.
 
 ---
 
-*Last updated: 2026-03-21*
+*Last updated: 2026-03-23*

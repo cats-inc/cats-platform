@@ -288,6 +288,12 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
         && outcome.metadata.channelId === channelId,
     ),
   );
+  assert.ok(
+    core.activities.some(
+      (activity) => activity.id.startsWith('activity-room-routing-')
+        && activity.conversationId === `conversation-channel-${channelId}`,
+    ),
+  );
 });
 
 test('FileChatStore preserves null room route targets when reloading persisted routing outcomes', async () => {

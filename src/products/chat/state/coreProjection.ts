@@ -2,6 +2,8 @@ import type {
   ArchiveMetadataRecord,
   BotBindingRecord,
   CatsCoreState,
+  CoreActivityKind,
+  CoreActivityRecord,
   CoreActorRecord,
   CoreApprovalRecord,
   CoreCheckpointRecord,
@@ -206,6 +208,14 @@ function preserveCoreOwnedOutcomes(
   return existingOutcomes
     .filter((outcome) => !outcome.id.startsWith('outcome-room-routing-'))
     .map((outcome) => structuredClone(outcome));
+}
+
+function preserveCoreOwnedActivities(
+  existingActivities: CoreActivityRecord[],
+): CoreActivityRecord[] {
+  return existingActivities
+    .filter((activity) => !activity.id.startsWith('activity-room-routing-'))
+    .map((activity) => structuredClone(activity));
 }
 
 function actorIdForParticipant(
@@ -416,6 +426,54 @@ function createWorkflowOutcome(
   };
 }
 
+function toCoreActivityKind(event: RoomWorkflowEvent): CoreActivityKind {
+  if (event.metadata.approvalRequired === true || event.metadata.approvalStatus === 'pending') {
+    return 'approval_requested';
+  }
+
+  if (event.metadata.approvalStatus === 'approved' || event.metadata.approvalStatus === 'rejected') {
+    return 'approval_decided';
+  }
+
+  if (event.kind === 'checkpoint' || event.kind === 'guard_blocked') {
+    return 'checkpoint_recorded';
+  }
+
+  if (event.kind === 'turn_started' || event.kind === 'fan_out' || event.kind === 'outcome') {
+    return 'status_change';
+  }
+
+  return 'work_item_updated';
+}
+
+function createWorkflowActivity(
+  channel: ChatChannelState,
+  turn: RoomWorkflowTurn,
+  event: RoomWorkflowEvent,
+): CoreActivityRecord {
+  return {
+    id: `activity-room-routing-${event.id}`,
+    kind: toCoreActivityKind(event),
+    actorId: actorIdForParticipant(event.actor),
+    projectId: null,
+    workItemId: null,
+    conversationId: `conversation-channel-${channel.id}`,
+    taskId: `task-channel-${channel.id}`,
+    runId: `run-room-routing-${channel.id}-${turn.id}`,
+    artifactId: null,
+    message: event.message,
+    createdAt: event.createdAt,
+    metadata: {
+      source: 'chat-room-workflow',
+      channelId: channel.id,
+      turnId: turn.id,
+      eventKind: event.kind,
+      eventStatus: event.status,
+      ...structuredClone(event.metadata),
+    },
+  };
+}
+
 function preserveCoreOwnedActors(existingActors: CoreActorRecord[]): CoreActorRecord[] {
   return existingActors
     .filter((actor) => actor.source === 'core_record')
@@ -556,6 +614,7 @@ export function syncCoreStateWithChatState(
   const preservedTraces = preserveCoreOwnedTraces(existingCore.traces ?? []);
   const preservedCheckpoints = preserveCoreOwnedCheckpoints(existingCore.checkpoints ?? []);
   const preservedOutcomes = preserveCoreOwnedOutcomes(existingCore.outcomes ?? []);
+  const preservedActivities = preserveCoreOwnedActivities(existingCore.activities ?? []);
   const preservedArchives = preserveCoreOwnedArchives(existingCore.archives ?? []);
   const archives = chat.channels.map((channel) =>
     createArchiveMetadata(
@@ -583,6 +642,9 @@ export function syncCoreStateWithChatState(
       .filter((event) => event.kind === 'outcome')
       .map((event) => createWorkflowOutcome(channel, turn, event)),
   );
+  const workflowActivities = workflowTurns.flatMap(({ channel, turn }) =>
+    turn.events.map((event) => createWorkflowActivity(channel, turn, event)),
+  );
 
   return {
     version: CATS_CORE_STATE_VERSION,
@@ -602,7 +664,7 @@ export function syncCoreStateWithChatState(
     checkpoints: [...workflowCheckpoints, ...preservedCheckpoints],
     outcomes: [...workflowOutcomes, ...preservedOutcomes],
     artifacts: structuredClone(existingCore.artifacts ?? []),
-    activities: structuredClone(existingCore.activities ?? []),
+    activities: [...workflowActivities, ...preservedActivities],
     approvalBindings: structuredClone(existingCore.approvalBindings ?? []),
     botBindings: syncBotBindings(chat, existingCore.botBindings ?? []),
     archives: [...archives, ...preservedArchives],

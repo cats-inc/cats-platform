@@ -25,6 +25,8 @@ The current slices are:
   room-routing / wake-request state
 - `My Cats` private-lane entry that reopens an existing direct room or opens a
   direct draft lane when needed
+- a transcript-adjacent operator loop with pending approvals, progress,
+  activity, trace, and run inspection surfaces
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - provider-agnostic cat memory checkpoints plus channel-scoped execution leases
 
@@ -46,6 +48,8 @@ The current slices are:
       room-routing / wake semantics, and room-header presence indicators
 - [x] Land Cat-private room entry from `My Cats` plus Telegram binding markers
       without auto-persisting new direct rooms
+- [x] Land transcript-adjacent operator approvals, progress, activity, and run
+      inspection surfaces
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open
@@ -55,7 +59,8 @@ several Phase 3 items remain:
 
 - richer orchestrator automation beyond explicit `@mention` routing
 - split-view chat surfaces for preview/debug context
-- operator-grade activity indicators and better live runtime state
+- deeper owner approval semantics, acknowledge/retry hooks, automatic resume
+  after decisions, and richer live runtime state
 - richer first-run remediation and packaged onboarding beyond the current
   three-screen setup flow
 - offline transcript normalization and ingestion handoff hooks
