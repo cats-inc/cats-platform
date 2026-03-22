@@ -58,17 +58,41 @@ export function NewChatDraft({
   draftLeadCatId,
   onDraftLeadCatChange,
 }: NewChatDraftProps) {
-  const showBoss = Boolean(payload.chat.bossCatId);
-  const totalCats = (showBoss ? 1 : 0) + draftCatIds.length;
+  const leadCat = draftLeadCatId
+    ? payload.chat.cats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
+    : null;
+  const hasTelegramBinding = Boolean(
+    leadCat && payload.chat.botBindings.some((binding) =>
+      binding.platform === 'telegram'
+      && binding.status === 'active'
+      && binding.catId === leadCat.id),
+  );
+  const showBoss = Boolean(payload.chat.bossCatId) && !leadCat;
+  const visibleDraftCatIds = leadCat
+    ? [leadCat.id, ...draftCatIds.filter((id) => id !== leadCat.id)]
+    : draftCatIds;
+  const totalCats = (showBoss ? 1 : 0) + visibleDraftCatIds.length;
   const hasMultipleCats = payload.chat.cats.filter((c) => c.status === 'active').length > 1;
 
   return (
     <div className="viewShell viewShellDraft">
       <section className="draftShell">
-        <div className="draftGreeting"><h1>{greeting}</h1></div>
+        <div className="draftGreeting">
+          {leadCat ? (
+            <>
+              <p className="eyebrow">Private Chat</p>
+              <h1>{leadCat.name}</h1>
+              <p className="heroNote">
+                {hasTelegramBinding ? 'Telegram-bound private lane.' : 'Private lane for this Cat.'}
+              </p>
+            </>
+          ) : (
+            <h1>{greeting}</h1>
+          )}
+        </div>
         {hasMultipleCats ? (
           <div className="draftLeadSelector">
-            <span className="draftLeadLabel">Chat with:</span>
+            <span className="draftLeadLabel">Start with:</span>
             <div className="draftLeadPills">
               <button
                 className={!draftLeadCatId ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
@@ -220,7 +244,7 @@ export function NewChatDraft({
                       </div>
                     </div>
                   ) : null}
-                  {draftCatIds.map((id) => {
+                  {visibleDraftCatIds.map((id) => {
                     const cat = payload.chat.cats.find((p) => p.id === id);
                     if (!cat) return null;
                     return (

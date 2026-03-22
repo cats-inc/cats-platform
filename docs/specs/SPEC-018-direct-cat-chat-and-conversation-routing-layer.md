@@ -54,23 +54,27 @@ shared routing layer owned by the product, not mainly by prompt conventions.
 2. Every persisted conversation shall have a routing mode.
 3. A room may also declare a lead participant for default target resolution.
 4. `+ New Chat` shall continue creating `boss_chat` rooms by default.
-5. The product shall support creating a `direct_cat_chat` room whose lead
-   participant is a chosen Cat.
-6. In `boss_chat`, an unmentioned operator turn shall default to `Boss Cat`.
-7. In `direct_cat_chat`, an unmentioned operator turn shall default to the
+5. The product shall support a Cat-private lane whose lead participant is a
+   chosen Cat.
+6. Selecting a Cat from `My Cats` shall resolve to that Cat's private lane.
+   If a persisted `direct_cat_chat` room already exists for that Cat, the
+   product should reopen it. Otherwise the product shall open a direct `/new`
+   draft for that Cat without creating a persisted room yet.
+7. In `boss_chat`, an unmentioned operator turn shall default to `Boss Cat`.
+8. In `direct_cat_chat`, an unmentioned operator turn shall default to the
    chosen lead Cat.
-8. In `transport_inbox`, an unmentioned inbound turn shall default to the bound
+9. In `transport_inbox`, an unmentioned inbound turn shall default to the bound
    `Boss Cat`.
-9. Explicit `@mentions` shall be parsed and resolved by the routing layer
+10. Explicit `@mentions` shall be parsed and resolved by the routing layer
    before prompt construction.
-10. If an explicit `@mention` resolves to a valid room participant, that target
+11. If an explicit `@mention` resolves to a valid room participant, that target
     shall be included in routing even if the prompt would have behaved
     differently.
-11. If an explicit `@mention` does not resolve, the product shall surface that
+12. If an explicit `@mention` does not resolve, the product shall surface that
     as a routing outcome instead of silently ignoring it.
-12. The routing layer shall decide whether a target needs to be woken before
+13. The routing layer shall decide whether a target needs to be woken before
     work is dispatched.
-13. Prompt construction shall consume resolved routing decisions rather than
+14. Prompt construction shall consume resolved routing decisions rather than
     acting as the only source of routing truth.
 
 ### Non-Functional Requirements
@@ -136,6 +140,11 @@ Dispatch
 
 - The operator should be able to start a direct room with one Cat from at least
   one obvious UI surface.
+- `My Cats` should behave like Cat-private lane selection, not like a button
+  that always creates a new persisted room.
+- Clicking a Cat in `My Cats` should reopen that Cat's existing direct room
+  when one exists, or open `/new?cat=<catId>` when the private lane has not
+  been persisted yet.
 - Once inside that room, the chosen Cat is the implicit counterpart.
 - `Boss Cat` is not required in the route for normal unmentioned turns.
 
@@ -174,6 +183,9 @@ Dispatch
   prompts from being the only thing enforcing explicit target resolution.
 - `Direct Cat Chat` should feel like a UI-native direct session with a chosen
   specialist, not like a hidden Boss Cat room wearing a different label.
+- The Cat-private lane and the persisted direct room are related but not
+  identical states. A private lane may exist first as a `/new` draft and become
+  persisted only after the first message is sent.
 
 ## Open Questions
 
@@ -193,4 +205,5 @@ Dispatch
 
 *Created: 2026-03-19*
 *Author: Codex*
+*Last updated: 2026-03-23*
 

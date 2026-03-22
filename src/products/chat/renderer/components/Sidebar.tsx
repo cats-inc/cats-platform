@@ -25,6 +25,7 @@ export interface SidebarProps {
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
   onSidebarViewChange: (mode: SidebarViewMode) => void;
+  activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
 }
 
@@ -134,9 +135,16 @@ export function Sidebar({
   onOverflowMenuToggle,
   onNavigateSettings,
   onSidebarViewChange,
+  activeMyCatId,
   onDirectChatCat,
 }: SidebarProps) {
   const showMyCats = payload.chat.cats.length > 0;
+  const telegramBoundCatIds = new Set(
+    (payload.chat.botBindings ?? [])
+      .filter((binding) => binding.platform === 'telegram' && binding.status === 'active')
+      .map((binding) => binding.catId)
+      .filter((catId): catId is string => Boolean(catId)),
+  );
 
   function renderChannelList(channels: ChatChannelSummary[]) {
     if (channels.length === 0) {
@@ -280,10 +288,12 @@ export function Sidebar({
                 })
                 .map((cat) => {
                   const isBoss = cat.id === payload.chat.bossCatId;
+                  const isActive = activeMyCatId === cat.id;
+                  const hasTelegramBinding = telegramBoundCatIds.has(cat.id);
                   return (
                     <button
                       key={cat.id}
-                      className="myCatItem"
+                      className={isActive ? 'myCatItem myCatItemActive' : 'myCatItem'}
                       type="button"
                       onClick={() => onDirectChatCat(cat.id)}
                     >
@@ -294,7 +304,12 @@ export function Sidebar({
                         {catInitials(cat.name)}
                       </span>
                       <span className="myCatName">{cat.name}</span>
-                      {isBoss ? <span className="myCatBadge">Boss</span> : null}
+                      <span className="myCatBadges">
+                        {hasTelegramBinding ? (
+                          <span className="myCatBindingBadge" title="Telegram bot bound">Telegram</span>
+                        ) : null}
+                        {isBoss ? <span className="myCatBadge">Boss</span> : null}
+                      </span>
                     </button>
                   );
                 })}

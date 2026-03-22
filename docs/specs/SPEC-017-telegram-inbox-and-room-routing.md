@@ -85,6 +85,11 @@ not replace the room model.
 15. The global `Boss Cat` role shall remain singular even when multiple
     Telegram bot bindings exist.
 16. A non-`Boss Cat` Cat may still own a Telegram bot binding.
+17. Telegram bot binding ownership shall attach to Cat identity, not to one
+    persisted direct room.
+18. The web product may surface Cat-owned Telegram binding state from the same
+    `My Cats` roster used for Cat-private entry, while durable topic work still
+    belongs in `Recents`.
 
 ### Non-Functional Requirements
 
@@ -124,6 +129,9 @@ Telegram private chat
   orchestration terms.
 - Telegram is allowed to stay concise and summary-oriented even when large room
   work is happening elsewhere.
+- In the web app, the Cat that owns a Telegram bot may be indicated from
+  `My Cats`, because the binding belongs to Cat identity rather than a single
+  persisted thread.
 
 ### Rooms as Canonical Chats
 
@@ -214,6 +222,5 @@ Telegram private chat
 
 *Created: 2026-03-19*
 *Author: Codex*
-*Last updated: 2026-03-22*
-
+*Last updated: 2026-03-23*
 

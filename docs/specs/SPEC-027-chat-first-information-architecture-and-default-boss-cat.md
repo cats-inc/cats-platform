@@ -56,6 +56,8 @@ The key rule is:
 The product should still feel immediately familiar:
 
 - sidebar shows `+ New Chat`, `Recents`, and `Settings`
+- sidebar still shows a lightweight `My Cats` presence with the current
+  `Boss Cat`, even when it is the only Cat
 - the environment already has a default `Boss Cat`
 - the fallback display name is `Boss Cat` until the user renames it
 - `Recents` items may show the default Boss Cat avatar even if the user has not
@@ -99,13 +101,16 @@ topic, not for a registry item.
 
 ### Lightweight `My Cats` Roster
 
-If the product has more than one Cat, the sidebar may also show `My Cats`.
+The sidebar should show a lightweight `My Cats` roster, starting with the
+current `Boss Cat` even when it is the only Cat.
 
 `My Cats` is:
 
 - a quick-access roster
-- a direct-chat launcher
+- a Cat-identity and private-lane launcher
 - a lightweight visibility surface for who exists in the household
+- an acceptable place to show transport ownership markers such as Telegram bot
+  bindings
 
 `My Cats` is not:
 
@@ -114,8 +119,8 @@ If the product has more than one Cat, the sidebar may also show `My Cats`.
 
 Those remain under `Settings > Cats`.
 
-If only one Cat exists, a dedicated `My Cats` roster is optional rather than
-required because the main chat flows already point at that Cat.
+If only one Cat exists, the roster may stay visually minimal, but the current
+`Boss Cat` should still remain visible there.
 
 ### View Mode
 
@@ -192,6 +197,10 @@ Direct Cat Chat semantics:
 - `lead_cat_id = selected cat`
 - unmentioned turns default to that Cat
 - the main header should show the selected Cat clearly
+- clicking a Cat in `My Cats` resolves to that Cat's private lane
+- if a persisted direct thread already exists for that Cat, reopen it
+- otherwise open `/new?cat=<catId>` as a direct draft
+- clicking the roster entry alone must not create a persisted thread
 
 ## Group Chat
 
@@ -237,7 +246,10 @@ These are different actions and should remain different in copy and behavior.
 
 ### `Chat with this cat`
 
-- opens or creates a direct chat thread for that Cat
+- opens that Cat's private lane
+- reuses an existing direct thread when one already exists
+- otherwise opens a direct `/new` draft and waits until first send to create a
+  persisted thread
 - does not silently add the Cat to the currently open thread
 
 ## Boss Cat Assignment
@@ -277,6 +289,10 @@ auto-provision a neutral default `Boss Cat` using the provider/model target
 selected during setup, or the current environment default if setup chose a
 single default runtime target.
 
+After setup completes, the product should enter the normal `/new` draft route.
+That draft route uses the current `Boss Cat` as the default visible entrypoint,
+but setup should not auto-create or auto-select a first persisted chat thread.
+
 After entry, the product may gently offer:
 
 - `Rename your Boss Cat`
@@ -293,6 +309,8 @@ Initial behavior:
 
 - the default Telegram bot may still front the current `Boss Cat`
 - additional Cats may later have their own Telegram bots
+- the binding belongs to the Cat identity shown in `My Cats`, not to one
+  persisted direct thread
 - a Cat-bound bot should feel like talking to that Cat directly
 - when another Cat speaks inside a bot-bound thread, the product may label that
   reply explicitly
@@ -357,4 +375,4 @@ the claim that the underlying store has already been fully renamed or migrated.
 
 ---
 
-*Last updated: 2026-03-22*
+*Last updated: 2026-03-23*

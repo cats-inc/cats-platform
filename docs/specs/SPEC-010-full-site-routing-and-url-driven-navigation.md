@@ -103,6 +103,8 @@ Examples:
 - `/setup` opens the setup wizard before initialization, otherwise `/new`
 - `/chats/550e8400-e29b-41d4-a716-446655440000` opens that persisted chat
 - `/new` opens a fresh new-chat draft
+- `/new?cat=550e8400-e29b-41d4-a716-446655440000` opens a Cat-private new-chat
+  draft for that Cat without creating a persisted thread yet
 - `/settings/cats` opens the cats settings section
 - `/work/projects/roadmap` opens that project when such a surface exists
 
@@ -152,6 +154,8 @@ The following state belongs in the URL:
 
 - top-level surface selection
 - active chat channel identity
+- stable new-chat draft qualifiers such as selected lead Cat for a Cat-private
+  lane
 - stable settings subsection identity
 - future project/task/tool identity where direct entry matters
 
@@ -165,8 +169,8 @@ promotes it:
 - composer draft text
 - one-off modal state
 
-Query parameters may be used later for stable filters or sort modes, but path
-segments should carry the primary page identity.
+Query parameters may be used for stable draft qualifiers or future filters and
+sort modes, but path segments should carry the primary page identity.
 
 ## Functional Requirements
 
@@ -176,6 +180,8 @@ segments should carry the primary page identity.
   `/chats/{channelId}`.
 - Entering `/chats/{channelId}` directly shall load and display that chat if it
   exists.
+- Entering `/new?cat={catId}` shall open a Cat-private draft lane for that Cat
+  without forcing persisted-room creation before first send.
 - Entering `/chats` without a channel id shall resolve to either:
   - the preferred channel from persisted preferences, or
   - the chat overview/new-chat state
@@ -278,4 +284,4 @@ The following are strict constraints for implementation:
 
 ---
 
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-23*

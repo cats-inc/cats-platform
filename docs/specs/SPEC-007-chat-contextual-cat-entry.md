@@ -43,6 +43,10 @@ This spec is intentionally narrower than the overall chat IA:
   - future edit/archive/inspect flows
 - A lightweight `My Cats` roster may coexist with `Recents`, but it shall not
   replace `Settings > Cats` as the management surface.
+- Clicking a Cat from `My Cats` shall resolve to that Cat's private lane by
+  reopening an existing direct thread when one exists, or by opening a direct
+  `/new` draft when it does not. The click itself shall not create a persisted
+  thread.
 - The top-level navigation should stop treating `Cats` as a first-class peer of
   active chat work.
 
@@ -96,8 +100,7 @@ This spec is intentionally narrower than the overall chat IA:
 
 ---
 
-*Last updated: 2026-03-22*
-
+*Last updated: 2026-03-23*
 
 
 

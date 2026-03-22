@@ -54,8 +54,8 @@ This plan does not cover:
 
 ### Phase 2: Wake-on-Entry for Real Chats
 
-- [ ] Add a wake trigger when setup completes and lands in the first persisted
-      chat.
+- [ ] Add a wake trigger when the operator opens the first persisted chat after
+        setup.
 - [ ] Add a wake trigger when the operator opens an existing persisted chat.
 - [ ] Keep `/new` exempt from eager wake behavior.
 - [ ] Ensure the read model can show `Boss Cat` as sleeping, waking up, or awake
@@ -161,5 +161,5 @@ Use this when delegating implementation:
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-23*
 

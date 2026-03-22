@@ -10,7 +10,7 @@
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
-| Chat Product Features | Completed | Runtime-backed setup, global cat registry, sleep/wake-aware room entry, direct-cat routing, live mention continuation routing, transcript export, and execution-aware state landed |
+| Chat Product Features | Completed | Runtime-backed setup, global cat registry, sleep/wake-aware room entry, direct-cat draft lanes from `My Cats`, live mention continuation routing, transcript export, and execution-aware state landed |
 | Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records, but compatibility-shim cleanup and later control-plane slices remain |
 | Documentation | In Progress | Architecture, progress, API, and plan docs now reflect the shared-core write substrate, fixture bundle, and projection boundary, but broader launch-track docs still remain |
 | Cats Chat Launch Track | In Progress | Telegram Boss Cat inbox MVP now bridges webhook ingress into durable room routing and outbound replies, while approvals, escalation, takeover, and desktop packaging remain ahead |

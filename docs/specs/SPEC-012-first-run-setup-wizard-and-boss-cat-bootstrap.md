@@ -19,7 +19,8 @@ That wizard should:
 - capture minimal owner profile setup
 - check runtime readiness
 - auto-provision a neutral default `Boss Cat` if none exists
-- finish by opening the first chat with the current `Boss Cat`
+- finish by routing the user into the normal `/new` draft flow with the current
+  `Boss Cat` as the default visible entrypoint
 
 ## Goals
 
@@ -49,8 +50,8 @@ That wizard should:
 - As a first-time operator, I want the product to give me a usable Boss Cat by
   default so I can personalize it later instead of having to design one during
   setup.
-- As an operator, I want the product to open directly into a ready chat after
-  setup instead of leaving me in a half-configured state.
+- As an operator, I want the product to finish setup by taking me into the
+  normal new-chat entry flow instead of leaving me in a half-configured state.
 
 ## Requirements
 
@@ -76,11 +77,12 @@ That wizard should:
 - Completing setup shall leave the environment with:
   - a persisted current `Boss Cat`
   - a setup-complete state
-  - an initial conversation entry path ready for normal use
-- After successful setup, the product shall open directly into the first chat
-  with the Boss Cat.
-- The first chat may include a greeting later, but setup shall not depend on
-  a forced greeting behavior.
+  - the normal `/new` draft entry path ready for normal use
+- After successful setup, the product shall route the operator into `/new`.
+- Setup completion shall not auto-create or auto-select a first persisted chat
+  thread.
+- The `/new` surface may later include greeting or starter affordances, but
+  setup shall not depend on a forced greeting behavior.
 
 ### Non-Functional Requirements
 
@@ -107,7 +109,7 @@ Uninitialized app start
         +--> Done
         |
         v
-First chat with Boss Cat
+/new draft with Boss Cat as default entrypoint
 ```
 
 ## Proposed Flow
@@ -143,7 +145,8 @@ First chat with Boss Cat
 ### Step 5: Done
 
 - show success state
-- route directly into the first ready chat
+- route directly into the normal `/new` draft surface
+- do not auto-create or auto-select a first persisted chat thread during setup
 - optionally offer later prompts such as:
   - rename your Boss Cat
   - add another Cat
@@ -166,8 +169,8 @@ name should remain `Boss Cat`.
   state object, or a more explicit readiness checklist?
 - How much provider configuration should be included in the first wizard slice
   versus deferred to later settings?
-- Should the first version create one initial chat automatically, or should it
-  open a draft chat that becomes real on first message?
+- Should `/new` stay fully empty after setup, or should it include a lightweight
+  starter prompt while still remaining a draft page?
 - How much transport setup should appear in the first-run flow before it starts
   feeling too heavy?
 
@@ -184,5 +187,4 @@ name should remain `Boss Cat`.
 
 ---
 
-*Last updated: 2026-03-22*
-
+*Last updated: 2026-03-23*

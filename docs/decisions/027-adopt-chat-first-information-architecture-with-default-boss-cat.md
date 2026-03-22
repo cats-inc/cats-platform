@@ -79,8 +79,13 @@ default `Boss Cat`.
    - multi-Cat chats show stacked avatars
    - avatars are participant markers, not the primary sorting key
 
-8. A lightweight `My Cats` roster may appear in the sidebar.
+8. A lightweight `My Cats` roster should remain visible in the sidebar.
+   - it should still show the current `Boss Cat` even when that is the only Cat
    - it exists for quick entry into direct chats and quick switching
+   - selecting a Cat there should reopen an existing direct thread when one
+     exists, or open `/new?cat=<catId>` when it does not
+   - selecting a Cat there must not create a persisted thread by itself
+   - Cat-owned transport markers such as Telegram bindings may be shown there
    - it is not the full management registry
    - the reusable registry and full Cat management remain under `Settings > Cats`
 

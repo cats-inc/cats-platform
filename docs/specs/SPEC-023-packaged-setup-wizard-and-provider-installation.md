@@ -216,7 +216,8 @@ Advanced view may expand to explicit capability packs or individual providers.
 ### Step 6: Finish
 
 - persist setup completion
-- open the first ready chat surface
+- open the normal `/new` draft surface with the current `Boss Cat` as the
+  default visible entrypoint
 
 ## Post-Setup Provider Management
 
@@ -343,4 +344,4 @@ terminal failures:
 
 *Created: 2026-03-20*
 *Author: Codex*
-*Last updated: 2026-03-22*
+*Last updated: 2026-03-23*

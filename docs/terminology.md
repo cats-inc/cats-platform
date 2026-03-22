@@ -27,7 +27,7 @@
 | Boss Chat | The default conversation mode where unmentioned turns route first to `Boss Cat`, which can then coordinate or involve other Cats. |
 | Direct Cat Chat | A conversation mode where one chosen Cat is the room's lead participant and unmentioned turns default to that Cat rather than to `Boss Cat`. |
 | Group chat | A chat with more than one Cat participant, while still having one lead Cat for default reply behavior. Informal "family chat" companion usage is a kind of group chat, not a separate runtime mode. |
-| My Cats | A lightweight sidebar roster for quick Cat access and direct-chat entry. It is not the full registry management surface. |
+| My Cats | A lightweight sidebar roster for quick Cat access, Cat-private lane entry, and transport ownership hints. It is not the full registry management surface. |
 | Chat view mode | The sidebar list mode used to organize chats, such as `Latest`, `By Cat`, or `By Chat Type`. |
 | Cat registry | The chat-global list of reusable cats that can be assigned into one or more chats. Full management lives under `Settings > Cats`. |
 | Bot binding | A product record that maps one external bot identity to one visible Cat identity plus routing policy, inbox scope, and transport configuration. One environment may have many bot bindings. |
@@ -81,4 +81,3 @@
 ---
 
 Last updated: 2026-03-22
-

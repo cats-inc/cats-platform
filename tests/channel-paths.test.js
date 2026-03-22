@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildNewChatPath,
   buildChannelPath,
   createChannelExportFilename,
   isNewChatPath,
   isOpaqueChannelId,
   NEW_CHAT_PATH,
+  readNewChatLeadCatId,
   resolveAppEntryPath,
   resolveDefaultChatPath,
   SETUP_PATH,
@@ -44,6 +46,15 @@ test('new-chat route detection and export filenames remain title-based', () => {
     createChannelExportFilename('日常對話', '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae'),
     'channel-0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae.json',
   );
+});
+
+test('new-chat route helpers preserve direct-cat draft state without creating a thread', () => {
+  const catId = '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae';
+
+  assert.equal(buildNewChatPath(catId), `/new?cat=${catId}`);
+  assert.equal(buildNewChatPath('   '), NEW_CHAT_PATH);
+  assert.equal(readNewChatLeadCatId(`?cat=${catId}`), catId);
+  assert.equal(readNewChatLeadCatId(''), null);
 });
 
 test('slugifyChannelLabel falls back to chat for non-Latin input', () => {

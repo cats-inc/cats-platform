@@ -15,7 +15,8 @@ This plan covers the first implementation path for:
 - capturing minimal owner profile data
 - checking `cats-runtime` readiness
 - auto-provisioning the initial neutral default `Boss Cat` when needed
-- finishing in a ready first chat
+- finishing in the normal `/new` draft flow without auto-creating a persisted
+  first chat
 
 This plan is explicitly **not** a full authentication plan, a full transport
 binding plan, or a full desktop-packaging plan.
@@ -87,13 +88,14 @@ binding plan, or a full desktop-packaging plan.
 ### Phase 5: Completion and First Chat Bootstrap
 
 - [ ] Mark setup complete only after the minimum required state exists.
-- [ ] Create or open the first ready conversation path with the current
-      Boss Cat.
-- [ ] Route the operator directly into that first chat after setup.
+- [ ] Route the operator directly into `/new` after setup.
+- [ ] Keep the current `Boss Cat` as the default visible chat entrypoint in
+      that draft flow.
+- [ ] Do not auto-create or auto-select a first persisted chat during setup.
 - [ ] Optionally offer post-setup prompts such as renaming the Boss Cat or
       adding another Cat without blocking first use.
 
-**Deliverables**: smooth first-run handoff into normal product usage.
+**Deliverables**: smooth first-run handoff into the normal draft-first product flow.
 
 ### Phase 6: Validation and Cleanup
 
@@ -124,8 +126,8 @@ binding plan, or a full desktop-packaging plan.
 - The setup flow does not read like an auth or SaaS login flow.
 - The operator can finish setup without understanding internal orchestration
   structure.
-- Setup completion leaves the app with a current Boss Cat and a usable first
-  chat path.
+- Setup completion leaves the app with a current Boss Cat and a usable `/new`
+  draft path.
 - Returning app launches skip setup once initialization is complete.
 
 ## Risks
@@ -146,10 +148,10 @@ Use this when delegating implementation:
 > instead of a login-first flow. Detect uninitialized local environments, guide
 > the operator through welcome, runtime readiness, and owner profile, then
 > auto-provision a neutral default Boss Cat if needed and land them directly in
-> the first ready chat. Keep transport setup optional and preserve the existing
-> `cats-runtime` boundary.
+> the normal `/new` draft flow, without auto-creating a first persisted chat.
+> Keep transport setup optional and preserve the existing `cats-runtime`
+> boundary.
 
 ---
 
-*Last updated: 2026-03-22*
-
+*Last updated: 2026-03-23*

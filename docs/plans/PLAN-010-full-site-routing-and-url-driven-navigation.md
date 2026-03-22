@@ -33,6 +33,8 @@ This plan is explicitly **not** a visual redesign plan.
       - `/`
       - `/chats`
       - `/chats/:channelId`
+      - `/new`
+      - `/new?cat=<catId>` as a stable Cat-private draft qualifier
       - `/settings`
       - `/settings/cats`
 - [ ] Freeze the reserved future route families:
@@ -117,6 +119,8 @@ This plan is explicitly **not** a visual redesign plan.
 ## Validation
 
 - Visiting `/new` opens the new-chat draft and survives refresh.
+- Visiting `/new?cat=<catId>` opens a Cat-private draft lane and survives
+  refresh without auto-creating a persisted thread.
 - Visiting `/` redirects to `/setup` before initialization and to `/new` after setup.
 - Visiting `/setup` after setup redirects to `/new`.
 - Visiting `/chats` resolves to the last selected chat or `/new`.
@@ -151,4 +155,4 @@ Use this when delegating implementation:
 
 ---
 
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-23*
