@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../../shared/app-shell';
@@ -6,9 +6,9 @@ import { NEW_CHAT_PATH } from '../../../../shared/channelPaths';
 import { completeSetup } from '../api';
 import { ProviderModelFields } from './ProviderModelFields';
 
-type SetupStep = 1 | 2 | 3 | 4 | 5;
+type SetupStep = 1 | 2 | 3;
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 3;
 
 export function SetupWizard({
   payload,
@@ -27,39 +27,25 @@ export function SetupWizard({
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
 
-  // Step 4: Auto-provision Boss Cat on mount
-  useEffect(() => {
-    if (step !== 4) return;
-    let cancelled = false;
-
-    async function provision(): Promise<void> {
-      setBusy(true);
-      setFeedback('');
-      try {
-        const result = await completeSetup({
-          ownerDisplayName: ownerName.trim(),
-          bossCatName: bossCatName.trim() || undefined,
-          bossCatProvider: provider,
-          bossCatInstance: instance || undefined,
-          bossCatModel: model || undefined,
-        });
-        if (!cancelled) {
-          onComplete(result);
-          setStep(5);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setFeedback(error instanceof Error ? error.message : 'Setup failed.');
-          setStep(3);
-        }
-      } finally {
-        if (!cancelled) setBusy(false);
-      }
+  async function finishSetup(): Promise<void> {
+    setBusy(true);
+    setFeedback('');
+    try {
+      const result = await completeSetup({
+        ownerDisplayName: ownerName.trim(),
+        bossCatName: bossCatName.trim() || undefined,
+        bossCatProvider: provider,
+        bossCatInstance: instance || undefined,
+        bossCatModel: model || undefined,
+      });
+      onComplete(result);
+      navigate(NEW_CHAT_PATH, { replace: true });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Setup failed.');
+    } finally {
+      setBusy(false);
     }
-
-    void provision();
-    return () => { cancelled = true; };
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   const dots = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
 
@@ -94,7 +80,7 @@ export function SetupWizard({
 
         {step === 2 ? (
           <div className="contentCard setupCard">
-            <p className="eyebrow">Step 1 of 3</p>
+            <p className="eyebrow">Step 1 of 2</p>
             <h1>What&apos;s your name?</h1>
             <p className="heroNote">
               Tell us your name, and give your Boss Cat a name if you&apos;d like.
@@ -117,6 +103,7 @@ export function SetupWizard({
                 onChange={(e) => setBossCatName(e.target.value)}
                 placeholder="Boss Cat"
               />
+              <span className="fieldHint">Your personal AI agent that manages tasks and coordinates other cats.</span>
             </label>
             {feedback ? <p className="feedbackText">{feedback}</p> : null}
             <div className="setupActions">
@@ -141,7 +128,7 @@ export function SetupWizard({
 
         {step === 3 ? (
           <div className="contentCard setupCard">
-            <p className="eyebrow">Step 2 of 3</p>
+            <p className="eyebrow">Step 2 of 2</p>
             <h1>Choose your AI provider</h1>
             <p className="heroNote">
               Select the AI provider and model your Boss Cat will use. You can change this later.
@@ -174,47 +161,20 @@ export function SetupWizard({
               <button
                 className="setupBackButton"
                 type="button"
+                disabled={busy}
                 onClick={() => setStep(2)}
               >
                 Back
               </button>
               <button
                 className="primaryButton"
-                disabled={!model.trim()}
+                disabled={!model.trim() || busy}
                 type="button"
-                onClick={() => setStep(4)}
+                onClick={() => void finishSetup()}
               >
-                Continue
+                {busy ? 'Setting up...' : 'Finish setup'}
               </button>
             </div>
-          </div>
-        ) : null}
-
-        {step === 4 ? (
-          <div className="contentCard setupCard">
-            <p className="eyebrow">Step 3 of 3</p>
-            <h1>Setting up your Boss Cat...</h1>
-            <p className="heroNote">
-              Creating your default AI assistant. This will only take a moment.
-            </p>
-            <div className="bootSpinner" aria-hidden="true" />
-          </div>
-        ) : null}
-
-        {step === 5 ? (
-          <div className="contentCard setupCard">
-            <p className="eyebrow">All done</p>
-            <h1>You&apos;re all set!</h1>
-            <p className="heroNote">
-              Your Boss Cat is ready. You can rename it or add more cats anytime from Settings.
-            </p>
-            <button
-              className="primaryButton"
-              type="button"
-              onClick={() => navigate(NEW_CHAT_PATH, { replace: true })}
-            >
-              Start chatting
-            </button>
           </div>
         ) : null}
       </div>

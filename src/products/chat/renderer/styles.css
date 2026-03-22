@@ -682,6 +682,12 @@ textarea {
   font-weight: 500;
 }
 
+.fieldHint {
+  color: var(--muted-soft);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
 .textInput {
   width: 100%;
   padding: 10px 12px;
