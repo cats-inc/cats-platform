@@ -41,6 +41,7 @@ import type {
   CoreTaskRecord,
   CoreTraceRecord,
   CoreWorkItemRecord,
+  DurableMemoryRecord,
   OwnerProfileRecord,
 } from '../../../core/types.js';
 import type { CoreStore } from '../../../core/store.js';
@@ -1186,6 +1187,14 @@ function normalizeBotBinding(
     bossCatActorId:
       readNullableString(bindingRecord.bossCatActorId)
       ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
+    boundCatId: readNullableString(bindingRecord.boundCatId) ?? chat.bossCatId,
+    boundCatActorId: readNullableString(bindingRecord.boundCatActorId)
+      ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
+    botToken: readNullableString(bindingRecord.botToken),
+    webhookSecret: readNullableString(bindingRecord.webhookSecret),
+    defaultRoomMode: readString(bindingRecord.defaultRoomMode, 'boss_chat') === 'direct_cat_chat'
+      ? 'direct_cat_chat'
+      : 'boss_chat',
     status: rawStatus === 'disabled' ? 'disabled' : 'active',
     createdAt: readString(bindingRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(bindingRecord.updatedAt, new Date().toISOString()),
@@ -1215,6 +1224,49 @@ function normalizeArchiveMetadata(rawArchive: unknown): ArchiveMetadataRecord | 
     status,
     lastExportedAt: readNullableString(archiveRecord.lastExportedAt),
     updatedAt: readString(archiveRecord.updatedAt, new Date().toISOString()),
+  };
+}
+
+function normalizeDurableMemoryRecord(rawRecord: unknown): DurableMemoryRecord | null {
+  const record = asRecord(rawRecord);
+  if (!record) {
+    return null;
+  }
+
+  const rawSubjectType = readString(record.subjectType);
+  if (
+    rawSubjectType !== 'cat'
+    && rawSubjectType !== 'owner'
+    && rawSubjectType !== 'relationship'
+    && rawSubjectType !== 'project'
+  ) {
+    return null;
+  }
+
+  const rawCategory = readString(record.category);
+  if (
+    rawCategory !== 'preference'
+    && rawCategory !== 'fact'
+    && rawCategory !== 'policy'
+    && rawCategory !== 'style'
+    && rawCategory !== 'relationship'
+    && rawCategory !== 'lesson'
+  ) {
+    return null;
+  }
+
+  return {
+    id: readString(record.id, randomUUID()),
+    subjectType: rawSubjectType,
+    subjectId: readString(record.subjectId),
+    category: rawCategory,
+    content: readString(record.content),
+    confidence: typeof record.confidence === 'number' && Number.isFinite(record.confidence)
+      ? record.confidence
+      : null,
+    sourceRefs: readStringArray(record.sourceRefs),
+    createdAt: readString(record.createdAt, new Date().toISOString()),
+    updatedAt: readString(record.updatedAt, new Date().toISOString()),
   };
 }
 
@@ -1379,6 +1431,11 @@ function normalizePersistedChatSnapshot(rawState: unknown): PersistedChatSnapsho
         .map((archive) => normalizeArchiveMetadata(archive))
         .filter((archive): archive is ArchiveMetadataRecord => archive !== null)
     : [];
+  const durableMemory = Array.isArray(stateRecord.durableMemory)
+    ? stateRecord.durableMemory
+        .map((record) => normalizeDurableMemoryRecord(record))
+        .filter((record): record is DurableMemoryRecord => record !== null)
+    : [];
   const normalized = syncCoreStateWithChatState(chat, {
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
@@ -1396,6 +1453,7 @@ function normalizePersistedChatSnapshot(rawState: unknown): PersistedChatSnapsho
     approvalBindings,
     botBindings,
     archives,
+    durableMemory,
   });
 
   return buildPersistedChatSnapshot(chat, {

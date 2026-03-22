@@ -185,6 +185,7 @@ export async function buildAppShellPayload(
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,
     },
+    core,
   );
 }
 
@@ -199,7 +200,7 @@ export async function persistCreatedChannel(
     now,
   );
 
-  if (!input.skipBossCatGreeting) {
+  if (!input.skipBossCatGreeting && input.roomMode !== 'direct_cat_chat') {
     nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
   }
 

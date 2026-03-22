@@ -322,6 +322,7 @@ export interface ChatChannelSummary {
   chatCwd: string | null;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
+  leadCatId?: string | null;
   roomMode?: RoomRoutingMode;
   routingStatus?: RoomRoutingTurnStatus;
   lastRoutingAt?: string | null;
@@ -365,6 +366,15 @@ export interface ChatState {
   showVerboseMessages: boolean;
 }
 
+export interface BotBindingSummary {
+  id: string;
+  platform: 'telegram' | 'line';
+  botName: string;
+  boundCatId: string | null;
+  defaultRoomMode: string;
+  status: 'active' | 'disabled';
+}
+
 export interface ChatShellState {
   id: string;
   name: string;
@@ -376,6 +386,7 @@ export interface ChatShellState {
   globalOrchestrator: GlobalOrchestratorSummary;
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
+  botBindings: BotBindingSummary[];
 }
 
 export interface AppShellPayload extends SuiteHostEnvelope {
@@ -419,6 +430,8 @@ export interface CreateChatChannelInput {
   mcpProfile?: string;
   orchestratorRoles?: string[];
   cats?: CatDraftInput[];
+  /** Existing cat IDs to assign at creation time. */
+  participantCatIds?: string[];
   /** Internal UI affordance for the first user-sent turn in a newly created chat. */
   skipBossCatGreeting?: boolean;
 }
@@ -481,7 +494,7 @@ export interface ChannelExportPayload {
 
 export interface SetupCompleteInput {
   ownerDisplayName: string;
-  bossCatName: string;
+  bossCatName?: string;
   bossCatProvider: string;
   bossCatInstance?: string;
   bossCatModel?: string;

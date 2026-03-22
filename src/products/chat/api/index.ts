@@ -1,4 +1,6 @@
+import { routeBotBindingApi } from './botBindingRoutes.js';
 import { routeCanonicalCatApi } from './canonicalCatRoutes.js';
+import { routeMemoryApi } from './memoryRoutes.js';
 import { routeChatResourceApi } from './resourceRoutes.js';
 import { routeChatShellApi } from './shellRoutes.js';
 import { routeSetupApi } from './setupRoutes.js';
@@ -23,6 +25,14 @@ export async function routeChatApi(
   }
 
   if (await routeCanonicalCatApi(context)) {
+    return true;
+  }
+
+  if (await routeMemoryApi(context)) {
+    return true;
+  }
+
+  if (await routeBotBindingApi(context)) {
     return true;
   }
 

@@ -34,7 +34,7 @@ async function handleSetupComplete(
     chatState = createCat(
       chatState,
       {
-        name: body.bossCatName.trim() || 'Smelly',
+        name: body.bossCatName?.trim() || 'Boss Cat',
         provider: body.bossCatProvider,
         instance: body.bossCatInstance,
         model: body.bossCatModel,

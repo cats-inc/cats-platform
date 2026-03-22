@@ -600,7 +600,7 @@ export async function updateChatOrchestrator(
 export async function completeSetup(
   input: {
     ownerDisplayName: string;
-    bossCatName: string;
+    bossCatName?: string;
     bossCatProvider: string;
     bossCatInstance?: string;
     bossCatModel?: string;
@@ -634,6 +634,100 @@ export async function resetSetup(signal?: AbortSignal): Promise<AppShellPayload>
   return normalizeAppShellPayload(
     await expectJson<AppShellPayload>(response, `setup reset returned ${response.status}`),
   );
+}
+
+export async function updateCatProfile(
+  catId: string,
+  input: { skillProfile?: string | null; name?: string; makeBoss?: boolean },
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/cats/${encodeURIComponent(catId)}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return mutateAndRefetch(response, `cat profile update returned ${response.status}`, signal);
+}
+
+export async function createBotBindingApi(
+  input: {
+    botName: string;
+    boundCatId: string;
+    botToken?: string;
+    webhookSecret?: string;
+  },
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch('/api/bot-bindings', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ platform: 'telegram', ...input }),
+    signal,
+  });
+
+  return mutateAndRefetch(response, `bot binding create returned ${response.status}`, signal);
+}
+
+export async function deleteBotBindingApi(
+  bindingId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/bot-bindings/${encodeURIComponent(bindingId)}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  return mutateAndRefetch(response, `bot binding delete returned ${response.status}`, signal);
+}
+
+export interface DurableMemoryItem {
+  id: string;
+  category: string;
+  content: string;
+  confidence: number | null;
+  updatedAt: string;
+}
+
+export async function listCatMemory(
+  catId: string,
+  signal?: AbortSignal,
+): Promise<DurableMemoryItem[]> {
+  const response = await fetch(`/api/cats/${encodeURIComponent(catId)}/memory`, {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  const data = await expectJson<{ records: DurableMemoryItem[] }>(response, `cat memory list returned ${response.status}`);
+  return data.records ?? [];
+}
+
+export async function createCatMemory(
+  catId: string,
+  input: { category: string; content: string },
+  signal?: AbortSignal,
+): Promise<DurableMemoryItem[]> {
+  const response = await fetch(`/api/cats/${encodeURIComponent(catId)}/memory`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(input),
+    signal,
+  });
+  const data = await expectJson<{ records: DurableMemoryItem[] }>(response, `cat memory create returned ${response.status}`);
+  return data.records ?? [];
+}
+
+export async function deleteCatMemory(
+  catId: string,
+  memoryId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  await fetch(`/api/cats/${encodeURIComponent(catId)}/memory/${encodeURIComponent(memoryId)}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
 }
 
 

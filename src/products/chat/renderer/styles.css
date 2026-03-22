@@ -1530,10 +1530,15 @@ textarea {
   color: #fff;
   font-size: 0.65rem;
   font-weight: 700;
-  border: 2px solid var(--canvas-bg);
+  border: none;
   cursor: default;
   position: relative;
   z-index: 1;
+}
+
+.catAvatarBoss {
+  outline: 2px solid #fff;
+  outline-offset: 0px;
 }
 
 
@@ -2325,6 +2330,280 @@ textarea {
   .setupCard {
     padding: 20px;
   }
+}
+
+/* ─── My Cats Roster ─── */
+
+.myCatsSection {
+  padding: 0;
+  margin-top: 16px;
+}
+
+.myCatsSection > .sectionLabel {
+  margin: 0 0 4px;
+  padding: 0 12px;
+}
+
+.myCatsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.myCatItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+  width: 100%;
+  text-align: left;
+}
+
+.myCatItem:hover {
+  background: var(--sidebar-hover-bg);
+}
+
+
+
+.myCatName {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.myCatBadge {
+  font-size: 0.6rem;
+  color: var(--muted-soft);
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* ─── Recents View Mode Toggle ─── */
+
+.recentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  margin-bottom: 4px;
+}
+
+.recentHeader .sectionLabel {
+  margin: 0;
+  padding: 0;
+}
+
+.viewModeToggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.viewModeBtn {
+  padding: 2px 8px;
+  font-size: 0.65rem;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1.5;
+}
+
+.viewModeBtn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.viewModeBtn:hover {
+  background: var(--sidebar-hover-bg);
+}
+
+.viewModeBtnActive {
+  background: var(--sidebar-active-bg);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.recentGroup {
+  margin-bottom: 8px;
+}
+
+.recentGroupLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-soft);
+  padding: 4px 12px 2px 20px;
+  margin: 0;
+}
+
+.recentGroup .recentItemCard {
+  padding-left: 20px;
+}
+
+/* ─── Draft Lead Selector ─── */
+
+.draftLeadSelector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  margin-bottom: 4px;
+}
+
+.draftLeadLabel {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.draftLeadPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.draftLeadPill {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.draftLeadPill:hover {
+  background: var(--panel-hover);
+}
+
+.draftLeadPillActive {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ─── Chat Header Mode Badge ─── */
+
+.channelTopBarMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.channelTopBarTitle {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.channelModeBadge {
+  font-size: 0.65rem;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--muted-bg);
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+.channelLeadLabel {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ─── Cat Detail Panel (Settings > Cats) ─── */
+
+.catDetailPanel {
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.catDetailSection .sectionLabel {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-soft);
+  margin-bottom: 6px;
+}
+
+.skillPills {
+  display: flex;
+  gap: 6px;
+}
+
+.botBindingList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.botBindingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 0.78rem;
+}
+
+.botBindingForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.memoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.memoryItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+
+.memoryForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recentCatDot {
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 

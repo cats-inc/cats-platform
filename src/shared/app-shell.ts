@@ -47,6 +47,7 @@ export type {
   ChatChannelView,
   ChatMessage,
   ChatMessageSenderKind,
+  BotBindingSummary,
   ChatCat,
   ChatShellState,
   ChatState,

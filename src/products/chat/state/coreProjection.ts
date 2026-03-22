@@ -489,6 +489,11 @@ function syncBotBindings(
       botName: telegramBotName,
       orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
       bossCatActorId,
+      boundCatId: existingTelegram?.boundCatId ?? chat.bossCatId,
+      boundCatActorId: existingTelegram?.boundCatActorId ?? bossCatActorId,
+      botToken: existingTelegram?.botToken ?? null,
+      webhookSecret: existingTelegram?.webhookSecret ?? null,
+      defaultRoomMode: existingTelegram?.defaultRoomMode ?? 'boss_chat',
       status: 'active',
       createdAt: existingTelegram?.createdAt ?? updatedAt,
       updatedAt,
@@ -584,5 +589,6 @@ export function syncCoreStateWithChatState(
     approvalBindings: structuredClone(existingCore.approvalBindings ?? []),
     botBindings: syncBotBindings(chat, existingCore.botBindings ?? []),
     archives: [...archives, ...preservedArchives],
+    durableMemory: structuredClone(existingCore.durableMemory ?? []),
   };
 }

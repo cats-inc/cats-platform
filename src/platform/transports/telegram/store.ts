@@ -486,6 +486,7 @@ function toBinding(rawBinding: unknown): TelegramConversationBinding | null {
   }
 
   return {
+    botBindingId: readString(binding.botBindingId),
     telegramChatId,
     conversationId,
     transportConversationMode,

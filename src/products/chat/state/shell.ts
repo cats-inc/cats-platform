@@ -1,6 +1,7 @@
 import type { AppConfig } from '../../../config.js';
+import type { CatsCoreState } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
-import type { AppShellPayload, ChatState } from '../../../shared/app-shell.js';
+import type { AppShellPayload, BotBindingSummary, ChatState } from '../../../shared/app-shell.js';
 import { summarizeState } from './model.js';
 
 export function createAppShell(
@@ -9,8 +10,17 @@ export function createAppShell(
   chat: ChatState,
   now: Date = new Date(),
   setup?: { setupCompleteAt: string | null; ownerDisplayName: string; ownerAvatarColor: string | null },
+  core?: CatsCoreState | null,
 ): AppShellPayload {
   const summary = summarizeState(chat);
+  const botBindings: BotBindingSummary[] = (core?.botBindings ?? []).map((b) => ({
+    id: b.id,
+    platform: b.platform,
+    botName: b.botName,
+    boundCatId: b.boundCatId,
+    defaultRoomMode: b.defaultRoomMode,
+    status: b.status,
+  }));
 
   return {
     app: {
@@ -32,6 +42,7 @@ export function createAppShell(
       },
       capabilities: chat.capabilities,
       showVerboseMessages: chat.showVerboseMessages,
+      botBindings,
     },
     runtime,
     metadata: {

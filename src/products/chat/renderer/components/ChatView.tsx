@@ -1,0 +1,278 @@
+import type { FormEvent, KeyboardEvent, RefObject } from 'react';
+
+import type { AppShellPayload, ChatCat, ChannelCatAssignment } from '../../../../shared/app-shell';
+import {
+  catInitials,
+  messageTone,
+  resolveBossCatName,
+  truncatePath,
+  type SelectedChannelView,
+} from '../chatUtils';
+import { openFolderInExplorer } from '../api';
+
+export interface ChatViewProps {
+  payload: AppShellPayload;
+  selectedChannel: SelectedChannelView;
+  composerDraft: string;
+  busy: string;
+  feedback: string;
+  greeting: string;
+  channelFiles: File[];
+  channelPlusMenuOpen: boolean;
+  channelPlusMenuRef: RefObject<HTMLDivElement | null>;
+  channelFileInputRef: RefObject<HTMLInputElement | null>;
+  activeAssignedCats: ChannelCatAssignment[];
+  bossCatName: string;
+  bossCatAvatarColor: string | null;
+  showBossCatAvatar: boolean;
+  addCatOpen: boolean;
+  onComposerChange: (value: string) => void;
+  onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
+  onToggleAddCat: () => void;
+  onToggleChannelPlusMenu: () => void;
+  onChannelFileSelect: () => void;
+  onChannelFilesChange: (files: File[]) => void;
+  autoResize: (el: HTMLTextAreaElement) => void;
+}
+
+export function ChatView({
+  payload,
+  selectedChannel,
+  composerDraft,
+  busy,
+  feedback,
+  greeting,
+  channelFiles,
+  channelPlusMenuOpen,
+  channelPlusMenuRef,
+  channelFileInputRef,
+  activeAssignedCats,
+  bossCatName,
+  bossCatAvatarColor,
+  showBossCatAvatar,
+  onComposerChange,
+  onComposerKeyDown,
+  onSendMessage,
+  onToggleAddCat,
+  onToggleChannelPlusMenu,
+  onChannelFileSelect,
+  onChannelFilesChange,
+  autoResize,
+}: ChatViewProps) {
+  const hasConversationStarted =
+    selectedChannel.messages.some((message) => message.senderKind !== 'system');
+
+  const roomMode = (selectedChannel as { roomRouting?: { mode?: string } }).roomRouting?.mode ?? 'boss_chat';
+  const leadParticipantId = (selectedChannel as { roomRouting?: { leadParticipantId?: string | null } }).roomRouting?.leadParticipantId ?? null;
+  const leadCat = leadParticipantId
+    ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
+    : null;
+
+  const modeLabel = roomMode === 'direct_cat_chat'
+    ? 'Direct chat'
+    : roomMode === 'transport_inbox'
+      ? 'Inbox'
+      : activeAssignedCats.length > 0
+        ? 'Group'
+        : 'Boss Chat';
+
+  return (
+    <>
+      <header className="channelTopBar">
+        <div className="rosterAvatars">
+          {roomMode === 'direct_cat_chat' && leadCat ? (
+            <div className="catAvatar" title={leadCat.name} style={leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}>
+              {catInitials(leadCat.name)}
+            </div>
+          ) : (
+            <>
+              {showBossCatAvatar ? (
+                <div className="catAvatar catAvatarBoss" title={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
+                  {catInitials(bossCatName)}
+                </div>
+              ) : null}
+              {activeAssignedCats.map((cat) => (
+                <div key={cat.catId} className="catAvatar" title={cat.name} style={cat.avatarColor ? { background: cat.avatarColor } : undefined}>
+                  {catInitials(cat.name)}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+        <div className="channelTopBarMeta">
+          {roomMode === 'direct_cat_chat' && leadCat ? (
+            <span className="channelTopBarTitle">{leadCat.name}</span>
+          ) : null}
+          <span className="channelModeBadge">{modeLabel}</span>
+          {roomMode === 'boss_chat' && activeAssignedCats.length > 0 && leadCat ? (
+            <span className="channelLeadLabel">Lead: {leadCat.name}</span>
+          ) : null}
+        </div>
+        <button
+          className="addCatButton"
+          type="button"
+          onClick={onToggleAddCat}
+        >
+          +
+        </button>
+      </header>
+      <div className="viewShell viewShellChannel">
+        <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
+
+          {feedback ? <p className="feedbackText channelFeedback">{feedback}</p> : null}
+
+          {hasConversationStarted ? (
+            <section className="transcriptPanel">
+              <div className="transcriptList">
+                {selectedChannel.messages.filter((msg) => payload.chat.showVerboseMessages || msg.metadata?.verbosity !== 'verbose').map((message) => (
+                  <article key={message.id} className={messageTone(message.senderKind)}>
+                    {message.senderKind !== 'user' ? (
+                      <div className="transcriptMessageTop">
+                        <strong>{message.senderName}</strong>
+                      </div>
+                    ) : null}
+                    <p>{message.body}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <section className="freshChatIntro">
+              <div className="draftGreeting"><h1>{greeting}</h1></div>
+            </section>
+          )}
+
+          <form
+            className={
+              hasConversationStarted
+                ? 'composerCard composerCardDocked'
+                : 'composerCard composerCardFresh'
+            }
+            onSubmit={(event) => void onSendMessage(event)}
+          >
+            {channelFiles.length > 0 ? (
+              <div className="composerAttachments">
+                {channelFiles.map((file, index) => {
+                  const isImage = file.type.startsWith('image/');
+                  return (
+                    <div key={`${file.name}-${file.size}-${index}`} className="attachmentCard">
+                      <button
+                        className="attachmentRemove"
+                        type="button"
+                        onClick={() => onChannelFilesChange(channelFiles.filter((_, i) => i !== index))}
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        &times;
+                      </button>
+                      {isImage ? (
+                        <img
+                          className="attachmentPreview"
+                          src={URL.createObjectURL(file)}
+                          alt={file.name}
+                          onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+                        />
+                      ) : (
+                        <div className="attachmentFileIcon">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <path d="M14 2v6h6" />
+                          </svg>
+                        </div>
+                      )}
+                      <span className="attachmentName">{file.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+            <textarea
+              className="composerInput"
+              rows={1}
+              placeholder="How can I help you today?"
+              value={composerDraft}
+              onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
+              onKeyDown={(event) => void onComposerKeyDown(event)}
+            />
+            <div className="composerBottomRow">
+              <div className="composerLeftGroup">
+                <div className="composerPlusWrapper" ref={channelPlusMenuRef}>
+                  <button
+                    className="composerPlusButton"
+                    type="button"
+                    aria-label="Attach"
+                    onClick={onToggleChannelPlusMenu}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3v10" />
+                      <path d="M3 8h10" />
+                    </svg>
+                  </button>
+                  {channelPlusMenuOpen ? (
+                    <div className="composerPlusMenu">
+                      <button
+                        className="composerPlusMenuItem"
+                        type="button"
+                        onClick={onChannelFileSelect}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
+                          <path d="M8 2v8" />
+                          <path d="M4 6l4-4 4 4" />
+                        </svg>
+                        Add photos and files
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                {(() => {
+                  const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
+                  if (!cwd) return null;
+                  return (
+                    <span
+                      className="composerCwdChip composerCwdClickable"
+                      title={cwd}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => void openFolderInExplorer(cwd)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                      </svg>
+                      <span>{truncatePath(cwd)}</span>
+                    </span>
+                  );
+                })()}
+              </div>
+              <button
+                className="composerSendButton"
+                disabled={!composerDraft.trim() || busy === 'message:send'}
+                type="submit"
+                aria-label="Send"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 13V3" />
+                  <path d="M3 7l5-5 5 5" />
+                </svg>
+              </button>
+            </div>
+            <input
+              ref={channelFileInputRef}
+              type="file"
+              multiple
+              style={{ display: 'none' }}
+              onChange={(event) => {
+                const input = event.currentTarget;
+                if (input.files && input.files.length > 0) {
+                  const selected = Array.from(input.files);
+                  onChannelFilesChange([...channelFiles, ...selected]);
+                }
+                input.value = '';
+              }}
+            />
+          </form>
+        </section>
+      </div>
+    </>
+  );
+}

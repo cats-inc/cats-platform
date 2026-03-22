@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
 export const AVATAR_PALETTE = [
-  '#E57373', '#F06292', '#BA68C8', '#9575CD',
-  '#7986CB', '#64B5F6', '#4FC3F7', '#4DB6AC',
-  '#81C784', '#FFB74D', '#FF8A65', '#A1887F',
+  '#7986CB', '#4DB6AC', '#FFB74D', '#BA68C8',
+  '#64B5F6', '#81C784', '#FF8A65', '#9575CD',
+  '#4FC3F7', '#A1887F', '#F06292', '#E57373',
 ] as const;
 
 export function pickAvatarColor(index: number): string {
@@ -264,6 +264,7 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     chatCwd: channel.chatCwd,
     lastMessageAt: channel.lastMessageAt,
     lastActivatedAt: channel.lastActivatedAt,
+    leadCatId: channel.roomRouting?.leadParticipantId ?? null,
     roomMode: roomRouting.mode,
     routingStatus: routingStatus ?? roomRouting.lastOutcome?.status ?? 'idle',
     lastRoutingAt:
@@ -306,6 +307,13 @@ export function deleteChannel(
   return nextState;
 }
 
+const DEFAULT_CAT_NAME = 'Boss Cat';
+const DEFAULT_AVATAR_COLOR = '#90A4AE';
+
+export function isDefaultCatName(name: string): boolean {
+  return name.trim() === DEFAULT_CAT_NAME;
+}
+
 export function createCat(
   state: ChatState,
   input: CreateCatInput,
@@ -314,7 +322,9 @@ export function createCat(
   const nextState = cloneState(state);
   const cat = createCatRecord(input, isoAt(now));
   if (!cat.avatarColor) {
-    cat.avatarColor = pickAvatarColor(nextState.cats.length);
+    cat.avatarColor = isDefaultCatName(cat.name)
+      ? DEFAULT_AVATAR_COLOR
+      : pickAvatarColor(nextState.cats.length);
   }
   nextState.cats.unshift(cat);
   return nextState;
@@ -339,6 +349,62 @@ export function deleteCat(
   return nextState;
 }
 
+export function updateCatSkillProfile(
+  state: ChatState,
+  catId: string,
+  skillProfile: string | null,
+): ChatState {
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((p) => p.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  cat.skillProfile = skillProfile;
+  cat.updatedAt = new Date().toISOString();
+  return nextState;
+}
+
+export function setBossCat(
+  state: ChatState,
+  catId: string,
+): ChatState {
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((p) => p.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  if (cat.status !== 'active') {
+    throw new Error(`Cat is not active: ${catId}`);
+  }
+  nextState.bossCatId = catId;
+  return nextState;
+}
+
+export function renameCat(
+  state: ChatState,
+  catId: string,
+  name: string,
+): ChatState {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Cat name cannot be empty');
+  }
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((p) => p.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  const wasDefault = isDefaultCatName(cat.name);
+  cat.name = trimmed;
+  if (isDefaultCatName(trimmed)) {
+    cat.avatarColor = DEFAULT_AVATAR_COLOR;
+  } else if (wasDefault && cat.avatarColor === DEFAULT_AVATAR_COLOR) {
+    cat.avatarColor = pickAvatarColor(state.cats.indexOf(state.cats.find((c) => c.id === catId)!) );
+  }
+  cat.updatedAt = new Date().toISOString();
+  return nextState;
+}
+
 export function createChannel(
   state: ChatState,
   input: CreateChatChannelInput,
@@ -351,12 +417,15 @@ export function createChannel(
   const channelId = createChannelId();
   const catDrafts = input.cats ?? input.cats ?? [];
   const createdCats = catDrafts.map((palInput) => createCatRecord(palInput, nowIso));
+  const participantCatIds = input.participantCatIds ?? [];
   const requestedLeadParticipantId = normalizeLeadParticipantId(input.leadParticipantId);
   const defaultLeadParticipantId = requestedLeadParticipantId
     ?? (
       input.roomMode === 'direct_cat_chat' && createdCats.length === 1
         ? createdCats[0]?.id ?? null
-        : null
+        : input.roomMode === 'direct_cat_chat' && createdCats.length === 0 && participantCatIds.length === 1
+          ? participantCatIds[0] ?? null
+          : null
     );
 
   nextState.cats.unshift(...createdCats);
@@ -372,6 +441,13 @@ export function createChannel(
       nowIso,
     ),
   );
+
+  for (const catId of participantCatIds) {
+    const existingCat = requireCat(nextState, catId);
+    catAssignments.push(
+      createAssignmentRecord(existingCat, {}, nowIso),
+    );
+  }
 
   const channel: ChatChannelState = {
     id: channelId,
@@ -710,7 +786,7 @@ export function setChannelRoomRouting(
 }
 
 export function parseMentions(text: string): string[] {
-  return Array.from(new Set(text.match(/(?<!\w)@([A-Za-z0-9._-]+)/gu)?.map((value) => value.slice(1)) ?? []));
+  return Array.from(new Set(text.match(/(?<!\w)@([\p{L}\p{N}._-]+)/gu)?.map((value) => value.slice(1)) ?? []));
 }
 
 export function exportChannel(state: ChatState, channelId: string): ChannelExportPayload {

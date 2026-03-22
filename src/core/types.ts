@@ -1,4 +1,4 @@
-export const CATS_CORE_STATE_VERSION = 3 as const;
+export const CATS_CORE_STATE_VERSION = 4 as const;
 
 export interface CoreRecordMetadata {
   [key: string]: unknown;
@@ -15,6 +15,34 @@ export interface MemoryCheckpointSummary {
   facts: string[];
   openLoops: string[];
   updatedAt: string | null;
+}
+
+export type DurableMemorySubjectType = 'cat' | 'owner' | 'relationship' | 'project';
+export type DurableMemoryCategory = 'preference' | 'fact' | 'policy' | 'style' | 'relationship' | 'lesson';
+
+export interface DurableMemoryRecord {
+  id: string;
+  subjectType: DurableMemorySubjectType;
+  subjectId: string;
+  category: DurableMemoryCategory;
+  content: string;
+  confidence: number | null;
+  sourceRefs: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EvidenceEventKind = 'user_turn' | 'agent_turn' | 'system_event' | 'routing_decision';
+
+export interface EvidenceEvent {
+  id: string;
+  conversationId: string;
+  sessionId: string | null;
+  layer: 'evidence';
+  actorId: string | null;
+  kind: EvidenceEventKind;
+  timestamp: string;
+  payload: Record<string, unknown>;
 }
 
 export type CoreActorKind =
@@ -349,12 +377,24 @@ export interface CoreActivityRecord {
 
 export type BotBindingPlatform = 'telegram' | 'line';
 
+export type BotBindingDefaultRoomMode = 'boss_chat' | 'direct_cat_chat';
+
 export interface BotBindingRecord {
   id: string;
   platform: BotBindingPlatform;
   botName: string;
   orchestratorActorId: string;
   bossCatActorId: string | null;
+  /** Which Cat this bot fronts (null = Boss Cat for backward compat) */
+  boundCatId: string | null;
+  /** Actor ID of the bound Cat */
+  boundCatActorId: string | null;
+  /** Per-binding bot token reference (null = use environment default) */
+  botToken: string | null;
+  /** Per-binding webhook secret for Telegram X-Telegram-Bot-Api-Secret-Token */
+  webhookSecret: string | null;
+  /** Default room mode for inbound messages from this bot */
+  defaultRoomMode: BotBindingDefaultRoomMode;
   status: 'active' | 'disabled';
   createdAt: string;
   updatedAt: string;
@@ -400,4 +440,5 @@ export interface CatsCoreState {
   approvalBindings: CoreApprovalBindingRecord[];
   botBindings: BotBindingRecord[];
   archives: ArchiveMetadataRecord[];
+  durableMemory: DurableMemoryRecord[];
 }

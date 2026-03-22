@@ -29,7 +29,6 @@ import {
   ORCHESTRATOR_NAME,
   appendMessage,
   buildChannelView,
-  parseMentions,
   requireChannel,
   resolveOrchestratorDisplayName,
   setChannelOrchestratorLease,
@@ -38,6 +37,12 @@ import {
   setChannelStatus,
   setChannelChatCwd,
 } from './model.js';
+import { parseMentions } from './mentionParsing.js';
+import {
+  resolveMentionRoute,
+  type RoutingTarget,
+  type MentionRouteResult,
+} from './mentionRouter.js';
 import {
   buildOrchestratorPrompt,
   buildOrchestratorRewritePrompt,
@@ -56,9 +61,7 @@ import {
 } from './roomRouting.js';
 import { formatSessionStartedMessage } from './runtimeMessages.js';
 
-type RoutingTarget = RoomRoutingParticipantRef & {
-  sessionId: string | null;
-};
+// RoutingTarget and MentionRouteResult imported from mentionRouter.ts
 
 interface TargetResolution {
   targets: RoutingTarget[];
@@ -284,52 +287,13 @@ function resolveTargets(
     explicitTrigger: RoomRoutingTrigger;
   },
 ): TargetResolution {
-  const channel = buildChannelView(state, channelId);
-  const mentionNames = parseMentions(body);
-  const activeCats = activeAssignedCats(channel);
-  const catsByName = new Map(activeCats.map((cat) => [cat.name.toLowerCase(), cat]));
-  const orchestratorTarget = buildOrchestratorTarget(state, channel);
-  const orchestratorMentionAliases = new Set([
-    ORCHESTRATOR_NAME.toLowerCase(),
-    orchestratorTarget.participantName.toLowerCase(),
-  ]);
-  const targets: RoutingTarget[] = [];
-  const unresolved: string[] = [];
-
-  if (mentionNames.length === 0) {
-    return {
-      targets: options.allowDefaultTarget ? [resolveDefaultTarget(state, channel)] : [],
-      unresolved,
-      mentionNames,
-      trigger: 'room_default',
-    };
-  }
-
-  for (const mentionName of mentionNames) {
-    const normalizedMention = mentionName.toLowerCase();
-    if (orchestratorMentionAliases.has(normalizedMention)) {
-      if (!targets.some((target) => participantKey(target) === participantKey(orchestratorTarget))) {
-        targets.push(orchestratorTarget);
-      }
-      continue;
-    }
-
-    const cat = catsByName.get(normalizedMention);
-    if (!cat) {
-      unresolved.push(mentionName);
-      continue;
-    }
-
-    if (!targets.some((target) => target.participantId === cat.catId)) {
-      targets.push(buildCatTarget(cat));
-    }
-  }
-
+  // Delegate to the deterministic mention router (system layer)
+  const result = resolveMentionRoute(state, channelId, body, options);
   return {
-    targets,
-    unresolved,
-    mentionNames,
-    trigger: options.explicitTrigger,
+    targets: result.targets,
+    unresolved: result.unresolvedMentions,
+    mentionNames: result.parsedMentionNames,
+    trigger: result.trigger,
   };
 }
 

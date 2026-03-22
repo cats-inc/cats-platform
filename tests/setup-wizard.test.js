@@ -229,7 +229,7 @@ test('POST /api/setup/reset clears setup state and returns clean chat', async ()
   });
 });
 
-test('POST /api/setup/complete defaults Boss Cat name to Smelly if empty', async () => {
+test('POST /api/setup/complete defaults Boss Cat name to Boss Cat if empty', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/setup/complete`, {
       method: 'POST',
@@ -247,7 +247,7 @@ test('POST /api/setup/complete defaults Boss Cat name to Smelly if empty', async
       (p) => p.id === payload.chat.bossCatId,
     );
     assert.ok(bossCat);
-    assert.equal(bossCat.name, 'Smelly');
+    assert.equal(bossCat.name, 'Boss Cat');
   });
 });
 

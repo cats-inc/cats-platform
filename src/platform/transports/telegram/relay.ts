@@ -537,6 +537,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
                 updatedAt: deliveredAt,
               }
             : {
+                botBindingId: null,
                 telegramChatId: chatId,
                 conversationId,
                 transportConversationMode: 'transport_inbox' as const,

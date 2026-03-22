@@ -79,7 +79,7 @@ test('FileChatStore persists configured channels, cats, assignments, and message
   const parsedState = JSON.parse(rawState);
   const createdChannel = parsedState.chat.channels.find((channel) => channel.id === channelId);
 
-  assert.equal(parsedState.version, 3);
+  assert.equal(parsedState.version, 4);
   assert.match(parsedState.chat.selectedChannelId, UUID_PATTERN);
   assert.equal(parsedState.chat.selectedChannelId, channelId);
   assert.equal(parsedState.chat.cats.length, 2);
@@ -469,7 +469,7 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
 
   const reloadedCore = await reloadedStore.readCore();
 
-  assert.equal(reloadedCore.version, 3);
+  assert.equal(reloadedCore.version, 4);
   assert.equal(reloadedCore.ownerProfile.displayName, 'Boss Owner');
   assert.ok(reloadedCore.actors.some((actor) => actor.id === 'actor-stakeholder-1'));
   assert.ok(

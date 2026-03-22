@@ -1,7 +1,7 @@
 import type { BotBindingRecord } from '../../../core/types.js';
 
-export type TelegramRelayMode = 'boss-cat-ingress';
-export type TelegramPublicIdentityMode = 'boss_cat_single_identity';
+export type TelegramRelayMode = 'boss-cat-ingress' | 'multi-cat-ingress';
+export type TelegramPublicIdentityMode = 'boss_cat_single_identity' | 'per_cat_identity';
 
 export type TelegramTransportConversationMode = 'transport_inbox';
 
@@ -155,6 +155,8 @@ export interface TelegramRoomRoutingSeam {
 }
 
 export interface TelegramConversationBinding {
+  /** Which bot binding this conversation is scoped to (null = legacy/default) */
+  botBindingId: string | null;
   telegramChatId: string;
   conversationId: string;
   transportConversationMode: TelegramTransportConversationMode;

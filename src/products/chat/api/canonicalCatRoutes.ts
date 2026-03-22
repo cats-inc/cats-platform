@@ -1,8 +1,10 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { buildChannelView, requireCat } from '../state/model.js';
+import { buildChannelView, renameCat, requireCat, setBossCat, updateCatSkillProfile } from '../state/model.js';
 import type { AssignChannelCatInput, CreateCatInput } from './contracts.js';
 import {
+  buildAppShellPayload,
   handleCanonicalCatError,
+  handleRestError,
   mapChannelCat,
   persistCatAssignmentRemoval,
   persistCatAssignmentUpdate,
@@ -43,6 +45,33 @@ async function handleCanonicalGetCat(
     sendJson(context.response, 200, { cat: requireCat(state, catId) });
   } catch (error) {
     handleCanonicalCatError(context, error);
+  }
+}
+
+async function handleCanonicalUpdateCat(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<{ skillProfile?: string | null; name?: string; makeBoss?: boolean }>(context.request);
+    let state = await context.dependencies.chatStore.read();
+    if (body.name !== undefined) {
+      state = renameCat(state, catId, body.name);
+    }
+    if (body.skillProfile !== undefined) {
+      state = updateCatSkillProfile(state, catId, body.skillProfile);
+    }
+    if (body.makeBoss) {
+      state = setBossCat(state, catId);
+    }
+    await context.dependencies.chatStore.write(state);
+    sendJson(
+      context.response,
+      200,
+      await buildAppShellPayload(context.dependencies),
+    );
+  } catch (error) {
+    handleRestError(context, error);
   }
 }
 
@@ -137,11 +166,15 @@ export async function routeCanonicalCatApi(
       await handleCanonicalGetCat(context, canonicalCatDetailMatch[0]);
       return true;
     }
+    if (context.method === 'PATCH') {
+      await handleCanonicalUpdateCat(context, canonicalCatDetailMatch[0]);
+      return true;
+    }
     if (context.method === 'DELETE') {
       await handleCanonicalDeleteCat(context, canonicalCatDetailMatch[0]);
       return true;
     }
-    sendMethodNotAllowed(context.response, ['GET', 'DELETE']);
+    sendMethodNotAllowed(context.response, ['GET', 'PATCH', 'DELETE']);
     return true;
   }
 
