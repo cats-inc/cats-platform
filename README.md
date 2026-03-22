@@ -18,8 +18,9 @@ The current slices are:
 - a `cats-runtime` health and app-shell API
 - a chat-first `React/Vite` renderer with modal setup tools and a preview-ready side pane
 - file-backed chat state, cat execution, and transcript persistence
-- runtime-backed channel activation and routed messaging through `cats-runtime`
-- a global orchestrator surface, basic `@mention` routing, and transcript export
+<<<<<<< HEAD
+- runtime-backed channel activation, mode-aware sleep/wake entry, and routed messaging through `cats-runtime`
+- a global orchestrator surface, direct-cat routing, deterministic `@mention` handling, transcript export, and visible presence states
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - provider-agnostic cat memory checkpoints plus channel-scoped execution leases
 
@@ -35,6 +36,7 @@ The current slices are:
 - [x] Add basic runtime-backed channel operations
 - [x] Add a global cat registry, chat assignment, mention routing, and transcript export
 - [x] Separate cat identity and memory from provider-specific execution state
+- [x] Land chat session sleep/wake lifecycle, direct Cat chat defaults, and room-header presence indicators
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open

@@ -27,7 +27,6 @@ import {
 } from '../../../shared/sidebarPreference';
 import type { AppShellPayload } from '../../../shared/app-shell';
 import {
-  activateChatChannel,
   assignCatToChannelApi,
   browseDirectories,
   type BrowseDirectoryEntry,
@@ -501,14 +500,19 @@ export default function App() {
         throw new Error('No chat is available for sending messages.');
       }
 
-      if (!payload.chat.selectedChannel?.orchestratorLease.sessionId) {
-        const activation = await activateChatChannel(channelId);
-        rollbackPayload = activation.appShell;
-      }
-
       let messageBody = body;
       const filesToUpload = wasDraftingNewChat ? draftFiles : channelFiles;
       if (filesToUpload.length > 0) {
+        const selectedForFiles =
+          payload.chat.selectedChannel?.id === channelId
+            ? payload.chat.selectedChannel
+            : null;
+        if (!selectedForFiles?.repoPath && !selectedForFiles?.chatCwd) {
+          const warmed = await updateSelectedChannel(channelId);
+          payload = warmed;
+          rollbackPayload = warmed;
+          setState({ status: 'ready', payload: warmed });
+        }
         const attachments = await uploadChannelAttachments(channelId, filesToUpload);
         const refs = attachments.map((a) => `- ${a.relativePath}`).join('\n');
         messageBody = `[Attached files in working directory:]\n${refs}\n\n${body}`;
@@ -717,8 +721,13 @@ export default function App() {
               leadParticipantId: catId,
               skipBossCatGreeting: true,
             });
-            startTransition(() => setState({ status: 'ready', payload: created }));
-            navigate(buildChannelPath(created.chat.selectedChannelId));
+            const selectedChannelId = created.chat.selectedChannelId;
+            if (!selectedChannelId) {
+              throw new Error('Direct chat creation did not return a selected channel.');
+            }
+            const warmed = await updateSelectedChannel(selectedChannelId);
+            startTransition(() => setState({ status: 'ready', payload: warmed }));
+            navigate(buildChannelPath(selectedChannelId));
           } catch (error) {
             setFeedback(error instanceof Error ? error.message : 'Failed to create direct chat.');
           } finally {

@@ -268,6 +268,71 @@ test('room routing continues across agent mentions and auto-wakes targeted parti
   );
 });
 
+test('direct cat chat routes unmentioned turns to the lead cat without waking Boss Cat first', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Smelly',
+      provider: 'claude',
+      roles: ['boss'],
+    },
+    now,
+  );
+  state.bossCatId = state.cats[0].id;
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Talk directly to Companion.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Companion')) {
+      return usage('Companion is already on it.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Handle this directly.' },
+    runtimeClient,
+    now,
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Smelly')), false);
+  assert.equal(channel.orchestratorLease.sessionId, null);
+  assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
+  assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
+  assert.equal(channel.status, 'active');
+});
+
 test('anti-ping-pong blocks repeated back-and-forth and prompts only include per-target recent context', async () => {
   const { state, channelId } = await createChannelState();
   const promptsByTarget = {

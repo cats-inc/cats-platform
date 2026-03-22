@@ -256,9 +256,11 @@ async function expectJson<T>(response: Response, fallback: string): Promise<T> {
 }
 
 export async function fetchAppShell(signal?: AbortSignal): Promise<AppShellPayload> {
+  const routePath = typeof window === 'undefined' ? null : window.location.pathname;
   const response = await fetch('/api/app-shell', {
     headers: {
       Accept: 'application/json',
+      ...(routePath ? { 'x-cats-route-path': routePath } : {}),
     },
     signal,
   });

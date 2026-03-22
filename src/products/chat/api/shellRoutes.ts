@@ -7,14 +7,55 @@ import {
   nowFrom,
 } from './shared.js';
 import { selectChannel } from '../state/model.js';
+import { wakeChannelEntryParticipant } from '../state/runtimeActions.js';
+
+function requestedChatRouteChannelId(
+  context: ChatApiRouteContext,
+): string | null {
+  const rawPath = context.request.headers['x-cats-route-path'];
+  if (typeof rawPath !== 'string') {
+    return null;
+  }
+
+  const match = rawPath.match(/^\/chats\/([^/?#]+)$/u);
+  if (!match) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(match[1] ?? '').trim() || null;
+  } catch {
+    return null;
+  }
+}
 
 async function handleAppShell(
   context: ChatApiRouteContext,
 ): Promise<void> {
+  let state = await context.dependencies.chatStore.read();
+  const routeChannelId = requestedChatRouteChannelId(context);
+  if (routeChannelId && routeChannelId === state.selectedChannelId) {
+    const stateBeforeWake = state;
+    const wake = await wakeChannelEntryParticipant(
+      state,
+      routeChannelId,
+      context.dependencies.runtimeClient,
+      nowFrom(context.dependencies),
+    );
+    state = wake.state;
+    if (
+      wake.state !== stateBeforeWake
+      || wake.result?.status === 'started'
+      || wake.result?.status === 'error'
+    ) {
+      state = await context.dependencies.chatStore.write(state);
+    }
+  }
+
   sendJson(
     context.response,
     200,
-    await buildAppShellPayload(context.dependencies),
+    await buildAppShellPayload(context.dependencies, state),
   );
 }
 

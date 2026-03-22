@@ -10,7 +10,7 @@
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
-| Chat Product Features | Completed | Runtime-backed setup, global cat registry, channel assignment, live mention continuation routing, transcript export, and execution-aware state landed |
+| Chat Product Features | Completed | Runtime-backed setup, global cat registry, sleep/wake-aware room entry, direct-cat routing, live mention continuation routing, transcript export, and execution-aware state landed |
 | Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records, but compatibility-shim cleanup and later control-plane slices remain |
 | Documentation | In Progress | Architecture, progress, API, and plan docs now reflect the shared-core write substrate, fixture bundle, and projection boundary, but broader launch-track docs still remain |
 | Cats Chat Launch Track | In Progress | Telegram Boss Cat inbox MVP now bridges webhook ingress into durable room routing and outbound replies, while approvals, escalation, takeover, and desktop packaging remain ahead |
@@ -59,6 +59,7 @@
 | Add persistent chat-shell storage | [x] | File-backed chat state now includes selected and created channels |
 | Implement orchestrator and channel setup UX | [x] | Channel setup, global orchestrator editing, and runtime activation all landed |
 | Add runtime-backed message, cat, and export flows | [x] | Global cat registry, channel assignment, continuation loop routing, fan-out, guards, room-workflow state, core-projected system records, and transcript export now exist |
+| Land chat lifecycle and direct routing productization | [x] | Persisted room entry now background-wakes the visible participant, direct rooms default to the lead cat, sleeping targets auto-wake on route, and the header shows sleeping/waking/awake presence |
 
 #### Acceptance Criteria
 

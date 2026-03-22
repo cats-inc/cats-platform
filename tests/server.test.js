@@ -648,6 +648,193 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
   });
 });
 
+test('PATCH /api/preferences wakes the selected Boss Chat entry participant', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Wake Boss Chat',
+        topic: 'Wake the entry participant on room entry.',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    assert.equal(runtimeClient.createdSessions.length, 0);
+
+    const updatePrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+    assert.equal(updatePrefsResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
+    assert.equal(channelPayload.channel.status, 'active');
+  });
+});
+
+test('GET /api/app-shell wakes the selected direct chat lead when the route opens a persisted room', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Companion Direct',
+        topic: 'Wake the lead cat on persisted room entry.',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [catId],
+        leadParticipantId: catId,
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`, {
+      headers: { 'x-cats-route-path': `/chats/${channelId}` },
+    });
+    assert.equal(appShellResponse.status, 200);
+    const appShellPayload = await appShellResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(appShellPayload.chat.selectedChannel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(appShellPayload.chat.selectedChannel.orchestratorLease.sessionId, null);
+    assert.equal(
+      appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.sessionId,
+      'session-1',
+    );
+    assert.equal(appShellPayload.chat.selectedChannel.status, 'active');
+  });
+});
+
+test('re-adding a removed cat to an active chat wakes it again instead of leaving it sleeping', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Rejoin Wake',
+        topic: 'Wake cats when they rejoin a live room.',
+        repoPath: 'C:/repo/cats',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Agent-Rejoin',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const activateResponse = await fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
+      method: 'POST',
+    });
+    assert.equal(activateResponse.status, 200);
+    assert.equal(runtimeClient.createdSessions.length, 1);
+
+    const firstAssignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${catId}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(firstAssignResponse.status, 201);
+    assert.equal(runtimeClient.createdSessions.length, 2);
+
+    const removeResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${catId}`, {
+      method: 'DELETE',
+    });
+    assert.equal(removeResponse.status, 200);
+
+    const reassignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${catId}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(reassignResponse.status, 200);
+    const reassignPayload = await reassignResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 3);
+    assert.equal(reassignPayload.cat.execution.lease.sessionId, 'session-3');
+    assert.equal(reassignPayload.cat.execution.lease.cwd, 'C:/repo/cats');
+    assert.ok(runtimeClient.closedSessions.includes('session-2'));
+  });
+});
+
 test('attachment uploads sanitize names and avoid overwriting earlier files', async () => {
   const runtimeClient = createRuntimeStub();
   const tempWorkingDir = await mkdtemp(path.join(os.tmpdir(), 'cats-attachments-'));

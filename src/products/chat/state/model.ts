@@ -40,6 +40,7 @@ import {
 } from './roomRouting.js';
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
+export type ChatLifecycleState = 'sleeping' | 'waking_up' | 'awake';
 
 export function resolveOrchestratorDisplayName(state: ChatState): string {
   if (state.bossCatId) {
@@ -75,6 +76,19 @@ function createChannelId(): string {
 function normalizeLeadParticipantId(value: string | undefined): string | null {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+}
+
+export function resolveParticipantLifecycleState(
+  lease: ParticipantExecutionLease,
+): ChatLifecycleState {
+  switch (lease.status) {
+    case 'ready':
+      return 'awake';
+    case 'initializing':
+      return 'waking_up';
+    default:
+      return 'sleeping';
+  }
 }
 
 function findChannelIndex(state: ChatState, channelId: string): number {
@@ -236,6 +250,40 @@ export function buildChannelView(
       .map((assignment) =>
         hydrateChannelCat(requireCat(state, assignment.catId), assignment),
       ),
+  };
+}
+
+export function resolveChannelEntryParticipant(
+  state: ChatState,
+  channelOrId: ChatChannelState | string,
+): {
+  participantKind: 'orchestrator' | 'cat';
+  participantId: string;
+  participantName: string;
+  lifecycleState: ChatLifecycleState;
+} {
+  const channel = buildChannelView(state, channelOrId);
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+
+  if (roomRouting.mode === 'direct_cat_chat' && roomRouting.leadParticipantId) {
+    const leadCat = channel.assignedCats.find(
+      (cat) => cat.status === 'active' && cat.catId === roomRouting.leadParticipantId,
+    );
+    if (leadCat) {
+      return {
+        participantKind: 'cat',
+        participantId: leadCat.catId,
+        participantName: leadCat.name,
+        lifecycleState: resolveParticipantLifecycleState(leadCat.execution.lease),
+      };
+    }
+  }
+
+  return {
+    participantKind: 'orchestrator',
+    participantId: 'orchestrator',
+    participantName: resolveOrchestratorDisplayName(state),
+    lifecycleState: resolveParticipantLifecycleState(channel.orchestratorLease),
   };
 }
 
@@ -612,7 +660,17 @@ export function removeCatFromChannel(
 
   assignment.status = 'removed';
   assignment.leftAt = nowIso;
-  assignment.execution.lease.status = 'removed';
+  assignment.execution.lease = {
+    ...assignment.execution.lease,
+    sessionId: null,
+    status: 'removed',
+    cwd: null,
+    lastError: null,
+    provider: null,
+    model: null,
+    startedAt: null,
+    lastUsedAt: null,
+  };
 
   const cat = requireCat(nextState, catId);
   applyMessageToChannel(

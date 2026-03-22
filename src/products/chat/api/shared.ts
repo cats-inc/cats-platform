@@ -19,6 +19,7 @@ import {
   resolveOrchestratorDisplayName,
   setChannelCatLease,
   setChannelChatCwd,
+  setChannelStatus,
 } from '../state/model.js';
 import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
 import { createAppShell } from '../state/shell.js';
@@ -360,9 +361,21 @@ export async function persistCatAssignmentUpdate(
     ?? refreshedChannel.orchestratorLease.cwd
     ?? null
   );
+  const channelIsLive = refreshedChannel.status === 'active'
+    || refreshedChannel.orchestratorLease.sessionId !== null
+    || refreshedChannel.orchestratorLease.status === 'initializing'
+    || refreshedChannel.catAssignments.some((candidate) =>
+      candidate.catId !== input.catId
+      && candidate.status === 'active'
+      && (
+        candidate.execution.lease.sessionId !== null
+        || candidate.execution.lease.status === 'initializing'
+      ),
+    );
   const needsSession = updatedCat
+    && updatedCat.status === 'active'
     && !updatedCat.execution.lease.sessionId
-    && (isNew || targetChanged)
+    && (isNew || targetChanged || channelIsLive)
     && Boolean(spawnCwd);
 
   if (needsSession) {
@@ -388,6 +401,7 @@ export async function persistCatAssignmentUpdate(
       if (!spawnCwd && session.cwd) {
         nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
+      nextState = setChannelStatus(nextState, channelId, 'active', now);
       const cat = requireCat(nextState, input.catId);
       nextState = appendMessage(
         nextState,
@@ -409,6 +423,11 @@ export async function persistCatAssignmentUpdate(
         },
       ).state;
     } catch (sessionError) {
+      const errorMessage = sessionError instanceof Error ? sessionError.message : 'Unknown runtime error';
+      nextState = setChannelCatLease(nextState, channelId, input.catId, {
+        status: 'error',
+        lastError: errorMessage,
+      }, now);
       const cat = requireCat(nextState, input.catId);
       nextState = appendMessage(
         nextState,
@@ -416,9 +435,7 @@ export async function persistCatAssignmentUpdate(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `Failed to start ${cat.name}: ${
-            sessionError instanceof Error ? sessionError.message : 'Unknown runtime error'
-          }`,
+          body: `Failed to start ${cat.name}: ${errorMessage}`,
         },
         now,
         {

@@ -10,6 +10,41 @@ import {
 } from '../chatUtils';
 import { openFolderInExplorer } from '../api';
 
+type ParticipantLifecycleState = 'sleeping' | 'waking_up' | 'awake';
+
+function resolveLifecycleState(status: string | null | undefined): ParticipantLifecycleState {
+  switch (status) {
+    case 'ready':
+      return 'awake';
+    case 'initializing':
+      return 'waking_up';
+    default:
+      return 'sleeping';
+  }
+}
+
+function lifecycleLabel(state: ParticipantLifecycleState): string {
+  switch (state) {
+    case 'awake':
+      return 'Awake';
+    case 'waking_up':
+      return 'Waking up';
+    default:
+      return 'Sleeping';
+  }
+}
+
+function lifecycleClassName(state: ParticipantLifecycleState): string {
+  switch (state) {
+    case 'awake':
+      return 'isAwake';
+    case 'waking_up':
+      return 'isWaking';
+    default:
+      return 'isSleeping';
+  }
+}
+
 export interface ChatViewProps {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
@@ -68,6 +103,44 @@ export function ChatView({
   const leadCat = leadParticipantId
     ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
     : null;
+  const bossLifecycle = resolveLifecycleState(selectedChannel.orchestratorLease.status);
+  const presenceItems = roomMode === 'direct_cat_chat' && leadCat
+    ? [
+        {
+          id: `cat:${leadCat.catId}`,
+          name: leadCat.name,
+          state: resolveLifecycleState(leadCat.execution.lease.status),
+          isEntry: true,
+        },
+        ...activeAssignedCats
+          .filter((cat) => cat.catId !== leadCat.catId)
+          .map((cat) => ({
+            id: `cat:${cat.catId}`,
+            name: cat.name,
+            state: resolveLifecycleState(cat.execution.lease.status),
+            isEntry: false,
+          })),
+      ]
+    : [
+        {
+          id: 'orchestrator',
+          name: bossCatName,
+          state: bossLifecycle,
+          isEntry: true,
+        },
+        ...activeAssignedCats.map((cat) => ({
+          id: `cat:${cat.catId}`,
+          name: cat.name,
+          state: resolveLifecycleState(cat.execution.lease.status),
+          isEntry: false,
+        })),
+      ];
+  const entryPresence = presenceItems[0] ?? {
+    id: 'orchestrator',
+    name: bossCatName,
+    state: bossLifecycle,
+    isEntry: true,
+  };
 
   const modeLabel = roomMode === 'direct_cat_chat'
     ? 'Direct chat'
@@ -101,13 +174,30 @@ export function ChatView({
           )}
         </div>
         <div className="channelTopBarMeta">
-          {roomMode === 'direct_cat_chat' && leadCat ? (
-            <span className="channelTopBarTitle">{leadCat.name}</span>
-          ) : null}
-          <span className="channelModeBadge">{modeLabel}</span>
-          {roomMode === 'boss_chat' && activeAssignedCats.length > 0 && leadCat ? (
-            <span className="channelLeadLabel">Lead: {leadCat.name}</span>
-          ) : null}
+          <div className="channelTopBarHeading">
+            {roomMode === 'direct_cat_chat' && leadCat ? (
+              <span className="channelTopBarTitle">{leadCat.name}</span>
+            ) : null}
+            <span className="channelModeBadge">{modeLabel}</span>
+            {roomMode === 'boss_chat' && activeAssignedCats.length > 0 && leadCat ? (
+              <span className="channelLeadLabel">Lead: {leadCat.name}</span>
+            ) : null}
+            <span className={`channelPresenceBadge ${lifecycleClassName(entryPresence.state)}`}>
+              {entryPresence.name} {lifecycleLabel(entryPresence.state)}
+            </span>
+          </div>
+          <div className="channelPresenceRow">
+            {presenceItems
+              .filter((item) => !item.isEntry)
+              .map((item) => (
+                <span
+                  key={item.id}
+                  className={`channelPresencePill ${lifecycleClassName(item.state)}`}
+                >
+                  {item.name} {lifecycleLabel(item.state)}
+                </span>
+              ))}
+          </div>
         </div>
         <button
           className="addCatButton"

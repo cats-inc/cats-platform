@@ -2497,10 +2497,19 @@ textarea {
 
 .channelTopBarMeta {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   flex: 1;
   min-width: 0;
+}
+
+.channelTopBarHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .channelTopBarTitle {
@@ -2524,6 +2533,43 @@ textarea {
   font-size: 0.72rem;
   color: var(--muted);
   white-space: nowrap;
+}
+
+.channelPresenceRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.channelPresenceBadge,
+.channelPresencePill {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.channelPresenceBadge.isAwake,
+.channelPresencePill.isAwake {
+  background: rgba(77, 182, 172, 0.14);
+  color: #1d6b63;
+  border-color: rgba(77, 182, 172, 0.28);
+}
+
+.channelPresenceBadge.isWaking,
+.channelPresencePill.isWaking {
+  background: rgba(255, 183, 77, 0.16);
+  color: #8a5a12;
+  border-color: rgba(255, 183, 77, 0.34);
+}
+
+.channelPresenceBadge.isSleeping,
+.channelPresencePill.isSleeping {
+  background: rgba(120, 134, 203, 0.12);
+  color: #4d5d9f;
+  border-color: rgba(120, 134, 203, 0.24);
 }
 
 /* ─── Cat Detail Panel (Settings > Cats) ─── */

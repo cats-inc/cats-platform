@@ -5,6 +5,7 @@ import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../
 import {
   activateChannelSessions,
   routeChannelMessage,
+  wakeChannelEntryParticipant,
 } from '../state/runtimeActions.js';
 import {
   buildChannelView,
@@ -141,6 +142,13 @@ async function handleRestUpdatePreferences(
         body.selectedChannelId,
         nowFrom(context.dependencies),
       );
+      const wake = await wakeChannelEntryParticipant(
+        nextState,
+        body.selectedChannelId,
+        context.dependencies.runtimeClient,
+        nowFrom(context.dependencies),
+      );
+      nextState = wake.state;
     }
 
     if (typeof body.showVerboseMessages === 'boolean') {

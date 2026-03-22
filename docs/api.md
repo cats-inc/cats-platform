@@ -177,6 +177,10 @@ PATCH /api/preferences
 
 - `GET` returns `{ preferences: { selectedChannelId } }`.
 - `PATCH` accepts `{ selectedChannelId }` and returns the updated preferences.
+- Updating `selectedChannelId` also wakes the selected room's visible entry
+  participant when that room is currently sleeping:
+  - `boss_chat` and `transport_inbox` wake `Boss Cat`
+  - `direct_cat_chat` wakes the room's lead Cat
 
 ### Providers
 
@@ -831,6 +835,11 @@ GET /api/app-shell
 ```
 
 Returns the current product shell contract.
+
+Renderer clients may send `x-cats-route-path: /chats/{channelId}` when booting a
+persisted room. When that header matches the currently selected room, the server
+may wake the room's visible entry participant before returning the app-shell
+payload so product entry feels present instead of dormant.
 
 Abbreviated example response:
 

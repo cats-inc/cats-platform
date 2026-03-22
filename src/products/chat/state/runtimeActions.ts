@@ -35,6 +35,7 @@ import {
   appendMessage,
   buildChannelView,
   requireChannel,
+  resolveChannelEntryParticipant,
   resolveOrchestratorDisplayName,
   setChannelOrchestratorLease,
   setChannelCatLease,
@@ -226,6 +227,41 @@ function setErroredSession(
     },
     now,
   );
+}
+
+function markTargetWaking(
+  state: ChatState,
+  channelId: string,
+  target: RoutingTarget,
+  now: Date,
+): ChatState {
+  if (target.participantKind === 'cat') {
+    return setChannelCatLease(
+      state,
+      channelId,
+      target.participantId,
+      { status: 'initializing', lastError: null },
+      now,
+    );
+  }
+
+  return setChannelOrchestratorLease(
+    state,
+    channelId,
+    { status: 'initializing', lastError: null },
+    now,
+  );
+}
+
+function ensureChannelMarkedActive(
+  state: ChatState,
+  channelId: string,
+  now: Date,
+): ChatState {
+  const channel = requireChannel(state, channelId);
+  return channel.status === 'active'
+    ? state
+    : setChannelStatus(state, channelId, 'active', now);
 }
 
 function setReadyAfterMessage(
@@ -928,6 +964,7 @@ async function ensureTargetSession(
   let nextState = state;
 
   try {
+    nextState = markTargetWaking(nextState, channelId, target, now);
     if (target.participantKind === 'orchestrator') {
       const session = await runtimeClient.createSession({
         provider: nextState.globalOrchestrator.executionTarget.provider,
@@ -1045,6 +1082,70 @@ async function ensureTargetSession(
     ).state;
     return { state: nextState, target, error: message };
   }
+}
+
+export async function wakeChannelEntryParticipant(
+  state: ChatState,
+  channelId: string,
+  runtimeClient: RuntimeClient,
+  now: Date = new Date(),
+): Promise<{
+  state: ChatState;
+  result: ChannelActivationResult | null;
+}> {
+  let nextState = state;
+  const channel = buildChannelView(nextState, channelId);
+  const target = resolveDefaultTarget(nextState, channel);
+  const entryParticipant = resolveChannelEntryParticipant(nextState, channelId);
+
+  if (entryParticipant.lifecycleState === 'awake' || entryParticipant.lifecycleState === 'waking_up') {
+    nextState = ensureChannelMarkedActive(nextState, channelId, now);
+    return {
+      state: nextState,
+      result: {
+        targetKind: target.participantKind,
+        targetId: target.participantId,
+        targetName: target.participantName,
+        status: 'already_started',
+        sessionId: target.sessionId,
+      },
+    };
+  }
+
+  const ensured = await ensureTargetSession(
+    nextState,
+    channelId,
+    target,
+    runtimeClient,
+    now,
+  );
+  nextState = ensured.state;
+
+  if (ensured.error) {
+    return {
+      state: nextState,
+      result: {
+        targetKind: target.participantKind,
+        targetId: target.participantId,
+        targetName: target.participantName,
+        status: 'error',
+        sessionId: null,
+        error: ensured.error,
+      },
+    };
+  }
+
+  nextState = ensureChannelMarkedActive(nextState, channelId, now);
+  return {
+    state: nextState,
+    result: {
+      targetKind: ensured.target.participantKind,
+      targetId: ensured.target.participantId,
+      targetName: ensured.target.participantName,
+      status: 'started',
+      sessionId: ensured.target.sessionId,
+    },
+  };
 }
 
 async function executeDispatch(
@@ -1811,6 +1912,7 @@ export async function routeChannelMessage(
         continue;
       }
 
+      nextState = ensureChannelMarkedActive(nextState, channelId, now);
       readyRequests.push({
         ...request,
         target: ensured.target,
