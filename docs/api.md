@@ -241,6 +241,10 @@ POST /api/transports/telegram/webhook/:bindingId
   - requires JSON payloads
   - optionally enforces `x-telegram-bot-api-secret-token`
   - rejects oversized bodies using the transport-owned byte limit
+  - returns 4xx transport errors for malformed payloads, binding lookup
+    failures, invalid secrets, or oversized bodies
+  - returns 500 transport errors such as `telegram_room_dispatch_failed` when
+    an accepted Telegram turn cannot be completed into an internal room turn
   - returns transport receipts with normalized message summaries
   - persists dedupe and inbox-to-conversation mapping state outside chat core
   - ignores unsupported, bot-authored, or non-private updates with explicit
@@ -258,7 +262,9 @@ and supports transport-level `send`, `reply`, `edit`, and `delete` operations.
 When `CATS_TELEGRAM_BOT_TOKEN` is configured, the default server wiring enables
 the Telegram Bot API delivery client; otherwise the seam stays visible in
 status/diagnostics as `not_configured` and delivery attempts fail with
-`delivery_client_not_configured`.
+`delivery_client_not_configured`. If an accepted webhook fails before the room
+turn finishes, diagnostics record a failed delivery receipt with
+`runtime_dispatch_failed`.
 
 ### Orchestrator
 

@@ -2,6 +2,12 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../../shared/app-shell';
+import {
+  createSettingsCatsTelegramAutoLoader,
+  createSettingsCatsTelegramScopeKey,
+  fetchSettingsCatsTelegramSnapshot,
+  SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
+} from '../../settingsCatsTelegramDiagnostics';
 import { executionLabel, emptyCatForm, type CatFormState } from '../chatUtils';
 import {
   createGlobalCat,
@@ -59,6 +65,11 @@ export function SettingsCats({
   onBusy,
 }: SettingsCatsProps) {
   const navigate = useNavigate();
+  const botBindings = payload.chat.botBindings ?? [];
+  const telegramScopeKey = createSettingsCatsTelegramScopeKey({
+    bossCatId: payload.chat.bossCatId,
+    botBindings,
+  });
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -70,6 +81,10 @@ export function SettingsCats({
   const [telegramDiagnostics, setTelegramDiagnostics] = useState<TelegramTransportDiagnostics | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(false);
   const [telegramError, setTelegramError] = useState('');
+  const [telegramAutoLoader] = useState(() => createSettingsCatsTelegramAutoLoader({
+    fetchStatus: fetchTelegramTransportStatus,
+    fetchDiagnostics: fetchTelegramTransportDiagnostics,
+  }));
 
   useEffect(() => {
     if (!expandedCatId) return;
@@ -83,35 +98,26 @@ export function SettingsCats({
   }, [expandedCatId]);
 
   useEffect(() => {
-    let cancelled = false;
-    setTelegramLoading(true);
-    setTelegramError('');
-    Promise.all([
-      fetchTelegramTransportStatus(),
-      fetchTelegramTransportDiagnostics(),
-    ])
-      .then(([status, diagnostics]) => {
-        if (cancelled) {
-          return;
-        }
-        setTelegramStatus(status);
-        setTelegramDiagnostics(diagnostics);
-      })
-      .catch((error) => {
-        if (cancelled) {
-          return;
-        }
+    const loadRun = telegramAutoLoader.loadForScope(telegramScopeKey, {
+      onStart() {
+        setTelegramLoading(true);
+        setTelegramError('');
+      },
+      onSuccess(snapshot) {
+        setTelegramStatus(snapshot.status);
+        setTelegramDiagnostics(snapshot.diagnostics);
+      },
+      onError(message) {
         setTelegramStatus(null);
         setTelegramDiagnostics(null);
-        setTelegramError(error instanceof Error ? error.message : 'Failed to load Telegram diagnostics.');
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setTelegramLoading(false);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [payload.chat.botBindings]);
+        setTelegramError(message);
+      },
+      onFinish() {
+        setTelegramLoading(false);
+      },
+    });
+    return loadRun.cancel;
+  }, [telegramAutoLoader, telegramScopeKey]);
 
   async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -242,22 +248,22 @@ export function SettingsCats({
     setTelegramLoading(true);
     setTelegramError('');
     try {
-      const [status, diagnostics] = await Promise.all([
-        fetchTelegramTransportStatus(),
-        fetchTelegramTransportDiagnostics(),
-      ]);
-      setTelegramStatus(status);
-      setTelegramDiagnostics(diagnostics);
+      const snapshot = await fetchSettingsCatsTelegramSnapshot({
+        fetchStatus: fetchTelegramTransportStatus,
+        fetchDiagnostics: fetchTelegramTransportDiagnostics,
+      });
+      setTelegramStatus(snapshot.status);
+      setTelegramDiagnostics(snapshot.diagnostics);
     } catch (error) {
       setTelegramStatus(null);
       setTelegramDiagnostics(null);
-      setTelegramError(error instanceof Error ? error.message : 'Failed to load Telegram diagnostics.');
+      setTelegramError(
+        error instanceof Error ? error.message : SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
+      );
     } finally {
       setTelegramLoading(false);
     }
   }
-
-  const botBindings = payload.chat.botBindings ?? [];
 
   return (
     <div className="settingsShell">

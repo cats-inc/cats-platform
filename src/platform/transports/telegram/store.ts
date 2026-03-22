@@ -92,6 +92,7 @@ const DELIVERY_STATUSES = new Set<TelegramDeliveryReceipt['status']>([
 const DELIVERY_REASONS = new Set<NonNullable<TelegramDeliveryReceipt['reason']>>([
   'telegram_not_bound_to_boss_cat',
   'delivery_client_not_configured',
+  'runtime_dispatch_failed',
   'conversation_not_mapped',
   'chat_id_required',
   'message_id_required',

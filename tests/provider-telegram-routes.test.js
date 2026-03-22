@@ -103,9 +103,7 @@ function createRuntimeStub() {
     },
     async sendMessage(_sessionId, content) {
       return {
-        content: content.includes('rewrite')
-          ? 'Boss Cat relay reply'
-          : 'Boss Cat relay reply',
+        content: 'Boss Cat relay reply',
         inputTokens: 42,
         outputTokens: 24,
         tokensUsed: 66,
@@ -115,6 +113,25 @@ function createRuntimeStub() {
       throw new Error('not used');
     },
   };
+}
+
+class FailingWriteChatStore extends MemoryChatStore {
+  failOnRelativeWrite = null;
+  relativeWriteCount = 0;
+
+  enableFailureOnRelativeWrite(relativeWrite) {
+    this.failOnRelativeWrite = relativeWrite;
+    this.relativeWriteCount = 0;
+  }
+
+  async write(state) {
+    this.relativeWriteCount += 1;
+    if (this.failOnRelativeWrite === this.relativeWriteCount) {
+      this.failOnRelativeWrite = null;
+      throw new Error('Simulated chat store write failure');
+    }
+    return super.write(state);
+  }
 }
 
 async function withServer(
@@ -498,6 +515,60 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
         },
       }),
     },
+  );
+});
+
+test('telegram webhook returns 500 and records diagnostics when room persistence fails mid-bridge', async () => {
+  const chatStore = new FailingWriteChatStore();
+
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      await configureTelegramBossCat(baseUrl);
+      chatStore.enableFailureOnRelativeWrite(2);
+
+      const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          update_id: 101,
+          message: {
+            message_id: 88,
+            text: 'hello from telegram',
+            chat: { id: 12345, type: 'private' },
+            from: { id: 1, first_name: 'Kenny' },
+          },
+        }),
+      });
+      assert.equal(webhookResponse.status, 500);
+
+      const errorPayload = await webhookResponse.json();
+      assert.equal(errorPayload.error.code, 'telegram_room_dispatch_failed');
+      assert.match(errorPayload.error.message, /could not process the room turn/i);
+
+      const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+      assert.equal(diagnosticsResponse.status, 200);
+      const diagnosticsPayload = await diagnosticsResponse.json();
+      assert.equal(diagnosticsPayload.telegram.ingress.acceptedUpdates, 1);
+      assert.equal(diagnosticsPayload.telegram.delivery.failedCount, 1);
+      assert.equal(
+        diagnosticsPayload.telegram.delivery.lastReceipt.reason,
+        'runtime_dispatch_failed',
+      );
+
+      const roomId = diagnosticsPayload.telegram.bindings[0].linkedRoomId;
+      assert.ok(roomId);
+
+      const messagesResponse = await fetch(`${baseUrl}/api/channels/${roomId}/messages`);
+      assert.equal(messagesResponse.status, 200);
+      const messagesPayload = await messagesResponse.json();
+      assert.ok(messagesPayload.messages.some((message) =>
+        message.senderKind === 'user' && message.body === 'hello from telegram'));
+      assert.ok(messagesPayload.messages.some((message) =>
+        message.senderKind === 'system'
+        && message.body.includes('Cats Chat could not process the room turn')));
+    },
+    chatStore,
   );
 });
 

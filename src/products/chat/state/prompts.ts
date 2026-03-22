@@ -120,6 +120,12 @@ function transportInstruction(
   ].join(' ');
 }
 
+function joinPromptSections(sections: Array<string | null | undefined>): string {
+  return sections
+    .filter((section): section is string => typeof section === 'string' && section.length > 0)
+    .join('\n\n');
+}
+
 export function buildOrchestratorPrompt(
   channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,
@@ -134,7 +140,7 @@ export function buildOrchestratorPrompt(
     : 'Latest routed handoff';
   const transportGuidance = transportInstruction(routingContext?.transport);
 
-  return [
+  return joinPromptSections([
     `You are ${orchestratorName}, the visible Boss Cat and chat coordinator for Cats Inc.`,
     'The system layer has already routed this turn to you. Do not reinterpret target selection.',
     routingContext?.reason ?? 'System routing selected you as the current turn owner.',
@@ -158,7 +164,7 @@ export function buildOrchestratorPrompt(
     `${sourceLabel}:\n${sourceMessage.body}`,
     'Respond with the next useful contribution for the room.',
     'If another teammate should continue after you, mention them explicitly with @Name. Otherwise, answer without a handoff mention.',
-  ].join('\n\n');
+  ]);
 }
 
 export function buildOrchestratorRewritePrompt(
@@ -167,7 +173,7 @@ export function buildOrchestratorRewritePrompt(
   orchestratorName: string,
   draft: string,
 ): string {
-  return [
+  return joinPromptSections([
     `You are ${orchestratorName}, rewriting your previous draft into the final reply for the user.`,
     'Rewrite the draft as a direct user-facing assistant response.',
     `Do not address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
@@ -176,7 +182,7 @@ export function buildOrchestratorRewritePrompt(
     languageInstruction(channel.responseLanguage),
     `Latest user message:\n${userMessage.body}`,
     `Draft to rewrite:\n${draft}`,
-  ].join('\n\n');
+  ]);
 }
 
 export function buildCatPrompt(
@@ -193,7 +199,7 @@ export function buildCatPrompt(
     : 'Latest routed handoff';
   const transportGuidance = transportInstruction(routingContext?.transport);
 
-  return [
+  return joinPromptSections([
     `You are ${cat.name}, a chat participant inside the Chat module for Cats Inc.`,
     `Your provider is ${cat.execution.target.provider}${cat.execution.target.model ? ` and model ${cat.execution.target.model}` : ''}.`,
     `Your roles in this chat: ${roleLabel}.`,
@@ -214,5 +220,5 @@ export function buildCatPrompt(
     `${sourceLabel}:\n${sourceMessage.body}`,
     'Reply with the work product or the next useful observation.',
     'If another teammate should continue after you, mention them explicitly with @Name. Otherwise, answer without a handoff mention.',
-  ].join('\n\n');
+  ]);
 }

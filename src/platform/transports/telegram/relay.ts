@@ -23,6 +23,11 @@ import {
   normalizeTelegramMessageSummary,
 } from './normalization.js';
 import { InMemoryTelegramRelayStore, type TelegramRelayStore } from './store.js';
+import {
+  pickTelegramMessage,
+  readTelegramString,
+  resolveActiveTelegramBinding,
+} from './utils.js';
 
 export interface TelegramWebhookIngressConfig {
   secretToken: string | null;
@@ -53,6 +58,7 @@ export interface TelegramRelay {
     request: TelegramDeliveryRequest;
     context: TelegramRelayContext;
   }): Promise<TelegramDeliveryReceipt>;
+  recordDeliveryReceipt(receipt: TelegramDeliveryReceipt): void;
 }
 
 interface TelegramRelayOptions {
@@ -69,23 +75,6 @@ interface TelegramRelayOptions {
 
 const DEFAULT_MAX_BODY_BYTES = 256 * 1024;
 const SUPPORTED_DELIVERY_OPERATIONS = ['send', 'reply', 'edit', 'delete'] as const;
-
-function pickMessage(
-  update: TelegramWebhookUpdate,
-): { message: TelegramMessagePayload | null; isEdited: boolean } {
-  if (update.message) {
-    return { message: update.message, isEdited: false };
-  }
-  if (update.edited_message) {
-    return { message: update.edited_message, isEdited: true };
-  }
-  return { message: null, isEdited: false };
-}
-
-function resolveActiveBinding(context: TelegramRelayContext): BotBindingRecord | null {
-  const candidate = context.selectedBotBinding ?? context.defaultBotBinding;
-  return candidate?.status === 'active' ? candidate : null;
-}
 
 function hasActiveDefaultBinding(context: TelegramRelayContext): boolean {
   return context.defaultBotBinding?.status === 'active';
@@ -115,10 +104,6 @@ function buildStatusNote(input: {
     : 'Telegram ingress and delivery are both pinned to the active Cat binding.';
 }
 
-function readString(value: string | null | undefined): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
-}
-
 function resolveStoredBinding(
   store: TelegramRelayStore,
   input: {
@@ -127,13 +112,13 @@ function resolveStoredBinding(
     bindingId?: string | null;
   },
 ): TelegramConversationBinding | null {
-  const bindingId = readString(input.bindingId);
-  const conversationId = readString(input.conversationId);
+  const bindingId = readTelegramString(input.bindingId);
+  const conversationId = readTelegramString(input.conversationId);
   if (conversationId) {
     return store.getBindingByConversationId(conversationId);
   }
 
-  const chatId = readString(input.chatId);
+  const chatId = readTelegramString(input.chatId);
   if (chatId) {
     return store.getBinding(chatId, bindingId);
   }
@@ -147,7 +132,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
   const conversationMapper = options.conversationMapper ?? createTelegramConversationMapper(store);
   const webhookPath = options.webhookPath ?? '/api/transports/telegram/webhook';
   const diagnosticsPath = options.diagnosticsPath ?? '/api/transports/telegram/diagnostics';
-  const webhookSecretToken = readString(options.webhookSecretToken);
+  const webhookSecretToken = readTelegramString(options.webhookSecretToken);
   const maxBodyBytes = Number.isFinite(options.maxBodyBytes)
     ? Math.max(1024, Number(options.maxBodyBytes))
     : DEFAULT_MAX_BODY_BYTES;
@@ -325,7 +310,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         ...binding,
         linkedRoomId: input.roomId,
         roomRoutingStatus: 'linked_room',
-        updatedAt: readString(input.linkedAt) ?? now().toISOString(),
+        updatedAt: readTelegramString(input.linkedAt) ?? now().toISOString(),
       };
       store.upsertBinding(nextBinding);
       return nextBinding;
@@ -340,11 +325,11 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     }): TelegramWebhookReceipt {
       const acceptedAt = now().toISOString();
       const updateId = typeof update.update_id === 'number' ? update.update_id : null;
-      const pickedMessage = pickMessage(update);
+      const pickedMessage = pickTelegramMessage(update);
       const message = pickedMessage.message;
       const chatId = message?.chat?.id != null ? String(message.chat.id) : null;
       const messageId = typeof message?.message_id === 'number' ? String(message.message_id) : null;
-      const activeBinding = resolveActiveBinding(context);
+      const activeBinding = resolveActiveTelegramBinding(context);
       const scopedBindingId = context.selectedBotBinding?.id ?? null;
       const scopedBotName = context.selectedBotBinding?.botName ?? activeBinding?.botName ?? null;
 
@@ -451,8 +436,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         bindingId: scopedBindingId,
         botName: scopedBotName,
         chatType: message.chat?.type ?? 'private',
-        chatTitle: readString(message.chat?.title),
-        chatUsername: readString(message.chat?.username),
+        chatTitle: readTelegramString(message.chat?.title),
+        chatUsername: readTelegramString(message.chat?.username),
         messageId,
         messageSummary: normalizeTelegramMessageSummary(message, {
           isEdited: pickedMessage.isEdited,
@@ -497,10 +482,10 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         botName: null as string | null,
         bossCatId: context.bossCatId,
         bossCatName: context.bossCatName,
-        replyToMessageId: readString(request.replyToMessageId),
+        replyToMessageId: readTelegramString(request.replyToMessageId),
         textPreview: normalizeTelegramDeliveryTextPreview(request.text),
       };
-      const activeBinding = resolveActiveBinding(context);
+      const activeBinding = resolveActiveTelegramBinding(context);
       const scopedBindingId = context.selectedBotBinding?.id ?? null;
       const scopedBotName = context.selectedBotBinding?.botName ?? activeBinding?.botName ?? null;
 
@@ -508,9 +493,9 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
           status: 'failed',
-          chatId: readString(request.chatId),
-          conversationId: readString(request.conversationId),
-          messageId: readString(request.messageId),
+          chatId: readTelegramString(request.chatId),
+          conversationId: readTelegramString(request.conversationId),
+          messageId: readTelegramString(request.messageId),
           reason: 'telegram_not_bound_to_boss_cat',
           errorMessage: null,
         };
@@ -525,9 +510,9 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
           status: 'failed',
-          chatId: readString(request.chatId),
-          conversationId: readString(request.conversationId),
-          messageId: readString(request.messageId),
+          chatId: readTelegramString(request.chatId),
+          conversationId: readTelegramString(request.conversationId),
+          messageId: readTelegramString(request.messageId),
           reason: 'text_required',
           errorMessage: null,
         };
@@ -539,9 +524,9 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
           status: 'failed',
-          chatId: readString(request.chatId),
-          conversationId: readString(request.conversationId),
-          messageId: readString(request.messageId),
+          chatId: readTelegramString(request.chatId),
+          conversationId: readTelegramString(request.conversationId),
+          messageId: readTelegramString(request.messageId),
           reason: 'message_id_required',
           errorMessage: null,
         };
@@ -549,12 +534,15 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         return receipt;
       }
 
-      if ((request.operation === 'edit' || request.operation === 'delete') && !readString(request.messageId)) {
+      if (
+        (request.operation === 'edit' || request.operation === 'delete')
+        && !readTelegramString(request.messageId)
+      ) {
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
           status: 'failed',
-          chatId: readString(request.chatId),
-          conversationId: readString(request.conversationId),
+          chatId: readTelegramString(request.chatId),
+          conversationId: readTelegramString(request.conversationId),
           messageId: null,
           reason: 'message_id_required',
           errorMessage: null,
@@ -592,9 +580,9 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           bindingId: deliveryBinding?.id ?? null,
           botName: deliveryBinding?.botName ?? null,
           status: 'failed',
-          chatId: readString(request.chatId),
-          conversationId: binding?.conversationId ?? readString(request.conversationId),
-          messageId: readString(request.messageId),
+          chatId: readTelegramString(request.chatId),
+          conversationId: binding?.conversationId ?? readTelegramString(request.conversationId),
+          messageId: readTelegramString(request.messageId),
           reason: 'delivery_client_not_configured',
           errorMessage: null,
         };
@@ -602,7 +590,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         return receipt;
       }
 
-      const chatId = binding?.telegramChatId ?? readString(request.chatId);
+      const chatId = binding?.telegramChatId ?? readTelegramString(request.chatId);
       if (!chatId) {
         const receipt: TelegramDeliveryReceipt = {
           ...baseReceipt,
@@ -610,8 +598,8 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           botName: deliveryBinding?.botName ?? null,
           status: 'failed',
           chatId: null,
-          conversationId: binding?.conversationId ?? readString(request.conversationId),
-          messageId: readString(request.messageId),
+          conversationId: binding?.conversationId ?? readTelegramString(request.conversationId),
+          messageId: readTelegramString(request.messageId),
           reason: request.conversationId ? 'conversation_not_mapped' : 'chat_id_required',
           errorMessage: null,
         };
@@ -638,7 +626,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           status: result.ok ? status : 'failed',
           chatId,
           conversationId,
-          messageId: result.messageId ?? readString(request.messageId),
+          messageId: result.messageId ?? readTelegramString(request.messageId),
           reason: result.ok ? undefined : 'telegram_api_error',
           errorMessage: result.ok ? null : result.description ?? null,
         };
@@ -684,13 +672,17 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
           status: 'failed',
           chatId,
           conversationId,
-          messageId: readString(request.messageId),
+          messageId: readTelegramString(request.messageId),
           reason: 'telegram_api_error',
           errorMessage: error instanceof Error ? error.message : 'Telegram delivery failed',
         };
         store.recordDeliveryReceipt(receipt);
         return receipt;
       }
+    },
+
+    recordDeliveryReceipt(receipt: TelegramDeliveryReceipt): void {
+      store.recordDeliveryReceipt(receipt);
     },
   };
 }

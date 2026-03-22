@@ -3,15 +3,21 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createCatActorId } from '../../core/model.js';
 import type { BotBindingRecord } from '../../core/types.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
-import { bridgeTelegramWebhookToRoom } from '../../platform/transports/telegram/bridge.js';
+import {
+  bridgeTelegramWebhookToRoom,
+  TelegramWebhookBridgeError,
+} from '../../platform/transports/telegram/bridge.js';
 import type { TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import type { ChatState } from '../../shared/app-shell.js';
 
-interface TelegramRouteDependencies {
+interface TelegramQueryDependencies {
   chatStore: ChatStore;
   telegramRelay: TelegramRelay;
+}
+
+interface TelegramWebhookDependencies extends TelegramQueryDependencies {
   runtimeClient: RuntimeClient;
   now?: () => Date;
 }
@@ -169,7 +175,7 @@ function validateTelegramWebhookSecret(
 
 export async function handleTelegramStatus(
   response: ServerResponse,
-  dependencies: TelegramRouteDependencies,
+  dependencies: TelegramQueryDependencies,
 ): Promise<void> {
   const context = await readTelegramContext(dependencies.chatStore);
   sendJson(response, 200, {
@@ -179,7 +185,7 @@ export async function handleTelegramStatus(
 
 export async function handleTelegramDiagnostics(
   response: ServerResponse,
-  dependencies: TelegramRouteDependencies,
+  dependencies: TelegramQueryDependencies,
 ): Promise<void> {
   const context = await readTelegramContext(dependencies.chatStore);
   sendJson(response, 200, {
@@ -190,7 +196,7 @@ export async function handleTelegramDiagnostics(
 export async function handleTelegramWebhook(
   request: IncomingMessage,
   response: ServerResponse,
-  dependencies: TelegramRouteDependencies,
+  dependencies: TelegramWebhookDependencies,
   selectedBindingId?: string,
 ): Promise<void> {
   try {
@@ -230,12 +236,16 @@ export async function handleTelegramWebhook(
       sendRestError(response, error.statusCode, error.code, error.message);
       return;
     }
+    if (error instanceof TelegramWebhookBridgeError) {
+      sendRestError(response, 500, error.code, error.message);
+      return;
+    }
 
     sendRestError(
       response,
-      400,
-      'invalid_telegram_update',
-      error instanceof Error ? error.message : 'Invalid Telegram update',
+      500,
+      'telegram_webhook_processing_failed',
+      error instanceof Error ? error.message : 'Telegram webhook processing failed',
     );
   }
 }
