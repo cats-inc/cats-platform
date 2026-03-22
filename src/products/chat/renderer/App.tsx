@@ -677,13 +677,10 @@ export default function App() {
     && readySelectedChannel?.id === routeChannelId
     ? readySelectedChannel
     : null;
-  const selectedChannelRoomRouting = (selectedChannel as {
-    roomRouting?: { mode?: string | null; leadParticipantId?: string | null };
-  } | null)?.roomRouting;
   const activeMyCatId = showingNewChatDraft
     ? draftLeadCatId
-    : selectedChannelRoomRouting?.mode === 'direct_cat_chat'
-      ? selectedChannelRoomRouting.leadParticipantId ?? null
+    : selectedChannel?.roomRouting?.mode === 'direct_cat_chat'
+      ? selectedChannel.roomRouting.leadParticipantId ?? null
       : null;
 
   const activeAssignedCats =

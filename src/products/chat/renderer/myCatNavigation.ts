@@ -9,10 +9,9 @@ export function resolveMyCatNavigationTarget(
   channels: ChatChannelSummary[],
   catId: string,
 ): MyCatNavigationTarget {
-  const existing = channels.find((channel) => {
-    const summary = channel as { leadCatId?: string | null; roomMode?: string | null };
-    return summary.leadCatId === catId && summary.roomMode === 'direct_cat_chat';
-  });
+  const existing = channels.find((channel) =>
+    channel.leadCatId === catId && channel.roomMode === 'direct_cat_chat',
+  );
 
   if (existing) {
     return { kind: 'existing_channel', channelId: existing.id };

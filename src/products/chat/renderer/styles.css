@@ -2399,7 +2399,7 @@ textarea {
   padding: 2px 6px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.64);
+  background: var(--sidebar-hover-bg);
 }
 
 /* ─── Recents View Mode Toggle ─── */

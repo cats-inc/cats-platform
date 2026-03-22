@@ -72,6 +72,7 @@ function createChannel(
   return {
     id: overrides.id,
     title: overrides.title,
+    topic: '',
     status: 'active',
     unreadCount: 0,
     catCount: 1,
@@ -79,16 +80,7 @@ function createChannel(
     repoPath: null,
     chatCwd: null,
     lastMessageAt: null,
-    messageCount: 0,
-    createdAt: '2026-03-23T00:00:00.000Z',
-    updatedAt: '2026-03-23T00:00:00.000Z',
-    archivedAt: null,
-    sessionStatus: 'ready',
-    orchestratorLease: null,
-    draftMode: false,
-    topic: null,
-    formationMode: 'manual',
-    lastMessagePreview: null,
+    lastActivatedAt: null,
     ...overrides,
   };
 }
