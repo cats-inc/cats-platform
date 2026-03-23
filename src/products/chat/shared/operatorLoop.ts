@@ -3,7 +3,10 @@ import type {
   CoreActivityRecord,
   CoreApprovalDecisionAction,
   CoreApprovalQueueItem,
+  CoreBudgetAlertLevel,
+  CoreBudgetAlertSource,
   CoreCheckpointRecord,
+  CoreDeliveryMode,
   CoreDeliveryGate,
   CoreEffectivePolicySource,
   CoreOrchestrationOutcomeRecord,
@@ -56,12 +59,12 @@ export interface ChatWorkflowBranchView {
 }
 
 export interface ChatEffectivePolicyView {
-  deliveryMode: string | null;
+  deliveryMode: CoreDeliveryMode | null;
   deliveryGates: CoreDeliveryGate[];
   deliverySource: CoreEffectivePolicySource | null;
   deliveryRationale: string | null;
-  budgetAlertLevel: string | null;
-  budgetAlertSource: string | null;
+  budgetAlertLevel: CoreBudgetAlertLevel | null;
+  budgetAlertSource: CoreBudgetAlertSource | null;
   budgetRationale: string | null;
 }
 
@@ -115,6 +118,45 @@ export interface ChatOperatorView {
   effectivePolicy: ChatEffectivePolicyView | null;
   incidentActions: ChatOperatorActionView[];
 }
+
+const CORE_DELIVERY_MODES = [
+  'artifact_only',
+  'commit_only',
+  'push_branch',
+  'pr_with_checks',
+  'deploy_preview',
+] as const satisfies readonly CoreDeliveryMode[];
+
+const CORE_DELIVERY_GATES = [
+  'manual_review_required',
+  'owner_approval_required',
+  'publish_artifact_required',
+] as const satisfies readonly CoreDeliveryGate[];
+
+const CORE_EFFECTIVE_POLICY_SOURCES = [
+  'chat_default',
+  'task_override',
+  'room_tightening',
+  'approved_exception',
+] as const satisfies readonly CoreEffectivePolicySource[];
+
+const CORE_BUDGET_ALERT_LEVELS = [
+  'normal',
+  'warning',
+  'blocked',
+] as const satisfies readonly CoreBudgetAlertLevel[];
+
+const CORE_BUDGET_ALERT_SOURCES = [
+  'runtime_usage',
+  'rate_limit_incident',
+  'guardrail_state',
+] as const satisfies readonly CoreBudgetAlertSource[];
+
+const CORE_DELIVERY_MODE_SET = new Set<string>(CORE_DELIVERY_MODES);
+const CORE_DELIVERY_GATE_SET = new Set<string>(CORE_DELIVERY_GATES);
+const CORE_EFFECTIVE_POLICY_SOURCE_SET = new Set<string>(CORE_EFFECTIVE_POLICY_SOURCES);
+const CORE_BUDGET_ALERT_LEVEL_SET = new Set<string>(CORE_BUDGET_ALERT_LEVELS);
+const CORE_BUDGET_ALERT_SOURCE_SET = new Set<string>(CORE_BUDGET_ALERT_SOURCES);
 
 function compareIsoDesc(left: string, right: string): number {
   return right.localeCompare(left);
@@ -175,6 +217,23 @@ function readMetadataStringArray(
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     : [];
+}
+
+function readMetadataEnum<T extends string>(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+  allowed: ReadonlySet<string>,
+): T | null {
+  const value = readMetadataString(metadata, key);
+  return value && allowed.has(value) ? value as T : null;
+}
+
+function readMetadataEnumArray<T extends string>(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+  allowed: ReadonlySet<string>,
+): T[] {
+  return readMetadataStringArray(metadata, key).filter((value): value is T => allowed.has(value));
 }
 
 function readMetadataRecordArray(
@@ -431,13 +490,32 @@ function buildEffectivePolicyView(task: CoreTaskRecord | null): ChatEffectivePol
 
   const metadata = readMetadataRecord(task.metadata);
   return {
-    deliveryMode: readMetadataString(metadata, 'effectiveDeliveryMode'),
-    deliveryGates: readMetadataStringArray(metadata, 'effectiveDeliveryGates') as CoreDeliveryGate[],
-    deliverySource:
-      readMetadataString(metadata, 'effectiveDeliverySource') as CoreEffectivePolicySource | null,
+    deliveryMode: readMetadataEnum<CoreDeliveryMode>(
+      metadata,
+      'effectiveDeliveryMode',
+      CORE_DELIVERY_MODE_SET,
+    ),
+    deliveryGates: readMetadataEnumArray<CoreDeliveryGate>(
+      metadata,
+      'effectiveDeliveryGates',
+      CORE_DELIVERY_GATE_SET,
+    ),
+    deliverySource: readMetadataEnum<CoreEffectivePolicySource>(
+      metadata,
+      'effectiveDeliverySource',
+      CORE_EFFECTIVE_POLICY_SOURCE_SET,
+    ),
     deliveryRationale: readMetadataString(metadata, 'effectiveDeliveryRationale'),
-    budgetAlertLevel: readMetadataString(metadata, 'effectiveBudgetAlertLevel'),
-    budgetAlertSource: readMetadataString(metadata, 'effectiveBudgetAlertSource'),
+    budgetAlertLevel: readMetadataEnum<CoreBudgetAlertLevel>(
+      metadata,
+      'effectiveBudgetAlertLevel',
+      CORE_BUDGET_ALERT_LEVEL_SET,
+    ),
+    budgetAlertSource: readMetadataEnum<CoreBudgetAlertSource>(
+      metadata,
+      'effectiveBudgetAlertSource',
+      CORE_BUDGET_ALERT_SOURCE_SET,
+    ),
     budgetRationale: readMetadataString(metadata, 'effectiveBudgetRationale'),
   };
 }

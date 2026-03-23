@@ -201,3 +201,40 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   assert.equal(inspector.branchStates[0].participantName, 'Agent-1');
   assert.equal(inspector.incidentActions[0].kind, 'retry');
 });
+
+test('buildChatOperatorView filters invalid effective policy metadata enum values', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-channel-room-invalid-policy',
+      title: 'Invalid policy metadata',
+      conversationId: 'conversation-channel-room-invalid-policy',
+      createdAt: '2026-03-23T02:00:00.000Z',
+      metadata: {
+        effectiveDeliveryMode: 'bogus_mode',
+        effectiveDeliveryGates: ['owner_approval_required', 'bogus_gate'],
+        effectiveDeliverySource: 'bogus_source',
+        effectiveBudgetAlertLevel: 'bogus_level',
+        effectiveBudgetAlertSource: 'bogus_budget_source',
+      },
+    },
+    new Date('2026-03-23T02:00:00.000Z'),
+  ).core;
+
+  const view = buildChatOperatorView(
+    {
+      core,
+      approvals: buildApprovalQueue(core),
+    },
+    'room-invalid-policy',
+  );
+
+  assert.ok(view);
+  assert.equal(view.effectivePolicy?.deliveryMode, null);
+  assert.deepEqual(view.effectivePolicy?.deliveryGates, ['owner_approval_required']);
+  assert.equal(view.effectivePolicy?.deliverySource, null);
+  assert.equal(view.effectivePolicy?.budgetAlertLevel, null);
+  assert.equal(view.effectivePolicy?.budgetAlertSource, null);
+});

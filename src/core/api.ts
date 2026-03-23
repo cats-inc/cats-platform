@@ -949,11 +949,12 @@ function mergeOperatorActionMetadata(
     operatorLastActionBy: actorId,
     operatorLastActionNotes: notes,
   };
+  delete nextMetadata.operatorAcknowledgeNotes;
 
   if (action === 'acknowledge') {
     nextMetadata.operatorAcknowledgedAt = nowIso;
     nextMetadata.operatorAcknowledgedBy = actorId;
-    nextMetadata.operatorAcknowledgeNotes = notes;
+    nextMetadata.operatorAcknowledgedNotes = notes;
   }
 
   if (action === 'retry') {

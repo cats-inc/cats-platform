@@ -512,6 +512,68 @@ test('core operator actions annotate blocked runs and append operator activity r
   }, chatStore);
 });
 
+test('core acknowledge actions use acknowledged metadata keys and append operator activity records', async () => {
+  const chatStore = new MemoryChatStore();
+  const fixtures = createSharedCoreFixtureBundle();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ task: fixtures.task }),
+    });
+    await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          ...fixtures.run,
+          status: 'blocked',
+        },
+      }),
+    });
+
+    const operatorActionResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'acknowledge',
+        actorId: 'actor-owner',
+        taskId: fixtures.task.id,
+        runId: fixtures.run.id,
+        notes: 'Owner has seen the guardrail.',
+      }),
+    });
+    assert.equal(operatorActionResponse.status, 200);
+
+    const stateResponse = await fetch(`${baseUrl}/api/core`);
+    const statePayload = await stateResponse.json();
+    const run = statePayload.runs.find((candidate) => candidate.id === fixtures.run.id);
+    const activity = statePayload.activities.find(
+      (candidate) =>
+        candidate.kind === 'operator_action'
+        && candidate.runId === fixtures.run.id
+        && candidate.metadata.action === 'acknowledge',
+    );
+
+    assert.equal(run.metadata.operatorAcknowledgedBy, 'actor-owner');
+    assert.ok(typeof run.metadata.operatorAcknowledgedAt === 'string');
+    assert.equal(
+      run.metadata.operatorAcknowledgedNotes,
+      'Owner has seen the guardrail.',
+    );
+    assert.equal('operatorAcknowledgeNotes' in run.metadata, false);
+    assert.ok(activity);
+    assert.equal(activity.metadata.action, 'acknowledge');
+  }, chatStore);
+});
+
 test('core artifact and activity writes enforce non-negative sizeBytes and append-only ids', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

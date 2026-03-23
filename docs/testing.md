@@ -17,7 +17,10 @@ semantics, direct-cat default routing, re-wake flows for sleeping room
 participants, transcript-adjacent operator-loop wiring, conversation-scoped
 approval/run selection, pre-dispatch reroute actions, retry/acknowledge
 operator seams, room-workflow branch metadata, effective policy summaries, and
-chat-workflow activity projection into the shared core read model.
+chat-workflow activity projection into the shared core read model. Operator
+loop regression coverage also verifies that invalid effective-policy enum
+metadata is ignored rather than leaked through raw casts, and that
+acknowledge-action metadata uses the stable `operatorAcknowledged*` key family.
 
 ## Test Types
 

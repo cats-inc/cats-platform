@@ -699,6 +699,10 @@ Semantics:
   - `acknowledge`
 - the route annotates the addressed task/run/checkpoint/outcome metadata with
   operator action timestamps and actor ids
+- `retry` writes `operatorRetryRequestedAt`, `operatorRetryRequestedBy`, and
+  `operatorRetryNotes`
+- `acknowledge` writes `operatorAcknowledgedAt`,
+  `operatorAcknowledgedBy`, and `operatorAcknowledgedNotes`
 - the route also appends a shared activity record so Chat can surface the
   action in transcript-adjacent operator rails without inventing a second
   transcript channel
