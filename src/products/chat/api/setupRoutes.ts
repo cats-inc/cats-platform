@@ -77,6 +77,10 @@ async function handleSetupComplete(
 
     await context.dependencies.chatStore.write(chatState);
     await context.dependencies.chatStore.writeCore(core);
+    await context.dependencies.memoryService.flushOwnerProfile({
+      reason: 'owner_profile_sync',
+      now,
+    });
     sendJson(
       context.response,
       200,
@@ -91,8 +95,13 @@ async function handleSetupReset(
   context: ChatApiRouteContext,
 ): Promise<void> {
   try {
+    const now = nowFrom(context.dependencies);
     await context.dependencies.chatStore.write(createDefaultChatState());
     await context.dependencies.chatStore.writeCore(createDefaultCoreState());
+    await context.dependencies.memoryService.flushOwnerProfile({
+      reason: 'owner_profile_sync',
+      now,
+    });
     sendJson(
       context.response,
       200,

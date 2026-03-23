@@ -195,6 +195,16 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     const ownerProfilePayload = await ownerProfileResponse.json();
     assert.equal(ownerProfilePayload.ownerProfile.displayName, 'Boss Owner');
 
+    const ownerCanonicalResponse = await fetch(`${baseUrl}/api/owner/memory/canonical`);
+    assert.equal(ownerCanonicalResponse.status, 200);
+    const ownerCanonicalPayload = await ownerCanonicalResponse.json();
+    assert.ok(
+      ownerCanonicalPayload.records.some((record) =>
+        record.origin.kind === 'owner_profile'
+        && record.content === 'show options first',
+      ),
+    );
+
     const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
       method: 'POST',
       headers: {

@@ -1,3 +1,7 @@
+import {
+  createCatActorId,
+  listDurableMemoryBySubject,
+} from '../../core/model.js';
 import type { MemoryCheckpointSummary } from '../../core/types.js';
 import type {
   ChatCat,
@@ -16,6 +20,7 @@ import type {
 import {
   extractCanonicalMemoryFromChannel,
   extractCanonicalMemoryFromCompanionBox,
+  extractCanonicalMemoryFromDurableMemory,
   extractCanonicalMemoryFromOwnerProfile,
 } from './extraction.js';
 import { buildMemoryRetrievalContext } from './retrieval.js';
@@ -81,24 +86,50 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
   }): Promise<MemoryFlushResult> {
     const now = input.now ?? new Date();
     const reason = input.reason ?? 'manual';
-    const [box, sources, derived, memory, responseProfile] = await Promise.all([
+    const [core, box, sources, derived, memory, responseProfile] = await Promise.all([
+      this.chatStore.readCore(),
       input.companionStore.getBox(input.catId, now),
       input.companionStore.listSources(input.catId, now),
       input.companionStore.listDerived(input.catId, now),
       input.companionStore.listMemory(input.catId, now),
       input.companionStore.getResponseProfile(input.catId, now),
     ]);
-    const persisted = await this.memoryStore.upsertRecords(
-      extractCanonicalMemoryFromCompanionBox({
-        catId: input.catId,
-        box,
-        sources,
-        derived,
-        memory,
-        responseProfile,
-        reason,
-        now,
-      }),
+    const durableMemory = listDurableMemoryBySubject(
+      core,
+      'cat',
+      createCatActorId(input.catId),
+    );
+    const persisted = await this.memoryStore.replaceRecords(
+      {
+        subjectKind: 'cat',
+        subjectId: input.catId,
+        originKinds: [
+          'companion_source',
+          'companion_derived',
+          'companion_memory',
+          'response_profile',
+          'durable_memory',
+        ],
+      },
+      [
+        ...extractCanonicalMemoryFromCompanionBox({
+          catId: input.catId,
+          box,
+          sources,
+          derived,
+          memory,
+          responseProfile,
+          reason,
+          now,
+        }),
+        ...extractCanonicalMemoryFromDurableMemory({
+          subjectKind: 'cat',
+          subjectId: input.catId,
+          records: durableMemory,
+          reason,
+          now,
+        }),
+      ],
       now,
     );
 
@@ -121,7 +152,12 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     const reason = input.reason ?? 'manual';
     const state = await this.chatStore.read();
     const channel = requireChannel(state, input.channelId);
-    const persisted = await this.memoryStore.upsertRecords(
+    const persisted = await this.memoryStore.replaceRecords(
+      {
+        subjectKind: 'channel',
+        subjectId: input.channelId,
+        originKinds: ['channel_working_memory'],
+      },
       extractCanonicalMemoryFromChannel({
         channel,
         reason,
@@ -147,12 +183,31 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     const now = input?.now ?? new Date();
     const reason = input?.reason ?? 'owner_profile_sync';
     const core = await this.chatStore.readCore();
-    const persisted = await this.memoryStore.upsertRecords(
-      extractCanonicalMemoryFromOwnerProfile({
-        ownerProfile: core.ownerProfile,
-        reason,
-        now,
-      }),
+    const durableMemory = listDurableMemoryBySubject(
+      core,
+      'owner',
+      core.ownerProfile.actorId,
+    );
+    const persisted = await this.memoryStore.replaceRecords(
+      {
+        subjectKind: 'owner',
+        subjectId: core.ownerProfile.actorId,
+        originKinds: ['owner_profile', 'durable_memory'],
+      },
+      [
+        ...extractCanonicalMemoryFromOwnerProfile({
+          ownerProfile: core.ownerProfile,
+          reason,
+          now,
+        }),
+        ...extractCanonicalMemoryFromDurableMemory({
+          subjectKind: 'owner',
+          subjectId: core.ownerProfile.actorId,
+          records: durableMemory,
+          reason,
+          now,
+        }),
+      ],
       now,
     );
 

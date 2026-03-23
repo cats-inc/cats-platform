@@ -1,4 +1,7 @@
-import type { OwnerProfileRecord } from '../../core/types.js';
+import type {
+  DurableMemoryRecord,
+  OwnerProfileRecord,
+} from '../../core/types.js';
 import type { ChatChannelState } from '../../shared/app-shell.js';
 import type {
   CompanionBox,
@@ -323,4 +326,30 @@ export function extractCanonicalMemoryFromOwnerProfile(input: {
   }
 
   return records;
+}
+
+export function extractCanonicalMemoryFromDurableMemory(input: {
+  subjectKind: 'cat' | 'owner';
+  subjectId: string;
+  records: DurableMemoryRecord[];
+  reason: MemoryFlushReason;
+  now: Date;
+}): Array<Omit<CanonicalMemoryRecord, 'id'>> {
+  const nowIso = input.now.toISOString();
+  return input.records.map((record) => baseRecord({
+    subjectKind: input.subjectKind,
+    subjectId: input.subjectId,
+    category: record.category,
+    title: input.subjectKind === 'owner'
+      ? `Owner curated ${record.category}`
+      : `Cat curated ${record.category}`,
+    content: record.content,
+    confidence: record.confidence,
+    sourceRefs: [record.id, ...record.sourceRefs],
+    tags: ['curated', record.category],
+    keywords: [record.category],
+    originKind: 'durable_memory',
+    reason: input.reason,
+    nowIso,
+  }));
 }

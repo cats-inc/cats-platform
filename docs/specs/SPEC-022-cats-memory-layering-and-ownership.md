@@ -32,10 +32,13 @@ The first product-owned slice is now landed inside `cats`:
 
 - `src/platform/memory/*` owns canonical memory contracts, extraction,
   retrieval assembly, and local persistence
-- companion boxes, owner profile, and channel working memory can be flushed
-  into Cats-owned canonical records without `personal-rag-system`
+- companion boxes, curated cat/owner durable notes, owner profile, and channel
+  working memory can be flushed into Cats-owned canonical records without
+  `personal-rag-system`
 - direct companion-session hydration can now include an additive retrieval
   context assembled inside `cats`
+- canonical flushes are now source-scoped replacements, so deleted or updated
+  durable notes stop surfacing as stale retrieval hits
 - the current retrieval seam is intentionally local and additive; archive/vector
   backends remain future follow-on work
 

@@ -165,10 +165,14 @@ GET    /api/channels/{channelId}/memory/retrieval-context
 This slice deliberately separates three related surfaces:
 
 - `/api/cats/{catId}/memory` and `/api/owner/memory` remain the existing
-  durable-memory CRUD surface for curated product records
+  durable-memory CRUD surface for curated product records, and those writes now
+  auto-refresh the matching canonical projection
 - `/memory/canonical` reads the Cats-owned canonical-memory projection derived
-  from companion data, owner profile, and channel working memory
+  from companion data, curated cat/owner notes, owner profile, and channel
+  working memory
 - `/memory/flush` materializes or refreshes that canonical projection on demand
+  using source-scoped replacement so deleted/updated notes do not linger as
+  stale retrieval hits
 - `/memory/retrieval-context` assembles a runtime-facing retrieval preview from
   canonical records plus live companion records
 
@@ -187,7 +191,9 @@ Canonical-memory records include:
 - subject scope (`cat`, `owner`, `channel`)
 - durable-memory category
 - normalized content, summary, tags, keywords, and source refs
-- origin metadata describing how the record was extracted and why it was flushed
+- origin metadata describing how the record was extracted and why it was
+  flushed, including curated durable-memory notes synced from the product CRUD
+  layer
 
 Retrieval-context responses return `{ retrieval }`, where `retrieval` includes:
 

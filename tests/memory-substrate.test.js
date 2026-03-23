@@ -9,6 +9,7 @@ import {
   FileCanonicalMemoryStore,
   MemoryCanonicalMemoryStore,
 } from '../dist-server/platform/memory/index.js';
+import { createCatActorId } from '../dist-server/core/model.js';
 import { buildMemoryRetrievalContext } from '../dist-server/platform/memory/retrieval.js';
 import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companionBoxStore.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
@@ -84,6 +85,30 @@ test('memory substrate flushes companion and owner data into canonical records a
       escalationPreferences: ['Escalate before deleting or resetting long-running work.'],
       updatedAt: now.toISOString(),
     },
+    durableMemory: [
+      {
+        id: 'owner-durable-1',
+        subjectType: 'owner',
+        subjectId: core.ownerProfile.actorId,
+        category: 'policy',
+        content: 'Always include one recommended next step when summarizing.',
+        confidence: 0.95,
+        sourceRefs: [],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      },
+      {
+        id: 'cat-durable-1',
+        subjectType: 'cat',
+        subjectId: createCatActorId('cat-memory'),
+        category: 'fact',
+        content: 'Companion tracks the morning bird count on the balcony.',
+        confidence: 0.9,
+        sourceRefs: [],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      },
+    ],
   });
 
   await companionStore.ingestSource(
@@ -140,6 +165,12 @@ test('memory substrate flushes companion and owner data into canonical records a
   });
   assert.ok(catRecords.some((record) => record.origin.kind === 'response_profile'));
   assert.ok(catRecords.some((record) => record.category === 'preference'));
+  assert.ok(
+    catRecords.some((record) =>
+      record.origin.kind === 'durable_memory'
+      && record.content.includes('bird count'),
+    ),
+  );
 
   const retrieval = await memoryService.buildCompanionRetrievalContext({
     cat: buildCompanionCat('cat-memory', now.toISOString()),
@@ -171,7 +202,68 @@ test('memory substrate flushes companion and owner data into canonical records a
 
   assert.ok(retrieval.hits.length > 0);
   assert.ok(retrieval.ownerProfileHints.some((hint) => hint.includes('concise')));
+  assert.ok(
+    retrieval.ownerProfileHints.some((hint) => hint.includes('recommended next step')),
+  );
   assert.ok(retrieval.facts.some((fact) => fact.toLowerCase().includes('bird')));
+});
+
+test('scope-aware canonical flush removes stale durable memory when curated notes are deleted', async () => {
+  const now = new Date('2026-03-23T16:00:00.000Z');
+  const chatStore = new MemoryChatStore();
+  const companionStore = new MemoryCompanionBoxStore();
+  const memoryStore = new MemoryCanonicalMemoryStore();
+  const memoryService = createCatsMemoryService(chatStore, memoryStore);
+
+  const core = await chatStore.readCore();
+  await chatStore.writeCore({
+    ...core,
+    durableMemory: [
+      {
+        id: 'cat-durable-delete-me',
+        subjectType: 'cat',
+        subjectId: createCatActorId('cat-memory'),
+        category: 'fact',
+        content: 'Companion used to prefer moonlit naps.',
+        confidence: 0.8,
+        sourceRefs: [],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      },
+    ],
+  });
+
+  await memoryService.flushCompanionBox({
+    catId: 'cat-memory',
+    companionStore,
+    now,
+  });
+
+  let catRecords = await memoryService.listCanonicalRecords({
+    subjectKind: 'cat',
+    subjectId: 'cat-memory',
+  });
+  assert.ok(catRecords.some((record) => record.origin.kind === 'durable_memory'));
+
+  await chatStore.writeCore({
+    ...(await chatStore.readCore()),
+    durableMemory: [],
+  });
+
+  await memoryService.flushCompanionBox({
+    catId: 'cat-memory',
+    companionStore,
+    now: new Date('2026-03-23T16:05:00.000Z'),
+  });
+
+  catRecords = await memoryService.listCanonicalRecords({
+    subjectKind: 'cat',
+    subjectId: 'cat-memory',
+  });
+  assert.equal(
+    catRecords.filter((record) => record.origin.kind === 'durable_memory').length,
+    0,
+  );
 });
 
 test('file-backed canonical memory store does not overwrite malformed snapshots on read failure', async () => {

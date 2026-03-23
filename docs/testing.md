@@ -21,6 +21,9 @@ chat-workflow activity projection into the shared core read model. Operator
 loop regression coverage also verifies that invalid effective-policy enum
 metadata is ignored rather than leaked through raw casts, and that
 acknowledge-action metadata uses the stable `operatorAcknowledged*` key family.
+Memory-substrate regression coverage also verifies that curated cat/owner
+durable memory is promoted into canonical retrieval, and that scope-aware
+flushes remove stale canonical hits after update/delete flows.
 Desktop-host regression coverage now also checks:
 
 - `cats` app startup flag parsing and lifecycle output

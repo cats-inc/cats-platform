@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import type {
   CanonicalMemoryRecord,
+  CanonicalMemoryReplaceFilter,
   CanonicalMemorySnapshot,
   CanonicalMemorySubjectKind,
 } from './contracts.js';
@@ -90,6 +91,7 @@ function normalizeCanonicalMemoryRecord(
       'companion_memory',
       'response_profile',
       'channel_working_memory',
+      'durable_memory',
       'owner_profile',
     ].includes(originKind)
   ) {
@@ -147,6 +149,22 @@ function prepareRecord(record: Omit<CanonicalMemoryRecord, 'id'>): CanonicalMemo
   };
 }
 
+function matchesFilter(
+  record: CanonicalMemoryRecord,
+  filter: CanonicalMemoryReplaceFilter,
+): boolean {
+  if (filter.subjectKind && record.subjectKind !== filter.subjectKind) {
+    return false;
+  }
+  if (filter.subjectId && record.subjectId !== filter.subjectId) {
+    return false;
+  }
+  if (filter.originKinds && !filter.originKinds.includes(record.origin.kind)) {
+    return false;
+  }
+  return true;
+}
+
 export interface CanonicalMemoryStore {
   readSnapshot(): Promise<CanonicalMemorySnapshot>;
   listRecords(filter?: {
@@ -154,6 +172,11 @@ export interface CanonicalMemoryStore {
     subjectId?: string;
   }): Promise<CanonicalMemoryRecord[]>;
   upsertRecords(
+    records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
+    now?: Date,
+  ): Promise<CanonicalMemoryRecord[]>;
+  replaceRecords(
+    filter: CanonicalMemoryReplaceFilter,
     records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
     now?: Date,
   ): Promise<CanonicalMemoryRecord[]>;
@@ -265,6 +288,46 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
     });
   }
 
+  async replaceRecords(
+    filter: CanonicalMemoryReplaceFilter,
+    records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
+    now: Date = new Date(),
+  ): Promise<CanonicalMemoryRecord[]> {
+    return this.runExclusive(async () => {
+      const snapshot = await this.readOrCreateSnapshot();
+      const nowIso = now.toISOString();
+      const prepared = records.map((candidate) => prepareRecord(candidate));
+      const existingById = new Map(snapshot.records.map((record) => [record.id, record] as const));
+      const persisted = prepared.map((record) => {
+        const existing = existingById.get(record.id);
+        if (!existing) {
+          return record;
+        }
+        return {
+          ...existing,
+          ...record,
+          tags: uniqueStrings([...existing.tags, ...record.tags]),
+          keywords: uniqueStrings([...existing.keywords, ...record.keywords]),
+          sourceRefs: uniqueStrings([...existing.sourceRefs, ...record.sourceRefs]),
+          createdAt: existing.createdAt,
+          updatedAt: nowIso,
+          lastRetrievedAt: existing.lastRetrievedAt,
+        };
+      });
+      const persistedIds = new Set(persisted.map((record) => record.id));
+
+      snapshot.records = [
+        ...persisted,
+        ...snapshot.records.filter((record) =>
+          !matchesFilter(record, filter) && !persistedIds.has(record.id),
+        ),
+      ];
+      snapshot.updatedAt = nowIso;
+      await this.writeSnapshot(snapshot);
+      return structuredClone(persisted);
+    });
+  }
+
   async touchRecords(recordIds: string[], now: Date = new Date()): Promise<void> {
     if (recordIds.length === 0) {
       return;
@@ -358,6 +421,45 @@ export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
 
     this.snapshot.updatedAt = nowIso;
     return persisted;
+  }
+
+  async replaceRecords(
+    filter: CanonicalMemoryReplaceFilter,
+    records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
+    now: Date = new Date(),
+  ): Promise<CanonicalMemoryRecord[]> {
+    const nowIso = now.toISOString();
+    const prepared = records.map((candidate) => prepareRecord(candidate));
+    const existingById = new Map(this.snapshot.records.map((record) => [record.id, record] as const));
+    const persisted = prepared.map((record) => {
+      const existing = existingById.get(record.id);
+      if (!existing) {
+        return record;
+      }
+      return {
+        ...existing,
+        ...record,
+        tags: uniqueStrings([...existing.tags, ...record.tags]),
+        keywords: uniqueStrings([...existing.keywords, ...record.keywords]),
+        sourceRefs: uniqueStrings([...existing.sourceRefs, ...record.sourceRefs]),
+        createdAt: existing.createdAt,
+        updatedAt: nowIso,
+        lastRetrievedAt: existing.lastRetrievedAt,
+      };
+    });
+    const persistedIds = new Set(persisted.map((record) => record.id));
+
+    this.snapshot = {
+      ...this.snapshot,
+      updatedAt: nowIso,
+      records: [
+        ...persisted,
+        ...this.snapshot.records.filter((record) =>
+          !matchesFilter(record, filter) && !persistedIds.has(record.id),
+        ),
+      ],
+    };
+    return structuredClone(persisted);
   }
 
   async touchRecords(recordIds: string[], now: Date = new Date()): Promise<void> {

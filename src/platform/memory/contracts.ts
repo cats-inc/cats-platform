@@ -8,6 +8,7 @@ export type CanonicalMemoryOriginKind =
   | 'companion_memory'
   | 'response_profile'
   | 'channel_working_memory'
+  | 'durable_memory'
   | 'owner_profile';
 
 export type MemoryFlushReason =
@@ -46,6 +47,12 @@ export interface CanonicalMemorySnapshot {
   version: 1;
   updatedAt: string;
   records: CanonicalMemoryRecord[];
+}
+
+export interface CanonicalMemoryReplaceFilter {
+  subjectKind?: CanonicalMemorySubjectKind;
+  subjectId?: string;
+  originKinds?: CanonicalMemoryOriginKind[];
 }
 
 export interface MemoryFlushResult {

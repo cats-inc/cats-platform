@@ -35,8 +35,9 @@ The current slices are:
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
   direct companion-session hydration metadata, and Cats-owned retrieval context
-- Cats-owned canonical memory extraction, retrieval assembly, and pre-reset /
-  pre-compaction flush seams for companion, owner, and channel memory
+- Cats-owned canonical memory extraction, retrieval assembly, auto-synced
+  curated cat/owner durable notes, and pre-reset / pre-compaction flush seams
+  for companion, owner, and channel memory
 - provider-agnostic cat memory checkpoints plus channel-scoped execution leases
 
 ## Current Status
@@ -67,7 +68,8 @@ The current slices are:
 - [x] Land the first Electron desktop-host slice with app-managed readiness,
       local sidecar supervision, and bootstrap prerequisite checks
 - [x] Land Cats-owned canonical memory records, retrieval context assembly, and
-      memory flush seams without adding an external RAG dependency
+      memory flush seams without adding an external RAG dependency; curated
+      cat/owner notes now sync into canonical retrieval and replace stale hits
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open

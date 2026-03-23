@@ -433,6 +433,51 @@ test('cat memory routes reject cross-subject mutations and accept empty flush bo
     assert.equal(createOwnerMemoryResponse.status, 201);
     const { memory: ownerMemory } = await createOwnerMemoryResponse.json();
 
+    const ownerCanonicalResponse = await fetch(`${baseUrl}/api/owner/memory/canonical`);
+    assert.equal(ownerCanonicalResponse.status, 200);
+    const ownerCanonicalPayload = await ownerCanonicalResponse.json();
+    assert.ok(
+      ownerCanonicalPayload.records.some((record) =>
+        record.origin.kind === 'durable_memory'
+        && record.content === 'Owner prefers concise updates.',
+      ),
+    );
+
+    const createCatMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        category: 'fact',
+        content: 'Companion keeps a moonlit nap routine by the window.',
+      }),
+    });
+    assert.equal(createCatMemoryResponse.status, 201);
+    const { memory: catMemory } = await createCatMemoryResponse.json();
+
+    const initialCatCanonicalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/canonical`);
+    assert.equal(initialCatCanonicalResponse.status, 200);
+    const initialCatCanonicalPayload = await initialCatCanonicalResponse.json();
+    assert.ok(
+      initialCatCanonicalPayload.records.some((record) =>
+        record.origin.kind === 'durable_memory'
+        && record.content === 'Companion keeps a moonlit nap routine by the window.',
+      ),
+    );
+
+    const initialRetrievalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/retrieval-context`);
+    assert.equal(initialRetrievalResponse.status, 200);
+    const initialRetrievalPayload = await initialRetrievalResponse.json();
+    assert.ok(
+      initialRetrievalPayload.retrieval.facts.some((fact) =>
+        fact.includes('moonlit nap routine'),
+      ),
+    );
+    assert.ok(
+      initialRetrievalPayload.retrieval.ownerProfileHints.some((hint) =>
+        hint.includes('concise updates'),
+      ),
+    );
+
     const updateResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/${ownerMemory.id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -455,6 +500,40 @@ test('cat memory routes reject cross-subject mutations and accept empty flush bo
     assert.equal(ownerMemoryResponse.status, 200);
     const ownerMemoryPayload = await ownerMemoryResponse.json();
     assert.equal(ownerMemoryPayload.records.length, 1);
+
+    const updateCatMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/${catMemory.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        content: 'Companion now prefers sunrise window naps instead of moonlit ones.',
+      }),
+    });
+    assert.equal(updateCatMemoryResponse.status, 200);
+
+    const updatedCatCanonicalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/canonical`);
+    assert.equal(updatedCatCanonicalResponse.status, 200);
+    const updatedCatCanonicalPayload = await updatedCatCanonicalResponse.json();
+    const updatedCatDurableRecords = updatedCatCanonicalPayload.records.filter((record) =>
+      record.origin.kind === 'durable_memory',
+    );
+    assert.equal(updatedCatDurableRecords.length, 1);
+    assert.equal(
+      updatedCatDurableRecords[0].content,
+      'Companion now prefers sunrise window naps instead of moonlit ones.',
+    );
+
+    const deleteCatMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/${catMemory.id}`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteCatMemoryResponse.status, 200);
+
+    const emptyCatCanonicalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/canonical`);
+    assert.equal(emptyCatCanonicalResponse.status, 200);
+    const emptyCatCanonicalPayload = await emptyCatCanonicalResponse.json();
+    assert.equal(
+      emptyCatCanonicalPayload.records.filter((record) => record.origin.kind === 'durable_memory').length,
+      0,
+    );
 
     const emptyFlushResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/flush`, {
       method: 'POST',

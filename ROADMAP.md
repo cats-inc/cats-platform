@@ -57,6 +57,12 @@ contracts.
 - [ ] Desktop host and tray lifecycle management above the existing Node server boundary
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
+- [ ] Extend Cats-owned canonical memory beyond the current cat/owner/channel
+      first slice so relationship- and project-scoped durable memory can also
+      participate in retrieval and later `Cats Work` flows
+- [ ] Complete owner durable-memory CRUD beyond the current `GET/POST`
+      surface, including update/delete paths that keep canonical retrieval
+      synchronized
 - [ ] Automatic resume after operator approve/reroute/retry decisions so the
       current action seams become a closed loop rather than write-only markers
 - [ ] Promote the current machine-readable governance/workflow summaries into
@@ -70,6 +76,9 @@ contracts.
       longer-running branch continuation behavior
 - [ ] Telegram, LINE, and alternate orchestrator entrypoints with escalation
       and takeover support
+- [ ] Evolve the current local lexical/hybrid memory retrieval seam into a
+      stronger archive/vector-backed retrieval pipeline without making `cats`
+      depend on `personal-rag-system`
 - [ ] Revisit a limited Chat mobile companion only after the desktop Chat
       surface is stable
 

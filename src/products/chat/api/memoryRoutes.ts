@@ -108,6 +108,28 @@ async function readOptionalFlushBody(
   return readJsonBody<FlushMemoryInput>(context.request);
 }
 
+async function syncCanonicalCatMemory(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  await context.dependencies.memoryService.flushCompanionBox({
+    catId,
+    companionStore: context.dependencies.companionStore,
+    reason: 'manual',
+    now: context.dependencies.now?.(),
+  });
+}
+
+async function syncCanonicalOwnerMemory(
+  context: ChatApiRouteContext,
+  reason: MemoryFlushReason = 'owner_profile_sync',
+): Promise<void> {
+  await context.dependencies.memoryService.flushOwnerProfile({
+    reason,
+    now: context.dependencies.now?.(),
+  });
+}
+
 function findCatMemoryRecord(
   core: { durableMemory: DurableMemoryRecord[] },
   catId: string,
@@ -168,6 +190,7 @@ async function handleCreateCatMemory(
     const core = await context.dependencies.chatStore.readCore();
     const nextCore = addDurableMemory(core, record);
     await context.dependencies.chatStore.writeCore(nextCore);
+    await syncCanonicalCatMemory(context, catId);
     sendJson(context.response, 201, { memory: record });
   } catch (error) {
     handleRestError(context, error);
@@ -214,6 +237,7 @@ async function handleUpdateCatMemory(
 
     const nextCore = updateDurableMemory(core, memoryId, updates);
     await context.dependencies.chatStore.writeCore(nextCore);
+    await syncCanonicalCatMemory(context, catId);
 
     const updated = nextCore.durableMemory.find((record) => record.id === memoryId);
     sendJson(context.response, 200, { memory: updated });
@@ -235,6 +259,7 @@ async function handleDeleteCatMemory(
     }
     const nextCore = removeDurableMemory(core, memoryId);
     await context.dependencies.chatStore.writeCore(nextCore);
+    await syncCanonicalCatMemory(context, catId);
     sendJson(context.response, 200, { deleted: true, memoryId });
   } catch (error) {
     handleRestError(context, error);
@@ -285,6 +310,7 @@ async function handleCreateOwnerMemory(
     const core = await context.dependencies.chatStore.readCore();
     const nextCore = addDurableMemory(core, record);
     await context.dependencies.chatStore.writeCore(nextCore);
+    await syncCanonicalOwnerMemory(context, 'manual');
     sendJson(context.response, 201, { memory: record });
   } catch (error) {
     handleRestError(context, error);
