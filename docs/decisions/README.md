@@ -40,7 +40,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
 | [030-own-per-cat-companion-boxes-in-product-and-hydrate-runtime-sessions](./030-own-per-cat-companion-boxes-in-product-and-hydrate-runtime-sessions.md) | Own per-Cat companion boxes in product and hydrate runtime sessions | Draft (Pending Review) | 2026-03-23 |
-| [029-automate-tunnel-and-telegram-webhook-registration](./029-automate-tunnel-and-telegram-webhook-registration.md) | Adopt polling-first Telegram setup with optional public ingress helpers | Draft (Pending Review) | 2026-03-23 |
+| [029-automate-tunnel-and-telegram-webhook-registration](./029-automate-tunnel-and-telegram-webhook-registration.md) | Adopt polling-first Telegram setup with optional public ingress helpers | Accepted | 2026-03-23 |
 | [028-allow-multiple-public-bot-bindings-with-one-boss-cat](./028-allow-multiple-public-bot-bindings-with-one-boss-cat.md) | Allow multiple public bot bindings with one Boss Cat | Accepted | 2026-03-22 |
 | [027-adopt-chat-first-information-architecture-with-default-boss-cat](./027-adopt-chat-first-information-architecture-with-default-boss-cat.md) | Adopt chat-first information architecture with a default Boss Cat | Accepted | 2026-03-22 |
 | [026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand](./026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md) | Use cats as the flagship suite name under cats-inc brand | Accepted | 2026-03-21 |

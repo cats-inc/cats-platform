@@ -7,7 +7,8 @@ import {
   bridgeTelegramWebhookToRoom,
   TelegramWebhookBridgeError,
 } from '../../platform/transports/telegram/bridge.js';
-import type { TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
+import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
+import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import type { ChatState } from '../../shared/app-shell.js';
@@ -248,4 +249,89 @@ export async function handleTelegramWebhook(
       error instanceof Error ? error.message : 'Telegram webhook processing failed',
     );
   }
+}
+
+interface TelegramPollingQueryDependencies {
+  pollingSupervisor: TelegramPollingSupervisor;
+}
+
+interface TelegramPollingReconnectDependencies {
+  bindingId: string;
+  chatStore: ChatStore;
+  telegramRelay: TelegramRelay;
+  runtimeClient: RuntimeClient;
+  pollingSupervisor: TelegramPollingSupervisor;
+  now?: () => Date;
+}
+
+export function handleTelegramPollingStatus(
+  response: ServerResponse,
+  dependencies: TelegramPollingQueryDependencies,
+): void {
+  sendJson(response, 200, {
+    polling: {
+      statuses: dependencies.pollingSupervisor.getAllPollingStatuses(),
+    },
+  });
+}
+
+export async function handleTelegramPollingReconnect(
+  response: ServerResponse,
+  dependencies: TelegramPollingReconnectDependencies,
+): Promise<void> {
+  try {
+    const core = await dependencies.chatStore.readCore();
+    const binding = core.botBindings.find((b) => b.id === dependencies.bindingId);
+    if (!binding) {
+      sendRestError(response, 404, 'binding_not_found', 'Bot binding not found');
+      return;
+    }
+    if (!binding.botToken) {
+      sendRestError(response, 400, 'token_required', 'Bot token is required for polling');
+      return;
+    }
+    if (binding.inboundMode !== 'polling') {
+      sendRestError(response, 400, 'not_polling_mode', 'Binding is not in polling mode');
+      return;
+    }
+
+    const context = await readTelegramContext(dependencies.chatStore);
+    await dependencies.pollingSupervisor.reconnect({
+      bindingId: dependencies.bindingId,
+      botToken: binding.botToken,
+      context,
+      chatStore: dependencies.chatStore,
+      runtimeClient: dependencies.runtimeClient,
+      telegramRelay: dependencies.telegramRelay,
+    });
+
+    const status = dependencies.pollingSupervisor.getPollingStatus(dependencies.bindingId);
+    sendJson(response, 200, { polling: status });
+  } catch (error) {
+    sendRestError(
+      response,
+      500,
+      'polling_reconnect_failed',
+      error instanceof Error ? error.message : 'Polling reconnect failed',
+    );
+  }
+}
+
+export async function readTelegramPollingContext(
+  chatStore: ChatStore,
+): Promise<{
+  bindings: Array<{ bindingId: string; botToken: string; inboundMode: 'polling' | 'webhook' }>;
+  context: TelegramRelayContext;
+}> {
+  const context = await readTelegramContext(chatStore);
+  const core = await chatStore.readCore();
+  const bindings = core.botBindings
+    .filter((b) => b.platform === 'telegram' && b.status === 'active' && b.botToken)
+    .map((b) => ({
+      bindingId: b.id,
+      botToken: b.botToken!,
+      inboundMode: b.inboundMode ?? 'polling' as const,
+    }));
+
+  return { bindings, context };
 }

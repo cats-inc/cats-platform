@@ -1,4 +1,4 @@
-export const CATS_CORE_STATE_VERSION = 4 as const;
+export const CATS_CORE_STATE_VERSION = 5 as const;
 
 export interface CoreRecordMetadata {
   [key: string]: unknown;
@@ -376,6 +376,7 @@ export interface CoreActivityRecord {
 }
 
 export type BotBindingPlatform = 'telegram' | 'line';
+export type BotBindingInboundMode = 'polling' | 'webhook';
 
 export interface BotBindingRecord {
   id: string;
@@ -386,6 +387,7 @@ export interface BotBindingRecord {
   bossCatActorId: string | null;
   botToken: string | null;
   webhookSecret: string | null;
+  inboundMode: BotBindingInboundMode;
   roomMode: 'boss_chat' | 'direct_cat_chat';
   status: 'active' | 'disabled';
   createdAt: string;

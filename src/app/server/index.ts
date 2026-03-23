@@ -11,6 +11,10 @@ import { routeCoreApi } from '../../core/api.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import { createTelegramBotApiDeliveryClient } from '../../platform/transports/telegram/delivery.js';
 import {
+  createTelegramPollingSupervisor,
+  type TelegramPollingSupervisor,
+} from '../../platform/transports/telegram/polling.js';
+import {
   createTelegramRelay,
   type TelegramRelay,
 } from '../../platform/transports/telegram/relay.js';
@@ -37,6 +41,8 @@ import {
 } from '../../server/routes/providers.js';
 import {
   handleTelegramDiagnostics,
+  handleTelegramPollingReconnect,
+  handleTelegramPollingStatus,
   handleTelegramStatus,
   handleTelegramWebhook,
 } from '../../server/routes/telegram.js';
@@ -46,11 +52,13 @@ export interface ServerDependencies {
   runtimeClient: RuntimeClient;
   chatStore: ChatStore;
   telegramRelay?: TelegramRelay;
+  pollingSupervisor?: TelegramPollingSupervisor;
   now?: () => Date;
 }
 
 type ResolvedServerDependencies = ServerDependencies & {
   telegramRelay: TelegramRelay;
+  pollingSupervisor: TelegramPollingSupervisor;
 };
 
 const WEB_DIST_ROOT = fileURLToPath(new URL('../../../dist', import.meta.url));
@@ -316,6 +324,37 @@ async function routeRequest(
     return;
   }
 
+  if (url.pathname === '/api/transports/telegram/polling') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return;
+    }
+    handleTelegramPollingStatus(response, {
+      pollingSupervisor: dependencies.pollingSupervisor,
+    });
+    return;
+  }
+
+  const pollingReconnectMatch = matchRoute(
+    url.pathname,
+    /^\/api\/transports\/telegram\/polling\/([^/]+)\/reconnect$/u,
+  );
+  if (pollingReconnectMatch) {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return;
+    }
+    await handleTelegramPollingReconnect(response, {
+      bindingId: pollingReconnectMatch[0]!,
+      chatStore: dependencies.chatStore,
+      telegramRelay: dependencies.telegramRelay,
+      runtimeClient: dependencies.runtimeClient,
+      pollingSupervisor: dependencies.pollingSupervisor,
+      now: dependencies.now,
+    });
+    return;
+  }
+
   if (await routeChatApi(context)) {
     return;
   }
@@ -334,12 +373,18 @@ async function routeRequest(
 }
 
 export function createServer(dependencies: ServerDependencies) {
+  const pollingSupervisor = dependencies.pollingSupervisor
+    ?? createTelegramPollingSupervisor({ now: dependencies.now });
+  const telegramRelay = dependencies.telegramRelay
+    ?? createDefaultTelegramRelay(dependencies, pollingSupervisor);
+
   const resolvedDependencies: ResolvedServerDependencies = {
     ...dependencies,
-    telegramRelay: dependencies.telegramRelay ?? createDefaultTelegramRelay(dependencies),
+    telegramRelay,
+    pollingSupervisor,
   };
 
-  return createHttpServer((request, response) => {
+  const server = createHttpServer((request, response) => {
     void routeRequest(request, response, resolvedDependencies).catch((error) => {
       sendJson(response, 500, {
         error: {
@@ -349,9 +394,33 @@ export function createServer(dependencies: ServerDependencies) {
       });
     });
   });
+
+  // Schedule polling reconciliation after server is created
+  void reconcilePollingOnStartup(resolvedDependencies).catch(() => {});
+
+  return server;
 }
 
-function createDefaultTelegramRelay(dependencies: ServerDependencies): TelegramRelay {
+async function reconcilePollingOnStartup(
+  dependencies: ResolvedServerDependencies,
+): Promise<void> {
+  const { readTelegramPollingContext } = await import('../../server/routes/telegram.js');
+  const pollingContext = await readTelegramPollingContext(dependencies.chatStore);
+  if (pollingContext.bindings.length > 0) {
+    await dependencies.pollingSupervisor.reconcilePolling({
+      bindings: pollingContext.bindings,
+      context: pollingContext.context,
+      chatStore: dependencies.chatStore,
+      runtimeClient: dependencies.runtimeClient,
+      telegramRelay: dependencies.telegramRelay,
+    });
+  }
+}
+
+function createDefaultTelegramRelay(
+  dependencies: ServerDependencies,
+  pollingSupervisor?: TelegramPollingSupervisor,
+): TelegramRelay {
   const webhookSecretToken = process.env.CATS_TELEGRAM_WEBHOOK_SECRET?.trim() || null;
   const botToken = process.env.CATS_TELEGRAM_BOT_TOKEN?.trim() || null;
   const parsedMaxBodyBytes = Number.parseInt(
@@ -367,6 +436,7 @@ function createDefaultTelegramRelay(dependencies: ServerDependencies): TelegramR
       : createFileBackedTelegramRelayStore(dependencies.config.chatStatePath),
     webhookSecretToken,
     maxBodyBytes: Number.isFinite(parsedMaxBodyBytes) ? parsedMaxBodyBytes : undefined,
+    getPollingStatuses: () => pollingSupervisor?.getAllPollingStatuses() ?? [],
     resolveDeliveryClient(binding) {
       const resolvedToken = binding?.botToken?.trim() || botToken;
       if (!resolvedToken) {

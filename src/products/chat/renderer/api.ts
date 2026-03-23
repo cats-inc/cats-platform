@@ -733,6 +733,7 @@ export async function createBotBindingApi(
   input: {
     botName: string;
     catId: string;
+    inboundMode?: 'polling' | 'webhook';
     botToken?: string;
     webhookSecret?: string;
   },
@@ -792,6 +793,17 @@ export interface TelegramTransportBindingDiagnostics {
   lastOutboundMessageId: string | null;
 }
 
+export interface TelegramTransportPollingStatus {
+  bindingId: string;
+  health: 'healthy' | 'degraded' | 'failed' | 'stopped';
+  lastPollTime: string | null;
+  lastSuccessAt: string | null;
+  lastPollError: string | null;
+  consecutiveFailures: number;
+  processedUpdateCount: number;
+  lastProcessedUpdateId: number | null;
+}
+
 export interface TelegramTransportStatus {
   platform: 'telegram';
   status: 'bound' | 'unbound';
@@ -814,6 +826,10 @@ export interface TelegramTransportStatus {
     deletedCount: number;
     failedCount: number;
     lastReceipt: TelegramTransportReceiptSummary | null;
+  };
+  polling?: {
+    activeConsumers: number;
+    statuses: TelegramTransportPollingStatus[];
   };
   note: string;
 }
@@ -852,6 +868,39 @@ export async function fetchTelegramTransportDiagnostics(
     `telegram transport diagnostics returned ${response.status}`,
   );
   return payload.telegram;
+}
+
+export async function reconnectTelegramPolling(
+  bindingId: string,
+  signal?: AbortSignal,
+): Promise<{ polling: TelegramTransportPollingStatus | null }> {
+  const response = await fetch(`/api/transports/telegram/polling/${bindingId}/reconnect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+  });
+  return expectJson(response, `polling reconnect returned ${response.status}`);
+}
+
+export async function updateBotBindingApi(
+  bindingId: string,
+  input: {
+    botName?: string;
+    catId?: string;
+    inboundMode?: 'polling' | 'webhook';
+    status?: 'active' | 'disabled';
+    botToken?: string | null;
+    webhookSecret?: string | null;
+  },
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/bot-bindings/${bindingId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    signal,
+  });
+  return expectJson(response, `update bot binding returned ${response.status}`);
 }
 
 export interface DurableMemoryItem {

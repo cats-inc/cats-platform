@@ -195,6 +195,7 @@ export async function buildAppShellPayload(
       botName: binding.botName,
       catId: matchedCat?.id ?? null,
       catName: matchedCat?.name ?? null,
+      inboundMode: binding.inboundMode ?? 'polling',
       roomMode: binding.roomMode ?? (matchedCat?.id === resolvedState.bossCatId ? 'boss_chat' : 'direct_cat_chat'),
       isBossBinding: Boolean(resolvedState.bossCatId && matchedCat?.id === resolvedState.bossCatId),
       status: binding.status,

@@ -74,7 +74,7 @@ export function SettingsCats({
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [botForm, setBotForm] = useState({ botName: '', botToken: '', webhookSecret: '' });
+  const [botForm, setBotForm] = useState({ botName: '', botToken: '', webhookSecret: '', inboundMode: 'polling' as 'polling' | 'webhook' });
   const [memoryForm, setMemoryForm] = useState({ category: 'fact', content: '' });
   const [catMemory, setCatMemory] = useState<DurableMemoryItem[]>([]);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -190,11 +190,12 @@ export function SettingsCats({
       const result = await createBotBindingApi({
         botName: botForm.botName.trim(),
         catId,
+        inboundMode: botForm.inboundMode,
         botToken: botForm.botToken.trim() || undefined,
-        webhookSecret: botForm.webhookSecret.trim() || undefined,
+        webhookSecret: botForm.inboundMode === 'webhook' ? (botForm.webhookSecret.trim() || undefined) : undefined,
       });
       onPayloadUpdate(result);
-      setBotForm({ botName: '', botToken: '', webhookSecret: '' });
+      setBotForm({ botName: '', botToken: '', webhookSecret: '', inboundMode: 'polling' });
       onFeedback('Telegram bot binding created.');
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : 'Failed to create binding.');
@@ -524,13 +525,17 @@ export function SettingsCats({
                                       <div>
                                         <strong>@{binding.botName}</strong>
                                         <span className="statusChip statusChipReady" style={{ marginLeft: 8 }}>{binding.status}</span>
+                                        <span className={`statusChip ${binding.inboundMode === 'polling' ? 'statusChipMuted' : 'statusChipPending'}`} style={{ marginLeft: 4 }}>{binding.inboundMode}</span>
                                         <div style={{ marginTop: 6, opacity: 0.7 }}>
-                                          <div>Webhook: {binding.webhookPath}</div>
+                                          {binding.inboundMode === 'webhook' ? (
+                                            <div>Webhook: {binding.webhookPath}</div>
+                                          ) : null}
                                           <div>Room mode: {binding.roomMode}</div>
                                           <div>
                                             Token {binding.hasBotToken ? 'configured' : 'missing'}
-                                            {' · '}
-                                            Secret {binding.hasWebhookSecret ? 'configured' : 'missing'}
+                                            {binding.inboundMode === 'webhook' ? (
+                                              <>{' · '}Secret {binding.hasWebhookSecret ? 'configured' : 'missing'}</>
+                                            ) : null}
                                           </div>
                                           {catBindingDiagnostics
                                             .filter((diagnostic) => diagnostic.bindingId === binding.id)
@@ -576,17 +581,34 @@ export function SettingsCats({
                                 />
                                 <input
                                   className="textInput"
-                                  placeholder="Bot token (optional)"
+                                  placeholder="Bot token"
                                   type="password"
                                   value={botForm.botToken}
                                   onChange={(e) => setBotForm({ ...botForm, botToken: e.target.value })}
                                 />
-                                <input
-                                  className="textInput"
-                                  placeholder="Webhook secret (optional)"
-                                  value={botForm.webhookSecret}
-                                  onChange={(e) => setBotForm({ ...botForm, webhookSecret: e.target.value })}
-                                />
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                  <label style={{ opacity: 0.8, fontSize: 12 }}>Mode:</label>
+                                  <button
+                                    type="button"
+                                    className={`chromeButton${botForm.inboundMode === 'polling' ? ' chromeButtonActive' : ''}`}
+                                    onClick={() => setBotForm({ ...botForm, inboundMode: 'polling' })}
+                                    style={{ fontSize: 11 }}
+                                  >Polling</button>
+                                  <button
+                                    type="button"
+                                    className={`chromeButton${botForm.inboundMode === 'webhook' ? ' chromeButtonActive' : ''}`}
+                                    onClick={() => setBotForm({ ...botForm, inboundMode: 'webhook' })}
+                                    style={{ fontSize: 11 }}
+                                  >Webhook</button>
+                                </div>
+                                {botForm.inboundMode === 'webhook' ? (
+                                  <input
+                                    className="textInput"
+                                    placeholder="Webhook secret (optional)"
+                                    value={botForm.webhookSecret}
+                                    onChange={(e) => setBotForm({ ...botForm, webhookSecret: e.target.value })}
+                                  />
+                                ) : null}
                                 <button
                                   className="primaryButton"
                                   type="button"

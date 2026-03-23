@@ -1248,6 +1248,12 @@ function normalizeBotBinding(
   const roomMode: BotBindingRecord['roomMode'] =
     rawRoomMode === 'direct_cat_chat' ? 'direct_cat_chat' : 'boss_chat';
 
+  const rawInboundMode = readString(bindingRecord.inboundMode);
+  const inboundMode: BotBindingRecord['inboundMode'] =
+    rawInboundMode === 'polling' || rawInboundMode === 'webhook'
+      ? rawInboundMode
+      : readNullableString(bindingRecord.webhookSecret) ? 'webhook' : 'polling';
+
   return {
     id: readString(bindingRecord.id, randomUUID()),
     platform,
@@ -1262,6 +1268,7 @@ function normalizeBotBinding(
       ?? (chat.bossCatId ? createCatActorId(chat.bossCatId) : null),
     botToken: readNullableString(bindingRecord.botToken),
     webhookSecret: readNullableString(bindingRecord.webhookSecret),
+    inboundMode,
     roomMode,
     status: rawStatus === 'disabled' ? 'disabled' : 'active',
     createdAt: readString(bindingRecord.createdAt, new Date().toISOString()),

@@ -6,6 +6,7 @@ import type {
   TelegramDeliveryReceipt,
   TelegramDeliveryRequest,
   TelegramMessagePayload,
+  TelegramPollingStatus,
   TelegramRelayContext,
   TelegramRelayDiagnostics,
   TelegramRelayStatus,
@@ -77,6 +78,7 @@ interface TelegramRelayOptions {
   conversationMapper?: TelegramConversationMapper;
   deliveryClient?: TelegramDeliveryClient | null;
   resolveDeliveryClient?: (binding: BotBindingRecord | null) => TelegramDeliveryClient | null;
+  getPollingStatuses?: () => TelegramPollingStatus[];
 }
 
 const DEFAULT_MAX_BODY_BYTES = 256 * 1024;
@@ -171,6 +173,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     : DEFAULT_MAX_BODY_BYTES;
   const deliveryClient = options.deliveryClient ?? null;
   const resolveDeliveryClient = options.resolveDeliveryClient;
+  const getPollingStatuses = options.getPollingStatuses ?? (() => []);
   const hasConfiguredDelivery = (context: TelegramRelayContext): boolean =>
     deliveryClient !== null
       || context.botBindings.some((binding) =>
@@ -198,6 +201,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
       platform: 'telegram' as const,
       botName: binding.botName,
       catActorId: binding.catActorId,
+      inboundMode: binding.inboundMode ?? 'polling' as const,
       roomMode: binding.roomMode,
       status: binding.status,
     }));
@@ -255,6 +259,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     const ingress = store.getIngressStats();
     const delivery = store.getDeliveryStats();
     const deliveryConfigured = hasConfiguredDelivery(context);
+    const pollingStatuses = getPollingStatuses();
 
     return {
       platform: 'telegram',
@@ -286,6 +291,10 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         deletedCount: delivery.deletedCount,
         failedCount: delivery.failedCount,
         lastReceipt: delivery.lastReceipt,
+      },
+      polling: {
+        activeConsumers: pollingStatuses.filter((s) => s.health !== 'stopped').length,
+        statuses: pollingStatuses,
       },
       note: base.note,
     };
@@ -324,6 +333,7 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         roomRouting: status.roomRouting,
         ingress: status.ingress,
         delivery: status.delivery,
+        polling: status.polling,
         bindings: conversationMapper.listBindings(),
         note: status.note,
       };

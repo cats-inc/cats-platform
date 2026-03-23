@@ -1,9 +1,22 @@
-import type { BotBindingRecord } from '../../../core/types.js';
+import type { BotBindingInboundMode, BotBindingRecord } from '../../../core/types.js';
 
 export type TelegramRelayMode = 'boss-cat-ingress';
 export type TelegramPublicIdentityMode = 'multi_cat_bindings_single_boss';
+export type TelegramInboundMode = BotBindingInboundMode;
+export type TelegramPollingHealth = 'healthy' | 'degraded' | 'failed' | 'stopped';
 
 export type TelegramTransportConversationMode = 'direct_cat_chat';
+
+export interface TelegramPollingStatus {
+  bindingId: string;
+  health: TelegramPollingHealth;
+  lastPollTime: string | null;
+  lastSuccessAt: string | null;
+  lastPollError: string | null;
+  consecutiveFailures: number;
+  processedUpdateCount: number;
+  lastProcessedUpdateId: number | null;
+}
 
 export type TelegramRoomRoutingStatus = 'placeholder' | 'linked_room';
 export type TelegramAttachmentKind =
@@ -199,6 +212,7 @@ export interface TelegramRelayStatus {
     platform: 'telegram';
     botName: string;
     catActorId: string | null;
+    inboundMode: TelegramInboundMode;
     roomMode: 'boss_chat' | 'direct_cat_chat';
     status: 'active' | 'disabled';
   }>;
@@ -225,6 +239,10 @@ export interface TelegramRelayStatus {
     deletedCount: number;
     failedCount: number;
     lastReceipt: TelegramDeliveryReceipt | null;
+  };
+  polling: {
+    activeConsumers: number;
+    statuses: TelegramPollingStatus[];
   };
   note: string;
 }
@@ -324,6 +342,7 @@ export interface TelegramRelayDiagnostics {
     platform: 'telegram';
     botName: string;
     catActorId: string | null;
+    inboundMode: TelegramInboundMode;
     roomMode: 'boss_chat' | 'direct_cat_chat';
     status: 'active' | 'disabled';
   }>;
@@ -338,6 +357,10 @@ export interface TelegramRelayDiagnostics {
   roomRouting: TelegramRoomRoutingSeam;
   ingress: TelegramWebhookIngressDiagnostics;
   delivery: TelegramDeliveryDiagnostics;
+  polling: {
+    activeConsumers: number;
+    statuses: TelegramPollingStatus[];
+  };
   bindings: TelegramConversationBinding[];
   note: string;
 }

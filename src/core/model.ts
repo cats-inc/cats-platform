@@ -1395,6 +1395,7 @@ export function createBotBinding(
     bossCatActorId: null,
     botToken: null,
     webhookSecret: null,
+    inboundMode: 'polling',
     roomMode: input.roomMode ?? 'direct_cat_chat',
     status: 'active',
     createdAt: nowIso,

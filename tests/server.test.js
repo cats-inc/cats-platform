@@ -135,7 +135,7 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
-    assert.equal(statePayload.version, 4);
+    assert.equal(statePayload.version, 5);
     assert.equal(statePayload.ownerProfile.actorId, 'actor-owner');
     assert.ok(Array.isArray(statePayload.actors));
     assert.ok(Array.isArray(statePayload.conversations));

@@ -36,6 +36,7 @@ function summarizeBinding(
     botName: binding.botName,
     catId: cat?.id ?? null,
     catName: cat?.name ?? null,
+    inboundMode: binding.inboundMode,
     roomMode: binding.roomMode,
     isBossBinding: Boolean(context.bossCatId && cat?.id === context.bossCatId),
     status: binding.status,
@@ -55,6 +56,8 @@ function createBindingRecord(
   const catActorId = createCatActorId(cat.id);
   const isBossBinding = chat.bossCatId === cat.id;
 
+  const inboundMode = input.inboundMode === 'webhook' ? 'webhook' : 'polling';
+
   return {
     id: randomUUID(),
     platform: input.platform,
@@ -64,6 +67,7 @@ function createBindingRecord(
     bossCatActorId: isBossBinding ? catActorId : null,
     botToken: trimNullableString(input.botToken),
     webhookSecret: trimNullableString(input.webhookSecret),
+    inboundMode,
     roomMode: input.roomMode ?? (isBossBinding ? 'boss_chat' : 'direct_cat_chat'),
     status: 'active',
     createdAt: nowIso,
@@ -94,6 +98,28 @@ async function handleListBotBindings(context: ChatApiRouteContext): Promise<void
   });
 }
 
+function validateTokenUniqueness(
+  botToken: string | null | undefined,
+  existingBindings: BotBindingRecord[],
+  excludeBindingId?: string,
+): void {
+  if (!botToken || typeof botToken !== 'string') {
+    return;
+  }
+  const trimmed = botToken.trim();
+  if (!trimmed) {
+    return;
+  }
+  const duplicate = existingBindings.find((binding) =>
+    binding.id !== excludeBindingId
+    && binding.botToken
+    && binding.botToken.trim() === trimmed,
+  );
+  if (duplicate) {
+    throw new Error('Bot token is already used by another binding');
+  }
+}
+
 async function handleCreateBotBinding(context: ChatApiRouteContext): Promise<void> {
   const body = await readJsonBody<CreateBotBindingInput>(context.request);
   const nowIso = nowFrom(context.dependencies).toISOString();
@@ -102,6 +128,7 @@ async function handleCreateBotBinding(context: ChatApiRouteContext): Promise<voi
     context.dependencies.chatStore.readCore(),
   ]);
 
+  validateTokenUniqueness(body.botToken, core.botBindings);
   const binding = createBindingRecord(chat, body, nowIso);
   const nextCore = updateCoreBindings(core, (bindings) => [...bindings, binding], nowIso);
   const persisted = await context.dependencies.chatStore.writeCore(nextCore);
@@ -129,6 +156,10 @@ async function handleUpdateBotBinding(
     throw new Error(`Bot binding not found: ${bindingId}`);
   }
 
+  if (body.botToken !== undefined) {
+    validateTokenUniqueness(body.botToken, core.botBindings, bindingId);
+  }
+
   let catActorId = existing.catActorId ?? existing.bossCatActorId;
   let bossCatActorId = existing.bossCatActorId;
   let roomMode = body.roomMode ?? existing.roomMode;
@@ -141,6 +172,10 @@ async function handleUpdateBotBinding(
       roomMode = chat.bossCatId === cat.id ? 'boss_chat' : 'direct_cat_chat';
     }
   }
+
+  const inboundMode = body.inboundMode === 'polling' || body.inboundMode === 'webhook'
+    ? body.inboundMode
+    : existing.inboundMode;
 
   const nextCore = updateCoreBindings(core, (bindings) =>
     bindings.map((binding) =>
@@ -156,6 +191,7 @@ async function handleUpdateBotBinding(
             webhookSecret: body.webhookSecret === undefined
               ? binding.webhookSecret
               : trimNullableString(body.webhookSecret),
+            inboundMode,
             roomMode,
             status: body.status ?? binding.status,
             updatedAt: nowIso,

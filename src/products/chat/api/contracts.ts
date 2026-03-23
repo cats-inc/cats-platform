@@ -1,10 +1,11 @@
 import type {
+  BotBindingInboundMode,
   ExecutionTargetSummary,
   MemoryCheckpointSummary,
 } from '../../../core/types.js';
 import type { SuiteHostEnvelope } from '../../../shared/suite-contract.js';
 
-export type { ExecutionTargetSummary, MemoryCheckpointSummary } from '../../../core/types.js';
+export type { BotBindingInboundMode, ExecutionTargetSummary, MemoryCheckpointSummary } from '../../../core/types.js';
 
 export type ChatChannelStatus =
   | 'planned'
@@ -427,6 +428,7 @@ export interface BotBindingSummary {
   platform: 'telegram' | 'line';
   botName: string;
   catId: string | null;
+  inboundMode: BotBindingInboundMode;
   roomMode: string;
   status: 'active' | 'disabled';
   webhookPath: string;
@@ -440,6 +442,7 @@ export interface ChatBotBindingSummary {
   botName: string;
   catId: string | null;
   catName: string | null;
+  inboundMode: BotBindingInboundMode;
   roomMode: string;
   isBossBinding: boolean;
   status: 'active' | 'disabled';
@@ -578,6 +581,7 @@ export interface CreateBotBindingInput {
   platform: 'telegram' | 'line';
   botName: string;
   catId: string;
+  inboundMode?: BotBindingInboundMode;
   roomMode?: RoomRoutingMode;
   botToken?: string;
   webhookSecret?: string;
@@ -586,6 +590,7 @@ export interface CreateBotBindingInput {
 export interface UpdateBotBindingInput {
   botName?: string;
   catId?: string;
+  inboundMode?: BotBindingInboundMode;
   roomMode?: RoomRoutingMode;
   status?: 'active' | 'disabled';
   botToken?: string | null;

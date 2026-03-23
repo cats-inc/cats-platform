@@ -5,7 +5,7 @@
 
 ## Status
 
-Draft (Pending Review)
+In Progress (Polling-first slice landed)
 
 ## Related
 
