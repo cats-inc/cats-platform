@@ -238,8 +238,8 @@ product/runtime boundary.
   a preview-ready artifact pane, contextual cat assignment, settings-hosted
   cat management, topic-first recents with Cat avatar markers, lightweight
   direct-chat entry for `My Cats`, channel setup, and global Boss Cat editing.
-  `My Cats` now reopens an existing direct room when one exists, or opens a
-  direct `/new` draft lane without creating a persisted room yet.
+  `My Cats` opens Cat-scoped in-place direct lanes and does not materialize
+  normal `Recents` threads as a side effect.
 
 ## Memory Layering Direction
 
@@ -519,7 +519,6 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-23*
-
 
 
 

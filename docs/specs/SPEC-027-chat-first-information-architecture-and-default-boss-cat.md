@@ -48,6 +48,9 @@ The key rule is:
    `Boss Cat` remains the default public transport identity.
 9. If the current `Boss Cat` has not been explicitly named yet, UI surfaces
    should use `Boss Cat` as the fallback display name.
+10. `My Cats` direct chats are Cat-scoped in-place private lanes.
+    They are not normal `Recents` threads and should not create a persisted
+    chat/channel record just because the user opened them.
 
 ## Progressive Disclosure Model
 
@@ -116,6 +119,7 @@ current `Boss Cat` even when it is the only Cat.
 
 - the full registry management surface
 - the place for detailed editing, archive, or system administration
+- part of the `Recents` thread list
 
 Those remain under `Settings > Cats`.
 
@@ -198,10 +202,11 @@ Direct Cat Chat semantics:
 - unmentioned turns default to that Cat
 - the main header should show the selected Cat clearly
 - clicking a Cat in `My Cats` resolves to that Cat's private lane
-- if a persisted direct thread already exists for that Cat, reopen it
-- otherwise create that Cat's canonical persisted private room immediately
-- `/new?cat=<catId>` may still exist as an explicit draft/deep-link route, but
-  it is not the default `My Cats` click path
+- that private lane is an in-place direct-chat surface under `My Cats`
+- opening it does not create a new persisted chat/channel or `Recents` item
+- `/new?cat=<catId>` may still exist as an internal draft/deep-link route, but
+  it should not materialize a normal persisted `Recents` thread merely because
+  the lane was opened from `My Cats`
 
 ## Group Chat
 
@@ -248,8 +253,9 @@ These are different actions and should remain different in copy and behavior.
 ### `Chat with this cat`
 
 - opens that Cat's private lane
-- reuses an existing direct thread when one already exists
-- otherwise creates the canonical direct thread immediately and opens it
+- keeps the operator in that Cat's in-place direct lane
+- does not create a normal persisted chat/channel or `Recents` item as a side
+  effect
 - does not silently add the Cat to the currently open thread
 
 ## Boss Cat Assignment
@@ -310,7 +316,7 @@ Initial behavior:
 - the default Telegram bot may still front the current `Boss Cat`
 - additional Cats may later have their own Telegram bots
 - the binding belongs to the Cat identity shown in `My Cats`, not to one
-  persisted direct thread
+  persisted `Recents` thread
 - a Cat-bound bot should feel like talking to that Cat directly
 - when another Cat speaks inside a bot-bound thread, the product may label that
   reply explicitly
@@ -356,6 +362,7 @@ the claim that the underlying store has already been fully renamed or migrated.
   assistant.
 - `Recents` remains topic-first and each item shows Cat avatar markers.
 - A user can open a direct private chat with a non-`Boss Cat`.
+- Opening a Cat from `My Cats` does not create a `Recents` item.
 - `Add cat to chat` and `Chat with this cat` behave differently and clearly.
 - A user can assign a different Cat as the global `Boss Cat`.
 - Sidebar view uses a single `View` mode control with `Latest`, `By Cat`, and

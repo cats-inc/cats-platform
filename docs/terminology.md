@@ -25,9 +25,9 @@
 | Default Boss Cat | The auto-provisioned neutral Boss Cat available before the user renames, personalizes, or replaces it. |
 | Primary Orchestrator Cat | The formal product and domain term for the Cat selected as the default public orchestrator. In UI copy, this should usually be presented as `Boss Cat`. |
 | Boss Chat | The default conversation mode where unmentioned turns route first to `Boss Cat`, which can then coordinate or involve other Cats. |
-| Direct Cat Chat | A conversation mode where one chosen Cat is the room's lead participant and unmentioned turns default to that Cat rather than to `Boss Cat`. |
+| Direct Cat Chat | A Cat-scoped private-lane mode where one chosen Cat is the lead participant and unmentioned turns default to that Cat rather than to `Boss Cat`. When opened from `My Cats`, it is an in-place lane, not a normal `Recents` thread. |
 | Group chat | A chat with more than one Cat participant, while still having one lead Cat for default reply behavior. Informal "family chat" companion usage is a kind of group chat, not a separate runtime mode. |
-| My Cats | A lightweight sidebar roster for quick Cat access, private-room entry, and transport ownership hints. Selecting an active Cat reopens its private room or creates the canonical direct room when needed. It is not the full registry management surface. |
+| My Cats | A lightweight sidebar roster for quick Cat access, in-place private-lane entry, and transport ownership hints. Selecting a Cat opens that Cat's direct lane in place and does not create a normal `Recents` thread. It is not the full registry management surface. |
 | Chat view mode | The sidebar list mode used to organize chats, such as `Latest`, `By Cat`, or `By Chat Type`. |
 | Cat registry | The chat-global list of reusable cats that can be assigned into one or more chats. Full management lives under `Settings > Cats`. |
 | Bot binding | A product record that maps one external bot identity to one visible Cat identity plus routing policy, inbox scope, and transport configuration. One environment may have many bot bindings. |
@@ -38,7 +38,7 @@
 | Waking up | The user-facing lifecycle state for a Cat whose wake request is in progress. |
 | Put to sleep | Closing a chat-scoped runtime session without removing the Cat from the chat. |
 | Active chat limit | The maximum number of chats in which a given class of Cat is allowed to stay awake at once. The first slice should configure this separately for `Boss Cat` and `Other Cats`. |
-| Transport binding | An external bot identity (e.g., Telegram bot) attached to a Cat's private lane (`direct_cat_chat`). Inbound messages from the transport deliver into that private lane, not into a separate channel type. |
+| Transport binding | An external bot identity (e.g., Telegram bot) attached to a Cat's private lane (`direct_cat_chat`). Inbound messages from the transport deliver into that private lane, not into a separate channel type or a `Recents` thread. |
 | Spawned room | A normal `Cats Chat` room that a Cat created or continued from a transport-bound private lane so it can appear in `Recents` and hold canonical topic work. |
 | Routing layer | The product-owned system layer that resolves mentions, default targets, wake-before-route behavior, and per-room routing mode before prompts are sent to runtime sessions. |
 | Lead participant | The default target participant for a room mode when an operator turn does not contain an explicit valid `@mention`. |
@@ -80,4 +80,4 @@
 
 ---
 
-Last updated: 2026-03-23
+Last updated: 2026-03-24

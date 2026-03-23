@@ -33,7 +33,7 @@ This spec defines that split.
 ## User Stories
 
 - As a product designer, I want `Boss Cat` in Telegram to get a different tool
-  posture from a coder Cat in a direct room.
+  posture from a coder Cat in a direct lane.
 - As a runtime maintainer, I want one place to translate product tool intent
   into provider-specific tool controls.
 - As an operator, I want fast startup and minimal unnecessary tool exposure

@@ -82,8 +82,9 @@ default `Boss Cat`.
 8. A lightweight `My Cats` roster should remain visible in the sidebar.
    - it should still show the current `Boss Cat` even when that is the only Cat
    - it exists for quick entry into direct chats and quick switching
-   - selecting a Cat there should reopen an existing direct thread when one
-     exists, or create the canonical direct thread immediately when it does not
+   - selecting a Cat there should open that Cat's in-place private lane
+   - that lane is not a normal `Recents` thread and must not create a
+     persisted chat/channel record merely because it was opened
    - Cat-owned transport markers such as Telegram bindings may be shown there
    - it is not the full management registry
    - the reusable registry and full Cat management remain under `Settings > Cats`

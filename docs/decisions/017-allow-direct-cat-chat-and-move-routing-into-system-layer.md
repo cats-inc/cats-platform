@@ -47,8 +47,10 @@ routing will be owned by a shared system-layer routing model.
    - the selected Cat becomes the room's lead participant
    - unmentioned turns in that room default to that Cat, not to `Boss Cat`
    - the `My Cats` roster is Cat-lane entry, not duplicate-room creation
-   - selecting a Cat there should reopen an existing direct room when one
-     exists, or create the canonical direct room immediately when it does not
+   - selecting a Cat there should switch the UI into that Cat's in-place
+     direct lane
+   - that lane must not appear as a normal `Recents` thread or force creation
+     of a persisted chat/channel record as a side effect
 
 3. Routing rules are product rules and must live in the system layer.
    - explicit mention parsing

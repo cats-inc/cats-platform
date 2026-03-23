@@ -134,7 +134,7 @@ Telegram private chat
   work is happening elsewhere.
 - In the web app, the Cat that owns a Telegram bot may be indicated from
   `My Cats`, because the binding belongs to Cat identity rather than a single
-  persisted thread.
+  `Recents` thread.
 
 ### Rooms as Canonical Chats
 

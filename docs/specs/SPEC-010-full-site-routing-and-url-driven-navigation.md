@@ -104,7 +104,8 @@ Examples:
 - `/chats/550e8400-e29b-41d4-a716-446655440000` opens that persisted chat
 - `/new` opens a fresh new-chat draft
 - `/new?cat=550e8400-e29b-41d4-a716-446655440000` opens a Cat-private new-chat
-  draft for that Cat without creating a persisted thread yet
+  draft/in-place direct lane for that Cat without creating a normal persisted
+  `Recents` thread
 - `/settings/cats` opens the cats settings section
 - `/work/projects/roadmap` opens that project when such a surface exists
 

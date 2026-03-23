@@ -13,7 +13,8 @@
 `cats` should support two first-class conversation modes:
 
 - `Boss Chat`: the default orchestrated conversation mode
-- `Direct Cat Chat`: a direct room with one chosen Cat as the lead participant
+- `Direct Cat Chat`: a Cat-scoped private lane with one chosen Cat as the lead
+  participant
 
 To make that reliable, mention parsing and target resolution must move into a
 shared routing layer owned by the product, not mainly by prompt conventions.
@@ -51,15 +52,18 @@ shared routing layer owned by the product, not mainly by prompt conventions.
    - `boss_chat`
    - `direct_cat_chat` (which may optionally bind to external transports such
      as Telegram)
-2. Every persisted conversation shall have a routing mode.
-3. A room may also declare a lead participant for default target resolution.
+2. Every persisted conversation that appears in `Recents` shall have a routing
+   mode.
+3. A room or Cat-private lane may declare a lead participant for default target
+   resolution.
 4. `+ New Chat` shall continue creating `boss_chat` rooms by default.
 5. The product shall support a Cat-private lane whose lead participant is a
    chosen Cat.
 6. Selecting a Cat from `My Cats` shall resolve to that Cat's private lane.
-   If a persisted `direct_cat_chat` room already exists for that Cat, the
-   product should reopen it. Otherwise the product shall create the canonical
-   direct room for that Cat and navigate there immediately.
+   That lane is an in-place direct-chat surface, not a normal persisted
+   chat/channel record in `Recents`.
+   Opening it from `My Cats` shall not create a new persisted chat/channel
+   record as a side effect.
 7. In `boss_chat`, an unmentioned operator turn shall default to `Boss Cat`.
 8. In `direct_cat_chat`, an unmentioned operator turn (or inbound transport
    message) shall default to the chosen lead Cat.
@@ -134,14 +138,15 @@ Dispatch
 
 ### Direct Cat Chat
 
-- The operator should be able to start a direct room with one Cat from at least
-  one obvious UI surface.
+- The operator should be able to enter a direct-chat lane with one Cat from at
+  least one obvious UI surface.
 - `My Cats` should behave like Cat-private lane selection, not like a button
   that creates arbitrary duplicate rooms.
-- Clicking a Cat in `My Cats` should reopen that Cat's existing direct room
-  when one exists, or create the canonical persisted direct room when the
-  private lane does not yet exist.
-- Once inside that room, the chosen Cat is the implicit counterpart.
+- Clicking a Cat in `My Cats` should switch the UI into that Cat's in-place
+  direct lane.
+- That lane is not a normal `Recents` thread and should not create a persisted
+  chat/channel record just because it was opened.
+- Once inside that lane, the chosen Cat is the implicit counterpart.
 - `Boss Cat` is not required in the route for normal unmentioned turns.
 
 ### Mention Behavior
@@ -179,10 +184,13 @@ Dispatch
   prompts from being the only thing enforcing explicit target resolution.
 - `Direct Cat Chat` should feel like a UI-native direct session with a chosen
   specialist, not like a hidden Boss Cat room wearing a different label.
-- The Cat-private lane is the canonical persisted `direct_cat_chat` room used
-  for that Cat's one-to-one web and transport entry. The product may still
-  expose explicit `/new?cat=<catId>` drafts for deep links or future compose
-  flows, but that is no longer the primary `My Cats` behavior.
+- The Cat-private lane is a Cat-scoped direct lane used for that Cat's
+  one-to-one web and transport entry.
+- It may preserve lane-scoped state, but it is not a normal persisted
+  `Recents` thread.
+- The product may still expose explicit `/new?cat=<catId>` drafts or internal
+  route state to enter that lane, but `My Cats` should not materialize a
+  standard chat record as a side effect.
 
 ## Open Questions
 
@@ -190,8 +198,8 @@ Dispatch
       cat card action, add button menu, or a new composer picker?
 - [ ] Should a `direct_cat_chat` room allow `Boss Cat` to be added later as a
       participant or escalation path?
-- [ ] Should direct rooms support multi-Cat participation after creation, or
-      should they stay one-lead-but-expandable from the start?
+- [ ] Should direct lanes support multi-Cat participation after escalation, or
+      should they stay one-lead with explicit breakout into a normal room?
 
 ## References
 
@@ -202,4 +210,4 @@ Dispatch
 
 *Created: 2026-03-19*
 *Author: Codex*
-*Last updated: 2026-03-23*
+*Last updated: 2026-03-24*

@@ -1147,8 +1147,9 @@ Errors use a minimal payload:
 - Chat mutations now cover selection, chat setup, global cat registry,
   channel deletion, channel assignment, activation, messaging, orchestrator
   editing, and export
-- `My Cats` private-room entry is a renderer behavior layered on top of the
-  canonical chat/channel APIs; the public API no longer models a separate
+- `My Cats` private-lane entry is a renderer behavior layered on top of the
+  canonical chat/channel APIs; it should not be treated as a normal persisted
+  `Recents` thread, and the public API no longer models a separate
   `transport_inbox` room mode
 - Runtime responses are currently delivered as request/response completions; the
   API does not expose live push or WebSocket streaming yet
@@ -1159,4 +1160,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-03-23*
+*Last updated: 2026-03-24*
