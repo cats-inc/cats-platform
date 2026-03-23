@@ -1,7 +1,8 @@
-import type { FormEvent, KeyboardEvent, RefObject } from 'react';
+import { useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../../../shared/app-shell';
 import { catInitials, truncatePath } from '../chatUtils';
+import { CatInspectPanel, type CatInspectTarget } from './CatInspectPanel';
 import { ModelSelector, type ModelSelectorValue } from './ModelSelector';
 
 export interface NewChatDraftProps {
@@ -74,11 +75,22 @@ export function NewChatDraft({
       && binding.status === 'active'
       && binding.catId === leadCat.id),
   );
-  const showBoss = Boolean(payload.chat.bossCatId) && !leadCat;
+  const draftLeadCat = !leadCat && draftCatIds.length > 0
+    ? payload.chat.cats.find((c) => c.id === draftCatIds[0] && c.status === 'active') ?? null
+    : null;
+  const effectiveLeadCat = leadCat ?? draftLeadCat;
+  const hasDraftCats = draftCatIds.length > 0;
+  const showSoloSelector = Boolean(payload.chat.bossCatId) && !effectiveLeadCat;
+  const nonLeadDraftCatIds = draftLeadCat
+    ? draftCatIds.filter((id) => id !== draftLeadCat.id)
+    : leadCat
+      ? draftCatIds.filter((id) => id !== leadCat.id)
+      : draftCatIds;
   const visibleDraftCatIds = leadCat
     ? [leadCat.id, ...draftCatIds.filter((id) => id !== leadCat.id)]
     : draftCatIds;
-  const totalCats = (showBoss ? 1 : 0) + visibleDraftCatIds.length;
+  const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
+  const [inspectOpen, setInspectOpen] = useState(false);
   const hasMultipleCats = payload.chat.cats.filter((c) => c.status === 'active').length > 1;
 
   return (
@@ -214,9 +226,9 @@ export function NewChatDraft({
                   </button>
                 </span>
               ) : null}
-              {visibleDraftCatIds.length > 0 ? (
+              {nonLeadDraftCatIds.length > 0 ? (
                 <div className="composerAvatarStack">
-                  {visibleDraftCatIds.map((id) => {
+                  {nonLeadDraftCatIds.map((id) => {
                     const cat = payload.chat.cats.find((p) => p.id === id);
                     if (!cat) return null;
                     return (
@@ -242,18 +254,38 @@ export function NewChatDraft({
                 </div>
               ) : null}
             </div>
-            {showBoss && selectedModel && onModelChange ? (
+            {showSoloSelector && selectedModel && onModelChange ? (
               <div style={{ marginRight: 8 }}>
                 <ModelSelector value={selectedModel} onChange={onModelChange} />
               </div>
-            ) : showBoss ? (
-              <div
-                className="catAvatar composerStackAvatar catAvatarBoss"
-                data-tooltip={bossCatName}
-                style={{ marginRight: 8, ...(bossCatAvatarColor ? { background: bossCatAvatarColor } : {}) }}
-              >
-                {catInitials(bossCatName)}
-              </div>
+            ) : effectiveLeadCat ? (
+              <>
+                <div
+                  className={effectiveLeadCat.id === payload.chat.bossCatId ? 'catAvatar composerStackAvatar catAvatarBoss composerLeadAvatar' : 'catAvatar composerStackAvatar composerLeadAvatar'}
+                  data-tooltip={effectiveLeadCat.name}
+                  style={effectiveLeadCat.avatarColor ? { background: effectiveLeadCat.avatarColor } : undefined}
+                  onClick={() => setInspectOpen(!inspectOpen)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  {catInitials(effectiveLeadCat.name)}
+                </div>
+                {inspectOpen ? (
+                  <CatInspectPanel
+                    cat={{
+                      id: effectiveLeadCat.id,
+                      name: effectiveLeadCat.name,
+                      avatarColor: effectiveLeadCat.avatarColor,
+                      provider: effectiveLeadCat.defaultExecutionTarget.provider,
+                      instance: effectiveLeadCat.defaultExecutionTarget.instance,
+                      model: effectiveLeadCat.defaultExecutionTarget.model,
+                      skillProfile: effectiveLeadCat.skillProfile ?? null,
+                      isBoss: effectiveLeadCat.id === payload.chat.bossCatId,
+                    }}
+                    onClose={() => setInspectOpen(false)}
+                  />
+                ) : null}
+              </>
             ) : null}
             <button
               className="composerSendButton"

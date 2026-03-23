@@ -141,11 +141,9 @@ export default function App() {
   const [draftModel, setDraftModel] = useState<{ provider: string; model: string | null; instance: string | null }>(() => ({
     provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
   }));
-  const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>({
-    provider: 'claude',
-    model: null,
-    instance: null,
-  });
+  const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(() => ({
+    provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
+  }));
   const [operatorState, setOperatorState] = useState<OperatorLoadState>({
     status: 'idle',
     snapshot: null,
@@ -455,6 +453,21 @@ export default function App() {
   useEffect(() => {
     return refreshOperatorSnapshot();
   }, [operatorRefreshKey, refreshOperatorSnapshot]);
+
+  // Sync solo channel model from the selected channel's pending state
+  useEffect(() => {
+    if (!readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
+      return;
+    }
+    const pending = readySelectedChannel as { pendingProvider?: string | null; pendingModel?: string | null; pendingInstance?: string | null };
+    if (pending.pendingProvider) {
+      setSoloChannelModel({
+        provider: pending.pendingProvider,
+        model: pending.pendingModel ?? null,
+        instance: pending.pendingInstance ?? null,
+      });
+    }
+  }, [readySelectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!readyPayload?.setupCompleteAt || typeof window === 'undefined' || typeof document === 'undefined') {

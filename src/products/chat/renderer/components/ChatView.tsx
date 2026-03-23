@@ -26,6 +26,7 @@ import {
   buildRunInspectorView,
 } from '../../shared/operatorLoop';
 import { ActivityFeed } from './ActivityFeed';
+import { CatInspectPanel } from './CatInspectPanel';
 import { ModelSelector, type ModelSelectorValue } from './ModelSelector';
 import { ApprovalQueuePanel } from './ApprovalQueuePanel';
 import { ProgressSummaryPanel } from './ProgressSummaryPanel';
@@ -389,6 +390,12 @@ export function ChatView({
                   <div style={{ marginRight: 8 }}>
                     <ModelSelector value={selectedModel} onChange={onModelChange} />
                   </div>
+                ) : !isSoloComposer && leadCat ? (
+                  <ComposerLeadCatAvatar
+                    cat={leadCat}
+                    isBoss={leadCat.catId === payload.chat.bossCatId}
+                    payload={payload}
+                  />
                 ) : null}
                 <button
                   className="composerSendButton"
@@ -468,6 +475,48 @@ export function ChatView({
           </aside>
         </div>
       </div>
+    </>
+  );
+}
+
+function ComposerLeadCatAvatar({
+  cat,
+  isBoss,
+  payload,
+}: {
+  cat: { catId: string; name: string; avatarColor: string | null; execution: { target: { provider: string; instance: string | null; model: string | null } }; skillProfile?: string | null };
+  isBoss: boolean;
+  payload: AppShellPayload;
+}) {
+  const [inspectOpen, setInspectOpen] = useState(false);
+
+  return (
+    <>
+      <div
+        className={isBoss ? 'catAvatar composerStackAvatar catAvatarBoss composerLeadAvatar' : 'catAvatar composerStackAvatar composerLeadAvatar'}
+        data-tooltip={cat.name}
+        style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
+        onClick={() => setInspectOpen(!inspectOpen)}
+        role="button"
+        tabIndex={0}
+      >
+        {catInitials(cat.name)}
+      </div>
+      {inspectOpen ? (
+        <CatInspectPanel
+          cat={{
+            id: cat.catId,
+            name: cat.name,
+            avatarColor: cat.avatarColor,
+            provider: cat.execution.target.provider,
+            instance: cat.execution.target.instance,
+            model: cat.execution.target.model,
+            skillProfile: cat.skillProfile ?? null,
+            isBoss,
+          }}
+          onClose={() => setInspectOpen(false)}
+        />
+      ) : null}
     </>
   );
 }
