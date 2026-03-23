@@ -306,6 +306,7 @@ export function Sidebar({
           </button>
         </nav>
 
+        <div className="sidebarScrollable">
         <nav className="navGroup navGroupChat" aria-label="Chat">
           <button
             className={surface === 'chats' ? 'navItem navItemActive' : 'navItem'}
@@ -409,6 +410,7 @@ export function Sidebar({
               : renderByChatType()}
           </div>
         </section>
+        </div>
       </div>
 
       <div className="sidebarFooter" ref={accountMenuRef}>

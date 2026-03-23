@@ -131,6 +131,7 @@ textarea {
 
 .brandRow {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   height: 32px;
@@ -164,6 +165,7 @@ textarea {
 
 .navGroup {
   display: grid;
+  flex-shrink: 0;
   gap: 1px;
 }
 
@@ -1238,7 +1240,7 @@ textarea {
 .sidebarCollapsed .brandCopy,
 .sidebarCollapsed .navLabel,
 .sidebarCollapsed .sidebarFooterMeta,
-.sidebarCollapsed .recentSection {
+.sidebarCollapsed .sidebarScrollable {
   display: none;
 }
 
@@ -1282,6 +1284,20 @@ textarea {
   flex: 1;
   flex-direction: column;
   padding: 16px 12px 10px;
+  overflow: hidden;
+}
+
+.sidebarScrollable {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 4px;
+  background:
+    linear-gradient(var(--sidebar-bg) 30%, transparent) center top,
+    linear-gradient(rgba(0, 0, 0, 0.07), rgba(0, 0, 0, 0.07)) center top;
+  background-repeat: no-repeat;
+  background-size: 100% 12px, 100% 1px;
+  background-attachment: local, scroll;
 }
 
 .chromeButton {
@@ -1298,15 +1314,10 @@ textarea {
 
 .recentSection {
   display: flex;
-  min-height: 0;
-  flex: 1;
   flex-direction: column;
 }
 
 .recentList {
-  min-height: 0;
-  flex: 1;
-  overflow: auto;
   align-content: start;
   padding-bottom: 8px;
   gap: 0;
