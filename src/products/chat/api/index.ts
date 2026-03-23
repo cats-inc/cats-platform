@@ -4,6 +4,7 @@ import { routeCompanionBoxApi } from './companionBoxRoutes.js';
 import { routeMemoryApi } from './memoryRoutes.js';
 import { routeOrchestratorApi } from './orchestratorRoutes.js';
 import { routeChatResourceApi } from './resourceRoutes.js';
+import { routeRuntimeBridgeApi } from './runtimeBridgeRoutes.js';
 import { routeChatShellApi } from './shellRoutes.js';
 import { routeSetupApi } from './setupRoutes.js';
 import {
@@ -43,6 +44,10 @@ export async function routeChatApi(
   }
 
   if (await routeOrchestratorApi(context)) {
+    return true;
+  }
+
+  if (await routeRuntimeBridgeApi(context)) {
     return true;
   }
 

@@ -375,6 +375,7 @@ async function routeRequest(
     await handleTelegramWebhook(request, response, {
       chatStore: dependencies.chatStore,
       companionStore: dependencies.companionStore,
+      memoryService: dependencies.memoryService,
       telegramRelay: dependencies.telegramRelay,
       runtimeClient: dependencies.runtimeClient,
       now: dependencies.now,
@@ -406,6 +407,7 @@ async function routeRequest(
       bindingId: pollingReconnectMatch[0]!,
       chatStore: dependencies.chatStore,
       companionStore: dependencies.companionStore,
+      memoryService: dependencies.memoryService,
       telegramRelay: dependencies.telegramRelay,
       runtimeClient: dependencies.runtimeClient,
       pollingSupervisor: dependencies.pollingSupervisor,
@@ -489,6 +491,7 @@ async function reconcilePollingOnStartup(
       refreshContext: async () => (await readTelegramPollingContext(dependencies.chatStore)).context,
       chatStore: dependencies.chatStore,
       companionStore: dependencies.companionStore,
+      memoryService: dependencies.memoryService,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,
     });

@@ -71,11 +71,13 @@ export type RoomRouteSelectionKind =
 
 export type RoomRouteBlockedReason =
   | 'missing_direct_chat_lead'
+  | 'missing_cat_led_lead'
   | 'no_valid_targets';
 
 export type RoomRouteDefaultTargetReason =
   | 'boss_chat_default'
-  | 'direct_chat_lead';
+  | 'direct_chat_lead'
+  | 'cat_led_lead';
 
 export type RoomRoutingTurnStatus =
   | 'idle'

@@ -2,6 +2,7 @@ import type { BotBindingRecord } from '../../../core/types.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import type { CompanionBoxStore } from '../../../products/chat/state/companionBoxStore.js';
 import type { ChatStore } from '../../../products/chat/state/store.js';
+import type { CatsMemoryService } from '../../memory/index.js';
 import {
   bridgeTelegramWebhookToRoom,
 } from './bridge.js';
@@ -30,6 +31,7 @@ export interface StartPollingInput {
   refreshContext?: () => Promise<TelegramRelayContext>;
   chatStore: ChatStore;
   companionStore: CompanionBoxStore;
+  memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
 }
@@ -40,6 +42,7 @@ export interface ReconcilePollingInput {
   refreshContext?: () => Promise<TelegramRelayContext>;
   chatStore: ChatStore;
   companionStore: CompanionBoxStore;
+  memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
 }
@@ -234,6 +237,7 @@ export function createTelegramPollingSupervisor(
                 context: scopedContext,
                 chatStore,
                 companionStore,
+                memoryService: input.memoryService,
                 runtimeClient,
                 telegramRelay,
                 now: options.now,
@@ -359,6 +363,7 @@ export function createTelegramPollingSupervisor(
             refreshContext: input.refreshContext,
             chatStore: input.chatStore,
             companionStore: input.companionStore,
+            memoryService: input.memoryService,
             runtimeClient: input.runtimeClient,
             telegramRelay: input.telegramRelay,
           });

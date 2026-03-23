@@ -469,6 +469,28 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
   conversation-scoped operator/run-inspector contract for that room. `?runId=`
   may be supplied when a caller wants a specific run instead of the latest run.
 
+### Runtime Bridge
+
+```text
+GET  /api/runtime/sessions/{sessionId}/observe
+POST /api/runtime/sessions/{sessionId}/memory-flush
+POST /api/runtime/mcp
+```
+
+- `GET /api/runtime/sessions/{sessionId}/observe` proxies the runtime-owned
+  `/sessions/{id}/observe` payload so product-side clients can read the same
+  machine-readable inspection contract without talking to `cats-runtime`
+  directly.
+- `POST /api/runtime/sessions/{sessionId}/memory-flush` is the first Team 4 ↔
+  Team 6 bridge. It inspects pending `memory_flush` maintenance hooks from the
+  runtime session, resolves Cats-owned `channelId` / `companionSession.catId`
+  metadata from the runtime invocation context, and executes the matching
+  product-owned flushes with reason `pre_reset` or `pre_compaction`.
+- `POST /api/runtime/mcp` proxies raw MCP JSON-RPC requests to the runtime MCP
+  facade. This keeps direct product APIs and MCP access available side by side:
+  product routes can stay HTTP-native while orchestrator-style agents still use
+  the same runtime MCP tool surface.
+
 ### Error Shape (Canonical Routes)
 
 Canonical routes use structured errors:

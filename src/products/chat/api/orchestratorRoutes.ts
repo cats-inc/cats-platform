@@ -34,6 +34,7 @@ async function handleDispatch(
       runtimeClient: context.dependencies.runtimeClient,
       now: context.dependencies.now?.(),
       companionStore: context.dependencies.companionStore,
+      memoryService: context.dependencies.memoryService,
     });
     sendJson(context.response, 200, response);
   } catch (error) {

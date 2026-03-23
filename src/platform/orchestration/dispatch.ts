@@ -1,5 +1,6 @@
 import type { CompanionBoxStore } from '../../products/chat/state/companionBoxStore.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
+import type { CatsMemoryService } from '../memory/index.js';
 import type { RuntimeClient } from '../runtime/client.js';
 import { buildChannelView } from '../../products/chat/state/model.js';
 import { routeChannelMessage } from '../../products/chat/state/runtimeActions.js';
@@ -22,6 +23,7 @@ interface DispatchOrchestratorTurnInput extends OrchestratorPlanRequest {
   runtimeClient: RuntimeClient;
   now?: Date;
   companionStore?: CompanionBoxStore;
+  memoryService?: CatsMemoryService;
 }
 
 export async function dispatchOrchestratorTurn(
@@ -44,6 +46,7 @@ export async function dispatchOrchestratorTurn(
     {
       transport: input.transport === 'telegram' ? 'telegram' : 'web',
       companionStore: input.companionStore,
+      memoryService: input.memoryService,
     },
   );
   const persisted = await input.chatStore.write(routed.state);

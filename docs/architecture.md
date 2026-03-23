@@ -468,6 +468,10 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
   substrate that flushes companion, owner, and channel context into local
   durable records and hydrates direct companion sessions with retrieval
   context.
+- `cats` now also exposes a small runtime-bridge layer for two cross-team seams:
+  runtime session observe payloads can be proxied through product APIs, and
+  runtime `memory_flush` maintenance hooks can trigger Cats-owned
+  channel/companion flushes before reset or compaction.
 - `Cats Core v1` now exists as a first in-tree contract plus a minimal neutral
   write substrate for owner profile, actors, conversations, projects,
   work items, tasks, approvals, approval bindings, runs, traces, checkpoints,
@@ -557,6 +561,5 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-24*
-
 
 

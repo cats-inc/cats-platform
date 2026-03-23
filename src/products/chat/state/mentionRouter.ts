@@ -128,6 +128,35 @@ export function resolveRoomDefaultRoutingTarget(
     };
   }
 
+  if (channel.composerMode === 'cat_led' && routing?.leadParticipantId) {
+    const leadCat = activeAssignedCats(channel)
+      .find((cat) => cat.catId === routing.leadParticipantId);
+    if (leadCat) {
+      const target = buildCatTarget(leadCat);
+      return {
+        participant: toParticipantRef(target),
+        target,
+        defaultTargetReason: 'cat_led_lead',
+        blockedReason: null,
+        note: null,
+      };
+    }
+
+    const leadCatName = state.cats.find((cat) => cat.id === routing.leadParticipantId)?.name
+      ?? 'Lead Cat';
+    return {
+      participant: {
+        participantKind: 'cat',
+        participantId: routing.leadParticipantId,
+        participantName: leadCatName,
+      },
+      target: null,
+      defaultTargetReason: 'cat_led_lead',
+      blockedReason: 'missing_cat_led_lead',
+      note: 'This chat no longer has an active lead Cat. Re-add the Cat or pick another lead before continuing.',
+    };
+  }
+
   const target = buildOrchestratorTarget(state, channel);
   return {
     participant: toParticipantRef(target),
@@ -165,6 +194,7 @@ function createRouteResolution(input: {
  *
  * Routing rules:
  * - No mentions + boss_chat → Boss Cat (orchestrator) via room_default
+ * - No mentions + cat_led → lead Cat via room_default
  * - No mentions + direct_cat_chat → lead Cat via room_default
  * - @Cat_A → Cat_A via explicit_single
  * - @Cat_A @Cat_B → both via explicit_multi

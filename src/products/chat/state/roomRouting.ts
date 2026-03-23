@@ -54,12 +54,14 @@ const ROOM_ROUTE_SELECTION_KINDS = new Set<RoomRouteSelectionKind>([
 
 const ROOM_ROUTE_BLOCKED_REASONS = new Set<RoomRouteBlockedReason>([
   'missing_direct_chat_lead',
+  'missing_cat_led_lead',
   'no_valid_targets',
 ]);
 
 const ROOM_ROUTE_DEFAULT_TARGET_REASONS = new Set<RoomRouteDefaultTargetReason>([
   'boss_chat_default',
   'direct_chat_lead',
+  'cat_led_lead',
 ]);
 
 const ROOM_ROUTING_TURN_STATUSES = new Set<RoomRoutingTurnStatus>([

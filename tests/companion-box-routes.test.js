@@ -328,6 +328,85 @@ test('direct companion chat routes hydrated companion session context into runti
   });
 });
 
+test('adding the first companion cat to a Recents thread hydrates the cat-led runtime session', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        roles: ['companion'],
+        skillProfile: 'companion',
+      }),
+    });
+    const { cat } = await createCatResponse.json();
+
+    await fetch(`${baseUrl}/api/cats/${cat.id}/companion-box/sources`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'note',
+        storageMode: 'uploaded_copy',
+        title: 'Favorite toy',
+        textContent: 'Companion always brings the red toy mouse back after fetch.',
+      }),
+    });
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Solo thread',
+        topic: 'Start solo, then upgrade to a cat-led Recents chat.',
+        skipBossCatGreeting: true,
+        composerMode: 'solo',
+        pendingProvider: 'gemini',
+        pendingModel: 'gemini-default',
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const { channel } = await createChannelResponse.json();
+    const channelId = channel.id;
+
+    const assignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${cat.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    assert.equal(assignResponse.status, 201);
+
+    const sendMessageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        body: 'Tell me about your favorite toy.',
+      }),
+    });
+    assert.equal(sendMessageResponse.status, 200);
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellResponse.status, 200);
+    const shellPayload = await shellResponse.json();
+    const selectedChannel = shellPayload.chat.selectedChannel;
+    assert.equal(selectedChannel.composerMode, 'cat_led');
+    assert.equal(selectedChannel.roomRouting.leadParticipantId, cat.id);
+
+    const createdSession = runtimeClient.createdSessions.at(-1);
+    assert.ok(createdSession);
+    assert.equal(createdSession.provider, 'claude');
+    assert.equal(createdSession.context.metadata.companionSession.catId, cat.id);
+    assert.equal(
+      createdSession.context.metadata.companionSession.channelContext.channelId,
+      channelId,
+    );
+    assert.ok(createdSession.context.metadata.companionSession.retrieval);
+    assert.ok(createdSession.context.metadata.companionSession.retrieval.hits.length > 0);
+  });
+});
+
 test('cat memory routes reject cross-subject mutations and accept empty flush bodies', async () => {
   const runtimeClient = createRuntimeStub();
 

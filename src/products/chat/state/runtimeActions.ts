@@ -35,6 +35,8 @@ import type {
 import type {
   CompanionBoxStore,
 } from './companionBoxStore.js';
+import type { CatsMemoryService } from '../../../platform/memory/index.js';
+import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import type {
   RuntimeClient,
   RuntimeSessionInfo,
@@ -119,6 +121,7 @@ type RuntimeTransportContext = 'telegram' | 'web';
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
   companionStore?: CompanionBoxStore;
+  memoryService?: CatsMemoryService;
 }
 
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_PROMPT_RECENT_MESSAGES;
@@ -1263,6 +1266,7 @@ async function ensureTargetSession(
   options: {
     transport?: RuntimeTransportContext;
     companionStore?: CompanionBoxStore;
+    memoryService?: CatsMemoryService;
     roomRouting?: RoomRoutingState | null;
     wakeTrigger?: RoomWakeTrigger;
     wakeReason?: RoomWakeReason;
@@ -1305,6 +1309,14 @@ async function ensureTargetSession(
         );
 
       if (shouldRestartSoloSession) {
+        await bestEffortFlushRuntimeSessionMemory({
+          runtimeClient,
+          sessionId: target.sessionId,
+          requestedPhase: 'pre_reset',
+          memoryService: options.memoryService,
+          companionStore: options.companionStore,
+          now,
+        });
         await runtimeClient.closeSession(target.sessionId);
         const resetState = setChannelOrchestratorLease(
           state,
@@ -1493,6 +1505,7 @@ export async function wakeChannelEntryParticipant(
   now: Date = new Date(),
   options: {
     companionStore?: CompanionBoxStore;
+    memoryService?: CatsMemoryService;
   } = {},
 ): Promise<{
   state: ChatState;
@@ -1556,6 +1569,7 @@ export async function wakeChannelEntryParticipant(
     now,
     {
       companionStore: options.companionStore,
+      memoryService: options.memoryService,
       roomRouting,
       wakeTrigger: 'room_entry',
       wakeReason: 'room_entry',
@@ -1720,6 +1734,7 @@ export async function activateChannelSessions(
   now: Date = new Date(),
   options: {
     companionStore?: CompanionBoxStore;
+    memoryService?: CatsMemoryService;
   } = {},
 ): Promise<{ state: ChatState; results: ChannelActivationResult[] }> {
   let nextState = state;
@@ -1954,6 +1969,14 @@ export async function routeChannelMessage(
     pendingTargetChanged
     && channelBeforeMessage.orchestratorLease.sessionId
   ) {
+    await bestEffortFlushRuntimeSessionMemory({
+      runtimeClient,
+      sessionId: channelBeforeMessage.orchestratorLease.sessionId,
+      requestedPhase: 'pre_reset',
+      memoryService: options.memoryService,
+      companionStore: options.companionStore,
+      now,
+    });
     await runtimeClient.closeSession(channelBeforeMessage.orchestratorLease.sessionId);
     nextState = setChannelOrchestratorLease(
       nextState,
@@ -2427,6 +2450,7 @@ export async function routeChannelMessage(
         {
           transport: options.transport,
           companionStore: options.companionStore,
+          memoryService: options.memoryService,
           roomRouting: baseRoomRouting,
           wakeTrigger: 'route_target',
           wakeReason: request.trigger === 'continuation_mention'

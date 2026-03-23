@@ -123,6 +123,16 @@ export interface RuntimeSendMessageInput {
   skills?: RuntimeSkillManifest;
 }
 
+export interface RuntimeObservedSessionPayload {
+  session: Record<string, unknown>;
+  historyPath?: string;
+  observePath?: string;
+  stream?: {
+    path?: string;
+    available?: boolean;
+  };
+}
+
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
   getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
@@ -133,6 +143,8 @@ export interface RuntimeClient {
     content: string,
     input?: RuntimeSendMessageInput,
   ): Promise<RuntimeMessageResult>;
+  observeSession(sessionId: string): Promise<RuntimeObservedSessionPayload>;
+  callMcp(request: unknown): Promise<Record<string, unknown> | null>;
   closeSession(sessionId: string): Promise<void>;
 }
 
@@ -507,6 +519,47 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     return readNdjsonResponse(response);
+  }
+
+  async observeSession(sessionId: string): Promise<RuntimeObservedSessionPayload> {
+    const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/observe`, {
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new Error(readErrorText(rawBody, `Failed to observe session (${response.status})`));
+    }
+
+    return (await response.json()) as RuntimeObservedSessionPayload;
+  }
+
+  async callMcp(request: unknown): Promise<Record<string, unknown> | null> {
+    const response = await fetch(`${this.baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        ...this.authHeaders(),
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new Error(readErrorText(rawBody, `Failed to call MCP (${response.status})`));
+    }
+
+    return (await response.json()) as Record<string, unknown>;
   }
 
   async closeSession(sessionId: string): Promise<void> {

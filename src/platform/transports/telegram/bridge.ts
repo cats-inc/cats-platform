@@ -7,6 +7,7 @@ import { routeChannelMessage } from '../../../products/chat/state/runtimeActions
 import type { CompanionBoxStore } from '../../../products/chat/state/companionBoxStore.js';
 import type { ChatStore } from '../../../products/chat/state/store.js';
 import type { RuntimeClient } from '../../runtime/client.js';
+import type { CatsMemoryService } from '../../memory/index.js';
 import type {
   TelegramDeliveryReceipt,
   TelegramMessagePayload,
@@ -270,6 +271,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
   context: TelegramRelayContext;
   chatStore: ChatStore;
   companionStore: CompanionBoxStore;
+  memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
   now?: () => Date;
@@ -358,7 +360,11 @@ export async function bridgeTelegramWebhookToRoom(input: {
       },
       input.runtimeClient,
       timestamp,
-      { transport: 'telegram', companionStore: input.companionStore },
+      {
+        transport: 'telegram',
+        companionStore: input.companionStore,
+        memoryService: input.memoryService,
+      },
     );
     dispatchedState = dispatch.state;
     const persistedState = await input.chatStore.write(

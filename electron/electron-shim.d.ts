@@ -1,0 +1,73 @@
+declare namespace Electron {
+  interface IpcRendererEvent {}
+}
+
+declare module 'electron' {
+  export interface BrowserWindowConstructorOptions {
+    width?: number;
+    height?: number;
+    minWidth?: number;
+    minHeight?: number;
+    show?: boolean;
+    title?: string;
+    backgroundColor?: string;
+    webPreferences?: {
+      preload?: string;
+      contextIsolation?: boolean;
+      nodeIntegration?: boolean;
+      sandbox?: boolean;
+    };
+  }
+
+  export interface WebContents {
+    getURL(): string;
+    send(channel: string, ...args: unknown[]): void;
+  }
+
+  export class BrowserWindow {
+    constructor(options?: BrowserWindowConstructorOptions);
+    webContents: WebContents;
+    loadURL(url: string): Promise<void>;
+    once(event: string, listener: () => void): this;
+    show(): void;
+    isMinimized(): boolean;
+    restore(): void;
+    focus(): void;
+  }
+
+  export const ipcMain: {
+    handle<TArgs extends unknown[] = unknown[], TResult = unknown>(
+      channel: string,
+      listener: (event: unknown, ...args: TArgs) => TResult | Promise<TResult>,
+    ): void;
+  };
+
+  export const ipcRenderer: {
+    invoke<TResult = unknown>(channel: string, ...args: unknown[]): Promise<TResult>;
+    on(
+      channel: string,
+      listener: (event: Electron.IpcRendererEvent, ...args: any[]) => void,
+    ): void;
+    off(
+      channel: string,
+      listener: (event: Electron.IpcRendererEvent, ...args: any[]) => void,
+    ): void;
+  };
+
+  export const contextBridge: {
+    exposeInMainWorld(key: string, api: unknown): void;
+  };
+
+  export const shell: {
+    openExternal(url: string): Promise<void>;
+  };
+
+  export const app: {
+    requestSingleInstanceLock(): boolean;
+    whenReady(): Promise<void>;
+    getPath(name: string): string;
+    quit(): void;
+    exit(exitCode?: number): void;
+    on(event: string, listener: (...args: any[]) => void): void;
+  };
+}

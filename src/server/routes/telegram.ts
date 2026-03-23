@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createCatActorId } from '../../core/model.js';
 import type { BotBindingRecord } from '../../core/types.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
+import type { CatsMemoryService } from '../../platform/memory/index.js';
 import {
   bridgeTelegramWebhookToRoom,
   TelegramWebhookBridgeError,
@@ -21,6 +22,7 @@ interface TelegramQueryDependencies {
 
 interface TelegramWebhookDependencies extends TelegramQueryDependencies {
   companionStore: CompanionBoxStore;
+  memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   now?: () => Date;
 }
@@ -229,6 +231,7 @@ export async function handleTelegramWebhook(
         context,
         chatStore: dependencies.chatStore,
         companionStore: dependencies.companionStore,
+        memoryService: dependencies.memoryService,
         runtimeClient: dependencies.runtimeClient,
         telegramRelay: dependencies.telegramRelay,
         now: dependencies.now,
@@ -262,6 +265,7 @@ interface TelegramPollingReconnectDependencies {
   bindingId: string;
   chatStore: ChatStore;
   companionStore: CompanionBoxStore;
+  memoryService: CatsMemoryService;
   telegramRelay: TelegramRelay;
   runtimeClient: RuntimeClient;
   pollingSupervisor: TelegramPollingSupervisor;
@@ -309,6 +313,7 @@ export async function handleTelegramPollingReconnect(
       ).context,
       chatStore: dependencies.chatStore,
       companionStore: dependencies.companionStore,
+      memoryService: dependencies.memoryService,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,
     });

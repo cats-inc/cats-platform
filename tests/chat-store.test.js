@@ -352,7 +352,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   const dispatched = await routeChannelMessage(
     state,
     channelId,
-    { body: 'Start the room workflow.' },
+    { body: '@Smelly Start the room workflow.' },
     runtimeClient,
     now,
   );
@@ -361,14 +361,14 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   const reloadedChannel = reloadedState.channels.find((channel) => channel.id === channelId);
   const core = await store.readCore();
 
-  assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.selectionKind, 'default_target');
+  assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.selectionKind, 'explicit_mentions');
   assert.equal(
     reloadedChannel?.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'boss_chat_default',
+    'cat_led_lead',
   );
   assert.deepEqual(
     reloadedChannel?.roomRouting?.wakeHistory.map((wake) => wake.reason),
-    ['workflow_continuation', 'room_default'],
+    ['workflow_continuation', 'explicit_mention'],
   );
   assert.ok(core.runs.some((run) => run.id.startsWith(`run-room-routing-${channelId}-`)));
   assert.ok(

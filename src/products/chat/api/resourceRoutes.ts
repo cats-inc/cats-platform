@@ -147,7 +147,10 @@ async function handleRestUpdatePreferences(
         body.selectedChannelId,
         context.dependencies.runtimeClient,
         nowFrom(context.dependencies),
-        { companionStore: context.dependencies.companionStore },
+        {
+          companionStore: context.dependencies.companionStore,
+          memoryService: context.dependencies.memoryService,
+        },
       );
       nextState = wake.state;
     }
@@ -268,7 +271,10 @@ async function handleRestSendMessage(
       body,
       context.dependencies.runtimeClient,
       nowFrom(context.dependencies),
-      { companionStore: context.dependencies.companionStore },
+      {
+        companionStore: context.dependencies.companionStore,
+        memoryService: context.dependencies.memoryService,
+      },
     );
     const persisted = await context.dependencies.chatStore.write(
       dispatch.state,
@@ -504,7 +510,10 @@ async function handleRestActivateChannel(
       channelId,
       context.dependencies.runtimeClient,
       now,
-      { companionStore: context.dependencies.companionStore },
+      {
+        companionStore: context.dependencies.companionStore,
+        memoryService: context.dependencies.memoryService,
+      },
     );
     await context.dependencies.chatStore.write(activation.state);
     sendJson(context.response, 200, {

@@ -22,8 +22,8 @@ export function shouldHydrateCompanionSession(
   box: CompanionBox,
   channel: { roomRouting?: ChatChannelView['roomRouting'] },
 ): boolean {
-  if (channel.roomRouting?.mode !== 'direct_cat_chat') {
-    return false;
+  if (channel.roomRouting?.mode === 'direct_cat_chat') {
+    return true;
   }
 
   if (cat.skillProfile === 'companion' || cat.roles.includes('companion')) {

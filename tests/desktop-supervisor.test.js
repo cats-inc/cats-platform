@@ -72,7 +72,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(appSpec.env.CATS_PORT, '48181');
   assert.equal(appSpec.env.CATS_RUNTIME_BASE_URL, 'http://127.0.0.1:43110');
   assert.equal(appSpec.env.CATS_STATE_PATH, 'C:\\Cats\\chat-state.local.json');
-  assert.equal(appSpec.cwd, 'C:\\Users\\sammy\\Source\\SK2\\one-man-digital-company\\cats');
+  assert.equal(appSpec.cwd, config.packageRoot);
 });
 
 test('stopAll preserves the app-before-runtime shutdown order', async () => {

@@ -14,9 +14,9 @@
     "declarationMap": true,
     "sourceMap": true,
     "moduleResolution": "NodeNext",
-    "types": ["node", "electron"]
+    "types": ["node"]
   },
-  "include": ["electron/**/*.ts"],
+  "include": ["electron/**/*.ts", "electron/**/*.d.ts"],
   "exclude": [
     "node_modules",
     "dist",

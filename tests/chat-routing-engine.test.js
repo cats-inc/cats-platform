@@ -283,12 +283,104 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
   assert.equal(orchestratorReplies[1]?.executionModel, 'gemini-default');
 });
 
-test('room routing continues across agent mentions and auto-wakes targeted participants', async () => {
+test('solo composer mode honors pending runtime memory flush hooks before restarting the session', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo thread',
+      topic: 'Restart the solo session after switching models.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) => usage(`response from ${sessionId}`));
+  runtimeClient.observeSession = async () => ({
+    session: {
+      context: {
+        metadata: {
+          channelId,
+        },
+      },
+      inspection: {
+        maintenance: {
+          hooks: {
+            preReset: {
+              pending: [
+                {
+                  id: 'memory_flush',
+                  status: 'pending',
+                },
+              ],
+            },
+            preCompaction: {
+              pending: [],
+            },
+          },
+        },
+      },
+    },
+  });
+  const flushedChannels = [];
+  const memoryService = {
+    async flushChannel(input) {
+      flushedChannels.push({ ...input });
+      return {
+        scope: 'channel',
+        subjectId: input.channelId,
+        reason: input.reason ?? 'manual',
+        generatedAt: (input.now ?? now).toISOString(),
+        persistedCount: 1,
+        persistedRecordIds: ['cats-memory-1'],
+      };
+    },
+  };
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First turn',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+    { memoryService },
+  );
+  await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    {
+      body: 'Second turn',
+      pendingProvider: 'gemini',
+      pendingModel: 'gemini-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+    { memoryService },
+  );
+
+  assert.deepEqual(flushedChannels, [
+    {
+      channelId,
+      reason: 'pre_reset',
+      now: new Date('2026-03-23T00:01:00.000Z'),
+    },
+  ]);
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+});
+
+test('cat-led room routing continues across agent mentions and auto-wakes targeted participants', async () => {
   const { state, channelId } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {
-    if (content.includes('You are Smelly')) {
-      return usage('@Agent-1 Please assess the problem.');
-    }
     if (content.includes('You are Agent-1')) {
       return usage('I need @Agent-2 to implement the change.');
     }
@@ -312,27 +404,31 @@ test('room routing continues across agent mentions and auto-wakes targeted parti
 
   assert.deepEqual(
     replies.map((message) => message.senderName),
-    ['Smelly', 'Agent-1', 'Agent-2'],
+    ['Agent-1', 'Agent-2'],
   );
-  assert.equal(runtimeClient.createdSessions.length, 3);
-  assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 3);
-  assert.equal(channel.roomRouting?.lastOutcome?.continuationCount, 2);
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 2);
+  assert.equal(channel.roomRouting?.lastOutcome?.continuationCount, 1);
   assert.equal(channel.roomRouting?.lastOutcome?.guard, null);
   assert.deepEqual(
     channel.roomRouting?.wakeHistory.map((wake) => wake.reason),
-    ['workflow_continuation', 'workflow_continuation', 'room_default'],
+    ['workflow_continuation', 'room_default'],
   );
   assert.deepEqual(
     channel.roomRouting?.wakeHistory.map((wake) => wake.status),
-    ['completed', 'completed', 'completed'],
+    ['completed', 'completed'],
+  );
+  assert.equal(
+    channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
+    'cat_led_lead',
   );
   assert.ok(
     channel.roomRouting?.lastOutcome?.checkpoints.some(
       (checkpoint) => checkpoint.kind === 'continuation',
     ),
   );
-  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.dispatchCount, 3);
-  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.continuationCount, 2);
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.dispatchCount, 2);
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.continuationCount, 1);
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.stageId, 'turn_completed');
   assert.ok(
@@ -582,10 +678,11 @@ test('anti-ping-pong blocks repeated back-and-forth and prompts only include per
   );
   const channel = buildChannelView(dispatched.state, channelId);
 
-  assert.equal(promptsByTarget.Smelly.length, 2);
-  assert.equal(promptsByTarget['Agent-1'].length, 1);
-  assert.ok(promptsByTarget.Smelly[1].includes('@Smelly please review.'));
-  assert.equal(promptsByTarget.Smelly[1].includes('@Agent-1 take first pass.'), false);
+  assert.equal(promptsByTarget.Smelly.length, 1);
+  assert.equal(promptsByTarget['Agent-1'].length, 2);
+  assert.ok(promptsByTarget['Agent-1'][1].includes('@Smelly please review.'));
+  assert.ok(promptsByTarget['Agent-1'][1].includes('@Agent-1 take first pass.'));
+  assert.equal(promptsByTarget['Agent-1'][1].includes('[user:User] Start the routing loop.'), false);
   assert.equal(channel.roomRouting?.lastOutcome?.guard, 'anti_ping_pong');
   assert.ok(
     channel.roomRouting?.lastOutcome?.checkpoints.some(

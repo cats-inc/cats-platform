@@ -4,6 +4,7 @@ import type { TelegramPollingSupervisor } from '../../../platform/transports/tel
 import type { TelegramRelay } from '../../../platform/transports/telegram/relay.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
+import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import { escapeContentDispositionFilename } from '../../../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import {
@@ -247,7 +248,7 @@ export async function persistCreatedChannel(
 }
 
 async function closeSessionIds(
-  runtimeClient: RuntimeClient,
+  context: ChatApiRouteContext,
   sessionIds: Array<string | null | undefined>,
 ): Promise<void> {
   const validSessionIds = sessionIds.filter(
@@ -256,7 +257,17 @@ async function closeSessionIds(
   );
 
   await Promise.allSettled(
-    validSessionIds.map((sessionId) => runtimeClient.closeSession(sessionId)),
+    validSessionIds.map(async (sessionId) => {
+      await bestEffortFlushRuntimeSessionMemory({
+        runtimeClient: context.dependencies.runtimeClient,
+        sessionId,
+        requestedPhase: 'pre_reset',
+        memoryService: context.dependencies.memoryService,
+        companionStore: context.dependencies.companionStore,
+        now: context.dependencies.now?.(),
+      });
+      await context.dependencies.runtimeClient.closeSession(sessionId);
+    }),
   );
 }
 
@@ -267,7 +278,7 @@ export async function persistDeletedChannel(
   const currentState = await context.dependencies.chatStore.read();
   const channel = requireChannel(currentState, channelId);
 
-  await closeSessionIds(context.dependencies.runtimeClient, [
+  await closeSessionIds(context, [
     channel.orchestratorLease.sessionId,
     ...channel.catAssignments.map(
       (assignment) => assignment.status === 'removed'
@@ -328,6 +339,14 @@ export async function persistCatAssignmentUpdate(
 
   if (targetChanged && previousSessionId) {
     try {
+      await bestEffortFlushRuntimeSessionMemory({
+        runtimeClient: context.dependencies.runtimeClient,
+        sessionId: previousSessionId,
+        requestedPhase: 'pre_reset',
+        memoryService: context.dependencies.memoryService,
+        companionStore: context.dependencies.companionStore,
+        now: context.dependencies.now?.(),
+      });
       await context.dependencies.runtimeClient.closeSession(previousSessionId);
     } catch (closeError) {
       const cat = requireCat(nextState, input.catId);
@@ -484,6 +503,14 @@ export async function persistCatAssignmentRemoval(
 
   if (assignment.execution.lease.sessionId) {
     try {
+      await bestEffortFlushRuntimeSessionMemory({
+        runtimeClient: context.dependencies.runtimeClient,
+        sessionId: assignment.execution.lease.sessionId,
+        requestedPhase: 'pre_reset',
+        memoryService: context.dependencies.memoryService,
+        companionStore: context.dependencies.companionStore,
+        now: context.dependencies.now?.(),
+      });
       await context.dependencies.runtimeClient.closeSession(
         assignment.execution.lease.sessionId,
       );
