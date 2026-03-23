@@ -34,6 +34,7 @@ import type {
 import {
   ORCHESTRATOR_RUNTIME_TOOL_SCHEMA_VERSION,
 } from './contracts.js';
+import { buildRoomWorkflowRunId } from './runIds.js';
 import { ORCHESTRATOR_RUNTIME_MCP_TOOLS } from './toolIntent.js';
 
 const RUNTIME_MCP_METHODS: OrchestratorRuntimeToolPlane['methods'] = [
@@ -597,9 +598,8 @@ function resolveWorkflowTurn(
   }
 
   if (selection.runId) {
-    return turns.find((turn) =>
-      `run-room-routing-${channel.id}-${turn.id}` === selection.runId,
-    ) ?? null;
+    return turns.find((turn) => buildRoomWorkflowRunId(channel.id, turn.id) === selection.runId)
+      ?? null;
   }
 
   return workflow.activeTurn ?? workflow.turnHistory[0] ?? null;
@@ -632,7 +632,9 @@ function buildRootWorkflowStep(
       : 'Room execution stage',
     summary: turn.workflowShape === 'parallel'
       ? `This turn fanned out to ${turn.targetStatuses.length} parallel branch(es).`
-      : `This turn routed work through ${turn.dispatchCount} dispatch(es).`,
+      : turn.dispatchCount === 0
+        ? 'This turn has not dispatched any work yet.'
+        : `This turn routed work through ${turn.dispatchCount} dispatch(es).`,
     stageId: turn.stageId,
     workflowShape: turn.workflowShape,
     parentStepId: null,
@@ -776,6 +778,7 @@ export function buildExecutionPlanFromChannel(input: {
   selection?: ExecutionSelection;
 }): OrchestratorExecutionPlan {
   const approval = buildApprovalGate(input.core, input.operatorSeams);
+  const approvalStep = resolveApprovalStep(approval);
   const recovery = buildRecoveryLoop(input.runInspector, input.operatorSeams);
   const turn = resolveWorkflowTurn(input.channel, input.selection);
   const state = mapExecutionState(turn?.status ?? null, approval);
@@ -789,7 +792,7 @@ export function buildExecutionPlanFromChannel(input: {
       workflowShape: null,
       sourceTurnId: null,
       sourceMessageId: null,
-      steps: resolveApprovalStep(approval) ? [resolveApprovalStep(approval)!] : [],
+      steps: approvalStep ? [approvalStep] : [],
       checkpoints: [],
       nextActions: buildNextActions({
         state,
@@ -805,7 +808,6 @@ export function buildExecutionPlanFromChannel(input: {
 
   const rootStep = buildRootWorkflowStep(turn, input.channel);
   const steps: OrchestratorExecutionStep[] = [];
-  const approvalStep = resolveApprovalStep(approval);
   if (approvalStep) {
     steps.push(approvalStep);
   }

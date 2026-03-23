@@ -310,7 +310,7 @@ test('POST /api/orchestrator/dispatch pauses while owner approval is pending and
       body: JSON.stringify({
         taskId: `task-channel-${channelId}`,
         status: 'approved',
-        action: 'approve',
+        decidedByActorId: 'actor-owner',
       }),
     });
     assert.equal(approvedResponse.status, 200);
@@ -394,5 +394,34 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
       payload.executionLoop.execution.nextActions.some((action) => action.kind === 'retry'),
     );
     assert.equal(payload.operator.executionLoopPath, `/api/orchestrator/channels/${channelId}/execution-loop`);
+  });
+});
+
+test('GET /api/orchestrator/channels/:id/execution-loop accepts a projected room-workflow runId', async () => {
+  const runtimeClient = createRuntimeStub();
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const channelId = created.channel.id;
+
+    const dispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Please ask @Inline-Agent to review this change',
+      }),
+    });
+    assert.equal(dispatchResponse.status, 200);
+    const dispatchPayload = await dispatchResponse.json();
+    const runId = dispatchPayload.operator.latestRunId;
+    assert.ok(runId);
+
+    const response = await fetch(
+      `${baseUrl}/api/orchestrator/channels/${channelId}/execution-loop?runId=${encodeURIComponent(runId)}`,
+    );
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.executionLoop.execution.sourceTurnId, dispatchPayload.executionLoop.execution.sourceTurnId);
+    assert.equal(payload.operator.latestRunId, runId);
   });
 });

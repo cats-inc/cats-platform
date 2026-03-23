@@ -45,6 +45,7 @@ import type {
   RoomWorkflowEvent,
   RoomWorkflowTurn,
 } from '../../../shared/app-shell.js';
+import { buildRoomWorkflowRunId } from '../../../platform/orchestration/runIds.js';
 
 function uniqueStrings(values: string[]): string[] {
   return values.filter((value, index) => value.length > 0 && values.indexOf(value) === index);
@@ -439,7 +440,7 @@ function createWorkflowRun(
     ?? `${channel.title} room workflow turn`;
 
   return {
-    id: `run-room-routing-${channel.id}-${turn.id}`,
+    id: buildRoomWorkflowRunId(channel.id, turn.id),
     title: `${channel.title} room turn`,
     status: toCoreRunStatus(turn.status),
     conversationId: `conversation-channel-${channel.id}`,
@@ -487,7 +488,7 @@ function createWorkflowTrace(
   turn: RoomWorkflowTurn,
   event: RoomWorkflowEvent,
 ): CoreTraceRecord {
-  const runId = `run-room-routing-${channel.id}-${turn.id}`;
+  const runId = buildRoomWorkflowRunId(channel.id, turn.id);
   return {
     id: `trace-room-routing-${event.id}`,
     traceId: `trace-room-routing-${turn.id}`,
@@ -526,7 +527,7 @@ function createWorkflowCheckpoint(
     label: `${channel.title} workflow checkpoint`,
     status: toCoreCheckpointStatus(event),
     conversationId: `conversation-channel-${channel.id}`,
-    runId: `run-room-routing-${channel.id}-${turn.id}`,
+    runId: buildRoomWorkflowRunId(channel.id, turn.id),
     taskId: `task-channel-${channel.id}`,
     sourceTraceId: `trace-room-routing-${event.id}`,
     summary: event.message,
@@ -568,7 +569,7 @@ function createWorkflowOutcome(
     title: `${channel.title} room workflow outcome`,
     status: toCoreOutcomeStatus(turn.status),
     conversationId: `conversation-channel-${channel.id}`,
-    runId: `run-room-routing-${channel.id}-${turn.id}`,
+    runId: buildRoomWorkflowRunId(channel.id, turn.id),
     taskId: `task-channel-${channel.id}`,
     summary: event.message,
     recordedAt: event.createdAt,
@@ -635,7 +636,7 @@ function createWorkflowActivity(
     workItemId: null,
     conversationId: `conversation-channel-${channel.id}`,
     taskId: `task-channel-${channel.id}`,
-    runId: `run-room-routing-${channel.id}-${turn.id}`,
+    runId: buildRoomWorkflowRunId(channel.id, turn.id),
     artifactId: null,
     message: event.message,
     createdAt: event.createdAt,
