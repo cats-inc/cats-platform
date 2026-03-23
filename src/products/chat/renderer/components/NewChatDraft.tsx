@@ -205,19 +205,8 @@ export function NewChatDraft({
                   </button>
                 </span>
               ) : null}
-              {totalCats > 0 ? (
+              {visibleDraftCatIds.length > 0 ? (
                 <div className="composerAvatarStack">
-                  {showBoss ? (
-                    <div className="composerStackItem">
-                      <div
-                        className="catAvatar composerStackAvatar catAvatarBoss"
-                        data-tooltip={bossCatName}
-                        style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}
-                      >
-                        {catInitials(bossCatName)}
-                      </div>
-                    </div>
-                  ) : null}
                   {visibleDraftCatIds.map((id) => {
                     const cat = payload.chat.cats.find((p) => p.id === id);
                     if (!cat) return null;
@@ -230,22 +219,29 @@ export function NewChatDraft({
                         >
                           {catInitials(cat.name)}
                         </div>
-                        {totalCats > 1 ? (
-                          <button
-                            className="composerStackRemove"
-                            type="button"
-                            onClick={() => onToggleDraftCat(id)}
-                            aria-label={`Remove ${cat.name}`}
-                          >
-                            &times;
-                          </button>
-                        ) : null}
+                        <button
+                          className="composerStackRemove"
+                          type="button"
+                          onClick={() => onToggleDraftCat(id)}
+                          aria-label={`Remove ${cat.name}`}
+                        >
+                          &times;
+                        </button>
                       </div>
                     );
                   })}
                 </div>
               ) : null}
             </div>
+            {showBoss ? (
+              <div
+                className="catAvatar composerStackAvatar catAvatarBoss"
+                data-tooltip={bossCatName}
+                style={{ marginRight: 8, ...(bossCatAvatarColor ? { background: bossCatAvatarColor } : {}) }}
+              >
+                {catInitials(bossCatName)}
+              </div>
+            ) : null}
             <button
               className="composerSendButton"
               disabled={!composerDraft.trim() || busy === 'message:send'}

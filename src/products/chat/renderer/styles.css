@@ -2103,6 +2103,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-right: 8px;
 }
 
 .composerStackItem {
