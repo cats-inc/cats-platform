@@ -1,5 +1,6 @@
 import { routeBotBindingApi } from './botBindingRoutes.js';
 import { routeCanonicalCatApi } from './canonicalCatRoutes.js';
+import { routeCompanionBoxApi } from './companionBoxRoutes.js';
 import { routeMemoryApi } from './memoryRoutes.js';
 import { routeChatResourceApi } from './resourceRoutes.js';
 import { routeChatShellApi } from './shellRoutes.js';
@@ -25,6 +26,10 @@ export async function routeChatApi(
   }
 
   if (await routeCanonicalCatApi(context)) {
+    return true;
+  }
+
+  if (await routeCompanionBoxApi(context)) {
     return true;
   }
 

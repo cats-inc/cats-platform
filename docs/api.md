@@ -78,6 +78,63 @@ GET  /api/cats/{catId}
 - `POST` returns `201` with `{ cat: { ...created } }`.
 - `GET` detail returns `{ cat: { ... } }`.
 
+### Companion Boxes
+
+```text
+GET   /api/cats/{catId}/companion-box
+GET   /api/cats/{catId}/companion-box/sources
+POST  /api/cats/{catId}/companion-box/sources
+GET   /api/cats/{catId}/companion-box/derived
+GET   /api/cats/{catId}/companion-box/memory
+POST  /api/cats/{catId}/companion-box/memory
+GET   /api/cats/{catId}/companion-box/response-profile
+PATCH /api/cats/{catId}/companion-box/response-profile
+GET   /api/cats/{catId}/companion-box/session-context
+```
+
+The companion-box slice is product-owned and Cat-scoped. It does not extend
+shared core and does not move Cat-local storage into `cats-runtime`.
+
+- `GET /api/cats/{catId}/companion-box` returns a summary read model with:
+  - the current `box`
+  - `sourceCount`, `derivedCount`, and `memoryCount`
+  - a storage-layout summary (`snapshotKey`, `boxDirectoryKey`,
+    `sourcesDirectoryKey`)
+  - `hasHydrationContext`
+- `POST /api/cats/{catId}/companion-box/sources` ingests one source and returns:
+  - `{ box, source, derivedRecords }`
+- `GET /api/cats/{catId}/companion-box/sources` returns `{ sources: [...] }`
+- `GET /api/cats/{catId}/companion-box/derived` returns `{ derived: [...] }`
+- `GET /api/cats/{catId}/companion-box/memory` returns `{ memory: [...] }`
+- `POST /api/cats/{catId}/companion-box/memory` accepts curated memory writes
+  and returns `{ memory: { ...created } }`
+- `GET /api/cats/{catId}/companion-box/response-profile` returns
+  `{ responseProfile }`
+- `PATCH /api/cats/{catId}/companion-box/response-profile` updates product-owned
+  response settings and returns `{ responseProfile }`
+- `GET /api/cats/{catId}/companion-box/session-context` returns the normalized
+  product-owned hydration payload for direct companion sessions
+
+Supported source kinds:
+
+- `note`
+- `conversation_log`
+- `article`
+- `image`
+- `video`
+- `audio`
+- `path_ref`
+
+Supported storage modes:
+
+- `uploaded_copy`
+- `imported_copy`
+- `linked_path`
+
+The first slice ingests text/log/article/path/media metadata through JSON
+bodies. For copied/imported sources, the sidecar store also materializes a
+per-source JSON payload under the Cat's storage layout.
+
 ### Setup
 
 ```text
@@ -153,6 +210,18 @@ Assistant transcript messages created by the routing engine carry structured
 metadata such as `turnId`, `sourceMessageId`, `routingTrigger`, and
 `dispatchDepth` so clients can correlate visible replies with room-level
 `roomRouting.lastOutcome` state.
+
+For direct companion sessions, runtime session create/send calls now also carry
+product-owned `companionSession` metadata. That payload includes:
+
+- requested runtime skill ids
+- selected source, derived, and memory ids
+- the current `CompanionResponseProfile`
+- owner notes and direct-session constraints
+- channel/transport context for the current direct lane
+
+This hydration seam is additive and product-owned. `cats-runtime` still remains
+the execution boundary rather than the long-lived companion-box store.
 
 Each `dispatch.results[]` item may also include:
 

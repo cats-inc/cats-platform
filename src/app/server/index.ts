@@ -24,6 +24,11 @@ import {
 } from '../../platform/transports/telegram/store.js';
 import { routeChatApi } from '../../products/chat/api/index.js';
 import {
+  createFileBackedCompanionBoxStore,
+  MemoryCompanionBoxStore,
+  type CompanionBoxStore,
+} from '../../products/chat/state/companionBoxStore.js';
+import {
   MemoryChatStore,
   type ChatStore,
 } from '../../products/chat/state/store.js';
@@ -51,12 +56,14 @@ export interface ServerDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
   chatStore: ChatStore;
+  companionStore?: CompanionBoxStore;
   telegramRelay?: TelegramRelay;
   pollingSupervisor?: TelegramPollingSupervisor;
   now?: () => Date;
 }
 
 type ResolvedServerDependencies = ServerDependencies & {
+  companionStore: CompanionBoxStore;
   telegramRelay: TelegramRelay;
   pollingSupervisor: TelegramPollingSupervisor;
 };
@@ -317,6 +324,7 @@ async function routeRequest(
     }
     await handleTelegramWebhook(request, response, {
       chatStore: dependencies.chatStore,
+      companionStore: dependencies.companionStore,
       telegramRelay: dependencies.telegramRelay,
       runtimeClient: dependencies.runtimeClient,
       now: dependencies.now,
@@ -380,6 +388,7 @@ export function createServer(dependencies: ServerDependencies) {
 
   const resolvedDependencies: ResolvedServerDependencies = {
     ...dependencies,
+    companionStore: dependencies.companionStore ?? createDefaultCompanionStore(dependencies),
     telegramRelay,
     pollingSupervisor,
   };
@@ -459,4 +468,12 @@ function createDefaultTelegramRelay(
       return client;
     },
   });
+}
+
+function createDefaultCompanionStore(
+  dependencies: ServerDependencies,
+): CompanionBoxStore {
+  return dependencies.chatStore instanceof MemoryChatStore
+    ? new MemoryCompanionBoxStore()
+    : createFileBackedCompanionBoxStore(dependencies.config.chatStatePath);
 }

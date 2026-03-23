@@ -30,16 +30,21 @@ import type {
   ChatState,
 } from '../../../shared/app-shell.js';
 import type {
+  CompanionBoxStore,
+} from './companionBoxStore.js';
+import type {
   RuntimeClient,
   RuntimeSessionInfo,
   RuntimeSkillManifest,
 } from '../../../platform/runtime/client.js';
+import { shouldHydrateCompanionSession } from '../companion/hydration.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import {
   ORCHESTRATOR_NAME,
   appendMessage,
   buildChannelView,
   requireChannel,
+  requireCat,
   resolveOrchestratorDisplayName,
   setChannelOrchestratorLease,
   setChannelCatLease,
@@ -106,6 +111,7 @@ type RuntimeTransportContext = 'telegram' | 'web';
 
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
+  companionStore?: CompanionBoxStore;
 }
 
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_PROMPT_RECENT_MESSAGES;
@@ -382,6 +388,123 @@ function resolveSessionSkillManifestForTarget(
       catName: cat?.name ?? target.participantName,
     },
   });
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return values.filter((value, index, list) => list.indexOf(value) === index);
+}
+
+function enrichInvocationContextWithCompanionSession(
+  context: ReturnType<typeof buildSessionContextForTarget>,
+  companionSession: Awaited<ReturnType<CompanionBoxStore['buildSessionContext']>> | null,
+) {
+  if (!companionSession) {
+    return context;
+  }
+
+  return {
+    ...context,
+    labels: uniqueStrings([
+      ...(context.labels ?? []),
+      'companion-session',
+      `companion-box:${companionSession.boxId}`,
+    ]),
+    metadata: {
+      ...(context.metadata ?? {}),
+      companionSession,
+    },
+  };
+}
+
+function enrichSkillManifestWithCompanionSession(
+  manifest: RuntimeSkillManifest | undefined,
+  companionSession: Awaited<ReturnType<CompanionBoxStore['buildSessionContext']>> | null,
+): RuntimeSkillManifest | undefined {
+  if (!manifest || !companionSession) {
+    return manifest;
+  }
+
+  return {
+    ...manifest,
+    context: {
+      ...manifest.context,
+      labels: uniqueStrings([
+        ...(manifest.context?.labels ?? []),
+        'companion-session',
+        `companion-box:${companionSession.boxId}`,
+      ]),
+      metadata: {
+        ...(manifest.context?.metadata ?? {}),
+        companionSession,
+      },
+    },
+  };
+}
+
+async function resolveCompanionSessionForTarget(
+  state: ChatState,
+  channel: ChatChannelView,
+  target: RoutingTarget,
+  skillManifest: RuntimeSkillManifest | undefined,
+  companionStore: CompanionBoxStore | undefined,
+  transport: RuntimeTransportContext | undefined,
+  now: Date,
+) {
+  if (!companionStore || target.participantKind !== 'cat') {
+    return null;
+  }
+
+  const cat = requireCat(state, target.participantId);
+  const summary = await companionStore.getBoxSummary(cat.id, now);
+  if (!shouldHydrateCompanionSession(cat, summary.box, channel)) {
+    return null;
+  }
+
+  return companionStore.buildSessionContext({
+    cat,
+    channel: {
+      id: channel.id,
+      title: channel.title,
+      topic: channel.topic,
+      workingMemory: channel.workingMemory,
+      roomRouting: channel.roomRouting,
+    },
+    requestedSkills: skillManifest?.requestedSkills ?? [],
+    transport: resolveTransportContext(channel, transport),
+    now,
+  });
+}
+
+async function resolveRuntimeEnvelopeForTarget(
+  state: ChatState,
+  channel: ChatChannelView,
+  target: RoutingTarget,
+  transport: RuntimeTransportContext | undefined,
+  now: Date,
+  companionStore?: CompanionBoxStore,
+) {
+  const baseContext = buildSessionContextForTarget(channel, target, transport);
+  const baseSkills = resolveSessionSkillManifestForTarget(
+    state,
+    channel,
+    target,
+    transport,
+  );
+  const companionSession = await resolveCompanionSessionForTarget(
+    state,
+    channel,
+    target,
+    baseSkills,
+    companionStore,
+    transport,
+    now,
+  );
+
+  return {
+    context: enrichInvocationContextWithCompanionSession(baseContext, companionSession),
+    skills: enrichSkillManifestWithCompanionSession(baseSkills, companionSession),
+    companionSession,
+  };
 }
 
 function resolveTargets(
@@ -1016,6 +1139,7 @@ async function ensureTargetSession(
   now: Date,
   options: {
     transport?: RuntimeTransportContext;
+    companionStore?: CompanionBoxStore;
     roomRouting?: RoomRoutingState | null;
     wakeTrigger?: RoomWakeTrigger;
     wakeReason?: RoomWakeReason;
@@ -1062,6 +1186,14 @@ async function ensureTargetSession(
 
   try {
     nextState = markTargetWaking(nextState, channelId, target, now);
+    const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
+      nextState,
+      channel,
+      target,
+      options.transport,
+      now,
+      options.companionStore,
+    );
     if (target.participantKind === 'orchestrator') {
       const session = await runtimeClient.createSession({
         provider: nextState.globalOrchestrator.executionTarget.provider,
@@ -1069,13 +1201,8 @@ async function ensureTargetSession(
         model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
         sharingMode,
-        context: buildSessionContextForTarget(channel, target, options.transport),
-        skills: resolveSessionSkillManifestForTarget(
-          nextState,
-          channel,
-          target,
-          options.transport,
-        ),
+        context: runtimeEnvelope.context,
+        skills: runtimeEnvelope.skills,
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
@@ -1125,13 +1252,8 @@ async function ensureTargetSession(
       model: cat.execution.target.model,
       cwd: spawnCwd,
       sharingMode,
-      context: buildSessionContextForTarget(channel, target, options.transport),
-      skills: resolveSessionSkillManifestForTarget(
-        nextState,
-        channel,
-        target,
-        options.transport,
-      ),
+      context: runtimeEnvelope.context,
+      skills: runtimeEnvelope.skills,
     });
     nextState = setStartedSession(
       nextState,
@@ -1205,6 +1327,9 @@ export async function wakeChannelEntryParticipant(
   channelId: string,
   runtimeClient: RuntimeClient,
   now: Date = new Date(),
+  options: {
+    companionStore?: CompanionBoxStore;
+  } = {},
 ): Promise<{
   state: ChatState;
   result: ChannelActivationResult | null;
@@ -1266,6 +1391,7 @@ export async function wakeChannelEntryParticipant(
     runtimeClient,
     now,
     {
+      companionStore: options.companionStore,
       roomRouting,
       wakeTrigger: 'room_entry',
       wakeReason: 'room_entry',
@@ -1307,12 +1433,26 @@ async function executeDispatch(
   request: DispatchRequest,
   runtimeClient: RuntimeClient,
   transport?: RuntimeTransportContext,
+  companionStore?: CompanionBoxStore,
 ): Promise<DispatchExecution> {
   try {
     const prompt = buildPromptForTarget(state, channelId, request, transport);
+    const channel = buildChannelView(state, channelId);
+    const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
+      state,
+      channel,
+      request.target,
+      transport,
+      new Date(),
+      companionStore,
+    );
     const runtimeResult = await runtimeClient.sendMessage(
       request.target.sessionId ?? '',
       prompt,
+      {
+        context: runtimeEnvelope.context,
+        skills: runtimeEnvelope.skills,
+      },
     );
     let responseBody = runtimeResult.content
       || `${request.target.participantName} completed the routed turn without text output.`;
@@ -1323,7 +1463,6 @@ async function executeDispatch(
     };
 
     if (request.target.participantKind === 'orchestrator') {
-      const channel = buildChannelView(state, channelId);
       if (
         shouldRewriteOrchestratorReply(
           responseBody,
@@ -1414,6 +1553,9 @@ export async function activateChannelSessions(
   channelId: string,
   runtimeClient: RuntimeClient,
   now: Date = new Date(),
+  options: {
+    companionStore?: CompanionBoxStore;
+  } = {},
 ): Promise<{ state: ChatState; results: ChannelActivationResult[] }> {
   let nextState = state;
   let channelState = requireChannel(nextState, channelId);
@@ -1434,14 +1576,22 @@ export async function activateChannelSessions(
   } else {
     try {
       const orchestratorTarget = buildOrchestratorTarget(nextState, channelView);
+      const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
+        nextState,
+        channelView,
+        orchestratorTarget,
+        undefined,
+        now,
+        options.companionStore,
+      );
       const session = await runtimeClient.createSession({
         provider: nextState.globalOrchestrator.executionTarget.provider,
         instance: nextState.globalOrchestrator.executionTarget.instance,
         model: nextState.globalOrchestrator.executionTarget.model,
         cwd: spawnCwd,
         sharingMode,
-        context: buildSessionContextForTarget(channelView, orchestratorTarget),
-        skills: resolveSessionSkillManifestForTarget(nextState, channelView, orchestratorTarget),
+        context: runtimeEnvelope.context,
+        skills: runtimeEnvelope.skills,
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
@@ -1515,14 +1665,22 @@ export async function activateChannelSessions(
 
     try {
       const catTarget = buildCatTarget(cat);
+      const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
+        nextState,
+        channelView,
+        catTarget,
+        undefined,
+        now,
+        options.companionStore,
+      );
       const session = await runtimeClient.createSession({
         provider: cat.execution.target.provider,
         instance: cat.execution.target.instance,
         model: cat.execution.target.model,
         cwd: spawnCwd,
         sharingMode,
-        context: buildSessionContextForTarget(channelView, catTarget),
-        skills: resolveSessionSkillManifestForTarget(nextState, channelView, catTarget),
+        context: runtimeEnvelope.context,
+        skills: runtimeEnvelope.skills,
       });
       nextState = setStartedSession(nextState, channelId, { catId: cat.catId }, session, now);
       if (!spawnCwd && session.cwd) {
@@ -2020,6 +2178,7 @@ export async function routeChannelMessage(
         now,
         {
           transport: options.transport,
+          companionStore: options.companionStore,
           roomRouting: baseRoomRouting,
           wakeTrigger: 'route_target',
           wakeReason: request.trigger === 'continuation_mention'
@@ -2132,7 +2291,14 @@ export async function routeChannelMessage(
     const stateSnapshot = nextState;
     const executions = await settleInCompletionOrder(
       readyRequests.map((request) =>
-        executeDispatch(stateSnapshot, channelId, request, runtimeClient, options.transport),
+        executeDispatch(
+          stateSnapshot,
+          channelId,
+          request,
+          runtimeClient,
+          options.transport,
+          options.companionStore,
+        ),
       ),
     );
 

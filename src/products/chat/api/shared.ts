@@ -25,6 +25,7 @@ import {
 } from '../state/model.js';
 import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
 import { createAppShell } from '../state/shell.js';
+import type { CompanionBoxStore } from '../state/companionBoxStore.js';
 import type { ChatStore } from '../state/store.js';
 import type {
   AppShellPayload,
@@ -41,6 +42,7 @@ export interface ChatApiDependencies {
   chatStore: ChatStore;
   telegramRelay?: TelegramRelay;
   pollingSupervisor?: TelegramPollingSupervisor;
+  companionStore: CompanionBoxStore;
   now?: () => Date;
 }
 

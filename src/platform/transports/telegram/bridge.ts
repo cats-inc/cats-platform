@@ -4,6 +4,7 @@ import type { ChatState, RoomRoutingMode } from '../../../shared/app-shell.js';
 import { refreshDerivedMemoryLayers } from '../../../products/chat/state/memoryLayers.js';
 import { appendMessage, createChannel, requireChannel } from '../../../products/chat/state/model.js';
 import { routeChannelMessage } from '../../../products/chat/state/runtimeActions.js';
+import type { CompanionBoxStore } from '../../../products/chat/state/companionBoxStore.js';
 import type { ChatStore } from '../../../products/chat/state/store.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import type {
@@ -268,6 +269,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
   receipt: TelegramWebhookReceipt;
   context: TelegramRelayContext;
   chatStore: ChatStore;
+  companionStore: CompanionBoxStore;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
   now?: () => Date;
@@ -356,7 +358,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
       },
       input.runtimeClient,
       timestamp,
-      { transport: 'telegram' },
+      { transport: 'telegram', companionStore: input.companionStore },
     );
     dispatchedState = dispatch.state;
     const persistedState = await input.chatStore.write(

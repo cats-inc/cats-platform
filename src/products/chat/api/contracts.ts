@@ -6,6 +6,31 @@ import type {
 import type { SuiteHostEnvelope } from '../../../shared/suite-contract.js';
 
 export type { BotBindingInboundMode, ExecutionTargetSummary, MemoryCheckpointSummary } from '../../../core/types.js';
+export type {
+  CompanionBox,
+  CompanionBoxSummary,
+  CompanionDerivedKind,
+  CompanionDerivedRecord,
+  CompanionExpressionMode,
+  CompanionMemoryCategory,
+  CompanionMemoryRecord,
+  CompanionMemoryStatus,
+  CompanionOutputMode,
+  CompanionResponseProfile,
+  CompanionSessionContext,
+  CompanionSessionDerivedRef,
+  CompanionSessionMemoryRef,
+  CompanionSessionSourceRef,
+  CompanionSnapshot,
+  CompanionSourceIngestResult,
+  CompanionSourceKind,
+  CompanionSourceRecord,
+  CompanionSourceStorageMode,
+  CompanionStorageLayout,
+  CreateCompanionMemoryInput,
+  CreateCompanionSourceInput,
+  UpdateCompanionResponseProfileInput,
+} from '../companion/contracts.js';
 
 export type ChatChannelStatus =
   | 'planned'

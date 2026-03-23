@@ -190,6 +190,23 @@ transport state stays in `src/platform/transports/telegram/*`.
   artifact/activity/approval-binding records, and the derived `Cats Core v1`
   records that wrap the phase-2 chat model
 
+### Companion Box Sidecar
+
+- **Purpose**: Keep per-Cat companion materials, response profiles, and
+  direct-session hydration context product-owned without extending shared core
+  or moving Cat-local storage into `cats-runtime`
+- **Technology**: `src/products/chat/companion/*` plus
+  `src/products/chat/state/companionBoxStore.ts`
+- **Responsibilities**:
+  - persist one product-owned `CompanionBox` per Cat
+  - retain raw source records, derived records, and curated companion memory
+  - preserve storage-mode provenance (`uploaded_copy`, `imported_copy`,
+    `linked_path`)
+  - materialize copied/imported source payloads into a per-Cat sidecar storage
+    layout
+  - expose Cat-scoped ingest/read APIs and a normalized
+    `CompanionSessionContext` seam for direct sessions
+
 ### Chat Runtime Actions
 
 - **Purpose**: Translate chat-level channel actions into `cats-runtime`
@@ -199,6 +216,18 @@ transport state stays in `src/platform/transports/telegram/*`.
   messages, run the continuation/fan-out/guard loop, maintain
   provider-agnostic room-workflow turn/event state, and persist runtime
   outcomes back into local transcripts
+
+Direct companion sessions now attach additive product-owned hydration metadata
+before runtime session create/send calls. The runtime receives a normalized
+`companionSession` payload that includes:
+
+- requested skill ids
+- selected source, derived, and memory ids
+- response profile
+- owner notes and current lane constraints
+
+This keeps the session informed by the Cat's box while preserving the
+product/runtime boundary.
 
 ### Renderer Shell
 
@@ -403,6 +432,9 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
   with continuation loop/fan-out/guards, a separate room-workflow read model,
   explicit route-resolution metadata, wake-request history, and transcript
   export.
+- `src/products/chat/state/companionBoxStore.ts` now adds a separate
+  product-owned sidecar store for per-Cat companion boxes, derived companion
+  knowledge, response profiles, and direct-session hydration context.
 - `Cats Core v1` now exists as a first in-tree contract plus a minimal neutral
   write substrate for owner profile, actors, conversations, projects,
   work items, tasks, approvals, approval bindings, runs, traces, checkpoints,
@@ -487,7 +519,6 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-23*
-
 
 
 

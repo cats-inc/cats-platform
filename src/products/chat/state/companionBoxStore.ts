@@ -1,0 +1,764 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+
+import type { ChatCat, ChatChannelView } from '../../../shared/app-shell.js';
+import {
+  buildCompanionSessionContext,
+} from '../companion/hydration.js';
+import {
+  buildCompanionBoxDirectoryKey,
+  buildCompanionSnapshotKey,
+  buildCompanionSourceStorageKey,
+  buildCompanionSourcesDirectoryKey,
+} from '../companion/layout.js';
+import {
+  applyCompanionResponseProfileUpdate,
+  createCompanionBox,
+  createCompanionMemoryRecord,
+  createCompanionSourceRecord,
+  createDefaultCompanionResponseProfile,
+  createDerivedRecordsForSource,
+} from '../companion/sourceIngestion.js';
+import type {
+  CompanionBox,
+  CompanionBoxSummary,
+  CompanionDerivedRecord,
+  CompanionMemoryRecord,
+  CompanionResponseProfile,
+  CompanionSessionContext,
+  CompanionSnapshot,
+  CompanionSourceIngestResult,
+  CompanionSourceRecord,
+  CompanionStorageLayout,
+  CreateCompanionMemoryInput,
+  CreateCompanionSourceInput,
+  UpdateCompanionResponseProfileInput,
+} from '../companion/contracts.js';
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function readString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function readNullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function cloneSnapshot(snapshot: CompanionSnapshot): CompanionSnapshot {
+  return structuredClone(snapshot);
+}
+
+function isoAt(now: Date): string {
+  return now.toISOString();
+}
+
+export function deriveCompanionBoxStatePath(chatStatePath: string): string {
+  const directory = path.dirname(chatStatePath);
+  const parsed = path.parse(chatStatePath);
+  return path.join(directory, `${parsed.name}.companion-boxes.json`);
+}
+
+function resolveCompanionStorageRoot(snapshotPath: string): string {
+  return path.join(path.dirname(snapshotPath), 'companion-boxes');
+}
+
+function createEmptySnapshot(nowIso: string): CompanionSnapshot {
+  return {
+    version: 1,
+    updatedAt: nowIso,
+    boxes: [],
+    sources: [],
+    derived: [],
+    memory: [],
+  };
+}
+
+function normalizeResponseProfile(
+  rawProfile: unknown,
+  nowIso: string,
+): CompanionResponseProfile {
+  const profileRecord = asRecord(rawProfile);
+  const fallback = createDefaultCompanionResponseProfile(nowIso);
+  const expressionMode = readString(profileRecord?.expressionMode, fallback.expressionMode);
+  const outputMode = readString(profileRecord?.outputMode, fallback.outputMode);
+
+  return {
+    expressionMode:
+      expressionMode === 'animalistic'
+      || expressionMode === 'anthropomorphic'
+      || expressionMode === 'mixed'
+        ? expressionMode
+        : fallback.expressionMode,
+    outputMode:
+      outputMode === 'text'
+      || outputMode === 'audio_clip'
+      || outputMode === 'tts'
+      || outputMode === 'mixed'
+        ? outputMode
+        : fallback.outputMode,
+    voiceProfileId: readNullableString(profileRecord?.voiceProfileId),
+    notes: readNullableString(profileRecord?.notes),
+    updatedAt: readString(profileRecord?.updatedAt, nowIso),
+  };
+}
+
+function normalizeBox(rawBox: unknown, nowIso: string): CompanionBox | null {
+  const boxRecord = asRecord(rawBox);
+  if (!boxRecord) {
+    return null;
+  }
+
+  const catId = readNullableString(boxRecord.catId);
+  const id = readNullableString(boxRecord.id);
+  if (!catId || !id) {
+    return null;
+  }
+
+  return {
+    id,
+    catId,
+    sourceIds: readStringArray(boxRecord.sourceIds),
+    derivedIds: readStringArray(boxRecord.derivedIds),
+    memoryIds: readStringArray(boxRecord.memoryIds),
+    responseProfile: normalizeResponseProfile(boxRecord.responseProfile, nowIso),
+    createdAt: readString(boxRecord.createdAt, nowIso),
+    updatedAt: readString(boxRecord.updatedAt, nowIso),
+    lastIngestedAt: readNullableString(boxRecord.lastIngestedAt),
+  };
+}
+
+function normalizeSource(rawSource: unknown, nowIso: string): CompanionSourceRecord | null {
+  const record = asRecord(rawSource);
+  if (!record) {
+    return null;
+  }
+
+  const id = readNullableString(record.id);
+  const boxId = readNullableString(record.boxId);
+  const catId = readNullableString(record.catId);
+  const kind = readString(record.kind);
+  const storageMode = readString(record.storageMode);
+  if (
+    !id
+    || !boxId
+    || !catId
+    || !['note', 'conversation_log', 'article', 'image', 'video', 'audio', 'path_ref'].includes(kind)
+    || !['uploaded_copy', 'imported_copy', 'linked_path'].includes(storageMode)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    boxId,
+    catId,
+    kind: kind as CompanionSourceRecord['kind'],
+    storageMode: storageMode as CompanionSourceRecord['storageMode'],
+    title: readNullableString(record.title),
+    ownerNote: readNullableString(record.ownerNote),
+    sourceText: readNullableString(record.sourceText),
+    textExcerpt: readNullableString(record.textExcerpt),
+    linkedPath: readNullableString(record.linkedPath),
+    storedPath: readNullableString(record.storedPath),
+    sourceUrl: readNullableString(record.sourceUrl),
+    mimeType: readNullableString(record.mimeType),
+    originalFileName: readNullableString(record.originalFileName),
+    metadata: asRecord(record.metadata) ?? {},
+    createdAt: readString(record.createdAt, nowIso),
+    updatedAt: readString(record.updatedAt, nowIso),
+  };
+}
+
+function normalizeDerived(rawRecord: unknown, nowIso: string): CompanionDerivedRecord | null {
+  const record = asRecord(rawRecord);
+  if (!record) {
+    return null;
+  }
+
+  const id = readNullableString(record.id);
+  const boxId = readNullableString(record.boxId);
+  const catId = readNullableString(record.catId);
+  const kind = readString(record.kind);
+  if (
+    !id
+    || !boxId
+    || !catId
+    || ![
+      'summary',
+      'transcript',
+      'caption',
+      'tags',
+      'traits',
+      'event',
+      'relationship_note',
+      'normalized_note',
+      'metadata',
+    ].includes(kind)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    boxId,
+    catId,
+    kind: kind as CompanionDerivedRecord['kind'],
+    sourceIds: readStringArray(record.sourceIds),
+    title: readNullableString(record.title),
+    content: readString(record.content),
+    tags: readStringArray(record.tags),
+    metadata: asRecord(record.metadata) ?? {},
+    createdAt: readString(record.createdAt, nowIso),
+    updatedAt: readString(record.updatedAt, nowIso),
+  };
+}
+
+function normalizeMemory(rawRecord: unknown, nowIso: string): CompanionMemoryRecord | null {
+  const record = asRecord(rawRecord);
+  if (!record) {
+    return null;
+  }
+
+  const id = readNullableString(record.id);
+  const boxId = readNullableString(record.boxId);
+  const catId = readNullableString(record.catId);
+  const category = readString(record.category);
+  const status = readString(record.status, 'active');
+  const curatedBy = readString(record.curatedBy, 'owner');
+  if (
+    !id
+    || !boxId
+    || !catId
+    || !['identity', 'preference', 'relationship', 'fact', 'event', 'owner_note'].includes(category)
+    || !['active', 'superseded', 'archived'].includes(status)
+    || !['owner', 'system'].includes(curatedBy)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    boxId,
+    catId,
+    category: category as CompanionMemoryRecord['category'],
+    sourceIds: readStringArray(record.sourceIds),
+    content: readString(record.content),
+    summary: readNullableString(record.summary),
+    status: status as CompanionMemoryRecord['status'],
+    curatedBy: curatedBy as CompanionMemoryRecord['curatedBy'],
+    replacedById: readNullableString(record.replacedById),
+    metadata: asRecord(record.metadata) ?? {},
+    createdAt: readString(record.createdAt, nowIso),
+    updatedAt: readString(record.updatedAt, nowIso),
+  };
+}
+
+function normalizeSnapshot(rawSnapshot: unknown): CompanionSnapshot {
+  const nowIso = new Date().toISOString();
+  const snapshotRecord = asRecord(rawSnapshot);
+  if (!snapshotRecord) {
+    return createEmptySnapshot(nowIso);
+  }
+
+  return {
+    version: 1,
+    updatedAt: readString(snapshotRecord.updatedAt, nowIso),
+    boxes: Array.isArray(snapshotRecord.boxes)
+      ? snapshotRecord.boxes
+          .map((box) => normalizeBox(box, nowIso))
+          .filter((box): box is CompanionBox => box !== null)
+      : [],
+    sources: Array.isArray(snapshotRecord.sources)
+      ? snapshotRecord.sources
+          .map((source) => normalizeSource(source, nowIso))
+          .filter((source): source is CompanionSourceRecord => source !== null)
+      : [],
+    derived: Array.isArray(snapshotRecord.derived)
+      ? snapshotRecord.derived
+          .map((record) => normalizeDerived(record, nowIso))
+          .filter((record): record is CompanionDerivedRecord => record !== null)
+      : [],
+    memory: Array.isArray(snapshotRecord.memory)
+      ? snapshotRecord.memory
+          .map((record) => normalizeMemory(record, nowIso))
+          .filter((record): record is CompanionMemoryRecord => record !== null)
+      : [],
+  };
+}
+
+function buildStorageLayout(catId: string, snapshotPath: string): CompanionStorageLayout {
+  return {
+    snapshotKey: buildCompanionSnapshotKey(path.basename(snapshotPath)),
+    boxDirectoryKey: buildCompanionBoxDirectoryKey(catId),
+    sourcesDirectoryKey: buildCompanionSourcesDirectoryKey(catId),
+  };
+}
+
+function sortNewestFirst<T extends { updatedAt: string }>(records: T[]): T[] {
+  return [...records].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
+function ensureBox(snapshot: CompanionSnapshot, catId: string, nowIso: string): CompanionBox {
+  const existing = snapshot.boxes.find((box) => box.catId === catId);
+  if (existing) {
+    return existing;
+  }
+
+  const box = createCompanionBox(catId, nowIso);
+  snapshot.boxes.push(box);
+  snapshot.updatedAt = nowIso;
+  return box;
+}
+
+function listBoxSources(snapshot: CompanionSnapshot, box: CompanionBox): CompanionSourceRecord[] {
+  return sortNewestFirst(
+    snapshot.sources.filter((record) => record.boxId === box.id),
+  );
+}
+
+function listBoxDerived(snapshot: CompanionSnapshot, box: CompanionBox): CompanionDerivedRecord[] {
+  return sortNewestFirst(
+    snapshot.derived.filter((record) => record.boxId === box.id),
+  );
+}
+
+function listBoxMemory(snapshot: CompanionSnapshot, box: CompanionBox): CompanionMemoryRecord[] {
+  return sortNewestFirst(
+    snapshot.memory.filter((record) => record.boxId === box.id),
+  );
+}
+
+function summarizeBox(
+  box: CompanionBox,
+  snapshot: CompanionSnapshot,
+  snapshotPath: string,
+): CompanionBoxSummary {
+  const sourceCount = snapshot.sources.filter((record) => record.boxId === box.id).length;
+  const derivedCount = snapshot.derived.filter((record) => record.boxId === box.id).length;
+  const memoryCount = snapshot.memory.filter((record) => record.boxId === box.id).length;
+
+  return {
+    box: structuredClone(box),
+    sourceCount,
+    derivedCount,
+    memoryCount,
+    storage: buildStorageLayout(box.catId, snapshotPath),
+    hasHydrationContext:
+      sourceCount > 0
+      || derivedCount > 0
+      || memoryCount > 0
+      || Boolean(box.responseProfile.notes),
+  };
+}
+
+async function materializeStoredSource(
+  snapshotPath: string,
+  source: CompanionSourceRecord,
+): Promise<void> {
+  if (source.storageMode === 'linked_path' || !source.storedPath) {
+    return;
+  }
+
+  const storageRoot = path.dirname(snapshotPath);
+  const targetPath = path.join(storageRoot, ...source.storedPath.split('/'));
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  await writeFile(
+    targetPath,
+    `${JSON.stringify({
+      id: source.id,
+      kind: source.kind,
+      storageMode: source.storageMode,
+      title: source.title,
+      ownerNote: source.ownerNote,
+      sourceText: source.sourceText,
+      linkedPath: source.linkedPath,
+      sourceUrl: source.sourceUrl,
+      mimeType: source.mimeType,
+      originalFileName: source.originalFileName,
+      metadata: source.metadata,
+      createdAt: source.createdAt,
+      updatedAt: source.updatedAt,
+    }, null, 2)}\n`,
+    'utf-8',
+  );
+}
+
+export interface CompanionBoxStore {
+  readSnapshot(): Promise<CompanionSnapshot>;
+  getBox(catId: string, now?: Date): Promise<CompanionBox>;
+  getBoxSummary(catId: string, now?: Date): Promise<CompanionBoxSummary>;
+  listSources(catId: string, now?: Date): Promise<CompanionSourceRecord[]>;
+  ingestSource(
+    catId: string,
+    input: CreateCompanionSourceInput,
+    now?: Date,
+  ): Promise<CompanionSourceIngestResult>;
+  listDerived(catId: string, now?: Date): Promise<CompanionDerivedRecord[]>;
+  listMemory(catId: string, now?: Date): Promise<CompanionMemoryRecord[]>;
+  createMemory(
+    catId: string,
+    input: CreateCompanionMemoryInput,
+    now?: Date,
+  ): Promise<CompanionMemoryRecord>;
+  getResponseProfile(catId: string, now?: Date): Promise<CompanionResponseProfile>;
+  updateResponseProfile(
+    catId: string,
+    update: UpdateCompanionResponseProfileInput,
+    now?: Date,
+  ): Promise<CompanionResponseProfile>;
+  buildSessionContext(input: {
+    cat: ChatCat;
+    channel: {
+      id: string | null;
+      title: string;
+      topic: string;
+      workingMemory?: ChatChannelView['workingMemory'];
+      roomRouting?: ChatChannelView['roomRouting'];
+    };
+    requestedSkills: string[];
+    transport: 'telegram' | 'line' | 'web' | null;
+    now?: Date;
+  }): Promise<CompanionSessionContext>;
+}
+
+export class FileCompanionBoxStore implements CompanionBoxStore {
+  constructor(private readonly snapshotPath: string) {}
+
+  private async readOrCreateSnapshot(): Promise<CompanionSnapshot> {
+    try {
+      return normalizeSnapshot(JSON.parse(await readFile(this.snapshotPath, 'utf-8')) as unknown);
+    } catch {
+      const snapshot = createEmptySnapshot(new Date().toISOString());
+      await this.writeSnapshot(snapshot);
+      return snapshot;
+    }
+  }
+
+  private async writeSnapshot(snapshot: CompanionSnapshot): Promise<void> {
+    await mkdir(path.dirname(this.snapshotPath), { recursive: true });
+    await writeFile(
+      this.snapshotPath,
+      `${JSON.stringify(snapshot, null, 2)}\n`,
+      'utf-8',
+    );
+  }
+
+  async readSnapshot(): Promise<CompanionSnapshot> {
+    return cloneSnapshot(await this.readOrCreateSnapshot());
+  }
+
+  async getBox(catId: string, now: Date = new Date()): Promise<CompanionBox> {
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = ensureBox(snapshot, catId, isoAt(now));
+    await this.writeSnapshot(snapshot);
+    return structuredClone(box);
+  }
+
+  async getBoxSummary(catId: string, now: Date = new Date()): Promise<CompanionBoxSummary> {
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = ensureBox(snapshot, catId, isoAt(now));
+    await this.writeSnapshot(snapshot);
+    return summarizeBox(box, snapshot, this.snapshotPath);
+  }
+
+  async listSources(catId: string, now: Date = new Date()): Promise<CompanionSourceRecord[]> {
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = ensureBox(snapshot, catId, isoAt(now));
+    await this.writeSnapshot(snapshot);
+    return structuredClone(listBoxSources(snapshot, box));
+  }
+
+  async ingestSource(
+    catId: string,
+    input: CreateCompanionSourceInput,
+    now: Date = new Date(),
+  ): Promise<CompanionSourceIngestResult> {
+    const nowIso = isoAt(now);
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = ensureBox(snapshot, catId, nowIso);
+    const storedPath = input.storageMode === 'linked_path'
+      ? null
+      : buildCompanionSourceStorageKey(catId, `source-${Date.now()}-${snapshot.sources.length + 1}`, 'json');
+    const source = createCompanionSourceRecord(box, input, nowIso, storedPath);
+    if (storedPath) {
+      source.storedPath = buildCompanionSourceStorageKey(catId, source.id, 'json');
+    }
+    const derivedRecords = createDerivedRecordsForSource(box, source, nowIso);
+
+    snapshot.sources.unshift(source);
+    snapshot.derived.unshift(...derivedRecords);
+    box.sourceIds.unshift(source.id);
+    box.derivedIds.unshift(...derivedRecords.map((record) => record.id));
+    box.updatedAt = nowIso;
+    box.lastIngestedAt = nowIso;
+    snapshot.updatedAt = nowIso;
+
+    await this.writeSnapshot(snapshot);
+    await materializeStoredSource(this.snapshotPath, source);
+
+    return {
+      box: structuredClone(box),
+      source: structuredClone(source),
+      derivedRecords: structuredClone(derivedRecords),
+    };
+  }
+
+  async listDerived(catId: string, now: Date = new Date()): Promise<CompanionDerivedRecord[]> {
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = ensureBox(snapshot, catId, isoAt(now));
+    await this.writeSnapshot(snapshot);
+    return structuredClone(listBoxDerived(snapshot, box));
+  }
+
+  async listMemory(catId: string, now: Date = new Date()): Promise<CompanionMemoryRecord[]> {
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = ensureBox(snapshot, catId, isoAt(now));
+    await this.writeSnapshot(snapshot);
+    return structuredClone(listBoxMemory(snapshot, box));
+  }
+
+  async createMemory(
+    catId: string,
+    input: CreateCompanionMemoryInput,
+    now: Date = new Date(),
+  ): Promise<CompanionMemoryRecord> {
+    const nowIso = isoAt(now);
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = ensureBox(snapshot, catId, nowIso);
+    const record = createCompanionMemoryRecord(box, input, nowIso);
+
+    snapshot.memory.unshift(record);
+    box.memoryIds.unshift(record.id);
+    box.updatedAt = nowIso;
+    snapshot.updatedAt = nowIso;
+    await this.writeSnapshot(snapshot);
+
+    return structuredClone(record);
+  }
+
+  async getResponseProfile(
+    catId: string,
+    now: Date = new Date(),
+  ): Promise<CompanionResponseProfile> {
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = ensureBox(snapshot, catId, isoAt(now));
+    await this.writeSnapshot(snapshot);
+    return structuredClone(box.responseProfile);
+  }
+
+  async updateResponseProfile(
+    catId: string,
+    update: UpdateCompanionResponseProfileInput,
+    now: Date = new Date(),
+  ): Promise<CompanionResponseProfile> {
+    const nowIso = isoAt(now);
+    const snapshot = await this.readOrCreateSnapshot();
+    const box = ensureBox(snapshot, catId, nowIso);
+    box.responseProfile = applyCompanionResponseProfileUpdate(
+      box.responseProfile,
+      update,
+      nowIso,
+    );
+    box.updatedAt = nowIso;
+    snapshot.updatedAt = nowIso;
+    await this.writeSnapshot(snapshot);
+    return structuredClone(box.responseProfile);
+  }
+
+  async buildSessionContext(input: {
+    cat: ChatCat;
+    channel: {
+      id: string | null;
+      title: string;
+      topic: string;
+      workingMemory?: ChatChannelView['workingMemory'];
+      roomRouting?: ChatChannelView['roomRouting'];
+    };
+    requestedSkills: string[];
+    transport: 'telegram' | 'line' | 'web' | null;
+    now?: Date;
+  }): Promise<CompanionSessionContext> {
+    const snapshot = await this.readOrCreateSnapshot();
+    const hydratedAt = isoAt(input.now ?? new Date());
+    const box = ensureBox(snapshot, input.cat.id, hydratedAt);
+    await this.writeSnapshot(snapshot);
+
+    return buildCompanionSessionContext({
+      cat: input.cat,
+      box,
+      sources: listBoxSources(snapshot, box),
+      derived: listBoxDerived(snapshot, box),
+      memory: listBoxMemory(snapshot, box),
+      requestedSkills: input.requestedSkills,
+      channel: input.channel,
+      transport: input.transport,
+      hydratedAt,
+    });
+  }
+}
+
+export class MemoryCompanionBoxStore implements CompanionBoxStore {
+  private snapshot: CompanionSnapshot;
+  private readonly snapshotPath: string;
+
+  constructor(
+    initialSnapshot: CompanionSnapshot = createEmptySnapshot(new Date().toISOString()),
+    snapshotPath = 'config/chat-state.local.companion-boxes.json',
+  ) {
+    this.snapshot = normalizeSnapshot(initialSnapshot);
+    this.snapshotPath = snapshotPath;
+  }
+
+  async readSnapshot(): Promise<CompanionSnapshot> {
+    return cloneSnapshot(this.snapshot);
+  }
+
+  async getBox(catId: string, now: Date = new Date()): Promise<CompanionBox> {
+    return structuredClone(ensureBox(this.snapshot, catId, isoAt(now)));
+  }
+
+  async getBoxSummary(catId: string, now: Date = new Date()): Promise<CompanionBoxSummary> {
+    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    return summarizeBox(box, this.snapshot, this.snapshotPath);
+  }
+
+  async listSources(catId: string, now: Date = new Date()): Promise<CompanionSourceRecord[]> {
+    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    return structuredClone(listBoxSources(this.snapshot, box));
+  }
+
+  async ingestSource(
+    catId: string,
+    input: CreateCompanionSourceInput,
+    now: Date = new Date(),
+  ): Promise<CompanionSourceIngestResult> {
+    const nowIso = isoAt(now);
+    const box = ensureBox(this.snapshot, catId, nowIso);
+    const storedPath = input.storageMode === 'linked_path'
+      ? null
+      : buildCompanionSourceStorageKey(catId, `memory-${this.snapshot.sources.length + 1}`, 'json');
+    const source = createCompanionSourceRecord(box, input, nowIso, storedPath);
+    if (storedPath) {
+      source.storedPath = buildCompanionSourceStorageKey(catId, source.id, 'json');
+    }
+    const derivedRecords = createDerivedRecordsForSource(box, source, nowIso);
+
+    this.snapshot.sources.unshift(source);
+    this.snapshot.derived.unshift(...derivedRecords);
+    box.sourceIds.unshift(source.id);
+    box.derivedIds.unshift(...derivedRecords.map((record) => record.id));
+    box.updatedAt = nowIso;
+    box.lastIngestedAt = nowIso;
+    this.snapshot.updatedAt = nowIso;
+
+    return {
+      box: structuredClone(box),
+      source: structuredClone(source),
+      derivedRecords: structuredClone(derivedRecords),
+    };
+  }
+
+  async listDerived(catId: string, now: Date = new Date()): Promise<CompanionDerivedRecord[]> {
+    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    return structuredClone(listBoxDerived(this.snapshot, box));
+  }
+
+  async listMemory(catId: string, now: Date = new Date()): Promise<CompanionMemoryRecord[]> {
+    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    return structuredClone(listBoxMemory(this.snapshot, box));
+  }
+
+  async createMemory(
+    catId: string,
+    input: CreateCompanionMemoryInput,
+    now: Date = new Date(),
+  ): Promise<CompanionMemoryRecord> {
+    const nowIso = isoAt(now);
+    const box = ensureBox(this.snapshot, catId, nowIso);
+    const record = createCompanionMemoryRecord(box, input, nowIso);
+    this.snapshot.memory.unshift(record);
+    box.memoryIds.unshift(record.id);
+    box.updatedAt = nowIso;
+    this.snapshot.updatedAt = nowIso;
+    return structuredClone(record);
+  }
+
+  async getResponseProfile(
+    catId: string,
+    now: Date = new Date(),
+  ): Promise<CompanionResponseProfile> {
+    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    return structuredClone(box.responseProfile);
+  }
+
+  async updateResponseProfile(
+    catId: string,
+    update: UpdateCompanionResponseProfileInput,
+    now: Date = new Date(),
+  ): Promise<CompanionResponseProfile> {
+    const nowIso = isoAt(now);
+    const box = ensureBox(this.snapshot, catId, nowIso);
+    box.responseProfile = applyCompanionResponseProfileUpdate(
+      box.responseProfile,
+      update,
+      nowIso,
+    );
+    box.updatedAt = nowIso;
+    this.snapshot.updatedAt = nowIso;
+    return structuredClone(box.responseProfile);
+  }
+
+  async buildSessionContext(input: {
+    cat: ChatCat;
+    channel: {
+      id: string | null;
+      title: string;
+      topic: string;
+      workingMemory?: ChatChannelView['workingMemory'];
+      roomRouting?: ChatChannelView['roomRouting'];
+    };
+    requestedSkills: string[];
+    transport: 'telegram' | 'line' | 'web' | null;
+    now?: Date;
+  }): Promise<CompanionSessionContext> {
+    const hydratedAt = isoAt(input.now ?? new Date());
+    const box = ensureBox(this.snapshot, input.cat.id, hydratedAt);
+
+    return buildCompanionSessionContext({
+      cat: input.cat,
+      box,
+      sources: listBoxSources(this.snapshot, box),
+      derived: listBoxDerived(this.snapshot, box),
+      memory: listBoxMemory(this.snapshot, box),
+      requestedSkills: input.requestedSkills,
+      channel: input.channel,
+      transport: input.transport,
+      hydratedAt,
+    });
+  }
+}
+
+export function createFileBackedCompanionBoxStore(
+  chatStatePath: string,
+): CompanionBoxStore {
+  return new FileCompanionBoxStore(deriveCompanionBoxStatePath(chatStatePath));
+}
+
+export function getCompanionStorageRootPath(chatStatePath: string): string {
+  return resolveCompanionStorageRoot(deriveCompanionBoxStatePath(chatStatePath));
+}

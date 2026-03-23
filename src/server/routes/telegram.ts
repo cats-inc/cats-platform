@@ -10,6 +10,7 @@ import {
 import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
+import type { CompanionBoxStore } from '../../products/chat/state/companionBoxStore.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import type { ChatState } from '../../shared/app-shell.js';
 
@@ -19,6 +20,7 @@ interface TelegramQueryDependencies {
 }
 
 interface TelegramWebhookDependencies extends TelegramQueryDependencies {
+  companionStore: CompanionBoxStore;
   runtimeClient: RuntimeClient;
   now?: () => Date;
 }
@@ -226,6 +228,7 @@ export async function handleTelegramWebhook(
         receipt,
         context,
         chatStore: dependencies.chatStore,
+        companionStore: dependencies.companionStore,
         runtimeClient: dependencies.runtimeClient,
         telegramRelay: dependencies.telegramRelay,
         now: dependencies.now,

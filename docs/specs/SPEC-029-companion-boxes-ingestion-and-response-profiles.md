@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft (Pending Review) |
+| **Status** | In Progress (First Slice Landed) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -33,6 +33,18 @@ This spec introduces a product-owned `CompanionBox` concept that sits above
 
 The runtime still hosts the reusable `companion` skill, but the per-Cat box,
 response profile, and long-lived companion context remain product-owned.
+
+## Implementation Snapshot
+
+The current first slice now lands these product-owned seams:
+
+- a Cat-scoped sidecar store under `src/products/chat/state/companionBoxStore.ts`
+- Cat-scoped source ingest/read, derived read, memory read/write,
+  response-profile read/update, and session-context read APIs
+- additive direct-session hydration through normalized `companionSession`
+  metadata on runtime create/send calls
+
+Visible companion-specific UI remains intentionally deferred.
 
 ## Goals
 
@@ -94,7 +106,7 @@ response profile, and long-lived companion context remain product-owned.
 #### Source ingestion
 
 9. The companion box shall support at least these source kinds:
-   - `message_note`
+   - `note`
    - `conversation_log`
    - `article`
    - `image`
@@ -182,6 +194,7 @@ response profile, and long-lived companion context remain product-owned.
     - derived records
     - durable memory records
     - response profile
+    - session context preview
 29. The first product API slice may ingest binary media through uploaded-copy
     routes and text/log/article payloads through JSON bodies, as long as the
     resulting records converge on one companion-box schema.
@@ -226,7 +239,7 @@ response profile, and long-lived companion context remain product-owned.
 
 ```ts
 type CompanionSourceKind =
-  | 'message_note'
+  | 'note'
   | 'conversation_log'
   | 'article'
   | 'image'
@@ -274,11 +287,15 @@ interface CompanionSourceRecord {
 
 interface CompanionSessionContext {
   catId: string;
+  boxId: string;
+  hydratedAt: string;
   requestedSkills: string[];
   sourceIds: string[];
   derivedIds: string[];
   memoryIds: string[];
   responseProfile: CompanionResponseProfile;
+  ownerNotes: string[];
+  constraints: string[];
 }
 ```
 
@@ -325,8 +342,10 @@ cats-runtime session execution
 
 ## Open Questions
 
-- [ ] Should the first slice store companion-box records inside the shared core
+- [x] Should the first slice store companion-box records inside the shared core
       store, a Cat-scoped sidecar store, or a hybrid projection?
+      Answer: the first slice now uses a Cat-scoped sidecar store and keeps
+      companion data outside shared core.
 - [ ] Which derived-record types should be first-class in the first slice:
       transcripts/captions only, or also traits/events/relationship notes?
 - [ ] Should `audio_clip` responses be modeled first as static asset selection,
@@ -344,4 +363,4 @@ cats-runtime session execution
 
 *Created: 2026-03-23*
 *Author: Codex*
-*Related Plan: TBD*
+*Related Plan: [PLAN-019](../plans/PLAN-019-companion-box-sidecar-and-session-hydration.md)*

@@ -28,6 +28,8 @@ The current slices are:
 - a transcript-adjacent operator loop with pending approvals, progress,
   activity, trace, and run inspection surfaces
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
+- product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
+  and direct companion-session hydration metadata
 - provider-agnostic cat memory checkpoints plus channel-scoped execution leases
 
 ## Current Status
@@ -50,6 +52,9 @@ The current slices are:
       without auto-persisting new direct rooms
 - [x] Land transcript-adjacent operator approvals, progress, activity, and run
       inspection surfaces
+- [x] Land product-owned companion box storage, Cat-scoped ingest/read routes,
+      and direct companion-session hydration contracts without visible UI
+      changes
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open
