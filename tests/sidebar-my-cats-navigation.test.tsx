@@ -196,6 +196,7 @@ function createSidebarTree(
     onStartNewChat: () => {},
     onSelect: () => {},
     onDeleteChannel: () => {},
+    onDeleteCat: () => {},
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},

@@ -27,6 +27,7 @@ export interface SidebarProps {
   onStartNewChat: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
+  onDeleteCat: (catId: string) => void;
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
@@ -171,6 +172,7 @@ export function Sidebar({
   onStartNewChat,
   onSelect,
   onDeleteChannel,
+  onDeleteCat,
   onAccountMenuToggle,
   onOverflowMenuToggle,
   onNavigateSettings,
@@ -369,14 +371,21 @@ export function Sidebar({
                       >
                         &#x22EF;
                       </button>
-                      {catOverflowOpen && directLane ? (
+                      {catOverflowOpen ? (
                         <div className="myCatOverflowMenu">
                           <button
                             type="button"
-                            disabled={busy === `channel:delete:${directLane.id}`}
-                            onClick={() => { onOverflowMenuToggle(null); void onDeleteChannel(directLane.id); }}
+                            disabled={isBoss}
+                            onClick={() => {
+                              onOverflowMenuToggle(null);
+                              if (directLane) {
+                                void onDeleteChannel(directLane.id);
+                              } else {
+                                void onDeleteCat(cat.id);
+                              }
+                            }}
                           >
-                            {busy === `channel:delete:${directLane.id}` ? 'Deleting...' : 'Delete'}
+                            Delete
                           </button>
                         </div>
                       ) : null}

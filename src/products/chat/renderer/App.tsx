@@ -34,6 +34,7 @@ import {
   browseDirectories,
   type BrowseDirectoryEntry,
   createGlobalCat,
+  deleteGlobalCat,
   resetSetup,
   createChatChannel,
   deleteChatChannel,
@@ -1037,6 +1038,17 @@ export default function App() {
         onStartNewChat={() => void onStartNewChat()}
         onSelect={onSelect}
         onDeleteChannel={(id) => void onDeleteChannel(id)}
+        onDeleteCat={async (catId) => {
+          setBusy(`cat:delete:${catId}`);
+          try {
+            const next = await deleteGlobalCat(catId);
+            startTransition(() => setState({ status: 'ready', payload: next }));
+          } catch (error) {
+            setFeedback(error instanceof Error ? error.message : 'Failed to delete cat.');
+          } finally {
+            setBusy('');
+          }
+        }}
         onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
         onOverflowMenuToggle={setOverflowMenuOpenId}
         onNavigateSettings={() => {
