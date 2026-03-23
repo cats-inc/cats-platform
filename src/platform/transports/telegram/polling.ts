@@ -26,6 +26,7 @@ export interface StartPollingInput {
   bindingId: string;
   botToken: string;
   context: TelegramRelayContext;
+  refreshContext?: () => Promise<TelegramRelayContext>;
   chatStore: ChatStore;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
@@ -168,11 +169,22 @@ export function createTelegramPollingSupervisor(
     };
   }
 
+  function buildScopedContext(
+    baseContext: TelegramRelayContext,
+    bindingId: string,
+  ): TelegramRelayContext {
+    const selectedBotBinding = baseContext.botBindings.find((b) => b.id === bindingId) ?? null;
+    return {
+      ...baseContext,
+      selectedBotBinding,
+    };
+  }
+
   async function runPollingLoop(
     consumer: PollingConsumer,
     input: StartPollingInput,
   ): Promise<void> {
-    const { botToken, context, chatStore, runtimeClient, telegramRelay } = input;
+    const { bindingId, botToken, chatStore, runtimeClient, telegramRelay } = input;
     const signal = consumer.abortController.signal;
 
     try {
@@ -194,6 +206,12 @@ export function createTelegramPollingSupervisor(
         const pollTime = now().toISOString();
         consumer.lastPollTime = pollTime;
 
+        // Re-read context each poll cycle so binding/boss changes are picked up
+        const freshContext = input.refreshContext
+          ? await input.refreshContext()
+          : input.context;
+        const scopedContext = buildScopedContext(freshContext, bindingId);
+
         for (const update of updates) {
           if (signal.aborted) {
             break;
@@ -201,14 +219,14 @@ export function createTelegramPollingSupervisor(
 
           const updateId = typeof update.update_id === 'number' ? update.update_id : null;
 
-          const receipt = telegramRelay.receiveUpdate({ update, context });
+          const receipt = telegramRelay.receiveUpdate({ update, context: scopedContext });
 
           if (receipt.status === 'accepted') {
             try {
               await bridgeTelegramWebhookToRoom({
                 update,
                 receipt,
-                context,
+                context: scopedContext,
                 chatStore,
                 runtimeClient,
                 telegramRelay,

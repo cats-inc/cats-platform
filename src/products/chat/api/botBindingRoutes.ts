@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { GLOBAL_ORCHESTRATOR_ACTOR_ID, createCatActorId } from '../../../core/model.js';
 import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
+import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import { requireCat } from '../state/model.js';
 import type {
   CreateBotBindingInput,
@@ -13,6 +14,25 @@ import {
   nowFrom,
   type ChatApiRouteContext,
 } from './shared.js';
+
+async function reconcilePollingAfterMutation(context: ChatApiRouteContext): Promise<void> {
+  const { pollingSupervisor, telegramRelay, chatStore, runtimeClient } = context.dependencies;
+  if (!pollingSupervisor || !telegramRelay) {
+    return;
+  }
+  try {
+    const pollingCtx = await readTelegramPollingContext(chatStore);
+    await pollingSupervisor.reconcilePolling({
+      bindings: pollingCtx.bindings,
+      context: pollingCtx.context,
+      chatStore,
+      runtimeClient,
+      telegramRelay,
+    });
+  } catch {
+    // Best-effort; binding mutation already succeeded
+  }
+}
 
 function trimNullableString(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
@@ -139,6 +159,7 @@ async function handleCreateBotBinding(context: ChatApiRouteContext): Promise<voi
       chat,
     ),
   });
+  void reconcilePollingAfterMutation(context);
 }
 
 async function handleUpdateBotBinding(
@@ -204,6 +225,7 @@ async function handleUpdateBotBinding(
   sendJson(context.response, 200, {
     botBinding: summarizeBinding(updated ?? existing, chat),
   });
+  void reconcilePollingAfterMutation(context);
 }
 
 async function handleDeleteBotBinding(
@@ -223,6 +245,7 @@ async function handleDeleteBotBinding(
   );
   await context.dependencies.chatStore.writeCore(nextCore);
   sendJson(context.response, 200, { deleted: true, bindingId });
+  void reconcilePollingAfterMutation(context);
 }
 
 export async function routeBotBindingApi(

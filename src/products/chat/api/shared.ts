@@ -1,5 +1,7 @@
 import type { AppConfig } from '../../../config.js';
 import { createCatActorId } from '../../../core/model.js';
+import type { TelegramPollingSupervisor } from '../../../platform/transports/telegram/polling.js';
+import type { TelegramRelay } from '../../../platform/transports/telegram/relay.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import { escapeContentDispositionFilename } from '../../../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
@@ -37,6 +39,8 @@ export interface ChatApiDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
   chatStore: ChatStore;
+  telegramRelay?: TelegramRelay;
+  pollingSupervisor?: TelegramPollingSupervisor;
   now?: () => Date;
 }
 

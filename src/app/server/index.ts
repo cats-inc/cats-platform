@@ -395,6 +395,11 @@ export function createServer(dependencies: ServerDependencies) {
     });
   });
 
+  // Stop polling consumers when server closes
+  server.on('close', () => {
+    pollingSupervisor.stopAll();
+  });
+
   // Schedule polling reconciliation after server is created
   void reconcilePollingOnStartup(resolvedDependencies).catch(() => {});
 
