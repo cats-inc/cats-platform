@@ -66,6 +66,10 @@ contracts.
 - [ ] Surface the new orchestrator execution-loop contract in product-owned
       operator rails so Chat can consume step state, next actions, approval
       gates, and recovery hints without scraping transcript text
+- [ ] Implement explicit `Boss Cat` auto-helper intervention policy for
+      Recents threads, including when background orchestration may silently
+      assist, when it must surface itself, and how that policy differs when
+      Boss is absent, backgrounded, or currently the lead cat
 - [ ] Automatic resume after operator approve/reroute/retry decisions so the
       current action seams become a closed loop rather than write-only markers
 - [ ] Promote the current machine-readable governance/workflow summaries into
@@ -80,6 +84,11 @@ contracts.
 - [ ] Deepen room-workflow semantics beyond the current summary contract,
       especially richer checkpoint recommendations, converge policy, and
       longer-running branch continuation behavior
+- [ ] Finish companion product surfaces above the current data/runtime seams,
+      especially composer avatar inspect flows, companion preset inspection or
+      editing boundaries, companion memory/debug inspector panels, and clearer
+      visibility into the active companion/session context without regressing
+      `My Cats` direct-lane semantics
 - [ ] Telegram, LINE, and alternate orchestrator entrypoints with escalation
       and takeover support
 - [ ] Evolve the current local lexical/hybrid memory retrieval seam into a
