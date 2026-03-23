@@ -59,7 +59,10 @@ default `Boss Cat`.
    - users can rename it, personalize it, or replace it later
 
 4. Any Cat may later be assigned as the global `Boss Cat`.
-   - the global `Boss Cat` becomes the default lead for new chats
+   - the global `Boss Cat` remains the default public transport identity and
+     default Cat-level orchestrator identity
+   - ordinary `Recents` threads may still begin in solo composer mode rather
+     than auto-starting as visible Boss-led chats
    - existing chats do not need to be retroactively rewritten when the global
      `Boss Cat` changes
 
@@ -68,8 +71,8 @@ default `Boss Cat`.
    - `Add cat to chat` and `Chat with this cat` are distinct actions
 
 6. Multi-Cat chats are allowed, but each chat still has one lead Cat.
-   - the default lead is the current `Boss Cat` unless the chat explicitly uses
-     another lead
+   - a chat may begin with no visible lead Cat in solo composer mode
+   - once a Cat is added, that chat still has one lead Cat
    - group chats should default to one primary reply voice rather than all Cats
      replying every turn
 
@@ -172,6 +175,7 @@ default `Boss Cat`.
 - [SPEC-007](../specs/SPEC-007-chat-contextual-cat-entry.md)
 - [SPEC-012](../specs/SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md)
 - [SPEC-018](../specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md)
+- [SPEC-030](../specs/SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md)
 
 ---
 

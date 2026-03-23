@@ -36,7 +36,9 @@ The key rule is:
 
 ## Product Rules
 
-1. Every chat has at least one visible Cat participant.
+1. `My Cats` direct lanes and Cat-led chats have at least one visible Cat
+   participant, but normal `Recents` threads may begin in solo composer mode as
+   defined by `SPEC-030`.
 2. The product always has one current global `Boss Cat`.
 3. First-run setup auto-provisions a neutral default `Boss Cat` if no Cat exists.
 4. Users may later rename that Cat, personalize it, or assign another Cat as
@@ -63,8 +65,8 @@ The product should still feel immediately familiar:
   `Boss Cat`, even when it is the only Cat
 - the environment already has a default `Boss Cat`
 - the fallback display name is `Boss Cat` until the user renames it
-- `Recents` items may show the default Boss Cat avatar even if the user has not
-  personalized it yet
+- new `Recents` threads may begin in solo composer mode without a visible Cat
+  participant, while `My Cats` still exposes the current `Boss Cat`
 
 The user should be able to ignore Cat customization entirely and still use the
 product normally.
@@ -166,19 +168,19 @@ Each recent item should show:
 
 ### If only the default Boss Cat exists
 
-`+ New Chat` should open directly into a fresh chat composer with the current
-`Boss Cat` already selected.
+`+ New Chat` should open into a fresh chat composer in solo mode, with the
+composer controlling the next-turn provider/model selection as defined by
+`SPEC-030`.
 
-If there is only one Cat in the environment, this is effectively the user's
-direct chat with that Cat even if the product still labels the default mode as
-`Boss Chat`.
+The environment may still have only one configured `Boss Cat`, but that does
+not require every new `Recents` thread to begin as a visible Cat-led thread.
 
 ### If multiple Cats exist
 
 `+ New Chat` should:
 
-- default to the current global `Boss Cat`
-- show a participant/lead selector near the header or composer
+- begin in solo composer mode by default
+- allow adding one Cat to upgrade the thread into a Cat-led chat
 - allow choosing another single Cat instead
 - allow `Start group`
 
@@ -379,6 +381,7 @@ the claim that the underlying store has already been fully renamed or migrated.
 - [SPEC-007](./SPEC-007-chat-contextual-cat-entry.md)
 - [SPEC-012](./SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md)
 - [SPEC-018](./SPEC-018-direct-cat-chat-and-conversation-routing-layer.md)
+- [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md)
 
 ---
 

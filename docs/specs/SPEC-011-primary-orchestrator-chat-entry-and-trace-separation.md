@@ -10,7 +10,9 @@ how the orchestrator should appear in the product.
 The agreed direction is:
 
 - one `Primary Orchestrator Cat` acts as the default public entry identity
-- `+ New Chat` starts a conversation with that Cat
+- `+ New Chat` no longer requires a visible Boss-led thread in the first
+  composer state; ordinary `Recents` threads may begin in solo composer mode,
+  while Boss-led and transport-led chats remain valid orchestrated entry flows
 - orchestration mechanics remain real system capabilities, but they are not a
   second user-visible character
 - orchestration details belong in a dedicated activity or trace surface rather
@@ -64,8 +66,9 @@ Terminology rule:
   orchestrator per `cats` environment.
 - Public bot bindings such as Telegram and LINE@ shall attach to that primary
   orchestrator identity.
-- `+ New Chat` and equivalent draft-chat entry flows shall start a conversation
-  whose implicit lead participant is the `Primary Orchestrator Cat`.
+- the product shall continue supporting orchestrated chats whose implicit lead
+  participant is the `Primary Orchestrator Cat`, but ordinary `Recents` threads
+  may begin in solo composer mode as defined by `SPEC-030`
 - The initial chat UX shall not require the user to choose among multiple
   public orchestrators before starting a conversation.
 - Other Cats shall remain assignable as specialists or collaborators inside the
@@ -135,14 +138,14 @@ That section should be able to show:
 
 ### New Chat
 
-`+ New Chat` should no longer feel like creating an empty room with no explicit
-counterparty.
+`+ New Chat` may begin as a solo composer entry for ordinary `Recents` threads,
+while Boss-led chats remain a supported orchestrated mode.
 
-Instead, it should create a new conversation addressed to the
-`Primary Orchestrator Cat`.
+The primary orchestrator should still remain the default public identity for:
 
-The orchestrator should be the implicit lead participant in that chat even if
-the operator later adds specialist Cats.
+- transport-led entry
+- explicit Boss-led chats
+- orchestrated flows where the product chooses to foreground the orchestrator
 
 ### Transcript vs Activity
 
@@ -185,8 +188,9 @@ The activity or trace panel should contain:
 - [Requirements](../requirements.md)
 - [ADR-011](../decisions/011-model-primary-orchestrator-as-visible-cat.md)
 - [PLAN-011](../plans/PLAN-011-primary-orchestrator-chat-entry-and-trace-separation.md)
+- [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md)
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-23*
 

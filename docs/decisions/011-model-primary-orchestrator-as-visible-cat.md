@@ -17,7 +17,9 @@ Accepted
 `cats` is now firmly a chat-first product. That creates a product-level
 constraint:
 
-- a user opening `+ New Chat` expects to be talking to someone
+- a user opening `+ New Chat` expects a clear way to begin chatting, but that
+  does not require every normal `Recents` thread to begin as a visibly
+  Boss-led conversation
 - Telegram and LINE@ also expect one stable public-facing bot identity
 - the app still needs non-chat orchestration behavior such as dispatch,
   retries, run state, event traces, and log inspection
@@ -57,8 +59,12 @@ Terminology rule:
      Telegram and LINE@ when a more specific Cat binding is not chosen
    - user-facing surfaces should usually label this role as `Boss Cat`
 
-2. `+ New Chat` starts a conversation with that `Primary Orchestrator Cat`.
-   - the orchestrator is the implicit lead participant in new chats
+2. The `Primary Orchestrator Cat` remains the default public orchestrator
+   identity, but not every normal `Recents` thread must begin as a visible
+   Boss-led conversation.
+   - transport-led and explicit Boss-led chats still use that identity
+   - ordinary `Recents` threads may begin in solo composer mode before a visible
+     lead Cat is chosen
    - users do not choose among multiple public orchestrators in the initial UX
 
 3. Other Cats remain assignable collaborators, not competing public entry
@@ -159,12 +165,13 @@ state as one object
 - [ADR-008](./008-expose-cats-runtime-via-direct-api-and-mcp-facade.md)
 - [ADR-009](./009-prefer-chat-contextual-cat-entry-and-settings-registry.md)
 - [ADR-028](./028-allow-multiple-public-bot-bindings-with-one-boss-cat.md)
+- [ADR-031](./031-separate-composer-lead-control-from-boss-orchestration-authority.md)
 - [Architecture](../architecture.md)
 - [Requirements](../requirements.md)
 - [SPEC-011](../specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md)
+- [SPEC-030](../specs/SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md)
 
 ---
 
 *Accepted: 2026-03-19*
 *Accepted by: user direction captured through Codex*
-
