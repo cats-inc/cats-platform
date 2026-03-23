@@ -12,10 +12,10 @@ import {
 } from './contracts.js';
 import {
   buildOrchestratorExecutionLoopSnapshot,
-  buildOrchestratorTurnPlan,
   buildOrchestratorExecutionLoopResponse,
+  buildOrchestratorTurnPlan,
+  resolveOrchestratorOperatorSeams,
 } from './planner.js';
-import { buildApprovalQueue } from '../../core/model.js';
 
 interface DispatchOrchestratorTurnInput extends OrchestratorPlanRequest {
   chatStore: ChatStore;
@@ -55,20 +55,11 @@ export async function dispatchOrchestratorTurn(
     input.channelId,
     routed.results.find((result) => result.turnId)?.turnId ?? null,
   );
-  const operatorView = executionLoop.operator;
 
   return {
     contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
     surface: 'direct_product_api',
-    operator: {
-      conversationId: operatorView?.conversationId ?? `conversation-channel-${input.channelId}`,
-      taskId: operatorView?.task?.id ?? `task-channel-${input.channelId}`,
-      approvalsPath: '/api/core/approvals',
-      operatorActionsPath: '/api/core/operator-actions',
-      executionLoopPath: `/api/orchestrator/channels/${input.channelId}/execution-loop`,
-      latestApprovalId: operatorView?.latestApproval?.id ?? buildApprovalQueue(coreAfter)[0]?.id ?? null,
-      latestRunId: operatorView?.latestRun?.id ?? null,
-    },
+    operator: resolveOrchestratorOperatorSeams(coreAfter, input.channelId),
     plan,
     dispatch: {
       channelId: input.channelId,

@@ -97,6 +97,7 @@ export interface OrchestratorExecutionLoopContract {
 
 export interface OrchestratorTurnPlan {
   planId: string;
+  snapshot: 'pre_dispatch';
   channelId: string;
   channelTitle: string;
   roomMode: RoomRoutingMode;

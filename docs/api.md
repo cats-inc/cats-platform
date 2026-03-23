@@ -396,6 +396,7 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
 - `POST /api/orchestrator/dispatch` accepts the same request body, reuses the
   existing `routeChannelMessage()` execution path, and returns:
   - the pre-dispatch plan
+    - `plan.snapshot` is always `"pre_dispatch"` so consumers do not treat it as post-dispatch truth
   - additive dispatch receipts
   - `sourceMessageId`
   - a post-dispatch execution-loop snapshot

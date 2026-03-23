@@ -93,6 +93,13 @@ function buildOrchestratorOperatorSeams(
   };
 }
 
+export function resolveOrchestratorOperatorSeams(
+  core: CatsCoreState,
+  channelId: string,
+): OrchestratorOperatorSeams {
+  return buildOrchestratorOperatorSeams(core, channelId);
+}
+
 function buildExecutionLoopContract(
   channel: ChatChannelView,
   initialTargetCount: number,
@@ -237,6 +244,7 @@ export function buildOrchestratorTurnPlan(
 
   return {
     planId: `orch-plan-${randomUUID()}`,
+    snapshot: 'pre_dispatch',
     channelId: channel.id,
     channelTitle: channel.title,
     roomMode: roomRouting.mode,
@@ -288,7 +296,7 @@ export function buildOrchestratorPlanResponse(
   return {
     contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
     surface: 'direct_product_api',
-    operator: buildOrchestratorOperatorSeams(core, input.channelId),
+    operator: resolveOrchestratorOperatorSeams(core, input.channelId),
     plan: buildOrchestratorTurnPlan(state, core, input),
   };
 }
@@ -301,7 +309,7 @@ export function buildOrchestratorExecutionLoopResponse(
   return {
     contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
     surface: 'direct_product_api',
-    operator: buildOrchestratorOperatorSeams(core, channelId),
+    operator: resolveOrchestratorOperatorSeams(core, channelId),
     executionLoop: buildOrchestratorExecutionLoopSnapshot(core, channelId, runId),
   };
 }

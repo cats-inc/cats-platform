@@ -48,6 +48,8 @@ orchestration loop or making MCP the only runtime interface.
 - `POST /api/orchestrator/dispatch` should embed the pre-dispatch plan plus
   post-dispatch execution-loop snapshot so downstream consumers can correlate
   planning and execution without re-deriving state client-side.
+  - The returned plan should be explicitly labeled as a pre-dispatch snapshot so
+    consumers do not read volatile fields like `sessionId` as post-dispatch truth.
 - MCP tool results should always carry structured JSON in addition to a short
   text summary.
 

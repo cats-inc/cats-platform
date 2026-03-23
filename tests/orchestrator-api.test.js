@@ -136,6 +136,7 @@ test('POST /api/orchestrator/plan returns machine-readable plan and tool intent'
     assert.equal(payload.surface, 'direct_product_api');
     assert.equal(payload.operator.executionLoopPath, `/api/orchestrator/channels/${channelId}/execution-loop`);
     assert.equal(payload.plan.channelId, channelId);
+    assert.equal(payload.plan.snapshot, 'pre_dispatch');
     assert.equal(payload.plan.routing.initialTargets.length, 1);
     assert.equal(payload.plan.routing.initialTargets[0].targetName, 'Inline-Agent');
     assert.equal(payload.plan.executionLoop.dispatchBoundary, 'direct_runtime_api');
@@ -170,6 +171,7 @@ test('POST /api/orchestrator/dispatch reuses runtime routing and returns executi
     assert.ok(payload.dispatch.sourceMessageId);
     assert.equal(payload.dispatch.results.length, 1);
     assert.equal(payload.dispatch.results[0].targetName, 'Inline-Agent');
+    assert.equal(payload.plan.snapshot, 'pre_dispatch');
     assert.equal(payload.operator.approvalsPath, '/api/core/approvals');
     assert.equal(payload.operator.operatorActionsPath, '/api/core/operator-actions');
     assert.equal(payload.executionLoop.channelId, channelId);
