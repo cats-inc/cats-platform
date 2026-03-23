@@ -156,8 +156,7 @@ export interface MemoryRetrievalHit {
 export type MemoryRetrievalExclusionReason =
   | 'no_query_match'
   | 'policy_scope'
-  | 'owner_hint_only'
-  | 'supporting_evidence_only';
+  | 'owner_hint_only';
 
 export interface MemoryRetrievalExcluded {
   recordId: string;

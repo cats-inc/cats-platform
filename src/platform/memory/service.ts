@@ -12,6 +12,7 @@ import type { CompanionBoxStore } from '../../products/chat/state/companionBoxSt
 import type { ChatStore } from '../../products/chat/state/store.js';
 import type { CanonicalMemoryStore } from './store.js';
 import type {
+  CanonicalMemoryOriginKind,
   CanonicalMemoryRecord,
   MemoryFlushReason,
   MemoryFlushPayload,
@@ -25,6 +26,18 @@ import {
   extractCanonicalMemoryFromOwnerProfile,
 } from './extraction.js';
 import { buildMemoryRetrievalContext } from './retrieval.js';
+
+const COMPANION_BOX_ORIGIN_KINDS: CanonicalMemoryOriginKind[] = [
+  'companion_source',
+  'companion_derived',
+  'companion_memory',
+  'response_profile',
+  'durable_memory',
+];
+
+const CHANNEL_ORIGIN_KINDS: CanonicalMemoryOriginKind[] = ['channel_working_memory'];
+
+const OWNER_ORIGIN_KINDS: CanonicalMemoryOriginKind[] = ['owner_profile', 'durable_memory'];
 
 export interface CatsMemoryService {
   listCanonicalRecords(filter?: {
@@ -123,18 +136,6 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
   }): Promise<MemoryFlushResult> {
     const now = input.now ?? new Date();
     const reason = input.reason ?? 'manual';
-    const existingRecords = (await this.memoryStore.listRecords({
-      subjectKind: 'cat',
-      subjectId: input.catId,
-    })).filter((record) =>
-      [
-        'companion_source',
-        'companion_derived',
-        'companion_memory',
-        'response_profile',
-        'durable_memory',
-      ].includes(record.origin.kind),
-    );
     const [core, box, sources, derived, memory, responseProfile] = await Promise.all([
       this.chatStore.readCore(),
       input.companionStore.getBox(input.catId, now),
@@ -148,17 +149,11 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       'cat',
       createCatActorId(input.catId),
     );
-    const persisted = await this.memoryStore.replaceRecords(
+    const { persisted, removedRecordIds } = await this.memoryStore.replaceRecordsWithResult(
       {
         subjectKind: 'cat',
         subjectId: input.catId,
-        originKinds: [
-          'companion_source',
-          'companion_derived',
-          'companion_memory',
-          'response_profile',
-          'durable_memory',
-        ],
+        originKinds: COMPANION_BOX_ORIGIN_KINDS,
       },
       [
         ...extractCanonicalMemoryFromCompanionBox({
@@ -181,9 +176,6 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       ],
       now,
     );
-    const removedRecordIds = existingRecords
-      .map((record) => record.id)
-      .filter((recordId) => !persisted.some((record) => record.id === recordId));
     const generatedAt = now.toISOString();
     const payload = buildFlushPayload({
       scope: 'cat',
@@ -213,17 +205,13 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
   }): Promise<MemoryFlushResult> {
     const now = input.now ?? new Date();
     const reason = input.reason ?? 'manual';
-    const existingRecords = (await this.memoryStore.listRecords({
-      subjectKind: 'channel',
-      subjectId: input.channelId,
-    })).filter((record) => record.origin.kind === 'channel_working_memory');
     const state = await this.chatStore.read();
     const channel = requireChannel(state, input.channelId);
-    const persisted = await this.memoryStore.replaceRecords(
+    const { persisted, removedRecordIds } = await this.memoryStore.replaceRecordsWithResult(
       {
         subjectKind: 'channel',
         subjectId: input.channelId,
-        originKinds: ['channel_working_memory'],
+        originKinds: CHANNEL_ORIGIN_KINDS,
       },
       extractCanonicalMemoryFromChannel({
         channel,
@@ -232,9 +220,6 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       }),
       now,
     );
-    const removedRecordIds = existingRecords
-      .map((record) => record.id)
-      .filter((recordId) => !persisted.some((record) => record.id === recordId));
     const generatedAt = now.toISOString();
     const payload = buildFlushPayload({
       scope: 'channel',
@@ -264,22 +249,16 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     const now = input?.now ?? new Date();
     const reason = input?.reason ?? 'owner_profile_sync';
     const core = await this.chatStore.readCore();
-    const existingRecords = (await this.memoryStore.listRecords({
-      subjectKind: 'owner',
-      subjectId: core.ownerProfile.actorId,
-    })).filter((record) =>
-      ['owner_profile', 'durable_memory'].includes(record.origin.kind),
-    );
     const durableMemory = listDurableMemoryBySubject(
       core,
       'owner',
       core.ownerProfile.actorId,
     );
-    const persisted = await this.memoryStore.replaceRecords(
+    const { persisted, removedRecordIds } = await this.memoryStore.replaceRecordsWithResult(
       {
         subjectKind: 'owner',
         subjectId: core.ownerProfile.actorId,
-        originKinds: ['owner_profile', 'durable_memory'],
+        originKinds: OWNER_ORIGIN_KINDS,
       },
       [
         ...extractCanonicalMemoryFromOwnerProfile({
@@ -297,9 +276,6 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       ],
       now,
     );
-    const removedRecordIds = existingRecords
-      .map((record) => record.id)
-      .filter((recordId) => !persisted.some((record) => record.id === recordId));
     const generatedAt = now.toISOString();
     const payload = buildFlushPayload({
       scope: 'owner',

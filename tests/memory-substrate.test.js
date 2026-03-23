@@ -10,6 +10,10 @@ import {
   MemoryCanonicalMemoryStore,
 } from '../dist-server/platform/memory/index.js';
 import { createCatActorId } from '../dist-server/core/model.js';
+import {
+  extractCanonicalMemoryFromChannel,
+  extractCanonicalMemoryFromOwnerProfile,
+} from '../dist-server/platform/memory/extraction.js';
 import { buildMemoryRetrievalContext } from '../dist-server/platform/memory/retrieval.js';
 import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companionBoxStore.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
@@ -264,11 +268,14 @@ test('scope-aware canonical flush removes stale durable memory when curated note
     durableMemory: [],
   });
 
-  await memoryService.flushCompanionBox({
+  const previousDurableRecordId = catRecords.find((record) => record.origin.kind === 'durable_memory')?.id;
+  const secondFlush = await memoryService.flushCompanionBox({
     catId: 'cat-memory',
     companionStore,
     now: new Date('2026-03-23T16:05:00.000Z'),
   });
+  assert.ok(previousDurableRecordId);
+  assert.ok(secondFlush.removedRecordIds.includes(previousDurableRecordId));
 
   catRecords = await memoryService.listCanonicalRecords({
     subjectKind: 'cat',
@@ -470,4 +477,50 @@ test('retrieval keeps unrelated owner records out of top hits while preserving o
   assert.ok(context.hits.every((hit) => hit.subjectKind !== 'owner'));
   assert.ok(context.ownerProfileHints.some((hint) => hint.includes('concise')));
   assert.equal(context.ownerProfile.mode, 'fallback');
+});
+
+test('array-backed channel and owner records emit distinct replacement groups per entry', () => {
+  const now = new Date('2026-03-23T19:00:00.000Z');
+  const channelRecords = extractCanonicalMemoryFromChannel({
+    channel: {
+      id: 'channel-memory',
+      title: 'Ops Room',
+      topic: 'Coordinate the next response.',
+      workingMemory: {
+        summary: 'Current thread summary.',
+        facts: ['First fact', 'Second fact'],
+        openLoops: ['First loop', 'Second loop'],
+        updatedAt: now.toISOString(),
+      },
+    },
+    reason: 'manual',
+    now,
+  });
+  const ownerRecords = extractCanonicalMemoryFromOwnerProfile({
+    ownerProfile: {
+      actorId: 'owner-actor',
+      displayName: 'Owner',
+      summary: 'Owner profile summary.',
+      communicationPreferences: ['Keep updates concise.', 'Lead with the recommendation.'],
+      decisionPreferences: ['Offer one recommended option first.', 'Call out tradeoffs briefly.'],
+      escalationPreferences: ['Escalate before destructive actions.', 'Raise blockers early.'],
+      updatedAt: now.toISOString(),
+    },
+    reason: 'owner_profile_sync',
+    now,
+  });
+
+  const channelFactGroups = channelRecords
+    .filter((record) => record.promotionRule === 'channel_fact')
+    .map((record) => record.lineage.replacementGroup);
+  const channelLoopGroups = channelRecords
+    .filter((record) => record.promotionRule === 'channel_open_loop')
+    .map((record) => record.lineage.replacementGroup);
+  const ownerCommunicationGroups = ownerRecords
+    .filter((record) => record.promotionRule === 'owner_communication_preference')
+    .map((record) => record.lineage.replacementGroup);
+
+  assert.equal(new Set(channelFactGroups).size, channelFactGroups.length);
+  assert.equal(new Set(channelLoopGroups).size, channelLoopGroups.length);
+  assert.equal(new Set(ownerCommunicationGroups).size, ownerCommunicationGroups.length);
 });

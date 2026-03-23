@@ -223,6 +223,13 @@ Flush responses return `{ flush }`, where `flush` also includes:
 - `payload.persistedRecords[*].promotionRule`
 - `payload.persistedRecords[*].replacementGroup`
 
+`removedRecordIds` is computed from the same subject-replace transaction that
+persists the new canonical projection, so pre-reset / pre-compaction callers can
+treat it as the authoritative removal set. Array-backed channel and owner
+records also emit entry-scoped `replacementGroup` values instead of a shared
+bucket so downstream consumers do not collapse distinct facts, open loops, or
+preferences into one semantic slot.
+
 Retrieval-context responses return `{ retrieval }`, where `retrieval` includes:
 
 - `scope` with `catId`, `channelId`, and `includeOwnerProfile`

@@ -63,6 +63,14 @@ contracts.
 - [ ] Complete owner durable-memory CRUD beyond the current `GET/POST`
       surface, including update/delete paths that keep canonical retrieval
       synchronized
+- [ ] Converge companion-source mutation sync so canonical memory flush is not
+      only guaranteed by HTTP routes: direct `MemoryAwareCompanionBoxStore`
+      update/delete callers should hit the same non-duplicated sync boundary
+      without relying on route handlers or double-flushing canonical state
+- [ ] Promote the current Team 5-ready flush payload into a fuller non-HTTP
+      memory maintenance contract, including reusable source-mutation sync,
+      background-safe flush invocation, and clearer downstream expectations for
+      `removedRecordIds` and entry-scoped `replacementGroup` consumers
 - [ ] Surface the new orchestrator execution-loop contract in product-owned
       operator rails so Chat can consume step state, next actions, approval
       gates, and recovery hints without scraping transcript text

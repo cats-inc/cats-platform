@@ -49,7 +49,10 @@ The current slice now lands the core substrate in-tree:
   machine-readable contract
 - runtime-facing memory flushes now return a Team 5-ready payload with
   `removedRecordIds`, `sourceScopeKeys`, and per-record promotion/replacement
-  metadata
+  metadata; `removedRecordIds` must come from the same subject-replace
+  transaction that persists the new projection, and array-backed channel/owner
+  entries must use entry-scoped `replacementGroup` values so downstream
+  compaction/dedup consumers do not collapse distinct facts or preferences
 
 ## Context
 

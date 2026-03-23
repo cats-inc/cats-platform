@@ -58,13 +58,19 @@ function readLineage(
   },
 ): CanonicalMemoryRecord['lineage'] {
   const record = asRecord(value);
+  const sourceScopeKeys = readStringArray(record?.sourceScopeKeys);
   return {
-    sourceScopeKeys: readStringArray(record?.sourceScopeKeys).length > 0
-      ? readStringArray(record?.sourceScopeKeys)
+    sourceScopeKeys: sourceScopeKeys.length > 0
+      ? sourceScopeKeys
       : fallback.sourceScopeKeys,
     derivedFromIds: readStringArray(record?.derivedFromIds),
     replacementGroup: readNullableString(record?.replacementGroup) ?? fallback.replacementGroup,
   };
+}
+
+export interface CanonicalMemoryReplaceResult {
+  persisted: CanonicalMemoryRecord[];
+  removedRecordIds: string[];
 }
 
 function createEmptySnapshot(nowIso: string): CanonicalMemorySnapshot {
@@ -257,6 +263,11 @@ export interface CanonicalMemoryStore {
     records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
     now?: Date,
   ): Promise<CanonicalMemoryRecord[]>;
+  replaceRecordsWithResult(
+    filter: CanonicalMemoryReplaceFilter,
+    records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
+    now?: Date,
+  ): Promise<CanonicalMemoryReplaceResult>;
   touchRecords(recordIds: string[], now?: Date): Promise<void>;
 }
 
@@ -370,6 +381,14 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
     records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
     now: Date = new Date(),
   ): Promise<CanonicalMemoryRecord[]> {
+    return (await this.replaceRecordsWithResult(filter, records, now)).persisted;
+  }
+
+  async replaceRecordsWithResult(
+    filter: CanonicalMemoryReplaceFilter,
+    records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
+    now: Date = new Date(),
+  ): Promise<CanonicalMemoryReplaceResult> {
     if (!hasReplaceSelector(filter)) {
       throw new Error('replaceRecords requires at least one filter selector.');
     }
@@ -377,6 +396,7 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
       const snapshot = await this.readOrCreateSnapshot();
       const nowIso = now.toISOString();
       const prepared = records.map((candidate) => prepareRecord(candidate));
+      const matchedRecords = snapshot.records.filter((record) => matchesFilter(record, filter));
       const existingById = new Map(snapshot.records.map((record) => [record.id, record] as const));
       const persisted = prepared.map((record) => {
         const existing = existingById.get(record.id);
@@ -395,6 +415,9 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
         };
       });
       const persistedIds = new Set(persisted.map((record) => record.id));
+      const removedRecordIds = matchedRecords
+        .map((record) => record.id)
+        .filter((recordId) => !persistedIds.has(recordId));
 
       snapshot.records = [
         ...persisted,
@@ -404,7 +427,10 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
       ];
       snapshot.updatedAt = nowIso;
       await this.writeSnapshot(snapshot);
-      return structuredClone(persisted);
+      return {
+        persisted: structuredClone(persisted),
+        removedRecordIds,
+      };
     });
   }
 
@@ -508,11 +534,20 @@ export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
     records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
     now: Date = new Date(),
   ): Promise<CanonicalMemoryRecord[]> {
+    return (await this.replaceRecordsWithResult(filter, records, now)).persisted;
+  }
+
+  async replaceRecordsWithResult(
+    filter: CanonicalMemoryReplaceFilter,
+    records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
+    now: Date = new Date(),
+  ): Promise<CanonicalMemoryReplaceResult> {
     if (!hasReplaceSelector(filter)) {
       throw new Error('replaceRecords requires at least one filter selector.');
     }
     const nowIso = now.toISOString();
     const prepared = records.map((candidate) => prepareRecord(candidate));
+    const matchedRecords = this.snapshot.records.filter((record) => matchesFilter(record, filter));
     const existingById = new Map(this.snapshot.records.map((record) => [record.id, record] as const));
     const persisted = prepared.map((record) => {
       const existing = existingById.get(record.id);
@@ -531,6 +566,9 @@ export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
       };
     });
     const persistedIds = new Set(persisted.map((record) => record.id));
+    const removedRecordIds = matchedRecords
+      .map((record) => record.id)
+      .filter((recordId) => !persistedIds.has(recordId));
 
     this.snapshot = {
       ...this.snapshot,
@@ -542,7 +580,10 @@ export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
         ),
       ],
     };
-    return structuredClone(persisted);
+    return {
+      persisted: structuredClone(persisted),
+      removedRecordIds,
+    };
   }
 
   async touchRecords(recordIds: string[], now: Date = new Date()): Promise<void> {

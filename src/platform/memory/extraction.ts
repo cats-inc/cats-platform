@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type {
   DurableMemoryRecord,
   OwnerProfileRecord,
@@ -52,6 +54,14 @@ function buildLineage(input: {
 
 function sourceScopeKey(prefix: string, id: string): string {
   return `${prefix}:${id}`;
+}
+
+function buildScopedContentReplacementGroup(prefix: string, content: string): string {
+  const digest = createHash('sha256')
+    .update(normalizeWhitespace(content).toLowerCase())
+    .digest('hex')
+    .slice(0, 12);
+  return `${prefix}:${digest}`;
 }
 
 function visibilityForSubject(
@@ -342,7 +352,10 @@ export function extractCanonicalMemoryFromChannel(input: {
       promotionRule: 'channel_fact',
       lineage: buildLineage({
         sourceScopeKeys: [sourceScopeKey('channel-working-memory', input.channel.id)],
-        replacementGroup: `channel-working-memory:${input.channel.id}:fact`,
+        replacementGroup: buildScopedContentReplacementGroup(
+          `channel-working-memory:${input.channel.id}:fact`,
+          fact,
+        ),
       }),
       originKind: 'channel_working_memory',
       channelId: input.channel.id,
@@ -362,7 +375,10 @@ export function extractCanonicalMemoryFromChannel(input: {
       promotionRule: 'channel_open_loop',
       lineage: buildLineage({
         sourceScopeKeys: [sourceScopeKey('channel-working-memory', input.channel.id)],
-        replacementGroup: `channel-working-memory:${input.channel.id}:open-loop`,
+        replacementGroup: buildScopedContentReplacementGroup(
+          `channel-working-memory:${input.channel.id}:open-loop`,
+          loop,
+        ),
       }),
       originKind: 'channel_working_memory',
       channelId: input.channel.id,
@@ -410,7 +426,10 @@ export function extractCanonicalMemoryFromOwnerProfile(input: {
       promotionRule: 'owner_communication_preference',
       lineage: buildLineage({
         sourceScopeKeys: [sourceScopeKey('owner-profile', input.ownerProfile.actorId)],
-        replacementGroup: `owner-profile:${input.ownerProfile.actorId}:communication`,
+        replacementGroup: buildScopedContentReplacementGroup(
+          `owner-profile:${input.ownerProfile.actorId}:communication`,
+          preference,
+        ),
       }),
       originKind: 'owner_profile',
       reason: input.reason,
@@ -428,7 +447,10 @@ export function extractCanonicalMemoryFromOwnerProfile(input: {
       promotionRule: 'owner_decision_preference',
       lineage: buildLineage({
         sourceScopeKeys: [sourceScopeKey('owner-profile', input.ownerProfile.actorId)],
-        replacementGroup: `owner-profile:${input.ownerProfile.actorId}:decision`,
+        replacementGroup: buildScopedContentReplacementGroup(
+          `owner-profile:${input.ownerProfile.actorId}:decision`,
+          preference,
+        ),
       }),
       originKind: 'owner_profile',
       reason: input.reason,
@@ -446,7 +468,10 @@ export function extractCanonicalMemoryFromOwnerProfile(input: {
       promotionRule: 'owner_escalation_preference',
       lineage: buildLineage({
         sourceScopeKeys: [sourceScopeKey('owner-profile', input.ownerProfile.actorId)],
-        replacementGroup: `owner-profile:${input.ownerProfile.actorId}:escalation`,
+        replacementGroup: buildScopedContentReplacementGroup(
+          `owner-profile:${input.ownerProfile.actorId}:escalation`,
+          preference,
+        ),
       }),
       originKind: 'owner_profile',
       reason: input.reason,
