@@ -17,6 +17,7 @@ htmlcov/
 dist/
 dist-test/
 dist-server/
+dist-electron/
 build/
 config/*.local.json
 config/*.local.*.json

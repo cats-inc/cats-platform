@@ -52,6 +52,13 @@ If assigned as Conductor in Project Roles table:
 - **MUST** follow coding conventions specified in AGENTS.md
 - **MUST** respect `.editorconfig` settings (LF line endings, final newline, trim rules)
 - **MUST NOT** use interactive rebase; always use non-interactive rebase commands only
+- **MUST NOT** run plain `git rebase --continue` in this Windows/PowerShell
+  workspace, because Git may open an editor and block the session
+- **MUST** continue rebases with an explicit no-editor command after conflicts
+  are resolved:
+  `$env:GIT_EDITOR='node -e \"process.exit(0)\"'; git rebase --continue`
+- **SHOULD** use the same no-editor pattern for `git cherry-pick --continue`
+  and `git merge --continue` when Git would otherwise invoke an editor
 - **SHOULD** make minimal, focused changes
 - **SHOULD** commit frequently with clear messages
 
