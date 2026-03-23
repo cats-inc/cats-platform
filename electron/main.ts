@@ -136,9 +136,12 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
     await mainWindow.loadURL(`${hostConfig.appBaseUrl}${snapshot.app.entryPath}`);
     return snapshot;
   }
+  if (actionId === 'quit') {
+    app.quit();
+    return latestSnapshot ?? buildSnapshot(null);
+  }
 
-  app.quit();
-  return latestSnapshot ?? buildSnapshot(null);
+  throw new Error(`Unknown desktop host action: ${actionId}`);
 }
 
 async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindow> {
@@ -154,6 +157,9 @@ async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindo
       preload: config.paths.preloadScript,
       contextIsolation: true,
       nodeIntegration: false,
+      // The bootstrap preload is compiled as ESM today, so the first host slice
+      // keeps Electron sandboxing off rather than adding a separate CJS preload
+      // build just for the bootstrap bridge.
       sandbox: false,
     },
   });

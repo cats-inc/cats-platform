@@ -32,6 +32,12 @@ interface ProcessSupervisorDependencies {
   onStateChange?: (snapshot: ManagedServiceSnapshot) => void;
 }
 
+function waitForTimeout(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 function writeTaggedOutput(
   stream: NodeJS.WriteStream,
   serviceName: ManagedServiceName,
@@ -120,6 +126,8 @@ export function buildManagedServiceSpecs(
 export class ManagedServiceSupervisor {
   private readonly handles = new Map<ManagedServiceName, ManagedServiceHandle>();
 
+  private readonly shutdownOrder: ManagedServiceName[];
+
   private readonly spawnImpl: typeof spawn;
 
   private readonly now: () => Date;
@@ -132,12 +140,14 @@ export class ManagedServiceSupervisor {
     private readonly config: DesktopHostConfig,
     private readonly dependencies: ProcessSupervisorDependencies = {},
   ) {
+    const specs = buildManagedServiceSpecs(config);
     this.spawnImpl = dependencies.spawn ?? spawn;
     this.now = dependencies.now ?? (() => new Date());
     this.waitForReadiness = dependencies.waitForServiceReadiness ?? waitForServiceReadiness;
     this.onStateChange = dependencies.onStateChange;
+    this.shutdownOrder = specs.map((spec) => spec.name).reverse();
 
-    for (const spec of buildManagedServiceSpecs(config)) {
+    for (const spec of specs) {
       this.handles.set(spec.name, {
         child: null,
         snapshot: createInitialSnapshot(spec.name, spec.healthUrl),
@@ -159,8 +169,7 @@ export class ManagedServiceSupervisor {
   }
 
   async stopAll(): Promise<void> {
-    const names: ManagedServiceName[] = ['cats', 'cats-runtime'];
-    for (const name of names) {
+    for (const name of this.shutdownOrder) {
       await this.stopService(name);
     }
   }
@@ -224,14 +233,15 @@ export class ManagedServiceSupervisor {
       handle.child = null;
     });
 
+    let exitBeforeReadyListener: ((code: number | null, signal: NodeJS.Signals | null) => void)
+      | null = null;
     const exitBeforeReady = new Promise<never>((_resolve, reject) => {
-      child.once('exit', (code, signal) => {
-        reject(
-          new Error(
-            `${spec.name} exited before readiness (code: ${code ?? 'null'}, signal: ${signal ?? 'null'})`,
-          ),
-        );
-      });
+      exitBeforeReadyListener = (code, signal) => {
+        reject(new Error(
+          `${spec.name} exited before readiness (code: ${code ?? 'null'}, signal: ${signal ?? 'null'})`,
+        ));
+      };
+      child.once('exit', exitBeforeReadyListener);
     });
 
     const readinessPromise = spec.name === 'cats'
@@ -258,6 +268,10 @@ export class ManagedServiceSupervisor {
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
+    } finally {
+      if (exitBeforeReadyListener) {
+        child.off('exit', exitBeforeReadyListener);
+      }
     }
   }
 
@@ -280,14 +294,11 @@ export class ManagedServiceSupervisor {
       child.stdin.end();
     }
 
-    const gracefulWait = new Promise<void>((resolve) => {
-      setTimeout(resolve, this.config.gracefulShutdownMs);
-    });
-    await Promise.race([waitForExit, gracefulWait]);
+    await Promise.race([waitForExit, waitForTimeout(this.config.gracefulShutdownMs)]);
 
     if (child.exitCode === null && child.signalCode === null) {
       child.kill('SIGTERM');
-      await Promise.race([waitForExit, gracefulWait]);
+      await Promise.race([waitForExit, waitForTimeout(this.config.gracefulShutdownMs)]);
     }
 
     if (child.exitCode === null && child.signalCode === null) {

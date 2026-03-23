@@ -110,17 +110,14 @@ async function main(): Promise<void> {
     throw new Error('Cats app failed to resolve its listening address.');
   }
 
-  markAppReady(startup, {
+  const listeningAddress = {
     host: config.host,
     port: address.port,
     healthUrl: `http://${config.host}:${address.port}/health`,
-  });
+  };
+  markAppReady(startup, listeningAddress);
   writeLifecycle(
-    formatAppReadyMessage(startup, {
-      host: config.host,
-      port: address.port,
-      healthUrl: `http://${config.host}:${address.port}/health`,
-    }),
+    formatAppReadyMessage(startup, listeningAddress),
   );
 }
 
