@@ -50,6 +50,8 @@ contracts.
 - [ ] Offline transcript normalization and ingestion handoff hooks
 - [ ] Split-view chat canvas with preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
+- [ ] Persist solo-composer model changes immediately on selector change instead of
+      only committing the pending provider/model when the next message is sent
 - [ ] Shift cat UX to a chat-contextual `Add cat` flow while moving registry
       administration into `Settings > Cats`
 - [ ] Desktop host and tray lifecycle management above the existing Node server boundary

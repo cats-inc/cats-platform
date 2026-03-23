@@ -591,6 +591,9 @@ export interface UpdateGlobalOrchestratorInput {
 export interface SendChannelMessageInput {
   body: string;
   senderName?: string;
+  pendingProvider?: string;
+  pendingModel?: string | null;
+  pendingInstance?: string | null;
 }
 
 export interface ChannelActivationResult {

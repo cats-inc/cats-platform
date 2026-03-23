@@ -26,6 +26,7 @@ import {
   buildRunInspectorView,
 } from '../../shared/operatorLoop';
 import { ActivityFeed } from './ActivityFeed';
+import { ModelSelector, type ModelSelectorValue } from './ModelSelector';
 import { ApprovalQueuePanel } from './ApprovalQueuePanel';
 import { ProgressSummaryPanel } from './ProgressSummaryPanel';
 import { RunInspector } from './RunInspector';
@@ -66,6 +67,8 @@ export interface ChatViewProps {
   }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
   showAddCatButton?: boolean;
+  selectedModel?: ModelSelectorValue;
+  onModelChange?: (value: ModelSelectorValue) => void;
 }
 
 export function ChatView({
@@ -97,6 +100,8 @@ export function ChatView({
   onOperatorAction,
   autoResize,
   showAddCatButton = true,
+  selectedModel,
+  onModelChange,
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
@@ -107,6 +112,8 @@ export function ChatView({
     ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
     : null;
   const bossLifecycle = resolveChatLifecycleState(selectedChannel.orchestratorLease.status);
+  const isSoloComposer = selectedChannel.composerMode === 'solo'
+    && roomMode !== 'direct_cat_chat';
   const presenceItems = roomMode === 'direct_cat_chat' && leadCat
     ? [
         {
@@ -124,6 +131,21 @@ export function ChatView({
             isEntry: false,
           })),
       ]
+    : isSoloComposer
+      ? [
+          {
+            id: 'chat',
+            name: 'Chat',
+            state: bossLifecycle,
+            isEntry: true,
+          },
+          ...activeAssignedCats.map((cat) => ({
+            id: `cat:${cat.catId}`,
+            name: cat.name,
+            state: resolveChatLifecycleState(cat.execution.lease.status),
+            isEntry: false,
+          })),
+        ]
     : [
         {
           id: 'orchestrator',
@@ -147,6 +169,8 @@ export function ChatView({
 
   const modeLabel = roomMode === 'direct_cat_chat'
     ? 'Direct chat'
+    : isSoloComposer
+      ? 'Chat'
     : activeAssignedCats.length > 0
       ? 'Group'
       : 'Boss Chat';
@@ -185,7 +209,7 @@ export function ChatView({
             </div>
           ) : (
             <>
-              {showBossCatAvatar ? (
+              {showBossCatAvatar && !isSoloComposer ? (
                 <div className="catAvatar catAvatarBoss" data-tooltip={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
                   {catInitials(bossCatName)}
                 </div>
@@ -361,6 +385,11 @@ export function ChatView({
                   );
                 })()}
               </div>
+                {isSoloComposer && selectedModel && onModelChange ? (
+                  <div style={{ marginRight: 8 }}>
+                    <ModelSelector value={selectedModel} onChange={onModelChange} />
+                  </div>
+                ) : null}
                 <button
                   className="composerSendButton"
                   disabled={!composerDraft.trim() || busy === 'message:send'}

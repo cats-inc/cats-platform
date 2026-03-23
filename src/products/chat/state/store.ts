@@ -233,6 +233,9 @@ function normalizeMessage(rawMessage: unknown, channelId: string): ChatMessage {
           tokensUsed: readNumber(usageRecord.tokensUsed),
         }
       : null,
+    executionProvider: readNullableString(messageRecord?.executionProvider),
+    executionModel: readNullableString(messageRecord?.executionModel),
+    executionInstance: readNullableString(messageRecord?.executionInstance),
     createdAt: readString(messageRecord?.createdAt, new Date().toISOString()),
   };
 }
@@ -664,6 +667,16 @@ function normalizeChannel(
   const messages = Array.isArray(channelRecord.messages)
     ? channelRecord.messages.map((message) => normalizeMessage(message, channelId))
     : [];
+  const roomRouting = normalizeRoomRouting(channelRecord.roomRouting);
+  const inferredComposerMode = channelRecord.composerMode === 'cat_led'
+    ? 'cat_led'
+    : channelRecord.composerMode === 'solo'
+      ? 'solo'
+      : roomRouting.mode === 'direct_cat_chat'
+          || catAssignments.some((assignment) => assignment.status === 'active')
+          || Boolean(roomRouting.leadParticipantId)
+        ? 'cat_led'
+        : 'solo';
 
   return {
     id: channelId,
@@ -679,7 +692,7 @@ function normalizeChannel(
     skillProfile: readNullableString(channelRecord.skillProfile) ?? 'chat-default',
     mcpProfile: readNullableString(channelRecord.mcpProfile) ?? 'chat-memory',
     orchestratorRoles: readStringArray(channelRecord.orchestratorRoles),
-    composerMode: channelRecord.composerMode === 'cat_led' ? 'cat_led' : 'solo',
+    composerMode: inferredComposerMode,
     pendingProvider: readNullableString(channelRecord.pendingProvider),
     pendingModel: readNullableString(channelRecord.pendingModel),
     pendingInstance: readNullableString(channelRecord.pendingInstance),
@@ -693,7 +706,7 @@ function normalizeChannel(
     ),
     catAssignments,
     messages,
-    roomRouting: normalizeRoomRouting(channelRecord.roomRouting),
+    roomRouting,
   };
 }
 

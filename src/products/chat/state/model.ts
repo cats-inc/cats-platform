@@ -82,6 +82,42 @@ function normalizeLeadParticipantId(value: string | undefined): string | null {
   return normalized ? normalized : null;
 }
 
+function inferChannelComposerMode(input: {
+  roomMode?: string;
+  activeCatIds: string[];
+}): 'solo' | 'cat_led' {
+  if (input.roomMode === 'direct_cat_chat') {
+    return 'cat_led';
+  }
+  return input.activeCatIds.length > 0 ? 'cat_led' : 'solo';
+}
+
+function syncChannelLeadAndComposerMode(channel: ChatChannelState): void {
+  const activeCatIds = channel.catAssignments
+    .filter((assignment) => assignment.status === 'active')
+    .map((assignment) => assignment.catId);
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const currentLeadId = roomRouting.leadParticipantId;
+  const hasValidLead = Boolean(currentLeadId && activeCatIds.includes(currentLeadId));
+
+  channel.composerMode = inferChannelComposerMode({
+    roomMode: roomRouting.mode,
+    activeCatIds,
+  });
+
+  if (roomRouting.mode === 'direct_cat_chat') {
+    roomRouting.leadParticipantId = hasValidLead
+      ? currentLeadId
+      : activeCatIds[0] ?? currentLeadId ?? null;
+  } else if (activeCatIds.length === 0) {
+    roomRouting.leadParticipantId = null;
+  } else if (!hasValidLead) {
+    roomRouting.leadParticipantId = activeCatIds[0] ?? null;
+  }
+
+  channel.roomRouting = roomRouting;
+}
+
 export function resolveParticipantLifecycleState(
   lease: ParticipantExecutionLease,
 ): ChatLifecycleState {
@@ -122,6 +158,11 @@ function createMessageRecord(
   createdAt: string,
   metadata: Record<string, unknown>,
   usage: MessageUsageSummary | null,
+  execution: {
+    provider?: string | null;
+    model?: string | null;
+    instance?: string | null;
+  } = {},
 ): ChatMessage {
   return {
     id: randomUUID(),
@@ -132,6 +173,9 @@ function createMessageRecord(
     mentions: parseMentions(body),
     metadata,
     usage,
+    executionProvider: execution.provider ?? null,
+    executionModel: execution.model ?? null,
+    executionInstance: execution.instance ?? null,
     createdAt,
   };
 }
@@ -474,7 +518,7 @@ export function createChannel(
   const nowIso = isoAt(now);
   const topic = input.topic.trim();
   const channelId = createChannelId();
-  const catDrafts = input.cats ?? input.cats ?? [];
+  const catDrafts = input.cats ?? [];
   const createdCats = catDrafts.map((palInput) => createCatRecord(palInput, nowIso));
   const participantCatIds = input.participantCatIds ?? [];
 
@@ -496,6 +540,8 @@ export function createChannel(
         ? createdCats[0]?.id ?? null
         : input.roomMode === 'direct_cat_chat' && createdCats.length === 0 && participantCatIds.length === 1
           ? participantCatIds[0] ?? null
+          : participantCatIds.length > 0
+            ? participantCatIds[0] ?? null
           : null
     );
 
@@ -535,7 +581,12 @@ export function createChannel(
     mcpProfile: normalizeOptionalText(input.mcpProfile) ?? 'chat-memory',
     orchestratorRoles: normalizeList(input.orchestratorRoles),
     composerMode: input.composerMode
-      ?? (input.roomMode === 'direct_cat_chat' ? 'cat_led' : 'solo'),
+      ?? inferChannelComposerMode({
+        roomMode: input.roomMode,
+        activeCatIds: catAssignments
+          .filter((assignment) => assignment.status === 'active')
+          .map((assignment) => assignment.catId),
+      }),
     pendingProvider: normalizeOptionalText(input.pendingProvider),
     pendingModel: normalizeOptionalText(input.pendingModel),
     pendingInstance: normalizeOptionalText(input.pendingInstance),
@@ -553,6 +604,7 @@ export function createChannel(
     workingMemory: createEmptyMemoryCheckpoint(),
   };
 
+  syncChannelLeadAndComposerMode(channel);
   nextState.channels.unshift(channel);
   nextState.selectedChannelId = channelId;
   return nextState;
@@ -591,6 +643,8 @@ export function assignCatToChannel(
     if (channel.status === 'planned') {
       channel.status = 'configured';
     }
+
+    syncChannelLeadAndComposerMode(channel);
 
     applyMessageToChannel(
       channel,
@@ -637,6 +691,8 @@ export function assignCatToChannel(
   } else if (existing.execution.lease.status === 'removed') {
     existing.execution.lease.status = 'not_started';
   }
+
+  syncChannelLeadAndComposerMode(channel);
 
   applyMessageToChannel(
     channel,
@@ -688,6 +744,8 @@ export function removeCatFromChannel(
     startedAt: null,
     lastUsedAt: null,
   };
+
+  syncChannelLeadAndComposerMode(channel);
 
   const cat = requireCat(nextState, catId);
   applyMessageToChannel(
@@ -746,6 +804,11 @@ export function appendMessage(
   options: {
     metadata?: Record<string, unknown>;
     usage?: MessageUsageSummary | null;
+    execution?: {
+      provider?: string | null;
+      model?: string | null;
+      instance?: string | null;
+    };
     incrementUnread?: boolean;
   } = {},
 ): { state: ChatState; message: ChatMessage } {
@@ -760,6 +823,7 @@ export function appendMessage(
     nowIso,
     options.metadata ?? {},
     options.usage ?? null,
+    options.execution ?? {},
   );
 
   applyMessageToChannel(channel, message, nowIso);
@@ -773,6 +837,33 @@ export function appendMessage(
   }
 
   return { state: nextState, message };
+}
+
+export function setChannelPendingExecutionTarget(
+  state: ChatState,
+  channelId: string,
+  input: {
+    provider?: string | null;
+    model?: string | null;
+    instance?: string | null;
+  },
+  now: Date = new Date(),
+): ChatState {
+  const nextState = cloneState(state);
+  const channel = requireChannel(nextState, channelId);
+
+  if (input.provider !== undefined) {
+    channel.pendingProvider = normalizeOptionalText(input.provider);
+  }
+  if (input.model !== undefined) {
+    channel.pendingModel = normalizeOptionalText(input.model);
+  }
+  if (input.instance !== undefined) {
+    channel.pendingInstance = normalizeOptionalText(input.instance);
+  }
+
+  channel.updatedAt = isoAt(now);
+  return nextState;
 }
 
 function updateExecutionLease(

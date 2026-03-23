@@ -15,6 +15,7 @@ function createRuntimeStub(responder) {
   let nextSession = 1;
   return {
     createdSessions: [],
+    closedSessions: [],
     sentMessages: [],
     async getHealth() {
       return {
@@ -56,7 +57,9 @@ function createRuntimeStub(responder) {
       this.sentMessages.push({ sessionId, content });
       return responder({ sessionId, content, sentMessages: this.sentMessages });
     },
-    async closeSession() {},
+    async closeSession(sessionId) {
+      this.closedSessions.push(sessionId);
+    },
   };
 }
 
@@ -220,6 +223,64 @@ test('explicit multi-target mentions fan out in parallel and persist replies in 
   assert.ok(
     channel.roomRouting?.workflow.eventHistory.some((event) => event.kind === 'outcome'),
   );
+});
+
+test('solo composer mode restarts orchestrator sessions when the pending model changes and records provenance', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Switch between providers per turn.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First turn',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+  );
+  const secondDispatch = await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    {
+      body: 'Second turn',
+      pendingProvider: 'gemini',
+      pendingModel: 'gemini-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+  const channel = buildChannelView(secondDispatch.state, channelId);
+  const orchestratorReplies = channel.messages.filter((message) => message.senderKind === 'orchestrator');
+
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.equal(runtimeClient.createdSessions[0].provider, 'claude');
+  assert.equal(runtimeClient.createdSessions[1].provider, 'gemini');
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  assert.equal(channel.pendingProvider, 'gemini');
+  assert.equal(channel.pendingModel, 'gemini-default');
+  assert.equal(orchestratorReplies[0]?.executionProvider, 'claude');
+  assert.equal(orchestratorReplies[0]?.executionModel, 'claude-default');
+  assert.equal(orchestratorReplies[1]?.executionProvider, 'gemini');
+  assert.equal(orchestratorReplies[1]?.executionModel, 'gemini-default');
 });
 
 test('room routing continues across agent mentions and auto-wakes targeted participants', async () => {

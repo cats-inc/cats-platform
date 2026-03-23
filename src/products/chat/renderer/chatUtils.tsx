@@ -138,12 +138,19 @@ export function createOptimisticDraftPayload(
   payload: AppShellPayload,
   body: string,
   leadCatId?: string | null,
+  options: {
+    composerMode?: 'solo' | 'cat_led';
+    pendingProvider?: string | null;
+    pendingModel?: string | null;
+    pendingInstance?: string | null;
+  } = {},
 ): { payload: AppShellPayload; channelId: string } {
   const createdAt = new Date().toISOString();
   const channelId = `draft-${crypto.randomUUID()}`;
   const title = createDraftChannelTitle(body, payload.chat.channels.length);
   const topic = createDraftChannelTopic(body);
   const message = createOptimisticUserMessage(channelId, body, payload.ownerDisplayName, createdAt);
+  const composerMode = options.composerMode ?? (leadCatId ? 'cat_led' : 'solo');
   const channelSummary: ChatChannelSummary = {
     id: channelId,
     title,
@@ -156,6 +163,9 @@ export function createOptimisticDraftPayload(
     chatCwd: null,
     lastMessageAt: createdAt,
     lastActivatedAt: null,
+    composerMode,
+    pendingProvider: options.pendingProvider ?? null,
+    pendingModel: options.pendingModel ?? null,
     ...(leadCatId ? {
       roomMode: 'direct_cat_chat' as const,
       leadCatId,
@@ -175,6 +185,10 @@ export function createOptimisticDraftPayload(
     skillProfile: 'chat-default',
     mcpProfile: 'chat-memory',
     orchestratorRoles: [] as string[],
+    composerMode,
+    pendingProvider: options.pendingProvider ?? null,
+    pendingModel: options.pendingModel ?? null,
+    pendingInstance: options.pendingInstance ?? null,
     createdAt,
     updatedAt: createdAt,
     lastMessageAt: createdAt,

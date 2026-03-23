@@ -69,6 +69,7 @@ import {
 import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
 
 import { SetupWizard } from './components/SetupWizard';
+import type { ModelSelectorValue } from './components/ModelSelector';
 import { Sidebar, type SidebarViewMode } from './components/Sidebar';
 import { ChatView } from './components/ChatView';
 import { NewChatDraft } from './components/NewChatDraft';
@@ -139,6 +140,11 @@ export default function App() {
   const [draftModel, setDraftModel] = useState<{ provider: string; model: string | null; instance: string | null }>({
     provider: 'claude', model: null, instance: null,
   });
+  const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>({
+    provider: 'claude',
+    model: null,
+    instance: null,
+  });
   const [operatorState, setOperatorState] = useState<OperatorLoadState>({
     status: 'idle',
     snapshot: null,
@@ -196,6 +202,33 @@ export default function App() {
       ? `${routeChannelTitle.trim() === 'Untitled chat' ? 'New chat' : routeChannelTitle} - Cats Chat`
       : 'Cats Chat';
   }, [routeChannelTitle]);
+
+  useEffect(() => {
+    if (!readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
+      return;
+    }
+
+    setSoloChannelModel({
+      provider:
+        readySelectedChannel.pendingProvider
+        ?? readyChat.globalOrchestrator.executionTarget.provider,
+      model:
+        readySelectedChannel.pendingModel
+        ?? readyChat.globalOrchestrator.executionTarget.model
+        ?? null,
+      instance:
+        readySelectedChannel.pendingInstance
+        ?? readyChat.globalOrchestrator.executionTarget.instance
+        ?? null,
+    });
+  }, [
+    readyChat,
+    readySelectedChannel?.id,
+    readySelectedChannel?.composerMode,
+    readySelectedChannel?.pendingProvider,
+    readySelectedChannel?.pendingModel,
+    readySelectedChannel?.pendingInstance,
+  ]);
 
   useEffect(() => {
     if (!accountMenuOpen && !overflowMenuOpenId && !plusMenuOpen && !channelPlusMenuOpen && !addCatOpen) return;
@@ -779,7 +812,19 @@ export default function App() {
           setComposerDraft('');
         }
       } else if (wasDraftingNewChat) {
-        const optimisticDraft = createOptimisticDraftPayload(initialPayload, body, draftLeadCatId);
+        const optimisticDraft = createOptimisticDraftPayload(
+          initialPayload,
+          body,
+          draftLeadCatId ?? draftCatIds[0] ?? null,
+          draftLeadCatId || draftCatIds.length > 0 ? {
+            composerMode: 'cat_led',
+          } : {
+            composerMode: 'solo',
+            pendingProvider: draftModel.provider,
+            pendingModel: draftModel.model,
+            pendingInstance: draftModel.instance,
+          },
+        );
         payload = optimisticDraft.payload;
         setState({ status: 'ready', payload });
         setComposerDraft('');
@@ -865,7 +910,21 @@ export default function App() {
         messageBody = `[Attached files in working directory:]\n${refs}\n\n${body}`;
       }
 
-      const dispatch = await sendChatMessage(channelId, { body: messageBody });
+      const dispatch = await sendChatMessage(channelId, {
+        body: messageBody,
+        ...(
+          !wasDraftingNewChat
+          && !isCatScopedLaneRoute
+          && selectedChannel?.id === channelId
+          && selectedChannel.composerMode === 'solo'
+            ? {
+                pendingProvider: soloChannelModel.provider,
+                pendingModel: soloChannelModel.model,
+                pendingInstance: soloChannelModel.instance,
+              }
+            : {}
+        ),
+      });
       setState({ status: 'ready', payload: dispatch.appShell });
       setComposerDraft('');
       setFeedback('');
@@ -1016,6 +1075,7 @@ export default function App() {
     (cat) => cat.id === payload.chat.bossCatId,
   )?.avatarColor ?? null;
   const showBossCatAvatar = Boolean(payload.chat.bossCatId)
+    && selectedChannel?.composerMode !== 'solo'
     && !activeAssignedCats.some((cat) => cat.catId === payload.chat.bossCatId);
   const selectableCats = payload.chat.cats.filter(
     (cat) =>
@@ -1156,6 +1216,16 @@ export default function App() {
                 onApprovalDecision={(taskId, status) => void onApprovalDecision(taskId, status)}
                 onOperatorAction={(input) => void onOperatorAction(input)}
                 autoResize={autoResize}
+                selectedModel={
+                  selectedChannel.composerMode === 'solo'
+                    ? soloChannelModel
+                    : undefined
+                }
+                onModelChange={
+                  selectedChannel.composerMode === 'solo'
+                    ? setSoloChannelModel
+                    : undefined
+                }
               />
             ) : (
               <BootShell />

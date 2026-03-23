@@ -11,6 +11,7 @@ import {
   createCat,
   deleteChannel,
   exportChannel,
+  removeCatFromChannel,
   updateGlobalOrchestrator,
 } from '../dist-server/chat/model.js';
 import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
@@ -91,6 +92,101 @@ test('FileChatStore persists configured channels, cats, assignments, and message
   assert.equal(createdChannel.catAssignments.length, 2);
   assert.equal(createdChannel.catAssignments[0].execution.target.provider, 'claude');
   assert.equal(createdChannel.messages.at(-1).mentions[0], 'Agent-1');
+});
+
+test('assigning the first cat upgrades a solo chat into cat-led mode and removing the last cat returns it to solo', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  let state = await store.read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Milo',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const catId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Starts without visible cats.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+
+  state = assignCatToChannel(
+    state,
+    channelId,
+    {
+      catId,
+      provider: 'claude',
+      model: 'claude-default',
+    },
+    now,
+  );
+  assert.equal(state.channels[0].composerMode, 'cat_led');
+  assert.equal(state.channels[0].roomRouting?.leadParticipantId, catId);
+
+  state = removeCatFromChannel(
+    state,
+    channelId,
+    catId,
+    new Date('2026-03-23T00:05:00.000Z'),
+  );
+  assert.equal(state.channels[0].composerMode, 'solo');
+  assert.equal(state.channels[0].roomRouting?.leadParticipantId, null);
+});
+
+test('FileChatStore round-trips per-message execution provenance', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  let state = await store.read();
+  const now = new Date('2026-03-23T00:10:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Execution Provenance',
+      topic: 'Remember which provider answered.',
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'orchestrator',
+      senderName: 'Orchestrator',
+      body: 'Here is the answer.',
+    },
+    now,
+    {
+      execution: {
+        provider: 'gemini',
+        model: 'gemini-default',
+        instance: 'default',
+      },
+    },
+  ).state;
+
+  await store.write(state);
+  const reloaded = await store.read();
+  const lastMessage = reloaded.channels[0]?.messages.at(-1);
+
+  assert.equal(lastMessage?.executionProvider, 'gemini');
+  assert.equal(lastMessage?.executionModel, 'gemini-default');
+  assert.equal(lastMessage?.executionInstance, 'default');
 });
 
 test('exportChannel returns assigned cats with the selected transcript', async () => {

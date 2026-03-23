@@ -49,6 +49,7 @@ import {
   requireChannel,
   requireCat,
   resolveOrchestratorDisplayName,
+  setChannelPendingExecutionTarget,
   setChannelOrchestratorLease,
   setChannelCatLease,
   setChannelRoomRouting,
@@ -121,6 +122,11 @@ interface RouteChannelMessageOptions {
 }
 
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_PROMPT_RECENT_MESSAGES;
+
+function normalizePendingTargetValue(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
 
 function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionStatus {
   switch (status) {
@@ -312,6 +318,55 @@ function buildOrchestratorTarget(
     participantId: 'orchestrator',
     participantName: resolveOrchestratorDisplayName(state),
     sessionId: channel.orchestratorLease.sessionId,
+  };
+}
+
+function resolveOrchestratorExecutionTarget(state: ChatState, channel: ChatChannelState): {
+  provider: string;
+  model: string | null;
+  instance: string | null;
+} {
+  if (channel.composerMode === 'solo' && channel.pendingProvider) {
+    return {
+      provider: channel.pendingProvider,
+      instance: channel.pendingInstance ?? null,
+      model: channel.pendingModel ?? null,
+    };
+  }
+
+  return {
+    provider: state.globalOrchestrator.executionTarget.provider,
+    instance: state.globalOrchestrator.executionTarget.instance,
+    model: state.globalOrchestrator.executionTarget.model,
+  };
+}
+
+function resolveExecutionMetadataForTarget(
+  state: ChatState,
+  channelId: string,
+  target: RoutingTarget,
+): {
+  provider: string | null;
+  model: string | null;
+  instance: string | null;
+} {
+  const channel = requireChannel(state, channelId);
+  if (target.participantKind === 'orchestrator') {
+    const executionTarget = resolveOrchestratorExecutionTarget(state, channel);
+    return {
+      provider: executionTarget.provider,
+      model: executionTarget.model,
+      instance: executionTarget.instance,
+    };
+  }
+
+  const assignment = channel.catAssignments.find(
+    (candidate) => candidate.catId === target.participantId && candidate.status === 'active',
+  );
+  return {
+    provider: assignment?.execution.target.provider ?? null,
+    model: assignment?.execution.target.model ?? null,
+    instance: assignment?.execution.target.instance ?? null,
   };
 }
 
@@ -1239,6 +1294,43 @@ async function ensureTargetSession(
   );
 
   if (target.sessionId) {
+    if (target.participantKind === 'orchestrator') {
+      const channelState = requireChannel(state, channelId);
+      const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
+      const orchestratorLease = channelState.orchestratorLease;
+      const shouldRestartSoloSession = channelState.composerMode === 'solo'
+        && (
+          orchestratorLease.provider !== executionTarget.provider
+          || orchestratorLease.model !== executionTarget.model
+        );
+
+      if (shouldRestartSoloSession) {
+        await runtimeClient.closeSession(target.sessionId);
+        const resetState = setChannelOrchestratorLease(
+          state,
+          channelId,
+          {
+            sessionId: null,
+            status: 'not_started',
+            lastError: null,
+            provider: executionTarget.provider,
+            model: executionTarget.model,
+            startedAt: null,
+            lastUsedAt: orchestratorLease.lastUsedAt,
+          },
+          now,
+        );
+        return ensureTargetSession(
+          resetState,
+          channelId,
+          { ...target, sessionId: null },
+          runtimeClient,
+          now,
+          options,
+        );
+      }
+    }
+
     return {
       state,
       target,
@@ -1263,22 +1355,14 @@ async function ensureTargetSession(
       options.companionStore,
     );
     if (target.participantKind === 'orchestrator') {
-      const channelState = requireChannel(nextState, channelId);
-      const useSoloPending = channelState.composerMode === 'solo'
-        && channelState.pendingProvider;
-      const sessionProvider = useSoloPending
-        ? channelState.pendingProvider!
-        : nextState.globalOrchestrator.executionTarget.provider;
-      const sessionInstance = useSoloPending
-        ? channelState.pendingInstance ?? null
-        : nextState.globalOrchestrator.executionTarget.instance;
-      const sessionModel = useSoloPending
-        ? channelState.pendingModel ?? null
-        : nextState.globalOrchestrator.executionTarget.model;
+      const sessionTarget = resolveOrchestratorExecutionTarget(
+        nextState,
+        requireChannel(nextState, channelId),
+      );
       const session = await runtimeClient.createSession({
-        provider: sessionProvider,
-        instance: sessionInstance,
-        model: sessionModel,
+        provider: sessionTarget.provider,
+        instance: sessionTarget.instance,
+        model: sessionTarget.model,
         cwd: spawnCwd,
         sharingMode,
         context: runtimeEnvelope.context,
@@ -1665,10 +1749,11 @@ export async function activateChannelSessions(
         now,
         options.companionStore,
       );
+      const executionTarget = resolveOrchestratorExecutionTarget(nextState, requireChannel(nextState, channelId));
       const session = await runtimeClient.createSession({
-        provider: nextState.globalOrchestrator.executionTarget.provider,
-        instance: nextState.globalOrchestrator.executionTarget.instance,
-        model: nextState.globalOrchestrator.executionTarget.model,
+        provider: executionTarget.provider,
+        instance: executionTarget.instance,
+        model: executionTarget.model,
         cwd: spawnCwd,
         sharingMode,
         context: runtimeEnvelope.context,
@@ -1847,8 +1932,56 @@ export async function routeChannelMessage(
   now: Date = new Date(),
   options: RouteChannelMessageOptions = {},
 ): Promise<{ state: ChatState; results: ChannelDispatchResult[] }> {
-  let nextState = appendMessage(
-    state,
+  let nextState = state;
+  const channelBeforeMessage = requireChannel(nextState, channelId);
+  const nextPendingProvider = payload.pendingProvider === undefined
+    ? channelBeforeMessage.pendingProvider
+    : normalizePendingTargetValue(payload.pendingProvider);
+  const nextPendingModel = payload.pendingModel === undefined
+    ? channelBeforeMessage.pendingModel
+    : normalizePendingTargetValue(payload.pendingModel);
+  const nextPendingInstance = payload.pendingInstance === undefined
+    ? channelBeforeMessage.pendingInstance
+    : normalizePendingTargetValue(payload.pendingInstance);
+  const pendingTargetChanged = channelBeforeMessage.composerMode === 'solo'
+    && (
+      nextPendingProvider !== channelBeforeMessage.pendingProvider
+      || nextPendingModel !== channelBeforeMessage.pendingModel
+      || nextPendingInstance !== channelBeforeMessage.pendingInstance
+    );
+
+  if (
+    pendingTargetChanged
+    && channelBeforeMessage.orchestratorLease.sessionId
+  ) {
+    await runtimeClient.closeSession(channelBeforeMessage.orchestratorLease.sessionId);
+    nextState = setChannelOrchestratorLease(
+      nextState,
+      channelId,
+      {
+        sessionId: null,
+        status: 'not_started',
+        lastError: null,
+        provider: nextPendingProvider,
+        model: nextPendingModel,
+        startedAt: null,
+      },
+      now,
+    );
+  }
+
+  nextState = setChannelPendingExecutionTarget(
+    nextState,
+    channelId,
+    {
+      provider: nextPendingProvider,
+      model: nextPendingModel,
+      instance: nextPendingInstance,
+    },
+    now,
+  );
+  nextState = appendMessage(
+    nextState,
     channelId,
     {
       senderKind: 'user',
@@ -2554,6 +2687,7 @@ export async function routeChannelMessage(
             dispatchDepth: execution.depth,
           },
           usage: execution.usage,
+          execution: resolveExecutionMetadataForTarget(nextState, channelId, execution.target),
           incrementUnread: false,
         },
       );
