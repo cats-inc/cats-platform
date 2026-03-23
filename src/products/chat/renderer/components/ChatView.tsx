@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -139,11 +140,15 @@ export function ChatView({
     : activeAssignedCats.length > 0
       ? 'Group'
       : 'Boss Chat';
-  const operatorView = buildChatOperatorView(operatorSnapshot, selectedChannel.id);
-  const runIdsKey = operatorView?.runs.map((run) => run.id).join('|') ?? '';
-  const [inspectedRunId, setInspectedRunId] = useState<string | null>(
-    operatorView?.latestRun?.id ?? null,
+  const operatorView = useMemo(
+    () => buildChatOperatorView(operatorSnapshot, selectedChannel.id),
+    [operatorSnapshot, selectedChannel.id],
   );
+  const runIdsKey = useMemo(
+    () => operatorView?.runs.map((run) => run.id).join('|') ?? '',
+    [operatorView],
+  );
+  const [inspectedRunId, setInspectedRunId] = useState<string | null>(null);
 
   useEffect(() => {
     setInspectedRunId((current) => {
@@ -155,7 +160,10 @@ export function ChatView({
     });
   }, [operatorView?.latestRun?.id, runIdsKey]);
 
-  const inspectedRun = buildRunInspectorView(operatorView, inspectedRunId);
+  const inspectedRun = useMemo(
+    () => buildRunInspectorView(operatorView, inspectedRunId),
+    [operatorView, inspectedRunId],
+  );
 
   return (
     <>
