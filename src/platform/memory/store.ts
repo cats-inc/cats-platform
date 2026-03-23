@@ -165,6 +165,14 @@ function matchesFilter(
   return true;
 }
 
+function hasReplaceSelector(filter: CanonicalMemoryReplaceFilter): boolean {
+  return Boolean(
+    filter.subjectKind
+    || filter.subjectId
+    || (filter.originKinds && filter.originKinds.length > 0),
+  );
+}
+
 export interface CanonicalMemoryStore {
   readSnapshot(): Promise<CanonicalMemorySnapshot>;
   listRecords(filter?: {
@@ -293,6 +301,9 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
     records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
     now: Date = new Date(),
   ): Promise<CanonicalMemoryRecord[]> {
+    if (!hasReplaceSelector(filter)) {
+      throw new Error('replaceRecords requires at least one filter selector.');
+    }
     return this.runExclusive(async () => {
       const snapshot = await this.readOrCreateSnapshot();
       const nowIso = now.toISOString();
@@ -428,6 +439,9 @@ export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
     records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
     now: Date = new Date(),
   ): Promise<CanonicalMemoryRecord[]> {
+    if (!hasReplaceSelector(filter)) {
+      throw new Error('replaceRecords requires at least one filter selector.');
+    }
     const nowIso = now.toISOString();
     const prepared = records.map((candidate) => prepareRecord(candidate));
     const existingById = new Map(this.snapshot.records.map((record) => [record.id, record] as const));

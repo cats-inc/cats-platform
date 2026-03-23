@@ -50,6 +50,11 @@ export interface CoreApiDependencies {
   memoryService?: CatsMemoryService;
 }
 
+function reportCoreMemorySyncFailure(error: unknown): void {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`[cats-memory-sync] owner-profile: ${message}\n`);
+}
+
 const CORE_TASK_STATUSES = [
   'draft',
   'pending_approval',
@@ -1281,9 +1286,13 @@ async function handleOwnerProfileWrite(
     );
     const persisted = await context.dependencies.chatStore.writeCore(next.core);
     if (context.dependencies.memoryService) {
-      await context.dependencies.memoryService.flushOwnerProfile({
-        reason: 'owner_profile_sync',
-      });
+      try {
+        await context.dependencies.memoryService.flushOwnerProfile({
+          reason: 'owner_profile_sync',
+        });
+      } catch (error) {
+        reportCoreMemorySyncFailure(error);
+      }
     }
     sendJson(context.response, 200, {
       ownerProfile: persisted.ownerProfile,

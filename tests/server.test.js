@@ -8,6 +8,10 @@ import test from 'node:test';
 import { createServer } from '../dist-server/server.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
 import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
+import {
+  createCatsMemoryService,
+  MemoryCanonicalMemoryStore,
+} from '../dist-server/platform/memory/index.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
 
 const baseConfig = {
@@ -77,12 +81,18 @@ function createRuntimeStub() {
   };
 }
 
-async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+async function withServer(
+  runtimeClient,
+  callback,
+  chatStore = new MemoryChatStore(),
+  overrides = {},
+) {
   const server = createServer({
     config: baseConfig,
     runtimeClient,
     chatStore,
     now: () => new Date('2026-03-11T00:00:00.000Z'),
+    ...overrides,
   });
 
   server.listen(0, '127.0.0.1');
@@ -118,6 +128,107 @@ test('GET /health reports runtime reachability', async () => {
     assert.equal(payload.shutdown.stdinCloseEnabled, false);
     assert.equal(payload.runtime.service, 'cats-runtime');
   });
+});
+
+test('cat durable-memory writes stay successful when canonical sync fails', async () => {
+  const chatStore = new MemoryChatStore();
+  const baseMemoryService = createCatsMemoryService(chatStore, new MemoryCanonicalMemoryStore());
+  const failingMemoryService = {
+    async listCanonicalRecords(filter) {
+      return baseMemoryService.listCanonicalRecords(filter);
+    },
+    async flushCompanionBox() {
+      throw new Error('canonical cat sync failed');
+    },
+    async flushChannel(input) {
+      return baseMemoryService.flushChannel(input);
+    },
+    async flushOwnerProfile(input) {
+      return baseMemoryService.flushOwnerProfile(input);
+    },
+    async buildCompanionRetrievalContext(input) {
+      return baseMemoryService.buildCompanionRetrievalContext(input);
+    },
+    async buildChannelRetrievalContext(input) {
+      return baseMemoryService.buildChannelRetrievalContext(input);
+    },
+  };
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Memory Cat',
+        provider: 'claude',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const { cat } = await createCatResponse.json();
+
+    const createMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        category: 'fact',
+        content: 'Memory Cat likes rooftop naps.',
+      }),
+    });
+    assert.equal(createMemoryResponse.status, 201);
+
+    const listMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory`);
+    assert.equal(listMemoryResponse.status, 200);
+    const listMemoryPayload = await listMemoryResponse.json();
+    assert.equal(listMemoryPayload.records.length, 1);
+    assert.equal(listMemoryPayload.records[0].content, 'Memory Cat likes rooftop naps.');
+  }, chatStore, { memoryService: failingMemoryService });
+});
+
+test('owner-profile writes stay successful when canonical sync fails', async () => {
+  const chatStore = new MemoryChatStore();
+  const baseMemoryService = createCatsMemoryService(chatStore, new MemoryCanonicalMemoryStore());
+  const failingMemoryService = {
+    async listCanonicalRecords(filter) {
+      return baseMemoryService.listCanonicalRecords(filter);
+    },
+    async flushCompanionBox(input) {
+      return baseMemoryService.flushCompanionBox(input);
+    },
+    async flushChannel(input) {
+      return baseMemoryService.flushChannel(input);
+    },
+    async flushOwnerProfile() {
+      throw new Error('canonical owner sync failed');
+    },
+    async buildCompanionRetrievalContext(input) {
+      return baseMemoryService.buildCompanionRetrievalContext(input);
+    },
+    async buildChannelRetrievalContext(input) {
+      return baseMemoryService.buildChannelRetrievalContext(input);
+    },
+  };
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const ownerProfileResponse = await fetch(`${baseUrl}/api/core/owner-profile`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        displayName: 'Resilient Owner',
+      }),
+    });
+    assert.equal(ownerProfileResponse.status, 200);
+    const ownerProfilePayload = await ownerProfileResponse.json();
+    assert.equal(ownerProfilePayload.ownerProfile.displayName, 'Resilient Owner');
+
+    const coreState = await chatStore.readCore();
+    assert.equal(coreState.ownerProfile.displayName, 'Resilient Owner');
+  }, chatStore, { memoryService: failingMemoryService });
 });
 
 test('GET /api/app-shell exposes detailed chat state with global cats', async () => {

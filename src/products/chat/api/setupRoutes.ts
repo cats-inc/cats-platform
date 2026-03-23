@@ -11,6 +11,11 @@ import {
   type ChatApiRouteContext,
 } from './shared.js';
 
+function reportOwnerMemorySyncFailure(scope: 'setup_complete' | 'setup_reset', error: unknown): void {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
+}
+
 async function handleSetupComplete(
   context: ChatApiRouteContext,
 ): Promise<void> {
@@ -77,10 +82,14 @@ async function handleSetupComplete(
 
     await context.dependencies.chatStore.write(chatState);
     await context.dependencies.chatStore.writeCore(core);
-    await context.dependencies.memoryService.flushOwnerProfile({
-      reason: 'owner_profile_sync',
-      now,
-    });
+    try {
+      await context.dependencies.memoryService.flushOwnerProfile({
+        reason: 'owner_profile_sync',
+        now,
+      });
+    } catch (error) {
+      reportOwnerMemorySyncFailure('setup_complete', error);
+    }
     sendJson(
       context.response,
       200,
@@ -98,10 +107,14 @@ async function handleSetupReset(
     const now = nowFrom(context.dependencies);
     await context.dependencies.chatStore.write(createDefaultChatState());
     await context.dependencies.chatStore.writeCore(createDefaultCoreState());
-    await context.dependencies.memoryService.flushOwnerProfile({
-      reason: 'owner_profile_sync',
-      now,
-    });
+    try {
+      await context.dependencies.memoryService.flushOwnerProfile({
+        reason: 'owner_profile_sync',
+        now,
+      });
+    } catch (error) {
+      reportOwnerMemorySyncFailure('setup_reset', error);
+    }
     sendJson(
       context.response,
       200,

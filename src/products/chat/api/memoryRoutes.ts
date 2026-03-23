@@ -120,6 +120,22 @@ async function syncCanonicalCatMemory(
   });
 }
 
+function reportCanonicalSyncFailure(scope: string, error: unknown): void {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
+}
+
+async function trySyncCanonicalCatMemory(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    await syncCanonicalCatMemory(context, catId);
+  } catch (error) {
+    reportCanonicalSyncFailure(`cat:${catId}`, error);
+  }
+}
+
 async function syncCanonicalOwnerMemory(
   context: ChatApiRouteContext,
   reason: MemoryFlushReason = 'owner_profile_sync',
@@ -128,6 +144,17 @@ async function syncCanonicalOwnerMemory(
     reason,
     now: context.dependencies.now?.(),
   });
+}
+
+async function trySyncCanonicalOwnerMemory(
+  context: ChatApiRouteContext,
+  reason: MemoryFlushReason = 'owner_profile_sync',
+): Promise<void> {
+  try {
+    await syncCanonicalOwnerMemory(context, reason);
+  } catch (error) {
+    reportCanonicalSyncFailure('owner', error);
+  }
 }
 
 function findCatMemoryRecord(
@@ -190,7 +217,7 @@ async function handleCreateCatMemory(
     const core = await context.dependencies.chatStore.readCore();
     const nextCore = addDurableMemory(core, record);
     await context.dependencies.chatStore.writeCore(nextCore);
-    await syncCanonicalCatMemory(context, catId);
+    await trySyncCanonicalCatMemory(context, catId);
     sendJson(context.response, 201, { memory: record });
   } catch (error) {
     handleRestError(context, error);
@@ -237,7 +264,7 @@ async function handleUpdateCatMemory(
 
     const nextCore = updateDurableMemory(core, memoryId, updates);
     await context.dependencies.chatStore.writeCore(nextCore);
-    await syncCanonicalCatMemory(context, catId);
+    await trySyncCanonicalCatMemory(context, catId);
 
     const updated = nextCore.durableMemory.find((record) => record.id === memoryId);
     sendJson(context.response, 200, { memory: updated });
@@ -259,7 +286,7 @@ async function handleDeleteCatMemory(
     }
     const nextCore = removeDurableMemory(core, memoryId);
     await context.dependencies.chatStore.writeCore(nextCore);
-    await syncCanonicalCatMemory(context, catId);
+    await trySyncCanonicalCatMemory(context, catId);
     sendJson(context.response, 200, { deleted: true, memoryId });
   } catch (error) {
     handleRestError(context, error);
@@ -310,7 +337,7 @@ async function handleCreateOwnerMemory(
     const core = await context.dependencies.chatStore.readCore();
     const nextCore = addDurableMemory(core, record);
     await context.dependencies.chatStore.writeCore(nextCore);
-    await syncCanonicalOwnerMemory(context, 'manual');
+    await trySyncCanonicalOwnerMemory(context, 'manual');
     sendJson(context.response, 201, { memory: record });
   } catch (error) {
     handleRestError(context, error);

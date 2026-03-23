@@ -266,6 +266,26 @@ test('scope-aware canonical flush removes stale durable memory when curated note
   );
 });
 
+test('replaceRecords rejects an empty selector filter instead of clearing the full store', async () => {
+  const store = new MemoryCanonicalMemoryStore();
+  await store.upsertRecords([
+    buildCanonicalRecord({
+      subjectKind: 'cat',
+      subjectId: 'cat-memory',
+      content: 'Companion likes blanket forts.',
+    }),
+  ]);
+
+  await assert.rejects(
+    () => store.replaceRecords({}, []),
+    /replaceRecords requires at least one filter selector/u,
+  );
+
+  const records = await store.listRecords();
+  assert.equal(records.length, 1);
+  assert.equal(records[0].content, 'Companion likes blanket forts.');
+});
+
 test('file-backed canonical memory store does not overwrite malformed snapshots on read failure', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-memory-malformed-'));
   try {
