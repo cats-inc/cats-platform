@@ -17,6 +17,24 @@ This spec focuses only on:
 This spec explicitly does **not** define chat-header visuals, transcript
 styling, or `My Cats` private-lane UI changes.
 
+## Current-State Migration Note
+
+The current landed product behavior still includes older Boss-led new-chat
+assumptions in parts of the implementation.
+
+This spec intentionally changes that direction for ordinary `Recents` threads.
+Follow-on implementation should therefore:
+
+- stop auto-assigning `Boss Cat` as the visible lead participant for a normal
+  `+ New Chat`
+- stop auto-sending a visible `Boss Cat` greeting merely because a normal
+  `Recents` thread was opened
+- add explicit state that distinguishes solo composer mode from Cat-led mode
+  for normal `Recents` threads
+
+This migration note is about ordinary `Recents` chats only.
+It does not change `My Cats` direct lanes.
+
 ## Goals
 
 - Keep `+ New Chat` close to familiar model-first AI chat UX
@@ -51,6 +69,9 @@ styling, or `My Cats` private-lane UI changes.
   the Cat's preset, understanding that the preset is reused in other places.
 - As an operator, I want `Boss Cat` to remain able to orchestrate when present,
   even if another Cat is the visible lead speaker.
+- As an operator, if I add a Cat after several solo turns already exist, I want
+  the system to handle that history transition intentionally rather than
+  ambiguously.
 
 ## Scope Split
 
@@ -160,8 +181,9 @@ When the thread has a lead Cat:
 
 ### Avatar Click Behavior
 
-Clicking the composer avatar opens a Cat-focused settings surface that may show
-or edit:
+Clicking the composer avatar opens a Cat-focused inspect/settings surface.
+
+In the first slice, that surface should default to **read-only inspect** for:
 
 - provider
 - model
@@ -169,7 +191,8 @@ or edit:
 - skill profile
 - companion / knowledge / response-profile configuration
 
-Those edits are **Cat-preset** edits, not thread-local overrides.
+Later product slices may allow editing from that surface, but those edits would
+be **Cat-preset** edits, not thread-local overrides.
 
 That means:
 
@@ -178,7 +201,8 @@ That means:
 - the UI must make that scope clear
 
 This spec does not require the first slice to support thread-local temporary
-overrides of a Cat preset.
+overrides of a Cat preset, and it does not require composer-opened Cat preset
+editing to ship before that scope is made safe.
 
 ## Add-Cat Semantics
 
@@ -337,6 +361,10 @@ represent equivalent concepts such as:
 - `pendingModel: string | null`
 - per-message execution provenance fields
 
+The first implementation slice will likely also need an explicit
+`composerMode: 'solo' | 'cat_led'` or equivalent state to avoid inferring the
+mode only from older Boss-led metadata.
+
 ## Interaction Summary
 
 ```text
@@ -375,6 +403,10 @@ Make Boss Cat lead
 
 - [ ] Should the first slice allow a thread-local temporary override of a lead
       Cat's provider/model without mutating the Cat preset globally?
+- [ ] When a solo-mode thread already has several turns of history and the
+      operator adds the first Cat, should that Cat inherit the prior solo
+      transcript as execution context immediately, or should the handoff be
+      summarized/filtered through a dedicated hydration step?
 - [ ] When the lead Cat is removed from a multi-Cat thread, should the next lead
       be chosen explicitly or by deterministic promotion?
 - [ ] Should `Boss Cat` auto-helper participation ever be turned off
@@ -390,4 +422,3 @@ Make Boss Cat lead
 
 *Created: 2026-03-23*
 *Author: Codex*
-

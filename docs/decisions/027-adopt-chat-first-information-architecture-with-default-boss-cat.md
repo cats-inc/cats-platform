@@ -7,6 +7,12 @@
 
 Accepted
 
+> Revision note (2026-03-23): [SPEC-030](../specs/SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md)
+> refines ordinary `Recents` thread composer behavior. This ADR still governs
+> chat-first IA, direct lanes, and the global `Boss Cat` role, but normal
+> `Recents` threads may now begin in solo composer mode before a visible lead
+> Cat is chosen.
+
 ## Date
 
 2026-03-22

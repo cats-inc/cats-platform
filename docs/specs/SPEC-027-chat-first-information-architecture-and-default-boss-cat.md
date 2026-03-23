@@ -2,6 +2,12 @@
 
 Status: Approved
 
+> Revision note (2026-03-23): ordinary `Recents` composer semantics are now
+> refined by [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md).
+> This accepted spec still governs chat-first IA, `My Cats`, direct lanes, and
+> Cat-led chat behavior, while `+ New Chat` for normal `Recents` threads now
+> follows the solo-composer refinement in `SPEC-030`.
+
 ## Summary
 
 Define the product-facing UI model for `Cats Chat` so it can support both:
@@ -36,9 +42,10 @@ The key rule is:
 
 ## Product Rules
 
-1. `My Cats` direct lanes and Cat-led chats have at least one visible Cat
-   participant, but normal `Recents` threads may begin in solo composer mode as
-   defined by `SPEC-030`.
+1. Every chat has at least one visible Cat participant.
+   - Revision note: for ordinary `Recents` threads, `SPEC-030` supersedes this
+     assumption during the initial solo-composer phase before a lead Cat is
+     chosen.
 2. The product always has one current global `Boss Cat`.
 3. First-run setup auto-provisions a neutral default `Boss Cat` if no Cat exists.
 4. Users may later rename that Cat, personalize it, or assign another Cat as
@@ -168,21 +175,20 @@ Each recent item should show:
 
 ### If only the default Boss Cat exists
 
-`+ New Chat` should open into a fresh chat composer in solo mode, with the
-composer controlling the next-turn provider/model selection as defined by
-`SPEC-030`.
+`SPEC-030` now refines ordinary `Recents` new-chat behavior so that a normal
+thread may begin in solo composer mode before a visible lead Cat is chosen.
 
-The environment may still have only one configured `Boss Cat`, but that does
-not require every new `Recents` thread to begin as a visible Cat-led thread.
+The environment may still have only one configured `Boss Cat`, and explicit
+Boss-led or Cat-led chats remain valid, but the default `Recents` path no
+longer needs to begin as a visible Cat-led thread.
 
 ### If multiple Cats exist
 
-`+ New Chat` should:
+`SPEC-030` now refines ordinary `Recents` new-chat behavior so that:
 
-- begin in solo composer mode by default
-- allow adding one Cat to upgrade the thread into a Cat-led chat
-- allow choosing another single Cat instead
-- allow `Start group`
+- a thread may begin in solo composer mode by default
+- adding one Cat upgrades the thread into a Cat-led chat
+- choosing another single Cat or starting a group chat remains valid
 
 The goal is to keep the default path simple while still allowing multi-Cat chat
 creation without opening the registry first.

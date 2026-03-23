@@ -52,12 +52,14 @@ threads.
   avatar-only affordance
 - unmentioned turns default to that Cat
 
-### 3. Clicking the composer avatar edits the Cat preset, not only the current thread
+### 3. Clicking the composer avatar opens Cat inspect first; preset editing is deferred
 
-- provider/model/skill/knowledge changes opened from that avatar are Cat-preset
-  changes
-- those changes affect future use of the same Cat elsewhere unless a later
-  feature introduces thread-local overrides
+- the composer avatar opens a Cat-focused inspect/settings surface
+- the first slice should treat that surface as read-only inspect by default
+- future provider/model/skill/knowledge editing from that surface is still
+  expected to be Cat-preset editing, not thread-local editing
+- that edit path should not ship as a casual first-slice action until
+  thread-local override or stronger scope-warning design exists
 
 ### 4. `Boss Cat` auto-help is separate from lead status
 
@@ -97,8 +99,8 @@ threads.
   - thread-level pending execution state
   - Cat preset state
   - per-message execution provenance
-- editing a Cat from the composer can have cross-thread consequences, which
-  requires careful UX messaging
+- later composer-opened Cat editing can have cross-thread consequences, which
+  requires careful UX messaging and likely thread-local override follow-up work
 - participant-role handling is more formal than a single room-mode flag
 
 ### Neutral
@@ -108,6 +110,8 @@ threads.
   ship now
 - this ADR does not prevent later thread-local Cat overrides, but it does not
   require them
+- this ADR intentionally allows the first slice to ship avatar-click inspect
+  before avatar-click edit
 
 ## Alternatives Considered
 
@@ -154,4 +158,3 @@ threads.
 
 *Drafted: 2026-03-23*
 *Drafted by: Codex*
-
