@@ -25,6 +25,7 @@ async function reconcilePollingAfterMutation(context: ChatApiRouteContext): Prom
     await pollingSupervisor.reconcilePolling({
       bindings: pollingCtx.bindings,
       context: pollingCtx.context,
+      refreshContext: async () => (await readTelegramPollingContext(chatStore)).context,
       chatStore,
       runtimeClient,
       telegramRelay,

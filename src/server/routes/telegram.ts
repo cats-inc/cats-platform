@@ -300,6 +300,9 @@ export async function handleTelegramPollingReconnect(
       bindingId: dependencies.bindingId,
       botToken: binding.botToken,
       context,
+      refreshContext: async () => (
+        await readTelegramPollingContext(dependencies.chatStore)
+      ).context,
       chatStore: dependencies.chatStore,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,

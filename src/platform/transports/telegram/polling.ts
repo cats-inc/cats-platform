@@ -35,6 +35,7 @@ export interface StartPollingInput {
 export interface ReconcilePollingInput {
   bindings: Array<{ bindingId: string; botToken: string; inboundMode: 'polling' | 'webhook' }>;
   context: TelegramRelayContext;
+  refreshContext?: () => Promise<TelegramRelayContext>;
   chatStore: ChatStore;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
@@ -42,6 +43,7 @@ export interface ReconcilePollingInput {
 
 interface PollingConsumer {
   bindingId: string;
+  botToken: string;
   abortController: AbortController;
   health: TelegramPollingHealth;
   offset: number | null;
@@ -292,6 +294,7 @@ export function createTelegramPollingSupervisor(
 
       const consumer: PollingConsumer = {
         bindingId: input.bindingId,
+        botToken: input.botToken,
         abortController: new AbortController(),
         health: 'healthy',
         offset: lastUpdateId,
@@ -344,11 +347,12 @@ export function createTelegramPollingSupervisor(
       // Start consumers that should be polling but aren't
       for (const binding of pollingBindings) {
         const existing = consumers.get(binding.bindingId);
-        if (!existing || existing.health === 'stopped') {
+        if (!existing || existing.health === 'stopped' || existing.botToken !== binding.botToken) {
           await this.startPolling({
             bindingId: binding.bindingId,
             botToken: binding.botToken,
             context: input.context,
+            refreshContext: input.refreshContext,
             chatStore: input.chatStore,
             runtimeClient: input.runtimeClient,
             telegramRelay: input.telegramRelay,

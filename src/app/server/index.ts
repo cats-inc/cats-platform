@@ -415,6 +415,7 @@ async function reconcilePollingOnStartup(
     await dependencies.pollingSupervisor.reconcilePolling({
       bindings: pollingContext.bindings,
       context: pollingContext.context,
+      refreshContext: async () => (await readTelegramPollingContext(dependencies.chatStore)).context,
       chatStore: dependencies.chatStore,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,

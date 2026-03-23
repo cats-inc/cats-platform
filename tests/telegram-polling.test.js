@@ -196,6 +196,97 @@ test('reconcilePolling starts polling bindings and ignores webhook bindings', as
   await new Promise((resolve) => setTimeout(resolve, 100));
 });
 
+test('reconcilePolling forwards fresh scoped context into polling consumers', async () => {
+  const { mockFetch } = createMockFetch([
+    { ok: true, json: { ok: true } },
+    {
+      ok: true,
+      json: {
+        ok: true,
+        result: [
+          {
+            update_id: 777,
+            message: {
+              message_id: 9,
+              text: 'hello from polling',
+              chat: { id: 42, type: 'private' },
+            },
+          },
+        ],
+      },
+    },
+    { ok: true, json: { ok: true, result: [] } },
+  ]);
+
+  const supervisor = createTelegramPollingSupervisor({
+    fetchImpl: mockFetch,
+    pollingTimeout: 0,
+  });
+
+  let refreshCount = 0;
+  const receivedContexts = [];
+
+  await supervisor.reconcilePolling({
+    bindings: [
+      { bindingId: 'poll-1', botToken: 'token-poll', inboundMode: 'polling' },
+    ],
+    context: {
+      bossCatId: 'stale-boss',
+      bossCatName: 'Stale Boss',
+      bossCatActorId: 'stale-actor',
+      botBindings: [],
+      defaultBotBinding: null,
+      selectedBotBinding: null,
+    },
+    refreshContext: async () => {
+      refreshCount += 1;
+      return {
+        bossCatId: 'fresh-boss',
+        bossCatName: 'Fresh Boss',
+        bossCatActorId: 'fresh-actor',
+        botBindings: [
+          {
+            id: 'poll-1',
+            platform: 'telegram',
+            botName: 'fresh_bot',
+            orchestratorActorId: 'orchestrator',
+            catActorId: 'cat-actor-1',
+            bossCatActorId: null,
+            botToken: 'token-poll',
+            webhookSecret: null,
+            inboundMode: 'polling',
+            roomMode: 'direct_cat_chat',
+            status: 'active',
+            createdAt: '2026-03-23T00:00:00.000Z',
+            updatedAt: '2026-03-23T00:00:00.000Z',
+          },
+        ],
+        defaultBotBinding: null,
+        selectedBotBinding: null,
+      };
+    },
+    chatStore: { read: async () => ({}), readCore: async () => ({}) },
+    runtimeClient: { routeChannelMessage: async () => ({}) },
+    telegramRelay: {
+      receiveUpdate: ({ context }) => {
+        receivedContexts.push(context);
+        return { status: 'ignored', platform: 'telegram', roomRouting: {} };
+      },
+      resolveBinding: () => null,
+    },
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  assert.ok(refreshCount >= 1);
+  assert.ok(receivedContexts.length >= 1);
+  assert.equal(receivedContexts[0].bossCatName, 'Fresh Boss');
+  assert.equal(receivedContexts[0].selectedBotBinding?.id, 'poll-1');
+
+  supervisor.stopAll();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+});
+
 test('stopPolling stops a specific consumer without affecting others', async () => {
   const { mockFetch } = createMockFetch([
     { ok: true, json: { ok: true } },
@@ -230,4 +321,56 @@ test('stopPolling stops a specific consumer without affecting others', async () 
 
   supervisor.stopAll();
   await new Promise((resolve) => setTimeout(resolve, 100));
+});
+
+test('reconcilePolling restarts a consumer when its bot token changes', async () => {
+  const { mockFetch, calls } = createMockFetch([
+    { ok: true, json: { ok: true } },
+    { ok: true, json: { ok: true, result: [] } },
+    { ok: true, json: { ok: true } },
+    { ok: true, json: { ok: true, result: [] } },
+  ]);
+
+  const supervisor = createTelegramPollingSupervisor({
+    fetchImpl: mockFetch,
+    pollingTimeout: 0,
+  });
+
+  const reconcileInput = {
+    context: {
+      bossCatId: 'cat-1',
+      bossCatName: 'Cat',
+      bossCatActorId: 'a1',
+      botBindings: [],
+      defaultBotBinding: null,
+      selectedBotBinding: null,
+    },
+    chatStore: { read: async () => ({}), readCore: async () => ({}) },
+    runtimeClient: { routeChannelMessage: async () => ({}) },
+    telegramRelay: { receiveUpdate: () => ({ status: 'ignored' }), resolveBinding: () => null },
+  };
+
+  await supervisor.reconcilePolling({
+    ...reconcileInput,
+    bindings: [
+      { bindingId: 'poll-1', botToken: 'token-old', inboundMode: 'polling' },
+    ],
+  });
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  await supervisor.reconcilePolling({
+    ...reconcileInput,
+    bindings: [
+      { bindingId: 'poll-1', botToken: 'token-new', inboundMode: 'polling' },
+    ],
+  });
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  supervisor.stopAll();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  assert.ok(calls.some((call) => call.url.includes('bottoken-old/deleteWebhook')));
+  assert.ok(calls.some((call) => call.url.includes('bottoken-new/deleteWebhook')));
+  assert.ok(calls.some((call) => call.url.includes('bottoken-old/getUpdates')));
+  assert.ok(calls.some((call) => call.url.includes('bottoken-new/getUpdates')));
 });
