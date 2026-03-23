@@ -8,6 +8,21 @@ import {
   validateDesktopUrl,
 } from '../dist-electron/security.js';
 
+function extractActionIds(source, constantName) {
+  const anchor = source.indexOf(constantName);
+  assert.notEqual(anchor, -1, `Could not find ${constantName}.`);
+
+  const listStart = source.indexOf('[', anchor);
+  const listEnd = source.indexOf(']', listStart);
+  assert.notEqual(listStart, -1, `Could not find opening list for ${constantName}.`);
+  assert.notEqual(listEnd, -1, `Could not find closing list for ${constantName}.`);
+
+  return Array.from(
+    source.slice(listStart, listEnd).matchAll(/'([^']+)'/g),
+    (match) => match[1],
+  );
+}
+
 test('validateDesktopUrl only accepts http/https URLs from allow-listed hosts', () => {
   assert.equal(
     validateDesktopUrl('http://127.0.0.1:3110/diagnostics/health', {
@@ -35,4 +50,14 @@ test('desktop main process keeps Electron sandboxing enabled and validates IPC a
   assert.match(source, /sandbox: true/);
   assert.match(source, /isDesktopHostActionId/);
   assert.match(source, /validateDesktopUrl/);
+});
+
+test('preload and contracts keep the same desktop host action ids', async () => {
+  const preloadSource = await readFile(join(process.cwd(), 'electron', 'preload.cts'), 'utf8');
+  const contractsSource = await readFile(join(process.cwd(), 'electron', 'contracts.ts'), 'utf8');
+
+  const preloadActions = extractActionIds(preloadSource, 'DESKTOP_HOST_ACTION_IDS');
+  const contractActions = extractActionIds(contractsSource, 'DESKTOP_HOST_ACTION_IDS');
+
+  assert.deepEqual(preloadActions, contractActions);
 });

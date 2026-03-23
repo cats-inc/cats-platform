@@ -5,6 +5,7 @@ import {
   resolveDesktopUpdateConfig,
   type DesktopUpdateConfig,
 } from './update.js';
+import { parseDesktopBoolean } from './env.js';
 import { normalizeDesktopHost } from './security.js';
 
 export interface DesktopHostPaths {
@@ -101,20 +102,6 @@ function parsePositiveInt(rawValue: string | undefined, fallback: number): numbe
   return parsed;
 }
 
-function parseBoolean(rawValue: string | undefined, fallback: boolean): boolean {
-  const trimmed = rawValue?.trim().toLowerCase();
-  if (!trimmed) {
-    return fallback;
-  }
-  if (trimmed === '1' || trimmed === 'true' || trimmed === 'yes') {
-    return true;
-  }
-  if (trimmed === '0' || trimmed === 'false' || trimmed === 'no') {
-    return false;
-  }
-  return fallback;
-}
-
 function normalizeCloseBehavior(
   rawValue: string | undefined,
 ): DesktopHostBackgroundConfig['closeBehavior'] {
@@ -171,11 +158,11 @@ export function resolveDesktopHostConfig(
   );
   const userDataDir = resolve(options.userDataDir);
   const background: DesktopHostBackgroundConfig = {
-    trayEnabled: parseBoolean(
+    trayEnabled: parseDesktopBoolean(
       env.CATS_DESKTOP_TRAY_ENABLED,
       DEFAULT_DESKTOP_TRAY_ENABLED,
     ),
-    keepServicesRunning: parseBoolean(
+    keepServicesRunning: parseDesktopBoolean(
       env.CATS_DESKTOP_KEEP_SERVICES_RUNNING,
       DEFAULT_KEEP_SERVICES_RUNNING,
     ),

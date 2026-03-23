@@ -1,5 +1,6 @@
 import type { DesktopUpdateChannel, DesktopUpdateState } from './contracts.js';
 import { DESKTOP_HOST_VERSION } from './contracts.js';
+import { parseDesktopBoolean } from './env.js';
 import { parseDesktopAllowedHosts, validateDesktopUrl } from './security.js';
 
 export interface DesktopUpdateConfig {
@@ -27,20 +28,6 @@ function normalizeChannel(value: string | undefined): DesktopUpdateChannel {
     return value;
   }
   return 'stable';
-}
-
-function parseBoolean(value: string | undefined, fallback: boolean): boolean {
-  const trimmed = value?.trim().toLowerCase();
-  if (!trimmed) {
-    return fallback;
-  }
-  if (trimmed === '1' || trimmed === 'true' || trimmed === 'yes') {
-    return true;
-  }
-  if (trimmed === '0' || trimmed === 'false' || trimmed === 'no') {
-    return false;
-  }
-  return fallback;
 }
 
 function parseVersion(value: string): number[] | null {
@@ -102,8 +89,8 @@ export function resolveDesktopUpdateConfig(
     channel: normalizeChannel(env.CATS_DESKTOP_UPDATE_CHANNEL),
     manifestUrl: manifestUrl ? validateDesktopUrl(manifestUrl, { httpsOnly: true }) : null,
     allowedHosts: parseDesktopAllowedHosts(env.CATS_DESKTOP_UPDATE_ALLOWED_HOSTS),
-    checkOnStartup: parseBoolean(env.CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP, false),
-    autoDownload: parseBoolean(env.CATS_DESKTOP_UPDATE_AUTO_DOWNLOAD, false),
+    checkOnStartup: parseDesktopBoolean(env.CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP, false),
+    autoDownload: parseDesktopBoolean(env.CATS_DESKTOP_UPDATE_AUTO_DOWNLOAD, false),
   };
 }
 
