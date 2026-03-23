@@ -445,6 +445,11 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
 - Chat room-workflow turns, system events, checkpoints, and outcomes now
   project into core-backed run/trace/checkpoint/outcome records when chat
   state is persisted.
+- Those projected task/run/checkpoint/outcome metadata records now carry
+  machine-readable `governanceSummary`, `workflowSummary`, and
+  `runtimeDeliveryManifest` skeletons so operator loops and future control-plane
+  automation can consume approval/delivery/budget/workflow state without
+  scraping transcript text.
 - `Cats Work` is a planned sibling surface, not a shipped UI in the current
   codebase.
 - The current execution path keeps full Chat and Work desktop surfaces on the
@@ -518,9 +523,7 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-03-23*
-
-
+*Last updated: 2026-03-24*
 
 
 

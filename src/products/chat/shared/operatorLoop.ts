@@ -6,15 +6,29 @@ import type {
   CoreBudgetAlertLevel,
   CoreBudgetAlertSource,
   CoreCheckpointRecord,
-  CoreDeliveryMode,
   CoreDeliveryGate,
+  CoreDeliveryMode,
   CoreEffectivePolicySource,
+  CoreGovernanceSummary,
   CoreOrchestrationOutcomeRecord,
   CoreRecordMetadata,
   CoreRunRecord,
   CoreTaskRecord,
   CoreTraceRecord,
+  CoreWorkflowSummary,
 } from '../../../core/types.js';
+import {
+  deriveCoreGovernanceSummary,
+  deriveCoreWorkflowSummary,
+  readCoreEffectiveBudgetPolicy,
+  readCoreEffectiveDeliveryPolicy,
+} from '../../../core/governance.js';
+
+const CORE_DELIVERY_GATE_SET = new Set<string>([
+  'manual_review_required',
+  'owner_approval_required',
+  'publish_artifact_required',
+]);
 
 export interface ChatOperatorSnapshot {
   core: CatsCoreState;
@@ -68,6 +82,16 @@ export interface ChatEffectivePolicyView {
   budgetRationale: string | null;
 }
 
+export interface ChatApprovalActionView {
+  kind: CoreApprovalDecisionAction;
+  label: string;
+  description: string;
+  disabled: boolean;
+  taskId: string;
+  approvalId: string;
+  status: CoreApprovalQueueItem['status'];
+}
+
 export interface ChatOperatorActionView {
   kind: 'retry' | 'acknowledge';
   label: string;
@@ -91,10 +115,13 @@ export interface ChatRunInspectorView {
   guardReason: string | null;
   cooldownLabel: string | null;
   metrics: ChatRunMetrics;
+  workflowSummary: CoreWorkflowSummary | null;
+  governanceSummary: CoreGovernanceSummary | null;
   workflowStageId: string | null;
   workflowShape: string | null;
   reviewRequired: boolean;
   branchStates: ChatWorkflowBranchView[];
+  approvalActions: ChatApprovalActionView[];
   incidentActions: ChatOperatorActionView[];
 }
 
@@ -116,47 +143,11 @@ export interface ChatOperatorView {
   guardReason: string | null;
   cooldownLabel: string | null;
   effectivePolicy: ChatEffectivePolicyView | null;
+  governanceSummary: CoreGovernanceSummary | null;
+  workflowSummary: CoreWorkflowSummary | null;
+  approvalActions: ChatApprovalActionView[];
   incidentActions: ChatOperatorActionView[];
 }
-
-const CORE_DELIVERY_MODES = [
-  'artifact_only',
-  'commit_only',
-  'push_branch',
-  'pr_with_checks',
-  'deploy_preview',
-] as const satisfies readonly CoreDeliveryMode[];
-
-const CORE_DELIVERY_GATES = [
-  'manual_review_required',
-  'owner_approval_required',
-  'publish_artifact_required',
-] as const satisfies readonly CoreDeliveryGate[];
-
-const CORE_EFFECTIVE_POLICY_SOURCES = [
-  'chat_default',
-  'task_override',
-  'room_tightening',
-  'approved_exception',
-] as const satisfies readonly CoreEffectivePolicySource[];
-
-const CORE_BUDGET_ALERT_LEVELS = [
-  'normal',
-  'warning',
-  'blocked',
-] as const satisfies readonly CoreBudgetAlertLevel[];
-
-const CORE_BUDGET_ALERT_SOURCES = [
-  'runtime_usage',
-  'rate_limit_incident',
-  'guardrail_state',
-] as const satisfies readonly CoreBudgetAlertSource[];
-
-const CORE_DELIVERY_MODE_SET = new Set<string>(CORE_DELIVERY_MODES);
-const CORE_DELIVERY_GATE_SET = new Set<string>(CORE_DELIVERY_GATES);
-const CORE_EFFECTIVE_POLICY_SOURCE_SET = new Set<string>(CORE_EFFECTIVE_POLICY_SOURCES);
-const CORE_BUDGET_ALERT_LEVEL_SET = new Set<string>(CORE_BUDGET_ALERT_LEVELS);
-const CORE_BUDGET_ALERT_SOURCE_SET = new Set<string>(CORE_BUDGET_ALERT_SOURCES);
 
 function compareIsoDesc(left: string, right: string): number {
   return right.localeCompare(left);
@@ -203,37 +194,6 @@ function readMetadataBoolean(
   }
 
   return metadata[key] === true;
-}
-
-function readMetadataStringArray(
-  metadata: CoreRecordMetadata | null | undefined,
-  key: string,
-): string[] {
-  if (!metadata) {
-    return [];
-  }
-
-  const value = metadata[key];
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    : [];
-}
-
-function readMetadataEnum<T extends string>(
-  metadata: CoreRecordMetadata | null | undefined,
-  key: string,
-  allowed: ReadonlySet<string>,
-): T | null {
-  const value = readMetadataString(metadata, key);
-  return value && allowed.has(value) ? value as T : null;
-}
-
-function readMetadataEnumArray<T extends string>(
-  metadata: CoreRecordMetadata | null | undefined,
-  key: string,
-  allowed: ReadonlySet<string>,
-): T[] {
-  return readMetadataStringArray(metadata, key).filter((value): value is T => allowed.has(value));
 }
 
 function readMetadataRecordArray(
@@ -458,10 +418,12 @@ function resolveCooldownLabel(
 
 function metricsForRun(run: CoreRunRecord): ChatRunMetrics {
   const metadata = readMetadataRecord(run.metadata);
+  const workflowSummary = deriveCoreWorkflowSummary(run);
   return {
-    dispatchCount: readMetadataNumber(metadata, 'dispatchCount'),
-    continuationCount: readMetadataNumber(metadata, 'continuationCount'),
-    targetCount: readMetadataNumber(metadata, 'targetCount'),
+    dispatchCount: workflowSummary?.dispatchCount ?? readMetadataNumber(metadata, 'dispatchCount'),
+    continuationCount:
+      workflowSummary?.continuationCount ?? readMetadataNumber(metadata, 'continuationCount'),
+    targetCount: workflowSummary?.targetCount ?? readMetadataNumber(metadata, 'targetCount'),
   };
 }
 
@@ -489,35 +451,40 @@ function buildEffectivePolicyView(task: CoreTaskRecord | null): ChatEffectivePol
   }
 
   const metadata = readMetadataRecord(task.metadata);
+  const delivery = readCoreEffectiveDeliveryPolicy(metadata);
+  const budget = readCoreEffectiveBudgetPolicy(metadata);
   return {
-    deliveryMode: readMetadataEnum<CoreDeliveryMode>(
-      metadata,
-      'effectiveDeliveryMode',
-      CORE_DELIVERY_MODE_SET,
-    ),
-    deliveryGates: readMetadataEnumArray<CoreDeliveryGate>(
-      metadata,
-      'effectiveDeliveryGates',
-      CORE_DELIVERY_GATE_SET,
-    ),
-    deliverySource: readMetadataEnum<CoreEffectivePolicySource>(
-      metadata,
-      'effectiveDeliverySource',
-      CORE_EFFECTIVE_POLICY_SOURCE_SET,
-    ),
-    deliveryRationale: readMetadataString(metadata, 'effectiveDeliveryRationale'),
-    budgetAlertLevel: readMetadataEnum<CoreBudgetAlertLevel>(
-      metadata,
-      'effectiveBudgetAlertLevel',
-      CORE_BUDGET_ALERT_LEVEL_SET,
-    ),
-    budgetAlertSource: readMetadataEnum<CoreBudgetAlertSource>(
-      metadata,
-      'effectiveBudgetAlertSource',
-      CORE_BUDGET_ALERT_SOURCE_SET,
-    ),
-    budgetRationale: readMetadataString(metadata, 'effectiveBudgetRationale'),
+    deliveryMode: delivery?.mode ?? null,
+    deliveryGates: delivery?.gates
+      ?? (Array.isArray(metadata?.effectiveDeliveryGates)
+        ? metadata.effectiveDeliveryGates.filter((gate): gate is CoreDeliveryGate =>
+            typeof gate === 'string' && CORE_DELIVERY_GATE_SET.has(gate),
+          )
+        : []),
+    deliverySource: delivery?.source ?? null,
+    deliveryRationale: delivery?.rationale ?? null,
+    budgetAlertLevel: budget?.alertLevel ?? null,
+    budgetAlertSource: budget?.source ?? null,
+    budgetRationale: budget?.rationale ?? null,
   };
+}
+
+function buildApprovalActions(
+  latestApproval: CoreApprovalQueueItem | null,
+): ChatApprovalActionView[] {
+  if (!latestApproval || latestApproval.status !== 'pending' || !latestApproval.requiresOwnerDecision) {
+    return [];
+  }
+
+  return latestApproval.decisionOptions.map((option) => ({
+    kind: option.action,
+    label: option.label,
+    description: option.description,
+    disabled: false,
+    taskId: latestApproval.taskId,
+    approvalId: latestApproval.id,
+    status: latestApproval.status,
+  }));
 }
 
 function buildIncidentActions(
@@ -672,8 +639,13 @@ export function buildChatOperatorView(
   const latestRun = runs[0] ?? null;
   const latestOutcome = outcomes[0] ?? null;
   const latestCheckpoint = checkpoints[0] ?? null;
+  const latestApproval = approvals[0] ?? null;
   const guardReason = resolveGuardReason(latestRun, latestOutcome, latestCheckpoint, traces);
   const cooldownLabel = resolveCooldownLabel(latestRun, latestOutcome, latestCheckpoint, traces);
+  const effectivePolicy = buildEffectivePolicyView(task);
+  const workflowSummary = deriveCoreWorkflowSummary(latestRun);
+  const governanceSummary = deriveCoreGovernanceSummary(task, latestRun);
+  const approvalActions = buildApprovalActions(latestApproval);
   const activityFeed = uniqueActivityItems([
     ...activities.map((activity) => ({
       id: `activity:${activity.id}`,
@@ -704,10 +676,13 @@ export function buildChatOperatorView(
     latestRun,
     latestOutcome,
     latestCheckpoint,
-    latestApproval: approvals[0] ?? null,
+    latestApproval,
     guardReason,
     cooldownLabel,
-    effectivePolicy: buildEffectivePolicyView(task),
+    effectivePolicy,
+    governanceSummary,
+    workflowSummary,
+    approvalActions,
     incidentActions: buildIncidentActions(
       task,
       latestRun,
@@ -747,7 +722,9 @@ export function buildRunInspectorView(
   const latestCheckpoint = checkpoints[0] ?? null;
   const guardReason = resolveGuardReason(run, latestOutcome, latestCheckpoint, traces);
   const cooldownLabel = resolveCooldownLabel(run, latestOutcome, latestCheckpoint, traces);
-  const metadata = readMetadataRecord(run.metadata);
+  const workflowSummary = deriveCoreWorkflowSummary(run);
+  const governanceSummary = deriveCoreGovernanceSummary(operatorView.task, run);
+  const latestApproval = approvals[0] ?? operatorView.latestApproval;
 
   return {
     run,
@@ -760,10 +737,13 @@ export function buildRunInspectorView(
     guardReason,
     cooldownLabel,
     metrics: metricsForRun(run),
-    workflowStageId: readMetadataString(metadata, 'workflowStageId'),
-    workflowShape: readMetadataString(metadata, 'workflowShape'),
-    reviewRequired: readMetadataBoolean(metadata, 'workflowReviewRequired'),
+    workflowSummary,
+    governanceSummary,
+    workflowStageId: workflowSummary?.stageId ?? null,
+    workflowShape: workflowSummary?.shape ?? null,
+    reviewRequired: workflowSummary?.reviewRequired ?? false,
     branchStates: buildBranchStates(run),
+    approvalActions: buildApprovalActions(latestApproval),
     incidentActions: buildIncidentActions(
       operatorView.task,
       run,

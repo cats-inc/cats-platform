@@ -438,6 +438,8 @@ test('core approval write supports reroute actions and records the decision acti
     assert.equal(reroutePayload.approval.decisionAction, 'reroute');
     assert.equal(reroutePayload.activity.kind, 'approval_decided');
     assert.match(reroutePayload.activity.message, /requested a reroute/i);
+    assert.equal(reroutePayload.governanceSummary.approval.pending, false);
+    assert.equal(reroutePayload.governanceSummary.approval.latestDecisionAction, 'reroute');
   }, chatStore);
 });
 
@@ -495,6 +497,11 @@ test('core operator actions annotate blocked runs and append operator activity r
       }),
     });
     assert.equal(operatorActionResponse.status, 200);
+    const operatorActionPayload = await operatorActionResponse.json();
+    assert.equal(operatorActionPayload.action, 'retry');
+    assert.equal(operatorActionPayload.run.id, fixtures.run.id);
+    assert.equal(operatorActionPayload.task.id, fixtures.task.id);
+    assert.equal(operatorActionPayload.governanceSummary.latestOperatorAction.kind, 'retry');
 
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     const statePayload = await stateResponse.json();
@@ -551,6 +558,13 @@ test('core acknowledge actions use acknowledged metadata keys and append operato
       }),
     });
     assert.equal(operatorActionResponse.status, 200);
+    const operatorActionPayload = await operatorActionResponse.json();
+    assert.equal(operatorActionPayload.action, 'acknowledge');
+    assert.equal(operatorActionPayload.run.id, fixtures.run.id);
+    assert.equal(
+      operatorActionPayload.governanceSummary.latestOperatorAction.kind,
+      'acknowledge',
+    );
 
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     const statePayload = await stateResponse.json();

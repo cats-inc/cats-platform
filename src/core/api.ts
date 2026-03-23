@@ -37,6 +37,7 @@ import {
   upsertCoreWorkItem,
   writeApprovalDecision,
 } from './model.js';
+import { deriveCoreGovernanceSummary } from './governance.js';
 import {
   readJsonBody,
   sendJson,
@@ -966,6 +967,20 @@ function mergeOperatorActionMetadata(
   return nextMetadata;
 }
 
+function findLatestRunForTask(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+  taskId: string | null,
+) {
+  if (!taskId) {
+    return null;
+  }
+
+  return core.runs
+    .filter((candidate) => candidate.taskId === taskId)
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0]
+    ?? null;
+}
+
 async function handleCoreApprovalWrite(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
@@ -1028,12 +1043,20 @@ async function handleCoreApprovalWrite(
     const persistedActivity = persisted.activities.find(
       (candidate) => candidate.id === activity.activity.id,
     ) ?? activity.activity;
+    const latestRun = findLatestRunForTask(
+      persisted,
+      (persistedTask ?? next.task).id,
+    );
 
     sendJson(context.response, 200, {
       task: persistedTask ?? next.task,
       approval: (persistedTask ?? next.task).approval,
       queueItem,
       activity: persistedActivity,
+      governanceSummary: deriveCoreGovernanceSummary(
+        persistedTask ?? next.task,
+        latestRun,
+      ),
     });
   } catch (error) {
     handleCoreError(context, error);
@@ -1192,9 +1215,30 @@ async function handleCoreOperatorActionWrite(
     const persistedActivity = persisted.activities.find(
       (candidate) => candidate.id === activity.activity.id,
     ) ?? activity.activity;
+    const persistedTask = resolvedTaskId
+      ? persisted.tasks.find((candidate) => candidate.id === resolvedTaskId) ?? null
+      : null;
+    const persistedRun = resolvedRunId
+      ? persisted.runs.find((candidate) => candidate.id === resolvedRunId) ?? null
+      : null;
+    const persistedCheckpoint = checkpointId
+      ? persisted.checkpoints.find((candidate) => candidate.id === checkpointId) ?? null
+      : null;
+    const persistedOutcome = outcomeId
+      ? persisted.outcomes.find((candidate) => candidate.id === outcomeId) ?? null
+      : null;
 
     sendJson(context.response, 200, {
+      action,
+      task: persistedTask,
+      run: persistedRun,
+      checkpoint: persistedCheckpoint,
+      outcome: persistedOutcome,
       activity: persistedActivity,
+      governanceSummary: deriveCoreGovernanceSummary(
+        persistedTask,
+        persistedRun,
+      ),
     });
   } catch (error) {
     handleCoreError(context, error);

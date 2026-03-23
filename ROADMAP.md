@@ -55,6 +55,17 @@ contracts.
 - [ ] Desktop host and tray lifecycle management above the existing Node server boundary
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
+- [ ] Automatic resume after operator approve/reroute/retry decisions so the
+      current action seams become a closed loop rather than write-only markers
+- [ ] Promote the current machine-readable governance/workflow summaries into
+      a fuller operator-control-plane contract, including stable approval
+      actions, workflow continuation state, and runtime-delivery intent
+- [ ] Turn the current delivery-policy and budget-policy skeletons into
+      executable product flows, including override lifecycle, downgrade or
+      reroute policy, and later Cats Work war-room aggregates
+- [ ] Deepen room-workflow semantics beyond the current summary contract,
+      especially richer checkpoint recommendations, converge policy, and
+      longer-running branch continuation behavior
 - [ ] Telegram, LINE, and alternate orchestrator entrypoints with escalation
       and takeover support
 - [ ] Revisit a limited Chat mobile companion only after the desktop Chat
@@ -87,4 +98,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-24*

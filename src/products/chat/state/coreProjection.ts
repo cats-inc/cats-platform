@@ -6,10 +6,15 @@ import type {
   CoreActivityRecord,
   CoreActorRecord,
   CoreApprovalRecord,
+  CoreBudgetAlertLevel,
+  CoreBudgetAlertSource,
   CoreCheckpointRecord,
   CoreCheckpointStatus,
   CoreConversationRecord,
   CoreConversationStatus,
+  CoreDeliveryGate,
+  CoreDeliveryMode,
+  CoreEffectivePolicySource,
   CoreOrchestrationOutcomeRecord,
   CoreRecordMetadata,
   CoreTaskRecord,
@@ -27,6 +32,11 @@ import {
   createCatActorId,
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
 } from '../../../core/model.js';
+import {
+  buildCoreGovernanceSummary,
+  buildCoreWorkflowSummary,
+  buildRuntimeDeliveryManifestSummary,
+} from '../../../core/governance.js';
 import type {
   ChatChannelState,
   ChatCat,
@@ -68,28 +78,72 @@ function latestWorkflowTurn(channel: ChatChannelState): RoomWorkflowTurn | null 
 function buildChannelTaskMetadata(
   channel: ChatChannelState,
   existingTask: CoreTaskRecord | null,
+  approval: CoreApprovalRecord,
 ): CoreRecordMetadata {
   const latestTurn = latestWorkflowTurn(channel);
   const roomRouting = channel.roomRouting;
-  const pendingApproval = existingTask?.approval.status === 'pending';
-  const effectiveDeliveryMode = channel.repoPath ? 'commit_only' : 'artifact_only';
-  const effectiveDeliverySource = roomRouting?.mode === 'direct_cat_chat'
+  const pendingApproval = approval.status === 'pending';
+  const effectiveDeliveryMode: CoreDeliveryMode = channel.repoPath ? 'commit_only' : 'artifact_only';
+  const effectiveDeliverySource: CoreEffectivePolicySource = roomRouting?.mode === 'direct_cat_chat'
     ? 'room_tightening'
     : 'chat_default';
-  const deliveryGates = [
-    ...(pendingApproval ? ['owner_approval_required'] : []),
-    ...(latestTurn?.reviewRequired ? ['manual_review_required'] : []),
+  const deliveryGates: CoreDeliveryGate[] = [
+    ...(pendingApproval ? ['owner_approval_required' as const] : []),
+    ...(latestTurn?.reviewRequired ? ['manual_review_required' as const] : []),
   ];
-  const effectiveBudgetAlertLevel = roomRouting?.lastOutcome?.guard
+  const effectiveBudgetAlertLevel: CoreBudgetAlertLevel = roomRouting?.lastOutcome?.guard
     ? 'blocked'
     : roomRouting?.lastWakeRequest?.status === 'failed'
       ? 'warning'
       : 'normal';
-  const effectiveBudgetAlertSource = roomRouting?.lastOutcome?.guard
+  const effectiveBudgetAlertSource: CoreBudgetAlertSource | null = roomRouting?.lastOutcome?.guard
     ? 'guardrail_state'
     : roomRouting?.lastWakeRequest?.status === 'failed'
       ? 'rate_limit_incident'
       : null;
+  const effectiveDeliveryPolicy = {
+    mode: effectiveDeliveryMode,
+    gates: deliveryGates,
+    source: effectiveDeliverySource,
+    rationale: channel.repoPath
+      ? 'Repo-backed chats default to commit-only delivery.'
+      : 'Chats without a repo default to artifact-only delivery.',
+  };
+  const effectiveBudgetPolicy = {
+    alertLevel: effectiveBudgetAlertLevel,
+    source: effectiveBudgetAlertSource,
+    rationale: roomRouting?.lastOutcome?.guard
+      ? `Blocked by ${roomRouting.lastOutcome.guard}.`
+      : roomRouting?.lastWakeRequest?.status === 'failed'
+        ? 'Recent wake failures may require operator review.'
+        : 'No active budget or runtime guardrail alerts.',
+  };
+  const runtimeDeliveryManifest = buildRuntimeDeliveryManifestSummary({
+    deliveryMode: effectiveDeliveryPolicy.mode,
+    deliveryGates: effectiveDeliveryPolicy.gates,
+    channelId: channel.id,
+    conversationId: `conversation-channel-${channel.id}`,
+    taskId: `task-channel-${channel.id}`,
+    roomMode: roomRouting?.mode ?? 'boss_chat',
+    transport: null,
+    workflowStageId: latestTurn?.stageId ?? null,
+    workflowShape: latestTurn?.workflowShape ?? null,
+  });
+  const workflowSummary = buildCoreWorkflowSummary({
+    runStatus: null,
+    stageId: latestTurn?.stageId ?? null,
+    shape: latestTurn?.workflowShape ?? null,
+    reviewRequired: latestTurn?.reviewRequired ?? false,
+    lastCheckpointId:
+      latestTurn?.lastCheckpointId
+      ?? roomRouting?.lastCheckpoint?.id
+      ?? null,
+    convergeTargetId: latestTurn?.convergeTargetId ?? null,
+    continuationCount: latestTurn?.continuationCount ?? null,
+    dispatchCount: latestTurn?.dispatchCount ?? null,
+    targetCount: latestTurn?.targetStatuses.length ?? null,
+    branchStates: latestTurn?.targetStatuses,
+  });
 
   return {
     ...structuredClone(existingTask?.metadata ?? {}),
@@ -107,16 +161,21 @@ function buildChannelTaskMetadata(
     effectiveDeliveryMode,
     effectiveDeliveryGates: deliveryGates,
     effectiveDeliverySource,
-    effectiveDeliveryRationale: channel.repoPath
-      ? 'Repo-backed chats default to commit-only delivery.'
-      : 'Chats without a repo default to artifact-only delivery.',
+    effectiveDeliveryRationale: effectiveDeliveryPolicy.rationale,
     effectiveBudgetAlertLevel,
     effectiveBudgetAlertSource,
-    effectiveBudgetRationale: roomRouting?.lastOutcome?.guard
-      ? `Blocked by ${roomRouting.lastOutcome.guard}.`
-      : roomRouting?.lastWakeRequest?.status === 'failed'
-        ? 'Recent wake failures may require operator review.'
-        : 'No active budget or runtime guardrail alerts.',
+    effectiveBudgetRationale: effectiveBudgetPolicy.rationale,
+    effectiveDeliveryPolicy,
+    effectiveBudgetPolicy,
+    runtimeDeliveryManifest,
+    workflowSummary,
+    governanceSummary: buildCoreGovernanceSummary({
+      approval,
+      delivery: effectiveDeliveryPolicy,
+      budget: effectiveBudgetPolicy,
+      runtimeDeliveryManifest,
+      operatorMetadata: existingTask?.metadata ?? {},
+    }),
   };
 }
 
@@ -231,12 +290,12 @@ function createTaskFromChannel(
     ownerActorId,
     orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
     assignedActorIds: channel.catAssignments.map((assignment) => `actor-cat-${assignment.catId}`),
-    summary: channel.topic,
-    approval,
-    createdAt: channel.createdAt,
-    updatedAt: channel.updatedAt,
-    metadata: buildChannelTaskMetadata(channel, existingTask),
-  };
+      summary: channel.topic,
+      approval,
+      createdAt: channel.createdAt,
+      updatedAt: channel.updatedAt,
+      metadata: buildChannelTaskMetadata(channel, existingTask, approval),
+    };
 }
 
 function preserveCoreOwnedTasks(existingTasks: CoreTaskRecord[]): CoreTaskRecord[] {
@@ -407,6 +466,18 @@ function createWorkflowRun(
       continuationCount: turn.continuationCount,
       dispatchCount: turn.dispatchCount,
       targetCount: turn.targetStatuses.length,
+      workflowSummary: buildCoreWorkflowSummary({
+        runStatus: toCoreRunStatus(turn.status),
+        stageId: turn.stageId,
+        shape: turn.workflowShape,
+        reviewRequired: turn.reviewRequired,
+        lastCheckpointId: turn.lastCheckpointId,
+        convergeTargetId: turn.convergeTargetId,
+        continuationCount: turn.continuationCount,
+        dispatchCount: turn.dispatchCount,
+        targetCount: turn.targetStatuses.length,
+        branchStates: turn.targetStatuses,
+      }),
     },
   };
 }
@@ -444,6 +515,12 @@ function createWorkflowCheckpoint(
   turn: RoomWorkflowTurn,
   event: RoomWorkflowEvent,
 ): CoreCheckpointRecord {
+  const workflowStageId = typeof event.metadata.workflowStageId === 'string'
+    ? event.metadata.workflowStageId
+    : turn.stageId;
+  const workflowShape = typeof event.metadata.workflowShape === 'string'
+    ? event.metadata.workflowShape
+    : turn.workflowShape;
   return {
     id: `checkpoint-room-routing-${event.checkpointId ?? event.id}`,
     label: `${channel.title} workflow checkpoint`,
@@ -462,8 +539,20 @@ function createWorkflowCheckpoint(
       turnId: turn.id,
       eventKind: event.kind,
       checkpointKind: event.metadata.checkpointKind ?? null,
-      workflowStageId: turn.stageId,
-      workflowShape: turn.workflowShape,
+      workflowStageId,
+      workflowShape,
+      workflowSummary: buildCoreWorkflowSummary({
+        runStatus: toCoreRunStatus(turn.status),
+        stageId: workflowStageId,
+        shape: workflowShape,
+        reviewRequired: turn.reviewRequired,
+        lastCheckpointId: turn.lastCheckpointId,
+        convergeTargetId: turn.convergeTargetId,
+        continuationCount: turn.continuationCount,
+        dispatchCount: turn.dispatchCount,
+        targetCount: turn.targetStatuses.length,
+        branchStates: turn.targetStatuses,
+      }),
       ...structuredClone(event.metadata),
     },
   };
@@ -496,6 +585,18 @@ function createWorkflowOutcome(
       branchStates: structuredClone(turn.targetStatuses),
       continuationCount: turn.continuationCount,
       dispatchCount: turn.dispatchCount,
+      workflowSummary: buildCoreWorkflowSummary({
+        runStatus: toCoreRunStatus(turn.status),
+        stageId: turn.stageId,
+        shape: turn.workflowShape,
+        reviewRequired: turn.reviewRequired,
+        lastCheckpointId: turn.lastCheckpointId,
+        convergeTargetId: turn.convergeTargetId,
+        continuationCount: turn.continuationCount,
+        dispatchCount: turn.dispatchCount,
+        targetCount: turn.targetStatuses.length,
+        branchStates: turn.targetStatuses,
+      }),
       ...structuredClone(event.metadata),
     },
   };

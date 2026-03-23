@@ -279,6 +279,29 @@ export interface CoreEffectiveBudgetPolicy {
   rationale: string | null;
 }
 
+export type CoreRuntimeDeliveryAction =
+  | 'prepare_artifact'
+  | 'create_commit'
+  | 'push_branch'
+  | 'open_pull_request'
+  | 'wait_for_checks'
+  | 'publish_preview';
+
+export interface CoreRuntimeDeliveryManifestSummary {
+  requestedActions: CoreRuntimeDeliveryAction[];
+  gates: CoreDeliveryGate[];
+  context: {
+    channelId: string | null;
+    conversationId: string | null;
+    taskId: string | null;
+    roomMode: string | null;
+    transport: string | null;
+    workflowStageId: string | null;
+    workflowShape: string | null;
+  };
+  strict: boolean;
+}
+
 export type CoreOperatorActionKind =
   | 'retry'
   | 'acknowledge';
@@ -290,6 +313,48 @@ export type CoreRunStatus =
   | 'completed'
   | 'failed'
   | 'cancelled';
+
+export interface CoreWorkflowBranchStatusCounts {
+  pending: number;
+  running: number;
+  completed: number;
+  failed: number;
+  blocked: number;
+  cancelled: number;
+  waiting_for_converge: number;
+}
+
+export interface CoreWorkflowSummary {
+  runStatus: CoreRunStatus | null;
+  stageId: string | null;
+  shape: string | null;
+  reviewRequired: boolean;
+  lastCheckpointId: string | null;
+  convergeTargetId: string | null;
+  continuationCount: number | null;
+  dispatchCount: number | null;
+  targetCount: number | null;
+  branchStatusCounts: CoreWorkflowBranchStatusCounts;
+}
+
+export interface CoreGovernanceSummary {
+  delivery: CoreEffectiveDeliveryPolicy | null;
+  budget: CoreEffectiveBudgetPolicy | null;
+  runtimeDeliveryManifest: CoreRuntimeDeliveryManifestSummary | null;
+  approval: {
+    status: CoreApprovalStatus | null;
+    requiresOwnerDecision: boolean;
+    pending: boolean;
+    latestDecisionAction: CoreApprovalDecisionAction | null;
+    notes: string | null;
+  };
+  latestOperatorAction: {
+    kind: CoreOperatorActionKind | null;
+    at: string | null;
+    by: string | null;
+    notes: string | null;
+  } | null;
+}
 
 export interface CoreRunRecord {
   id: string;

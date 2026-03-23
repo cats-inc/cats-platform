@@ -564,6 +564,13 @@ Semantics:
 - `task.metadata` is the shared place for product-owned workflow/governance
   read-model fields such as effective delivery mode, gates, budget alert level,
   and operator-action annotations
+- channel-derived task metadata now also carries nested machine-readable
+  summaries alongside the legacy flat fields:
+  - `effectiveDeliveryPolicy`
+  - `effectiveBudgetPolicy`
+  - `runtimeDeliveryManifest`
+  - `workflowSummary`
+  - `governanceSummary`
 - channel-derived `task-channel-*` records remain chat-owned projections;
   Team 2 should use distinct ids for system-owned tasks
 
@@ -631,6 +638,12 @@ Response:
   },
   "activity": {
     "kind": "approval_decided"
+  },
+  "governanceSummary": {
+    "approval": {
+      "pending": false,
+      "latestDecisionAction": "reroute"
+    }
   }
 }
 ```
@@ -661,6 +674,9 @@ Semantics:
 - each approval write appends a shared core activity record so operator rails
   can show pending requests and final decisions without relying on transcript
   bubbles alone
+- approval writes now also return `governanceSummary` so operator loops or
+  automation can read back the effective approval/delivery state without
+  refetching the full core snapshot
 
 ### Write Core Operator Action
 
@@ -685,8 +701,20 @@ Response:
 
 ```json
 {
+  "action": "retry",
+  "task": {
+    "id": "task-system-1"
+  },
+  "run": {
+    "id": "run-system-1"
+  },
   "activity": {
     "kind": "operator_action"
+  },
+  "governanceSummary": {
+    "latestOperatorAction": {
+      "kind": "retry"
+    }
   }
 }
 ```
@@ -706,6 +734,8 @@ Semantics:
 - the route also appends a shared activity record so Chat can surface the
   action in transcript-adjacent operator rails without inventing a second
   transcript channel
+- the write response now returns the updated `task` / `run` / `checkpoint` /
+  `outcome` subjects when present, plus `governanceSummary`
 
 ### List Core Runs
 
@@ -716,6 +746,21 @@ POST /api/core/runs
 
 `POST` upserts durable orchestration run records. Caller-supplied `run.id`
 keeps the write idempotent.
+
+Chat-projected room-workflow runs/checkpoints/outcomes now also carry nested
+`workflowSummary` metadata alongside the legacy flat workflow fields. The
+summary includes:
+
+- `runStatus`
+- `stageId`
+- `shape`
+- `reviewRequired`
+- `lastCheckpointId`
+- `convergeTargetId`
+- `continuationCount`
+- `dispatchCount`
+- `targetCount`
+- `branchStatusCounts`
 
 ### List Core Traces
 

@@ -180,6 +180,17 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   assert.equal(view.guardReason, 'anti_ping_pong');
   assert.equal(view.effectivePolicy?.deliveryMode, 'commit_only');
   assert.equal(view.effectivePolicy?.budgetAlertLevel, 'blocked');
+  assert.equal(view.governanceSummary?.approval.pending, true);
+  assert.deepEqual(
+    view.governanceSummary?.runtimeDeliveryManifest?.requestedActions,
+    ['create_commit'],
+  );
+  assert.equal(view.workflowSummary?.shape, 'parallel');
+  assert.equal(view.workflowSummary?.branchStatusCounts.completed, 1);
+  assert.deepEqual(
+    view.approvalActions.map((action) => action.kind),
+    ['approve', 'reroute', 'reject'],
+  );
   assert.equal(view.incidentActions.length, 2);
   assert.ok(
     view.activityFeed.some((item) => item.message.includes('Boss Cat requested approval')),
@@ -196,9 +207,12 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   assert.equal(inspector.cooldownLabel, 'Retry after owner review');
   assert.equal(inspector.approvals.length, 1);
   assert.equal(inspector.checkpoints[0].id, 'checkpoint-room-1');
+  assert.equal(inspector.governanceSummary?.approval.pending, true);
+  assert.equal(inspector.workflowSummary?.dispatchCount, 2);
   assert.equal(inspector.workflowStageId, 'parallel_fan_out');
   assert.equal(inspector.workflowShape, 'parallel');
   assert.equal(inspector.branchStates[0].participantName, 'Agent-1');
+  assert.equal(inspector.approvalActions[1].kind, 'reroute');
   assert.equal(inspector.incidentActions[0].kind, 'retry');
 });
 

@@ -26,8 +26,8 @@ The current slices are:
 - `My Cats` private-lane entry that reopens an existing direct room or opens a
   direct draft lane when needed
 - a transcript-adjacent operator loop with pending approvals, progress,
-  activity, trace, run inspection, reroute/retry/acknowledge action seams, and
-  effective delivery/budget policy summaries
+  activity, trace, run inspection, explicit approve/reroute/retry seams, and
+  machine-readable delivery/budget/workflow governance summaries
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
   and direct companion-session hydration metadata
@@ -53,6 +53,8 @@ The current slices are:
       without auto-persisting new direct rooms
 - [x] Land transcript-adjacent operator approvals, progress, activity, and run
       inspection surfaces
+- [x] Land machine-readable governance/workflow summaries for approval,
+      delivery, budget, reroute, retry, and workflow continuation contracts
 - [x] Land product-owned companion box storage, Cat-scoped ingest/read routes,
       and direct companion-session hydration contracts without visible UI
       changes

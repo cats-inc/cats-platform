@@ -302,14 +302,34 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
         && activity.conversationId === `conversation-channel-${channelId}`,
     ),
   );
-  assert.ok(
-    core.tasks.some(
-      (task) =>
-        task.id === `task-channel-${channelId}`
-        && task.metadata.effectiveDeliveryMode === 'artifact_only'
-        && task.metadata.effectiveBudgetAlertLevel === 'normal',
-    ),
+  const projectedTask = core.tasks.find((task) => task.id === `task-channel-${channelId}`);
+  const projectedRun = core.runs.find((run) => run.id.startsWith(`run-room-routing-${channelId}-`));
+  const projectedCheckpoint = core.checkpoints.find(
+    (checkpoint) => checkpoint.id.startsWith('checkpoint-room-routing-')
+      && checkpoint.metadata.checkpointKind === 'continuation',
   );
+  const projectedOutcome = core.outcomes.find(
+    (outcome) => outcome.id.startsWith('outcome-room-routing-')
+      && outcome.metadata.channelId === channelId,
+  );
+
+  assert.ok(projectedTask);
+  assert.equal(projectedTask.metadata.effectiveDeliveryMode, 'artifact_only');
+  assert.equal(projectedTask.metadata.effectiveBudgetAlertLevel, 'normal');
+  assert.deepEqual(
+    projectedTask.metadata.runtimeDeliveryManifest?.requestedActions,
+    ['prepare_artifact'],
+  );
+  assert.equal(projectedTask.metadata.governanceSummary?.approval.pending, false);
+  assert.equal(projectedTask.metadata.workflowSummary?.shape, 'sequential');
+  assert.ok(projectedRun);
+  assert.equal(projectedRun.metadata.workflowSummary?.shape, 'sequential');
+  assert.equal(projectedRun.metadata.workflowSummary?.dispatchCount, 2);
+  assert.equal(projectedRun.metadata.workflowSummary?.branchStatusCounts.completed, 2);
+  assert.ok(projectedCheckpoint);
+  assert.equal(projectedCheckpoint.metadata.workflowSummary?.stageId, 'continuation_handoff');
+  assert.ok(projectedOutcome);
+  assert.equal(projectedOutcome.metadata.workflowSummary?.runStatus, 'completed');
 });
 
 test('FileChatStore preserves null room route targets when reloading persisted routing outcomes', async () => {
