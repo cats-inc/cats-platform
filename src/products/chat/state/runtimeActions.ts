@@ -757,9 +757,36 @@ function createWakeRequest(
     sourceMessageId,
     status,
     createdAt: nowIso,
-    completedAt: nowIso,
+    completedAt: status === 'skipped' ? null : nowIso,
     error,
   };
+}
+
+function createRecordedWakeRequest(
+  roomRouting: RoomRoutingState | null | undefined,
+  participant: RoomRoutingParticipantRef,
+  trigger: RoomWakeTrigger,
+  reason: RoomWakeReason,
+  sourceMessageId: string | null,
+  nowIso: string,
+  status: RoomWakeRequest['status'],
+  error: string | null = null,
+): RoomWakeRequest | null {
+  if (!roomRouting) {
+    return null;
+  }
+
+  const wakeRequest = createWakeRequest(
+    participant,
+    trigger,
+    reason,
+    sourceMessageId,
+    nowIso,
+    status,
+    error,
+  );
+  recordWakeRequest(roomRouting, wakeRequest);
+  return wakeRequest;
 }
 
 function workflowEventKindForCheckpoint(
@@ -1004,22 +1031,28 @@ async function ensureTargetSession(
   const wakeTrigger = options.wakeTrigger ?? 'route_target';
   const wakeReason = options.wakeReason ?? 'room_default';
   const sourceMessageId = options.sourceMessageId ?? null;
+  const participant = toParticipantRef(target);
+  const recordTargetWake = (
+    status: RoomWakeRequest['status'],
+    error: string | null = null,
+  ) => createRecordedWakeRequest(
+    options.roomRouting,
+    participant,
+    wakeTrigger,
+    wakeReason,
+    sourceMessageId,
+    nowIso,
+    status,
+    error,
+  );
 
   if (target.sessionId) {
-    const wakeRequest = options.roomRouting
-      ? createWakeRequest(
-          toParticipantRef(target),
-          wakeTrigger,
-          wakeReason,
-          sourceMessageId,
-          nowIso,
-          'skipped',
-        )
-      : null;
-    if (options.roomRouting && wakeRequest) {
-      recordWakeRequest(options.roomRouting, wakeRequest);
-    }
-    return { state, target, error: null, wakeRequest };
+    return {
+      state,
+      target,
+      error: null,
+      wakeRequest: recordTargetWake('skipped'),
+    };
   }
 
   const channel = buildChannelView(state, channelId);
@@ -1067,48 +1100,22 @@ async function ensureTargetSession(
           incrementUnread: false,
         },
       ).state;
-      const wakeRequest = options.roomRouting
-        ? createWakeRequest(
-            toParticipantRef(target),
-            wakeTrigger,
-            wakeReason,
-            sourceMessageId,
-            nowIso,
-            'completed',
-          )
-        : null;
-      if (options.roomRouting && wakeRequest) {
-        recordWakeRequest(options.roomRouting, wakeRequest);
-      }
       return {
         state: nextState,
         target: { ...target, sessionId: session.id },
         error: null,
-        wakeRequest,
+        wakeRequest: recordTargetWake('completed'),
       };
     }
 
     const cat = channel.assignedCats.find((candidate) => candidate.catId === target.participantId);
     if (!cat) {
-      const wakeRequest = options.roomRouting
-        ? createWakeRequest(
-            toParticipantRef(target),
-            wakeTrigger,
-            wakeReason,
-            sourceMessageId,
-            nowIso,
-            'failed',
-            'Target cat is no longer assigned to the selected chat.',
-          )
-        : null;
-      if (options.roomRouting && wakeRequest) {
-        recordWakeRequest(options.roomRouting, wakeRequest);
-      }
+      const error = 'Target cat is no longer assigned to the selected chat.';
       return {
         state,
         target,
-        error: 'Target cat is no longer assigned to the selected chat.',
-        wakeRequest,
+        error,
+        wakeRequest: recordTargetWake('failed', error),
       };
     }
 
@@ -1156,24 +1163,11 @@ async function ensureTargetSession(
         incrementUnread: false,
       },
     ).state;
-    const wakeRequest = options.roomRouting
-      ? createWakeRequest(
-          toParticipantRef(target),
-          wakeTrigger,
-          wakeReason,
-          sourceMessageId,
-          nowIso,
-          'completed',
-        )
-      : null;
-    if (options.roomRouting && wakeRequest) {
-      recordWakeRequest(options.roomRouting, wakeRequest);
-    }
     return {
       state: nextState,
       target: { ...target, sessionId: session.id },
       error: null,
-      wakeRequest,
+      wakeRequest: recordTargetWake('completed'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown runtime error';
@@ -1197,21 +1191,12 @@ async function ensureTargetSession(
         },
       },
     ).state;
-    const wakeRequest = options.roomRouting
-      ? createWakeRequest(
-          toParticipantRef(target),
-          wakeTrigger,
-          wakeReason,
-          sourceMessageId,
-          nowIso,
-          'failed',
-          message,
-        )
-      : null;
-    if (options.roomRouting && wakeRequest) {
-      recordWakeRequest(options.roomRouting, wakeRequest);
-    }
-    return { state: nextState, target, error: message, wakeRequest };
+    return {
+      state: nextState,
+      target,
+      error: message,
+      wakeRequest: recordTargetWake('failed', message),
+    };
   }
 }
 
@@ -1260,6 +1245,19 @@ export async function wakeChannelEntryParticipant(
   }
 
   const target = defaultTarget.target;
+  if (target.sessionId) {
+    nextState = ensureChannelMarkedActive(nextState, channelId, now);
+    return {
+      state: nextState,
+      result: {
+        targetKind: target.participantKind,
+        targetId: target.participantId,
+        targetName: target.participantName,
+        status: 'already_started',
+        sessionId: target.sessionId,
+      },
+    };
+  }
 
   const ensured = await ensureTargetSession(
     nextState,

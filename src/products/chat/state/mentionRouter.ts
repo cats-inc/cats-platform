@@ -100,7 +100,9 @@ export function resolveRoomDefaultRoutingTarget(
   state: ChatState,
   channelOrId: ChatChannelView | string,
 ): RoomDefaultTargetResolution {
-  const channel = buildChannelView(state, channelOrId);
+  const channel = typeof channelOrId === 'string'
+    ? buildChannelView(state, channelOrId)
+    : channelOrId;
   const routing = channel.roomRouting ?? null;
 
   if (routing?.mode === 'direct_cat_chat' && routing.leadParticipantId) {

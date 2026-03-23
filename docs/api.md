@@ -122,7 +122,7 @@ Each channel now exposes a `roomRouting` read model with:
 - `lastWakeRequest` for the most recent room-entry or route-before-dispatch wake
   decision
 - `wakeHistory` for recent wake requests with `trigger`, `reason`, `status`,
-  and any error text
+  `completedAt` when a wake actually finished, and any error text
 - `workflow` for room-level system state, including:
   - `activeTurn` while a room turn is still in flight
   - `turnHistory` with completed/blocked/failed workflow turns

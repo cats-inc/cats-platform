@@ -414,6 +414,68 @@ test('direct cat chat blocks unmentioned turns when the lead cat is no longer as
   assert.match(channel.messages.at(-1)?.body ?? '', /no longer has an active lead Cat/i);
 });
 
+test('already-awake route targets record skipped wake requests without a completion timestamp', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Keep skipped wake requests machine-readable.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Companion')) {
+      return usage('Companion stayed on the direct lane.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const firstTurn = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Handle this directly.' },
+    runtimeClient,
+    now,
+  );
+  const secondTurn = await routeChannelMessage(
+    firstTurn.state,
+    channelId,
+    { body: 'Handle the follow-up directly too.' },
+    runtimeClient,
+    now,
+  );
+  const channel = buildChannelView(secondTurn.state, channelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.deepEqual(
+    channel.roomRouting?.wakeHistory.map((wake) => wake.status),
+    ['skipped', 'completed'],
+  );
+  assert.equal(channel.roomRouting?.lastWakeRequest?.status, 'skipped');
+  assert.equal(channel.roomRouting?.lastWakeRequest?.completedAt, null);
+});
+
 test('anti-ping-pong blocks repeated back-and-forth and prompts only include per-target recent context', async () => {
   const { state, channelId } = await createChannelState();
   const promptsByTarget = {

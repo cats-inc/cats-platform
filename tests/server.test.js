@@ -701,6 +701,62 @@ test('PATCH /api/preferences wakes the selected Boss Chat entry participant', as
   });
 });
 
+test('PATCH /api/preferences does not overwrite the last wake request when the selected room is already awake', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Wake Boss Chat',
+        topic: 'Do not rewrite wake history on re-entry.',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const firstPrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+    assert.equal(firstPrefsResponse.status, 200);
+
+    const secondPrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+    assert.equal(secondPrefsResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(channelPayload.channel.roomRouting.wakeHistory.length, 1);
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.status, 'completed');
+    assert.equal(
+      channelPayload.channel.roomRouting.lastWakeRequest.completedAt,
+      '2026-03-11T00:00:00.000Z',
+    );
+  });
+});
+
 test('PATCH /api/preferences wakes the selected direct chat lead', async () => {
   const runtimeClient = createRuntimeStub();
 

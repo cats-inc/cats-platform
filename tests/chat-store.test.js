@@ -290,6 +290,66 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   );
 });
 
+test('FileChatStore preserves null room route targets when reloading persisted routing outcomes', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const store = new FileChatStore(statePath);
+  let state = await store.read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Blocked room',
+      topic: 'Keep blocked route targets nullable on reload.',
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  await store.write(state);
+
+  const rawSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
+  const channelRecord = rawSnapshot.chat.channels.find(
+    (channel) => channel.id === state.selectedChannelId,
+  );
+  assert.ok(channelRecord);
+  channelRecord.roomRouting.lastOutcome = {
+    turnId: 'turn-blocked-room',
+    mode: 'boss_chat',
+    sourceMessageId: 'message-blocked-room',
+    sourceSenderKind: 'user',
+    sourceSenderName: 'User',
+    status: 'blocked',
+    resolution: {
+      routingMode: 'room_default',
+      selectionKind: 'blocked',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: 'no_valid_targets',
+      note: 'No valid targets are available.',
+    },
+    resolvedTargets: [],
+    unresolvedMentions: [],
+    dispatches: [],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 0,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: now.toISOString(),
+  };
+  await writeFile(statePath, JSON.stringify(rawSnapshot, null, 2));
+
+  const reloadedState = await store.read();
+  const reloadedChannel = reloadedState.channels.find(
+    (channel) => channel.id === state.selectedChannelId,
+  );
+
+  assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.defaultTarget, null);
+  assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.fallbackTarget, null);
+});
+
 test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();

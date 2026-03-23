@@ -270,11 +270,15 @@ function normalizeRoomRouteResolution(rawResolution: unknown): RoomRouteResoluti
       resolutionRecord?.selectionKind,
       'blocked',
     ),
-    defaultTarget: normalizeRoomRoutingParticipant(resolutionRecord?.defaultTarget),
+    defaultTarget: resolutionRecord?.defaultTarget
+      ? normalizeRoomRoutingParticipant(resolutionRecord.defaultTarget)
+      : null,
     defaultTargetReason: normalizeRoomRouteDefaultTargetReason(
       resolutionRecord?.defaultTargetReason,
     ),
-    fallbackTarget: normalizeRoomRoutingParticipant(resolutionRecord?.fallbackTarget),
+    fallbackTarget: resolutionRecord?.fallbackTarget
+      ? normalizeRoomRoutingParticipant(resolutionRecord.fallbackTarget)
+      : null,
     blockedReason: normalizeRoomRouteBlockedReason(resolutionRecord?.blockedReason),
     note: readNullableString(resolutionRecord?.note),
   };
