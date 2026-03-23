@@ -61,6 +61,7 @@ import {
   pickGreeting,
   BootShell,
 } from './chatUtils';
+import { getDefaultModel } from '../../../shared/providerCatalog';
 import {
   normalizeSelectedChannelView,
   resolveSelectedChannelEntryLifecycle,
@@ -137,9 +138,9 @@ export default function App() {
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
   const [channelPlusMenuOpen, setChannelPlusMenuOpen] = useState(false);
-  const [draftModel, setDraftModel] = useState<{ provider: string; model: string | null; instance: string | null }>({
-    provider: 'claude', model: null, instance: null,
-  });
+  const [draftModel, setDraftModel] = useState<{ provider: string; model: string | null; instance: string | null }>(() => ({
+    provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
+  }));
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>({
     provider: 'claude',
     model: null,
