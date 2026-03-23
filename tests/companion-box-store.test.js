@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -109,6 +109,81 @@ test('FileCompanionBoxStore persists sources, derived records, memory, and respo
   const materializedBody = JSON.parse(await readFile(materializedPath, 'utf-8'));
   assert.equal(materializedBody.title, 'Favorite toy');
   assert.equal(materializedBody.sourceText, 'Companion loves feather toys and window naps.');
+});
+
+test('FileCompanionBoxStore updates and deletes sources while converging derived and memory source refs', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-store-'));
+  const chatStatePath = path.join(tempDir, 'chat-state.json');
+  const store = new FileCompanionBoxStore(deriveCompanionBoxStatePath(chatStatePath));
+  const now = new Date('2026-03-23T10:30:00.000Z');
+
+  const ingested = await store.ingestSource(
+    'cat-converge',
+    {
+      kind: 'note',
+      storageMode: 'uploaded_copy',
+      title: 'Morning ritual',
+      textContent: 'Companion watches birds by the window every morning.',
+      metadata: {
+        traits: ['observant'],
+      },
+    },
+    now,
+  );
+  await store.createMemory(
+    'cat-converge',
+    {
+      category: 'fact',
+      content: 'Track the bird-watching habit.',
+      sourceIds: [ingested.source.id],
+    },
+    now,
+  );
+
+  const updated = await store.updateSource(
+    'cat-converge',
+    ingested.source.id,
+    {
+      textContent: 'Companion now waits by the balcony for pigeon patrol every sunrise.',
+      metadata: {
+        traits: ['observant', 'balcony-loving'],
+      },
+    },
+    new Date('2026-03-23T10:35:00.000Z'),
+  );
+  assert.ok(updated.derivedRecords.some((record) => record.content.includes('balcony')));
+  assert.ok(updated.derivedRecords.some((record) => record.tags.includes('balcony-loving')));
+
+  const updatedSources = await store.listSources('cat-converge');
+  assert.equal(updatedSources[0].textExcerpt, 'Companion now waits by the balcony for pigeon patrol every sunrise.');
+
+  const updatedDerived = await store.listDerived('cat-converge');
+  assert.ok(updatedDerived.some((record) => record.content.includes('balcony')));
+  assert.ok(updatedDerived.every((record) => !record.content.includes('window every morning')));
+
+  const materializedPath = path.join(tempDir, ...updatedSources[0].storedPath.split('/'));
+  const materializedBody = JSON.parse(await readFile(materializedPath, 'utf-8'));
+  assert.equal(
+    materializedBody.sourceText,
+    'Companion now waits by the balcony for pigeon patrol every sunrise.',
+  );
+
+  const deleted = await store.deleteSource(
+    'cat-converge',
+    ingested.source.id,
+    new Date('2026-03-23T10:40:00.000Z'),
+  );
+  assert.equal(deleted.sourceId, ingested.source.id);
+  assert.ok(deleted.removedDerivedIds.length > 0);
+  assert.ok(deleted.prunedMemoryIds.length > 0);
+
+  const sourcesAfterDelete = await store.listSources('cat-converge');
+  const derivedAfterDelete = await store.listDerived('cat-converge');
+  const memoryAfterDelete = await store.listMemory('cat-converge');
+  assert.equal(sourcesAfterDelete.length, 0);
+  assert.equal(derivedAfterDelete.length, 0);
+  assert.deepEqual(memoryAfterDelete[0].sourceIds, []);
+  await assert.rejects(() => access(materializedPath));
 });
 
 test('FileCompanionBoxStore keeps linked path sources without duplicating content and builds hydration context', async () => {

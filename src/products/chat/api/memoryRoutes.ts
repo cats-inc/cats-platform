@@ -405,6 +405,7 @@ async function handleGetCatRetrievalContext(
         workingMemory: channel?.workingMemory,
         roomRouting: channel?.roomRouting,
       },
+      transport: 'web',
       companionStore: context.dependencies.companionStore,
       now: context.dependencies.now?.(),
     });
@@ -478,6 +479,7 @@ async function handleGetChannelRetrievalContext(
     const retrieval = await context.dependencies.memoryService.buildChannelRetrievalContext({
       channelId,
       catId,
+      transport: 'web',
       companionStore: context.dependencies.companionStore,
       now: context.dependencies.now?.(),
     });

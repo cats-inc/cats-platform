@@ -54,6 +54,13 @@ function buildCanonicalRecord(input) {
     keywords: input.keywords ?? [],
     confidence: input.confidence ?? null,
     sourceRefs: input.sourceRefs ?? [],
+    visibility: input.visibility ?? (input.subjectKind === 'channel' ? 'channel_private' : 'owner_private'),
+    promotionRule: input.promotionRule ?? 'durable_memory',
+    lineage: input.lineage ?? {
+      sourceScopeKeys: input.sourceRefs ?? [],
+      derivedFromIds: [],
+      replacementGroup: `${input.originKind ?? 'companion_memory'}:${input.subjectId ?? 'cat-memory'}`,
+    },
     origin: {
       kind: input.originKind ?? 'companion_memory',
       boxId: input.boxId ?? null,
@@ -158,6 +165,8 @@ test('memory substrate flushes companion and owner data into canonical records a
 
   assert.ok(catFlush.persistedCount > 0);
   assert.ok(ownerFlush.persistedCount > 0);
+  assert.ok(catFlush.payload.persistedRecords.length > 0);
+  assert.ok(catFlush.payload.persistedRecords.some((record) => record.promotionRule === 'companion_response_profile'));
 
   const catRecords = await memoryService.listCanonicalRecords({
     subjectKind: 'cat',
@@ -165,6 +174,7 @@ test('memory substrate flushes companion and owner data into canonical records a
   });
   assert.ok(catRecords.some((record) => record.origin.kind === 'response_profile'));
   assert.ok(catRecords.some((record) => record.category === 'preference'));
+  assert.ok(catRecords.every((record) => record.promotionRule));
   assert.ok(
     catRecords.some((record) =>
       record.origin.kind === 'durable_memory'
@@ -201,10 +211,14 @@ test('memory substrate flushes companion and owner data into canonical records a
   });
 
   assert.ok(retrieval.hits.length > 0);
+  assert.equal(retrieval.policy.visibility, 'owner_private');
+  assert.ok(retrieval.selectedMemories.length > 0);
+  assert.ok(retrieval.supportingEvidence.length > 0);
   assert.ok(retrieval.ownerProfileHints.some((hint) => hint.includes('concise')));
   assert.ok(
     retrieval.ownerProfileHints.some((hint) => hint.includes('recommended next step')),
   );
+  assert.equal(retrieval.ownerProfile.mode, 'matched');
   assert.ok(retrieval.facts.some((fact) => fact.toLowerCase().includes('bird')));
 });
 
@@ -264,6 +278,74 @@ test('scope-aware canonical flush removes stale durable memory when curated note
     catRecords.filter((record) => record.origin.kind === 'durable_memory').length,
     0,
   );
+});
+
+test('retrieval policy keeps owner-private cat memory out of shared-room contexts while preserving channel context and owner hints', () => {
+  const context = buildMemoryRetrievalContext({
+    now: new Date('2026-03-23T14:30:00.000Z'),
+    catId: 'cat-memory',
+    channelId: 'channel-memory',
+    includeOwnerProfile: true,
+    channelTitle: 'Ops Room',
+    channelTopic: 'Coordinate the next response.',
+    roomMode: 'boss_chat',
+    transport: 'web',
+    canonicalRecords: [
+      buildCanonicalRecord({
+        subjectKind: 'cat',
+        subjectId: 'cat-memory',
+        title: 'Private cat note',
+        content: 'Companion prefers sunrise balcony patrols.',
+        visibility: 'owner_private',
+        promotionRule: 'companion_curated_memory',
+      }),
+      buildCanonicalRecord({
+        subjectKind: 'channel',
+        subjectId: 'channel-memory',
+        title: 'Current room summary',
+        content: 'The room is coordinating the next response.',
+        visibility: 'channel_private',
+        originKind: 'channel_working_memory',
+        promotionRule: 'channel_summary',
+      }),
+      buildCanonicalRecord({
+        subjectKind: 'owner',
+        subjectId: 'owner-actor',
+        title: 'Owner preference',
+        content: 'Keep updates concise and high-signal.',
+        visibility: 'owner_private',
+        originKind: 'owner_profile',
+        promotionRule: 'owner_communication_preference',
+      }),
+    ],
+    companionSources: [
+      {
+        id: 'source-live',
+        boxId: 'companion-box-cat-memory',
+        catId: 'cat-memory',
+        kind: 'note',
+        storageMode: 'uploaded_copy',
+        title: 'Live private note',
+        ownerNote: null,
+        sourceText: 'Companion privately tracks balcony pigeons.',
+        textExcerpt: 'Companion privately tracks balcony pigeons.',
+        linkedPath: null,
+        storedPath: null,
+        sourceUrl: null,
+        mimeType: null,
+        originalFileName: null,
+        metadata: {},
+        createdAt: '2026-03-23T14:00:00.000Z',
+        updatedAt: '2026-03-23T14:00:00.000Z',
+      },
+    ],
+  });
+
+  assert.equal(context.policy.visibility, 'shared_room');
+  assert.ok(context.hits.every((hit) => hit.subjectKind !== 'cat'));
+  assert.ok(context.hits.some((hit) => hit.subjectKind === 'channel'));
+  assert.ok(context.excludedMemories.some((record) => record.reason === 'policy_scope'));
+  assert.ok(context.ownerProfileHints.some((hint) => hint.includes('concise')));
 });
 
 test('replaceRecords rejects an empty selector filter instead of clearing the full store', async () => {
@@ -363,12 +445,15 @@ test('retrieval keeps unrelated owner records out of top hits while preserving o
     includeOwnerProfile: true,
     channelTitle: 'Bird routine',
     channelTopic: 'How should Companion talk about birds today?',
+    roomMode: 'direct_cat_chat',
+    transport: 'web',
     canonicalRecords: [
       buildCanonicalRecord({
         subjectKind: 'cat',
         subjectId: 'cat-memory',
         title: 'Bird watching ritual',
         content: 'Companion watches birds by the balcony every morning.',
+        promotionRule: 'companion_curated_memory',
       }),
       ...Array.from({ length: 10 }, (_, index) => buildCanonicalRecord({
         subjectKind: 'owner',
@@ -376,6 +461,7 @@ test('retrieval keeps unrelated owner records out of top hits while preserving o
         title: `Owner preference ${index + 1}`,
         content: 'Keep updates concise and high-signal.',
         originKind: 'owner_profile',
+        promotionRule: 'owner_communication_preference',
       })),
     ],
   });
@@ -383,4 +469,5 @@ test('retrieval keeps unrelated owner records out of top hits while preserving o
   assert.ok(context.hits.some((hit) => hit.subjectKind === 'cat'));
   assert.ok(context.hits.every((hit) => hit.subjectKind !== 'owner'));
   assert.ok(context.ownerProfileHints.some((hint) => hint.includes('concise')));
+  assert.equal(context.ownerProfile.mode, 'fallback');
 });

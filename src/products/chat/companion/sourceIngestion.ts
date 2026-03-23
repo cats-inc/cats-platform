@@ -9,6 +9,7 @@ import type {
   CompanionSourceRecord,
   CreateCompanionMemoryInput,
   CreateCompanionSourceInput,
+  UpdateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from './contracts.js';
 
@@ -143,6 +144,42 @@ export function createCompanionSourceRecord(
     createdAt: nowIso,
     updatedAt: nowIso,
   };
+}
+
+export function applyCompanionSourceUpdate(
+  source: CompanionSourceRecord,
+  update: UpdateCompanionSourceInput,
+  nowIso: string,
+): CompanionSourceRecord {
+  const nextSource: CompanionSourceRecord = {
+    ...source,
+    title: update.title === undefined ? source.title : trimOptionalText(update.title),
+    ownerNote: update.ownerNote === undefined ? source.ownerNote : trimOptionalText(update.ownerNote),
+    sourceText: update.textContent === undefined ? source.sourceText : trimOptionalText(update.textContent),
+    linkedPath: update.linkedPath === undefined ? source.linkedPath : trimOptionalText(update.linkedPath),
+    sourceUrl: update.sourceUrl === undefined ? source.sourceUrl : trimOptionalText(update.sourceUrl),
+    mimeType: update.mimeType === undefined ? source.mimeType : trimOptionalText(update.mimeType),
+    originalFileName: update.originalFileName === undefined
+      ? source.originalFileName
+      : trimOptionalText(update.originalFileName),
+    metadata: update.metadata === undefined ? asRecord(source.metadata) : asRecord(update.metadata),
+    updatedAt: nowIso,
+  };
+
+  nextSource.textExcerpt = resolveSourceExcerpt({
+    kind: nextSource.kind,
+    storageMode: nextSource.storageMode,
+    title: nextSource.title,
+    ownerNote: nextSource.ownerNote,
+    textContent: nextSource.sourceText,
+    linkedPath: nextSource.linkedPath,
+    sourceUrl: nextSource.sourceUrl,
+    mimeType: nextSource.mimeType,
+    originalFileName: nextSource.originalFileName,
+    metadata: nextSource.metadata,
+  });
+
+  return nextSource;
 }
 
 export function createDerivedRecordsForSource(

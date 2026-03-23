@@ -222,12 +222,18 @@ transport state stays in `src/platform/transports/telegram/*`.
 - **Responsibilities**:
   - normalize canonical Cats-owned memory records for cat, owner, and channel
     scopes
-  - extract durable memory from companion sources, derived records, curated
-    memory, response profiles, owner profile, and channel working memory
+  - promote only stable or curated companion signals into canonical durable
+    memory, while leaving low-signal summaries/transcripts/captions as live or
+    supporting evidence
+  - preserve source lineage, replacement groups, and visibility metadata so
+    source update/delete flows can converge stale retrieval cleanly
   - assemble retrieval context for direct companion sessions and route-level
-    retrieval previews
+    retrieval previews, including policy/exclusion annotations for
+    owner-private vs shared-room vs transport-facing contexts
   - expose pre-reset / pre-compaction flush seams without treating runtime
     sandboxes as long-lived truth
+  - expose machine-readable flush payloads that Team 5 runtime maintenance
+    hooks can consume without re-implementing Cats memory rules
   - keep embedding/vector backends additive rather than a hard dependency
 
 ### Chat Runtime Actions
@@ -574,4 +580,3 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-24*
-

@@ -34,6 +34,39 @@ function readStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string');
 }
 
+function defaultVisibilityForSubjectKind(
+  subjectKind: string,
+): CanonicalMemoryRecord['visibility'] {
+  switch (subjectKind) {
+    case 'channel':
+      return 'channel_private';
+    case 'relationship':
+    case 'project':
+      return 'shared_room';
+    case 'cat':
+    case 'owner':
+    default:
+      return 'owner_private';
+  }
+}
+
+function readLineage(
+  value: unknown,
+  fallback: {
+    sourceScopeKeys: string[];
+    replacementGroup: string;
+  },
+): CanonicalMemoryRecord['lineage'] {
+  const record = asRecord(value);
+  return {
+    sourceScopeKeys: readStringArray(record?.sourceScopeKeys).length > 0
+      ? readStringArray(record?.sourceScopeKeys)
+      : fallback.sourceScopeKeys,
+    derivedFromIds: readStringArray(record?.derivedFromIds),
+    replacementGroup: readNullableString(record?.replacementGroup) ?? fallback.replacementGroup,
+  };
+}
+
 function createEmptySnapshot(nowIso: string): CanonicalMemorySnapshot {
   return {
     version: 1,
@@ -79,11 +112,13 @@ function normalizeCanonicalMemoryRecord(
   const originKind = readString(origin.kind);
   const flushedAt = readString(origin.flushedAt, nowIso);
   const flushReason = readString(origin.flushReason, 'manual');
+  const visibility = readString(record.visibility, defaultVisibilityForSubjectKind(subjectKind));
+  const promotionRule = readString(record.promotionRule, 'durable_memory');
 
   if (
     !id
     || !subjectId
-    || !['cat', 'owner', 'channel'].includes(subjectKind)
+    || !['cat', 'owner', 'channel', 'relationship', 'project'].includes(subjectKind)
     || !['preference', 'fact', 'policy', 'style', 'relationship', 'lesson'].includes(category)
     || ![
       'companion_source',
@@ -94,9 +129,33 @@ function normalizeCanonicalMemoryRecord(
       'durable_memory',
       'owner_profile',
     ].includes(originKind)
+    || !['owner_private', 'channel_private', 'shared_room', 'transport'].includes(visibility)
+    || ![
+      'companion_owner_note',
+      'companion_response_profile',
+      'companion_curated_memory',
+      'companion_trait',
+      'companion_event',
+      'companion_relationship_note',
+      'companion_normalized_note',
+      'channel_summary',
+      'channel_fact',
+      'channel_open_loop',
+      'durable_memory',
+      'owner_profile_summary',
+      'owner_communication_preference',
+      'owner_decision_preference',
+      'owner_escalation_preference',
+    ].includes(promotionRule)
   ) {
     return null;
   }
+
+  const sourceRefs = readStringArray(record.sourceRefs);
+  const lineage = readLineage(record.lineage, {
+    sourceScopeKeys: sourceRefs,
+    replacementGroup: `${originKind}:${subjectId}`,
+  });
 
   return {
     id,
@@ -109,7 +168,10 @@ function normalizeCanonicalMemoryRecord(
     tags: readStringArray(record.tags),
     keywords: readStringArray(record.keywords),
     confidence: typeof record.confidence === 'number' ? record.confidence : null,
-    sourceRefs: readStringArray(record.sourceRefs),
+    sourceRefs,
+    visibility: visibility as CanonicalMemoryRecord['visibility'],
+    promotionRule: promotionRule as CanonicalMemoryRecord['promotionRule'],
+    lineage,
     origin: {
       kind: originKind as CanonicalMemoryRecord['origin']['kind'],
       boxId: readNullableString(origin.boxId),
@@ -133,6 +195,8 @@ function stableRecordId(record: Omit<CanonicalMemoryRecord, 'id'>): string {
       content: record.content,
       sourceRefs: [...record.sourceRefs].sort(),
       originKind: record.origin.kind,
+      visibility: record.visibility,
+      promotionRule: record.promotionRule,
     }))
     .digest('hex')
     .slice(0, 16);
@@ -146,6 +210,11 @@ function prepareRecord(record: Omit<CanonicalMemoryRecord, 'id'>): CanonicalMemo
     tags: uniqueStrings(record.tags.map((tag) => tag.trim())),
     keywords: uniqueStrings(record.keywords.map((keyword) => keyword.trim().toLowerCase())),
     sourceRefs: uniqueStrings(record.sourceRefs.map((ref) => ref.trim())),
+    lineage: {
+      sourceScopeKeys: uniqueStrings(record.lineage.sourceScopeKeys.map((key) => key.trim())),
+      derivedFromIds: uniqueStrings(record.lineage.derivedFromIds.map((id) => id.trim())),
+      replacementGroup: record.lineage.replacementGroup.trim(),
+    },
   };
 }
 

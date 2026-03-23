@@ -14,6 +14,7 @@ import type { CanonicalMemoryStore } from './store.js';
 import type {
   CanonicalMemoryRecord,
   MemoryFlushReason,
+  MemoryFlushPayload,
   MemoryFlushResult,
   MemoryRetrievalContext,
 } from './contracts.js';
@@ -54,15 +55,51 @@ export interface CatsMemoryService {
       workingMemory?: MemoryCheckpointSummary;
       roomRouting?: ChatChannelView['roomRouting'];
     };
+    transport?: 'telegram' | 'line' | 'web' | null;
     companionStore: CompanionBoxStore;
     now?: Date;
   }): Promise<MemoryRetrievalContext>;
   buildChannelRetrievalContext(input: {
     channelId: string;
     catId?: string | null;
+    transport?: 'telegram' | 'line' | 'web' | null;
     companionStore?: CompanionBoxStore;
     now?: Date;
   }): Promise<MemoryRetrievalContext>;
+}
+
+function buildFlushPayload(input: {
+  scope: CanonicalMemoryRecord['subjectKind'];
+  subjectId: string;
+  reason: MemoryFlushReason;
+  generatedAt: string;
+  records: CanonicalMemoryRecord[];
+  removedRecordIds: string[];
+}): MemoryFlushPayload {
+  return {
+    version: 1,
+    reason: input.reason,
+    generatedAt: input.generatedAt,
+    subject: {
+      kind: input.scope,
+      id: input.subjectId,
+    },
+    replacementMode: 'subject_projection_replace',
+    sourceScopeKeys: Array.from(new Set(
+      input.records.flatMap((record) => record.lineage.sourceScopeKeys),
+    )),
+    persistedRecords: input.records.map((record) => ({
+      recordId: record.id,
+      category: record.category,
+      originKind: record.origin.kind,
+      promotionRule: record.promotionRule,
+      visibility: record.visibility,
+      sourceRefs: structuredClone(record.sourceRefs),
+      sourceScopeKeys: structuredClone(record.lineage.sourceScopeKeys),
+      replacementGroup: record.lineage.replacementGroup,
+    })),
+    removedRecordIds: structuredClone(input.removedRecordIds),
+  };
 }
 
 export class DefaultCatsMemoryService implements CatsMemoryService {
@@ -86,6 +123,18 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
   }): Promise<MemoryFlushResult> {
     const now = input.now ?? new Date();
     const reason = input.reason ?? 'manual';
+    const existingRecords = (await this.memoryStore.listRecords({
+      subjectKind: 'cat',
+      subjectId: input.catId,
+    })).filter((record) =>
+      [
+        'companion_source',
+        'companion_derived',
+        'companion_memory',
+        'response_profile',
+        'durable_memory',
+      ].includes(record.origin.kind),
+    );
     const [core, box, sources, derived, memory, responseProfile] = await Promise.all([
       this.chatStore.readCore(),
       input.companionStore.getBox(input.catId, now),
@@ -132,14 +181,28 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       ],
       now,
     );
+    const removedRecordIds = existingRecords
+      .map((record) => record.id)
+      .filter((recordId) => !persisted.some((record) => record.id === recordId));
+    const generatedAt = now.toISOString();
+    const payload = buildFlushPayload({
+      scope: 'cat',
+      subjectId: input.catId,
+      reason,
+      generatedAt,
+      records: persisted,
+      removedRecordIds,
+    });
 
     return {
       scope: 'cat',
       subjectId: input.catId,
       reason,
-      generatedAt: now.toISOString(),
+      generatedAt,
       persistedCount: persisted.length,
       persistedRecordIds: persisted.map((record) => record.id),
+      removedRecordIds,
+      payload,
     };
   }
 
@@ -150,6 +213,10 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
   }): Promise<MemoryFlushResult> {
     const now = input.now ?? new Date();
     const reason = input.reason ?? 'manual';
+    const existingRecords = (await this.memoryStore.listRecords({
+      subjectKind: 'channel',
+      subjectId: input.channelId,
+    })).filter((record) => record.origin.kind === 'channel_working_memory');
     const state = await this.chatStore.read();
     const channel = requireChannel(state, input.channelId);
     const persisted = await this.memoryStore.replaceRecords(
@@ -165,14 +232,28 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       }),
       now,
     );
+    const removedRecordIds = existingRecords
+      .map((record) => record.id)
+      .filter((recordId) => !persisted.some((record) => record.id === recordId));
+    const generatedAt = now.toISOString();
+    const payload = buildFlushPayload({
+      scope: 'channel',
+      subjectId: input.channelId,
+      reason,
+      generatedAt,
+      records: persisted,
+      removedRecordIds,
+    });
 
     return {
       scope: 'channel',
       subjectId: input.channelId,
       reason,
-      generatedAt: now.toISOString(),
+      generatedAt,
       persistedCount: persisted.length,
       persistedRecordIds: persisted.map((record) => record.id),
+      removedRecordIds,
+      payload,
     };
   }
 
@@ -183,6 +264,12 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     const now = input?.now ?? new Date();
     const reason = input?.reason ?? 'owner_profile_sync';
     const core = await this.chatStore.readCore();
+    const existingRecords = (await this.memoryStore.listRecords({
+      subjectKind: 'owner',
+      subjectId: core.ownerProfile.actorId,
+    })).filter((record) =>
+      ['owner_profile', 'durable_memory'].includes(record.origin.kind),
+    );
     const durableMemory = listDurableMemoryBySubject(
       core,
       'owner',
@@ -210,14 +297,28 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       ],
       now,
     );
+    const removedRecordIds = existingRecords
+      .map((record) => record.id)
+      .filter((recordId) => !persisted.some((record) => record.id === recordId));
+    const generatedAt = now.toISOString();
+    const payload = buildFlushPayload({
+      scope: 'owner',
+      subjectId: core.ownerProfile.actorId,
+      reason,
+      generatedAt,
+      records: persisted,
+      removedRecordIds,
+    });
 
     return {
       scope: 'owner',
       subjectId: core.ownerProfile.actorId,
       reason,
-      generatedAt: now.toISOString(),
+      generatedAt,
       persistedCount: persisted.length,
       persistedRecordIds: persisted.map((record) => record.id),
+      removedRecordIds,
+      payload,
     };
   }
 
@@ -230,6 +331,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       workingMemory?: MemoryCheckpointSummary;
       roomRouting?: ChatChannelView['roomRouting'];
     };
+    transport?: 'telegram' | 'line' | 'web' | null;
     companionStore: CompanionBoxStore;
     now?: Date;
   }): Promise<MemoryRetrievalContext> {
@@ -254,6 +356,8 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       channelTitle: input.channel.title,
       channelTopic: input.channel.topic,
       workingMemory: input.channel.workingMemory,
+      roomMode: input.channel.roomRouting?.mode ?? null,
+      transport: input.transport ?? null,
       canonicalRecords: [...catRecords, ...ownerRecords, ...channelRecords],
       companionSources: sources,
       companionDerived: derived,
@@ -273,6 +377,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
   async buildChannelRetrievalContext(input: {
     channelId: string;
     catId?: string | null;
+    transport?: 'telegram' | 'line' | 'web' | null;
     companionStore?: CompanionBoxStore;
     now?: Date;
   }): Promise<MemoryRetrievalContext> {
@@ -293,6 +398,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
           workingMemory: channel.workingMemory,
           roomRouting: channel.roomRouting,
         },
+        transport: input.transport ?? null,
         companionStore: input.companionStore,
         now,
       });
@@ -312,6 +418,8 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       channelTitle: channel.title,
       channelTopic: channel.topic,
       workingMemory: channel.workingMemory,
+      roomMode: channel.roomRouting?.mode ?? null,
+      transport: input.transport ?? null,
       canonicalRecords: [...channelRecords, ...ownerRecords],
     });
     await this.memoryStore.touchRecords(

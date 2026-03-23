@@ -128,6 +128,7 @@ test('companion box routes ingest records, persist profile/memory, and expose se
     assert.equal(ingestPayload.source.kind, 'note');
     assert.ok(ingestPayload.derivedRecords.some((record) => record.kind === 'summary'));
     assert.ok(ingestPayload.derivedRecords.some((record) => record.kind === 'traits'));
+    assert.equal(ingestPayload.canonicalSync.status, 'synced');
 
     const patchProfileResponse = await fetch(
       `${baseUrl}/api/cats/${cat.id}/companion-box/response-profile`,
@@ -144,6 +145,7 @@ test('companion box routes ingest records, persist profile/memory, and expose se
     assert.equal(patchProfileResponse.status, 200);
     const patchProfilePayload = await patchProfileResponse.json();
     assert.equal(patchProfilePayload.responseProfile.outputMode, 'tts');
+    assert.equal(patchProfilePayload.canonicalSync.status, 'synced');
 
     const createMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/companion-box/memory`, {
       method: 'POST',
@@ -156,6 +158,8 @@ test('companion box routes ingest records, persist profile/memory, and expose se
       }),
     });
     assert.equal(createMemoryResponse.status, 201);
+    const createMemoryPayload = await createMemoryResponse.json();
+    assert.equal(createMemoryPayload.canonicalSync.status, 'synced');
 
     const summaryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/companion-box`);
     assert.equal(summaryResponse.status, 200);
@@ -176,6 +180,128 @@ test('companion box routes ingest records, persist profile/memory, and expose se
     assert.ok(
       sessionContextPayload.sessionContext.ownerNotes.includes(
         'Prefer short meows and purr-like phrasing.',
+      ),
+    );
+  });
+});
+
+test('companion source update/delete routes converge canonical retrieval and prune stale source lineage', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        roles: ['companion'],
+        skillProfile: 'companion',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const { cat } = await createCatResponse.json();
+
+    const ingestResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/companion-box/sources`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'note',
+        storageMode: 'uploaded_copy',
+        title: 'Morning patrol',
+        textContent: 'Companion watches birds by the window every morning.',
+        metadata: {
+          traits: ['observant'],
+        },
+      }),
+    });
+    assert.equal(ingestResponse.status, 201);
+    const ingestPayload = await ingestResponse.json();
+    assert.equal(ingestPayload.canonicalSync.status, 'synced');
+
+    const createMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/companion-box/memory`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        category: 'fact',
+        content: 'Track the morning patrol habit.',
+        sourceIds: [ingestPayload.source.id],
+      }),
+    });
+    assert.equal(createMemoryResponse.status, 201);
+
+    const initialCanonicalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/canonical`);
+    const initialCanonicalPayload = await initialCanonicalResponse.json();
+    assert.ok(
+      initialCanonicalPayload.records.some((record) =>
+        record.content.includes('window every morning')
+        || record.content.includes('observant'),
+      ),
+    );
+
+    const updateSourceResponse = await fetch(
+      `${baseUrl}/api/cats/${cat.id}/companion-box/sources/${ingestPayload.source.id}`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          textContent: 'Companion now waits on the balcony for pigeon patrol every sunrise.',
+          metadata: {
+            traits: ['balcony-loving'],
+          },
+        }),
+      },
+    );
+    assert.equal(updateSourceResponse.status, 200);
+    const updateSourcePayload = await updateSourceResponse.json();
+    assert.equal(updateSourcePayload.canonicalSync.status, 'synced');
+
+    const updatedCanonicalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/canonical`);
+    const updatedCanonicalPayload = await updatedCanonicalResponse.json();
+    assert.ok(
+      updatedCanonicalPayload.records.some((record) =>
+        record.content.includes('balcony')
+        || record.content.includes('balcony-loving'),
+      ),
+    );
+    assert.ok(
+      updatedCanonicalPayload.records.every((record) =>
+        !record.content.includes('window every morning'),
+      ),
+    );
+
+    const updatedRetrievalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/retrieval-context`);
+    assert.equal(updatedRetrievalResponse.status, 200);
+    const updatedRetrievalPayload = await updatedRetrievalResponse.json();
+    assert.ok(updatedRetrievalPayload.retrieval.facts.some((fact) => fact.includes('balcony')));
+
+    const deleteSourceResponse = await fetch(
+      `${baseUrl}/api/cats/${cat.id}/companion-box/sources/${ingestPayload.source.id}`,
+      {
+        method: 'DELETE',
+      },
+    );
+    assert.equal(deleteSourceResponse.status, 200);
+    const deleteSourcePayload = await deleteSourceResponse.json();
+    assert.equal(deleteSourcePayload.deleted, true);
+    assert.equal(deleteSourcePayload.canonicalSync.status, 'synced');
+    assert.ok(deleteSourcePayload.removedDerivedIds.length > 0);
+    assert.ok(deleteSourcePayload.prunedMemoryIds.length > 0);
+
+    const sourcesResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/companion-box/sources`);
+    const sourcesPayload = await sourcesResponse.json();
+    assert.equal(sourcesPayload.sources.length, 0);
+
+    const memoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/companion-box/memory`);
+    const memoryPayload = await memoryResponse.json();
+    assert.deepEqual(memoryPayload.memory[0].sourceIds, []);
+
+    const finalCanonicalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/canonical`);
+    const finalCanonicalPayload = await finalCanonicalResponse.json();
+    assert.ok(
+      finalCanonicalPayload.records.every((record) =>
+        !record.content.includes('balcony')
+        && !record.content.includes('window every morning'),
       ),
     );
   });
@@ -403,7 +529,15 @@ test('adding the first companion cat to a Recents thread hydrates the cat-led ru
       channelId,
     );
     assert.ok(createdSession.context.metadata.companionSession.retrieval);
-    assert.ok(createdSession.context.metadata.companionSession.retrieval.hits.length > 0);
+    assert.equal(
+      createdSession.context.metadata.companionSession.retrieval.policy.visibility,
+      'shared_room',
+    );
+    assert.ok(
+      createdSession.context.metadata.companionSession.retrieval.excludedMemories.some(
+        (record) => record.reason === 'policy_scope',
+      ),
+    );
   });
 });
 

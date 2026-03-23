@@ -12,6 +12,7 @@ import {
   buildCompanionSourcesDirectoryKey,
 } from '../companion/layout.js';
 import {
+  applyCompanionSourceUpdate,
   applyCompanionResponseProfileUpdate,
   createCompanionBox,
   createCompanionMemoryRecord,
@@ -28,10 +29,13 @@ import type {
   CompanionSessionContext,
   CompanionSnapshot,
   CompanionSourceIngestResult,
+  CompanionSourceUpdateResult,
+  CompanionSourceDeleteResult,
   CompanionSourceRecord,
   CompanionStorageLayout,
   CreateCompanionMemoryInput,
   CreateCompanionSourceInput,
+  UpdateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
 import {
@@ -369,6 +373,70 @@ function listBoxMemory(snapshot: CompanionSnapshot, box: CompanionBox): Companio
   );
 }
 
+function requireSourceRecord(
+  snapshot: CompanionSnapshot,
+  box: CompanionBox,
+  sourceId: string,
+): CompanionSourceRecord {
+  const source = snapshot.sources.find((record) => record.boxId === box.id && record.id === sourceId);
+  if (!source) {
+    throw new Error(`Companion source not found: ${sourceId}`);
+  }
+  return source;
+}
+
+function collectDerivedIdsForSource(
+  snapshot: CompanionSnapshot,
+  box: CompanionBox,
+  sourceId: string,
+): string[] {
+  return snapshot.derived
+    .filter((record) => record.boxId === box.id && record.sourceIds.includes(sourceId))
+    .map((record) => record.id);
+}
+
+function replaceDerivedForSource(
+  snapshot: CompanionSnapshot,
+  box: CompanionBox,
+  sourceId: string,
+  nextDerived: CompanionDerivedRecord[],
+): string[] {
+  const removedDerivedIds = collectDerivedIdsForSource(snapshot, box, sourceId);
+  snapshot.derived = [
+    ...nextDerived,
+    ...snapshot.derived.filter((record) =>
+      !(record.boxId === box.id && record.sourceIds.includes(sourceId)),
+    ),
+  ];
+  box.derivedIds = [
+    ...nextDerived.map((record) => record.id),
+    ...box.derivedIds.filter((id) => !removedDerivedIds.includes(id)),
+  ];
+  return removedDerivedIds;
+}
+
+function pruneMemorySourceRefs(
+  snapshot: CompanionSnapshot,
+  box: CompanionBox,
+  sourceId: string,
+  nowIso: string,
+): string[] {
+  const prunedMemoryIds: string[] = [];
+  snapshot.memory = snapshot.memory.map((record) => {
+    if (record.boxId !== box.id || !record.sourceIds.includes(sourceId)) {
+      return record;
+    }
+    const nextSourceIds = record.sourceIds.filter((candidate) => candidate !== sourceId);
+    prunedMemoryIds.push(record.id);
+    return {
+      ...record,
+      sourceIds: nextSourceIds,
+      updatedAt: nowIso,
+    };
+  });
+  return prunedMemoryIds;
+}
+
 function summarizeBox(
   box: CompanionBox,
   snapshot: CompanionSnapshot,
@@ -445,6 +513,17 @@ export interface CompanionBoxStore {
     input: CreateCompanionSourceInput,
     now?: Date,
   ): Promise<CompanionSourceIngestResult>;
+  updateSource(
+    catId: string,
+    sourceId: string,
+    update: UpdateCompanionSourceInput,
+    now?: Date,
+  ): Promise<CompanionSourceUpdateResult>;
+  deleteSource(
+    catId: string,
+    sourceId: string,
+    now?: Date,
+  ): Promise<CompanionSourceDeleteResult>;
   listDerived(catId: string, now?: Date): Promise<CompanionDerivedRecord[]>;
   listMemory(catId: string, now?: Date): Promise<CompanionMemoryRecord[]>;
   createMemory(
@@ -582,6 +661,109 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
       box: structuredClone(box),
       source: structuredClone(source),
       derivedRecords: structuredClone(derivedRecords),
+    };
+  }
+
+  async updateSource(
+    catId: string,
+    sourceId: string,
+    update: UpdateCompanionSourceInput,
+    now: Date = new Date(),
+  ): Promise<CompanionSourceUpdateResult> {
+    const nowIso = isoAt(now);
+    const snapshot = await this.readOrCreateSnapshot();
+    const snapshotBeforeMutation = cloneSnapshot(snapshot);
+    const { box } = ensureBox(snapshot, catId, nowIso);
+    const source = requireSourceRecord(snapshot, box, sourceId);
+    const nextSource = applyCompanionSourceUpdate(source, update, nowIso);
+    const nextDerived = createDerivedRecordsForSource(box, nextSource, nowIso);
+
+    const sourceIndex = snapshot.sources.findIndex((record) => record.id === sourceId && record.boxId === box.id);
+    snapshot.sources[sourceIndex] = nextSource;
+    replaceDerivedForSource(snapshot, box, sourceId, nextDerived);
+    box.updatedAt = nowIso;
+    snapshot.updatedAt = nowIso;
+
+    try {
+      await this.writeSnapshot(snapshot);
+      await materializeStoredSource(this.snapshotPath, nextSource);
+    } catch (error) {
+      const rollbackErrors: string[] = [];
+      try {
+        await this.writeSnapshot(snapshotBeforeMutation);
+      } catch (rollbackError) {
+        rollbackErrors.push(`snapshot rollback failed: ${describeError(rollbackError)}`);
+      }
+      try {
+        await materializeStoredSource(this.snapshotPath, source);
+      } catch (rollbackError) {
+        rollbackErrors.push(`stored source rollback failed: ${describeError(rollbackError)}`);
+      }
+      if (rollbackErrors.length > 0) {
+        throw new Error(
+          `Failed to update companion source: ${describeError(error)}. ${rollbackErrors.join('; ')}`,
+        );
+      }
+      throw error;
+    }
+
+    return {
+      box: structuredClone(box),
+      source: structuredClone(nextSource),
+      derivedRecords: structuredClone(nextDerived),
+    };
+  }
+
+  async deleteSource(
+    catId: string,
+    sourceId: string,
+    now: Date = new Date(),
+  ): Promise<CompanionSourceDeleteResult> {
+    const nowIso = isoAt(now);
+    const snapshot = await this.readOrCreateSnapshot();
+    const snapshotBeforeMutation = cloneSnapshot(snapshot);
+    const { box } = ensureBox(snapshot, catId, nowIso);
+    const source = requireSourceRecord(snapshot, box, sourceId);
+    const removedDerivedIds = collectDerivedIdsForSource(snapshot, box, sourceId);
+    const prunedMemoryIds = pruneMemorySourceRefs(snapshot, box, sourceId, nowIso);
+
+    snapshot.sources = snapshot.sources.filter((record) => !(record.boxId === box.id && record.id === sourceId));
+    box.sourceIds = box.sourceIds.filter((id) => id !== sourceId);
+    box.derivedIds = box.derivedIds.filter((id) => !removedDerivedIds.includes(id));
+    snapshot.derived = snapshot.derived.filter((record) =>
+      !(record.boxId === box.id && record.sourceIds.includes(sourceId)),
+    );
+    box.updatedAt = nowIso;
+    snapshot.updatedAt = nowIso;
+
+    try {
+      await this.writeSnapshot(snapshot);
+      await removeMaterializedStoredSource(this.snapshotPath, source.storedPath);
+    } catch (error) {
+      const rollbackErrors: string[] = [];
+      try {
+        await this.writeSnapshot(snapshotBeforeMutation);
+      } catch (rollbackError) {
+        rollbackErrors.push(`snapshot rollback failed: ${describeError(rollbackError)}`);
+      }
+      try {
+        await materializeStoredSource(this.snapshotPath, source);
+      } catch (rollbackError) {
+        rollbackErrors.push(`stored source rollback failed: ${describeError(rollbackError)}`);
+      }
+      if (rollbackErrors.length > 0) {
+        throw new Error(
+          `Failed to delete companion source: ${describeError(error)}. ${rollbackErrors.join('; ')}`,
+        );
+      }
+      throw error;
+    }
+
+    return {
+      box: structuredClone(box),
+      sourceId,
+      removedDerivedIds: structuredClone(removedDerivedIds),
+      prunedMemoryIds: structuredClone(prunedMemoryIds),
     };
   }
 
@@ -742,6 +924,62 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
       box: structuredClone(box),
       source: structuredClone(source),
       derivedRecords: structuredClone(derivedRecords),
+    };
+  }
+
+  async updateSource(
+    catId: string,
+    sourceId: string,
+    update: UpdateCompanionSourceInput,
+    now: Date = new Date(),
+  ): Promise<CompanionSourceUpdateResult> {
+    const nowIso = isoAt(now);
+    const { box } = ensureBox(this.snapshot, catId, nowIso);
+    const source = requireSourceRecord(this.snapshot, box, sourceId);
+    const nextSource = applyCompanionSourceUpdate(source, update, nowIso);
+    const nextDerived = createDerivedRecordsForSource(box, nextSource, nowIso);
+    const sourceIndex = this.snapshot.sources.findIndex((record) =>
+      record.id === sourceId && record.boxId === box.id,
+    );
+    this.snapshot.sources[sourceIndex] = nextSource;
+    replaceDerivedForSource(this.snapshot, box, sourceId, nextDerived);
+    box.updatedAt = nowIso;
+    this.snapshot.updatedAt = nowIso;
+
+    return {
+      box: structuredClone(box),
+      source: structuredClone(nextSource),
+      derivedRecords: structuredClone(nextDerived),
+    };
+  }
+
+  async deleteSource(
+    catId: string,
+    sourceId: string,
+    now: Date = new Date(),
+  ): Promise<CompanionSourceDeleteResult> {
+    const nowIso = isoAt(now);
+    const { box } = ensureBox(this.snapshot, catId, nowIso);
+    requireSourceRecord(this.snapshot, box, sourceId);
+    const removedDerivedIds = collectDerivedIdsForSource(this.snapshot, box, sourceId);
+    const prunedMemoryIds = pruneMemorySourceRefs(this.snapshot, box, sourceId, nowIso);
+
+    this.snapshot.sources = this.snapshot.sources.filter((record) =>
+      !(record.boxId === box.id && record.id === sourceId),
+    );
+    this.snapshot.derived = this.snapshot.derived.filter((record) =>
+      !(record.boxId === box.id && record.sourceIds.includes(sourceId)),
+    );
+    box.sourceIds = box.sourceIds.filter((id) => id !== sourceId);
+    box.derivedIds = box.derivedIds.filter((id) => !removedDerivedIds.includes(id));
+    box.updatedAt = nowIso;
+    this.snapshot.updatedAt = nowIso;
+
+    return {
+      box: structuredClone(box),
+      sourceId,
+      removedDerivedIds: structuredClone(removedDerivedIds),
+      prunedMemoryIds: structuredClone(prunedMemoryIds),
     };
   }
 

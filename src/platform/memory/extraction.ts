@@ -11,8 +11,11 @@ import type {
   CompanionSourceRecord,
 } from '../../products/chat/companion/contracts.js';
 import type {
+  CanonicalMemoryLineage,
   CanonicalMemoryRecord,
+  CanonicalMemoryPromotionRule,
   MemoryFlushReason,
+  MemoryVisibility,
 } from './contracts.js';
 import { normalizeWhitespace, tokenize, uniqueStrings } from './utils.js';
 
@@ -35,6 +38,38 @@ function keywordsFrom(value: string, extra: string[] = []): string[] {
   return uniqueStrings([...tokenize(value), ...extra.map((item) => item.toLowerCase())]);
 }
 
+function buildLineage(input: {
+  sourceScopeKeys?: string[];
+  derivedFromIds?: string[];
+  replacementGroup: string;
+}): CanonicalMemoryLineage {
+  return {
+    sourceScopeKeys: uniqueStrings(input.sourceScopeKeys ?? []),
+    derivedFromIds: uniqueStrings(input.derivedFromIds ?? []),
+    replacementGroup: input.replacementGroup,
+  };
+}
+
+function sourceScopeKey(prefix: string, id: string): string {
+  return `${prefix}:${id}`;
+}
+
+function visibilityForSubject(
+  subjectKind: CanonicalMemoryRecord['subjectKind'],
+): MemoryVisibility {
+  switch (subjectKind) {
+    case 'channel':
+      return 'channel_private';
+    case 'relationship':
+    case 'project':
+      return 'shared_room';
+    case 'cat':
+    case 'owner':
+    default:
+      return 'owner_private';
+  }
+}
+
 function baseRecord(input: {
   subjectKind: CanonicalMemoryRecord['subjectKind'];
   subjectId: string;
@@ -46,6 +81,9 @@ function baseRecord(input: {
   keywords?: string[];
   confidence?: number | null;
   sourceRefs?: string[];
+  visibility?: MemoryVisibility;
+  promotionRule: CanonicalMemoryPromotionRule;
+  lineage: CanonicalMemoryLineage;
   originKind: CanonicalMemoryRecord['origin']['kind'];
   boxId?: string | null;
   channelId?: string | null;
@@ -63,6 +101,9 @@ function baseRecord(input: {
     keywords: keywordsFrom(input.content, input.keywords ?? []),
     confidence: input.confidence ?? null,
     sourceRefs: uniqueStrings(input.sourceRefs ?? []),
+    visibility: input.visibility ?? visibilityForSubject(input.subjectKind),
+    promotionRule: input.promotionRule,
+    lineage: structuredClone(input.lineage),
     origin: {
       kind: input.originKind,
       boxId: input.boxId ?? null,
@@ -137,6 +178,11 @@ export function extractCanonicalMemoryFromCompanionBox(input: {
       content: input.responseProfile.notes,
       tags: [input.responseProfile.expressionMode, input.responseProfile.outputMode],
       keywords: [input.responseProfile.expressionMode, input.responseProfile.outputMode],
+      promotionRule: 'companion_response_profile',
+      lineage: buildLineage({
+        sourceScopeKeys: [sourceScopeKey('response-profile', input.box.id)],
+        replacementGroup: `response-profile:${input.box.id}`,
+      }),
       originKind: 'response_profile',
       boxId: input.box.id,
       reason: input.reason,
@@ -153,6 +199,15 @@ export function extractCanonicalMemoryFromCompanionBox(input: {
       content: record.content,
       summary: record.summary,
       sourceRefs: [record.id, ...record.sourceIds],
+      promotionRule: 'companion_curated_memory',
+      lineage: buildLineage({
+        sourceScopeKeys: [
+          sourceScopeKey('companion-memory', record.id),
+          ...record.sourceIds.map((sourceId) => sourceScopeKey('companion-source', sourceId)),
+        ],
+        derivedFromIds: [record.id],
+        replacementGroup: `companion-memory:${record.id}`,
+      }),
       originKind: 'companion_memory',
       boxId: input.box.id,
       reason: input.reason,
@@ -164,6 +219,32 @@ export function extractCanonicalMemoryFromCompanionBox(input: {
     if (!record.content.trim()) {
       continue;
     }
+    let promotionRule: CanonicalMemoryPromotionRule | null = null;
+    switch (record.kind) {
+      case 'traits':
+        promotionRule = 'companion_trait';
+        break;
+      case 'event':
+        promotionRule = 'companion_event';
+        break;
+      case 'relationship_note':
+        promotionRule = 'companion_relationship_note';
+        break;
+      case 'normalized_note':
+        promotionRule = 'companion_normalized_note';
+        break;
+      case 'summary':
+      case 'transcript':
+      case 'caption':
+      case 'tags':
+      case 'metadata':
+      default:
+        promotionRule = null;
+        break;
+    }
+    if (!promotionRule) {
+      continue;
+    }
     records.push(baseRecord({
       subjectKind: 'cat',
       subjectId: input.catId,
@@ -172,6 +253,14 @@ export function extractCanonicalMemoryFromCompanionBox(input: {
       content: record.content,
       tags: record.tags,
       sourceRefs: [record.id, ...record.sourceIds],
+      promotionRule,
+      lineage: buildLineage({
+        sourceScopeKeys: record.sourceIds.map((sourceId) => sourceScopeKey('companion-source', sourceId)),
+        derivedFromIds: [record.id],
+        replacementGroup: record.sourceIds.length > 0
+          ? `companion-source:${record.sourceIds.slice().sort().join('+')}`
+          : `companion-derived:${record.id}`,
+      }),
       originKind: 'companion_derived',
       boxId: input.box.id,
       reason: input.reason,
@@ -180,14 +269,14 @@ export function extractCanonicalMemoryFromCompanionBox(input: {
   }
 
   for (const record of input.sources) {
-    const content = record.ownerNote ?? record.sourceText ?? record.textExcerpt;
+    const content = record.ownerNote;
     if (!content) {
       continue;
     }
     records.push(baseRecord({
       subjectKind: 'cat',
       subjectId: input.catId,
-      category: record.ownerNote ? 'lesson' : 'fact',
+      category: 'lesson',
       title: record.title,
       content,
       sourceRefs: [record.id],
@@ -197,6 +286,11 @@ export function extractCanonicalMemoryFromCompanionBox(input: {
           ? record.metadata.tags.filter((item): item is string => typeof item === 'string')
           : []),
       ]),
+      promotionRule: 'companion_owner_note',
+      lineage: buildLineage({
+        sourceScopeKeys: [sourceScopeKey('companion-source', record.id)],
+        replacementGroup: `companion-source:${record.id}`,
+      }),
       originKind: 'companion_source',
       boxId: input.box.id,
       reason: input.reason,
@@ -225,6 +319,11 @@ export function extractCanonicalMemoryFromChannel(input: {
       content: workingMemory.summary,
       summary: workingMemory.summary,
       keywords: [input.channel.title, input.channel.topic],
+      promotionRule: 'channel_summary',
+      lineage: buildLineage({
+        sourceScopeKeys: [sourceScopeKey('channel-working-memory', input.channel.id)],
+        replacementGroup: `channel-working-memory:${input.channel.id}:summary`,
+      }),
       originKind: 'channel_working_memory',
       channelId: input.channel.id,
       reason: input.reason,
@@ -240,6 +339,11 @@ export function extractCanonicalMemoryFromChannel(input: {
       title: input.channel.title,
       content: fact,
       keywords: [input.channel.title],
+      promotionRule: 'channel_fact',
+      lineage: buildLineage({
+        sourceScopeKeys: [sourceScopeKey('channel-working-memory', input.channel.id)],
+        replacementGroup: `channel-working-memory:${input.channel.id}:fact`,
+      }),
       originKind: 'channel_working_memory',
       channelId: input.channel.id,
       reason: input.reason,
@@ -255,6 +359,11 @@ export function extractCanonicalMemoryFromChannel(input: {
       title: `${input.channel.title} open loop`,
       content: loop,
       keywords: [input.channel.title],
+      promotionRule: 'channel_open_loop',
+      lineage: buildLineage({
+        sourceScopeKeys: [sourceScopeKey('channel-working-memory', input.channel.id)],
+        replacementGroup: `channel-working-memory:${input.channel.id}:open-loop`,
+      }),
       originKind: 'channel_working_memory',
       channelId: input.channel.id,
       reason: input.reason,
@@ -280,6 +389,11 @@ export function extractCanonicalMemoryFromOwnerProfile(input: {
       category: 'fact',
       title: `${input.ownerProfile.displayName} profile`,
       content: input.ownerProfile.summary,
+      promotionRule: 'owner_profile_summary',
+      lineage: buildLineage({
+        sourceScopeKeys: [sourceScopeKey('owner-profile', input.ownerProfile.actorId)],
+        replacementGroup: `owner-profile:${input.ownerProfile.actorId}:summary`,
+      }),
       originKind: 'owner_profile',
       reason: input.reason,
       nowIso,
@@ -293,6 +407,11 @@ export function extractCanonicalMemoryFromOwnerProfile(input: {
       category: 'style',
       title: `${input.ownerProfile.displayName} communication preference`,
       content: preference,
+      promotionRule: 'owner_communication_preference',
+      lineage: buildLineage({
+        sourceScopeKeys: [sourceScopeKey('owner-profile', input.ownerProfile.actorId)],
+        replacementGroup: `owner-profile:${input.ownerProfile.actorId}:communication`,
+      }),
       originKind: 'owner_profile',
       reason: input.reason,
       nowIso,
@@ -306,6 +425,11 @@ export function extractCanonicalMemoryFromOwnerProfile(input: {
       category: 'lesson',
       title: `${input.ownerProfile.displayName} decision preference`,
       content: preference,
+      promotionRule: 'owner_decision_preference',
+      lineage: buildLineage({
+        sourceScopeKeys: [sourceScopeKey('owner-profile', input.ownerProfile.actorId)],
+        replacementGroup: `owner-profile:${input.ownerProfile.actorId}:decision`,
+      }),
       originKind: 'owner_profile',
       reason: input.reason,
       nowIso,
@@ -319,6 +443,11 @@ export function extractCanonicalMemoryFromOwnerProfile(input: {
       category: 'policy',
       title: `${input.ownerProfile.displayName} escalation preference`,
       content: preference,
+      promotionRule: 'owner_escalation_preference',
+      lineage: buildLineage({
+        sourceScopeKeys: [sourceScopeKey('owner-profile', input.ownerProfile.actorId)],
+        replacementGroup: `owner-profile:${input.ownerProfile.actorId}:escalation`,
+      }),
       originKind: 'owner_profile',
       reason: input.reason,
       nowIso,
@@ -329,7 +458,7 @@ export function extractCanonicalMemoryFromOwnerProfile(input: {
 }
 
 export function extractCanonicalMemoryFromDurableMemory(input: {
-  subjectKind: 'cat' | 'owner';
+  subjectKind: 'cat' | 'owner' | 'relationship' | 'project';
   subjectId: string;
   records: DurableMemoryRecord[];
   reason: MemoryFlushReason;
@@ -348,6 +477,15 @@ export function extractCanonicalMemoryFromDurableMemory(input: {
     sourceRefs: [record.id, ...record.sourceRefs],
     tags: ['curated', record.category],
     keywords: [record.category],
+    promotionRule: 'durable_memory',
+    lineage: buildLineage({
+      sourceScopeKeys: [
+        sourceScopeKey('durable-memory', record.id),
+        ...record.sourceRefs.map((sourceRef) => sourceScopeKey('durable-source', sourceRef)),
+      ],
+      derivedFromIds: [record.id],
+      replacementGroup: `durable-memory:${record.id}`,
+    }),
     originKind: 'durable_memory',
     reason: input.reason,
     nowIso,

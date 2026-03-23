@@ -28,6 +28,29 @@ The goal is not to bolt `cats` onto an external RAG service. The goal is to
 make Cats-owned memory strong enough that later archive/vector systems become
 downstream accelerators rather than the canonical source of truth.
 
+## Implementation Snapshot
+
+The current slice now lands the core substrate in-tree:
+
+- `src/platform/memory/*` owns canonical memory contracts, lineage-aware
+  extraction, retrieval assembly, and file-backed persistence
+- durable promotion is now rule-based rather than a raw mirror of every source:
+  curated companion memory, owner notes, stable derived traits/events/
+  relationship notes, response-profile guidance, owner profile, and channel
+  working memory promote into canonical durable records, while lower-signal
+  summaries/transcripts/captions remain supporting evidence
+- canonical records now carry `visibility`, `promotionRule`, and `lineage`
+  (`sourceScopeKeys`, `derivedFromIds`, `replacementGroup`)
+- companion source update/delete now converges derived records, prunes stale
+  source refs from companion memory, and removes stale canonical retrieval hits
+- retrieval payloads now expose `policy`, `selectedMemories`,
+  `supportingEvidence`, `excludedMemories`, and `ownerProfile` so direct
+  companion hydration and later orchestrator flows can consume the same
+  machine-readable contract
+- runtime-facing memory flushes now return a Team 5-ready payload with
+  `removedRecordIds`, `sourceScopeKeys`, and per-record promotion/replacement
+  metadata
+
 ## Context
 
 `SPEC-022` already defines the layered memory model and ownership split:

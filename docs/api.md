@@ -86,6 +86,8 @@ GET  /api/cats/{catId}
 GET   /api/cats/{catId}/companion-box
 GET   /api/cats/{catId}/companion-box/sources
 POST  /api/cats/{catId}/companion-box/sources
+PUT   /api/cats/{catId}/companion-box/sources/{sourceId}
+DELETE /api/cats/{catId}/companion-box/sources/{sourceId}
 GET   /api/cats/{catId}/companion-box/derived
 GET   /api/cats/{catId}/companion-box/memory
 POST  /api/cats/{catId}/companion-box/memory
@@ -104,16 +106,23 @@ shared core and does not move Cat-local storage into `cats-runtime`.
     `sourcesDirectoryKey`)
   - `hasHydrationContext`
 - `POST /api/cats/{catId}/companion-box/sources` ingests one source and returns:
-  - `{ box, source, derivedRecords }`
+  - `{ box, source, derivedRecords, canonicalSync }`
+- `PUT /api/cats/{catId}/companion-box/sources/{sourceId}` updates mutable
+  source fields, regenerates source-owned derived records, and returns:
+  - `{ box, source, derivedRecords, canonicalSync }`
+- `DELETE /api/cats/{catId}/companion-box/sources/{sourceId}` removes the raw
+  source, prunes source-owned derived records, removes stale source refs from
+  companion memory, and returns:
+  - `{ deleted, sourceId, removedDerivedIds, prunedMemoryIds, canonicalSync }`
 - `GET /api/cats/{catId}/companion-box/sources` returns `{ sources: [...] }`
 - `GET /api/cats/{catId}/companion-box/derived` returns `{ derived: [...] }`
 - `GET /api/cats/{catId}/companion-box/memory` returns `{ memory: [...] }`
 - `POST /api/cats/{catId}/companion-box/memory` accepts curated memory writes
-  and returns `{ memory: { ...created } }`
+  and returns `{ memory: { ...created }, canonicalSync }`
 - `GET /api/cats/{catId}/companion-box/response-profile` returns
   `{ responseProfile }`
 - `PATCH /api/cats/{catId}/companion-box/response-profile` updates product-owned
-  response settings and returns `{ responseProfile }`
+  response settings and returns `{ responseProfile, canonicalSync }`
 - `GET /api/cats/{catId}/companion-box/session-context` returns the normalized
   product-owned hydration payload for direct companion sessions
 
@@ -139,8 +148,12 @@ per-source JSON payload under the Cat's storage layout.
 
 `CompanionSessionContext` is now additive and includes a Cats-owned
 `retrieval` block assembled from canonical memory, live companion records,
-owner-profile hints, and room working memory. This keeps retrieval
-product-owned even when runtime/provider continuity changes underneath it.
+owner-profile hints, and room working memory. That retrieval payload now also
+exposes `policy`, `selectedMemories`, `supportingEvidence`,
+`excludedMemories`, and `ownerProfile` so companion and orchestrator callers
+can consume a machine-readable scope/exclusion contract instead of one flat hit
+list. This keeps retrieval product-owned even when runtime/provider continuity
+changes underneath it.
 
 ### Canonical Memory and Retrieval
 
@@ -174,7 +187,8 @@ This slice deliberately separates three related surfaces:
   using source-scoped replacement so deleted/updated notes do not linger as
   stale retrieval hits
 - `/memory/retrieval-context` assembles a runtime-facing retrieval preview from
-  canonical records plus live companion records
+  canonical records plus live companion records, with explicit policy-aware
+  exclusions for shared-room and transport contexts
 
 Supported flush reasons:
 
@@ -188,21 +202,40 @@ Supported flush reasons:
 Canonical-memory records include:
 
 - stable Cats-owned ids
-- subject scope (`cat`, `owner`, `channel`)
+- subject scope (`cat`, `owner`, `channel`; `relationship` / `project`
+  reserved in the canonical contract)
 - durable-memory category
 - normalized content, summary, tags, keywords, and source refs
+- `visibility`
+- `promotionRule`
+- `lineage` with `sourceScopeKeys`, `derivedFromIds`, and
+  `replacementGroup`
 - origin metadata describing how the record was extracted and why it was
   flushed, including curated durable-memory notes synced from the product CRUD
   layer
 
+Flush responses return `{ flush }`, where `flush` also includes:
+
+- `removedRecordIds`
+- `payload.version`
+- `payload.subject`
+- `payload.sourceScopeKeys`
+- `payload.persistedRecords[*].promotionRule`
+- `payload.persistedRecords[*].replacementGroup`
+
 Retrieval-context responses return `{ retrieval }`, where `retrieval` includes:
 
 - `scope` with `catId`, `channelId`, and `includeOwnerProfile`
+- `policy`
 - `query`
 - ranked `hits`
+- `selectedMemories`
+- `supportingEvidence`
+- `excludedMemories`
 - `summary`
 - `facts`
 - `ownerProfileHints`
+- `ownerProfile`
 - `openLoops`
 
 ### Setup
@@ -511,6 +544,13 @@ POST /api/runtime/mcp
   runtime session, resolves Cats-owned `channelId` / `companionSession.catId`
   metadata from the runtime invocation context, and executes the matching
   product-owned flushes with reason `pre_reset` or `pre_compaction`.
+- Each returned flush now carries a machine-readable `payload` with:
+  - `subject`
+  - `sourceScopeKeys`
+  - `removedRecordIds`
+  - `persistedRecords[*].promotionRule`
+  - `persistedRecords[*].replacementGroup`
+  This is the Team 5-ready pre-reset / pre-compaction memory contract.
 - `POST /api/runtime/mcp` proxies raw MCP JSON-RPC requests to the runtime MCP
   facade. This keeps direct product APIs and MCP access available side by side:
   product routes can stay HTTP-native while orchestrator-style agents still use

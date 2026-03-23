@@ -12,6 +12,7 @@ import {
 import type {
   CreateCompanionMemoryInput,
   CreateCompanionSourceInput,
+  UpdateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
 import {
@@ -25,6 +26,32 @@ async function resolveCatContext(context: ChatApiRouteContext, catId: string) {
   const state = await context.dependencies.chatStore.read();
   const cat = requireCat(state, catId);
   return { state, cat };
+}
+
+function reportCanonicalSyncFailure(scope: string, error: unknown): void {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
+}
+
+async function syncCanonicalCompanionMemory(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<
+  | { status: 'synced'; flush: Awaited<ReturnType<ChatApiRouteContext['dependencies']['memoryService']['flushCompanionBox']>> }
+  | { status: 'deferred'; flush: null }
+> {
+  try {
+    const flush = await context.dependencies.memoryService.flushCompanionBox({
+      catId,
+      companionStore: context.dependencies.companionStore,
+      reason: 'manual',
+      now: context.dependencies.now?.(),
+    });
+    return { status: 'synced', flush };
+  } catch (error) {
+    reportCanonicalSyncFailure(`companion:${catId}`, error);
+    return { status: 'deferred', flush: null };
+  }
 }
 
 async function handleGetCompanionBox(
@@ -112,10 +139,116 @@ async function handleCreateCompanionSource(
       return;
     }
     const result = await context.dependencies.companionStore.ingestSource(catId, body);
+    const canonicalSync = await syncCanonicalCompanionMemory(context, catId);
     sendJson(context.response, 201, {
       box: result.box,
       source: result.source,
       derivedRecords: result.derivedRecords,
+      canonicalSync,
+    });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
+function validateUpdateSourceInput(
+  context: ChatApiRouteContext,
+  body: Partial<UpdateCompanionSourceInput>,
+): body is UpdateCompanionSourceInput {
+  const hasChanges = [
+    'title',
+    'ownerNote',
+    'textContent',
+    'linkedPath',
+    'sourceUrl',
+    'mimeType',
+    'originalFileName',
+    'metadata',
+  ].some((key) => Object.hasOwn(body, key));
+  if (!hasChanges) {
+    sendRestError(
+      context,
+      400,
+      'companion_source_update_required',
+      'Companion source updates require at least one mutable field.',
+    );
+    return false;
+  }
+  return true;
+}
+
+async function handleUpdateCompanionSource(
+  context: ChatApiRouteContext,
+  catId: string,
+  sourceId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const existingSources = await context.dependencies.companionStore.listSources(catId);
+    const existingSource = existingSources.find((record) => record.id === sourceId);
+    if (!existingSource) {
+      sendRestError(context, 404, 'companion_source_not_found', `Companion source not found: ${sourceId}`);
+      return;
+    }
+    const body = await readJsonBody<Partial<UpdateCompanionSourceInput>>(context.request);
+    if (!validateUpdateSourceInput(context, body)) {
+      return;
+    }
+    if (
+      existingSource.storageMode === 'linked_path'
+      && body.linkedPath !== undefined
+      && (!body.linkedPath || body.linkedPath.trim().length === 0)
+    ) {
+      sendRestError(
+        context,
+        400,
+        'linked_path_required',
+        'linkedPath is required when updating a linked_path companion source.',
+      );
+      return;
+    }
+    if (existingSource.storageMode !== 'linked_path' && body.linkedPath !== undefined) {
+      sendRestError(
+        context,
+        400,
+        'linked_path_not_supported',
+        'linkedPath can only be updated for linked_path companion sources.',
+      );
+      return;
+    }
+    const result = await context.dependencies.companionStore.updateSource(catId, sourceId, body);
+    const canonicalSync = await syncCanonicalCompanionMemory(context, catId);
+    sendJson(context.response, 200, {
+      box: result.box,
+      source: result.source,
+      derivedRecords: result.derivedRecords,
+      canonicalSync,
+    });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
+async function handleDeleteCompanionSource(
+  context: ChatApiRouteContext,
+  catId: string,
+  sourceId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const existingSources = await context.dependencies.companionStore.listSources(catId);
+    if (!existingSources.some((record) => record.id === sourceId)) {
+      sendRestError(context, 404, 'companion_source_not_found', `Companion source not found: ${sourceId}`);
+      return;
+    }
+    const result = await context.dependencies.companionStore.deleteSource(catId, sourceId);
+    const canonicalSync = await syncCanonicalCompanionMemory(context, catId);
+    sendJson(context.response, 200, {
+      deleted: true,
+      sourceId: result.sourceId,
+      removedDerivedIds: result.removedDerivedIds,
+      prunedMemoryIds: result.prunedMemoryIds,
+      canonicalSync,
     });
   } catch (error) {
     handleCanonicalCatError(context, error);
@@ -180,7 +313,8 @@ async function handleCreateCompanionMemory(
       sourceIds: Array.isArray(body.sourceIds) ? body.sourceIds : [],
       metadata: body.metadata ?? {},
     });
-    sendJson(context.response, 201, { memory });
+    const canonicalSync = await syncCanonicalCompanionMemory(context, catId);
+    sendJson(context.response, 201, { memory, canonicalSync });
   } catch (error) {
     handleCanonicalCatError(context, error);
   }
@@ -228,7 +362,8 @@ async function handleUpdateCompanionResponseProfile(
       catId,
       body,
     );
-    sendJson(context.response, 200, { responseProfile });
+    const canonicalSync = await syncCanonicalCompanionMemory(context, catId);
+    sendJson(context.response, 200, { responseProfile, canonicalSync });
   } catch (error) {
     handleCanonicalCatError(context, error);
   }
@@ -355,6 +490,23 @@ export async function routeCompanionBoxApi(
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  const sourceItemMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/companion-box\/sources\/([^/]+)$/u,
+  );
+  if (sourceItemMatch) {
+    if (context.method === 'PUT') {
+      await handleUpdateCompanionSource(context, sourceItemMatch[0]!, sourceItemMatch[1]!);
+      return true;
+    }
+    if (context.method === 'DELETE') {
+      await handleDeleteCompanionSource(context, sourceItemMatch[0]!, sourceItemMatch[1]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['PUT', 'DELETE']);
     return true;
   }
 

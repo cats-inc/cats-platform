@@ -195,6 +195,17 @@ export interface CreateCompanionSourceInput {
   metadata?: Record<string, unknown>;
 }
 
+export interface UpdateCompanionSourceInput {
+  title?: string | null;
+  ownerNote?: string | null;
+  textContent?: string | null;
+  linkedPath?: string | null;
+  sourceUrl?: string | null;
+  mimeType?: string | null;
+  originalFileName?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
 export interface CreateCompanionMemoryInput {
   category: CompanionMemoryCategory;
   content: string;
@@ -214,6 +225,19 @@ export interface CompanionSourceIngestResult {
   box: CompanionBox;
   source: CompanionSourceRecord;
   derivedRecords: CompanionDerivedRecord[];
+}
+
+export interface CompanionSourceUpdateResult {
+  box: CompanionBox;
+  source: CompanionSourceRecord;
+  derivedRecords: CompanionDerivedRecord[];
+}
+
+export interface CompanionSourceDeleteResult {
+  box: CompanionBox;
+  sourceId: string;
+  removedDerivedIds: string[];
+  prunedMemoryIds: string[];
 }
 
 export interface CompanionSnapshot {

@@ -208,6 +208,13 @@ test('runtime bridge flushes cats-owned memory when runtime inspection advertise
     assert.ok(
       flushPayload.flushes.some((flush) => flush.scope === 'cat' && flush.persistedCount > 0),
     );
+    assert.ok(
+      flushPayload.flushes.every((flush) =>
+        flush.payload
+        && flush.payload.version === 1
+        && Array.isArray(flush.payload.persistedRecords),
+      ),
+    );
   });
 });
 

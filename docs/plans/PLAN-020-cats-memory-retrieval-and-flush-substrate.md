@@ -98,6 +98,9 @@ service to exist first.
   companion records so the embedding/vector seam can stay additive.
 - Treat pre-reset and pre-compaction as explicit flush reasons rather than
   hidden runtime side effects.
+- Promote only stable or curated companion signals into canonical durable
+  memory; keep lower-signal summaries/transcripts/captions as supporting
+  evidence rather than durable truth.
 
 ## Testing Strategy
 
@@ -120,6 +123,7 @@ service to exist first.
 |------|--------|
 | 2026-03-23 | Plan created after the first Cats-owned canonical-memory and retrieval slice landed |
 | 2026-03-23 | Canonical-memory storage, extraction/flush routes, and direct companion retrieval hydration implemented |
+| 2026-03-24 | Source update/delete convergence, promotion-rule metadata, policy-aware retrieval read model, and Team 5-ready flush payloads implemented |
 
 ---
 
