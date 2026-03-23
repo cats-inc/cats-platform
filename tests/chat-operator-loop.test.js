@@ -29,6 +29,13 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
       conversationId: 'conversation-channel-room-1',
       summary: 'Wait for owner approval before dispatch.',
       createdAt: '2026-03-23T01:00:00.000Z',
+      metadata: {
+        effectiveDeliveryMode: 'commit_only',
+        effectiveDeliveryGates: ['owner_approval_required'],
+        effectiveDeliverySource: 'chat_default',
+        effectiveBudgetAlertLevel: 'blocked',
+        effectiveBudgetAlertSource: 'guardrail_state',
+      },
     },
     new Date('2026-03-23T01:00:00.000Z'),
   ).core;
@@ -58,6 +65,18 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
         dispatchCount: 2,
         continuationCount: 1,
         targetCount: 2,
+        workflowStageId: 'parallel_fan_out',
+        workflowShape: 'parallel',
+        branchStates: [
+          {
+            id: 'branch-1',
+            participant: { participantName: 'Agent-1' },
+            status: 'completed',
+            handoffReason: 'explicit_mention',
+            branchStrategy: 'fresh_no_parent',
+            parentCheckpointId: 'checkpoint-room-1',
+          },
+        ],
       },
     },
     new Date('2026-03-23T01:02:00.000Z'),
@@ -155,9 +174,13 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   const inspector = buildRunInspectorView(view, 'run-room-1');
 
   assert.ok(view);
+  assert.equal(view.task?.metadata.effectiveDeliveryMode, 'commit_only');
   assert.equal(view.approvals.length, 1);
   assert.equal(view.runs.length, 1);
   assert.equal(view.guardReason, 'anti_ping_pong');
+  assert.equal(view.effectivePolicy?.deliveryMode, 'commit_only');
+  assert.equal(view.effectivePolicy?.budgetAlertLevel, 'blocked');
+  assert.equal(view.incidentActions.length, 2);
   assert.ok(
     view.activityFeed.some((item) => item.message.includes('Boss Cat requested approval')),
   );
@@ -173,4 +196,8 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   assert.equal(inspector.cooldownLabel, 'Retry after owner review');
   assert.equal(inspector.approvals.length, 1);
   assert.equal(inspector.checkpoints[0].id, 'checkpoint-room-1');
+  assert.equal(inspector.workflowStageId, 'parallel_fan_out');
+  assert.equal(inspector.workflowShape, 'parallel');
+  assert.equal(inspector.branchStates[0].participantName, 'Agent-1');
+  assert.equal(inspector.incidentActions[0].kind, 'retry');
 });

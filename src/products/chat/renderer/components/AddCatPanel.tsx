@@ -5,7 +5,7 @@ import { executionLabel, type CatFormState } from '../chatUtils';
 import { ProviderModelFields } from './ProviderModelFields';
 
 export interface AddCatPanelProps {
-  panelRef?: RefObject<HTMLDivElement | null>;
+  panelRef?: RefObject<HTMLDivElement>;
   selectableCats: ChatCat[];
   assignableCatCount: number;
   addCatTab: 'existing' | 'new';

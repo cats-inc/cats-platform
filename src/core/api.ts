@@ -5,6 +5,7 @@ import {
 import type { CoreStore } from './store.js';
 import type {
   CoreActivityKind,
+  CoreApprovalDecisionAction,
   CoreApprovalBindingKind,
   CoreApprovalBindingSubjectKind,
   CoreApprovalStatus,
@@ -15,6 +16,7 @@ import type {
   CoreProjectStatus,
   CoreRecordMetadata,
   CoreRunStatus,
+  CoreOperatorActionKind,
   CoreTaskStatus,
   CoreTraceKind,
   CoreWorkItemStatus,
@@ -135,10 +137,22 @@ const CORE_ACTIVITY_KINDS = [
   'status_change',
   'approval_requested',
   'approval_decided',
+  'operator_action',
   'artifact_recorded',
   'checkpoint_recorded',
   'work_item_updated',
 ] as const satisfies readonly CoreActivityKind[];
+
+const CORE_APPROVAL_ACTIONS = [
+  'approve',
+  'reroute',
+  'reject',
+] as const satisfies readonly CoreApprovalDecisionAction[];
+
+const CORE_OPERATOR_ACTIONS = [
+  'retry',
+  'acknowledge',
+] as const satisfies readonly CoreOperatorActionKind[];
 
 const CORE_APPROVAL_BINDING_KINDS = [
   'owner_decision',
@@ -491,10 +505,16 @@ async function handleCoreTaskWrite(
                 approval.decidedByActorId,
                 'task.approval.decidedByActorId',
               ),
+              decisionAction: readEnumValue(
+                approval.decisionAction,
+                'task.approval.decisionAction',
+                CORE_APPROVAL_ACTIONS,
+              ),
               notes: readNullableString(approval.notes, 'task.approval.notes'),
             }
           : undefined,
         createdAt: readOptionalString(task.createdAt, 'task.createdAt'),
+        metadata: readMetadata(task.metadata, 'task.metadata'),
       },
     );
     const persisted = await context.dependencies.chatStore.writeCore(next.core);
@@ -895,18 +915,71 @@ async function handleCoreApprovals(
   sendJson(context.response, 200, { approvals: buildApprovalQueue(core) });
 }
 
+function buildApprovalActivityMessage(
+  action: CoreApprovalDecisionAction | null,
+  status: CoreApprovalStatus,
+  taskTitle: string,
+): string {
+  if (status === 'pending') {
+    return `Owner approval requested for "${taskTitle}".`;
+  }
+
+  switch (action) {
+    case 'approve':
+      return `Owner approved "${taskTitle}".`;
+    case 'reroute':
+      return `Owner requested a reroute for "${taskTitle}".`;
+    case 'reject':
+    default:
+      return `Owner rejected "${taskTitle}".`;
+  }
+}
+
+function mergeOperatorActionMetadata(
+  metadata: CoreRecordMetadata,
+  action: CoreOperatorActionKind,
+  actorId: string | null,
+  nowIso: string,
+  notes: string | null,
+): CoreRecordMetadata {
+  const nextMetadata: CoreRecordMetadata = {
+    ...structuredClone(metadata),
+    operatorLastAction: action,
+    operatorLastActionAt: nowIso,
+    operatorLastActionBy: actorId,
+    operatorLastActionNotes: notes,
+  };
+
+  if (action === 'acknowledge') {
+    nextMetadata.operatorAcknowledgedAt = nowIso;
+    nextMetadata.operatorAcknowledgedBy = actorId;
+    nextMetadata.operatorAcknowledgeNotes = notes;
+  }
+
+  if (action === 'retry') {
+    nextMetadata.operatorRetryRequestedAt = nowIso;
+    nextMetadata.operatorRetryRequestedBy = actorId;
+    nextMetadata.operatorRetryNotes = notes;
+  }
+
+  return nextMetadata;
+}
+
 async function handleCoreApprovalWrite(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
   try {
     const approval = await readObjectBody(context);
+    const now = new Date();
+    let nextCore = await context.dependencies.chatStore.readCore();
     const next = writeApprovalDecision(
-      await context.dependencies.chatStore.readCore(),
+      nextCore,
       {
         taskId: readRequiredString(approval.taskId, 'taskId'),
         status:
           readEnumValue(approval.status, 'status', CORE_APPROVAL_STATUSES)
           ?? 'pending',
+        action: readEnumValue(approval.action, 'action', CORE_APPROVAL_ACTIONS),
         requestedByActorId: readNullableString(
           approval.requestedByActorId,
           'requestedByActorId',
@@ -918,17 +991,209 @@ async function handleCoreApprovalWrite(
         notes: readNullableString(approval.notes, 'notes'),
         taskStatus: readEnumValue(approval.taskStatus, 'taskStatus', CORE_TASK_STATUSES),
       },
+      now,
     );
-    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    nextCore = next.core;
+    const activity = appendCoreActivity(
+      nextCore,
+      {
+        kind: next.task.approval.status === 'pending'
+          ? 'approval_requested'
+          : 'approval_decided',
+        actorId: next.task.approval.status === 'pending'
+          ? next.task.orchestratorActorId
+          : next.task.approval.decidedByActorId,
+        conversationId: next.task.conversationId,
+        taskId: next.task.id,
+        runId: null,
+        message: buildApprovalActivityMessage(
+          next.task.approval.decisionAction,
+          next.task.approval.status,
+          next.task.title,
+        ),
+        metadata: {
+          source: 'core-approvals',
+          action: next.task.approval.decisionAction,
+          taskStatus: next.task.status,
+        },
+      },
+      now,
+    );
+    const persisted = await context.dependencies.chatStore.writeCore(activity.core);
     const persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
     const queueItem = buildApprovalQueue(persisted).find(
       (candidate) => candidate.taskId === next.task.id,
     ) ?? null;
+    const persistedActivity = persisted.activities.find(
+      (candidate) => candidate.id === activity.activity.id,
+    ) ?? activity.activity;
 
     sendJson(context.response, 200, {
       task: persistedTask ?? next.task,
       approval: (persistedTask ?? next.task).approval,
       queueItem,
+      activity: persistedActivity,
+    });
+  } catch (error) {
+    handleCoreError(context, error);
+  }
+}
+
+async function handleCoreOperatorActionWrite(
+  context: RouteContext<CoreApiDependencies>,
+): Promise<void> {
+  try {
+    const body = await readObjectBody(context);
+    const action = readEnumValue(body.action, 'action', CORE_OPERATOR_ACTIONS);
+    if (!action) {
+      throw new CoreValidationError('action is required');
+    }
+
+    const actorId = readNullableString(body.actorId, 'actorId') ?? null;
+    const notes = readNullableString(body.notes, 'notes') ?? null;
+    const runId = readNullableString(body.runId, 'runId') ?? null;
+    const checkpointId = readNullableString(body.checkpointId, 'checkpointId') ?? null;
+    const outcomeId = readNullableString(body.outcomeId, 'outcomeId') ?? null;
+    const taskId = readNullableString(body.taskId, 'taskId') ?? null;
+    const now = new Date();
+    const nowIso = now.toISOString();
+    let core = await context.dependencies.chatStore.readCore();
+
+    let conversationId: string | null = null;
+    let resolvedTaskId: string | null = taskId;
+    let resolvedRunId: string | null = runId;
+    let messageSubject = 'the current incident';
+
+    if (runId) {
+      const run = core.runs.find((candidate) => candidate.id === runId);
+      if (!run) {
+        throw new CoreValidationError(`runId not found: ${runId}`, 'run_not_found');
+      }
+      const updatedRun = upsertCoreRun(
+        core,
+        {
+          ...run,
+          metadata: mergeOperatorActionMetadata(run.metadata, action, actorId, nowIso, notes),
+        },
+        now,
+      );
+      core = updatedRun.core;
+      conversationId = run.conversationId;
+      resolvedTaskId = resolvedTaskId ?? run.taskId;
+      messageSubject = run.title;
+    }
+
+    if (checkpointId) {
+      const checkpoint = core.checkpoints.find((candidate) => candidate.id === checkpointId);
+      if (!checkpoint) {
+        throw new CoreValidationError(
+          `checkpointId not found: ${checkpointId}`,
+          'checkpoint_not_found',
+        );
+      }
+      const updatedCheckpoint = upsertCoreCheckpoint(
+        core,
+        {
+          ...checkpoint,
+          metadata: mergeOperatorActionMetadata(
+            checkpoint.metadata,
+            action,
+            actorId,
+            nowIso,
+            notes,
+          ),
+        },
+        now,
+      );
+      core = updatedCheckpoint.core;
+      conversationId = conversationId ?? checkpoint.conversationId;
+      resolvedTaskId = resolvedTaskId ?? checkpoint.taskId;
+      resolvedRunId = resolvedRunId ?? checkpoint.runId;
+      messageSubject = checkpoint.label;
+    }
+
+    if (outcomeId) {
+      const outcome = core.outcomes.find((candidate) => candidate.id === outcomeId);
+      if (!outcome) {
+        throw new CoreValidationError(
+          `outcomeId not found: ${outcomeId}`,
+          'outcome_not_found',
+        );
+      }
+      const updatedOutcome = upsertCoreOutcome(
+        core,
+        {
+          ...outcome,
+          metadata: mergeOperatorActionMetadata(
+            outcome.metadata,
+            action,
+            actorId,
+            nowIso,
+            notes,
+          ),
+        },
+        now,
+      );
+      core = updatedOutcome.core;
+      conversationId = conversationId ?? outcome.conversationId;
+      resolvedTaskId = resolvedTaskId ?? outcome.taskId;
+      resolvedRunId = resolvedRunId ?? outcome.runId;
+      messageSubject = outcome.title;
+    }
+
+    if (taskId) {
+      const task = core.tasks.find((candidate) => candidate.id === taskId);
+      if (!task) {
+        throw new CoreValidationError(`taskId not found: ${taskId}`, 'task_not_found');
+      }
+      const updatedTask = upsertCoreTask(
+        core,
+        {
+          ...task,
+          metadata: mergeOperatorActionMetadata(task.metadata, action, actorId, nowIso, notes),
+        },
+        now,
+      );
+      core = updatedTask.core;
+      conversationId = conversationId ?? task.conversationId;
+      messageSubject = task.title;
+    }
+
+    if (!runId && !checkpointId && !outcomeId && !taskId) {
+      throw new CoreValidationError(
+        'operator action requires at least one subject id',
+        'operator_action_subject_required',
+      );
+    }
+
+    const activity = appendCoreActivity(
+      core,
+      {
+        kind: 'operator_action',
+        actorId,
+        conversationId,
+        taskId: resolvedTaskId,
+        runId: resolvedRunId,
+        message: action === 'retry'
+          ? `Operator requested a retry for "${messageSubject}".`
+          : `Operator acknowledged "${messageSubject}".`,
+        metadata: {
+          source: 'core-operator-actions',
+          action,
+          checkpointId,
+          outcomeId,
+          notes,
+        },
+      },
+      now,
+    );
+    const persisted = await context.dependencies.chatStore.writeCore(activity.core);
+    const persistedActivity = persisted.activities.find(
+      (candidate) => candidate.id === activity.activity.id,
+    ) ?? activity.activity;
+
+    sendJson(context.response, 200, {
+      activity: persistedActivity,
     });
   } catch (error) {
     handleCoreError(context, error);
@@ -1146,6 +1411,15 @@ export async function routeCoreApi(
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/core/operator-actions') {
+    if (context.method === 'POST') {
+      await handleCoreOperatorActionWrite(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['POST']);
     return true;
   }
 

@@ -15,6 +15,9 @@ test('ChatView keeps operator loop surfaces transcript-adjacent', async () => {
   assert.match(source, /RunInspector/u);
   assert.match(source, /operatorRail/u);
   assert.match(source, /operatorSnapshot/u);
+  assert.match(source, /onOperatorAction/u);
+  assert.match(source, /effectivePolicy/u);
+  assert.match(source, /incidentActions/u);
   assert.match(source, /useMemo\(\s*\(\) => buildChatOperatorView/u);
   assert.match(source, /useMemo\(\s*\(\) => buildRunInspectorView/u);
 });

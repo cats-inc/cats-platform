@@ -5,7 +5,7 @@ export interface ApprovalQueuePanelProps {
   approvals: CoreApprovalQueueItem[];
   actorNameById: Record<string, string>;
   busy: string;
-  onDecision: (taskId: string, status: 'approved' | 'rejected') => void;
+  onDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
 }
 
 export function ApprovalQueuePanel({
@@ -51,22 +51,20 @@ export function ApprovalQueuePanel({
                   {approval.notes ? <span>{approval.notes}</span> : null}
                 </div>
                 <div className="operatorActionRow">
-                  <button
-                    className="operatorActionButton operatorActionButtonPrimary"
-                    type="button"
-                    disabled={isBusy}
-                    onClick={() => onDecision(approval.taskId, 'approved')}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    className="operatorActionButton"
-                    type="button"
-                    disabled={isBusy}
-                    onClick={() => onDecision(approval.taskId, 'rejected')}
-                  >
-                    Reject
-                  </button>
+                  {approval.decisionOptions.map((option) => (
+                    <button
+                      key={`${approval.id}:${option.action}`}
+                      className={option.action === 'approve'
+                        ? 'operatorActionButton operatorActionButtonPrimary'
+                        : 'operatorActionButton'}
+                      type="button"
+                      disabled={isBusy}
+                      title={option.description}
+                      onClick={() => onDecision(approval.taskId, option.action)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
               </article>
             );

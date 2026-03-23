@@ -204,9 +204,15 @@ test('explicit multi-target mentions fan out in parallel and persist replies in 
   );
   assert.equal(dispatched.results[0].targetName, 'Agent-2');
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.status, 'completed');
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'parallel');
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.stageId, 'turn_completed');
   assert.deepEqual(
     channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.map((target) => target.status),
     ['completed', 'completed'],
+  );
+  assert.deepEqual(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.map((target) => target.branchStrategy),
+    ['fresh_no_parent', 'fresh_no_parent'],
   );
   assert.ok(
     channel.roomRouting?.workflow.eventHistory.some((event) => event.kind === 'fan_out'),
@@ -266,6 +272,8 @@ test('room routing continues across agent mentions and auto-wakes targeted parti
   );
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.dispatchCount, 3);
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.continuationCount, 2);
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.stageId, 'turn_completed');
   assert.ok(
     channel.roomRouting?.workflow.turnHistory[0]?.events.some(
       (event) => event.kind === 'target_running',
@@ -275,6 +283,13 @@ test('room routing continues across agent mentions and auto-wakes targeted parti
     channel.roomRouting?.workflow.turnHistory[0]?.events.some(
       (event) => event.kind === 'checkpoint'
         && event.metadata.checkpointKind === 'continuation',
+    ),
+  );
+  assert.ok(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.some(
+      (target) =>
+        target.handoffReason === 'workflow_continuation'
+        && target.branchStrategy === 'transplant_context',
     ),
   );
 });

@@ -388,6 +388,130 @@ test('core approval write returns 409 for invalid terminal-to-pending transition
   }, chatStore);
 });
 
+test('core approval write supports reroute actions and records the decision activity', async () => {
+  const chatStore = new MemoryChatStore();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-system-reroute',
+          title: 'Reroute approval contract',
+          status: 'pending_approval',
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const pendingResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-system-reroute',
+        status: 'pending',
+      }),
+    });
+    assert.equal(pendingResponse.status, 200);
+
+    const rerouteResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-system-reroute',
+        status: 'rejected',
+        action: 'reroute',
+        decidedByActorId: 'actor-owner',
+      }),
+    });
+    assert.equal(rerouteResponse.status, 200);
+    const reroutePayload = await rerouteResponse.json();
+    assert.equal(reroutePayload.task.status, 'draft');
+    assert.equal(reroutePayload.approval.status, 'rejected');
+    assert.equal(reroutePayload.approval.decisionAction, 'reroute');
+    assert.equal(reroutePayload.activity.kind, 'approval_decided');
+    assert.match(reroutePayload.activity.message, /requested a reroute/i);
+  }, chatStore);
+});
+
+test('core operator actions annotate blocked runs and append operator activity records', async () => {
+  const chatStore = new MemoryChatStore();
+  const fixtures = createSharedCoreFixtureBundle();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ task: fixtures.task }),
+    });
+    await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          ...fixtures.run,
+          status: 'blocked',
+        },
+      }),
+    });
+    await fetch(`${baseUrl}/api/core/checkpoints`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ checkpoint: fixtures.checkpoint }),
+    });
+    await fetch(`${baseUrl}/api/core/outcomes`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ outcome: fixtures.outcome }),
+    });
+
+    const operatorActionResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'retry',
+        actorId: 'actor-owner',
+        taskId: fixtures.task.id,
+        runId: fixtures.run.id,
+        checkpointId: fixtures.checkpoint.id,
+        outcomeId: fixtures.outcome.id,
+      }),
+    });
+    assert.equal(operatorActionResponse.status, 200);
+
+    const stateResponse = await fetch(`${baseUrl}/api/core`);
+    const statePayload = await stateResponse.json();
+    const run = statePayload.runs.find((candidate) => candidate.id === fixtures.run.id);
+    const activity = statePayload.activities.find(
+      (candidate) =>
+        candidate.kind === 'operator_action'
+        && candidate.runId === fixtures.run.id,
+    );
+
+    assert.equal(run.metadata.operatorRetryRequestedBy, 'actor-owner');
+    assert.ok(typeof run.metadata.operatorRetryRequestedAt === 'string');
+    assert.ok(activity);
+    assert.equal(activity.metadata.action, 'retry');
+  }, chatStore);
+});
+
 test('core artifact and activity writes enforce non-negative sizeBytes and append-only ids', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

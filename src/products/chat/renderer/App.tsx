@@ -43,6 +43,7 @@ import {
   updateSelectedChannel,
   uploadChannelAttachments,
   writeCoreApprovalDecision,
+  writeCoreOperatorAction,
 } from './api';
 
 import {
@@ -447,17 +448,18 @@ export default function App() {
 
   async function onApprovalDecision(
     taskId: string,
-    status: 'approved' | 'rejected',
+    action: 'approve' | 'reroute' | 'reject',
   ): Promise<void> {
     if (!operatorState.snapshot) {
       return;
     }
 
-    setBusy(`approval:${taskId}:${status}`);
+    setBusy(`approval:${taskId}:${action}`);
     try {
       const snapshot = await writeCoreApprovalDecision({
         taskId,
-        status,
+        status: action === 'approve' ? 'approved' : 'rejected',
+        action,
         decidedByActorId: operatorState.snapshot.core.ownerProfile.actorId,
       });
       startTransition(() => {
@@ -470,6 +472,39 @@ export default function App() {
       });
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to update approval.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function onOperatorAction(input: {
+    action: 'retry' | 'acknowledge';
+    taskId?: string | null;
+    runId?: string | null;
+    checkpointId?: string | null;
+    outcomeId?: string | null;
+  }): Promise<void> {
+    if (!operatorState.snapshot) {
+      return;
+    }
+
+    const busyKey = input.runId ?? input.taskId ?? input.checkpointId ?? input.outcomeId ?? 'global';
+    setBusy(`operator-action:${input.action}:${busyKey}`);
+    try {
+      const snapshot = await writeCoreOperatorAction({
+        ...input,
+        actorId: operatorState.snapshot.core.ownerProfile.actorId,
+      });
+      startTransition(() => {
+        setOperatorState({
+          status: 'ready',
+          snapshot,
+          message: '',
+        });
+        setFeedback('');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to record operator action.');
     } finally {
       setBusy('');
     }
@@ -970,6 +1005,7 @@ export default function App() {
                 onChannelFileSelect={() => { channelFileInputRef.current?.click(); setChannelPlusMenuOpen(false); }}
                 onChannelFilesChange={setChannelFiles}
                 onApprovalDecision={(taskId, status) => void onApprovalDecision(taskId, status)}
+                onOperatorAction={(input) => void onOperatorAction(input)}
                 autoResize={autoResize}
               />
             ) : (

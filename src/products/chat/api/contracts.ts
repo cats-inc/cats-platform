@@ -111,7 +111,19 @@ export type RoomWorkflowTargetStatus =
   | 'running'
   | 'completed'
   | 'failed'
-  | 'blocked';
+  | 'blocked'
+  | 'cancelled'
+  | 'waiting_for_converge';
+
+export type RoomWorkflowShape =
+  | 'sequential'
+  | 'parallel'
+  | 'converge';
+
+export type RoomWorkflowBranchStrategy =
+  | 'fork_if_possible'
+  | 'transplant_context'
+  | 'fresh_no_parent';
 
 export type RoomWakeTrigger = 'room_entry' | 'route_target';
 
@@ -120,6 +132,11 @@ export type RoomWakeReason =
   | 'room_default'
   | 'explicit_mention'
   | 'workflow_continuation';
+
+export type RoomWorkflowHandoffReason =
+  | RoomWakeReason
+  | 'operator_reroute'
+  | 'runtime_retry';
 
 export type RoomWakeRequestStatus = 'skipped' | 'completed' | 'failed';
 
@@ -225,6 +242,9 @@ export interface RoomWorkflowTargetState {
   trigger: RoomRoutingTrigger;
   mentionNames: string[];
   depth: number;
+  parentCheckpointId: string | null;
+  branchStrategy: RoomWorkflowBranchStrategy | null;
+  handoffReason: RoomWorkflowHandoffReason | null;
   wakeRequestId: string | null;
   status: RoomWorkflowTargetStatus;
   queuedAt: string;
@@ -257,6 +277,11 @@ export interface RoomWorkflowTurn {
   sourceSenderKind: ChatMessageSenderKind;
   sourceSenderName: string;
   guard: RoomRoutingGuardReason;
+  stageId: string;
+  workflowShape: RoomWorkflowShape;
+  reviewRequired: boolean;
+  lastCheckpointId: string | null;
+  convergeTargetId: string | null;
   continuationCount: number;
   dispatchCount: number;
   targetStatuses: RoomWorkflowTargetState[];

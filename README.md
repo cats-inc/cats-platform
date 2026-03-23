@@ -26,7 +26,8 @@ The current slices are:
 - `My Cats` private-lane entry that reopens an existing direct room or opens a
   direct draft lane when needed
 - a transcript-adjacent operator loop with pending approvals, progress,
-  activity, trace, and run inspection surfaces
+  activity, trace, run inspection, reroute/retry/acknowledge action seams, and
+  effective delivery/budget policy summaries
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
   and direct companion-session hydration metadata
@@ -66,8 +67,8 @@ several Phase 3 items remain:
 - split-view chat surfaces for preview/debug context
 - polling-first Telegram onboarding so bot-token setup does not require public
   ingress by default
-- deeper owner approval semantics, acknowledge/retry hooks, automatic resume
-  after decisions, and richer live runtime state
+- automatic resume after owner or incident decisions, richer live runtime
+  state, and stronger closed-loop orchestration beyond the current action seams
 - richer first-run remediation and packaged onboarding beyond the current
   three-screen setup flow
 - offline transcript normalization and ingestion handoff hooks

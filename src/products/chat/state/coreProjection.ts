@@ -11,6 +11,7 @@ import type {
   CoreConversationRecord,
   CoreConversationStatus,
   CoreOrchestrationOutcomeRecord,
+  CoreRecordMetadata,
   CoreTaskRecord,
   CoreTaskStatus,
   CoreTraceKind,
@@ -57,6 +58,66 @@ function mapChannelStatusToTaskStatus(channel: ChatChannelState): CoreTaskStatus
     return 'archived';
   }
   return 'draft';
+}
+
+function latestWorkflowTurn(channel: ChatChannelState): RoomWorkflowTurn | null {
+  const workflow = channel.roomRouting?.workflow;
+  return workflow?.activeTurn ?? workflow?.turnHistory[0] ?? null;
+}
+
+function buildChannelTaskMetadata(
+  channel: ChatChannelState,
+  existingTask: CoreTaskRecord | null,
+): CoreRecordMetadata {
+  const latestTurn = latestWorkflowTurn(channel);
+  const roomRouting = channel.roomRouting;
+  const pendingApproval = existingTask?.approval.status === 'pending';
+  const effectiveDeliveryMode = channel.repoPath ? 'commit_only' : 'artifact_only';
+  const effectiveDeliverySource = roomRouting?.mode === 'direct_cat_chat'
+    ? 'room_tightening'
+    : 'chat_default';
+  const deliveryGates = [
+    ...(pendingApproval ? ['owner_approval_required'] : []),
+    ...(latestTurn?.reviewRequired ? ['manual_review_required'] : []),
+  ];
+  const effectiveBudgetAlertLevel = roomRouting?.lastOutcome?.guard
+    ? 'blocked'
+    : roomRouting?.lastWakeRequest?.status === 'failed'
+      ? 'warning'
+      : 'normal';
+  const effectiveBudgetAlertSource = roomRouting?.lastOutcome?.guard
+    ? 'guardrail_state'
+    : roomRouting?.lastWakeRequest?.status === 'failed'
+      ? 'rate_limit_incident'
+      : null;
+
+  return {
+    ...structuredClone(existingTask?.metadata ?? {}),
+    source: 'chat-channel',
+    channelId: channel.id,
+    roomRoutingMode: roomRouting?.mode ?? 'boss_chat',
+    workflowStageId: latestTurn?.stageId ?? null,
+    workflowShape: latestTurn?.workflowShape ?? null,
+    workflowLastCheckpointId:
+      latestTurn?.lastCheckpointId
+      ?? roomRouting?.lastCheckpoint?.id
+      ?? null,
+    workflowReviewRequired: latestTurn?.reviewRequired ?? false,
+    workflowConvergeTargetId: latestTurn?.convergeTargetId ?? null,
+    effectiveDeliveryMode,
+    effectiveDeliveryGates: deliveryGates,
+    effectiveDeliverySource,
+    effectiveDeliveryRationale: channel.repoPath
+      ? 'Repo-backed chats default to commit-only delivery.'
+      : 'Chats without a repo default to artifact-only delivery.',
+    effectiveBudgetAlertLevel,
+    effectiveBudgetAlertSource,
+    effectiveBudgetRationale: roomRouting?.lastOutcome?.guard
+      ? `Blocked by ${roomRouting.lastOutcome.guard}.`
+      : roomRouting?.lastWakeRequest?.status === 'failed'
+        ? 'Recent wake failures may require operator review.'
+        : 'No active budget or runtime guardrail alerts.',
+  };
 }
 
 function createOwnerActor(ownerProfile: OwnerProfileRecord): CoreActorRecord {
@@ -155,6 +216,7 @@ function createTaskFromChannel(
     requestedAt: null,
     decidedAt: null,
     decidedByActorId: null,
+    decisionAction: null,
     notes: null,
   };
   const status = derivedStatus === 'in_progress' || derivedStatus === 'archived'
@@ -173,6 +235,7 @@ function createTaskFromChannel(
     approval,
     createdAt: channel.createdAt,
     updatedAt: channel.updatedAt,
+    metadata: buildChannelTaskMetadata(channel, existingTask),
   };
 }
 
@@ -335,6 +398,12 @@ function createWorkflowRun(
       channelId: channel.id,
       turnId: turn.id,
       guard: turn.guard,
+      workflowStageId: turn.stageId,
+      workflowShape: turn.workflowShape,
+      workflowLastCheckpointId: turn.lastCheckpointId,
+      workflowReviewRequired: turn.reviewRequired,
+      workflowConvergeTargetId: turn.convergeTargetId,
+      branchStates: structuredClone(turn.targetStatuses),
       continuationCount: turn.continuationCount,
       dispatchCount: turn.dispatchCount,
       targetCount: turn.targetStatuses.length,
@@ -393,6 +462,8 @@ function createWorkflowCheckpoint(
       turnId: turn.id,
       eventKind: event.kind,
       checkpointKind: event.metadata.checkpointKind ?? null,
+      workflowStageId: turn.stageId,
+      workflowShape: turn.workflowShape,
       ...structuredClone(event.metadata),
     },
   };
@@ -419,6 +490,10 @@ function createWorkflowOutcome(
       turnId: turn.id,
       eventStatus: event.status,
       guard: turn.guard,
+      workflowStageId: turn.stageId,
+      workflowShape: turn.workflowShape,
+      workflowLastCheckpointId: turn.lastCheckpointId,
+      branchStates: structuredClone(turn.targetStatuses),
       continuationCount: turn.continuationCount,
       dispatchCount: turn.dispatchCount,
       ...structuredClone(event.metadata),
@@ -469,6 +544,8 @@ function createWorkflowActivity(
       turnId: turn.id,
       eventKind: event.kind,
       eventStatus: event.status,
+      workflowStageId: turn.stageId,
+      workflowShape: turn.workflowShape,
       ...structuredClone(event.metadata),
     },
   };

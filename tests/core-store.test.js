@@ -252,6 +252,7 @@ test('writeApprovalDecision preserves the first terminal decision timestamp and 
 
   const firstDecisionAt = core.tasks[0].approval.decidedAt;
   assert.equal(firstDecisionAt, '2026-03-21T01:02:00.000Z');
+  assert.equal(core.tasks[0].approval.decisionAction, 'approve');
 
   core = writeApprovalDecision(
     core,
@@ -307,6 +308,45 @@ test('writeApprovalDecision preserves the first terminal decision timestamp and 
 
   assert.equal(rejectedCore.tasks[0].status, 'pending_approval');
   assert.equal(rejectedCore.tasks[0].approval.status, 'rejected');
+  assert.equal(rejectedCore.tasks[0].approval.decisionAction, 'reject');
+});
+
+test('writeApprovalDecision supports reroute as a rejected draft-seeking approval action', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-system-reroute',
+      title: 'Reroute this plan',
+      status: 'pending_approval',
+    },
+    new Date('2026-03-21T01:10:00.000Z'),
+  ).core;
+
+  core = writeApprovalDecision(
+    core,
+    {
+      taskId: 'task-system-reroute',
+      status: 'pending',
+    },
+    new Date('2026-03-21T01:11:00.000Z'),
+  ).core;
+
+  core = writeApprovalDecision(
+    core,
+    {
+      taskId: 'task-system-reroute',
+      status: 'rejected',
+      action: 'reroute',
+      decidedByActorId: 'actor-owner',
+    },
+    new Date('2026-03-21T01:12:00.000Z'),
+  ).core;
+
+  assert.equal(core.tasks[0].status, 'draft');
+  assert.equal(core.tasks[0].approval.status, 'rejected');
+  assert.equal(core.tasks[0].approval.decisionAction, 'reroute');
 });
 
 test('upsertCoreCheckpoint keeps completed checkpoints consistent with completedAt', () => {

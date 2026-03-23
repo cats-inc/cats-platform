@@ -15,8 +15,9 @@ chat-core tests. Current regression coverage also targets chat-entry wake
 behavior through explicit selection mutations, read-only app-shell boot
 semantics, direct-cat default routing, re-wake flows for sleeping room
 participants, transcript-adjacent operator-loop wiring, conversation-scoped
-approval/run selection, and chat-workflow activity projection into the shared
-core read model.
+approval/run selection, pre-dispatch reroute actions, retry/acknowledge
+operator seams, room-workflow branch metadata, effective policy summaries, and
+chat-workflow activity projection into the shared core read model.
 
 ## Test Types
 
@@ -40,8 +41,8 @@ core read model.
 - **Location**: `src/renderer/**` or `tests/ui/`
 - **Framework**: TBD
 - **Scope**: Channel switching, runtime banners, orchestrator shell behavior,
-  and richer operator-loop interactions such as approve/reject forms and
-  run-inspector DOM behavior
+  and richer operator-loop interactions such as generic approval action
+  options, retry/acknowledge controls, and run-inspector DOM behavior
 
 ## Running Tests
 

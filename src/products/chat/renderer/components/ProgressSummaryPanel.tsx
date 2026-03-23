@@ -1,4 +1,8 @@
-import type { ChatRunInspectorView } from '../../shared/operatorLoop';
+import type {
+  ChatEffectivePolicyView,
+  ChatOperatorActionView,
+  ChatRunInspectorView,
+} from '../../shared/operatorLoop';
 import {
   formatOperatorTimestamp,
   operatorSeverityClassName,
@@ -8,18 +12,30 @@ import {
 
 export interface ProgressSummaryPanelProps {
   inspector: ChatRunInspectorView | null;
+  effectivePolicy: ChatEffectivePolicyView | null;
+  incidentActions: ChatOperatorActionView[];
   pendingApprovalCount: number;
   guardReason: string | null;
   cooldownLabel: string | null;
   onInspectRun: (runId: string) => void;
+  onOperatorAction: (input: {
+    action: 'retry' | 'acknowledge';
+    taskId?: string | null;
+    runId?: string | null;
+    checkpointId?: string | null;
+    outcomeId?: string | null;
+  }) => void;
 }
 
 export function ProgressSummaryPanel({
   inspector,
+  effectivePolicy,
+  incidentActions,
   pendingApprovalCount,
   guardReason,
   cooldownLabel,
   onInspectRun,
+  onOperatorAction,
 }: ProgressSummaryPanelProps) {
   return (
     <section className="operatorPanel">
@@ -65,6 +81,26 @@ export function ProgressSummaryPanel({
               <span>Updated {formatOperatorTimestamp(inspector.run.updatedAt)}</span>
               <span>{pendingApprovalCount} approval{pendingApprovalCount === 1 ? '' : 's'} pending</span>
             </div>
+            {inspector.workflowStageId || inspector.workflowShape ? (
+              <div className="operatorMetaRow">
+                {inspector.workflowStageId ? <span>Stage: {inspector.workflowStageId}</span> : null}
+                {inspector.workflowShape ? <span>Shape: {inspector.workflowShape}</span> : null}
+                {inspector.reviewRequired ? <span>Review required</span> : null}
+              </div>
+            ) : null}
+            {effectivePolicy ? (
+              <div className="operatorMetaRow">
+                {effectivePolicy.deliveryMode ? (
+                  <span>Delivery: {effectivePolicy.deliveryMode}</span>
+                ) : null}
+                {effectivePolicy.deliveryGates.length > 0 ? (
+                  <span>Gates: {effectivePolicy.deliveryGates.join(', ')}</span>
+                ) : null}
+                {effectivePolicy.budgetAlertLevel ? (
+                  <span>Budget: {effectivePolicy.budgetAlertLevel}</span>
+                ) : null}
+              </div>
+            ) : null}
             {guardReason ? (
               <div className="operatorCallout operatorCalloutAttention">
                 Guardrail: {guardReason}
@@ -83,7 +119,36 @@ export function ProgressSummaryPanel({
               >
                 Inspect run
               </button>
+              {incidentActions.map((action) => (
+                <button
+                  key={`${action.kind}:${action.runId ?? action.taskId ?? action.checkpointId ?? action.outcomeId ?? 'global'}`}
+                  className={action.kind === 'retry'
+                    ? 'operatorActionButton operatorActionButtonPrimary'
+                    : 'operatorActionButton'}
+                  type="button"
+                  disabled={action.disabled}
+                  title={action.description}
+                  onClick={() => onOperatorAction({
+                    action: action.kind,
+                    taskId: action.taskId,
+                    runId: action.runId,
+                    checkpointId: action.checkpointId,
+                    outcomeId: action.outcomeId,
+                  })}
+                >
+                  {action.label}
+                </button>
+              ))}
             </div>
+            {incidentActions.some((action) => action.statusLabel) ? (
+              <div className="operatorMetaRow">
+                {incidentActions
+                  .filter((action) => action.statusLabel)
+                  .map((action) => (
+                    <span key={`status:${action.kind}`}>{action.statusLabel}</span>
+                  ))}
+              </div>
+            ) : null}
           </article>
         </div>
       )}

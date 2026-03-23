@@ -275,6 +275,14 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
     ['workflow_continuation', 'room_default'],
   );
   assert.ok(core.runs.some((run) => run.id.startsWith(`run-room-routing-${channelId}-`)));
+  assert.ok(
+    core.runs.some(
+      (run) =>
+        run.id.startsWith(`run-room-routing-${channelId}-`)
+        && run.metadata.workflowShape === 'sequential'
+        && Array.isArray(run.metadata.branchStates),
+    ),
+  );
   assert.ok(core.traces.some((trace) => trace.id.startsWith('trace-room-routing-')));
   assert.ok(
     core.checkpoints.some(
@@ -292,6 +300,14 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
     core.activities.some(
       (activity) => activity.id.startsWith('activity-room-routing-')
         && activity.conversationId === `conversation-channel-${channelId}`,
+    ),
+  );
+  assert.ok(
+    core.tasks.some(
+      (task) =>
+        task.id === `task-channel-${channelId}`
+        && task.metadata.effectiveDeliveryMode === 'artifact_only'
+        && task.metadata.effectiveBudgetAlertLevel === 'normal',
     ),
   );
 });

@@ -13,7 +13,10 @@ import type {
   RoomRoutingState,
   RoomRoutingTrigger,
   RoomWorkflowEvent,
+  RoomWorkflowBranchStrategy,
   RoomWorkflowEventKind,
+  RoomWorkflowHandoffReason,
+  RoomWorkflowShape,
   RoomWorkflowState,
   RoomWorkflowStatus,
   RoomWorkflowTargetState,
@@ -99,6 +102,9 @@ interface DispatchRequest extends DispatchFrame {
   target: RoutingTarget;
   dispatchId: string;
   targetStateId: string;
+  parentCheckpointId: string | null;
+  branchStrategy: RoomWorkflowBranchStrategy | null;
+  handoffReason: RoomWorkflowHandoffReason | null;
 }
 
 interface DispatchExecution extends DispatchRequest {
@@ -535,6 +541,46 @@ function mergeUnresolvedMentions(outcome: RoomRoutingOutcome, mentions: string[]
   }
 }
 
+function workflowShapeForTargets(targetCount: number): RoomWorkflowShape {
+  return targetCount > 1 ? 'parallel' : 'sequential';
+}
+
+function workflowStageIdForTrigger(trigger: RoomRoutingTrigger): string {
+  switch (trigger) {
+    case 'explicit_mention':
+      return 'explicit_dispatch';
+    case 'continuation_mention':
+      return 'continuation_handoff';
+    case 'room_default':
+    default:
+      return 'default_dispatch';
+  }
+}
+
+function resolveWorkflowHandoffReason(trigger: RoomRoutingTrigger): RoomWorkflowHandoffReason {
+  switch (trigger) {
+    case 'explicit_mention':
+      return 'explicit_mention';
+    case 'continuation_mention':
+      return 'workflow_continuation';
+    case 'room_default':
+    default:
+      return 'room_default';
+  }
+}
+
+function resolveWorkflowBranchStrategy(
+  sourceParticipant: RoomRoutingParticipantRef | null,
+  target: RoutingTarget,
+  depth: number,
+): RoomWorkflowBranchStrategy {
+  if (depth > 0 && sourceParticipant && sourceParticipant.participantId !== target.participantId) {
+    return 'transplant_context';
+  }
+
+  return 'fresh_no_parent';
+}
+
 function createRoutingOutcome(
   channel: ChatChannelView,
   sourceMessage: ChatMessage,
@@ -586,6 +632,8 @@ function addCheckpoint(
 function createWorkflowTurn(
   sourceMessage: ChatMessage,
   nowIso: string,
+  stageId: string,
+  workflowShape: RoomWorkflowShape,
 ): RoomWorkflowTurn {
   return {
     id: randomUUID(),
@@ -594,6 +642,11 @@ function createWorkflowTurn(
     sourceSenderKind: sourceMessage.senderKind,
     sourceSenderName: sourceMessage.senderName,
     guard: null,
+    stageId,
+    workflowShape,
+    reviewRequired: false,
+    lastCheckpointId: null,
+    convergeTargetId: null,
     continuationCount: 0,
     dispatchCount: 0,
     targetStatuses: [],
@@ -675,6 +728,9 @@ function queueWorkflowTarget(
     trigger: request.trigger,
     mentionNames: structuredClone(request.mentionNames),
     depth: request.depth,
+    parentCheckpointId: request.parentCheckpointId,
+    branchStrategy: request.branchStrategy,
+    handoffReason: request.handoffReason,
     wakeRequestId: null,
     status: 'pending',
     queuedAt: nowIso,
@@ -719,6 +775,15 @@ function updateWorkflowTarget(
   }
   if (update.depth !== undefined) {
     targetStatus.depth = update.depth;
+  }
+  if (update.parentCheckpointId !== undefined) {
+    targetStatus.parentCheckpointId = update.parentCheckpointId;
+  }
+  if (update.branchStrategy !== undefined) {
+    targetStatus.branchStrategy = update.branchStrategy;
+  }
+  if (update.handoffReason !== undefined) {
+    targetStatus.handoffReason = update.handoffReason;
   }
   if (update.wakeRequestId !== undefined) {
     targetStatus.wakeRequestId = update.wakeRequestId;
@@ -965,11 +1030,14 @@ function addWorkflowCheckpoint(
         checkpointId: checkpoint.id,
         metadata: {
           checkpointKind: kind,
+          workflowStageId: turn.stageId,
+          workflowShape: turn.workflowShape,
           ...metadata,
         },
       },
     ),
   );
+  turn.lastCheckpointId = checkpoint.id;
   return checkpoint;
 }
 
@@ -1797,7 +1865,12 @@ export async function routeChannelMessage(
   const maxTargetVisits =
     baseRoomRouting.maxTargetVisitsPerTurn ?? DEFAULT_MAX_ROUTING_TARGET_VISITS;
   const outcome = createRoutingOutcome(channelAfterUserMessage, userMessage, initialResolution, nowIso);
-  const activeTurn = createWorkflowTurn(userMessage, nowIso);
+  const activeTurn = createWorkflowTurn(
+    userMessage,
+    nowIso,
+    workflowStageIdForTrigger(initialResolution.trigger),
+    workflowShapeForTargets(initialResolution.targets.length),
+  );
   activeTurn.id = outcome.turnId;
   workflow.activeTurn = activeTurn;
   appendWorkflowEvent(
@@ -1815,6 +1888,8 @@ export async function routeChannelMessage(
       {
         metadata: {
           trigger: initialResolution.trigger,
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
           selectionKind: initialResolution.resolution.selectionKind,
           defaultTargetReason: initialResolution.resolution.defaultTargetReason,
           blockedReason: initialResolution.resolution.blockedReason,
@@ -1873,6 +1948,7 @@ export async function routeChannelMessage(
     outcome.status = 'blocked';
     outcome.completedAt = nowIso;
     activeTurn.status = 'blocked';
+    activeTurn.stageId = 'blocked';
     activeTurn.completedAt = nowIso;
     activeTurn.updatedAt = nowIso;
     nextState = appendMessage(
@@ -1907,6 +1983,8 @@ export async function routeChannelMessage(
         {
           outcomeId: randomUUID(),
           metadata: {
+            workflowStageId: activeTurn.stageId,
+            workflowShape: activeTurn.workflowShape,
             status: 'blocked',
             blockedReason: outcome.resolution.blockedReason,
           },
@@ -1970,6 +2048,13 @@ export async function routeChannelMessage(
         target,
         dispatchId: randomUUID(),
         targetStateId: randomUUID(),
+        parentCheckpointId: latestCheckpoint?.id ?? null,
+        branchStrategy: resolveWorkflowBranchStrategy(
+          frame.sourceParticipant,
+          target,
+          frame.depth,
+        ),
+        handoffReason: resolveWorkflowHandoffReason(frame.trigger),
       };
       createPendingDispatch(outcome, request, nowIso);
       queueWorkflowTarget(activeTurn, request, nowIso);
@@ -1990,6 +2075,9 @@ export async function routeChannelMessage(
             metadata: {
               depth: frame.depth,
               trigger: frame.trigger,
+              parentCheckpointId: request.parentCheckpointId,
+              branchStrategy: request.branchStrategy,
+              handoffReason: request.handoffReason,
               mentionNames: structuredClone(frame.mentionNames),
             },
           },
@@ -2025,6 +2113,9 @@ export async function routeChannelMessage(
               dispatchId: request.dispatchId,
               metadata: {
                 reason: 'max_target_visits',
+                parentCheckpointId: request.parentCheckpointId,
+                branchStrategy: request.branchStrategy,
+                handoffReason: request.handoffReason,
               },
             },
           ),
@@ -2090,6 +2181,9 @@ export async function routeChannelMessage(
               dispatchId: request.dispatchId,
               metadata: {
                 reason: 'anti_ping_pong',
+                parentCheckpointId: request.parentCheckpointId,
+                branchStrategy: request.branchStrategy,
+                handoffReason: request.handoffReason,
               },
             },
           ),
@@ -2138,6 +2232,8 @@ export async function routeChannelMessage(
     }
 
     if (allowedRequests.length > 1) {
+      activeTurn.workflowShape = 'parallel';
+      activeTurn.stageId = 'parallel_fan_out';
       appendWorkflowEvent(
         workflow,
         activeTurn,
@@ -2153,6 +2249,8 @@ export async function routeChannelMessage(
           {
             metadata: {
               branchCount: allowedRequests.length,
+              workflowStageId: activeTurn.stageId,
+              workflowShape: activeTurn.workflowShape,
             },
           },
         ),
@@ -2166,6 +2264,10 @@ export async function routeChannelMessage(
         nowIso,
         frame.sourceParticipant,
         allowedRequests.map((request) => toParticipantRef(request.target)),
+        {
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+        },
       );
     }
 
@@ -2217,6 +2319,9 @@ export async function routeChannelMessage(
               dispatchId: request.dispatchId,
               metadata: {
                 phase: 'wake',
+                parentCheckpointId: request.parentCheckpointId,
+                branchStrategy: request.branchStrategy,
+                handoffReason: request.handoffReason,
               },
             },
           ),
@@ -2274,15 +2379,18 @@ export async function routeChannelMessage(
           request.sourceParticipant,
           request.sourceMessage.id,
           [toParticipantRef(ensured.target)],
-          {
-            dispatchId: request.dispatchId,
-            metadata: {
-              depth: request.depth,
-              trigger: request.trigger,
+            {
+              dispatchId: request.dispatchId,
+              metadata: {
+                depth: request.depth,
+                trigger: request.trigger,
+                parentCheckpointId: request.parentCheckpointId,
+                branchStrategy: request.branchStrategy,
+                handoffReason: request.handoffReason,
+              },
             },
-          },
-        ),
-      );
+          ),
+        );
     }
 
     if (readyRequests.length === 0) {
@@ -2369,6 +2477,9 @@ export async function routeChannelMessage(
               dispatchId: execution.dispatchId,
               metadata: {
                 phase: 'dispatch',
+                parentCheckpointId: execution.parentCheckpointId,
+                branchStrategy: execution.branchStrategy,
+                handoffReason: execution.handoffReason,
               },
             },
           ),
@@ -2461,14 +2572,17 @@ export async function routeChannelMessage(
           execution.sourceParticipant,
           execution.sourceMessage.id,
           [toParticipantRef(execution.target)],
-          {
-            dispatchId: execution.dispatchId,
-            metadata: {
-              responseMessageId: responseMessage.id,
+            {
+              dispatchId: execution.dispatchId,
+              metadata: {
+                responseMessageId: responseMessage.id,
+                parentCheckpointId: execution.parentCheckpointId,
+                branchStrategy: execution.branchStrategy,
+                handoffReason: execution.handoffReason,
+              },
             },
-          },
-        ),
-      );
+          ),
+        );
       results.push({
         targetKind: execution.target.participantKind,
         targetId: execution.target.participantId,
@@ -2525,6 +2639,8 @@ export async function routeChannelMessage(
 
       outcome.continuationCount += 1;
       activeTurn.continuationCount = outcome.continuationCount;
+      activeTurn.stageId = 'continuation_handoff';
+      activeTurn.workflowShape = workflowShapeForTargets(continuationResolution.targets.length);
       latestCheckpoint = addWorkflowCheckpoint(
         outcome,
         workflow,
@@ -2536,6 +2652,16 @@ export async function routeChannelMessage(
         continuationResolution.targets.map((target) => toParticipantRef(target)),
         {
           mentionNames: structuredClone(continuationResolution.mentionNames),
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+          handoffReason: 'workflow_continuation',
+          branchStrategy: continuationResolution.targets.length > 1
+            ? 'transplant_context'
+            : resolveWorkflowBranchStrategy(
+                toParticipantRef(execution.target),
+                continuationResolution.targets[0]!,
+                execution.depth + 1,
+              ),
         },
       );
       queue.push({
@@ -2558,6 +2684,7 @@ export async function routeChannelMessage(
   activeTurn.guard = guardReason;
   activeTurn.continuationCount = outcome.continuationCount;
   activeTurn.dispatchCount = outcome.totalDispatchCount;
+  activeTurn.stageId = guardReason ? 'guard_blocked' : 'turn_completed';
   const terminalStatuses = deriveTerminalTurnStatuses(outcome, guardReason);
   outcome.status = terminalStatuses.outcomeStatus;
   activeTurn.status = terminalStatuses.workflowStatus;
@@ -2595,6 +2722,9 @@ export async function routeChannelMessage(
         outcomeId: randomUUID(),
         metadata: {
           guard: guardReason,
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+          workflowLastCheckpointId: activeTurn.lastCheckpointId,
           selectionKind: outcome.resolution.selectionKind,
           defaultTargetReason: outcome.resolution.defaultTargetReason,
           blockedReason: outcome.resolution.blockedReason,

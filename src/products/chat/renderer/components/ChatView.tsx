@@ -56,7 +56,14 @@ export interface ChatViewProps {
   onToggleChannelPlusMenu: () => void;
   onChannelFileSelect: () => void;
   onChannelFilesChange: (files: File[]) => void;
-  onApprovalDecision: (taskId: string, status: 'approved' | 'rejected') => void;
+  onApprovalDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
+  onOperatorAction: (input: {
+    action: 'retry' | 'acknowledge';
+    taskId?: string | null;
+    runId?: string | null;
+    checkpointId?: string | null;
+    outcomeId?: string | null;
+  }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
 }
 
@@ -86,6 +93,7 @@ export function ChatView({
   onChannelFileSelect,
   onChannelFilesChange,
   onApprovalDecision,
+  onOperatorAction,
   autoResize,
 }: ChatViewProps) {
   const hasConversationStarted =
@@ -409,10 +417,13 @@ export function ChatView({
             />
             <ProgressSummaryPanel
               inspector={inspectedRun}
+              effectivePolicy={operatorView?.effectivePolicy ?? null}
+              incidentActions={inspectedRun?.incidentActions ?? operatorView?.incidentActions ?? []}
               pendingApprovalCount={operatorView?.approvals.length ?? 0}
               guardReason={inspectedRun?.guardReason ?? operatorView?.guardReason ?? null}
               cooldownLabel={inspectedRun?.cooldownLabel ?? operatorView?.cooldownLabel ?? null}
               onInspectRun={setInspectedRunId}
+              onOperatorAction={onOperatorAction}
             />
             <ActivityFeed items={operatorView?.activityFeed ?? []} />
             <RunInspector

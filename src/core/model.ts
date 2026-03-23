@@ -10,6 +10,7 @@ import type {
   CoreActivityKind,
   CoreActivityRecord,
   CoreActorRecord,
+  CoreApprovalDecisionAction,
   CoreApprovalBindingKind,
   CoreApprovalBindingRecord,
   CoreApprovalBindingSubjectKind,
@@ -89,9 +90,9 @@ const DEFAULT_APPROVAL_DECISION_OPTIONS: CoreApprovalDecisionOptionRecord[] = [
     description: 'Allow the orchestrator plan to proceed.',
   },
   {
-    action: 'revise',
-    label: 'Request revision',
-    description: 'Send the plan back for refinement before execution.',
+    action: 'reroute',
+    label: 'Reroute',
+    description: 'Send the plan back for a different handoff or dispatch path.',
   },
   {
     action: 'reject',
@@ -284,6 +285,7 @@ export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[]
       requestedAt: task.approval.requestedAt,
       decidedAt: task.approval.decidedAt,
       decidedByActorId: task.approval.decidedByActorId,
+      decisionAction: task.approval.decisionAction,
       notes: task.approval.notes,
       requiresOwnerDecision: task.approval.status === 'pending',
       decisionOptions: DEFAULT_APPROVAL_DECISION_OPTIONS.map((option) => ({
@@ -333,9 +335,11 @@ export interface CoreTaskWriteInput {
     requestedAt: string | null;
     decidedAt: string | null;
     decidedByActorId: string | null;
+    decisionAction: CoreApprovalDecisionAction | null;
     notes: string | null;
   }>;
   createdAt?: string;
+  metadata?: CoreRecordMetadata;
 }
 
 export interface OwnerProfilePatchInput {
@@ -350,6 +354,7 @@ export interface OwnerProfilePatchInput {
 export interface CoreApprovalWriteInput {
   taskId: string;
   status: CoreApprovalStatus;
+  action?: CoreApprovalDecisionAction | null;
   requestedByActorId?: string | null;
   decidedByActorId?: string | null;
   notes?: string | null;
@@ -640,6 +645,10 @@ export function upsertCoreTask(
         input.approval?.decidedByActorId === undefined
           ? existingTask?.approval.decidedByActorId ?? null
           : normalizeNullableString(input.approval.decidedByActorId),
+      decisionAction:
+        input.approval?.decisionAction === undefined
+          ? existingTask?.approval.decisionAction ?? null
+          : input.approval.decisionAction ?? null,
       notes:
         input.approval?.notes === undefined
           ? existingTask?.approval.notes ?? null
@@ -647,6 +656,10 @@ export function upsertCoreTask(
     },
     createdAt: existingTask?.createdAt ?? input.createdAt ?? nowIso,
     updatedAt: nowIso,
+    metadata:
+      input.metadata === undefined
+        ? normalizeMetadata(existingTask?.metadata)
+        : normalizeMetadata(input.metadata),
   };
 
   const { records, created } = replaceById(core.tasks, task);
@@ -735,13 +748,46 @@ export function writeApprovalDecision(
     );
   }
 
+  if (input.status === 'pending' && input.action) {
+    throw new CoreValidationError(
+      'Approval action cannot be set while the task is still pending',
+      'approval_action_pending_invalid',
+    );
+  }
+  if (input.action === 'approve' && input.status !== 'approved') {
+    throw new CoreValidationError(
+      'Approval action approve requires status approved',
+      'approval_action_status_mismatch',
+    );
+  }
+  if (
+    (input.action === 'reroute' || input.action === 'reject')
+    && input.status !== 'rejected'
+  ) {
+    throw new CoreValidationError(
+      `Approval action ${input.action} requires status rejected`,
+      'approval_action_status_mismatch',
+    );
+  }
+
+  const resolvedDecisionAction =
+    input.status === 'pending'
+      ? null
+      : input.action
+        ?? (input.status === 'approved'
+          ? 'approve'
+          : input.taskStatus === 'draft'
+            ? 'reroute'
+            : 'reject');
   const nextTaskStatus =
     input.taskStatus
     ?? (input.status === 'pending'
       ? 'pending_approval'
       : input.status === 'approved'
         ? 'approved'
-        : task.status);
+        : resolvedDecisionAction === 'reroute'
+          ? 'draft'
+          : task.status);
   const requestedByActorId = normalizeNullableString(input.requestedByActorId);
   const decidedByActorId = normalizeNullableString(input.decidedByActorId);
   const existingApproval = task.approval;
@@ -768,6 +814,10 @@ export function writeApprovalDecision(
         input.status === 'pending'
           ? null
           : decidedByActorId ?? existingApproval.decidedByActorId,
+      decisionAction:
+        input.status === 'pending'
+          ? null
+          : resolvedDecisionAction,
       notes:
         input.notes === undefined
           ? existingApproval.notes

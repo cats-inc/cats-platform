@@ -10,8 +10,10 @@ import type {
 } from '../../../shared/app-shell';
 import type {
   CatsCoreState,
+  CoreApprovalDecisionAction,
   CoreApprovalQueueItem,
   CoreApprovalStatus,
+  CoreOperatorActionKind,
 } from '../../../core/types';
 import type {
   ProductProviderDescriptor,
@@ -336,6 +338,7 @@ export async function fetchOperatorLoopSnapshot(
 export interface CoreApprovalDecisionInput {
   taskId: string;
   status: Exclude<CoreApprovalStatus, 'not_requested'>;
+  action?: CoreApprovalDecisionAction | null;
   decidedByActorId?: string | null;
   notes?: string | null;
 }
@@ -356,6 +359,43 @@ export async function writeCoreApprovalDecision(
 
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, `cats core approval returned ${response.status}`));
+  }
+
+  try {
+    return await fetchOperatorLoopSnapshot(signal);
+  } catch {
+    return fetchOperatorLoopSnapshot();
+  }
+}
+
+export interface CoreOperatorActionInput {
+  action: CoreOperatorActionKind;
+  actorId?: string | null;
+  taskId?: string | null;
+  runId?: string | null;
+  checkpointId?: string | null;
+  outcomeId?: string | null;
+  notes?: string | null;
+}
+
+export async function writeCoreOperatorAction(
+  input: CoreOperatorActionInput,
+  signal?: AbortSignal,
+): Promise<ChatOperatorSnapshot> {
+  const response = await fetch('/api/core/operator-actions', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, `cats core operator action returned ${response.status}`),
+    );
   }
 
   try {

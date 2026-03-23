@@ -1,11 +1,15 @@
 import type {
   CatsCoreState,
   CoreActivityRecord,
+  CoreApprovalDecisionAction,
   CoreApprovalQueueItem,
   CoreCheckpointRecord,
+  CoreDeliveryGate,
+  CoreEffectivePolicySource,
   CoreOrchestrationOutcomeRecord,
   CoreRecordMetadata,
   CoreRunRecord,
+  CoreTaskRecord,
   CoreTraceRecord,
 } from '../../../core/types.js';
 
@@ -40,6 +44,39 @@ export interface ChatRunMetrics {
   targetCount: number | null;
 }
 
+export interface ChatWorkflowBranchView {
+  id: string;
+  participantName: string;
+  status: string;
+  handoffReason: string | null;
+  branchStrategy: string | null;
+  parentCheckpointId: string | null;
+  responseMessageId: string | null;
+  error: string | null;
+}
+
+export interface ChatEffectivePolicyView {
+  deliveryMode: string | null;
+  deliveryGates: CoreDeliveryGate[];
+  deliverySource: CoreEffectivePolicySource | null;
+  deliveryRationale: string | null;
+  budgetAlertLevel: string | null;
+  budgetAlertSource: string | null;
+  budgetRationale: string | null;
+}
+
+export interface ChatOperatorActionView {
+  kind: 'retry' | 'acknowledge';
+  label: string;
+  description: string;
+  disabled: boolean;
+  statusLabel: string | null;
+  taskId: string | null;
+  runId: string | null;
+  checkpointId: string | null;
+  outcomeId: string | null;
+}
+
 export interface ChatRunInspectorView {
   run: CoreRunRecord;
   traces: CoreTraceRecord[];
@@ -51,12 +88,18 @@ export interface ChatRunInspectorView {
   guardReason: string | null;
   cooldownLabel: string | null;
   metrics: ChatRunMetrics;
+  workflowStageId: string | null;
+  workflowShape: string | null;
+  reviewRequired: boolean;
+  branchStates: ChatWorkflowBranchView[];
+  incidentActions: ChatOperatorActionView[];
 }
 
 export interface ChatOperatorView {
   channelId: string;
   conversationId: string;
   actorNameById: Record<string, string>;
+  task: CoreTaskRecord | null;
   approvals: CoreApprovalQueueItem[];
   runs: CoreRunRecord[];
   traces: CoreTraceRecord[];
@@ -69,6 +112,8 @@ export interface ChatOperatorView {
   latestApproval: CoreApprovalQueueItem | null;
   guardReason: string | null;
   cooldownLabel: string | null;
+  effectivePolicy: ChatEffectivePolicyView | null;
+  incidentActions: ChatOperatorActionView[];
 }
 
 function compareIsoDesc(left: string, right: string): number {
@@ -116,6 +161,37 @@ function readMetadataBoolean(
   }
 
   return metadata[key] === true;
+}
+
+function readMetadataStringArray(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): string[] {
+  if (!metadata) {
+    return [];
+  }
+
+  const value = metadata[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+}
+
+function readMetadataRecordArray(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): CoreRecordMetadata[] {
+  if (!metadata) {
+    return [];
+  }
+
+  const value = metadata[key];
+  return Array.isArray(value)
+    ? value
+        .filter((item): item is CoreRecordMetadata =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+        )
+    : [];
 }
 
 function uniqueActivityItems(
@@ -183,7 +259,11 @@ function severityForActivity(activity: CoreActivityRecord): ChatOperatorSeverity
     case 'approval_requested':
       return 'attention';
     case 'approval_decided':
-      return 'success';
+      return readMetadataString(activity.metadata, 'action') === 'approve'
+        ? 'success'
+        : 'attention';
+    case 'operator_action':
+      return 'progress';
     case 'status_change':
       return 'progress';
     default:
@@ -210,6 +290,8 @@ function labelForActivity(activity: CoreActivityRecord): string {
       return 'Approval';
     case 'approval_decided':
       return 'Decision';
+    case 'operator_action':
+      return 'Action';
     case 'checkpoint_recorded':
       return 'Checkpoint';
     case 'status_change':
@@ -324,6 +406,99 @@ function metricsForRun(run: CoreRunRecord): ChatRunMetrics {
   };
 }
 
+function buildBranchStates(run: CoreRunRecord | null): ChatWorkflowBranchView[] {
+  const metadata = readMetadataRecord(run?.metadata);
+  return readMetadataRecordArray(metadata, 'branchStates').map((branch, index) => ({
+    id: readMetadataString(branch, 'id') ?? `branch-${index}`,
+    participantName:
+      readMetadataString(
+        readMetadataRecord(branch.participant),
+        'participantName',
+      ) ?? 'Unknown Cat',
+    status: readMetadataString(branch, 'status') ?? 'pending',
+    handoffReason: readMetadataString(branch, 'handoffReason'),
+    branchStrategy: readMetadataString(branch, 'branchStrategy'),
+    parentCheckpointId: readMetadataString(branch, 'parentCheckpointId'),
+    responseMessageId: readMetadataString(branch, 'responseMessageId'),
+    error: readMetadataString(branch, 'error'),
+  }));
+}
+
+function buildEffectivePolicyView(task: CoreTaskRecord | null): ChatEffectivePolicyView | null {
+  if (!task) {
+    return null;
+  }
+
+  const metadata = readMetadataRecord(task.metadata);
+  return {
+    deliveryMode: readMetadataString(metadata, 'effectiveDeliveryMode'),
+    deliveryGates: readMetadataStringArray(metadata, 'effectiveDeliveryGates') as CoreDeliveryGate[],
+    deliverySource:
+      readMetadataString(metadata, 'effectiveDeliverySource') as CoreEffectivePolicySource | null,
+    deliveryRationale: readMetadataString(metadata, 'effectiveDeliveryRationale'),
+    budgetAlertLevel: readMetadataString(metadata, 'effectiveBudgetAlertLevel'),
+    budgetAlertSource: readMetadataString(metadata, 'effectiveBudgetAlertSource'),
+    budgetRationale: readMetadataString(metadata, 'effectiveBudgetRationale'),
+  };
+}
+
+function buildIncidentActions(
+  task: CoreTaskRecord | null,
+  run: CoreRunRecord | null,
+  latestOutcome: CoreOrchestrationOutcomeRecord | null,
+  latestCheckpoint: CoreCheckpointRecord | null,
+  guardReason: string | null,
+  cooldownLabel: string | null,
+): ChatOperatorActionView[] {
+  if (!run) {
+    return [];
+  }
+
+  const needsIncidentAction = run.status === 'blocked'
+    || run.status === 'failed'
+    || Boolean(guardReason)
+    || Boolean(cooldownLabel);
+  if (!needsIncidentAction) {
+    return [];
+  }
+
+  const metadata = readMetadataRecord(run.metadata);
+  const incidentUpdatedAt = latestOutcome?.updatedAt ?? latestCheckpoint?.updatedAt ?? run.updatedAt;
+  const acknowledgedAt = readMetadataString(metadata, 'operatorAcknowledgedAt');
+  const retryRequestedAt = readMetadataString(metadata, 'operatorRetryRequestedAt');
+  const acknowledgedFresh = Boolean(
+    acknowledgedAt && acknowledgedAt.localeCompare(incidentUpdatedAt) >= 0,
+  );
+  const retryFresh = Boolean(
+    retryRequestedAt && retryRequestedAt.localeCompare(incidentUpdatedAt) >= 0,
+  );
+
+  return [
+    {
+      kind: 'retry',
+      label: retryFresh ? 'Retry Requested' : 'Request Retry',
+      description: 'Record that the operator wants this blocked or failed run retried.',
+      disabled: retryFresh,
+      statusLabel: retryFresh ? 'Retry requested' : null,
+      taskId: task?.id ?? run.taskId,
+      runId: run.id,
+      checkpointId: latestCheckpoint?.id ?? null,
+      outcomeId: latestOutcome?.id ?? null,
+    },
+    {
+      kind: 'acknowledge',
+      label: acknowledgedFresh ? 'Acknowledged' : 'Acknowledge',
+      description: 'Record that the operator has seen the current guardrail or incident state.',
+      disabled: acknowledgedFresh,
+      statusLabel: acknowledgedFresh ? 'Acknowledged' : null,
+      taskId: task?.id ?? run.taskId,
+      runId: run.id,
+      checkpointId: latestCheckpoint?.id ?? null,
+      outcomeId: latestOutcome?.id ?? null,
+    },
+  ];
+}
+
 function fallbackActivityFeed(
   traces: CoreTraceRecord[],
   checkpoints: CoreCheckpointRecord[],
@@ -393,6 +568,7 @@ export function buildChatOperatorView(
   const conversationId = resolveChatConversationId(channelId);
   const taskId = `task-channel-${channelId}`;
   const actorNameById = buildActorNameById(snapshot.core);
+  const task = snapshot.core.tasks.find((candidate) => candidate.id === taskId) ?? null;
   const approvals = snapshot.approvals
     .filter((approval) =>
       approval.conversationId === conversationId || approval.taskId === taskId,
@@ -418,6 +594,8 @@ export function buildChatOperatorView(
   const latestRun = runs[0] ?? null;
   const latestOutcome = outcomes[0] ?? null;
   const latestCheckpoint = checkpoints[0] ?? null;
+  const guardReason = resolveGuardReason(latestRun, latestOutcome, latestCheckpoint, traces);
+  const cooldownLabel = resolveCooldownLabel(latestRun, latestOutcome, latestCheckpoint, traces);
   const activityFeed = uniqueActivityItems([
     ...activities.map((activity) => ({
       id: `activity:${activity.id}`,
@@ -438,6 +616,7 @@ export function buildChatOperatorView(
     channelId,
     conversationId,
     actorNameById,
+    task,
     approvals,
     runs,
     traces,
@@ -448,8 +627,17 @@ export function buildChatOperatorView(
     latestOutcome,
     latestCheckpoint,
     latestApproval: approvals[0] ?? null,
-    guardReason: resolveGuardReason(latestRun, latestOutcome, latestCheckpoint, traces),
-    cooldownLabel: resolveCooldownLabel(latestRun, latestOutcome, latestCheckpoint, traces),
+    guardReason,
+    cooldownLabel,
+    effectivePolicy: buildEffectivePolicyView(task),
+    incidentActions: buildIncidentActions(
+      task,
+      latestRun,
+      latestOutcome,
+      latestCheckpoint,
+      guardReason,
+      cooldownLabel,
+    ),
   };
 }
 
@@ -479,6 +667,9 @@ export function buildRunInspectorView(
   const approvals = operatorView.approvals.filter((approval) => approval.taskId === run.taskId);
   const latestOutcome = outcomes[0] ?? null;
   const latestCheckpoint = checkpoints[0] ?? null;
+  const guardReason = resolveGuardReason(run, latestOutcome, latestCheckpoint, traces);
+  const cooldownLabel = resolveCooldownLabel(run, latestOutcome, latestCheckpoint, traces);
+  const metadata = readMetadataRecord(run.metadata);
 
   return {
     run,
@@ -488,8 +679,20 @@ export function buildRunInspectorView(
     approvals,
     latestOutcome,
     latestCheckpoint,
-    guardReason: resolveGuardReason(run, latestOutcome, latestCheckpoint, traces),
-    cooldownLabel: resolveCooldownLabel(run, latestOutcome, latestCheckpoint, traces),
+    guardReason,
+    cooldownLabel,
     metrics: metricsForRun(run),
+    workflowStageId: readMetadataString(metadata, 'workflowStageId'),
+    workflowShape: readMetadataString(metadata, 'workflowShape'),
+    reviewRequired: readMetadataBoolean(metadata, 'workflowReviewRequired'),
+    branchStates: buildBranchStates(run),
+    incidentActions: buildIncidentActions(
+      operatorView.task,
+      run,
+      latestOutcome,
+      latestCheckpoint,
+      guardReason,
+      cooldownLabel,
+    ),
   };
 }

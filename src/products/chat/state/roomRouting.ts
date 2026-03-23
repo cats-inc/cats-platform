@@ -11,6 +11,9 @@ import type {
   RoomRoutingTrigger,
   RoomRoutingTurnStatus,
   RoomWorkflowEventKind,
+  RoomWorkflowBranchStrategy,
+  RoomWorkflowHandoffReason,
+  RoomWorkflowShape,
   RoomWorkflowState,
   RoomWorkflowStatus,
   RoomWorkflowTargetStatus,
@@ -109,6 +112,29 @@ const ROOM_WORKFLOW_TARGET_STATUSES = new Set<RoomWorkflowTargetStatus>([
   'completed',
   'failed',
   'blocked',
+  'cancelled',
+  'waiting_for_converge',
+]);
+
+const ROOM_WORKFLOW_SHAPES = new Set<RoomWorkflowShape>([
+  'sequential',
+  'parallel',
+  'converge',
+]);
+
+const ROOM_WORKFLOW_BRANCH_STRATEGIES = new Set<RoomWorkflowBranchStrategy>([
+  'fork_if_possible',
+  'transplant_context',
+  'fresh_no_parent',
+]);
+
+const ROOM_WORKFLOW_HANDOFF_REASONS = new Set<RoomWorkflowHandoffReason>([
+  'room_entry',
+  'room_default',
+  'explicit_mention',
+  'workflow_continuation',
+  'operator_reroute',
+  'runtime_retry',
 ]);
 
 const ROOM_WORKFLOW_EVENT_KINDS = new Set<RoomWorkflowEventKind>([
@@ -296,6 +322,41 @@ export function normalizeRoomWorkflowTargetStatus(
   return typeof value === 'string'
     && ROOM_WORKFLOW_TARGET_STATUSES.has(value as RoomWorkflowTargetStatus)
     ? value as RoomWorkflowTargetStatus
+    : fallback;
+}
+
+export function normalizeRoomWorkflowShape(
+  value: unknown,
+  fallback: RoomWorkflowShape = 'sequential',
+): RoomWorkflowShape {
+  return typeof value === 'string' && ROOM_WORKFLOW_SHAPES.has(value as RoomWorkflowShape)
+    ? value as RoomWorkflowShape
+    : fallback;
+}
+
+export function normalizeRoomWorkflowBranchStrategy(
+  value: unknown,
+  fallback: RoomWorkflowBranchStrategy | null = null,
+): RoomWorkflowBranchStrategy | null {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  return ROOM_WORKFLOW_BRANCH_STRATEGIES.has(value as RoomWorkflowBranchStrategy)
+    ? value as RoomWorkflowBranchStrategy
+    : fallback;
+}
+
+export function normalizeRoomWorkflowHandoffReason(
+  value: unknown,
+  fallback: RoomWorkflowHandoffReason | null = null,
+): RoomWorkflowHandoffReason | null {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  return ROOM_WORKFLOW_HANDOFF_REASONS.has(value as RoomWorkflowHandoffReason)
+    ? value as RoomWorkflowHandoffReason
     : fallback;
 }
 

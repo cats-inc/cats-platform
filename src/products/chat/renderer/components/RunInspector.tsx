@@ -67,6 +67,13 @@ export function RunInspector({
               <span>Started {formatOperatorTimestamp(inspector.run.startedAt ?? inspector.run.createdAt)}</span>
               <span>Updated {formatOperatorTimestamp(inspector.run.updatedAt)}</span>
             </div>
+            {inspector.workflowStageId || inspector.workflowShape ? (
+              <div className="operatorMetaRow">
+                {inspector.workflowStageId ? <span>Stage: {inspector.workflowStageId}</span> : null}
+                {inspector.workflowShape ? <span>Shape: {inspector.workflowShape}</span> : null}
+                {inspector.reviewRequired ? <span>Review required</span> : null}
+              </div>
+            ) : null}
             {inspector.guardReason ? (
               <div className="operatorCallout operatorCalloutAttention">
                 Guardrail: {inspector.guardReason}
@@ -102,6 +109,33 @@ export function RunInspector({
                         </span>
                       </div>
                       <p>{checkpoint.summary ?? 'Checkpoint recorded.'}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="operatorInspectorSection">
+              <div className="operatorInspectorHeader">
+                <strong>Branches</strong>
+              </div>
+              {inspector.branchStates.length === 0 ? (
+                <p className="operatorEmptyState operatorInsetEmpty">
+                  No branch or handoff lineage recorded for this run.
+                </p>
+              ) : (
+                <div className="operatorList">
+                  {inspector.branchStates.slice(0, 6).map((branch) => (
+                    <article key={branch.id} className="operatorListItem">
+                      <div className="operatorListItemHeader">
+                        <strong>{branch.participantName}</strong>
+                        <span className="operatorMetaText">{branch.status}</span>
+                      </div>
+                      <p>
+                        {branch.handoffReason ? `Handoff: ${branch.handoffReason}. ` : ''}
+                        {branch.branchStrategy ? `Strategy: ${branch.branchStrategy}. ` : ''}
+                        {branch.parentCheckpointId ? `From ${branch.parentCheckpointId}.` : 'No checkpoint lineage recorded.'}
+                      </p>
+                      {branch.error ? <p>{branch.error}</p> : null}
                     </article>
                   ))}
                 </div>

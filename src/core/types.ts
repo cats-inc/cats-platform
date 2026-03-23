@@ -154,12 +154,13 @@ export interface CoreApprovalRecord {
   requestedAt: string | null;
   decidedAt: string | null;
   decidedByActorId: string | null;
+  decisionAction: CoreApprovalDecisionAction | null;
   notes: string | null;
 }
 
 export type CoreApprovalKind = 'dispatch_plan';
 
-export type CoreApprovalDecisionAction = 'approve' | 'revise' | 'reject';
+export type CoreApprovalDecisionAction = 'approve' | 'reroute' | 'reject';
 
 export interface CoreApprovalDecisionOptionRecord {
   action: CoreApprovalDecisionAction;
@@ -180,6 +181,7 @@ export interface CoreApprovalQueueItem {
   requestedAt: string | null;
   decidedAt: string | null;
   decidedByActorId: string | null;
+  decisionAction: CoreApprovalDecisionAction | null;
   notes: string | null;
   requiresOwnerDecision: boolean;
   decisionOptions: CoreApprovalDecisionOptionRecord[];
@@ -236,7 +238,50 @@ export interface CoreTaskRecord {
   approval: CoreApprovalRecord;
   createdAt: string;
   updatedAt: string;
+  metadata: CoreRecordMetadata;
 }
+
+export type CoreDeliveryMode =
+  | 'artifact_only'
+  | 'commit_only'
+  | 'push_branch'
+  | 'pr_with_checks'
+  | 'deploy_preview';
+
+export type CoreDeliveryGate =
+  | 'manual_review_required'
+  | 'owner_approval_required'
+  | 'publish_artifact_required';
+
+export type CoreEffectivePolicySource =
+  | 'chat_default'
+  | 'task_override'
+  | 'room_tightening'
+  | 'approved_exception';
+
+export interface CoreEffectiveDeliveryPolicy {
+  mode: CoreDeliveryMode;
+  gates: CoreDeliveryGate[];
+  source: CoreEffectivePolicySource;
+  rationale: string | null;
+}
+
+export type CoreBudgetAlertLevel = 'normal' | 'warning' | 'blocked';
+
+export type CoreBudgetAlertSource =
+  | 'runtime_usage'
+  | 'rate_limit_incident'
+  | 'guardrail_state';
+
+export interface CoreEffectiveBudgetPolicy {
+  alertLevel: CoreBudgetAlertLevel;
+  source: CoreBudgetAlertSource | null;
+  rationale: string | null;
+}
+
+export type CoreOperatorActionKind =
+  | 'retry'
+  | 'acknowledge';
 
 export type CoreRunStatus =
   | 'queued'
@@ -356,6 +401,7 @@ export type CoreActivityKind =
   | 'status_change'
   | 'approval_requested'
   | 'approval_decided'
+  | 'operator_action'
   | 'artifact_recorded'
   | 'checkpoint_recorded'
   | 'work_item_updated';

@@ -71,7 +71,10 @@ import {
   normalizeRoomWakeReason,
   normalizeRoomWakeRequestStatus,
   normalizeRoomWakeTrigger,
+  normalizeRoomWorkflowBranchStrategy,
   normalizeRoomWorkflowEventKind,
+  normalizeRoomWorkflowHandoffReason,
+  normalizeRoomWorkflowShape,
   normalizeRoomWorkflowStatus,
   normalizeRoomWorkflowTargetStatus,
 } from './roomRouting.js';
@@ -422,6 +425,9 @@ function normalizeRoomWorkflowTarget(rawTarget: unknown): RoomWorkflowTargetStat
     trigger: normalizeRoomRoutingTrigger(targetRecord.trigger, 'continuation_mention'),
     mentionNames: readStringArray(targetRecord.mentionNames),
     depth: readNumber(targetRecord.depth),
+    parentCheckpointId: readNullableString(targetRecord.parentCheckpointId),
+    branchStrategy: normalizeRoomWorkflowBranchStrategy(targetRecord.branchStrategy),
+    handoffReason: normalizeRoomWorkflowHandoffReason(targetRecord.handoffReason),
     wakeRequestId: readNullableString(targetRecord.wakeRequestId),
     status: normalizeRoomWorkflowTargetStatus(targetRecord.status, 'pending'),
     queuedAt: readString(targetRecord.queuedAt, new Date().toISOString()),
@@ -482,6 +488,11 @@ function normalizeRoomWorkflowTurn(rawTurn: unknown): RoomWorkflowTurn | null {
     sourceSenderKind: sourceSenderKind as ChatMessage['senderKind'],
     sourceSenderName: readString(turnRecord.sourceSenderName, 'Chat'),
     guard: normalizeRoomRoutingGuardReason(turnRecord.guard),
+    stageId: readString(turnRecord.stageId, 'dispatch'),
+    workflowShape: normalizeRoomWorkflowShape(turnRecord.workflowShape, 'sequential'),
+    reviewRequired: readBoolean(turnRecord.reviewRequired),
+    lastCheckpointId: readNullableString(turnRecord.lastCheckpointId),
+    convergeTargetId: readNullableString(turnRecord.convergeTargetId),
     continuationCount: readNumber(turnRecord.continuationCount),
     dispatchCount: readNumber(turnRecord.dispatchCount),
     targetStatuses: Array.isArray(turnRecord.targetStatuses)
@@ -945,6 +956,14 @@ function normalizeCoreTask(rawTask: unknown): CoreTaskRecord | null {
   )
     ? rawApprovalStatus
     : 'not_requested';
+  const rawDecisionAction = readString(approvalRecord?.decisionAction);
+  const decisionAction = (
+    rawDecisionAction === 'approve'
+    || rawDecisionAction === 'reroute'
+    || rawDecisionAction === 'reject'
+  )
+    ? rawDecisionAction
+    : null;
 
   return {
     id: readString(taskRecord.id, randomUUID()),
@@ -960,10 +979,12 @@ function normalizeCoreTask(rawTask: unknown): CoreTaskRecord | null {
       requestedAt: readNullableString(approvalRecord?.requestedAt),
       decidedAt: readNullableString(approvalRecord?.decidedAt),
       decidedByActorId: readNullableString(approvalRecord?.decidedByActorId),
+      decisionAction,
       notes: readNullableString(approvalRecord?.notes),
     },
     createdAt: readString(taskRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(taskRecord.updatedAt, new Date().toISOString()),
+    metadata: normalizeMetadata(taskRecord.metadata),
   };
 }
 
@@ -1160,6 +1181,7 @@ function normalizeCoreActivity(rawActivity: unknown): CoreActivityRecord | null 
     || rawKind === 'status_change'
     || rawKind === 'approval_requested'
     || rawKind === 'approval_decided'
+    || rawKind === 'operator_action'
     || rawKind === 'artifact_recorded'
     || rawKind === 'checkpoint_recorded'
     || rawKind === 'work_item_updated'

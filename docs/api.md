@@ -536,7 +536,11 @@ Request body:
     "id": "task-system-1",
     "title": "Approve orchestrator dispatch",
     "conversationId": "conversation-system-1",
-    "summary": "Product-owned task for the system layer."
+    "summary": "Product-owned task for the system layer.",
+    "metadata": {
+      "effectiveDeliveryMode": "commit_only",
+      "effectiveDeliveryGates": ["owner_approval_required"]
+    }
   }
 }
 ```
@@ -557,6 +561,9 @@ Semantics:
 
 - caller-supplied `id` makes the write idempotent
 - a missing `id` creates a new generated task id
+- `task.metadata` is the shared place for product-owned workflow/governance
+  read-model fields such as effective delivery mode, gates, budget alert level,
+  and operator-action annotations
 - channel-derived `task-channel-*` records remain chat-owned projections;
   Team 2 should use distinct ids for system-owned tasks
 
@@ -581,7 +588,9 @@ owner approval:
       "requestedByActorId": "actor-orchestrator-global",
       "requiresOwnerDecision": true,
       "decisionOptions": [
-        { "action": "approve", "label": "Approve" }
+        { "action": "approve", "label": "Approve" },
+        { "action": "reroute", "label": "Reroute" },
+        { "action": "reject", "label": "Reject" }
       ]
     }
   ]
@@ -599,9 +608,10 @@ Request body:
 ```json
 {
   "taskId": "task-system-1",
-  "status": "pending",
-  "requestedByActorId": "actor-orchestrator-global",
-  "notes": "Need owner confirmation before dispatch."
+  "status": "rejected",
+  "action": "reroute",
+  "decidedByActorId": "actor-owner",
+  "notes": "Try a different handoff path."
 }
 ```
 
@@ -613,10 +623,14 @@ Response:
     "id": "task-system-1"
   },
   "approval": {
-    "status": "pending"
+    "status": "rejected",
+    "decisionAction": "reroute"
   },
   "queueItem": {
     "taskId": "task-system-1"
+  },
+  "activity": {
+    "kind": "approval_decided"
   }
 }
 ```
@@ -626,6 +640,12 @@ Semantics:
 - `pending` defaults the task status to `pending_approval`
 - `approved` defaults the task status to `approved`
 - `rejected` preserves the current task status unless the caller overrides it
+- `action` is optional but product-owned; supported values are:
+  - `approve`
+  - `reroute`
+  - `reject`
+- `reroute` is the product-owned "reject this plan and send it back" contract;
+  when the caller omits `taskStatus`, the task falls back to `draft`
 - callers may override the task status explicitly with `taskStatus`
 - the first write may go directly from `not_requested` to `approved` or
   `rejected` when the caller is persisting an already-made owner decision and
@@ -638,6 +658,50 @@ Semantics:
   lifecycle to move somewhere explicit such as `draft` or `archived`, it should
   send `taskStatus` in the same request rather than relying on an implicit
   fallback
+- each approval write appends a shared core activity record so operator rails
+  can show pending requests and final decisions without relying on transcript
+  bubbles alone
+
+### Write Core Operator Action
+
+```text
+POST /api/core/operator-actions
+```
+
+Request body:
+
+```json
+{
+  "action": "retry",
+  "actorId": "actor-owner",
+  "taskId": "task-system-1",
+  "runId": "run-system-1",
+  "checkpointId": "checkpoint-system-1",
+  "outcomeId": "outcome-system-1"
+}
+```
+
+Response:
+
+```json
+{
+  "activity": {
+    "kind": "operator_action"
+  }
+}
+```
+
+Semantics:
+
+- this is the minimal product-owned write seam for operator incident actions
+- supported actions are:
+  - `retry`
+  - `acknowledge`
+- the route annotates the addressed task/run/checkpoint/outcome metadata with
+  operator action timestamps and actor ids
+- the route also appends a shared activity record so Chat can surface the
+  action in transcript-adjacent operator rails without inventing a second
+  transcript channel
 
 ### List Core Runs
 
@@ -1022,7 +1086,9 @@ of these seams later without inventing a second schema.
 - `/api/core/approval-bindings`
   - shared approval-to-subject bindings for owner decisions or future gates
 - `/api/core/approvals`
-  - approval queue projection plus approval decision write seam
+  - approval queue projection plus approve/reroute/reject decision seam
+- `/api/core/operator-actions`
+  - minimal product-owned retry/acknowledge incident seam for blocked or failed runs
 - `/api/core/owner-profile`
   - structured owner preferences and collaboration rules, including persistence
 - `/api/core/archive`
