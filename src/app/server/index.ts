@@ -45,6 +45,14 @@ import {
   handleProviderRegistry,
 } from '../../server/routes/providers.js';
 import {
+  createAppStartupState,
+  getAppLifecycleContract,
+  getAppOperationalStatus,
+  getAppReadinessSnapshot,
+  getAppShutdownContract,
+  type AppStartupState,
+} from './startup.js';
+import {
   handleTelegramDiagnostics,
   handleTelegramPollingReconnect,
   handleTelegramPollingStatus,
@@ -56,6 +64,7 @@ export interface ServerDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
   chatStore: ChatStore;
+  startup?: AppStartupState;
   companionStore?: CompanionBoxStore;
   telegramRelay?: TelegramRelay;
   pollingSupervisor?: TelegramPollingSupervisor;
@@ -63,6 +72,7 @@ export interface ServerDependencies {
 }
 
 type ResolvedServerDependencies = ServerDependencies & {
+  startup: AppStartupState;
   companionStore: CompanionBoxStore;
   telegramRelay: TelegramRelay;
   pollingSupervisor: TelegramPollingSupervisor;
@@ -81,14 +91,42 @@ async function handleHealth(
   dependencies: ServerDependencies,
   response: import('node:http').ServerResponse,
 ): Promise<void> {
+  const startup = dependencies.startup ?? createAppStartupState();
   const runtime = await dependencies.runtimeClient.getHealth();
   const now = dependencies.now?.() ?? new Date();
-  const status = runtime.reachable ? 'ok' : 'degraded';
+  const appStatus = getAppOperationalStatus(startup);
+  const readiness = getAppReadinessSnapshot(startup);
+  const status = appStatus.status === 'unavailable'
+    ? 'unavailable'
+    : runtime.reachable
+      ? appStatus.status
+      : 'degraded';
+  const summary = !runtime.reachable && appStatus.status === 'ok'
+    ? 'Cats app server is ready, but cats-runtime is unreachable.'
+    : appStatus.summary;
 
-  sendJson(response, runtime.reachable ? 200 : 503, {
+  sendJson(response, readiness.ready ? 200 : 503, {
     service: 'cats',
     status,
+    summary,
     timestamp: now.toISOString(),
+    version: startup.version,
+    contract: getAppLifecycleContract(startup),
+    readiness,
+    startup: {
+      contractVersion: startup.contractVersion,
+      mode: startup.mode,
+      managedBy: startup.managedBy,
+      phase: startup.phase,
+      readySignal: startup.readySignal,
+      ready: readiness.ready,
+      pid: startup.pid,
+      startedAt: startup.startedAt,
+      address: startup.address,
+      shutdownReason: startup.shutdownReason,
+      lastEvent: startup.lastEvent,
+    },
+    shutdown: getAppShutdownContract(startup),
     runtime,
   });
 }
@@ -389,6 +427,10 @@ export function createServer(dependencies: ServerDependencies) {
 
   const resolvedDependencies: ResolvedServerDependencies = {
     ...dependencies,
+    startup: dependencies.startup ?? createAppStartupState({
+      phase: 'ready',
+      ready: true,
+    }),
     companionStore: dependencies.companionStore ?? createDefaultCompanionStore(dependencies),
     telegramRelay,
     pollingSupervisor,

@@ -26,8 +26,10 @@ The current slices are:
 - `My Cats` private-lane entry that reopens an existing direct room or opens a
   direct draft lane when needed
 - a transcript-adjacent operator loop with pending approvals, progress,
-  activity, trace, run inspection, explicit approve/reroute/retry seams, and
-  machine-readable delivery/budget/workflow governance summaries
+  activity, trace, run inspection, approve/reroute/retry/acknowledge action
+  seams, and machine-readable delivery/budget/workflow governance summaries
+- an Electron desktop host that supervises local `cats-runtime` + `cats`,
+  waits for readiness, and owns the first packaged bootstrap/remediation seam
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
   and direct companion-session hydration metadata
@@ -58,6 +60,8 @@ The current slices are:
 - [x] Land product-owned companion box storage, Cat-scoped ingest/read routes,
       and direct companion-session hydration contracts without visible UI
       changes
+- [x] Land the first Electron desktop-host slice with app-managed readiness,
+      local sidecar supervision, and bootstrap prerequisite checks
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open
@@ -71,10 +75,11 @@ several Phase 3 items remain:
   ingress by default
 - automatic resume after owner or incident decisions, richer live runtime
   state, and stronger closed-loop orchestration beyond the current action seams
-- richer first-run remediation and packaged onboarding beyond the current
-  three-screen setup flow
+- richer first-run remediation, packaged installer UX, and host-managed
+  provider install/resume flows beyond the current bootstrap slice
 - offline transcript normalization and ingestion handoff hooks
-- desktop host, LINE entrypoints, and richer Telegram room-rotation policy
+- LINE entrypoints, richer Telegram room-rotation policy, and fuller desktop
+  packaging beyond the current host slice
 
 ## Quick Start
 
@@ -108,6 +113,15 @@ npm start
 
 The Node server will serve the built web UI from `dist/` when available.
 
+For the desktop-host slice:
+
+```bash
+npm run desktop:start
+```
+
+That command builds `dist-server/`, `dist/`, and `dist-electron/`, then starts
+the Electron host that supervises local `cats-runtime` and `cats` sidecars.
+
 ## Documentation
 
 See [docs/](./docs/) for project details:
@@ -123,6 +137,7 @@ See [docs/](./docs/) for project details:
 
 ```text
 cats/
+├── electron/      # Electron desktop host bootstrap and supervision
 ├── src/app/       # Suite-level server and renderer assembly
 ├── src/products/  # Product slices such as Cats Chat
 ├── src/shared/    # Types shared by server and renderer

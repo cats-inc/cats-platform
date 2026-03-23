@@ -109,6 +109,13 @@ test('GET /health reports runtime reachability', async () => {
     const payload = await response.json();
     assert.equal(payload.service, 'cats');
     assert.equal(payload.status, 'ok');
+    assert.equal(payload.readiness.ready, true);
+    assert.equal(payload.readiness.endpoint, '/health');
+    assert.equal(payload.contract.startup, 1);
+    assert.ok(Array.isArray(payload.contract.supportedModes));
+    assert.equal(payload.startup.mode, 'standalone');
+    assert.equal(payload.startup.phase, 'ready');
+    assert.equal(payload.shutdown.stdinCloseEnabled, false);
     assert.equal(payload.runtime.service, 'cats-runtime');
   });
 });

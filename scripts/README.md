@@ -46,3 +46,21 @@ The intended flow is:
 
 Tailscale remains the cheaper default for self-hosted webhook use. ngrok is
 supported as an alternative when you prefer or already depend on it.
+
+## Desktop Host Helpers
+
+The first Electron host slice now has simple wrappers for local packaged-style
+startup:
+
+- `scripts/windows/Start-DesktopHost.ps1`
+- `scripts/linux/start-desktop-host.sh`
+- `scripts/macos/start-desktop-host.sh`
+
+These wrappers call `npm run desktop:start`, which builds:
+
+- `dist-server/`
+- `dist/`
+- `dist-electron/`
+
+and then launches the Electron host that supervises local `cats-runtime` and
+`cats` child processes.

@@ -417,7 +417,8 @@ supported public surface is now:
 
 Clients should not target older compatibility aliases.
 
-Returns local service state plus current `cats-runtime` reachability.
+`GET /health` is now the app-managed readiness contract for self-hosted
+launchers and the Electron desktop host.
 
 Example response:
 
@@ -425,7 +426,49 @@ Example response:
 {
   "service": "cats",
   "status": "ok",
+  "summary": "Cats app server is ready to accept requests.",
   "timestamp": "2026-03-11T12:34:56.000Z",
+  "version": "0.1.0",
+  "contract": {
+    "startup": 1,
+    "supportedModes": ["standalone", "app-managed"],
+    "readinessPath": "/health",
+    "lifecycleEvents": [
+      "app.ready",
+      "app.startup_error",
+      "app.stopping",
+      "app.stopped"
+    ],
+    "shutdownSignals": ["SIGINT", "SIGTERM"],
+    "shutdownReasons": ["sigint", "sigterm", "stdin_closed"]
+  },
+  "readiness": {
+    "endpoint": "/health",
+    "authoritative": true,
+    "readySignal": "http",
+    "phase": "ready",
+    "ready": true
+  },
+  "startup": {
+    "contractVersion": 1,
+    "mode": "app-managed",
+    "managedBy": "cats-electron",
+    "phase": "ready",
+    "readySignal": "http",
+    "ready": true,
+    "pid": 12345,
+    "startedAt": "2026-03-11T12:34:00.000Z",
+    "address": {
+      "host": "127.0.0.1",
+      "port": 8181,
+      "healthUrl": "http://127.0.0.1:8181/health"
+    }
+  },
+  "shutdown": {
+    "signals": ["SIGINT", "SIGTERM"],
+    "reasons": ["sigint", "sigterm", "stdin_closed"],
+    "stdinCloseEnabled": true
+  },
   "runtime": {
     "baseUrl": "http://127.0.0.1:3110",
     "reachable": true,
@@ -434,6 +477,12 @@ Example response:
   }
 }
 ```
+
+`readiness.ready` is the authoritative machine-readable startup bit. Hosts
+should not infer readiness from process creation alone. `startup.phase` is one
+of `starting`, `ready`, `stopping`, or `stopped`, while top-level `status`
+stays lifecycle-aware and degrades if `cats-runtime` is unreachable even after
+the app listener is live.
 
 ### Core State
 

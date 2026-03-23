@@ -131,6 +131,41 @@ metadata, memory checkpoints, and transcripts.
 The checked-in starter state is empty, so the renderer does not open with any
 default or mock chats.
 
+### Desktop Host Run
+
+The first Electron host slice now wraps the same local `cats` + `cats-runtime`
+process topology:
+
+```bash
+npm run desktop:start
+```
+
+Platform wrappers:
+
+```powershell
+.\scripts\windows\Start-DesktopHost.ps1
+```
+
+```bash
+./scripts/linux/start-desktop-host.sh
+./scripts/macos/start-desktop-host.sh
+```
+
+What this does:
+
+- builds `cats` server, web bundle, and Electron host assets
+- starts `cats-runtime` in `app-managed` mode
+- starts `cats` in `app-managed` mode
+- waits for both `/health` readiness contracts
+- runs a lightweight prerequisite scan before opening chat or setup
+
+The host bootstrap page is intentionally separate from the React setup wizard.
+It is the desktop-owned seam for:
+
+- local service supervision
+- prerequisite and provider remediation messaging
+- later packaged install/resume flows
+
 ## Common Issues
 
 ### Issue 1: `/health` returns `503`
@@ -174,7 +209,18 @@ Longer-term direction: polling-first Telegram setup should remove this public
 URL requirement for the default onboarding path, while keeping these helpers as
 an optional advanced mode.
 
+### Issue 7: Desktop host fails before showing the bootstrap page
+
+**Solution**: Confirm these built assets exist:
+
+- `dist-server/index.js`
+- `dist/index.html`
+- `dist-electron/main.js`
+- sibling `../cats-runtime/dist/index.js`
+
+If you changed any desktop-host paths, re-check the corresponding
+`CATS_DESKTOP_*` overrides.
+
 ---
 
 *Last updated: 2026-03-23*
-

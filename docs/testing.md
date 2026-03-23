@@ -21,6 +21,13 @@ chat-workflow activity projection into the shared core read model. Operator
 loop regression coverage also verifies that invalid effective-policy enum
 metadata is ignored rather than leaked through raw casts, and that
 acknowledge-action metadata uses the stable `operatorAcknowledged*` key family.
+Desktop-host regression coverage now also checks:
+
+- `cats` app startup flag parsing and lifecycle output
+- desktop bootstrap phase selection (`ready_for_setup`, `ready_for_chat`,
+  `needs_prerequisites`)
+- managed child-process launch specs for `cats` and `cats-runtime`
+- host build smoke through `npm run build:host`
 
 ## Test Types
 
@@ -47,6 +54,14 @@ acknowledge-action metadata uses the stable `operatorAcknowledged*` key family.
   and richer operator-loop interactions such as generic approval action
   options, retry/acknowledge controls, and run-inspector DOM behavior
 
+### Desktop Host Tests
+
+- **Location**: `tests/app-startup.test.js`,
+  `tests/desktop-readiness.test.js`, `tests/desktop-supervisor.test.js`
+- **Framework**: `node:test`
+- **Scope**: app-managed startup contract, host prerequisite snapshot logic,
+  and managed child-process launch/shutdown seams
+
 ## Running Tests
 
 ### All Tests
@@ -62,6 +77,7 @@ against the compiled output.
 
 ```bash
 npm run build
+npm run build:host
 ```
 
 This is the current production-bundle smoke check. It is still run manually;

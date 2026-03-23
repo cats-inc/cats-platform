@@ -6,17 +6,20 @@
   "main": "dist-server/index.js",
   "types": "dist-server/index.d.ts",
   "scripts": {
-    "build": "npm run build:server && npm run build:web",
+    "build": "npm run build:server && npm run build:web && npm run build:host",
+    "build:host": "tsc -p tsconfig.electron.json",
     "build:server": "tsc -p tsconfig.server.json",
     "build:web": "vite build",
     "build:test-ui": "esbuild tests/*.test.tsx --bundle --platform=node --format=esm --outdir=dist-test",
+    "desktop:host": "electron dist-electron/main.js",
+    "desktop:start": "npm run build && npm run desktop:host",
     "dev": "npm run dev:web",
     "dev:server": "tsx watch src/index.ts",
     "dev:web": "vite",
     "preview:web": "vite preview",
     "start": "node dist-server/index.js",
-    "test": "npm run build:server && npm run build:test-ui && node --test --test-isolation=none tests/**/*.test.js dist-test/*.test.js",
-    "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.json"
+    "test": "npm run build:server && npm run build:host && npm run build:test-ui && node --test --test-isolation=none tests/**/*.test.js dist-test/*.test.js",
+    "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.electron.json && tsc --noEmit -p tsconfig.json"
   },
   "keywords": [
     "cats",
@@ -35,6 +38,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^36.1.0",
     "esbuild": "^0.27.0",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0",

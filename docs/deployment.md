@@ -12,7 +12,7 @@
 | Containerized local | `http://127.0.0.1:8181` | Scaffold exists, but container assets need refresh before being treated as current |
 | Staging | TBD | Pre-production testing |
 | Production | TBD | Live environment |
-| Desktop distributable | Planned | Preferred first public distribution path for `Cats Chat` and `Cats Work` |
+| Desktop distributable | Local slice landed | Electron host starts local `cats-runtime` + `cats`, waits for readiness, and gates into setup/chat |
 
 ## Deployment Methods
 
@@ -34,20 +34,43 @@ Container assets were inherited from bootstrap and have not yet been refreshed
 for the current `dist-server/` plus Vite output layout. Treat them as a future
 follow-up, not a validated deployment path.
 
-### Planned Desktop Packaging
+### Desktop Host First Slice
 
-Desktop packaging is not implemented yet, but the intended topology is now
-documented:
+The first desktop-host slice is now in-tree:
 
 - Electron `main` owns tray, windows, startup, and process supervision
-- `cats-runtime` runs as a managed local process
-- `cats` runs as a managed local process and hosts the first `Cats Core v1`
-  APIs or modules
-- The BrowserWindow loads local `Cats Chat` and `Cats Work` URLs from
-  `cats`
+- `cats-runtime` runs as a managed local sidecar in `app-managed` mode
+- `cats` runs as a managed local sidecar in `app-managed` mode
+- the host waits on each service's `/health` readiness contract before
+  leaving the bootstrap surface
+- a host-owned bootstrap page performs the first prerequisite scan against
+  `cats-runtime` diagnostics and then:
+  - continues into `/setup` for first-run flows
+  - or opens `/new` when setup and provider readiness are already satisfied
 - The renderer does not talk to provider CLIs or spawn local runtimes directly
-- The packaged experience should guide owner profile, model credentials, and
-  optional bot-binding setup rather than requiring terminal steps
+- the packaged experience still keeps setup and provider remediation in the
+  host rather than pushing shell work into the renderer
+- current launch command:
+
+```bash
+npm run desktop:start
+```
+
+- platform wrappers:
+
+```powershell
+.\scripts\windows\Start-DesktopHost.ps1
+```
+
+```bash
+./scripts/linux/start-desktop-host.sh
+./scripts/macos/start-desktop-host.sh
+```
+
+- still intentionally out of scope for this slice:
+  - full installer matrix
+  - auto-update
+  - privileged provider-install execution
 - Tauri is not the current path because the desktop package still needs to
   supervise Node-based `cats` and `cats-runtime` sidecars
 - Mobile is not part of the first packaged primary product surface; if added
@@ -69,6 +92,20 @@ for the planned desktop host model.
 | `CATS_RUNTIME_BASE_URL` | Yes | Upstream runtime URL |
 | `CATS_RUNTIME_API_KEY` | No | Optional bearer token for `cats-runtime` |
 
+Desktop-host specific overrides:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CATS_DESKTOP_APP_ENTRY` | No | Override built `cats` server entrypoint for the host |
+| `CATS_DESKTOP_RUNTIME_ENTRY` | No | Override built `cats-runtime` entrypoint for the host |
+| `CATS_DESKTOP_RUNTIME_ROOT` | No | Override sibling `cats-runtime/` root discovery |
+| `CATS_DESKTOP_APP_PORT` | No | Override host-managed `cats` port |
+| `CATS_DESKTOP_RUNTIME_PORT` | No | Override host-managed `cats-runtime` port |
+| `CATS_DESKTOP_STATE_PATH` | No | Override host-managed chat-state path |
+| `CATS_DESKTOP_RUNTIME_DATA_DIR` | No | Override host-managed runtime data dir |
+| `CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR` | No | Override host-managed runtime session dir |
+| `CATS_DESKTOP_RUNTIME_CONFIG_PATH` | No | Override host-managed runtime provider config path |
+
 ### Secrets Management
 
 - Keep `.env` local and uncommitted
@@ -79,7 +116,7 @@ for the planned desktop host model.
 - **Logs**: stdout from the Node process
 - **Health**: `GET /health`
 - **Renderer**: served by the Node server after `npm run build`
-- **Desktop host**: planned to supervise local services and onboarding
+- **Desktop host**: Electron bootstrap page plus child-process supervision
 
 ## Troubleshooting
 
@@ -96,14 +133,18 @@ entrypoint.
 **Solution**: Refresh the inherited container assets before using Docker as an
 official deployment path.
 
-### Issue 3: Packaged desktop onboarding does not exist yet
+### Issue 3: Desktop host stays on the bootstrap page instead of opening chat
 
-**Symptoms**: Non-technical users still need to edit `.env` files or start
-multiple local services manually.
-**Solution**: Treat packaged desktop onboarding as a product requirement, not as
-an optional polish item. The intended first-run flow should capture model
-credentials, owner profile, and optional transport bindings.
+**Symptoms**: The Electron host starts, but the window keeps showing
+prerequisite guidance or provider issues.
+**Solution**: Check the bootstrap actions first:
+
+- `Open Runtime Diagnostics` shows the current `cats-runtime`
+  diagnostics summary
+- `Continue to Setup` opens `/setup` so an API baseline or local CLI path can
+  be configured
+- `Retry Scan` re-runs readiness and prerequisite checks after remediation
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-23*

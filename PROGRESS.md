@@ -8,12 +8,12 @@
 |-----------|--------|-------------|
 | Bootstrap | Completed | Subproject created from `project-bootstrap` with Node.js preset |
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
-| HTTP App Shell | Completed | Node server exposes `/health` and `/api/app-shell` |
+| HTTP App Shell | Completed | Node server exposes `/health` as the app-managed readiness contract plus `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
 | Chat Product Features | Completed | Runtime-backed setup, global cat registry, first-run `/setup` onboarding, sleep/wake-aware room entry, direct-cat draft lanes from `My Cats`, stable room-routing / wake-request contracts, live mention continuation routing, transcript export, execution-aware state, and product-owned companion-box sidecar ingestion/hydration seams landed |
 | Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records, but compatibility-shim cleanup and later control-plane slices remain |
-| Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private in-place lane entry, Telegram inbox MVP, runtime skill/guardrail seams, shared-core projection boundaries, the operator-loop chat surfaces, the companion-box sidecar/session-hydration contract, and the polling-first Telegram follow-on direction; broader launch-track docs still remain |
-| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens Cat-scoped in-place direct lanes rather than creating `Recents` threads, Telegram Boss Cat inbox MVP currently bridges webhook ingress into durable room routing and outbound replies, per-Cat companion-box sidecar ingestion/hydration now exists without visible UI changes, and Chat now surfaces operator-facing approvals, reroute/retry/acknowledge seams, progress, activity, traces, run inspection, plus machine-readable governance/workflow summaries while polling-first onboarding, escalation, takeover, and desktop packaging remain ahead |
+| Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private in-place lane entry, Telegram inbox MVP, runtime skill/guardrail seams, shared-core projection boundaries, the operator-loop chat surfaces, the companion-box sidecar/session-hydration contract, the first Electron desktop-host slice, and the polling-first Telegram follow-on direction; broader launch-track docs still remain |
+| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens Cat-scoped in-place direct lanes rather than creating `Recents` threads, Telegram Boss Cat inbox MVP currently bridges webhook ingress into durable room routing and outbound replies, per-Cat companion-box sidecar ingestion/hydration now exists without visible UI changes, Chat now surfaces operator-facing approvals, reroute/retry/acknowledge seams, progress, activity, traces, run inspection, and machine-readable governance/workflow summaries, and the first Electron host now supervises local `cats-runtime` + `cats` with readiness-gated bootstrap while polling-first onboarding, escalation, takeover, and fuller packaging/install flows remain ahead |
 | Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
@@ -127,7 +127,7 @@ Known follow-ups:
 | Add interactive delegation and owner approval loop | [ ] | Pre-dispatch approve/reject/reroute now land through `/api/core/approvals`, retry/acknowledge incident hooks land through `/api/core/operator-actions`, task/run metadata now carries machine-readable governance/workflow summaries plus a runtime-delivery-manifest skeleton, and room-workflow/effective-policy metadata is visible in Chat; automatic resume and deeper planning loops still remain |
 | Add Telegram and LINE orchestrator entrypoints | [ ] | Telegram Boss Cat inbox MVP now lands webhook ingress, durable inbox-to-room mapping, room creation/continuation, transport diagnostics UI, and outbound replies; polling-first Telegram onboarding also landed (SPEC-028/ADR-029) with polling-default bindings, token uniqueness, PollingSupervisor health/reconnect seams, and Settings mode selection; LINE and richer room-rotation policy remain pending |
 | Add escalation and takeover support | [ ] | HITL flows are defined in planning only |
-| Ship desktop-safe packaging and onboarding | [ ] | Electron host exists only as an ADR today |
+| Ship desktop-safe packaging and onboarding | [ ] | The first Electron host slice now supervises local `cats-runtime` + `cats`, waits on `/health`, and gates into setup/chat; installer/update/polished remediation flows still remain |
 | Revisit limited mobile companion scope | [ ] | Mobile is not a full primary shell in the current plan |
 
 #### Acceptance Criteria
@@ -137,7 +137,7 @@ Known follow-ups:
 - [ ] Operators can add an existing or new cat from the active chat without
       going through a first-level registry page
 - [ ] External transport channels can route through a single orchestrator bot end to end; Telegram Boss Cat inbox MVP is landed, while LINE and richer multi-room policy still remain
-- [ ] Desktop packaging can start local services with guided setup
+- [x] Desktop packaging can start local services with guided setup
 
 ---
 
