@@ -1,9 +1,8 @@
 import type { ChatChannelSummary, ParticipantSessionStatus } from '../../../shared/app-shell.js';
-import { buildNewChatPath } from '../../../shared/channelPaths.js';
+import { buildMyCatPath } from '../../../shared/channelPaths.js';
 
 export type MyCatNavigationTarget =
-  | { kind: 'existing_channel'; channelId: string }
-  | { kind: 'draft_lane'; path: string };
+  | { kind: 'direct_lane'; path: string };
 
 export type MyCatStatusDot = 'no_dot' | 'sleeping' | 'waking_up' | 'awake' | 'error';
 
@@ -56,14 +55,8 @@ export function statusDotLabel(dot: MyCatStatusDot): string {
 }
 
 export function resolveMyCatNavigationTarget(
-  channels: ChatChannelSummary[],
+  _channels: ChatChannelSummary[],
   catId: string,
 ): MyCatNavigationTarget {
-  const existing = findDirectLaneForCat(channels, catId);
-
-  if (existing) {
-    return { kind: 'existing_channel', channelId: existing.id };
-  }
-
-  return { kind: 'draft_lane', path: buildNewChatPath(catId) };
+  return { kind: 'direct_lane', path: buildMyCatPath(catId) };
 }

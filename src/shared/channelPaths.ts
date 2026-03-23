@@ -1,9 +1,12 @@
+import type { ChatChannelSummary } from './app-shell.js';
+
 export const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 export const NEW_CHAT_PATH = '/new';
 export const NEW_CHAT_CAT_QUERY_PARAM = 'cat';
 export const SETUP_PATH = '/setup';
+export const MY_CATS_PATH_PREFIX = '/my-cats';
 
 export function resolveAppEntryPath(setupCompleteAt: string | null | undefined): string {
   return setupCompleteAt ? NEW_CHAT_PATH : SETUP_PATH;
@@ -24,6 +27,15 @@ export function buildNewChatPath(leadCatId?: string | null): string {
   return `${NEW_CHAT_PATH}?${params.toString()}`;
 }
 
+export function buildMyCatPath(catId: string): string {
+  const normalizedCatId = normalizeRouteToken(catId);
+  if (!normalizedCatId) {
+    return MY_CATS_PATH_PREFIX;
+  }
+
+  return `${MY_CATS_PATH_PREFIX}/${encodeURIComponent(normalizedCatId)}`;
+}
+
 export function readNewChatLeadCatId(search: string): string | null {
   const params = new URLSearchParams(search);
   return normalizeRouteToken(params.get(NEW_CHAT_CAT_QUERY_PARAM));
@@ -36,6 +48,22 @@ export function buildChannelPath(channelId: string): string {
 export function resolveDefaultChatPath(selectedChannelId: string | null | undefined): string {
   const normalized = selectedChannelId?.trim();
   return normalized ? buildChannelPath(normalized) : NEW_CHAT_PATH;
+}
+
+export function resolveVisibleChatPath(
+  channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode'>>,
+  selectedChannelId: string | null | undefined,
+): string {
+  const normalized = selectedChannelId?.trim() ?? '';
+  const selectedVisible = channels.find((channel) =>
+    channel.id === normalized && channel.roomMode !== 'direct_cat_chat',
+  );
+  if (selectedVisible) {
+    return buildChannelPath(selectedVisible.id);
+  }
+
+  const firstVisible = channels.find((channel) => channel.roomMode !== 'direct_cat_chat');
+  return firstVisible ? buildChannelPath(firstVisible.id) : NEW_CHAT_PATH;
 }
 
 export function isNewChatPath(pathname: string): boolean {

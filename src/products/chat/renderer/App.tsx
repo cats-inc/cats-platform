@@ -16,12 +16,13 @@ import {
 import { shouldSubmitComposerOnKeyDown } from '../../../shared/composer';
 import {
   buildNewChatPath,
+  buildMyCatPath,
   buildChannelPath,
   isNewChatPath,
   NEW_CHAT_PATH,
   readNewChatLeadCatId,
   resolveAppEntryPath,
-  resolveDefaultChatPath,
+  resolveVisibleChatPath,
 } from '../../../shared/channelPaths';
 import {
   readSidebarOpenPreference,
@@ -48,6 +49,7 @@ import {
 
 import {
   type CatFormState,
+  type SelectedChannelView,
   type Surface,
   emptyCatForm,
   resolveBossCatName,
@@ -75,6 +77,7 @@ import { SettingsData } from './components/SettingsData';
 import { AddCatPanel } from './components/AddCatPanel';
 import { FolderBrowser } from './components/FolderBrowser';
 import { resolveMyCatNavigationTarget } from './myCatNavigation';
+import { findDirectLaneForCat } from './myCatNavigation';
 
 type LoadState =
   | { status: 'loading' }
@@ -89,13 +92,28 @@ type OperatorLoadState =
 
 const OPERATOR_BACKGROUND_REFRESH_MS = 5_000;
 
+function isDirectLaneSelectedForCat(
+  channel: SelectedChannelView | null,
+  catId: string | null,
+): channel is SelectedChannelView {
+  if (!channel || !catId) {
+    return false;
+  }
+
+  return channel.roomRouting.mode === 'direct_cat_chat'
+    && channel.roomRouting.leadParticipantId === catId;
+}
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const channelMatch = useMatch('/chats/:channelId');
+  const myCatMatch = useMatch('/my-cats/:catId');
   const routeChannelId = channelMatch?.params.channelId ?? null;
+  const routeMyCatId = myCatMatch?.params.catId ?? null;
   const showingNewChatDraft = isNewChatPath(location.pathname);
-  const draftLeadCatId = readNewChatLeadCatId(location.search);
+  const draftLeadCatId = routeMyCatId ?? readNewChatLeadCatId(location.search);
+  const showingMyCatDirectLane = Boolean(routeMyCatId);
 
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [composerDraft, setComposerDraft] = useState('');
@@ -148,6 +166,14 @@ export default function App() {
   const routeChannelTitle = routeChannelId
     ? readyChat?.channels.find((channel) => channel.id === routeChannelId)?.title ?? null
     : null;
+  const routeDirectLaneSummary =
+    showingMyCatDirectLane && draftLeadCatId && readyChat
+      ? findDirectLaneForCat(readyChat.channels, draftLeadCatId)
+      : null;
+  const selectedDirectLane =
+    showingMyCatDirectLane && draftLeadCatId && isDirectLaneSelectedForCat(readySelectedChannel, draftLeadCatId)
+      ? readySelectedChannel
+      : null;
   const operatorRefreshKey = readyChat
     ? [
         readyChat.selectedChannelId,
@@ -306,7 +332,7 @@ export default function App() {
     if (state.status !== 'ready' || !routeChannelId) return;
 
     if (!routeChannelExists) {
-      navigate(resolveDefaultChatPath(selectedChannelId), { replace: true });
+      navigate(resolveVisibleChatPath(state.payload.chat.channels, selectedChannelId), { replace: true });
       return;
     }
 
@@ -329,7 +355,7 @@ export default function App() {
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          navigate(resolveDefaultChatPath(selectedChannelId), { replace: true });
+          navigate(resolveVisibleChatPath(state.payload.chat.channels, selectedChannelId), { replace: true });
         }
       });
 
@@ -345,7 +371,7 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    if (state.status !== 'ready' || !showingNewChatDraft || !draftLeadCatId) {
+    if (state.status !== 'ready' || !draftLeadCatId) {
       return;
     }
 
@@ -354,7 +380,39 @@ export default function App() {
     if (!catExists) {
       navigate(NEW_CHAT_PATH, { replace: true });
     }
-  }, [draftLeadCatId, navigate, showingNewChatDraft, state]);
+  }, [draftLeadCatId, navigate, state]);
+
+  useEffect(() => {
+    if (
+      state.status !== 'ready'
+      || !showingMyCatDirectLane
+      || !draftLeadCatId
+      || !routeDirectLaneSummary
+      || isDirectLaneSelectedForCat(readySelectedChannel, draftLeadCatId)
+    ) {
+      return;
+    }
+
+    const controller = new AbortController();
+    updateSelectedChannel(routeDirectLaneSummary.id, controller.signal)
+      .then((payload) => {
+        if (!controller.signal.aborted) {
+          startTransition(() => setState({ status: 'ready', payload }));
+        }
+      })
+      .catch(() => {
+        // Keep the route on the in-place lane even if the hidden backing channel
+        // could not be reselected; the draft surface remains the fallback.
+      });
+
+    return () => controller.abort();
+  }, [
+    draftLeadCatId,
+    readySelectedChannel,
+    routeDirectLaneSummary,
+    showingMyCatDirectLane,
+    state.status,
+  ]);
 
   useEffect(() => {
     return refreshOperatorSnapshot();
@@ -399,7 +457,7 @@ export default function App() {
 
   function onOpenChatsOverview(): void {
     if (state.status !== 'ready') return;
-    navigate(resolveDefaultChatPath(state.payload.chat.selectedChannelId));
+    navigate(resolveVisibleChatPath(state.payload.chat.channels, state.payload.chat.selectedChannelId));
     setFeedback('');
     setAddCatOpen(false);
   }
@@ -438,7 +496,7 @@ export default function App() {
         setAddCatOpen(false);
         setFeedback('');
       });
-      navigate(resolveDefaultChatPath(payload.chat.selectedChannelId));
+      navigate(resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
     } finally {
@@ -655,15 +713,68 @@ export default function App() {
 
     const initialPayload = state.payload;
     const wasDraftingNewChat = showingNewChatDraft;
+    const isCatScopedLaneRoute = Boolean(draftLeadCatId) && showingMyCatDirectLane;
+    const initialSelectedChannel = normalizeSelectedChannelView(initialPayload.chat.selectedChannel ?? null);
+    const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftLeadCatId)
+      ? initialSelectedChannel
+      : null;
     let payload = initialPayload;
     let rollbackPayload = initialPayload;
-    let channelId = wasDraftingNewChat ? '' : initialPayload.chat.selectedChannelId;
-    let rollbackPath = wasDraftingNewChat ? buildNewChatPath(draftLeadCatId) : location.pathname;
+    let channelId = wasDraftingNewChat || showingMyCatDirectLane
+      ? hydratedDirectLane?.id ?? ''
+      : initialPayload.chat.selectedChannelId;
+    let rollbackPath = showingMyCatDirectLane
+      ? buildMyCatPath(draftLeadCatId ?? '')
+      : wasDraftingNewChat
+        ? buildNewChatPath(draftLeadCatId)
+        : location.pathname;
 
     setBusy('message:send');
     setFeedback('');
     try {
-      if (wasDraftingNewChat) {
+      if (isCatScopedLaneRoute) {
+        if (!hydratedDirectLane) {
+          const createdPayload = await createChatChannel({
+            title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
+            topic: createDraftChannelTopic(body),
+            skipBossCatGreeting: true,
+            repoPath: draftCwd ?? undefined,
+            roomMode: 'direct_cat_chat' as const,
+            leadParticipantId: draftLeadCatId ?? undefined,
+            participantCatIds: draftLeadCatId
+              ? [draftLeadCatId, ...draftCatIds.filter((id) => id !== draftLeadCatId)]
+              : draftCatIds,
+          });
+          channelId = createdPayload.chat.selectedChannelId;
+          if (!channelId) {
+            throw new Error('No chat is available for sending messages.');
+          }
+
+          let latestPayload = createdPayload;
+          for (const catId of draftCatIds.filter((id) => id !== draftLeadCatId)) {
+            const cat = initialPayload.chat.cats.find((p) => p.id === catId);
+            if (cat) {
+              latestPayload = await assignCatToChannelApi(channelId, {
+                catId: cat.id,
+                provider: cat.defaultExecutionTarget.provider,
+                instance: cat.defaultExecutionTarget.instance ?? undefined,
+                model: cat.defaultExecutionTarget.model ?? undefined,
+              });
+            }
+          }
+
+          rollbackPayload = latestPayload;
+          payload = appendOptimisticUserMessage(latestPayload, channelId, body);
+          setState({ status: 'ready', payload });
+          setComposerDraft('');
+          navigate(rollbackPath, { replace: true });
+        } else {
+          channelId = hydratedDirectLane.id;
+          payload = appendOptimisticUserMessage(payload, channelId, body);
+          setState({ status: 'ready', payload });
+          setComposerDraft('');
+        }
+      } else if (wasDraftingNewChat) {
         const optimisticDraft = createOptimisticDraftPayload(initialPayload, body, draftLeadCatId);
         payload = optimisticDraft.payload;
         setState({ status: 'ready', payload });
@@ -720,7 +831,13 @@ export default function App() {
       }
 
       let messageBody = body;
-      const filesToUpload = wasDraftingNewChat ? draftFiles : channelFiles;
+      const filesToUpload = isCatScopedLaneRoute && !hydratedDirectLane
+        ? draftFiles
+        : hydratedDirectLane
+          ? channelFiles
+          : wasDraftingNewChat
+            ? draftFiles
+            : channelFiles;
       if (filesToUpload.length > 0) {
         const selectedForFiles =
           payload.chat.selectedChannel?.id === channelId
@@ -741,9 +858,14 @@ export default function App() {
       setState({ status: 'ready', payload: dispatch.appShell });
       setComposerDraft('');
       setFeedback('');
-      navigate(buildChannelPath(channelId), { replace: true });
+      navigate(rollbackPath, { replace: true });
 
-      if (wasDraftingNewChat) {
+      if (isCatScopedLaneRoute) {
+        setDraftCwd(null);
+        setDraftCatIds([]);
+        setDraftFiles([]);
+        setChannelFiles([]);
+      } else if (wasDraftingNewChat) {
         setDraftCwd(null);
         setDraftCatIds([]);
         setDraftFiles([]);
@@ -865,15 +987,19 @@ export default function App() {
     && readySelectedChannel?.id === routeChannelId
     ? readySelectedChannel
     : null;
-  const activeMyCatId = showingNewChatDraft
+  const directLaneChannel = showingMyCatDirectLane
+    ? selectedDirectLane
+    : null;
+  const activeChannelView = selectedChannel ?? directLaneChannel;
+  const activeMyCatId = draftLeadCatId
     ? draftLeadCatId
     : selectedChannel?.roomRouting?.mode === 'direct_cat_chat'
       ? selectedChannel.roomRouting.leadParticipantId ?? null
       : null;
 
   const activeAssignedCats =
-    selectedChannel?.assignedCats.filter((cat) => cat.status === 'active') ?? [];
-  const assignedCatIds = new Set(selectedChannel?.assignedCats.map((cat) => cat.catId) ?? []);
+    activeChannelView?.assignedCats.filter((cat) => cat.status === 'active') ?? [];
+  const assignedCatIds = new Set(activeChannelView?.assignedCats.map((cat) => cat.catId) ?? []);
   const bossCatName = resolveBossCatName(payload) ?? 'Orchestrator';
   const bossCatAvatarColor = payload.chat.cats.find(
     (cat) => cat.id === payload.chat.bossCatId,
@@ -924,13 +1050,14 @@ export default function App() {
         activeMyCatId={activeMyCatId}
         onDirectChatCat={async (catId) => {
           const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
-          if (target.kind === 'existing_channel') {
-            onSelect(target.channelId);
-            return;
-          }
           setFeedback('');
           setAddCatOpen(false);
           setPlusMenuOpen(false);
+          setDraftCwd(null);
+          setDraftCatIds([]);
+          setDraftFiles([]);
+          setChannelPlusMenuOpen(false);
+          setChannelFiles([]);
           navigate(target.path);
         }}
       />
@@ -1014,7 +1141,76 @@ export default function App() {
           } />
           <Route
             path="/chats"
-            element={<Navigate to={resolveDefaultChatPath(payload.chat.selectedChannelId)} replace />}
+            element={<Navigate to={resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId)} replace />}
+          />
+          <Route
+            path="/my-cats/:catId"
+            element={
+              routeDirectLaneSummary && !directLaneChannel ? (
+                <BootShell />
+              ) : directLaneChannel ? (
+                <ChatView
+                  payload={payload}
+                  selectedChannel={directLaneChannel}
+                  operatorSnapshot={operatorState.snapshot}
+                  operatorLoading={operatorState.status === 'loading' && operatorState.snapshot === null}
+                  operatorError={operatorState.status === 'error' ? operatorState.message : ''}
+                  composerDraft={composerDraft}
+                  busy={busy}
+                  feedback={feedback}
+                  greeting={greeting}
+                  channelFiles={channelFiles}
+                  channelPlusMenuOpen={channelPlusMenuOpen}
+                  channelPlusMenuRef={channelPlusMenuRef}
+                  channelFileInputRef={channelFileInputRef}
+                  activeAssignedCats={activeAssignedCats}
+                  bossCatName={bossCatName}
+                  bossCatAvatarColor={bossCatAvatarColor}
+                  showBossCatAvatar={showBossCatAvatar}
+                  addCatOpen={false}
+                  onComposerChange={setComposerDraft}
+                  onComposerKeyDown={(e) => void onComposerKeyDown(e)}
+                  onSendMessage={(e) => void onSendMessage(e)}
+                  onToggleAddCat={() => {}}
+                  onToggleChannelPlusMenu={() => setChannelPlusMenuOpen(!channelPlusMenuOpen)}
+                  onChannelFileSelect={() => { channelFileInputRef.current?.click(); setChannelPlusMenuOpen(false); }}
+                  onChannelFilesChange={setChannelFiles}
+                  onApprovalDecision={(taskId, status) => void onApprovalDecision(taskId, status)}
+                  onOperatorAction={(input) => void onOperatorAction(input)}
+                  autoResize={autoResize}
+                  showAddCatButton={false}
+                />
+              ) : (
+                <NewChatDraft
+                  payload={payload}
+                  composerDraft={composerDraft}
+                  busy={busy}
+                  greeting={greeting}
+                  draftFiles={draftFiles}
+                  draftCwd={draftCwd}
+                  draftCatIds={draftCatIds}
+                  plusMenuOpen={plusMenuOpen}
+                  plusMenuRef={plusMenuRef}
+                  fileInputRef={fileInputRef}
+                  bossCatName={bossCatName}
+                  bossCatAvatarColor={bossCatAvatarColor}
+                  onComposerChange={setComposerDraft}
+                  onComposerKeyDown={(e) => void onComposerKeyDown(e)}
+                  onSendMessage={(e) => void onSendMessage(e)}
+                  onTogglePlusMenu={() => setPlusMenuOpen(!plusMenuOpen)}
+                  onFileSelect={() => { fileInputRef.current?.click(); setPlusMenuOpen(false); }}
+                  onPickFolder={() => { void handlePickFolder(); setPlusMenuOpen(false); }}
+                  onOpenAddCat={() => {}}
+                  onDraftFilesChange={setDraftFiles}
+                  onDraftCwdClear={() => setDraftCwd(null)}
+                  onToggleDraftCat={toggleDraftCat}
+                  autoResize={autoResize}
+                  draftLeadCatId={draftLeadCatId}
+                  onDraftLeadCatChange={() => {}}
+                  allowAddCat={false}
+                />
+              )
+            }
           />
           <Route path={NEW_CHAT_PATH} element={
             <NewChatDraft
@@ -1063,7 +1259,7 @@ export default function App() {
         </Routes>
       </main>
 
-      {addCatOpen && (selectedChannel || showingNewChatDraft) ? (
+      {addCatOpen && (selectedChannel || (showingNewChatDraft && !draftLeadCatId)) ? (
         <AddCatPanel
           panelRef={addCatPanelRef}
           selectableCats={selectableCats}
@@ -1071,7 +1267,7 @@ export default function App() {
           addCatTab={addCatTab}
           busy={busy}
           feedback={feedback}
-          showingNewChatDraft={showingNewChatDraft}
+          showingNewChatDraft={showingNewChatDraft && !draftLeadCatId}
           draftCatIdSet={draftCatIdSet}
           assignedCatIds={assignedCatIds}
           catForm={catForm}
@@ -1082,7 +1278,7 @@ export default function App() {
           onToggleDraftCat={toggleDraftCat}
           onCatFormChange={setCatForm}
           onCreateCat={(e) => {
-            if (showingNewChatDraft) {
+            if (showingNewChatDraft && !draftLeadCatId) {
               void onCreateAndDraftCat(e);
             } else {
               void onCreateAndAssignCat(e);

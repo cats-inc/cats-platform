@@ -65,6 +65,7 @@ export interface ChatViewProps {
     outcomeId?: string | null;
   }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
+  showAddCatButton?: boolean;
 }
 
 export function ChatView({
@@ -95,6 +96,7 @@ export function ChatView({
   onApprovalDecision,
   onOperatorAction,
   autoResize,
+  showAddCatButton = true,
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
@@ -222,13 +224,15 @@ export function ChatView({
               ))}
           </div>
         </div>
-        <button
-          className="addCatButton"
-          type="button"
-          onClick={onToggleAddCat}
-        >
-          +
-        </button>
+        {showAddCatButton ? (
+          <button
+            className="addCatButton"
+            type="button"
+            onClick={onToggleAddCat}
+          >
+            +
+          </button>
+        ) : null}
       </header>
       <div className="viewShell viewShellChannel">
         <div className="channelWorkspace">

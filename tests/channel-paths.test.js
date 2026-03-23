@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   buildNewChatPath,
+  buildMyCatPath,
   buildChannelPath,
   createChannelExportFilename,
   isNewChatPath,
@@ -11,6 +12,7 @@ import {
   readNewChatLeadCatId,
   resolveAppEntryPath,
   resolveDefaultChatPath,
+  resolveVisibleChatPath,
   SETUP_PATH,
   slugifyChannelLabel,
 } from '../dist-server/shared/channelPaths.js';
@@ -19,6 +21,26 @@ test('resolveDefaultChatPath falls back to the dedicated new-chat route', () => 
   assert.equal(resolveDefaultChatPath(''), NEW_CHAT_PATH);
   assert.equal(resolveDefaultChatPath(null), NEW_CHAT_PATH);
   assert.equal(resolveDefaultChatPath(undefined), NEW_CHAT_PATH);
+});
+
+test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overview target', () => {
+  const channels = [
+    { id: 'direct-1', roomMode: 'direct_cat_chat' },
+    { id: 'boss-1', roomMode: 'boss_chat' },
+  ];
+
+  assert.equal(
+    resolveVisibleChatPath(channels, 'direct-1'),
+    '/chats/boss-1',
+  );
+  assert.equal(
+    resolveVisibleChatPath(channels, 'boss-1'),
+    '/chats/boss-1',
+  );
+  assert.equal(
+    resolveVisibleChatPath([{ id: 'direct-1', roomMode: 'direct_cat_chat' }], 'direct-1'),
+    NEW_CHAT_PATH,
+  );
 });
 
 test('resolveAppEntryPath routes setup and initialized chats to the correct entry page', () => {
@@ -52,6 +74,7 @@ test('new-chat route helpers preserve direct-cat draft state without creating a 
   const catId = '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae';
 
   assert.equal(buildNewChatPath(catId), `/new?cat=${catId}`);
+  assert.equal(buildMyCatPath(catId), `/my-cats/${catId}`);
   assert.equal(buildNewChatPath('   '), NEW_CHAT_PATH);
   assert.equal(readNewChatLeadCatId(`?cat=${catId}`), catId);
   assert.equal(readNewChatLeadCatId(''), null);

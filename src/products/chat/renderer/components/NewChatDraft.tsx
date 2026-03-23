@@ -29,6 +29,7 @@ export interface NewChatDraftProps {
   autoResize: (el: HTMLTextAreaElement) => void;
   draftLeadCatId: string | null;
   onDraftLeadCatChange: (catId: string | null) => void;
+  allowAddCat?: boolean;
 }
 
 export function NewChatDraft({
@@ -57,6 +58,7 @@ export function NewChatDraft({
   autoResize,
   draftLeadCatId,
   onDraftLeadCatChange,
+  allowAddCat = true,
 }: NewChatDraftProps) {
   const leadCat = draftLeadCatId
     ? payload.chat.cats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
@@ -172,17 +174,19 @@ export function NewChatDraft({
                       </svg>
                       Set working directory
                     </button>
-                    <button
-                      className="composerPlusMenuItem"
-                      type="button"
-                      onClick={onOpenAddCat}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="8" cy="5" r="3" />
-                        <path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5" />
-                      </svg>
-                      Add cat to chat
-                    </button>
+                    {allowAddCat ? (
+                      <button
+                        className="composerPlusMenuItem"
+                        type="button"
+                        onClick={onOpenAddCat}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="8" cy="5" r="3" />
+                          <path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5" />
+                        </svg>
+                        Add cat to chat
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

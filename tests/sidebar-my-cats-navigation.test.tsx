@@ -3,7 +3,7 @@ import test from 'node:test';
 import { isValidElement, type ReactNode, type RefObject } from 'react';
 
 import type { AppShellPayload, ChatChannelSummary, ParticipantSessionStatus } from '../src/shared/app-shell.ts';
-import { buildNewChatPath } from '../src/shared/channelPaths.ts';
+import { buildMyCatPath } from '../src/shared/channelPaths.ts';
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
 import {
   findDirectLaneForCat,
@@ -205,16 +205,12 @@ function createSidebarTree(
   });
 }
 
-test('clicking a My Cats entry without an existing direct thread opens a direct draft lane', () => {
+test('clicking a My Cats entry without an existing direct lane opens that Cat lane in place', () => {
   const payload = createPayload([]);
-  const actions: Array<{ kind: 'navigate'; path: string } | { kind: 'select'; channelId: string }> = [];
+  const actions: Array<{ kind: 'navigate'; path: string }> = [];
 
   const tree = createSidebarTree(payload, (catId) => {
     const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
-    if (target.kind === 'existing_channel') {
-      actions.push({ kind: 'select', channelId: target.channelId });
-      return;
-    }
     actions.push({ kind: 'navigate', path: target.path });
   });
 
@@ -222,11 +218,11 @@ test('clicking a My Cats entry without an existing direct thread opens a direct 
   companionButton.props.onClick?.();
 
   assert.deepEqual(actions, [
-    { kind: 'navigate', path: buildNewChatPath('companion-cat') },
+    { kind: 'navigate', path: buildMyCatPath('companion-cat') },
   ]);
 });
 
-test('clicking a My Cats entry with an existing direct thread reopens that thread', () => {
+test('clicking a My Cats entry with an existing hidden direct lane stays on the My Cats route', () => {
   const payload = createPayload([
     createChannel({
       id: 'direct-thread-1',
@@ -235,14 +231,10 @@ test('clicking a My Cats entry with an existing direct thread reopens that threa
       roomMode: 'direct_cat_chat',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
-  const actions: Array<{ kind: 'navigate'; path: string } | { kind: 'select'; channelId: string }> = [];
+  const actions: Array<{ kind: 'navigate'; path: string }> = [];
 
   const tree = createSidebarTree(payload, (catId) => {
     const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
-    if (target.kind === 'existing_channel') {
-      actions.push({ kind: 'select', channelId: target.channelId });
-      return;
-    }
     actions.push({ kind: 'navigate', path: target.path });
   });
 
@@ -250,7 +242,7 @@ test('clicking a My Cats entry with an existing direct thread reopens that threa
   companionButton.props.onClick?.();
 
   assert.deepEqual(actions, [
-    { kind: 'select', channelId: 'direct-thread-1' },
+    { kind: 'navigate', path: buildMyCatPath('companion-cat') },
   ]);
 });
 
@@ -342,19 +334,17 @@ test('clicking My Cats row still preserves existing navigation behavior with sta
       leadParticipantLeaseStatus: 'ready',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
-  const actions: Array<{ kind: 'select'; channelId: string }> = [];
+  const actions: Array<{ kind: 'navigate'; path: string }> = [];
 
   const tree = createSidebarTree(payload, (catId) => {
     const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
-    if (target.kind === 'existing_channel') {
-      actions.push({ kind: 'select', channelId: target.channelId });
-    }
+    actions.push({ kind: 'navigate', path: target.path });
   });
 
   const companionButton = findMyCatButton(tree, 'Companion');
   companionButton.props.onClick?.();
 
-  assert.deepEqual(actions, [{ kind: 'select', channelId: 'direct-thread-1' }]);
+  assert.deepEqual(actions, [{ kind: 'navigate', path: buildMyCatPath('companion-cat') }]);
 });
 
 // --- Runtime Footer Status Dot Tests ---
