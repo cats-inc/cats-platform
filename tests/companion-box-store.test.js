@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,6 +8,44 @@ import {
   FileCompanionBoxStore,
   deriveCompanionBoxStatePath,
 } from '../dist-server/products/chat/state/companionBoxStore.js';
+import {
+  buildCompanionBoxDirectoryKey,
+  buildCompanionSourceStorageKey,
+} from '../dist-server/products/chat/companion/layout.js';
+
+function buildCompanionCat(catId, nowIso) {
+  return {
+    id: catId,
+    name: 'Companion',
+    roles: ['companion'],
+    skillProfile: 'companion',
+    mcpProfile: null,
+    status: 'active',
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    archivedAt: null,
+    avatarColor: null,
+    defaultExecutionTarget: {
+      provider: 'claude',
+      instance: null,
+      model: null,
+    },
+    memory: {
+      summary: null,
+      facts: [],
+      openLoops: [],
+      updatedAt: null,
+    },
+  };
+}
+
+test('companion storage keys sanitize dot traversal segments', () => {
+  assert.equal(buildCompanionBoxDirectoryKey('..'), 'companion-boxes/unknown');
+  assert.equal(
+    buildCompanionSourceStorageKey('..', '..', 'json'),
+    'companion-boxes/unknown/sources/unknown.json',
+  );
+});
 
 test('FileCompanionBoxStore persists sources, derived records, memory, and response profile', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-store-'));
@@ -172,4 +210,87 @@ test('FileCompanionBoxStore derives transcript and caption records for log and m
   assert.ok(derived.some((record) => record.kind === 'transcript'));
   assert.ok(derived.some((record) => record.kind === 'caption'));
   assert.ok(derived.some((record) => record.kind === 'tags'));
+});
+
+test('FileCompanionBoxStore read methods do not rewrite existing snapshots', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-store-'));
+  const chatStatePath = path.join(tempDir, 'chat-state.json');
+  const snapshotPath = deriveCompanionBoxStatePath(chatStatePath);
+  const store = new FileCompanionBoxStore(snapshotPath);
+  const now = new Date('2026-03-23T13:00:00.000Z');
+
+  await store.ingestSource(
+    'cat-read-only',
+    {
+      kind: 'note',
+      storageMode: 'uploaded_copy',
+      title: 'Quiet nap note',
+      textContent: 'Companion naps by the window every afternoon.',
+    },
+    now,
+  );
+
+  const beforeRead = await stat(snapshotPath);
+  await new Promise((resolve) => setTimeout(resolve, 25));
+
+  await store.getBoxSummary('cat-read-only', now);
+  await store.listSources('cat-read-only', now);
+  await store.listDerived('cat-read-only', now);
+  await store.listMemory('cat-read-only', now);
+  await store.getResponseProfile('cat-read-only', now);
+  await store.buildSessionContext({
+    cat: buildCompanionCat('cat-read-only', now.toISOString()),
+    channel: {
+      id: 'channel-direct',
+      title: 'Direct Companion',
+      topic: 'Hydration check',
+      roomRouting: {
+        mode: 'direct_cat_chat',
+        leadParticipantId: 'cat-read-only',
+        explicitParticipantIds: [],
+        mentionParticipantIds: [],
+        defaultTargetParticipantId: 'cat-read-only',
+        lastTrigger: null,
+        lastOutcome: null,
+        lastWakeRequest: null,
+        wakeHistory: [],
+      },
+      workingMemory: undefined,
+    },
+    requestedSkills: ['companion'],
+    transport: 'web',
+    now,
+  });
+
+  const afterRead = await stat(snapshotPath);
+  assert.equal(afterRead.mtimeMs, beforeRead.mtimeMs);
+});
+
+test('FileCompanionBoxStore rolls back snapshot when stored source materialization fails', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-companion-store-'));
+  const chatStatePath = path.join(tempDir, 'chat-state.json');
+  const snapshotPath = deriveCompanionBoxStatePath(chatStatePath);
+  const store = new FileCompanionBoxStore(snapshotPath);
+  const now = new Date('2026-03-23T14:00:00.000Z');
+
+  await writeFile(path.join(tempDir, 'companion-boxes'), 'block materialization', 'utf-8');
+
+  await assert.rejects(
+    store.ingestSource(
+      'cat-materialize-fail',
+      {
+        kind: 'note',
+        storageMode: 'uploaded_copy',
+        title: 'Broken materialize',
+        textContent: 'This write should roll back cleanly.',
+      },
+      now,
+    ),
+  );
+
+  const snapshot = await store.readSnapshot();
+  assert.equal(snapshot.boxes.length, 0);
+  assert.equal(snapshot.sources.length, 0);
+  assert.equal(snapshot.derived.length, 0);
+  assert.equal(snapshot.memory.length, 0);
 });

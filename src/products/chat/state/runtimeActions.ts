@@ -1432,6 +1432,7 @@ async function executeDispatch(
   channelId: string,
   request: DispatchRequest,
   runtimeClient: RuntimeClient,
+  now: Date,
   transport?: RuntimeTransportContext,
   companionStore?: CompanionBoxStore,
 ): Promise<DispatchExecution> {
@@ -1443,7 +1444,7 @@ async function executeDispatch(
       channel,
       request.target,
       transport,
-      new Date(),
+      now,
       companionStore,
     );
     const runtimeResult = await runtimeClient.sendMessage(
@@ -2296,6 +2297,7 @@ export async function routeChannelMessage(
           channelId,
           request,
           runtimeClient,
+          now,
           options.transport,
           options.companionStore,
         ),

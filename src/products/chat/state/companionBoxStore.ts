@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ChatCat, ChatChannelView } from '../../../shared/app-shell.js';
@@ -34,6 +34,13 @@ import type {
   CreateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
+import {
+  COMPANION_EXPRESSION_MODES,
+  COMPANION_MEMORY_CATEGORIES,
+  COMPANION_OUTPUT_MODES,
+  COMPANION_SOURCE_KINDS,
+  COMPANION_SOURCE_STORAGE_MODES,
+} from '../companion/validation.js';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -67,6 +74,14 @@ function isoAt(now: Date): string {
   return now.toISOString();
 }
 
+function describeError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+}
+
 export function deriveCompanionBoxStatePath(chatStatePath: string): string {
   const directory = path.dirname(chatStatePath);
   const parsed = path.parse(chatStatePath);
@@ -98,19 +113,16 @@ function normalizeResponseProfile(
   const outputMode = readString(profileRecord?.outputMode, fallback.outputMode);
 
   return {
-    expressionMode:
-      expressionMode === 'animalistic'
-      || expressionMode === 'anthropomorphic'
-      || expressionMode === 'mixed'
-        ? expressionMode
-        : fallback.expressionMode,
-    outputMode:
-      outputMode === 'text'
-      || outputMode === 'audio_clip'
-      || outputMode === 'tts'
-      || outputMode === 'mixed'
-        ? outputMode
-        : fallback.outputMode,
+    expressionMode: COMPANION_EXPRESSION_MODES.includes(
+      expressionMode as CompanionResponseProfile['expressionMode'],
+    )
+      ? expressionMode as CompanionResponseProfile['expressionMode']
+      : fallback.expressionMode,
+    outputMode: COMPANION_OUTPUT_MODES.includes(
+      outputMode as CompanionResponseProfile['outputMode'],
+    )
+      ? outputMode as CompanionResponseProfile['outputMode']
+      : fallback.outputMode,
     voiceProfileId: readNullableString(profileRecord?.voiceProfileId),
     notes: readNullableString(profileRecord?.notes),
     updatedAt: readString(profileRecord?.updatedAt, nowIso),
@@ -157,8 +169,10 @@ function normalizeSource(rawSource: unknown, nowIso: string): CompanionSourceRec
     !id
     || !boxId
     || !catId
-    || !['note', 'conversation_log', 'article', 'image', 'video', 'audio', 'path_ref'].includes(kind)
-    || !['uploaded_copy', 'imported_copy', 'linked_path'].includes(storageMode)
+    || !COMPANION_SOURCE_KINDS.includes(kind as CompanionSourceRecord['kind'])
+    || !COMPANION_SOURCE_STORAGE_MODES.includes(
+      storageMode as CompanionSourceRecord['storageMode'],
+    )
   ) {
     return null;
   }
@@ -244,7 +258,7 @@ function normalizeMemory(rawRecord: unknown, nowIso: string): CompanionMemoryRec
     !id
     || !boxId
     || !catId
-    || !['identity', 'preference', 'relationship', 'fact', 'event', 'owner_note'].includes(category)
+    || !COMPANION_MEMORY_CATEGORIES.includes(category as CompanionMemoryRecord['category'])
     || !['active', 'superseded', 'archived'].includes(status)
     || !['owner', 'system'].includes(curatedBy)
   ) {
@@ -268,8 +282,10 @@ function normalizeMemory(rawRecord: unknown, nowIso: string): CompanionMemoryRec
   };
 }
 
-function normalizeSnapshot(rawSnapshot: unknown): CompanionSnapshot {
-  const nowIso = new Date().toISOString();
+function normalizeSnapshot(
+  rawSnapshot: unknown,
+  nowIso: string = new Date().toISOString(),
+): CompanionSnapshot {
   const snapshotRecord = asRecord(rawSnapshot);
   if (!snapshotRecord) {
     return createEmptySnapshot(nowIso);
@@ -313,16 +329,26 @@ function sortNewestFirst<T extends { updatedAt: string }>(records: T[]): T[] {
   return [...records].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
-function ensureBox(snapshot: CompanionSnapshot, catId: string, nowIso: string): CompanionBox {
+function ensureBox(
+  snapshot: CompanionSnapshot,
+  catId: string,
+  nowIso: string,
+): { box: CompanionBox; created: boolean } {
   const existing = snapshot.boxes.find((box) => box.catId === catId);
   if (existing) {
-    return existing;
+    return {
+      box: existing,
+      created: false,
+    };
   }
 
   const box = createCompanionBox(catId, nowIso);
   snapshot.boxes.push(box);
   snapshot.updatedAt = nowIso;
-  return box;
+  return {
+    box,
+    created: true,
+  };
 }
 
 function listBoxSources(snapshot: CompanionSnapshot, box: CompanionBox): CompanionSourceRecord[] {
@@ -374,8 +400,7 @@ async function materializeStoredSource(
     return;
   }
 
-  const storageRoot = path.dirname(snapshotPath);
-  const targetPath = path.join(storageRoot, ...source.storedPath.split('/'));
+  const targetPath = path.join(path.dirname(snapshotPath), ...source.storedPath.split('/'));
   await mkdir(path.dirname(targetPath), { recursive: true });
   await writeFile(
     targetPath,
@@ -396,6 +421,18 @@ async function materializeStoredSource(
     }, null, 2)}\n`,
     'utf-8',
   );
+}
+
+async function removeMaterializedStoredSource(
+  snapshotPath: string,
+  storedPath: string | null,
+): Promise<void> {
+  if (!storedPath) {
+    return;
+  }
+
+  const targetPath = path.join(path.dirname(snapshotPath), ...storedPath.split('/'));
+  await rm(targetPath, { force: true });
 }
 
 export interface CompanionBoxStore {
@@ -440,10 +477,14 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
   constructor(private readonly snapshotPath: string) {}
 
   private async readOrCreateSnapshot(): Promise<CompanionSnapshot> {
+    const nowIso = new Date().toISOString();
     try {
-      return normalizeSnapshot(JSON.parse(await readFile(this.snapshotPath, 'utf-8')) as unknown);
+      return normalizeSnapshot(
+        JSON.parse(await readFile(this.snapshotPath, 'utf-8')) as unknown,
+        nowIso,
+      );
     } catch {
-      const snapshot = createEmptySnapshot(new Date().toISOString());
+      const snapshot = createEmptySnapshot(nowIso);
       await this.writeSnapshot(snapshot);
       return snapshot;
     }
@@ -464,22 +505,28 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
 
   async getBox(catId: string, now: Date = new Date()): Promise<CompanionBox> {
     const snapshot = await this.readOrCreateSnapshot();
-    const box = ensureBox(snapshot, catId, isoAt(now));
-    await this.writeSnapshot(snapshot);
+    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    if (created) {
+      await this.writeSnapshot(snapshot);
+    }
     return structuredClone(box);
   }
 
   async getBoxSummary(catId: string, now: Date = new Date()): Promise<CompanionBoxSummary> {
     const snapshot = await this.readOrCreateSnapshot();
-    const box = ensureBox(snapshot, catId, isoAt(now));
-    await this.writeSnapshot(snapshot);
+    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    if (created) {
+      await this.writeSnapshot(snapshot);
+    }
     return summarizeBox(box, snapshot, this.snapshotPath);
   }
 
   async listSources(catId: string, now: Date = new Date()): Promise<CompanionSourceRecord[]> {
     const snapshot = await this.readOrCreateSnapshot();
-    const box = ensureBox(snapshot, catId, isoAt(now));
-    await this.writeSnapshot(snapshot);
+    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    if (created) {
+      await this.writeSnapshot(snapshot);
+    }
     return structuredClone(listBoxSources(snapshot, box));
   }
 
@@ -490,12 +537,10 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
   ): Promise<CompanionSourceIngestResult> {
     const nowIso = isoAt(now);
     const snapshot = await this.readOrCreateSnapshot();
-    const box = ensureBox(snapshot, catId, nowIso);
-    const storedPath = input.storageMode === 'linked_path'
-      ? null
-      : buildCompanionSourceStorageKey(catId, `source-${Date.now()}-${snapshot.sources.length + 1}`, 'json');
-    const source = createCompanionSourceRecord(box, input, nowIso, storedPath);
-    if (storedPath) {
+    const snapshotBeforeMutation = cloneSnapshot(snapshot);
+    const { box } = ensureBox(snapshot, catId, nowIso);
+    const source = createCompanionSourceRecord(box, input, nowIso, null);
+    if (input.storageMode !== 'linked_path') {
       source.storedPath = buildCompanionSourceStorageKey(catId, source.id, 'json');
     }
     const derivedRecords = createDerivedRecordsForSource(box, source, nowIso);
@@ -508,8 +553,30 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     box.lastIngestedAt = nowIso;
     snapshot.updatedAt = nowIso;
 
-    await this.writeSnapshot(snapshot);
-    await materializeStoredSource(this.snapshotPath, source);
+    try {
+      await this.writeSnapshot(snapshot);
+      await materializeStoredSource(this.snapshotPath, source);
+    } catch (error) {
+      const rollbackErrors: string[] = [];
+      try {
+        await this.writeSnapshot(snapshotBeforeMutation);
+      } catch (rollbackError) {
+        rollbackErrors.push(`snapshot rollback failed: ${describeError(rollbackError)}`);
+      }
+      try {
+        await removeMaterializedStoredSource(this.snapshotPath, source.storedPath);
+      } catch (rollbackError) {
+        rollbackErrors.push(`stored source cleanup failed: ${describeError(rollbackError)}`);
+      }
+
+      if (rollbackErrors.length > 0) {
+        throw new Error(
+          `Failed to persist companion source: ${describeError(error)}. ${rollbackErrors.join('; ')}`,
+        );
+      }
+
+      throw error;
+    }
 
     return {
       box: structuredClone(box),
@@ -520,15 +587,19 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
 
   async listDerived(catId: string, now: Date = new Date()): Promise<CompanionDerivedRecord[]> {
     const snapshot = await this.readOrCreateSnapshot();
-    const box = ensureBox(snapshot, catId, isoAt(now));
-    await this.writeSnapshot(snapshot);
+    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    if (created) {
+      await this.writeSnapshot(snapshot);
+    }
     return structuredClone(listBoxDerived(snapshot, box));
   }
 
   async listMemory(catId: string, now: Date = new Date()): Promise<CompanionMemoryRecord[]> {
     const snapshot = await this.readOrCreateSnapshot();
-    const box = ensureBox(snapshot, catId, isoAt(now));
-    await this.writeSnapshot(snapshot);
+    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    if (created) {
+      await this.writeSnapshot(snapshot);
+    }
     return structuredClone(listBoxMemory(snapshot, box));
   }
 
@@ -539,7 +610,7 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
   ): Promise<CompanionMemoryRecord> {
     const nowIso = isoAt(now);
     const snapshot = await this.readOrCreateSnapshot();
-    const box = ensureBox(snapshot, catId, nowIso);
+    const { box } = ensureBox(snapshot, catId, nowIso);
     const record = createCompanionMemoryRecord(box, input, nowIso);
 
     snapshot.memory.unshift(record);
@@ -556,8 +627,10 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionResponseProfile> {
     const snapshot = await this.readOrCreateSnapshot();
-    const box = ensureBox(snapshot, catId, isoAt(now));
-    await this.writeSnapshot(snapshot);
+    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    if (created) {
+      await this.writeSnapshot(snapshot);
+    }
     return structuredClone(box.responseProfile);
   }
 
@@ -568,7 +641,7 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
   ): Promise<CompanionResponseProfile> {
     const nowIso = isoAt(now);
     const snapshot = await this.readOrCreateSnapshot();
-    const box = ensureBox(snapshot, catId, nowIso);
+    const { box } = ensureBox(snapshot, catId, nowIso);
     box.responseProfile = applyCompanionResponseProfileUpdate(
       box.responseProfile,
       update,
@@ -595,8 +668,10 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
   }): Promise<CompanionSessionContext> {
     const snapshot = await this.readOrCreateSnapshot();
     const hydratedAt = isoAt(input.now ?? new Date());
-    const box = ensureBox(snapshot, input.cat.id, hydratedAt);
-    await this.writeSnapshot(snapshot);
+    const { box, created } = ensureBox(snapshot, input.cat.id, hydratedAt);
+    if (created) {
+      await this.writeSnapshot(snapshot);
+    }
 
     return buildCompanionSessionContext({
       cat: input.cat,
@@ -620,7 +695,7 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     initialSnapshot: CompanionSnapshot = createEmptySnapshot(new Date().toISOString()),
     snapshotPath = 'config/chat-state.local.companion-boxes.json',
   ) {
-    this.snapshot = normalizeSnapshot(initialSnapshot);
+    this.snapshot = normalizeSnapshot(initialSnapshot, new Date().toISOString());
     this.snapshotPath = snapshotPath;
   }
 
@@ -629,16 +704,16 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
   }
 
   async getBox(catId: string, now: Date = new Date()): Promise<CompanionBox> {
-    return structuredClone(ensureBox(this.snapshot, catId, isoAt(now)));
+    return structuredClone(ensureBox(this.snapshot, catId, isoAt(now)).box);
   }
 
   async getBoxSummary(catId: string, now: Date = new Date()): Promise<CompanionBoxSummary> {
-    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
     return summarizeBox(box, this.snapshot, this.snapshotPath);
   }
 
   async listSources(catId: string, now: Date = new Date()): Promise<CompanionSourceRecord[]> {
-    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
     return structuredClone(listBoxSources(this.snapshot, box));
   }
 
@@ -648,12 +723,9 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionSourceIngestResult> {
     const nowIso = isoAt(now);
-    const box = ensureBox(this.snapshot, catId, nowIso);
-    const storedPath = input.storageMode === 'linked_path'
-      ? null
-      : buildCompanionSourceStorageKey(catId, `memory-${this.snapshot.sources.length + 1}`, 'json');
-    const source = createCompanionSourceRecord(box, input, nowIso, storedPath);
-    if (storedPath) {
+    const { box } = ensureBox(this.snapshot, catId, nowIso);
+    const source = createCompanionSourceRecord(box, input, nowIso, null);
+    if (input.storageMode !== 'linked_path') {
       source.storedPath = buildCompanionSourceStorageKey(catId, source.id, 'json');
     }
     const derivedRecords = createDerivedRecordsForSource(box, source, nowIso);
@@ -674,12 +746,12 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
   }
 
   async listDerived(catId: string, now: Date = new Date()): Promise<CompanionDerivedRecord[]> {
-    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
     return structuredClone(listBoxDerived(this.snapshot, box));
   }
 
   async listMemory(catId: string, now: Date = new Date()): Promise<CompanionMemoryRecord[]> {
-    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
     return structuredClone(listBoxMemory(this.snapshot, box));
   }
 
@@ -689,7 +761,7 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionMemoryRecord> {
     const nowIso = isoAt(now);
-    const box = ensureBox(this.snapshot, catId, nowIso);
+    const { box } = ensureBox(this.snapshot, catId, nowIso);
     const record = createCompanionMemoryRecord(box, input, nowIso);
     this.snapshot.memory.unshift(record);
     box.memoryIds.unshift(record.id);
@@ -702,7 +774,7 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     catId: string,
     now: Date = new Date(),
   ): Promise<CompanionResponseProfile> {
-    const box = ensureBox(this.snapshot, catId, isoAt(now));
+    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
     return structuredClone(box.responseProfile);
   }
 
@@ -712,7 +784,7 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionResponseProfile> {
     const nowIso = isoAt(now);
-    const box = ensureBox(this.snapshot, catId, nowIso);
+    const { box } = ensureBox(this.snapshot, catId, nowIso);
     box.responseProfile = applyCompanionResponseProfileUpdate(
       box.responseProfile,
       update,
@@ -737,7 +809,7 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now?: Date;
   }): Promise<CompanionSessionContext> {
     const hydratedAt = isoAt(input.now ?? new Date());
-    const box = ensureBox(this.snapshot, input.cat.id, hydratedAt);
+    const { box } = ensureBox(this.snapshot, input.cat.id, hydratedAt);
 
     return buildCompanionSessionContext({
       cat: input.cat,

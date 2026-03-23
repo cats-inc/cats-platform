@@ -251,6 +251,10 @@ test('direct companion chat routes hydrated companion session context into runti
       createdSession.context.metadata.companionSession.channelContext.channelId,
       channelId,
     );
+    assert.equal(
+      createdSession.context.metadata.companionSession.hydratedAt,
+      '2026-03-23T12:00:00.000Z',
+    );
     assert.ok(
       createdSession.context.metadata.companionSession.sources.some(
         (record) => record.title === 'Window habits',
@@ -267,6 +271,10 @@ test('direct companion chat routes hydrated companion session context into runti
     assert.equal(
       sentMessage.input.context.metadata.companionSession.channelContext.channelId,
       channelId,
+    );
+    assert.equal(
+      sentMessage.input.context.metadata.companionSession.hydratedAt,
+      '2026-03-23T12:00:00.000Z',
     );
     assert.equal(
       sentMessage.input.skills.context.metadata.companionSession.responseProfile.outputMode,

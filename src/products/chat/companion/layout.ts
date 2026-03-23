@@ -1,11 +1,17 @@
 const STORAGE_ROOT_KEY = 'companion-boxes';
 
 function sanitizePathSegment(value: string): string {
-  return value
+  const normalized = value
     .trim()
     .replace(/[^a-zA-Z0-9._-]+/g, '-')
     .replace(/^-+|-+$/g, '')
     || 'unknown';
+
+  if (normalized === '.' || normalized === '..') {
+    return 'unknown';
+  }
+
+  return normalized;
 }
 
 export function buildCompanionBoxDirectoryKey(catId: string): string {
