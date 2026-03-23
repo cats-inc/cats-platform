@@ -90,32 +90,6 @@ export function NewChatDraft({
             <h1>{greeting}</h1>
           )}
         </div>
-        {hasMultipleCats ? (
-          <div className="draftLeadSelector">
-            <span className="draftLeadLabel">Start with:</span>
-            <div className="draftLeadPills">
-              <button
-                className={!draftLeadCatId ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
-                type="button"
-                onClick={() => onDraftLeadCatChange(null)}
-              >
-                {bossCatName}
-              </button>
-              {payload.chat.cats
-                .filter((c) => c.status === 'active' && c.id !== payload.chat.bossCatId)
-                .map((cat) => (
-                  <button
-                    key={cat.id}
-                    className={draftLeadCatId === cat.id ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
-                    type="button"
-                    onClick={() => onDraftLeadCatChange(cat.id)}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-            </div>
-          </div>
-        ) : null}
         <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
           {draftFiles.length > 0 ? (
             <div className="composerAttachments">

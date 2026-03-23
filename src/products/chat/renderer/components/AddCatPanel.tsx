@@ -1,10 +1,11 @@
-import type { FormEvent } from 'react';
+import type { FormEvent, RefObject } from 'react';
 
 import type { ChatCat } from '../../../../shared/app-shell';
 import { executionLabel, type CatFormState } from '../chatUtils';
 import { ProviderModelFields } from './ProviderModelFields';
 
 export interface AddCatPanelProps {
+  panelRef?: RefObject<HTMLDivElement | null>;
   selectableCats: ChatCat[];
   assignableCatCount: number;
   addCatTab: 'existing' | 'new';
@@ -24,6 +25,7 @@ export interface AddCatPanelProps {
 }
 
 export function AddCatPanel({
+  panelRef,
   selectableCats,
   assignableCatCount,
   addCatTab,
@@ -42,7 +44,7 @@ export function AddCatPanel({
   onCreateCat,
 }: AddCatPanelProps) {
   return (
-    <div className="addCatPanel">
+    <div className="addCatPanel" ref={panelRef}>
       <div className="addCatPanelHeader">
         <h2>Add cat to chat</h2>
         <button

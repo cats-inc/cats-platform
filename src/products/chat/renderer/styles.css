@@ -1593,7 +1593,7 @@ textarea {
 }
 
 .catAvatarBoss {
-  outline: 2px solid #fff;
+  outline: 2px solid #e8c84a;
   outline-offset: 0px;
 }
 
@@ -2110,8 +2110,8 @@ textarea {
 }
 
 .composerStackAvatar {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   font-size: 0.6rem;
   border: 0;
 }

@@ -114,6 +114,7 @@ export default function App() {
   const [folderBrowseError, setFolderBrowseError] = useState('');
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
+  const addCatPanelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const channelPlusMenuRef = useRef<HTMLDivElement>(null);
   const channelFileInputRef = useRef<HTMLInputElement>(null);
@@ -138,15 +139,15 @@ export default function App() {
   }, [routeChannelTitle]);
 
   useEffect(() => {
-    if (!accountMenuOpen && !overflowMenuOpenId && !plusMenuOpen && !channelPlusMenuOpen) return;
+    if (!accountMenuOpen && !overflowMenuOpenId && !plusMenuOpen && !channelPlusMenuOpen && !addCatOpen) return;
     function handleClick(e: MouseEvent) {
       const target = e.target as Node;
       if (accountMenuOpen && accountMenuRef.current && !accountMenuRef.current.contains(target)) {
         setAccountMenuOpen(false);
       }
       if (overflowMenuOpenId) {
-        const menu = document.querySelector('.recentOverflowMenu');
-        const button = (e.target as Element).closest?.('.recentOverflowButton');
+        const menu = document.querySelector('.recentOverflowMenu') ?? document.querySelector('.myCatOverflowMenu');
+        const button = (e.target as Element).closest?.('.recentOverflowButton, .myCatOverflowButton');
         if (!menu?.contains(target) && !button) {
           setOverflowMenuOpenId(null);
         }
@@ -157,10 +158,13 @@ export default function App() {
       if (channelPlusMenuOpen && channelPlusMenuRef.current && !channelPlusMenuRef.current.contains(target)) {
         setChannelPlusMenuOpen(false);
       }
+      if (addCatOpen && addCatPanelRef.current && !addCatPanelRef.current.contains(target)) {
+        setAddCatOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [accountMenuOpen, overflowMenuOpenId, plusMenuOpen, channelPlusMenuOpen]);
+  }, [accountMenuOpen, overflowMenuOpenId, plusMenuOpen, channelPlusMenuOpen, addCatOpen]);
 
   useEffect(() => {
     if (!folderBrowserOpen) return;
@@ -896,6 +900,7 @@ export default function App() {
 
       {addCatOpen && (selectedChannel || showingNewChatDraft) ? (
         <AddCatPanel
+          panelRef={addCatPanelRef}
           selectableCats={selectableCats}
           assignableCatCount={assignableCatCount}
           addCatTab={addCatTab}
