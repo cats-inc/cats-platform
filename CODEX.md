@@ -51,6 +51,7 @@ If assigned as Conductor in Project Roles table:
 - **MUST** update documentation when changing public APIs
 - **MUST** follow coding conventions specified in AGENTS.md
 - **MUST** respect `.editorconfig` settings (LF line endings, final newline, trim rules)
+- **MUST NOT** use interactive rebase; always use non-interactive rebase commands only
 - **SHOULD** make minimal, focused changes
 - **SHOULD** commit frequently with clear messages
 
@@ -129,4 +130,4 @@ working memory for Codex, not yet a ratified product spec or ADR.
 
 This file is maintained by Codex only. Other agents should not modify this file.
 
-Last updated: 2026-03-16
+Last updated: 2026-03-23
