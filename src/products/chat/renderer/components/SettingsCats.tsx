@@ -439,7 +439,7 @@ export function SettingsCats({
                                     onBusy('');
                                   }
                                 }}
-                                title={`Delete ${cat.name}`}
+                                data-tooltip={`Delete ${cat.name}`}
                               >
                                 &#x2715;
                               </button>

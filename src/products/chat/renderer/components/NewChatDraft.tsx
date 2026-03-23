@@ -215,7 +215,7 @@ export function NewChatDraft({
               {draftCwd ? (
                 <span
                   className="composerCwdChip"
-                  title={draftCwd}
+                  data-tooltip={draftCwd}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
@@ -237,7 +237,7 @@ export function NewChatDraft({
                     <div className="composerStackItem">
                       <div
                         className="catAvatar composerStackAvatar catAvatarBoss"
-                        title={bossCatName}
+                        data-tooltip={bossCatName}
                         style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}
                       >
                         {catInitials(bossCatName)}
@@ -251,7 +251,7 @@ export function NewChatDraft({
                       <div key={id} className="composerStackItem">
                         <div
                           className="catAvatar composerStackAvatar"
-                          title={cat.name}
+                          data-tooltip={cat.name}
                           style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
                         >
                           {catInitials(cat.name)}

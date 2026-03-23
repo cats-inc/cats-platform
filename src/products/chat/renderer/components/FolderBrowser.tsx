@@ -95,7 +95,7 @@ export function FolderBrowser({
           >
             Refresh
           </button>
-          <span className="folderBrowserCurrentPath" title={folderBrowseCurrentPath}>
+          <span className="folderBrowserCurrentPath" data-tooltip={folderBrowseCurrentPath}>
             {folderBrowseCurrentPath || 'Loading...'}
           </span>
         </div>

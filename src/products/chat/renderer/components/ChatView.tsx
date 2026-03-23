@@ -122,18 +122,18 @@ export function ChatView({
       <header className="channelTopBar">
         <div className="rosterAvatars">
           {roomMode === 'direct_cat_chat' && leadCat ? (
-            <div className="catAvatar" title={leadCat.name} style={leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}>
+            <div className="catAvatar" data-tooltip={leadCat.name} style={leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}>
               {catInitials(leadCat.name)}
             </div>
           ) : (
             <>
               {showBossCatAvatar ? (
-                <div className="catAvatar catAvatarBoss" title={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
+                <div className="catAvatar catAvatarBoss" data-tooltip={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
                   {catInitials(bossCatName)}
                 </div>
               ) : null}
               {activeAssignedCats.map((cat) => (
-                <div key={cat.catId} className="catAvatar" title={cat.name} style={cat.avatarColor ? { background: cat.avatarColor } : undefined}>
+                <div key={cat.catId} className="catAvatar" data-tooltip={cat.name} style={cat.avatarColor ? { background: cat.avatarColor } : undefined}>
                   {catInitials(cat.name)}
                 </div>
               ))}
@@ -288,7 +288,7 @@ export function ChatView({
                   return (
                     <span
                       className="composerCwdChip composerCwdClickable"
-                      title={cwd}
+                      data-tooltip={cwd}
                       role="button"
                       tabIndex={0}
                       onClick={() => void openFolderInExplorer(cwd)}

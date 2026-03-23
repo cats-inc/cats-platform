@@ -370,8 +370,9 @@ function findRuntimeDotTitle(node: ReactNode): string | null {
   }
   if (!isValidElement(node)) return null;
   const cls = typeof node.props.className === 'string' ? node.props.className : '';
-  if (cls.includes('runtimeStatusDot') && typeof node.props.title === 'string') {
-    return node.props.title;
+  const tooltip = node.props['data-tooltip'] ?? node.props.title;
+  if (cls.includes('runtimeStatusDot') && typeof tooltip === 'string') {
+    return tooltip;
   }
   const ch = node.props.children;
   if (Array.isArray(ch)) {
@@ -389,25 +390,25 @@ test('no runtime health yet shows gray dot with unknown tooltip', () => {
   const payload = createPayload([]);
   const tree = createSidebarTree(payload, () => {});
   const title = findRuntimeDotTitle(tree);
-  assert.equal(title, 'cats-runtime status unknown');
+  assert.equal(title, 'Cats Runtime status unknown');
 });
 
 test('reachable healthy runtime shows green dot', () => {
   const payload = createPayload([], createRuntime(true, 'ok'));
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime connected');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime connected');
 });
 
 test('reachable degraded runtime shows yellow dot', () => {
   const payload = createPayload([], createRuntime(true, 'degraded'));
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime degraded');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime degraded');
 });
 
 test('unreachable runtime shows red dot', () => {
   const payload = createPayload([], createRuntime(false, 'error'));
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime unavailable');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime unavailable');
 });
 
 test('changing selected chat does not affect footer runtime dot', () => {
@@ -416,7 +417,7 @@ test('changing selected chat does not affect footer runtime dot', () => {
     createRuntime(true, 'ok'),
   );
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime connected');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime connected');
 });
 
 test('My Cats status dots and footer runtime dot coexist', () => {
@@ -428,5 +429,5 @@ test('My Cats status dots and footer runtime dot coexist', () => {
     createRuntime(true, 'ok'),
   );
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'cats-runtime connected');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime connected');
 });

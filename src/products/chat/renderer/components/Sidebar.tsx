@@ -50,10 +50,10 @@ function resolveRuntimeFooterStatus(payload: AppShellPayload): RuntimeFooterStat
 
 function runtimeFooterStatusLabel(status: RuntimeFooterStatus): string {
   switch (status) {
-    case 'connected': return 'cats-runtime connected';
-    case 'degraded': return 'cats-runtime degraded';
-    case 'unavailable': return 'cats-runtime unavailable';
-    default: return 'cats-runtime status unknown';
+    case 'connected': return 'Cats Runtime connected';
+    case 'degraded': return 'Cats Runtime degraded';
+    case 'unavailable': return 'Cats Runtime unavailable';
+    default: return 'Cats Runtime status unknown';
   }
 }
 
@@ -128,7 +128,7 @@ function ChannelItem({
             <span
               className="recentCatDot"
               style={{ background: cat.avatarColor ?? '#90A4AE', width: 8, height: 8, borderRadius: '50%', flexShrink: 0 }}
-              title={cat.name}
+              data-tooltip={cat.name}
             />
           ) : null}
           <strong>{presentChannelTitle(channel.title)}</strong>
@@ -337,28 +337,50 @@ export function Sidebar({
                   const dot = resolveMyCatStatusDot(directLane?.leadParticipantLeaseStatus);
                   const dotClass = statusDotClassName(dot);
                   const dotTitle = statusDotLabel(dot);
+                  const overflowKey = `cat:${cat.id}`;
+                  const catOverflowOpen = overflowMenuOpenId === overflowKey;
                   return (
-                    <button
-                      key={cat.id}
-                      className={isActive ? 'myCatItem myCatItemActive' : 'myCatItem'}
-                      type="button"
-                      onClick={() => onDirectChatCat(cat.id)}
-                    >
-                      <span
-                        className={isBoss ? 'myCatAvatarWrap catAvatar catAvatarBoss' : 'myCatAvatarWrap catAvatar'}
-                        style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
+                    <div key={cat.id} className="myCatRow">
+                      <button
+                        className={isActive ? 'myCatItem myCatItemActive' : 'myCatItem'}
+                        type="button"
+                        onClick={() => onDirectChatCat(cat.id)}
                       >
-                        {catInitials(cat.name)}
-                        {dotClass ? <span className={dotClass} title={dotTitle} /> : null}
-                      </span>
-                      <span className="myCatName">{cat.name}</span>
-                      <span className="myCatBadges">
+                        <span
+                          className={isBoss ? 'myCatAvatarWrap catAvatar catAvatarBoss' : 'myCatAvatarWrap catAvatar'}
+                          style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
+                        >
+                          {catInitials(cat.name)}
+                          {dotClass ? <span className={dotClass} data-tooltip={dotTitle} /> : null}
+                        </span>
+                        <span className="myCatName">{cat.name}</span>
                         {hasTelegramBinding ? (
-                          <span className="myCatBindingBadge" title="Telegram bot bound">Telegram</span>
+                          <span className="myCatTelegramIcon" data-tooltip="Telegram bot bound" aria-label="Telegram bot bound">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M20.66 3.88 2.92 10.9a.73.73 0 0 0 .04 1.38l4.45 1.4 1.72 5.52a.78.78 0 0 0 1.24.37l2.48-2.02 4.87 3.6a.78.78 0 0 0 1.2-.46L21.7 4.76c.17-.7-.52-1.27-1.04-0.88ZM10.1 14.6l-.44 3.15-1.34-4.3 9.38-6.2Z" />
+                            </svg>
+                          </span>
                         ) : null}
-                        {isBoss ? <span className="myCatBadge">Boss</span> : null}
-                      </span>
-                    </button>
+                      </button>
+                      <button
+                        className="myCatOverflowButton"
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onOverflowMenuToggle(catOverflowOpen ? null : overflowKey); }}
+                      >
+                        &#x22EF;
+                      </button>
+                      {catOverflowOpen && directLane ? (
+                        <div className="myCatOverflowMenu">
+                          <button
+                            type="button"
+                            disabled={busy === `channel:delete:${directLane.id}`}
+                            onClick={() => { onOverflowMenuToggle(null); void onDeleteChannel(directLane.id); }}
+                          >
+                            {busy === `channel:delete:${directLane.id}` ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   );
                 })}
             </div>
@@ -375,7 +397,7 @@ export function Sidebar({
                   className={sidebarView === mode ? 'viewModeBtn viewModeBtnActive' : 'viewModeBtn'}
                   type="button"
                   onClick={() => onSidebarViewChange(mode)}
-                  title={mode === 'latest' ? 'Latest' : mode === 'by_cat' ? 'By Cat' : 'By Type'}
+                  data-tooltip={mode === 'latest' ? 'Latest' : mode === 'by_cat' ? 'By Cat' : 'By Type'}
                 >
                   {mode === 'latest' ? 'All' : mode === 'by_cat' ? 'Cat' : 'Type'}
                 </button>
@@ -403,7 +425,7 @@ export function Sidebar({
           </div>
           <span
             className={runtimeFooterStatusClassName(resolveRuntimeFooterStatus(payload))}
-            title={runtimeFooterStatusLabel(resolveRuntimeFooterStatus(payload))}
+            data-tooltip={runtimeFooterStatusLabel(resolveRuntimeFooterStatus(payload))}
             aria-label={runtimeFooterStatusLabel(resolveRuntimeFooterStatus(payload))}
           />
         </button>
