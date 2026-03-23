@@ -136,6 +136,9 @@ export default function App() {
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
   const [channelPlusMenuOpen, setChannelPlusMenuOpen] = useState(false);
+  const [draftModel, setDraftModel] = useState<{ provider: string; model: string | null; instance: string | null }>({
+    provider: 'claude', model: null, instance: null,
+  });
   const [operatorState, setOperatorState] = useState<OperatorLoadState>({
     status: 'idle',
     snapshot: null,
@@ -782,6 +785,7 @@ export default function App() {
         setComposerDraft('');
         navigate(buildChannelPath(optimisticDraft.channelId), { replace: true });
 
+        const isSoloDraft = !draftLeadCatId && draftCatIds.length === 0;
         const createdPayload = await createChatChannel({
           title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
           topic: createDraftChannelTopic(body),
@@ -793,6 +797,12 @@ export default function App() {
             participantCatIds: [draftLeadCatId, ...draftCatIds.filter((id) => id !== draftLeadCatId)],
           } : draftCatIds.length > 0 ? {
             participantCatIds: draftCatIds,
+          } : {}),
+          ...(isSoloDraft ? {
+            composerMode: 'solo' as const,
+            pendingProvider: draftModel.provider,
+            pendingModel: draftModel.model ?? undefined,
+            pendingInstance: draftModel.instance ?? undefined,
           } : {}),
         });
         channelId = createdPayload.chat.selectedChannelId;
@@ -1262,6 +1272,8 @@ export default function App() {
                 }
                 navigate(buildNewChatPath(catId), { replace: true });
               }}
+              selectedModel={!draftLeadCatId ? draftModel : undefined}
+              onModelChange={!draftLeadCatId ? setDraftModel : undefined}
             />
           } />
           <Route

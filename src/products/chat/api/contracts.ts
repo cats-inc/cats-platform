@@ -52,6 +52,7 @@ export type ParticipantSessionStatus =
 export type ChatMessageSenderKind = 'user' | 'agent' | 'system' | 'orchestrator';
 
 export type RoomRoutingMode = 'boss_chat' | 'direct_cat_chat';
+export type ComposerMode = 'solo' | 'cat_led';
 
 export type RoomRoutingTrigger =
   | 'room_default'
@@ -384,6 +385,9 @@ export interface ChatMessage {
   mentions: string[];
   metadata: Record<string, unknown>;
   usage: MessageUsageSummary | null;
+  executionProvider?: string | null;
+  executionModel?: string | null;
+  executionInstance?: string | null;
   createdAt: string;
 }
 
@@ -401,6 +405,10 @@ export interface ChatChannelState {
   skillProfile: string | null;
   mcpProfile: string | null;
   orchestratorRoles: string[];
+  composerMode: ComposerMode;
+  pendingProvider: string | null;
+  pendingModel: string | null;
+  pendingInstance: string | null;
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
@@ -428,6 +436,9 @@ export interface ChatChannelSummary {
   chatCwd: string | null;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
+  composerMode?: ComposerMode;
+  pendingProvider?: string | null;
+  pendingModel?: string | null;
   leadCatId?: string | null;
   leadParticipantLeaseStatus?: ParticipantSessionStatus | null;
   roomMode?: RoomRoutingMode;
@@ -551,8 +562,12 @@ export interface CreateChatChannelInput {
   language?: string;
   responseLanguage?: string;
   formationMode?: ChannelFormationMode;
+  composerMode?: ComposerMode;
   roomMode?: RoomRoutingMode;
   leadParticipantId?: string;
+  pendingProvider?: string;
+  pendingModel?: string;
+  pendingInstance?: string;
   skillProfile?: string;
   mcpProfile?: string;
   orchestratorRoles?: string[];

@@ -1263,10 +1263,22 @@ async function ensureTargetSession(
       options.companionStore,
     );
     if (target.participantKind === 'orchestrator') {
+      const channelState = requireChannel(nextState, channelId);
+      const useSoloPending = channelState.composerMode === 'solo'
+        && channelState.pendingProvider;
+      const sessionProvider = useSoloPending
+        ? channelState.pendingProvider!
+        : nextState.globalOrchestrator.executionTarget.provider;
+      const sessionInstance = useSoloPending
+        ? channelState.pendingInstance ?? null
+        : nextState.globalOrchestrator.executionTarget.instance;
+      const sessionModel = useSoloPending
+        ? channelState.pendingModel ?? null
+        : nextState.globalOrchestrator.executionTarget.model;
       const session = await runtimeClient.createSession({
-        provider: nextState.globalOrchestrator.executionTarget.provider,
-        instance: nextState.globalOrchestrator.executionTarget.instance,
-        model: nextState.globalOrchestrator.executionTarget.model,
+        provider: sessionProvider,
+        instance: sessionInstance,
+        model: sessionModel,
         cwd: spawnCwd,
         sharingMode,
         context: runtimeEnvelope.context,

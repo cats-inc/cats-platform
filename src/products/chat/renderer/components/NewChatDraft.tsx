@@ -2,6 +2,7 @@ import type { FormEvent, KeyboardEvent, RefObject } from 'react';
 
 import type { AppShellPayload } from '../../../../shared/app-shell';
 import { catInitials, truncatePath } from '../chatUtils';
+import { ModelSelector, type ModelSelectorValue } from './ModelSelector';
 
 export interface NewChatDraftProps {
   payload: AppShellPayload;
@@ -30,6 +31,8 @@ export interface NewChatDraftProps {
   draftLeadCatId: string | null;
   onDraftLeadCatChange: (catId: string | null) => void;
   allowAddCat?: boolean;
+  selectedModel?: ModelSelectorValue;
+  onModelChange?: (value: ModelSelectorValue) => void;
 }
 
 export function NewChatDraft({
@@ -59,6 +62,8 @@ export function NewChatDraft({
   draftLeadCatId,
   onDraftLeadCatChange,
   allowAddCat = true,
+  selectedModel,
+  onModelChange,
 }: NewChatDraftProps) {
   const leadCat = draftLeadCatId
     ? payload.chat.cats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
@@ -237,7 +242,11 @@ export function NewChatDraft({
                 </div>
               ) : null}
             </div>
-            {showBoss ? (
+            {showBoss && selectedModel && onModelChange ? (
+              <div style={{ marginRight: 8 }}>
+                <ModelSelector value={selectedModel} onChange={onModelChange} />
+              </div>
+            ) : showBoss ? (
               <div
                 className="catAvatar composerStackAvatar catAvatarBoss"
                 data-tooltip={bossCatName}

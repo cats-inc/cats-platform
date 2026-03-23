@@ -2890,6 +2890,79 @@ textarea {
   background: var(--panel-hover);
 }
 
+/* ─── Model Selector (Solo Composer Mode) ─── */
+
+.modelSelector {
+  display: inline-flex;
+  align-items: center;
+}
+
+.modelSelectorButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.modelSelectorButton:hover {
+  background: var(--sidebar-hover-bg);
+}
+
+.modelSelectorLabel {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modelSelectorDropdown {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+  padding: 3px;
+}
+
+.modelSelectorItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.modelSelectorItem:hover {
+  background: var(--panel-hover);
+}
+
+.modelSelectorItemActive {
+  font-weight: 600;
+}
+
+.modelSelectorItemSub {
+  opacity: 0.5;
+  font-size: 0.7rem;
+  margin-left: 8px;
+}
+
 /* ─── Recents View Mode Toggle ─── */
 
 .recentHeader {

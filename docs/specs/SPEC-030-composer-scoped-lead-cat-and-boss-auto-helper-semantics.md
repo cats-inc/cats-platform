@@ -1,6 +1,6 @@
 # SPEC-030: Composer-Scoped Lead Cat and Boss Auto-Helper Semantics
 
-Status: Draft (Pending Review)
+Status: In Progress (Solo composer mode landed)
 
 ## Summary
 

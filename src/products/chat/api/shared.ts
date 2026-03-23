@@ -239,7 +239,7 @@ export async function persistCreatedChannel(
     now,
   );
 
-  if (!input.skipBossCatGreeting && input.roomMode !== 'direct_cat_chat') {
+  if (!input.skipBossCatGreeting && input.roomMode !== 'direct_cat_chat' && input.composerMode !== 'solo') {
     nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
   }
 
