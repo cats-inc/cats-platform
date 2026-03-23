@@ -16,7 +16,7 @@ import {
 } from './shared.js';
 
 async function reconcilePollingAfterMutation(context: ChatApiRouteContext): Promise<void> {
-  const { pollingSupervisor, telegramRelay, chatStore, runtimeClient } = context.dependencies;
+  const { pollingSupervisor, telegramRelay, chatStore, companionStore, runtimeClient } = context.dependencies;
   if (!pollingSupervisor || !telegramRelay) {
     return;
   }
@@ -27,6 +27,7 @@ async function reconcilePollingAfterMutation(context: ChatApiRouteContext): Prom
       context: pollingCtx.context,
       refreshContext: async () => (await readTelegramPollingContext(chatStore)).context,
       chatStore,
+      companionStore,
       runtimeClient,
       telegramRelay,
     });

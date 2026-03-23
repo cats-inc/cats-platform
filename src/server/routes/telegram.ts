@@ -261,6 +261,7 @@ interface TelegramPollingQueryDependencies {
 interface TelegramPollingReconnectDependencies {
   bindingId: string;
   chatStore: ChatStore;
+  companionStore: CompanionBoxStore;
   telegramRelay: TelegramRelay;
   runtimeClient: RuntimeClient;
   pollingSupervisor: TelegramPollingSupervisor;
@@ -307,6 +308,7 @@ export async function handleTelegramPollingReconnect(
         await readTelegramPollingContext(dependencies.chatStore)
       ).context,
       chatStore: dependencies.chatStore,
+      companionStore: dependencies.companionStore,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,
     });

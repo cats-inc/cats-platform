@@ -355,6 +355,7 @@ async function routeRequest(
     await handleTelegramPollingReconnect(response, {
       bindingId: pollingReconnectMatch[0]!,
       chatStore: dependencies.chatStore,
+      companionStore: dependencies.companionStore,
       telegramRelay: dependencies.telegramRelay,
       runtimeClient: dependencies.runtimeClient,
       pollingSupervisor: dependencies.pollingSupervisor,
@@ -426,6 +427,7 @@ async function reconcilePollingOnStartup(
       context: pollingContext.context,
       refreshContext: async () => (await readTelegramPollingContext(dependencies.chatStore)).context,
       chatStore: dependencies.chatStore,
+      companionStore: dependencies.companionStore,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,
     });

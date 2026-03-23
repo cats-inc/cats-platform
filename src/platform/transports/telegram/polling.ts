@@ -1,5 +1,6 @@
 import type { BotBindingRecord } from '../../../core/types.js';
 import type { RuntimeClient } from '../../runtime/client.js';
+import type { CompanionBoxStore } from '../../../products/chat/state/companionBoxStore.js';
 import type { ChatStore } from '../../../products/chat/state/store.js';
 import {
   bridgeTelegramWebhookToRoom,
@@ -28,6 +29,7 @@ export interface StartPollingInput {
   context: TelegramRelayContext;
   refreshContext?: () => Promise<TelegramRelayContext>;
   chatStore: ChatStore;
+  companionStore: CompanionBoxStore;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
 }
@@ -37,6 +39,7 @@ export interface ReconcilePollingInput {
   context: TelegramRelayContext;
   refreshContext?: () => Promise<TelegramRelayContext>;
   chatStore: ChatStore;
+  companionStore: CompanionBoxStore;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
 }
@@ -186,7 +189,7 @@ export function createTelegramPollingSupervisor(
     consumer: PollingConsumer,
     input: StartPollingInput,
   ): Promise<void> {
-    const { bindingId, botToken, chatStore, runtimeClient, telegramRelay } = input;
+    const { bindingId, botToken, chatStore, companionStore, runtimeClient, telegramRelay } = input;
     const signal = consumer.abortController.signal;
 
     try {
@@ -230,6 +233,7 @@ export function createTelegramPollingSupervisor(
                 receipt,
                 context: scopedContext,
                 chatStore,
+                companionStore,
                 runtimeClient,
                 telegramRelay,
                 now: options.now,
@@ -354,6 +358,7 @@ export function createTelegramPollingSupervisor(
             context: input.context,
             refreshContext: input.refreshContext,
             chatStore: input.chatStore,
+            companionStore: input.companionStore,
             runtimeClient: input.runtimeClient,
             telegramRelay: input.telegramRelay,
           });
