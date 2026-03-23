@@ -78,7 +78,8 @@ Current ownership:
   APIs/UI
 - `src/products/code/*` owns Code placeholder surfaces and future
   project/preview/build APIs/UI
-- `src/platform/*` owns runtime, persistence, and transport infrastructure
+- `src/platform/*` owns runtime, orchestration contracts, persistence, and
+  transport infrastructure
 
 The product is still in a transitional state: top-level compatibility shims
 remain at `src/server.ts`, `src/renderer/*`, and `src/chat/*` so existing
@@ -160,11 +161,14 @@ transport state stays in `src/platform/transports/telegram/*`.
 - **Purpose**: Keep `cats-runtime` as the only execution boundary while
   supporting both product-controlled APIs and orchestrator-controlled tools
 - **Technology**: Native `fetch` today; planned MCP facade exposed by
-  `cats-runtime`
+  `cats-runtime`, plus contract-first orchestration helpers in
+  `src/platform/orchestration/*`
 - **Responsibilities**:
   - direct product API calls for health, session lifecycle, routing, and
     operational control
-  - planned MCP tool surface for orchestrator-style agents that need runtime
+  - product-owned plan/dispatch/execution-loop contracts for orchestrator
+    consumers inside `cats`
+  - MCP tool surface for orchestrator-style agents that need runtime
     capabilities without direct provider coupling
   - keep backend details out of higher layers
 
@@ -384,7 +388,7 @@ primary operator workflow. See
 4. `Cats Chat`, `Cats Work`, or a transport relay requests product actions
    through the same product server boundary.
 5. If work needs execution, the product server can call `cats-runtime`
-   directly, or an orchestrator can use the planned MCP facade for runtime
+   directly, or an orchestrator can use the runtime MCP facade for runtime
    tools.
 6. Transport relays persist transport-only dedupe, binding, and delivery
    diagnostics in sidecar state rather than hiding them inside room
@@ -524,7 +528,6 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-24*
-
 
 
 

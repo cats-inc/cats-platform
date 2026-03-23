@@ -28,6 +28,8 @@ The current slices are:
 - a transcript-adjacent operator loop with pending approvals, progress,
   activity, trace, run inspection, approve/reroute/retry/acknowledge action
   seams, and machine-readable delivery/budget/workflow governance summaries
+- contract-first orchestrator planning, dispatch, and execution-loop routes
+  that stay above the existing direct `cats-runtime` API path
 - an Electron desktop host that supervises local `cats-runtime` + `cats`,
   waits for readiness, and owns the first packaged bootstrap/remediation seam
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery

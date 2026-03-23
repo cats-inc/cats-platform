@@ -11,9 +11,9 @@
 | HTTP App Shell | Completed | Node server exposes `/health` as the app-managed readiness contract plus `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
 | Chat Product Features | Completed | Runtime-backed setup, global cat registry, first-run `/setup` onboarding, sleep/wake-aware room entry, direct-cat draft lanes from `My Cats`, stable room-routing / wake-request contracts, live mention continuation routing, transcript export, execution-aware state, and product-owned companion-box sidecar ingestion/hydration seams landed |
-| Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records, but compatibility-shim cleanup and later control-plane slices remain |
-| Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private in-place lane entry, Telegram inbox MVP, runtime skill/guardrail seams, shared-core projection boundaries, the operator-loop chat surfaces, the companion-box sidecar/session-hydration contract, the first Electron desktop-host slice, and the polling-first Telegram follow-on direction; broader launch-track docs still remain |
-| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens Cat-scoped in-place direct lanes rather than creating `Recents` threads, Telegram Boss Cat inbox MVP currently bridges webhook ingress into durable room routing and outbound replies, per-Cat companion-box sidecar ingestion/hydration now exists without visible UI changes, Chat now surfaces operator-facing approvals, reroute/retry/acknowledge seams, progress, activity, traces, run inspection, and machine-readable governance/workflow summaries, and the first Electron host now supervises local `cats-runtime` + `cats` with readiness-gated bootstrap while polling-first onboarding, escalation, takeover, and fuller packaging/install flows remain ahead |
+| Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records plus a first contract-first orchestrator plan/dispatch/execution-loop seam aligned with the runtime MCP facade, but compatibility-shim cleanup and later control-plane slices remain |
+| Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private in-place lane entry, Telegram inbox MVP, runtime skill/guardrail seams, shared-core projection boundaries, the operator-loop chat surfaces, the companion-box sidecar/session-hydration contract, the contract-first orchestrator/MCP seam, the first Electron desktop-host slice, and the polling-first Telegram follow-on direction; broader launch-track docs still remain |
+| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens Cat-scoped in-place direct lanes rather than creating `Recents` threads, Telegram Boss Cat inbox MVP currently bridges webhook ingress into durable room routing and outbound replies, per-Cat companion-box sidecar ingestion/hydration now exists without visible UI changes, Chat now surfaces operator-facing approvals, reroute/retry/acknowledge seams, progress, activity, traces, run inspection, machine-readable governance/workflow summaries, and a contract-first orchestrator plan/dispatch/execution-loop seam, and the first Electron host now supervises local `cats-runtime` + `cats` with readiness-gated bootstrap while polling-first onboarding, escalation, takeover, and fuller packaging/install flows remain ahead |
 | Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
@@ -122,6 +122,7 @@ Known follow-ups:
 | Task | Status | Notes |
 |------|--------|-------|
 | Add operator-grade chat activity and split-view surfaces | [x] | Chat now exposes transcript-adjacent approvals, progress, activity, traces, and run inspection on top of the shared core read model |
+| Add contract-first orchestrator plan/dispatch seam and runtime MCP alignment | [x] | `src/platform/orchestration/*` plus `/api/orchestrator/plan`, `/api/orchestrator/dispatch`, and `/api/orchestrator/channels/{id}/execution-loop` now expose machine-readable planning/tool-intent/operator seams while keeping direct runtime API dispatch as the execution path |
 | Land product-owned companion boxes and hydration seams | [x] | Cat-scoped sidecar storage, ingest/read routes, response profiles, and direct-session hydration metadata now exist without visible UI changes |
 | Rework cat information architecture around current-chat `Add cat` | [ ] | Registry stays global, but the main entry should move into chat context |
 | Add interactive delegation and owner approval loop | [ ] | Pre-dispatch approve/reject/reroute now land through `/api/core/approvals`, retry/acknowledge incident hooks land through `/api/core/operator-actions`, task/run metadata now carries machine-readable governance/workflow summaries plus a runtime-delivery-manifest skeleton, and room-workflow/effective-policy metadata is visible in Chat; automatic resume and deeper planning loops still remain |
@@ -223,6 +224,9 @@ Known follow-ups:
 - `src/products/chat/shared/operatorLoop.ts` now assembles conversation-scoped
   operator snapshots from the shared core so Chat can render approvals,
   activity, trace, and run-inspector surfaces without extending app-shell
+- `src/platform/orchestration/*` now resolves product-owned room-turn plans,
+  tool-intent manifests, and post-dispatch execution-loop snapshots without
+  replacing the existing chat runtime loop
 - `src/shared/coreFixtures.ts` now publishes reusable example payloads for Chat,
   Work, and Code follow-up teams through `src/shared/core.ts`
 - `src/products/chat/state/store.ts` now preserves core-owned system

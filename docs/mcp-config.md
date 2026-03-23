@@ -1,7 +1,6 @@
 # MCP Configuration Guide
 
-> Planning notes for how this project expects to use Model Context Protocol
-> (MCP).
+> Runtime MCP usage for orchestrator-style agents in `cats`.
 
 ## Overview
 
@@ -39,20 +38,23 @@ adapters or CLI details.
 - `cats-runtime` remains the main runtime boundary for all product code.
 - `cats` product services should continue to call `cats-runtime` through
   direct HTTP or SDK-style APIs.
-- A future `cats-runtime` MCP facade should expose a curated tool set for
-  orchestrators.
+- `cats-runtime` now exposes a first-slice MCP facade at `POST /mcp`.
 - `cats` should not require MCP just to render Chat or Work surfaces.
+- `cats` now also exposes contract-first orchestration routes for direct
+  product consumers:
+  - `POST /api/orchestrator/plan`
+  - `POST /api/orchestrator/dispatch`
+  - `GET /api/orchestrator/channels/{channelId}/execution-loop`
 
-## Planned MCP Tool Scope
+## Current MCP Tool Scope
 
-The exact tool names are still to be finalized, but the intended scope is:
+The current `cats-runtime` MCP facade ships the first curated tool slice:
 
-- session or worker creation
-- dispatching or routing work
-- querying run status or worker status
-- cancellation or interruption
-- artifact or output retrieval
-- safe escalation or approval handoff hooks where runtime context is needed
+- `runtime_summary`
+- `list_sessions`
+- `observe_session`
+- `audit_workspace`
+- `audit_delivery_target`
 
 MCP should not become a back door around product-owned permissions,
 conversations, or approval state. Those remain inside `cats` and
@@ -132,17 +134,75 @@ Location: `.cursor/mcp.json` (project root)
 }
 ```
 
-## Project-Specific Configuration
+## Direct Product Routes
 
-The project does not ship a validated MCP server command today. When the
-`cats-runtime` MCP facade lands, this section should be replaced with the real
-command, arguments, and environment contract.
+`cats` product code should keep using direct API routes, not the MCP facade.
 
-Until then:
+The first orchestration routes are:
 
-- treat any MCP examples here as planning-only
-- do not document a fake production command
-- keep product services on the direct runtime API path
+```text
+POST /api/orchestrator/plan
+POST /api/orchestrator/dispatch
+GET  /api/orchestrator/channels/{channelId}/execution-loop
+```
+
+These routes return machine-readable room-turn planning, dispatch receipts,
+tool-intent metadata, and execution-loop snapshots while still dispatching work
+through the existing `cats -> cats-runtime` direct API path.
+
+## Runtime MCP Endpoint
+
+For orchestrator-style agents, use the runtime-owned MCP facade:
+
+```text
+POST http://127.0.0.1:3110/mcp
+Authorization: Bearer <cats-runtime-api-key>   # when enabled
+Content-Type: application/json
+```
+
+Example `initialize`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {}
+}
+```
+
+Example `tools/list`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list",
+  "params": {}
+}
+```
+
+Example `tools/call`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "observe_session",
+    "arguments": {
+      "sessionId": "session-123"
+    }
+  }
+}
+```
+
+Notes:
+
+- this slice is HTTP JSON-RPC, not a new standalone stdio binary
+- direct product APIs remain the primary app integration boundary
+- MCP is additive and aimed at orchestrator/tool hosts
 
 ## Security Considerations
 
@@ -159,4 +219,4 @@ Until then:
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-23*

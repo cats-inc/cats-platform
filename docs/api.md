@@ -377,12 +377,31 @@ turn finishes, diagnostics record a failed delivery receipt with
 GET   /api/orchestrator
 PATCH /api/orchestrator
 PUT   /api/orchestrator
+POST  /api/orchestrator/plan
+POST  /api/orchestrator/dispatch
+GET   /api/orchestrator/channels/{channelId}/execution-loop
 ```
 
 - `GET` returns `{ orchestrator: { ...state } }`.
 - `PATCH` accepts `{ provider, model?, systemPrompt?, ... }` and returns
   `{ orchestrator: { ...updated } }`.
 - `PUT` is a legacy alias that returns `AppShellPayload`.
+- `POST /api/orchestrator/plan` accepts `{ channelId, body, senderName?, transport? }`
+  and returns a contract-first room-turn plan:
+  - room-routing resolution and unresolved mentions
+  - initial dispatch targets
+  - resolved runtime skill manifests
+  - product-owned MCP/tool intent manifests
+  - execution-loop guardrails and operator seam paths
+- `POST /api/orchestrator/dispatch` accepts the same request body, reuses the
+  existing `routeChannelMessage()` execution path, and returns:
+  - the pre-dispatch plan
+  - additive dispatch receipts
+  - `sourceMessageId`
+  - a post-dispatch execution-loop snapshot
+- `GET /api/orchestrator/channels/{channelId}/execution-loop` returns the
+  conversation-scoped operator/run-inspector contract for that room. `?runId=`
+  may be supplied when a caller wants a specific run instead of the latest run.
 
 ### Error Shape (Canonical Routes)
 
@@ -1204,8 +1223,8 @@ Team 2 and future Work/Code slices can import the same examples through
 
 - Product services continue to call `cats-runtime` through direct APIs for
   health, session lifecycle, routing, and operational control.
-- Orchestrator-style agents are expected to gain a planned MCP tool surface
-  exposed by `cats-runtime`.
+- Orchestrator-style agents can now also use the first `cats-runtime`
+  MCP facade at `POST /mcp`.
 - MCP is therefore an additional runtime access mode, not a replacement for the
   app-facing API described in this document.
 
