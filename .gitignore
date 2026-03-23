@@ -19,6 +19,7 @@ dist-test/
 dist-server/
 dist-electron/
 build/
+release/
 config/*.local.json
 config/*.local.*.json
 

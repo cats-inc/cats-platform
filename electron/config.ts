@@ -1,6 +1,11 @@
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  resolveDesktopUpdateConfig,
+  type DesktopUpdateConfig,
+} from './update.js';
+
 export interface DesktopHostPaths {
   appEntryScript: string;
   runtimeEntryScript: string;
@@ -9,6 +14,14 @@ export interface DesktopHostPaths {
   runtimeDataDir: string;
   runtimeSessionBaseDir: string;
   runtimeConfigPath: string;
+  hostStatePath: string;
+  packagingOutputRoot: string;
+}
+
+export interface DesktopHostBackgroundConfig {
+  trayEnabled: boolean;
+  keepServicesRunning: boolean;
+  closeBehavior: 'quit' | 'minimize_to_tray';
 }
 
 export interface DesktopHostConfig {
@@ -24,12 +37,16 @@ export interface DesktopHostConfig {
   readinessTimeoutMs: number;
   readinessPollIntervalMs: number;
   gracefulShutdownMs: number;
+  background: DesktopHostBackgroundConfig;
+  update: DesktopUpdateConfig;
   paths: DesktopHostPaths;
 }
 
 interface ResolveDesktopHostConfigOptions {
   env?: NodeJS.ProcessEnv;
   userDataDir: string;
+  packaged?: boolean;
+  resourcesPath?: string;
 }
 
 const DEFAULT_LOCAL_HOST = '127.0.0.1';
@@ -38,9 +55,37 @@ const DEFAULT_RUNTIME_PORT = 3110;
 const DEFAULT_READINESS_TIMEOUT_MS = 30000;
 const DEFAULT_READINESS_POLL_INTERVAL_MS = 500;
 const DEFAULT_GRACEFUL_SHUTDOWN_MS = 3000;
+const DEFAULT_DESKTOP_TRAY_ENABLED = true;
+const DEFAULT_KEEP_SERVICES_RUNNING = true;
+const DEFAULT_CLOSE_BEHAVIOR = 'minimize_to_tray';
 
 function readCurrentPackageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), '..');
+}
+
+function resolveHostRuntimeRoot(
+  packaged: boolean,
+  currentPackageRoot: string,
+  resourcesPath: string | undefined,
+): {
+  hostPackageRoot: string;
+  appSidecarRoot: string;
+  runtimePackageRoot: string;
+} {
+  if (!packaged) {
+    return {
+      hostPackageRoot: currentPackageRoot,
+      appSidecarRoot: currentPackageRoot,
+      runtimePackageRoot: resolve(join(currentPackageRoot, '..', 'cats-runtime')),
+    };
+  }
+
+  const bundledResourcesRoot = resolve(resourcesPath || join(currentPackageRoot, '..'));
+  return {
+    hostPackageRoot: currentPackageRoot,
+    appSidecarRoot: resolve(join(bundledResourcesRoot, 'app-sidecar')),
+    runtimePackageRoot: resolve(join(bundledResourcesRoot, 'cats-runtime')),
+  };
 }
 
 function parsePositiveInt(rawValue: string | undefined, fallback: number): number {
@@ -60,13 +105,45 @@ function normalizeHost(rawValue: string | undefined, fallback: string): string {
   return trimmed || fallback;
 }
 
+function parseBoolean(rawValue: string | undefined, fallback: boolean): boolean {
+  const trimmed = rawValue?.trim().toLowerCase();
+  if (!trimmed) {
+    return fallback;
+  }
+  if (trimmed === '1' || trimmed === 'true' || trimmed === 'yes') {
+    return true;
+  }
+  if (trimmed === '0' || trimmed === 'false' || trimmed === 'no') {
+    return false;
+  }
+  return fallback;
+}
+
+function normalizeCloseBehavior(
+  rawValue: string | undefined,
+): DesktopHostBackgroundConfig['closeBehavior'] {
+  const trimmed = rawValue?.trim();
+  if (trimmed === 'quit') {
+    return 'quit';
+  }
+  return DEFAULT_CLOSE_BEHAVIOR;
+}
+
 export function resolveDesktopHostConfig(
   options: ResolveDesktopHostConfigOptions,
 ): DesktopHostConfig {
   const env = options.env ?? process.env;
-  const packageRoot = readCurrentPackageRoot();
+  const hostPackageRoot = readCurrentPackageRoot();
+  const layout = resolveHostRuntimeRoot(
+    options.packaged === true,
+    hostPackageRoot,
+    options.resourcesPath,
+  );
+  const packageRoot = resolve(
+    env.CATS_DESKTOP_APP_ROOT?.trim() || layout.appSidecarRoot,
+  );
   const runtimePackageRoot = resolve(
-    env.CATS_DESKTOP_RUNTIME_ROOT?.trim() || join(packageRoot, '..', 'cats-runtime'),
+    env.CATS_DESKTOP_RUNTIME_ROOT?.trim() || layout.runtimePackageRoot,
   );
   const appHost = normalizeHost(env.CATS_DESKTOP_APP_HOST || env.CATS_HOST, DEFAULT_LOCAL_HOST);
   const appPort = parsePositiveInt(
@@ -94,6 +171,18 @@ export function resolveDesktopHostConfig(
     DEFAULT_GRACEFUL_SHUTDOWN_MS,
   );
   const userDataDir = resolve(options.userDataDir);
+  const background: DesktopHostBackgroundConfig = {
+    trayEnabled: parseBoolean(
+      env.CATS_DESKTOP_TRAY_ENABLED,
+      DEFAULT_DESKTOP_TRAY_ENABLED,
+    ),
+    keepServicesRunning: parseBoolean(
+      env.CATS_DESKTOP_KEEP_SERVICES_RUNNING,
+      DEFAULT_KEEP_SERVICES_RUNNING,
+    ),
+    closeBehavior: normalizeCloseBehavior(env.CATS_DESKTOP_CLOSE_BEHAVIOR),
+  };
+  const update = resolveDesktopUpdateConfig(env);
 
   return {
     packageRoot,
@@ -108,6 +197,8 @@ export function resolveDesktopHostConfig(
     readinessTimeoutMs,
     readinessPollIntervalMs,
     gracefulShutdownMs,
+    background,
+    update,
     paths: {
       appEntryScript: resolve(
         env.CATS_DESKTOP_APP_ENTRY?.trim() || join(packageRoot, 'dist-server', 'index.js'),
@@ -115,7 +206,7 @@ export function resolveDesktopHostConfig(
       runtimeEntryScript: resolve(
         env.CATS_DESKTOP_RUNTIME_ENTRY?.trim() || join(runtimePackageRoot, 'dist', 'index.js'),
       ),
-      preloadScript: resolve(join(packageRoot, 'dist-electron', 'preload.js')),
+      preloadScript: resolve(join(hostPackageRoot, 'dist-electron', 'preload.js')),
       appStatePath: resolve(
         env.CATS_DESKTOP_STATE_PATH?.trim()
           || join(userDataDir, 'config', 'chat-state.local.json'),
@@ -131,6 +222,14 @@ export function resolveDesktopHostConfig(
       runtimeConfigPath: resolve(
         env.CATS_DESKTOP_RUNTIME_CONFIG_PATH?.trim()
           || join(userDataDir, 'runtime', 'providers.yaml'),
+      ),
+      hostStatePath: resolve(
+        env.CATS_DESKTOP_HOST_STATE_PATH?.trim()
+          || join(userDataDir, 'desktop-host', 'state.json'),
+      ),
+      packagingOutputRoot: resolve(
+        env.CATS_DESKTOP_PACKAGING_OUTPUT_ROOT?.trim()
+          || join(packageRoot, 'build', 'desktop-packaging'),
       ),
     },
   };

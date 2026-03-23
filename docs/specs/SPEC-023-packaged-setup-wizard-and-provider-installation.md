@@ -41,15 +41,24 @@ The first host-owned slice is already in-repo:
 - readiness-gated bootstrap exists before the renderer fully enters the normal
   chat flow
 - first-run setup can already distinguish setup entry versus ready entry
+- the host now persists a machine-readable bootstrap/remediation snapshot for
+  background helpers or later installer flows
+- the host now carries a tray/background lifecycle and a manual-check
+  update-channel skeleton
+- packaging scripts now stage Windows/macOS/Linux build outputs plus installer
+  manifests under `build/desktop-packaging`
+- Windows test installs can now be exercised through a real `electron-builder`
+  + `NSIS` installer path
+- Windows packaged installs now also have a host-owned smoke-check script that
+  verifies bundled sidecars and the persisted desktop-host bootstrap snapshot
 
 What remains open for the packaging workstream is the packaged-distribution and
 host-operations depth around that first slice:
 
-- Windows/macOS/Linux packaging outputs
-- installer behavior
-- first-run prerequisite and remediation contracts
-- tray/background lifecycle
-- update channel and auto-update policy
+- signed/native installer publication
+- privileged installer behavior and elevation round-trips
+- richer first-run remediation polish
+- auto-update download/apply policy
 
 ## Goals
 

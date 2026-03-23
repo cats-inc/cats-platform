@@ -16,6 +16,17 @@ const desktopConfig = {
   readinessTimeoutMs: 30000,
   readinessPollIntervalMs: 500,
   gracefulShutdownMs: 3000,
+  background: {
+    trayEnabled: true,
+    keepServicesRunning: true,
+    closeBehavior: 'minimize_to_tray',
+  },
+  update: {
+    channel: 'stable',
+    manifestUrl: 'https://updates.example.com/cats/stable.json',
+    checkOnStartup: false,
+    autoDownload: false,
+  },
   paths: {
     appEntryScript: 'cats/dist-server/index.js',
     runtimeEntryScript: 'cats-runtime/dist/index.js',
@@ -24,6 +35,8 @@ const desktopConfig = {
     runtimeDataDir: 'cats/.desktop/runtime/data',
     runtimeSessionBaseDir: 'cats/.desktop/runtime/sessions',
     runtimeConfigPath: 'cats/.desktop/runtime/providers.yaml',
+    hostStatePath: 'cats/.desktop/host/state.json',
+    packagingOutputRoot: 'cats/build/desktop-packaging',
   },
 };
 
@@ -93,6 +106,10 @@ test('desktop bootstrap stays in ready_for_setup until setup is completed', () =
   assert.equal(snapshot.phase, 'ready_for_setup');
   assert.equal(snapshot.app.entryPath, '/setup');
   assert.ok(snapshot.actions.some((action) => action.id === 'open_setup'));
+  assert.equal(snapshot.progress.currentStepId, 'enter-chat');
+  assert.equal(snapshot.background.trayEnabled, true);
+  assert.equal(snapshot.updates.status, 'idle');
+  assert.equal(snapshot.hostStatePath, 'cats/.desktop/host/state.json');
 });
 
 test('desktop bootstrap opens chat when setup and provider readiness are complete', () => {
@@ -149,6 +166,8 @@ test('desktop bootstrap opens chat when setup and provider readiness are complet
   assert.equal(snapshot.status, 'ok');
   assert.equal(snapshot.app.entryPath, '/new');
   assert.ok(snapshot.actions.some((action) => action.id === 'open_chat'));
+  assert.equal(snapshot.progress.steps.at(-1)?.status, 'completed');
+  assert.equal(snapshot.packaging.targets.length >= 3, true);
 });
 
 test('desktop bootstrap surfaces provider remediation after setup if no provider is ready', () => {
@@ -218,4 +237,9 @@ test('desktop bootstrap surfaces provider remediation after setup if no provider
   assert.ok(snapshot.issues.some((issue) => /provider target/i.test(issue.title)));
   assert.ok(snapshot.actions.some((action) => action.id === 'retry'));
   assert.ok(snapshot.actions.some((action) => action.id === 'open_setup'));
+  assert.equal(snapshot.issues[0]?.remediation?.kind, 'open_setup');
+  assert.equal(
+    snapshot.progress.steps.find((step) => step.id === 'enter-chat')?.status,
+    'failed',
+  );
 });

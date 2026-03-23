@@ -166,6 +166,100 @@ It is the desktop-owned seam for:
 - prerequisite and provider remediation messaging
 - later packaged install/resume flows
 
+The desktop host now also keeps a host-readable state file at
+`CATS_DESKTOP_HOST_STATE_PATH` (default:
+`<userData>/desktop-host/state.json`). That JSON snapshot includes:
+
+- bootstrap phase and summary
+- structured prerequisite issues plus remediation actions
+- progress steps for service start, prerequisite scan, setup handoff, and chat entry
+- tray/background lifecycle state
+- update-channel status
+- packaging-plan metadata
+
+### Desktop Packaging Stage
+
+To generate staged packaging outputs without changing the visible renderer UI:
+
+```bash
+npm run desktop:stage
+```
+
+Platform wrappers:
+
+```powershell
+.\scripts\windows\Build-DesktopPackage.ps1 -Platform windows
+```
+
+```bash
+./scripts/linux/build-desktop-package.sh linux
+./scripts/macos/build-desktop-package.sh macos
+```
+
+The current substrate writes:
+
+- `build/desktop-packaging/desktop-package-plan.json`
+- `build/desktop-packaging/shared/*`
+- `build/desktop-packaging/targets/<target>/installer-manifest.json`
+
+This is intentionally a staging layer, not the final signed-installer
+publication step.
+
+### Windows Installer Build
+
+For an actual Windows installer that can be test-installed:
+
+```bash
+npm run desktop:package:windows
+```
+
+```powershell
+.\scripts\windows\Build-WindowsInstaller.ps1
+```
+
+This currently uses `electron-builder` with the `NSIS` target and writes:
+
+- `release/Cats-0.1.0-setup-x64.exe` style installer output
+- `release/win-unpacked/` for unpacked verification
+
+### Windows Post-Install Smoke Check
+
+After running the installer on a Windows machine, validate the installed app
+with:
+
+```powershell
+.\scripts\windows\Test-WindowsInstallerSmoke.ps1
+```
+
+Default assumptions:
+
+- install root: `%LOCALAPPDATA%\Programs\Cats`
+- host state path: `%APPDATA%\Cats\desktop-host\state.json`
+
+If you installed to a different directory, pass overrides:
+
+```powershell
+.\scripts\windows\Test-WindowsInstallerSmoke.ps1 -InstallRoot 'C:\Program Files\Cats'
+```
+
+What the smoke-check confirms:
+
+- `Cats.exe` exists
+- bundled `cats` and `cats-runtime` sidecar assets exist under `resources/`
+- the packaged `desktop-package-plan.json` still advertises the Windows NSIS
+  target
+- launching the installed app refreshes the persisted desktop-host state file
+  and reaches a stable bootstrap phase
+
+Use `-SkipLaunch` if you only want file/layout verification.
+
+Current limitations of the first real installer slice:
+
+- unsigned build
+- no branded icon yet
+- update install/apply remains manual
+- provider-install elevation/resume is not yet integrated into the installer
+
 ## Common Issues
 
 ### Issue 1: `/health` returns `503`
@@ -221,6 +315,14 @@ an optional advanced mode.
 If you changed any desktop-host paths, re-check the corresponding
 `CATS_DESKTOP_*` overrides.
 
+### Issue 8: Closing the desktop window does not stop local services
+
+**Solution**: This is now controlled by the host lifecycle contract. By
+default the host minimizes to tray and keeps `cats-runtime` + `cats` alive in
+the background. Set `CATS_DESKTOP_CLOSE_BEHAVIOR=quit` or
+`CATS_DESKTOP_KEEP_SERVICES_RUNNING=false` if you need the older quit-on-close
+behavior while testing.
+
 ---
 
-*Last updated: 2026-03-23*
+*Last updated: 2026-03-24*

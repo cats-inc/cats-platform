@@ -183,6 +183,23 @@ transport state stays in `src/platform/transports/telegram/*`.
   routes, Work/Code placeholder routes, runtime-facing routes, and built
   renderer files
 
+### Electron Host and Packaging Substrate
+
+- **Purpose**: Own desktop-only lifecycle concerns without pushing shell or
+  installer logic into the renderer
+- **Technology**: `electron/*` plus host-owned packaging scripts under
+  `scripts/*`
+- **Responsibilities**:
+  - supervise local `cats-runtime` + `cats` sidecars
+  - persist a host-readable bootstrap/remediation snapshot to desktop user data
+  - keep a tray/background lifecycle for packaged runs
+  - stage deterministic Windows/macOS/Linux packaging outputs under
+    `build/desktop-packaging`
+  - produce a Windows NSIS installer by bundling the Electron host plus staged
+    app/runtime sidecars
+  - define the first installer/update contract without requiring a visible UI
+    redesign
+
 ### Chat Store and Future Shared Storage
 
 - **Purpose**: Persist the current chat shell while preparing for a
@@ -432,7 +449,7 @@ primary operator workflow. See
    operational DB, canonical memory, or approval state.
 10. In built mode, the server also serves the static renderer bundle.
 
-## Planned Desktop Topology
+## Desktop Host Topology
 
 The future desktop shape is now decided even though it is not implemented yet:
 
@@ -441,7 +458,9 @@ Electron main
   ├─ tray + window lifecycle
   ├─ starts cats-runtime
   ├─ starts cats
-  ├─ manages local onboarding and settings
+  ├─ persists host-readable bootstrap/update state
+  ├─ stages packaging/update manifests
+  ├─ manages local onboarding and remediation handoff
   └─ loads Chat and Work windows from cats
 
 BrowserWindow renderer
@@ -457,7 +476,12 @@ cats-runtime
 ```
 
 This keeps subprocess-backed runtime work out of the renderer and preserves the
-existing `cats -> cats-runtime` boundary for desktop packaging. See
+existing `cats -> cats-runtime` boundary for desktop packaging. The current
+implementation now includes the first tray/background lifecycle, structured
+bootstrap snapshot, manual-check update skeleton, staged packaging-output
+plan, and a Windows NSIS installer path, while signed installers for release
+distribution and privileged provider-install execution remain follow-on work.
+See
 [ADR-003](./decisions/003-electron-host-manages-local-services.md),
 [ADR-007](./decisions/007-establish-cats-core-v1-for-chat-and-work.md), and
 [ADR-008](./decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md).
@@ -530,7 +554,8 @@ intentionally deferred:
   workflow loop
 - full Telegram/LINE outbound delivery, room-routing policy, escalation, and
   takeover behavior above the current relay seam
-- desktop host lifecycle management and tray-driven UX implementation
+- signed installer publication, provider-install privilege orchestration, and
+  richer desktop remediation polish above the current host substrate
 - `Cats Work` product surfaces above the shared core
 - any limited mobile companion scope, which is intentionally secondary to the
   desktop suite

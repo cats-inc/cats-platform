@@ -36,12 +36,77 @@ export const DESKTOP_HOST_ACTION_IDS = [
   'open_chat',
   'quit',
 ] as const;
+export const DESKTOP_BACKGROUND_MODES = [
+  'foreground',
+  'background',
+] as const;
+export const DESKTOP_BACKGROUND_CLOSE_BEHAVIORS = [
+  'quit',
+  'minimize_to_tray',
+] as const;
+export const DESKTOP_PROGRESS_STEP_STATUSES = [
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'skipped',
+] as const;
+export const DESKTOP_UPDATE_STATUSES = [
+  'disabled',
+  'idle',
+  'checking',
+  'up_to_date',
+  'update_available',
+  'failed',
+] as const;
+export const DESKTOP_UPDATE_CHANNELS = [
+  'stable',
+  'beta',
+  'alpha',
+] as const;
+export const DESKTOP_PACKAGING_PLATFORMS = [
+  'windows',
+  'macos',
+  'linux',
+] as const;
+export const DESKTOP_PACKAGING_ARCHITECTURES = [
+  'x64',
+  'arm64',
+  'universal',
+] as const;
+export const DESKTOP_INSTALLER_FORMATS = [
+  'nsis',
+  'msi',
+  'zip',
+  'dmg',
+  'pkg',
+  'appimage',
+  'deb',
+  'tar.gz',
+] as const;
+export const DESKTOP_REMEDIATION_KINDS = [
+  'retry',
+  'open_runtime_diagnostics',
+  'open_setup',
+  'reinstall_host',
+  'manual_update',
+  'restart_host',
+] as const;
 
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
 export type DesktopHostActionId = typeof DESKTOP_HOST_ACTION_IDS[number];
 export type DesktopHealthStatus = 'ok' | 'degraded' | 'unavailable';
 export type ManagedServiceName = 'cats-runtime' | 'cats';
 export type ManagedServiceStatus = 'stopped' | 'starting' | 'ready' | 'failed';
+export type DesktopBackgroundMode = typeof DESKTOP_BACKGROUND_MODES[number];
+export type DesktopBackgroundCloseBehavior = typeof DESKTOP_BACKGROUND_CLOSE_BEHAVIORS[number];
+export type DesktopProgressStepStatus = typeof DESKTOP_PROGRESS_STEP_STATUSES[number];
+export type DesktopUpdateStatus = typeof DESKTOP_UPDATE_STATUSES[number];
+export type DesktopUpdateChannel = typeof DESKTOP_UPDATE_CHANNELS[number];
+export type DesktopPackagingPlatform = typeof DESKTOP_PACKAGING_PLATFORMS[number];
+export type DesktopPackagingArchitecture = typeof DESKTOP_PACKAGING_ARCHITECTURES[number];
+export type DesktopInstallerFormat = typeof DESKTOP_INSTALLER_FORMATS[number];
+export type DesktopRemediationKind = typeof DESKTOP_REMEDIATION_KINDS[number];
 
 export interface ManagedServiceSnapshot {
   name: ManagedServiceName;
@@ -82,6 +147,9 @@ export interface DesktopPrerequisiteIssue {
   title: string;
   detail: string;
   target?: string;
+  category?: 'service' | 'provider' | 'install' | 'update' | 'packaging';
+  resumeKey?: string;
+  remediation?: DesktopRemediationAction | null;
 }
 
 export interface DesktopHostAction {
@@ -89,6 +157,93 @@ export interface DesktopHostAction {
   label: string;
   primary?: boolean;
   disabled?: boolean;
+}
+
+export interface DesktopRemediationAction {
+  kind: DesktopRemediationKind;
+  label: string;
+  resumable: boolean;
+  requiresRestart: boolean;
+  docsPath?: string | null;
+}
+
+export interface DesktopBootstrapProgressStep {
+  id: string;
+  label: string;
+  status: DesktopProgressStepStatus;
+  detail: string | null;
+  blocking: boolean;
+}
+
+export interface DesktopBootstrapProgress {
+  currentStepId: string | null;
+  steps: DesktopBootstrapProgressStep[];
+}
+
+export interface DesktopBackgroundState {
+  trayEnabled: boolean;
+  keepServicesRunning: boolean;
+  mode: DesktopBackgroundMode;
+  closeBehavior: DesktopBackgroundCloseBehavior;
+  windowVisible: boolean;
+  lastHiddenAt: string | null;
+}
+
+export interface DesktopUpdateState {
+  channel: DesktopUpdateChannel;
+  status: DesktopUpdateStatus;
+  currentVersion: string;
+  latestVersion: string | null;
+  summary: string;
+  lastCheckedAt: string | null;
+  manifestUrl: string | null;
+  downloadUrl: string | null;
+  error: string | null;
+}
+
+export interface DesktopPackagingArtifact {
+  id: string;
+  relativePath: string;
+  role: 'electron_host' | 'app_server' | 'app_renderer' | 'runtime_sidecar' | 'manifest';
+  required: boolean;
+}
+
+export interface DesktopPackagingTarget {
+  id: string;
+  platform: DesktopPackagingPlatform;
+  arch: DesktopPackagingArchitecture;
+  installerFormats: DesktopInstallerFormat[];
+  artifactBaseName: string;
+  stageDirectory: string;
+  artifacts: DesktopPackagingArtifact[];
+}
+
+export interface DesktopInstallerContract {
+  prerequisiteChecks: Array<{
+    id: string;
+    label: string;
+    hostOwned: boolean;
+    resumable: boolean;
+  }>;
+  remediationActions: DesktopRemediationAction[];
+  requiresBundledRuntimeSidecar: boolean;
+}
+
+export interface DesktopUpdateContract {
+  channel: DesktopUpdateChannel;
+  autoCheckOnStartup: boolean;
+  autoDownload: boolean;
+  manifestUrl: string | null;
+}
+
+export interface DesktopPackagingPlan {
+  strategy: 'electron-sidecar-bundle';
+  generatedAt: string;
+  outputRoot: string;
+  selfHostedNpmCompatible: boolean;
+  targets: DesktopPackagingTarget[];
+  installer: DesktopInstallerContract;
+  updates: DesktopUpdateContract;
 }
 
 export interface DesktopBootstrapSnapshot {
@@ -117,4 +272,17 @@ export interface DesktopBootstrapSnapshot {
   issues: DesktopPrerequisiteIssue[];
   actions: DesktopHostAction[];
   lastError: string | null;
+  progress: DesktopBootstrapProgress;
+  background: DesktopBackgroundState;
+  updates: DesktopUpdateState;
+  packaging: DesktopPackagingPlan;
+  hostStatePath: string | null;
+}
+
+export interface DesktopHostPersistedState {
+  snapshot: DesktopBootstrapSnapshot;
+  background: DesktopBackgroundState;
+  updates: DesktopUpdateState;
+  packaging: DesktopPackagingPlan;
+  savedAt: string;
 }

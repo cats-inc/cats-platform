@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Flagship Cats suite app backed by cats-runtime.",
   "type": "module",
-  "main": "dist-server/index.js",
+  "main": "dist-electron/main.js",
   "types": "dist-server/index.d.ts",
   "scripts": {
     "build": "npm run build:server && npm run build:web && npm run build:host",
@@ -12,6 +12,12 @@
     "build:web": "vite build",
     "build:test-ui": "esbuild tests/*.test.tsx --bundle --platform=node --format=esm --outdir=dist-test",
     "desktop:host": "electron dist-electron/main.js",
+    "desktop:package": "node scripts/build-desktop-installer.mjs --target current",
+    "desktop:package:windows": "node scripts/build-desktop-installer.mjs --target windows",
+    "desktop:stage": "npm run build && node scripts/package-desktop.mjs --platform all",
+    "desktop:stage:linux": "npm run build && node scripts/package-desktop.mjs --platform linux",
+    "desktop:stage:macos": "npm run build && node scripts/package-desktop.mjs --platform macos",
+    "desktop:stage:windows": "npm run build && node scripts/package-desktop.mjs --platform windows",
     "desktop:start": "npm run build && npm run desktop:host",
     "dev": "npm run dev:web",
     "dev:server": "tsx watch src/index.ts",
@@ -39,6 +45,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^36.1.0",
+    "electron-builder": "^26.8.1",
     "esbuild": "^0.27.0",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0",
@@ -46,5 +53,65 @@
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "build": {
+    "appId": "io.catsinc.cats",
+    "productName": "Cats",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "release",
+      "buildResources": "assets/build"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/desktop-packaging/shared/dist-server",
+        "to": "app-sidecar/dist-server",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "build/desktop-packaging/shared/dist",
+        "to": "app-sidecar/dist",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "build/desktop-packaging/shared/cats-runtime",
+        "to": "cats-runtime",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "build/desktop-packaging/desktop-package-plan.json",
+        "to": "desktop-package-plan.json"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false,
+      "artifactName": "Cats-${version}-setup-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

@@ -1,5 +1,8 @@
 declare namespace Electron {
   interface IpcRendererEvent {}
+  interface Event {
+    preventDefault(): void;
+  }
 }
 
 declare module 'electron' {
@@ -28,8 +31,10 @@ declare module 'electron' {
     constructor(options?: BrowserWindowConstructorOptions);
     webContents: WebContents;
     loadURL(url: string): Promise<void>;
+    on(event: string, listener: (...args: any[]) => void): this;
     once(event: string, listener: () => void): this;
     show(): void;
+    hide(): void;
     isMinimized(): boolean;
     restore(): void;
     focus(): void;
@@ -62,7 +67,24 @@ declare module 'electron' {
     openExternal(url: string): Promise<void>;
   };
 
+  export const Menu: {
+    buildFromTemplate(template: Array<Record<string, unknown>>): unknown;
+  };
+
+  export const nativeImage: {
+    createFromDataURL(dataUrl: string): unknown;
+  };
+
+  export class Tray {
+    constructor(image: unknown);
+    setToolTip(tooltip: string): void;
+    setContextMenu(menu: unknown): void;
+    on(event: string, listener: (...args: any[]) => void): this;
+    destroy(): void;
+  }
+
   export const app: {
+    isPackaged: boolean;
     requestSingleInstanceLock(): boolean;
     whenReady(): Promise<void>;
     getPath(name: string): string;

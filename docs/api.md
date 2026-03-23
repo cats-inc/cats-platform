@@ -663,6 +663,59 @@ of `starting`, `ready`, `stopping`, or `stopped`, while top-level `status`
 stays lifecycle-aware and degrades if `cats-runtime` is unreachable even after
 the app listener is live.
 
+### Desktop Host Bootstrap Snapshot
+
+The Electron host now keeps a host-readable JSON snapshot at
+`CATS_DESKTOP_HOST_STATE_PATH` (default:
+`<userData>/desktop-host/state.json`). This is not a public HTTP route, but it
+is part of the packaged host contract.
+
+The persisted snapshot mirrors the Electron bootstrap bridge payload and
+includes:
+
+- `phase`, `status`, `summary`, `lastError`
+- `services[]` with process/readiness state for `cats-runtime` and `cats`
+- `issues[]` with machine-readable remediation metadata:
+  - `category`
+  - `resumeKey`
+  - `remediation.kind`
+  - `remediation.resumable`
+  - `remediation.requiresRestart`
+- `progress`:
+  - `currentStepId`
+  - ordered `steps[]` for runtime start, app start, prerequisite scan, setup
+    handoff, and chat entry
+- `background`:
+  - `trayEnabled`
+  - `keepServicesRunning`
+  - `mode`
+  - `closeBehavior`
+  - `windowVisible`
+- `updates`:
+  - `channel`
+  - `status`
+  - `currentVersion`
+  - `latestVersion`
+  - `manifestUrl`
+  - `downloadUrl`
+- `packaging`:
+  - packaging `strategy`
+  - staged target matrix for Windows/macOS/Linux
+  - installer prerequisite/remediation contract
+  - update-channel skeleton metadata
+
+This lets host-side tooling, packaged installers, or future background helpers
+inspect desktop startup state without scraping the visible bootstrap page.
+
+The current packaged host contract now has two build layers:
+
+- `npm run desktop:stage`
+  - stages deterministic packaging inputs and manifests only
+- `npm run desktop:package:windows`
+  - builds a real Windows `NSIS` installer through `electron-builder`
+  - bundles the Electron host inside `app.asar`
+  - bundles `cats` and `cats-runtime` sidecars through `extraResources`
+
 ### Core State
 
 ```text

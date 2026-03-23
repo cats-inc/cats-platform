@@ -32,8 +32,11 @@ The current slices are:
   execution-loop routes that now expose checkpoint-driven multi-step execution
   plans, recovery actions, and Team 6 MCP tool-plane metadata while staying
   above the existing direct `cats-runtime` API path
-- an Electron desktop host that supervises local `cats-runtime` + `cats`,
-  waits for readiness, and owns the first packaged bootstrap/remediation seam
+- an Electron desktop host that now supervises local `cats-runtime` + `cats`,
+  can produce a real Windows NSIS installer, stages cross-platform packaging
+  outputs, persists host-readable bootstrap state, supports tray/background
+  lifecycle, and owns the packaged bootstrap/remediation seam plus a
+  manual-check update skeleton
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
   direct companion-session hydration metadata, and Cats-owned retrieval context
@@ -89,8 +92,9 @@ several Phase 3 items remain:
 - automatic resume after owner or incident decisions, richer live runtime
   state, and deeper converge/group planning beyond the current execution-loop
   and action seams
-- richer first-run remediation, packaged installer UX, and host-managed
-  provider install/resume flows beyond the current bootstrap slice
+- richer first-run remediation polish, branded/signed release assets, and
+  host-managed provider install/resume flows beyond the current Windows
+  NSIS-first packaging substrate
 - offline transcript normalization and ingestion handoff hooks
 - richer semantic indexing and archive export beyond the current local
   canonical-memory and retrieval substrate
@@ -137,6 +141,30 @@ npm run desktop:start
 
 That command builds `dist-server/`, `dist/`, and `dist-electron/`, then starts
 the Electron host that supervises local `cats-runtime` and `cats` sidecars.
+
+For staged packaging outputs:
+
+```bash
+npm run desktop:stage
+```
+
+That command keeps the self-hosted npm path intact while generating
+cross-platform packaging manifests under `build/desktop-packaging/`.
+
+For a real Windows installer:
+
+```bash
+npm run desktop:package:windows
+```
+
+That command builds `cats-runtime`, builds `cats`, stages bundled sidecars, and
+produces an NSIS installer under `release/`.
+
+For a post-install validation pass on Windows:
+
+```powershell
+.\scripts\windows\Test-WindowsInstallerSmoke.ps1
+```
 
 ## Documentation
 

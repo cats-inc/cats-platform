@@ -47,6 +47,11 @@ test('desktop host config and managed service specs preserve the app/runtime pro
       CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats/dist-server/index.js',
       CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/dist/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
+      CATS_DESKTOP_TRAY_ENABLED: 'true',
+      CATS_DESKTOP_KEEP_SERVICES_RUNNING: 'true',
+      CATS_DESKTOP_CLOSE_BEHAVIOR: 'minimize_to_tray',
+      CATS_DESKTOP_UPDATE_CHANNEL: 'beta',
+      CATS_DESKTOP_UPDATE_MANIFEST_URL: 'https://updates.example.com/cats/beta.json',
     },
     userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
   });
@@ -73,6 +78,36 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(appSpec.env.CATS_RUNTIME_BASE_URL, 'http://127.0.0.1:43110');
   assert.equal(appSpec.env.CATS_STATE_PATH, 'C:\\Cats\\chat-state.local.json');
   assert.equal(appSpec.cwd, config.packageRoot);
+  assert.equal(config.background.trayEnabled, true);
+  assert.equal(config.background.closeBehavior, 'minimize_to_tray');
+  assert.equal(config.update.channel, 'beta');
+  assert.equal(config.update.manifestUrl, 'https://updates.example.com/cats/beta.json');
+  assert.equal(
+    config.paths.hostStatePath,
+    'C:\\Users\\test\\AppData\\Roaming\\Cats\\desktop-host\\state.json',
+  );
+});
+
+test('desktop host config resolves bundled sidecar paths in packaged mode', () => {
+  const config = resolveDesktopHostConfig({
+    env: {},
+    userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    packaged: true,
+    resourcesPath: 'C:/Program Files/Cats/resources',
+  });
+
+  assert.equal(
+    config.paths.appEntryScript,
+    'C:\\Program Files\\Cats\\resources\\app-sidecar\\dist-server\\index.js',
+  );
+  assert.equal(
+    config.paths.runtimeEntryScript,
+    'C:\\Program Files\\Cats\\resources\\cats-runtime\\dist\\index.js',
+  );
+  assert.equal(
+    config.packageRoot,
+    'C:\\Program Files\\Cats\\resources\\app-sidecar',
+  );
 });
 
 test('stopAll preserves the app-before-runtime shutdown order', async () => {

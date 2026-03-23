@@ -1,15 +1,21 @@
 import type {
+  DesktopBackgroundState,
   DesktopBootstrapSnapshot,
+  DesktopBootstrapProgress,
   DesktopHostAction,
   DesktopHostActionId,
   DesktopPrerequisiteIssue,
   DesktopProviderIssue,
   DesktopProviderSummary,
+  DesktopUpdateState,
   ManagedServiceSnapshot,
 } from './contracts.js';
 import { DESKTOP_HOST_NAME, DESKTOP_HOST_VERSION } from './contracts.js';
 import type { DesktopHealthStatus } from './contracts.js';
 import type { DesktopHostConfig } from './config.js';
+import { createDesktopBackgroundState } from './hostState.js';
+import { createDesktopPackagingPlan } from './packaging.js';
+import { createDefaultDesktopUpdateState } from './update.js';
 
 export interface ReadinessPayload {
   readiness?: {
@@ -66,6 +72,9 @@ interface BuildDesktopBootstrapSnapshotInput {
   providerDiagnostics?: RuntimeProviderDiagnosticsPayload | null;
   lastError?: string | null;
   now?: () => Date;
+  background?: DesktopBackgroundState;
+  updates?: DesktopUpdateState;
+  hostStatePath?: string | null;
 }
 
 interface WaitForServiceReadinessOptions {
@@ -134,6 +143,15 @@ function buildIssues(
       severity: 'error',
       title: 'Desktop host failed to finish startup',
       detail: lastError,
+      category: 'service',
+      resumeKey: 'host_startup_retry',
+      remediation: {
+        kind: 'retry',
+        label: 'Retry desktop host startup',
+        resumable: true,
+        requiresRestart: false,
+        docsPath: 'cats/docs/deployment.md',
+      },
     });
   }
 
@@ -144,6 +162,15 @@ function buildIssues(
       title: 'Cats cannot reach cats-runtime',
       detail: 'The local app booted, but its runtime dependency is still unreachable.',
       target: 'cats-runtime',
+      category: 'service',
+      resumeKey: 'runtime_diagnostics',
+      remediation: {
+        kind: 'open_runtime_diagnostics',
+        label: 'Open runtime diagnostics',
+        resumable: true,
+        requiresRestart: false,
+        docsPath: 'cats/docs/deployment.md',
+      },
     });
   }
 
@@ -156,6 +183,15 @@ function buildIssues(
         ? 'Setup is complete, but there is no ready provider path for chat yet.'
         : 'Continue into setup to choose an API baseline or optional local CLI provider path.',
       target: 'providers',
+      category: 'provider',
+      resumeKey: 'provider_setup',
+      remediation: {
+        kind: 'open_setup',
+        label: 'Open setup',
+        resumable: true,
+        requiresRestart: false,
+        docsPath: 'cats/docs/setup-guide.md',
+      },
     });
   } else if (!hasReadyProviderPath(providerSummary)) {
     issues.push({
@@ -164,6 +200,15 @@ function buildIssues(
       title: 'No provider target is currently ready',
       detail: providerSummary?.summary || 'Provider diagnostics need attention.',
       target: 'providers',
+      category: 'provider',
+      resumeKey: 'provider_remediation',
+      remediation: {
+        kind: 'open_setup',
+        label: 'Open setup',
+        resumable: true,
+        requiresRestart: false,
+        docsPath: 'cats/docs/setup-guide.md',
+      },
     });
   }
 
@@ -174,6 +219,15 @@ function buildIssues(
       title: `${providerIssue.provider}/${providerIssue.instance} needs attention`,
       detail: providerIssue.summary,
       target: providerIssue.target,
+      category: 'provider',
+      resumeKey: `provider_${providerIssue.provider}_${providerIssue.instance}`,
+      remediation: {
+        kind: 'open_setup',
+        label: 'Open setup',
+        resumable: true,
+        requiresRestart: false,
+        docsPath: 'cats/docs/setup-guide.md',
+      },
     });
   }
 
@@ -184,10 +238,107 @@ function buildIssues(
       title: 'Runtime diagnostics are still loading',
       detail: 'The desktop host has not finished its prerequisite scan yet.',
       target: 'cats-runtime',
+      category: 'service',
+      remediation: null,
     });
   }
 
   return issues;
+}
+
+function buildBootstrapProgress(
+  services: ManagedServiceSnapshot[],
+  phase: DesktopBootstrapSnapshot['phase'],
+  issues: DesktopPrerequisiteIssue[],
+  lastError: string | null | undefined,
+): DesktopBootstrapProgress {
+  const runtimeService = services.find((service) => service.name === 'cats-runtime');
+  const appService = services.find((service) => service.name === 'cats');
+  const runtimeReady = runtimeService?.ready === true;
+  const appReady = appService?.ready === true;
+  const setupReady = phase === 'ready_for_setup' || phase === 'ready_for_chat' || phase === 'needs_prerequisites';
+
+  const steps: DesktopBootstrapProgress['steps'] = [
+    {
+      id: 'start-runtime',
+      label: 'Start cats-runtime sidecar',
+      status: runtimeService?.status === 'failed'
+        ? 'failed'
+        : runtimeReady
+          ? 'completed'
+          : 'running',
+      detail: runtimeService?.error ?? null,
+      blocking: true,
+    },
+    {
+      id: 'start-app',
+      label: 'Start cats product server',
+      status: appService?.status === 'failed'
+        ? 'failed'
+        : appReady
+          ? 'completed'
+          : runtimeReady
+            ? 'running'
+            : 'pending',
+      detail: appService?.error ?? null,
+      blocking: true,
+    },
+    {
+      id: 'scan-prerequisites',
+      label: 'Scan provider and prerequisite readiness',
+      status: phase === 'starting_services'
+        ? 'pending'
+        : phase === 'checking_prerequisites'
+          ? 'running'
+          : lastError
+            ? 'failed'
+            : 'completed',
+      detail: issues.length > 0 ? `${issues.length} issue(s) currently reported.` : null,
+      blocking: true,
+    },
+    {
+      id: 'enter-setup',
+      label: 'Prepare first-run setup or remediation handoff',
+      status: phase === 'ready_for_setup'
+        ? 'completed'
+        : phase === 'ready_for_chat'
+          ? 'skipped'
+          : phase === 'needs_prerequisites'
+            ? 'completed'
+            : phase === 'failed'
+              ? 'failed'
+              : setupReady
+                ? 'completed'
+                : 'pending',
+      detail: phase === 'needs_prerequisites'
+        ? 'Setup remains available for provider remediation.'
+        : null,
+      blocking: false,
+    },
+    {
+      id: 'enter-chat',
+      label: 'Enter ready chat flow',
+      status: phase === 'ready_for_chat'
+        ? 'completed'
+        : phase === 'failed' || phase === 'needs_prerequisites'
+          ? 'failed'
+          : 'pending',
+      detail: phase === 'needs_prerequisites'
+        ? 'A provider path still needs remediation before chat can open.'
+        : null,
+      blocking: false,
+    },
+  ];
+
+  const currentStep = steps.find((step) => step.status === 'running')
+    ?? steps.find((step) => step.status === 'failed')
+    ?? steps.find((step) => step.status === 'pending')
+    ?? null;
+
+  return {
+    currentStepId: currentStep?.id ?? null,
+    steps,
+  };
 }
 
 function buildActions(
@@ -322,6 +473,14 @@ export function buildDesktopBootstrapSnapshot(
     summary = providerSummary?.summary || 'Cats needs provider remediation before chat can open.';
   }
 
+  const background = input.background ?? createDesktopBackgroundState(input.config);
+  const updates = input.updates ?? createDefaultDesktopUpdateState(input.config.update);
+  const packaging = createDesktopPackagingPlan(input.config, {
+    generatedAt: now,
+    outputRoot: input.config.paths.packagingOutputRoot,
+  });
+  const progress = buildBootstrapProgress(input.services, phase, issues, input.lastError);
+
   return {
     service: DESKTOP_HOST_NAME,
     version: DESKTOP_HOST_VERSION,
@@ -352,5 +511,10 @@ export function buildDesktopBootstrapSnapshot(
       runtimeReady: Boolean(runtimeService?.ready),
     }),
     lastError: input.lastError ?? null,
+    progress,
+    background,
+    updates,
+    packaging,
+    hostStatePath: input.hostStatePath ?? input.config.paths.hostStatePath,
   };
 }

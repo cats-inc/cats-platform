@@ -30,6 +30,8 @@ Desktop-host regression coverage now also checks:
 - desktop bootstrap phase selection (`ready_for_setup`, `ready_for_chat`,
   `needs_prerequisites`)
 - managed child-process launch specs for `cats` and `cats-runtime`
+- Windows installer smoke-check script coverage for bundled sidecars and the
+  persisted desktop-host state contract
 - host build smoke through `npm run build:host`
 
 ## Test Types
@@ -86,6 +88,24 @@ npm run build:host
 This is the current production-bundle smoke check. It is still run manually;
 the CI workflow does not yet build the Vite bundle.
 
+### Windows Installer Smoke Check
+
+After producing and installing the Windows NSIS package, run:
+
+```powershell
+.\scripts\windows\Test-WindowsInstallerSmoke.ps1
+```
+
+The smoke-check validates:
+
+- `Cats.exe` exists under the installed package root
+- bundled `cats` sidecar assets exist under `resources/app-sidecar/*`
+- bundled `cats-runtime` assets exist under `resources/cats-runtime/*`
+- the packaged `desktop-package-plan.json` still advertises the Windows NSIS
+  target
+- launching the installed app refreshes the persisted desktop-host state file
+  and reaches a stable bootstrap phase
+
 ## Mocking Guidelines
 
 - Prefer in-process stub objects for runtime clients
@@ -103,4 +123,4 @@ the CI workflow does not yet build the Vite bundle.
 
 ---
 
-*Last updated: 2026-03-23*
+*Last updated: 2026-03-24*
