@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-020](./PLAN-020-cats-memory-retrieval-and-flush-substrate.md) | Cats Memory Retrieval and Flush Substrate | In Progress (First Slice Landed) | [SPEC-022](../specs/SPEC-022-cats-memory-layering-and-ownership.md), [SPEC-029](../specs/SPEC-029-companion-boxes-ingestion-and-response-profiles.md) |
 | [PLAN-019](./PLAN-019-companion-box-sidecar-and-session-hydration.md) | Companion Box Sidecar and Session Hydration | In Progress (First Slice Landed) | [SPEC-029](../specs/SPEC-029-companion-boxes-ingestion-and-response-profiles.md) |
 | [PLAN-018](./PLAN-018-rename-the-main-suite-from-cats-inc-to-cats.md) | Rename the Main Suite from cats-inc to cats | Draft (Pending Review) | [ADR-026](../decisions/026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md) |
 | [PLAN-017](./PLAN-017-suite-host-refactor-for-chat-work-code-and-core.md) | Suite Host Refactor for Chat, Work, Code, and Core | Draft (Pending Review) | [ADR-025](../decisions/025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) |
@@ -79,6 +80,5 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 *Last updated: 2026-03-23*
 
 *See also: [specs/](../specs/) for feature specifications*
-
 
 

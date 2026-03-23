@@ -12,6 +12,8 @@ The current Phase 2 API provides:
 - a file-backed chat mutation surface
 - a chat-global cat registry plus channel-scoped cat assignment
 - runtime-backed channel activation and message routing
+- a Cats-owned canonical memory and retrieval substrate for companion, owner,
+  and channel scopes
 - transcript export for later ingestion
 
 The current server now exposes the first neutral `Cats Core v1` write-side
@@ -135,6 +137,68 @@ The first slice ingests text/log/article/path/media metadata through JSON
 bodies. For copied/imported sources, the sidecar store also materializes a
 per-source JSON payload under the Cat's storage layout.
 
+`CompanionSessionContext` is now additive and includes a Cats-owned
+`retrieval` block assembled from canonical memory, live companion records,
+owner-profile hints, and room working memory. This keeps retrieval
+product-owned even when runtime/provider continuity changes underneath it.
+
+### Canonical Memory and Retrieval
+
+```text
+GET    /api/cats/{catId}/memory
+POST   /api/cats/{catId}/memory
+PUT    /api/cats/{catId}/memory/{memoryId}
+DELETE /api/cats/{catId}/memory/{memoryId}
+GET    /api/cats/{catId}/memory/canonical
+POST   /api/cats/{catId}/memory/flush
+GET    /api/cats/{catId}/memory/retrieval-context
+
+GET    /api/owner/memory
+POST   /api/owner/memory
+GET    /api/owner/memory/canonical
+POST   /api/owner/memory/flush
+
+POST   /api/channels/{channelId}/memory/flush
+GET    /api/channels/{channelId}/memory/retrieval-context
+```
+
+This slice deliberately separates three related surfaces:
+
+- `/api/cats/{catId}/memory` and `/api/owner/memory` remain the existing
+  durable-memory CRUD surface for curated product records
+- `/memory/canonical` reads the Cats-owned canonical-memory projection derived
+  from companion data, owner profile, and channel working memory
+- `/memory/flush` materializes or refreshes that canonical projection on demand
+- `/memory/retrieval-context` assembles a runtime-facing retrieval preview from
+  canonical records plus live companion records
+
+Supported flush reasons:
+
+- `manual`
+- `session_hydration`
+- `pre_reset`
+- `pre_compaction`
+- `channel_handoff`
+- `owner_profile_sync`
+
+Canonical-memory records include:
+
+- stable Cats-owned ids
+- subject scope (`cat`, `owner`, `channel`)
+- durable-memory category
+- normalized content, summary, tags, keywords, and source refs
+- origin metadata describing how the record was extracted and why it was flushed
+
+Retrieval-context responses return `{ retrieval }`, where `retrieval` includes:
+
+- `scope` with `catId`, `channelId`, and `includeOwnerProfile`
+- `query`
+- ranked `hits`
+- `summary`
+- `facts`
+- `ownerProfileHints`
+- `openLoops`
+
 ### Setup
 
 ```text
@@ -218,6 +282,7 @@ product-owned `companionSession` metadata. That payload includes:
 - selected source, derived, and memory ids
 - the current `CompanionResponseProfile`
 - owner notes and direct-session constraints
+- retrieval context assembled inside `cats`
 - channel/transport context for the current direct lane
 
 This hydration seam is additive and product-owned. `cats-runtime` still remains

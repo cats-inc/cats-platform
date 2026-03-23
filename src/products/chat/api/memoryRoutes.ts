@@ -14,6 +14,8 @@ import type {
   DurableMemoryRecord,
   DurableMemorySubjectType,
 } from '../../../core/types.js';
+import type { MemoryFlushReason } from '../../../platform/memory/index.js';
+import { requireCat } from '../state/model.js';
 import {
   handleRestError,
   sendRestError,
@@ -36,6 +38,10 @@ interface UpdateDurableMemoryInput {
   sourceRefs?: string[];
 }
 
+interface FlushMemoryInput {
+  reason?: MemoryFlushReason | unknown;
+}
+
 function validateCategory(value: unknown): value is DurableMemoryCategory {
   return (
     value === 'preference'
@@ -54,6 +60,31 @@ function validateSubjectType(value: unknown): value is DurableMemorySubjectType 
     || value === 'relationship'
     || value === 'project'
   );
+}
+
+function validateFlushReason(value: unknown): value is MemoryFlushReason | undefined {
+  return (
+    value === undefined
+    || value === 'manual'
+    || value === 'session_hydration'
+    || value === 'pre_reset'
+    || value === 'pre_compaction'
+    || value === 'channel_handoff'
+    || value === 'owner_profile_sync'
+  );
+}
+
+async function readOptionalFlushBody(
+  context: ChatApiRouteContext,
+): Promise<FlushMemoryInput> {
+  try {
+    return await readJsonBody<FlushMemoryInput>(context.request);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Request body is required') {
+      return {};
+    }
+    throw error;
+  }
 }
 
 async function handleListCatMemory(
@@ -218,9 +249,170 @@ async function handleCreateOwnerMemory(
   }
 }
 
+async function handleListCanonicalCatMemory(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    const state = await context.dependencies.chatStore.read();
+    requireCat(state, catId);
+    const records = await context.dependencies.memoryService.listCanonicalRecords({
+      subjectKind: 'cat',
+      subjectId: catId,
+    });
+    sendJson(context.response, 200, { records });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleFlushCanonicalCatMemory(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    const state = await context.dependencies.chatStore.read();
+    requireCat(state, catId);
+    const body = await readOptionalFlushBody(context);
+    if (!validateFlushReason(body.reason)) {
+      sendRestError(context, 400, 'invalid_flush_reason', 'Invalid memory flush reason.');
+      return;
+    }
+    const flush = await context.dependencies.memoryService.flushCompanionBox({
+      catId,
+      companionStore: context.dependencies.companionStore,
+      reason: body.reason,
+      now: context.dependencies.now?.(),
+    });
+    sendJson(context.response, 200, { flush });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleGetCatRetrievalContext(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    const state = await context.dependencies.chatStore.read();
+    const cat = requireCat(state, catId);
+    const channelId = context.url.searchParams.get('channelId')?.trim() ?? '';
+    const channel = channelId
+      ? state.channels.find((candidate) => candidate.id === channelId) ?? null
+      : null;
+    const retrieval = await context.dependencies.memoryService.buildCompanionRetrievalContext({
+      cat,
+      channel: {
+        id: channel?.id ?? null,
+        title: channel?.title ?? `${cat.name} Memory`,
+        topic: channel?.topic ?? 'Companion retrieval preview.',
+        workingMemory: channel?.workingMemory,
+        roomRouting: channel?.roomRouting,
+      },
+      companionStore: context.dependencies.companionStore,
+      now: context.dependencies.now?.(),
+    });
+    sendJson(context.response, 200, { retrieval });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleListCanonicalOwnerMemory(
+  context: ChatApiRouteContext,
+): Promise<void> {
+  try {
+    const core = await context.dependencies.chatStore.readCore();
+    const records = await context.dependencies.memoryService.listCanonicalRecords({
+      subjectKind: 'owner',
+      subjectId: core.ownerProfile.actorId,
+    });
+    sendJson(context.response, 200, { records });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleFlushCanonicalOwnerMemory(
+  context: ChatApiRouteContext,
+): Promise<void> {
+  try {
+    const body = await readOptionalFlushBody(context);
+    if (!validateFlushReason(body.reason)) {
+      sendRestError(context, 400, 'invalid_flush_reason', 'Invalid memory flush reason.');
+      return;
+    }
+    const flush = await context.dependencies.memoryService.flushOwnerProfile({
+      reason: body.reason,
+      now: context.dependencies.now?.(),
+    });
+    sendJson(context.response, 200, { flush });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleFlushChannelMemory(
+  context: ChatApiRouteContext,
+  channelId: string,
+): Promise<void> {
+  try {
+    const body = await readOptionalFlushBody(context);
+    if (!validateFlushReason(body.reason)) {
+      sendRestError(context, 400, 'invalid_flush_reason', 'Invalid memory flush reason.');
+      return;
+    }
+    const flush = await context.dependencies.memoryService.flushChannel({
+      channelId,
+      reason: body.reason,
+      now: context.dependencies.now?.(),
+    });
+    sendJson(context.response, 200, { flush });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleGetChannelRetrievalContext(
+  context: ChatApiRouteContext,
+  channelId: string,
+): Promise<void> {
+  try {
+    const catId = context.url.searchParams.get('catId')?.trim() || null;
+    const retrieval = await context.dependencies.memoryService.buildChannelRetrievalContext({
+      channelId,
+      catId,
+      companionStore: context.dependencies.companionStore,
+      now: context.dependencies.now?.(),
+    });
+    sendJson(context.response, 200, { retrieval });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
 export async function routeMemoryApi(
   context: ChatApiRouteContext,
 ): Promise<boolean> {
+  if (context.url.pathname === '/api/owner/memory/canonical') {
+    if (context.method === 'GET') {
+      await handleListCanonicalOwnerMemory(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET']);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/owner/memory/flush') {
+    if (context.method === 'POST') {
+      await handleFlushCanonicalOwnerMemory(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['POST']);
+    return true;
+  }
+
   if (context.url.pathname === '/api/owner/memory') {
     if (context.method === 'GET') {
       await handleListOwnerMemory(context);
@@ -231,6 +423,71 @@ export async function routeMemoryApi(
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  const channelFlushMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/memory\/flush$/u,
+  );
+  if (channelFlushMatch) {
+    if (context.method === 'POST') {
+      await handleFlushChannelMemory(context, channelFlushMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['POST']);
+    return true;
+  }
+
+  const channelRetrievalMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/memory\/retrieval-context$/u,
+  );
+  if (channelRetrievalMatch) {
+    if (context.method === 'GET') {
+      await handleGetChannelRetrievalContext(context, channelRetrievalMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET']);
+    return true;
+  }
+
+  const catCanonicalMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/memory\/canonical$/u,
+  );
+  if (catCanonicalMatch) {
+    if (context.method === 'GET') {
+      await handleListCanonicalCatMemory(context, catCanonicalMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET']);
+    return true;
+  }
+
+  const catFlushMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/memory\/flush$/u,
+  );
+  if (catFlushMatch) {
+    if (context.method === 'POST') {
+      await handleFlushCanonicalCatMemory(context, catFlushMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['POST']);
+    return true;
+  }
+
+  const catRetrievalMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/memory\/retrieval-context$/u,
+  );
+  if (catRetrievalMatch) {
+    if (context.method === 'GET') {
+      await handleGetCatRetrievalContext(context, catRetrievalMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET']);
     return true;
   }
 

@@ -43,6 +43,8 @@ The current first slice now lands these product-owned seams:
   response-profile read/update, and session-context read APIs
 - additive direct-session hydration through normalized `companionSession`
   metadata on runtime create/send calls
+- Cats-owned canonical-memory flush and retrieval-context seams under
+  `src/platform/memory/*` and `src/products/chat/api/memoryRoutes.ts`
 
 Visible companion-specific UI remains intentionally deferred.
 
@@ -175,6 +177,7 @@ Visible companion-specific UI remains intentionally deferred.
     - selected durable memory items
     - response profile
     - owner-facing notes or constraints for the current session
+    - additive retrieval context assembled inside `cats`
 24. The reusable runtime `companion` skill shall remain a shared skill package,
     not a per-Cat data store.
 25. The product shall request the runtime `companion` skill by stable
@@ -195,7 +198,10 @@ Visible companion-specific UI remains intentionally deferred.
     - durable memory records
     - response profile
     - session context preview
-29. The first product API slice may ingest binary media through uploaded-copy
+29. The product may expose additive Cats-owned canonical-memory flush and
+    retrieval-preview routes for cat, owner, and channel scope as long as the
+    companion box remains product-owned.
+30. The first product API slice may ingest binary media through uploaded-copy
     routes and text/log/article payloads through JSON bodies, as long as the
     resulting records converge on one companion-box schema.
 
@@ -296,6 +302,16 @@ interface CompanionSessionContext {
   responseProfile: CompanionResponseProfile;
   ownerNotes: string[];
   constraints: string[];
+  retrieval?: {
+    query: string;
+    hits: Array<{
+      recordId: string;
+      score: number;
+    }>;
+    facts: string[];
+    ownerProfileHints: string[];
+    openLoops: string[];
+  } | null;
 }
 ```
 

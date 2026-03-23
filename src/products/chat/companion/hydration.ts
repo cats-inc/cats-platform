@@ -6,6 +6,7 @@ import type {
   CompanionSessionContext,
   CompanionSourceRecord,
 } from './contracts.js';
+import type { MemoryRetrievalContext } from '../../../platform/memory/contracts.js';
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
   return values
@@ -56,6 +57,7 @@ export function buildCompanionSessionContext(input: {
   };
   transport: 'telegram' | 'line' | 'web' | null;
   hydratedAt: string;
+  retrieval?: MemoryRetrievalContext | null;
 }): CompanionSessionContext {
   const sources = sortNewestFirst(input.sources).slice(0, 5);
   const derived = sortNewestFirst(input.derived).slice(0, 6);
@@ -111,6 +113,7 @@ export function buildCompanionSessionContext(input: {
     })),
     ownerNotes,
     constraints,
+    retrieval: input.retrieval ?? null,
     channelContext: {
       channelId: input.channel.id,
       roomMode: input.channel.roomRouting?.mode ?? null,

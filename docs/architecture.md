@@ -211,6 +211,23 @@ transport state stays in `src/platform/transports/telegram/*`.
   - expose Cat-scoped ingest/read APIs and a normalized
     `CompanionSessionContext` seam for direct sessions
 
+### Cats Memory Substrate
+
+- **Purpose**: Own canonical durable memory extraction, retrieval assembly, and
+  explicit flush seams inside `cats`
+- **Technology**: `src/platform/memory/*` plus a file-backed sidecar derived
+  from the chat-state path
+- **Responsibilities**:
+  - normalize canonical Cats-owned memory records for cat, owner, and channel
+    scopes
+  - extract durable memory from companion sources, derived records, curated
+    memory, response profiles, owner profile, and channel working memory
+  - assemble retrieval context for direct companion sessions and route-level
+    retrieval previews
+  - expose pre-reset / pre-compaction flush seams without treating runtime
+    sandboxes as long-lived truth
+  - keep embedding/vector backends additive rather than a hard dependency
+
 ### Chat Runtime Actions
 
 - **Purpose**: Translate chat-level channel actions into `cats-runtime`
@@ -264,6 +281,11 @@ This means agent-native transcripts are useful, but they are not the only
 durable memory of the product. The product should ingest, normalize, and own
 its own memory layers even when a backend such as OpenClaw also keeps session
 history.
+
+The first product-owned implementation slice now exists in `src/platform/memory/*`.
+It keeps a local canonical-memory sidecar and a lexical/hybrid retrieval seam
+inside `cats` so companion continuity does not depend on an external RAG
+service.
 
 ### Chat Shell Model
 
@@ -395,9 +417,12 @@ primary operator workflow. See
    transcripts.
 7. The product server persists operational transcript, approval, actor, and
    artifact state to product-owned storage.
-8. Archived data later flows into archive/RAG pipelines without replacing the
-   operational DB or approval state.
-9. In built mode, the server also serves the static renderer bundle.
+8. The product server can flush companion, owner, and channel context into a
+   Cats-owned canonical-memory projection and assemble retrieval context for
+   direct companion sessions.
+9. Archived data later flows into archive/RAG pipelines without replacing the
+   operational DB, canonical memory, or approval state.
+10. In built mode, the server also serves the static renderer bundle.
 
 ## Planned Desktop Topology
 
@@ -439,6 +464,10 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
 - `src/products/chat/state/companionBoxStore.ts` now adds a separate
   product-owned sidecar store for per-Cat companion boxes, derived companion
   knowledge, response profiles, and direct-session hydration context.
+- `src/platform/memory/*` now adds a Cats-owned canonical-memory and retrieval
+  substrate that flushes companion, owner, and channel context into local
+  durable records and hydrates direct companion sessions with retrieval
+  context.
 - `Cats Core v1` now exists as a first in-tree contract plus a minimal neutral
   write substrate for owner profile, actors, conversations, projects,
   work items, tasks, approvals, approval bindings, runs, traces, checkpoints,
@@ -528,7 +557,6 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-24*
-
 
 
 

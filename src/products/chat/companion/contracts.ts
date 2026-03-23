@@ -1,3 +1,5 @@
+import type { MemoryRetrievalContext } from '../../../platform/memory/contracts.js';
+
 export type CompanionSourceKind =
   | 'note'
   | 'conversation_log'
@@ -172,6 +174,7 @@ export interface CompanionSessionContext {
   memory: CompanionSessionMemoryRef[];
   ownerNotes: string[];
   constraints: string[];
+  retrieval: MemoryRetrievalContext | null;
   channelContext: {
     channelId: string | null;
     roomMode: 'boss_chat' | 'direct_cat_chat' | null;

@@ -171,6 +171,8 @@ test('companion box routes ingest records, persist profile/memory, and expose se
     const sessionContextPayload = await sessionContextResponse.json();
     assert.equal(sessionContextPayload.sessionContext.requestedSkills[0], 'companion');
     assert.equal(sessionContextPayload.sessionContext.channelContext.channelId, null);
+    assert.ok(sessionContextPayload.sessionContext.retrieval);
+    assert.ok(sessionContextPayload.sessionContext.retrieval.hits.length > 0);
     assert.ok(
       sessionContextPayload.sessionContext.ownerNotes.includes(
         'Prefer short meows and purr-like phrasing.',
@@ -242,6 +244,8 @@ test('direct companion chat routes hydrated companion session context into runti
 
     assert.equal(runtimeClient.createdSessions.length, 1);
     const createdSession = runtimeClient.createdSessions[0];
+    assert.ok(createdSession.context.metadata.companionSession.retrieval);
+    assert.ok(createdSession.context.metadata.companionSession.retrieval.hits.length > 0);
     assert.deepEqual(createdSession.skills.requestedSkills, ['companion']);
     assert.equal(
       createdSession.context.metadata.companionSession.responseProfile.expressionMode,
@@ -280,5 +284,46 @@ test('direct companion chat routes hydrated companion session context into runti
       sentMessage.input.skills.context.metadata.companionSession.responseProfile.outputMode,
       'text',
     );
+
+    const flushCatMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/flush`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        reason: 'pre_reset',
+      }),
+    });
+    assert.equal(flushCatMemoryResponse.status, 200);
+    const flushCatPayload = await flushCatMemoryResponse.json();
+    assert.ok(flushCatPayload.flush.persistedCount > 0);
+
+    const canonicalCatMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/canonical`);
+    assert.equal(canonicalCatMemoryResponse.status, 200);
+    const canonicalCatPayload = await canonicalCatMemoryResponse.json();
+    assert.ok(canonicalCatPayload.records.length > 0);
+
+    const catRetrievalResponse = await fetch(
+      `${baseUrl}/api/cats/${cat.id}/memory/retrieval-context?channelId=${channelId}`,
+    );
+    assert.equal(catRetrievalResponse.status, 200);
+    const catRetrievalPayload = await catRetrievalResponse.json();
+    assert.ok(catRetrievalPayload.retrieval.hits.length > 0);
+
+    const flushChannelMemoryResponse = await fetch(`${baseUrl}/api/channels/${channelId}/memory/flush`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        reason: 'pre_compaction',
+      }),
+    });
+    assert.equal(flushChannelMemoryResponse.status, 200);
+    const flushChannelPayload = await flushChannelMemoryResponse.json();
+    assert.ok(flushChannelPayload.flush.persistedCount > 0);
+
+    const channelRetrievalResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/memory/retrieval-context?catId=${cat.id}`,
+    );
+    assert.equal(channelRetrievalResponse.status, 200);
+    const channelRetrievalPayload = await channelRetrievalResponse.json();
+    assert.ok(channelRetrievalPayload.retrieval.hits.length > 0);
   });
 });

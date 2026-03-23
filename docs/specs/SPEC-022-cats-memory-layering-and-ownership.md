@@ -26,6 +26,19 @@ The key rule is:
 - archive/RAG corpora are downstream retrieval projections, not the live source
   of truth
 
+## Implementation Snapshot
+
+The first product-owned slice is now landed inside `cats`:
+
+- `src/platform/memory/*` owns canonical memory contracts, extraction,
+  retrieval assembly, and local persistence
+- companion boxes, owner profile, and channel working memory can be flushed
+  into Cats-owned canonical records without `personal-rag-system`
+- direct companion-session hydration can now include an additive retrieval
+  context assembled inside `cats`
+- the current retrieval seam is intentionally local and additive; archive/vector
+  backends remain future follow-on work
+
 ## Goals
 
 - define a suite-wide memory layering model for `cats` and `cats-runtime`
@@ -345,8 +358,10 @@ The most suitable contemporary technical pattern for Cats is:
       only in `cats` product stores?
 - [ ] When `Cats Work` launches, should archive retrieval be one shared corpus
       or segmented by chat, transport, or privacy domain?
-- [ ] What is the first implementation slice: transcript normalization,
+- [x] What is the first implementation slice: transcript normalization,
       Cat-memory store, or archive export pipeline?
+      Answer: the first landed slice is a Cats-owned canonical memory store
+      plus extraction/retrieval seams for companion, owner, and channel scope.
 
 ## References
 

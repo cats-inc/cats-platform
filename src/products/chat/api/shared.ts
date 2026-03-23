@@ -3,6 +3,7 @@ import { createCatActorId } from '../../../core/model.js';
 import type { TelegramPollingSupervisor } from '../../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../../platform/transports/telegram/relay.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
+import type { CatsMemoryService } from '../../../platform/memory/index.js';
 import { escapeContentDispositionFilename } from '../../../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import {
@@ -43,6 +44,7 @@ export interface ChatApiDependencies {
   telegramRelay?: TelegramRelay;
   pollingSupervisor?: TelegramPollingSupervisor;
   companionStore: CompanionBoxStore;
+  memoryService: CatsMemoryService;
   now?: () => Date;
 }
 
@@ -543,5 +545,4 @@ export async function persistDeletedCat(
   const nextState = deleteCat(await context.dependencies.chatStore.read(), catId);
   await context.dependencies.chatStore.write(nextState);
 }
-
 

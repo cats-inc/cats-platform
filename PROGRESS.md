@@ -10,10 +10,10 @@
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` as the app-managed readiness contract plus `/api/app-shell` |
 | Renderer Shell | Completed | React/Vite shell consumes app-shell and now exposes chat setup, global cats, assignments, transcript, and orchestrator surfaces |
-| Chat Product Features | Completed | Runtime-backed setup, global cat registry, first-run `/setup` onboarding, sleep/wake-aware room entry, direct-cat draft lanes from `My Cats`, stable room-routing / wake-request contracts, live mention continuation routing, transcript export, execution-aware state, and product-owned companion-box sidecar ingestion/hydration seams landed |
+| Chat Product Features | Completed | Runtime-backed setup, global cat registry, first-run `/setup` onboarding, sleep/wake-aware room entry, direct-cat draft lanes from `My Cats`, stable room-routing / wake-request contracts, live mention continuation routing, transcript export, execution-aware state, product-owned companion-box sidecar ingestion/hydration seams, and Cats-owned canonical memory / retrieval seams landed |
 | Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records plus a first contract-first orchestrator plan/dispatch/execution-loop seam aligned with the runtime MCP facade, but compatibility-shim cleanup and later control-plane slices remain |
-| Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private in-place lane entry, Telegram inbox MVP, runtime skill/guardrail seams, shared-core projection boundaries, the operator-loop chat surfaces, the companion-box sidecar/session-hydration contract, the contract-first orchestrator/MCP seam, the first Electron desktop-host slice, and the polling-first Telegram follow-on direction; broader launch-track docs still remain |
-| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens Cat-scoped in-place direct lanes rather than creating `Recents` threads, Telegram Boss Cat inbox MVP currently bridges webhook ingress into durable room routing and outbound replies, per-Cat companion-box sidecar ingestion/hydration now exists without visible UI changes, Chat now surfaces operator-facing approvals, reroute/retry/acknowledge seams, progress, activity, traces, run inspection, machine-readable governance/workflow summaries, and a contract-first orchestrator plan/dispatch/execution-loop seam, and the first Electron host now supervises local `cats-runtime` + `cats` with readiness-gated bootstrap while polling-first onboarding, escalation, takeover, and fuller packaging/install flows remain ahead |
+| Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private in-place lane entry, Telegram inbox MVP, runtime skill/guardrail seams, shared-core projection boundaries, the operator-loop chat surfaces, the companion-box sidecar/session-hydration contract, the Cats-owned canonical memory/retrieval substrate, the contract-first orchestrator/MCP seam, the first Electron desktop-host slice, and the polling-first Telegram follow-on direction; broader launch-track docs still remain |
+| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, `My Cats` opens Cat-scoped in-place direct lanes rather than creating `Recents` threads, Telegram Boss Cat inbox MVP currently bridges webhook ingress into durable room routing and outbound replies, per-Cat companion-box sidecar ingestion/hydration plus Cats-owned canonical memory/retrieval seams now exist without visible UI changes, Chat now surfaces operator-facing approvals, reroute/retry/acknowledge seams, progress, activity, traces, run inspection, machine-readable governance/workflow summaries, and a contract-first orchestrator plan/dispatch/execution-loop seam, and the first Electron host now supervises local `cats-runtime` + `cats` with readiness-gated bootstrap while polling-first onboarding, escalation, takeover, and fuller packaging/install flows remain ahead |
 | Cats Work Launch Track | Not Started | Work dashboard and operational surfaces are planned on top of the shared core |
 
 **Legend**: Not Started | In Progress | Completed | Blocked
@@ -124,6 +124,8 @@ Known follow-ups:
 | Add operator-grade chat activity and split-view surfaces | [x] | Chat now exposes transcript-adjacent approvals, progress, activity, traces, and run inspection on top of the shared core read model |
 | Add contract-first orchestrator plan/dispatch seam and runtime MCP alignment | [x] | `src/platform/orchestration/*` plus `/api/orchestrator/plan`, `/api/orchestrator/dispatch`, and `/api/orchestrator/channels/{id}/execution-loop` now expose machine-readable planning/tool-intent/operator seams while keeping direct runtime API dispatch as the execution path |
 | Land product-owned companion boxes and hydration seams | [x] | Cat-scoped sidecar storage, ingest/read routes, response profiles, and direct-session hydration metadata now exist without visible UI changes |
+| Land Cats-owned memory extraction and retrieval substrate | [x] | `src/platform/memory/*` now owns canonical memory records, local file-backed storage, companion/owner/channel flush seams, and retrieval-context assembly without an external RAG dependency |
+| Land product-owned companion boxes and hydration seams | [x] | Cat-scoped sidecar storage, ingest/read routes, response profiles, direct-session hydration metadata, and retrieval-context hydration now exist without visible UI changes |
 | Rework cat information architecture around current-chat `Add cat` | [ ] | Registry stays global, but the main entry should move into chat context |
 | Add interactive delegation and owner approval loop | [ ] | Pre-dispatch approve/reject/reroute now land through `/api/core/approvals`, retry/acknowledge incident hooks land through `/api/core/operator-actions`, task/run metadata now carries machine-readable governance/workflow summaries plus a runtime-delivery-manifest skeleton, and room-workflow/effective-policy metadata is visible in Chat; automatic resume and deeper planning loops still remain |
 | Add Telegram and LINE orchestrator entrypoints | [ ] | Telegram Boss Cat inbox MVP now lands webhook ingress, durable inbox-to-room mapping, room creation/continuation, transport diagnostics UI, and outbound replies; polling-first Telegram onboarding also landed (SPEC-028/ADR-029) with polling-default bindings, token uniqueness, PollingSupervisor health/reconnect seams, and Settings mode selection; LINE and richer room-rotation policy remain pending |
@@ -135,6 +137,8 @@ Known follow-ups:
 
 - [x] Operators can inspect pending approvals, progress, traces, and run state from the active chat
 - [x] Operators can approve or redirect orchestrator plans before dispatch
+- [x] Companion boxes can flush Cats-owned canonical memory and assemble
+      retrieval context without depending on `personal-rag-system`
 - [ ] Operators can add an existing or new cat from the active chat without
       going through a first-level registry page
 - [ ] External transport channels can route through a single orchestrator bot end to end; Telegram Boss Cat inbox MVP is landed, while LINE and richer multi-room policy still remain
@@ -242,6 +246,26 @@ Known follow-ups:
   API and renderer surfaces
 - `src/shared/app-shell.ts` is now a compatibility shim over shared suite
   envelope types and Chat-specific contracts
+
+### WP-4: Cats Chat Launch Track
+
+**Most recent progress**: 2026-03-23
+
+#### Landed in the current companion-memory slice
+
+- `src/platform/memory/*` now owns Cats-managed canonical memory contracts,
+  extraction, retrieval assembly, and file-backed persistence derived from the
+  chat-state path
+- companion-derived, companion-memory, response-profile, owner-profile, and
+  channel working-memory records can now be flushed into canonical Cats-owned
+  memory without depending on `personal-rag-system`
+- `src/products/chat/api/memoryRoutes.ts` now exposes additive canonical-memory,
+  flush, and retrieval-context routes for cat, channel, and owner scopes
+- direct companion-session hydration now includes an additive retrieval context
+  assembled from canonical memory, live companion records, owner hints, and
+  room working memory
+- the new memory substrate deliberately treats runtime sandboxes and provider
+  continuity as inputs, not long-lived product truth
 - validation coverage now includes `/api/work`, `/api/code`, and the current
   suite route map
 

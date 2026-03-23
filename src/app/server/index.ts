@@ -9,6 +9,14 @@ import { fileURLToPath } from 'node:url';
 import type { AppConfig } from '../../config.js';
 import { routeCoreApi } from '../../core/api.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
+import {
+  createCatsMemoryService,
+  createFileBackedCanonicalMemoryStore,
+  createMemoryAwareCompanionBoxStore,
+  MemoryCanonicalMemoryStore,
+  type CanonicalMemoryStore,
+  type CatsMemoryService,
+} from '../../platform/memory/index.js';
 import { createTelegramBotApiDeliveryClient } from '../../platform/transports/telegram/delivery.js';
 import {
   createTelegramPollingSupervisor,
@@ -66,6 +74,8 @@ export interface ServerDependencies {
   chatStore: ChatStore;
   startup?: AppStartupState;
   companionStore?: CompanionBoxStore;
+  memoryStore?: CanonicalMemoryStore;
+  memoryService?: CatsMemoryService;
   telegramRelay?: TelegramRelay;
   pollingSupervisor?: TelegramPollingSupervisor;
   now?: () => Date;
@@ -74,6 +84,8 @@ export interface ServerDependencies {
 type ResolvedServerDependencies = ServerDependencies & {
   startup: AppStartupState;
   companionStore: CompanionBoxStore;
+  memoryStore: CanonicalMemoryStore;
+  memoryService: CatsMemoryService;
   telegramRelay: TelegramRelay;
   pollingSupervisor: TelegramPollingSupervisor;
 };
@@ -420,10 +432,15 @@ async function routeRequest(
 }
 
 export function createServer(dependencies: ServerDependencies) {
+  const memoryStore = dependencies.memoryStore
+    ?? createDefaultMemoryStore(dependencies);
+  const memoryService = dependencies.memoryService
+    ?? createCatsMemoryService(dependencies.chatStore, memoryStore);
   const pollingSupervisor = dependencies.pollingSupervisor
     ?? createTelegramPollingSupervisor({ now: dependencies.now });
   const telegramRelay = dependencies.telegramRelay
     ?? createDefaultTelegramRelay(dependencies, pollingSupervisor);
+  const baseCompanionStore = dependencies.companionStore ?? createDefaultCompanionStore(dependencies);
 
   const resolvedDependencies: ResolvedServerDependencies = {
     ...dependencies,
@@ -431,7 +448,9 @@ export function createServer(dependencies: ServerDependencies) {
       phase: 'ready',
       ready: true,
     }),
-    companionStore: dependencies.companionStore ?? createDefaultCompanionStore(dependencies),
+    companionStore: createMemoryAwareCompanionBoxStore(baseCompanionStore, memoryService),
+    memoryStore,
+    memoryService,
     telegramRelay,
     pollingSupervisor,
   };
@@ -520,4 +539,12 @@ function createDefaultCompanionStore(
   return dependencies.chatStore instanceof MemoryChatStore
     ? new MemoryCompanionBoxStore()
     : createFileBackedCompanionBoxStore(dependencies.config.chatStatePath);
+}
+
+function createDefaultMemoryStore(
+  dependencies: ServerDependencies,
+): CanonicalMemoryStore {
+  return dependencies.chatStore instanceof MemoryChatStore
+    ? new MemoryCanonicalMemoryStore()
+    : createFileBackedCanonicalMemoryStore(dependencies.config.chatStatePath);
 }
