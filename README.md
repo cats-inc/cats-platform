@@ -28,8 +28,10 @@ The current slices are:
 - a transcript-adjacent operator loop with pending approvals, progress,
   activity, trace, run inspection, approve/reroute/retry/acknowledge action
   seams, and machine-readable delivery/budget/workflow governance summaries
-- contract-first orchestrator planning, dispatch, and execution-loop routes
-  that stay above the existing direct `cats-runtime` API path
+- contract-first orchestrator planning, approval-gated dispatch, and
+  execution-loop routes that now expose checkpoint-driven multi-step execution
+  plans, recovery actions, and Team 6 MCP tool-plane metadata while staying
+  above the existing direct `cats-runtime` API path
 - an Electron desktop host that supervises local `cats-runtime` + `cats`,
   waits for readiness, and owns the first packaged bootstrap/remediation seam
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
@@ -82,7 +84,8 @@ several Phase 3 items remain:
 - polling-first Telegram onboarding so bot-token setup does not require public
   ingress by default
 - automatic resume after owner or incident decisions, richer live runtime
-  state, and stronger closed-loop orchestration beyond the current action seams
+  state, and deeper converge/group planning beyond the current execution-loop
+  and action seams
 - richer first-run remediation, packaged installer UX, and host-managed
   provider install/resume flows beyond the current bootstrap slice
 - offline transcript normalization and ingestion handoff hooks

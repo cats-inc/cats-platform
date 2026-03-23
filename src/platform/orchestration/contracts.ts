@@ -3,6 +3,8 @@ import type {
   ChatChannelCat,
   ChatChannelView,
   ParticipantExecutionLease,
+  RoomRoutingCheckpointKind,
+  RoomRoutingParticipantRef,
   RoomRouteResolution,
   RoomRoutingTrigger,
   RoomWorkflowBranchStrategy,
@@ -18,8 +20,66 @@ import type {
 } from '../../products/chat/shared/operatorLoop.js';
 
 export const ORCHESTRATOR_CONTRACT_VERSION = 1;
+export const ORCHESTRATOR_RUNTIME_TOOL_SCHEMA_VERSION = 1;
 
 export type OrchestratorTransportContext = 'telegram' | 'line' | 'web';
+export type OrchestratorExecutionState =
+  | 'planned'
+  | 'awaiting_approval'
+  | 'running'
+  | 'completed'
+  | 'blocked'
+  | 'failed';
+export type OrchestratorExecutionStepPhase =
+  | 'approval'
+  | 'dispatch'
+  | 'execute'
+  | 'report'
+  | 'recover';
+export type OrchestratorExecutionStepKind =
+  | 'approval_gate'
+  | 'dispatch_group'
+  | 'dispatch_target'
+  | 'continuation_handoff'
+  | 'parallel_fan_out'
+  | 'report_outcome'
+  | 'recovery';
+export type OrchestratorExecutionStepStatus =
+  | 'ready'
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'blocked'
+  | 'failed'
+  | 'skipped';
+export type OrchestratorNextActionKind =
+  | 'dispatch'
+  | 'approve'
+  | 'reroute'
+  | 'reject'
+  | 'retry'
+  | 'acknowledge'
+  | 'wait'
+  | 'complete';
+
+export interface OrchestratorActionEnvelope {
+  method: 'POST';
+  path: string;
+  body: Record<string, unknown>;
+}
+
+export interface OrchestratorRuntimeToolPlane {
+  boundary: 'runtime_mcp_facade';
+  productSurfacePath: '/api/runtime/mcp';
+  runtimeSurfacePath: '/mcp';
+  protocol: 'jsonrpc_2_0_http';
+  schemaVersion: number;
+  methods: Array<'initialize' | 'tools/list' | 'tools/call' | 'notifications/initialized'>;
+  tools: Array<{
+    name: string;
+    source: 'cats-runtime';
+  }>;
+}
 
 export interface ToolIntentManifest {
   profileId?: string;
@@ -72,6 +132,105 @@ export interface OrchestratorDispatchTargetPlan {
   toolIntent: ToolIntentManifest | null;
 }
 
+export interface OrchestratorExecutionTargetRef {
+  participantKind: 'orchestrator' | 'cat';
+  participantId: string;
+  participantName: string;
+  sessionId: string | null;
+  trigger: RoomRoutingTrigger | null;
+  plannedDepth: number;
+  dispatchId: string | null;
+  responseMessageId: string | null;
+  branchStrategy: RoomWorkflowBranchStrategy | null;
+  handoffReason: RoomWorkflowHandoffReason | null;
+  mentionNames: string[];
+  sourceParticipant: RoomRoutingParticipantRef | null;
+  sourceMessageId: string | null;
+  error: string | null;
+}
+
+export interface OrchestratorExecutionCheckpoint {
+  checkpointId: string | null;
+  checkpointKind: RoomRoutingCheckpointKind | null;
+  message: string;
+  createdAt: string;
+  actor: RoomRoutingParticipantRef | null;
+  targets: RoomRoutingParticipantRef[];
+}
+
+export interface OrchestratorApprovalActionContract {
+  kind: 'approve' | 'reroute' | 'reject';
+  label: string;
+  disabled: boolean;
+  action: OrchestratorActionEnvelope;
+}
+
+export interface OrchestratorOperatorActionContract {
+  kind: 'retry' | 'acknowledge';
+  label: string;
+  disabled: boolean;
+  statusLabel: string | null;
+  action: OrchestratorActionEnvelope;
+}
+
+export interface OrchestratorApprovalGate {
+  taskId: string;
+  status: 'not_requested' | 'pending' | 'approved' | 'rejected';
+  latestApprovalId: string | null;
+  latestDecisionAction: 'approve' | 'reroute' | 'reject' | null;
+  notes: string | null;
+  requestAvailable: boolean;
+  requestAction: OrchestratorActionEnvelope;
+  decisionActions: OrchestratorApprovalActionContract[];
+}
+
+export interface OrchestratorRecoveryLoop {
+  guardReason: string | null;
+  cooldownLabel: string | null;
+  incidentActions: OrchestratorOperatorActionContract[];
+}
+
+export interface OrchestratorNextAction {
+  kind: OrchestratorNextActionKind;
+  label: string;
+  blocking: boolean;
+  action: OrchestratorActionEnvelope | null;
+}
+
+export interface OrchestratorExecutionStep {
+  id: string;
+  phase: OrchestratorExecutionStepPhase;
+  kind: OrchestratorExecutionStepKind;
+  status: OrchestratorExecutionStepStatus;
+  title: string;
+  summary: string;
+  stageId: string | null;
+  workflowShape: RoomWorkflowShape | 'blocked' | null;
+  parentStepId: string | null;
+  participant: OrchestratorExecutionTargetRef | null;
+  targets: OrchestratorExecutionTargetRef[];
+  checkpointId: string | null;
+  outcomeId: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  retryable: boolean;
+}
+
+export interface OrchestratorExecutionPlan {
+  planner: 'dynamic_room_workflow';
+  loopMode: 'checkpoint_driven';
+  state: OrchestratorExecutionState;
+  stageId: string | null;
+  workflowShape: RoomWorkflowShape | 'blocked' | null;
+  sourceTurnId: string | null;
+  sourceMessageId: string | null;
+  steps: OrchestratorExecutionStep[];
+  checkpoints: OrchestratorExecutionCheckpoint[];
+  nextActions: OrchestratorNextAction[];
+  approval: OrchestratorApprovalGate;
+  recovery: OrchestratorRecoveryLoop;
+}
+
 export interface OrchestratorOperatorSeams {
   conversationId: string;
   taskId: string;
@@ -119,10 +278,14 @@ export interface OrchestratorTurnPlan {
   };
   participants: OrchestratorParticipantPlan[];
   executionLoop: OrchestratorExecutionLoopContract;
+  runtimeToolPlane: OrchestratorRuntimeToolPlane;
+  execution: OrchestratorExecutionPlan;
 }
 
 export interface OrchestratorExecutionLoopSnapshot {
   channelId: string;
+  runtimeToolPlane: OrchestratorRuntimeToolPlane;
+  execution: OrchestratorExecutionPlan;
   operator: ChatOperatorView | null;
   runInspector: ChatRunInspectorView | null;
 }
@@ -141,6 +304,8 @@ export interface OrchestratorDispatchResponse {
   plan: OrchestratorTurnPlan;
   dispatch: {
     channelId: string;
+    status: 'dispatched' | 'blocked';
+    blockedReason: 'approval_pending' | null;
     sourceMessageId: string | null;
     results: ChannelDispatchResult[];
   };

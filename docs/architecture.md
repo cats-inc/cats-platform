@@ -168,6 +168,8 @@ transport state stays in `src/platform/transports/telegram/*`.
     operational control
   - product-owned plan/dispatch/execution-loop contracts for orchestrator
     consumers inside `cats`
+  - checkpoint-driven execution-plan read models that project room workflow,
+    approval state, and recovery actions without moving policy into runtime
   - MCP tool surface for orchestrator-style agents that need runtime
     capabilities without direct provider coupling
   - keep backend details out of higher layers
@@ -472,6 +474,17 @@ existing `cats -> cats-runtime` boundary for desktop packaging. See
   runtime session observe payloads can be proxied through product APIs, and
   runtime `memory_flush` maintenance hooks can trigger Cats-owned
   channel/companion flushes before reset or compaction.
+- `src/platform/orchestration/*` now promotes the existing room-routing engine
+  into a product-owned execution contract:
+  - pre-dispatch plans expose initial dispatch, checkpoint-driven handoff, and
+    outcome-report stages
+  - post-dispatch snapshots expose executed target steps, continuation/fan-out
+    milestones, approval actions, and retry/acknowledge recovery actions
+  - pending owner approval now pauses `/api/orchestrator/dispatch` instead of
+    silently bypassing the approval seam
+- the orchestrator contract also freezes the Team 6 runtime MCP tool plane
+  through product-owned metadata that points callers at `/api/runtime/mcp`
+  rather than inventing a second runtime control surface
 - `Cats Core v1` now exists as a first in-tree contract plus a minimal neutral
   write substrate for owner profile, actors, conversations, projects,
   work items, tasks, approvals, approval bindings, runs, traces, checkpoints,
@@ -561,5 +574,4 @@ intentionally deferred:
 ---
 
 *Last updated: 2026-03-24*
-
 

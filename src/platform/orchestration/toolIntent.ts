@@ -21,6 +21,14 @@ const MCP_FACADE_TOOLS = {
   auditDeliveryTarget: 'audit_delivery_target',
 } as const;
 
+export const ORCHESTRATOR_RUNTIME_MCP_TOOLS = [
+  MCP_FACADE_TOOLS.runtimeSummary,
+  MCP_FACADE_TOOLS.listSessions,
+  MCP_FACADE_TOOLS.observeSession,
+  MCP_FACADE_TOOLS.auditWorkspace,
+  MCP_FACADE_TOOLS.auditDeliveryTarget,
+] as const;
+
 function uniqueStrings(values: string[]): string[] {
   return values.filter((value, index) => values.indexOf(value) === index);
 }

@@ -63,11 +63,17 @@ contracts.
 - [ ] Complete owner durable-memory CRUD beyond the current `GET/POST`
       surface, including update/delete paths that keep canonical retrieval
       synchronized
+- [ ] Surface the new orchestrator execution-loop contract in product-owned
+      operator rails so Chat can consume step state, next actions, approval
+      gates, and recovery hints without scraping transcript text
 - [ ] Automatic resume after operator approve/reroute/retry decisions so the
       current action seams become a closed loop rather than write-only markers
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent
+- [ ] Consume future runtime MCP mutation tools and richer transport options as
+      additive orchestrator capabilities while keeping direct product APIs as
+      the primary boundary
 - [ ] Turn the current delivery-policy and budget-policy skeletons into
       executable product flows, including override lifecycle, downgrade or
       reroute policy, and later Cats Work war-room aggregates

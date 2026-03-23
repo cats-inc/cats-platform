@@ -54,6 +54,7 @@ async function handleExecutionLoop(
       context.response,
       200,
       buildOrchestratorExecutionLoopResponse(
+        state,
         core,
         channelId,
         context.url.searchParams.get('runId'),

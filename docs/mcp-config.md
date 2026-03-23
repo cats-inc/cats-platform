@@ -147,8 +147,26 @@ GET  /api/orchestrator/channels/{channelId}/execution-loop
 ```
 
 These routes return machine-readable room-turn planning, dispatch receipts,
-tool-intent metadata, and execution-loop snapshots while still dispatching work
-through the existing `cats -> cats-runtime` direct API path.
+tool-intent metadata, runtime MCP tool-plane metadata, and execution-loop
+snapshots while still dispatching work through the existing
+`cats -> cats-runtime` direct API path.
+
+The orchestrator contract now freezes the Team 6 MCP read-tool schema inside
+`runtimeToolPlane`:
+
+- `productSurfacePath: "/api/runtime/mcp"`
+- `runtimeSurfacePath: "/mcp"`
+- `protocol: "jsonrpc_2_0_http"`
+- `schemaVersion: 1`
+- tool names:
+  - `runtime_summary`
+  - `list_sessions`
+  - `observe_session`
+  - `audit_workspace`
+  - `audit_delivery_target`
+
+This keeps `cats` aligned to the runtime-owned tool plane without inventing a
+second runtime control surface.
 
 ## Runtime MCP Endpoint
 
@@ -219,4 +237,4 @@ Notes:
 
 ---
 
-*Last updated: 2026-03-23*
+*Last updated: 2026-03-24*

@@ -33,6 +33,11 @@ import type {
   OrchestratorPlannerChannelContext,
 } from './contracts.js';
 import { ORCHESTRATOR_CONTRACT_VERSION } from './contracts.js';
+import {
+  buildExecutionPlanFromChannel,
+  buildOrchestratorRuntimeToolPlane,
+  buildPreDispatchExecutionPlan,
+} from './execution.js';
 import { resolveToolIntentManifest } from './toolIntent.js';
 
 function buildOperatorSnapshot(core: CatsCoreState): ChatOperatorSnapshot {
@@ -241,10 +246,16 @@ export function buildOrchestratorTurnPlan(
     buildOrchestratorParticipantPlan(state, channelContext),
     ...channel.assignedCats.map((cat) => buildCatParticipantPlan(channelContext, cat)),
   ];
-
-  return {
-    planId: `orch-plan-${randomUUID()}`,
-    snapshot: 'pre_dispatch',
+  const planId = `orch-plan-${randomUUID()}`;
+  const operatorSeams = resolveOrchestratorOperatorSeams(core, channel.id);
+  const executionLoop = buildExecutionLoopContract(
+    channel,
+    resolution.targets.length,
+    resolution.trigger,
+  );
+  const planBase = {
+    planId,
+    snapshot: 'pre_dispatch' as const,
     channelId: channel.id,
     channelTitle: channel.title,
     roomMode: roomRouting.mode,
@@ -267,24 +278,54 @@ export function buildOrchestratorTurnPlan(
       ),
     },
     participants,
-    executionLoop: buildExecutionLoopContract(
-      channel,
-      resolution.targets.length,
-      resolution.trigger,
+    executionLoop,
+  };
+
+  return {
+    ...planBase,
+    runtimeToolPlane: buildOrchestratorRuntimeToolPlane(),
+    execution: buildPreDispatchExecutionPlan(
+      {
+        planId,
+        channelId: channel.id,
+        sourceMessageId: null,
+        initialStageId: executionLoop.initialStageId,
+        initialShape: executionLoop.initialShape,
+        initialTargets: planBase.routing.initialTargets,
+        sourceBody: planBase.source.body,
+        senderName: planBase.source.senderName,
+        transport: planBase.source.transport,
+      },
+      core,
+      operatorSeams,
     ),
   };
 }
 
 export function buildOrchestratorExecutionLoopSnapshot(
+  state: ChatState,
   core: CatsCoreState,
   channelId: string,
-  runId?: string | null,
+  selection: {
+    runId?: string | null;
+    turnId?: string | null;
+  } = {},
 ): OrchestratorExecutionLoopSnapshot {
   const operator = buildChatOperatorView(buildOperatorSnapshot(core), channelId);
+  const channel = buildChannelView(state, channelId);
+  const runInspector = buildRunInspectorView(operator, selection.runId);
   return {
     channelId,
+    runtimeToolPlane: buildOrchestratorRuntimeToolPlane(),
+    execution: buildExecutionPlanFromChannel({
+      channel,
+      core,
+      operatorSeams: resolveOrchestratorOperatorSeams(core, channelId),
+      runInspector,
+      selection,
+    }),
     operator,
-    runInspector: buildRunInspectorView(operator, runId),
+    runInspector,
   };
 }
 
@@ -302,6 +343,7 @@ export function buildOrchestratorPlanResponse(
 }
 
 export function buildOrchestratorExecutionLoopResponse(
+  state: ChatState,
   core: CatsCoreState,
   channelId: string,
   runId?: string | null,
@@ -310,6 +352,6 @@ export function buildOrchestratorExecutionLoopResponse(
     contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
     surface: 'direct_product_api',
     operator: resolveOrchestratorOperatorSeams(core, channelId),
-    executionLoop: buildOrchestratorExecutionLoopSnapshot(core, channelId, runId),
+    executionLoop: buildOrchestratorExecutionLoopSnapshot(state, core, channelId, { runId }),
   };
 }

@@ -463,17 +463,36 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
   - initial dispatch targets
   - resolved runtime skill manifests
   - product-owned MCP/tool intent manifests
+  - frozen runtime MCP tool-plane metadata aligned to `POST /api/runtime/mcp`
   - execution-loop guardrails and operator seam paths
+  - a pre-dispatch `execution` skeleton with:
+    - initial dispatch stage
+    - checkpoint-driven handoff loop
+    - outcome-report stage
+    - approval request / decision payload templates
 - `POST /api/orchestrator/dispatch` accepts the same request body, reuses the
   existing `routeChannelMessage()` execution path, and returns:
   - the pre-dispatch plan
     - `plan.snapshot` is always `"pre_dispatch"` so consumers do not treat it as post-dispatch truth
+    - `plan.execution.nextActions` now reflects whether dispatch is still ready
+      or paused by owner approval
   - additive dispatch receipts
+    - `dispatch.status` is `dispatched` or `blocked`
+    - `dispatch.blockedReason` is currently `approval_pending` when a task is
+      still waiting on `/api/core/approvals`
   - `sourceMessageId`
-  - a post-dispatch execution-loop snapshot
+  - a post-dispatch execution-loop snapshot that includes:
+    - `runtimeToolPlane`
+    - `execution.state`
+    - executed multi-step `execution.steps`
+    - checkpoint summaries
+    - `nextActions` for approval, retry, acknowledge, or completion
 - `GET /api/orchestrator/channels/{channelId}/execution-loop` returns the
   conversation-scoped operator/run-inspector contract for that room. `?runId=`
   may be supplied when a caller wants a specific run instead of the latest run.
+  The payload now also includes a product-owned `execution` read model derived
+  from the room workflow turn, plus approval/recovery action templates that
+  point back to `/api/core/approvals` and `/api/core/operator-actions`.
 
 ### Runtime Bridge
 

@@ -6,6 +6,9 @@ Land the first contract-first orchestration seam in `cats` and the first
 runtime-owned MCP facade in `cats-runtime` without rewriting the existing chat
 orchestration loop or making MCP the only runtime interface.
 
+The follow-on execution-loop and recovery slice now continues in
+[PLAN-023](./PLAN-023-orchestrator-execution-loop-and-recovery.md).
+
 ## Scope
 
 ### `cats`

@@ -32,8 +32,30 @@ export async function dispatchOrchestratorTurn(
   const now = input.now ?? new Date();
   const stateBefore = await input.chatStore.read();
   const coreBefore = await input.chatStore.readCore();
-  const messageCountBefore = buildChannelView(stateBefore, input.channelId).messages.length;
   const plan = buildOrchestratorTurnPlan(stateBefore, coreBefore, input);
+
+  if (plan.execution.approval.status === 'pending') {
+    return {
+      contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
+      surface: 'direct_product_api',
+      operator: resolveOrchestratorOperatorSeams(coreBefore, input.channelId),
+      plan,
+      dispatch: {
+        channelId: input.channelId,
+        status: 'blocked',
+        blockedReason: 'approval_pending',
+        sourceMessageId: null,
+        results: [],
+      },
+      executionLoop: buildOrchestratorExecutionLoopSnapshot(
+        stateBefore,
+        coreBefore,
+        input.channelId,
+      ),
+    };
+  }
+
+  const messageCountBefore = buildChannelView(stateBefore, input.channelId).messages.length;
   const routed = await routeChannelMessage(
     stateBefore,
     input.channelId,
@@ -54,9 +76,12 @@ export async function dispatchOrchestratorTurn(
   const persistedChannel = buildChannelView(persisted, input.channelId);
   const sourceMessage = persistedChannel.messages[messageCountBefore] ?? null;
   const executionLoop = buildOrchestratorExecutionLoopSnapshot(
+    persisted,
     coreAfter,
     input.channelId,
-    routed.results.find((result) => result.turnId)?.turnId ?? null,
+    {
+      turnId: routed.results.find((result) => result.turnId)?.turnId ?? null,
+    },
   );
 
   return {
@@ -66,6 +91,8 @@ export async function dispatchOrchestratorTurn(
     plan,
     dispatch: {
       channelId: input.channelId,
+      status: 'dispatched',
+      blockedReason: null,
       sourceMessageId: sourceMessage?.id ?? null,
       results: routed.results,
     },
