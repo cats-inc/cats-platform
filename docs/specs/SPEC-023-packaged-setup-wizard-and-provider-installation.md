@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft (Pending Review) |
+| **Status** | In Progress (First Host Slice Landed) |
 | **Owner** | Codex |
 | **Reviewer** | User / packaging workstream |
 
@@ -32,6 +32,24 @@ The key architectural constraint is that **app installation** and
 
 This spec defines the user-facing setup flow and the cross-project integration
 shape among `cats`, `cats-runtime`, and `environment-bootstrap`.
+
+## Implementation Snapshot
+
+The first host-owned slice is already in-repo:
+
+- `cats/electron/*` now supervises local `cats-runtime` + `cats`
+- readiness-gated bootstrap exists before the renderer fully enters the normal
+  chat flow
+- first-run setup can already distinguish setup entry versus ready entry
+
+What remains open for the packaging workstream is the packaged-distribution and
+host-operations depth around that first slice:
+
+- Windows/macOS/Linux packaging outputs
+- installer behavior
+- first-run prerequisite and remediation contracts
+- tray/background lifecycle
+- update channel and auto-update policy
 
 ## Goals
 
@@ -116,6 +134,17 @@ shape among `cats`, `cats-runtime`, and `environment-bootstrap`.
     - discovered/installed provider readiness state
     - Boss Cat selection and initial execution target
 15. The wizard shall finish by opening the user into a ready chat entry flow.
+16. The packaged host shall define explicit distribution targets for Windows,
+    macOS, and Linux.
+17. The packaged host shall own installer-time and first-run prerequisite
+    checks for:
+    - bundled app assets
+    - `cats-runtime` sidecar availability
+    - platform-specific provider prerequisites where relevant
+18. The packaged host shall support a background/tray lifecycle that can keep
+    local services alive without forcing the main window to remain open.
+19. The packaged host shall define an update channel strategy, even if the
+    first slice only lands manual-check or signed-manifest support.
 
 ### Cross-Project Requirements
 
@@ -218,6 +247,19 @@ Advanced view may expand to explicit capability packs or individual providers.
 - persist setup completion
 - open the normal `/new` draft surface with the current `Boss Cat` as the
   default visible entrypoint
+
+## Packaging Follow-On Scope
+
+The packaging workstream should cover, at minimum:
+
+- bundling strategy for Windows/macOS/Linux
+- installer output and signing assumptions
+- first-run remediation contract
+- tray/background host lifecycle
+- update-channel contract and staged rollout assumptions
+
+This spec does not require every one of those items to ship at once, but it
+does require them to be designed as part of one host-owned packaging story.
 
 ## Post-Setup Provider Management
 
@@ -344,4 +386,4 @@ terminal failures:
 
 *Created: 2026-03-20*
 *Author: Codex*
-*Last updated: 2026-03-23*
+*Last updated: 2026-03-24*

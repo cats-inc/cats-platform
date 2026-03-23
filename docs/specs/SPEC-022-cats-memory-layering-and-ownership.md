@@ -42,6 +42,11 @@ The first product-owned slice is now landed inside `cats`:
 - the current retrieval seam is intentionally local and additive; archive/vector
   backends remain future follow-on work
 
+This layered ownership model now has a narrower implementation follow-on:
+
+- `SPEC-031` defines the concrete extraction, durable-sync, and
+  retrieval-context contract above this memory model
+
 ## Goals
 
 - define a suite-wide memory layering model for `cats` and `cats-runtime`
@@ -351,6 +356,7 @@ The most suitable contemporary technical pattern for Cats is:
 - [ADR-008: Expose cats-runtime via direct API and MCP facade](../decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md)
 - [cats-runtime Architecture](../../../cats-runtime/docs/architecture.md)
 - [cats-runtime ADR-006: Introduce an agent backend and shared runtime contracts](../../../cats-runtime/docs/decisions/006-agent-backend-and-shared-runtime-contracts.md)
+- [SPEC-031: Built-In Memory Extraction, Durable Sync, and Retrieval Context](./SPEC-031-built-in-memory-extraction-durable-sync-and-retrieval-context.md)
 - [OpenClaw memory layering benchmark](../research/2026-03-19-openclaw-memory-layering-benchmark.md)
 
 ## Open Questions

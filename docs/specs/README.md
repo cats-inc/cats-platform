@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-031](./SPEC-031-built-in-memory-extraction-durable-sync-and-retrieval-context.md) | Built-In Memory Extraction, Durable Sync, and Retrieval Context | Draft (Pending Review) | - |
 | [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md) | Composer-Scoped Lead Cat and Boss Auto-Helper Semantics | Draft (Pending Review) | - |
 | [SPEC-029](./SPEC-029-companion-boxes-ingestion-and-response-profiles.md) | Companion Boxes, Ingestion, and Response Profiles | In Progress (First Slice Landed) | [PLAN-019](../plans/PLAN-019-companion-box-sidecar-and-session-hydration.md) |
 | [SPEC-028](./SPEC-028-automated-tunnel-and-telegram-webhook-lifecycle.md) | Telegram Polling-First Setup and Optional Webhook Ingress | In Progress (Polling-first slice landed) | - |
@@ -55,7 +56,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-026](./SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) | Explicit Mentions and Dynamic Room Workflow Orchestration | Draft (Pending Review) | [PLAN-016](../plans/PLAN-016-dynamic-room-workflow-orchestration.md) |
 | [SPEC-025](./SPEC-025-budget-policy-override-flows-and-war-room-dashboard.md) | Budget Policy, Override Flows, and War-Room Dashboard | Draft (Pending Review) | - |
 | [SPEC-024](./SPEC-024-chat-delivery-policy-and-governance-levels.md) | Chat Delivery Policy and Governance Levels | Draft (Pending Review) | - |
-| [SPEC-023](./SPEC-023-packaged-setup-wizard-and-provider-installation.md) | Packaged Setup Wizard and Provider Installation | Draft (Pending Review) | - |
+| [SPEC-023](./SPEC-023-packaged-setup-wizard-and-provider-installation.md) | Packaged Setup Wizard and Provider Installation | In Progress (First Host Slice Landed) | - |
 | [SPEC-022](./SPEC-022-cats-memory-layering-and-ownership.md) | Cats Memory Layering and Ownership | Draft (Pending Review) | - |
 | [SPEC-021](./SPEC-021-contextual-mcp-profiles-and-lazy-tool-activation.md) | Contextual MCP Profiles and Lazy Tool Activation | Draft (Pending Review) | - |
 | [SPEC-020](./SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md) | Embedded Preview Surfaces for Runtime Artifacts and Services | Draft (Pending Review) | - |
@@ -89,6 +90,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-03-23*
+*Last updated: 2026-03-24*
 
 *See also: [plans/](../plans/) for implementation plans*
