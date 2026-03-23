@@ -38,7 +38,8 @@ adapters or CLI details.
 - `cats-runtime` remains the main runtime boundary for all product code.
 - `cats` product services should continue to call `cats-runtime` through
   direct HTTP or SDK-style APIs.
-- `cats-runtime` now exposes a first-slice MCP facade at `POST /mcp`.
+- `cats-runtime` now exposes an additive MCP facade at `POST /mcp` and through
+  the `cats-runtime-mcp` stdio binary.
 - `cats` should not require MCP just to render Chat or Work surfaces.
 - `cats` now also exposes contract-first orchestration routes for direct
   product consumers:
@@ -48,13 +49,18 @@ adapters or CLI details.
 
 ## Current MCP Tool Scope
 
-The current `cats-runtime` MCP facade ships the first curated tool slice:
+The current `cats-runtime` MCP facade ships this curated tool slice:
 
 - `runtime_summary`
 - `list_sessions`
 - `observe_session`
+- `create_session`
+- `send_message`
+- `fork_session`
 - `audit_workspace`
 - `audit_delivery_target`
+- `init_workspace`
+- `commit_changes`
 
 MCP should not become a back door around product-owned permissions,
 conversations, or approval state. Those remain inside `cats` and
@@ -216,9 +222,20 @@ Example `tools/call`:
 }
 ```
 
+For stdio hosts, the same tool plane is available through:
+
+```text
+cats-runtime-mcp
+```
+
+or a local build:
+
+```text
+node dist/bin/mcp.js
+```
+
 Notes:
 
-- this slice is HTTP JSON-RPC, not a new standalone stdio binary
 - direct product APIs remain the primary app integration boundary
 - MCP is additive and aimed at orchestrator/tool hosts
 
