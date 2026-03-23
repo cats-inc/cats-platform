@@ -44,6 +44,71 @@ Open:
 - Renderer: `http://127.0.0.1:5173`
 - API: `http://127.0.0.1:8181/health`
 
+### Optional: auto-start local cats with Tailscale Funnel or ngrok
+
+For self-hosted Telegram webhook development, `cats` now includes helper
+scripts that can:
+
+- build the project
+- create a login auto-start runner
+- start the built local `cats` server
+- ensure a public ingress provider is available
+
+They still do **not** register Telegram webhooks. Webhook lifecycle stays in
+`Settings > Cats`.
+
+Choose the helper for your platform and ingress provider:
+
+```powershell
+# Windows
+.\scripts\windows\Setup-TailscaleFunnel.ps1 -Install
+.\scripts\windows\Setup-TailscaleFunnel.ps1 -Verify
+.\scripts\windows\Setup-TailscaleFunnel.ps1 -Remove
+
+.\scripts\windows\Setup-NgrokTunnel.ps1 -Install
+.\scripts\windows\Setup-NgrokTunnel.ps1 -Verify
+.\scripts\windows\Setup-NgrokTunnel.ps1 -Remove
+```
+
+```bash
+# Linux
+./scripts/linux/setup-tailscale-funnel.sh install
+./scripts/linux/setup-tailscale-funnel.sh verify
+./scripts/linux/setup-tailscale-funnel.sh remove
+
+./scripts/linux/setup-ngrok-tunnel.sh install
+./scripts/linux/setup-ngrok-tunnel.sh verify
+./scripts/linux/setup-ngrok-tunnel.sh remove
+
+# macOS
+./scripts/macos/setup-tailscale-funnel.sh install
+./scripts/macos/setup-tailscale-funnel.sh verify
+./scripts/macos/setup-tailscale-funnel.sh remove
+
+./scripts/macos/setup-ngrok-tunnel.sh install
+./scripts/macos/setup-ngrok-tunnel.sh verify
+./scripts/macos/setup-ngrok-tunnel.sh remove
+```
+
+Requirements:
+
+- Node.js and npm installed
+- local cats port configured through `CATS_PORT` or `CATS_INC_PORT`
+- for Tailscale:
+  - Tailscale installed
+  - `tailscale up` already completed
+  - optional `TAILSCALE_HTTPS_PORT` in `.env`
+- for ngrok:
+  - ngrok installed
+  - optional `CATS_NGROK_AUTHTOKEN` / `CATS_NGROK_DOMAIN` in `.env`
+
+Recommended flow:
+
+1. Run the helper for your platform and provider
+2. Let the helper register login auto-start for built `cats` + ingress
+3. Use `Settings > Cats` to manage Telegram bot bindings
+4. Let the product own webhook registration and diagnostics
+
 ### Built Run
 
 ```bash
@@ -88,7 +153,15 @@ unset, the app uses `config/chat-state.local.json`.
 provider/model execution target is supported by the runtime backend. Activation
 errors are also persisted into the channel transcript.
 
+### Issue 6: Telegram needs a public webhook URL during local development
+
+**Solution**: Run one of the startup helpers from `scripts/windows/`,
+`scripts/linux/`, or `scripts/macos/`. Tailscale Funnel is the cheaper default;
+ngrok is also supported. The helper can keep the local built `cats` server and
+public ingress alive at login. Webhook registration is still product-owned and
+should be managed from `Settings > Cats`.
+
 ---
 
-*Last updated: 2026-03-13*
+*Last updated: 2026-03-23*
 

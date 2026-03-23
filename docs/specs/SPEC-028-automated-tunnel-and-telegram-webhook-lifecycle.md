@@ -1,8 +1,7 @@
-# SPEC-028: Automated Tunnel and Telegram Webhook Lifecycle
+# SPEC-028: Public URL Preparation and Telegram Webhook Lifecycle
 
-> Automate public URL tunnel management and Telegram webhook registration
-> so operators can set up Telegram by entering a bot token in the UI
-> without touching a terminal.
+> Prepare a public HTTPS URL outside the server process, then let `cats`
+> own Telegram webhook registration and diagnostics through the product UI/API.
 
 ## Status
 
@@ -18,213 +17,188 @@ Draft (Pending Review)
 
 ## Problem
 
-The current Telegram setup requires the operator to:
+The current Telegram setup still expects too much manual work:
 
-1. Run `ngrok` or `cloudflared` manually in a separate terminal
-2. Copy the generated public URL
-3. Run a `curl` command to call Telegram's `setWebhook` API
-4. Paste the URL, bot token, and secret into the correct format
+1. prepare a public HTTPS URL outside the product
+2. copy the public URL
+3. manually call Telegram `setWebhook`
+4. diagnose failures without a product-owned status surface
 
-This is unacceptable for non-technical users and violates the product's
-deployment goal of "simple install + guided setup = ready to use."
+The public ingress problem and the webhook lifecycle problem should be split.
+The first slice can use helper scripts or an externally supplied URL for
+ingress, while keeping webhook lifecycle inside `cats`.
 
 ## Goals
 
-- Operator enters a Telegram bot token in the Settings UI and clicks one
-  button — tunnel starts, webhook registers, messages start flowing
-- Server startup with existing bindings re-establishes the tunnel and
-  re-registers webhooks automatically
-- Clear status feedback in the UI at every step
-- Graceful degradation when tunnel or registration fails
+- operators can prepare a public URL once, then use Settings UI to register
+  Telegram without curl
+- public ingress bootstrap and Telegram webhook lifecycle stay as separate
+  concerns
+- the product explains clearly when public ingress is still missing
+- webhook status is visible and retryable inside Settings
 
 ## Non-Goals
 
-- Production reverse proxy configuration (handled by deployment, not
-  this spec)
-- Alternative tunnel providers beyond ngrok in the first slice
+- fully automated tunnel startup inside the cats server process
 - Telegram long polling mode
-- LINE or other transport tunnels (same pattern, future spec)
+- LINE or other transport tunnels in this slice
+- choosing the long-term production reverse proxy/deployment model
 
 ## User Stories
 
-- As an operator, I want to set up Telegram by pasting my bot token into
-  Settings so I do not need to use a terminal or understand webhooks.
-- As an operator, I want the product to reconnect Telegram automatically
-  when I restart the server so I do not need to re-register anything.
-- As an operator, I want to see whether Telegram is connected, degraded,
-  or failed in the UI so I know if something is wrong.
+- As an operator, I want to use a helper script or an existing public URL so I
+  do not need to hand-build webhook URLs.
+- As an operator, I want to manage Telegram webhook registration from Settings
+  so I never need curl or raw Telegram API calls.
+- As an operator, I want the product to tell me whether public ingress is
+  missing, healthy, or failed so I know what to fix.
 
 ## Requirements
 
 ### Functional Requirements
 
-#### Tunnel Management
+#### Public URL preparation
 
-1. When `CATS_TUNNEL_ENABLED=true` and `CATS_TUNNEL_AUTHTOKEN` is set,
-   the server shall start an ngrok tunnel on startup.
-2. The tunnel shall expose the cats HTTP server port to a public HTTPS
-   URL.
-3. The public URL shall be stored in runtime state and available to
-   transport bindings.
-4. If `CATS_TUNNEL_DOMAIN` is set (paid ngrok), the tunnel shall use
-   that fixed domain.
-5. If `CATS_PUBLIC_URL` is set (cloud/production deployment), the
-   product shall use that URL directly and skip tunnel creation.
-6. The tunnel shall stop when the server shuts down.
-7. If the tunnel fails to start, the server shall still run but mark
-   transport bindings as degraded.
-8. The tunnel URL shall be visible in the Settings UI and in the
-   sidebar footer runtime status tooltip.
+1. The first slice shall treat public ingress as an external prerequisite, not
+   as a server-owned runtime dependency.
+2. The repo shall provide helper scripts for local/self-hosted public ingress:
+   - `scripts/windows/Setup-TailscaleFunnel.ps1`
+   - `scripts/windows/Setup-NgrokTunnel.ps1`
+   - `scripts/linux/setup-tailscale-funnel.sh`
+   - `scripts/linux/setup-ngrok-tunnel.sh`
+   - `scripts/macos/setup-tailscale-funnel.sh`
+   - `scripts/macos/setup-ngrok-tunnel.sh`
+3. Those helper scripts shall manage only the public HTTPS URL layer for the
+   local cats server plus optional login auto-start and shall not register
+   Telegram webhooks.
+4. The helper scripts shall read `CATS_PORT` or compatibility alias
+   `CATS_INC_PORT`.
+5. The helper scripts may optionally read `TAILSCALE_HTTPS_PORT`.
+6. Settings shall surface when no usable public URL is available yet.
 
-#### Webhook Auto-Registration
+#### Webhook lifecycle
 
-9. When a Telegram bot binding is created with a valid bot token and a
-   public URL is available (tunnel or `CATS_PUBLIC_URL`), the product
-   shall automatically call Telegram's `setWebhook` API.
-10. The webhook URL shall be:
-    `<public_url>/api/transports/telegram/webhook/<bindingId>`
-11. The `secret_token` parameter shall be the binding's webhook secret.
-    If no secret was provided during creation, the product shall
-    auto-generate one.
-12. On server startup, the product shall re-register webhooks for all
-    active Telegram bindings that have bot tokens.
-13. When a Telegram binding is disabled or deleted, the product shall
-    call Telegram's `deleteWebhook` API.
-14. When the tunnel URL changes (e.g., ngrok free tier restart), the
-    product shall re-register all active webhooks with the new URL.
-15. Webhook registration success or failure shall be recorded per
-    binding and visible in the Settings UI.
+7. When a Telegram bot binding is created or updated with a valid bot token and
+   a public URL is available, the product shall call Telegram `setWebhook`.
+8. The webhook URL shall be:
+   `<public_url>/api/transports/telegram/webhook/<bindingId>`
+9. The `secret_token` parameter shall be the binding's webhook secret. If no
+   secret was provided during creation, the product shall auto-generate one.
+10. When a Telegram binding is deleted or disabled, the product shall call
+    Telegram `deleteWebhook`.
+11. When the known public URL changes, the product shall re-register active
+    Telegram bindings against the new URL.
+12. When the app starts and already knows a valid public URL, the product may
+    reconcile existing active Telegram bindings in the background.
+13. Registration success or failure shall be recorded per binding and visible
+    in the Settings UI.
 
-#### Environment Configuration
+#### Token uniqueness
 
-16. Required env vars for development Telegram:
-    - `CATS_TUNNEL_ENABLED=true`
-    - `CATS_TUNNEL_AUTHTOKEN=<ngrok authtoken>`
-17. Optional env vars:
-    - `CATS_TUNNEL_DOMAIN=<fixed ngrok domain>` (paid plans)
-    - `CATS_PUBLIC_URL=<url>` (production, skips tunnel)
-18. Bot tokens are stored per-binding in the app state, not in `.env`.
+14. The same Telegram bot token shall not be allowed on more than one binding
+    in the same `cats` environment.
+15. Duplicate token attempts shall fail with a product-visible error instead of
+    allowing webhook ownership to flap between bindings.
 
-#### UI Feedback
+#### Configuration and docs
 
-19. Settings > Cats > Telegram section shall show:
-    - Tunnel status (active / inactive / failed)
-    - Current public URL when tunnel is active
-    - Webhook registration status per binding (registered / failed /
-      pending)
-    - A "Reconnect" button to manually retry tunnel + webhook
-20. The sidebar footer runtime status tooltip shall include tunnel
-    status when transport bindings exist.
-21. When tunnel authtoken is missing but a Telegram binding exists, the
-    UI shall show a clear message explaining what to add to `.env`.
+16. `.env.example` shall document `TAILSCALE_HTTPS_PORT` for the helper
+    scripts.
+17. Bot tokens remain per-binding state, not global `.env` configuration.
+
+#### UI feedback
+
+18. Settings > Cats > Telegram shall show:
+    - public URL status (`available`, `missing`, or `failed`)
+    - current public URL when known
+    - webhook registration status per binding
+    - an explicit reconnect / retry action
+    - guidance toward the helper scripts when public ingress is missing
+19. The product shall not require the operator to call Telegram APIs or paste a
+    raw webhook URL manually.
 
 ### Non-Functional Requirements
 
-- **Startup latency**: tunnel connection should not block server
-  readiness for local-only features. Tunnel and webhook registration
-  should happen asynchronously after the HTTP server is listening.
-- **Resilience**: tunnel disconnection should not crash the server.
-  The product should attempt reconnection and update binding status.
-- **Security**: bot tokens and webhook secrets must not be logged in
-  plaintext. Tunnel authtoken must not be exposed to the renderer.
-- **Dependency scope**: `@ngrok/ngrok` should be an optional dependency
-  that is only loaded when `CATS_TUNNEL_ENABLED=true`.
+- **Startup latency**: local app startup should not be blocked by tunnel
+  creation because ingress bootstrap is external.
+- **Resilience**: missing or changed public ingress should not crash the
+  server. Local-only features should remain usable.
+- **Security**: bot tokens and webhook secrets must not be logged in plaintext.
+- **Dependency scope**: the first slice should not add a tunnel SDK/runtime
+  dependency to the cats server.
 
 ## Proposed Architecture
 
 ```text
-.env
-  CATS_TUNNEL_ENABLED=true
-  CATS_TUNNEL_AUTHTOKEN=xxx
-
-Server startup
+scripts/windows|linux|macos/*
+  |
+  +--> prepare public URL for local cats server
   |
   v
-Start HTTP server (local)
+cats starts normally
   |
   v
-TunnelService.start(port)
-  |
-  +--> @ngrok/ngrok connect
-  |       |
-  |       v
-  |    Public URL available
-  |       |
-  |       v
-  |    WebhookRegistrar.registerAll(bindings, publicUrl)
-  |       |
-  |       +--> POST api.telegram.org/bot<TOKEN>/setWebhook
-  |       |       url=<publicUrl>/api/transports/telegram/webhook/<bindingId>
-  |       |       secret_token=<secret>
-  |       |
-  |       +--> Update binding status: registered / failed
-  |
-  +--> Tunnel failed: log warning, mark transport degraded
-
 Settings UI: "Add Telegram Bot"
   |
-  v
-POST /api/bot-bindings { botToken, ... }
+  +--> if public URL missing
+  |       |
+  |       +--> show guidance to run helper script / provide ingress
   |
-  v
-Server creates binding + calls WebhookRegistrar.register(binding, publicUrl)
-  |
-  v
-Returns binding with webhook registration status
+  +--> if public URL known
+          |
+          v
+       POST /api/bot-bindings { botToken, ... }
+          |
+          v
+       Server creates binding + calls WebhookRegistrar.register(binding, publicUrl)
+          |
+          v
+       Returns binding with webhook registration status
 ```
 
 ## Proposed Components
 
-### TunnelService (`src/platform/tunnel/`)
+### PublicUrlStatus (`Settings > Cats`)
 
-- `startTunnel(config)`: starts ngrok, returns public URL
-- `stopTunnel()`: closes ngrok connection
-- `getTunnelUrl()`: returns current public URL or null
-- Emits events: `tunnel:connected`, `tunnel:disconnected`,
-  `tunnel:error`
+- show whether a usable public URL is currently known
+- show guidance toward helper scripts when missing
+- show the effective webhook base path when available
 
 ### WebhookRegistrar (`src/platform/transports/telegram/webhook.ts`)
 
-- `registerWebhook(binding, publicUrl)`: calls Telegram setWebhook
-- `deleteWebhook(binding)`: calls Telegram deleteWebhook
-- `registerAll(bindings, publicUrl)`: batch register on startup
-- Returns registration result with success/failure per binding
+- `registerWebhook(binding, publicUrl)`: call Telegram `setWebhook`
+- `deleteWebhook(binding)`: call Telegram `deleteWebhook`
+- `registerAll(bindings, publicUrl)`: reconcile when a valid public URL is known
+- return machine-readable success/failure results per binding
 
-### Config Extension
+### Validation rules
 
-```ts
-interface TunnelConfig {
-  enabled: boolean;
-  authtoken: string | null;
-  domain: string | null;
-  publicUrl: string | null; // CATS_PUBLIC_URL override
-}
-```
+- reject duplicate Telegram bot tokens across bindings in the same environment
+- keep webhook secret generation inside the product
+- keep env-token fallback compatibility-only until removed; do not treat it as
+  the desired long-term product contract
 
 ## Open Questions
 
-- Should the tunnel auto-start only when bindings exist, or always when
-  `CATS_TUNNEL_ENABLED=true`?
-- Should webhook re-registration on tunnel URL change be immediate or
-  debounced?
-- Should the product validate the bot token with Telegram's `getMe` API
-  before attempting webhook registration?
-- When Electron ships, should tunnel management move to the host process?
+- How should the UI learn the effective public URL in the first slice:
+  manual entry, host-provided config, or helper-script-discovered state?
+- Should webhook re-registration on public URL change be immediate or debounced?
+- Should the product validate the bot token with Telegram `getMe` before
+  attempting registration?
+- When Electron ships, should the packaged host supervise public ingress?
 
 ## Acceptance Criteria
 
-- Operator can set up Telegram entirely through Settings UI (no terminal
-  commands)
-- Server startup with existing bindings re-establishes tunnel and
-  webhooks automatically
-- Tunnel failure does not crash the server
-- Settings UI shows tunnel URL, webhook status, and actionable errors
-- `.env.example` documents all tunnel-related env vars
-- Bot tokens are not logged in plaintext
-- Tests cover: tunnel start/stop, webhook register/delete/re-register,
-  missing authtoken, tunnel failure, binding lifecycle
+- operators can set up Telegram entirely through Settings UI without manual
+  Telegram API calls
+- helper scripts exist for Windows, Linux, and macOS to prepare local ingress
+  through Tailscale Funnel or ngrok
+- missing public URL does not crash the server
+- Settings UI shows public URL status, webhook status, and actionable errors
+- `.env.example` documents helper-script configuration
+- duplicate token bindings are rejected
+- bot tokens are not logged in plaintext
 
 ---
 
 *Created: 2026-03-23*
-*Author: Claude*

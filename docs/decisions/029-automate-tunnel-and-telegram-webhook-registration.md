@@ -1,8 +1,7 @@
-# ADR-029: Automate Tunnel and Telegram Webhook Registration
+# ADR-029: Keep public ingress external while Cats owns Telegram webhook lifecycle
 
-> The product should handle public URL exposure and Telegram webhook
-> registration automatically so operators never need to run curl commands
-> or manually configure external APIs.
+> The product should own Telegram webhook registration and diagnostics, while
+> public HTTPS ingress may be prepared outside the server process.
 
 ## Status
 
@@ -14,178 +13,135 @@ Draft (Pending Review)
 
 ## Context
 
-The current Telegram integration requires operators to:
+The current Telegram experience still has two separate problems:
 
-1. Manually run `ngrok` or `cloudflared` to expose the local server
-2. Copy the public URL
-3. Run a `curl` command against `https://api.telegram.org/bot<TOKEN>/setWebhook`
-   to register the webhook
+1. A local `cats` server is not publicly reachable by default, so Telegram
+   cannot deliver webhook updates until the operator provides a public HTTPS
+   URL.
+2. Once a public URL exists, operators should not need to manually call
+   Telegram `setWebhook` / `deleteWebhook` with curl or raw API requests.
 
-This violates the core product principle that non-technical users should be able
-to install and use `cats` without developer tooling. The setup wizard and
-Settings UI already collect the bot token — the product should use that token
-to complete the webhook registration automatically.
+These concerns do not need to live in the same implementation surface.
+The product can keep webhook lifecycle in `cats`, while using an external
+public ingress helper for the first slice.
 
-Additionally, `cats` runs as a local server that is not publicly reachable by
-default. Telegram requires a public HTTPS URL to deliver webhook updates.
-The product must solve this without asking the operator to understand
-networking, DNS, or reverse proxies.
+This also aligns better with the current packaging boundary from ADR-021:
+bootstrap/setup helpers may live outside the core server process, while the
+product UI/API remains responsible for user-facing integration lifecycle.
 
 ## Decision
 
-`cats` will automate both tunnel creation and Telegram webhook registration.
+`cats` will treat public ingress as an external prerequisite and will own the
+Telegram webhook lifecycle inside the product UI/API.
 
-### 1. Tunnel Automation
+### 1. Public ingress stays outside the server process
 
-The product will manage a public tunnel as part of server startup when
-transport bindings require external reachability.
+The first slice will not start or stop tunnels from the `cats` server.
+Instead, operators provide a public HTTPS base URL by one of these means:
 
-- Use `@ngrok/ngrok` Node.js SDK for the first implementation
-- The operator provides an ngrok authtoken via `.env`
-  (`CATS_TUNNEL_AUTHTOKEN`)
-- The tunnel starts automatically when the server starts and at least one
-  active transport binding exists (or when explicitly enabled)
-- The tunnel URL is stored in runtime state and used for webhook
-  registration
-- The tunnel lifecycle is tied to the server process — it starts and stops
-  with the server
-- If the tunnel fails to start, the server still runs but transport
-  bindings are marked as degraded
-- Future slices may support alternative tunnel providers (Cloudflare,
-  localhost.run) behind the same configuration seam
+- an operator-managed reverse proxy or cloud deployment URL
+- an operator-run helper script such as:
+  - `scripts/windows/Setup-TailscaleFunnel.ps1`
+  - `scripts/windows/Setup-NgrokTunnel.ps1`
+  - `scripts/linux/setup-tailscale-funnel.sh`
+  - `scripts/linux/setup-ngrok-tunnel.sh`
+  - `scripts/macos/setup-tailscale-funnel.sh`
+  - `scripts/macos/setup-ngrok-tunnel.sh`
+- a future packaged host-managed ingress helper
 
-### 2. Webhook Auto-Registration
+The helper scripts may prepare a public URL for local/self-hosted use, but they
+remain intentionally separate from the Telegram webhook flow.
 
-When a Telegram bot binding is created or updated with a valid bot token,
-the product will automatically call the Telegram Bot API to register the
-webhook.
+### 2. Webhook lifecycle is product-owned
+
+When a Telegram bot binding is created or updated with a valid bot token and a
+public HTTPS base URL is available, `cats` will register the webhook through
+the product-owned Settings UI/API flow.
 
 - Call `POST https://api.telegram.org/bot<TOKEN>/setWebhook` with:
-  - `url`: `<tunnel_public_url>/api/transports/telegram/webhook/<bindingId>`
-  - `secret_token`: the binding's webhook secret (auto-generated if not
-    provided)
-- Registration happens:
-  - When a bot binding is created via the Settings UI
-  - When the server starts and an active binding exists with a tunnel URL
-  - When the tunnel URL changes (ngrok may assign a new URL on restart
-    with free tier)
-- If registration fails, the binding status should reflect the failure
-  and the Settings UI should show a clear error
-- The product should call `deleteWebhook` when a binding is disabled or
-  deleted
+  - `url`: `<public_url>/api/transports/telegram/webhook/<bindingId>`
+  - `secret_token`: the binding's webhook secret
+- Call `deleteWebhook` when a binding is deleted or disabled
+- Record success/failure per binding and surface it in Settings
+- Allow manual re-registration from Settings
 
-### 3. Environment Configuration
+### 3. Token uniqueness is required
 
-```env
-# Tunnel (required for Telegram in development)
-CATS_TUNNEL_ENABLED=true
-CATS_TUNNEL_AUTHTOKEN=<ngrok authtoken>
-# Optional: fixed domain for paid ngrok plans
-CATS_TUNNEL_DOMAIN=
+Telegram only allows one active webhook per bot token. Therefore, the same
+Telegram bot token must be unique per `cats` environment.
 
-# Telegram bot tokens are stored per-binding in the UI,
-# not in .env — no additional env vars needed for Telegram.
-```
+The first slice should reject duplicate bindings that reuse the same bot token
+instead of letting bindings overwrite one another.
 
-### 4. Server Startup Flow
+### 4. UI integration
 
-```text
-Server starts
-    |
-    v
-Load active transport bindings from state
-    |
-    +--> No active bindings with bot tokens -> skip tunnel
-    |
-    +--> Active bindings exist + CATS_TUNNEL_ENABLED=true
-            |
-            v
-         Start ngrok tunnel
-            |
-            +--> Success: store public URL in runtime state
-            |       |
-            |       v
-            |    For each active Telegram binding:
-            |       call setWebhook with tunnel URL
-            |
-            +--> Failure: log warning, mark transport as degraded
-```
+Settings > Cats > Telegram should:
 
-### 5. UI Integration
-
-The Settings > Cats > Telegram section should:
-
-- Show the current tunnel URL when active
-- Show webhook registration status (registered / failed / pending)
-- Allow manual re-registration if needed (a "Reconnect" button)
-- Show a clear error if the tunnel is not running or authtoken is missing
-- Not require the operator to touch any external tool or terminal
+- show whether a usable public URL is currently known
+- show the effective webhook base path when available
+- show webhook registration status per binding
+- offer an explicit reconnect / retry action
+- explain when the operator still needs to run an external ingress helper
 
 ## Consequences
 
 ### Positive
 
-- Non-technical operators can set up Telegram by entering a bot token in
-  the UI — no curl, no ngrok CLI, no webhook URL copy-paste
-- The product controls the full lifecycle: tunnel start → webhook register
-  → message receive → reply deliver
-- Tunnel URL changes on restart are handled automatically
-- Same pattern extends to LINE and future transports
+- webhook lifecycle stays product-owned, visible, and retryable from the UI
+- `cats` avoids adding a tunnel SDK/runtime dependency in the first slice
+- self-hosted operators can use Tailscale Funnel or ngrok without embedding
+  either provider directly into the cats server
+- the same webhook flow can later work with helper scripts, packaged hosts, or
+  real deployment URLs without changing binding semantics
 
 ### Negative
 
-- Adds `@ngrok/ngrok` as a runtime dependency
-- Free ngrok tier assigns random URLs on each restart, causing brief
-  downtime until re-registration completes
-- Network failures in tunnel or webhook registration need graceful
-  degradation and clear UI feedback
-- Paid ngrok plans are needed for stable custom domains in production
+- operators still need a one-time ingress preparation step outside the app
+- the UI must explain missing public ingress clearly or setup will feel broken
+- URL changes still require re-registration logic in the product
+- webhook registration failures still need careful degradation and diagnostics
 
 ### Neutral
 
-- This ADR does not decide the production deployment model (where a real
-  reverse proxy replaces ngrok)
-- This ADR does not decide whether tunnel management should live in
-  `cats` or in a future Electron host process
-- The tunnel is a development/self-hosted convenience — cloud deployments
-  would use a real public URL via `CATS_PUBLIC_URL` env var instead of
-  a tunnel
+- this ADR does not decide the final production deployment model
+- this ADR allows a future packaged host to supervise public ingress, but does
+  not require it for the first slice
+- helper scripts are a local/self-hosted convenience, not the long-term cloud
+  deployment model
 
 ## Alternatives Considered
 
-### Alternative 1: Require operators to run ngrok manually
+### Alternative 1: Let the cats server start ngrok itself
 
-- **Pros**: no new dependency, no tunnel management code
-- **Cons**: violates the "non-technical user" deployment goal; requires
-  terminal, curl, and URL copy-paste
-- **Why rejected**: unacceptable UX for the target audience
+- **Pros**: one-button story inside the app
+- **Cons**: adds runtime dependency, couples tunnel lifecycle to server
+  startup, makes host-vs-server ownership blurry
+- **Why rejected for first slice**: too much coupling for the first
+  implementation, especially when a helper-script path is good enough
 
 ### Alternative 2: Use Telegram long polling instead of webhooks
 
-- **Pros**: no public URL needed, no tunnel needed
-- **Cons**: higher latency, more complex polling lifecycle, doesn't
-  match the existing webhook-based relay architecture
-- **Why rejected**: webhook is the standard approach and already
-  implemented
+- **Pros**: no public URL needed
+- **Cons**: higher latency, different lifecycle, diverges from the existing
+  webhook relay model
+- **Why rejected**: webhook remains the preferred transport model
 
-### Alternative 3: Use cloudflared instead of ngrok
+### Alternative 3: Require operators to manage everything manually
 
-- **Pros**: free, no account needed for basic tunnels
-- **Cons**: requires cloudflared binary installed, less mature Node.js
-  SDK, harder to manage lifecycle programmatically
-- **Why rejected for first slice**: ngrok has a mature Node.js SDK;
-  cloudflared can be added as an alternative later
+- **Pros**: no product work
+- **Cons**: bad UX, requires curl/webhook knowledge, easy to misconfigure
+- **Why rejected**: webhook registration should still be product-owned even if
+  ingress preparation is external
 
 ## References
 
 - [ADR-016](./016-treat-telegram-as-boss-cat-inbox-not-room-mirror.md)
+- [ADR-021](./021-keep-packaged-setup-and-provider-installation-in-the-host.md)
 - [ADR-028](./028-allow-multiple-public-bot-bindings-with-one-boss-cat.md)
 - [SPEC-014](../specs/SPEC-014-telegram-boss-cat-relay-mvp.md)
 - [SPEC-017](../specs/SPEC-017-telegram-inbox-and-room-routing.md)
 - [SPEC-028](../specs/SPEC-028-automated-tunnel-and-telegram-webhook-lifecycle.md)
-- ngrok Node.js SDK: https://github.com/ngrok/ngrok-nodejs
 
 ---
 
 *Draft: 2026-03-23*
-*Author: Claude*
