@@ -34,9 +34,9 @@ The current slices are:
   above the existing direct `cats-runtime` API path
 - an Electron desktop host that now supervises local `cats-runtime` + `cats`,
   can produce a real Windows NSIS installer, stages cross-platform packaging
-  outputs, persists host-readable bootstrap state, supports tray/background
-  lifecycle, and owns the packaged bootstrap/remediation seam plus a
-  manual-check update skeleton
+  outputs, persists host-readable bootstrap state, keeps the bootstrap bridge
+  sandboxed, supports tray/background lifecycle, and owns the packaged
+  bootstrap/remediation seam plus a manual-check update skeleton
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
   direct companion-session hydration metadata, and Cats-owned retrieval context

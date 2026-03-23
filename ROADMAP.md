@@ -55,6 +55,25 @@ contracts.
 - [ ] Shift cat UX to a chat-contextual `Add cat` flow while moving registry
       administration into `Settings > Cats`
 - [ ] Desktop host and tray lifecycle management above the existing Node server boundary
+- [ ] Turn the current Windows NSIS-first packaging slice into a release-grade
+      desktop distribution path, including signed installers, branded assets,
+      and a documented release pipeline rather than test-install outputs only
+- [ ] Extend the current desktop packaging contract beyond Windows staging so
+      macOS and Linux also produce real installer artifacts instead of staged
+      manifests only
+- [ ] Strengthen the packaged host trust chain beyond the current HTTPS and
+      allow-list checks, including signed update manifests, verified download
+      integrity, and controlled apply/restart orchestration
+- [ ] Harden desktop host persistence and readiness parsing with stricter
+      machine-readable validation for host-state snapshots, readiness payloads,
+      and update manifests so corrupted local files or malformed service
+      responses cannot silently degrade packaged runs
+- [ ] Add installed-app verification beyond the current unpacked smoke pass,
+      including real Windows post-install launch checks, persisted host-state
+      assertions on installed machines, and later packaging CI coverage
+- [ ] Land host-owned privileged provider install/resume and remediation flows,
+      including Windows elevation/UAC handling and resumable installer-first
+      recovery contracts
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
 - [ ] Extend Cats-owned canonical memory beyond the current cat/owner/channel
@@ -125,6 +144,8 @@ contracts.
 
 - Thin Electron host that manages local `cats` and `cats-runtime` services
 - Shared desktop host that can open both `Cats Chat` and `Cats Work`
+- Release-grade desktop packaging, update signing, and installer recovery
+  discipline across Windows/macOS/Linux
 - Richer memory retrieval loops through structured owner profile plus archive RAG
 - Optional Chat mobile companion after the shared desktop suite stabilizes
 - Product rename or repo split once the public open-source topology is ready

@@ -41,7 +41,9 @@ test('package.json wires Windows installers through electron-builder NSIS', asyn
   const packageJson = JSON.parse(await readFile(join(process.cwd(), 'package.json'), 'utf8'));
 
   assert.equal(packageJson.main, 'dist-electron/main.js');
+  assert.equal(Object.hasOwn(packageJson, 'types'), false);
   assert.equal(packageJson.scripts['desktop:package:windows'], 'node scripts/build-desktop-installer.mjs --target windows');
+  assert.equal(packageJson.scripts['start:server'], 'node dist-server/index.js');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
   assert.equal(packageJson.build.nsis.oneClick, false);
 });
@@ -62,6 +64,18 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /needs_prerequisites/);
 });
 
+test('build-desktop-installer script avoids shell execution on Windows', async () => {
+  const script = await readFile(
+    join(process.cwd(), 'scripts', 'build-desktop-installer.mjs'),
+    'utf8',
+  );
+
+  assert.match(script, /npm-cli\.js/);
+  assert.match(script, /npx-cli\.js/);
+  assert.match(script, /process\.execPath/);
+  assert.match(script, /shell: false/);
+});
+
 test('stageDesktopPackagingOutputs writes staging manifests and shared assets', async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-desktop-package-'));
   const packageRoot = join(workingDir, 'cats');
@@ -71,7 +85,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await seedFile(join(packageRoot, 'dist-server', 'index.js'), 'export {};');
   await seedFile(join(packageRoot, 'dist', 'index.html'), '<!doctype html>');
   await seedFile(join(packageRoot, 'dist-electron', 'main.js'), 'export {};');
-  await seedFile(join(packageRoot, 'dist-electron', 'preload.js'), 'export {};');
+  await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(runtimeRoot, 'dist', 'index.js'), 'export {};');
 
   const config = resolveDesktopHostConfig({
@@ -93,6 +107,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'dist-server', 'index.js'));
   await access(join(plan.outputRoot, 'shared', 'dist', 'index.html'));
   await access(join(plan.outputRoot, 'shared', 'dist-electron', 'main.js'));
+  await access(join(plan.outputRoot, 'shared', 'dist-electron', 'preload.cjs'));
   await access(join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'));
 
   const targetManifest = JSON.parse(await readFile(
@@ -101,4 +116,36 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   ));
   assert.equal(targetManifest.target.platform, 'windows');
   assert.equal(targetManifest.updates.channel, config.update.channel);
+  assert.equal(targetManifest.target.artifactBaseName, 'cats-windows-x64');
+});
+
+test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is missing', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-desktop-package-missing-runtime-'));
+  const packageRoot = join(workingDir, 'cats');
+  const runtimeRoot = join(workingDir, 'cats-runtime');
+  const outputRoot = join(workingDir, 'desktop-packaging');
+
+  await seedFile(join(packageRoot, 'dist-server', 'index.js'), 'export {};');
+  await seedFile(join(packageRoot, 'dist', 'index.html'), '<!doctype html>');
+  await seedFile(join(packageRoot, 'dist-electron', 'main.js'), 'export {};');
+  await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
+  await mkdir(runtimeRoot, { recursive: true });
+
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'dist-server', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'dist', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
+      CATS_DESKTOP_PACKAGING_OUTPUT_ROOT: outputRoot,
+    },
+    userDataDir: join(workingDir, 'user-data'),
+  });
+
+  await assert.rejects(
+    stageDesktopPackagingOutputs(config, {
+      generatedAt: new Date('2026-03-24T12:05:00.000Z'),
+      platforms: ['windows'],
+    }),
+    /requires a bundled cats-runtime sidecar/,
+  );
 });

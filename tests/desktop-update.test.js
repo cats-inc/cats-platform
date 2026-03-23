@@ -11,20 +11,29 @@ test('resolveDesktopUpdateConfig reads channel and manifest settings', () => {
   const config = resolveDesktopUpdateConfig({
     CATS_DESKTOP_UPDATE_CHANNEL: 'beta',
     CATS_DESKTOP_UPDATE_MANIFEST_URL: 'https://updates.example.com/cats/beta.json',
+    CATS_DESKTOP_UPDATE_ALLOWED_HOSTS: 'downloads.example.com',
     CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP: 'true',
     CATS_DESKTOP_UPDATE_AUTO_DOWNLOAD: 'false',
   });
 
   assert.equal(config.channel, 'beta');
   assert.equal(config.manifestUrl, 'https://updates.example.com/cats/beta.json');
+  assert.deepEqual(config.allowedHosts, ['downloads.example.com']);
   assert.equal(config.checkOnStartup, true);
   assert.equal(config.autoDownload, false);
+});
+
+test('resolveDesktopUpdateConfig rejects insecure manifest URLs', () => {
+  assert.throws(() => resolveDesktopUpdateConfig({
+    CATS_DESKTOP_UPDATE_MANIFEST_URL: 'http://updates.example.com/cats/stable.json',
+  }), /Unsupported desktop URL protocol/);
 });
 
 test('createDefaultDesktopUpdateState disables checks when no manifest is configured', () => {
   const state = createDefaultDesktopUpdateState({
     channel: 'stable',
     manifestUrl: null,
+    allowedHosts: [],
     checkOnStartup: false,
     autoDownload: false,
   });
@@ -37,6 +46,7 @@ test('checkForDesktopUpdates reports update_available when manifest version is n
   const state = await checkForDesktopUpdates({
     channel: 'stable',
     manifestUrl: 'https://updates.example.com/cats/stable.json',
+    allowedHosts: ['downloads.example.com'],
     checkOnStartup: false,
     autoDownload: false,
   }, {
@@ -63,6 +73,7 @@ test('checkForDesktopUpdates reports failed when manifest fetch breaks', async (
   const state = await checkForDesktopUpdates({
     channel: 'stable',
     manifestUrl: 'https://updates.example.com/cats/stable.json',
+    allowedHosts: [],
     checkOnStartup: false,
     autoDownload: false,
   }, {
@@ -74,4 +85,28 @@ test('checkForDesktopUpdates reports failed when manifest fetch breaks', async (
 
   assert.equal(state.status, 'failed');
   assert.equal(state.error, 'network unavailable');
+});
+
+test('checkForDesktopUpdates rejects insecure or non-allow-listed download URLs', async () => {
+  const state = await checkForDesktopUpdates({
+    channel: 'stable',
+    manifestUrl: 'https://updates.example.com/cats/stable.json',
+    allowedHosts: [],
+    checkOnStartup: false,
+    autoDownload: false,
+  }, {
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          version: '0.2.0',
+          downloadUrl: 'https://downloads.example.com/cats-0.2.0.exe',
+        };
+      },
+    }),
+    now: () => new Date('2026-03-24T10:08:00.000Z'),
+  });
+
+  assert.equal(state.status, 'failed');
+  assert.match(state.error ?? '', /allow-listed/);
 });

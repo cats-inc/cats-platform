@@ -13,11 +13,17 @@
 #>
 param()
 
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
 $projectRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 
 Push-Location $projectRoot
 try {
   node .\scripts\build-desktop-installer.mjs --target windows
+  if ($LASTEXITCODE -ne 0) {
+    throw "desktop installer build failed with exit code $LASTEXITCODE"
+  }
 } finally {
   Pop-Location
 }

@@ -4,7 +4,6 @@
   "description": "Flagship Cats suite app backed by cats-runtime.",
   "type": "module",
   "main": "dist-electron/main.js",
-  "types": "dist-server/index.d.ts",
   "scripts": {
     "build": "npm run build:server && npm run build:web && npm run build:host",
     "build:host": "tsc -p tsconfig.electron.json",
@@ -23,7 +22,8 @@
     "dev:server": "tsx watch src/index.ts",
     "dev:web": "vite",
     "preview:web": "vite preview",
-    "start": "node dist-server/index.js",
+    "start": "npm run start:server",
+    "start:server": "node dist-server/index.js",
     "test": "npm run build:server && npm run build:host && npm run build:test-ui && node --test --test-isolation=none tests/**/*.test.js dist-test/*.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.electron.json && tsc --noEmit -p tsconfig.json"
   },

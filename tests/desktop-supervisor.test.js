@@ -108,6 +108,19 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
     config.packageRoot,
     'C:\\Program Files\\Cats\\resources\\app-sidecar',
   );
+  assert.equal(
+    config.paths.preloadScript.endsWith('\\dist-electron\\preload.cjs'),
+    true,
+  );
+});
+
+test('desktop host config rejects invalid host overrides', () => {
+  assert.throws(() => resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_APP_HOST: '127.0.0.1/bad-path',
+    },
+    userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+  }), /Invalid desktop host value/);
 });
 
 test('stopAll preserves the app-before-runtime shutdown order', async () => {

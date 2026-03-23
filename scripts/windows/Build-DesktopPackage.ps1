@@ -23,15 +23,24 @@ param(
   [string]$OutputDir = ''
 )
 
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
 $projectRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 
 Push-Location $projectRoot
 try {
   npm run build | Out-Host
+  if ($LASTEXITCODE -ne 0) {
+    throw "npm run build failed with exit code $LASTEXITCODE"
+  }
   if ($OutputDir) {
     node .\scripts\package-desktop.mjs --platform $Platform --output-dir $OutputDir
   } else {
     node .\scripts\package-desktop.mjs --platform $Platform
+  }
+  if ($LASTEXITCODE -ne 0) {
+    throw "desktop packaging failed with exit code $LASTEXITCODE"
   }
 } finally {
   Pop-Location

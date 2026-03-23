@@ -26,6 +26,14 @@ function createTrayIcon() {
   return nativeImage.createFromDataURL(TRAY_ICON_DATA_URL);
 }
 
+function runTrayAction(action: () => Promise<void>): void {
+  void action().catch((error) => {
+    process.stderr.write(
+      `Desktop tray action failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+  });
+}
+
 export function createDesktopTrayController(
   options: CreateDesktopTrayControllerOptions,
 ): DesktopTrayController {
@@ -44,16 +52,20 @@ export function createDesktopTrayController(
   tray.setContextMenu(Menu.buildFromTemplate([
     {
       label: 'Open Cats',
-      click: async () => {
-        await options.onShowChat();
-        showWindow();
+      click: () => {
+        runTrayAction(async () => {
+          await options.onShowChat();
+          showWindow();
+        });
       },
     },
     {
       label: 'Open Setup',
-      click: async () => {
-        await options.onShowSetup();
-        showWindow();
+      click: () => {
+        runTrayAction(async () => {
+          await options.onShowSetup();
+          showWindow();
+        });
       },
     },
     {

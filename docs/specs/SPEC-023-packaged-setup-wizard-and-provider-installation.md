@@ -51,6 +51,8 @@ The first host-owned slice is already in-repo:
   + `NSIS` installer path
 - Windows packaged installs now also have a host-owned smoke-check script that
   verifies bundled sidecars and the persisted desktop-host bootstrap snapshot
+- the bootstrap bridge now stays sandboxed, validates host-controlled actions,
+  and only accepts HTTPS update manifests plus allow-listed download hosts
 
 What remains open for the packaging workstream is the packaged-distribution and
 host-operations depth around that first slice:

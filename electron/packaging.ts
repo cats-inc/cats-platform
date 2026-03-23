@@ -10,13 +10,7 @@ import type {
   DesktopUpdateChannel,
 } from './contracts.js';
 
-interface CreateDesktopPackagingPlanOptions {
-  generatedAt?: Date;
-  outputRoot?: string;
-  platforms?: DesktopPackagingPlatform[] | null;
-}
-
-interface StageDesktopPackagingOutputsOptions {
+interface DesktopPackagingPlanOptions {
   generatedAt?: Date;
   outputRoot?: string;
   platforms?: DesktopPackagingPlatform[] | null;
@@ -128,7 +122,7 @@ function buildPackagingTarget(
   const stageDirectory = join(outputRoot, 'targets', target.id);
   const sharedAssets = [
     { id: 'electron-main', relativePath: 'shared/dist-electron/main.js', role: 'electron_host' as const },
-    { id: 'electron-preload', relativePath: 'shared/dist-electron/preload.js', role: 'electron_host' as const },
+    { id: 'electron-preload', relativePath: 'shared/dist-electron/preload.cjs', role: 'electron_host' as const },
     { id: 'app-server', relativePath: 'shared/dist-server/index.js', role: 'app_server' as const },
     { id: 'app-renderer', relativePath: 'shared/dist/index.html', role: 'app_renderer' as const },
     { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/dist/index.js', role: 'runtime_sidecar' as const },
@@ -140,7 +134,7 @@ function buildPackagingTarget(
     platform: target.platform,
     arch: target.arch,
     installerFormats: target.installerFormats,
-    artifactBaseName: `cats-${config.appPort}-${target.id}`,
+    artifactBaseName: `cats-${target.id}`,
     stageDirectory,
     artifacts: sharedAssets.map((artifact) => ({
       ...artifact,
@@ -151,7 +145,7 @@ function buildPackagingTarget(
 
 export function createDesktopPackagingPlan(
   config: DesktopHostConfig,
-  options: CreateDesktopPackagingPlanOptions = {},
+  options: DesktopPackagingPlanOptions = {},
 ): DesktopPackagingPlan {
   const generatedAt = options.generatedAt ?? new Date();
   const outputRoot = resolve(options.outputRoot ?? defaultOutputRoot(config));
@@ -219,7 +213,7 @@ async function writeInstallerManifest(
 
 export async function stageDesktopPackagingOutputs(
   config: DesktopHostConfig,
-  options: StageDesktopPackagingOutputsOptions = {},
+  options: DesktopPackagingPlanOptions = {},
 ): Promise<DesktopPackagingPlan> {
   const generatedAt = options.generatedAt ?? new Date();
   const outputRoot = resolve(options.outputRoot ?? defaultOutputRoot(config));
@@ -241,15 +235,21 @@ export async function stageDesktopPackagingOutputs(
   try {
     await ensureRequiredFile(join(runtimeDistRoot, 'index.js'));
     await copyDirectory(runtimeDistRoot, join(outputRoot, 'shared', 'cats-runtime', 'dist'));
-  } catch {
-    // Keep the packaging contract explicit even when the sidecar build is not present yet.
+  } catch (error) {
+    throw new Error(
+      `Desktop packaging requires a bundled cats-runtime sidecar at ${join(runtimeDistRoot, 'index.js')}. `
+      + `Build cats-runtime first before staging or packaging the desktop host.`,
+      { cause: error },
+    );
   }
 
   await writeFile(join(outputRoot, 'desktop-package-plan.json'), JSON.stringify(plan, null, 2));
   await writeFile(join(outputRoot, 'shared', 'asset-map.json'), JSON.stringify({
-    packageRoot: config.packageRoot,
-    runtimePackageRoot: config.runtimePackageRoot,
     copiedAt: generatedAt.toISOString(),
+    roots: {
+      app: '.',
+      runtime: '../cats-runtime',
+    },
     assets: [
       {
         source: relative(outputRoot, config.paths.appEntryScript),
@@ -265,7 +265,11 @@ export async function stageDesktopPackagingOutputs(
       },
       {
         source: relative(outputRoot, config.paths.preloadScript),
-        target: 'shared/dist-electron/preload.js',
+        target: 'shared/dist-electron/preload.cjs',
+      },
+      {
+        source: relative(outputRoot, join(runtimeDistRoot, 'index.js')),
+        target: 'shared/cats-runtime/dist/index.js',
       },
     ],
   }, null, 2));

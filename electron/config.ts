@@ -5,6 +5,7 @@ import {
   resolveDesktopUpdateConfig,
   type DesktopUpdateConfig,
 } from './update.js';
+import { normalizeDesktopHost } from './security.js';
 
 export interface DesktopHostPaths {
   appEntryScript: string;
@@ -100,11 +101,6 @@ function parsePositiveInt(rawValue: string | undefined, fallback: number): numbe
   return parsed;
 }
 
-function normalizeHost(rawValue: string | undefined, fallback: string): string {
-  const trimmed = rawValue?.trim();
-  return trimmed || fallback;
-}
-
 function parseBoolean(rawValue: string | undefined, fallback: boolean): boolean {
   const trimmed = rawValue?.trim().toLowerCase();
   if (!trimmed) {
@@ -145,12 +141,15 @@ export function resolveDesktopHostConfig(
   const runtimePackageRoot = resolve(
     env.CATS_DESKTOP_RUNTIME_ROOT?.trim() || layout.runtimePackageRoot,
   );
-  const appHost = normalizeHost(env.CATS_DESKTOP_APP_HOST || env.CATS_HOST, DEFAULT_LOCAL_HOST);
+  const appHost = normalizeDesktopHost(
+    env.CATS_DESKTOP_APP_HOST || env.CATS_HOST,
+    DEFAULT_LOCAL_HOST,
+  );
   const appPort = parsePositiveInt(
     env.CATS_DESKTOP_APP_PORT || env.CATS_PORT,
     DEFAULT_APP_PORT,
   );
-  const runtimeHost = normalizeHost(
+  const runtimeHost = normalizeDesktopHost(
     env.CATS_DESKTOP_RUNTIME_HOST || env.CATS_RUNTIME_HOST,
     DEFAULT_LOCAL_HOST,
   );
@@ -206,7 +205,7 @@ export function resolveDesktopHostConfig(
       runtimeEntryScript: resolve(
         env.CATS_DESKTOP_RUNTIME_ENTRY?.trim() || join(runtimePackageRoot, 'dist', 'index.js'),
       ),
-      preloadScript: resolve(join(hostPackageRoot, 'dist-electron', 'preload.js')),
+      preloadScript: resolve(join(hostPackageRoot, 'dist-electron', 'preload.cjs')),
       appStatePath: resolve(
         env.CATS_DESKTOP_STATE_PATH?.trim()
           || join(userDataDir, 'config', 'chat-state.local.json'),

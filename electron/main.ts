@@ -18,6 +18,7 @@ import {
   type RuntimeDiagnosticsHealthPayload,
   type RuntimeProviderDiagnosticsPayload,
 } from './readiness.js';
+import { isDesktopHostActionId, validateDesktopUrl } from './security.js';
 import { createDesktopTrayController, type DesktopTrayController } from './tray.js';
 import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
 
@@ -31,6 +32,7 @@ let trayController: DesktopTrayController | null = null;
 let stateStore: DesktopHostStateStore | null = null;
 let backgroundState: DesktopBackgroundState | null = null;
 let updateState: DesktopUpdateState | null = null;
+let bootstrapPageVisible = false;
 
 function encodeDataUrl(html: string): string {
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
@@ -40,9 +42,9 @@ async function ensureBootstrapPageVisible(): Promise<void> {
   if (!mainWindow) {
     return;
   }
-  const bootstrapUrl = encodeDataUrl(buildDesktopBootstrapPage());
-  if (mainWindow.webContents.getURL() !== bootstrapUrl) {
-    await mainWindow.loadURL(bootstrapUrl);
+  if (!bootstrapPageVisible) {
+    await mainWindow.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));
+    bootstrapPageVisible = true;
   }
 }
 
@@ -90,7 +92,10 @@ async function showMainWindow(url?: string): Promise<void> {
     return;
   }
   if (url) {
-    await mainWindow.loadURL(url);
+    await mainWindow.loadURL(validateDesktopUrl(url, {
+      allowedHosts: hostConfig ? [hostConfig.appHost] : null,
+    }));
+    bootstrapPageVisible = false;
   }
   mainWindow.show();
   mainWindow.focus();
@@ -138,7 +143,7 @@ async function refreshBootstrapSnapshot(): Promise<DesktopBootstrapSnapshot> {
     throw new Error('Desktop host is not initialized.');
   }
 
-  const [appHealth, appShell, runtimeHealth, providerDiagnostics] = await Promise.all([
+  const [appHealth, appShell, runtimeHealth, providerDiagnostics] = await Promise.allSettled([
     fetchJson<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`),
     fetchJson<AppShellPayload>(`${hostConfig.appBaseUrl}/api/app-shell`),
     fetchJson<RuntimeDiagnosticsHealthPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/health`),
@@ -148,10 +153,10 @@ async function refreshBootstrapSnapshot(): Promise<DesktopBootstrapSnapshot> {
   return buildDesktopBootstrapSnapshot({
     config: hostConfig,
     services: supervisor.getSnapshots(),
-    appHealth,
-    appShell,
-    runtimeHealth,
-    providerDiagnostics,
+    appHealth: appHealth.status === 'fulfilled' ? appHealth.value : null,
+    appShell: appShell.status === 'fulfilled' ? appShell.value : null,
+    runtimeHealth: runtimeHealth.status === 'fulfilled' ? runtimeHealth.value : null,
+    providerDiagnostics: providerDiagnostics.status === 'fulfilled' ? providerDiagnostics.value : null,
     background: backgroundState ?? undefined,
     updates: updateState ?? undefined,
     hostStatePath: hostConfig.paths.hostStatePath,
@@ -230,7 +235,12 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
     return await bootstrapDesktopHost(true);
   }
   if (actionId === 'open_runtime_diagnostics') {
-    await shell.openExternal(`${hostConfig.runtimeBaseUrl}/diagnostics/health`);
+    await shell.openExternal(validateDesktopUrl(
+      `${hostConfig.runtimeBaseUrl}/diagnostics/health`,
+      {
+        allowedHosts: [hostConfig.runtimeHost],
+      },
+    ));
     return latestSnapshot ?? buildSnapshot(null);
   }
   if (actionId === 'open_setup') {
@@ -263,14 +273,12 @@ async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindo
       preload: config.paths.preloadScript,
       contextIsolation: true,
       nodeIntegration: false,
-      // The bootstrap preload is compiled as ESM today, so the first host slice
-      // keeps Electron sandboxing off rather than adding a separate CJS preload
-      // build just for the bootstrap bridge.
-      sandbox: false,
+      sandbox: true,
     },
   });
 
   await window.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));
+  bootstrapPageVisible = true;
   window.once('ready-to-show', () => {
     window.show();
   });
@@ -347,7 +355,10 @@ async function main(): Promise<void> {
   ipcMain.handle('cats-host:get-snapshot', async () => {
     return latestSnapshot ?? buildSnapshot(null);
   });
-  ipcMain.handle('cats-host:run-action', async (_event, actionId: DesktopHostActionId) => {
+  ipcMain.handle('cats-host:run-action', async (_event, actionId: unknown) => {
+    if (!isDesktopHostActionId(actionId)) {
+      throw new Error(`Invalid desktop host action: ${String(actionId)}`);
+    }
     return await runHostAction(actionId);
   });
 
@@ -393,6 +404,5 @@ async function main(): Promise<void> {
 
 void main().catch((error) => {
   process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
-  process.exitCode = 1;
   process.exit(1);
 });

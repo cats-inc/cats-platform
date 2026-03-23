@@ -24,13 +24,14 @@ const desktopConfig = {
   update: {
     channel: 'stable',
     manifestUrl: 'https://updates.example.com/cats/stable.json',
+    allowedHosts: [],
     checkOnStartup: false,
     autoDownload: false,
   },
   paths: {
     appEntryScript: 'cats/dist-server/index.js',
     runtimeEntryScript: 'cats-runtime/dist/index.js',
-    preloadScript: 'cats/dist-electron/preload.js',
+    preloadScript: 'cats/dist-electron/preload.cjs',
     appStatePath: 'cats/config/chat-state.local.json',
     runtimeDataDir: 'cats/.desktop/runtime/data',
     runtimeSessionBaseDir: 'cats/.desktop/runtime/sessions',

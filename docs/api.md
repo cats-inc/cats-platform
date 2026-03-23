@@ -668,7 +668,9 @@ the app listener is live.
 The Electron host now keeps a host-readable JSON snapshot at
 `CATS_DESKTOP_HOST_STATE_PATH` (default:
 `<userData>/desktop-host/state.json`). This is not a public HTTP route, but it
-is part of the packaged host contract.
+is part of the packaged host contract. The bootstrap renderer itself now stays
+behind a sandboxed preload bridge, and the host only exposes snapshot reads
+plus a validated action seam.
 
 The persisted snapshot mirrors the Electron bootstrap bridge payload and
 includes:
@@ -697,7 +699,10 @@ includes:
   - `currentVersion`
   - `latestVersion`
   - `manifestUrl`
+    - HTTPS only
   - `downloadUrl`
+    - HTTPS only
+    - must stay on the manifest host or an explicit allow-list
 - `packaging`:
   - packaging `strategy`
   - staged target matrix for Windows/macOS/Linux

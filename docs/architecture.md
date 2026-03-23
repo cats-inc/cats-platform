@@ -191,12 +191,14 @@ transport state stays in `src/platform/transports/telegram/*`.
   `scripts/*`
 - **Responsibilities**:
   - supervise local `cats-runtime` + `cats` sidecars
+  - keep the bootstrap renderer sandboxed behind a narrow preload bridge
   - persist a host-readable bootstrap/remediation snapshot to desktop user data
   - keep a tray/background lifecycle for packaged runs
   - stage deterministic Windows/macOS/Linux packaging outputs under
     `build/desktop-packaging`
   - produce a Windows NSIS installer by bundling the Electron host plus staged
-    app/runtime sidecars
+    app/runtime sidecars and by failing packaging when the runtime sidecar is
+    missing
   - define the first installer/update contract without requiring a visible UI
     redesign
 

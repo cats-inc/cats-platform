@@ -30,6 +30,8 @@ Desktop-host regression coverage now also checks:
 - desktop bootstrap phase selection (`ready_for_setup`, `ready_for_chat`,
   `needs_prerequisites`)
 - managed child-process launch specs for `cats` and `cats-runtime`
+- Electron host security guards for sandboxed preload usage, validated desktop
+  action ids, validated host overrides, and validated update URLs
 - Windows installer smoke-check script coverage for bundled sidecars and the
   persisted desktop-host state contract
 - host build smoke through `npm run build:host`

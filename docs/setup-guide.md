@@ -177,6 +177,10 @@ The desktop host now also keeps a host-readable state file at
 - update-channel status
 - packaging-plan metadata
 
+The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
+and only exposes the narrow desktop action/snapshot IPC surface through a
+preload bridge.
+
 ### Desktop Packaging Stage
 
 To generate staged packaging outputs without changing the visible renderer UI:
@@ -258,6 +262,8 @@ Current limitations of the first real installer slice:
 - unsigned build
 - no branded icon yet
 - update install/apply remains manual
+- update manifests must be HTTPS, and any `downloadUrl` must stay on the
+  manifest host or a host listed in `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS`
 - provider-install elevation/resume is not yet integrated into the installer
 
 ## Common Issues

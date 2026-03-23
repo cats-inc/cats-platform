@@ -1,9 +1,11 @@
 import type { DesktopUpdateChannel, DesktopUpdateState } from './contracts.js';
 import { DESKTOP_HOST_VERSION } from './contracts.js';
+import { parseDesktopAllowedHosts, validateDesktopUrl } from './security.js';
 
 export interface DesktopUpdateConfig {
   channel: DesktopUpdateChannel;
   manifestUrl: string | null;
+  allowedHosts: string[];
   checkOnStartup: boolean;
   autoDownload: boolean;
 }
@@ -95,9 +97,11 @@ export function createDefaultDesktopUpdateState(
 export function resolveDesktopUpdateConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): DesktopUpdateConfig {
+  const manifestUrl = env.CATS_DESKTOP_UPDATE_MANIFEST_URL?.trim() || null;
   return {
     channel: normalizeChannel(env.CATS_DESKTOP_UPDATE_CHANNEL),
-    manifestUrl: env.CATS_DESKTOP_UPDATE_MANIFEST_URL?.trim() || null,
+    manifestUrl: manifestUrl ? validateDesktopUrl(manifestUrl, { httpsOnly: true }) : null,
+    allowedHosts: parseDesktopAllowedHosts(env.CATS_DESKTOP_UPDATE_ALLOWED_HOSTS),
     checkOnStartup: parseBoolean(env.CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP, false),
     autoDownload: parseBoolean(env.CATS_DESKTOP_UPDATE_AUTO_DOWNLOAD, false),
   };
@@ -115,7 +119,9 @@ export async function checkForDesktopUpdates(
 
   const fetchImpl = dependencies.fetchImpl ?? fetch;
   try {
-    const response = await fetchImpl(config.manifestUrl);
+    const validatedManifestUrl = validateDesktopUrl(config.manifestUrl, { httpsOnly: true });
+    const manifestUrl = new URL(validatedManifestUrl);
+    const response = await fetchImpl(validatedManifestUrl);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -124,6 +130,13 @@ export async function checkForDesktopUpdates(
     const hasUpdate = latestVersion !== null
       && compareVersions(DESKTOP_HOST_VERSION, latestVersion) < 0;
     const status = hasUpdate ? 'update_available' : 'up_to_date';
+
+    const downloadUrl = manifest.downloadUrl?.trim()
+      ? validateDesktopUrl(manifest.downloadUrl.trim(), {
+        httpsOnly: true,
+        allowedHosts: [manifestUrl.hostname, ...config.allowedHosts],
+      })
+      : null;
 
     return {
       channel: config.channel,
@@ -135,8 +148,8 @@ export async function checkForDesktopUpdates(
           ? `Update ${latestVersion} is available on the ${config.channel} channel.`
           : `Cats desktop host is up to date on the ${config.channel} channel.`),
       lastCheckedAt: now.toISOString(),
-      manifestUrl: config.manifestUrl,
-      downloadUrl: manifest.downloadUrl?.trim() || null,
+      manifestUrl: validatedManifestUrl,
+      downloadUrl,
       error: null,
     };
   } catch (error) {

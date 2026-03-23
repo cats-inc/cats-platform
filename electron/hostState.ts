@@ -119,7 +119,7 @@ export class DesktopHostStateStore {
     updates: DesktopUpdateState;
     packaging: DesktopPackagingPlan;
   }): Promise<void> {
-    this.writeQueue = this.writeQueue.then(async () => {
+    const writeOperation = this.writeQueue.catch(() => undefined).then(async () => {
       await mkdir(dirname(this.statePath), { recursive: true });
       const payload: DesktopHostPersistedState = {
         snapshot: input.snapshot,
@@ -130,7 +130,8 @@ export class DesktopHostStateStore {
       };
       await writeFile(this.statePath, JSON.stringify(payload, null, 2));
     });
+    this.writeQueue = writeOperation.catch(() => undefined);
 
-    return await this.writeQueue;
+    return await writeOperation;
   }
 }

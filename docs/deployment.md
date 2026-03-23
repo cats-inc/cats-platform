@@ -119,7 +119,8 @@ npm run desktop:package:windows
   - map failures onto structured host state plus resumable remediation actions
 - update-channel contract in this slice:
   - manual-check skeleton only
-  - optional manifest URL via env
+  - optional HTTPS manifest URL via env
+  - download URLs must stay on the manifest host or an explicit allow-list
   - no auto-download or silent apply yet
 - Windows packaging mode in this slice:
   - `electron-builder`
@@ -184,7 +185,8 @@ Desktop-host specific overrides:
 | `CATS_DESKTOP_KEEP_SERVICES_RUNNING` | No | Keep sidecars alive after the window hides |
 | `CATS_DESKTOP_CLOSE_BEHAVIOR` | No | `quit` or `minimize_to_tray` |
 | `CATS_DESKTOP_UPDATE_CHANNEL` | No | `stable`, `beta`, or `alpha` |
-| `CATS_DESKTOP_UPDATE_MANIFEST_URL` | No | Optional update-manifest URL for manual checks |
+| `CATS_DESKTOP_UPDATE_MANIFEST_URL` | No | Optional HTTPS update-manifest URL for manual checks |
+| `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS` | No | Optional comma-separated host allow-list for update download URLs beyond the manifest host |
 | `CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP` | No | Run the manual-check skeleton during startup |
 | `CATS_DESKTOP_UPDATE_AUTO_DOWNLOAD` | No | Reserved toggle; remains `false` in this slice |
 
@@ -202,6 +204,9 @@ Desktop-host specific overrides:
 - **Desktop host state**: JSON snapshot at `CATS_DESKTOP_HOST_STATE_PATH`
   containing bootstrap phase, issues, remediation actions, progress steps,
   tray/background state, update status, and packaging metadata
+- **Desktop security posture**: sandboxed preload bridge, validated host env
+  overrides, validated host action ids, and HTTP/HTTPS-only host-controlled
+  external URLs
 
 ## Troubleshooting
 
@@ -237,6 +242,13 @@ installer, but Windows still treats it as unsigned.
 **Solution**: This is expected in the current slice. The installer is now real
 and testable, but signing/editing is still disabled so the build can run
 without the `winCodeSign` symlink issue and without release certificates.
+
+### Issue 5: Desktop update checks fail even though the manifest URL exists
+
+**Symptoms**: The host reports update-check failure after fetching the manifest.
+**Solution**: The current desktop host only accepts HTTPS update manifests, and
+any `downloadUrl` returned by that manifest must stay on the manifest host or a
+host listed in `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS`.
 
 ### Issue 5: The installer finishes, but you need a quick post-install verification
 

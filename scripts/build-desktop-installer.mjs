@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
+import { access } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -36,20 +37,64 @@ function parseArgs(argv) {
   return { help: false, target };
 }
 
-function runCommand(command, args, cwd) {
+async function resolveNodeCliScript(command) {
+  const scriptName = command === 'npm' ? 'npm-cli.js' : 'npx-cli.js';
+  const candidates = [];
+
+  if (command === 'npm' && process.env.npm_execpath?.trim()) {
+    candidates.push(resolve(process.env.npm_execpath.trim()));
+  }
+
+  const nodeDir = dirname(process.execPath);
+  candidates.push(resolve(nodeDir, 'node_modules', 'npm', 'bin', scriptName));
+  candidates.push(resolve(nodeDir, '..', 'node_modules', 'npm', 'bin', scriptName));
+
+  for (const candidate of candidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // Try the next candidate.
+    }
+  }
+
+  return null;
+}
+
+async function resolveCommandInvocation(command, args) {
+  if (command === 'npm' || command === 'npx') {
+    const cliScript = await resolveNodeCliScript(command);
+    if (cliScript) {
+      return {
+        command: process.execPath,
+        args: [cliScript, ...args],
+      };
+    }
+  }
+
+  return {
+    command,
+    args,
+  };
+}
+
+async function runCommand(command, args, cwd) {
+  const invocation = await resolveCommandInvocation(command, args);
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(invocation.command, invocation.args, {
       cwd,
       env: process.env,
       stdio: 'inherit',
-      shell: process.platform === 'win32',
+      shell: false,
     });
     child.once('exit', (code) => {
       if (code === 0) {
         resolvePromise();
         return;
       }
-      reject(new Error(`${command} ${args.join(' ')} exited with code ${code ?? 'null'}`));
+      reject(new Error(
+        `${invocation.command} ${invocation.args.join(' ')} exited with code ${code ?? 'null'}`,
+      ));
     });
     child.once('error', reject);
   });
