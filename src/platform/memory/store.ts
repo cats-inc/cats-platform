@@ -7,6 +7,7 @@ import type {
   CanonicalMemorySnapshot,
   CanonicalMemorySubjectKind,
 } from './contracts.js';
+import { isErrnoException, uniqueStrings } from './utils.js';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -30,10 +31,6 @@ function readStringArray(value: unknown): string[] {
   }
 
   return value.filter((item): item is string => typeof item === 'string');
-}
-
-function uniqueStrings(values: string[]): string[] {
-  return values.filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
 }
 
 function createEmptySnapshot(nowIso: string): CanonicalMemorySnapshot {
@@ -170,16 +167,33 @@ export function deriveCanonicalMemoryStatePath(chatStatePath: string): string {
 }
 
 export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
+  private mutationQueue: Promise<void> = Promise.resolve();
+
   constructor(private readonly snapshotPath: string) {}
+
+  private async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = this.mutationQueue;
+    let release: () => void = () => {};
+    this.mutationQueue = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+    }
+  }
 
   private async readOrCreateSnapshot(): Promise<CanonicalMemorySnapshot> {
     const nowIso = new Date().toISOString();
     try {
-      return normalizeSnapshot(
-        JSON.parse(await readFile(this.snapshotPath, 'utf-8')) as unknown,
-        nowIso,
-      );
-    } catch {
+      const rawSnapshot = await readFile(this.snapshotPath, 'utf-8');
+      return normalizeSnapshot(JSON.parse(rawSnapshot) as unknown, nowIso);
+    } catch (error) {
+      if (!isErrnoException(error) || error.code !== 'ENOENT') {
+        throw error;
+      }
       const snapshot = createEmptySnapshot(nowIso);
       await this.writeSnapshot(snapshot);
       return snapshot;
@@ -192,6 +206,7 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
   }
 
   async readSnapshot(): Promise<CanonicalMemorySnapshot> {
+    await this.mutationQueue;
     return structuredClone(await this.readOrCreateSnapshot());
   }
 
@@ -199,6 +214,7 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
     subjectKind?: CanonicalMemorySubjectKind;
     subjectId?: string;
   }): Promise<CanonicalMemoryRecord[]> {
+    await this.mutationQueue;
     const snapshot = await this.readOrCreateSnapshot();
     return structuredClone(snapshot.records.filter((record) => {
       if (filter?.subjectKind && record.subjectKind !== filter.subjectKind) {
@@ -215,36 +231,38 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
     records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
     now: Date = new Date(),
   ): Promise<CanonicalMemoryRecord[]> {
-    const snapshot = await this.readOrCreateSnapshot();
-    const nowIso = now.toISOString();
-    const persisted: CanonicalMemoryRecord[] = [];
+    return this.runExclusive(async () => {
+      const snapshot = await this.readOrCreateSnapshot();
+      const nowIso = now.toISOString();
+      const persisted: CanonicalMemoryRecord[] = [];
 
-    for (const record of records.map((candidate) => prepareRecord(candidate))) {
-      const existingIndex = snapshot.records.findIndex((candidate) => candidate.id === record.id);
-      if (existingIndex === -1) {
-        snapshot.records.unshift(record);
-        persisted.push(structuredClone(record));
-        continue;
+      for (const record of records.map((candidate) => prepareRecord(candidate))) {
+        const existingIndex = snapshot.records.findIndex((candidate) => candidate.id === record.id);
+        if (existingIndex === -1) {
+          snapshot.records.unshift(record);
+          persisted.push(structuredClone(record));
+          continue;
+        }
+
+        const existing = snapshot.records[existingIndex]!;
+        const nextRecord: CanonicalMemoryRecord = {
+          ...existing,
+          ...record,
+          tags: uniqueStrings([...existing.tags, ...record.tags]),
+          keywords: uniqueStrings([...existing.keywords, ...record.keywords]),
+          sourceRefs: uniqueStrings([...existing.sourceRefs, ...record.sourceRefs]),
+          createdAt: existing.createdAt,
+          updatedAt: nowIso,
+          lastRetrievedAt: existing.lastRetrievedAt,
+        };
+        snapshot.records[existingIndex] = nextRecord;
+        persisted.push(structuredClone(nextRecord));
       }
 
-      const existing = snapshot.records[existingIndex]!;
-      const nextRecord: CanonicalMemoryRecord = {
-        ...existing,
-        ...record,
-        tags: uniqueStrings([...existing.tags, ...record.tags]),
-        keywords: uniqueStrings([...existing.keywords, ...record.keywords]),
-        sourceRefs: uniqueStrings([...existing.sourceRefs, ...record.sourceRefs]),
-        createdAt: existing.createdAt,
-        updatedAt: nowIso,
-        lastRetrievedAt: existing.lastRetrievedAt,
-      };
-      snapshot.records[existingIndex] = nextRecord;
-      persisted.push(structuredClone(nextRecord));
-    }
-
-    snapshot.updatedAt = nowIso;
-    await this.writeSnapshot(snapshot);
-    return persisted;
+      snapshot.updatedAt = nowIso;
+      await this.writeSnapshot(snapshot);
+      return persisted;
+    });
   }
 
   async touchRecords(recordIds: string[], now: Date = new Date()): Promise<void> {
@@ -252,28 +270,31 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
       return;
     }
 
-    const snapshot = await this.readOrCreateSnapshot();
-    const nowIso = now.toISOString();
-    let touched = false;
+    await this.runExclusive(async () => {
+      const snapshot = await this.readOrCreateSnapshot();
+      const nowIso = now.toISOString();
+      const recordIdSet = new Set(recordIds);
+      let touched = false;
 
-    snapshot.records = snapshot.records.map((record) => {
-      if (!recordIds.includes(record.id)) {
-        return record;
+      snapshot.records = snapshot.records.map((record) => {
+        if (!recordIdSet.has(record.id)) {
+          return record;
+        }
+        touched = true;
+        return {
+          ...record,
+          lastRetrievedAt: nowIso,
+          updatedAt: nowIso,
+        };
+      });
+
+      if (!touched) {
+        return;
       }
-      touched = true;
-      return {
-        ...record,
-        lastRetrievedAt: nowIso,
-        updatedAt: nowIso,
-      };
+
+      snapshot.updatedAt = nowIso;
+      await this.writeSnapshot(snapshot);
     });
-
-    if (!touched) {
-      return;
-    }
-
-    snapshot.updatedAt = nowIso;
-    await this.writeSnapshot(snapshot);
   }
 }
 

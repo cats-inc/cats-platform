@@ -7,12 +7,7 @@ import type {
   CompanionSourceRecord,
 } from './contracts.js';
 import type { MemoryRetrievalContext } from '../../../platform/memory/contracts.js';
-
-function uniqueStrings(values: Array<string | null | undefined>): string[] {
-  return values
-    .map((value) => value?.trim() ?? '')
-    .filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
-}
+import { uniqueStrings } from '../../../platform/memory/utils.js';
 
 function sortNewestFirst<T extends { updatedAt: string }>(records: T[]): T[] {
   return [...records].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));

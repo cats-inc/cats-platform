@@ -483,7 +483,7 @@ Canonical routes use structured errors:
 ```
 
 Codes: `chat_not_found`, `channel_not_found`, `cat_not_found`,
-`assignment_not_found`, `bad_request`.
+`assignment_not_found`, `memory_not_found`, `bad_request`.
 
 ---
 

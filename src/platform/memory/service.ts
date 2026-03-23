@@ -20,12 +20,6 @@ import {
 } from './extraction.js';
 import { buildMemoryRetrievalContext } from './retrieval.js';
 
-function uniqueStrings(values: Array<string | null | undefined>): string[] {
-  return values
-    .map((value) => value?.trim() ?? '')
-    .filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
-}
-
 export interface CatsMemoryService {
   listCanonicalRecords(filter?: {
     subjectKind?: CanonicalMemoryRecord['subjectKind'];
@@ -230,30 +224,6 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     const now = input.now ?? new Date();
     const state = await this.chatStore.read();
     const channel = requireChannel(state, input.channelId);
-    const channelView: ChatChannelView = {
-      ...structuredClone(channel),
-      assignedCats: channel.catAssignments
-        .filter((assignment) => assignment.status === 'active')
-        .map((assignment) => {
-          const cat = state.cats.find((candidate) => candidate.id === assignment.catId);
-          return cat
-            ? {
-                catId: cat.id,
-                name: cat.name,
-                roles: structuredClone(cat.roles),
-                skillProfile: cat.skillProfile,
-                mcpProfile: cat.mcpProfile,
-                status: assignment.status,
-                joinedAt: assignment.joinedAt,
-                leftAt: assignment.leftAt,
-                avatarColor: cat.avatarColor,
-                execution: structuredClone(assignment.execution),
-                memory: structuredClone(cat.memory),
-              }
-            : null;
-        })
-        .filter((cat): cat is ChatChannelView['assignedCats'][number] => cat !== null),
-    };
     const cat = input.catId
       ? state.cats.find((candidate) => candidate.id === input.catId) ?? null
       : null;
@@ -262,11 +232,11 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       return this.buildCompanionRetrievalContext({
         cat,
         channel: {
-          id: channelView.id,
-          title: channelView.title,
-          topic: channelView.topic,
-          workingMemory: channelView.workingMemory,
-          roomRouting: channelView.roomRouting,
+          id: channel.id,
+          title: channel.title,
+          topic: channel.topic,
+          workingMemory: channel.workingMemory,
+          roomRouting: channel.roomRouting,
         },
         companionStore: input.companionStore,
         now,

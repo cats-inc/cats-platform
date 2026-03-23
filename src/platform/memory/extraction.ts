@@ -11,16 +11,7 @@ import type {
   CanonicalMemoryRecord,
   MemoryFlushReason,
 } from './contracts.js';
-
-function normalizeWhitespace(value: string): string {
-  return value.replace(/\s+/gu, ' ').trim();
-}
-
-function uniqueStrings(values: Array<string | null | undefined>): string[] {
-  return values
-    .map((value) => normalizeWhitespace(value ?? ''))
-    .filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
-}
+import { normalizeWhitespace, tokenize, uniqueStrings } from './utils.js';
 
 function clampSummary(value: string | null, maxLength = 220): string | null {
   if (!value) {
@@ -38,11 +29,7 @@ function clampSummary(value: string | null, maxLength = 220): string | null {
 }
 
 function keywordsFrom(value: string, extra: string[] = []): string[] {
-  const parts = value
-    .toLowerCase()
-    .split(/[^a-z0-9]+/u)
-    .filter((part) => part.length >= 3);
-  return uniqueStrings([...parts, ...extra]);
+  return uniqueStrings([...tokenize(value), ...extra.map((item) => item.toLowerCase())]);
 }
 
 function baseRecord(input: {

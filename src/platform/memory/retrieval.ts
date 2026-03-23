@@ -9,25 +9,7 @@ import type {
   MemoryRetrievalContext,
   MemoryRetrievalHit,
 } from './contracts.js';
-
-function normalizeWhitespace(value: string): string {
-  return value.replace(/\s+/gu, ' ').trim();
-}
-
-function uniqueStrings(values: Array<string | null | undefined>): string[] {
-  return values
-    .map((value) => normalizeWhitespace(value ?? ''))
-    .filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
-}
-
-function tokenize(value: string): string[] {
-  return uniqueStrings(
-    value
-      .toLowerCase()
-      .split(/[^a-z0-9]+/u)
-      .filter((part) => part.length >= 3),
-  );
-}
+import { tokenize, uniqueStrings } from './utils.js';
 
 function scoreMatch(
   queryTokens: string[],
@@ -160,22 +142,31 @@ export function buildMemoryRetrievalContext(input: {
   ]).join(' | ');
   const queryTokens = tokenize(query);
   const hits: MemoryRetrievalHit[] = [];
+  const fallbackOwnerHints: string[] = [];
 
   for (const record of input.canonicalRecords) {
-    let score = scoreMatch(
+    const candidateTokens = uniqueStrings([
+      record.title,
+      record.content,
+      record.summary,
+      ...record.tags,
+      ...record.keywords,
+    ].filter((value): value is string => typeof value === 'string')).flatMap(tokenize);
+    const matchedScore = scoreMatch(
       queryTokens,
-      uniqueStrings([
-        record.title,
-        record.content,
-        record.summary,
-        ...record.tags,
-        ...record.keywords,
-      ].filter((value): value is string => typeof value === 'string')).flatMap(tokenize),
-      record.subjectKind === 'cat' && record.subjectId === input.catId ? 2 : 0,
+      candidateTokens,
     );
+    let score = matchedScore + (record.subjectKind === 'cat' && record.subjectId === input.catId ? 2 : 0);
 
-    if (record.subjectKind === 'owner') {
-      score += input.includeOwnerProfile === false ? 0 : 2;
+    if (
+      record.subjectKind === 'owner'
+      && input.includeOwnerProfile !== false
+      && matchedScore > 0
+    ) {
+      score += 2;
+    }
+    if (record.subjectKind === 'owner' && input.includeOwnerProfile !== false) {
+      fallbackOwnerHints.push(record.summary ?? record.content);
     }
     if (record.subjectKind === 'channel' && record.subjectId === input.channelId) {
       score += 2;
@@ -228,8 +219,9 @@ export function buildMemoryRetrievalContext(input: {
     sortedHits.map((hit) => hit.summary ?? hit.content),
   ).slice(0, 6);
   const ownerProfileHints = uniqueStrings(
-    ownerHints
-      .map((hit) => hit.summary ?? hit.content),
+    ownerHints.length > 0
+      ? ownerHints.map((hit) => hit.summary ?? hit.content)
+      : fallbackOwnerHints,
   ).slice(0, 4);
   const summary = facts.length > 0
     ? facts.slice(0, 3).join(' | ')

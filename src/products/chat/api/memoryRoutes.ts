@@ -42,6 +42,31 @@ interface FlushMemoryInput {
   reason?: MemoryFlushReason | unknown;
 }
 
+function requestHasJsonBody(context: ChatApiRouteContext): boolean {
+  const transferEncoding = context.request.headers['transfer-encoding'];
+  if (Array.isArray(transferEncoding)) {
+    if (transferEncoding.some((value) => value.trim().length > 0)) {
+      return true;
+    }
+  } else if (
+    typeof transferEncoding === 'string'
+    && transferEncoding.trim().length > 0
+  ) {
+    return true;
+  }
+
+  const contentLengthHeader = context.request.headers['content-length'];
+  const rawContentLength = Array.isArray(contentLengthHeader)
+    ? contentLengthHeader[0]
+    : contentLengthHeader;
+  if (rawContentLength === undefined) {
+    return false;
+  }
+
+  const contentLength = Number.parseInt(rawContentLength, 10);
+  return !Number.isFinite(contentLength) || contentLength > 0;
+}
+
 function validateCategory(value: unknown): value is DurableMemoryCategory {
   return (
     value === 'preference'
@@ -77,14 +102,23 @@ function validateFlushReason(value: unknown): value is MemoryFlushReason | undef
 async function readOptionalFlushBody(
   context: ChatApiRouteContext,
 ): Promise<FlushMemoryInput> {
-  try {
-    return await readJsonBody<FlushMemoryInput>(context.request);
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Request body is required') {
-      return {};
-    }
-    throw error;
+  if (!requestHasJsonBody(context)) {
+    return {};
   }
+  return readJsonBody<FlushMemoryInput>(context.request);
+}
+
+function findCatMemoryRecord(
+  core: { durableMemory: DurableMemoryRecord[] },
+  catId: string,
+  memoryId: string,
+): DurableMemoryRecord | null {
+  const subjectId = createCatActorId(catId);
+  return core.durableMemory.find((record) =>
+    record.id === memoryId
+    && record.subjectType === 'cat'
+    && record.subjectId === subjectId,
+  ) ?? null;
 }
 
 async function handleListCatMemory(
@@ -142,10 +176,15 @@ async function handleCreateCatMemory(
 
 async function handleUpdateCatMemory(
   context: ChatApiRouteContext,
-  _catId: string,
+  catId: string,
   memoryId: string,
 ): Promise<void> {
   try {
+    const core = await context.dependencies.chatStore.readCore();
+    if (!findCatMemoryRecord(core, catId, memoryId)) {
+      sendRestError(context, 404, 'memory_not_found', `Cat memory not found: ${memoryId}`);
+      return;
+    }
     const body = await readJsonBody<UpdateDurableMemoryInput>(context.request);
     const updates: Partial<Pick<DurableMemoryRecord, 'content' | 'confidence' | 'category' | 'sourceRefs'>> = {};
 
@@ -173,7 +212,6 @@ async function handleUpdateCatMemory(
       updates.sourceRefs = Array.isArray(body.sourceRefs) ? body.sourceRefs : [];
     }
 
-    const core = await context.dependencies.chatStore.readCore();
     const nextCore = updateDurableMemory(core, memoryId, updates);
     await context.dependencies.chatStore.writeCore(nextCore);
 
@@ -186,11 +224,15 @@ async function handleUpdateCatMemory(
 
 async function handleDeleteCatMemory(
   context: ChatApiRouteContext,
-  _catId: string,
+  catId: string,
   memoryId: string,
 ): Promise<void> {
   try {
     const core = await context.dependencies.chatStore.readCore();
+    if (!findCatMemoryRecord(core, catId, memoryId)) {
+      sendRestError(context, 404, 'memory_not_found', `Cat memory not found: ${memoryId}`);
+      return;
+    }
     const nextCore = removeDurableMemory(core, memoryId);
     await context.dependencies.chatStore.writeCore(nextCore);
     sendJson(context.response, 200, { deleted: true, memoryId });

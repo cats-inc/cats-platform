@@ -327,3 +327,61 @@ test('direct companion chat routes hydrated companion session context into runti
     assert.ok(channelRetrievalPayload.retrieval.hits.length > 0);
   });
 });
+
+test('cat memory routes reject cross-subject mutations and accept empty flush bodies', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const { cat } = await createCatResponse.json();
+
+    const createOwnerMemoryResponse = await fetch(`${baseUrl}/api/owner/memory`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        category: 'style',
+        content: 'Owner prefers concise updates.',
+      }),
+    });
+    assert.equal(createOwnerMemoryResponse.status, 201);
+    const { memory: ownerMemory } = await createOwnerMemoryResponse.json();
+
+    const updateResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/${ownerMemory.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        content: 'Attempted overwrite',
+      }),
+    });
+    assert.equal(updateResponse.status, 404);
+    const updatePayload = await updateResponse.json();
+    assert.equal(updatePayload.error.code, 'memory_not_found');
+
+    const deleteResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/${ownerMemory.id}`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteResponse.status, 404);
+    const deletePayload = await deleteResponse.json();
+    assert.equal(deletePayload.error.code, 'memory_not_found');
+
+    const ownerMemoryResponse = await fetch(`${baseUrl}/api/owner/memory`);
+    assert.equal(ownerMemoryResponse.status, 200);
+    const ownerMemoryPayload = await ownerMemoryResponse.json();
+    assert.equal(ownerMemoryPayload.records.length, 1);
+
+    const emptyFlushResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/flush`, {
+      method: 'POST',
+    });
+    assert.equal(emptyFlushResponse.status, 200);
+    const emptyFlushPayload = await emptyFlushResponse.json();
+    assert.equal(emptyFlushPayload.flush.reason, 'manual');
+  });
+});
