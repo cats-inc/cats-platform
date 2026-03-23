@@ -306,11 +306,12 @@ async function main(): Promise<void> {
   }
 
   await app.whenReady();
+  const nodeProcess = process as NodeJS.Process & { resourcesPath?: string };
 
   hostConfig = resolveDesktopHostConfig({
     userDataDir: app.getPath('userData'),
     packaged: app.isPackaged,
-    resourcesPath: process.resourcesPath,
+    resourcesPath: nodeProcess.resourcesPath,
   });
   backgroundState = createDesktopBackgroundState(hostConfig);
   updateState = createDefaultDesktopUpdateState(hostConfig.update);

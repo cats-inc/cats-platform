@@ -122,8 +122,12 @@ export function resolveDesktopHostConfig(
     hostPackageRoot,
     options.resourcesPath,
   );
+  const explicitAppEntry = env.CATS_DESKTOP_APP_ENTRY?.trim();
+  const inferredPackageRoot = explicitAppEntry
+    ? resolve(dirname(resolve(explicitAppEntry)), '..')
+    : undefined;
   const packageRoot = resolve(
-    env.CATS_DESKTOP_APP_ROOT?.trim() || layout.appSidecarRoot,
+    env.CATS_DESKTOP_APP_ROOT?.trim() || inferredPackageRoot || layout.appSidecarRoot,
   );
   const runtimePackageRoot = resolve(
     env.CATS_DESKTOP_RUNTIME_ROOT?.trim() || layout.runtimePackageRoot,
@@ -192,7 +196,9 @@ export function resolveDesktopHostConfig(
       runtimeEntryScript: resolve(
         env.CATS_DESKTOP_RUNTIME_ENTRY?.trim() || join(runtimePackageRoot, 'dist', 'index.js'),
       ),
-      preloadScript: resolve(join(hostPackageRoot, 'dist-electron', 'preload.cjs')),
+      preloadScript: resolve(
+        env.CATS_DESKTOP_PRELOAD_SCRIPT?.trim() || join(packageRoot, 'dist-electron', 'preload.cjs'),
+      ),
       appStatePath: resolve(
         env.CATS_DESKTOP_STATE_PATH?.trim()
           || join(userDataDir, 'config', 'chat-state.local.json'),
