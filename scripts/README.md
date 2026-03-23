@@ -32,6 +32,11 @@ These scripts can build the project, create a login auto-start runner, start
 the local built `cats` server, and ensure a public ingress provider is up.
 They still do **not** register Telegram webhooks.
 
+They are intended for webhook-mode/self-hosted ingress scenarios. They are not
+the only future Telegram setup path: the current planning direction is
+polling-first Telegram onboarding, with these helpers remaining optional for
+operators who prefer or require webhook delivery.
+
 The intended flow is:
 
 1. Run the helper for your platform and chosen ingress provider
@@ -39,5 +44,5 @@ The intended flow is:
 3. Use `Settings > Cats` inside the product to manage Telegram bot bindings
    and webhook registration
 
-Tailscale remains the cheaper default for self-hosted use. ngrok is supported
-as an alternative when you prefer or already depend on it.
+Tailscale remains the cheaper default for self-hosted webhook use. ngrok is
+supported as an alternative when you prefer or already depend on it.

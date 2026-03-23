@@ -44,7 +44,7 @@ Open:
 - Renderer: `http://127.0.0.1:5173`
 - API: `http://127.0.0.1:8181/health`
 
-### Optional: auto-start local cats with Tailscale Funnel or ngrok
+### Optional: auto-start local cats with Tailscale Funnel or ngrok for webhook mode
 
 For self-hosted Telegram webhook development, `cats` now includes helper
 scripts that can:
@@ -56,6 +56,14 @@ scripts that can:
 
 They still do **not** register Telegram webhooks. Webhook lifecycle stays in
 `Settings > Cats`.
+
+Current reality:
+
+- the shipped Telegram MVP is still webhook-based
+- the accepted follow-on direction is to add polling-first setup so Telegram
+  can work without any public URL
+- until that polling slice lands, these helpers remain the local path for
+  webhook-mode Telegram development
 
 Choose the helper for your platform and ingress provider:
 
@@ -102,7 +110,7 @@ Requirements:
   - ngrok installed
   - optional `CATS_NGROK_AUTHTOKEN` / `CATS_NGROK_DOMAIN` in `.env`
 
-Recommended flow:
+Recommended webhook-mode flow:
 
 1. Run the helper for your platform and provider
 2. Let the helper register login auto-start for built `cats` + ingress
@@ -155,11 +163,16 @@ errors are also persisted into the channel transcript.
 
 ### Issue 6: Telegram needs a public webhook URL during local development
 
-**Solution**: Run one of the startup helpers from `scripts/windows/`,
-`scripts/linux/`, or `scripts/macos/`. Tailscale Funnel is the cheaper default;
-ngrok is also supported. The helper can keep the local built `cats` server and
-public ingress alive at login. Webhook registration is still product-owned and
-should be managed from `Settings > Cats`.
+**Solution**: The current Telegram MVP is webhook-based, so run one of the
+startup helpers from `scripts/windows/`, `scripts/linux/`, or
+`scripts/macos/` if you want local webhook development. Tailscale Funnel is
+the cheaper default; ngrok is also supported. The helper can keep the local
+built `cats` server and public ingress alive at login. Webhook registration is
+still product-owned and should be managed from `Settings > Cats`.
+
+Longer-term direction: polling-first Telegram setup should remove this public
+URL requirement for the default onboarding path, while keeping these helpers as
+an optional advanced mode.
 
 ---
 

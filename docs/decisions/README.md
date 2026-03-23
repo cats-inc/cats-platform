@@ -44,7 +44,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand](./026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md) | Use cats as the flagship suite name under cats-inc brand | Accepted | 2026-03-21 |
 | [025-make-cats-inc-a-suite-host-with-core-owned-product-projections](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) | Make cats a suite host with core-owned product projections | Accepted | 2026-03-21 |
 | [024-separate-explicit-mentions-from-dynamic-room-workflow](./024-separate-explicit-mentions-from-dynamic-room-workflow.md) | Separate explicit mentions from dynamic room workflow | Accepted | 2026-03-20 |
-| [029-automate-tunnel-and-telegram-webhook-registration](./029-automate-tunnel-and-telegram-webhook-registration.md) | Automate tunnel and Telegram webhook registration | Draft (Pending Review) | 2026-03-23 |
+| [029-automate-tunnel-and-telegram-webhook-registration](./029-automate-tunnel-and-telegram-webhook-registration.md) | Adopt polling-first Telegram setup with optional public ingress helpers | Draft (Pending Review) | 2026-03-23 |
 | [023-own-budget-policy-and-cost-control-in-product](./023-own-budget-policy-and-cost-control-in-product.md) | Own budget policy and cost control in product | Accepted | 2026-03-20 |
 | [022-own-chat-delivery-policy-in-product](./022-own-chat-delivery-policy-in-product.md) | Own chat delivery policy in product | Accepted | 2026-03-20 |
 | [021-keep-packaged-setup-and-provider-installation-in-the-host](./021-keep-packaged-setup-and-provider-installation-in-the-host.md) | Keep packaged setup and provider installation in the host | Accepted | 2026-03-20 |
@@ -81,5 +81,4 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 *Last updated: 2026-03-23*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*
-
 

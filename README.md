@@ -59,6 +59,8 @@ several Phase 3 items remain:
 
 - richer orchestrator automation beyond explicit `@mention` routing
 - split-view chat surfaces for preview/debug context
+- polling-first Telegram onboarding so bot-token setup does not require public
+  ingress by default
 - deeper owner approval semantics, acknowledge/retry hooks, automatic resume
   after decisions, and richer live runtime state
 - richer first-run remediation and packaged onboarding beyond the current

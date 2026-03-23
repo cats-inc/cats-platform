@@ -1,7 +1,8 @@
-# ADR-029: Keep public ingress external while Cats owns Telegram webhook lifecycle
+# ADR-029: Adopt polling-first Telegram setup with optional public ingress helpers
 
-> The product should own Telegram webhook registration and diagnostics, while
-> public HTTPS ingress may be prepared outside the server process.
+> `cats` should default to Telegram long polling for the first usable setup
+> path, while keeping webhook registration and public ingress helpers as an
+> optional advanced mode.
 
 ## Status
 
@@ -13,31 +14,58 @@ Draft (Pending Review)
 
 ## Context
 
-The current Telegram experience still has two separate problems:
+The current Telegram MVP in `cats` already ships a webhook ingress seam and
+outbound reply flow, but that is not yet the right default onboarding path for
+local or self-hosted operators.
 
-1. A local `cats` server is not publicly reachable by default, so Telegram
-   cannot deliver webhook updates until the operator provides a public HTTPS
-   URL.
-2. Once a public URL exists, operators should not need to manually call
-   Telegram `setWebhook` / `deleteWebhook` with curl or raw API requests.
+For a self-hosted chat app, requiring a public HTTPS URL before Telegram can
+work creates too much setup friction:
 
-These concerns do not need to live in the same implementation surface.
-The product can keep webhook lifecycle in `cats`, while using an external
-public ingress helper for the first slice.
+1. the operator must first expose the local `cats` server to the internet
+2. the operator must keep that ingress alive across app restarts or login
+3. the product must then register or re-register Telegram webhooks against that
+   public URL
 
-This also aligns better with the current packaging boundary from ADR-021:
-bootstrap/setup helpers may live outside the core server process, while the
-product UI/API remains responsible for user-facing integration lifecycle.
+OpenClaw demonstrates a simpler first experience: Telegram can work with just a
+bot token by using long polling (`getUpdates`) instead of webhook delivery.
+
+The repo should still keep the recently added Tailscale/ngrok helper scripts,
+because webhook mode remains useful for advanced self-hosted and future
+deployment scenarios. But those helpers should not be treated as the primary
+Telegram onboarding path.
+
+This also aligns better with ADR-021: setup/bootstrap helpers may live outside
+the core server process, while the product UI/API remains responsible for the
+user-facing Telegram lifecycle.
 
 ## Decision
 
-`cats` will treat public ingress as an external prerequisite and will own the
-Telegram webhook lifecycle inside the product UI/API.
+`cats` will support two Telegram inbound modes:
 
-### 1. Public ingress stays outside the server process
+- `polling` as the default and preferred first-run path
+- `webhook` as an optional advanced mode when a public HTTPS URL is available
 
-The first slice will not start or stop tunnels from the `cats` server.
-Instead, operators provide a public HTTPS base URL by one of these means:
+The product UI/API will own Telegram mode selection, diagnostics, and lifecycle
+inside `Settings > Cats`.
+
+### 1. Polling is the default onboarding path
+
+When an operator creates or updates a Telegram bot binding with a valid bot
+token, `cats` should be able to start Telegram long polling without requiring a
+public URL.
+
+- the product may validate the token with Telegram `getMe`
+- the product should clear any previously registered webhook before polling
+- the product should start or reconcile a per-binding polling consumer
+- the UI should show polling health, last update, and retry/reconnect actions
+
+This is the preferred first slice for "fill in a bot token and it works."
+
+### 2. Public ingress stays external for webhook mode
+
+Webhook mode remains supported, but public ingress stays outside the `cats`
+server process. Operators may provide a public HTTPS base URL by one of these
+means:
 
 - an operator-managed reverse proxy or cloud deployment URL
 - an operator-run helper script such as:
@@ -50,13 +78,13 @@ Instead, operators provide a public HTTPS base URL by one of these means:
 - a future packaged host-managed ingress helper
 
 The helper scripts may prepare a public URL for local/self-hosted use, but they
-remain intentionally separate from the Telegram webhook flow.
+remain intentionally separate from the Telegram transport lifecycle.
 
-### 2. Webhook lifecycle is product-owned
+### 3. Webhook lifecycle is still product-owned
 
-When a Telegram bot binding is created or updated with a valid bot token and a
-public HTTPS base URL is available, `cats` will register the webhook through
-the product-owned Settings UI/API flow.
+When an operator explicitly selects webhook mode and a public HTTPS base URL is
+available, `cats` will register the webhook through the product-owned Settings
+UI/API flow.
 
 - Call `POST https://api.telegram.org/bot<TOKEN>/setWebhook` with:
   - `url`: `<public_url>/api/transports/telegram/webhook/<bindingId>`
@@ -65,7 +93,7 @@ the product-owned Settings UI/API flow.
 - Record success/failure per binding and surface it in Settings
 - Allow manual re-registration from Settings
 
-### 3. Token uniqueness is required
+### 4. Token uniqueness is required
 
 Telegram only allows one active webhook per bot token. Therefore, the same
 Telegram bot token must be unique per `cats` environment.
@@ -73,33 +101,45 @@ Telegram bot token must be unique per `cats` environment.
 The first slice should reject duplicate bindings that reuse the same bot token
 instead of letting bindings overwrite one another.
 
-### 4. UI integration
+This uniqueness rule should apply regardless of whether the binding currently
+uses polling or webhook mode, because mode switches should not allow token
+ownership to flap between bindings.
+
+### 5. UI integration
 
 Settings > Cats > Telegram should:
 
-- show whether a usable public URL is currently known
+- default new bindings toward polling mode
+- show the current inbound mode per binding
+- show polling health when a binding uses polling
+- show whether a usable public URL is currently known when webhook mode is
+  selected
 - show the effective webhook base path when available
-- show webhook registration status per binding
+- show webhook registration status per binding when webhook mode is selected
 - offer an explicit reconnect / retry action
-- explain when the operator still needs to run an external ingress helper
+- explain that helper scripts are only needed for webhook mode or deployment
+  scenarios that prefer push delivery
 
 ## Consequences
 
 ### Positive
 
+- Telegram can work with only a bot token in the preferred first-run path
 - webhook lifecycle stays product-owned, visible, and retryable from the UI
 - `cats` avoids adding a tunnel SDK/runtime dependency in the first slice
-- self-hosted operators can use Tailscale Funnel or ngrok without embedding
-  either provider directly into the cats server
+- self-hosted operators can still use Tailscale Funnel or ngrok without
+  embedding either provider directly into the cats server
 - the same webhook flow can later work with helper scripts, packaged hosts, or
   real deployment URLs without changing binding semantics
 
 ### Negative
 
-- operators still need a one-time ingress preparation step outside the app
-- the UI must explain missing public ingress clearly or setup will feel broken
-- URL changes still require re-registration logic in the product
-- webhook registration failures still need careful degradation and diagnostics
+- `cats` now needs two inbound transport lifecycles instead of just one
+- polling requires stateful consumer management, offset persistence, and retry
+  behavior
+- the UI must distinguish polling health from webhook status cleanly
+- webhook mode still requires a one-time ingress preparation step outside the
+  app
 
 ### Neutral
 
@@ -111,27 +151,28 @@ Settings > Cats > Telegram should:
 
 ## Alternatives Considered
 
-### Alternative 1: Let the cats server start ngrok itself
+### Alternative 1: Keep webhook as the only supported Telegram mode
 
-- **Pros**: one-button story inside the app
-- **Cons**: adds runtime dependency, couples tunnel lifecycle to server
+- **Pros**: simpler transport model, reuses the current MVP directly
+- **Cons**: requires public ingress even for local first-run use, creates avoidable
+  operator friction, and compares poorly with products that allow token-only
+  Telegram setup
+- **Why rejected**: not the right default onboarding path
+
+### Alternative 2: Let the cats server start ngrok itself
+
+- **Pros**: one-button webhook story inside the app
+- **Cons**: adds a runtime dependency, couples tunnel lifecycle to server
   startup, makes host-vs-server ownership blurry
-- **Why rejected for first slice**: too much coupling for the first
-  implementation, especially when a helper-script path is good enough
-
-### Alternative 2: Use Telegram long polling instead of webhooks
-
-- **Pros**: no public URL needed
-- **Cons**: higher latency, different lifecycle, diverges from the existing
-  webhook relay model
-- **Why rejected**: webhook remains the preferred transport model
+- **Why rejected for first slice**: too much coupling when polling already
+  solves the basic inbound setup problem
 
 ### Alternative 3: Require operators to manage everything manually
 
 - **Pros**: no product work
 - **Cons**: bad UX, requires curl/webhook knowledge, easy to misconfigure
-- **Why rejected**: webhook registration should still be product-owned even if
-  ingress preparation is external
+- **Why rejected**: Telegram lifecycle should be product-owned whether the
+  binding uses polling or webhook mode
 
 ## References
 
