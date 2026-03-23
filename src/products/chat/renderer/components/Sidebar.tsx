@@ -94,7 +94,6 @@ function channelRoomMode(channel: ChatChannelSummary): string {
 function roomModeLabel(mode: string): string {
   switch (mode) {
     case 'direct_cat_chat': return 'Direct';
-    case 'direct_cat_chat': return 'Direct';
     default: return 'Boss Chat';
   }
 }

@@ -86,6 +86,8 @@ type OperatorLoadState =
   | { status: 'ready'; snapshot: ChatOperatorSnapshot; message: string }
   | { status: 'error'; snapshot: ChatOperatorSnapshot | null; message: string };
 
+const OPERATOR_BACKGROUND_REFRESH_MS = 5_000;
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -126,6 +128,7 @@ export default function App() {
   const [folderBrowseEntries, setFolderBrowseEntries] = useState<BrowseDirectoryEntry[]>([]);
   const [folderBrowseLoading, setFolderBrowseLoading] = useState(false);
   const [folderBrowseError, setFolderBrowseError] = useState('');
+  const operatorRequestIdRef = useRef(0);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const addCatPanelRef = useRef<HTMLDivElement>(null);
@@ -221,6 +224,62 @@ export default function App() {
     }
   }, []);
 
+  const refreshOperatorSnapshot = useCallback((
+    options: { background?: boolean } = {},
+  ) => {
+    if (!readyPayload?.setupCompleteAt) {
+      operatorRequestIdRef.current += 1;
+      setOperatorState({
+        status: 'idle',
+        snapshot: null,
+        message: '',
+      });
+      return () => {};
+    }
+
+    const controller = new AbortController();
+    const requestId = operatorRequestIdRef.current + 1;
+    operatorRequestIdRef.current = requestId;
+    if (!options.background) {
+      setOperatorState((current) => ({
+        status: 'loading',
+        snapshot: current.snapshot,
+        message: '',
+      }));
+    }
+
+    void fetchOperatorLoopSnapshot(controller.signal)
+      .then((snapshot) => {
+        if (controller.signal.aborted || requestId !== operatorRequestIdRef.current) {
+          return;
+        }
+        startTransition(() => {
+          setOperatorState({
+            status: 'ready',
+            snapshot,
+            message: '',
+          });
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted || requestId !== operatorRequestIdRef.current) {
+          return;
+        }
+        setOperatorState((current) => {
+          if (options.background && current.snapshot) {
+            return current;
+          }
+          return {
+            status: 'error',
+            snapshot: current.snapshot,
+            message: error instanceof Error ? error.message : 'Failed to load operator loop.',
+          };
+        });
+      });
+
+    return () => controller.abort();
+  }, [readyPayload?.setupCompleteAt]);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -297,46 +356,39 @@ export default function App() {
   }, [draftLeadCatId, navigate, showingNewChatDraft, state]);
 
   useEffect(() => {
-    if (!readyPayload?.setupCompleteAt) {
-      setOperatorState({
-        status: 'idle',
-        snapshot: null,
-        message: '',
-      });
+    return refreshOperatorSnapshot();
+  }, [operatorRefreshKey, refreshOperatorSnapshot]);
+
+  useEffect(() => {
+    if (!readyPayload?.setupCompleteAt || typeof window === 'undefined' || typeof document === 'undefined') {
       return;
     }
 
-    const controller = new AbortController();
-    setOperatorState((current) => ({
-      status: 'loading',
-      snapshot: current.snapshot,
-      message: '',
-    }));
+    const refreshInBackground = () => {
+      if (document.visibilityState === 'hidden') {
+        return;
+      }
+      void refreshOperatorSnapshot({ background: true });
+    };
 
-    void fetchOperatorLoopSnapshot(controller.signal)
-      .then((snapshot) => {
-        if (!controller.signal.aborted) {
-          startTransition(() => {
-            setOperatorState({
-              status: 'ready',
-              snapshot,
-              message: '',
-            });
-          });
-        }
-      })
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          setOperatorState((current) => ({
-            status: 'error',
-            snapshot: current.snapshot,
-            message: error instanceof Error ? error.message : 'Failed to load operator loop.',
-          }));
-        }
-      });
+    const intervalId = window.setInterval(refreshInBackground, OPERATOR_BACKGROUND_REFRESH_MS);
+    const handleFocus = () => {
+      refreshInBackground();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshInBackground();
+      }
+    };
 
-    return () => controller.abort();
-  }, [operatorRefreshKey, readyPayload?.setupCompleteAt]);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [readyPayload?.setupCompleteAt, refreshOperatorSnapshot]);
 
   // --- Callbacks ---
 
