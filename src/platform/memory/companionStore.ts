@@ -16,13 +16,50 @@ import type {
   UpdateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from '../../products/chat/companion/contracts.js';
+import type { MemoryFlushResult } from './contracts.js';
 import type { CatsMemoryService } from './service.js';
 
+export type CompanionCanonicalSyncResult =
+  | { status: 'synced'; flush: MemoryFlushResult }
+  | { status: 'deferred'; flush: null };
+
+export interface CanonicalSyncAwareCompanionBoxStore extends CompanionBoxStore {
+  consumePendingCanonicalSync(catId: string): CompanionCanonicalSyncResult | null;
+}
+
+function reportCanonicalSyncFailure(scope: string, error: unknown): void {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
+}
+
 export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
+  private readonly pendingCanonicalSync = new Map<string, CompanionCanonicalSyncResult>();
+
   constructor(
     private readonly delegate: CompanionBoxStore,
     private readonly memoryService: CatsMemoryService,
   ) {}
+
+  consumePendingCanonicalSync(catId: string): CompanionCanonicalSyncResult | null {
+    const pending = this.pendingCanonicalSync.get(catId) ?? null;
+    this.pendingCanonicalSync.delete(catId);
+    return pending;
+  }
+
+  private async syncCanonicalCompanionMemory(catId: string, now?: Date): Promise<void> {
+    try {
+      const flush = await this.memoryService.flushCompanionBox({
+        catId,
+        companionStore: this,
+        reason: 'manual',
+        now,
+      });
+      this.pendingCanonicalSync.set(catId, { status: 'synced', flush });
+    } catch (error) {
+      reportCanonicalSyncFailure(`companion:${catId}`, error);
+      this.pendingCanonicalSync.set(catId, { status: 'deferred', flush: null });
+    }
+  }
 
   async readSnapshot() {
     return this.delegate.readSnapshot();
@@ -45,7 +82,9 @@ export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
     input: CreateCompanionSourceInput,
     now?: Date,
   ): Promise<CompanionSourceIngestResult> {
-    return this.delegate.ingestSource(catId, input, now);
+    const result = await this.delegate.ingestSource(catId, input, now);
+    await this.syncCanonicalCompanionMemory(catId, now);
+    return result;
   }
 
   async updateSource(
@@ -54,7 +93,9 @@ export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
     update: UpdateCompanionSourceInput,
     now?: Date,
   ): Promise<CompanionSourceUpdateResult> {
-    return this.delegate.updateSource(catId, sourceId, update, now);
+    const result = await this.delegate.updateSource(catId, sourceId, update, now);
+    await this.syncCanonicalCompanionMemory(catId, now);
+    return result;
   }
 
   async deleteSource(
@@ -62,7 +103,9 @@ export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
     sourceId: string,
     now?: Date,
   ): Promise<CompanionSourceDeleteResult> {
-    return this.delegate.deleteSource(catId, sourceId, now);
+    const result = await this.delegate.deleteSource(catId, sourceId, now);
+    await this.syncCanonicalCompanionMemory(catId, now);
+    return result;
   }
 
   async listDerived(catId: string, now?: Date): Promise<CompanionDerivedRecord[]> {
@@ -78,7 +121,9 @@ export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
     input: CreateCompanionMemoryInput,
     now?: Date,
   ): Promise<CompanionMemoryRecord> {
-    return this.delegate.createMemory(catId, input, now);
+    const result = await this.delegate.createMemory(catId, input, now);
+    await this.syncCanonicalCompanionMemory(catId, now);
+    return result;
   }
 
   async getResponseProfile(catId: string, now?: Date): Promise<CompanionResponseProfile> {
@@ -90,7 +135,9 @@ export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
     update: UpdateCompanionResponseProfileInput,
     now?: Date,
   ): Promise<CompanionResponseProfile> {
-    return this.delegate.updateResponseProfile(catId, update, now);
+    const result = await this.delegate.updateResponseProfile(catId, update, now);
+    await this.syncCanonicalCompanionMemory(catId, now);
+    return result;
   }
 
   async buildSessionContext(input: {

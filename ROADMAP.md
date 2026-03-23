@@ -37,13 +37,13 @@ contracts.
       and archive metadata
 - [x] Keep the full desktop suite on one `Electron + React/TypeScript` path
       while `cats` and `cats-runtime` remain Node sidecars
-- [ ] Define how `cats` hosts or exposes shared `Cats Core v1` services for
+- [x] Define how `cats` hosts or exposes shared `Cats Core v1` services for
       both `Cats Chat` and `Cats Work`
-- [ ] Define the split between `cats-runtime` direct product APIs and the
+- [x] Define the split between `cats-runtime` direct product APIs and the
       planned MCP facade for orchestrator tool use
 - [ ] Introduce a storage abstraction so the current file-backed shell can grow
       into operational DB plus archive/RAG pipelines without a flag-day rewrite
-- [ ] Keep the current chat shell loadable while the shared contracts land
+- [x] Keep the current chat shell loadable while the shared contracts land
 
 ### Phase 4: Cats Chat Launch Track
 
@@ -54,7 +54,7 @@ contracts.
       only committing the pending provider/model when the next message is sent
 - [ ] Shift cat UX to a chat-contextual `Add cat` flow while moving registry
       administration into `Settings > Cats`
-- [ ] Desktop host and tray lifecycle management above the existing Node server boundary
+- [x] Desktop host and tray lifecycle management above the existing Node server boundary
 - [ ] Turn the current Windows NSIS-first packaging slice into a release-grade
       desktop distribution path, including signed installers, branded assets,
       and a documented release pipeline rather than test-install outputs only
@@ -79,10 +79,10 @@ contracts.
 - [ ] Extend Cats-owned canonical memory beyond the current cat/owner/channel
       first slice so relationship- and project-scoped durable memory can also
       participate in retrieval and later `Cats Work` flows
-- [ ] Complete owner durable-memory CRUD beyond the current `GET/POST`
+- [x] Complete owner durable-memory CRUD beyond the current `GET/POST`
       surface, including update/delete paths that keep canonical retrieval
       synchronized
-- [ ] Converge companion-source mutation sync so canonical memory flush is not
+- [x] Converge companion-source mutation sync so canonical memory flush is not
       only guaranteed by HTTP routes: direct `MemoryAwareCompanionBoxStore`
       update/delete callers should hit the same non-duplicated sync boundary
       without relying on route handlers or double-flushing canonical state
@@ -90,7 +90,7 @@ contracts.
       memory maintenance contract, including reusable source-mutation sync,
       background-safe flush invocation, and clearer downstream expectations for
       `removedRecordIds` and entry-scoped `replacementGroup` consumers
-- [ ] Surface the new orchestrator execution-loop contract in product-owned
+- [x] Surface the new orchestrator execution-loop contract in product-owned
       operator rails so Chat can consume step state, next actions, approval
       gates, and recovery hints without scraping transcript text
 - [ ] Implement explicit `Boss Cat` auto-helper intervention policy for

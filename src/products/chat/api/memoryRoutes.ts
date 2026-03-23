@@ -170,6 +170,17 @@ function findCatMemoryRecord(
   ) ?? null;
 }
 
+function findOwnerMemoryRecord(
+  core: { durableMemory: DurableMemoryRecord[] },
+  memoryId: string,
+): DurableMemoryRecord | null {
+  return core.durableMemory.find((record) =>
+    record.id === memoryId
+    && record.subjectType === 'owner'
+    && record.subjectId === OWNER_ACTOR_ID,
+  ) ?? null;
+}
+
 async function handleListCatMemory(
   context: ChatApiRouteContext,
   catId: string,
@@ -339,6 +350,73 @@ async function handleCreateOwnerMemory(
     await context.dependencies.chatStore.writeCore(nextCore);
     await trySyncCanonicalOwnerMemory(context, 'manual');
     sendJson(context.response, 201, { memory: record });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleUpdateOwnerMemory(
+  context: ChatApiRouteContext,
+  memoryId: string,
+): Promise<void> {
+  try {
+    const core = await context.dependencies.chatStore.readCore();
+    if (!findOwnerMemoryRecord(core, memoryId)) {
+      sendRestError(context, 404, 'memory_not_found', `Owner memory not found: ${memoryId}`);
+      return;
+    }
+    const body = await readJsonBody<UpdateDurableMemoryInput>(context.request);
+    const updates: Partial<Pick<DurableMemoryRecord, 'content' | 'confidence' | 'category' | 'sourceRefs'>> = {};
+
+    if (body.content !== undefined) {
+      if (typeof body.content !== 'string' || body.content.trim().length === 0) {
+        sendRestError(context, 400, 'content_required', 'Memory content must be a non-empty string.');
+        return;
+      }
+      updates.content = body.content.trim();
+    }
+
+    if (body.category !== undefined) {
+      if (!validateCategory(body.category)) {
+        sendRestError(context, 400, 'invalid_category', 'Invalid memory category.');
+        return;
+      }
+      updates.category = body.category;
+    }
+
+    if (body.confidence !== undefined) {
+      updates.confidence = body.confidence;
+    }
+
+    if (body.sourceRefs !== undefined) {
+      updates.sourceRefs = Array.isArray(body.sourceRefs) ? body.sourceRefs : [];
+    }
+
+    const nextCore = updateDurableMemory(core, memoryId, updates);
+    await context.dependencies.chatStore.writeCore(nextCore);
+    await trySyncCanonicalOwnerMemory(context, 'manual');
+
+    const updated = nextCore.durableMemory.find((record) => record.id === memoryId);
+    sendJson(context.response, 200, { memory: updated });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleDeleteOwnerMemory(
+  context: ChatApiRouteContext,
+  memoryId: string,
+): Promise<void> {
+  try {
+    const core = await context.dependencies.chatStore.readCore();
+    if (!findOwnerMemoryRecord(core, memoryId)) {
+      sendRestError(context, 404, 'memory_not_found', `Owner memory not found: ${memoryId}`);
+      return;
+    }
+    const nextCore = removeDurableMemory(core, memoryId);
+    await context.dependencies.chatStore.writeCore(nextCore);
+    await trySyncCanonicalOwnerMemory(context, 'manual');
+    sendJson(context.response, 200, { deleted: true, memoryId });
   } catch (error) {
     handleRestError(context, error);
   }
@@ -520,6 +598,23 @@ export async function routeMemoryApi(
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  const ownerMemoryItemMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/owner\/memory\/([^/]+)$/u,
+  );
+  if (ownerMemoryItemMatch) {
+    if (context.method === 'PUT') {
+      await handleUpdateOwnerMemory(context, ownerMemoryItemMatch[0]!);
+      return true;
+    }
+    if (context.method === 'DELETE') {
+      await handleDeleteOwnerMemory(context, ownerMemoryItemMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['PUT', 'DELETE']);
     return true;
   }
 

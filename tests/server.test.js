@@ -231,6 +231,67 @@ test('owner-profile writes stay successful when canonical sync fails', async () 
   }, chatStore, { memoryService: failingMemoryService });
 });
 
+test('owner durable-memory writes stay successful when canonical sync fails', async () => {
+  const chatStore = new MemoryChatStore();
+  const baseMemoryService = createCatsMemoryService(chatStore, new MemoryCanonicalMemoryStore());
+  const failingMemoryService = {
+    async listCanonicalRecords(filter) {
+      return baseMemoryService.listCanonicalRecords(filter);
+    },
+    async flushCompanionBox(input) {
+      return baseMemoryService.flushCompanionBox(input);
+    },
+    async flushChannel(input) {
+      return baseMemoryService.flushChannel(input);
+    },
+    async flushOwnerProfile() {
+      throw new Error('canonical owner sync failed');
+    },
+    async buildCompanionRetrievalContext(input) {
+      return baseMemoryService.buildCompanionRetrievalContext(input);
+    },
+    async buildChannelRetrievalContext(input) {
+      return baseMemoryService.buildChannelRetrievalContext(input);
+    },
+  };
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const createMemoryResponse = await fetch(`${baseUrl}/api/owner/memory`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        category: 'style',
+        content: 'Owner prefers concise updates.',
+      }),
+    });
+    assert.equal(createMemoryResponse.status, 201);
+    const { memory } = await createMemoryResponse.json();
+
+    const updateMemoryResponse = await fetch(`${baseUrl}/api/owner/memory/${memory.id}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        content: 'Owner prefers bullet summaries.',
+      }),
+    });
+    assert.equal(updateMemoryResponse.status, 200);
+
+    const deleteMemoryResponse = await fetch(`${baseUrl}/api/owner/memory/${memory.id}`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteMemoryResponse.status, 200);
+
+    const listMemoryResponse = await fetch(`${baseUrl}/api/owner/memory`);
+    assert.equal(listMemoryResponse.status, 200);
+    const listMemoryPayload = await listMemoryResponse.json();
+    assert.equal(listMemoryPayload.records.length, 0);
+  }, chatStore, { memoryService: failingMemoryService });
+});
+
 test('GET /api/app-shell exposes detailed chat state with global cats', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/app-shell`);

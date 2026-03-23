@@ -168,6 +168,8 @@ GET    /api/cats/{catId}/memory/retrieval-context
 
 GET    /api/owner/memory
 POST   /api/owner/memory
+PUT    /api/owner/memory/{memoryId}
+DELETE /api/owner/memory/{memoryId}
 GET    /api/owner/memory/canonical
 POST   /api/owner/memory/flush
 

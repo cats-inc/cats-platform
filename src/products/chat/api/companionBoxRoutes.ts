@@ -16,6 +16,10 @@ import type {
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
 import {
+  type CanonicalSyncAwareCompanionBoxStore,
+  type CompanionCanonicalSyncResult,
+} from '../../../platform/memory/companionStore.js';
+import {
   handleCanonicalCatError,
   handleRestError,
   sendRestError,
@@ -28,6 +32,12 @@ async function resolveCatContext(context: ChatApiRouteContext, catId: string) {
   return { state, cat };
 }
 
+function isCanonicalSyncAwareCompanionBoxStore(
+  store: ChatApiRouteContext['dependencies']['companionStore'],
+): store is CanonicalSyncAwareCompanionBoxStore {
+  return typeof (store as CanonicalSyncAwareCompanionBoxStore).consumePendingCanonicalSync === 'function';
+}
+
 function reportCanonicalSyncFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
   process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
@@ -36,10 +46,13 @@ function reportCanonicalSyncFailure(scope: string, error: unknown): void {
 async function syncCanonicalCompanionMemory(
   context: ChatApiRouteContext,
   catId: string,
-): Promise<
-  | { status: 'synced'; flush: Awaited<ReturnType<ChatApiRouteContext['dependencies']['memoryService']['flushCompanionBox']>> }
-  | { status: 'deferred'; flush: null }
-> {
+): Promise<CompanionCanonicalSyncResult> {
+  if (isCanonicalSyncAwareCompanionBoxStore(context.dependencies.companionStore)) {
+    const pending = context.dependencies.companionStore.consumePendingCanonicalSync(catId);
+    if (pending) {
+      return pending;
+    }
+  }
   try {
     const flush = await context.dependencies.memoryService.flushCompanionBox({
       catId,

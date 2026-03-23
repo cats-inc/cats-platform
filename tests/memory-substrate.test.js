@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  createMemoryAwareCompanionBoxStore,
   createCatsMemoryService,
   FileCanonicalMemoryStore,
   MemoryCanonicalMemoryStore,
@@ -285,6 +286,68 @@ test('scope-aware canonical flush removes stale durable memory when curated note
     catRecords.filter((record) => record.origin.kind === 'durable_memory').length,
     0,
   );
+});
+
+test('memory-aware companion store auto-syncs direct source mutations without route-owned flushes', async () => {
+  const now = new Date('2026-03-23T18:00:00.000Z');
+  const chatStore = new MemoryChatStore();
+  const baseCompanionStore = new MemoryCompanionBoxStore();
+  const memoryStore = new MemoryCanonicalMemoryStore();
+  const memoryService = createCatsMemoryService(chatStore, memoryStore);
+  const companionStore = createMemoryAwareCompanionBoxStore(baseCompanionStore, memoryService);
+
+  const ingested = await companionStore.ingestSource(
+    'cat-memory',
+    {
+      kind: 'note',
+      storageMode: 'uploaded_copy',
+      title: 'Play routine',
+      textContent: 'Companion adores feather wand warmups.',
+      metadata: { tags: ['play'] },
+    },
+    now,
+  );
+  const ingestSync = companionStore.consumePendingCanonicalSync('cat-memory');
+  assert.equal(ingestSync?.status, 'synced');
+  assert.equal(companionStore.consumePendingCanonicalSync('cat-memory'), null);
+
+  let catRecords = await memoryService.listCanonicalRecords({
+    subjectKind: 'cat',
+    subjectId: 'cat-memory',
+  });
+  assert.ok(catRecords.some((record) => record.content.includes('feather wand warmups')));
+
+  await companionStore.updateSource(
+    'cat-memory',
+    ingested.source.id,
+    {
+      textContent: 'Companion now prefers laser pointer sprints.',
+    },
+    new Date('2026-03-23T18:05:00.000Z'),
+  );
+  const updateSync = companionStore.consumePendingCanonicalSync('cat-memory');
+  assert.equal(updateSync?.status, 'synced');
+
+  catRecords = await memoryService.listCanonicalRecords({
+    subjectKind: 'cat',
+    subjectId: 'cat-memory',
+  });
+  assert.equal(catRecords.some((record) => record.content.includes('feather wand warmups')), false);
+  assert.ok(catRecords.some((record) => record.content.includes('laser pointer sprints')));
+
+  await companionStore.deleteSource(
+    'cat-memory',
+    ingested.source.id,
+    new Date('2026-03-23T18:10:00.000Z'),
+  );
+  const deleteSync = companionStore.consumePendingCanonicalSync('cat-memory');
+  assert.equal(deleteSync?.status, 'synced');
+
+  catRecords = await memoryService.listCanonicalRecords({
+    subjectKind: 'cat',
+    subjectId: 'cat-memory',
+  });
+  assert.equal(catRecords.some((record) => record.content.includes('laser pointer sprints')), false);
 });
 
 test('retrieval policy keeps owner-private cat memory out of shared-room contexts while preserving channel context and owner hints', () => {

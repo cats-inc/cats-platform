@@ -634,6 +634,37 @@ test('cat memory routes reject cross-subject mutations and accept empty flush bo
     assert.equal(ownerMemoryResponse.status, 200);
     const ownerMemoryPayload = await ownerMemoryResponse.json();
     assert.equal(ownerMemoryPayload.records.length, 1);
+    assert.equal(ownerMemoryPayload.records[0].content, 'Owner prefers concise updates.');
+
+    const updateOwnerMemoryResponse = await fetch(`${baseUrl}/api/owner/memory/${ownerMemory.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        content: 'Owner now prefers bullet summaries with next steps.',
+      }),
+    });
+    assert.equal(updateOwnerMemoryResponse.status, 200);
+
+    const updatedOwnerCanonicalResponse = await fetch(`${baseUrl}/api/owner/memory/canonical`);
+    assert.equal(updatedOwnerCanonicalResponse.status, 200);
+    const updatedOwnerCanonicalPayload = await updatedOwnerCanonicalResponse.json();
+    const updatedOwnerDurableRecords = updatedOwnerCanonicalPayload.records.filter((record) =>
+      record.origin.kind === 'durable_memory',
+    );
+    assert.equal(updatedOwnerDurableRecords.length, 1);
+    assert.equal(
+      updatedOwnerDurableRecords[0].content,
+      'Owner now prefers bullet summaries with next steps.',
+    );
+
+    const updatedRetrievalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/retrieval-context`);
+    assert.equal(updatedRetrievalResponse.status, 200);
+    const updatedRetrievalPayload = await updatedRetrievalResponse.json();
+    assert.ok(
+      updatedRetrievalPayload.retrieval.ownerProfileHints.some((hint) =>
+        hint.includes('bullet summaries with next steps'),
+      ),
+    );
 
     const updateCatMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/${catMemory.id}`, {
       method: 'PUT',
@@ -654,6 +685,34 @@ test('cat memory routes reject cross-subject mutations and accept empty flush bo
     assert.equal(
       updatedCatDurableRecords[0].content,
       'Companion now prefers sunrise window naps instead of moonlit ones.',
+    );
+
+    const deleteOwnerMemoryResponse = await fetch(`${baseUrl}/api/owner/memory/${ownerMemory.id}`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteOwnerMemoryResponse.status, 200);
+
+    const emptyOwnerMemoryResponse = await fetch(`${baseUrl}/api/owner/memory`);
+    assert.equal(emptyOwnerMemoryResponse.status, 200);
+    const emptyOwnerMemoryPayload = await emptyOwnerMemoryResponse.json();
+    assert.equal(emptyOwnerMemoryPayload.records.length, 0);
+
+    const emptyOwnerCanonicalResponse = await fetch(`${baseUrl}/api/owner/memory/canonical`);
+    assert.equal(emptyOwnerCanonicalResponse.status, 200);
+    const emptyOwnerCanonicalPayload = await emptyOwnerCanonicalResponse.json();
+    assert.equal(
+      emptyOwnerCanonicalPayload.records.filter((record) => record.origin.kind === 'durable_memory').length,
+      0,
+    );
+
+    const finalRetrievalResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/retrieval-context`);
+    assert.equal(finalRetrievalResponse.status, 200);
+    const finalRetrievalPayload = await finalRetrievalResponse.json();
+    assert.equal(
+      finalRetrievalPayload.retrieval.ownerProfileHints.some((hint) =>
+        hint.includes('bullet summaries with next steps'),
+      ),
+      false,
     );
 
     const deleteCatMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory/${catMemory.id}`, {
