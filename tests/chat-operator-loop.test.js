@@ -252,3 +252,62 @@ test('buildChatOperatorView filters invalid effective policy metadata enum value
   assert.equal(view.effectivePolicy?.budgetAlertLevel, null);
   assert.equal(view.effectivePolicy?.budgetAlertSource, null);
 });
+
+test('buildChatOperatorView filters invalid embedded governance summary enum values', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-channel-room-invalid-governance',
+      title: 'Invalid governance summary metadata',
+      conversationId: 'conversation-channel-room-invalid-governance',
+      createdAt: '2026-03-23T03:00:00.000Z',
+      metadata: {
+        governanceSummary: {
+          approval: {
+            status: 'pending',
+            requiresOwnerDecision: true,
+            pending: true,
+            latestDecisionAction: 'bogus_action',
+          },
+          runtimeDeliveryManifest: {
+            requestedActions: ['create_commit', 'bogus_action'],
+            gates: ['owner_approval_required', 'bogus_gate'],
+            context: {
+              channelId: 'room-invalid-governance',
+              conversationId: 'conversation-channel-room-invalid-governance',
+              taskId: 'task-channel-room-invalid-governance',
+              roomMode: 'boss_chat',
+              transport: null,
+              workflowStageId: null,
+              workflowShape: null,
+            },
+            strict: true,
+          },
+        },
+      },
+    },
+    new Date('2026-03-23T03:00:00.000Z'),
+  ).core;
+
+  const view = buildChatOperatorView(
+    {
+      core,
+      approvals: buildApprovalQueue(core),
+    },
+    'room-invalid-governance',
+  );
+
+  assert.ok(view);
+  assert.equal(view.governanceSummary?.approval.status, 'pending');
+  assert.equal(view.governanceSummary?.approval.latestDecisionAction, null);
+  assert.deepEqual(
+    view.governanceSummary?.runtimeDeliveryManifest?.requestedActions,
+    ['create_commit'],
+  );
+  assert.deepEqual(
+    view.governanceSummary?.runtimeDeliveryManifest?.gates,
+    ['owner_approval_required'],
+  );
+});

@@ -1,4 +1,5 @@
 import type {
+  CoreApprovalDecisionAction,
   CoreApprovalRecord,
   CoreApprovalStatus,
   CoreBudgetAlertLevel,
@@ -56,6 +57,37 @@ const CORE_BUDGET_ALERT_SOURCES = new Set<string>([
 const CORE_OPERATOR_ACTIONS = new Set<string>([
   'retry',
   'acknowledge',
+]);
+
+const CORE_RUNTIME_DELIVERY_ACTIONS = new Set<string>([
+  'prepare_artifact',
+  'create_commit',
+  'push_branch',
+  'open_pull_request',
+  'wait_for_checks',
+  'publish_preview',
+]);
+
+const CORE_RUN_STATUSES = new Set<string>([
+  'queued',
+  'running',
+  'blocked',
+  'completed',
+  'failed',
+  'cancelled',
+]);
+
+const CORE_APPROVAL_STATUSES = new Set<string>([
+  'not_requested',
+  'pending',
+  'approved',
+  'rejected',
+]);
+
+const CORE_APPROVAL_DECISION_ACTIONS = new Set<string>([
+  'approve',
+  'reroute',
+  'reject',
 ]);
 
 const CORE_WORKFLOW_TARGET_STATUSES = [
@@ -328,13 +360,7 @@ export function readCoreRuntimeDeliveryManifestSummary(
 
   return {
     requestedActions: readStringArray(summary.requestedActions).filter(
-      (action): action is CoreRuntimeDeliveryAction =>
-        action === 'prepare_artifact'
-        || action === 'create_commit'
-        || action === 'push_branch'
-        || action === 'open_pull_request'
-        || action === 'wait_for_checks'
-        || action === 'publish_preview',
+      (action): action is CoreRuntimeDeliveryAction => CORE_RUNTIME_DELIVERY_ACTIONS.has(action),
     ),
     gates: readStringArray(summary.gates).filter((gate): gate is CoreDeliveryGate =>
       CORE_DELIVERY_GATES.has(gate),
@@ -359,14 +385,7 @@ export function readCoreWorkflowSummary(
   const summary = asRecord(metadata?.workflowSummary);
   if (summary) {
     return {
-      runStatus: readEnum<CoreRunStatus>(summary.runStatus, new Set<string>([
-        'queued',
-        'running',
-        'blocked',
-        'completed',
-        'failed',
-        'cancelled',
-      ])) ?? fallbackRunStatus,
+      runStatus: readEnum<CoreRunStatus>(summary.runStatus, CORE_RUN_STATUSES) ?? fallbackRunStatus,
       stageId: readString(summary.stageId),
       shape: readString(summary.shape),
       reviewRequired: readBoolean(summary.reviewRequired),
@@ -423,6 +442,8 @@ export function readCoreGovernanceSummary(
     return null;
   }
 
+  const approvalSummary = asRecord(summary.approval);
+
   return {
     delivery: readCoreEffectiveDeliveryPolicy({
       effectiveDeliveryPolicy: summary.delivery,
@@ -434,15 +455,14 @@ export function readCoreGovernanceSummary(
       runtimeDeliveryManifest: summary.runtimeDeliveryManifest,
     }),
     approval: {
-      status: readEnum<CoreApprovalStatus>(
-        asRecord(summary.approval)?.status,
-        new Set<string>(['not_requested', 'pending', 'approved', 'rejected']),
+      status: readEnum<CoreApprovalStatus>(approvalSummary?.status, CORE_APPROVAL_STATUSES),
+      requiresOwnerDecision: readBoolean(approvalSummary?.requiresOwnerDecision),
+      pending: readBoolean(approvalSummary?.pending),
+      latestDecisionAction: readEnum<CoreApprovalDecisionAction>(
+        approvalSummary?.latestDecisionAction,
+        CORE_APPROVAL_DECISION_ACTIONS,
       ),
-      requiresOwnerDecision: readBoolean(asRecord(summary.approval)?.requiresOwnerDecision),
-      pending: readBoolean(asRecord(summary.approval)?.pending),
-      latestDecisionAction: readString(asRecord(summary.approval)?.latestDecisionAction) as
-        CoreGovernanceSummary['approval']['latestDecisionAction'],
-      notes: readString(asRecord(summary.approval)?.notes),
+      notes: readString(approvalSummary?.notes),
     },
     latestOperatorAction: (() => {
       const operator = asRecord(summary.latestOperatorAction);

@@ -290,12 +290,12 @@ function createTaskFromChannel(
     ownerActorId,
     orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
     assignedActorIds: channel.catAssignments.map((assignment) => `actor-cat-${assignment.catId}`),
-      summary: channel.topic,
-      approval,
-      createdAt: channel.createdAt,
-      updatedAt: channel.updatedAt,
-      metadata: buildChannelTaskMetadata(channel, existingTask, approval),
-    };
+    summary: channel.topic,
+    approval,
+    createdAt: channel.createdAt,
+    updatedAt: channel.updatedAt,
+    metadata: buildChannelTaskMetadata(channel, existingTask, approval),
+  };
 }
 
 function preserveCoreOwnedTasks(existingTasks: CoreTaskRecord[]): CoreTaskRecord[] {
