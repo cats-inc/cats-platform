@@ -277,10 +277,41 @@ Owner 可以從 Solo Mode 開始，驗證 pipeline 跑通後，再開放 Mesh Mo
 
 ---
 
+## 天條：Human-in-the-Loop 強制原則
+
+> **初期所有關鍵動作都必須有人類明確按下同意，不得全自動執行。**
+
+此原則的目的是避免觸發任何 provider TOS 或接案平台的使用條款問題。
+
+**強制 approval gate 的動作（不可略過）：**
+
+- **接案決策** — AI 推薦案子後，人類必須明確同意才進入 pipeline
+- **Proposal 投遞** — AI 撰寫 proposal draft 後，人類必須審核並按下送出
+- **實作啟動** — 拆完 task 後，人類必須同意才開始派工
+- **交付確認** — 完成品必須經過人類 final review 才交付給客戶
+- **Mesh 節點接 task** — 節點 owner 必須同意自己的 runtime 接受特定 task
+
+**絕對不做的事：**
+
+- 不自動投遞 proposal 到任何平台
+- 不自動承諾 deadline 或報價
+- 不自動交付成果給客戶
+- 不在節點 owner 不知情的情況下消耗其 subscription quota
+- 不繞過任何 provider 或平台的 TOS 限制
+
+**設計含義：**
+
+- pipeline 中每個階段的轉換都需要 structured choices 呈現給人類決策
+- 即使未來 pipeline 成熟到品質可信賴，解除 approval gate 也必須是
+  owner **逐項、明確 opt-in** 的行為，不設全域開關
+- 此原則適用於 Solo Mode 和 Mesh Mode
+
+---
+
 ## 風險與考量
 
 **Part 1 風險**
-- 各接案平台的 TOS 限制（自動投遞 proposal 可能違規）
+- 各接案平台的 TOS 限制 — 已由天條約束，初期所有投遞皆需人工確認
 - 交付品質控制（AI 寫的 code 品質能否達到客戶期望）
 - 客戶溝通（需求變更、追加需求）仍需人工介入
 
@@ -288,13 +319,14 @@ Owner 可以從 Solo Mode 開始，驗證 pipeline 跑通後，再開放 Mesh Mo
 - 信任問題（參與者可能提交低品質結果）
 - 資料安全（task 內容可能含敏感資訊）
 - 法律問題（跨國分潤、稅務、契約責任）
-- Provider TOS（subscription 是否允許此類使用）
+- Provider TOS — 已由天條約束，節點 owner 必須明確同意每個 task
 
 **緩解策略**
 - Phase 1 先做 Solo Mode，驗證 pipeline 後再開放 Mesh
 - Mesh 初期限制為 trusted network（朋友 / 同事），不公開
 - Cross-node peer review 作為品質 gate
 - 敏感 task 只派給高信譽節點
+- 所有動作遵守天條，人類 approval 不可被程式碼繞過
 
 ---
 
