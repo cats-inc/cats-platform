@@ -19,6 +19,7 @@ dist-test/
 dist-server/
 build/
 config/*.local.json
+config/*.local.*.json
 
 # === Node.js ===
 node_modules/
