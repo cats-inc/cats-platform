@@ -564,6 +564,29 @@ test('settings cats consumes dedicated telegram and memory hooks instead of defi
   assert.match(memoryHookSource, /export function useSettingsCatsMemory/u);
 });
 
+test('settings cats consumes dedicated registry actions instead of defining cat and binding mutations inline', async () => {
+  const settingsCatsSource = await readFile(
+    new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
+    'utf8',
+  );
+  const registryHookSource = await readFile(
+    new URL('../src/products/chat/renderer/useSettingsCatsRegistryActions.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(settingsCatsSource, /useSettingsCatsRegistryActions/u);
+  assert.doesNotMatch(settingsCatsSource, /async function onCreateCat\(/u);
+  assert.doesNotMatch(settingsCatsSource, /async function onRenameCat\(/u);
+  assert.doesNotMatch(settingsCatsSource, /async function onMakeBossCat\(/u);
+  assert.doesNotMatch(settingsCatsSource, /async function onCreateBinding\(/u);
+  assert.doesNotMatch(settingsCatsSource, /async function onDeleteBinding\(/u);
+  assert.match(registryHookSource, /export function useSettingsCatsRegistryActions/u);
+  assert.match(registryHookSource, /createGlobalCat/u);
+  assert.match(registryHookSource, /updateCatProfile/u);
+  assert.match(registryHookSource, /createBotBindingApi/u);
+  assert.match(registryHookSource, /deleteBotBindingApi/u);
+});
+
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
     new URL('../src/products/chat/renderer/api.ts', import.meta.url),

@@ -1,15 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts';
-import { executionLabel, emptyCatForm, type CatFormState } from '../chatUtils';
-import {
-  createGlobalCat,
-  deleteGlobalCat,
-  updateCatProfile,
-  createBotBindingApi,
-  deleteBotBindingApi,
-} from '../api';
+import { executionLabel } from '../chatUtils';
+import { useSettingsCatsRegistryActions } from '../useSettingsCatsRegistryActions';
 import { useSettingsCatsMemory } from '../useSettingsCatsMemory';
 import { useSettingsCatsTelegram } from '../useSettingsCatsTelegram';
 import { ProviderModelFields } from './ProviderModelFields';
@@ -53,10 +47,28 @@ export function SettingsCats({
   onBusy,
 }: SettingsCatsProps) {
   const navigate = useNavigate();
-  const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [botForm, setBotForm] = useState({ botName: '', botToken: '', webhookSecret: '', inboundMode: 'polling' as 'polling' | 'webhook' });
+  const {
+    botForm,
+    catForm,
+    renameValue,
+    setBotForm,
+    setCatForm,
+    setRenameValue,
+    onCreateBinding,
+    onCreateCat,
+    onDeleteBinding,
+    onDeleteCat,
+    onMakeBossCat,
+    onRenameCat,
+    onSkillChange,
+  } = useSettingsCatsRegistryActions({
+    expandedCatId,
+    setExpandedCatId,
+    onBusy,
+    onFeedback,
+    onPayloadUpdate,
+  });
   const {
     botBindings,
     telegramStatus,
@@ -77,103 +89,6 @@ export function SettingsCats({
     onBusy,
     onFeedback,
   });
-
-  async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    onBusy('cat:create');
-    try {
-      const result = await createGlobalCat({
-        name: catForm.name,
-        provider: catForm.provider,
-        instance: catForm.instance || undefined,
-        model: catForm.model || undefined,
-      });
-      onPayloadUpdate(result);
-      setCatForm(emptyCatForm());
-      onFeedback('Cat saved.');
-    } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to save cat.');
-    } finally {
-      onBusy('');
-    }
-  }
-
-  async function onRenameCat(catId: string): Promise<void> {
-    const trimmed = renameValue.trim();
-    if (!trimmed) return;
-    onBusy(`cat:rename:${catId}`);
-    try {
-      const result = await updateCatProfile(catId, { name: trimmed });
-      onPayloadUpdate(result);
-      setRenameValue('');
-      onFeedback('Cat renamed.');
-    } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to rename cat.');
-    } finally {
-      onBusy('');
-    }
-  }
-
-  async function onMakeBossCat(catId: string): Promise<void> {
-    onBusy(`cat:makeBoss:${catId}`);
-    try {
-      const result = await updateCatProfile(catId, { makeBoss: true });
-      onPayloadUpdate(result);
-      onFeedback('Boss Cat updated.');
-    } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to set Boss Cat.');
-    } finally {
-      onBusy('');
-    }
-  }
-
-  async function onSkillChange(catId: string, skillProfile: string): Promise<void> {
-    onBusy(`cat:skill:${catId}`);
-    try {
-      const result = await updateCatProfile(catId, {
-        skillProfile: skillProfile === 'chat-default' ? null : skillProfile,
-      });
-      onPayloadUpdate(result);
-    } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to update skill.');
-    } finally {
-      onBusy('');
-    }
-  }
-
-  async function onCreateBinding(catId: string): Promise<void> {
-    if (!botForm.botName.trim()) return;
-    onBusy('bot:create');
-    try {
-      const result = await createBotBindingApi({
-        botName: botForm.botName.trim(),
-        catId,
-        inboundMode: botForm.inboundMode,
-        botToken: botForm.botToken.trim() || undefined,
-        webhookSecret: botForm.inboundMode === 'webhook' ? (botForm.webhookSecret.trim() || undefined) : undefined,
-      });
-      onPayloadUpdate(result);
-      setBotForm({ botName: '', botToken: '', webhookSecret: '', inboundMode: 'polling' });
-      onFeedback('Telegram bot binding created.');
-    } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to create binding.');
-    } finally {
-      onBusy('');
-    }
-  }
-
-  async function onDeleteBinding(bindingId: string): Promise<void> {
-    onBusy(`bot:delete:${bindingId}`);
-    try {
-      const result = await deleteBotBindingApi(bindingId);
-      onPayloadUpdate(result);
-      onFeedback('Binding removed.');
-    } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to remove binding.');
-    } finally {
-      onBusy('');
-    }
-  }
 
   return (
     <div className="settingsShell">
@@ -333,20 +248,9 @@ export function SettingsCats({
                                 className="chromeButton"
                                 type="button"
                                 disabled={busy === `cat:delete:${cat.id}`}
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  onBusy(`cat:delete:${cat.id}`);
-                                  onFeedback('');
-                                  try {
-                                    const next = await deleteGlobalCat(cat.id);
-                                    onPayloadUpdate(next);
-                                    onFeedback(`${cat.name} deleted.`);
-                                    if (expandedCatId === cat.id) setExpandedCatId(null);
-                                  } catch (err) {
-                                    onFeedback(err instanceof Error ? err.message : 'Failed to delete cat');
-                                  } finally {
-                                    onBusy('');
-                                  }
+                                  void onDeleteCat(cat.id, cat.name);
                                 }}
                                 data-tooltip={`Delete ${cat.name}`}
                               >
