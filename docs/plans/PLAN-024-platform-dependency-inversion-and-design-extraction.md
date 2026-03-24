@@ -8,7 +8,17 @@
 
 ## Status
 
-Draft
+In Progress
+
+Execution checkpoint on 2026-03-25:
+
+- Phase 0 completed
+- Phase 1 completed
+- Phase 2 in progress
+- Phase 3 substantially advanced
+- Phase 4 substantially advanced
+- Phase 5 substantially advanced
+- Phases 6 through 8 pending
 
 ## Date
 
@@ -57,36 +67,36 @@ Nothing listed above is optional. This plan includes the final cleanup.
 
 ## Ground-Truth Snapshot
 
-The plan starts from the codebase as it actually exists on 2026-03-24.
+The plan started from the 2026-03-24 baseline and is now tracked against the
+current execution checkpoint below.
 
 ### Structural hotspots
 
-Current hotspot files and measured line counts:
+Current notable hotspot files and measured line counts as of 2026-03-25:
 
-- `src/products/chat/renderer/styles.css` - 2,924 lines
-- `src/products/chat/state/runtimeActions.ts` - 2,897 lines
-- `src/core/api.ts` - 1,761 lines
-- `src/products/chat/state/store.ts` - 1,536 lines
-- `src/core/model.ts` - 1,376 lines
-- `src/products/chat/renderer/App.tsx` - 1,353 lines
+- `src/app/server/index.ts` - 573 lines
+- `src/platform/orchestration/contracts.ts` - 544 lines
+- `src/products/chat/renderer/styles/extras.css` - 507 lines
+- `src/products/chat/state/model.ts` - 496 lines
+- `src/products/chat/renderer/App.tsx` - 491 lines
+- `src/runtime/client.ts` - 434 lines
 
 ### Dependency problems
 
-The most important reverse dependencies still exist today:
+The worst reverse dependencies from the original baseline have largely been
+removed. The current structural pressure points are:
 
-- `platform/orchestration/dispatch.ts` imports `ChatStore`,
-  `CompanionBoxStore`, `buildChannelView`, and `routeChannelMessage`.
-- `platform/orchestration/planner.ts` imports Chat state/model helpers and
-  operator loop types.
-- `platform/memory/service.ts` imports `ChatStore`, `CompanionBoxStore`, and
-  `requireChannel`.
-- `platform/transports/telegram/bridge.ts` imports Chat state/model/runtime
-  logic directly.
-- `shared/app-shell.ts` is still used as a false shared contract surface.
+- `src/app/server/index.ts` is now the main composition root and must not grow
+  into a new integration God file as more product lines are wired in.
+- Several module families are still organized as flat prefix groups rather than
+  clearer subdirectories, which hurts navigability even after the file splits.
+- A shrinking set of `*Shared.ts`, compatibility barrels, and transitional
+  re-exports still need active governance so they do not become new dumping
+  grounds.
 
 ### Test baseline
 
-`cats` is not starting from zero tests. The repo currently has 39 repo-owned
+`cats` is not starting from zero tests. The repo currently has 40 repo-owned
 test files under `tests/`, and `npm test` already protects substantial server,
 renderer, routing, and orchestrator behavior. The job is to reshape and expand
 that protection while refactoring, not to invent testing from scratch.
@@ -99,6 +109,18 @@ that protection while refactoring, not to invent testing from scratch.
   `/api/orchestrator/*`.
 - Runtime dashboard/playground are still native `cats-runtime` pages rather
   than suite-hosted surfaces in `cats`.
+
+### Phase checkpoint
+
+The plan is no longer at the untouched baseline:
+
+- Phase 0 guardrails and architectural regression tests are in place.
+- Phase 1 seam injection and composition-root inversion have landed.
+- Phase 3 and Phase 4 hotspot decomposition have substantially reduced the
+  earlier monoliths.
+- Phase 5 renderer extraction has materially progressed, though the shared
+  shell/design end state is not complete yet.
+- Phase 6 through Phase 8 remain the major unfinished work.
 
 ## Execution Principles
 
@@ -536,6 +558,8 @@ track that should remain active after the main refactor lands.
   turning into new dumping grounds.
 - Rebalance test coverage so new modules gain behavior tests, not only static
   boundary checks.
+- Keep the suite composition root deliberate instead of letting
+  `app/server/index.ts` become the next integration sink.
 - Keep future product growth aligned to the approved `core/platform/product`
   dependency direction.
 
@@ -590,6 +614,41 @@ following rules:
 - feature work that grows an existing module family should prefer landing in
   the owned slice/directory rather than reopening a generic integration file
 
+#### 5. Composition Root Governance
+
+`src/app/server/index.ts` is the suite composition root. It is allowed to know
+about product modules and adapters, but it must not become a second-generation
+God file.
+
+Governance rules:
+
+- keep business logic, route behavior, and domain transforms out of the
+  composition root
+- if a new product or transport adds meaningful branching or setup logic,
+  extract a dedicated registration/factory module and let the composition root
+  only wire it
+- prefer one host-owned wiring call per product surface rather than letting
+  feature work append more inline setup blocks forever
+- review composition-root growth whenever a change increases its fan-in or
+  introduces new product-specific conditional behavior
+
+#### 6. File-Size Budgets
+
+Size budgets are a governance tool, not a substitute for judgment. They exist
+to catch integration sinks before they turn back into 1,500-line files.
+
+Budget rules:
+
+- `> 500` lines: warn and justify why the file still has one bounded
+  responsibility
+- `> 650` lines: require a named split target or follow-up decomposition task
+- `> 900` lines: block unless an ADR or plan explicitly grants a temporary
+  exception with a removal target
+
+Composition roots and generated style aggregators are not automatically exempt.
+They may remain larger than ordinary modules, but they still require an
+explicit ownership story and decomposition path once they cross the thresholds.
+
 ### Follow-Up Success Criteria
 
 The follow-up track is healthy when all of the following are true:
@@ -599,5 +658,8 @@ The follow-up track is healthy when all of the following are true:
 - shared/helper files stay specific instead of becoming anonymous catch-alls
 - test growth tracks module growth with both behavior coverage and boundary
   enforcement
+- the suite composition root stays a wiring layer rather than becoming a new
+  feature implementation hub
+- file-size budgets trigger early decomposition before new monoliths emerge
 - future `Chat`, `Work`, `Code`, and `Learn` work continues to strengthen the
   architecture instead of eroding it
