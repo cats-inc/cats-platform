@@ -12,9 +12,6 @@ import type {
 } from '../../shared/app-shell.js';
 import type { CatsCoreState } from '../../core/types.js';
 import type {
-  ChatRunInspectorView,
-} from '../../products/chat/shared/operatorLoop.js';
-import type {
   OrchestratorActionEnvelope,
   OrchestratorApprovalGate,
   OrchestratorDispatchTargetPlan,
@@ -27,6 +24,7 @@ import type {
   OrchestratorExecutionTargetRef,
   OrchestratorNextAction,
   OrchestratorOperatorActionContract,
+  OrchestratorRunInspectorView,
   OrchestratorOperatorSeams,
   OrchestratorRecoveryLoop,
   OrchestratorRuntimeToolPlane,
@@ -299,7 +297,7 @@ function buildApprovalGate(
 }
 
 function buildRecoveryLoop(
-  runInspector: ChatRunInspectorView | null,
+  runInspector: OrchestratorRunInspectorView | null,
   operatorSeams: OrchestratorOperatorSeams,
 ): OrchestratorRecoveryLoop {
   const incidentActions: OrchestratorOperatorActionContract[] = (
@@ -774,7 +772,7 @@ export function buildExecutionPlanFromChannel(input: {
   channel: ChatChannelView;
   core: CatsCoreState;
   operatorSeams: OrchestratorOperatorSeams;
-  runInspector: ChatRunInspectorView | null;
+  runInspector: OrchestratorRunInspectorView | null;
   selection?: ExecutionSelection;
 }): OrchestratorExecutionPlan {
   const approval = buildApprovalGate(input.core, input.operatorSeams);

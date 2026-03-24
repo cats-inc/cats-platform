@@ -14,13 +14,26 @@ import type {
   RoomWorkflowShape,
   RoomRoutingMode,
 } from '../../shared/app-shell.js';
-import type { CatsCoreState, ExecutionTargetSummary } from '../../core/types.js';
+import type {
+  CatsCoreState,
+  CoreApprovalDecisionAction,
+  CoreApprovalQueueItem,
+  CoreBudgetAlertLevel,
+  CoreBudgetAlertSource,
+  CoreCheckpointRecord,
+  CoreDeliveryGate,
+  CoreDeliveryMode,
+  CoreEffectivePolicySource,
+  CoreGovernanceSummary,
+  CoreOrchestrationOutcomeRecord,
+  CoreRunRecord,
+  CoreTaskRecord,
+  CoreTraceRecord,
+  CoreWorkflowSummary,
+  ExecutionTargetSummary,
+} from '../../core/types.js';
 import type { RuntimeClient, RuntimeSkillManifest } from '../runtime/client.js';
 import type { CatsMemoryService } from '../memory/index.js';
-import type {
-  ChatOperatorView,
-  ChatRunInspectorView,
-} from '../../products/chat/shared/operatorLoop.js';
 
 export const ORCHESTRATOR_CONTRACT_VERSION = 1;
 export const ORCHESTRATOR_RUNTIME_TOOL_SCHEMA_VERSION = 1;
@@ -99,6 +112,120 @@ export interface ToolIntentManifest {
   strict?: boolean;
 }
 
+export type OrchestratorOperatorSeverity =
+  | 'muted'
+  | 'progress'
+  | 'attention'
+  | 'error'
+  | 'success';
+
+export interface OrchestratorOperatorActivityItem {
+  id: string;
+  label: string;
+  message: string;
+  createdAt: string;
+  actorId: string | null;
+  actorName: string | null;
+  runId: string | null;
+  taskId: string | null;
+  severity: OrchestratorOperatorSeverity;
+  source: 'activity' | 'trace' | 'checkpoint' | 'outcome';
+}
+
+export interface OrchestratorRunMetrics {
+  dispatchCount: number | null;
+  continuationCount: number | null;
+  targetCount: number | null;
+}
+
+export interface OrchestratorWorkflowBranchView {
+  id: string;
+  participantName: string;
+  status: string;
+  handoffReason: string | null;
+  branchStrategy: string | null;
+  parentCheckpointId: string | null;
+  responseMessageId: string | null;
+  error: string | null;
+}
+
+export interface OrchestratorEffectivePolicyView {
+  deliveryMode: CoreDeliveryMode | null;
+  deliveryGates: CoreDeliveryGate[];
+  deliverySource: CoreEffectivePolicySource | null;
+  deliveryRationale: string | null;
+  budgetAlertLevel: CoreBudgetAlertLevel | null;
+  budgetAlertSource: CoreBudgetAlertSource | null;
+  budgetRationale: string | null;
+}
+
+export interface OrchestratorApprovalActionView {
+  kind: CoreApprovalDecisionAction;
+  label: string;
+  description: string;
+  disabled: boolean;
+  taskId: string;
+  approvalId: string;
+  status: CoreApprovalQueueItem['status'];
+}
+
+export interface OrchestratorOperatorActionView {
+  kind: 'retry' | 'acknowledge';
+  label: string;
+  description: string;
+  disabled: boolean;
+  statusLabel: string | null;
+  taskId: string | null;
+  runId: string | null;
+  checkpointId: string | null;
+  outcomeId: string | null;
+}
+
+export interface OrchestratorRunInspectorView {
+  run: CoreRunRecord;
+  traces: CoreTraceRecord[];
+  checkpoints: CoreCheckpointRecord[];
+  outcomes: CoreOrchestrationOutcomeRecord[];
+  approvals: CoreApprovalQueueItem[];
+  latestOutcome: CoreOrchestrationOutcomeRecord | null;
+  latestCheckpoint: CoreCheckpointRecord | null;
+  guardReason: string | null;
+  cooldownLabel: string | null;
+  metrics: OrchestratorRunMetrics;
+  workflowSummary: CoreWorkflowSummary | null;
+  governanceSummary: CoreGovernanceSummary | null;
+  workflowStageId: string | null;
+  workflowShape: string | null;
+  reviewRequired: boolean;
+  branchStates: OrchestratorWorkflowBranchView[];
+  approvalActions: OrchestratorApprovalActionView[];
+  incidentActions: OrchestratorOperatorActionView[];
+}
+
+export interface OrchestratorOperatorView {
+  channelId: string;
+  conversationId: string;
+  actorNameById: Record<string, string>;
+  task: CoreTaskRecord | null;
+  approvals: CoreApprovalQueueItem[];
+  runs: CoreRunRecord[];
+  traces: CoreTraceRecord[];
+  checkpoints: CoreCheckpointRecord[];
+  outcomes: CoreOrchestrationOutcomeRecord[];
+  activityFeed: OrchestratorOperatorActivityItem[];
+  latestRun: CoreRunRecord | null;
+  latestOutcome: CoreOrchestrationOutcomeRecord | null;
+  latestCheckpoint: CoreCheckpointRecord | null;
+  latestApproval: CoreApprovalQueueItem | null;
+  guardReason: string | null;
+  cooldownLabel: string | null;
+  effectivePolicy: OrchestratorEffectivePolicyView | null;
+  governanceSummary: CoreGovernanceSummary | null;
+  workflowSummary: CoreWorkflowSummary | null;
+  approvalActions: OrchestratorApprovalActionView[];
+  incidentActions: OrchestratorOperatorActionView[];
+}
+
 export interface OrchestratorChatStore {
   read(): Promise<ChatState>;
   write(state: ChatState): Promise<ChatState>;
@@ -155,11 +282,11 @@ export interface OrchestratorPlannerSurface {
   ): OrchestratorMentionRouteResult;
   resolveRoomRoutingState(roomRouting: RoomRoutingState | null | undefined): RoomRoutingState;
   resolveOrchestratorDisplayName(state: ChatState): string;
-  buildOperatorView(core: CatsCoreState, channelId: string): ChatOperatorView | null;
+  buildOperatorView(core: CatsCoreState, channelId: string): OrchestratorOperatorView | null;
   buildRunInspectorView(
-    operatorView: ChatOperatorView | null,
+    operatorView: OrchestratorOperatorView | null,
     runId: string | null | undefined,
-  ): ChatRunInspectorView | null;
+  ): OrchestratorRunInspectorView | null;
   resolveConversationId(channelId: string): string;
 }
 
@@ -353,8 +480,8 @@ export interface OrchestratorExecutionLoopSnapshot {
   channelId: string;
   runtimeToolPlane: OrchestratorRuntimeToolPlane;
   execution: OrchestratorExecutionPlan;
-  operator: ChatOperatorView | null;
-  runInspector: ChatRunInspectorView | null;
+  operator: OrchestratorOperatorView | null;
+  runInspector: OrchestratorRunInspectorView | null;
 }
 
 export interface OrchestratorPlanResponse {

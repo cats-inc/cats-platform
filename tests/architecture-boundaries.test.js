@@ -54,6 +54,20 @@ test('platform orchestrator planner stays behind an injected planner surface sea
   );
 });
 
+test('platform orchestrator contracts own their operator-loop view types', async () => {
+  const source = await readFile(
+    new URL('../src/platform/orchestration/contracts.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /export interface OrchestratorOperatorView/u);
+  assert.match(source, /export interface OrchestratorRunInspectorView/u);
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/shared\/operatorLoop\.js/u,
+  );
+});
+
 test('platform telegram bridge stays behind an injected room bridge seam', async () => {
   const source = await readFile(
     new URL('../src/platform/transports/telegram/bridge.ts', import.meta.url),
