@@ -460,6 +460,35 @@ test('renderer app consumes dedicated governance actions instead of defining app
   assert.match(hookSource, /sendChatMessage/u);
 });
 
+test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
+  const apiSource = await readFile(
+    new URL('../src/products/chat/renderer/api.ts', import.meta.url),
+    'utf8',
+  );
+  const normalizationSource = await readFile(
+    new URL('../src/products/chat/renderer/apiNormalization.ts', import.meta.url),
+    'utf8',
+  );
+  const operatorSource = await readFile(
+    new URL('../src/products/chat/renderer/apiOperator.ts', import.meta.url),
+    'utf8',
+  );
+  const chatSource = await readFile(
+    new URL('../src/products/chat/renderer/apiChat.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(apiSource, /from '\.\/apiNormalization\.js'/u);
+  assert.match(apiSource, /from '\.\/apiOperator\.js'/u);
+  assert.match(apiSource, /from '\.\/apiChat\.js'/u);
+  assert.doesNotMatch(apiSource, /async function readErrorMessage\(/u);
+  assert.doesNotMatch(apiSource, /export async function fetchAppShell\(/u);
+  assert.doesNotMatch(apiSource, /export async function sendChatMessage\(/u);
+  assert.match(normalizationSource, /export function normalizeAppShellPayload/u);
+  assert.match(operatorSource, /export async function fetchOperatorLoopSnapshot/u);
+  assert.match(chatSource, /export async function sendChatMessage/u);
+});
+
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
