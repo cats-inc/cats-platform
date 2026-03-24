@@ -38,10 +38,8 @@ import {
   resetSetup,
   createChatChannel,
   deleteChatChannel,
-  fetchAppShell,
   removeCatFromChannelApi,
   sendChatMessage,
-  updateSelectedChannel,
   uploadChannelAttachments,
   writeCoreApprovalDecision,
   writeCoreOperatorAction,
@@ -68,6 +66,7 @@ import {
 } from '../shared/channelEntry';
 import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
 import { useOperatorLoop } from './useOperatorLoop';
+import { useAppShellRouting } from './useAppShellRouting';
 
 import { SetupWizard } from './components/SetupWizard';
 import type { ModelSelectorValue } from './components/ModelSelector';
@@ -279,112 +278,20 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    void fetchAppShell(controller.signal)
-      .then((payload) => {
-        startTransition(() => {
-          setState({ status: 'ready', payload });
-        });
-      })
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          setState({
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Unknown renderer error',
-          });
-        }
-      });
-
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    if (state.status !== 'ready' || !routeChannelId) return;
-
-    if (!routeChannelExists) {
-      navigate(resolveVisibleChatPath(state.payload.chat.channels, selectedChannelId), { replace: true });
-      return;
-    }
-
-    if (!shouldWakeRouteChannelOnEntry({
-      routeChannelId,
-      routeChannelExists,
-      selectedChannelId,
-      selectedChannelViewId,
-      entryLifecycleState: selectedChannelEntryLifecycle,
-    })) {
-      return;
-    }
-
-    const controller = new AbortController();
-    updateSelectedChannel(routeChannelId, controller.signal)
-      .then(p => {
-        if (!controller.signal.aborted) {
-          startTransition(() => setState({ status: 'ready', payload: p }));
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          navigate(resolveVisibleChatPath(state.payload.chat.channels, selectedChannelId), { replace: true });
-        }
-      });
-
-    return () => controller.abort();
-  }, [
+  useAppShellRouting({
+    state,
+    setState,
     navigate,
-    routeChannelExists,
     routeChannelId,
+    routeChannelExists,
     selectedChannelId,
-    selectedChannelEntryLifecycle,
     selectedChannelViewId,
-    state.status,
-  ]);
-
-  useEffect(() => {
-    if (state.status !== 'ready' || !draftLeadCatId) {
-      return;
-    }
-
-    const catExists = state.payload.chat.cats.some((cat) =>
-      cat.id === draftLeadCatId && cat.status === 'active');
-    if (!catExists) {
-      navigate(NEW_CHAT_PATH, { replace: true });
-    }
-  }, [draftLeadCatId, navigate, state]);
-
-  useEffect(() => {
-    if (
-      state.status !== 'ready'
-      || !showingMyCatDirectLane
-      || !draftLeadCatId
-      || !routeDirectLaneSummary
-      || isDirectLaneSelectedForCat(readySelectedChannel, draftLeadCatId)
-    ) {
-      return;
-    }
-
-    const controller = new AbortController();
-    updateSelectedChannel(routeDirectLaneSummary.id, controller.signal)
-      .then((payload) => {
-        if (!controller.signal.aborted) {
-          startTransition(() => setState({ status: 'ready', payload }));
-        }
-      })
-      .catch(() => {
-        // Keep the route on the in-place lane even if the hidden backing channel
-        // could not be reselected; the draft surface remains the fallback.
-      });
-
-    return () => controller.abort();
-  }, [
+    selectedChannelEntryLifecycle,
     draftLeadCatId,
-    readySelectedChannel,
-    routeDirectLaneSummary,
     showingMyCatDirectLane,
-    state.status,
-  ]);
+    routeDirectLaneSummary,
+    readySelectedChannel,
+  });
 
   // Sync solo channel model from the selected channel's pending state
   useEffect(() => {

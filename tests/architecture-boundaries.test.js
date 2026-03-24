@@ -362,6 +362,24 @@ test('renderer app consumes a dedicated operator-loop hook instead of defining p
   assert.match(hookSource, /fetchOperatorLoopSnapshot/u);
 });
 
+test('renderer app consumes a dedicated app-shell routing hook instead of defining route sync inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/chat/renderer/useAppShellRouting.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /useAppShellRouting/u);
+  assert.doesNotMatch(appSource, /void fetchAppShell\(controller\.signal\)/u);
+  assert.doesNotMatch(appSource, /updateSelectedChannel\(routeChannelId,\s*controller\.signal\)/u);
+  assert.match(hookSource, /export function useAppShellRouting/u);
+  assert.match(hookSource, /fetchAppShell/u);
+  assert.match(hookSource, /updateSelectedChannel/u);
+});
+
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
