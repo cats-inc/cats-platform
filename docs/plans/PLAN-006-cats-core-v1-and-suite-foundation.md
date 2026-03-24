@@ -49,7 +49,7 @@ fixtures.
   - artifact
   - activity
   - owner profile
-- `src/products/chat/state/coreProjection.ts` and
+- `src/products/chat/state/core-projection/index.ts` and
   `src/products/chat/state/store.ts` now keep the boundary explicit between
   chat-owned projections and durable core-owned source-of-truth records.
 - `src/shared/coreFixtures.ts` now publishes a reusable example payload bundle
@@ -119,6 +119,5 @@ fixtures.
 ---
 
 *Last updated: 2026-03-22*
-
 
 

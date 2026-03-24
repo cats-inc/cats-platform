@@ -3,7 +3,7 @@ import {
   buildApprovalQueue,
   upsertCoreTask,
   writeApprovalDecision,
-} from '../model.js';
+} from '../model/index.js';
 import { deriveCoreGovernanceSummary } from '../governance.js';
 import { applyTaskAssignmentLifecycle } from '../taskLifecycle.js';
 import type { OrchestratorDispatchResponse } from '../../platform/orchestration/contracts.js';

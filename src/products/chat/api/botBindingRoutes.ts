@@ -7,7 +7,7 @@ import {
 import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
-import { requireCat } from '../state/model.js';
+import { requireCat } from '../state/model/index.js';
 import type {
   CreateBotBindingInput,
   UpdateBotBindingInput,

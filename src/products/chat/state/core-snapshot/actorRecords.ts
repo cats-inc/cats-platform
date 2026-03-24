@@ -7,7 +7,7 @@ import type {
   CoreWorkItemRecord,
   OwnerProfileRecord,
 } from '../../../../core/types.js';
-import { createDefaultCoreState } from '../../../../core/model.js';
+import { createDefaultCoreState } from '../../../../core/model/index.js';
 import {
   createEmptyMemoryCheckpoint,
 } from '../../../../core/actors.js';

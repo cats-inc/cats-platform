@@ -180,7 +180,7 @@ Split by resource domain:
 - `core/api/workItemRoutes.ts` — work item CRUD
 - `core/api/artifactRoutes.ts` — artifact CRUD
 - `core/api/activityRoutes.ts` — activity append/query
-- `core/api/memoryRoutes.ts` — durable memory operations
+- `products/chat/api/memory/index.ts` — chat-owned durable memory operations
 - `core/api/ownerRoutes.ts` — owner profile
 - `core/api/index.ts` — re-exports `routeCoreApi` that delegates to the above
 

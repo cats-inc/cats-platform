@@ -152,7 +152,7 @@ they are individually migrated to core-based assertions.
 
 Current transitional modules after Phase 4:
 
-- `src/products/chat/state/coreProjection.ts` owns the Chat-specific
+- `src/products/chat/state/core-projection/index.ts` owns the Chat-specific
   `chat -> core` projection logic that previously lived under
   `src/core/model.ts`.
 - `src/chat/store.ts` now persists a temporary `{ ...core, chat }`
@@ -324,7 +324,6 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-21*
-
 
 
 

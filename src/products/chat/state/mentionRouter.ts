@@ -23,7 +23,7 @@ import {
   ORCHESTRATOR_NAME,
   buildChannelView,
   resolveOrchestratorDisplayName,
-} from './model.js';
+} from './model/index.js';
 import { parseMentions } from './mentionParsing.js';
 
 export type MentionRoutingMode = RoomRouteResolutionMode;

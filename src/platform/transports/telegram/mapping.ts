@@ -3,7 +3,7 @@ import type {
   TelegramNormalizedMessageSummary,
   TelegramRoomRoutingSeam,
 } from './contracts.js';
-import type { TelegramRelayStore } from './store.js';
+import type { TelegramRelayStore } from './store/index.js';
 
 export const TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE =
   'Telegram ingress is durably mapped to transport inbox conversations. ' +

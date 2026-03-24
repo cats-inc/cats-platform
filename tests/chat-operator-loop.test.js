@@ -11,7 +11,7 @@ import {
   upsertCoreRun,
   upsertCoreTask,
   writeApprovalDecision,
-} from '../dist-server/core/model.js';
+} from '../dist-server/core/model/index.js';
 import {
   buildChatOperatorView,
   buildRunInspectorView,

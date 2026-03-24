@@ -1,6 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
-import { createCatMemory, deleteCatMemory, listCatMemory, type DurableMemoryItem } from '../api.js';
+import { createCatMemory, deleteCatMemory, listCatMemory, type DurableMemoryItem } from '../api/index.js';
 
 export interface SettingsCatsMemoryController {
   memoryForm: {

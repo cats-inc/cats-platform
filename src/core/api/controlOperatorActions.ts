@@ -4,7 +4,7 @@ import {
   upsertCoreOutcome,
   upsertCoreRun,
   upsertCoreTask,
-} from '../model.js';
+} from '../model/index.js';
 import { deriveCoreGovernanceSummary } from '../governance.js';
 import { CoreValidationError } from '../errors.js';
 import {

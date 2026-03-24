@@ -28,7 +28,7 @@ import {
   buildExecutionPlanFromChannel,
   buildOrchestratorRuntimeToolPlane,
   buildPreDispatchExecutionPlan,
-} from './execution.js';
+} from './execution/index.js';
 import { resolveToolIntentManifest } from './toolIntent.js';
 
 function resolveTransport(

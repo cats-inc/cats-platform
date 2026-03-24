@@ -1,4 +1,4 @@
-import { upsertCoreTask } from '../model.js';
+import { upsertCoreTask } from '../model/index.js';
 import {
   applyTaskAssignmentLifecycle,
   checkoutTaskExecution,

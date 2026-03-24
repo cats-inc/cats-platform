@@ -121,25 +121,25 @@ test('platform orchestrator contracts own their operator-loop view types', async
 
 test('platform orchestrator execution is a thin facade over dedicated execution plan modules', async () => {
   const executionModule = await readFile(
-    new URL('../src/platform/orchestration/execution.ts', import.meta.url),
+    new URL('../src/platform/orchestration/execution/index.ts', import.meta.url),
     'utf8',
   );
   const sharedModule = await readFile(
-    new URL('../src/platform/orchestration/executionShared.ts', import.meta.url),
+    new URL('../src/platform/orchestration/execution/shared.ts', import.meta.url),
     'utf8',
   );
   const preDispatchModule = await readFile(
-    new URL('../src/platform/orchestration/executionPreDispatch.ts', import.meta.url),
+    new URL('../src/platform/orchestration/execution/preDispatch.ts', import.meta.url),
     'utf8',
   );
   const workflowModule = await readFile(
-    new URL('../src/platform/orchestration/executionWorkflow.ts', import.meta.url),
+    new URL('../src/platform/orchestration/execution/workflow.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(executionModule, /executionPreDispatch\.js/u);
-  assert.match(executionModule, /executionWorkflow\.js/u);
-  assert.match(executionModule, /executionShared\.js/u);
+  assert.match(executionModule, /preDispatch\.js/u);
+  assert.match(executionModule, /workflow\.js/u);
+  assert.match(executionModule, /shared\.js/u);
   assert.doesNotMatch(executionModule, /function buildApprovalGate\(/u);
   assert.doesNotMatch(executionModule, /function buildEventStep\(/u);
   assert.match(sharedModule, /export function buildApprovalGate/u);
@@ -174,25 +174,25 @@ test('chat operator loop composes dedicated metadata and action helper modules',
 
 test('telegram relay composes dedicated status, ingress, and delivery helper modules', async () => {
   const relayModule = await readFile(
-    new URL('../src/platform/transports/telegram/relay.ts', import.meta.url),
+    new URL('../src/platform/transports/telegram/relay/index.ts', import.meta.url),
     'utf8',
   );
   const statusModule = await readFile(
-    new URL('../src/platform/transports/telegram/relayStatus.ts', import.meta.url),
+    new URL('../src/platform/transports/telegram/relay/status.ts', import.meta.url),
     'utf8',
   );
   const ingressModule = await readFile(
-    new URL('../src/platform/transports/telegram/relayIngress.ts', import.meta.url),
+    new URL('../src/platform/transports/telegram/relay/ingress.ts', import.meta.url),
     'utf8',
   );
   const deliveryModule = await readFile(
-    new URL('../src/platform/transports/telegram/relayDelivery.ts', import.meta.url),
+    new URL('../src/platform/transports/telegram/relay/delivery.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(relayModule, /relayStatus\.js/u);
-  assert.match(relayModule, /relayIngress\.js/u);
-  assert.match(relayModule, /relayDelivery\.js/u);
+  assert.match(relayModule, /status\.js/u);
+  assert.match(relayModule, /ingress\.js/u);
+  assert.match(relayModule, /delivery\.js/u);
   assert.doesNotMatch(relayModule, /function buildStatusNote\(/u);
   assert.doesNotMatch(relayModule, /function buildWebhookReceipt\(/u);
   assert.doesNotMatch(relayModule, /normalizeTelegramMessageSummary/u);
@@ -207,20 +207,20 @@ test('telegram relay composes dedicated status, ingress, and delivery helper mod
 
 test('telegram relay store composes dedicated persistence and state-normalizer modules', async () => {
   const storeModule = await readFile(
-    new URL('../src/platform/transports/telegram/store.ts', import.meta.url),
+    new URL('../src/platform/transports/telegram/store/index.ts', import.meta.url),
     'utf8',
   );
   const persistenceModule = await readFile(
-    new URL('../src/platform/transports/telegram/storePersistence.ts', import.meta.url),
+    new URL('../src/platform/transports/telegram/store/persistence.ts', import.meta.url),
     'utf8',
   );
   const stateModule = await readFile(
-    new URL('../src/platform/transports/telegram/storeState.ts', import.meta.url),
+    new URL('../src/platform/transports/telegram/store/state.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(storeModule, /storePersistence\.js/u);
-  assert.match(storeModule, /storeState\.js/u);
+  assert.match(storeModule, /persistence\.js/u);
+  assert.match(storeModule, /state\.js/u);
   assert.doesNotMatch(storeModule, /function asRecord\(/u);
   assert.doesNotMatch(storeModule, /function toWebhookReceipt\(/u);
   assert.doesNotMatch(storeModule, /writeFileSync/u);
@@ -277,15 +277,15 @@ test('canonical memory store composes dedicated snapshot helpers instead of defi
 
 test('chat model re-exports dedicated cat mutation helpers instead of defining them inline', async () => {
   const modelModule = await readFile(
-    new URL('../src/products/chat/state/model.ts', import.meta.url),
+    new URL('../src/products/chat/state/model/index.ts', import.meta.url),
     'utf8',
   );
   const catsModule = await readFile(
-    new URL('../src/products/chat/state/modelCats.ts', import.meta.url),
+    new URL('../src/products/chat/state/model/cats.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(modelModule, /from '\.\/modelCats\.js'/u);
+  assert.match(modelModule, /from '\.\/cats\.js'/u);
   assert.doesNotMatch(modelModule, /const DEFAULT_CAT_NAME/u);
   assert.doesNotMatch(modelModule, /export function renameCat\(/u);
   assert.doesNotMatch(modelModule, /export function createCat\(/u);
@@ -296,7 +296,7 @@ test('chat model re-exports dedicated cat mutation helpers instead of defining t
 
 test('chat snapshot composes dedicated shared and entity helper modules', async () => {
   const snapshotModule = await readFile(
-    new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
+    new URL('../src/products/chat/state/chat-snapshot/index.ts', import.meta.url),
     'utf8',
   );
   const sharedModule = await readFile(
@@ -308,8 +308,8 @@ test('chat snapshot composes dedicated shared and entity helper modules', async 
     'utf8',
   );
 
-  assert.match(snapshotModule, /chat-snapshot\/shared\.js/u);
-  assert.match(snapshotModule, /chat-snapshot\/entities\.js/u);
+  assert.match(snapshotModule, /\.\/shared\.js/u);
+  assert.match(snapshotModule, /\.\/entities\.js/u);
   assert.doesNotMatch(snapshotModule, /function normalizeMessage\(/u);
   assert.doesNotMatch(snapshotModule, /function normalizeExecutionLease\(/u);
   assert.match(sharedModule, /export function normalizeExecutionLease/u);
@@ -320,25 +320,25 @@ test('chat snapshot composes dedicated shared and entity helper modules', async 
 
 test('chat resource routes compose dedicated preference, orchestrator, and channel modules', async () => {
   const resourceRoutesModule = await readFile(
-    new URL('../src/products/chat/api/resourceRoutes.ts', import.meta.url),
+    new URL('../src/products/chat/api/resources/index.ts', import.meta.url),
     'utf8',
   );
   const preferenceModule = await readFile(
-    new URL('../src/products/chat/api/resourcePreferenceRoutes.ts', import.meta.url),
+    new URL('../src/products/chat/api/resources/preferenceRoutes.ts', import.meta.url),
     'utf8',
   );
   const orchestratorModule = await readFile(
-    new URL('../src/products/chat/api/resourceOrchestratorRoutes.ts', import.meta.url),
+    new URL('../src/products/chat/api/resources/orchestratorRoutes.ts', import.meta.url),
     'utf8',
   );
   const channelModule = await readFile(
-    new URL('../src/products/chat/api/resourceChannelRoutes.ts', import.meta.url),
+    new URL('../src/products/chat/api/resources/channelRoutes.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(resourceRoutesModule, /resourcePreferenceRoutes\.js/u);
-  assert.match(resourceRoutesModule, /resourceOrchestratorRoutes\.js/u);
-  assert.match(resourceRoutesModule, /resourceChannelRoutes\.js/u);
+  assert.match(resourceRoutesModule, /preferenceRoutes\.js/u);
+  assert.match(resourceRoutesModule, /orchestratorRoutes\.js/u);
+  assert.match(resourceRoutesModule, /channelRoutes\.js/u);
   assert.doesNotMatch(resourceRoutesModule, /handleRestGetPreferences/u);
   assert.doesNotMatch(resourceRoutesModule, /handleRestSendMessage/u);
   assert.match(preferenceModule, /export async function routeChatPreferenceResourceApi/u);
@@ -350,29 +350,29 @@ test('chat resource routes compose dedicated preference, orchestrator, and chann
 
 test('chat memory routes compose dedicated owner, channel, cat, and shared memory modules', async () => {
   const memoryRoutesModule = await readFile(
-    new URL('../src/products/chat/api/memoryRoutes.ts', import.meta.url),
+    new URL('../src/products/chat/api/memory/index.ts', import.meta.url),
     'utf8',
   );
   const sharedModule = await readFile(
-    new URL('../src/products/chat/api/memoryRouteShared.ts', import.meta.url),
+    new URL('../src/products/chat/api/memory/shared.ts', import.meta.url),
     'utf8',
   );
   const catModule = await readFile(
-    new URL('../src/products/chat/api/memoryCatRoutes.ts', import.meta.url),
+    new URL('../src/products/chat/api/memory/catRoutes.ts', import.meta.url),
     'utf8',
   );
   const ownerModule = await readFile(
-    new URL('../src/products/chat/api/memoryOwnerRoutes.ts', import.meta.url),
+    new URL('../src/products/chat/api/memory/ownerRoutes.ts', import.meta.url),
     'utf8',
   );
   const channelModule = await readFile(
-    new URL('../src/products/chat/api/memoryChannelRoutes.ts', import.meta.url),
+    new URL('../src/products/chat/api/memory/channelRoutes.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(memoryRoutesModule, /memoryOwnerRoutes\.js/u);
-  assert.match(memoryRoutesModule, /memoryChannelRoutes\.js/u);
-  assert.match(memoryRoutesModule, /memoryCatRoutes\.js/u);
+  assert.match(memoryRoutesModule, /ownerRoutes\.js/u);
+  assert.match(memoryRoutesModule, /channelRoutes\.js/u);
+  assert.match(memoryRoutesModule, /catRoutes\.js/u);
   assert.doesNotMatch(memoryRoutesModule, /handleCreateCatMemory/u);
   assert.doesNotMatch(memoryRoutesModule, /handleFlushCanonicalOwnerMemory/u);
   assert.match(sharedModule, /export function validateCategory/u);
@@ -449,7 +449,7 @@ test('runtimeActions is a thin facade over dedicated routing seams', async () =>
   );
 
   assert.match(runtimeActions, /runtime-dispatch\/routing\.js/u);
-  assert.match(runtimeActions, /runtimeSessionRouting\.js/u);
+  assert.match(runtimeActions, /runtime-session\/index\.js/u);
   assert.doesNotMatch(runtimeActions, /export async function routeChannelMessage\(/u);
   assert.doesNotMatch(runtimeActions, /export async function activateChannelSessions\(/u);
   assert.doesNotMatch(runtimeActions, /export async function wakeChannelEntryParticipant\(/u);
@@ -655,7 +655,7 @@ test('runtime dispatch execution consumes dedicated runtime session-routing help
     'utf8',
   );
   const sessionRoutingModule = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionRouting.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/index.ts', import.meta.url),
     'utf8',
   );
   const sessionSharedModule = await readFile(
@@ -663,9 +663,9 @@ test('runtime dispatch execution consumes dedicated runtime session-routing help
     'utf8',
   );
 
-  assert.match(dispatchExecutionModule, /runtimeSessionRouting\.js/u);
+  assert.match(dispatchExecutionModule, /runtime-session\/index\.js/u);
   assert.doesNotMatch(dispatchExecutionModule, /function shouldRewriteOrchestratorReply\(/u);
-  assert.match(sessionRoutingModule, /runtime-session\/shared\.js/u);
+  assert.match(sessionRoutingModule, /\.\/shared\.js/u);
   assert.match(sessionSharedModule, /export function shouldRewriteOrchestratorReply/u);
 });
 
@@ -694,7 +694,7 @@ test('runtime dispatch wake consumes dedicated runtime session-routing helpers i
     'utf8',
   );
   const sessionRoutingModule = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionRouting.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/index.ts', import.meta.url),
     'utf8',
   );
   const sessionWakeModule = await readFile(
@@ -702,17 +702,17 @@ test('runtime dispatch wake consumes dedicated runtime session-routing helpers i
     'utf8',
   );
 
-  assert.match(dispatchWakeModule, /runtimeSessionRouting\.js/u);
+  assert.match(dispatchWakeModule, /runtime-session\/index\.js/u);
   assert.doesNotMatch(dispatchWakeModule, /async function ensureTargetSession\(/u);
   assert.doesNotMatch(dispatchWakeModule, /async function maybeAutoCheckoutChannelTask\(/u);
-  assert.match(sessionRoutingModule, /runtime-session\/wake\.js/u);
+  assert.match(sessionRoutingModule, /\.\/wake\.js/u);
   assert.match(sessionWakeModule, /export async function ensureTargetSession/u);
   assert.match(sessionWakeModule, /export async function maybeAutoCheckoutChannelTask/u);
 });
 
 test('runtime session routing composes dedicated wake and activation modules instead of defining session flows inline', async () => {
   const sessionRoutingModule = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionRouting.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/index.ts', import.meta.url),
     'utf8',
   );
   const sessionActivationModule = await readFile(
@@ -720,9 +720,9 @@ test('runtime session routing composes dedicated wake and activation modules ins
     'utf8',
   );
 
-  assert.match(sessionRoutingModule, /runtime-session\/shared\.js/u);
-  assert.match(sessionRoutingModule, /runtime-session\/wake\.js/u);
-  assert.match(sessionRoutingModule, /runtime-session\/activation\.js/u);
+  assert.match(sessionRoutingModule, /\.\/shared\.js/u);
+  assert.match(sessionRoutingModule, /\.\/wake\.js/u);
+  assert.match(sessionRoutingModule, /\.\/activation\.js/u);
   assert.doesNotMatch(sessionRoutingModule, /export async function ensureTargetSession\(/u);
   assert.doesNotMatch(sessionRoutingModule, /export async function wakeChannelEntryParticipant\(/u);
   assert.doesNotMatch(sessionRoutingModule, /export async function activateChannelSessions\(/u);
@@ -1133,7 +1133,7 @@ test('renderer styles compose dedicated partials instead of keeping the full sty
 
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
-    new URL('../src/products/chat/renderer/api.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/api/index.ts', import.meta.url),
     'utf8',
   );
   const normalizationSource = await readFile(
@@ -1162,7 +1162,7 @@ test('renderer api facade composes dedicated client modules instead of defining 
 
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
-    new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
+    new URL('../src/products/chat/state/chat-snapshot/index.ts', import.meta.url),
     'utf8',
   );
   const entityModule = await readFile(
@@ -1174,7 +1174,7 @@ test('chat snapshot consumes dedicated room-routing snapshot normalization inste
     'utf8',
   );
 
-  assert.match(snapshotConsumer, /chat-snapshot\/entities\.js/u);
+  assert.match(snapshotConsumer, /\.\/entities\.js/u);
   assert.doesNotMatch(snapshotConsumer, /function normalizeRoomRouting\(/u);
   assert.doesNotMatch(snapshotConsumer, /function normalizeRoomWorkflowTurn\(/u);
   assert.match(entityModule, /room-routing\/snapshot\.js/u);
@@ -1183,25 +1183,25 @@ test('chat snapshot consumes dedicated room-routing snapshot normalization inste
 
 test('chat model composes dedicated shared and read-model modules instead of defining projections inline', async () => {
   const modelSource = await readFile(
-    new URL('../src/products/chat/state/model.ts', import.meta.url),
+    new URL('../src/products/chat/state/model/index.ts', import.meta.url),
     'utf8',
   );
   const sharedSource = await readFile(
-    new URL('../src/products/chat/state/modelShared.ts', import.meta.url),
+    new URL('../src/products/chat/state/model/shared.ts', import.meta.url),
     'utf8',
   );
   const readModelSource = await readFile(
-    new URL('../src/products/chat/state/modelReadModels.ts', import.meta.url),
+    new URL('../src/products/chat/state/model/readModels.ts', import.meta.url),
     'utf8',
   );
   const recordBuilderSource = await readFile(
-    new URL('../src/products/chat/state/modelRecordBuilders.ts', import.meta.url),
+    new URL('../src/products/chat/state/model/recordBuilders.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(modelSource, /from '\.\/modelShared\.js'/u);
-  assert.match(modelSource, /from '\.\/modelReadModels\.js'/u);
-  assert.match(modelSource, /from '\.\/modelRecordBuilders\.js'/u);
+  assert.match(modelSource, /from '\.\/shared\.js'/u);
+  assert.match(modelSource, /from '\.\/readModels\.js'/u);
+  assert.match(modelSource, /from '\.\/recordBuilders\.js'/u);
   assert.doesNotMatch(modelSource, /export function buildChannelView\(/u);
   assert.doesNotMatch(modelSource, /export function summarizeState\(/u);
   assert.doesNotMatch(modelSource, /export function requireChannel\(/u);
@@ -1220,7 +1220,7 @@ test('store consumes dedicated core snapshot normalization instead of defining i
     'utf8',
   );
   const snapshotModule = await readFile(
-    new URL('../src/products/chat/state/coreSnapshot.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-snapshot/index.ts', import.meta.url),
     'utf8',
   );
   const snapshotSharedModule = await readFile(
@@ -1244,12 +1244,12 @@ test('store consumes dedicated core snapshot normalization instead of defining i
     'utf8',
   );
 
-  assert.match(storeSource, /coreSnapshot\.js/u);
+  assert.match(storeSource, /core-snapshot\/index\.js/u);
   assert.doesNotMatch(storeSource, /function normalizeCoreTask\(/u);
   assert.doesNotMatch(storeSource, /function buildPersistedChatSnapshot\(/u);
   assert.match(snapshotModule, /normalizeCoreTask,/u);
   assert.match(snapshotModule, /export function buildPersistedChatSnapshot/u);
-  assert.match(snapshotModule, /core-snapshot\/records\.js/u);
+  assert.match(snapshotModule, /\.\/records\.js/u);
   assert.doesNotMatch(snapshotModule, /function asRecord\(/u);
   assert.match(snapshotSharedModule, /export function asRecord/u);
   assert.match(snapshotRecordsModule, /\.\/actorRecords\.js/u);
@@ -1337,7 +1337,7 @@ test('core route modules consume dedicated parsing and error helpers instead of 
 
 test('core api consumes dedicated control route modules and api contracts instead of defining them inline', async () => {
   const coreApiSource = await readFile(
-    new URL('../src/core/api.ts', import.meta.url),
+    new URL('../src/core/api/index.ts', import.meta.url),
     'utf8',
   );
   const controlRoutesSource = await readFile(
@@ -1385,10 +1385,10 @@ test('core api consumes dedicated control route modules and api contracts instea
     'utf8',
   );
 
-  assert.match(coreApiSource, /api\/controlRoutes\.js/u);
-  assert.match(coreApiSource, /api\/recordRoutes\.js/u);
-  assert.match(coreApiSource, /api\/taskRoutes\.js/u);
-  assert.match(coreApiSource, /api\/types\.js/u);
+  assert.match(coreApiSource, /\.\/controlRoutes\.js/u);
+  assert.match(coreApiSource, /\.\/recordRoutes\.js/u);
+  assert.match(coreApiSource, /\.\/taskRoutes\.js/u);
+  assert.match(coreApiSource, /\.\/types\.js/u);
   assert.doesNotMatch(coreApiSource, /export interface CoreApiDependencies/u);
   assert.doesNotMatch(coreApiSource, /async function handleCoreProjectWrite\(/u);
   assert.doesNotMatch(coreApiSource, /async function handleCoreRunWrite\(/u);
@@ -1440,7 +1440,7 @@ test('core api consumes dedicated control route modules and api contracts instea
 
 test('core model consumes dedicated shared helpers and input contracts instead of defining them inline', async () => {
   const modelSource = await readFile(
-    new URL('../src/core/model.ts', import.meta.url),
+    new URL('../src/core/model/index.ts', import.meta.url),
     'utf8',
   );
   const sharedSource = await readFile(
@@ -1452,8 +1452,8 @@ test('core model consumes dedicated shared helpers and input contracts instead o
     'utf8',
   );
 
-  assert.match(modelSource, /model\/shared\.js/u);
-  assert.match(modelSource, /model\/inputs\.js/u);
+  assert.match(modelSource, /\.\/shared\.js/u);
+  assert.match(modelSource, /\.\/inputs\.js/u);
   assert.doesNotMatch(modelSource, /function normalizeMetadata\(/u);
   assert.doesNotMatch(modelSource, /function replaceById\(/u);
   assert.doesNotMatch(modelSource, /export interface CoreProjectWriteInput/u);
@@ -1466,7 +1466,7 @@ test('core model consumes dedicated shared helpers and input contracts instead o
 
 test('core model composes dedicated record write modules instead of defining record mutations inline', async () => {
   const modelSource = await readFile(
-    new URL('../src/core/model.ts', import.meta.url),
+    new URL('../src/core/model/index.ts', import.meta.url),
     'utf8',
   );
   const recordModuleSource = await readFile(
@@ -1486,7 +1486,7 @@ test('core model composes dedicated record write modules instead of defining rec
     'utf8',
   );
 
-  assert.match(modelSource, /model\/records\.js/u);
+  assert.match(modelSource, /\.\/records\.js/u);
   assert.doesNotMatch(modelSource, /export function upsertCoreProject\(/u);
   assert.doesNotMatch(modelSource, /export function upsertCoreRun\(/u);
   assert.doesNotMatch(modelSource, /export function appendCoreActivity\(/u);
@@ -1505,7 +1505,7 @@ test('core model composes dedicated record write modules instead of defining rec
 
 test('core model composes dedicated task-control and memory-binding modules instead of defining them inline', async () => {
   const modelSource = await readFile(
-    new URL('../src/core/model.ts', import.meta.url),
+    new URL('../src/core/model/index.ts', import.meta.url),
     'utf8',
   );
   const taskControlSource = await readFile(
@@ -1517,8 +1517,8 @@ test('core model composes dedicated task-control and memory-binding modules inst
     'utf8',
   );
 
-  assert.match(modelSource, /model\/taskControls\.js/u);
-  assert.match(modelSource, /model\/memoryBindings\.js/u);
+  assert.match(modelSource, /\.\/taskControls\.js/u);
+  assert.match(modelSource, /\.\/memoryBindings\.js/u);
   assert.doesNotMatch(modelSource, /export function upsertCoreTask\(/u);
   assert.doesNotMatch(modelSource, /export function writeApprovalDecision\(/u);
   assert.doesNotMatch(modelSource, /export function addDurableMemory\(/u);
@@ -1569,7 +1569,7 @@ test('task lifecycle composes dedicated shared and watcher modules instead of de
 
 test('core projection composes a dedicated workflow projection module instead of defining workflow record derivation inline', async () => {
   const projectionSource = await readFile(
-    new URL('../src/products/chat/state/coreProjection.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-projection/index.ts', import.meta.url),
     'utf8',
   );
   const workflowProjectionSource = await readFile(
@@ -1577,7 +1577,7 @@ test('core projection composes a dedicated workflow projection module instead of
     'utf8',
   );
 
-  assert.match(projectionSource, /core-projection\/workflow\.js/u);
+  assert.match(projectionSource, /\.\/workflow\.js/u);
   assert.doesNotMatch(projectionSource, /function createWorkflowRun\(/u);
   assert.doesNotMatch(projectionSource, /function createWorkflowActivity\(/u);
   assert.match(workflowProjectionSource, /export function createWorkflowRun/u);
@@ -1586,7 +1586,7 @@ test('core projection composes a dedicated workflow projection module instead of
 
 test('core projection composes a dedicated entity projection module instead of defining actor and channel record derivation inline', async () => {
   const projectionSource = await readFile(
-    new URL('../src/products/chat/state/coreProjection.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-projection/index.ts', import.meta.url),
     'utf8',
   );
   const entityProjectionSource = await readFile(
@@ -1594,7 +1594,7 @@ test('core projection composes a dedicated entity projection module instead of d
     'utf8',
   );
 
-  assert.match(projectionSource, /core-projection\/entities\.js/u);
+  assert.match(projectionSource, /\.\/entities\.js/u);
   assert.doesNotMatch(projectionSource, /function createConversationFromChannel\(/u);
   assert.doesNotMatch(projectionSource, /function createTaskFromChannel\(/u);
   assert.match(entityProjectionSource, /export function createConversationFromChannel/u);
@@ -1608,11 +1608,11 @@ test('store consumes dedicated chat snapshot normalization instead of defining i
     'utf8',
   );
   const snapshotModule = await readFile(
-    new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
+    new URL('../src/products/chat/state/chat-snapshot/index.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(storeSource, /chatSnapshot\.js/u);
+  assert.match(storeSource, /chat-snapshot\/index\.js/u);
   assert.doesNotMatch(storeSource, /function normalizeChatState\(/u);
   assert.doesNotMatch(storeSource, /function normalizePersistedChatSnapshot\(/u);
   assert.match(snapshotModule, /export function normalizeChatState/u);
@@ -1621,7 +1621,7 @@ test('store consumes dedicated chat snapshot normalization instead of defining i
 
 test('companion box store composes dedicated file and memory store modules instead of defining both stores inline', async () => {
   const storeSource = await readFile(
-    new URL('../src/products/chat/state/companionBoxStore.ts', import.meta.url),
+    new URL('../src/products/chat/state/companion-box/index.ts', import.meta.url),
     'utf8',
   );
   const fileStoreSource = await readFile(
@@ -1633,8 +1633,8 @@ test('companion box store composes dedicated file and memory store modules inste
     'utf8',
   );
 
-  assert.match(storeSource, /companion-box\/fileStore\.js/u);
-  assert.match(storeSource, /companion-box\/memoryStore\.js/u);
+  assert.match(storeSource, /\.\/fileStore\.js/u);
+  assert.match(storeSource, /\.\/memoryStore\.js/u);
   assert.doesNotMatch(storeSource, /export class FileCompanionBoxStore/u);
   assert.doesNotMatch(storeSource, /export class MemoryCompanionBoxStore/u);
   assert.match(fileStoreSource, /export class FileCompanionBoxStore/u);
@@ -1811,7 +1811,7 @@ test('actor and owner-profile helpers are consumed from the dedicated core actor
     'utf8',
   );
   const coreProjection = await readFile(
-    new URL('../src/products/chat/state/coreProjection.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-projection/index.ts', import.meta.url),
     'utf8',
   );
   const runtimeSessionState = await readFile(

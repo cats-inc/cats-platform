@@ -8,11 +8,11 @@ import {
   createTelegramConversationMapper,
   TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE,
 } from '../dist-server/platform/transports/telegram/mapping.js';
-import { createTelegramRelay } from '../dist-server/platform/transports/telegram/relay.js';
+import { createTelegramRelay } from '../dist-server/platform/transports/telegram/relay/index.js';
 import {
   FileBackedTelegramRelayStore,
   InMemoryTelegramRelayStore,
-} from '../dist-server/platform/transports/telegram/store.js';
+} from '../dist-server/platform/transports/telegram/store/index.js';
 
 function createContext(overrides = {}) {
   const defaultBotBinding = {

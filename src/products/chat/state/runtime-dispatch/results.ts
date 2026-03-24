@@ -9,7 +9,7 @@ import type {
   RoomWorkflowState,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
-import { appendMessage, setChannelCatLease, setChannelOrchestratorLease } from '../model.js';
+import { appendMessage, setChannelCatLease, setChannelOrchestratorLease } from '../model/index.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
   mergeUnresolvedMentions,

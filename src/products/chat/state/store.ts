@@ -5,14 +5,14 @@ import type { ChatState } from '../api/contracts.js';
 import type { CatsCoreState } from '../../../core/types.js';
 import type { CoreStore } from '../../../core/store.js';
 import { createDefaultChatState } from './defaults.js';
-import { createDefaultCoreState } from '../../../core/model.js';
-import { syncCoreStateWithChatState } from './coreProjection.js';
-import { normalizePersistedChatSnapshot } from './chatSnapshot.js';
-import type { PersistedChatSnapshot } from './coreSnapshot.js';
+import { createDefaultCoreState } from '../../../core/model/index.js';
+import { syncCoreStateWithChatState } from './core-projection/index.js';
+import { normalizePersistedChatSnapshot } from './chat-snapshot/index.js';
+import type { PersistedChatSnapshot } from './core-snapshot/index.js';
 import {
   buildPersistedChatSnapshot,
   extractCoreState,
-} from './coreSnapshot.js';
+} from './core-snapshot/index.js';
 
 export interface ChatStore extends CoreStore {
   read(): Promise<ChatState>;

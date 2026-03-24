@@ -9,7 +9,7 @@ import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
 } from '../../../shared/roomRouting.js';
-import type { CompanionBoxStore } from './companionBoxStore.js';
+import type { CompanionBoxStore } from './companion-box/index.js';
 import type { RuntimeSkillManifest } from '../../../platform/runtime/client.js';
 import { shouldHydrateCompanionSession } from '../companion/hydration.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
@@ -18,7 +18,7 @@ import {
   requireChannel,
   requireCat,
   resolveOrchestratorDisplayName,
-} from './model.js';
+} from './model/index.js';
 import type { RoutingTarget } from './mentionRouter.js';
 import {
   buildOrchestratorPrompt,

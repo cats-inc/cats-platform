@@ -1,4 +1,4 @@
-import { upsertCoreTask } from '../../core/model.js';
+import { upsertCoreTask } from '../../core/model/index.js';
 import type { CatsMemoryService } from '../memory/index.js';
 import type { RuntimeClient } from '../runtime/client.js';
 import type {

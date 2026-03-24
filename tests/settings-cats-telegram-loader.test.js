@@ -6,7 +6,7 @@ import {
   createSettingsCatsTelegramAutoLoader,
   createSettingsCatsTelegramScopeKey,
   SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
-} from '../dist-server/products/chat/settingsCatsTelegramDiagnostics.js';
+} from '../dist-server/products/chat/settings-cats/telegramDiagnostics.js';
 
 function deferred() {
   let resolve;

@@ -3,7 +3,7 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
-import { buildChannelView, requireChannel, setChannelStatus } from '../model.js';
+import { buildChannelView, requireChannel, setChannelStatus } from '../model/index.js';
 import { buildCatTarget, buildOrchestratorTarget } from '../runtimeTargeting.js';
 import { ensureTargetSession } from './wake.js';
 import {

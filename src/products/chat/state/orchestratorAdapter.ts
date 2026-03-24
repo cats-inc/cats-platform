@@ -2,11 +2,11 @@ import type {
   OrchestratorChannelRouter,
   OrchestratorPlannerSurface,
 } from '../../../platform/orchestration/contracts.js';
-import { buildApprovalQueue } from '../../../core/model.js';
-import type { CompanionBoxStore } from './companionBoxStore.js';
+import { buildApprovalQueue } from '../../../core/model/index.js';
+import type { CompanionBoxStore } from './companion-box/index.js';
 import type { ChatState } from '../api/contracts.js';
 import type { ChatStore } from './store.js';
-import { buildChannelView, resolveOrchestratorDisplayName } from './model.js';
+import { buildChannelView, resolveOrchestratorDisplayName } from './model/index.js';
 import { resolveMentionRoute } from './mentionRouter.js';
 import { resolveRoomRoutingState } from './roomRouting.js';
 import { routeChannelMessage } from './runtimeActions.js';

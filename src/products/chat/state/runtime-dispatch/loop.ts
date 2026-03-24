@@ -14,7 +14,7 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
-import type { CompanionBoxStore } from '../companionBoxStore.js';
+import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import {
   type DispatchFrame,

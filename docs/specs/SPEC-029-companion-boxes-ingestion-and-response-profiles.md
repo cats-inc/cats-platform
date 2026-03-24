@@ -38,13 +38,13 @@ response profile, and long-lived companion context remain product-owned.
 
 The current first slice now lands these product-owned seams:
 
-- a Cat-scoped sidecar store under `src/products/chat/state/companionBoxStore.ts`
+- a Cat-scoped sidecar store under `src/products/chat/state/companion-box/index.ts`
 - Cat-scoped source ingest/read, derived read, memory read/write,
   response-profile read/update, and session-context read APIs
 - additive direct-session hydration through normalized `companionSession`
   metadata on runtime create/send calls
 - Cats-owned canonical-memory flush and retrieval-context seams under
-  `src/platform/memory/*` and `src/products/chat/api/memoryRoutes.ts`
+  `src/platform/memory/*` and `src/products/chat/api/memory/index.ts`
 
 Visible companion-specific UI remains intentionally deferred.
 

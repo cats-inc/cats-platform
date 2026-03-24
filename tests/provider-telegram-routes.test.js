@@ -5,13 +5,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createTelegramRelay } from '../dist-server/platform/transports/telegram/relay.js';
+import { createTelegramRelay } from '../dist-server/platform/transports/telegram/relay/index.js';
 import { createServer } from '../dist-server/server.js';
 import {
   FileChatStore,
   MemoryChatStore,
 } from '../dist-server/chat/store.js';
-import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companionBoxStore.js';
+import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companion-box/index.js';
 import { createChatTelegramRoomBridge } from '../dist-server/products/chat/state/telegramBridgeAdapter.js';
 
 const baseConfig = {

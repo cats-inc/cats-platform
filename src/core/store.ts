@@ -1,5 +1,5 @@
 import type { CatsCoreState } from './types.js';
-import { createDefaultCoreState } from './model.js';
+import { createDefaultCoreState } from './model/index.js';
 
 export interface CoreStore {
   readCore(): Promise<CatsCoreState>;

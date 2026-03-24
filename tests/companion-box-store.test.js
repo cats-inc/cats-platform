@@ -7,7 +7,7 @@ import test from 'node:test';
 import {
   FileCompanionBoxStore,
   deriveCompanionBoxStatePath,
-} from '../dist-server/products/chat/state/companionBoxStore.js';
+} from '../dist-server/products/chat/state/companion-box/index.js';
 import {
   buildCompanionBoxDirectoryKey,
   buildCompanionSourceStorageKey,

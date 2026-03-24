@@ -1,7 +1,7 @@
 import type { AppConfig } from '../../../config.js';
 import { createCatActorId } from '../../../core/actors.js';
 import type { TelegramPollingSupervisor } from '../../../platform/transports/telegram/polling.js';
-import type { TelegramRelay } from '../../../platform/transports/telegram/relay.js';
+import type { TelegramRelay } from '../../../platform/transports/telegram/relay/index.js';
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
@@ -29,10 +29,10 @@ import {
   setChannelCatLease,
   setChannelChatCwd,
   setChannelStatus,
-} from '../state/model.js';
+} from '../state/model/index.js';
 import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
 import { createAppShell } from '../state/shell.js';
-import type { CompanionBoxStore } from '../state/companionBoxStore.js';
+import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import type { ChatStore } from '../state/store.js';
 import type {
   AppShellPayload,

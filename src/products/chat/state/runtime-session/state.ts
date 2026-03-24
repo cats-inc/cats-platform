@@ -20,7 +20,7 @@ import {
   setChannelOrchestratorLease,
   setChannelRoomRouting,
   setChannelStatus,
-} from '../model.js';
+} from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import { resolveRoomRoutingState } from '../roomRouting.js';
 import { createRoomRoutingSnapshot } from '../room-routing/wake.js';

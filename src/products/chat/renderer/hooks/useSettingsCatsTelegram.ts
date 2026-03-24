@@ -7,13 +7,13 @@ import {
   createSettingsCatsTelegramScopeKey,
   fetchSettingsCatsTelegramSnapshot,
   SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
-} from '../../settingsCatsTelegramDiagnostics.js';
+} from '../../settings-cats/telegramDiagnostics.js';
 import {
   fetchTelegramTransportDiagnostics,
   fetchTelegramTransportStatus,
   type TelegramTransportDiagnostics,
   type TelegramTransportStatus,
-} from '../api.js';
+} from '../api/index.js';
 
 export function useSettingsCatsTelegram(payload: AppShellPayload): {
   botBindings: NonNullable<AppShellPayload['chat']['botBindings']>;

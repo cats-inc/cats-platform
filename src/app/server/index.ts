@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { AppConfig } from '../../config.js';
-import { routeCoreApi } from '../../core/api.js';
+import { routeCoreApi } from '../../core/api/index.js';
 import type { CoreStore } from '../../core/store.js';
 import type { TaskExecutionLocator } from '../../core/taskExecutionLocator.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
@@ -31,21 +31,21 @@ import {
 import {
   createTelegramRelay,
   type TelegramRelay,
-} from '../../platform/transports/telegram/relay.js';
+} from '../../platform/transports/telegram/relay/index.js';
 import type { TelegramRoomBridge } from '../../platform/transports/telegram/bridge.js';
 import { dispatchOrchestratorTurn } from '../../platform/orchestration/index.js';
 import type { PendingOrchestratorDispatchRequest } from '../../platform/orchestration/pendingDispatch.js';
 import {
   createFileBackedTelegramRelayStore,
   InMemoryTelegramRelayStore,
-} from '../../platform/transports/telegram/store.js';
+} from '../../platform/transports/telegram/store/index.js';
 import { routeChatApi } from '../../products/chat/api/index.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import {
   createFileBackedCompanionBoxStore,
   MemoryCompanionBoxStore,
   type CompanionBoxStore,
-} from '../../products/chat/state/companionBoxStore.js';
+} from '../../products/chat/state/companion-box/index.js';
 import {
   MemoryChatStore,
   type ChatStore,

@@ -6,7 +6,7 @@ import {
   appendCoreActivity,
   upsertCoreRun,
   upsertCoreTask,
-} from './model.js';
+} from './model/index.js';
 import type {
   CatsCoreState,
   CoreActivityRecord,

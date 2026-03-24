@@ -8,7 +8,7 @@ import {
   outcomeStatusSeverity,
   runStatusLabel,
   runStatusSeverity,
-} from './operatorUi';
+} from './operatorFormatting';
 import { TraceList } from './TraceList';
 
 export interface RunInspectorProps {

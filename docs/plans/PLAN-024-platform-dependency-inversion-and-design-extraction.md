@@ -396,7 +396,7 @@ Key files:
 
 - `src/core/api.ts` or its extracted route modules
 - `src/products/chat/api/shared.ts`
-- `src/products/chat/api/resourceRoutes.ts`
+- `src/products/chat/api/resources/index.ts`
 - `src/products/chat/api/orchestratorRoutes.ts`
 - `src/app/server/index.ts`
 - shared HTTP/error utilities under `src/shared/`

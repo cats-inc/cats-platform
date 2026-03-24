@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Cats Mobile",
+    "slug": "cats-mobile",
+    "scheme": "cats-mobile",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "plugins": [
+      "expo-router",
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

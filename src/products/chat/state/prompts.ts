@@ -5,7 +5,7 @@ import type {
   ChatMessage,
 } from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
-import { ORCHESTRATOR_NAME } from './model.js';
+import { ORCHESTRATOR_NAME } from './model/index.js';
 
 export interface PromptRoutingContext {
   reason: string;

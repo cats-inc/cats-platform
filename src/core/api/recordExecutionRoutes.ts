@@ -4,7 +4,7 @@ import {
   upsertCoreCheckpoint,
   upsertCoreOutcome,
   upsertCoreRun,
-} from '../model.js';
+} from '../model/index.js';
 import {
   handleCoreError,
   readEnumValue,

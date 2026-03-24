@@ -7,7 +7,7 @@ import {
   deleteBotBindingApi,
   deleteGlobalCat,
   updateCatProfile,
-} from '../api.js';
+} from '../api/index.js';
 import { emptyCatForm, type CatFormState } from '../chatUtils.js';
 
 export interface BotFormState {

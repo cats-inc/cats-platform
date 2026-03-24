@@ -1,1 +1,1 @@
-export * from '../products/chat/renderer/api';
+export * from '../products/chat/renderer/api/index.js';

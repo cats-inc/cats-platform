@@ -1,7 +1,7 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import { createDefaultRoomRoutingState } from '../state/roomRouting.js';
-import { requireCat, requireChannel } from '../state/model.js';
+import { requireCat, requireChannel } from '../state/model/index.js';
 import {
   isCompanionExpressionMode,
   isCompanionMemoryCategory,

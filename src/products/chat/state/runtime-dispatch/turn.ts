@@ -17,7 +17,7 @@ import {
   appendMessage,
   buildChannelView,
   requireChannel,
-} from '../model.js';
+} from '../model/index.js';
 import {
   DEFAULT_MAX_ROUTING_CONTINUATIONS,
   DEFAULT_MAX_ROUTING_DISPATCHES,

@@ -2,7 +2,7 @@ import {
   upsertCoreArtifact,
   upsertCoreProject,
   upsertCoreWorkItem,
-} from '../model.js';
+} from '../model/index.js';
 import {
   handleCoreError,
   readEnumValue,

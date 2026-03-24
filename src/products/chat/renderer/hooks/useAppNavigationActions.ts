@@ -17,7 +17,7 @@ import {
   deleteChatChannel,
   deleteGlobalCat,
   resetSetup,
-} from '../api.js';
+} from '../api/index.js';
 
 type LoadStateLike =
   | { status: 'loading' }

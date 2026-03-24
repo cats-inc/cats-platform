@@ -12,7 +12,7 @@ import type {
 } from './contracts.js';
 import { describeTelegramRoomRouting } from './mapping.js';
 import { normalizeTelegramAttachments } from './normalization.js';
-import type { TelegramRelay } from './relay.js';
+import type { TelegramRelay } from './relay/index.js';
 import {
   pickTelegramMessage,
   readTelegramString,

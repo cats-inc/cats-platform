@@ -65,7 +65,7 @@ independently of core chat state.
 | File | Action | Description |
 |------|--------|-------------|
 | `src/products/chat/companion/*` | Create | Companion contracts, validation, ingestion, and hydration helpers |
-| `src/products/chat/state/companionBoxStore.ts` | Create | File-backed and in-memory companion sidecar persistence |
+| `src/products/chat/state/companion-box/index.ts` | Create | File-backed and in-memory companion sidecar persistence |
 | `src/products/chat/api/companionBoxRoutes.ts` | Create | Cat-scoped companion-box HTTP routes |
 | `src/products/chat/state/runtimeActions.ts` | Modify | Attach companion hydration metadata during session create/send |
 | `src/app/server/index.ts` | Modify | Minimal wiring for default companion-store construction |

@@ -2,7 +2,7 @@ import type { ChatOperatorActivityItem } from '../../shared/operatorLoop';
 import {
   formatOperatorTimestamp,
   operatorSeverityClassName,
-} from './operatorUi';
+} from './operatorFormatting';
 
 export interface ActivityFeedProps {
   items: ChatOperatorActivityItem[];

@@ -1,5 +1,5 @@
 import type { CoreTraceRecord } from '../../../../core/types';
-import { formatOperatorTimestamp, traceKindLabel } from './operatorUi';
+import { formatOperatorTimestamp, traceKindLabel } from './operatorFormatting';
 
 export interface TraceListProps {
   traces: CoreTraceRecord[];

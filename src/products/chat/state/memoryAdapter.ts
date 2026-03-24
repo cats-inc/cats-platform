@@ -1,5 +1,5 @@
 import type { MemoryChatSurface } from '../../../platform/memory/contracts.js';
-import { requireChannel } from './model.js';
+import { requireChannel } from './model/index.js';
 import type { ChatStore } from './store.js';
 
 export function createChatMemorySurface(chatStore: ChatStore): MemoryChatSurface {

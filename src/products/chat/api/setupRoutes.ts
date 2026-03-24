@@ -1,7 +1,7 @@
-import { createDefaultCoreState } from '../../../core/model.js';
+import { createDefaultCoreState } from '../../../core/model/index.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { createDefaultChatState } from '../state/defaults.js';
-import { createCat } from '../state/model.js';
+import { createCat } from '../state/model/index.js';
 import type { SetupCompleteInput } from './contracts.js';
 import {
   buildAppShellPayload,

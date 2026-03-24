@@ -8,7 +8,7 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import type {
   CompanionBoxStore,
-} from '../companionBoxStore.js';
+} from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
@@ -20,7 +20,7 @@ import {
   requireChannel,
   setChannelPendingExecutionTarget,
   setChannelOrchestratorLease,
-} from '../model.js';
+} from '../model/index.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
   type RuntimeTransportContext,

@@ -2,10 +2,10 @@ import type {
   ChatChannelCat,
   ChatChannelView,
 } from '../../api/contracts.js';
-import type { CompanionBoxStore } from '../companionBoxStore.js';
+import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
-import { ORCHESTRATOR_NAME } from '../model.js';
+import { ORCHESTRATOR_NAME } from '../model/index.js';
 
 export interface RuntimeSessionRoutingOptions {
   transport?: import('../runtimeTargeting.js').RuntimeTransportContext;

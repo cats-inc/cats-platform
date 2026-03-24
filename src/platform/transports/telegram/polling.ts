@@ -11,7 +11,7 @@ import type {
   TelegramRelayContext,
   TelegramWebhookUpdate,
 } from './contracts.js';
-import type { TelegramRelay } from './relay.js';
+import type { TelegramRelay } from './relay/index.js';
 
 export interface TelegramPollingSupervisor {
   startPolling(input: StartPollingInput): Promise<void>;

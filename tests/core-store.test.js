@@ -17,7 +17,7 @@ import {
   upsertCoreTask,
   upsertCoreWorkItem,
   writeApprovalDecision,
-} from '../dist-server/core/model.js';
+} from '../dist-server/core/model/index.js';
 import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
 
 test('MemoryCoreStore exposes a neutral read/write boundary for Cats Core state', async () => {

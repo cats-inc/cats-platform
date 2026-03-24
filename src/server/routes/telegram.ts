@@ -11,7 +11,7 @@ import {
 } from '../../platform/transports/telegram/bridge.js';
 import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
-import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
+import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 

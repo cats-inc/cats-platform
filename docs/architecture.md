@@ -221,7 +221,7 @@ transport state stays in `src/platform/transports/telegram/*`.
   direct-session hydration context product-owned without extending shared core
   or moving Cat-local storage into `cats-runtime`
 - **Technology**: `src/products/chat/companion/*` plus
-  `src/products/chat/state/companionBoxStore.ts`
+  `src/products/chat/state/companion-box/index.ts`
 - **Responsibilities**:
   - persist one product-owned `CompanionBox` per Cat
   - retain raw source records, derived records, and curated companion memory
@@ -495,7 +495,7 @@ See
   with continuation loop/fan-out/guards, a separate room-workflow read model,
   explicit route-resolution metadata, wake-request history, and transcript
   export.
-- `src/products/chat/state/companionBoxStore.ts` now adds a separate
+- `src/products/chat/state/companion-box/index.ts` now adds a separate
   product-owned sidecar store for per-Cat companion boxes, derived companion
   knowledge, response profiles, and direct-session hydration context.
 - `src/platform/memory/*` now adds a Cats-owned canonical-memory and retrieval
@@ -521,7 +521,7 @@ See
   write substrate for owner profile, actors, conversations, projects,
   work items, tasks, approvals, approval bindings, runs, traces, checkpoints,
   orchestration outcomes, artifacts, and activities.
-- `src/products/chat/state/coreProjection.ts` now makes the boundary explicit:
+- `src/products/chat/state/core-projection/index.ts` now makes the boundary explicit:
   chat-derived actors/conversations/tasks/archives are projections, while
   core-owned records survive chat sync and file-backed reload.
 - Chat room-workflow turns, system events, checkpoints, and outcomes now

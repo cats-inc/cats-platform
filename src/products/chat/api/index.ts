@@ -1,9 +1,9 @@
 import { routeBotBindingApi } from './botBindingRoutes.js';
 import { routeCanonicalCatApi } from './canonicalCatRoutes.js';
 import { routeCompanionBoxApi } from './companionBoxRoutes.js';
-import { routeMemoryApi } from './memoryRoutes.js';
+import { routeMemoryApi } from './memory/index.js';
 import { routeOrchestratorApi } from './orchestratorRoutes.js';
-import { routeChatResourceApi } from './resourceRoutes.js';
+import { routeChatResourceApi } from './resources/index.js';
 import { routeRuntimeBridgeApi } from './runtimeBridgeRoutes.js';
 import { routeChatShellApi } from './shellRoutes.js';
 import { routeSetupApi } from './setupRoutes.js';

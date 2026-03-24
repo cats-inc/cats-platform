@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultCoreState } from '../dist-server/core/model.js';
+import { createDefaultCoreState } from '../dist-server/core/model/index.js';
 import {
   resolveSuiteSurfaceForPath,
   SUITE_SURFACE_ROUTES,

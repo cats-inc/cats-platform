@@ -1,1 +1,1 @@
-export * from '../products/chat/state/model.js';
+export * from '../products/chat/state/model/index.js';

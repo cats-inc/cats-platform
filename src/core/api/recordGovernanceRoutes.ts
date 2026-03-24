@@ -1,4 +1,4 @@
-import { upsertCoreApprovalBinding } from '../model.js';
+import { upsertCoreApprovalBinding } from '../model/index.js';
 import {
   handleCoreError,
   readEnumValue,

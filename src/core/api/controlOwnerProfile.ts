@@ -1,4 +1,4 @@
-import { patchOwnerProfile } from '../model.js';
+import { patchOwnerProfile } from '../model/index.js';
 import {
   handleCoreError,
   readNullableString,

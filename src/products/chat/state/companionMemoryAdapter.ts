@@ -1,6 +1,6 @@
 import type {
   CompanionBoxStore,
-} from './companionBoxStore.js';
+} from './companion-box/index.js';
 import type {
   CatsMemoryService,
   MemoryFlushResult,

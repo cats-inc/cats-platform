@@ -22,7 +22,7 @@ import {
   setChannelChatCwd,
   setChannelOrchestratorLease,
   setChannelRoomRouting,
-} from '../model.js';
+} from '../model/index.js';
 import { resolveRoomDefaultRoutingTarget, type RoutingTarget } from '../mentionRouter.js';
 import { resolveRoomRoutingState } from '../roomRouting.js';
 import { createRecordedWakeRequest } from '../room-routing/wake.js';

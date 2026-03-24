@@ -6,9 +6,9 @@ import type {
   RoomRoutingOutcome,
   RoomRoutingParticipantRef,
 } from '../../../../shared/roomRouting.js';
-import type { CompanionBoxStore } from '../companionBoxStore.js';
+import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
-import { buildChannelView } from '../model.js';
+import { buildChannelView } from '../model/index.js';
 import { type RoutingTarget } from '../mentionRouter.js';
 import { buildOrchestratorRewritePrompt } from '../prompts.js';
 import { type DispatchRequest } from '../room-routing/runtime.js';
@@ -18,7 +18,7 @@ import {
   resolveRuntimeEnvelopeForTarget,
 } from '../runtimeTargeting.js';
 import { participantKey } from '../runtime-session/state.js';
-import { shouldRewriteOrchestratorReply } from '../runtimeSessionRouting.js';
+import { shouldRewriteOrchestratorReply } from '../runtime-session/index.js';
 
 export interface DispatchExecution extends DispatchRequest {
   responseBody: string | null;
