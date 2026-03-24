@@ -11,7 +11,6 @@ import {
 
 import {
   buildNewChatPath,
-  buildChannelPath,
   isNewChatPath,
   NEW_CHAT_PATH,
   readNewChatLeadCatId,
@@ -19,11 +18,6 @@ import {
   resolveVisibleChatPath,
 } from '../shared/channelPaths';
 import type { AppShellPayload } from '../api/contracts';
-import {
-  deleteGlobalCat,
-  resetSetup,
-  deleteChatChannel,
-} from './api';
 
 import {
   type CatFormState,
@@ -43,6 +37,7 @@ import {
 import { useOperatorLoop } from './useOperatorLoop';
 import { useAppShellRouting } from './useAppShellRouting';
 import { useAppChrome } from './useAppChrome';
+import { useAppNavigationActions } from './useAppNavigationActions';
 import { useCatAssignmentActions } from './useCatAssignmentActions';
 import { useComposerSubmit } from './useComposerSubmit';
 import { useFolderBrowser } from './useFolderBrowser';
@@ -58,7 +53,6 @@ import { SettingsCats } from './components/SettingsCats';
 import { SettingsData } from './components/SettingsData';
 import { AddCatPanel } from './components/AddCatPanel';
 import { FolderBrowser } from './components/FolderBrowser';
-import { resolveMyCatNavigationTarget } from './myCatNavigation';
 import { findDirectLaneForCat } from './myCatNavigation';
 
 type LoadState =
@@ -129,6 +123,31 @@ export default function App() {
     onToggleSidebar,
     onCollapsedSidebarClick,
   } = useAppChrome();
+  const {
+    onOpenChatsOverview,
+    onSelect,
+    onDeleteChannel,
+    onDeleteCat,
+    onNavigateSettings,
+    onDirectChatCat,
+    onResetSetup,
+    onStartNewChat,
+  } = useAppNavigationActions({
+    state,
+    setState,
+    navigate,
+    setBusy,
+    setFeedback,
+    setComposerDraft,
+    setAccountMenuOpen,
+    setAddCatOpen,
+    setPlusMenuOpen,
+    setChannelPlusMenuOpen,
+    setDraftCwd,
+    setDraftCatIds,
+    setDraftFiles,
+    setChannelFiles,
+  });
   const readyPayload = state.status === 'ready' ? state.payload : null;
   const readyChat = state.status === 'ready' ? state.payload.chat : null;
   const readySelectedChannel = normalizeSelectedChannelView(readyChat?.selectedChannel ?? null);
@@ -311,66 +330,6 @@ export default function App() {
     startTransition(() => setState({ status: 'ready', payload }));
   }
 
-  function onOpenChatsOverview(): void {
-    if (state.status !== 'ready') return;
-    navigate(resolveVisibleChatPath(state.payload.chat.channels, state.payload.chat.selectedChannelId));
-    setFeedback('');
-    setAddCatOpen(false);
-  }
-
-  function onSelect(channelId: string): void {
-    navigate(buildChannelPath(channelId));
-    setFeedback('');
-    setAddCatOpen(false);
-    setChannelFiles([]);
-    setChannelPlusMenuOpen(false);
-  }
-
-  async function onDeleteChannel(channelId: string): Promise<void> {
-    setBusy(`channel:delete:${channelId}`);
-    try {
-      const payload = await deleteChatChannel(channelId);
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setAddCatOpen(false);
-        setFeedback('');
-      });
-      navigate(resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId));
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onResetSetup(): Promise<void> {
-    if (!window.confirm('This will erase all chats, cats, and settings. Continue?')) return;
-    setBusy('setup:reset');
-    try {
-      const payload = await resetSetup();
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setAccountMenuOpen(false);
-      });
-      navigate('/setup');
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to reset setup.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onStartNewChat(): Promise<void> {
-    navigate(buildNewChatPath(null));
-    setComposerDraft('');
-    setFeedback('');
-    setAddCatOpen(false);
-    setPlusMenuOpen(false);
-    setDraftCwd(null);
-    setDraftCatIds([]);
-    setDraftFiles([]);
-  }
-
   // --- Render ---
 
   if (state.status === 'loading') {
@@ -464,40 +423,14 @@ export default function App() {
         onStartNewChat={() => void onStartNewChat()}
         onSelect={onSelect}
         onDeleteChannel={(id) => void onDeleteChannel(id)}
-        onDeleteCat={async (catId) => {
-          setBusy(`cat:delete:${catId}`);
-          try {
-            const next = await deleteGlobalCat(catId);
-            startTransition(() => setState({ status: 'ready', payload: next }));
-          } catch (error) {
-            setFeedback(error instanceof Error ? error.message : 'Failed to delete cat.');
-          } finally {
-            setBusy('');
-          }
-        }}
+        onDeleteCat={(catId) => void onDeleteCat(catId)}
         onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
         onOverflowMenuToggle={setOverflowMenuOpenId}
-        onNavigateSettings={() => {
-          navigate('/settings/general');
-          setAccountMenuOpen(false);
-          setAddCatOpen(false);
-          setFeedback('');
-        }}
+        onNavigateSettings={onNavigateSettings}
         sidebarView={sidebarView}
         onSidebarViewChange={setSidebarView}
         activeMyCatId={activeMyCatId}
-        onDirectChatCat={async (catId) => {
-          const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
-          setFeedback('');
-          setAddCatOpen(false);
-          setPlusMenuOpen(false);
-          setDraftCwd(null);
-          setDraftCatIds([]);
-          setDraftFiles([]);
-          setChannelPlusMenuOpen(false);
-          setChannelFiles([]);
-          navigate(target.path);
-        }}
+        onDirectChatCat={(catId) => void onDirectChatCat(catId)}
       />
 
       <main className="canvas">

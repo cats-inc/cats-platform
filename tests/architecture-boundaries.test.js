@@ -498,6 +498,28 @@ test('renderer app consumes a dedicated chrome hook instead of defining shell me
   assert.match(hookSource, /document\.addEventListener\('mousedown'/u);
 });
 
+test('renderer app consumes dedicated navigation actions instead of defining route-side effects inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/chat/renderer/useAppNavigationActions.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /useAppNavigationActions/u);
+  assert.doesNotMatch(appSource, /async function onDeleteChannel\(/u);
+  assert.doesNotMatch(appSource, /async function onResetSetup\(/u);
+  assert.doesNotMatch(appSource, /async function onStartNewChat\(/u);
+  assert.doesNotMatch(appSource, /function onOpenChatsOverview\(/u);
+  assert.doesNotMatch(appSource, /function onSelect\(/u);
+  assert.match(hookSource, /export function useAppNavigationActions/u);
+  assert.match(hookSource, /deleteChatChannel/u);
+  assert.match(hookSource, /deleteGlobalCat/u);
+  assert.match(hookSource, /resolveMyCatNavigationTarget/u);
+});
+
 test('settings cats consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {
   const settingsCatsSource = await readFile(
     new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
