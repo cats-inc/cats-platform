@@ -137,6 +137,31 @@ test('platform orchestrator execution is a thin facade over dedicated execution 
   assert.match(workflowModule, /export function buildExecutionPlanFromChannel/u);
 });
 
+test('chat operator loop composes dedicated metadata and action helper modules', async () => {
+  const operatorLoopModule = await readFile(
+    new URL('../src/products/chat/shared/operatorLoop.ts', import.meta.url),
+    'utf8',
+  );
+  const metadataModule = await readFile(
+    new URL('../src/products/chat/shared/operatorLoopMetadata.ts', import.meta.url),
+    'utf8',
+  );
+  const actionsModule = await readFile(
+    new URL('../src/products/chat/shared/operatorLoopActions.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(operatorLoopModule, /operatorLoopMetadata\.js/u);
+  assert.match(operatorLoopModule, /operatorLoopActions\.js/u);
+  assert.match(operatorLoopModule, /operatorLoopTypes\.js/u);
+  assert.doesNotMatch(operatorLoopModule, /function readMetadataRecord\(/u);
+  assert.doesNotMatch(operatorLoopModule, /function buildIncidentActions\(/u);
+  assert.match(metadataModule, /export function readMetadataRecord/u);
+  assert.match(metadataModule, /export function resolveCooldownLabel/u);
+  assert.match(actionsModule, /export function buildIncidentActions/u);
+  assert.match(actionsModule, /export function buildActivityFeed/u);
+});
+
 test('shared room-routing contracts are extracted from chat api contracts', async () => {
   const chatContracts = await readFile(
     new URL('../src/products/chat/api/contracts.ts', import.meta.url),
