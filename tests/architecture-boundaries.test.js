@@ -162,6 +162,64 @@ test('chat operator loop composes dedicated metadata and action helper modules',
   assert.match(actionsModule, /export function buildActivityFeed/u);
 });
 
+test('telegram relay composes dedicated status, ingress, and delivery helper modules', async () => {
+  const relayModule = await readFile(
+    new URL('../src/platform/transports/telegram/relay.ts', import.meta.url),
+    'utf8',
+  );
+  const statusModule = await readFile(
+    new URL('../src/platform/transports/telegram/relayStatus.ts', import.meta.url),
+    'utf8',
+  );
+  const ingressModule = await readFile(
+    new URL('../src/platform/transports/telegram/relayIngress.ts', import.meta.url),
+    'utf8',
+  );
+  const deliveryModule = await readFile(
+    new URL('../src/platform/transports/telegram/relayDelivery.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(relayModule, /relayStatus\.js/u);
+  assert.match(relayModule, /relayIngress\.js/u);
+  assert.match(relayModule, /relayDelivery\.js/u);
+  assert.doesNotMatch(relayModule, /function buildStatusNote\(/u);
+  assert.doesNotMatch(relayModule, /function buildWebhookReceipt\(/u);
+  assert.doesNotMatch(relayModule, /normalizeTelegramMessageSummary/u);
+  assert.doesNotMatch(relayModule, /resolveActiveTelegramBinding/u);
+  assert.match(statusModule, /export function buildTelegramRelayStatus/u);
+  assert.match(statusModule, /export function buildTelegramRelayDiagnostics/u);
+  assert.match(ingressModule, /export function receiveTelegramUpdate/u);
+  assert.match(ingressModule, /export function linkTelegramRoom/u);
+  assert.match(deliveryModule, /export async function deliverTelegramRequest/u);
+  assert.match(deliveryModule, /export function createBridgeDispatchFailureReceipt/u);
+});
+
+test('telegram relay store composes dedicated persistence and state-normalizer modules', async () => {
+  const storeModule = await readFile(
+    new URL('../src/platform/transports/telegram/store.ts', import.meta.url),
+    'utf8',
+  );
+  const persistenceModule = await readFile(
+    new URL('../src/platform/transports/telegram/storePersistence.ts', import.meta.url),
+    'utf8',
+  );
+  const stateModule = await readFile(
+    new URL('../src/platform/transports/telegram/storeState.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(storeModule, /storePersistence\.js/u);
+  assert.match(storeModule, /storeState\.js/u);
+  assert.doesNotMatch(storeModule, /function asRecord\(/u);
+  assert.doesNotMatch(storeModule, /function toWebhookReceipt\(/u);
+  assert.doesNotMatch(storeModule, /writeFileSync/u);
+  assert.match(persistenceModule, /export function readPersistedTelegramRelayState/u);
+  assert.match(persistenceModule, /export function writePersistedTelegramRelayState/u);
+  assert.match(stateModule, /export function asPersistedTelegramRelayState/u);
+  assert.match(stateModule, /export function createEmptyPersistedTelegramRelayState/u);
+});
+
 test('chat resource routes compose dedicated preference, orchestrator, and channel modules', async () => {
   const resourceRoutesModule = await readFile(
     new URL('../src/products/chat/api/resourceRoutes.ts', import.meta.url),
