@@ -1,11 +1,9 @@
-import type { CompanionBoxStore } from '../../products/chat/state/companionBoxStore.js';
-import type { ChatStore } from '../../products/chat/state/store.js';
 import { upsertCoreTask } from '../../core/model.js';
 import type { CatsMemoryService } from '../memory/index.js';
 import type { RuntimeClient } from '../runtime/client.js';
-import { buildChannelView } from '../../products/chat/state/model.js';
-import { routeChannelMessage } from '../../products/chat/state/runtimeActions.js';
 import type {
+  OrchestratorChannelRouter,
+  OrchestratorChatStore,
   OrchestratorDispatchResponse,
   OrchestratorPlanRequest,
 } from './contracts.js';
@@ -23,16 +21,17 @@ import {
   resolveOrchestratorOperatorSeams,
 } from './planner.js';
 
-interface DispatchOrchestratorTurnInput extends OrchestratorPlanRequest {
-  chatStore: ChatStore;
+interface DispatchOrchestratorTurnInput<TCompanionStore = unknown> extends OrchestratorPlanRequest {
+  chatStore: OrchestratorChatStore;
+  channelRouter: OrchestratorChannelRouter<TCompanionStore>;
   runtimeClient: RuntimeClient;
   now?: Date;
-  companionStore?: CompanionBoxStore;
+  companionStore?: TCompanionStore;
   memoryService?: CatsMemoryService;
 }
 
-async function persistPendingApprovalDispatch(
-  input: DispatchOrchestratorTurnInput,
+async function persistPendingApprovalDispatch<TCompanionStore>(
+  input: DispatchOrchestratorTurnInput<TCompanionStore>,
   taskId: string,
   now: Date,
 ): Promise<void> {
@@ -71,8 +70,8 @@ async function persistPendingApprovalDispatch(
   await input.chatStore.writeCore(next.core);
 }
 
-export async function dispatchOrchestratorTurn(
-  input: DispatchOrchestratorTurnInput,
+export async function dispatchOrchestratorTurn<TCompanionStore>(
+  input: DispatchOrchestratorTurnInput<TCompanionStore>,
 ): Promise<OrchestratorDispatchResponse> {
   const now = input.now ?? new Date();
   const stateBefore = await input.chatStore.read();
@@ -106,26 +105,28 @@ export async function dispatchOrchestratorTurn(
     };
   }
 
-  const messageCountBefore = buildChannelView(stateBefore, input.channelId).messages.length;
-  const routed = await routeChannelMessage(
+  const messageCountBefore = input.channelRouter.buildChannelView(
     stateBefore,
     input.channelId,
-    {
-      body: input.body,
-      senderName: input.senderName,
-    },
-    input.runtimeClient,
+  ).messages.length;
+  const routed = await input.channelRouter.routeChannelMessage({
+    state: stateBefore,
+    channelId: input.channelId,
+    body: input.body,
+    senderName: input.senderName,
+    runtimeClient: input.runtimeClient,
     now,
-    {
-      transport: input.transport === 'telegram' ? 'telegram' : 'web',
-      companionStore: input.companionStore,
-      memoryService: input.memoryService,
-      chatStore: input.chatStore,
-    },
-  );
+    transport: input.transport === 'telegram' ? 'telegram' : 'web',
+    companionStore: input.companionStore,
+    memoryService: input.memoryService,
+    chatStore: input.chatStore,
+  });
   const persisted = await input.chatStore.write(routed.state);
   const coreAfter = await input.chatStore.readCore();
-  const persistedChannel = buildChannelView(persisted, input.channelId);
+  const persistedChannel = input.channelRouter.buildChannelView(
+    persisted,
+    input.channelId,
+  );
   const sourceMessage = persistedChannel.messages[messageCountBefore] ?? null;
   const executionLoop = buildOrchestratorExecutionLoopSnapshot(
     persisted,

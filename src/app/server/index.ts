@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url';
 import type { AppConfig } from '../../config.js';
 import { routeCoreApi } from '../../core/api.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
-import type { OrchestratorDispatchResponse } from '../../platform/orchestration/contracts.js';
+import type {
+  OrchestratorChannelRouter,
+  OrchestratorDispatchResponse,
+} from '../../platform/orchestration/contracts.js';
 import {
   createCatsMemoryService,
   createFileBackedCanonicalMemoryStore,
@@ -43,6 +46,7 @@ import {
   MemoryChatStore,
   type ChatStore,
 } from '../../products/chat/state/store.js';
+import { chatOrchestratorChannelRouter } from '../../products/chat/state/orchestratorAdapter.js';
 import { handleCodePlaceholder } from '../../products/code/api/index.js';
 import { handleWorkPlaceholder } from '../../products/work/api/index.js';
 import {
@@ -77,6 +81,7 @@ export interface ServerDependencies {
   chatStore: ChatStore;
   startup?: AppStartupState;
   companionStore?: CompanionBoxStore;
+  orchestratorChannelRouter?: OrchestratorChannelRouter<CompanionBoxStore>;
   memoryStore?: CanonicalMemoryStore;
   memoryService?: CatsMemoryService;
   telegramRelay?: TelegramRelay;
@@ -93,6 +98,7 @@ export interface ServerDependencies {
 type ResolvedServerDependencies = ServerDependencies & {
   startup: AppStartupState;
   companionStore: CompanionBoxStore;
+  orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore>;
   memoryStore: CanonicalMemoryStore;
   memoryService: CatsMemoryService;
   telegramRelay: TelegramRelay;
@@ -463,6 +469,7 @@ export function createServer(dependencies: ServerDependencies) {
       ...request,
       senderName: request.senderName ?? undefined,
       chatStore: dependencies.chatStore,
+      channelRouter: dependencies.orchestratorChannelRouter ?? chatOrchestratorChannelRouter,
       runtimeClient: dependencies.runtimeClient,
       now: dependencies.now?.(),
       companionStore,
@@ -476,6 +483,7 @@ export function createServer(dependencies: ServerDependencies) {
       ready: true,
     }),
     companionStore,
+    orchestratorChannelRouter: dependencies.orchestratorChannelRouter ?? chatOrchestratorChannelRouter,
     memoryStore,
     memoryService,
     telegramRelay,

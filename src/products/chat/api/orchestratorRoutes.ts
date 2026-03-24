@@ -31,6 +31,7 @@ async function handleDispatch(
     const response = await dispatchOrchestratorTurn({
       ...body,
       chatStore: context.dependencies.chatStore,
+      channelRouter: context.dependencies.orchestratorChannelRouter,
       runtimeClient: context.dependencies.runtimeClient,
       now: context.dependencies.now?.(),
       companionStore: context.dependencies.companionStore,

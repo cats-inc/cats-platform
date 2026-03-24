@@ -4,6 +4,7 @@ import type { TelegramPollingSupervisor } from '../../../platform/transports/tel
 import type { TelegramRelay } from '../../../platform/transports/telegram/relay.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
+import type { OrchestratorChannelRouter } from '../../../platform/orchestration/contracts.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import { escapeContentDispositionFilename } from '../../../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
@@ -42,6 +43,7 @@ export interface ChatApiDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
   chatStore: ChatStore;
+  orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore>;
   telegramRelay?: TelegramRelay;
   pollingSupervisor?: TelegramPollingSupervisor;
   companionStore: CompanionBoxStore;

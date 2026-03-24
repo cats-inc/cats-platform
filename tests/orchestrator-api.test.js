@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import test from 'node:test';
 
+import { buildChannelView } from '../dist-server/chat/model.js';
+import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
 import { createServer } from '../dist-server/server.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
 
@@ -330,6 +332,58 @@ test('POST /api/orchestrator/dispatch returns executed continuation steps from t
       payload.executionLoop.execution.steps.some((step) => step.kind === 'continuation_handoff'),
     );
     assert.ok(runtimeClient.sentMessages.length >= 1);
+  });
+});
+
+test('POST /api/orchestrator/dispatch uses the injected channel router seam', async () => {
+  const runtimeClient = createRuntimeStub();
+  let buildCalls = 0;
+  let routeCalls = 0;
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const channelId = created.channel.id;
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Please ask @Inline-Agent to review this change',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.ok(buildCalls >= 2);
+    assert.equal(routeCalls, 1);
+  }, new MemoryChatStore(), {
+    orchestratorChannelRouter: {
+      buildChannelView(state, channelId) {
+        buildCalls += 1;
+        return buildChannelView(state, channelId);
+      },
+      routeChannelMessage(input) {
+        routeCalls += 1;
+        return routeChannelMessage(
+          input.state,
+          input.channelId,
+          {
+            body: input.body,
+            senderName: input.senderName,
+          },
+          input.runtimeClient,
+          input.now,
+          {
+            transport: input.transport,
+            companionStore: input.companionStore,
+            memoryService: input.memoryService,
+            chatStore: input.chatStore,
+          },
+        );
+      },
+    },
   });
 });
 

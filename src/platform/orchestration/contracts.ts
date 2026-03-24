@@ -2,6 +2,7 @@ import type {
   ChannelDispatchResult,
   ChatChannelCat,
   ChatChannelView,
+  ChatState,
   ParticipantExecutionLease,
   RoomRoutingCheckpointKind,
   RoomRoutingParticipantRef,
@@ -12,8 +13,9 @@ import type {
   RoomWorkflowShape,
   RoomRoutingMode,
 } from '../../shared/app-shell.js';
-import type { ExecutionTargetSummary } from '../../core/types.js';
-import type { RuntimeSkillManifest } from '../runtime/client.js';
+import type { CatsCoreState, ExecutionTargetSummary } from '../../core/types.js';
+import type { RuntimeClient, RuntimeSkillManifest } from '../runtime/client.js';
+import type { CatsMemoryService } from '../memory/index.js';
 import type {
   ChatOperatorView,
   ChatRunInspectorView,
@@ -94,6 +96,36 @@ export interface ToolIntentManifest {
     transport?: OrchestratorTransportContext | null;
   };
   strict?: boolean;
+}
+
+export interface OrchestratorChatStore {
+  read(): Promise<ChatState>;
+  write(state: ChatState): Promise<ChatState>;
+  readCore(): Promise<CatsCoreState>;
+  writeCore(state: CatsCoreState): Promise<CatsCoreState>;
+}
+
+export interface OrchestratorChannelRouteInput<TCompanionStore = unknown> {
+  state: ChatState;
+  channelId: string;
+  body: string;
+  senderName?: string;
+  runtimeClient: RuntimeClient;
+  now: Date;
+  transport: 'telegram' | 'web';
+  chatStore: OrchestratorChatStore;
+  companionStore?: TCompanionStore;
+  memoryService?: CatsMemoryService;
+}
+
+export interface OrchestratorChannelRouter<TCompanionStore = unknown> {
+  buildChannelView(state: ChatState, channelId: string): ChatChannelView;
+  routeChannelMessage(
+    input: OrchestratorChannelRouteInput<TCompanionStore>,
+  ): Promise<{
+    state: ChatState;
+    results: ChannelDispatchResult[];
+  }>;
 }
 
 export interface OrchestratorPlanRequest {
