@@ -623,6 +623,36 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
   assert.match(transportPanelSource, /No Telegram inbox bindings have received traffic yet\./u);
 });
 
+test('settings cats composes dedicated registry and create-form components instead of rendering all cat detail UI inline', async () => {
+  const settingsCatsSource = await readFile(
+    new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
+    'utf8',
+  );
+  const registrySource = await readFile(
+    new URL('../src/products/chat/renderer/components/SettingsCatsRegistry.tsx', import.meta.url),
+    'utf8',
+  );
+  const detailPanelSource = await readFile(
+    new URL('../src/products/chat/renderer/components/SettingsCatsDetailPanel.tsx', import.meta.url),
+    'utf8',
+  );
+  const createFormSource = await readFile(
+    new URL('../src/products/chat/renderer/components/SettingsCatsCreateForm.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(settingsCatsSource, /SettingsCatsRegistry/u);
+  assert.match(settingsCatsSource, /SettingsCatsCreateForm/u);
+  assert.doesNotMatch(settingsCatsSource, /className="catDetailSection"/u);
+  assert.doesNotMatch(settingsCatsSource, /ProviderModelFields/u);
+  assert.match(registrySource, /SettingsCatsDetailPanel/u);
+  assert.doesNotMatch(registrySource, /className="memoryForm"/u);
+  assert.match(detailPanelSource, /formatTransportTimestamp/u);
+  assert.match(detailPanelSource, /export function SettingsCatsDetailPanel/u);
+  assert.match(createFormSource, /ProviderModelFields/u);
+  assert.match(createFormSource, /export function SettingsCatsCreateForm/u);
+});
+
 test('renderer styles compose dedicated partials instead of keeping the full stylesheet inline', async () => {
   const stylesIndexSource = await readFile(
     new URL('../src/products/chat/renderer/styles.css', import.meta.url),

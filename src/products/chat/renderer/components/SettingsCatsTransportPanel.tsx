@@ -2,18 +2,7 @@ import type {
   TelegramTransportDiagnostics,
   TelegramTransportStatus,
 } from '../api.js';
-
-function formatTransportTimestamp(value: string | null | undefined): string {
-  if (!value) {
-    return '—';
-  }
-
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
-}
+import { formatTransportTimestamp } from './settingsCatsShared.js';
 
 export interface SettingsCatsTransportPanelProps {
   telegramDiagnostics: TelegramTransportDiagnostics | null;
