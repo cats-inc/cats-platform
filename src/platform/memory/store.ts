@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -8,245 +7,21 @@ import type {
   CanonicalMemorySnapshot,
   CanonicalMemorySubjectKind,
 } from './contracts.js';
+import {
+  createEmptyCanonicalMemorySnapshot,
+  deriveCanonicalMemoryStatePath,
+  hasCanonicalMemoryReplaceSelector,
+  matchesCanonicalMemoryFilter,
+  normalizeCanonicalMemorySnapshot,
+  prepareCanonicalMemoryRecord,
+} from './storeSnapshot.js';
 import { isErrnoException, uniqueStrings } from './utils.js';
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-
-  return value as Record<string, unknown>;
-}
-
-function readString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback;
-}
-
-function readNullableString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
-}
-
-function readStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter((item): item is string => typeof item === 'string');
-}
-
-function defaultVisibilityForSubjectKind(
-  subjectKind: string,
-): CanonicalMemoryRecord['visibility'] {
-  switch (subjectKind) {
-    case 'channel':
-      return 'channel_private';
-    case 'relationship':
-    case 'project':
-      return 'shared_room';
-    case 'cat':
-    case 'owner':
-    default:
-      return 'owner_private';
-  }
-}
-
-function readLineage(
-  value: unknown,
-  fallback: {
-    sourceScopeKeys: string[];
-    replacementGroup: string;
-  },
-): CanonicalMemoryRecord['lineage'] {
-  const record = asRecord(value);
-  const sourceScopeKeys = readStringArray(record?.sourceScopeKeys);
-  return {
-    sourceScopeKeys: sourceScopeKeys.length > 0
-      ? sourceScopeKeys
-      : fallback.sourceScopeKeys,
-    derivedFromIds: readStringArray(record?.derivedFromIds),
-    replacementGroup: readNullableString(record?.replacementGroup) ?? fallback.replacementGroup,
-  };
-}
 
 export interface CanonicalMemoryReplaceResult {
   persisted: CanonicalMemoryRecord[];
   removedRecordIds: string[];
 }
 
-function createEmptySnapshot(nowIso: string): CanonicalMemorySnapshot {
-  return {
-    version: 1,
-    updatedAt: nowIso,
-    records: [],
-  };
-}
-
-function normalizeSnapshot(
-  rawSnapshot: unknown,
-  nowIso: string = new Date().toISOString(),
-): CanonicalMemorySnapshot {
-  const record = asRecord(rawSnapshot);
-  if (!record) {
-    return createEmptySnapshot(nowIso);
-  }
-
-  return {
-    version: 1,
-    updatedAt: readString(record.updatedAt, nowIso),
-    records: Array.isArray(record.records)
-      ? record.records
-          .map((item) => normalizeCanonicalMemoryRecord(item, nowIso))
-          .filter((item): item is CanonicalMemoryRecord => item !== null)
-      : [],
-  };
-}
-
-function normalizeCanonicalMemoryRecord(
-  rawRecord: unknown,
-  nowIso: string,
-): CanonicalMemoryRecord | null {
-  const record = asRecord(rawRecord);
-  const origin = asRecord(record?.origin);
-  if (!record || !origin) {
-    return null;
-  }
-
-  const id = readNullableString(record.id);
-  const subjectKind = readString(record.subjectKind);
-  const subjectId = readNullableString(record.subjectId);
-  const category = readString(record.category);
-  const originKind = readString(origin.kind);
-  const flushedAt = readString(origin.flushedAt, nowIso);
-  const flushReason = readString(origin.flushReason, 'manual');
-  const visibility = readString(record.visibility, defaultVisibilityForSubjectKind(subjectKind));
-  const promotionRule = readString(record.promotionRule, 'durable_memory');
-
-  if (
-    !id
-    || !subjectId
-    || !['cat', 'owner', 'channel', 'relationship', 'project'].includes(subjectKind)
-    || !['preference', 'fact', 'policy', 'style', 'relationship', 'lesson'].includes(category)
-    || ![
-      'companion_source',
-      'companion_derived',
-      'companion_memory',
-      'response_profile',
-      'channel_working_memory',
-      'durable_memory',
-      'owner_profile',
-    ].includes(originKind)
-    || !['owner_private', 'channel_private', 'shared_room', 'transport'].includes(visibility)
-    || ![
-      'companion_owner_note',
-      'companion_response_profile',
-      'companion_curated_memory',
-      'companion_trait',
-      'companion_event',
-      'companion_relationship_note',
-      'companion_normalized_note',
-      'channel_summary',
-      'channel_fact',
-      'channel_open_loop',
-      'durable_memory',
-      'owner_profile_summary',
-      'owner_communication_preference',
-      'owner_decision_preference',
-      'owner_escalation_preference',
-    ].includes(promotionRule)
-  ) {
-    return null;
-  }
-
-  const sourceRefs = readStringArray(record.sourceRefs);
-  const lineage = readLineage(record.lineage, {
-    sourceScopeKeys: sourceRefs,
-    replacementGroup: `${originKind}:${subjectId}`,
-  });
-
-  return {
-    id,
-    subjectKind: subjectKind as CanonicalMemoryRecord['subjectKind'],
-    subjectId,
-    category: category as CanonicalMemoryRecord['category'],
-    title: readNullableString(record.title),
-    content: readString(record.content),
-    summary: readNullableString(record.summary),
-    tags: readStringArray(record.tags),
-    keywords: readStringArray(record.keywords),
-    confidence: typeof record.confidence === 'number' ? record.confidence : null,
-    sourceRefs,
-    visibility: visibility as CanonicalMemoryRecord['visibility'],
-    promotionRule: promotionRule as CanonicalMemoryRecord['promotionRule'],
-    lineage,
-    origin: {
-      kind: originKind as CanonicalMemoryRecord['origin']['kind'],
-      boxId: readNullableString(origin.boxId),
-      channelId: readNullableString(origin.channelId),
-      flushedAt,
-      flushReason: flushReason as CanonicalMemoryRecord['origin']['flushReason'],
-    },
-    createdAt: readString(record.createdAt, nowIso),
-    updatedAt: readString(record.updatedAt, nowIso),
-    lastRetrievedAt: readNullableString(record.lastRetrievedAt),
-  };
-}
-
-function stableRecordId(record: Omit<CanonicalMemoryRecord, 'id'>): string {
-  const hash = createHash('sha256')
-    .update(JSON.stringify({
-      subjectKind: record.subjectKind,
-      subjectId: record.subjectId,
-      category: record.category,
-      title: record.title,
-      content: record.content,
-      sourceRefs: [...record.sourceRefs].sort(),
-      originKind: record.origin.kind,
-      visibility: record.visibility,
-      promotionRule: record.promotionRule,
-    }))
-    .digest('hex')
-    .slice(0, 16);
-  return `cats-memory-${hash}`;
-}
-
-function prepareRecord(record: Omit<CanonicalMemoryRecord, 'id'>): CanonicalMemoryRecord {
-  return {
-    ...record,
-    id: stableRecordId(record),
-    tags: uniqueStrings(record.tags.map((tag) => tag.trim())),
-    keywords: uniqueStrings(record.keywords.map((keyword) => keyword.trim().toLowerCase())),
-    sourceRefs: uniqueStrings(record.sourceRefs.map((ref) => ref.trim())),
-    lineage: {
-      sourceScopeKeys: uniqueStrings(record.lineage.sourceScopeKeys.map((key) => key.trim())),
-      derivedFromIds: uniqueStrings(record.lineage.derivedFromIds.map((id) => id.trim())),
-      replacementGroup: record.lineage.replacementGroup.trim(),
-    },
-  };
-}
-
-function matchesFilter(
-  record: CanonicalMemoryRecord,
-  filter: CanonicalMemoryReplaceFilter,
-): boolean {
-  if (filter.subjectKind && record.subjectKind !== filter.subjectKind) {
-    return false;
-  }
-  if (filter.subjectId && record.subjectId !== filter.subjectId) {
-    return false;
-  }
-  if (filter.originKinds && !filter.originKinds.includes(record.origin.kind)) {
-    return false;
-  }
-  return true;
-}
-
-function hasReplaceSelector(filter: CanonicalMemoryReplaceFilter): boolean {
-  return Boolean(
-    filter.subjectKind
-    || filter.subjectId
-    || (filter.originKinds && filter.originKinds.length > 0),
-  );
-}
 
 export interface CanonicalMemoryStore {
   readSnapshot(): Promise<CanonicalMemorySnapshot>;
@@ -271,11 +46,7 @@ export interface CanonicalMemoryStore {
   touchRecords(recordIds: string[], now?: Date): Promise<void>;
 }
 
-export function deriveCanonicalMemoryStatePath(chatStatePath: string): string {
-  const directory = path.dirname(chatStatePath);
-  const parsed = path.parse(chatStatePath);
-  return path.join(directory, `${parsed.name}.memory.json`);
-}
+export { deriveCanonicalMemoryStatePath };
 
 export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
   private mutationQueue: Promise<void> = Promise.resolve();
@@ -300,12 +71,12 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
     const nowIso = new Date().toISOString();
     try {
       const rawSnapshot = await readFile(this.snapshotPath, 'utf-8');
-      return normalizeSnapshot(JSON.parse(rawSnapshot) as unknown, nowIso);
+      return normalizeCanonicalMemorySnapshot(JSON.parse(rawSnapshot) as unknown, nowIso);
     } catch (error) {
       if (!isErrnoException(error) || error.code !== 'ENOENT') {
         throw error;
       }
-      const snapshot = createEmptySnapshot(nowIso);
+      const snapshot = createEmptyCanonicalMemorySnapshot(nowIso);
       await this.writeSnapshot(snapshot);
       return snapshot;
     }
@@ -347,7 +118,7 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
       const nowIso = now.toISOString();
       const persisted: CanonicalMemoryRecord[] = [];
 
-      for (const record of records.map((candidate) => prepareRecord(candidate))) {
+      for (const record of records.map((candidate) => prepareCanonicalMemoryRecord(candidate))) {
         const existingIndex = snapshot.records.findIndex((candidate) => candidate.id === record.id);
         if (existingIndex === -1) {
           snapshot.records.unshift(record);
@@ -389,14 +160,16 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
     records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
     now: Date = new Date(),
   ): Promise<CanonicalMemoryReplaceResult> {
-    if (!hasReplaceSelector(filter)) {
+    if (!hasCanonicalMemoryReplaceSelector(filter)) {
       throw new Error('replaceRecords requires at least one filter selector.');
     }
     return this.runExclusive(async () => {
       const snapshot = await this.readOrCreateSnapshot();
       const nowIso = now.toISOString();
-      const prepared = records.map((candidate) => prepareRecord(candidate));
-      const matchedRecords = snapshot.records.filter((record) => matchesFilter(record, filter));
+      const prepared = records.map((candidate) => prepareCanonicalMemoryRecord(candidate));
+      const matchedRecords = snapshot.records.filter((record) =>
+        matchesCanonicalMemoryFilter(record, filter),
+      );
       const existingById = new Map(snapshot.records.map((record) => [record.id, record] as const));
       const persisted = prepared.map((record) => {
         const existing = existingById.get(record.id);
@@ -422,7 +195,7 @@ export class FileCanonicalMemoryStore implements CanonicalMemoryStore {
       snapshot.records = [
         ...persisted,
         ...snapshot.records.filter((record) =>
-          !matchesFilter(record, filter) && !persistedIds.has(record.id),
+          !matchesCanonicalMemoryFilter(record, filter) && !persistedIds.has(record.id),
         ),
       ];
       snapshot.updatedAt = nowIso;
@@ -471,9 +244,11 @@ export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
   private snapshot: CanonicalMemorySnapshot;
 
   constructor(
-    initialSnapshot: CanonicalMemorySnapshot = createEmptySnapshot(new Date().toISOString()),
+    initialSnapshot: CanonicalMemorySnapshot = createEmptyCanonicalMemorySnapshot(
+      new Date().toISOString(),
+    ),
   ) {
-    this.snapshot = normalizeSnapshot(initialSnapshot, new Date().toISOString());
+    this.snapshot = normalizeCanonicalMemorySnapshot(initialSnapshot, new Date().toISOString());
   }
 
   async readSnapshot(): Promise<CanonicalMemorySnapshot> {
@@ -502,7 +277,7 @@ export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
     const nowIso = now.toISOString();
     const persisted: CanonicalMemoryRecord[] = [];
 
-    for (const record of records.map((candidate) => prepareRecord(candidate))) {
+    for (const record of records.map((candidate) => prepareCanonicalMemoryRecord(candidate))) {
       const existingIndex = this.snapshot.records.findIndex((candidate) => candidate.id === record.id);
       if (existingIndex === -1) {
         this.snapshot.records.unshift(record);
@@ -542,12 +317,14 @@ export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
     records: Array<Omit<CanonicalMemoryRecord, 'id'>>,
     now: Date = new Date(),
   ): Promise<CanonicalMemoryReplaceResult> {
-    if (!hasReplaceSelector(filter)) {
+    if (!hasCanonicalMemoryReplaceSelector(filter)) {
       throw new Error('replaceRecords requires at least one filter selector.');
     }
     const nowIso = now.toISOString();
-    const prepared = records.map((candidate) => prepareRecord(candidate));
-    const matchedRecords = this.snapshot.records.filter((record) => matchesFilter(record, filter));
+    const prepared = records.map((candidate) => prepareCanonicalMemoryRecord(candidate));
+    const matchedRecords = this.snapshot.records.filter((record) =>
+      matchesCanonicalMemoryFilter(record, filter),
+    );
     const existingById = new Map(this.snapshot.records.map((record) => [record.id, record] as const));
     const persisted = prepared.map((record) => {
       const existing = existingById.get(record.id);
@@ -576,7 +353,7 @@ export class MemoryCanonicalMemoryStore implements CanonicalMemoryStore {
       records: [
         ...persisted,
         ...this.snapshot.records.filter((record) =>
-          !matchesFilter(record, filter) && !persistedIds.has(record.id),
+          !matchesCanonicalMemoryFilter(record, filter) && !persistedIds.has(record.id),
         ),
       ],
     };

@@ -220,6 +220,51 @@ test('telegram relay store composes dedicated persistence and state-normalizer m
   assert.match(stateModule, /export function createEmptyPersistedTelegramRelayState/u);
 });
 
+test('runtime client composes dedicated parsing and stream helper modules', async () => {
+  const clientModule = await readFile(
+    new URL('../src/runtime/client.ts', import.meta.url),
+    'utf8',
+  );
+  const parsingModule = await readFile(
+    new URL('../src/runtime/clientParsing.ts', import.meta.url),
+    'utf8',
+  );
+  const streamsModule = await readFile(
+    new URL('../src/runtime/clientStreams.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(clientModule, /clientParsing\.js/u);
+  assert.match(clientModule, /clientStreams\.js/u);
+  assert.doesNotMatch(clientModule, /function readErrorText\(/u);
+  assert.doesNotMatch(clientModule, /async function readNdjsonResponse\(/u);
+  assert.doesNotMatch(clientModule, /async function readSseResponse\(/u);
+  assert.match(parsingModule, /export function readRuntimeErrorText/u);
+  assert.match(parsingModule, /export function normalizeRuntimeProviderConfigRegistry/u);
+  assert.match(streamsModule, /export async function readRuntimeNdjsonResponse/u);
+  assert.match(streamsModule, /export async function readRuntimeSseResponse/u);
+});
+
+test('canonical memory store composes dedicated snapshot helpers instead of defining normalization inline', async () => {
+  const storeModule = await readFile(
+    new URL('../src/platform/memory/store.ts', import.meta.url),
+    'utf8',
+  );
+  const snapshotModule = await readFile(
+    new URL('../src/platform/memory/storeSnapshot.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(storeModule, /storeSnapshot\.js/u);
+  assert.doesNotMatch(storeModule, /function normalizeCanonicalMemoryRecord\(/u);
+  assert.doesNotMatch(storeModule, /function prepareRecord\(/u);
+  assert.doesNotMatch(storeModule, /function matchesFilter\(/u);
+  assert.match(snapshotModule, /export function normalizeCanonicalMemorySnapshot/u);
+  assert.match(snapshotModule, /export function prepareCanonicalMemoryRecord/u);
+  assert.match(snapshotModule, /export function matchesCanonicalMemoryFilter/u);
+  assert.match(snapshotModule, /export function deriveCanonicalMemoryStatePath/u);
+});
+
 test('chat resource routes compose dedicated preference, orchestrator, and channel modules', async () => {
   const resourceRoutesModule = await readFile(
     new URL('../src/products/chat/api/resourceRoutes.ts', import.meta.url),

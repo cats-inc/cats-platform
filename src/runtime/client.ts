@@ -2,6 +2,14 @@ import {
   normalizeProviderModelCatalog,
   type ProviderModelCatalog,
 } from '../shared/providerCatalog.js';
+import {
+  normalizeRuntimeProviderConfigRegistry,
+  readRuntimeErrorText,
+} from './clientParsing.js';
+import {
+  readRuntimeNdjsonResponse,
+  readRuntimeSseResponse,
+} from './clientStreams.js';
 
 export interface RuntimeProviderInstanceConfig {
   id: string;
@@ -195,248 +203,6 @@ export class RuntimeRequestError extends Error {
   }
 }
 
-function readErrorText(body: string, fallback: string): string {
-  const trimmed = body.trim();
-  if (!trimmed) {
-    return fallback;
-  }
-
-  try {
-    const payload = JSON.parse(trimmed) as { error?: string };
-    return typeof payload.error === 'string' ? payload.error : trimmed;
-  } catch {
-    return trimmed;
-  }
-}
-
-function normalizeRuntimeProviderConfigRegistry(payload: unknown): RuntimeProviderConfigRegistry {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    return {};
-  }
-
-  const root = payload as Record<string, unknown>;
-  const providers = root.providers;
-  if (!providers || typeof providers !== 'object' || Array.isArray(providers)) {
-    return {};
-  }
-
-  return Object.fromEntries(
-    Object.entries(providers)
-      .map(([provider, rawEntry]) => {
-        if (!rawEntry || typeof rawEntry !== 'object' || Array.isArray(rawEntry)) {
-          return null;
-        }
-
-        const entry = rawEntry as Record<string, unknown>;
-        const rawInstances = Array.isArray(entry.instances) ? entry.instances : [];
-        return [
-          provider,
-          {
-            defaultInstance:
-              typeof entry.defaultInstance === 'string' && entry.defaultInstance.trim().length > 0
-                ? entry.defaultInstance
-                : null,
-            defaultBackend:
-              typeof entry.defaultBackend === 'string' && entry.defaultBackend.trim().length > 0
-                ? entry.defaultBackend
-                : null,
-            instances: rawInstances
-              .map((rawInstance) => {
-                if (!rawInstance || typeof rawInstance !== 'object' || Array.isArray(rawInstance)) {
-                  return null;
-                }
-
-                const instance = rawInstance as Record<string, unknown>;
-                const id = typeof instance.id === 'string' ? instance.id.trim() : '';
-                if (!id) {
-                  return null;
-                }
-
-                return {
-                  id,
-                  target:
-                    typeof instance.target === 'string' && instance.target.trim().length > 0
-                      ? instance.target
-                      : null,
-                  backend:
-                    typeof instance.backend === 'string' && instance.backend.trim().length > 0
-                      ? instance.backend
-                      : null,
-                  command:
-                    typeof instance.command === 'string' && instance.command.trim().length > 0
-                      ? instance.command
-                      : null,
-                  runner:
-                    typeof instance.runner === 'string' && instance.runner.trim().length > 0
-                      ? instance.runner
-                      : null,
-                  runtime:
-                    typeof instance.runtime === 'string' && instance.runtime.trim().length > 0
-                      ? instance.runtime
-                      : null,
-                  transport:
-                    typeof instance.transport === 'string' && instance.transport.trim().length > 0
-                      ? instance.transport
-                      : null,
-                  model:
-                    typeof instance.model === 'string' && instance.model.trim().length > 0
-                      ? instance.model
-                      : null,
-                };
-              })
-              .filter((instance): instance is RuntimeProviderInstanceConfig => instance !== null),
-          } satisfies RuntimeProviderConfigEntry,
-        ] as const;
-      })
-      .filter((entry): entry is readonly [string, RuntimeProviderConfigEntry] => entry !== null),
-  );
-}
-
-async function readNdjsonResponse(response: Response): Promise<RuntimeMessageResult> {
-  if (!response.body) {
-    throw new Error('cats-runtime did not provide a response stream');
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  const textParts: string[] = [];
-  let inputTokens = 0;
-  let outputTokens = 0;
-
-  while (true) {
-    const chunk = await reader.read();
-    if (chunk.done) {
-      break;
-    }
-
-    buffer += decoder.decode(chunk.value, { stream: true });
-    const lines = buffer.split(/\r?\n/u);
-    buffer = lines.pop() ?? '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) {
-        continue;
-      }
-
-      let event: Record<string, unknown>;
-      try {
-        event = JSON.parse(trimmed) as Record<string, unknown>;
-      } catch {
-        continue;
-      }
-
-      const type = String(event.type ?? '');
-      if (type === 'text') {
-        textParts.push(String(event.text ?? ''));
-        continue;
-      }
-
-      if (type === 'result') {
-        const usage = (event.usage ?? {}) as Record<string, unknown>;
-        inputTokens = Number(usage.inputTokens ?? 0);
-        outputTokens = Number(usage.outputTokens ?? 0);
-        continue;
-      }
-
-      if (type === 'error') {
-        throw new Error(String(event.text ?? 'Agent turn failed'));
-      }
-    }
-  }
-
-  const trailing = `${buffer}${decoder.decode()}`.trim();
-  if (trailing) {
-    try {
-      const event = JSON.parse(trailing) as Record<string, unknown>;
-      const type = String(event.type ?? '');
-      if (type === 'text') {
-        textParts.push(String(event.text ?? ''));
-      } else if (type === 'result') {
-        const usage = (event.usage ?? {}) as Record<string, unknown>;
-        inputTokens = Number(usage.inputTokens ?? 0);
-        outputTokens = Number(usage.outputTokens ?? 0);
-      } else if (type === 'error') {
-        throw new Error(String(event.text ?? 'Agent turn failed'));
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-    }
-  }
-
-  return {
-    content: textParts.join(''),
-    inputTokens,
-    outputTokens,
-    tokensUsed: inputTokens + outputTokens,
-  };
-}
-
-async function readSseResponse(
-  response: Response,
-  onEvent: (event: RuntimeSessionStreamEvent) => void | Promise<void>,
-): Promise<void> {
-  if (!response.body) {
-    throw new Error('cats-runtime did not provide a response stream');
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const chunk = await reader.read();
-    if (chunk.done) {
-      break;
-    }
-
-    buffer += decoder.decode(chunk.value, { stream: true });
-
-    while (true) {
-      const boundaryIndex = buffer.search(/\r?\n\r?\n/u);
-      if (boundaryIndex === -1) {
-        break;
-      }
-
-      const rawEvent = buffer.slice(0, boundaryIndex);
-      const separatorLength = buffer[boundaryIndex] === '\r' ? 4 : 2;
-      buffer = buffer.slice(boundaryIndex + separatorLength);
-
-      let eventName = 'message';
-      const dataLines: string[] = [];
-      for (const line of rawEvent.split(/\r?\n/u)) {
-        if (line.startsWith('event:')) {
-          eventName = line.slice(6).trim() || 'message';
-          continue;
-        }
-        if (line.startsWith('data:')) {
-          dataLines.push(line.slice(5).trimStart());
-        }
-      }
-
-      const dataText = dataLines.join('\n').trim();
-      if (!dataText) {
-        continue;
-      }
-
-      let parsed: Record<string, unknown>;
-      try {
-        parsed = JSON.parse(dataText) as Record<string, unknown>;
-      } catch {
-        continue;
-      }
-
-      await onEvent({
-        event: eventName,
-        data: parsed,
-      });
-    }
-  }
-}
-
 export class CatsRuntimeClient implements RuntimeClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
@@ -496,7 +262,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (!response.ok) {
       const rawBody = await response.text();
       throw new RuntimeRequestError(
-        readErrorText(rawBody, `Failed to fetch provider config (${response.status})`),
+        readRuntimeErrorText(rawBody, `Failed to fetch provider config (${response.status})`),
         response.status,
       );
     }
@@ -524,7 +290,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (!response.ok) {
       const rawBody = await response.text();
       throw new RuntimeRequestError(
-        readErrorText(rawBody, `Failed to fetch provider models (${response.status})`),
+        readRuntimeErrorText(rawBody, `Failed to fetch provider models (${response.status})`),
         response.status,
       );
     }
@@ -573,7 +339,7 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok) {
       const rawBody = await response.text();
-      throw new Error(readErrorText(rawBody, `Failed to create session (${response.status})`));
+      throw new Error(readRuntimeErrorText(rawBody, `Failed to create session (${response.status})`));
     }
 
     const data = (await response.json()) as Record<string, unknown>;
@@ -612,10 +378,10 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok) {
       const rawBody = await response.text();
-      throw new Error(readErrorText(rawBody, `Failed to send message (${response.status})`));
+      throw new Error(readRuntimeErrorText(rawBody, `Failed to send message (${response.status})`));
     }
 
-    return readNdjsonResponse(response);
+    return readRuntimeNdjsonResponse(response);
   }
 
   async observeSession(sessionId: string): Promise<RuntimeObservedSessionPayload> {
@@ -629,7 +395,7 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok) {
       const rawBody = await response.text();
-      throw new Error(readErrorText(rawBody, `Failed to observe session (${response.status})`));
+      throw new Error(readRuntimeErrorText(rawBody, `Failed to observe session (${response.status})`));
     }
 
     return (await response.json()) as RuntimeObservedSessionPayload;
@@ -648,10 +414,10 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok) {
       const rawBody = await response.text();
-      throw new Error(readErrorText(rawBody, `Failed to stream session (${response.status})`));
+      throw new Error(readRuntimeErrorText(rawBody, `Failed to stream session (${response.status})`));
     }
 
-    await readSseResponse(response, onEvent);
+    await readRuntimeSseResponse(response, onEvent);
   }
 
   async createWakeup(input: RuntimeWakeupCreateInput): Promise<RuntimeWakeupCreateResult> {
@@ -674,7 +440,7 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok) {
       const rawBody = await response.text();
-      throw new Error(readErrorText(rawBody, `Failed to create wakeup (${response.status})`));
+      throw new Error(readRuntimeErrorText(rawBody, `Failed to create wakeup (${response.status})`));
     }
 
     return (await response.json()) as RuntimeWakeupCreateResult;
@@ -698,7 +464,7 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok) {
       const rawBody = await response.text();
-      throw new Error(readErrorText(rawBody, `Failed to call MCP (${response.status})`));
+      throw new Error(readRuntimeErrorText(rawBody, `Failed to call MCP (${response.status})`));
     }
 
     return (await response.json()) as Record<string, unknown>;
@@ -713,7 +479,7 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok && response.status !== 204) {
       const rawBody = await response.text();
-      throw new Error(readErrorText(rawBody, `Failed to close session (${response.status})`));
+      throw new Error(readRuntimeErrorText(rawBody, `Failed to close session (${response.status})`));
     }
   }
 
