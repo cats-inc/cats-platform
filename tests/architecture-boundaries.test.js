@@ -587,6 +587,24 @@ test('settings cats consumes dedicated registry actions instead of defining cat 
   assert.match(registryHookSource, /deleteBotBindingApi/u);
 });
 
+test('settings cats consumes a dedicated transport panel instead of rendering telegram diagnostics inline', async () => {
+  const settingsCatsSource = await readFile(
+    new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
+    'utf8',
+  );
+  const transportPanelSource = await readFile(
+    new URL('../src/products/chat/renderer/components/SettingsCatsTransportPanel.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(settingsCatsSource, /SettingsCatsTransportPanel/u);
+  assert.doesNotMatch(settingsCatsSource, /Last inbound: \{formatTransportTimestamp/u);
+  assert.doesNotMatch(settingsCatsSource, /Tracked inboxes \{telegramDiagnostics\.bindings\.length\}/u);
+  assert.match(transportPanelSource, /export function SettingsCatsTransportPanel/u);
+  assert.match(transportPanelSource, /formatTransportTimestamp/u);
+  assert.match(transportPanelSource, /No Telegram inbox bindings have received traffic yet\./u);
+});
+
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
     new URL('../src/products/chat/renderer/api.ts', import.meta.url),
