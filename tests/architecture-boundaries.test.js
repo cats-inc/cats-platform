@@ -440,6 +440,26 @@ test('renderer app consumes dedicated cat-assignment actions instead of defining
   assert.match(hookSource, /removeCatFromChannelApi/u);
 });
 
+test('renderer app consumes dedicated governance actions instead of defining approval and choice flows inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/chat/renderer/useGovernanceActions.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /useGovernanceActions/u);
+  assert.doesNotMatch(appSource, /async function onApprovalDecision\(/u);
+  assert.doesNotMatch(appSource, /async function onChoiceSubmit\(/u);
+  assert.doesNotMatch(appSource, /async function onOperatorAction\(/u);
+  assert.match(hookSource, /export function useGovernanceActions/u);
+  assert.match(hookSource, /writeCoreApprovalDecision/u);
+  assert.match(hookSource, /writeCoreOperatorAction/u);
+  assert.match(hookSource, /sendChatMessage/u);
+});
+
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),

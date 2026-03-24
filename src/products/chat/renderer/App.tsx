@@ -30,8 +30,6 @@ import {
   deleteGlobalCat,
   resetSetup,
   deleteChatChannel,
-  writeCoreApprovalDecision,
-  writeCoreOperatorAction,
 } from './api';
 
 import {
@@ -49,18 +47,17 @@ import {
   resolveSelectedChannelEntryLifecycle,
   shouldWakeRouteChannelOnEntry,
 } from '../shared/channelEntry';
-import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
 import { useOperatorLoop } from './useOperatorLoop';
 import { useAppShellRouting } from './useAppShellRouting';
 import { useCatAssignmentActions } from './useCatAssignmentActions';
 import { useComposerSubmit } from './useComposerSubmit';
 import { useFolderBrowser } from './useFolderBrowser';
+import { useGovernanceActions } from './useGovernanceActions';
 
 import { SetupWizard } from './components/SetupWizard';
 import type { ModelSelectorValue } from './components/ModelSelector';
 import { Sidebar, type SidebarViewMode } from './components/Sidebar';
 import { ChatView } from './components/ChatView';
-import type { MessageChoicesSubmitInput } from './components/MessageChoices';
 import { NewChatDraft } from './components/NewChatDraft';
 import { SettingsGeneral } from './components/SettingsGeneral';
 import { SettingsCats } from './components/SettingsCats';
@@ -228,6 +225,18 @@ export default function App() {
     setAddCatOpen,
     setDraftCatIds,
   });
+  const {
+    onApprovalDecision,
+    onChoiceSubmit,
+    onOperatorAction,
+  } = useGovernanceActions({
+    state,
+    setState,
+    operatorState,
+    setOperatorState,
+    setBusy,
+    setFeedback,
+  });
 
   // --- Effects ---
 
@@ -391,98 +400,6 @@ export default function App() {
       navigate(resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onApprovalDecision(
-    taskId: string,
-    action: 'approve' | 'reroute' | 'reject',
-  ): Promise<void> {
-    if (!operatorState.snapshot) {
-      return;
-    }
-
-    setBusy(`approval:${taskId}:${action}`);
-    try {
-      const snapshot = await writeCoreApprovalDecision({
-        taskId,
-        status: action === 'approve' ? 'approved' : 'rejected',
-        action,
-        decidedByActorId: operatorState.snapshot.core.ownerProfile.actorId,
-      });
-      startTransition(() => {
-        setOperatorState({
-          status: 'ready',
-          snapshot,
-          message: '',
-        });
-        setFeedback('');
-      });
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to update approval.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onChoiceSubmit(input: MessageChoicesSubmitInput): Promise<void> {
-    if (state.status !== 'ready') {
-      return;
-    }
-
-    const channelId = input.channelId;
-    if (!channelId) {
-      return;
-    }
-
-    setBusy(`choice:${input.choiceResponse.sourceMessageId}:${input.choiceResponse.status}`);
-    try {
-      const dispatch = await sendChatMessage(channelId, {
-        body: input.body,
-        senderName: state.payload.ownerDisplayName,
-        choiceResponse: input.choiceResponse,
-      });
-      startTransition(() => {
-        setState({ status: 'ready', payload: dispatch.appShell });
-        setFeedback('');
-      });
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to submit choice response.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onOperatorAction(input: {
-    action: 'retry' | 'acknowledge';
-    taskId?: string | null;
-    runId?: string | null;
-    checkpointId?: string | null;
-    outcomeId?: string | null;
-  }): Promise<void> {
-    if (!operatorState.snapshot) {
-      return;
-    }
-
-    const busyKey = input.runId ?? input.taskId ?? input.checkpointId ?? input.outcomeId ?? 'global';
-    setBusy(`operator-action:${input.action}:${busyKey}`);
-    try {
-      const snapshot = await writeCoreOperatorAction({
-        ...input,
-        actorId: operatorState.snapshot.core.ownerProfile.actorId,
-      });
-      startTransition(() => {
-        setOperatorState({
-          status: 'ready',
-          snapshot,
-          message: '',
-        });
-        setFeedback('');
-      });
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to record operator action.');
     } finally {
       setBusy('');
     }
