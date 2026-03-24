@@ -12,7 +12,6 @@ import type {
   ChatState,
 } from '../api/contracts.js';
 import type {
-  ParticipantSessionStatus,
   RoomRouteResolution,
   RoomRoutingCheckpoint,
   RoomRoutingGuardReason,
@@ -42,16 +41,11 @@ import type { CatsMemoryService } from '../../../platform/memory/index.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import type {
   RuntimeClient,
-  RuntimeSessionInfo,
 } from '../../../platform/runtime/client.js';
 import {
   checkoutTaskExecution,
   startTaskRunWatcher,
 } from '../../../core/taskLifecycle.js';
-import {
-  createCatActorId,
-  GLOBAL_ORCHESTRATOR_ACTOR_ID,
-} from '../../../core/model.js';
 import {
   ORCHESTRATOR_NAME,
   appendMessage,
@@ -85,7 +79,6 @@ import {
   appendWorkflowEvent,
   createPendingDispatch,
   createRecordedWakeRequest,
-  createRoomRoutingSnapshot,
   createRoutingOutcome,
   createWorkflowEvent,
   createWorkflowTurn,
@@ -116,6 +109,19 @@ import {
   resolveOrchestratorExecutionTarget,
   resolveRuntimeEnvelopeForTarget,
 } from './runtimeTargeting.js';
+import {
+  applyRoomRoutingSnapshot,
+  ensureChannelMarkedActive,
+  markTargetWaking,
+  normalizeRuntimeStatus,
+  participantKey,
+  resolveActorIdForTarget,
+  setErroredSession,
+  setReadyAfterMessage,
+  setStartedSession,
+  spawnCwdFor,
+  toParticipantRef,
+} from './runtimeSessionState.js';
 
 interface DispatchExecution extends DispatchRequest {
   responseBody: string | null;
@@ -134,23 +140,6 @@ function normalizePendingTargetValue(value: string | null | undefined): string |
   return normalized ? normalized : null;
 }
 
-function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionStatus {
-  switch (status) {
-    case 'ready':
-      return 'ready';
-    case 'closed':
-      return 'closed';
-    case 'error':
-      return 'error';
-    default:
-      return 'initializing';
-  }
-}
-
-function spawnCwdFor(channel: ChatChannelState): string | null {
-  return channel.repoPath ?? channel.chatCwd ?? null;
-}
-
 function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
   return channel.assignedCats.filter((cat) => cat.status === 'active');
 }
@@ -167,24 +156,6 @@ function shouldRewriteOrchestratorReply(
   const normalized = content.toLowerCase();
   return normalized.includes(`@${orchestratorName.toLowerCase()}`)
     || normalized.includes(`@${ORCHESTRATOR_NAME.toLowerCase()}`);
-}
-
-function participantKey(participant: RoomRoutingParticipantRef | RoutingTarget): string {
-  return `${participant.participantKind}:${participant.participantId}`;
-}
-
-function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantRef {
-  return {
-    participantKind: target.participantKind,
-    participantId: target.participantId,
-    participantName: target.participantName,
-  };
-}
-
-function resolveActorIdForTarget(target: RoutingTarget): string {
-  return target.participantKind === 'orchestrator'
-    ? GLOBAL_ORCHESTRATOR_ACTOR_ID
-    : createCatActorId(target.participantId);
 }
 
 async function maybeAutoCheckoutChannelTask(
@@ -230,157 +201,6 @@ async function maybeAutoCheckoutChannelTask(
     sessionId: target.sessionId,
     actorId,
   });
-}
-
-function setStartedSession(
-  state: ChatState,
-  channelId: string,
-  target: 'orchestrator' | { catId: string },
-  session: RuntimeSessionInfo,
-  now: Date,
-): ChatState {
-  const timestamp = now.toISOString();
-  if (typeof target !== 'string') {
-    return setChannelCatLease(
-      state,
-      channelId,
-      target.catId,
-      {
-        sessionId: session.id,
-        status: normalizeRuntimeStatus(session.status),
-        cwd: session.cwd,
-        lastError: null,
-        provider: session.provider,
-        model: session.model,
-        startedAt: timestamp,
-        lastUsedAt: timestamp,
-      },
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
-    state,
-    channelId,
-    {
-      sessionId: session.id,
-      status: normalizeRuntimeStatus(session.status),
-      cwd: session.cwd,
-      lastError: null,
-      provider: session.provider,
-      model: session.model,
-      startedAt: timestamp,
-      lastUsedAt: timestamp,
-    },
-    now,
-  );
-}
-
-function setErroredSession(
-  state: ChatState,
-  channelId: string,
-  target: 'orchestrator' | { catId: string },
-  message: string,
-  now: Date,
-): ChatState {
-  if (typeof target !== 'string') {
-    return setChannelCatLease(
-      state,
-      channelId,
-      target.catId,
-      {
-        status: 'error',
-        lastError: message,
-      },
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
-    state,
-    channelId,
-    {
-      status: 'error',
-      lastError: message,
-    },
-    now,
-  );
-}
-
-function markTargetWaking(
-  state: ChatState,
-  channelId: string,
-  target: RoutingTarget,
-  now: Date,
-): ChatState {
-  if (target.participantKind === 'cat') {
-    return setChannelCatLease(
-      state,
-      channelId,
-      target.participantId,
-      { status: 'initializing', lastError: null },
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
-    state,
-    channelId,
-    { status: 'initializing', lastError: null },
-    now,
-  );
-}
-
-function ensureChannelMarkedActive(
-  state: ChatState,
-  channelId: string,
-  now: Date,
-): ChatState {
-  const channel = requireChannel(state, channelId);
-  return channel.status === 'active'
-    ? state
-    : setChannelStatus(state, channelId, 'active', now);
-}
-
-function setReadyAfterMessage(
-  state: ChatState,
-  channelId: string,
-  target: 'orchestrator' | { catId: string },
-  now: Date,
-): ChatState {
-  if (typeof target !== 'string') {
-    return setChannelCatLease(
-      state,
-      channelId,
-      target.catId,
-      { status: 'ready', lastUsedAt: now.toISOString() },
-      now,
-    );
-  }
-
-  return setChannelOrchestratorLease(
-    state,
-    channelId,
-    { status: 'ready', lastUsedAt: now.toISOString() },
-    now,
-  );
-}
-
-function applyRoomRoutingSnapshot(
-  state: ChatState,
-  channelId: string,
-  baseRoomRouting: ReturnType<typeof resolveRoomRoutingState>,
-  workflow: RoomWorkflowState,
-  outcome: RoomRoutingOutcome | null,
-  checkpoint: RoomRoutingCheckpoint | null,
-  now: Date,
-): ChatState {
-  return setChannelRoomRouting(
-    state,
-    channelId,
-    createRoomRoutingSnapshot(baseRoomRouting, workflow, outcome, checkpoint),
-    now,
-  );
 }
 
 function describeGuardReason(reason: Exclude<RoomRoutingGuardReason, null>): string {

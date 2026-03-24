@@ -204,6 +204,25 @@ test('runtimeActions consumes dedicated runtime targeting helpers instead of def
   assert.match(targetingModule, /export function resolveChoiceResponseTarget/u);
 });
 
+test('runtimeActions consumes dedicated runtime session-state helpers instead of defining them inline', async () => {
+  const runtimeActions = await readFile(
+    new URL('../src/products/chat/state/runtimeActions.ts', import.meta.url),
+    'utf8',
+  );
+  const sessionStateModule = await readFile(
+    new URL('../src/products/chat/state/runtimeSessionState.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(runtimeActions, /runtimeSessionState\.js/u);
+  assert.doesNotMatch(runtimeActions, /function setStartedSession\(/u);
+  assert.doesNotMatch(runtimeActions, /function markTargetWaking\(/u);
+  assert.doesNotMatch(runtimeActions, /function applyRoomRoutingSnapshot\(/u);
+  assert.match(sessionStateModule, /export function setStartedSession/u);
+  assert.match(sessionStateModule, /export function markTargetWaking/u);
+  assert.match(sessionStateModule, /export function applyRoomRoutingSnapshot/u);
+});
+
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
