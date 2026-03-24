@@ -1,11 +1,8 @@
 import {
   startTransition,
-  useCallback,
   useEffect,
-  useRef,
   useState,
   type FormEvent,
-  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import {
   Routes, Route, Navigate,
@@ -21,10 +18,6 @@ import {
   resolveAppEntryPath,
   resolveVisibleChatPath,
 } from '../shared/channelPaths';
-import {
-  readSidebarOpenPreference,
-  writeSidebarOpenPreference,
-} from '../../../shared/sidebarPreference';
 import type { AppShellPayload } from '../api/contracts';
 import {
   deleteGlobalCat,
@@ -49,6 +42,7 @@ import {
 } from '../shared/channelEntry';
 import { useOperatorLoop } from './useOperatorLoop';
 import { useAppShellRouting } from './useAppShellRouting';
+import { useAppChrome } from './useAppChrome';
 import { useCatAssignmentActions } from './useCatAssignmentActions';
 import { useComposerSubmit } from './useComposerSubmit';
 import { useFolderBrowser } from './useFolderBrowser';
@@ -100,33 +94,41 @@ export default function App() {
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [busy, setBusy] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [addCatOpen, setAddCatOpen] = useState(false);
   const [addCatTab, setAddCatTab] = useState<'existing' | 'new'>('existing');
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(() =>
-    readSidebarOpenPreference(typeof window === 'undefined' ? null : window.localStorage),
-  );
-  const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(null);
   const [greeting] = useState(pickGreeting);
   const [sidebarView, setSidebarView] = useState<SidebarViewMode>('latest');
-  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [draftCwd, setDraftCwd] = useState<string | null>(null);
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
-  const [channelPlusMenuOpen, setChannelPlusMenuOpen] = useState(false);
   const [draftModel, setDraftModel] = useState<ModelSelectorValue>(() => ({
     provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
   }));
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(() => ({
     provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
   }));
-  const accountMenuRef = useRef<HTMLDivElement>(null);
-  const plusMenuRef = useRef<HTMLDivElement>(null);
-  const addCatPanelRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const channelPlusMenuRef = useRef<HTMLDivElement>(null);
-  const channelFileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    accountMenuOpen,
+    setAccountMenuOpen,
+    sidebarOpen,
+    overflowMenuOpenId,
+    setOverflowMenuOpenId,
+    plusMenuOpen,
+    setPlusMenuOpen,
+    addCatOpen,
+    setAddCatOpen,
+    channelPlusMenuOpen,
+    setChannelPlusMenuOpen,
+    accountMenuRef,
+    plusMenuRef,
+    addCatPanelRef,
+    fileInputRef,
+    channelPlusMenuRef,
+    channelFileInputRef,
+    autoResize,
+    onToggleSidebar,
+    onCollapsedSidebarClick,
+  } = useAppChrome();
   const readyPayload = state.status === 'ready' ? state.payload : null;
   const readyChat = state.status === 'ready' ? state.payload.chat : null;
   const readySelectedChannel = normalizeSelectedChannelView(readyChat?.selectedChannel ?? null);
@@ -273,53 +275,6 @@ export default function App() {
     readySelectedChannel?.pendingInstance,
   ]);
 
-  useEffect(() => {
-    if (!accountMenuOpen && !overflowMenuOpenId && !plusMenuOpen && !channelPlusMenuOpen && !addCatOpen) return;
-    function handleClick(e: MouseEvent) {
-      const target = e.target as Node;
-      if (accountMenuOpen && accountMenuRef.current && !accountMenuRef.current.contains(target)) {
-        setAccountMenuOpen(false);
-      }
-      if (overflowMenuOpenId) {
-        const menu = document.querySelector('.recentOverflowMenu') ?? document.querySelector('.myCatOverflowMenu');
-        const button = (e.target as Element).closest?.('.recentOverflowButton, .myCatOverflowButton');
-        if (!menu?.contains(target) && !button) {
-          setOverflowMenuOpenId(null);
-        }
-      }
-      if (plusMenuOpen && plusMenuRef.current && !plusMenuRef.current.contains(target)) {
-        setPlusMenuOpen(false);
-      }
-      if (channelPlusMenuOpen && channelPlusMenuRef.current && !channelPlusMenuRef.current.contains(target)) {
-        setChannelPlusMenuOpen(false);
-      }
-      if (addCatOpen && addCatPanelRef.current && !addCatPanelRef.current.contains(target)) {
-        setAddCatOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [accountMenuOpen, overflowMenuOpenId, plusMenuOpen, channelPlusMenuOpen, addCatOpen]);
-
-  useEffect(() => {
-    writeSidebarOpenPreference(
-      typeof window === 'undefined' ? null : window.localStorage,
-      sidebarOpen,
-    );
-  }, [sidebarOpen]);
-
-  const autoResize = useCallback((el: HTMLTextAreaElement) => {
-    el.style.height = 'auto';
-    const max = 200;
-    if (el.scrollHeight > max) {
-      el.style.height = `${max}px`;
-      el.style.overflowY = 'auto';
-    } else {
-      el.style.height = `${el.scrollHeight}px`;
-      el.style.overflowY = 'hidden';
-    }
-  }, []);
-
   useAppShellRouting({
     state,
     setState,
@@ -361,23 +316,6 @@ export default function App() {
     navigate(resolveVisibleChatPath(state.payload.chat.channels, state.payload.chat.selectedChannelId));
     setFeedback('');
     setAddCatOpen(false);
-  }
-
-  function onToggleSidebar(): void {
-    setSidebarOpen((current) => {
-      if (current) setAccountMenuOpen(false);
-      return !current;
-    });
-  }
-
-  function onCollapsedSidebarClick(event: ReactMouseEvent<HTMLElement>): void {
-    if (sidebarOpen) return;
-    const target = event.target as HTMLElement;
-    if (
-      target.closest('button, a, input, textarea, select, [role="button"]')
-      || target.closest('.accountMenu')
-    ) return;
-    setSidebarOpen(true);
   }
 
   function onSelect(channelId: string): void {

@@ -479,6 +479,25 @@ test('renderer app consumes dedicated governance actions instead of defining app
   assert.match(hookSource, /sendChatMessage/u);
 });
 
+test('renderer app consumes a dedicated chrome hook instead of defining shell menu state inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/chat/renderer/useAppChrome.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /useAppChrome/u);
+  assert.doesNotMatch(appSource, /document\.addEventListener\('mousedown'/u);
+  assert.doesNotMatch(appSource, /writeSidebarOpenPreference/u);
+  assert.doesNotMatch(appSource, /const autoResize = useCallback/u);
+  assert.match(hookSource, /export function useAppChrome/u);
+  assert.match(hookSource, /writeSidebarOpenPreference/u);
+  assert.match(hookSource, /document\.addEventListener\('mousedown'/u);
+});
+
 test('settings cats consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {
   const settingsCatsSource = await readFile(
     new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
