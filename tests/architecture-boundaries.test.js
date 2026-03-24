@@ -811,6 +811,39 @@ test('chat snapshot consumes dedicated room-routing snapshot normalization inste
   assert.match(snapshotModule, /export function normalizeRoomRouting/u);
 });
 
+test('chat model composes dedicated shared and read-model modules instead of defining projections inline', async () => {
+  const modelSource = await readFile(
+    new URL('../src/products/chat/state/model.ts', import.meta.url),
+    'utf8',
+  );
+  const sharedSource = await readFile(
+    new URL('../src/products/chat/state/modelShared.ts', import.meta.url),
+    'utf8',
+  );
+  const readModelSource = await readFile(
+    new URL('../src/products/chat/state/modelReadModels.ts', import.meta.url),
+    'utf8',
+  );
+  const recordBuilderSource = await readFile(
+    new URL('../src/products/chat/state/modelRecordBuilders.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(modelSource, /from '\.\/modelShared\.js'/u);
+  assert.match(modelSource, /from '\.\/modelReadModels\.js'/u);
+  assert.match(modelSource, /from '\.\/modelRecordBuilders\.js'/u);
+  assert.doesNotMatch(modelSource, /export function buildChannelView\(/u);
+  assert.doesNotMatch(modelSource, /export function summarizeState\(/u);
+  assert.doesNotMatch(modelSource, /export function requireChannel\(/u);
+  assert.doesNotMatch(modelSource, /function createMessageRecord\(/u);
+  assert.match(sharedSource, /export function requireChannel/u);
+  assert.match(sharedSource, /export function requireCat/u);
+  assert.match(readModelSource, /export function buildChannelView/u);
+  assert.match(readModelSource, /export function summarizeState/u);
+  assert.match(recordBuilderSource, /export function createMessageRecord/u);
+  assert.match(recordBuilderSource, /export function createCatRecord/u);
+});
+
 test('store consumes dedicated core snapshot normalization instead of defining it inline', async () => {
   const storeSource = await readFile(
     new URL('../src/products/chat/state/store.ts', import.meta.url),

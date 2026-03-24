@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 export const AVATAR_PALETTE = [
   '#7986CB', '#4DB6AC', '#FFB74D', '#BA68C8',
   '#64B5F6', '#81C784', '#FF8A65', '#9575CD',
@@ -12,21 +10,14 @@ export function pickAvatarColor(index: number): string {
 
 import type {
   AssignChannelCatInput,
-  ChannelExportPayload,
-  ChannelCatAssignment,
   CreateCatInput,
   CreateChatChannelInput,
-  GlobalOrchestratorSummary,
   MessageUsageSummary,
   ParticipantExecutionLease,
   SendChannelMessageInput,
-  ChatChannelCat,
   ChatChannelState,
   ChatChannelStatus,
-  ChatChannelSummary,
-  ChatChannelView,
   ChatMessage,
-  ChatCat,
   ChatState,
   UpdateGlobalOrchestratorInput,
 } from '../api/contracts.js';
@@ -34,368 +25,44 @@ import type {
   ChatMessageSenderKind,
   ParticipantSessionStatus,
 } from '../../../shared/roomRouting.js';
-import { createChannelExportFilename } from '../shared/channelPaths.js';
-import {
-  resolveChatLifecycleState,
-  type ChatLifecycleState,
-} from '../shared/lifecycle.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from './defaults.js';
 import {
-  createDefaultRoomRoutingState,
-  resolveRoomRoutingState,
-} from './roomRouting.js';
+  applyMessageToChannel,
+  createAssignmentRecord,
+  createCatRecord,
+  createMessageRecord,
+} from './modelRecordBuilders.js';
 import {
-  extractChatMessageChoicesFromBody,
-  normalizeChatMessageChoiceResponse,
-} from '../shared/messageChoices.js';
+  cloneState,
+  createChannelId,
+  findChannelIndex,
+  inferChannelComposerMode,
+  isoAt,
+  normalizeLeadParticipantId,
+  normalizeList,
+  normalizeOptionalText,
+  requireCat,
+  requireChannel,
+  syncChannelLeadAndComposerMode,
+  updateExecutionLease,
+} from './modelShared.js';
+import {
+  createDefaultRoomRoutingState,
+} from './roomRouting.js';
 
-export const ORCHESTRATOR_NAME = 'Orchestrator';
 export type { ChatLifecycleState } from '../shared/lifecycle.js';
-
-export function resolveOrchestratorDisplayName(state: ChatState): string {
-  if (state.bossCatId) {
-    const cat = state.cats.find((candidate) => candidate.id === state.bossCatId);
-    if (cat) return cat.name;
-  }
-  return ORCHESTRATOR_NAME;
-}
-
-function cloneState(state: ChatState): ChatState {
-  return structuredClone(state);
-}
-
-function isoAt(now: Date): string {
-  return now.toISOString();
-}
-
-function normalizeOptionalText(value: string | null | undefined): string | null {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
-
-function normalizeList(values: string[] | undefined): string[] {
-  return (values ?? [])
-    .map((value) => value.trim())
-    .filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
-}
-
-function createChannelId(): string {
-  return randomUUID();
-}
-
-function normalizeLeadParticipantId(value: string | undefined): string | null {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
-
-function inferChannelComposerMode(input: {
-  roomMode?: string;
-  activeCatIds: string[];
-}): 'solo' | 'cat_led' {
-  if (input.roomMode === 'direct_cat_chat') {
-    return 'cat_led';
-  }
-  return input.activeCatIds.length > 0 ? 'cat_led' : 'solo';
-}
-
-function syncChannelLeadAndComposerMode(channel: ChatChannelState): void {
-  const activeCatIds = channel.catAssignments
-    .filter((assignment) => assignment.status === 'active')
-    .map((assignment) => assignment.catId);
-  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  const currentLeadId = roomRouting.leadParticipantId;
-  const hasValidLead = Boolean(currentLeadId && activeCatIds.includes(currentLeadId));
-
-  channel.composerMode = inferChannelComposerMode({
-    roomMode: roomRouting.mode,
-    activeCatIds,
-  });
-
-  if (roomRouting.mode === 'direct_cat_chat') {
-    roomRouting.leadParticipantId = hasValidLead
-      ? currentLeadId
-      : activeCatIds[0] ?? currentLeadId ?? null;
-  } else if (activeCatIds.length === 0) {
-    roomRouting.leadParticipantId = null;
-  } else if (!hasValidLead) {
-    roomRouting.leadParticipantId = activeCatIds[0] ?? null;
-  }
-
-  channel.roomRouting = roomRouting;
-}
-
-export function resolveParticipantLifecycleState(
-  lease: ParticipantExecutionLease,
-): ChatLifecycleState {
-  return resolveChatLifecycleState(lease.status);
-}
-
-function findChannelIndex(state: ChatState, channelId: string): number {
-  return state.channels.findIndex((channel) => channel.id === channelId);
-}
-
-export function requireChannel(state: ChatState, channelId: string): ChatChannelState {
-  const channel = state.channels.find((candidate) => candidate.id === channelId);
-  if (!channel) {
-    throw new Error(`Channel not found: ${channelId}`);
-  }
-
-  return channel;
-}
-
-export function requireCat(state: ChatState, catId: string): ChatCat {
-  const cat = state.cats.find((candidate) => candidate.id === catId);
-  if (!cat) {
-    throw new Error(`Cat not found: ${catId}`);
-  }
-
-  return cat;
-}
-
-function activeCatCount(channel: ChatChannelState): number {
-  return channel.catAssignments.filter((assignment) => assignment.status === 'active').length;
-}
-
-function createMessageRecord(
-  channelId: string,
-  senderKind: ChatMessageSenderKind,
-  senderName: string,
-  body: string,
-  createdAt: string,
-  metadata: Record<string, unknown>,
-  usage: MessageUsageSummary | null,
-  execution: {
-    provider?: string | null;
-    model?: string | null;
-    instance?: string | null;
-  } = {},
-  structured: {
-    choices?: ChatMessage['choices'];
-    choiceResponse?: ChatMessage['choiceResponse'];
-  } = {},
-): ChatMessage {
-  const { body: normalizedBody, choices } = extractChatMessageChoicesFromBody(
-    body.trim(),
-    structured.choices,
-  );
-  const choiceResponse = normalizeChatMessageChoiceResponse(structured.choiceResponse);
-
-  return {
-    id: randomUUID(),
-    channelId,
-    senderKind,
-    senderName,
-    body: normalizedBody,
-    ...(choices ? { choices } : {}),
-    ...(choiceResponse ? { choiceResponse } : {}),
-    mentions: parseMentions(normalizedBody),
-    metadata,
-    usage,
-    executionProvider: execution.provider ?? null,
-    executionModel: execution.model ?? null,
-    executionInstance: execution.instance ?? null,
-    createdAt,
-  };
-}
-
-function applyMessageToChannel(
-  channel: ChatChannelState,
-  message: ChatMessage,
-  nowIso: string,
-): void {
-  channel.messages.push(message);
-  channel.updatedAt = nowIso;
-  channel.lastMessageAt = nowIso;
-}
-
-function createCatRecord(input: CreateCatInput, nowIso: string): ChatCat {
-  const name = input.name.trim();
-  const provider = input.provider.trim();
-
-  if (!name) {
-    throw new Error('Cat name is required');
-  }
-  if (!provider) {
-    throw new Error('Cat provider is required');
-  }
-
-  return {
-    id: randomUUID(),
-    name,
-    roles: normalizeList(input.roles),
-    skillProfile: normalizeOptionalText(input.skillProfile),
-    mcpProfile: normalizeOptionalText(input.mcpProfile),
-    status: 'active',
-    createdAt: nowIso,
-    updatedAt: nowIso,
-    archivedAt: null,
-    avatarColor: null,
-    defaultExecutionTarget: {
-      provider,
-      instance: normalizeOptionalText(input.instance),
-      model: normalizeOptionalText(input.model),
-    },
-    memory: createEmptyMemoryCheckpoint(),
-  };
-}
-
-function createAssignmentRecord(
-  cat: ChatCat,
-  input: {
-    provider?: string;
-    instance?: string | null;
-    model?: string | null;
-    roles?: string[];
-  },
-  nowIso: string,
-): ChannelCatAssignment {
-  const roles = normalizeList(input.roles);
-
-  return {
-    catId: cat.id,
-    status: 'active',
-    roles: roles.length > 0 ? roles : cat.roles,
-    joinedAt: nowIso,
-    leftAt: null,
-    execution: {
-      target: {
-        provider: input.provider?.trim() || cat.defaultExecutionTarget.provider,
-        instance:
-          input.instance === undefined
-            ? cat.defaultExecutionTarget.instance
-            : normalizeOptionalText(input.instance),
-        model:
-          input.model === undefined
-            ? cat.defaultExecutionTarget.model
-            : normalizeOptionalText(input.model),
-      },
-      lease: createEmptyExecutionLease(),
-    },
-  };
-}
-
-function hydrateChannelCat(
-  cat: ChatCat,
-  assignment: ChannelCatAssignment,
-): ChatChannelCat {
-  return {
-    catId: cat.id,
-    name: cat.name,
-    roles: assignment.roles.length > 0 ? structuredClone(assignment.roles) : structuredClone(cat.roles),
-    skillProfile: cat.skillProfile,
-    mcpProfile: cat.mcpProfile,
-    status: assignment.status,
-    joinedAt: assignment.joinedAt,
-    leftAt: assignment.leftAt,
-    avatarColor: cat.avatarColor,
-    execution: structuredClone(assignment.execution),
-    memory: structuredClone(cat.memory),
-  };
-}
-
-export function buildChannelView(
-  state: ChatState,
-  channelOrId: ChatChannelState | string,
-): ChatChannelView {
-  const channel =
-    typeof channelOrId === 'string' ? requireChannel(state, channelOrId) : channelOrId;
-  const clonedChannel = structuredClone(channel);
-
-  return {
-    ...clonedChannel,
-    roomRouting: clonedChannel.roomRouting ?? createDefaultRoomRoutingState(),
-    assignedCats: channel.catAssignments
-      .filter((assignment) => state.cats.some((p) => p.id === assignment.catId))
-      .map((assignment) =>
-        hydrateChannelCat(requireCat(state, assignment.catId), assignment),
-      ),
-  };
-}
-
-export function resolveChannelEntryParticipant(
-  state: ChatState,
-  channelOrId: ChatChannelState | string,
-): {
-  participantKind: 'orchestrator' | 'cat';
-  participantId: string;
-  participantName: string;
-  lifecycleState: ChatLifecycleState;
-} {
-  const channel = buildChannelView(state, channelOrId);
-  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-
-  if (roomRouting.mode === 'direct_cat_chat' && roomRouting.leadParticipantId) {
-    const leadCat = channel.assignedCats.find(
-      (cat) => cat.status === 'active' && cat.catId === roomRouting.leadParticipantId,
-    );
-    if (leadCat) {
-      return {
-        participantKind: 'cat',
-        participantId: leadCat.catId,
-        participantName: leadCat.name,
-        lifecycleState: resolveParticipantLifecycleState(leadCat.execution.lease),
-      };
-    }
-  }
-
-  return {
-    participantKind: 'orchestrator',
-    participantId: 'orchestrator',
-    participantName: resolveOrchestratorDisplayName(state),
-    lifecycleState: resolveParticipantLifecycleState(channel.orchestratorLease),
-  };
-}
-
-function resolveLeadParticipantLeaseStatus(
-  channel: ChatChannelState,
-): ParticipantSessionStatus | null {
-  const leadId = channel.roomRouting?.leadParticipantId;
-  if (!leadId) return null;
-  const assignment = channel.catAssignments.find(
-    (a) => a.catId === leadId && a.status === 'active',
-  );
-  return assignment?.execution.lease.status ?? null;
-}
-
-export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary {
-  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  const workflowStatus = roomRouting.workflow.activeTurn?.status
-    ?? roomRouting.workflow.lastOutcomeEvent?.status
-    ?? null;
-  const lastWorkflowAt = roomRouting.workflow.activeTurn?.updatedAt
-    ?? roomRouting.workflow.lastOutcomeEvent?.createdAt
-    ?? null;
-  const routingStatus = workflowStatus === 'pending'
-    ? 'running'
-    : workflowStatus === 'failed'
-      ? 'error'
-      : workflowStatus;
-  return {
-    id: channel.id,
-    title: channel.title,
-    topic: channel.topic,
-    status: channel.status,
-    unreadCount: channel.unreadCount,
-    catCount: channel.catAssignments.length,
-    activeCatCount: activeCatCount(channel),
-    repoPath: channel.repoPath,
-    chatCwd: channel.chatCwd,
-    lastMessageAt: channel.lastMessageAt,
-    lastActivatedAt: channel.lastActivatedAt,
-    composerMode: channel.composerMode ?? 'solo',
-    pendingProvider: channel.pendingProvider ?? null,
-    pendingModel: channel.pendingModel ?? null,
-    leadCatId: channel.roomRouting?.leadParticipantId ?? null,
-    leadParticipantLeaseStatus: resolveLeadParticipantLeaseStatus(channel),
-    roomMode: roomRouting.mode,
-    routingStatus: routingStatus ?? roomRouting.lastOutcome?.status ?? 'idle',
-    lastRoutingAt:
-      lastWorkflowAt
-      ?? roomRouting.lastOutcome?.completedAt
-      ?? roomRouting.lastCheckpoint?.createdAt
-      ?? null,
-  };
-}
+export {
+  ORCHESTRATOR_NAME,
+  buildChannelExportFilename,
+  buildChannelView,
+  exportChannel,
+  resolveChannelEntryParticipant,
+  resolveOrchestratorDisplayName,
+  resolveParticipantLifecycleState,
+  summarizeState,
+  toChannelSummary,
+} from './modelReadModels.js';
+export { requireCat, requireChannel } from './modelShared.js';
 
 export function selectChannel(
   state: ChatState,
@@ -890,28 +557,6 @@ export function setChannelPendingExecutionTarget(
   return nextState;
 }
 
-function updateExecutionLease(
-  current: ParticipantExecutionLease,
-  input: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
-): ParticipantExecutionLease {
-  return {
-    sessionId:
-      input.sessionId === undefined ? current.sessionId : input.sessionId,
-    status: input.status ?? current.status,
-    cwd: input.cwd === undefined ? current.cwd : input.cwd,
-    lastError:
-      input.lastError === undefined ? current.lastError : input.lastError,
-    provider:
-      input.provider === undefined ? current.provider : normalizeOptionalText(input.provider),
-    model:
-      input.model === undefined ? current.model : normalizeOptionalText(input.model),
-    startedAt:
-      input.startedAt === undefined ? current.startedAt : input.startedAt,
-    lastUsedAt:
-      input.lastUsedAt === undefined ? current.lastUsedAt : input.lastUsedAt,
-  };
-}
-
 export function setChannelOrchestratorLease(
   state: ChatState,
   channelId: string,
@@ -985,43 +630,6 @@ export function setChannelRoomRouting(
   channel.roomRouting = structuredClone(roomRouting);
   channel.updatedAt = isoAt(now);
   return nextState;
-}
-
-export function parseMentions(text: string): string[] {
-  return Array.from(new Set(text.match(/(?<!\w)@([\p{L}\p{N}._-]+)/gu)?.map((value) => value.slice(1)) ?? []));
-}
-
-export function exportChannel(state: ChatState, channelId: string): ChannelExportPayload {
-  const channel = requireChannel(state, channelId);
-
-  return {
-    exportedAt: new Date().toISOString(),
-    orchestrator: structuredClone(state.globalOrchestrator),
-    channel: structuredClone(channel),
-    assignedCats: buildChannelView(state, channel).assignedCats,
-  };
-}
-
-export function buildChannelExportFilename(state: ChatState, channelId: string): string {
-  const channel = requireChannel(state, channelId);
-  return createChannelExportFilename(channel.title, channel.id);
-}
-
-export function summarizeState(state: ChatState): {
-  cats: ChatCat[];
-  channels: ChatChannelSummary[];
-  selectedChannel: ChatChannelView | null;
-  globalOrchestrator: GlobalOrchestratorSummary;
-} {
-  const selectedChannelState =
-    state.channels.find((channel) => channel.id === state.selectedChannelId) ?? null;
-
-  return {
-    cats: structuredClone(state.cats),
-    channels: state.channels.map((channel) => toChannelSummary(channel)),
-    selectedChannel: selectedChannelState ? buildChannelView(state, selectedChannelState) : null,
-    globalOrchestrator: structuredClone(state.globalOrchestrator),
-  };
 }
 
 export function replaceState(state: ChatState, channel: ChatChannelState): ChatState {
