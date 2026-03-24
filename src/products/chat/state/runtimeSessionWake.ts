@@ -208,6 +208,9 @@ export async function ensureTargetSession(
         skills: runtimeEnvelope.skills,
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
+      // TODO(room-workspace): stop promoting participant session cwd into
+      // channel-level workspace authority; bootstrap a room-owned workspace
+      // explicitly before spawning shared participants.
       if (!spawnCwd && session.cwd) {
         nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
@@ -265,6 +268,9 @@ export async function ensureTargetSession(
       session,
       now,
     );
+    // TODO(room-workspace): stop promoting participant session cwd into
+    // channel-level workspace authority; bootstrap a room-owned workspace
+    // explicitly before spawning shared participants.
     if (!spawnCwd && session.cwd) {
       nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
     }

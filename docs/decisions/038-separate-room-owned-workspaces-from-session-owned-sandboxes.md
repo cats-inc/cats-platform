@@ -25,6 +25,9 @@ That ambiguity creates a semantic failure:
   room
 - later participants then join using shared semantics against the same path
 
+This can currently happen through more than one product entry path, including
+runtime wake flows and direct channel-assignment persistence flows.
+
 If that first `cwd` came from a participant-owned isolated sandbox, the product
 has silently converted a private session workspace into a public room workspace.
 
@@ -64,12 +67,31 @@ runtime cwd state.
    - Cat 1 joins the room workspace as shared from the start
    - Cat 2 and later participants join the same room workspace as shared
 
-5. `channel.chatCwd` should be retired as the room's authoritative workspace
+5. The first implementation slice keeps managed room workspace bootstrap in
+   `cats` host code.
+   - use a stable host-owned directory rooted beside `chatStatePath`
+   - key the directory by room/channel ID
+   - do not use runtime worktree isolation as the `Cats Chat` default strategy
+     for this repair
+
+6. Bootstrap must be idempotent per room.
+   - concurrent wake or assignment flows for one room reuse the same bootstrap
+     result
+   - failure persists as room workspace error state instead of silently falling
+     back to participant-private isolated sandboxes
+
+7. `channel.chatCwd` should be retired as the room's authoritative workspace
    field in favor of explicit room workspace metadata.
    - keep participant lease cwd separate
    - keep room workspace lifecycle separate
 
-6. Cleanup ownership follows workspace ownership.
+8. Persisted legacy room state must migrate conservatively.
+   - `repoPath` maps into room-owned `user_selected` workspace state
+   - legacy `chatCwd` may be imported as compatibility-only managed room
+     workspace state
+   - new writes stop mutating `chatCwd`
+
+9. Cleanup ownership follows workspace ownership.
    - participant close/reset owns participant cleanup only
    - room deletion or explicit room-workspace reset owns managed room workspace
      cleanup
@@ -98,6 +120,8 @@ runtime cwd state.
 - This ADR does not decide per-file locking or merge strategy.
 - This ADR does not remove isolated workspaces from non-room-private flows.
 - This ADR does not require the final runtime bootstrap endpoint shape yet.
+- This ADR intentionally leaves runtime worktree isolation to future
+  `Cats Code`-specific design work.
 
 ## Alternatives Considered
 
@@ -130,6 +154,7 @@ runtime cwd state.
 - [ADR-001](./001-use-cats-runtime-boundary.md)
 - [ADR-017](./017-allow-direct-cat-chat-and-move-routing-into-system-layer.md)
 - [SPEC-016](../specs/SPEC-016-chat-session-sleep-wake-lifecycle.md)
+- `src/products/chat/api/shared.ts`
 - `src/products/chat/state/runtimeSessionWake.ts`
 - `src/products/chat/state/runtimeSessionState.ts`
 

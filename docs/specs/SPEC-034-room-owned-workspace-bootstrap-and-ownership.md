@@ -36,6 +36,8 @@ This spec defines the state model, wake flow, and cleanup rules needed to keep
 - Defining Git, PR, or delivery-governance policy for room workspaces
 - Replacing isolated sandboxes for non-room or diagnostic flows
 - Standardizing the exact `cats-runtime` HTTP route shape in this document
+- Using runtime worktree isolation as the default `Cats Chat` room-workspace
+  strategy; that remains `Cats Code` scope
 - Solving cross-machine workspace synchronization
 
 ## User Stories
@@ -73,6 +75,13 @@ This spec defines the state model, wake flow, and cleanup rules needed to keep
   shall not start as isolated and then be implicitly upgraded.
 - Additional participants in the same room shall start against the same
   room-owned workspace from their first spawned session.
+- In the first slice, managed room workspace bootstrap shall be owned by
+  `cats` host code rather than inferred from participant session spawn
+  side effects.
+- The first slice shall place managed room workspaces under a stable host-owned
+  root adjacent to chat-state persistence, keyed by room/channel ID. A concrete
+  default is:
+  - `<dirname(chatStatePath)>/room-workspaces/<channelId>/`
 - Room wake flows for Boss Cat, direct Cat routing, and newly assigned Cats
   shall all resolve room workspace first and participant session second.
 - The product shall no longer use `channel.chatCwd` as an ambiguous field that
@@ -90,6 +99,19 @@ This spec defines the state model, wake flow, and cleanup rules needed to keep
 - Room workspace state shall record whether the resolved workspace is:
   - `user_selected`
   - `managed_room`
+- Room workspace bootstrap shall be idempotent per room. Concurrent wake or
+  assignment flows for the same room shall reuse one `preparing` or `ready`
+  room workspace record instead of racing to create separate directories.
+- Room workspace metadata shall be persisted and rehydrated on restart. The
+  product shall attempt to reuse persisted `resolvedCwd` for `managed_room`
+  state before considering a new bootstrap.
+- Backward compatibility shall support persisted channels that still carry
+  legacy `chatCwd` state:
+  - if `repoPath` exists and `roomWorkspace` does not, derive
+    `roomWorkspace.kind = user_selected` from `repoPath`
+  - if `chatCwd` exists and `repoPath` does not, import that path into
+    `roomWorkspace.kind = managed_room` as a legacy compatibility value
+  - new writes shall stop mutating `chatCwd`
 - Resetting, closing, or cleaning up one participant session shall not delete a
   managed room workspace while the room still depends on it.
 - Deleting the room or explicitly clearing room workspace state shall own the
@@ -134,12 +156,10 @@ The room should gain an explicit resolved workspace record:
 
 ```ts
 interface ChatRoomWorkspaceState {
-  owner: 'room';
   status: 'unbound' | 'preparing' | 'ready' | 'error';
   kind: 'user_selected' | 'managed_room' | null;
   requestedCwd: string | null;
   resolvedCwd: string | null;
-  runtimeManaged: boolean;
   lastError: string | null;
 }
 ```
@@ -154,6 +174,28 @@ State responsibilities:
 - participant lease `cwd`
   - actual runtime cwd for one participant session
   - not authoritative for the room
+
+### First-Slice Bootstrap Contract
+
+The first implementation slice should not wait for a new runtime bootstrap API.
+
+Instead:
+
+1. `cats` host code owns managed room workspace bootstrap.
+2. The bootstrap root is derived from `chatStatePath`:
+   - `dirname(chatStatePath)/room-workspaces/<channelId>/`
+3. The room persists `roomWorkspace.status = preparing` before directory
+   creation begins.
+4. Successful bootstrap persists:
+   - `roomWorkspace.kind = managed_room`
+   - `roomWorkspace.resolvedCwd = <host-owned room directory>`
+   - `roomWorkspace.status = ready`
+5. Runtime session spawn consumes `roomWorkspace.resolvedCwd` with shared
+   semantics; runtime does not own room-workspace authority in this slice.
+
+This keeps the first repair local to `cats`, avoids relying on participant
+session side effects, and leaves room for a later runtime-owned bootstrap seam
+if product/runtime responsibilities change.
 
 ### `channel.chatCwd` Direction
 
@@ -172,7 +214,23 @@ In the first compatibility slice:
 
 - `repoPath` can remain
 - `chatCwd` should stop being written from `session.cwd`
+- legacy `chatCwd` may still be read during migration/import
 - session spawn should resolve from `roomWorkspace.resolvedCwd`
+
+### Bootstrap Locking and Idempotency
+
+Bootstrap is keyed by room/channel ID.
+
+Rules:
+
+- if one flow marks `roomWorkspace.status = preparing`, later concurrent flows
+  for the same room should wait for or reuse that in-flight bootstrap instead of
+  starting a second directory creation
+- if bootstrap completes and the room reaches `ready`, all pending participants
+  should reuse the same `resolvedCwd`
+- if bootstrap fails, the room should persist `status = error` plus `lastError`
+  and require a visible retry path instead of silently falling back to isolated
+  participant sandboxes
 
 ### Participant Spawn Flow
 
@@ -192,7 +250,6 @@ In the first compatibility slice:
 2. The product bootstraps a managed room workspace owned by the room.
 3. The room records:
    - `roomWorkspace.kind = managed_room`
-   - `roomWorkspace.runtimeManaged = true`
    - `roomWorkspace.resolvedCwd = <managed room cwd>`
    - `roomWorkspace.status = ready`
 4. Cat 1 starts with shared semantics against that managed room workspace.
@@ -218,6 +275,25 @@ Rules:
 - if a room-selected folder changes, the old room workspace authority must be
   replaced explicitly rather than drifting through participant wake order
 
+### Migration and Compatibility
+
+This change should migrate persisted state conservatively.
+
+Load-time rules:
+
+- if `roomWorkspace` already exists, trust it
+- else if `repoPath` exists, materialize `roomWorkspace.kind = user_selected`
+  from `repoPath`
+- else if legacy `chatCwd` exists, import that value into
+  `roomWorkspace.kind = managed_room` as a compatibility shim
+
+Write-time rules:
+
+- new persistence writes should stop updating `chatCwd`
+- participant session `cwd` should remain on leases only
+- compatibility export paths may still include legacy `chatCwd` until all
+  readers switch to `roomWorkspace`
+
 ## Dependencies
 
 - [ADR-001](../decisions/001-use-cats-runtime-boundary.md)
@@ -229,10 +305,8 @@ Rules:
 
 ## Open Questions
 
-- Should managed room workspaces be created by `cats` host code, by a new
-  `cats-runtime` bootstrap route, or by either behind one product seam?
-- Should a room-managed workspace survive process restart until room deletion,
-  or should it be lazily rehydrated from persisted room metadata?
+- Should a later slice move managed room workspace bootstrap behind a dedicated
+  `cats-runtime` API once the product-owned repair is stable?
 - What UI language should distinguish `user_selected` versus `managed_room`
   workspaces without exposing implementation jargon?
 
@@ -241,6 +315,7 @@ Rules:
 - [ADR-038](../decisions/038-separate-room-owned-workspaces-from-session-owned-sandboxes.md)
 - [Architecture](../architecture.md)
 - [API](../api.md)
+- `src/products/chat/api/shared.ts`
 - `src/products/chat/state/runtimeSessionWake.ts`
 - `src/products/chat/state/runtimeSessionState.ts`
 
