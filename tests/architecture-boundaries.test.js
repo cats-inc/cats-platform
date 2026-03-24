@@ -223,6 +223,25 @@ test('runtimeActions consumes dedicated runtime session-state helpers instead of
   assert.match(sessionStateModule, /export function applyRoomRoutingSnapshot/u);
 });
 
+test('runtimeActions consumes dedicated runtime session-routing helpers instead of defining wake and activation flows inline', async () => {
+  const runtimeActions = await readFile(
+    new URL('../src/products/chat/state/runtimeActions.ts', import.meta.url),
+    'utf8',
+  );
+  const sessionRoutingModule = await readFile(
+    new URL('../src/products/chat/state/runtimeSessionRouting.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(runtimeActions, /runtimeSessionRouting\.js/u);
+  assert.doesNotMatch(runtimeActions, /async function ensureTargetSession\(/u);
+  assert.doesNotMatch(runtimeActions, /export async function activateChannelSessions\(/u);
+  assert.doesNotMatch(runtimeActions, /export async function wakeChannelEntryParticipant\(/u);
+  assert.match(sessionRoutingModule, /export async function ensureTargetSession/u);
+  assert.match(sessionRoutingModule, /export async function activateChannelSessions/u);
+  assert.match(sessionRoutingModule, /export async function wakeChannelEntryParticipant/u);
+});
+
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),

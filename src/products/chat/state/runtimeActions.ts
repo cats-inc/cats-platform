@@ -1,13 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-  ChannelActivationResult,
   ChannelDispatchResult,
   MessageUsageSummary,
   SendChannelMessageInput,
-  ChatChannelCat,
   ChatChannelState,
-  ChatChannelView,
   ChatMessage,
   ChatState,
 } from '../api/contracts.js';
@@ -17,7 +14,6 @@ import type {
   RoomRoutingGuardReason,
   RoomRoutingOutcome,
   RoomRoutingParticipantRef,
-  RoomRoutingState,
   RoomRoutingTrigger,
   RoomWorkflowEvent,
   RoomWorkflowBranchStrategy,
@@ -29,9 +25,6 @@ import type {
   RoomWorkflowTargetState,
   RoomWorkflowTargetStatus,
   RoomWorkflowTurn,
-  RoomWakeReason,
-  RoomWakeRequest,
-  RoomWakeTrigger,
 } from '../../../shared/roomRouting.js';
 import type {
   CompanionBoxStore,
@@ -43,25 +36,16 @@ import type {
   RuntimeClient,
 } from '../../../platform/runtime/client.js';
 import {
-  checkoutTaskExecution,
-  startTaskRunWatcher,
-} from '../../../core/taskLifecycle.js';
-import {
-  ORCHESTRATOR_NAME,
   appendMessage,
   buildChannelView,
   requireChannel,
-  resolveOrchestratorDisplayName,
   setChannelPendingExecutionTarget,
   setChannelOrchestratorLease,
   setChannelCatLease,
   setChannelRoomRouting,
-  setChannelStatus,
-  setChannelChatCwd,
 } from './model.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
 import {
-  resolveRoomDefaultRoutingTarget,
   type RoutingTarget,
 } from './mentionRouter.js';
 import {
@@ -78,7 +62,6 @@ import {
   addWorkflowCheckpoint,
   appendWorkflowEvent,
   createPendingDispatch,
-  createRecordedWakeRequest,
   createRoutingOutcome,
   createWorkflowEvent,
   createWorkflowTurn,
@@ -98,30 +81,33 @@ import {
   workflowShapeForTargets,
   workflowStageIdForTrigger,
 } from './roomRoutingRuntime.js';
-import { formatSessionStartedMessage } from './runtimeMessages.js';
 import {
   type RuntimeTransportContext,
-  buildCatTarget,
-  buildOrchestratorTarget,
   buildPromptForTarget,
   resolveChoiceResponseTarget,
   resolveExecutionMetadataForTarget,
-  resolveOrchestratorExecutionTarget,
   resolveRuntimeEnvelopeForTarget,
 } from './runtimeTargeting.js';
 import {
   applyRoomRoutingSnapshot,
   ensureChannelMarkedActive,
-  markTargetWaking,
   normalizeRuntimeStatus,
   participantKey,
-  resolveActorIdForTarget,
   setErroredSession,
   setReadyAfterMessage,
-  setStartedSession,
-  spawnCwdFor,
   toParticipantRef,
 } from './runtimeSessionState.js';
+import {
+  activateChannelSessions,
+  ensureTargetSession,
+  maybeAutoCheckoutChannelTask,
+  shouldRewriteOrchestratorReply,
+  wakeChannelEntryParticipant,
+} from './runtimeSessionRouting.js';
+export {
+  activateChannelSessions,
+  wakeChannelEntryParticipant,
+} from './runtimeSessionRouting.js';
 
 interface DispatchExecution extends DispatchRequest {
   responseBody: string | null;
@@ -140,69 +126,6 @@ function normalizePendingTargetValue(value: string | null | undefined): string |
   return normalized ? normalized : null;
 }
 
-function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
-  return channel.assignedCats.filter((cat) => cat.status === 'active');
-}
-
-function shouldRewriteOrchestratorReply(
-  content: string,
-  orchestratorName: string,
-  channel: ChatChannelView,
-): boolean {
-  if (activeAssignedCats(channel).length > 0) {
-    return false;
-  }
-
-  const normalized = content.toLowerCase();
-  return normalized.includes(`@${orchestratorName.toLowerCase()}`)
-    || normalized.includes(`@${ORCHESTRATOR_NAME.toLowerCase()}`);
-}
-
-async function maybeAutoCheckoutChannelTask(
-  chatStore: Pick<ChatStore, 'readCore' | 'writeCore'> | undefined,
-  runtimeClient: Pick<RuntimeClient, 'observeSession' | 'streamSession'>,
-  channelId: string,
-  target: RoutingTarget,
-  now: Date,
-): Promise<void> {
-  if (!chatStore || !target.sessionId) {
-    return;
-  }
-
-  const core = await chatStore.readCore();
-  const taskId = `task-channel-${channelId}`;
-  const task = core.tasks.find((candidate) => candidate.id === taskId);
-  if (!task || task.status !== 'approved') {
-    return;
-  }
-
-  const actorId = resolveActorIdForTarget(target);
-  if (!task.assignedActorIds.includes(actorId)) {
-    return;
-  }
-
-  const checkout = checkoutTaskExecution({
-    core,
-    taskId,
-    actorId,
-    sessionId: target.sessionId,
-    now,
-  });
-  const persisted = await chatStore.writeCore(checkout.core);
-  const persistedTask = persisted.tasks.find((candidate) => candidate.id === checkout.task.id)
-    ?? checkout.task;
-  const persistedRun = persisted.runs.find((candidate) => candidate.id === checkout.run.id)
-    ?? checkout.run;
-  startTaskRunWatcher({
-    chatStore,
-    runtimeClient,
-    taskId: persistedTask.id,
-    runId: persistedRun.id,
-    sessionId: target.sessionId,
-    actorId,
-  });
-}
-
 function describeGuardReason(reason: Exclude<RoomRoutingGuardReason, null>): string {
   switch (reason) {
     case 'max_continuations':
@@ -216,352 +139,6 @@ function describeGuardReason(reason: Exclude<RoomRoutingGuardReason, null>): str
     default:
       return 'a routing guard';
   }
-}
-
-async function ensureTargetSession(
-  state: ChatState,
-  channelId: string,
-  target: RoutingTarget,
-  runtimeClient: RuntimeClient,
-  now: Date,
-  options: {
-    transport?: RuntimeTransportContext;
-    companionStore?: CompanionBoxStore;
-    memoryService?: CatsMemoryService;
-    roomRouting?: RoomRoutingState | null;
-    wakeTrigger?: RoomWakeTrigger;
-    wakeReason?: RoomWakeReason;
-    sourceMessageId?: string | null;
-  } = {},
-): Promise<{
-  state: ChatState;
-  target: RoutingTarget;
-  error: string | null;
-  wakeRequest: RoomWakeRequest | null;
-}> {
-  const nowIso = now.toISOString();
-  const wakeTrigger = options.wakeTrigger ?? 'route_target';
-  const wakeReason = options.wakeReason ?? 'room_default';
-  const sourceMessageId = options.sourceMessageId ?? null;
-  const participant = toParticipantRef(target);
-  const recordTargetWake = (
-    status: RoomWakeRequest['status'],
-    error: string | null = null,
-  ) => createRecordedWakeRequest(
-    options.roomRouting,
-    participant,
-    wakeTrigger,
-    wakeReason,
-    sourceMessageId,
-    nowIso,
-    status,
-    error,
-  );
-
-  if (target.sessionId) {
-    if (target.participantKind === 'orchestrator') {
-      const channelState = requireChannel(state, channelId);
-      const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
-      const orchestratorLease = channelState.orchestratorLease;
-      const shouldRestartSoloSession = channelState.composerMode === 'solo'
-        && (
-          orchestratorLease.provider !== executionTarget.provider
-          || orchestratorLease.model !== executionTarget.model
-        );
-
-      if (shouldRestartSoloSession) {
-        await bestEffortFlushRuntimeSessionMemory({
-          runtimeClient,
-          sessionId: target.sessionId,
-          requestedPhase: 'pre_reset',
-          memoryService: options.memoryService,
-          companionStore: options.companionStore,
-          now,
-        });
-        await runtimeClient.closeSession(target.sessionId);
-        const resetState = setChannelOrchestratorLease(
-          state,
-          channelId,
-          {
-            sessionId: null,
-            status: 'not_started',
-            lastError: null,
-            provider: executionTarget.provider,
-            model: executionTarget.model,
-            startedAt: null,
-            lastUsedAt: orchestratorLease.lastUsedAt,
-          },
-          now,
-        );
-        return ensureTargetSession(
-          resetState,
-          channelId,
-          { ...target, sessionId: null },
-          runtimeClient,
-          now,
-          options,
-        );
-      }
-    }
-
-    return {
-      state,
-      target,
-      error: null,
-      wakeRequest: recordTargetWake('skipped'),
-    };
-  }
-
-  const channel = buildChannelView(state, channelId);
-  const spawnCwd = spawnCwdFor(requireChannel(state, channelId));
-  const sharingMode = spawnCwd ? 'shared' : null;
-  let nextState = state;
-
-  try {
-    nextState = markTargetWaking(nextState, channelId, target, now);
-    const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
-      nextState,
-      channel,
-      target,
-      options.transport,
-      now,
-      options.companionStore,
-    );
-    if (target.participantKind === 'orchestrator') {
-      const sessionTarget = resolveOrchestratorExecutionTarget(
-        nextState,
-        requireChannel(nextState, channelId),
-      );
-      const session = await runtimeClient.createSession({
-        provider: sessionTarget.provider,
-        instance: sessionTarget.instance,
-        model: sessionTarget.model,
-        cwd: spawnCwd,
-        sharingMode,
-        context: runtimeEnvelope.context,
-        skills: runtimeEnvelope.skills,
-      });
-      nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
-      if (!spawnCwd && session.cwd) {
-        nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
-      }
-      nextState = appendMessage(
-        nextState,
-        channelId,
-        {
-          senderKind: 'system',
-          senderName: 'Runtime',
-          body: formatSessionStartedMessage(target.participantName, session),
-        },
-        now,
-        {
-          metadata: {
-            event: 'session_started',
-            targetKind: 'orchestrator',
-            sessionId: session.id,
-            verbosity: 'verbose',
-          },
-          incrementUnread: false,
-        },
-      ).state;
-      return {
-        state: nextState,
-        target: { ...target, sessionId: session.id },
-        error: null,
-        wakeRequest: recordTargetWake('completed'),
-      };
-    }
-
-    const cat = channel.assignedCats.find((candidate) => candidate.catId === target.participantId);
-    if (!cat) {
-      const error = 'Target cat is no longer assigned to the selected chat.';
-      return {
-        state,
-        target,
-        error,
-        wakeRequest: recordTargetWake('failed', error),
-      };
-    }
-
-    const session = await runtimeClient.createSession({
-      provider: cat.execution.target.provider,
-      instance: cat.execution.target.instance,
-      model: cat.execution.target.model,
-      cwd: spawnCwd,
-      sharingMode,
-      context: runtimeEnvelope.context,
-      skills: runtimeEnvelope.skills,
-    });
-    nextState = setStartedSession(
-      nextState,
-      channelId,
-      { catId: target.participantId },
-      session,
-      now,
-    );
-    if (!spawnCwd && session.cwd) {
-      nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
-    }
-    nextState = appendMessage(
-      nextState,
-      channelId,
-      {
-        senderKind: 'system',
-        senderName: 'Runtime',
-        body: formatSessionStartedMessage(target.participantName, session),
-      },
-      now,
-      {
-        metadata: {
-          event: 'session_started',
-          targetKind: 'cat',
-          targetId: target.participantId,
-          sessionId: session.id,
-          verbosity: 'verbose',
-        },
-        incrementUnread: false,
-      },
-    ).state;
-    return {
-      state: nextState,
-      target: { ...target, sessionId: session.id },
-      error: null,
-      wakeRequest: recordTargetWake('completed'),
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown runtime error';
-    nextState = target.participantKind === 'cat'
-      ? setErroredSession(nextState, channelId, { catId: target.participantId }, message, now)
-      : setErroredSession(nextState, channelId, 'orchestrator', message, now);
-    nextState = appendMessage(
-      nextState,
-      channelId,
-      {
-        senderKind: 'system',
-        senderName: 'Runtime',
-        body: `Failed to start ${target.participantName}: ${message}`,
-      },
-      now,
-      {
-        metadata: {
-          event: 'session_start_failed',
-          targetKind: target.participantKind,
-          targetId: target.participantId,
-        },
-      },
-    ).state;
-    return {
-      state: nextState,
-      target,
-      error: message,
-      wakeRequest: recordTargetWake('failed', message),
-    };
-  }
-}
-
-export async function wakeChannelEntryParticipant(
-  state: ChatState,
-  channelId: string,
-  runtimeClient: RuntimeClient,
-  now: Date = new Date(),
-  options: {
-    companionStore?: CompanionBoxStore;
-    memoryService?: CatsMemoryService;
-  } = {},
-): Promise<{
-  state: ChatState;
-  result: ChannelActivationResult | null;
-}> {
-  let nextState = state;
-  const roomRouting = resolveRoomRoutingState(requireChannel(nextState, channelId).roomRouting);
-  const defaultTarget = resolveRoomDefaultRoutingTarget(nextState, channelId);
-
-  if (!defaultTarget.target) {
-    if (defaultTarget.participant) {
-      createRecordedWakeRequest(
-        roomRouting,
-        defaultTarget.participant,
-        'room_entry',
-        'room_entry',
-        null,
-        now.toISOString(),
-        'failed',
-        defaultTarget.note ?? 'No room entry participant could be woken.',
-      );
-      nextState = setChannelRoomRouting(nextState, channelId, roomRouting, now);
-    }
-    return {
-      state: nextState,
-      result: defaultTarget.participant
-        ? {
-            targetKind: defaultTarget.participant.participantKind,
-            targetId: defaultTarget.participant.participantId,
-            targetName: defaultTarget.participant.participantName,
-            status: 'error',
-            sessionId: null,
-            error: defaultTarget.note ?? 'No room entry participant could be woken.',
-          }
-        : null,
-    };
-  }
-
-  const target = defaultTarget.target;
-  if (target.sessionId) {
-    nextState = ensureChannelMarkedActive(nextState, channelId, now);
-    return {
-      state: nextState,
-      result: {
-        targetKind: target.participantKind,
-        targetId: target.participantId,
-        targetName: target.participantName,
-        status: 'already_started',
-        sessionId: target.sessionId,
-      },
-    };
-  }
-
-  const ensured = await ensureTargetSession(
-    nextState,
-    channelId,
-    target,
-    runtimeClient,
-    now,
-    {
-      companionStore: options.companionStore,
-      memoryService: options.memoryService,
-      roomRouting,
-      wakeTrigger: 'room_entry',
-      wakeReason: 'room_entry',
-    },
-  );
-  nextState = ensured.state;
-  nextState = setChannelRoomRouting(nextState, channelId, roomRouting, now);
-
-  if (ensured.error) {
-    return {
-      state: nextState,
-      result: {
-        targetKind: target.participantKind,
-        targetId: target.participantId,
-        targetName: target.participantName,
-        status: 'error',
-        sessionId: null,
-        error: ensured.error,
-      },
-    };
-  }
-
-  nextState = ensureChannelMarkedActive(nextState, channelId, now);
-  return {
-    state: nextState,
-    result: {
-      targetKind: ensured.target.participantKind,
-      targetId: ensured.target.participantId,
-      targetName: ensured.target.participantName,
-      status: ensured.wakeRequest?.status === 'skipped' ? 'already_started' : 'started',
-      sessionId: ensured.target.sessionId,
-    },
-  };
 }
 
 async function executeDispatch(
@@ -684,218 +261,6 @@ function shouldBlockAntiPingPong(
     && participantKey(previousDispatch.target) === participantKey(target)
     && participantKey(lastDispatch.source) === participantKey(target)
     && participantKey(lastDispatch.target) === participantKey(sourceParticipant);
-}
-
-export async function activateChannelSessions(
-  state: ChatState,
-  channelId: string,
-  runtimeClient: RuntimeClient,
-  now: Date = new Date(),
-  options: {
-    companionStore?: CompanionBoxStore;
-    memoryService?: CatsMemoryService;
-  } = {},
-): Promise<{ state: ChatState; results: ChannelActivationResult[] }> {
-  let nextState = state;
-  let channelState = requireChannel(nextState, channelId);
-  let channelView = buildChannelView(nextState, channelId);
-  let spawnCwd = spawnCwdFor(channelState);
-  const sharingMode = spawnCwd ? 'shared' : null;
-  const orchestratorDisplayName = resolveOrchestratorDisplayName(nextState);
-  const results: ChannelActivationResult[] = [];
-
-  if (channelState.orchestratorLease.sessionId) {
-    results.push({
-      targetKind: 'orchestrator',
-      targetId: 'orchestrator',
-      targetName: orchestratorDisplayName,
-      status: 'already_started',
-      sessionId: channelState.orchestratorLease.sessionId,
-    });
-  } else {
-    try {
-      const orchestratorTarget = buildOrchestratorTarget(nextState, channelView);
-      const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
-        nextState,
-        channelView,
-        orchestratorTarget,
-        undefined,
-        now,
-        options.companionStore,
-      );
-      const executionTarget = resolveOrchestratorExecutionTarget(nextState, requireChannel(nextState, channelId));
-      const session = await runtimeClient.createSession({
-        provider: executionTarget.provider,
-        instance: executionTarget.instance,
-        model: executionTarget.model,
-        cwd: spawnCwd,
-        sharingMode,
-        context: runtimeEnvelope.context,
-        skills: runtimeEnvelope.skills,
-      });
-      nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
-      if (!spawnCwd && session.cwd) {
-        spawnCwd = session.cwd;
-        nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
-      }
-      nextState = appendMessage(
-        nextState,
-        channelId,
-        {
-          senderKind: 'system',
-          senderName: 'Runtime',
-          body: formatSessionStartedMessage(orchestratorDisplayName, session),
-        },
-        now,
-        {
-          metadata: {
-            event: 'session_started',
-            targetKind: 'orchestrator',
-            sessionId: session.id,
-            verbosity: 'verbose',
-          },
-        },
-      ).state;
-      results.push({
-        targetKind: 'orchestrator',
-        targetId: 'orchestrator',
-        targetName: orchestratorDisplayName,
-        status: 'started',
-        sessionId: session.id,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown runtime error';
-      nextState = setErroredSession(nextState, channelId, 'orchestrator', message, now);
-      nextState = appendMessage(
-        nextState,
-        channelId,
-        {
-          senderKind: 'system',
-          senderName: 'Runtime',
-          body: `Failed to start ${orchestratorDisplayName}: ${message}`,
-        },
-        now,
-        {
-          metadata: { event: 'session_start_failed', targetKind: 'orchestrator' },
-        },
-      ).state;
-      results.push({
-        targetKind: 'orchestrator',
-        targetId: 'orchestrator',
-        targetName: orchestratorDisplayName,
-        status: 'error',
-        sessionId: null,
-        error: message,
-      });
-    }
-  }
-
-  channelView = buildChannelView(nextState, channelId);
-  for (const cat of activeAssignedCats(channelView)) {
-    if (cat.execution.lease.sessionId) {
-      results.push({
-        targetKind: 'cat',
-        targetId: cat.catId,
-        targetName: cat.name,
-        status: 'already_started',
-        sessionId: cat.execution.lease.sessionId,
-      });
-      continue;
-    }
-
-    try {
-      const catTarget = buildCatTarget(cat);
-      const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
-        nextState,
-        channelView,
-        catTarget,
-        undefined,
-        now,
-        options.companionStore,
-      );
-      const session = await runtimeClient.createSession({
-        provider: cat.execution.target.provider,
-        instance: cat.execution.target.instance,
-        model: cat.execution.target.model,
-        cwd: spawnCwd,
-        sharingMode,
-        context: runtimeEnvelope.context,
-        skills: runtimeEnvelope.skills,
-      });
-      nextState = setStartedSession(nextState, channelId, { catId: cat.catId }, session, now);
-      if (!spawnCwd && session.cwd) {
-        spawnCwd = session.cwd;
-        nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
-      }
-      nextState = appendMessage(
-        nextState,
-        channelId,
-        {
-          senderKind: 'system',
-          senderName: 'Runtime',
-          body: formatSessionStartedMessage(cat.name, session),
-        },
-        now,
-        {
-          metadata: {
-            event: 'session_started',
-            targetKind: 'cat',
-            targetId: cat.catId,
-            sessionId: session.id,
-            verbosity: 'verbose',
-          },
-        },
-      ).state;
-      results.push({
-        targetKind: 'cat',
-        targetId: cat.catId,
-        targetName: cat.name,
-        status: 'started',
-        sessionId: session.id,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown runtime error';
-      nextState = setErroredSession(nextState, channelId, { catId: cat.catId }, message, now);
-      nextState = appendMessage(
-        nextState,
-        channelId,
-        {
-          senderKind: 'system',
-          senderName: 'Runtime',
-          body: `Failed to start ${cat.name}: ${message}`,
-        },
-        now,
-        {
-          metadata: {
-            event: 'session_start_failed',
-            targetKind: 'cat',
-            targetId: cat.catId,
-          },
-        },
-      ).state;
-      results.push({
-        targetKind: 'cat',
-        targetId: cat.catId,
-        targetName: cat.name,
-        status: 'error',
-        sessionId: null,
-        error: message,
-      });
-    }
-  }
-
-  channelState = requireChannel(nextState, channelId);
-  const hasStartedSession = results.some(
-    (result) => result.status === 'started' || result.status === 'already_started',
-  );
-  nextState = setChannelStatus(
-    nextState,
-    channelId,
-    hasStartedSession ? 'active' : channelState.catAssignments.length > 0 ? 'configured' : 'planned',
-    now,
-  );
-
-  return { state: nextState, results };
 }
 
 export async function routeChannelMessage(
