@@ -365,6 +365,24 @@ test('core model consumes dedicated shared helpers and input contracts instead o
   assert.match(inputsSource, /export interface CoreApprovalBindingWriteInput/u);
 });
 
+test('core model composes dedicated record write modules instead of defining record mutations inline', async () => {
+  const modelSource = await readFile(
+    new URL('../src/core/model.ts', import.meta.url),
+    'utf8',
+  );
+  const recordModuleSource = await readFile(
+    new URL('../src/core/modelRecords.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(modelSource, /modelRecords\.js/u);
+  assert.doesNotMatch(modelSource, /export function upsertCoreProject\(/u);
+  assert.doesNotMatch(modelSource, /export function upsertCoreRun\(/u);
+  assert.doesNotMatch(modelSource, /export function appendCoreActivity\(/u);
+  assert.match(recordModuleSource, /export function upsertCoreProject/u);
+  assert.match(recordModuleSource, /export function appendCoreActivity/u);
+});
+
 test('store consumes dedicated chat snapshot normalization instead of defining it inline', async () => {
   const storeSource = await readFile(
     new URL('../src/products/chat/state/store.ts', import.meta.url),
