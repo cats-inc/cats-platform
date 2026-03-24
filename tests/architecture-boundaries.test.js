@@ -895,6 +895,18 @@ test('core route modules consume dedicated parsing and error helpers instead of 
     new URL('../src/core/apiControlRoutes.ts', import.meta.url),
     'utf8',
   );
+  const controlApprovalsSource = await readFile(
+    new URL('../src/core/apiControlApprovals.ts', import.meta.url),
+    'utf8',
+  );
+  const controlOperatorActionsSource = await readFile(
+    new URL('../src/core/apiControlOperatorActions.ts', import.meta.url),
+    'utf8',
+  );
+  const controlOwnerProfileSource = await readFile(
+    new URL('../src/core/apiControlOwnerProfile.ts', import.meta.url),
+    'utf8',
+  );
   const recordRoutesSource = await readFile(
     new URL('../src/core/apiRecordRoutes.ts', import.meta.url),
     'utf8',
@@ -908,10 +920,20 @@ test('core route modules consume dedicated parsing and error helpers instead of 
     'utf8',
   );
 
-  assert.match(controlRoutesSource, /apiShared\.js/u);
+  assert.match(controlApprovalsSource, /apiShared\.js/u);
+  assert.match(controlOperatorActionsSource, /apiShared\.js/u);
+  assert.match(controlOwnerProfileSource, /apiShared\.js/u);
   assert.match(recordRoutesSource, /apiShared\.js/u);
   assert.match(taskRoutesSource, /apiShared\.js/u);
-  assert.doesNotMatch(controlRoutesSource, /function readRequiredString\(/u);
+  assert.match(controlRoutesSource, /apiControlApprovals\.js/u);
+  assert.match(controlRoutesSource, /apiControlOperatorActions\.js/u);
+  assert.match(controlRoutesSource, /apiControlOwnerProfile\.js/u);
+  assert.doesNotMatch(controlApprovalsSource, /function readRequiredString\(/u);
+  assert.doesNotMatch(controlOperatorActionsSource, /function readObjectBody\(/u);
+  assert.doesNotMatch(controlOwnerProfileSource, /function readOptionalString\(/u);
+  assert.doesNotMatch(controlRoutesSource, /async function handleCoreApprovalWrite\(/u);
+  assert.doesNotMatch(controlRoutesSource, /async function handleCoreOperatorActionWrite\(/u);
+  assert.doesNotMatch(controlRoutesSource, /async function handleOwnerProfileWrite\(/u);
   assert.doesNotMatch(recordRoutesSource, /function readObjectBody\(/u);
   assert.doesNotMatch(taskRoutesSource, /function handleCoreError\(/u);
   assert.match(sharedModule, /export function readRequiredString/u);
@@ -926,6 +948,18 @@ test('core api consumes dedicated control route modules and api contracts instea
   );
   const controlRoutesSource = await readFile(
     new URL('../src/core/apiControlRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const controlApprovalsSource = await readFile(
+    new URL('../src/core/apiControlApprovals.ts', import.meta.url),
+    'utf8',
+  );
+  const controlOperatorActionsSource = await readFile(
+    new URL('../src/core/apiControlOperatorActions.ts', import.meta.url),
+    'utf8',
+  );
+  const controlOwnerProfileSource = await readFile(
+    new URL('../src/core/apiControlOwnerProfile.ts', import.meta.url),
     'utf8',
   );
   const recordRoutesSource = await readFile(
@@ -960,7 +994,12 @@ test('core api consumes dedicated control route modules and api contracts instea
   assert.doesNotMatch(coreApiSource, /const CORE_TASK_STATUSES = \[/u);
   assert.match(controlRoutesSource, /export async function routeCoreControlApi/u);
   assert.match(controlRoutesSource, /apiTypes\.js/u);
-  assert.match(controlRoutesSource, /apiConstants\.js/u);
+  assert.match(controlRoutesSource, /apiControlApprovals\.js/u);
+  assert.match(controlRoutesSource, /apiControlOperatorActions\.js/u);
+  assert.match(controlRoutesSource, /apiControlOwnerProfile\.js/u);
+  assert.match(controlApprovalsSource, /export async function routeCoreApprovalsApi/u);
+  assert.match(controlOperatorActionsSource, /export async function routeCoreOperatorActionsApi/u);
+  assert.match(controlOwnerProfileSource, /export async function routeCoreOwnerProfileApi/u);
   assert.match(recordRoutesSource, /export async function routeCoreRecordApi/u);
   assert.match(recordRoutesSource, /apiTypes\.js/u);
   assert.match(recordRoutesSource, /apiConstants\.js/u);
