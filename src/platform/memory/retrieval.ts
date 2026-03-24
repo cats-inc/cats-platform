@@ -1,11 +1,9 @@
 import type { MemoryCheckpointSummary } from '../../core/types.js';
 import type {
-  CompanionDerivedRecord,
-  CompanionMemoryRecord,
-  CompanionSourceRecord,
-} from '../../products/chat/companion/contracts.js';
-import type {
   CanonicalMemoryRecord,
+  MemoryCompanionDerivedRecord,
+  MemoryCompanionMemoryRecord,
+  MemoryCompanionSourceRecord,
   MemoryOwnerProfileContext,
   MemoryRetrievalContext,
   MemoryRetrievalExcluded,
@@ -102,7 +100,7 @@ function hitFromCanonicalRecord(
 }
 
 function hitFromCompanionSource(
-  record: CompanionSourceRecord,
+  record: MemoryCompanionSourceRecord,
   score: number,
   selectionReasons: string[],
 ): MemoryRetrievalHit | null {
@@ -132,7 +130,7 @@ function hitFromCompanionSource(
 }
 
 function hitFromCompanionDerived(
-  record: CompanionDerivedRecord,
+  record: MemoryCompanionDerivedRecord,
   score: number,
   selectionReasons: string[],
 ): MemoryRetrievalHit {
@@ -161,7 +159,7 @@ function hitFromCompanionDerived(
 }
 
 function hitFromCompanionMemory(
-  record: CompanionMemoryRecord,
+  record: MemoryCompanionMemoryRecord,
   score: number,
   selectionReasons: string[],
 ): MemoryRetrievalHit {
@@ -274,9 +272,9 @@ export function buildMemoryRetrievalContext(input: {
   roomMode?: 'boss_chat' | 'direct_cat_chat' | null;
   transport?: 'telegram' | 'line' | 'web' | null;
   canonicalRecords: CanonicalMemoryRecord[];
-  companionSources?: CompanionSourceRecord[];
-  companionDerived?: CompanionDerivedRecord[];
-  companionMemory?: CompanionMemoryRecord[];
+  companionSources?: MemoryCompanionSourceRecord[];
+  companionDerived?: MemoryCompanionDerivedRecord[];
+  companionMemory?: MemoryCompanionMemoryRecord[];
 }): MemoryRetrievalContext {
   const nowIso = input.now.toISOString();
   const query = uniqueStrings([

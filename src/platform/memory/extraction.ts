@@ -5,17 +5,15 @@ import type {
   OwnerProfileRecord,
 } from '../../core/types.js';
 import type {
-  CompanionBox,
-  CompanionDerivedRecord,
-  CompanionMemoryRecord,
-  CompanionResponseProfile,
-  CompanionSourceRecord,
-} from '../../products/chat/companion/contracts.js';
-import type {
   CanonicalMemoryLineage,
-  MemoryChannelSnapshot,
   CanonicalMemoryRecord,
   CanonicalMemoryPromotionRule,
+  MemoryChannelSnapshot,
+  MemoryCompanionBox,
+  MemoryCompanionDerivedRecord,
+  MemoryCompanionMemoryRecord,
+  MemoryCompanionResponseProfile,
+  MemoryCompanionSourceRecord,
   MemoryFlushReason,
   MemoryVisibility,
 } from './contracts.js';
@@ -128,7 +126,7 @@ function baseRecord(input: {
 }
 
 function categoryForCompanionMemory(
-  record: CompanionMemoryRecord,
+  record: MemoryCompanionMemoryRecord,
 ): CanonicalMemoryRecord['category'] {
   switch (record.category) {
     case 'preference':
@@ -146,7 +144,7 @@ function categoryForCompanionMemory(
 }
 
 function categoryForDerivedRecord(
-  record: CompanionDerivedRecord,
+  record: MemoryCompanionDerivedRecord,
 ): CanonicalMemoryRecord['category'] {
   switch (record.kind) {
     case 'traits':
@@ -168,11 +166,11 @@ function categoryForDerivedRecord(
 
 export function extractCanonicalMemoryFromCompanionBox(input: {
   catId: string;
-  box: CompanionBox;
-  sources: CompanionSourceRecord[];
-  derived: CompanionDerivedRecord[];
-  memory: CompanionMemoryRecord[];
-  responseProfile: CompanionResponseProfile;
+  box: MemoryCompanionBox;
+  sources: MemoryCompanionSourceRecord[];
+  derived: MemoryCompanionDerivedRecord[];
+  memory: MemoryCompanionMemoryRecord[];
+  responseProfile: MemoryCompanionResponseProfile;
   reason: MemoryFlushReason;
   now: Date;
 }): Array<Omit<CanonicalMemoryRecord, 'id'>> {

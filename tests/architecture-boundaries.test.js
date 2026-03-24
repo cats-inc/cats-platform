@@ -176,6 +176,37 @@ test('platform runtime maintenance only depends on the memory-owned companion su
   );
 });
 
+test('platform memory owns companion projection types instead of importing chat companion contracts', async () => {
+  const contracts = await readFile(
+    new URL('../src/platform/memory/contracts.ts', import.meta.url),
+    'utf8',
+  );
+  const extraction = await readFile(
+    new URL('../src/platform/memory/extraction.ts', import.meta.url),
+    'utf8',
+  );
+  const retrieval = await readFile(
+    new URL('../src/platform/memory/retrieval.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(contracts, /export interface MemoryCompanionSourceRecord/u);
+  assert.match(contracts, /export interface MemoryCompanionDerivedRecord/u);
+  assert.match(contracts, /export interface MemoryCompanionMemoryRecord/u);
+  assert.doesNotMatch(
+    contracts,
+    /products\/chat\/companion\/contracts\.js/u,
+  );
+  assert.doesNotMatch(
+    extraction,
+    /products\/chat\/companion\/contracts\.js/u,
+  );
+  assert.doesNotMatch(
+    retrieval,
+    /products\/chat\/companion\/contracts\.js/u,
+  );
+});
+
 test('platform telegram bridge stays behind an injected room bridge seam', async () => {
   const source = await readFile(
     new URL('../src/platform/transports/telegram/bridge.ts', import.meta.url),

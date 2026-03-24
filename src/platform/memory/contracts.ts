@@ -2,13 +2,6 @@ import type { DurableMemoryCategory } from '../../core/types.js';
 
 import type { CatsCoreState, MemoryCheckpointSummary } from '../../core/types.js';
 import type { RoomRoutingState } from '../../shared/roomRouting.js';
-import type {
-  CompanionBox,
-  CompanionDerivedRecord,
-  CompanionMemoryRecord,
-  CompanionResponseProfile,
-  CompanionSourceRecord,
-} from '../../products/chat/companion/contracts.js';
 
 export type CanonicalMemorySubjectKind =
   | 'cat'
@@ -236,10 +229,120 @@ export interface MemoryChatSurface {
   findCat(catId: string): Promise<MemoryCatRef | null>;
 }
 
+export type MemoryCompanionSourceKind =
+  | 'note'
+  | 'conversation_log'
+  | 'article'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'path_ref';
+
+export type MemoryCompanionDerivedKind =
+  | 'summary'
+  | 'transcript'
+  | 'caption'
+  | 'tags'
+  | 'traits'
+  | 'event'
+  | 'relationship_note'
+  | 'normalized_note'
+  | 'metadata';
+
+export type MemoryCompanionMemoryCategory =
+  | 'identity'
+  | 'preference'
+  | 'relationship'
+  | 'fact'
+  | 'event'
+  | 'owner_note';
+
+export type MemoryCompanionMemoryStatus = 'active' | 'superseded' | 'archived';
+
+export type MemoryCompanionExpressionMode =
+  | 'animalistic'
+  | 'anthropomorphic'
+  | 'mixed';
+
+export type MemoryCompanionOutputMode =
+  | 'text'
+  | 'audio_clip'
+  | 'tts'
+  | 'mixed';
+
+export interface MemoryCompanionResponseProfile {
+  expressionMode: MemoryCompanionExpressionMode;
+  outputMode: MemoryCompanionOutputMode;
+  voiceProfileId: string | null;
+  notes: string | null;
+  updatedAt: string;
+}
+
+export interface MemoryCompanionBox {
+  id: string;
+  catId: string;
+  sourceIds: string[];
+  derivedIds: string[];
+  memoryIds: string[];
+  responseProfile: MemoryCompanionResponseProfile;
+  createdAt: string;
+  updatedAt: string;
+  lastIngestedAt: string | null;
+}
+
+export interface MemoryCompanionSourceRecord {
+  id: string;
+  boxId: string;
+  catId: string;
+  kind: MemoryCompanionSourceKind;
+  title: string | null;
+  ownerNote: string | null;
+  sourceText: string | null;
+  textExcerpt: string | null;
+  linkedPath: string | null;
+  storedPath: string | null;
+  sourceUrl: string | null;
+  mimeType: string | null;
+  originalFileName: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemoryCompanionDerivedRecord {
+  id: string;
+  boxId: string;
+  catId: string;
+  kind: MemoryCompanionDerivedKind;
+  sourceIds: string[];
+  title: string | null;
+  content: string;
+  tags: string[];
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemoryCompanionMemoryRecord {
+  id: string;
+  boxId: string;
+  catId: string;
+  category: MemoryCompanionMemoryCategory;
+  sourceIds: string[];
+  content: string;
+  summary: string | null;
+  status: MemoryCompanionMemoryStatus;
+  curatedBy: 'owner' | 'system';
+  replacedById: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MemoryCompanionSurface {
-  getBox(catId: string, now?: Date): Promise<CompanionBox>;
-  listSources(catId: string, now?: Date): Promise<CompanionSourceRecord[]>;
-  listDerived(catId: string, now?: Date): Promise<CompanionDerivedRecord[]>;
-  listMemory(catId: string, now?: Date): Promise<CompanionMemoryRecord[]>;
-  getResponseProfile(catId: string, now?: Date): Promise<CompanionResponseProfile>;
+  getBox(catId: string, now?: Date): Promise<MemoryCompanionBox>;
+  listSources(catId: string, now?: Date): Promise<MemoryCompanionSourceRecord[]>;
+  listDerived(catId: string, now?: Date): Promise<MemoryCompanionDerivedRecord[]>;
+  listMemory(catId: string, now?: Date): Promise<MemoryCompanionMemoryRecord[]>;
+  getResponseProfile(catId: string, now?: Date): Promise<MemoryCompanionResponseProfile>;
 }
