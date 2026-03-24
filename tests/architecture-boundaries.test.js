@@ -399,6 +399,26 @@ test('renderer app consumes a dedicated folder-browser hook instead of defining 
   assert.match(hookSource, /openFolderBrowser/u);
 });
 
+test('renderer app consumes a dedicated composer-submit hook instead of defining optimistic send flows inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/chat/renderer/useComposerSubmit.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /useComposerSubmit/u);
+  assert.doesNotMatch(appSource, /async function submitComposerMessage\(/u);
+  assert.doesNotMatch(appSource, /appendOptimisticUserMessage/u);
+  assert.doesNotMatch(appSource, /createOptimisticDraftPayload/u);
+  assert.match(hookSource, /export function useComposerSubmit/u);
+  assert.match(hookSource, /appendOptimisticUserMessage/u);
+  assert.match(hookSource, /createOptimisticDraftPayload/u);
+  assert.match(hookSource, /sendChatMessage/u);
+});
+
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),

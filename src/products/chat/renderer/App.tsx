@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type FormEvent,
-  type KeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import {
@@ -13,10 +12,8 @@ import {
   useNavigate, useLocation, useMatch,
 } from 'react-router-dom';
 
-import { shouldSubmitComposerOnKeyDown } from '../../../shared/composer';
 import {
   buildNewChatPath,
-  buildMyCatPath,
   buildChannelPath,
   isNewChatPath,
   NEW_CHAT_PATH,
@@ -34,11 +31,8 @@ import {
   createGlobalCat,
   deleteGlobalCat,
   resetSetup,
-  createChatChannel,
   deleteChatChannel,
   removeCatFromChannelApi,
-  sendChatMessage,
-  uploadChannelAttachments,
   writeCoreApprovalDecision,
   writeCoreOperatorAction,
 } from './api';
@@ -49,10 +43,6 @@ import {
   type Surface,
   emptyCatForm,
   resolveBossCatName,
-  createOptimisticDraftPayload,
-  appendOptimisticUserMessage,
-  createDraftChannelTitle,
-  createDraftChannelTopic,
   pickGreeting,
   BootShell,
 } from './chatUtils';
@@ -65,6 +55,7 @@ import {
 import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
 import { useOperatorLoop } from './useOperatorLoop';
 import { useAppShellRouting } from './useAppShellRouting';
+import { useComposerSubmit } from './useComposerSubmit';
 import { useFolderBrowser } from './useFolderBrowser';
 
 import { SetupWizard } from './components/SetupWizard';
@@ -129,7 +120,7 @@ export default function App() {
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
   const [channelPlusMenuOpen, setChannelPlusMenuOpen] = useState(false);
-  const [draftModel, setDraftModel] = useState<{ provider: string; model: string | null; instance: string | null }>(() => ({
+  const [draftModel, setDraftModel] = useState<ModelSelectorValue>(() => ({
     provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
   }));
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(() => ({
@@ -157,6 +148,10 @@ export default function App() {
     showingMyCatDirectLane && draftLeadCatId && readyChat
       ? findDirectLaneForCat(readyChat.channels, draftLeadCatId)
       : null;
+  const selectedChannel = routeChannelId
+    && readySelectedChannel?.id === routeChannelId
+    ? readySelectedChannel
+    : null;
   const selectedDirectLane =
     showingMyCatDirectLane && draftLeadCatId && isDirectLaneSelectedForCat(readySelectedChannel, draftLeadCatId)
       ? readySelectedChannel
@@ -191,6 +186,33 @@ export default function App() {
     setFolderBrowsePath,
   } = useFolderBrowser({
     onSelectPath: setDraftCwd,
+  });
+  const {
+    onComposerKeyDown,
+    onSendMessage,
+  } = useComposerSubmit({
+    state,
+    setState,
+    navigate,
+    currentPathname: location.pathname,
+    composerDraft,
+    setComposerDraft,
+    showingNewChatDraft,
+    showingMyCatDirectLane,
+    draftLeadCatId,
+    draftCatIds,
+    draftCwd,
+    draftFiles,
+    channelFiles,
+    setDraftCwd,
+    setDraftCatIds,
+    setDraftFiles,
+    setChannelFiles,
+    draftModel,
+    soloChannelModel,
+    selectedChannel,
+    setBusy,
+    setFeedback,
   });
 
   // --- Effects ---
@@ -568,236 +590,6 @@ export default function App() {
     setDraftFiles([]);
   }
 
-  async function submitComposerMessage(): Promise<void> {
-    if (state.status !== 'ready') return;
-
-    const body = composerDraft.trim();
-    if (!body) return;
-
-    const initialPayload = state.payload;
-    const wasDraftingNewChat = showingNewChatDraft;
-    const isCatScopedLaneRoute = Boolean(draftLeadCatId) && showingMyCatDirectLane;
-    const initialSelectedChannel = normalizeSelectedChannelView(initialPayload.chat.selectedChannel ?? null);
-    const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftLeadCatId)
-      ? initialSelectedChannel
-      : null;
-    let payload = initialPayload;
-    let rollbackPayload = initialPayload;
-    let channelId = wasDraftingNewChat || showingMyCatDirectLane
-      ? hydratedDirectLane?.id ?? ''
-      : initialPayload.chat.selectedChannelId;
-    let rollbackPath = showingMyCatDirectLane
-      ? buildMyCatPath(draftLeadCatId ?? '')
-      : wasDraftingNewChat
-        ? buildNewChatPath(draftLeadCatId)
-        : location.pathname;
-
-    setBusy('message:send');
-    setFeedback('');
-    try {
-      if (isCatScopedLaneRoute) {
-        if (!hydratedDirectLane) {
-          const createdPayload = await createChatChannel({
-            title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
-            topic: createDraftChannelTopic(body),
-            skipBossCatGreeting: true,
-            repoPath: draftCwd ?? undefined,
-            roomMode: 'direct_cat_chat' as const,
-            leadParticipantId: draftLeadCatId ?? undefined,
-            participantCatIds: draftLeadCatId
-              ? [draftLeadCatId, ...draftCatIds.filter((id) => id !== draftLeadCatId)]
-              : draftCatIds,
-          });
-          channelId = createdPayload.chat.selectedChannelId;
-          if (!channelId) {
-            throw new Error('No chat is available for sending messages.');
-          }
-
-          let latestPayload = createdPayload;
-          for (const catId of draftCatIds.filter((id) => id !== draftLeadCatId)) {
-            const cat = initialPayload.chat.cats.find((p) => p.id === catId);
-            if (cat) {
-              latestPayload = await assignCatToChannelApi(channelId, {
-                catId: cat.id,
-                provider: cat.defaultExecutionTarget.provider,
-                instance: cat.defaultExecutionTarget.instance ?? undefined,
-                model: cat.defaultExecutionTarget.model ?? undefined,
-              });
-            }
-          }
-
-          rollbackPayload = latestPayload;
-          payload = appendOptimisticUserMessage(latestPayload, channelId, body);
-          setState({ status: 'ready', payload });
-          setComposerDraft('');
-          navigate(rollbackPath, { replace: true });
-        } else {
-          channelId = hydratedDirectLane.id;
-          payload = appendOptimisticUserMessage(payload, channelId, body);
-          setState({ status: 'ready', payload });
-          setComposerDraft('');
-        }
-      } else if (wasDraftingNewChat) {
-        const optimisticDraft = createOptimisticDraftPayload(
-          initialPayload,
-          body,
-          draftLeadCatId ?? draftCatIds[0] ?? null,
-          draftLeadCatId || draftCatIds.length > 0 ? {
-            composerMode: 'cat_led',
-          } : {
-            composerMode: 'solo',
-            pendingProvider: draftModel.provider,
-            pendingModel: draftModel.model,
-            pendingInstance: draftModel.instance,
-          },
-        );
-        payload = optimisticDraft.payload;
-        setState({ status: 'ready', payload });
-        setComposerDraft('');
-        navigate(buildChannelPath(optimisticDraft.channelId), { replace: true });
-
-        const isSoloDraft = !draftLeadCatId && draftCatIds.length === 0;
-        const createdPayload = await createChatChannel({
-          title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
-          topic: createDraftChannelTopic(body),
-          skipBossCatGreeting: true,
-          repoPath: draftCwd ?? undefined,
-          ...(draftLeadCatId ? {
-            roomMode: 'direct_cat_chat' as const,
-            leadParticipantId: draftLeadCatId,
-            participantCatIds: [draftLeadCatId, ...draftCatIds.filter((id) => id !== draftLeadCatId)],
-          } : draftCatIds.length > 0 ? {
-            participantCatIds: draftCatIds,
-          } : {}),
-          ...(isSoloDraft ? {
-            composerMode: 'solo' as const,
-            pendingProvider: draftModel.provider,
-            pendingModel: draftModel.model ?? undefined,
-            pendingInstance: draftModel.instance ?? undefined,
-          } : {}),
-        });
-        channelId = createdPayload.chat.selectedChannelId;
-        if (!channelId) {
-          throw new Error('No chat is available for sending messages.');
-        }
-
-        let latestPayload = createdPayload;
-        for (const catId of draftCatIds.filter((id) => id !== draftLeadCatId)) {
-          const cat = initialPayload.chat.cats.find((p) => p.id === catId);
-          if (cat) {
-            latestPayload = await assignCatToChannelApi(channelId, {
-              catId: cat.id,
-              provider: cat.defaultExecutionTarget.provider,
-              instance: cat.defaultExecutionTarget.instance ?? undefined,
-              model: cat.defaultExecutionTarget.model ?? undefined,
-            });
-          }
-        }
-
-        rollbackPayload = latestPayload;
-        rollbackPath = buildChannelPath(channelId);
-        payload = appendOptimisticUserMessage(latestPayload, channelId, body);
-        setState({ status: 'ready', payload });
-        navigate(rollbackPath, { replace: true });
-      } else {
-        if (!channelId) {
-          throw new Error('No chat is available for sending messages.');
-        }
-        payload = appendOptimisticUserMessage(payload, channelId, body);
-        setState({ status: 'ready', payload });
-        setComposerDraft('');
-      }
-
-      if (!channelId) {
-        throw new Error('No chat is available for sending messages.');
-      }
-
-      let messageBody = body;
-      const filesToUpload = isCatScopedLaneRoute && !hydratedDirectLane
-        ? draftFiles
-        : hydratedDirectLane
-          ? channelFiles
-          : wasDraftingNewChat
-            ? draftFiles
-            : channelFiles;
-      if (filesToUpload.length > 0) {
-        const selectedForFiles =
-          payload.chat.selectedChannel?.id === channelId
-            ? payload.chat.selectedChannel
-            : null;
-        if (!selectedForFiles?.repoPath && !selectedForFiles?.chatCwd) {
-          const warmed = await updateSelectedChannel(channelId);
-          payload = warmed;
-          rollbackPayload = warmed;
-          setState({ status: 'ready', payload: warmed });
-        }
-        const attachments = await uploadChannelAttachments(channelId, filesToUpload);
-        const refs = attachments.map((a) => `- ${a.relativePath}`).join('\n');
-        messageBody = `[Attached files in working directory:]\n${refs}\n\n${body}`;
-      }
-
-      const dispatch = await sendChatMessage(channelId, {
-        body: messageBody,
-        ...(
-          !wasDraftingNewChat
-          && !isCatScopedLaneRoute
-          && selectedChannel?.id === channelId
-          && selectedChannel.composerMode === 'solo'
-            ? {
-                pendingProvider: soloChannelModel.provider,
-                pendingModel: soloChannelModel.model,
-                pendingInstance: soloChannelModel.instance,
-              }
-            : {}
-        ),
-      });
-      setState({ status: 'ready', payload: dispatch.appShell });
-      setComposerDraft('');
-      setFeedback('');
-      navigate(rollbackPath, { replace: true });
-
-      if (isCatScopedLaneRoute) {
-        setDraftCwd(null);
-        setDraftCatIds([]);
-        setDraftFiles([]);
-        setChannelFiles([]);
-      } else if (wasDraftingNewChat) {
-        setDraftCwd(null);
-        setDraftCatIds([]);
-        setDraftFiles([]);
-      } else {
-        setChannelFiles([]);
-      }
-    } catch (error) {
-      setState({ status: 'ready', payload: rollbackPayload });
-      setComposerDraft(body);
-      setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
-      navigate(rollbackPath, { replace: true });
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onSendMessage(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    await submitComposerMessage();
-  }
-
-  async function onComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): Promise<void> {
-    if (
-      !shouldSubmitComposerOnKeyDown({
-        key: event.key,
-        shiftKey: event.shiftKey,
-        ctrlKey: event.ctrlKey,
-        metaKey: event.metaKey,
-        altKey: event.altKey,
-        isComposing: event.nativeEvent.isComposing,
-      })
-    ) return;
-    event.preventDefault();
-    await submitComposerMessage();
-  }
-
   function toggleDraftCat(catId: string): void {
     setDraftCatIds((prev) =>
       prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId],
@@ -873,10 +665,6 @@ export default function App() {
   const surface: Surface = location.pathname.startsWith('/settings')
     ? 'settings' : 'chats';
 
-  const selectedChannel = routeChannelId
-    && readySelectedChannel?.id === routeChannelId
-    ? readySelectedChannel
-    : null;
   const directLaneChannel = showingMyCatDirectLane
     ? selectedDirectLane
     : null;
