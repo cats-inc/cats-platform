@@ -479,6 +479,29 @@ test('renderer app consumes dedicated governance actions instead of defining app
   assert.match(hookSource, /sendChatMessage/u);
 });
 
+test('settings cats consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {
+  const settingsCatsSource = await readFile(
+    new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
+    'utf8',
+  );
+  const telegramHookSource = await readFile(
+    new URL('../src/products/chat/renderer/useSettingsCatsTelegram.ts', import.meta.url),
+    'utf8',
+  );
+  const memoryHookSource = await readFile(
+    new URL('../src/products/chat/renderer/useSettingsCatsMemory.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(settingsCatsSource, /useSettingsCatsTelegram/u);
+  assert.match(settingsCatsSource, /useSettingsCatsMemory/u);
+  assert.doesNotMatch(settingsCatsSource, /beginSettingsCatsTelegramScopeLoad/u);
+  assert.doesNotMatch(settingsCatsSource, /createSettingsCatsTelegramAutoLoader/u);
+  assert.doesNotMatch(settingsCatsSource, /listCatMemory\(/u);
+  assert.match(telegramHookSource, /export function useSettingsCatsTelegram/u);
+  assert.match(memoryHookSource, /export function useSettingsCatsMemory/u);
+});
+
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
     new URL('../src/products/chat/renderer/api.ts', import.meta.url),

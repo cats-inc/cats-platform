@@ -1,14 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts';
-import {
-  beginSettingsCatsTelegramScopeLoad,
-  createSettingsCatsTelegramAutoLoader,
-  createSettingsCatsTelegramScopeKey,
-  fetchSettingsCatsTelegramSnapshot,
-  SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
-} from '../../settingsCatsTelegramDiagnostics';
 import { executionLabel, emptyCatForm, type CatFormState } from '../chatUtils';
 import {
   createGlobalCat,
@@ -16,15 +9,9 @@ import {
   updateCatProfile,
   createBotBindingApi,
   deleteBotBindingApi,
-  fetchTelegramTransportDiagnostics,
-  fetchTelegramTransportStatus,
-  listCatMemory,
-  createCatMemory,
-  deleteCatMemory,
-  type DurableMemoryItem,
-  type TelegramTransportDiagnostics,
-  type TelegramTransportStatus,
 } from '../api';
+import { useSettingsCatsMemory } from '../useSettingsCatsMemory';
+import { useSettingsCatsTelegram } from '../useSettingsCatsTelegram';
 import { ProviderModelFields } from './ProviderModelFields';
 
 const SKILL_PROFILES = [
@@ -66,59 +53,30 @@ export function SettingsCats({
   onBusy,
 }: SettingsCatsProps) {
   const navigate = useNavigate();
-  const botBindings = payload.chat.botBindings ?? [];
-  const telegramScopeKey = createSettingsCatsTelegramScopeKey({
-    bossCatId: payload.chat.bossCatId,
-    botBindings,
-  });
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [botForm, setBotForm] = useState({ botName: '', botToken: '', webhookSecret: '', inboundMode: 'polling' as 'polling' | 'webhook' });
-  const [memoryForm, setMemoryForm] = useState({ category: 'fact', content: '' });
-  const [catMemory, setCatMemory] = useState<DurableMemoryItem[]>([]);
-  const [memoryLoading, setMemoryLoading] = useState(false);
-  const [telegramStatus, setTelegramStatus] = useState<TelegramTransportStatus | null>(null);
-  const [telegramDiagnostics, setTelegramDiagnostics] = useState<TelegramTransportDiagnostics | null>(null);
-  const [telegramLoading, setTelegramLoading] = useState(false);
-  const [telegramError, setTelegramError] = useState('');
-  const [telegramAutoLoader] = useState(() => createSettingsCatsTelegramAutoLoader({
-    fetchStatus: fetchTelegramTransportStatus,
-    fetchDiagnostics: fetchTelegramTransportDiagnostics,
-  }));
-
-  useEffect(() => {
-    if (!expandedCatId) return;
-    let cancelled = false;
-    setMemoryLoading(true);
-    listCatMemory(expandedCatId)
-      .then((items) => { if (!cancelled) setCatMemory(items); })
-      .catch(() => { if (!cancelled) setCatMemory([]); })
-      .finally(() => { if (!cancelled) setMemoryLoading(false); });
-    return () => { cancelled = true; };
-  }, [expandedCatId]);
-
-  useEffect(() => {
-    const loadRun = beginSettingsCatsTelegramScopeLoad(telegramAutoLoader, telegramScopeKey, {
-      onStart() {
-        setTelegramLoading(true);
-        setTelegramError('');
-      },
-      onSuccess(snapshot) {
-        setTelegramStatus(snapshot.status);
-        setTelegramDiagnostics(snapshot.diagnostics);
-      },
-      onError(message) {
-        setTelegramStatus(null);
-        setTelegramDiagnostics(null);
-        setTelegramError(message);
-      },
-      onFinish() {
-        setTelegramLoading(false);
-      },
-    });
-    return loadRun.cancel;
-  }, [telegramAutoLoader, telegramScopeKey]);
+  const {
+    botBindings,
+    telegramStatus,
+    telegramDiagnostics,
+    telegramLoading,
+    telegramError,
+    refreshTelegramDiagnostics,
+  } = useSettingsCatsTelegram(payload);
+  const {
+    memoryForm,
+    setMemoryForm,
+    catMemory,
+    memoryLoading,
+    addMemory,
+    deleteMemory,
+  } = useSettingsCatsMemory({
+    expandedCatId,
+    onBusy,
+    onFeedback,
+  });
 
   async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -217,56 +175,6 @@ export function SettingsCats({
     }
   }
 
-  async function onAddMemory(catId: string): Promise<void> {
-    if (!memoryForm.content.trim()) return;
-    onBusy('memory:create');
-    try {
-      const item = await createCatMemory(catId, {
-        category: memoryForm.category,
-        content: memoryForm.content.trim(),
-      });
-      setCatMemory((prev) => [item, ...prev.filter((existing) => existing.id !== item.id)]);
-      setMemoryForm({ category: 'fact', content: '' });
-    } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to save memory.');
-    } finally {
-      onBusy('');
-    }
-  }
-
-  async function onDeleteMemory(catId: string, memoryId: string): Promise<void> {
-    onBusy(`memory:delete:${memoryId}`);
-    try {
-      await deleteCatMemory(catId, memoryId);
-      setCatMemory((prev) => prev.filter((m) => m.id !== memoryId));
-    } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to delete memory.');
-    } finally {
-      onBusy('');
-    }
-  }
-
-  async function onRefreshTelegramDiagnostics(): Promise<void> {
-    setTelegramLoading(true);
-    setTelegramError('');
-    try {
-      const snapshot = await fetchSettingsCatsTelegramSnapshot({
-        fetchStatus: fetchTelegramTransportStatus,
-        fetchDiagnostics: fetchTelegramTransportDiagnostics,
-      });
-      setTelegramStatus(snapshot.status);
-      setTelegramDiagnostics(snapshot.diagnostics);
-    } catch (error) {
-      setTelegramStatus(null);
-      setTelegramDiagnostics(null);
-      setTelegramError(
-        error instanceof Error ? error.message : SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
-      );
-    } finally {
-      setTelegramLoading(false);
-    }
-  }
-
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
@@ -294,7 +202,7 @@ export function SettingsCats({
                 className="chromeButton"
                 type="button"
                 disabled={telegramLoading}
-                onClick={() => void onRefreshTelegramDiagnostics()}
+                onClick={() => void refreshTelegramDiagnostics()}
               >
                 {telegramLoading ? 'Refreshing...' : 'Refresh'}
               </button>
@@ -635,7 +543,7 @@ export function SettingsCats({
                                         className="chromeButton"
                                         type="button"
                                         disabled={busy === `memory:delete:${mem.id}`}
-                                        onClick={() => void onDeleteMemory(cat.id, mem.id)}
+                                        onClick={() => void deleteMemory(cat.id, mem.id)}
                                       >
                                         &#x2715;
                                       </button>
@@ -666,7 +574,7 @@ export function SettingsCats({
                                   className="primaryButton"
                                   type="button"
                                   disabled={!memoryForm.content.trim() || busy === 'memory:create'}
-                                  onClick={() => void onAddMemory(cat.id)}
+                                  onClick={() => void addMemory(cat.id)}
                                 >
                                   {busy === 'memory:create' ? 'Saving...' : 'Add Memory'}
                                 </button>
