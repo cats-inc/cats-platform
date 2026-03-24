@@ -378,12 +378,43 @@ export interface ChatChannelCat {
   memory: MemoryCheckpointSummary;
 }
 
+export interface ChatMessageOption {
+  id: string;
+  label: string;
+  description?: string;
+  style?: 'primary' | 'secondary' | 'danger';
+}
+
+export interface ChatMessageChoice {
+  question: string;
+  options: ChatMessageOption[];
+  multiSelect?: boolean;
+  allowCustom?: boolean;
+  allowSkip?: boolean;
+}
+
+export interface ChatMessageChoiceAnswer {
+  question: string;
+  selectedOptionIds: string[];
+  customText?: string;
+  skipped?: boolean;
+}
+
+export interface ChatMessageChoiceResponse {
+  sourceMessageId: string;
+  status: 'submitted' | 'skipped';
+  answers: ChatMessageChoiceAnswer[];
+  submittedAt: string;
+}
+
 export interface ChatMessage {
   id: string;
   channelId: string;
   senderKind: ChatMessageSenderKind;
   senderName: string;
   body: string;
+  choices?: ChatMessageChoice[];
+  choiceResponse?: ChatMessageChoiceResponse | null;
   mentions: string[];
   metadata: Record<string, unknown>;
   usage: MessageUsageSummary | null;
@@ -596,6 +627,7 @@ export interface SendChannelMessageInput {
   pendingProvider?: string;
   pendingModel?: string | null;
   pendingInstance?: string | null;
+  choiceResponse?: ChatMessageChoiceResponse | null;
 }
 
 export interface ChannelActivationResult {

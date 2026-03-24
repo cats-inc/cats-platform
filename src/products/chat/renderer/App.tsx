@@ -73,6 +73,7 @@ import { SetupWizard } from './components/SetupWizard';
 import type { ModelSelectorValue } from './components/ModelSelector';
 import { Sidebar, type SidebarViewMode } from './components/Sidebar';
 import { ChatView } from './components/ChatView';
+import type { MessageChoicesSubmitInput } from './components/MessageChoices';
 import { NewChatDraft } from './components/NewChatDraft';
 import { SettingsGeneral } from './components/SettingsGeneral';
 import { SettingsCats } from './components/SettingsCats';
@@ -581,6 +582,34 @@ export default function App() {
       });
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to update approval.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function onChoiceSubmit(input: MessageChoicesSubmitInput): Promise<void> {
+    if (state.status !== 'ready') {
+      return;
+    }
+
+    const channelId = input.channelId;
+    if (!channelId) {
+      return;
+    }
+
+    setBusy(`choice:${input.choiceResponse.sourceMessageId}:${input.choiceResponse.status}`);
+    try {
+      const dispatch = await sendChatMessage(channelId, {
+        body: input.body,
+        senderName: state.payload.ownerDisplayName,
+        choiceResponse: input.choiceResponse,
+      });
+      startTransition(() => {
+        setState({ status: 'ready', payload: dispatch.appShell });
+        setFeedback('');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to submit choice response.');
     } finally {
       setBusy('');
     }
@@ -1228,6 +1257,7 @@ export default function App() {
                 onChannelFileSelect={() => { channelFileInputRef.current?.click(); setChannelPlusMenuOpen(false); }}
                 onChannelFilesChange={setChannelFiles}
                 onApprovalDecision={(taskId, status) => void onApprovalDecision(taskId, status)}
+                onChoiceSubmit={(input) => void onChoiceSubmit(input)}
                 onOperatorAction={(input) => void onOperatorAction(input)}
                 autoResize={autoResize}
                 selectedModel={
@@ -1282,6 +1312,7 @@ export default function App() {
                   onChannelFileSelect={() => { channelFileInputRef.current?.click(); setChannelPlusMenuOpen(false); }}
                   onChannelFilesChange={setChannelFiles}
                   onApprovalDecision={(taskId, status) => void onApprovalDecision(taskId, status)}
+                  onChoiceSubmit={(input) => void onChoiceSubmit(input)}
                   onOperatorAction={(input) => void onOperatorAction(input)}
                   autoResize={autoResize}
                   showAddCatButton={false}

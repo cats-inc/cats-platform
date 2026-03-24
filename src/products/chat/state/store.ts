@@ -79,6 +79,10 @@ import {
   normalizeRoomWorkflowTargetStatus,
 } from './roomRouting.js';
 import {
+  extractChatMessageChoicesFromBody,
+  normalizeChatMessageChoiceResponse,
+} from '../shared/messageChoices.js';
+import {
   createDefaultCoreState,
   createCatActorId,
 } from '../../../core/model.js';
@@ -209,6 +213,7 @@ function normalizeMessage(rawMessage: unknown, channelId: string): ChatMessage {
   const messageRecord = asRecord(rawMessage);
   const usageRecord = asRecord(messageRecord?.usage);
   const rawSenderKind = readString(messageRecord?.senderKind, 'system');
+  const normalizedChoiceResponse = normalizeChatMessageChoiceResponse(messageRecord?.choiceResponse);
   const senderKind = (
     rawSenderKind === 'user'
     || rawSenderKind === 'agent'
@@ -217,13 +222,20 @@ function normalizeMessage(rawMessage: unknown, channelId: string): ChatMessage {
   )
     ? rawSenderKind
     : 'system';
+  const normalizedBody = readString(messageRecord?.body);
+  const extractedChoices = extractChatMessageChoicesFromBody(
+    normalizedBody,
+    messageRecord?.choices,
+  );
 
   return {
     id: readString(messageRecord?.id, randomUUID()),
     channelId: readString(messageRecord?.channelId, channelId),
     senderKind,
     senderName: readString(messageRecord?.senderName, 'Chat'),
-    body: readString(messageRecord?.body),
+    body: extractedChoices.body,
+    ...(extractedChoices.choices ? { choices: extractedChoices.choices } : {}),
+    ...(normalizedChoiceResponse ? { choiceResponse: normalizedChoiceResponse } : {}),
     mentions: readStringArray(messageRecord?.mentions),
     metadata: asRecord(messageRecord?.metadata) ?? {},
     usage: usageRecord

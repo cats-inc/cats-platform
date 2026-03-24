@@ -189,6 +189,76 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
   assert.equal(lastMessage?.executionInstance, 'default');
 });
 
+test('FileChatStore preserves first-class choices, embedded-json extraction, and choice responses', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  let state = await store.read();
+  const now = new Date('2026-03-24T09:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Choice Contract',
+      topic: 'Persist structured choices in transcript history.',
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Designer Cat',
+      body: [
+        'Pick a style:',
+        '```json',
+        '{"choices":[{"question":"Which style?","options":[{"id":"minimal","label":"Minimal"},{"id":"bold","label":"Bold"}],"allowSkip":true}]}',
+        '```',
+      ].join('\n'),
+    },
+    now,
+  ).state;
+  const sourceMessageId = state.channels[0].messages.at(-1)?.id;
+  assert.ok(sourceMessageId);
+
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Owner',
+      body: 'Q: Which style?\nA: Minimal',
+    },
+    new Date('2026-03-24T09:01:00.000Z'),
+    {
+      choiceResponse: {
+        sourceMessageId,
+        status: 'submitted',
+        submittedAt: '2026-03-24T09:01:00.000Z',
+        answers: [
+          {
+            question: 'Which style?',
+            selectedOptionIds: ['minimal'],
+          },
+        ],
+      },
+    },
+  ).state;
+
+  await store.write(state);
+  const reloaded = await store.read();
+  const sourceMessage = reloaded.channels[0]?.messages.find((message) => message.id === sourceMessageId);
+  const responseMessage = reloaded.channels[0]?.messages.at(-1);
+
+  assert.equal(sourceMessage?.body, 'Pick a style:');
+  assert.equal(sourceMessage?.choices?.length, 1);
+  assert.equal(sourceMessage?.choices?.[0]?.options[0]?.label, 'Minimal');
+  assert.equal(responseMessage?.choiceResponse?.sourceMessageId, sourceMessageId);
+  assert.equal(responseMessage?.choiceResponse?.answers[0]?.selectedOptionIds[0], 'minimal');
+});
+
 test('exportChannel returns assigned cats with the selected transcript', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   const initialState = await store.read();
@@ -426,6 +496,155 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   assert.equal(projectedCheckpoint.metadata.workflowSummary?.stageId, 'continuation_handoff');
   assert.ok(projectedOutcome);
   assert.equal(projectedOutcome.metadata.workflowSummary?.runStatus, 'completed');
+});
+
+test('routeChannelMessage sends choice responses back to the originating cat session without mentions', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  let state = await store.read();
+  const now = new Date('2026-03-24T10:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Designer Cat',
+      provider: 'claude',
+      roles: ['designer'],
+    },
+    now,
+  );
+  const catId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Choice Routing',
+      topic: 'Route structured answers back to the originating cat.',
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  state = assignCatToChannel(
+    state,
+    channelId,
+    {
+      catId,
+      provider: 'claude',
+      roles: ['designer'],
+    },
+    now,
+  );
+
+  const channel = state.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(channel);
+  channel.orchestratorLease = {
+    ...channel.orchestratorLease,
+    sessionId: 'session-orchestrator',
+    status: 'ready',
+  };
+  channel.catAssignments[0].execution.lease = {
+    ...channel.catAssignments[0].execution.lease,
+    sessionId: 'session-designer',
+    status: 'ready',
+  };
+
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Designer Cat',
+      body: 'Which style do you want?',
+    },
+    now,
+    {
+      choices: [
+        {
+          question: 'Which style?',
+          options: [
+            { id: 'minimal', label: 'Minimal' },
+            { id: 'bold', label: 'Bold' },
+          ],
+          allowSkip: true,
+        },
+      ],
+      metadata: {
+        event: 'runtime_response',
+        targetKind: 'cat',
+        targetId: catId,
+        sessionId: 'session-designer',
+      },
+    },
+  ).state;
+  const sourceMessageId = state.channels[0].messages.at(-1)?.id;
+  assert.ok(sourceMessageId);
+
+  const sentSessionIds = [];
+  const runtimeClient = {
+    async getHealth() {
+      return {
+        baseUrl: 'http://127.0.0.1:3110',
+        reachable: true,
+        status: 'ok',
+        service: 'cats-runtime',
+      };
+    },
+    async getProviderConfig() {
+      return {};
+    },
+    async getProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: `${provider}-default`,
+        source: 'config',
+        cache: null,
+        models: [
+          { id: `${provider}-default`, label: `${provider} default`, default: true },
+        ],
+        warnings: [],
+      };
+    },
+    async createSession() {
+      throw new Error('routeChannelMessage should reuse the existing target session');
+    },
+    async sendMessage(sessionId) {
+      sentSessionIds.push(sessionId);
+      return {
+        content: 'Thanks, proceeding with Minimal.',
+        inputTokens: 8,
+        outputTokens: 5,
+        tokensUsed: 13,
+      };
+    },
+    async closeSession() {},
+  };
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Q: Which style?\nA: Minimal',
+      choiceResponse: {
+        sourceMessageId,
+        status: 'submitted',
+        submittedAt: '2026-03-24T10:01:00.000Z',
+        answers: [
+          {
+            question: 'Which style?',
+            selectedOptionIds: ['minimal'],
+          },
+        ],
+      },
+    },
+    runtimeClient,
+    new Date('2026-03-24T10:01:00.000Z'),
+  );
+
+  assert.deepEqual(sentSessionIds, ['session-designer']);
+  assert.equal(dispatched.results[0]?.targetKind, 'cat');
+  assert.equal(dispatched.results[0]?.sessionId, 'session-designer');
 });
 
 test('FileChatStore preserves null room route targets when reloading persisted routing outcomes', async () => {

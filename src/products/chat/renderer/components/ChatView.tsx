@@ -29,6 +29,10 @@ import { ActivityFeed } from './ActivityFeed';
 import { CatInspectPanel } from './CatInspectPanel';
 import { ModelSelector, type ModelSelectorValue } from './ModelSelector';
 import { ApprovalQueuePanel } from './ApprovalQueuePanel';
+import {
+  MessageChoices,
+  type MessageChoicesSubmitInput,
+} from './MessageChoices';
 import { ProgressSummaryPanel } from './ProgressSummaryPanel';
 import { RunInspector } from './RunInspector';
 
@@ -59,6 +63,7 @@ export interface ChatViewProps {
   onChannelFileSelect: () => void;
   onChannelFilesChange: (files: File[]) => void;
   onApprovalDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
+  onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
   onOperatorAction: (input: {
     action: 'retry' | 'acknowledge';
     taskId?: string | null;
@@ -98,6 +103,7 @@ export function ChatView({
   onChannelFileSelect,
   onChannelFilesChange,
   onApprovalDecision,
+  onChoiceSubmit,
   onOperatorAction,
   autoResize,
   showAddCatButton = true,
@@ -179,6 +185,18 @@ export function ChatView({
     () => buildChatOperatorView(operatorSnapshot, selectedChannel.id),
     [operatorSnapshot, selectedChannel.id],
   );
+  const choiceResponsesBySource = useMemo(() => {
+    const responses = new Map<
+      string,
+      NonNullable<(typeof selectedChannel.messages)[number]['choiceResponse']>
+    >();
+    for (const message of selectedChannel.messages) {
+      if (message.choiceResponse?.sourceMessageId) {
+        responses.set(message.choiceResponse.sourceMessageId, message.choiceResponse);
+      }
+    }
+    return responses;
+  }, [selectedChannel.messages]);
   const runIdsKey = useMemo(
     () => operatorView?.runs.map((run) => run.id).join('|') ?? '',
     [operatorView],
@@ -274,7 +292,17 @@ export function ChatView({
                           <strong>{message.senderName}</strong>
                         </div>
                       ) : null}
-                      <p>{message.body}</p>
+                      {message.body ? <p>{message.body}</p> : null}
+                      {message.choices && message.choices.length > 0 ? (
+                        <MessageChoices
+                          channelId={selectedChannel.id}
+                          messageId={message.id}
+                          choices={message.choices}
+                          existingResponse={choiceResponsesBySource.get(message.id) ?? null}
+                          busy={busy.startsWith(`choice:${message.id}:`)}
+                          onSubmit={onChoiceSubmit}
+                        />
+                      ) : null}
                     </article>
                   ))}
                 </div>

@@ -382,6 +382,44 @@ function buildCatTarget(cat: ChatChannelCat): RoutingTarget {
   };
 }
 
+function resolveChoiceResponseTarget(
+  state: ChatState,
+  channel: ChatChannelView,
+  sourceMessageId: string,
+): RoutingTarget | null {
+  const sourceMessage = channel.messages.find((message) => message.id === sourceMessageId);
+  if (!sourceMessage) {
+    return null;
+  }
+
+  const targetKind = sourceMessage.metadata.targetKind === 'orchestrator'
+    || sourceMessage.metadata.targetKind === 'cat'
+    ? sourceMessage.metadata.targetKind
+    : sourceMessage.senderKind === 'orchestrator'
+      ? 'orchestrator'
+      : sourceMessage.senderKind === 'agent'
+        ? 'cat'
+        : null;
+
+  if (targetKind === 'orchestrator') {
+    return buildOrchestratorTarget(state, channel);
+  }
+
+  if (targetKind !== 'cat') {
+    return null;
+  }
+
+  const targetId = typeof sourceMessage.metadata.targetId === 'string'
+    ? sourceMessage.metadata.targetId
+    : null;
+  if (!targetId) {
+    return null;
+  }
+
+  const cat = activeAssignedCats(channel).find((candidate) => candidate.catId === targetId);
+  return cat ? buildCatTarget(cat) : null;
+}
+
 function resolveTransportContext(
   _channel: ChatChannelView,
   transport?: RuntimeTransportContext,
@@ -2012,15 +2050,47 @@ export async function routeChannelMessage(
       body: payload.body,
     },
     now,
+    {
+      metadata: payload.choiceResponse
+        ? {
+            event: 'choice_response',
+            sourceMessageId: payload.choiceResponse.sourceMessageId,
+          }
+        : {},
+      choiceResponse: payload.choiceResponse,
+    },
   ).state;
   nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
 
   const channelAfterUserMessage = buildChannelView(nextState, channelId);
   const userMessage = channelAfterUserMessage.messages[channelAfterUserMessage.messages.length - 1];
-  const initialResolution = resolveTargets(nextState, channelId, payload.body, {
-    allowDefaultTarget: true,
-    explicitTrigger: 'explicit_mention',
-  });
+  const choiceResponseTarget = payload.choiceResponse
+    ? resolveChoiceResponseTarget(
+        nextState,
+        channelAfterUserMessage,
+        payload.choiceResponse.sourceMessageId,
+      )
+    : null;
+  const initialResolution = choiceResponseTarget
+    ? {
+        targets: [choiceResponseTarget],
+        unresolved: [],
+        mentionNames: [],
+        trigger: 'room_default' as const,
+        resolution: {
+          routingMode: 'room_default' as const,
+          selectionKind: 'default_target' as const,
+          defaultTarget: toParticipantRef(choiceResponseTarget),
+          defaultTargetReason: null,
+          fallbackTarget: null,
+          blockedReason: null,
+          note: 'Structured choice response routed back to the originating participant.',
+        },
+      }
+    : resolveTargets(nextState, channelId, payload.body, {
+        allowDefaultTarget: true,
+        explicitTrigger: 'explicit_mention',
+      });
   const results: ChannelDispatchResult[] = [];
   const nowIso = now.toISOString();
   const channelRouting = requireChannel(nextState, channelId).roomRouting;

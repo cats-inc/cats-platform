@@ -42,6 +42,10 @@ import {
   createDefaultRoomRoutingState,
   resolveRoomRoutingState,
 } from './roomRouting.js';
+import {
+  extractChatMessageChoicesFromBody,
+  normalizeChatMessageChoiceResponse,
+} from '../shared/messageChoices.js';
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
 export type { ChatLifecycleState } from '../shared/lifecycle.js';
@@ -163,14 +167,26 @@ function createMessageRecord(
     model?: string | null;
     instance?: string | null;
   } = {},
+  structured: {
+    choices?: ChatMessage['choices'];
+    choiceResponse?: ChatMessage['choiceResponse'];
+  } = {},
 ): ChatMessage {
+  const { body: normalizedBody, choices } = extractChatMessageChoicesFromBody(
+    body.trim(),
+    structured.choices,
+  );
+  const choiceResponse = normalizeChatMessageChoiceResponse(structured.choiceResponse);
+
   return {
     id: randomUUID(),
     channelId,
     senderKind,
     senderName,
-    body: body.trim(),
-    mentions: parseMentions(body),
+    body: normalizedBody,
+    ...(choices ? { choices } : {}),
+    ...(choiceResponse ? { choiceResponse } : {}),
+    mentions: parseMentions(normalizedBody),
     metadata,
     usage,
     executionProvider: execution.provider ?? null,
@@ -804,6 +820,8 @@ export function appendMessage(
   options: {
     metadata?: Record<string, unknown>;
     usage?: MessageUsageSummary | null;
+    choices?: ChatMessage['choices'];
+    choiceResponse?: ChatMessage['choiceResponse'];
     execution?: {
       provider?: string | null;
       model?: string | null;
@@ -824,6 +842,10 @@ export function appendMessage(
     options.metadata ?? {},
     options.usage ?? null,
     options.execution ?? {},
+    {
+      choices: options.choices,
+      choiceResponse: options.choiceResponse,
+    },
   );
 
   applyMessageToChannel(channel, message, nowIso);
