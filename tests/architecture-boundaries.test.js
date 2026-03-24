@@ -62,9 +62,23 @@ test('platform orchestrator contracts own their operator-loop view types', async
 
   assert.match(source, /export interface OrchestratorOperatorView/u);
   assert.match(source, /export interface OrchestratorRunInspectorView/u);
+  assert.match(source, /export interface OrchestratorChannelView/u);
+  assert.match(source, /export interface OrchestratorParticipantExecutionLease/u);
   assert.doesNotMatch(
     source,
     /products\/chat\/shared\/operatorLoop\.js/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /\bChatChannelView\b/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /\bChatChannelCat\b/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /\bParticipantExecutionLease\b/u,
   );
 });
 

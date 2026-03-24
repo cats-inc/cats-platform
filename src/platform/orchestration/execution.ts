@@ -1,5 +1,4 @@
 import type {
-  ChatChannelView,
   RoomRoutingCheckpointKind,
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
@@ -14,6 +13,7 @@ import type { CatsCoreState } from '../../core/types.js';
 import type {
   OrchestratorActionEnvelope,
   OrchestratorApprovalGate,
+  OrchestratorChannelView,
   OrchestratorDispatchTargetPlan,
   OrchestratorExecutionCheckpoint,
   OrchestratorExecutionPlan,
@@ -178,7 +178,7 @@ function buildRuntimeToolPlane(): OrchestratorRuntimeToolPlane {
 }
 
 function resolveParticipantSessionId(
-  channel: ChatChannelView,
+  channel: OrchestratorChannelView,
   participant: RoomRoutingParticipantRef | null,
 ): string | null {
   if (!participant) {
@@ -215,7 +215,7 @@ function mapTargetPlanToExecutionRef(
 }
 
 function mapWorkflowTargetToExecutionRef(
-  channel: ChatChannelView,
+  channel: OrchestratorChannelView,
   target: RoomWorkflowTargetState,
 ): OrchestratorExecutionTargetRef {
   return {
@@ -578,7 +578,7 @@ export function buildPreDispatchExecutionPlan(
 }
 
 function resolveWorkflowTurn(
-  channel: ChatChannelView,
+  channel: OrchestratorChannelView,
   selection: ExecutionSelection = {},
 ): RoomWorkflowTurn | null {
   const workflow = channel.roomRouting?.workflow;
@@ -618,7 +618,7 @@ function buildCheckpointSummary(
 
 function buildRootWorkflowStep(
   turn: RoomWorkflowTurn,
-  channel: ChatChannelView,
+  channel: OrchestratorChannelView,
 ): OrchestratorExecutionStep {
   return {
     id: `dispatch-group-${turn.id}`,
@@ -648,7 +648,7 @@ function buildRootWorkflowStep(
 
 function buildTargetStep(
   turn: RoomWorkflowTurn,
-  channel: ChatChannelView,
+  channel: OrchestratorChannelView,
   target: RoomWorkflowTargetState,
 ): OrchestratorExecutionStep {
   const mappedTarget = mapWorkflowTargetToExecutionRef(channel, target);
@@ -676,7 +676,7 @@ function buildTargetStep(
 
 function buildEventStep(
   turn: RoomWorkflowTurn,
-  channel: ChatChannelView,
+  channel: OrchestratorChannelView,
   event: RoomWorkflowEvent,
 ): OrchestratorExecutionStep | null {
   const workflowShape = (
@@ -769,7 +769,7 @@ function buildEventStep(
 }
 
 export function buildExecutionPlanFromChannel(input: {
-  channel: ChatChannelView;
+  channel: OrchestratorChannelView;
   core: CatsCoreState;
   operatorSeams: OrchestratorOperatorSeams;
   runInspector: OrchestratorRunInspectorView | null;

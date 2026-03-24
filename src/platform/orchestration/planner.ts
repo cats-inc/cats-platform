@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-  ChatChannelCat,
-  ChatChannelView,
   ChatState,
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
@@ -20,6 +18,8 @@ import type {
   OrchestratorTransportContext,
   OrchestratorTurnPlan,
   OrchestratorExecutionLoopContract,
+  OrchestratorChannelCat,
+  OrchestratorChannelView,
   OrchestratorPlannerChannelContext,
   OrchestratorPlannerSurface,
 } from './contracts.js';
@@ -92,7 +92,7 @@ export function resolveOrchestratorOperatorSeams(
 }
 
 function buildExecutionLoopContract(
-  channel: ChatChannelView,
+  channel: OrchestratorChannelView,
   initialTargetCount: number,
   trigger: RoomRoutingTrigger,
   plannerSurface: OrchestratorPlannerSurface,
@@ -148,7 +148,7 @@ function buildOrchestratorParticipantPlan(
 
 function buildCatParticipantPlan(
   channelContext: OrchestratorPlannerChannelContext,
-  cat: ChatChannelCat,
+  cat: OrchestratorChannelCat,
 ): OrchestratorParticipantPlan {
   return {
     participantKind: 'cat',

@@ -1,9 +1,7 @@
 import type {
   ChannelDispatchResult,
-  ChatChannelCat,
-  ChatChannelView,
   ChatState,
-  ParticipantExecutionLease,
+  ParticipantSessionStatus,
   RoomRoutingCheckpointKind,
   RoomRoutingParticipantRef,
   RoomRouteResolution,
@@ -226,6 +224,51 @@ export interface OrchestratorOperatorView {
   incidentActions: OrchestratorOperatorActionView[];
 }
 
+export interface OrchestratorMessageView {
+  id: string;
+}
+
+export interface OrchestratorParticipantExecutionLease {
+  sessionId: string | null;
+  status: ParticipantSessionStatus;
+  cwd: string | null;
+  lastError: string | null;
+  provider: string | null;
+  model: string | null;
+  startedAt: string | null;
+  lastUsedAt: string | null;
+}
+
+export interface OrchestratorParticipantExecutionState {
+  target: ExecutionTargetSummary;
+  lease: OrchestratorParticipantExecutionLease;
+}
+
+export interface OrchestratorChannelCat {
+  catId: string;
+  name: string;
+  roles: string[];
+  skillProfile: string | null;
+  mcpProfile: string | null;
+  status: 'active' | 'removed';
+  joinedAt: string;
+  leftAt: string | null;
+  avatarColor: string | null;
+  execution: OrchestratorParticipantExecutionState;
+}
+
+export interface OrchestratorChannelView {
+  id: string;
+  title: string;
+  skillProfile: string | null;
+  mcpProfile: string | null;
+  orchestratorRoles: string[];
+  orchestratorLease: OrchestratorParticipantExecutionLease;
+  assignedCats: OrchestratorChannelCat[];
+  messages: OrchestratorMessageView[];
+  roomRouting?: RoomRoutingState;
+}
+
 export interface OrchestratorChatStore {
   read(): Promise<ChatState>;
   write(state: ChatState): Promise<ChatState>;
@@ -247,7 +290,7 @@ export interface OrchestratorChannelRouteInput<TCompanionStore = unknown> {
 }
 
 export interface OrchestratorChannelRouter<TCompanionStore = unknown> {
-  buildChannelView(state: ChatState, channelId: string): ChatChannelView;
+  buildChannelView(state: ChatState, channelId: string): OrchestratorChannelView;
   routeChannelMessage(
     input: OrchestratorChannelRouteInput<TCompanionStore>,
   ): Promise<{
@@ -270,7 +313,7 @@ export interface OrchestratorMentionRouteResult {
 }
 
 export interface OrchestratorPlannerSurface {
-  buildChannelView(state: ChatState, channelId: string): ChatChannelView;
+  buildChannelView(state: ChatState, channelId: string): OrchestratorChannelView;
   resolveMentionRoute(
     state: ChatState,
     channelId: string,
@@ -302,9 +345,9 @@ export interface OrchestratorParticipantPlan {
   participantId: string;
   participantName: string;
   roles: string[];
-  assignmentStatus: ChatChannelCat['status'] | 'active';
+  assignmentStatus: OrchestratorChannelCat['status'] | 'active';
   executionTarget: ExecutionTargetSummary;
-  lease: ParticipantExecutionLease;
+  lease: OrchestratorParticipantExecutionLease;
   skillProfile: string | null;
   mcpProfile: string | null;
   runtimeSkills: RuntimeSkillManifest | null;
@@ -514,6 +557,6 @@ export interface OrchestratorExecutionLoopResponse {
 }
 
 export interface OrchestratorPlannerChannelContext {
-  channel: ChatChannelView;
+  channel: OrchestratorChannelView;
   transport: OrchestratorTransportContext;
 }
