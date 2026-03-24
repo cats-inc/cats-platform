@@ -383,6 +383,31 @@ test('core model composes dedicated record write modules instead of defining rec
   assert.match(recordModuleSource, /export function appendCoreActivity/u);
 });
 
+test('core model composes dedicated task-control and memory-binding modules instead of defining them inline', async () => {
+  const modelSource = await readFile(
+    new URL('../src/core/model.ts', import.meta.url),
+    'utf8',
+  );
+  const taskControlSource = await readFile(
+    new URL('../src/core/modelTaskControls.ts', import.meta.url),
+    'utf8',
+  );
+  const memoryBindingSource = await readFile(
+    new URL('../src/core/modelMemoryBindings.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(modelSource, /modelTaskControls\.js/u);
+  assert.match(modelSource, /modelMemoryBindings\.js/u);
+  assert.doesNotMatch(modelSource, /export function upsertCoreTask\(/u);
+  assert.doesNotMatch(modelSource, /export function writeApprovalDecision\(/u);
+  assert.doesNotMatch(modelSource, /export function addDurableMemory\(/u);
+  assert.match(taskControlSource, /export function upsertCoreTask/u);
+  assert.match(taskControlSource, /export function writeApprovalDecision/u);
+  assert.match(memoryBindingSource, /export function addDurableMemory/u);
+  assert.match(memoryBindingSource, /export function createBotBinding/u);
+});
+
 test('store consumes dedicated chat snapshot normalization instead of defining it inline', async () => {
   const storeSource = await readFile(
     new URL('../src/products/chat/state/store.ts', import.meta.url),
