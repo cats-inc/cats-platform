@@ -5,6 +5,7 @@ import type {
   OrchestratorChannelRouter,
   OrchestratorChatStore,
   OrchestratorDispatchResponse,
+  OrchestratorPlannerSurface,
   OrchestratorPlanRequest,
 } from './contracts.js';
 import {
@@ -24,6 +25,7 @@ import {
 interface DispatchOrchestratorTurnInput<TCompanionStore = unknown> extends OrchestratorPlanRequest {
   chatStore: OrchestratorChatStore;
   channelRouter: OrchestratorChannelRouter<TCompanionStore>;
+  plannerSurface: OrchestratorPlannerSurface;
   runtimeClient: RuntimeClient;
   now?: Date;
   companionStore?: TCompanionStore;
@@ -76,7 +78,12 @@ export async function dispatchOrchestratorTurn<TCompanionStore>(
   const now = input.now ?? new Date();
   const stateBefore = await input.chatStore.read();
   const coreBefore = await input.chatStore.readCore();
-  const plan = buildOrchestratorTurnPlan(stateBefore, coreBefore, input);
+  const plan = buildOrchestratorTurnPlan(
+    stateBefore,
+    coreBefore,
+    input,
+    input.plannerSurface,
+  );
 
   if (plan.execution.approval.status === 'pending') {
     await persistPendingApprovalDispatch(
@@ -88,7 +95,11 @@ export async function dispatchOrchestratorTurn<TCompanionStore>(
     return {
       contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
       surface: 'direct_product_api',
-      operator: resolveOrchestratorOperatorSeams(coreAfter, input.channelId),
+      operator: resolveOrchestratorOperatorSeams(
+        coreAfter,
+        input.channelId,
+        input.plannerSurface,
+      ),
       plan,
       dispatch: {
         channelId: input.channelId,
@@ -101,6 +112,7 @@ export async function dispatchOrchestratorTurn<TCompanionStore>(
         stateBefore,
         coreAfter,
         input.channelId,
+        input.plannerSurface,
       ),
     };
   }
@@ -132,6 +144,7 @@ export async function dispatchOrchestratorTurn<TCompanionStore>(
     persisted,
     coreAfter,
     input.channelId,
+    input.plannerSurface,
     {
       turnId: routed.results.find((result) => result.turnId)?.turnId ?? null,
     },
@@ -140,7 +153,11 @@ export async function dispatchOrchestratorTurn<TCompanionStore>(
   return {
     contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
     surface: 'direct_product_api',
-    operator: resolveOrchestratorOperatorSeams(coreAfter, input.channelId),
+    operator: resolveOrchestratorOperatorSeams(
+      coreAfter,
+      input.channelId,
+      input.plannerSurface,
+    ),
     plan,
     dispatch: {
       channelId: input.channelId,

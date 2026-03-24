@@ -12,6 +12,7 @@ import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type {
   OrchestratorChannelRouter,
   OrchestratorDispatchResponse,
+  OrchestratorPlannerSurface,
 } from '../../platform/orchestration/contracts.js';
 import {
   createCatsMemoryService,
@@ -46,7 +47,10 @@ import {
   MemoryChatStore,
   type ChatStore,
 } from '../../products/chat/state/store.js';
-import { chatOrchestratorChannelRouter } from '../../products/chat/state/orchestratorAdapter.js';
+import {
+  chatOrchestratorChannelRouter,
+  chatOrchestratorPlannerSurface,
+} from '../../products/chat/state/orchestratorAdapter.js';
 import { handleCodePlaceholder } from '../../products/code/api/index.js';
 import { handleWorkPlaceholder } from '../../products/work/api/index.js';
 import {
@@ -82,6 +86,7 @@ export interface ServerDependencies {
   startup?: AppStartupState;
   companionStore?: CompanionBoxStore;
   orchestratorChannelRouter?: OrchestratorChannelRouter<CompanionBoxStore>;
+  orchestratorPlannerSurface?: OrchestratorPlannerSurface;
   memoryStore?: CanonicalMemoryStore;
   memoryService?: CatsMemoryService;
   telegramRelay?: TelegramRelay;
@@ -99,6 +104,7 @@ type ResolvedServerDependencies = ServerDependencies & {
   startup: AppStartupState;
   companionStore: CompanionBoxStore;
   orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore>;
+  orchestratorPlannerSurface: OrchestratorPlannerSurface;
   memoryStore: CanonicalMemoryStore;
   memoryService: CatsMemoryService;
   telegramRelay: TelegramRelay;
@@ -470,6 +476,7 @@ export function createServer(dependencies: ServerDependencies) {
       senderName: request.senderName ?? undefined,
       chatStore: dependencies.chatStore,
       channelRouter: dependencies.orchestratorChannelRouter ?? chatOrchestratorChannelRouter,
+      plannerSurface: dependencies.orchestratorPlannerSurface ?? chatOrchestratorPlannerSurface,
       runtimeClient: dependencies.runtimeClient,
       now: dependencies.now?.(),
       companionStore,
@@ -484,6 +491,7 @@ export function createServer(dependencies: ServerDependencies) {
     }),
     companionStore,
     orchestratorChannelRouter: dependencies.orchestratorChannelRouter ?? chatOrchestratorChannelRouter,
+    orchestratorPlannerSurface: dependencies.orchestratorPlannerSurface ?? chatOrchestratorPlannerSurface,
     memoryStore,
     memoryService,
     telegramRelay,

@@ -7,6 +7,7 @@ import type {
   RoomRoutingCheckpointKind,
   RoomRoutingParticipantRef,
   RoomRouteResolution,
+  RoomRoutingState,
   RoomRoutingTrigger,
   RoomWorkflowBranchStrategy,
   RoomWorkflowHandoffReason,
@@ -126,6 +127,40 @@ export interface OrchestratorChannelRouter<TCompanionStore = unknown> {
     state: ChatState;
     results: ChannelDispatchResult[];
   }>;
+}
+
+export interface OrchestratorRoutingTarget extends RoomRoutingParticipantRef {
+  sessionId: string | null;
+}
+
+export interface OrchestratorMentionRouteResult {
+  targets: OrchestratorRoutingTarget[];
+  unresolvedMentions: string[];
+  parsedMentionNames: string[];
+  trigger: RoomRoutingTrigger;
+  routingMode: 'room_default' | 'explicit_single' | 'explicit_multi';
+  resolution: RoomRouteResolution;
+}
+
+export interface OrchestratorPlannerSurface {
+  buildChannelView(state: ChatState, channelId: string): ChatChannelView;
+  resolveMentionRoute(
+    state: ChatState,
+    channelId: string,
+    body: string,
+    options: {
+      allowDefaultTarget: boolean;
+      explicitTrigger: RoomRoutingTrigger;
+    },
+  ): OrchestratorMentionRouteResult;
+  resolveRoomRoutingState(roomRouting: RoomRoutingState | null | undefined): RoomRoutingState;
+  resolveOrchestratorDisplayName(state: ChatState): string;
+  buildOperatorView(core: CatsCoreState, channelId: string): ChatOperatorView | null;
+  buildRunInspectorView(
+    operatorView: ChatOperatorView | null,
+    runId: string | null | undefined,
+  ): ChatRunInspectorView | null;
+  resolveConversationId(channelId: string): string;
 }
 
 export interface OrchestratorPlanRequest {

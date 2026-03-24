@@ -1,8 +1,19 @@
-import type { OrchestratorChannelRouter } from '../../../platform/orchestration/contracts.js';
+import type {
+  OrchestratorChannelRouter,
+  OrchestratorPlannerSurface,
+} from '../../../platform/orchestration/contracts.js';
+import { buildApprovalQueue } from '../../../core/model.js';
 import type { CompanionBoxStore } from './companionBoxStore.js';
 import type { ChatStore } from './store.js';
-import { buildChannelView } from './model.js';
+import { buildChannelView, resolveOrchestratorDisplayName } from './model.js';
+import { resolveMentionRoute } from './mentionRouter.js';
+import { resolveRoomRoutingState } from './roomRouting.js';
 import { routeChannelMessage } from './runtimeActions.js';
+import {
+  buildChatOperatorView,
+  buildRunInspectorView,
+  resolveChatConversationId,
+} from '../shared/operatorLoop.js';
 
 export const chatOrchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore> = {
   buildChannelView,
@@ -24,4 +35,22 @@ export const chatOrchestratorChannelRouter: OrchestratorChannelRouter<CompanionB
       },
     );
   },
+};
+
+export const chatOrchestratorPlannerSurface: OrchestratorPlannerSurface = {
+  buildChannelView,
+  resolveMentionRoute,
+  resolveRoomRoutingState,
+  resolveOrchestratorDisplayName,
+  buildOperatorView(core, channelId) {
+    return buildChatOperatorView(
+      {
+        core,
+        approvals: buildApprovalQueue(core),
+      },
+      channelId,
+    );
+  },
+  buildRunInspectorView,
+  resolveConversationId: resolveChatConversationId,
 };

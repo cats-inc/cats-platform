@@ -1,5 +1,4 @@
 import { sendMethodNotAllowed, matchRoute, readJsonBody, sendJson } from '../../../shared/http.js';
-import { buildChannelView } from '../state/model.js';
 import {
   buildOrchestratorExecutionLoopResponse,
   buildOrchestratorPlanResponse,
@@ -16,8 +15,17 @@ async function handlePlan(
     const body = await readJsonBody<OrchestratorPlanRequest>(context.request);
     const state = await context.dependencies.chatStore.read();
     const core = await context.dependencies.chatStore.readCore();
-    buildChannelView(state, body.channelId);
-    sendJson(context.response, 200, buildOrchestratorPlanResponse(state, core, body));
+    context.dependencies.orchestratorPlannerSurface.buildChannelView(state, body.channelId);
+    sendJson(
+      context.response,
+      200,
+      buildOrchestratorPlanResponse(
+        state,
+        core,
+        body,
+        context.dependencies.orchestratorPlannerSurface,
+      ),
+    );
   } catch (error) {
     handleRestError(context, error);
   }
@@ -32,6 +40,7 @@ async function handleDispatch(
       ...body,
       chatStore: context.dependencies.chatStore,
       channelRouter: context.dependencies.orchestratorChannelRouter,
+      plannerSurface: context.dependencies.orchestratorPlannerSurface,
       runtimeClient: context.dependencies.runtimeClient,
       now: context.dependencies.now?.(),
       companionStore: context.dependencies.companionStore,
@@ -49,7 +58,7 @@ async function handleExecutionLoop(
 ): Promise<void> {
   try {
     const state = await context.dependencies.chatStore.read();
-    buildChannelView(state, channelId);
+    context.dependencies.orchestratorPlannerSurface.buildChannelView(state, channelId);
     const core = await context.dependencies.chatStore.readCore();
     sendJson(
       context.response,
@@ -58,6 +67,7 @@ async function handleExecutionLoop(
         state,
         core,
         channelId,
+        context.dependencies.orchestratorPlannerSurface,
         context.url.searchParams.get('runId'),
       ),
     );

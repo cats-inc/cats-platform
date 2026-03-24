@@ -7,17 +7,7 @@ import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
 } from '../../shared/app-shell.js';
-import { buildApprovalQueue } from '../../core/model.js';
-import { buildChannelView, resolveOrchestratorDisplayName } from '../../products/chat/state/model.js';
-import { resolveMentionRoute } from '../../products/chat/state/mentionRouter.js';
-import { resolveRoomRoutingState } from '../../products/chat/state/roomRouting.js';
 import { resolveSkillProfileManifest } from '../../shared/skillProfiles.js';
-import {
-  buildChatOperatorView,
-  buildRunInspectorView,
-  resolveChatConversationId,
-  type ChatOperatorSnapshot,
-} from '../../products/chat/shared/operatorLoop.js';
 import type { CatsCoreState } from '../../core/types.js';
 import type {
   OrchestratorDispatchTargetPlan,
@@ -31,6 +21,7 @@ import type {
   OrchestratorTurnPlan,
   OrchestratorExecutionLoopContract,
   OrchestratorPlannerChannelContext,
+  OrchestratorPlannerSurface,
 } from './contracts.js';
 import { ORCHESTRATOR_CONTRACT_VERSION } from './contracts.js';
 import {
@@ -39,13 +30,6 @@ import {
   buildPreDispatchExecutionPlan,
 } from './execution.js';
 import { resolveToolIntentManifest } from './toolIntent.js';
-
-function buildOperatorSnapshot(core: CatsCoreState): ChatOperatorSnapshot {
-  return {
-    core,
-    approvals: buildApprovalQueue(core),
-  };
-}
 
 function resolveTransport(
   transport?: OrchestratorTransportContext,
@@ -84,11 +68,12 @@ function resolveWorkflowHandoffReason(trigger: RoomRoutingTrigger) {
 function buildOrchestratorOperatorSeams(
   core: CatsCoreState,
   channelId: string,
+  plannerSurface: OrchestratorPlannerSurface,
 ): OrchestratorOperatorSeams {
-  const operatorView = buildChatOperatorView(buildOperatorSnapshot(core), channelId);
+  const operatorView = plannerSurface.buildOperatorView(core, channelId);
 
   return {
-    conversationId: operatorView?.conversationId ?? resolveChatConversationId(channelId),
+    conversationId: operatorView?.conversationId ?? plannerSurface.resolveConversationId(channelId),
     taskId: operatorView?.task?.id ?? `task-channel-${channelId}`,
     approvalsPath: '/api/core/approvals',
     operatorActionsPath: '/api/core/operator-actions',
@@ -101,16 +86,18 @@ function buildOrchestratorOperatorSeams(
 export function resolveOrchestratorOperatorSeams(
   core: CatsCoreState,
   channelId: string,
+  plannerSurface: OrchestratorPlannerSurface,
 ): OrchestratorOperatorSeams {
-  return buildOrchestratorOperatorSeams(core, channelId);
+  return buildOrchestratorOperatorSeams(core, channelId, plannerSurface);
 }
 
 function buildExecutionLoopContract(
   channel: ChatChannelView,
   initialTargetCount: number,
   trigger: RoomRoutingTrigger,
+  plannerSurface: OrchestratorPlannerSurface,
 ): OrchestratorExecutionLoopContract {
-  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const roomRouting = plannerSurface.resolveRoomRoutingState(channel.roomRouting);
   return {
     planner: 'dynamic_room_workflow',
     dispatchBoundary: 'direct_runtime_api',
@@ -128,11 +115,12 @@ function buildExecutionLoopContract(
 function buildOrchestratorParticipantPlan(
   state: ChatState,
   channelContext: OrchestratorPlannerChannelContext,
+  plannerSurface: OrchestratorPlannerSurface,
 ): OrchestratorParticipantPlan {
   return {
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
-    participantName: resolveOrchestratorDisplayName(state),
+    participantName: plannerSurface.resolveOrchestratorDisplayName(state),
     roles: [...channelContext.channel.orchestratorRoles],
     assignmentStatus: 'active',
     executionTarget: structuredClone(state.globalOrchestrator.executionTarget),
@@ -225,11 +213,12 @@ export function buildOrchestratorTurnPlan(
   state: ChatState,
   core: CatsCoreState,
   input: OrchestratorPlanRequest,
+  plannerSurface: OrchestratorPlannerSurface,
 ): OrchestratorTurnPlan {
-  const channel = buildChannelView(state, input.channelId);
+  const channel = plannerSurface.buildChannelView(state, input.channelId);
   const transport = resolveTransport(input.transport);
-  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  const resolution = resolveMentionRoute(
+  const roomRouting = plannerSurface.resolveRoomRoutingState(channel.roomRouting);
+  const resolution = plannerSurface.resolveMentionRoute(
     state,
     channel.id,
     input.body,
@@ -243,15 +232,16 @@ export function buildOrchestratorTurnPlan(
     transport,
   };
   const participants: OrchestratorParticipantPlan[] = [
-    buildOrchestratorParticipantPlan(state, channelContext),
+    buildOrchestratorParticipantPlan(state, channelContext, plannerSurface),
     ...channel.assignedCats.map((cat) => buildCatParticipantPlan(channelContext, cat)),
   ];
   const planId = `orch-plan-${randomUUID()}`;
-  const operatorSeams = resolveOrchestratorOperatorSeams(core, channel.id);
+  const operatorSeams = resolveOrchestratorOperatorSeams(core, channel.id, plannerSurface);
   const executionLoop = buildExecutionLoopContract(
     channel,
     resolution.targets.length,
     resolution.trigger,
+    plannerSurface,
   );
   const planBase = {
     planId,
@@ -306,21 +296,22 @@ export function buildOrchestratorExecutionLoopSnapshot(
   state: ChatState,
   core: CatsCoreState,
   channelId: string,
+  plannerSurface: OrchestratorPlannerSurface,
   selection: {
     runId?: string | null;
     turnId?: string | null;
   } = {},
 ): OrchestratorExecutionLoopSnapshot {
-  const operator = buildChatOperatorView(buildOperatorSnapshot(core), channelId);
-  const channel = buildChannelView(state, channelId);
-  const runInspector = buildRunInspectorView(operator, selection.runId);
+  const operator = plannerSurface.buildOperatorView(core, channelId);
+  const channel = plannerSurface.buildChannelView(state, channelId);
+  const runInspector = plannerSurface.buildRunInspectorView(operator, selection.runId);
   return {
     channelId,
     runtimeToolPlane: buildOrchestratorRuntimeToolPlane(),
     execution: buildExecutionPlanFromChannel({
       channel,
       core,
-      operatorSeams: resolveOrchestratorOperatorSeams(core, channelId),
+      operatorSeams: resolveOrchestratorOperatorSeams(core, channelId, plannerSurface),
       runInspector,
       selection,
     }),
@@ -333,12 +324,13 @@ export function buildOrchestratorPlanResponse(
   state: ChatState,
   core: CatsCoreState,
   input: OrchestratorPlanRequest,
+  plannerSurface: OrchestratorPlannerSurface,
 ): OrchestratorPlanResponse {
   return {
     contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
     surface: 'direct_product_api',
-    operator: resolveOrchestratorOperatorSeams(core, input.channelId),
-    plan: buildOrchestratorTurnPlan(state, core, input),
+    operator: resolveOrchestratorOperatorSeams(core, input.channelId, plannerSurface),
+    plan: buildOrchestratorTurnPlan(state, core, input, plannerSurface),
   };
 }
 
@@ -346,12 +338,19 @@ export function buildOrchestratorExecutionLoopResponse(
   state: ChatState,
   core: CatsCoreState,
   channelId: string,
+  plannerSurface: OrchestratorPlannerSurface,
   runId?: string | null,
 ): OrchestratorExecutionLoopResponse {
   return {
     contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
     surface: 'direct_product_api',
-    operator: resolveOrchestratorOperatorSeams(core, channelId),
-    executionLoop: buildOrchestratorExecutionLoopSnapshot(state, core, channelId, { runId }),
+    operator: resolveOrchestratorOperatorSeams(core, channelId, plannerSurface),
+    executionLoop: buildOrchestratorExecutionLoopSnapshot(
+      state,
+      core,
+      channelId,
+      plannerSurface,
+      { runId },
+    ),
   };
 }

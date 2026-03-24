@@ -6,6 +6,8 @@ import { buildChannelView } from '../dist-server/chat/model.js';
 import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
 import { createServer } from '../dist-server/server.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { resolveMentionRoute } from '../dist-server/products/chat/state/mentionRouter.js';
+import { resolveRoomRoutingState } from '../dist-server/products/chat/state/roomRouting.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -258,6 +260,55 @@ test('POST /api/orchestrator/plan returns machine-readable plan and tool intent'
     );
     assert.ok(Array.isArray(payload.plan.routing.initialTargets[0].runtimeSkills.requestedSkills));
     assert.equal(payload.plan.routing.initialTargets[0].runtimeSkills.requestedSkills[0], 'companion');
+  });
+});
+
+test('POST /api/orchestrator/plan uses the injected planner surface seam', async () => {
+  let buildCalls = 0;
+  let resolveCalls = 0;
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const channelId = created.channel.id;
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/plan`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Please have @Inline-Agent review the current diff.',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.plan.channelId, channelId);
+    assert.ok(buildCalls >= 1);
+    assert.equal(resolveCalls, 1);
+  }, new MemoryChatStore(), {
+    orchestratorPlannerSurface: {
+      buildChannelView(state, channelId) {
+        buildCalls += 1;
+        return buildChannelView(state, channelId);
+      },
+      resolveMentionRoute(state, channelId, body, options) {
+        resolveCalls += 1;
+        return resolveMentionRoute(state, channelId, body, options);
+      },
+      resolveRoomRoutingState,
+      resolveOrchestratorDisplayName(state) {
+        return state.globalOrchestrator.nextFocus;
+      },
+      buildOperatorView() {
+        return null;
+      },
+      buildRunInspectorView() {
+        return null;
+      },
+      resolveConversationId(channelId) {
+        return `conversation:${channelId}`;
+      },
+    },
   });
 });
 
