@@ -1,4 +1,8 @@
-import type { AppShellPayload, ChatCat, ChatChannelSummary } from '../../../shared/app-shell';
+import type {
+  AppShellPayload,
+  ChatCat,
+  ChatChannelSummary,
+} from '../api/contracts';
 import { getProviderDisplayName } from './providerCatalog';
 import {
   normalizeSelectedChannelView,

@@ -1,7 +1,7 @@
 import { startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { AppShellPayload } from '../../../../shared/app-shell';
+import type { AppShellPayload } from '../../api/contracts';
 import { updateVerbosePreference } from '../api';
 
 export interface SettingsGeneralProps {

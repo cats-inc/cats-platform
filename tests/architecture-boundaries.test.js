@@ -1,6 +1,23 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
+import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+async function* walkSourceFiles(rootDirectory) {
+  const entries = await readdir(rootDirectory, { withFileTypes: true });
+  for (const entry of entries) {
+    const resolvedPath = path.join(rootDirectory, entry.name);
+    if (entry.isDirectory()) {
+      yield* walkSourceFiles(resolvedPath);
+      continue;
+    }
+    if (!/\.(?:ts|tsx)$/u.test(entry.name)) {
+      continue;
+    }
+    yield resolvedPath;
+  }
+}
 
 test('platform orchestrator dispatch stays behind an injected channel router seam', async () => {
   const source = await readFile(
@@ -108,6 +125,47 @@ test('shared room-routing contracts are extracted from chat api contracts', asyn
     /export interface RoomRoutingState/u,
   );
   assert.match(appShell, /from '\.\/roomRouting\.js'/u);
+});
+
+test('chat and server internals do not import the app-shell compatibility barrel', async () => {
+  const srcRootPath = fileURLToPath(new URL('../src', import.meta.url));
+  const sourceRoots = [
+    new URL('../src/products/chat', import.meta.url),
+    new URL('../src/server/routes', import.meta.url),
+    new URL('../src/shared/channelPaths.ts', import.meta.url),
+  ];
+
+  for (const sourceRoot of sourceRoots) {
+    if (sourceRoot.pathname.endsWith('.ts')) {
+      const source = await readFile(sourceRoot, 'utf8');
+      assert.doesNotMatch(source, /shared\/app-shell(?:\.js|\.ts)?/u);
+      continue;
+    }
+
+    for await (const filePath of walkSourceFiles(fileURLToPath(sourceRoot))) {
+      const relativePath = path.relative(srcRootPath, filePath);
+      const source = await readFile(filePath, 'utf8');
+      assert.doesNotMatch(
+        source,
+        /shared\/app-shell(?:\.js|\.ts)?/u,
+        `unexpected app-shell import in ${relativePath}`,
+      );
+    }
+  }
+});
+
+test('chat internals use the product channel-paths module instead of the shared compatibility shim', async () => {
+  const productChatPath = fileURLToPath(new URL('../src/products/chat', import.meta.url));
+
+  for await (const filePath of walkSourceFiles(productChatPath)) {
+    const relativePath = path.relative(productChatPath, filePath);
+    const source = await readFile(filePath, 'utf8');
+    assert.doesNotMatch(
+      source,
+      /(?:\.\.\/){3,}shared\/channelPaths(?:\.js|\.ts)?/u,
+      `unexpected shared channelPaths import in ${relativePath}`,
+    );
+  }
 });
 
 test('platform consumes room-routing types from the shared roomRouting module', async () => {

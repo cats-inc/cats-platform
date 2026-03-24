@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { AppShellPayload } from '../../../../shared/app-shell';
+import type { AppShellPayload } from '../../api/contracts';
 import {
   beginSettingsCatsTelegramScopeLoad,
   createSettingsCatsTelegramAutoLoader,

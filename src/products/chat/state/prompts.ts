@@ -1,10 +1,10 @@
 import type {
   GlobalOrchestratorSummary,
-  MemoryCheckpointSummary,
   ChatChannelCat,
   ChatChannelView,
   ChatMessage,
-} from '../../../shared/app-shell.js';
+} from '../api/contracts.js';
+import type { MemoryCheckpointSummary } from '../../../core/types.js';
 import { ORCHESTRATOR_NAME } from './model.js';
 
 export interface PromptRoutingContext {

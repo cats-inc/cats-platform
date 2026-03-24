@@ -1,6 +1,6 @@
 import type { RefObject, MouseEvent as ReactMouseEvent } from 'react';
 
-import type { AppShellPayload, ChatChannelSummary } from '../../../../shared/app-shell';
+import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts';
 import { catInitials, presentChannelTitle, type Surface } from '../chatUtils';
 import {
   findDirectLaneForCat,

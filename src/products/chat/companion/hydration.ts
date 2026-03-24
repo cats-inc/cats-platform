@@ -1,4 +1,4 @@
-import type { ChatCat, ChatChannelView } from '../../../shared/app-shell.js';
+import type { ChatCat, ChatChannelView } from '../api/contracts.js';
 import type {
   CompanionBox,
   CompanionDerivedRecord,

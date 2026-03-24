@@ -41,10 +41,12 @@ import type {
   ChatChannelState,
   ChatCat,
   ChatState,
+} from '../api/contracts.js';
+import type {
   RoomRoutingParticipantRef,
   RoomWorkflowEvent,
   RoomWorkflowTurn,
-} from '../../../shared/app-shell.js';
+} from '../../../shared/roomRouting.js';
 import { buildRoomWorkflowRunId } from '../../../platform/orchestration/runIds.js';
 
 function uniqueStrings(values: string[]): string[] {

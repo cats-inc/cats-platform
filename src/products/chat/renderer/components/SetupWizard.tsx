@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { AppShellPayload } from '../../../../shared/app-shell';
-import { NEW_CHAT_PATH } from '../../../../shared/channelPaths';
+import type { AppShellPayload } from '../../api/contracts';
+import { NEW_CHAT_PATH } from '../../shared/channelPaths';
 import { completeSetup } from '../api';
 import { ProviderModelFields } from './ProviderModelFields';
 

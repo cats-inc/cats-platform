@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
-import type { AppShellPayload } from '../../../../shared/app-shell';
+import type { AppShellPayload } from '../../api/contracts';
 import { catInitials, truncatePath } from '../chatUtils';
 import { CatInspectPanel, type CatInspectTarget } from './CatInspectPanel';
 import { ModelSelector, type ModelSelectorValue } from './ModelSelector';

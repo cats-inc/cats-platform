@@ -20,7 +20,7 @@ import type {
   RoomWakeReason,
   RoomWakeRequestStatus,
   RoomWakeTrigger,
-} from '../../../shared/app-shell.js';
+} from '../../../shared/roomRouting.js';
 
 export const DEFAULT_MAX_ROUTING_CONTINUATIONS = 6;
 export const DEFAULT_MAX_ROUTING_DISPATCHES = 12;

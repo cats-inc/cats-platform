@@ -1,5 +1,6 @@
-import type { ChatChannelSummary, ParticipantSessionStatus } from '../../../shared/app-shell.js';
-import { buildMyCatPath } from '../../../shared/channelPaths.js';
+import type { ChatChannelSummary } from '../api/contracts.js';
+import type { ParticipantSessionStatus } from '../../../shared/roomRouting.js';
+import { buildMyCatPath } from '../shared/channelPaths.js';
 
 export type MyCatNavigationTarget =
   | { kind: 'direct_lane'; path: string };

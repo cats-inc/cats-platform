@@ -7,16 +7,18 @@
  */
 
 import type {
+  ChatChannelCat,
+  ChatChannelView,
+  ChatState,
+} from '../api/contracts.js';
+import type {
   RoomRouteBlockedReason,
   RoomRouteDefaultTargetReason,
   RoomRouteResolution,
   RoomRouteResolutionMode,
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
-  ChatChannelCat,
-  ChatChannelView,
-  ChatState,
-} from '../../../shared/app-shell.js';
+} from '../../../shared/roomRouting.js';
 import {
   ORCHESTRATOR_NAME,
   buildChannelView,

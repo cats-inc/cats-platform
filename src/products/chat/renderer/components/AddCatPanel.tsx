@@ -1,6 +1,6 @@
 import type { FormEvent, RefObject } from 'react';
 
-import type { ChatCat } from '../../../../shared/app-shell';
+import type { ChatCat } from '../../api/contracts';
 import { executionLabel, type CatFormState } from '../chatUtils';
 import { ProviderModelFields } from './ProviderModelFields';
 

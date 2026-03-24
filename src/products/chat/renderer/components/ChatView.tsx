@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from 'react';
 
-import type { AppShellPayload } from '../../../../shared/app-shell';
+import type { AppShellPayload } from '../../api/contracts';
 import {
   catInitials,
   messageTone,

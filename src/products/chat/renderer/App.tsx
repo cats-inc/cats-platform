@@ -23,12 +23,12 @@ import {
   readNewChatLeadCatId,
   resolveAppEntryPath,
   resolveVisibleChatPath,
-} from '../../../shared/channelPaths';
+} from '../shared/channelPaths';
 import {
   readSidebarOpenPreference,
   writeSidebarOpenPreference,
 } from '../../../shared/sidebarPreference';
-import type { AppShellPayload } from '../../../shared/app-shell';
+import type { AppShellPayload } from '../api/contracts';
 import {
   assignCatToChannelApi,
   browseDirectories,

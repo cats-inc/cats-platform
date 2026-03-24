@@ -4,8 +4,8 @@ import type {
   ChatChannelView,
   ChatMessage,
   ChatState,
-  MemoryCheckpointSummary,
-} from '../../../shared/app-shell.js';
+} from '../api/contracts.js';
+import type { MemoryCheckpointSummary } from '../../../core/types.js';
 
 function normalizeText(value: string, maxLength = 160): string {
   const normalized = value.replace(/\s+/g, ' ').trim();

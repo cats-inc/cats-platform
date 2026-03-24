@@ -12,8 +12,8 @@ import {
 import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
+import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
-import type { ChatState } from '../../shared/app-shell.js';
 
 interface TelegramQueryDependencies {
   chatStore: ChatStore;

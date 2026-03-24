@@ -19,7 +19,6 @@ import type {
   GlobalOrchestratorSummary,
   MessageUsageSummary,
   ParticipantExecutionLease,
-  ParticipantSessionStatus,
   SendChannelMessageInput,
   ChatChannelCat,
   ChatChannelState,
@@ -27,12 +26,15 @@ import type {
   ChatChannelSummary,
   ChatChannelView,
   ChatMessage,
-  ChatMessageSenderKind,
   ChatCat,
   ChatState,
   UpdateGlobalOrchestratorInput,
-} from '../../../shared/app-shell.js';
-import { createChannelExportFilename } from '../../../shared/channelPaths.js';
+} from '../api/contracts.js';
+import type {
+  ChatMessageSenderKind,
+  ParticipantSessionStatus,
+} from '../../../shared/roomRouting.js';
+import { createChannelExportFilename } from '../shared/channelPaths.js';
 import {
   resolveChatLifecycleState,
   type ChatLifecycleState,

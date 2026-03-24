@@ -1,7 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { ChatCat, ChatChannelView } from '../../../shared/app-shell.js';
+import type { ChatCat, ChatChannelView } from '../api/contracts.js';
 import {
   buildCompanionSessionContext,
 } from '../companion/hydration.js';

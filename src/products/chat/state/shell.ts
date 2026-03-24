@@ -1,6 +1,6 @@
 import type { AppConfig } from '../../../config.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
-import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../../../shared/app-shell.js';
+import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
 import { summarizeState } from './model.js';
 
 export function createAppShell(

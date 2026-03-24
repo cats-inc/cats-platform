@@ -1,9 +1,9 @@
 import type {
-  ParticipantExecutionLease,
   GlobalOrchestratorSummary,
   ChatCapabilities,
   ChatState,
-} from '../../../shared/app-shell.js';
+  ParticipantExecutionLease,
+} from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
 import { createEmptyMemoryCheckpoint } from '../../../core/model.js';
 export { createEmptyMemoryCheckpoint };

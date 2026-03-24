@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isValidElement, type ReactNode, type RefObject } from 'react';
 
-import type { AppShellPayload, ChatChannelSummary, ParticipantSessionStatus } from '../src/shared/app-shell.ts';
+import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/api/contracts.ts';
+import type { ParticipantSessionStatus } from '../src/shared/roomRouting.ts';
 import { buildMyCatPath } from '../src/shared/channelPaths.ts';
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
 import {

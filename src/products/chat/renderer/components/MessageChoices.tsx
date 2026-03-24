@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type {
   ChatMessageChoice,
   ChatMessageChoiceResponse,
-} from '../../../../shared/app-shell.js';
+} from '../../api/contracts.js';
 import { buildChoiceResponseBody } from '../../shared/messageChoices.js';
 
 export interface MessageChoicesSubmitInput {

@@ -4,6 +4,14 @@ import type {
   ChannelActivationResult,
   ChannelDispatchResult,
   MessageUsageSummary,
+  SendChannelMessageInput,
+  ChatChannelCat,
+  ChatChannelState,
+  ChatChannelView,
+  ChatMessage,
+  ChatState,
+} from '../api/contracts.js';
+import type {
   ParticipantSessionStatus,
   RoomRouteResolution,
   RoomRoutingCheckpoint,
@@ -25,13 +33,7 @@ import type {
   RoomWakeReason,
   RoomWakeRequest,
   RoomWakeTrigger,
-  SendChannelMessageInput,
-  ChatChannelCat,
-  ChatChannelState,
-  ChatChannelView,
-  ChatMessage,
-  ChatState,
-} from '../../../shared/app-shell.js';
+} from '../../../shared/roomRouting.js';
 import type {
   CompanionBoxStore,
 } from './companionBoxStore.js';

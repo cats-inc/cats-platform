@@ -1,4 +1,5 @@
-import type { AppShellPayload, RoomRoutingState } from '../../../shared/app-shell.js';
+import type { AppShellPayload } from '../api/contracts.js';
+import type { RoomRoutingState } from '../../../shared/roomRouting.js';
 import { resolveRoomRoutingState } from '../state/roomRouting.js';
 import {
   resolveChatLifecycleState,

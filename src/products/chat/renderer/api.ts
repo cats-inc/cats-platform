@@ -7,7 +7,7 @@ import type {
   SendChannelMessageInput,
   SendChannelMessageResponse,
   UpdateGlobalOrchestratorInput,
-} from '../../../shared/app-shell';
+} from '../api/contracts';
 import type {
   CatsCoreState,
   CoreApprovalDecisionAction,

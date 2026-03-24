@@ -4,11 +4,20 @@ import path from 'node:path';
 
 import type {
   ChannelCatAssignment,
-  ExecutionTargetSummary,
   GlobalOrchestratorSummary,
-  MemoryCheckpointSummary,
   ParticipantExecutionLease,
   ParticipantExecutionState,
+  ChatCapabilities,
+  ChatChannelState,
+  ChatMessage,
+  ChatCat,
+  ChatState,
+} from '../api/contracts.js';
+import type {
+  ExecutionTargetSummary,
+  MemoryCheckpointSummary,
+} from '../../../core/types.js';
+import type {
   RoomRouteResolution,
   RoomRoutingCheckpoint,
   RoomRoutingDispatch,
@@ -20,12 +29,7 @@ import type {
   RoomWorkflowTargetState,
   RoomWorkflowTurn,
   RoomWakeRequest,
-  ChatCapabilities,
-  ChatChannelState,
-  ChatMessage,
-  ChatCat,
-  ChatState,
-} from '../../../shared/app-shell.js';
+} from '../../../shared/roomRouting.js';
 import type {
   ArchiveMetadataRecord,
   BotBindingRecord,

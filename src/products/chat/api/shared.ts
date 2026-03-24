@@ -10,7 +10,7 @@ import type {
   OrchestratorPlannerSurface,
 } from '../../../platform/orchestration/contracts.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
-import { escapeContentDispositionFilename } from '../../../shared/channelPaths.js';
+import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import {
   appendMessage,
