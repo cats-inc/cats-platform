@@ -201,6 +201,23 @@ test('store consumes dedicated room-routing snapshot normalization instead of de
   assert.match(snapshotModule, /export function normalizeRoomRouting/u);
 });
 
+test('store consumes dedicated core snapshot normalization instead of defining it inline', async () => {
+  const storeSource = await readFile(
+    new URL('../src/products/chat/state/store.ts', import.meta.url),
+    'utf8',
+  );
+  const snapshotModule = await readFile(
+    new URL('../src/products/chat/state/coreSnapshot.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(storeSource, /coreSnapshot\.js/u);
+  assert.doesNotMatch(storeSource, /function normalizeCoreTask\(/u);
+  assert.doesNotMatch(storeSource, /function buildPersistedChatSnapshot\(/u);
+  assert.match(snapshotModule, /export function normalizeCoreTask/u);
+  assert.match(snapshotModule, /export function buildPersistedChatSnapshot/u);
+});
+
 test('platform consumes room-routing types from the shared roomRouting module', async () => {
   const orchestratorContracts = await readFile(
     new URL('../src/platform/orchestration/contracts.ts', import.meta.url),
