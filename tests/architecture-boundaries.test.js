@@ -605,6 +605,42 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
   assert.match(transportPanelSource, /No Telegram inbox bindings have received traffic yet\./u);
 });
 
+test('renderer styles compose dedicated partials instead of keeping the full stylesheet inline', async () => {
+  const stylesIndexSource = await readFile(
+    new URL('../src/products/chat/renderer/styles.css', import.meta.url),
+    'utf8',
+  );
+  const baseStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/base.css', import.meta.url),
+    'utf8',
+  );
+  const settingsStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/settings.css', import.meta.url),
+    'utf8',
+  );
+  const chatStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/chat.css', import.meta.url),
+    'utf8',
+  );
+  const extraStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/extras.css', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(stylesIndexSource, /@import '\.\/styles\/base\.css';/u);
+  assert.match(stylesIndexSource, /@import '\.\/styles\/settings\.css';/u);
+  assert.match(stylesIndexSource, /@import '\.\/styles\/chat\.css';/u);
+  assert.match(stylesIndexSource, /@import '\.\/styles\/extras\.css';/u);
+  assert.doesNotMatch(stylesIndexSource, /\.tooltipPortal/u);
+  assert.doesNotMatch(stylesIndexSource, /\.settingsShell/u);
+  assert.doesNotMatch(stylesIndexSource, /\.channelWorkspace/u);
+  assert.doesNotMatch(stylesIndexSource, /\.myCatsSection/u);
+  assert.match(baseStylesSource, /\.tooltipPortal/u);
+  assert.match(settingsStylesSource, /\.settingsShell/u);
+  assert.match(chatStylesSource, /\.channelWorkspace/u);
+  assert.match(extraStylesSource, /\.myCatsSection/u);
+});
+
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
     new URL('../src/products/chat/renderer/api.ts', import.meta.url),
