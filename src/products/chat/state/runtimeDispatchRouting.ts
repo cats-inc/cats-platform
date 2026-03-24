@@ -47,20 +47,24 @@ import {
   resolveRoomRoutingState,
 } from './roomRouting.js';
 import {
-  addWorkflowCheckpoint,
-  appendWorkflowEvent,
-  createPendingDispatch,
-  createWorkflowEvent,
-  queueWorkflowTarget,
-  resolveWakeReasonFromRoutingTrigger,
   resolveWorkflowBranchStrategy,
   resolveWorkflowHandoffReason,
   type DispatchFrame,
   type DispatchRequest,
   type TargetResolution,
+} from './roomRoutingRuntime.js';
+import {
+  addWorkflowCheckpoint,
+  appendWorkflowEvent,
+  createPendingDispatch,
+  createWorkflowEvent,
+  queueWorkflowTarget,
   updateDispatch,
   updateWorkflowTarget,
-} from './roomRoutingRuntime.js';
+} from './roomRoutingWorkflow.js';
+import {
+  resolveWakeReasonFromRoutingTrigger,
+} from './roomRoutingWake.js';
 import {
   type RuntimeTransportContext,
 } from './runtimeTargeting.js';

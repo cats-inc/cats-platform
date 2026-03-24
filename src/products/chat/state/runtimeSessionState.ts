@@ -22,8 +22,8 @@ import {
   setChannelStatus,
 } from './model.js';
 import type { RoutingTarget } from './mentionRouter.js';
-import { createRoomRoutingSnapshot } from './roomRoutingRuntime.js';
 import { resolveRoomRoutingState } from './roomRouting.js';
+import { createRoomRoutingSnapshot } from './roomRoutingWake.js';
 import type { RuntimeSessionInfo } from '../../../platform/runtime/client.js';
 
 export function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionStatus {

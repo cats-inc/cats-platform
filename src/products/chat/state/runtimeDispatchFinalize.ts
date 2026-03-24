@@ -17,7 +17,7 @@ import {
   createWorkflowEvent,
   deriveTerminalTurnStatuses,
   finalizeWorkflowTurn,
-} from './roomRoutingRuntime.js';
+} from './roomRoutingWorkflow.js';
 import {
   applyRoomRoutingSnapshot,
 } from './runtimeSessionState.js';

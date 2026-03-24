@@ -26,18 +26,20 @@ import {
   resolveRoomWorkflowState,
 } from './roomRouting.js';
 import {
-  addWorkflowCheckpoint,
-  appendWorkflowEvent,
-  createRoutingOutcome,
-  createWorkflowEvent,
-  createWorkflowTurn,
-  finalizeWorkflowTurn,
   mergeUnresolvedMentions,
   resolveTargets,
   type TargetResolution,
   workflowShapeForTargets,
   workflowStageIdForTrigger,
 } from './roomRoutingRuntime.js';
+import {
+  addWorkflowCheckpoint,
+  appendWorkflowEvent,
+  createRoutingOutcome,
+  createWorkflowEvent,
+  createWorkflowTurn,
+  finalizeWorkflowTurn,
+} from './roomRoutingWorkflow.js';
 import { resolveChoiceResponseTarget } from './runtimeTargeting.js';
 import {
   applyRoomRoutingSnapshot,

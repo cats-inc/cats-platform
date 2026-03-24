@@ -25,7 +25,7 @@ import {
 } from './model.js';
 import { resolveRoomDefaultRoutingTarget, type RoutingTarget } from './mentionRouter.js';
 import { resolveRoomRoutingState } from './roomRouting.js';
-import { createRecordedWakeRequest } from './roomRoutingRuntime.js';
+import { createRecordedWakeRequest } from './roomRoutingWake.js';
 import { formatSessionStartedMessage } from './runtimeMessages.js';
 import {
   resolveOrchestratorExecutionTarget,

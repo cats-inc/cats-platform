@@ -14,14 +14,18 @@ import type { ChatStore } from './store.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import {
+  type DispatchRequest,
+} from './roomRoutingRuntime.js';
+import {
   addWorkflowCheckpoint,
   appendWorkflowEvent,
   createWorkflowEvent,
-  resolveWakeReasonFromRoutingTrigger,
-  type DispatchRequest,
   updateDispatch,
   updateWorkflowTarget,
-} from './roomRoutingRuntime.js';
+} from './roomRoutingWorkflow.js';
+import {
+  resolveWakeReasonFromRoutingTrigger,
+} from './roomRoutingWake.js';
 import {
   ensureChannelMarkedActive,
   toParticipantRef,

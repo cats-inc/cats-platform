@@ -187,15 +187,50 @@ test('runtime dispatch routing consumes dedicated room-routing workflow helpers 
     'utf8',
   );
   const workflowModule = await readFile(
-    new URL('../src/products/chat/state/roomRoutingRuntime.ts', import.meta.url),
+    new URL('../src/products/chat/state/roomRoutingWorkflow.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(dispatchRouting, /roomRoutingRuntime\.js/u);
+  assert.match(dispatchRouting, /roomRoutingWorkflow\.js/u);
   assert.doesNotMatch(dispatchRouting, /function createWorkflowTurn\(/u);
   assert.doesNotMatch(dispatchRouting, /function addWorkflowCheckpoint\(/u);
   assert.match(workflowModule, /export function createWorkflowTurn/u);
   assert.match(workflowModule, /export function addWorkflowCheckpoint/u);
+});
+
+test('room routing runtime keeps routing contracts while workflow and wake helpers live in dedicated modules', async () => {
+  const runtimeModule = await readFile(
+    new URL('../src/products/chat/state/roomRoutingRuntime.ts', import.meta.url),
+    'utf8',
+  );
+  const workflowModule = await readFile(
+    new URL('../src/products/chat/state/roomRoutingWorkflow.ts', import.meta.url),
+    'utf8',
+  );
+  const wakeModule = await readFile(
+    new URL('../src/products/chat/state/roomRoutingWake.ts', import.meta.url),
+    'utf8',
+  );
+  const sessionWakeModule = await readFile(
+    new URL('../src/products/chat/state/runtimeSessionWake.ts', import.meta.url),
+    'utf8',
+  );
+  const sessionStateModule = await readFile(
+    new URL('../src/products/chat/state/runtimeSessionState.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(runtimeModule, /export interface DispatchRequest/u);
+  assert.match(runtimeModule, /export function resolveTargets/u);
+  assert.doesNotMatch(runtimeModule, /export function createWorkflowTurn/u);
+  assert.doesNotMatch(runtimeModule, /export function createRecordedWakeRequest/u);
+  assert.doesNotMatch(runtimeModule, /export function createRoomRoutingSnapshot/u);
+  assert.match(workflowModule, /export function createWorkflowTurn/u);
+  assert.match(workflowModule, /export function finalizeWorkflowTurn/u);
+  assert.match(wakeModule, /export function createRecordedWakeRequest/u);
+  assert.match(wakeModule, /export function createRoomRoutingSnapshot/u);
+  assert.match(sessionWakeModule, /roomRoutingWake\.js/u);
+  assert.match(sessionStateModule, /roomRoutingWake\.js/u);
 });
 
 test('runtime dispatch routing consumes dedicated turn bootstrap helpers instead of defining initial turn setup inline', async () => {

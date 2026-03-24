@@ -12,17 +12,19 @@ import type {
 import { appendMessage, setChannelCatLease, setChannelOrchestratorLease } from './model.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
 import {
-  addWorkflowCheckpoint,
-  appendWorkflowEvent,
-  createWorkflowEvent,
   mergeUnresolvedMentions,
   resolveTargets,
   resolveWorkflowBranchStrategy,
   type DispatchFrame,
-  updateDispatch,
-  updateWorkflowTarget,
   workflowShapeForTargets,
 } from './roomRoutingRuntime.js';
+import {
+  addWorkflowCheckpoint,
+  appendWorkflowEvent,
+  createWorkflowEvent,
+  updateDispatch,
+  updateWorkflowTarget,
+} from './roomRoutingWorkflow.js';
 import type { DispatchExecution } from './runtimeDispatchExecution.js';
 import { resolveExecutionMetadataForTarget } from './runtimeTargeting.js';
 import {
