@@ -923,6 +923,18 @@ test('core route modules consume dedicated parsing and error helpers instead of 
     new URL('../src/core/apiRecordRoutes.ts', import.meta.url),
     'utf8',
   );
+  const recordPlanningRoutesSource = await readFile(
+    new URL('../src/core/apiRecordPlanningRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const recordExecutionRoutesSource = await readFile(
+    new URL('../src/core/apiRecordExecutionRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const recordGovernanceRoutesSource = await readFile(
+    new URL('../src/core/apiRecordGovernanceRoutes.ts', import.meta.url),
+    'utf8',
+  );
   const taskRoutesSource = await readFile(
     new URL('../src/core/apiTaskRoutes.ts', import.meta.url),
     'utf8',
@@ -935,11 +947,16 @@ test('core route modules consume dedicated parsing and error helpers instead of 
   assert.match(controlApprovalsSource, /apiShared\.js/u);
   assert.match(controlOperatorActionsSource, /apiShared\.js/u);
   assert.match(controlOwnerProfileSource, /apiShared\.js/u);
-  assert.match(recordRoutesSource, /apiShared\.js/u);
+  assert.match(recordPlanningRoutesSource, /apiShared\.js/u);
+  assert.match(recordExecutionRoutesSource, /apiShared\.js/u);
+  assert.match(recordGovernanceRoutesSource, /apiShared\.js/u);
   assert.match(taskRoutesSource, /apiShared\.js/u);
   assert.match(controlRoutesSource, /apiControlApprovals\.js/u);
   assert.match(controlRoutesSource, /apiControlOperatorActions\.js/u);
   assert.match(controlRoutesSource, /apiControlOwnerProfile\.js/u);
+  assert.match(recordRoutesSource, /apiRecordPlanningRoutes\.js/u);
+  assert.match(recordRoutesSource, /apiRecordExecutionRoutes\.js/u);
+  assert.match(recordRoutesSource, /apiRecordGovernanceRoutes\.js/u);
   assert.doesNotMatch(controlApprovalsSource, /function readRequiredString\(/u);
   assert.doesNotMatch(controlOperatorActionsSource, /function readObjectBody\(/u);
   assert.doesNotMatch(controlOwnerProfileSource, /function readOptionalString\(/u);
@@ -947,6 +964,9 @@ test('core route modules consume dedicated parsing and error helpers instead of 
   assert.doesNotMatch(controlRoutesSource, /async function handleCoreOperatorActionWrite\(/u);
   assert.doesNotMatch(controlRoutesSource, /async function handleOwnerProfileWrite\(/u);
   assert.doesNotMatch(recordRoutesSource, /function readObjectBody\(/u);
+  assert.doesNotMatch(recordPlanningRoutesSource, /function readObjectBody\(/u);
+  assert.doesNotMatch(recordExecutionRoutesSource, /function readObjectBody\(/u);
+  assert.doesNotMatch(recordGovernanceRoutesSource, /function readObjectBody\(/u);
   assert.doesNotMatch(taskRoutesSource, /function handleCoreError\(/u);
   assert.match(sharedModule, /export function readRequiredString/u);
   assert.match(sharedModule, /export async function readObjectBody/u);
@@ -976,6 +996,18 @@ test('core api consumes dedicated control route modules and api contracts instea
   );
   const recordRoutesSource = await readFile(
     new URL('../src/core/apiRecordRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const recordPlanningRoutesSource = await readFile(
+    new URL('../src/core/apiRecordPlanningRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const recordExecutionRoutesSource = await readFile(
+    new URL('../src/core/apiRecordExecutionRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const recordGovernanceRoutesSource = await readFile(
+    new URL('../src/core/apiRecordGovernanceRoutes.ts', import.meta.url),
     'utf8',
   );
   const taskRoutesSource = await readFile(
@@ -1014,7 +1046,21 @@ test('core api consumes dedicated control route modules and api contracts instea
   assert.match(controlOwnerProfileSource, /export async function routeCoreOwnerProfileApi/u);
   assert.match(recordRoutesSource, /export async function routeCoreRecordApi/u);
   assert.match(recordRoutesSource, /apiTypes\.js/u);
-  assert.match(recordRoutesSource, /apiConstants\.js/u);
+  assert.match(recordRoutesSource, /apiRecordPlanningRoutes\.js/u);
+  assert.match(recordRoutesSource, /apiRecordExecutionRoutes\.js/u);
+  assert.match(recordRoutesSource, /apiRecordGovernanceRoutes\.js/u);
+  assert.doesNotMatch(recordRoutesSource, /async function handleCoreProjectWrite\(/u);
+  assert.doesNotMatch(recordRoutesSource, /async function handleCoreRunWrite\(/u);
+  assert.doesNotMatch(recordRoutesSource, /async function handleCoreApprovalBindingWrite\(/u);
+  assert.match(recordPlanningRoutesSource, /export async function routeCorePlanningRecordApi/u);
+  assert.match(recordPlanningRoutesSource, /apiConstants\.js/u);
+  assert.match(recordPlanningRoutesSource, /async function handleCoreProjectWrite\(/u);
+  assert.match(recordExecutionRoutesSource, /export async function routeCoreExecutionRecordApi/u);
+  assert.match(recordExecutionRoutesSource, /apiConstants\.js/u);
+  assert.match(recordExecutionRoutesSource, /async function handleCoreRunWrite\(/u);
+  assert.match(recordGovernanceRoutesSource, /export async function routeCoreGovernanceRecordApi/u);
+  assert.match(recordGovernanceRoutesSource, /apiConstants\.js/u);
+  assert.match(recordGovernanceRoutesSource, /async function handleCoreApprovalBindingWrite\(/u);
   assert.match(taskRoutesSource, /export async function routeCoreTaskApi/u);
   assert.match(taskRoutesSource, /apiTypes\.js/u);
   assert.match(taskRoutesSource, /apiConstants\.js/u);
@@ -1059,13 +1105,34 @@ test('core model composes dedicated record write modules instead of defining rec
     new URL('../src/core/modelRecords.ts', import.meta.url),
     'utf8',
   );
+  const planningRecordModuleSource = await readFile(
+    new URL('../src/core/modelPlanningRecords.ts', import.meta.url),
+    'utf8',
+  );
+  const executionRecordModuleSource = await readFile(
+    new URL('../src/core/modelExecutionRecords.ts', import.meta.url),
+    'utf8',
+  );
+  const governanceRecordModuleSource = await readFile(
+    new URL('../src/core/modelGovernanceRecords.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(modelSource, /modelRecords\.js/u);
   assert.doesNotMatch(modelSource, /export function upsertCoreProject\(/u);
   assert.doesNotMatch(modelSource, /export function upsertCoreRun\(/u);
   assert.doesNotMatch(modelSource, /export function appendCoreActivity\(/u);
-  assert.match(recordModuleSource, /export function upsertCoreProject/u);
-  assert.match(recordModuleSource, /export function appendCoreActivity/u);
+  assert.match(recordModuleSource, /modelPlanningRecords\.js/u);
+  assert.match(recordModuleSource, /modelExecutionRecords\.js/u);
+  assert.match(recordModuleSource, /modelGovernanceRecords\.js/u);
+  assert.doesNotMatch(recordModuleSource, /export function upsertCoreProject\(/u);
+  assert.doesNotMatch(recordModuleSource, /export function appendCoreActivity\(/u);
+  assert.doesNotMatch(recordModuleSource, /export function upsertCoreApprovalBinding\(/u);
+  assert.match(planningRecordModuleSource, /export function upsertCoreProject/u);
+  assert.match(planningRecordModuleSource, /export function upsertCoreArtifact/u);
+  assert.match(executionRecordModuleSource, /export function upsertCoreRun/u);
+  assert.match(executionRecordModuleSource, /export function appendCoreActivity/u);
+  assert.match(governanceRecordModuleSource, /export function upsertCoreApprovalBinding/u);
 });
 
 test('core model composes dedicated task-control and memory-binding modules instead of defining them inline', async () => {
