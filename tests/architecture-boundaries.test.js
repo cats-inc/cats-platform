@@ -162,6 +162,71 @@ test('chat operator loop composes dedicated metadata and action helper modules',
   assert.match(actionsModule, /export function buildActivityFeed/u);
 });
 
+test('chat resource routes compose dedicated preference, orchestrator, and channel modules', async () => {
+  const resourceRoutesModule = await readFile(
+    new URL('../src/products/chat/api/resourceRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const preferenceModule = await readFile(
+    new URL('../src/products/chat/api/resourcePreferenceRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const orchestratorModule = await readFile(
+    new URL('../src/products/chat/api/resourceOrchestratorRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const channelModule = await readFile(
+    new URL('../src/products/chat/api/resourceChannelRoutes.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(resourceRoutesModule, /resourcePreferenceRoutes\.js/u);
+  assert.match(resourceRoutesModule, /resourceOrchestratorRoutes\.js/u);
+  assert.match(resourceRoutesModule, /resourceChannelRoutes\.js/u);
+  assert.doesNotMatch(resourceRoutesModule, /handleRestGetPreferences/u);
+  assert.doesNotMatch(resourceRoutesModule, /handleRestSendMessage/u);
+  assert.match(preferenceModule, /export async function routeChatPreferenceResourceApi/u);
+  assert.match(orchestratorModule, /export async function routeChatOrchestratorResourceApi/u);
+  assert.match(channelModule, /export async function routeChatChannelResourceApi/u);
+  assert.doesNotMatch(channelModule, /handleRestAssignCat/u);
+  assert.doesNotMatch(channelModule, /handleRestGetChat/u);
+});
+
+test('chat memory routes compose dedicated owner, channel, cat, and shared memory modules', async () => {
+  const memoryRoutesModule = await readFile(
+    new URL('../src/products/chat/api/memoryRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const sharedModule = await readFile(
+    new URL('../src/products/chat/api/memoryRouteShared.ts', import.meta.url),
+    'utf8',
+  );
+  const catModule = await readFile(
+    new URL('../src/products/chat/api/memoryCatRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const ownerModule = await readFile(
+    new URL('../src/products/chat/api/memoryOwnerRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const channelModule = await readFile(
+    new URL('../src/products/chat/api/memoryChannelRoutes.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(memoryRoutesModule, /memoryOwnerRoutes\.js/u);
+  assert.match(memoryRoutesModule, /memoryChannelRoutes\.js/u);
+  assert.match(memoryRoutesModule, /memoryCatRoutes\.js/u);
+  assert.doesNotMatch(memoryRoutesModule, /handleCreateCatMemory/u);
+  assert.doesNotMatch(memoryRoutesModule, /handleFlushCanonicalOwnerMemory/u);
+  assert.match(sharedModule, /export function validateCategory/u);
+  assert.match(sharedModule, /export async function trySyncCanonicalCatMemory/u);
+  assert.match(catModule, /export async function routeCatMemoryApi/u);
+  assert.match(ownerModule, /export async function routeOwnerMemoryApi/u);
+  assert.match(channelModule, /export async function routeChannelMemoryApi/u);
+  assert.doesNotMatch(sharedModule, /validateSubjectType/u);
+});
+
 test('shared room-routing contracts are extracted from chat api contracts', async () => {
   const chatContracts = await readFile(
     new URL('../src/products/chat/api/contracts.ts', import.meta.url),
