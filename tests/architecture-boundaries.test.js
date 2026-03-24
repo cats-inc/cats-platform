@@ -622,6 +622,18 @@ test('renderer styles compose dedicated partials instead of keeping the full sty
     new URL('../src/products/chat/renderer/styles/chat.css', import.meta.url),
     'utf8',
   );
+  const chatWorkspaceStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/chat-workspace.css', import.meta.url),
+    'utf8',
+  );
+  const chatComposerStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/chat-composer.css', import.meta.url),
+    'utf8',
+  );
+  const chatSetupStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/chat-setup.css', import.meta.url),
+    'utf8',
+  );
   const extraStylesSource = await readFile(
     new URL('../src/products/chat/renderer/styles/extras.css', import.meta.url),
     'utf8',
@@ -633,11 +645,18 @@ test('renderer styles compose dedicated partials instead of keeping the full sty
   assert.match(stylesIndexSource, /@import '\.\/styles\/extras\.css';/u);
   assert.doesNotMatch(stylesIndexSource, /\.tooltipPortal/u);
   assert.doesNotMatch(stylesIndexSource, /\.settingsShell/u);
-  assert.doesNotMatch(stylesIndexSource, /\.channelWorkspace/u);
   assert.doesNotMatch(stylesIndexSource, /\.myCatsSection/u);
+  assert.match(chatStylesSource, /@import '\.\/chat-workspace\.css';/u);
+  assert.match(chatStylesSource, /@import '\.\/chat-composer\.css';/u);
+  assert.match(chatStylesSource, /@import '\.\/chat-setup\.css';/u);
+  assert.doesNotMatch(chatStylesSource, /\.channelWorkspace/u);
+  assert.doesNotMatch(chatStylesSource, /\.composerPlusMenu/u);
+  assert.doesNotMatch(chatStylesSource, /\.setupWizard/u);
   assert.match(baseStylesSource, /\.tooltipPortal/u);
   assert.match(settingsStylesSource, /\.settingsShell/u);
-  assert.match(chatStylesSource, /\.channelWorkspace/u);
+  assert.match(chatWorkspaceStylesSource, /\.channelWorkspace/u);
+  assert.match(chatComposerStylesSource, /\.composerPlusMenu/u);
+  assert.match(chatSetupStylesSource, /\.setupWizard/u);
   assert.match(extraStylesSource, /\.myCatsSection/u);
 });
 

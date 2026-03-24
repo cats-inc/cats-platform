@@ -1,0 +1,86 @@
+/* Setup wizard */
+
+.setupWizard {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  width: min(100%, 460px);
+}
+
+.setupCard {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  padding: 32px;
+}
+
+.setupCard h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.setupCard .heroNote {
+  margin-top: -8px;
+}
+
+.setupStepIndicator {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.setupDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.setupDotActive {
+  background: var(--accent);
+}
+
+.setupActions {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.setupBackButton {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.setupBackButton:hover {
+  background: var(--panel-hover);
+}
+
+.setupRuntimeStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .draftGreeting h1 {
+    font-size: clamp(1.2rem, 4vw, 1.5rem);
+  }
+
+  .welcomeShell h1,
+  .viewIntro h1,
+  .loadingPanel h1,
+  .errorPanel h1 {
+    font-size: clamp(1.2rem, 4vw, 1.5rem);
+  }
+
+  .setupCard {
+    padding: 20px;
+  }
+}
+
