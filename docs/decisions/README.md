@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [038-separate-room-owned-workspaces-from-session-owned-sandboxes](./038-separate-room-owned-workspaces-from-session-owned-sandboxes.md) | Separate room-owned workspaces from session-owned sandboxes | Proposed | 2026-03-25 |
 | [031-separate-composer-lead-control-from-boss-orchestration-authority](./031-separate-composer-lead-control-from-boss-orchestration-authority.md) | Separate composer lead control from Boss orchestration authority | Draft (Pending Review) | 2026-03-23 |
 | [030-own-per-cat-companion-boxes-in-product-and-hydrate-runtime-sessions](./030-own-per-cat-companion-boxes-in-product-and-hydrate-runtime-sessions.md) | Own per-Cat companion boxes in product and hydrate runtime sessions | Draft (Pending Review) | 2026-03-23 |
 | [029-automate-tunnel-and-telegram-webhook-registration](./029-automate-tunnel-and-telegram-webhook-registration.md) | Adopt polling-first Telegram setup with optional public ingress helpers | Accepted | 2026-03-23 |
@@ -80,6 +81,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-03-23*
+*Last updated: 2026-03-25*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

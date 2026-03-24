@@ -1,0 +1,249 @@
+# SPEC-034: Room-Owned Workspace Bootstrap and Ownership Semantics
+
+Status: Draft (Pending Review)
+
+## Summary
+
+`cats` must stop inferring a room's shared workspace from whichever participant
+session wakes first.
+
+A collaborative room needs an explicit room-owned workspace contract:
+
+- if the operator selected a local folder, that folder becomes the room's
+  shared workspace
+- if the operator did not select a folder, the product bootstraps a managed
+  room workspace before starting the first participant session
+- session-owned isolated sandboxes remain private and must never be promoted
+  into room-shared authority
+
+This spec defines the state model, wake flow, and cleanup rules needed to keep
+`shared` and `isolated` semantics honest for Boss Cat and multi-Cat rooms.
+
+## Goals
+
+- Make workspace ownership explicit at the room level instead of inferring it
+  from participant session state.
+- Preserve the meaning of `isolated` as private session scope.
+- Allow multi-Cat collaboration on local files even when the operator did not
+  preselect a folder.
+- Remove wake-order dependence from collaborative room filesystem behavior.
+- Keep the product/runtime boundary compatible with
+  [ADR-001](../decisions/001-use-cats-runtime-boundary.md).
+
+## Non-Goals
+
+- Designing per-file locking or merge-conflict resolution
+- Defining Git, PR, or delivery-governance policy for room workspaces
+- Replacing isolated sandboxes for non-room or diagnostic flows
+- Standardizing the exact `cats-runtime` HTTP route shape in this document
+- Solving cross-machine workspace synchronization
+
+## User Stories
+
+- As an operator, I want Cats in the same room to collaborate on the same local
+  files, so room-based work feels real rather than simulated.
+- As an operator, I want a room without a preselected folder to still gain a
+  shared writable workspace, so I can start working before choosing a repo.
+- As a Cat, I want `isolated` to mean my workspace is private, so my runtime
+  semantics match what the product claims.
+- As a maintainer, I want room workspace lifecycle to survive participant
+  resets and cleanup, so one Cat cannot accidentally delete another Cat's
+  shared working area.
+
+## Requirements
+
+### Functional Requirements
+
+- A collaborative room shall have at most one authoritative room workspace at a
+  time.
+- Product state shall distinguish:
+  - operator-selected workspace intent
+  - resolved room-owned shared workspace
+  - participant session runtime cwd
+- A participant session's private isolated sandbox shall never be promoted into
+  room-owned shared workspace authority.
+- If a room has an operator-selected folder, the product shall resolve that
+  folder into a room-owned shared workspace before spawning the first
+  participant session.
+- If a room does not have an operator-selected folder but needs collaborative
+  runtime sessions, the product shall bootstrap a managed room-owned workspace
+  before spawning the first participant session.
+- The first participant in a collaborative room without a selected folder shall
+  start against the room-owned managed workspace with shared semantics; it
+  shall not start as isolated and then be implicitly upgraded.
+- Additional participants in the same room shall start against the same
+  room-owned workspace from their first spawned session.
+- Room wake flows for Boss Cat, direct Cat routing, and newly assigned Cats
+  shall all resolve room workspace first and participant session second.
+- The product shall no longer use `channel.chatCwd` as an ambiguous field that
+  can mean both:
+  - room-shared workspace cwd
+  - session-private runtime cwd
+- Participant leases may continue to store their own `cwd`, but that value
+  shall be treated as participant execution state only, not room workspace
+  authority.
+- Room workspace state shall support at least these statuses:
+  - `unbound`
+  - `preparing`
+  - `ready`
+  - `error`
+- Room workspace state shall record whether the resolved workspace is:
+  - `user_selected`
+  - `managed_room`
+- Resetting, closing, or cleaning up one participant session shall not delete a
+  managed room workspace while the room still depends on it.
+- Deleting the room or explicitly clearing room workspace state shall own the
+  cleanup of managed room workspaces.
+
+### Non-Functional Requirements
+
+- Workspace semantics should be order-independent: Cat 1 then Cat 2 must behave
+  the same as Cat 2 then Cat 1.
+- Workspace semantics should be honest in product language: `isolated` must not
+  silently become public later.
+- The first slice should preserve existing room routing concepts where possible
+  and minimize leakage of runtime-only implementation details into the product
+  model.
+- The model should allow a later `cats-runtime` bootstrap API without forcing
+  that API shape now.
+
+## Design Overview
+
+```text
+Operator selected folder?
+  yes
+    -> resolve room workspace from user folder
+    -> Cat 1 shared into room workspace
+    -> Cat 2 shared into same room workspace
+  no
+    -> bootstrap managed room workspace
+    -> Cat 1 shared into managed room workspace
+    -> Cat 2 shared into same managed room workspace
+
+Session-owned isolated sandbox
+  -> private to one session
+  -> never promoted into room workspace authority
+```
+
+### Proposed State Model
+
+`repoPath` may remain as the operator-facing input in the first compatibility
+slice, but it should stop being the only room-level workspace field.
+
+The room should gain an explicit resolved workspace record:
+
+```ts
+interface ChatRoomWorkspaceState {
+  owner: 'room';
+  status: 'unbound' | 'preparing' | 'ready' | 'error';
+  kind: 'user_selected' | 'managed_room' | null;
+  requestedCwd: string | null;
+  resolvedCwd: string | null;
+  runtimeManaged: boolean;
+  lastError: string | null;
+}
+```
+
+State responsibilities:
+
+- `requestedCwd`
+  - operator intent
+  - derived from the current `repoPath` in the first slice
+- `resolvedCwd`
+  - authoritative shared cwd for participant session spawn
+- participant lease `cwd`
+  - actual runtime cwd for one participant session
+  - not authoritative for the room
+
+### `channel.chatCwd` Direction
+
+`channel.chatCwd` should be deprecated and replaced by explicit room workspace
+state.
+
+The current field is overloaded because it can mean:
+
+- a room-shared workspace selected or accepted by the operator
+- a runtime-returned cwd from one participant session
+
+That ambiguity enables the bug where a session-owned isolated sandbox path can
+be promoted into room-wide shared authority.
+
+In the first compatibility slice:
+
+- `repoPath` can remain
+- `chatCwd` should stop being written from `session.cwd`
+- session spawn should resolve from `roomWorkspace.resolvedCwd`
+
+### Participant Spawn Flow
+
+#### Flow A: Room with operator-selected folder
+
+1. The room records `requestedCwd` from the selected folder.
+2. Before the first participant session spawn, the product resolves:
+   - `roomWorkspace.status = ready`
+   - `roomWorkspace.kind = user_selected`
+   - `roomWorkspace.resolvedCwd = requestedCwd`
+3. Cat 1, Cat 2, and later participants all spawn with shared semantics
+   against `roomWorkspace.resolvedCwd`.
+
+#### Flow B: Room without operator-selected folder
+
+1. The room enters `roomWorkspace.status = preparing`.
+2. The product bootstraps a managed room workspace owned by the room.
+3. The room records:
+   - `roomWorkspace.kind = managed_room`
+   - `roomWorkspace.runtimeManaged = true`
+   - `roomWorkspace.resolvedCwd = <managed room cwd>`
+   - `roomWorkspace.status = ready`
+4. Cat 1 starts with shared semantics against that managed room workspace.
+5. Cat 2 and later participants use the same room workspace from first spawn.
+
+#### Flow C: Session-private isolated sandbox
+
+This remains valid for non-room-private flows, diagnostics, or future product
+surfaces that intentionally need session-private scratch state.
+
+Rules:
+
+- isolated sandbox ownership is `session`, not `room`
+- isolated sandbox cwd may appear in participant session metadata
+- isolated sandbox cwd must not be copied into room workspace state
+
+### Cleanup and Reset Rules
+
+- participant close/reset should clean up only participant-owned resources
+- managed room workspace cleanup should be owned by room lifecycle
+- if the first participant leaves, the room workspace remains authoritative for
+  later participants until the room explicitly clears it
+- if a room-selected folder changes, the old room workspace authority must be
+  replaced explicitly rather than drifting through participant wake order
+
+## Dependencies
+
+- [ADR-001](../decisions/001-use-cats-runtime-boundary.md)
+- [ADR-017](../decisions/017-allow-direct-cat-chat-and-move-routing-into-system-layer.md)
+- [ADR-024](../decisions/024-separate-explicit-mentions-from-dynamic-room-workflow.md)
+- [SPEC-016](./SPEC-016-chat-session-sleep-wake-lifecycle.md)
+- [SPEC-018](./SPEC-018-direct-cat-chat-and-conversation-routing-layer.md)
+- [SPEC-032](./SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
+
+## Open Questions
+
+- Should managed room workspaces be created by `cats` host code, by a new
+  `cats-runtime` bootstrap route, or by either behind one product seam?
+- Should a room-managed workspace survive process restart until room deletion,
+  or should it be lazily rehydrated from persisted room metadata?
+- What UI language should distinguish `user_selected` versus `managed_room`
+  workspaces without exposing implementation jargon?
+
+## References
+
+- [ADR-038](../decisions/038-separate-room-owned-workspaces-from-session-owned-sandboxes.md)
+- [Architecture](../architecture.md)
+- [API](../api.md)
+- `src/products/chat/state/runtimeSessionWake.ts`
+- `src/products/chat/state/runtimeSessionState.ts`
+
+---
+
+*Last updated: 2026-03-25*

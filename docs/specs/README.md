@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-034](./SPEC-034-room-owned-workspace-bootstrap-and-ownership.md) | Room-Owned Workspace Bootstrap and Ownership Semantics | Draft (Pending Review) | - |
 | [SPEC-031](./SPEC-031-built-in-memory-extraction-durable-sync-and-retrieval-context.md) | Built-In Memory Extraction, Durable Sync, and Retrieval Context | Draft (Pending Review) | - |
 | [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md) | Composer-Scoped Lead Cat and Boss Auto-Helper Semantics | Draft (Pending Review) | - |
 | [SPEC-029](./SPEC-029-companion-boxes-ingestion-and-response-profiles.md) | Companion Boxes, Ingestion, and Response Profiles | In Progress (First Slice Landed) | [PLAN-019](../plans/PLAN-019-companion-box-sidecar-and-session-hydration.md) |
@@ -90,6 +91,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-25*
 
 *See also: [plans/](../plans/) for implementation plans*
