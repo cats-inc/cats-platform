@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import type { AppConfig } from '../../config.js';
 import { routeCoreApi } from '../../core/api.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
+import type { OrchestratorDispatchResponse } from '../../platform/orchestration/contracts.js';
 import {
   createCatsMemoryService,
   createFileBackedCanonicalMemoryStore,
@@ -26,6 +27,8 @@ import {
   createTelegramRelay,
   type TelegramRelay,
 } from '../../platform/transports/telegram/relay.js';
+import { dispatchOrchestratorTurn } from '../../platform/orchestration/index.js';
+import type { PendingOrchestratorDispatchRequest } from '../../platform/orchestration/pendingDispatch.js';
 import {
   createFileBackedTelegramRelayStore,
   InMemoryTelegramRelayStore,
@@ -79,6 +82,12 @@ export interface ServerDependencies {
   telegramRelay?: TelegramRelay;
   pollingSupervisor?: TelegramPollingSupervisor;
   now?: () => Date;
+  resumePendingOrchestratorDispatch?: (
+    request: PendingOrchestratorDispatchRequest,
+    options: {
+      trigger: 'approve' | 'reroute';
+    },
+  ) => Promise<OrchestratorDispatchResponse>;
 }
 
 type ResolvedServerDependencies = ServerDependencies & {
@@ -443,6 +452,22 @@ export function createServer(dependencies: ServerDependencies) {
   const telegramRelay = dependencies.telegramRelay
     ?? createDefaultTelegramRelay(dependencies, pollingSupervisor);
   const baseCompanionStore = dependencies.companionStore ?? createDefaultCompanionStore(dependencies);
+  const companionStore = createMemoryAwareCompanionBoxStore(baseCompanionStore, memoryService);
+  const resumePendingOrchestratorDispatch = dependencies.resumePendingOrchestratorDispatch
+    ?? (async (
+      request: PendingOrchestratorDispatchRequest,
+      _options: {
+        trigger: 'approve' | 'reroute';
+      },
+    ) => dispatchOrchestratorTurn({
+      ...request,
+      senderName: request.senderName ?? undefined,
+      chatStore: dependencies.chatStore,
+      runtimeClient: dependencies.runtimeClient,
+      now: dependencies.now?.(),
+      companionStore,
+      memoryService,
+    }));
 
   const resolvedDependencies: ResolvedServerDependencies = {
     ...dependencies,
@@ -450,11 +475,12 @@ export function createServer(dependencies: ServerDependencies) {
       phase: 'ready',
       ready: true,
     }),
-    companionStore: createMemoryAwareCompanionBoxStore(baseCompanionStore, memoryService),
+    companionStore,
     memoryStore,
     memoryService,
     telegramRelay,
     pollingSupervisor,
+    resumePendingOrchestratorDispatch,
   };
 
   const server = createHttpServer((request, response) => {

@@ -522,6 +522,9 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
     - `dispatch.status` is `dispatched` or `blocked`
     - `dispatch.blockedReason` is currently `approval_pending` when a task is
       still waiting on `/api/core/approvals`
+    - when approval blocks dispatch, Cats also persists that pending request on
+      the channel task metadata so a later owner decision can replay it without
+      requiring the caller to post the same dispatch body a second time
   - `sourceMessageId`
   - a post-dispatch execution-loop snapshot that includes:
     - `runtimeToolPlane`
@@ -932,6 +935,14 @@ Response:
       "pending": false,
       "latestDecisionAction": "reroute"
     }
+  },
+  "autoResume": {
+    "trigger": "reroute",
+    "status": "dispatched",
+    "blockedReason": null,
+    "sourceMessageId": "message-123",
+    "resultCount": 1,
+    "executionState": "completed"
   }
 }
 ```
@@ -965,6 +976,23 @@ Semantics:
 - approval writes now also return `governanceSummary` so operator loops or
   automation can read back the effective approval/delivery state without
   refetching the full core snapshot
+- when a channel-scoped orchestrator dispatch was previously blocked by
+  `approval_pending`, `approve` and `reroute` decisions now attempt an additive
+  auto-resume of that stored dispatch request
+- successful or blocked auto-resume attempts return an `autoResume` summary with:
+  - `trigger`
+  - `status`
+    - `dispatched`
+    - `blocked`
+    - `failed`
+  - `blockedReason`
+  - `sourceMessageId`
+  - `resultCount`
+  - `executionState`
+  - optional `error` when the replay attempt fails
+- the stored pending dispatch request is cleared only after a successful
+  replay; failed attempts leave the request in task metadata so later recovery
+  or deeper follow-through slices can retry it
 
 ### Write Core Operator Action
 

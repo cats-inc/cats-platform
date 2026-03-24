@@ -93,12 +93,44 @@ function createRuntimeStub(options = {}) {
   };
 }
 
-async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+function readPendingDispatchMetadata(task) {
+  return task?.metadata?.pendingOrchestratorDispatch ?? null;
+}
+
+class FailingPendingDispatchCleanupStore extends MemoryChatStore {
+  failCleanupOnce = true;
+
+  async writeCore(state) {
+    if (this.failCleanupOnce) {
+      const current = await this.readCore();
+      const inProgressTask = current.tasks.find((candidate) =>
+        readPendingDispatchMetadata(candidate)?.replayState === 'in_progress'
+      );
+      if (inProgressTask) {
+        const nextTask = state.tasks.find((candidate) => candidate.id === inProgressTask.id) ?? null;
+        if (!readPendingDispatchMetadata(nextTask)) {
+          this.failCleanupOnce = false;
+          throw new Error('simulated pending dispatch cleanup failure');
+        }
+      }
+    }
+
+    return super.writeCore(state);
+  }
+}
+
+async function withServer(
+  runtimeClient,
+  callback,
+  chatStore = new MemoryChatStore(),
+  overrides = {},
+) {
   const server = createServer({
     config: baseConfig,
     runtimeClient,
     chatStore,
     now: () => new Date('2026-03-23T00:00:00.000Z'),
+    ...overrides,
   });
 
   server.listen(0, '127.0.0.1');
@@ -267,7 +299,7 @@ test('POST /api/orchestrator/dispatch returns executed continuation steps from t
   });
 });
 
-test('POST /api/orchestrator/dispatch pauses while owner approval is pending and resumes after approval', async () => {
+test('POST /api/orchestrator/dispatch persists approval-blocked requests and auto-resumes them after approval', async () => {
   const runtimeClient = createRuntimeStub();
   await withServer(runtimeClient, async (baseUrl) => {
     const created = await createChannel(baseUrl);
@@ -314,8 +346,48 @@ test('POST /api/orchestrator/dispatch pauses while owner approval is pending and
       }),
     });
     assert.equal(approvedResponse.status, 200);
+    const approvedPayload = await approvedResponse.json();
+    assert.equal(approvedPayload.approval.status, 'approved');
+    assert.deepEqual(approvedPayload.autoResume, {
+      trigger: 'approve',
+      status: 'dispatched',
+      blockedReason: null,
+      sourceMessageId: approvedPayload.autoResume.sourceMessageId,
+      resultCount: 1,
+      executionState: 'completed',
+    });
+    assert.ok(approvedPayload.autoResume.sourceMessageId);
+    assert.ok(runtimeClient.sentMessages.length >= 1);
 
-    const resumedDispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+    const executionLoopResponse = await fetch(
+      `${baseUrl}/api/orchestrator/channels/${channelId}/execution-loop`,
+    );
+    assert.equal(executionLoopResponse.status, 200);
+    const executionLoopPayload = await executionLoopResponse.json();
+    assert.equal(executionLoopPayload.executionLoop.execution.state, 'completed');
+    assert.equal(executionLoopPayload.executionLoop.execution.approval.status, 'approved');
+  });
+});
+
+test('POST /api/core/approvals uses an injected pending-dispatch resume seam when provided', async () => {
+  const runtimeClient = createRuntimeStub();
+  const replayCalls = [];
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const channelId = created.channel.id;
+
+    const pendingApprovalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: `task-channel-${channelId}`,
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+      }),
+    });
+    assert.equal(pendingApprovalResponse.status, 200);
+
+    const blockedDispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -323,13 +395,169 @@ test('POST /api/orchestrator/dispatch pauses while owner approval is pending and
         body: 'Please ask @Inline-Agent to review this change',
       }),
     });
-    assert.equal(resumedDispatchResponse.status, 200);
-    const resumedPayload = await resumedDispatchResponse.json();
-    assert.equal(resumedPayload.dispatch.status, 'dispatched');
-    assert.equal(resumedPayload.dispatch.results.length, 1);
-    assert.equal(resumedPayload.executionLoop.execution.approval.status, 'approved');
-    assert.ok(runtimeClient.sentMessages.length >= 1);
+    assert.equal(blockedDispatchResponse.status, 200);
+
+    const approvedResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: `task-channel-${channelId}`,
+        status: 'approved',
+        decidedByActorId: 'actor-owner',
+      }),
+    });
+    assert.equal(approvedResponse.status, 200);
+    const approvedPayload = await approvedResponse.json();
+    assert.deepEqual(approvedPayload.autoResume, {
+      trigger: 'approve',
+      status: 'failed',
+      blockedReason: null,
+      sourceMessageId: null,
+      resultCount: 0,
+      executionState: null,
+      error: 'injected replay seam used',
+    });
+    assert.equal(runtimeClient.sentMessages.length, 0);
+    assert.equal(replayCalls.length, 1);
+    assert.equal(replayCalls[0].options.trigger, 'approve');
+    assert.equal(replayCalls[0].request.channelId, channelId);
+  }, new MemoryChatStore(), {
+    resumePendingOrchestratorDispatch: async (request, options) => {
+      replayCalls.push({ request, options });
+      throw new Error('injected replay seam used');
+    },
   });
+});
+
+test('POST /api/core/approvals auto-resumes stored approval-blocked dispatches after reroute decisions', async () => {
+  const runtimeClient = createRuntimeStub();
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const channelId = created.channel.id;
+
+    const pendingApprovalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: `task-channel-${channelId}`,
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+      }),
+    });
+    assert.equal(pendingApprovalResponse.status, 200);
+
+    const blockedDispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Please ask @Inline-Agent to review this change',
+      }),
+    });
+    assert.equal(blockedDispatchResponse.status, 200);
+    const blockedPayload = await blockedDispatchResponse.json();
+    assert.equal(blockedPayload.dispatch.status, 'blocked');
+    assert.equal(blockedPayload.dispatch.blockedReason, 'approval_pending');
+
+    const rerouteResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: `task-channel-${channelId}`,
+        status: 'rejected',
+        action: 'reroute',
+        decidedByActorId: 'actor-owner',
+      }),
+    });
+    assert.equal(rerouteResponse.status, 200);
+    const reroutePayload = await rerouteResponse.json();
+    assert.equal(reroutePayload.approval.status, 'rejected');
+    assert.equal(reroutePayload.approval.decisionAction, 'reroute');
+    assert.deepEqual(reroutePayload.autoResume, {
+      trigger: 'reroute',
+      status: 'dispatched',
+      blockedReason: null,
+      sourceMessageId: reroutePayload.autoResume.sourceMessageId,
+      resultCount: 1,
+      executionState: 'completed',
+    });
+    assert.ok(reroutePayload.autoResume.sourceMessageId);
+    assert.ok(runtimeClient.sentMessages.length >= 1);
+
+    const executionLoopResponse = await fetch(
+      `${baseUrl}/api/orchestrator/channels/${channelId}/execution-loop`,
+    );
+    assert.equal(executionLoopResponse.status, 200);
+    const executionLoopPayload = await executionLoopResponse.json();
+    assert.equal(executionLoopPayload.executionLoop.execution.state, 'completed');
+    assert.equal(executionLoopPayload.executionLoop.execution.approval.status, 'rejected');
+    assert.equal(
+      executionLoopPayload.executionLoop.execution.approval.latestDecisionAction,
+      'reroute',
+    );
+  });
+});
+
+test('POST /api/core/approvals does not replay the same blocked dispatch twice when cleanup persistence fails after replay', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new FailingPendingDispatchCleanupStore();
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const channelId = created.channel.id;
+
+    const pendingApprovalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: `task-channel-${channelId}`,
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+      }),
+    });
+    assert.equal(pendingApprovalResponse.status, 200);
+
+    const blockedDispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Please ask @Inline-Agent to review this change',
+      }),
+    });
+    assert.equal(blockedDispatchResponse.status, 200);
+
+    const approvedResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: `task-channel-${channelId}`,
+        status: 'approved',
+        decidedByActorId: 'actor-owner',
+      }),
+    });
+    assert.equal(approvedResponse.status, 200);
+    const approvedPayload = await approvedResponse.json();
+    assert.equal(approvedPayload.autoResume.status, 'dispatched');
+    assert.equal(runtimeClient.sentMessages.length, 1);
+
+    const coreState = await chatStore.readCore();
+    const task = coreState.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    assert.equal(readPendingDispatchMetadata(task)?.replayState, 'in_progress');
+
+    const repeatedApproveResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: `task-channel-${channelId}`,
+        status: 'approved',
+        decidedByActorId: 'actor-owner',
+      }),
+    });
+    assert.equal(repeatedApproveResponse.status, 200);
+    const repeatedApprovePayload = await repeatedApproveResponse.json();
+    assert.equal(repeatedApprovePayload.autoResume, undefined);
+    assert.equal(runtimeClient.sentMessages.length, 1);
+  }, chatStore);
 });
 
 test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions for blocked multi-step runs', async () => {

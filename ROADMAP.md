@@ -55,6 +55,8 @@ contracts.
 - [ ] Shift cat UX to a chat-contextual `Add cat` flow while moving registry
       administration into `Settings > Cats`
 - [x] Desktop host and tray lifecycle management above the existing Node server boundary
+- [x] Stage cross-platform desktop packaging manifests and emit Windows NSIS
+      installer artifacts through the host-owned pipeline
 - [ ] Turn the current Windows NSIS-first packaging slice into a release-grade
       desktop distribution path, including signed installers, branded assets,
       and a documented release pipeline rather than test-install outputs only
@@ -76,6 +78,8 @@ contracts.
       recovery contracts
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
+- [x] Land product-owned companion boxes, session hydration, and Cats-owned
+      canonical memory/retrieval first slices without changing visible Chat UI
 - [ ] Extend Cats-owned canonical memory beyond the current cat/owner/channel
       first slice so relationship- and project-scoped durable memory can also
       participate in retrieval and later `Cats Work` flows
@@ -97,8 +101,10 @@ contracts.
       Recents threads, including when background orchestration may silently
       assist, when it must surface itself, and how that policy differs when
       Boss is absent, backgrounded, or currently the lead cat
-- [ ] Automatic resume after operator approve/reroute/retry decisions so the
-      current action seams become a closed loop rather than write-only markers
+- [ ] Extend automatic resume beyond the landed approve/reroute replay of
+      stored approval-blocked dispatches so retry decisions and deeper workflow
+      continuation paths also become a closed loop instead of write-only
+      markers
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent
@@ -116,8 +122,10 @@ contracts.
       editing boundaries, companion memory/debug inspector panels, and clearer
       visibility into the active companion/session context without regressing
       `My Cats` direct-lane semantics
-- [ ] Telegram, LINE, and alternate orchestrator entrypoints with escalation
-      and takeover support
+- [x] Ship the Telegram Boss Cat inbox MVP with polling-first setup, durable
+      room routing, outbound replies, and token-uniqueness safeguards
+- [ ] Extend external orchestrator entrypoints beyond Telegram MVP, including
+      LINE, richer escalation, and takeover support
 - [ ] Evolve the current local lexical/hybrid memory retrieval seam into a
       stronger archive/vector-backed retrieval pipeline without making `cats`
       depend on `personal-rag-system`

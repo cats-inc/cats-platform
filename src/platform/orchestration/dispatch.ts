@@ -1,5 +1,6 @@
 import type { CompanionBoxStore } from '../../products/chat/state/companionBoxStore.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
+import { upsertCoreTask } from '../../core/model.js';
 import type { CatsMemoryService } from '../memory/index.js';
 import type { RuntimeClient } from '../runtime/client.js';
 import { buildChannelView } from '../../products/chat/state/model.js';
@@ -11,6 +12,10 @@ import type {
 import {
   ORCHESTRATOR_CONTRACT_VERSION,
 } from './contracts.js';
+import {
+  buildPendingOrchestratorDispatchRequest,
+  writePendingOrchestratorDispatchMetadata,
+} from './pendingDispatch.js';
 import {
   buildOrchestratorExecutionLoopSnapshot,
   buildOrchestratorExecutionLoopResponse,
@@ -26,6 +31,46 @@ interface DispatchOrchestratorTurnInput extends OrchestratorPlanRequest {
   memoryService?: CatsMemoryService;
 }
 
+async function persistPendingApprovalDispatch(
+  input: DispatchOrchestratorTurnInput,
+  taskId: string,
+  now: Date,
+): Promise<void> {
+  const core = await input.chatStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === taskId);
+  if (!task) {
+    return;
+  }
+
+  const next = upsertCoreTask(
+    core,
+    {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      conversationId: task.conversationId,
+      ownerActorId: task.ownerActorId,
+      orchestratorActorId: task.orchestratorActorId,
+      assignedActorIds: task.assignedActorIds,
+      summary: task.summary,
+      approval: task.approval,
+      createdAt: task.createdAt,
+      metadata: writePendingOrchestratorDispatchMetadata(
+        task.metadata,
+        buildPendingOrchestratorDispatchRequest({
+          channelId: input.channelId,
+          body: input.body,
+          senderName: input.senderName,
+          transport: input.transport,
+          blockedAt: now.toISOString(),
+        }),
+      ),
+    },
+    now,
+  );
+  await input.chatStore.writeCore(next.core);
+}
+
 export async function dispatchOrchestratorTurn(
   input: DispatchOrchestratorTurnInput,
 ): Promise<OrchestratorDispatchResponse> {
@@ -35,10 +80,16 @@ export async function dispatchOrchestratorTurn(
   const plan = buildOrchestratorTurnPlan(stateBefore, coreBefore, input);
 
   if (plan.execution.approval.status === 'pending') {
+    await persistPendingApprovalDispatch(
+      input,
+      plan.execution.approval.taskId,
+      now,
+    );
+    const coreAfter = await input.chatStore.readCore();
     return {
       contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
       surface: 'direct_product_api',
-      operator: resolveOrchestratorOperatorSeams(coreBefore, input.channelId),
+      operator: resolveOrchestratorOperatorSeams(coreAfter, input.channelId),
       plan,
       dispatch: {
         channelId: input.channelId,
@@ -49,7 +100,7 @@ export async function dispatchOrchestratorTurn(
       },
       executionLoop: buildOrchestratorExecutionLoopSnapshot(
         stateBefore,
-        coreBefore,
+        coreAfter,
         input.channelId,
       ),
     };

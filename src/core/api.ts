@@ -4,6 +4,12 @@ import {
 } from './errors.js';
 import type { CoreStore } from './store.js';
 import type { CatsMemoryService } from '../platform/memory/index.js';
+import type { OrchestratorDispatchResponse } from '../platform/orchestration/contracts.js';
+import type { PendingOrchestratorDispatchRequest } from '../platform/orchestration/pendingDispatch.js';
+import {
+  readPendingOrchestratorDispatch,
+  writePendingOrchestratorDispatchMetadata,
+} from '../platform/orchestration/pendingDispatch.js';
 import type {
   CoreActivityKind,
   CoreApprovalDecisionAction,
@@ -48,6 +54,23 @@ import {
 export interface CoreApiDependencies {
   chatStore: Pick<CoreStore, 'readCore' | 'writeCore'>;
   memoryService?: CatsMemoryService;
+  now?: () => Date;
+  resumePendingOrchestratorDispatch?: (
+    request: PendingOrchestratorDispatchRequest,
+    options: {
+      trigger: 'approve' | 'reroute';
+    },
+  ) => Promise<OrchestratorDispatchResponse>;
+}
+
+interface CoreOrchestratorAutoResumeSummary {
+  trigger: 'approve' | 'reroute';
+  status: 'dispatched' | 'blocked' | 'failed';
+  blockedReason: string | null;
+  sourceMessageId: string | null;
+  resultCount: number;
+  executionState: string | null;
+  error?: string;
 }
 
 function reportCoreMemorySyncFailure(error: unknown): void {
@@ -988,12 +1011,246 @@ function findLatestRunForTask(
     ?? null;
 }
 
+function overwriteTaskMetadata(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+  taskId: string,
+  metadata: CoreRecordMetadata,
+  now: Date,
+): {
+  core: Awaited<ReturnType<CoreStore['readCore']>>;
+  task: Awaited<ReturnType<CoreStore['readCore']>>['tasks'][number];
+} | null {
+  const task = core.tasks.find((candidate) => candidate.id === taskId);
+  if (!task) {
+    return null;
+  }
+
+  const next = upsertCoreTask(
+    core,
+    {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      conversationId: task.conversationId,
+      ownerActorId: task.ownerActorId,
+      orchestratorActorId: task.orchestratorActorId,
+      assignedActorIds: task.assignedActorIds,
+      summary: task.summary,
+      approval: task.approval,
+      createdAt: task.createdAt,
+      metadata,
+    },
+    now,
+  );
+
+  return {
+    core: next.core,
+    task: next.task,
+  };
+}
+
+function summarizeAutoResumeDispatch(
+  trigger: 'approve' | 'reroute',
+  dispatch: OrchestratorDispatchResponse,
+): CoreOrchestratorAutoResumeSummary {
+  return {
+    trigger,
+    status: dispatch.dispatch.status === 'dispatched' ? 'dispatched' : 'blocked',
+    blockedReason: dispatch.dispatch.blockedReason,
+    sourceMessageId: dispatch.dispatch.sourceMessageId,
+    resultCount: dispatch.dispatch.results.length,
+    executionState: dispatch.executionLoop.execution.state,
+  };
+}
+
+function buildAutoResumeFailureSummary(
+  trigger: 'approve' | 'reroute',
+  error: unknown,
+): CoreOrchestratorAutoResumeSummary {
+  return {
+    trigger,
+    status: 'failed',
+    blockedReason: null,
+    sourceMessageId: null,
+    resultCount: 0,
+    executionState: null,
+    error: error instanceof Error ? error.message : String(error),
+  };
+}
+
+async function persistTaskMetadata(
+  context: RouteContext<CoreApiDependencies>,
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+  taskId: string,
+  metadata: CoreRecordMetadata,
+  now: Date,
+): Promise<{
+  core: Awaited<ReturnType<CoreStore['readCore']>>;
+  task: Awaited<ReturnType<CoreStore['readCore']>>['tasks'][number] | null;
+}> {
+  const updated = overwriteTaskMetadata(core, taskId, metadata, now);
+  if (!updated) {
+    return {
+      core,
+      task: core.tasks.find((candidate) => candidate.id === taskId) ?? null,
+    };
+  }
+
+  const persisted = await context.dependencies.chatStore.writeCore(updated.core);
+  return {
+    core: persisted,
+    task: persisted.tasks.find((candidate) => candidate.id === taskId) ?? updated.task,
+  };
+}
+
+async function maybeAutoResumePendingDispatch(
+  context: RouteContext<CoreApiDependencies>,
+  taskId: string,
+  trigger: 'approve' | 'reroute',
+  now: Date,
+): Promise<{
+  core: Awaited<ReturnType<CoreStore['readCore']>>;
+  task: Awaited<ReturnType<CoreStore['readCore']>>['tasks'][number] | null;
+  autoResume?: CoreOrchestratorAutoResumeSummary;
+}> {
+  const initialCore = await context.dependencies.chatStore.readCore();
+  const task = initialCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
+  const pendingDispatch = readPendingOrchestratorDispatch(task?.metadata);
+  if (!task || !pendingDispatch || !context.dependencies.resumePendingOrchestratorDispatch) {
+    return {
+      core: initialCore,
+      task,
+    };
+  }
+
+  const replayAttemptAt = now.toISOString();
+  let persistedBeforeDispatch: {
+    core: Awaited<ReturnType<CoreStore['readCore']>>;
+    task: Awaited<ReturnType<CoreStore['readCore']>>['tasks'][number] | null;
+  } = {
+    core: initialCore,
+    task,
+  };
+  try {
+    persistedBeforeDispatch = await persistTaskMetadata(
+      context,
+      initialCore,
+      taskId,
+      writePendingOrchestratorDispatchMetadata(
+        task.metadata,
+        pendingDispatch,
+        {
+          replayState: 'in_progress',
+          replayTrigger: trigger,
+          replayAttemptAt,
+          replayError: null,
+        },
+      ),
+      now,
+    );
+    const dispatch = await context.dependencies.resumePendingOrchestratorDispatch(
+      pendingDispatch,
+      { trigger },
+    );
+    const latestCore = await context.dependencies.chatStore.readCore();
+    const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
+    const autoResume = summarizeAutoResumeDispatch(trigger, dispatch);
+
+    if (dispatch.dispatch.status !== 'dispatched') {
+      try {
+        const failed = await persistTaskMetadata(
+          context,
+          latestCore,
+          taskId,
+          writePendingOrchestratorDispatchMetadata(
+            latestTask?.metadata,
+            pendingDispatch,
+            {
+              replayState: 'failed',
+              replayTrigger: trigger,
+              replayAttemptAt,
+              replayError: dispatch.dispatch.blockedReason,
+            },
+          ),
+          now,
+        );
+        return {
+          ...failed,
+          autoResume,
+        };
+      } catch {
+        return {
+          core: latestCore,
+          task: latestTask ?? persistedBeforeDispatch.task,
+          autoResume,
+        };
+      }
+    }
+
+    try {
+      const cleared = await persistTaskMetadata(
+        context,
+        latestCore,
+        taskId,
+        writePendingOrchestratorDispatchMetadata(
+          latestTask?.metadata,
+          null,
+        ),
+        now,
+      );
+      return {
+        ...cleared,
+        autoResume,
+      };
+    } catch {
+      return {
+        core: latestCore,
+        task: latestTask ?? persistedBeforeDispatch.task,
+        autoResume,
+      };
+    }
+  } catch (error) {
+    const autoResume = buildAutoResumeFailureSummary(trigger, error);
+    const latestCore = await context.dependencies.chatStore.readCore();
+    const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
+
+    try {
+      const failed = await persistTaskMetadata(
+        context,
+        latestCore,
+        taskId,
+        writePendingOrchestratorDispatchMetadata(
+          latestTask?.metadata,
+          pendingDispatch,
+          {
+            replayState: 'failed',
+            replayTrigger: trigger,
+            replayAttemptAt,
+            replayError: autoResume.error ?? null,
+          },
+        ),
+        now,
+      );
+      return {
+        ...failed,
+        autoResume,
+      };
+    } catch {
+      return {
+        core: latestCore,
+        task: latestTask ?? persistedBeforeDispatch.task,
+        autoResume,
+      };
+    }
+  }
+}
+
 async function handleCoreApprovalWrite(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<void> {
   try {
     const approval = await readObjectBody(context);
-    const now = new Date();
+    const now = context.dependencies.now?.() ?? new Date();
     let nextCore = await context.dependencies.chatStore.readCore();
     const next = writeApprovalDecision(
       nextCore,
@@ -1042,8 +1299,20 @@ async function handleCoreApprovalWrite(
       },
       now,
     );
-    const persisted = await context.dependencies.chatStore.writeCore(activity.core);
-    const persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
+    let persisted = await context.dependencies.chatStore.writeCore(activity.core);
+    let persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
+    let autoResume: CoreOrchestratorAutoResumeSummary | undefined;
+    if (next.task.approval.decisionAction === 'approve' || next.task.approval.decisionAction === 'reroute') {
+      const resumed = await maybeAutoResumePendingDispatch(
+        context,
+        next.task.id,
+        next.task.approval.decisionAction,
+        now,
+      );
+      persisted = resumed.core;
+      persistedTask = resumed.task ?? persistedTask;
+      autoResume = resumed.autoResume;
+    }
     const queueItem = buildApprovalQueue(persisted).find(
       (candidate) => candidate.taskId === next.task.id,
     ) ?? null;
@@ -1064,6 +1333,7 @@ async function handleCoreApprovalWrite(
         persistedTask ?? next.task,
         latestRun,
       ),
+      ...(autoResume ? { autoResume } : {}),
     });
   } catch (error) {
     handleCoreError(context, error);
