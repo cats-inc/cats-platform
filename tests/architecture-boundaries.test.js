@@ -769,6 +769,25 @@ test('store consumes dedicated chat snapshot normalization instead of defining i
   assert.match(snapshotModule, /export function normalizePersistedChatSnapshot/u);
 });
 
+test('companion box store consumes dedicated snapshot helpers instead of defining normalization inline', async () => {
+  const storeSource = await readFile(
+    new URL('../src/products/chat/state/companionBoxStore.ts', import.meta.url),
+    'utf8',
+  );
+  const snapshotModule = await readFile(
+    new URL('../src/products/chat/state/companionBoxSnapshot.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(storeSource, /companionBoxSnapshot\.js/u);
+  assert.doesNotMatch(storeSource, /function normalizeSnapshot\(/u);
+  assert.doesNotMatch(storeSource, /function deriveCompanionBoxStatePath\(/u);
+  assert.doesNotMatch(storeSource, /function buildStorageLayout\(/u);
+  assert.match(snapshotModule, /export function normalizeSnapshot/u);
+  assert.match(snapshotModule, /export function deriveCompanionBoxStatePath/u);
+  assert.match(snapshotModule, /export function buildStorageLayout/u);
+});
+
 test('platform consumes room-routing types from the shared roomRouting module', async () => {
   const orchestratorContracts = await readFile(
     new URL('../src/platform/orchestration/contracts.ts', import.meta.url),
