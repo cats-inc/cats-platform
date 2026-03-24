@@ -109,6 +109,34 @@ test('platform orchestrator contracts own their operator-loop view types', async
   assert.match(source, /export interface OrchestratorDispatchResult/u);
 });
 
+test('platform orchestrator execution is a thin facade over dedicated execution plan modules', async () => {
+  const executionModule = await readFile(
+    new URL('../src/platform/orchestration/execution.ts', import.meta.url),
+    'utf8',
+  );
+  const sharedModule = await readFile(
+    new URL('../src/platform/orchestration/executionShared.ts', import.meta.url),
+    'utf8',
+  );
+  const preDispatchModule = await readFile(
+    new URL('../src/platform/orchestration/executionPreDispatch.ts', import.meta.url),
+    'utf8',
+  );
+  const workflowModule = await readFile(
+    new URL('../src/platform/orchestration/executionWorkflow.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(executionModule, /executionPreDispatch\.js/u);
+  assert.match(executionModule, /executionWorkflow\.js/u);
+  assert.match(executionModule, /executionShared\.js/u);
+  assert.doesNotMatch(executionModule, /function buildApprovalGate\(/u);
+  assert.doesNotMatch(executionModule, /function buildEventStep\(/u);
+  assert.match(sharedModule, /export function buildApprovalGate/u);
+  assert.match(preDispatchModule, /export function buildPreDispatchExecutionPlan/u);
+  assert.match(workflowModule, /export function buildExecutionPlanFromChannel/u);
+});
+
 test('shared room-routing contracts are extracted from chat api contracts', async () => {
   const chatContracts = await readFile(
     new URL('../src/products/chat/api/contracts.ts', import.meta.url),
