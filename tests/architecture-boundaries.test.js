@@ -185,9 +185,9 @@ test('runtimeActions consumes dedicated room-routing workflow helpers instead of
   assert.match(workflowModule, /export function addWorkflowCheckpoint/u);
 });
 
-test('store consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
-  const storeSource = await readFile(
-    new URL('../src/products/chat/state/store.ts', import.meta.url),
+test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
+  const snapshotConsumer = await readFile(
+    new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
     'utf8',
   );
   const snapshotModule = await readFile(
@@ -195,9 +195,9 @@ test('store consumes dedicated room-routing snapshot normalization instead of de
     'utf8',
   );
 
-  assert.match(storeSource, /roomRoutingSnapshot\.js/u);
-  assert.doesNotMatch(storeSource, /function normalizeRoomRouting\(/u);
-  assert.doesNotMatch(storeSource, /function normalizeRoomWorkflowTurn\(/u);
+  assert.match(snapshotConsumer, /roomRoutingSnapshot\.js/u);
+  assert.doesNotMatch(snapshotConsumer, /function normalizeRoomRouting\(/u);
+  assert.doesNotMatch(snapshotConsumer, /function normalizeRoomWorkflowTurn\(/u);
   assert.match(snapshotModule, /export function normalizeRoomRouting/u);
 });
 
@@ -216,6 +216,23 @@ test('store consumes dedicated core snapshot normalization instead of defining i
   assert.doesNotMatch(storeSource, /function buildPersistedChatSnapshot\(/u);
   assert.match(snapshotModule, /export function normalizeCoreTask/u);
   assert.match(snapshotModule, /export function buildPersistedChatSnapshot/u);
+});
+
+test('store consumes dedicated chat snapshot normalization instead of defining it inline', async () => {
+  const storeSource = await readFile(
+    new URL('../src/products/chat/state/store.ts', import.meta.url),
+    'utf8',
+  );
+  const snapshotModule = await readFile(
+    new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(storeSource, /chatSnapshot\.js/u);
+  assert.doesNotMatch(storeSource, /function normalizeChatState\(/u);
+  assert.doesNotMatch(storeSource, /function normalizePersistedChatSnapshot\(/u);
+  assert.match(snapshotModule, /export function normalizeChatState/u);
+  assert.match(snapshotModule, /export function normalizePersistedChatSnapshot/u);
 });
 
 test('platform consumes room-routing types from the shared roomRouting module', async () => {
