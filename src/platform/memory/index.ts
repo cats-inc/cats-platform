@@ -10,7 +10,6 @@ export {
   DefaultCatsMemoryService,
   type CatsMemoryService,
 } from './service.js';
-export { createMemoryAwareCompanionBoxStore, MemoryAwareCompanionBoxStore } from './companionStore.js';
 export type {
   CanonicalMemoryRecord,
   CanonicalMemorySnapshot,
@@ -21,6 +20,7 @@ export type {
   MemoryChannelContext,
   MemoryChannelSnapshot,
   MemoryChatSurface,
+  MemoryCompanionSurface,
   MemoryFlushReason,
   MemoryFlushPayload,
   MemoryFlushRecordPayload,

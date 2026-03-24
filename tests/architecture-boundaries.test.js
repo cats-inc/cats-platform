@@ -129,6 +129,10 @@ test('platform memory service stays behind a chat memory surface seam', async ()
     source,
     /products\/chat\/state\/store\.js/u,
   );
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/companionBoxStore\.js/u,
+  );
 });
 
 test('app server wires the chat memory adapter into platform memory', async () => {
@@ -139,6 +143,37 @@ test('app server wires the chat memory adapter into platform memory', async () =
 
   assert.match(source, /createChatMemorySurface/u);
   assert.match(source, /createCatsMemoryService/u);
+});
+
+test('chat owns the companion canonical-sync adapter instead of platform memory', async () => {
+  const source = await readFile(
+    new URL('../src/products/chat/state/companionMemoryAdapter.ts', import.meta.url),
+    'utf8',
+  );
+  const memoryIndex = await readFile(
+    new URL('../src/platform/memory/index.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /CompanionBoxStore/u);
+  assert.match(source, /CatsMemoryService/u);
+  assert.doesNotMatch(
+    memoryIndex,
+    /createMemoryAwareCompanionBoxStore/u,
+  );
+});
+
+test('platform runtime maintenance only depends on the memory-owned companion surface', async () => {
+  const source = await readFile(
+    new URL('../src/platform/memory/runtimeMaintenance.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /\bMemoryCompanionSurface\b/u);
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/companionBoxStore\.js/u,
+  );
 });
 
 test('platform telegram bridge stays behind an injected room bridge seam', async () => {

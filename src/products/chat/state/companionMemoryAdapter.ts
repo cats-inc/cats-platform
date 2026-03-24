@@ -1,23 +1,10 @@
-import type { ChatCat, ChatChannelView } from '../../shared/app-shell.js';
-import type { CompanionBoxStore } from '../../products/chat/state/companionBoxStore.js';
 import type {
-  CompanionBox,
-  CompanionBoxSummary,
-  CompanionDerivedRecord,
-  CompanionMemoryRecord,
-  CompanionResponseProfile,
-  CompanionSessionContext,
-  CompanionSourceIngestResult,
-  CompanionSourceUpdateResult,
-  CompanionSourceDeleteResult,
-  CompanionSourceRecord,
-  CreateCompanionMemoryInput,
-  CreateCompanionSourceInput,
-  UpdateCompanionSourceInput,
-  UpdateCompanionResponseProfileInput,
-} from '../../products/chat/companion/contracts.js';
-import type { MemoryFlushResult } from './contracts.js';
-import type { CatsMemoryService } from './service.js';
+  CompanionBoxStore,
+} from './companionBoxStore.js';
+import type {
+  CatsMemoryService,
+  MemoryFlushResult,
+} from '../../../platform/memory/index.js';
 
 export type CompanionCanonicalSyncResult =
   | { status: 'synced'; flush: MemoryFlushResult }
@@ -32,7 +19,7 @@ function reportCanonicalSyncFailure(scope: string, error: unknown): void {
   process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
 }
 
-export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
+export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanionBoxStore {
   private readonly pendingCanonicalSync = new Map<string, CompanionCanonicalSyncResult>();
 
   constructor(
@@ -65,23 +52,19 @@ export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
     return this.delegate.readSnapshot();
   }
 
-  async getBox(catId: string, now?: Date): Promise<CompanionBox> {
+  async getBox(catId: string, now?: Date) {
     return this.delegate.getBox(catId, now);
   }
 
-  async getBoxSummary(catId: string, now?: Date): Promise<CompanionBoxSummary> {
+  async getBoxSummary(catId: string, now?: Date) {
     return this.delegate.getBoxSummary(catId, now);
   }
 
-  async listSources(catId: string, now?: Date): Promise<CompanionSourceRecord[]> {
+  async listSources(catId: string, now?: Date) {
     return this.delegate.listSources(catId, now);
   }
 
-  async ingestSource(
-    catId: string,
-    input: CreateCompanionSourceInput,
-    now?: Date,
-  ): Promise<CompanionSourceIngestResult> {
+  async ingestSource(catId: string, input: Parameters<CompanionBoxStore['ingestSource']>[1], now?: Date) {
     const result = await this.delegate.ingestSource(catId, input, now);
     await this.syncCanonicalCompanionMemory(catId, now);
     return result;
@@ -90,74 +73,54 @@ export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
   async updateSource(
     catId: string,
     sourceId: string,
-    update: UpdateCompanionSourceInput,
+    update: Parameters<CompanionBoxStore['updateSource']>[2],
     now?: Date,
-  ): Promise<CompanionSourceUpdateResult> {
+  ) {
     const result = await this.delegate.updateSource(catId, sourceId, update, now);
     await this.syncCanonicalCompanionMemory(catId, now);
     return result;
   }
 
-  async deleteSource(
-    catId: string,
-    sourceId: string,
-    now?: Date,
-  ): Promise<CompanionSourceDeleteResult> {
+  async deleteSource(catId: string, sourceId: string, now?: Date) {
     const result = await this.delegate.deleteSource(catId, sourceId, now);
     await this.syncCanonicalCompanionMemory(catId, now);
     return result;
   }
 
-  async listDerived(catId: string, now?: Date): Promise<CompanionDerivedRecord[]> {
+  async listDerived(catId: string, now?: Date) {
     return this.delegate.listDerived(catId, now);
   }
 
-  async listMemory(catId: string, now?: Date): Promise<CompanionMemoryRecord[]> {
+  async listMemory(catId: string, now?: Date) {
     return this.delegate.listMemory(catId, now);
   }
 
-  async createMemory(
-    catId: string,
-    input: CreateCompanionMemoryInput,
-    now?: Date,
-  ): Promise<CompanionMemoryRecord> {
+  async createMemory(catId: string, input: Parameters<CompanionBoxStore['createMemory']>[1], now?: Date) {
     const result = await this.delegate.createMemory(catId, input, now);
     await this.syncCanonicalCompanionMemory(catId, now);
     return result;
   }
 
-  async getResponseProfile(catId: string, now?: Date): Promise<CompanionResponseProfile> {
+  async getResponseProfile(catId: string, now?: Date) {
     return this.delegate.getResponseProfile(catId, now);
   }
 
   async updateResponseProfile(
     catId: string,
-    update: UpdateCompanionResponseProfileInput,
+    update: Parameters<CompanionBoxStore['updateResponseProfile']>[1],
     now?: Date,
-  ): Promise<CompanionResponseProfile> {
+  ) {
     const result = await this.delegate.updateResponseProfile(catId, update, now);
     await this.syncCanonicalCompanionMemory(catId, now);
     return result;
   }
 
-  async buildSessionContext(input: {
-    cat: ChatCat;
-    channel: {
-      id: string | null;
-      title: string;
-      topic: string;
-      workingMemory?: ChatChannelView['workingMemory'];
-      roomRouting?: ChatChannelView['roomRouting'];
-    };
-    requestedSkills: string[];
-    transport: 'telegram' | 'line' | 'web' | null;
-    now?: Date;
-  }): Promise<CompanionSessionContext> {
+  async buildSessionContext(input: Parameters<CompanionBoxStore['buildSessionContext']>[0]) {
     const context = await this.delegate.buildSessionContext(input);
     return {
       ...context,
       retrieval: await this.memoryService.buildCompanionRetrievalContext({
-        cat: input.cat,
+        cat: { id: input.cat.id },
         channel: input.channel,
         transport: input.transport,
         companionStore: this.delegate,
@@ -170,6 +133,6 @@ export class MemoryAwareCompanionBoxStore implements CompanionBoxStore {
 export function createMemoryAwareCompanionBoxStore(
   delegate: CompanionBoxStore,
   memoryService: CatsMemoryService,
-): CompanionBoxStore {
+): CanonicalSyncAwareCompanionBoxStore {
   return new MemoryAwareCompanionBoxStore(delegate, memoryService);
 }

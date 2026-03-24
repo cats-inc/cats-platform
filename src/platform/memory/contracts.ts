@@ -2,6 +2,13 @@ import type { DurableMemoryCategory } from '../../core/types.js';
 
 import type { CatsCoreState, MemoryCheckpointSummary } from '../../core/types.js';
 import type { RoomRoutingState } from '../../shared/roomRouting.js';
+import type {
+  CompanionBox,
+  CompanionDerivedRecord,
+  CompanionMemoryRecord,
+  CompanionResponseProfile,
+  CompanionSourceRecord,
+} from '../../products/chat/companion/contracts.js';
 
 export type CanonicalMemorySubjectKind =
   | 'cat'
@@ -227,4 +234,12 @@ export interface MemoryChatSurface {
   readCore(): Promise<CatsCoreState>;
   readChannel(channelId: string): Promise<MemoryChannelSnapshot>;
   findCat(catId: string): Promise<MemoryCatRef | null>;
+}
+
+export interface MemoryCompanionSurface {
+  getBox(catId: string, now?: Date): Promise<CompanionBox>;
+  listSources(catId: string, now?: Date): Promise<CompanionSourceRecord[]>;
+  listDerived(catId: string, now?: Date): Promise<CompanionDerivedRecord[]>;
+  listMemory(catId: string, now?: Date): Promise<CompanionMemoryRecord[]>;
+  getResponseProfile(catId: string, now?: Date): Promise<CompanionResponseProfile>;
 }

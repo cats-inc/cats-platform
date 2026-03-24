@@ -2,7 +2,6 @@ import {
   createCatActorId,
   listDurableMemoryBySubject,
 } from '../../core/model.js';
-import type { CompanionBoxStore } from '../../products/chat/state/companionBoxStore.js';
 import type { CanonicalMemoryStore } from './store.js';
 import type {
   CanonicalMemoryOriginKind,
@@ -10,6 +9,7 @@ import type {
   MemoryChannelContext,
   MemoryChannelSnapshot,
   MemoryChatSurface,
+  MemoryCompanionSurface,
   CanonicalMemoryRecord,
   MemoryFlushReason,
   MemoryFlushPayload,
@@ -43,7 +43,7 @@ export interface CatsMemoryService {
   }): Promise<CanonicalMemoryRecord[]>;
   flushCompanionBox(input: {
     catId: string;
-    companionStore: CompanionBoxStore;
+    companionStore: MemoryCompanionSurface;
     reason?: MemoryFlushReason;
     now?: Date;
   }): Promise<MemoryFlushResult>;
@@ -60,14 +60,14 @@ export interface CatsMemoryService {
     cat: MemoryCatRef;
     channel: MemoryChannelContext;
     transport?: 'telegram' | 'line' | 'web' | null;
-    companionStore: CompanionBoxStore;
+    companionStore: MemoryCompanionSurface;
     now?: Date;
   }): Promise<MemoryRetrievalContext>;
   buildChannelRetrievalContext(input: {
     channelId: string;
     catId?: string | null;
     transport?: 'telegram' | 'line' | 'web' | null;
-    companionStore?: CompanionBoxStore;
+    companionStore?: MemoryCompanionSurface;
     now?: Date;
   }): Promise<MemoryRetrievalContext>;
 }
@@ -121,7 +121,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
 
   async flushCompanionBox(input: {
     catId: string;
-    companionStore: CompanionBoxStore;
+    companionStore: MemoryCompanionSurface;
     reason?: MemoryFlushReason;
     now?: Date;
   }): Promise<MemoryFlushResult> {
@@ -292,7 +292,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     cat: MemoryCatRef;
     channel: MemoryChannelContext;
     transport?: 'telegram' | 'line' | 'web' | null;
-    companionStore: CompanionBoxStore;
+    companionStore: MemoryCompanionSurface;
     now?: Date;
   }): Promise<MemoryRetrievalContext> {
     const now = input.now ?? new Date();
@@ -338,7 +338,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     channelId: string;
     catId?: string | null;
     transport?: 'telegram' | 'line' | 'web' | null;
-    companionStore?: CompanionBoxStore;
+    companionStore?: MemoryCompanionSurface;
     now?: Date;
   }): Promise<MemoryRetrievalContext> {
     const now = input.now ?? new Date();

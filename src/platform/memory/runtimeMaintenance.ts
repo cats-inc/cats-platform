@@ -1,10 +1,10 @@
-import type { CompanionBoxStore } from '../../products/chat/state/companionBoxStore.js';
 import type {
   RuntimeClient,
   RuntimeObservedSessionPayload,
 } from '../../runtime/client.js';
 import type {
   CatsMemoryService,
+  MemoryCompanionSurface,
   MemoryFlushReason,
   MemoryFlushResult,
 } from './index.js';
@@ -98,7 +98,7 @@ export async function flushObservedRuntimeSessionMemory(input: {
   observed: RuntimeObservedSessionPayload;
   requestedPhase?: RuntimeMaintenancePhase | null;
   memoryService: CatsMemoryService;
-  companionStore?: CompanionBoxStore;
+  companionStore?: MemoryCompanionSurface;
   now?: Date;
 }): Promise<{
   phase: RuntimeMaintenancePhase | null;
@@ -158,7 +158,7 @@ export async function bestEffortFlushRuntimeSessionMemory(input: {
   sessionId: string | null | undefined;
   requestedPhase?: RuntimeMaintenancePhase | null;
   memoryService?: CatsMemoryService;
-  companionStore?: CompanionBoxStore;
+  companionStore?: MemoryCompanionSurface;
   now?: Date;
 }): Promise<void> {
   if (

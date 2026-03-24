@@ -5,7 +5,6 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  createMemoryAwareCompanionBoxStore,
   createCatsMemoryService,
   FileCanonicalMemoryStore,
   MemoryCanonicalMemoryStore,
@@ -16,6 +15,7 @@ import {
   extractCanonicalMemoryFromOwnerProfile,
 } from '../dist-server/platform/memory/extraction.js';
 import { buildMemoryRetrievalContext } from '../dist-server/platform/memory/retrieval.js';
+import { createMemoryAwareCompanionBoxStore } from '../dist-server/products/chat/state/companionMemoryAdapter.js';
 import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companionBoxStore.js';
 import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';

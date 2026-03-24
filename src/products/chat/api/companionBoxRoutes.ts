@@ -18,7 +18,7 @@ import type {
 import {
   type CanonicalSyncAwareCompanionBoxStore,
   type CompanionCanonicalSyncResult,
-} from '../../../platform/memory/companionStore.js';
+} from '../state/companionMemoryAdapter.js';
 import {
   handleCanonicalCatError,
   handleRestError,

@@ -17,7 +17,6 @@ import type {
 import {
   createCatsMemoryService,
   createFileBackedCanonicalMemoryStore,
-  createMemoryAwareCompanionBoxStore,
   MemoryCanonicalMemoryStore,
   type CanonicalMemoryStore,
   type CatsMemoryService,
@@ -52,6 +51,7 @@ import {
   chatOrchestratorChannelRouter,
   chatOrchestratorPlannerSurface,
 } from '../../products/chat/state/orchestratorAdapter.js';
+import { createMemoryAwareCompanionBoxStore } from '../../products/chat/state/companionMemoryAdapter.js';
 import { createChatMemorySurface } from '../../products/chat/state/memoryAdapter.js';
 import { createChatTelegramRoomBridge } from '../../products/chat/state/telegramBridgeAdapter.js';
 import { handleCodePlaceholder } from '../../products/code/api/index.js';
