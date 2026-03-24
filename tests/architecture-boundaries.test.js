@@ -265,6 +265,49 @@ test('canonical memory store composes dedicated snapshot helpers instead of defi
   assert.match(snapshotModule, /export function deriveCanonicalMemoryStatePath/u);
 });
 
+test('chat model re-exports dedicated cat mutation helpers instead of defining them inline', async () => {
+  const modelModule = await readFile(
+    new URL('../src/products/chat/state/model.ts', import.meta.url),
+    'utf8',
+  );
+  const catsModule = await readFile(
+    new URL('../src/products/chat/state/modelCats.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(modelModule, /from '\.\/modelCats\.js'/u);
+  assert.doesNotMatch(modelModule, /const DEFAULT_CAT_NAME/u);
+  assert.doesNotMatch(modelModule, /export function renameCat\(/u);
+  assert.doesNotMatch(modelModule, /export function createCat\(/u);
+  assert.match(catsModule, /export function createCat/u);
+  assert.match(catsModule, /export function renameCat/u);
+  assert.match(catsModule, /export function setBossCat/u);
+});
+
+test('chat snapshot composes dedicated shared and entity helper modules', async () => {
+  const snapshotModule = await readFile(
+    new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
+    'utf8',
+  );
+  const sharedModule = await readFile(
+    new URL('../src/products/chat/state/chatSnapshotShared.ts', import.meta.url),
+    'utf8',
+  );
+  const entitiesModule = await readFile(
+    new URL('../src/products/chat/state/chatSnapshotEntities.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(snapshotModule, /chatSnapshotShared\.js/u);
+  assert.match(snapshotModule, /chatSnapshotEntities\.js/u);
+  assert.doesNotMatch(snapshotModule, /function normalizeMessage\(/u);
+  assert.doesNotMatch(snapshotModule, /function normalizeExecutionLease\(/u);
+  assert.match(sharedModule, /export function normalizeExecutionLease/u);
+  assert.match(sharedModule, /export function normalizeMemoryCheckpoint/u);
+  assert.match(entitiesModule, /export function normalizeMessage/u);
+  assert.match(entitiesModule, /export function normalizeChannel/u);
+});
+
 test('chat resource routes compose dedicated preference, orchestrator, and channel modules', async () => {
   const resourceRoutesModule = await readFile(
     new URL('../src/products/chat/api/resourceRoutes.ts', import.meta.url),
@@ -1112,14 +1155,19 @@ test('chat snapshot consumes dedicated room-routing snapshot normalization inste
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
     'utf8',
   );
+  const entityModule = await readFile(
+    new URL('../src/products/chat/state/chatSnapshotEntities.ts', import.meta.url),
+    'utf8',
+  );
   const snapshotModule = await readFile(
     new URL('../src/products/chat/state/roomRoutingSnapshot.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(snapshotConsumer, /roomRoutingSnapshot\.js/u);
+  assert.match(snapshotConsumer, /chatSnapshotEntities\.js/u);
   assert.doesNotMatch(snapshotConsumer, /function normalizeRoomRouting\(/u);
   assert.doesNotMatch(snapshotConsumer, /function normalizeRoomWorkflowTurn\(/u);
+  assert.match(entityModule, /roomRoutingSnapshot\.js/u);
   assert.match(snapshotModule, /export function normalizeRoomRouting/u);
 });
 
