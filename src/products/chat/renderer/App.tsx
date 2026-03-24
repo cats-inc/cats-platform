@@ -2,56 +2,47 @@ import {
   startTransition,
   useEffect,
   useState,
-  type FormEvent,
 } from 'react';
 import {
-  Routes, Route, Navigate,
-  useNavigate, useLocation, useMatch,
+  useLocation,
+  useMatch,
+  useNavigate,
 } from 'react-router-dom';
 
+import type { AppShellPayload } from '../api/contracts';
 import {
   isNewChatPath,
-  NEW_CHAT_PATH,
   readNewChatLeadCatId,
-  resolveAppEntryPath,
-  resolveVisibleChatPath,
 } from '../shared/channelPaths';
-import type { AppShellPayload } from '../api/contracts';
-
-import {
-  type CatFormState,
-  type SelectedChannelView,
-  type Surface,
-  emptyCatForm,
-  resolveBossCatName,
-  pickGreeting,
-  BootShell,
-} from './chatUtils';
 import { getDefaultModel } from '../../../shared/providerCatalog';
 import {
   normalizeSelectedChannelView,
   resolveSelectedChannelEntryLifecycle,
 } from '../shared/channelEntry';
-import { useOperatorLoop } from './useOperatorLoop';
-import { useAppShellRouting } from './useAppShellRouting';
+import {
+  BootShell,
+  emptyCatForm,
+  pickGreeting,
+  resolveBossCatName,
+  type CatFormState,
+  type SelectedChannelView,
+  type Surface,
+} from './chatUtils';
+import { AppRoutes } from './AppRoutes';
 import { useAppChrome } from './useAppChrome';
 import { useAppDraftUiActions } from './useAppDraftUiActions';
 import { useAppNavigationActions } from './useAppNavigationActions';
+import { useAppShellRouting } from './useAppShellRouting';
 import { useCatAssignmentActions } from './useCatAssignmentActions';
 import { useComposerSubmit } from './useComposerSubmit';
 import { useFolderBrowser } from './useFolderBrowser';
 import { useGovernanceActions } from './useGovernanceActions';
-
-import { SetupWizard } from './components/SetupWizard';
+import { useOperatorLoop } from './useOperatorLoop';
 import type { ModelSelectorValue } from './components/ModelSelector';
-import { Sidebar, type SidebarViewMode } from './components/Sidebar';
-import { ChatView } from './components/ChatView';
-import { NewChatDraft } from './components/NewChatDraft';
-import { SettingsGeneral } from './components/SettingsGeneral';
-import { SettingsCats } from './components/SettingsCats';
-import { SettingsData } from './components/SettingsData';
-import { AddCatPanel } from './components/AddCatPanel';
-import { FolderBrowser } from './components/FolderBrowser';
+import {
+  Sidebar,
+  type SidebarViewMode,
+} from './components/Sidebar';
 import { findDirectLaneForCat } from './myCatNavigation';
 
 type LoadState =
@@ -70,8 +61,6 @@ function isDirectLaneSelectedForCat(
   return channel.roomRouting.mode === 'direct_cat_chat'
     && channel.roomRouting.leadParticipantId === catId;
 }
-
-function noop(): void {}
 
 export default function App() {
   const navigate = useNavigate();
@@ -97,11 +86,16 @@ export default function App() {
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
   const [draftModel, setDraftModel] = useState<ModelSelectorValue>(() => ({
-    provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
+    provider: 'claude',
+    model: getDefaultModel('claude') || null,
+    instance: null,
   }));
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(() => ({
-    provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
+    provider: 'claude',
+    model: getDefaultModel('claude') || null,
+    instance: null,
   }));
+
   const {
     accountMenuOpen,
     setAccountMenuOpen,
@@ -191,12 +185,14 @@ export default function App() {
     setDraftFiles,
     setChannelFiles,
   });
+
   const readyPayload = state.status === 'ready' ? state.payload : null;
   const readyChat = state.status === 'ready' ? state.payload.chat : null;
   const readySelectedChannel = normalizeSelectedChannelView(readyChat?.selectedChannel ?? null);
   const selectedChannelId = readyChat?.selectedChannelId ?? null;
   const selectedChannelViewId = readySelectedChannel?.id ?? null;
-  const selectedChannelEntryLifecycle = resolveSelectedChannelEntryLifecycle(readySelectedChannel);
+  const selectedChannelEntryLifecycle =
+    resolveSelectedChannelEntryLifecycle(readySelectedChannel);
   const routeChannelExists = Boolean(
     routeChannelId && readyChat?.channels.some((channel) => channel.id === routeChannelId),
   );
@@ -212,7 +208,9 @@ export default function App() {
     ? readySelectedChannel
     : null;
   const selectedDirectLane =
-    showingMyCatDirectLane && draftLeadCatId && isDirectLaneSelectedForCat(readySelectedChannel, draftLeadCatId)
+    showingMyCatDirectLane
+    && draftLeadCatId
+    && isDirectLaneSelectedForCat(readySelectedChannel, draftLeadCatId)
       ? readySelectedChannel
       : null;
   const operatorRefreshKey = readyChat
@@ -285,8 +283,6 @@ export default function App() {
     setFeedback,
   });
 
-  // --- Effects ---
-
   useEffect(() => {
     document.title = routeChannelTitle
       ? `${routeChannelTitle.trim() === 'Untitled chat' ? 'New chat' : routeChannelTitle} - Cats Chat`
@@ -335,12 +331,16 @@ export default function App() {
     readySelectedChannel,
   });
 
-  // Sync solo channel model from the selected channel's pending state
   useEffect(() => {
     if (!readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
       return;
     }
-    const pending = readySelectedChannel as { pendingProvider?: string | null; pendingModel?: string | null; pendingInstance?: string | null };
+
+    const pending = readySelectedChannel as {
+      pendingProvider?: string | null;
+      pendingModel?: string | null;
+      pendingInstance?: string | null;
+    };
     if (pending.pendingProvider) {
       setSoloChannelModel({
         provider: pending.pendingProvider,
@@ -350,13 +350,9 @@ export default function App() {
     }
   }, [readySelectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- Callbacks ---
-
   function updatePayload(payload: AppShellPayload): void {
     startTransition(() => setState({ status: 'ready', payload }));
   }
-
-  // --- Render ---
 
   if (state.status === 'loading') {
     return <BootShell />;
@@ -375,42 +371,21 @@ export default function App() {
   }
 
   const { payload } = state;
-
-  if (!payload.setupCompleteAt) {
-    return (
-      <Routes>
-        <Route
-          path="/setup"
-          element={
-            <SetupWizard
-              payload={payload}
-              onComplete={(next) => {
-                startTransition(() => setState({ status: 'ready', payload: next }));
-              }}
-            />
-          }
-        />
-        <Route path="*" element={<Navigate to="/setup" replace />} />
-      </Routes>
-    );
-  }
-
   const surface: Surface = location.pathname.startsWith('/settings')
-    ? 'settings' : 'chats';
-
-  const directLaneChannel = showingMyCatDirectLane
-    ? selectedDirectLane
-    : null;
+    ? 'settings'
+    : 'chats';
+  const directLaneChannel = showingMyCatDirectLane ? selectedDirectLane : null;
   const activeChannelView = selectedChannel ?? directLaneChannel;
   const activeMyCatId = draftLeadCatId
     ? draftLeadCatId
-    : selectedChannel?.roomRouting?.mode === 'direct_cat_chat'
+    : selectedChannel?.roomRouting.mode === 'direct_cat_chat'
       ? selectedChannel.roomRouting.leadParticipantId ?? null
       : null;
-
   const activeAssignedCats =
     activeChannelView?.assignedCats.filter((cat) => cat.status === 'active') ?? [];
-  const assignedCatIds = new Set(activeChannelView?.assignedCats.map((cat) => cat.catId) ?? []);
+  const assignedCatIds = new Set(
+    activeChannelView?.assignedCats.map((cat) => cat.catId) ?? [],
+  );
   const bossCatName = resolveBossCatName(payload) ?? 'Orchestrator';
   const bossCatAvatarColor = payload.chat.cats.find(
     (cat) => cat.id === payload.chat.bossCatId,
@@ -419,12 +394,13 @@ export default function App() {
     && selectedChannel?.composerMode !== 'solo'
     && !activeAssignedCats.some((cat) => cat.catId === payload.chat.bossCatId);
   const selectableCats = payload.chat.cats.filter(
-    (cat) =>
-      cat.status === 'active'
-      && cat.id !== payload.chat.bossCatId,
+    (cat) => cat.status === 'active' && cat.id !== payload.chat.bossCatId,
   );
   const assignableCatCount = selectableCats.length;
   const draftCatIdSet = new Set(draftCatIds);
+  const showDirectLaneBoot = Boolean(routeDirectLaneSummary && !directLaneChannel);
+  const showAddCatPanel =
+    addCatOpen && (Boolean(selectedChannel) || (showingNewChatDraft && !draftLeadCatId));
 
   return (
     <div
@@ -460,242 +436,119 @@ export default function App() {
       />
 
       <main className="canvas">
-        <Routes>
-          <Route
-            path="/"
-            element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
-          />
-          <Route
-            path="/setup"
-            element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
-          />
-          <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
-          <Route path="/settings/general" element={
-            <SettingsGeneral
-              payload={payload}
-              feedback={feedback}
-              onPayloadUpdate={updatePayload}
-              onFeedback={setFeedback}
-            />
-          } />
-          <Route path="/settings/cats" element={
-            <SettingsCats
-              payload={payload}
-              feedback={feedback}
-              busy={busy}
-              onPayloadUpdate={updatePayload}
-              onFeedback={setFeedback}
-              onBusy={setBusy}
-            />
-          } />
-          <Route path="/settings/data" element={
-            <SettingsData
-              feedback={feedback}
-              busy={busy}
-              onResetSetup={onResetSetup}
-            />
-          } />
-          <Route path="/chats/:channelId" element={
-            selectedChannel ? (
-              <ChatView
-                payload={payload}
-                selectedChannel={selectedChannel}
-                operatorSnapshot={operatorState.snapshot}
-                operatorLoading={operatorState.status === 'loading' && operatorState.snapshot === null}
-                operatorError={operatorState.status === 'error' ? operatorState.message : ''}
-                composerDraft={composerDraft}
-                busy={busy}
-                feedback={feedback}
-                greeting={greeting}
-                channelFiles={channelFiles}
-                channelPlusMenuOpen={channelPlusMenuOpen}
-                channelPlusMenuRef={channelPlusMenuRef}
-                channelFileInputRef={channelFileInputRef}
-                activeAssignedCats={activeAssignedCats}
-                bossCatName={bossCatName}
-                bossCatAvatarColor={bossCatAvatarColor}
-                showBossCatAvatar={showBossCatAvatar}
-                addCatOpen={addCatOpen}
-                onComposerChange={setComposerDraft}
-                onComposerKeyDown={onComposerKeyDown}
-                onSendMessage={onSendMessage}
-                onToggleAddCat={toggleAddCatPanel}
-                onToggleChannelPlusMenu={toggleChannelPlusMenu}
-                onChannelFileSelect={openChannelFilePicker}
-                onChannelFilesChange={setChannelFiles}
-                onApprovalDecision={onApprovalDecision}
-                onChoiceSubmit={onChoiceSubmit}
-                onOperatorAction={onOperatorAction}
-                autoResize={autoResize}
-                selectedModel={
-                  selectedChannel.composerMode === 'solo'
-                    ? soloChannelModel
-                    : undefined
-                }
-                onModelChange={
-                  selectedChannel.composerMode === 'solo'
-                    ? setSoloChannelModel
-                    : undefined
-                }
-              />
-            ) : (
-              <BootShell />
-            )
-          } />
-          <Route
-            path="/chats"
-            element={<Navigate to={resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId)} replace />}
-          />
-          <Route
-            path="/my-cats/:catId"
-            element={
-              routeDirectLaneSummary && !directLaneChannel ? (
-                <BootShell />
-              ) : directLaneChannel ? (
-                <ChatView
-                  payload={payload}
-                  selectedChannel={directLaneChannel}
-                  operatorSnapshot={operatorState.snapshot}
-                  operatorLoading={operatorState.status === 'loading' && operatorState.snapshot === null}
-                  operatorError={operatorState.status === 'error' ? operatorState.message : ''}
-                  composerDraft={composerDraft}
-                  busy={busy}
-                  feedback={feedback}
-                  greeting={greeting}
-                  channelFiles={channelFiles}
-                  channelPlusMenuOpen={channelPlusMenuOpen}
-                  channelPlusMenuRef={channelPlusMenuRef}
-                  channelFileInputRef={channelFileInputRef}
-                  activeAssignedCats={activeAssignedCats}
-                  bossCatName={bossCatName}
-                  bossCatAvatarColor={bossCatAvatarColor}
-                  showBossCatAvatar={showBossCatAvatar}
-                  addCatOpen={false}
-                  onComposerChange={setComposerDraft}
-                  onComposerKeyDown={onComposerKeyDown}
-                  onSendMessage={onSendMessage}
-                  onToggleAddCat={noop}
-                  onToggleChannelPlusMenu={toggleChannelPlusMenu}
-                  onChannelFileSelect={openChannelFilePicker}
-                  onChannelFilesChange={setChannelFiles}
-                  onApprovalDecision={onApprovalDecision}
-                  onChoiceSubmit={onChoiceSubmit}
-                  onOperatorAction={onOperatorAction}
-                  autoResize={autoResize}
-                  showAddCatButton={false}
-                />
-              ) : (
-                <NewChatDraft
-                  payload={payload}
-                  composerDraft={composerDraft}
-                  busy={busy}
-                  greeting={greeting}
-                  draftFiles={draftFiles}
-                  draftCwd={draftCwd}
-                  draftCatIds={draftCatIds}
-                  plusMenuOpen={plusMenuOpen}
-                  plusMenuRef={plusMenuRef}
-                  fileInputRef={fileInputRef}
-                  bossCatName={bossCatName}
-                  bossCatAvatarColor={bossCatAvatarColor}
-                  onComposerChange={setComposerDraft}
-                  onComposerKeyDown={onComposerKeyDown}
-                  onSendMessage={onSendMessage}
-                  onTogglePlusMenu={toggleDraftPlusMenu}
-                  onFileSelect={openDraftFilePicker}
-                  onPickFolder={openDraftFolderPicker}
-                  onOpenAddCat={noop}
-                  onDraftFilesChange={setDraftFiles}
-                  onDraftCwdClear={() => setDraftCwd(null)}
-                  onToggleDraftCat={toggleDraftCat}
-                  autoResize={autoResize}
-                  draftLeadCatId={draftLeadCatId}
-                  onDraftLeadCatChange={noop}
-                  allowAddCat={false}
-                />
-              )
-            }
-          />
-          <Route path={NEW_CHAT_PATH} element={
-            <NewChatDraft
-              payload={payload}
-              composerDraft={composerDraft}
-              busy={busy}
-              greeting={greeting}
-              draftFiles={draftFiles}
-              draftCwd={draftCwd}
-              draftCatIds={draftCatIds}
-              plusMenuOpen={plusMenuOpen}
-              plusMenuRef={plusMenuRef}
-              fileInputRef={fileInputRef}
-              bossCatName={bossCatName}
-              bossCatAvatarColor={bossCatAvatarColor}
-              onComposerChange={setComposerDraft}
-              onComposerKeyDown={onComposerKeyDown}
-              onSendMessage={onSendMessage}
-              onTogglePlusMenu={toggleDraftPlusMenu}
-              onFileSelect={openDraftFilePicker}
-              onPickFolder={openDraftFolderPicker}
-              onOpenAddCat={openDraftAddCatPanel}
-              onDraftFilesChange={setDraftFiles}
-              onDraftCwdClear={() => setDraftCwd(null)}
-              onToggleDraftCat={toggleDraftCat}
-              autoResize={autoResize}
-              draftLeadCatId={draftLeadCatId}
-              onDraftLeadCatChange={changeDraftLeadCat}
-              selectedModel={!draftLeadCatId ? draftModel : undefined}
-              onModelChange={!draftLeadCatId ? setDraftModel : undefined}
-            />
-          } />
-          <Route
-            path="*"
-            element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
-          />
-        </Routes>
-      </main>
-
-      {addCatOpen && (selectedChannel || (showingNewChatDraft && !draftLeadCatId)) ? (
-        <AddCatPanel
-          panelRef={addCatPanelRef}
-          selectableCats={selectableCats}
-          assignableCatCount={assignableCatCount}
-          addCatTab={addCatTab}
-          busy={busy}
+        <AppRoutes
+          payload={payload}
+          selectedChannel={selectedChannel}
+          directLaneChannel={directLaneChannel}
+          showDirectLaneBoot={showDirectLaneBoot}
           feedback={feedback}
-          showingNewChatDraft={showingNewChatDraft && !draftLeadCatId}
-          draftCatIdSet={draftCatIdSet}
-          assignedCatIds={assignedCatIds}
-          catForm={catForm}
-          onClose={() => setAddCatOpen(false)}
-          onTabChange={setAddCatTab}
-          onAssignExistingCat={onAssignExistingCat}
-          onRemoveAssignedCat={onRemoveAssignedCat}
-          onToggleDraftCat={toggleDraftCat}
-          onCatFormChange={setCatForm}
-          onCreateCat={(e) => {
-            if (showingNewChatDraft && !draftLeadCatId) {
-              void onCreateAndDraftCat(e);
-            } else {
-              void onCreateAndAssignCat(e);
-            }
+          busy={busy}
+          chatSurfaceProps={{
+            operatorSnapshot: operatorState.snapshot,
+            operatorLoading:
+              operatorState.status === 'loading' && operatorState.snapshot === null,
+            operatorError: operatorState.status === 'error' ? operatorState.message : '',
+            composerDraft,
+            busy,
+            feedback,
+            greeting,
+            channelFiles,
+            channelPlusMenuOpen,
+            channelPlusMenuRef,
+            channelFileInputRef,
+            activeAssignedCats,
+            bossCatName,
+            bossCatAvatarColor,
+            showBossCatAvatar,
+            onComposerChange: setComposerDraft,
+            onComposerKeyDown,
+            onSendMessage,
+            onToggleChannelPlusMenu: toggleChannelPlusMenu,
+            onChannelFileSelect: openChannelFilePicker,
+            onChannelFilesChange: setChannelFiles,
+            onApprovalDecision,
+            onChoiceSubmit,
+            onOperatorAction,
+            autoResize,
+            selectedModel:
+              selectedChannel?.composerMode === 'solo' ? soloChannelModel : undefined,
+            onModelChange:
+              selectedChannel?.composerMode === 'solo' ? setSoloChannelModel : undefined,
           }}
+          draftSurfaceProps={{
+            composerDraft,
+            busy,
+            greeting,
+            draftFiles,
+            draftCwd,
+            draftCatIds,
+            plusMenuOpen,
+            plusMenuRef,
+            fileInputRef,
+            bossCatName,
+            bossCatAvatarColor,
+            onComposerChange: setComposerDraft,
+            onComposerKeyDown,
+            onSendMessage,
+            onTogglePlusMenu: toggleDraftPlusMenu,
+            onFileSelect: openDraftFilePicker,
+            onPickFolder: openDraftFolderPicker,
+            onDraftFilesChange: setDraftFiles,
+            onDraftCwdClear: () => setDraftCwd(null),
+            onToggleDraftCat: toggleDraftCat,
+            autoResize,
+            draftLeadCatId,
+            selectedModel: !draftLeadCatId ? draftModel : undefined,
+            onModelChange: !draftLeadCatId ? setDraftModel : undefined,
+          }}
+          onToggleAddCat={toggleAddCatPanel}
+          onPayloadUpdate={updatePayload}
+          onFeedback={setFeedback}
+          onBusy={setBusy}
+          onResetSetup={onResetSetup}
+          addCatOpen={showAddCatPanel}
+          addCatPanelProps={{
+            panelRef: addCatPanelRef,
+            selectableCats,
+            assignableCatCount,
+            addCatTab,
+            showingNewChatDraft: showingNewChatDraft && !draftLeadCatId,
+            draftCatIdSet,
+            assignedCatIds,
+            catForm,
+            onClose: () => setAddCatOpen(false),
+            onTabChange: setAddCatTab,
+            onAssignExistingCat,
+            onRemoveAssignedCat,
+            onToggleDraftCat: toggleDraftCat,
+            onCatFormChange: setCatForm,
+            onCreateCat: (event) => {
+              if (showingNewChatDraft && !draftLeadCatId) {
+                void onCreateAndDraftCat(event);
+                return;
+              }
+              void onCreateAndAssignCat(event);
+            },
+          }}
+          folderBrowserProps={{
+            folderBrowserOpen,
+            folderBrowsePath,
+            folderBrowseCurrentPath: folderBrowseCurrentPath ?? '',
+            folderBrowseParentPath: folderBrowseParentPath ?? '',
+            folderBrowseEntries,
+            folderBrowseLoading,
+            folderBrowseError,
+            onPathChange: setFolderBrowsePath,
+            onBrowse: (path) => {
+              void browseFolder(path);
+            },
+            onClose: closeFolderBrowser,
+            onSelect: selectCurrentFolder,
+          }}
+          onOpenDraftAddCat={openDraftAddCatPanel}
+          onChangeDraftLeadCat={changeDraftLeadCat}
         />
-      ) : null}
-
-      {folderBrowserOpen ? (
-        <FolderBrowser
-          folderBrowsePath={folderBrowsePath}
-          folderBrowseCurrentPath={folderBrowseCurrentPath}
-          folderBrowseParentPath={folderBrowseParentPath}
-          folderBrowseEntries={folderBrowseEntries}
-          folderBrowseLoading={folderBrowseLoading}
-          folderBrowseError={folderBrowseError}
-          onPathChange={setFolderBrowsePath}
-          onBrowse={(path) => void browseFolder(path)}
-          onClose={closeFolderBrowser}
-          onSelect={selectCurrentFolder}
-        />
-      ) : null}
+      </main>
     </div>
   );
 }

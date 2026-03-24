@@ -498,6 +498,24 @@ test('renderer app consumes a dedicated chrome hook instead of defining shell me
   assert.match(hookSource, /document\.addEventListener\('mousedown'/u);
 });
 
+test('renderer app consumes a dedicated routes module instead of defining the route tree inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const routesSource = await readFile(
+    new URL('../src/products/chat/renderer/AppRoutes.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /AppRoutes/u);
+  assert.doesNotMatch(appSource, /<Routes>/u);
+  assert.doesNotMatch(appSource, /path="\/settings\/general"/u);
+  assert.match(routesSource, /export function AppRoutes/u);
+  assert.match(routesSource, /path="\/settings\/general"/u);
+  assert.match(routesSource, /path="\/chats\/:channelId"/u);
+});
+
 test('renderer app consumes dedicated navigation actions instead of defining route-side effects inline', async () => {
   const appSource = await readFile(
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
@@ -614,6 +632,18 @@ test('renderer styles compose dedicated partials instead of keeping the full sty
     new URL('../src/products/chat/renderer/styles/base.css', import.meta.url),
     'utf8',
   );
+  const baseFoundationStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/base-foundation.css', import.meta.url),
+    'utf8',
+  );
+  const baseSurfacesStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/base-surfaces.css', import.meta.url),
+    'utf8',
+  );
+  const baseOverlaysStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/base-overlays.css', import.meta.url),
+    'utf8',
+  );
   const settingsStylesSource = await readFile(
     new URL('../src/products/chat/renderer/styles/settings.css', import.meta.url),
     'utf8',
@@ -624,6 +654,18 @@ test('renderer styles compose dedicated partials instead of keeping the full sty
   );
   const chatWorkspaceStylesSource = await readFile(
     new URL('../src/products/chat/renderer/styles/chat-workspace.css', import.meta.url),
+    'utf8',
+  );
+  const chatShellStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/chat-shell.css', import.meta.url),
+    'utf8',
+  );
+  const chatOperatorStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/chat-operator.css', import.meta.url),
+    'utf8',
+  );
+  const chatThreadStylesSource = await readFile(
+    new URL('../src/products/chat/renderer/styles/chat-thread.css', import.meta.url),
     'utf8',
   );
   const chatComposerStylesSource = await readFile(
@@ -646,15 +688,29 @@ test('renderer styles compose dedicated partials instead of keeping the full sty
   assert.doesNotMatch(stylesIndexSource, /\.tooltipPortal/u);
   assert.doesNotMatch(stylesIndexSource, /\.settingsShell/u);
   assert.doesNotMatch(stylesIndexSource, /\.myCatsSection/u);
+  assert.match(baseStylesSource, /@import '\.\/base-foundation\.css';/u);
+  assert.match(baseStylesSource, /@import '\.\/base-surfaces\.css';/u);
+  assert.match(baseStylesSource, /@import '\.\/base-overlays\.css';/u);
+  assert.doesNotMatch(baseStylesSource, /\.tooltipPortal/u);
+  assert.doesNotMatch(baseStylesSource, /\.accountMenu/u);
   assert.match(chatStylesSource, /@import '\.\/chat-workspace\.css';/u);
   assert.match(chatStylesSource, /@import '\.\/chat-composer\.css';/u);
   assert.match(chatStylesSource, /@import '\.\/chat-setup\.css';/u);
   assert.doesNotMatch(chatStylesSource, /\.channelWorkspace/u);
   assert.doesNotMatch(chatStylesSource, /\.composerPlusMenu/u);
   assert.doesNotMatch(chatStylesSource, /\.setupWizard/u);
-  assert.match(baseStylesSource, /\.tooltipPortal/u);
+  assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-shell\.css';/u);
+  assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-operator\.css';/u);
+  assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-thread\.css';/u);
+  assert.doesNotMatch(chatWorkspaceStylesSource, /\.channelWorkspace/u);
+  assert.doesNotMatch(chatWorkspaceStylesSource, /\.recentOverflowMenu/u);
+  assert.match(baseFoundationStylesSource, /\.tooltipPortal/u);
+  assert.match(baseSurfacesStylesSource, /\.messageChoices/u);
+  assert.match(baseOverlaysStylesSource, /\.accountMenu/u);
   assert.match(settingsStylesSource, /\.settingsShell/u);
-  assert.match(chatWorkspaceStylesSource, /\.channelWorkspace/u);
+  assert.match(chatShellStylesSource, /\.sidebarCollapsed \.brandCopy/u);
+  assert.match(chatOperatorStylesSource, /\.channelWorkspace/u);
+  assert.match(chatThreadStylesSource, /\.recentOverflowMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusMenu/u);
   assert.match(chatSetupStylesSource, /\.setupWizard/u);
   assert.match(extraStylesSource, /\.myCatsSection/u);
