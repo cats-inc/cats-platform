@@ -2,20 +2,6 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ChatCat, ChatChannelView } from '../api/contracts.js';
-import {
-  buildCompanionSessionContext,
-} from '../companion/hydration.js';
-import {
-  buildCompanionSourceStorageKey,
-} from '../companion/layout.js';
-import {
-  applyCompanionSourceUpdate,
-  applyCompanionResponseProfileUpdate,
-  createCompanionBox,
-  createCompanionMemoryRecord,
-  createCompanionSourceRecord,
-  createDerivedRecordsForSource,
-} from '../companion/sourceIngestion.js';
 import type {
   CompanionBox,
   CompanionBoxSummary,
@@ -35,7 +21,19 @@ import type {
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
 import {
-  buildStorageLayout,
+  appendCompanionBoxMemory,
+  buildCompanionBoxSessionContext,
+  deleteCompanionSource,
+  ensureCompanionBox,
+  ingestCompanionSource,
+  listCompanionBoxDerived,
+  listCompanionBoxMemory,
+  listCompanionBoxSources,
+  summarizeCompanionBox,
+  updateCompanionBoxResponseProfile,
+  updateCompanionSource,
+} from './companionBoxOperations.js';
+import {
   cloneSnapshot,
   createEmptySnapshot,
   deriveCompanionBoxStatePath,
@@ -46,137 +44,6 @@ import {
 } from './companionBoxSnapshot.js';
 
 export { deriveCompanionBoxStatePath };
-
-function sortNewestFirst<T extends { updatedAt: string }>(records: T[]): T[] {
-  return [...records].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
-}
-
-function ensureBox(
-  snapshot: CompanionSnapshot,
-  catId: string,
-  nowIso: string,
-): { box: CompanionBox; created: boolean } {
-  const existing = snapshot.boxes.find((box) => box.catId === catId);
-  if (existing) {
-    return {
-      box: existing,
-      created: false,
-    };
-  }
-
-  const box = createCompanionBox(catId, nowIso);
-  snapshot.boxes.push(box);
-  snapshot.updatedAt = nowIso;
-  return {
-    box,
-    created: true,
-  };
-}
-
-function listBoxSources(snapshot: CompanionSnapshot, box: CompanionBox): CompanionSourceRecord[] {
-  return sortNewestFirst(
-    snapshot.sources.filter((record) => record.boxId === box.id),
-  );
-}
-
-function listBoxDerived(snapshot: CompanionSnapshot, box: CompanionBox): CompanionDerivedRecord[] {
-  return sortNewestFirst(
-    snapshot.derived.filter((record) => record.boxId === box.id),
-  );
-}
-
-function listBoxMemory(snapshot: CompanionSnapshot, box: CompanionBox): CompanionMemoryRecord[] {
-  return sortNewestFirst(
-    snapshot.memory.filter((record) => record.boxId === box.id),
-  );
-}
-
-function requireSourceRecord(
-  snapshot: CompanionSnapshot,
-  box: CompanionBox,
-  sourceId: string,
-): CompanionSourceRecord {
-  const source = snapshot.sources.find((record) => record.boxId === box.id && record.id === sourceId);
-  if (!source) {
-    throw new Error(`Companion source not found: ${sourceId}`);
-  }
-  return source;
-}
-
-function collectDerivedIdsForSource(
-  snapshot: CompanionSnapshot,
-  box: CompanionBox,
-  sourceId: string,
-): string[] {
-  return snapshot.derived
-    .filter((record) => record.boxId === box.id && record.sourceIds.includes(sourceId))
-    .map((record) => record.id);
-}
-
-function replaceDerivedForSource(
-  snapshot: CompanionSnapshot,
-  box: CompanionBox,
-  sourceId: string,
-  nextDerived: CompanionDerivedRecord[],
-): string[] {
-  const removedDerivedIds = collectDerivedIdsForSource(snapshot, box, sourceId);
-  snapshot.derived = [
-    ...nextDerived,
-    ...snapshot.derived.filter((record) =>
-      !(record.boxId === box.id && record.sourceIds.includes(sourceId)),
-    ),
-  ];
-  box.derivedIds = [
-    ...nextDerived.map((record) => record.id),
-    ...box.derivedIds.filter((id) => !removedDerivedIds.includes(id)),
-  ];
-  return removedDerivedIds;
-}
-
-function pruneMemorySourceRefs(
-  snapshot: CompanionSnapshot,
-  box: CompanionBox,
-  sourceId: string,
-  nowIso: string,
-): string[] {
-  const prunedMemoryIds: string[] = [];
-  snapshot.memory = snapshot.memory.map((record) => {
-    if (record.boxId !== box.id || !record.sourceIds.includes(sourceId)) {
-      return record;
-    }
-    const nextSourceIds = record.sourceIds.filter((candidate) => candidate !== sourceId);
-    prunedMemoryIds.push(record.id);
-    return {
-      ...record,
-      sourceIds: nextSourceIds,
-      updatedAt: nowIso,
-    };
-  });
-  return prunedMemoryIds;
-}
-
-function summarizeBox(
-  box: CompanionBox,
-  snapshot: CompanionSnapshot,
-  snapshotPath: string,
-): CompanionBoxSummary {
-  const sourceCount = snapshot.sources.filter((record) => record.boxId === box.id).length;
-  const derivedCount = snapshot.derived.filter((record) => record.boxId === box.id).length;
-  const memoryCount = snapshot.memory.filter((record) => record.boxId === box.id).length;
-
-  return {
-    box: structuredClone(box),
-    sourceCount,
-    derivedCount,
-    memoryCount,
-    storage: buildStorageLayout(box.catId, snapshotPath),
-    hasHydrationContext:
-      sourceCount > 0
-      || derivedCount > 0
-      || memoryCount > 0
-      || Boolean(box.responseProfile.notes),
-  };
-}
 
 async function materializeStoredSource(
   snapshotPath: string,
@@ -302,7 +169,7 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
 
   async getBox(catId: string, now: Date = new Date()): Promise<CompanionBox> {
     const snapshot = await this.readOrCreateSnapshot();
-    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    const { box, created } = ensureCompanionBox(snapshot, catId, isoAt(now));
     if (created) {
       await this.writeSnapshot(snapshot);
     }
@@ -311,20 +178,20 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
 
   async getBoxSummary(catId: string, now: Date = new Date()): Promise<CompanionBoxSummary> {
     const snapshot = await this.readOrCreateSnapshot();
-    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    const { box, created } = ensureCompanionBox(snapshot, catId, isoAt(now));
     if (created) {
       await this.writeSnapshot(snapshot);
     }
-    return summarizeBox(box, snapshot, this.snapshotPath);
+    return summarizeCompanionBox(box, snapshot, this.snapshotPath);
   }
 
   async listSources(catId: string, now: Date = new Date()): Promise<CompanionSourceRecord[]> {
     const snapshot = await this.readOrCreateSnapshot();
-    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    const { box, created } = ensureCompanionBox(snapshot, catId, isoAt(now));
     if (created) {
       await this.writeSnapshot(snapshot);
     }
-    return structuredClone(listBoxSources(snapshot, box));
+    return structuredClone(listCompanionBoxSources(snapshot, box));
   }
 
   async ingestSource(
@@ -335,24 +202,12 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     const nowIso = isoAt(now);
     const snapshot = await this.readOrCreateSnapshot();
     const snapshotBeforeMutation = cloneSnapshot(snapshot);
-    const { box } = ensureBox(snapshot, catId, nowIso);
-    const source = createCompanionSourceRecord(box, input, nowIso, null);
-    if (input.storageMode !== 'linked_path') {
-      source.storedPath = buildCompanionSourceStorageKey(catId, source.id, 'json');
-    }
-    const derivedRecords = createDerivedRecordsForSource(box, source, nowIso);
-
-    snapshot.sources.unshift(source);
-    snapshot.derived.unshift(...derivedRecords);
-    box.sourceIds.unshift(source.id);
-    box.derivedIds.unshift(...derivedRecords.map((record) => record.id));
-    box.updatedAt = nowIso;
-    box.lastIngestedAt = nowIso;
-    snapshot.updatedAt = nowIso;
+    const { box } = ensureCompanionBox(snapshot, catId, nowIso);
+    const result = ingestCompanionSource(snapshot, box, catId, input, nowIso);
 
     try {
       await this.writeSnapshot(snapshot);
-      await materializeStoredSource(this.snapshotPath, source);
+      await materializeStoredSource(this.snapshotPath, result.source);
     } catch (error) {
       const rollbackErrors: string[] = [];
       try {
@@ -361,7 +216,7 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
         rollbackErrors.push(`snapshot rollback failed: ${describeError(rollbackError)}`);
       }
       try {
-        await removeMaterializedStoredSource(this.snapshotPath, source.storedPath);
+        await removeMaterializedStoredSource(this.snapshotPath, result.source.storedPath);
       } catch (rollbackError) {
         rollbackErrors.push(`stored source cleanup failed: ${describeError(rollbackError)}`);
       }
@@ -376,9 +231,9 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     }
 
     return {
-      box: structuredClone(box),
-      source: structuredClone(source),
-      derivedRecords: structuredClone(derivedRecords),
+      box: structuredClone(result.box),
+      source: structuredClone(result.source),
+      derivedRecords: structuredClone(result.derivedRecords),
     };
   }
 
@@ -391,20 +246,12 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     const nowIso = isoAt(now);
     const snapshot = await this.readOrCreateSnapshot();
     const snapshotBeforeMutation = cloneSnapshot(snapshot);
-    const { box } = ensureBox(snapshot, catId, nowIso);
-    const source = requireSourceRecord(snapshot, box, sourceId);
-    const nextSource = applyCompanionSourceUpdate(source, update, nowIso);
-    const nextDerived = createDerivedRecordsForSource(box, nextSource, nowIso);
-
-    const sourceIndex = snapshot.sources.findIndex((record) => record.id === sourceId && record.boxId === box.id);
-    snapshot.sources[sourceIndex] = nextSource;
-    replaceDerivedForSource(snapshot, box, sourceId, nextDerived);
-    box.updatedAt = nowIso;
-    snapshot.updatedAt = nowIso;
+    const { box } = ensureCompanionBox(snapshot, catId, nowIso);
+    const result = updateCompanionSource(snapshot, box, sourceId, update, nowIso);
 
     try {
       await this.writeSnapshot(snapshot);
-      await materializeStoredSource(this.snapshotPath, nextSource);
+      await materializeStoredSource(this.snapshotPath, result.source);
     } catch (error) {
       const rollbackErrors: string[] = [];
       try {
@@ -413,7 +260,7 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
         rollbackErrors.push(`snapshot rollback failed: ${describeError(rollbackError)}`);
       }
       try {
-        await materializeStoredSource(this.snapshotPath, source);
+        await materializeStoredSource(this.snapshotPath, result.previousSource);
       } catch (rollbackError) {
         rollbackErrors.push(`stored source rollback failed: ${describeError(rollbackError)}`);
       }
@@ -426,9 +273,9 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     }
 
     return {
-      box: structuredClone(box),
-      source: structuredClone(nextSource),
-      derivedRecords: structuredClone(nextDerived),
+      box: structuredClone(result.box),
+      source: structuredClone(result.source),
+      derivedRecords: structuredClone(result.derivedRecords),
     };
   }
 
@@ -440,23 +287,12 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     const nowIso = isoAt(now);
     const snapshot = await this.readOrCreateSnapshot();
     const snapshotBeforeMutation = cloneSnapshot(snapshot);
-    const { box } = ensureBox(snapshot, catId, nowIso);
-    const source = requireSourceRecord(snapshot, box, sourceId);
-    const removedDerivedIds = collectDerivedIdsForSource(snapshot, box, sourceId);
-    const prunedMemoryIds = pruneMemorySourceRefs(snapshot, box, sourceId, nowIso);
-
-    snapshot.sources = snapshot.sources.filter((record) => !(record.boxId === box.id && record.id === sourceId));
-    box.sourceIds = box.sourceIds.filter((id) => id !== sourceId);
-    box.derivedIds = box.derivedIds.filter((id) => !removedDerivedIds.includes(id));
-    snapshot.derived = snapshot.derived.filter((record) =>
-      !(record.boxId === box.id && record.sourceIds.includes(sourceId)),
-    );
-    box.updatedAt = nowIso;
-    snapshot.updatedAt = nowIso;
+    const { box } = ensureCompanionBox(snapshot, catId, nowIso);
+    const result = deleteCompanionSource(snapshot, box, sourceId, nowIso);
 
     try {
       await this.writeSnapshot(snapshot);
-      await removeMaterializedStoredSource(this.snapshotPath, source.storedPath);
+      await removeMaterializedStoredSource(this.snapshotPath, result.source.storedPath);
     } catch (error) {
       const rollbackErrors: string[] = [];
       try {
@@ -465,7 +301,7 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
         rollbackErrors.push(`snapshot rollback failed: ${describeError(rollbackError)}`);
       }
       try {
-        await materializeStoredSource(this.snapshotPath, source);
+        await materializeStoredSource(this.snapshotPath, result.source);
       } catch (rollbackError) {
         rollbackErrors.push(`stored source rollback failed: ${describeError(rollbackError)}`);
       }
@@ -478,29 +314,29 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     }
 
     return {
-      box: structuredClone(box),
-      sourceId,
-      removedDerivedIds: structuredClone(removedDerivedIds),
-      prunedMemoryIds: structuredClone(prunedMemoryIds),
+      box: structuredClone(result.box),
+      sourceId: result.sourceId,
+      removedDerivedIds: structuredClone(result.removedDerivedIds),
+      prunedMemoryIds: structuredClone(result.prunedMemoryIds),
     };
   }
 
   async listDerived(catId: string, now: Date = new Date()): Promise<CompanionDerivedRecord[]> {
     const snapshot = await this.readOrCreateSnapshot();
-    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    const { box, created } = ensureCompanionBox(snapshot, catId, isoAt(now));
     if (created) {
       await this.writeSnapshot(snapshot);
     }
-    return structuredClone(listBoxDerived(snapshot, box));
+    return structuredClone(listCompanionBoxDerived(snapshot, box));
   }
 
   async listMemory(catId: string, now: Date = new Date()): Promise<CompanionMemoryRecord[]> {
     const snapshot = await this.readOrCreateSnapshot();
-    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    const { box, created } = ensureCompanionBox(snapshot, catId, isoAt(now));
     if (created) {
       await this.writeSnapshot(snapshot);
     }
-    return structuredClone(listBoxMemory(snapshot, box));
+    return structuredClone(listCompanionBoxMemory(snapshot, box));
   }
 
   async createMemory(
@@ -510,13 +346,8 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
   ): Promise<CompanionMemoryRecord> {
     const nowIso = isoAt(now);
     const snapshot = await this.readOrCreateSnapshot();
-    const { box } = ensureBox(snapshot, catId, nowIso);
-    const record = createCompanionMemoryRecord(box, input, nowIso);
-
-    snapshot.memory.unshift(record);
-    box.memoryIds.unshift(record.id);
-    box.updatedAt = nowIso;
-    snapshot.updatedAt = nowIso;
+    const { box } = ensureCompanionBox(snapshot, catId, nowIso);
+    const record = appendCompanionBoxMemory(snapshot, box, input, nowIso);
     await this.writeSnapshot(snapshot);
 
     return structuredClone(record);
@@ -527,7 +358,7 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionResponseProfile> {
     const snapshot = await this.readOrCreateSnapshot();
-    const { box, created } = ensureBox(snapshot, catId, isoAt(now));
+    const { box, created } = ensureCompanionBox(snapshot, catId, isoAt(now));
     if (created) {
       await this.writeSnapshot(snapshot);
     }
@@ -541,16 +372,10 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
   ): Promise<CompanionResponseProfile> {
     const nowIso = isoAt(now);
     const snapshot = await this.readOrCreateSnapshot();
-    const { box } = ensureBox(snapshot, catId, nowIso);
-    box.responseProfile = applyCompanionResponseProfileUpdate(
-      box.responseProfile,
-      update,
-      nowIso,
-    );
-    box.updatedAt = nowIso;
-    snapshot.updatedAt = nowIso;
+    const { box } = ensureCompanionBox(snapshot, catId, nowIso);
+    const responseProfile = updateCompanionBoxResponseProfile(snapshot, box, update, nowIso);
     await this.writeSnapshot(snapshot);
-    return structuredClone(box.responseProfile);
+    return structuredClone(responseProfile);
   }
 
   async buildSessionContext(input: {
@@ -568,20 +393,13 @@ export class FileCompanionBoxStore implements CompanionBoxStore {
   }): Promise<CompanionSessionContext> {
     const snapshot = await this.readOrCreateSnapshot();
     const hydratedAt = isoAt(input.now ?? new Date());
-    const { box, created } = ensureBox(snapshot, input.cat.id, hydratedAt);
+    const { box, created } = ensureCompanionBox(snapshot, input.cat.id, hydratedAt);
     if (created) {
       await this.writeSnapshot(snapshot);
     }
 
-    return buildCompanionSessionContext({
-      cat: input.cat,
-      box,
-      sources: listBoxSources(snapshot, box),
-      derived: listBoxDerived(snapshot, box),
-      memory: listBoxMemory(snapshot, box),
-      requestedSkills: input.requestedSkills,
-      channel: input.channel,
-      transport: input.transport,
+    return buildCompanionBoxSessionContext(snapshot, box, {
+      ...input,
       hydratedAt,
     });
   }
@@ -604,17 +422,17 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
   }
 
   async getBox(catId: string, now: Date = new Date()): Promise<CompanionBox> {
-    return structuredClone(ensureBox(this.snapshot, catId, isoAt(now)).box);
+    return structuredClone(ensureCompanionBox(this.snapshot, catId, isoAt(now)).box);
   }
 
   async getBoxSummary(catId: string, now: Date = new Date()): Promise<CompanionBoxSummary> {
-    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
-    return summarizeBox(box, this.snapshot, this.snapshotPath);
+    const { box } = ensureCompanionBox(this.snapshot, catId, isoAt(now));
+    return summarizeCompanionBox(box, this.snapshot, this.snapshotPath);
   }
 
   async listSources(catId: string, now: Date = new Date()): Promise<CompanionSourceRecord[]> {
-    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
-    return structuredClone(listBoxSources(this.snapshot, box));
+    const { box } = ensureCompanionBox(this.snapshot, catId, isoAt(now));
+    return structuredClone(listCompanionBoxSources(this.snapshot, box));
   }
 
   async ingestSource(
@@ -623,25 +441,13 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionSourceIngestResult> {
     const nowIso = isoAt(now);
-    const { box } = ensureBox(this.snapshot, catId, nowIso);
-    const source = createCompanionSourceRecord(box, input, nowIso, null);
-    if (input.storageMode !== 'linked_path') {
-      source.storedPath = buildCompanionSourceStorageKey(catId, source.id, 'json');
-    }
-    const derivedRecords = createDerivedRecordsForSource(box, source, nowIso);
-
-    this.snapshot.sources.unshift(source);
-    this.snapshot.derived.unshift(...derivedRecords);
-    box.sourceIds.unshift(source.id);
-    box.derivedIds.unshift(...derivedRecords.map((record) => record.id));
-    box.updatedAt = nowIso;
-    box.lastIngestedAt = nowIso;
-    this.snapshot.updatedAt = nowIso;
+    const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
+    const result = ingestCompanionSource(this.snapshot, box, catId, input, nowIso);
 
     return {
-      box: structuredClone(box),
-      source: structuredClone(source),
-      derivedRecords: structuredClone(derivedRecords),
+      box: structuredClone(result.box),
+      source: structuredClone(result.source),
+      derivedRecords: structuredClone(result.derivedRecords),
     };
   }
 
@@ -652,22 +458,13 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionSourceUpdateResult> {
     const nowIso = isoAt(now);
-    const { box } = ensureBox(this.snapshot, catId, nowIso);
-    const source = requireSourceRecord(this.snapshot, box, sourceId);
-    const nextSource = applyCompanionSourceUpdate(source, update, nowIso);
-    const nextDerived = createDerivedRecordsForSource(box, nextSource, nowIso);
-    const sourceIndex = this.snapshot.sources.findIndex((record) =>
-      record.id === sourceId && record.boxId === box.id,
-    );
-    this.snapshot.sources[sourceIndex] = nextSource;
-    replaceDerivedForSource(this.snapshot, box, sourceId, nextDerived);
-    box.updatedAt = nowIso;
-    this.snapshot.updatedAt = nowIso;
+    const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
+    const result = updateCompanionSource(this.snapshot, box, sourceId, update, nowIso);
 
     return {
-      box: structuredClone(box),
-      source: structuredClone(nextSource),
-      derivedRecords: structuredClone(nextDerived),
+      box: structuredClone(result.box),
+      source: structuredClone(result.source),
+      derivedRecords: structuredClone(result.derivedRecords),
     };
   }
 
@@ -677,38 +474,25 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionSourceDeleteResult> {
     const nowIso = isoAt(now);
-    const { box } = ensureBox(this.snapshot, catId, nowIso);
-    requireSourceRecord(this.snapshot, box, sourceId);
-    const removedDerivedIds = collectDerivedIdsForSource(this.snapshot, box, sourceId);
-    const prunedMemoryIds = pruneMemorySourceRefs(this.snapshot, box, sourceId, nowIso);
-
-    this.snapshot.sources = this.snapshot.sources.filter((record) =>
-      !(record.boxId === box.id && record.id === sourceId),
-    );
-    this.snapshot.derived = this.snapshot.derived.filter((record) =>
-      !(record.boxId === box.id && record.sourceIds.includes(sourceId)),
-    );
-    box.sourceIds = box.sourceIds.filter((id) => id !== sourceId);
-    box.derivedIds = box.derivedIds.filter((id) => !removedDerivedIds.includes(id));
-    box.updatedAt = nowIso;
-    this.snapshot.updatedAt = nowIso;
+    const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
+    const result = deleteCompanionSource(this.snapshot, box, sourceId, nowIso);
 
     return {
-      box: structuredClone(box),
-      sourceId,
-      removedDerivedIds: structuredClone(removedDerivedIds),
-      prunedMemoryIds: structuredClone(prunedMemoryIds),
+      box: structuredClone(result.box),
+      sourceId: result.sourceId,
+      removedDerivedIds: structuredClone(result.removedDerivedIds),
+      prunedMemoryIds: structuredClone(result.prunedMemoryIds),
     };
   }
 
   async listDerived(catId: string, now: Date = new Date()): Promise<CompanionDerivedRecord[]> {
-    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
-    return structuredClone(listBoxDerived(this.snapshot, box));
+    const { box } = ensureCompanionBox(this.snapshot, catId, isoAt(now));
+    return structuredClone(listCompanionBoxDerived(this.snapshot, box));
   }
 
   async listMemory(catId: string, now: Date = new Date()): Promise<CompanionMemoryRecord[]> {
-    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
-    return structuredClone(listBoxMemory(this.snapshot, box));
+    const { box } = ensureCompanionBox(this.snapshot, catId, isoAt(now));
+    return structuredClone(listCompanionBoxMemory(this.snapshot, box));
   }
 
   async createMemory(
@@ -717,12 +501,8 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionMemoryRecord> {
     const nowIso = isoAt(now);
-    const { box } = ensureBox(this.snapshot, catId, nowIso);
-    const record = createCompanionMemoryRecord(box, input, nowIso);
-    this.snapshot.memory.unshift(record);
-    box.memoryIds.unshift(record.id);
-    box.updatedAt = nowIso;
-    this.snapshot.updatedAt = nowIso;
+    const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
+    const record = appendCompanionBoxMemory(this.snapshot, box, input, nowIso);
     return structuredClone(record);
   }
 
@@ -730,7 +510,7 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     catId: string,
     now: Date = new Date(),
   ): Promise<CompanionResponseProfile> {
-    const { box } = ensureBox(this.snapshot, catId, isoAt(now));
+    const { box } = ensureCompanionBox(this.snapshot, catId, isoAt(now));
     return structuredClone(box.responseProfile);
   }
 
@@ -740,15 +520,10 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now: Date = new Date(),
   ): Promise<CompanionResponseProfile> {
     const nowIso = isoAt(now);
-    const { box } = ensureBox(this.snapshot, catId, nowIso);
-    box.responseProfile = applyCompanionResponseProfileUpdate(
-      box.responseProfile,
-      update,
-      nowIso,
+    const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
+    return structuredClone(
+      updateCompanionBoxResponseProfile(this.snapshot, box, update, nowIso),
     );
-    box.updatedAt = nowIso;
-    this.snapshot.updatedAt = nowIso;
-    return structuredClone(box.responseProfile);
   }
 
   async buildSessionContext(input: {
@@ -765,17 +540,10 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     now?: Date;
   }): Promise<CompanionSessionContext> {
     const hydratedAt = isoAt(input.now ?? new Date());
-    const { box } = ensureBox(this.snapshot, input.cat.id, hydratedAt);
+    const { box } = ensureCompanionBox(this.snapshot, input.cat.id, hydratedAt);
 
-    return buildCompanionSessionContext({
-      cat: input.cat,
-      box,
-      sources: listBoxSources(this.snapshot, box),
-      derived: listBoxDerived(this.snapshot, box),
-      memory: listBoxMemory(this.snapshot, box),
-      requestedSkills: input.requestedSkills,
-      channel: input.channel,
-      transport: input.transport,
+    return buildCompanionBoxSessionContext(this.snapshot, box, {
+      ...input,
       hydratedAt,
     });
   }

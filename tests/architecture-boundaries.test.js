@@ -788,6 +788,26 @@ test('companion box store consumes dedicated snapshot helpers instead of definin
   assert.match(snapshotModule, /export function buildStorageLayout/u);
 });
 
+test('companion box store consumes dedicated operations helpers instead of defining mutation flows inline', async () => {
+  const storeSource = await readFile(
+    new URL('../src/products/chat/state/companionBoxStore.ts', import.meta.url),
+    'utf8',
+  );
+  const operationsModule = await readFile(
+    new URL('../src/products/chat/state/companionBoxOperations.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(storeSource, /companionBoxOperations\.js/u);
+  assert.doesNotMatch(storeSource, /function ensureBox\(/u);
+  assert.doesNotMatch(storeSource, /function summarizeBox\(/u);
+  assert.doesNotMatch(storeSource, /function replaceDerivedForSource\(/u);
+  assert.match(operationsModule, /export function ensureCompanionBox/u);
+  assert.match(operationsModule, /export function ingestCompanionSource/u);
+  assert.match(operationsModule, /export function updateCompanionSource/u);
+  assert.match(operationsModule, /export function deleteCompanionSource/u);
+});
+
 test('platform consumes room-routing types from the shared roomRouting module', async () => {
   const orchestratorContracts = await readFile(
     new URL('../src/platform/orchestration/contracts.ts', import.meta.url),
