@@ -925,6 +925,18 @@ test('store consumes dedicated core snapshot normalization instead of defining i
     new URL('../src/products/chat/state/coreSnapshotRecords.ts', import.meta.url),
     'utf8',
   );
+  const snapshotActorRecordsModule = await readFile(
+    new URL('../src/products/chat/state/coreSnapshotActorRecords.ts', import.meta.url),
+    'utf8',
+  );
+  const snapshotWorkflowRecordsModule = await readFile(
+    new URL('../src/products/chat/state/coreSnapshotWorkflowRecords.ts', import.meta.url),
+    'utf8',
+  );
+  const snapshotAuxiliaryRecordsModule = await readFile(
+    new URL('../src/products/chat/state/coreSnapshotAuxiliaryRecords.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(storeSource, /coreSnapshot\.js/u);
   assert.doesNotMatch(storeSource, /function normalizeCoreTask\(/u);
@@ -934,7 +946,16 @@ test('store consumes dedicated core snapshot normalization instead of defining i
   assert.match(snapshotModule, /coreSnapshotRecords\.js/u);
   assert.doesNotMatch(snapshotModule, /function asRecord\(/u);
   assert.match(snapshotSharedModule, /export function asRecord/u);
-  assert.match(snapshotRecordsModule, /export function normalizeCoreTask/u);
+  assert.match(snapshotRecordsModule, /coreSnapshotActorRecords\.js/u);
+  assert.match(snapshotRecordsModule, /coreSnapshotWorkflowRecords\.js/u);
+  assert.match(snapshotRecordsModule, /coreSnapshotAuxiliaryRecords\.js/u);
+  assert.doesNotMatch(snapshotRecordsModule, /export function normalizeCoreTask\(/u);
+  assert.match(snapshotActorRecordsModule, /export function normalizeOwnerProfile/u);
+  assert.match(snapshotActorRecordsModule, /export function normalizeCoreProject/u);
+  assert.match(snapshotWorkflowRecordsModule, /export function normalizeCoreTask/u);
+  assert.match(snapshotWorkflowRecordsModule, /export function normalizeCoreApprovalBinding/u);
+  assert.match(snapshotAuxiliaryRecordsModule, /export function normalizeBotBinding/u);
+  assert.match(snapshotAuxiliaryRecordsModule, /export function normalizeDurableMemoryRecord/u);
 });
 
 test('core route modules consume dedicated parsing and error helpers instead of defining them inline', async () => {
