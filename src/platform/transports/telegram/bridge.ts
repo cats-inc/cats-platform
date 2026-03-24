@@ -1,11 +1,6 @@
 import { createCatActorId } from '../../../core/model.js';
 import type { BotBindingRecord } from '../../../core/types.js';
 import type { ChatState, RoomRoutingMode } from '../../../shared/app-shell.js';
-import { refreshDerivedMemoryLayers } from '../../../products/chat/state/memoryLayers.js';
-import { appendMessage, createChannel, requireChannel } from '../../../products/chat/state/model.js';
-import { routeChannelMessage } from '../../../products/chat/state/runtimeActions.js';
-import type { CompanionBoxStore } from '../../../products/chat/state/companionBoxStore.js';
-import type { ChatStore } from '../../../products/chat/state/store.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import type { CatsMemoryService } from '../../memory/index.js';
 import type {
@@ -25,6 +20,57 @@ import {
 } from './utils.js';
 
 const TELEGRAM_REPLY_LIMIT = 4000;
+
+export interface TelegramRoomBridgeMessage {
+  senderKind: string;
+  senderName: string | null;
+  body: string;
+}
+
+export interface TelegramRoomBridgeView {
+  id: string;
+  title: string;
+  messages: TelegramRoomBridgeMessage[];
+}
+
+export interface TelegramRoomBridgeCreateRoomInput {
+  title: string;
+  topic: string;
+  roomMode: RoomRoutingMode;
+  leadParticipantId?: string;
+  participantCatIds: string[];
+}
+
+export interface TelegramRoomBridgeRecoveryInput {
+  state: ChatState;
+  roomId: string;
+  senderName: string;
+  inboundBody: string;
+  occurredAt: Date;
+  errorMessage: string;
+  includeInboundMessage: boolean;
+}
+
+export interface TelegramRoomBridge {
+  readState(): Promise<ChatState>;
+  writeState(state: ChatState): Promise<ChatState>;
+  createRoom(
+    state: ChatState,
+    input: TelegramRoomBridgeCreateRoomInput,
+    timestamp: Date,
+  ): { state: ChatState; roomId: string };
+  readRoom(state: ChatState, roomId: string): TelegramRoomBridgeView;
+  routeRoomMessage(input: {
+    state: ChatState;
+    roomId: string;
+    body: string;
+    senderName: string;
+    runtimeClient: RuntimeClient;
+    memoryService: CatsMemoryService;
+    timestamp: Date;
+  }): Promise<{ state: ChatState }>;
+  buildRecoveryState(input: TelegramRoomBridgeRecoveryInput): ChatState;
+}
 
 function collapseWhitespace(value: string | null | undefined): string | null {
   return readTelegramString(value)?.replace(/\s+/gu, ' ') ?? null;
@@ -155,12 +201,13 @@ function restoreSelection(state: ChatState, selectedChannelId: string): ChatStat
 }
 
 function buildTelegramReplyText(input: {
+  roomBridge: TelegramRoomBridge;
   state: ChatState;
   roomId: string;
   roomCreated: boolean;
   messageCountBeforeDispatch: number;
 }): string {
-  const channel = requireChannel(input.state, input.roomId);
+  const channel = input.roomBridge.readRoom(input.state, input.roomId);
   const newMessages = channel.messages.slice(input.messageCountBeforeDispatch);
   const replyMessage = [...newMessages].reverse().find((message) =>
     message.senderKind === 'orchestrator' || message.senderKind === 'agent',
@@ -177,13 +224,14 @@ function buildTelegramReplyText(input: {
 }
 
 function roomHasInboundMessage(input: {
+  roomBridge: TelegramRoomBridge;
   state: ChatState;
   roomId: string;
   senderName: string;
   inboundBody: string;
   messageCountBeforeDispatch?: number | null;
 }): boolean {
-  const channel = requireChannel(input.state, input.roomId);
+  const channel = input.roomBridge.readRoom(input.state, input.roomId);
   const messageStartIndex = input.messageCountBeforeDispatch == null
     ? 0
     : Math.max(0, input.messageCountBeforeDispatch);
@@ -201,51 +249,6 @@ function describeBridgeFailure(error: unknown): string {
     return readTelegramString(error.message) ?? 'Unexpected internal Telegram bridge error.';
   }
   return 'Unexpected internal Telegram bridge error.';
-}
-
-function buildRecoveryState(input: {
-  state: ChatState;
-  roomId: string;
-  senderName: string;
-  inboundBody: string;
-  occurredAt: Date;
-  errorMessage: string;
-  includeInboundMessage: boolean;
-}): ChatState {
-  let recoveryState = input.state;
-
-  if (input.includeInboundMessage) {
-    recoveryState = appendMessage(
-      recoveryState,
-      input.roomId,
-      {
-        senderKind: 'user',
-        senderName: input.senderName,
-        body: input.inboundBody,
-      },
-      input.occurredAt,
-    ).state;
-  }
-
-  recoveryState = appendMessage(
-    recoveryState,
-    input.roomId,
-    {
-      senderKind: 'system',
-      senderName: 'Runtime',
-      body: `Telegram relay accepted the message, but Cats Chat could not process the room turn: ${input.errorMessage}`,
-    },
-    input.occurredAt,
-    {
-      metadata: {
-        event: 'runtime_error',
-        transport: 'telegram',
-      },
-      incrementUnread: false,
-    },
-  ).state;
-
-  return refreshDerivedMemoryLayers(recoveryState, input.roomId, input.occurredAt);
 }
 
 export class TelegramWebhookBridgeError extends Error {
@@ -269,8 +272,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
   update: TelegramWebhookUpdate;
   receipt: TelegramWebhookReceipt;
   context: TelegramRelayContext;
-  chatStore: ChatStore;
-  companionStore: CompanionBoxStore;
+  roomBridge: TelegramRoomBridge;
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
@@ -293,7 +295,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
   const { message } = pickTelegramMessage(input.update);
   const senderName = resolveSenderName(message, input.receipt);
   const activeBinding = resolveActiveTelegramBinding(input.context, input.receipt.bindingId);
-  const currentState = await input.chatStore.read();
+  const currentState = await input.roomBridge.readState();
   const boundCat = resolveBoundCat(currentState, activeBinding, input.context);
   const existingBinding = input.telegramRelay.resolveBinding({
     conversationId: input.receipt.mappedConversationId,
@@ -315,7 +317,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
     ) {
       const previousSelection = nextState.selectedChannelId;
       const roomMode = resolveInternalRoomMode(activeBinding);
-      const nextRoomState = createChannel(
+      const nextRoomState = input.roomBridge.createRoom(
         nextState,
         {
           title: buildRoomTitle(message, boundCat.catName),
@@ -323,13 +325,12 @@ export async function bridgeTelegramWebhookToRoom(input: {
           roomMode,
           leadParticipantId: roomMode === 'direct_cat_chat' ? boundCat.catId ?? undefined : undefined,
           participantCatIds: roomMode === 'direct_cat_chat' && boundCat.catId ? [boundCat.catId] : [],
-          skipBossCatGreeting: true,
         },
         timestamp,
       );
-      roomId = nextRoomState.selectedChannelId;
-      nextState = restoreSelection(nextRoomState, previousSelection);
-      nextState = await input.chatStore.write(nextState);
+      roomId = nextRoomState.roomId;
+      nextState = restoreSelection(nextRoomState.state, previousSelection);
+      nextState = await input.roomBridge.writeState(nextState);
       roomCreated = true;
     }
 
@@ -349,31 +350,25 @@ export async function bridgeTelegramWebhookToRoom(input: {
       roomId,
       linkedAt: timestamp.toISOString(),
     });
-    const channelBeforeDispatch = requireChannel(nextState, roomId);
+    const channelBeforeDispatch = input.roomBridge.readRoom(nextState, roomId);
     messageCountBeforeDispatch = channelBeforeDispatch.messages.length;
-    const dispatch = await routeChannelMessage(
-      nextState,
+    const dispatch = await input.roomBridge.routeRoomMessage({
+      state: nextState,
       roomId,
-      {
-        body: inboundBody,
-        senderName,
-      },
-      input.runtimeClient,
+      body: inboundBody,
+      senderName,
+      runtimeClient: input.runtimeClient,
+      memoryService: input.memoryService,
       timestamp,
-      {
-        transport: 'telegram',
-        companionStore: input.companionStore,
-        memoryService: input.memoryService,
-        chatStore: input.chatStore,
-      },
-    );
+    });
     dispatchedState = dispatch.state;
-    const persistedState = await input.chatStore.write(
+    const persistedState = await input.roomBridge.writeState(
       restoreSelection(dispatch.state, currentState.selectedChannelId),
     );
     nextState = persistedState;
 
     const replyText = buildTelegramReplyText({
+      roomBridge: input.roomBridge,
       state: persistedState,
       roomId,
       roomCreated,
@@ -406,9 +401,9 @@ export async function bridgeTelegramWebhookToRoom(input: {
     if (roomId) {
       const recoverySourceState = dispatchedState ?? nextState;
       try {
-        nextState = await input.chatStore.write(
+        nextState = await input.roomBridge.writeState(
           restoreSelection(
-            buildRecoveryState({
+            input.roomBridge.buildRecoveryState({
               state: recoverySourceState,
               roomId,
               senderName,
@@ -416,6 +411,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
               occurredAt: timestamp,
               errorMessage,
               includeInboundMessage: !roomHasInboundMessage({
+                roomBridge: input.roomBridge,
                 state: recoverySourceState,
                 roomId,
                 senderName,

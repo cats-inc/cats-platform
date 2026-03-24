@@ -31,6 +31,7 @@ import {
   createTelegramRelay,
   type TelegramRelay,
 } from '../../platform/transports/telegram/relay.js';
+import type { TelegramRoomBridge } from '../../platform/transports/telegram/bridge.js';
 import { dispatchOrchestratorTurn } from '../../platform/orchestration/index.js';
 import type { PendingOrchestratorDispatchRequest } from '../../platform/orchestration/pendingDispatch.js';
 import {
@@ -51,6 +52,7 @@ import {
   chatOrchestratorChannelRouter,
   chatOrchestratorPlannerSurface,
 } from '../../products/chat/state/orchestratorAdapter.js';
+import { createChatTelegramRoomBridge } from '../../products/chat/state/telegramBridgeAdapter.js';
 import { handleCodePlaceholder } from '../../products/code/api/index.js';
 import { handleWorkPlaceholder } from '../../products/work/api/index.js';
 import {
@@ -90,6 +92,7 @@ export interface ServerDependencies {
   memoryStore?: CanonicalMemoryStore;
   memoryService?: CatsMemoryService;
   telegramRelay?: TelegramRelay;
+  telegramRoomBridge?: TelegramRoomBridge;
   pollingSupervisor?: TelegramPollingSupervisor;
   now?: () => Date;
   resumePendingOrchestratorDispatch?: (
@@ -108,6 +111,7 @@ type ResolvedServerDependencies = ServerDependencies & {
   memoryStore: CanonicalMemoryStore;
   memoryService: CatsMemoryService;
   telegramRelay: TelegramRelay;
+  telegramRoomBridge: TelegramRoomBridge;
   pollingSupervisor: TelegramPollingSupervisor;
 };
 
@@ -395,7 +399,7 @@ async function routeRequest(
     }
     await handleTelegramWebhook(request, response, {
       chatStore: dependencies.chatStore,
-      companionStore: dependencies.companionStore,
+      telegramRoomBridge: dependencies.telegramRoomBridge,
       memoryService: dependencies.memoryService,
       telegramRelay: dependencies.telegramRelay,
       runtimeClient: dependencies.runtimeClient,
@@ -427,7 +431,7 @@ async function routeRequest(
     await handleTelegramPollingReconnect(response, {
       bindingId: pollingReconnectMatch[0]!,
       chatStore: dependencies.chatStore,
-      companionStore: dependencies.companionStore,
+      telegramRoomBridge: dependencies.telegramRoomBridge,
       memoryService: dependencies.memoryService,
       telegramRelay: dependencies.telegramRelay,
       runtimeClient: dependencies.runtimeClient,
@@ -495,6 +499,10 @@ export function createServer(dependencies: ServerDependencies) {
     memoryStore,
     memoryService,
     telegramRelay,
+    telegramRoomBridge: dependencies.telegramRoomBridge ?? createChatTelegramRoomBridge({
+      chatStore: dependencies.chatStore,
+      companionStore,
+    }),
     pollingSupervisor,
     resumePendingOrchestratorDispatch,
   };
@@ -531,8 +539,7 @@ async function reconcilePollingOnStartup(
       bindings: pollingContext.bindings,
       context: pollingContext.context,
       refreshContext: async () => (await readTelegramPollingContext(dependencies.chatStore)).context,
-      chatStore: dependencies.chatStore,
-      companionStore: dependencies.companionStore,
+      roomBridge: dependencies.telegramRoomBridge,
       memoryService: dependencies.memoryService,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,

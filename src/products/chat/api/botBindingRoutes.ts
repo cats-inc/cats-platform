@@ -19,8 +19,8 @@ async function reconcilePollingAfterMutation(context: ChatApiRouteContext): Prom
   const {
     pollingSupervisor,
     telegramRelay,
+    telegramRoomBridge,
     chatStore,
-    companionStore,
     memoryService,
     runtimeClient,
   } = context.dependencies;
@@ -33,8 +33,7 @@ async function reconcilePollingAfterMutation(context: ChatApiRouteContext): Prom
       bindings: pollingCtx.bindings,
       context: pollingCtx.context,
       refreshContext: async () => (await readTelegramPollingContext(chatStore)).context,
-      chatStore,
-      companionStore,
+      roomBridge: telegramRoomBridge,
       memoryService,
       runtimeClient,
       telegramRelay,

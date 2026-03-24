@@ -11,6 +11,8 @@ import {
   FileChatStore,
   MemoryChatStore,
 } from '../dist-server/chat/store.js';
+import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companionBoxStore.js';
+import { createChatTelegramRoomBridge } from '../dist-server/products/chat/state/telegramBridgeAdapter.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -514,6 +516,79 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
           },
         },
       }),
+    },
+  );
+});
+
+test('telegram webhook uses the injected room bridge seam', async () => {
+  const chatStore = new MemoryChatStore();
+  const companionStore = new MemoryCompanionBoxStore();
+  const roomBridge = createChatTelegramRoomBridge({ chatStore, companionStore });
+  let createRoomCalls = 0;
+  let routeCalls = 0;
+
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      await configureTelegramBossCat(baseUrl);
+
+      const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          update_id: 201,
+          message: {
+            message_id: 99,
+            text: 'room bridge seam',
+            chat: { id: 54321, type: 'private' },
+            from: { id: 2, first_name: 'Adapter' },
+          },
+        }),
+      });
+      assert.equal(webhookResponse.status, 202);
+
+      const payload = await webhookResponse.json();
+      assert.equal(payload.receipt.status, 'accepted');
+      assert.ok(createRoomCalls >= 1);
+      assert.equal(routeCalls, 1);
+    },
+    chatStore,
+    {
+      companionStore,
+      telegramRelay: createTelegramRelay({
+        now: () => new Date('2026-03-19T00:00:00.000Z'),
+        deliveryClient: {
+          async deliver(request) {
+            return {
+              ok: true,
+              chatId: request.chatId,
+              messageId: '5002',
+            };
+          },
+        },
+      }),
+      telegramRoomBridge: {
+        readState() {
+          return roomBridge.readState();
+        },
+        writeState(state) {
+          return roomBridge.writeState(state);
+        },
+        createRoom(state, input, timestamp) {
+          createRoomCalls += 1;
+          return roomBridge.createRoom(state, input, timestamp);
+        },
+        readRoom(state, roomId) {
+          return roomBridge.readRoom(state, roomId);
+        },
+        routeRoomMessage(input) {
+          routeCalls += 1;
+          return roomBridge.routeRoomMessage(input);
+        },
+        buildRecoveryState(input) {
+          return roomBridge.buildRecoveryState(input);
+        },
+      },
     },
   );
 });

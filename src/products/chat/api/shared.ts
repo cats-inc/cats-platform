@@ -2,6 +2,7 @@ import type { AppConfig } from '../../../config.js';
 import { createCatActorId } from '../../../core/model.js';
 import type { TelegramPollingSupervisor } from '../../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../../platform/transports/telegram/relay.js';
+import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
 import type {
@@ -49,6 +50,7 @@ export interface ChatApiDependencies {
   orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore>;
   orchestratorPlannerSurface: OrchestratorPlannerSurface;
   telegramRelay?: TelegramRelay;
+  telegramRoomBridge: TelegramRoomBridge;
   pollingSupervisor?: TelegramPollingSupervisor;
   companionStore: CompanionBoxStore;
   memoryService: CatsMemoryService;

@@ -1,10 +1,9 @@
 import type { BotBindingRecord } from '../../../core/types.js';
 import type { RuntimeClient } from '../../runtime/client.js';
-import type { CompanionBoxStore } from '../../../products/chat/state/companionBoxStore.js';
-import type { ChatStore } from '../../../products/chat/state/store.js';
 import type { CatsMemoryService } from '../../memory/index.js';
 import {
   bridgeTelegramWebhookToRoom,
+  type TelegramRoomBridge,
 } from './bridge.js';
 import type {
   TelegramPollingHealth,
@@ -29,8 +28,7 @@ export interface StartPollingInput {
   botToken: string;
   context: TelegramRelayContext;
   refreshContext?: () => Promise<TelegramRelayContext>;
-  chatStore: ChatStore;
-  companionStore: CompanionBoxStore;
+  roomBridge: TelegramRoomBridge;
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
@@ -40,8 +38,7 @@ export interface ReconcilePollingInput {
   bindings: Array<{ bindingId: string; botToken: string; inboundMode: 'polling' | 'webhook' }>;
   context: TelegramRelayContext;
   refreshContext?: () => Promise<TelegramRelayContext>;
-  chatStore: ChatStore;
-  companionStore: CompanionBoxStore;
+  roomBridge: TelegramRoomBridge;
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
@@ -192,7 +189,7 @@ export function createTelegramPollingSupervisor(
     consumer: PollingConsumer,
     input: StartPollingInput,
   ): Promise<void> {
-    const { bindingId, botToken, chatStore, companionStore, runtimeClient, telegramRelay } = input;
+    const { bindingId, botToken, roomBridge, runtimeClient, telegramRelay } = input;
     const signal = consumer.abortController.signal;
 
     try {
@@ -235,8 +232,7 @@ export function createTelegramPollingSupervisor(
                 update,
                 receipt,
                 context: scopedContext,
-                chatStore,
-                companionStore,
+                roomBridge,
                 memoryService: input.memoryService,
                 runtimeClient,
                 telegramRelay,
@@ -361,8 +357,7 @@ export function createTelegramPollingSupervisor(
             botToken: binding.botToken,
             context: input.context,
             refreshContext: input.refreshContext,
-            chatStore: input.chatStore,
-            companionStore: input.companionStore,
+            roomBridge: input.roomBridge,
             memoryService: input.memoryService,
             runtimeClient: input.runtimeClient,
             telegramRelay: input.telegramRelay,

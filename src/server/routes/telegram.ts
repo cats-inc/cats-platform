@@ -6,12 +6,12 @@ import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../platform/memory/index.js';
 import {
   bridgeTelegramWebhookToRoom,
+  type TelegramRoomBridge,
   TelegramWebhookBridgeError,
 } from '../../platform/transports/telegram/bridge.js';
 import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay.js';
-import type { CompanionBoxStore } from '../../products/chat/state/companionBoxStore.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import type { ChatState } from '../../shared/app-shell.js';
 
@@ -21,7 +21,7 @@ interface TelegramQueryDependencies {
 }
 
 interface TelegramWebhookDependencies extends TelegramQueryDependencies {
-  companionStore: CompanionBoxStore;
+  telegramRoomBridge: TelegramRoomBridge;
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   now?: () => Date;
@@ -229,8 +229,7 @@ export async function handleTelegramWebhook(
         update,
         receipt,
         context,
-        chatStore: dependencies.chatStore,
-        companionStore: dependencies.companionStore,
+        roomBridge: dependencies.telegramRoomBridge,
         memoryService: dependencies.memoryService,
         runtimeClient: dependencies.runtimeClient,
         telegramRelay: dependencies.telegramRelay,
@@ -264,7 +263,7 @@ interface TelegramPollingQueryDependencies {
 interface TelegramPollingReconnectDependencies {
   bindingId: string;
   chatStore: ChatStore;
-  companionStore: CompanionBoxStore;
+  telegramRoomBridge: TelegramRoomBridge;
   memoryService: CatsMemoryService;
   telegramRelay: TelegramRelay;
   runtimeClient: RuntimeClient;
@@ -311,8 +310,7 @@ export async function handleTelegramPollingReconnect(
       refreshContext: async () => (
         await readTelegramPollingContext(dependencies.chatStore)
       ).context,
-      chatStore: dependencies.chatStore,
-      companionStore: dependencies.companionStore,
+      roomBridge: dependencies.telegramRoomBridge,
       memoryService: dependencies.memoryService,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,

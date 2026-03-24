@@ -53,3 +53,59 @@ test('platform orchestrator planner stays behind an injected planner surface sea
     /products\/chat\/shared\/operatorLoop\.js/u,
   );
 });
+
+test('platform telegram bridge stays behind an injected room bridge seam', async () => {
+  const source = await readFile(
+    new URL('../src/platform/transports/telegram/bridge.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /\broomBridge\b/u);
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/model\.js/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/runtimeActions\.js/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/memoryLayers\.js/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/store\.js/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/companionBoxStore\.js/u,
+  );
+});
+
+test('platform telegram polling stays behind an injected room bridge seam', async () => {
+  const source = await readFile(
+    new URL('../src/platform/transports/telegram/polling.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /\broomBridge\b/u);
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/store\.js/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/companionBoxStore\.js/u,
+  );
+});
+
+test('app server wires the chat telegram bridge adapter into platform transports', async () => {
+  const source = await readFile(
+    new URL('../src/app/server/index.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /createChatTelegramRoomBridge/u);
+  assert.match(source, /telegramRoomBridge/u);
+});
