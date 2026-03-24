@@ -1,7 +1,7 @@
 import {
-  createCatActorId,
   listDurableMemoryBySubject,
 } from '../../core/model.js';
+import { createCatActorId } from '../../core/actors.js';
 import type { CanonicalMemoryStore } from './store.js';
 import type {
   CanonicalMemoryOriginKind,

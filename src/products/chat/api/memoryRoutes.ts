@@ -6,9 +6,11 @@ import {
   updateDurableMemory,
   removeDurableMemory,
   listDurableMemoryBySubject,
+} from '../../../core/model.js';
+import {
   createCatActorId,
   OWNER_ACTOR_ID,
-} from '../../../core/model.js';
+} from '../../../core/actors.js';
 import type {
   DurableMemoryCategory,
   DurableMemoryRecord,

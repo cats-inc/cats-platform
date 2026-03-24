@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { GLOBAL_ORCHESTRATOR_ACTOR_ID, createCatActorId } from '../../../core/model.js';
+import {
+  GLOBAL_ORCHESTRATOR_ACTOR_ID,
+  createCatActorId,
+} from '../../../core/actors.js';
 import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';

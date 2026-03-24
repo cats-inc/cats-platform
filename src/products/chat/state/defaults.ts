@@ -5,7 +5,7 @@ import type {
   ParticipantExecutionLease,
 } from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
-import { createEmptyMemoryCheckpoint } from '../../../core/model.js';
+import { createEmptyMemoryCheckpoint } from '../../../core/actors.js';
 export { createEmptyMemoryCheckpoint };
 
 function isoNow(): string {

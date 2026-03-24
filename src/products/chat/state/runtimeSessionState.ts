@@ -13,7 +13,7 @@ import type {
 import {
   createCatActorId,
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
-} from '../../../core/model.js';
+} from '../../../core/actors.js';
 import {
   requireChannel,
   setChannelCatLease,

@@ -5,6 +5,13 @@ import {
   CoreNotFoundError,
   CoreValidationError,
 } from './errors.js';
+import {
+  createCatActorId,
+  createDefaultOwnerProfile,
+  createEmptyMemoryCheckpoint,
+  GLOBAL_ORCHESTRATOR_ACTOR_ID,
+  OWNER_ACTOR_ID,
+} from './actors.js';
 import type {
   CatsCoreState,
   CoreActivityKind,
@@ -44,42 +51,19 @@ import type {
 } from './types.js';
 import { CATS_CORE_STATE_VERSION } from './types.js';
 
-export const OWNER_ACTOR_ID = 'actor-owner';
-export const GLOBAL_ORCHESTRATOR_ACTOR_ID = 'actor-orchestrator-global';
-
-export function createCatActorId(catId: string): string {
-  return `actor-cat-${catId}`;
-}
-
-export function createEmptyMemoryCheckpoint(): MemoryCheckpointSummary {
-  return {
-    summary: null,
-    facts: [],
-    openLoops: [],
-    updatedAt: null,
-  };
-}
+export {
+  createCatActorId,
+  createDefaultOwnerProfile,
+  createEmptyMemoryCheckpoint,
+  GLOBAL_ORCHESTRATOR_ACTOR_ID,
+  OWNER_ACTOR_ID,
+};
 
 function createDefaultExecutionTarget(): ExecutionTargetSummary {
   return {
     provider: 'claude',
     instance: null,
     model: null,
-  };
-}
-
-export function createDefaultOwnerProfile(
-  updatedAt: string = new Date().toISOString(),
-): OwnerProfileRecord {
-  return {
-    actorId: OWNER_ACTOR_ID,
-    displayName: 'Owner',
-    avatarColor: null,
-    summary: null,
-    communicationPreferences: [],
-    decisionPreferences: [],
-    escalationPreferences: [],
-    updatedAt,
   };
 }
 

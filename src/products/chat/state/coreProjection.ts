@@ -27,11 +27,13 @@ import type {
 import { CATS_CORE_STATE_VERSION } from '../../../core/types.js';
 import {
   createDefaultCoreState,
+} from '../../../core/model.js';
+import {
+  createCatActorId,
   createDefaultOwnerProfile,
   createEmptyMemoryCheckpoint,
-  createCatActorId,
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
-} from '../../../core/model.js';
+} from '../../../core/actors.js';
 import {
   buildCoreGovernanceSummary,
   buildCoreWorkflowSummary,

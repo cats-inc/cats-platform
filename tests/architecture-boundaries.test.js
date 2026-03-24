@@ -463,6 +463,49 @@ test('platform memory owns companion projection types instead of importing chat 
   );
 });
 
+test('actor and owner-profile helpers are consumed from the dedicated core actors module', async () => {
+  const memoryService = await readFile(
+    new URL('../src/platform/memory/service.ts', import.meta.url),
+    'utf8',
+  );
+  const telegramBridge = await readFile(
+    new URL('../src/platform/transports/telegram/bridge.ts', import.meta.url),
+    'utf8',
+  );
+  const apiShared = await readFile(
+    new URL('../src/products/chat/api/shared.ts', import.meta.url),
+    'utf8',
+  );
+  const botBindingRoutes = await readFile(
+    new URL('../src/products/chat/api/botBindingRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const coreProjection = await readFile(
+    new URL('../src/products/chat/state/coreProjection.ts', import.meta.url),
+    'utf8',
+  );
+  const runtimeSessionState = await readFile(
+    new URL('../src/products/chat/state/runtimeSessionState.ts', import.meta.url),
+    'utf8',
+  );
+
+  for (const source of [
+    memoryService,
+    telegramBridge,
+    apiShared,
+    botBindingRoutes,
+    coreProjection,
+    runtimeSessionState,
+  ]) {
+    assert.match(source, /core\/actors\.js/u);
+  }
+
+  assert.doesNotMatch(memoryService, /createCatActorId.*core\/model\.js/u);
+  assert.doesNotMatch(telegramBridge, /createCatActorId.*core\/model\.js/u);
+  assert.doesNotMatch(apiShared, /createCatActorId.*core\/model\.js/u);
+  assert.doesNotMatch(botBindingRoutes, /GLOBAL_ORCHESTRATOR_ACTOR_ID.*core\/model\.js/u);
+});
+
 test('platform telegram bridge stays behind an injected room bridge seam', async () => {
   const source = await readFile(
     new URL('../src/platform/transports/telegram/bridge.ts', import.meta.url),

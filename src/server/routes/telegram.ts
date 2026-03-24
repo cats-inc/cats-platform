@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import { createCatActorId } from '../../core/model.js';
+import { createCatActorId } from '../../core/actors.js';
 import type { BotBindingRecord } from '../../core/types.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../platform/memory/index.js';

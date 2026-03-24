@@ -4,11 +4,13 @@ import {
 } from './errors.js';
 import {
   appendCoreActivity,
-  createCatActorId,
-  GLOBAL_ORCHESTRATOR_ACTOR_ID,
   upsertCoreRun,
   upsertCoreTask,
 } from './model.js';
+import {
+  createCatActorId,
+  GLOBAL_ORCHESTRATOR_ACTOR_ID,
+} from './actors.js';
 import type {
   CatsCoreState,
   CoreActivityRecord,

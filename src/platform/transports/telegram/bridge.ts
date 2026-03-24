@@ -1,4 +1,4 @@
-import { createCatActorId } from '../../../core/model.js';
+import { createCatActorId } from '../../../core/actors.js';
 import type { BotBindingRecord } from '../../../core/types.js';
 import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 import type { RuntimeClient } from '../../runtime/client.js';

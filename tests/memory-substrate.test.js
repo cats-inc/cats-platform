@@ -9,7 +9,7 @@ import {
   FileCanonicalMemoryStore,
   MemoryCanonicalMemoryStore,
 } from '../dist-server/platform/memory/index.js';
-import { createCatActorId } from '../dist-server/core/model.js';
+import { createCatActorId } from '../dist-server/core/actors.js';
 import {
   extractCanonicalMemoryFromChannel,
   extractCanonicalMemoryFromOwnerProfile,

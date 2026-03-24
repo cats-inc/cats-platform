@@ -1,5 +1,5 @@
 import type { AppConfig } from '../../../config.js';
-import { createCatActorId } from '../../../core/model.js';
+import { createCatActorId } from '../../../core/actors.js';
 import type { TelegramPollingSupervisor } from '../../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../../platform/transports/telegram/relay.js';
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';

@@ -24,10 +24,12 @@ import type {
   OwnerProfileRecord,
 } from '../../../core/types.js';
 import {
-  createCatActorId,
   createDefaultCoreState,
-  createEmptyMemoryCheckpoint,
 } from '../../../core/model.js';
+import {
+  createCatActorId,
+  createEmptyMemoryCheckpoint,
+} from '../../../core/actors.js';
 
 export interface PersistedChatSnapshot extends CatsCoreState {
   chat: ChatState;
