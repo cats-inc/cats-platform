@@ -31,8 +31,6 @@ import {
 import type { AppShellPayload } from '../api/contracts';
 import {
   assignCatToChannelApi,
-  browseDirectories,
-  type BrowseDirectoryEntry,
   createGlobalCat,
   deleteGlobalCat,
   resetSetup,
@@ -67,6 +65,7 @@ import {
 import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
 import { useOperatorLoop } from './useOperatorLoop';
 import { useAppShellRouting } from './useAppShellRouting';
+import { useFolderBrowser } from './useFolderBrowser';
 
 import { SetupWizard } from './components/SetupWizard';
 import type { ModelSelectorValue } from './components/ModelSelector';
@@ -136,13 +135,6 @@ export default function App() {
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(() => ({
     provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
   }));
-  const [folderBrowserOpen, setFolderBrowserOpen] = useState(false);
-  const [folderBrowsePath, setFolderBrowsePath] = useState('');
-  const [folderBrowseCurrentPath, setFolderBrowseCurrentPath] = useState('');
-  const [folderBrowseParentPath, setFolderBrowseParentPath] = useState('');
-  const [folderBrowseEntries, setFolderBrowseEntries] = useState<BrowseDirectoryEntry[]>([]);
-  const [folderBrowseLoading, setFolderBrowseLoading] = useState(false);
-  const [folderBrowseError, setFolderBrowseError] = useState('');
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const addCatPanelRef = useRef<HTMLDivElement>(null);
@@ -184,6 +176,22 @@ export default function App() {
     refreshOperatorSnapshot,
     setOperatorState,
   } = useOperatorLoop(readyPayload, operatorRefreshKey);
+  const {
+    browseFolder,
+    closeFolderBrowser,
+    folderBrowserOpen,
+    folderBrowseCurrentPath,
+    folderBrowseEntries,
+    folderBrowseError,
+    folderBrowseLoading,
+    folderBrowseParentPath,
+    folderBrowsePath,
+    openFolderBrowser,
+    selectCurrentFolder,
+    setFolderBrowsePath,
+  } = useFolderBrowser({
+    onSelectPath: setDraftCwd,
+  });
 
   // --- Effects ---
 
@@ -247,17 +255,6 @@ export default function App() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [accountMenuOpen, overflowMenuOpenId, plusMenuOpen, channelPlusMenuOpen, addCatOpen]);
-
-  useEffect(() => {
-    if (!folderBrowserOpen) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setFolderBrowserOpen(false);
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown as never);
-    return () => document.removeEventListener('keydown', handleKeyDown as never);
-  }, [folderBrowserOpen]);
 
   useEffect(() => {
     writeSidebarOpenPreference(
@@ -571,27 +568,6 @@ export default function App() {
     setDraftFiles([]);
   }
 
-  const loadFolderBrowse = useCallback(async (targetPath?: string): Promise<void> => {
-    setFolderBrowseLoading(true);
-    setFolderBrowseError('');
-    try {
-      const result = await browseDirectories(targetPath);
-      setFolderBrowseCurrentPath(result.current);
-      setFolderBrowseParentPath(result.parent);
-      setFolderBrowsePath(result.current);
-      setFolderBrowseEntries(result.entries);
-      setFolderBrowseError(result.error ?? '');
-    } catch (error) {
-      setFolderBrowseError(error instanceof Error ? error.message : 'Failed to load folders.');
-      setFolderBrowseEntries([]);
-      if (targetPath) {
-        setFolderBrowsePath(targetPath);
-      }
-    } finally {
-      setFolderBrowseLoading(false);
-    }
-  }, []);
-
   async function submitComposerMessage(): Promise<void> {
     if (state.status !== 'ready') return;
 
@@ -820,12 +796,6 @@ export default function App() {
     ) return;
     event.preventDefault();
     await submitComposerMessage();
-  }
-
-  async function handlePickFolder(): Promise<void> {
-    setFolderBrowsePath(draftCwd ?? '');
-    setFolderBrowserOpen(true);
-    await loadFolderBrowse(draftCwd ?? undefined);
   }
 
   function toggleDraftCat(catId: string): void {
@@ -1143,7 +1113,7 @@ export default function App() {
                   onSendMessage={(e) => void onSendMessage(e)}
                   onTogglePlusMenu={() => setPlusMenuOpen(!plusMenuOpen)}
                   onFileSelect={() => { fileInputRef.current?.click(); setPlusMenuOpen(false); }}
-                  onPickFolder={() => { void handlePickFolder(); setPlusMenuOpen(false); }}
+                  onPickFolder={() => { void openFolderBrowser(draftCwd); setPlusMenuOpen(false); }}
                   onOpenAddCat={() => {}}
                   onDraftFilesChange={setDraftFiles}
                   onDraftCwdClear={() => setDraftCwd(null)}
@@ -1175,7 +1145,7 @@ export default function App() {
               onSendMessage={(e) => void onSendMessage(e)}
               onTogglePlusMenu={() => setPlusMenuOpen(!plusMenuOpen)}
               onFileSelect={() => { fileInputRef.current?.click(); setPlusMenuOpen(false); }}
-              onPickFolder={() => { void handlePickFolder(); setPlusMenuOpen(false); }}
+              onPickFolder={() => { void openFolderBrowser(draftCwd); setPlusMenuOpen(false); }}
               onOpenAddCat={() => {
                 setPlusMenuOpen(false);
                 setAddCatOpen(true);
@@ -1242,13 +1212,9 @@ export default function App() {
           folderBrowseLoading={folderBrowseLoading}
           folderBrowseError={folderBrowseError}
           onPathChange={setFolderBrowsePath}
-          onBrowse={(path) => void loadFolderBrowse(path)}
-          onClose={() => { setFolderBrowserOpen(false); setFolderBrowseError(''); }}
-          onSelect={() => {
-            if (!folderBrowseCurrentPath || folderBrowseError) return;
-            setDraftCwd(folderBrowseCurrentPath);
-            setFolderBrowserOpen(false);
-          }}
+          onBrowse={(path) => void browseFolder(path)}
+          onClose={closeFolderBrowser}
+          onSelect={selectCurrentFolder}
         />
       ) : null}
     </div>
