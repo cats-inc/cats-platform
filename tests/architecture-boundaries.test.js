@@ -256,9 +256,17 @@ test('store consumes dedicated core snapshot normalization instead of defining i
   assert.match(snapshotModule, /export function buildPersistedChatSnapshot/u);
 });
 
-test('core api consumes dedicated parsing and error helpers instead of defining them inline', async () => {
-  const coreApiSource = await readFile(
-    new URL('../src/core/api.ts', import.meta.url),
+test('core route modules consume dedicated parsing and error helpers instead of defining them inline', async () => {
+  const controlRoutesSource = await readFile(
+    new URL('../src/core/apiControlRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const recordRoutesSource = await readFile(
+    new URL('../src/core/apiRecordRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const taskRoutesSource = await readFile(
+    new URL('../src/core/apiTaskRoutes.ts', import.meta.url),
     'utf8',
   );
   const sharedModule = await readFile(
@@ -266,13 +274,69 @@ test('core api consumes dedicated parsing and error helpers instead of defining 
     'utf8',
   );
 
-  assert.match(coreApiSource, /apiShared\.js/u);
-  assert.doesNotMatch(coreApiSource, /function readRequiredString\(/u);
-  assert.doesNotMatch(coreApiSource, /function readObjectBody\(/u);
-  assert.doesNotMatch(coreApiSource, /function handleCoreError\(/u);
+  assert.match(controlRoutesSource, /apiShared\.js/u);
+  assert.match(recordRoutesSource, /apiShared\.js/u);
+  assert.match(taskRoutesSource, /apiShared\.js/u);
+  assert.doesNotMatch(controlRoutesSource, /function readRequiredString\(/u);
+  assert.doesNotMatch(recordRoutesSource, /function readObjectBody\(/u);
+  assert.doesNotMatch(taskRoutesSource, /function handleCoreError\(/u);
   assert.match(sharedModule, /export function readRequiredString/u);
   assert.match(sharedModule, /export async function readObjectBody/u);
   assert.match(sharedModule, /export function handleCoreError/u);
+});
+
+test('core api consumes dedicated control route modules and api contracts instead of defining them inline', async () => {
+  const coreApiSource = await readFile(
+    new URL('../src/core/api.ts', import.meta.url),
+    'utf8',
+  );
+  const controlRoutesSource = await readFile(
+    new URL('../src/core/apiControlRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const recordRoutesSource = await readFile(
+    new URL('../src/core/apiRecordRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const taskRoutesSource = await readFile(
+    new URL('../src/core/apiTaskRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const constantsSource = await readFile(
+    new URL('../src/core/apiConstants.ts', import.meta.url),
+    'utf8',
+  );
+  const typesSource = await readFile(
+    new URL('../src/core/apiTypes.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(coreApiSource, /apiControlRoutes\.js/u);
+  assert.match(coreApiSource, /apiRecordRoutes\.js/u);
+  assert.match(coreApiSource, /apiTaskRoutes\.js/u);
+  assert.match(coreApiSource, /apiTypes\.js/u);
+  assert.doesNotMatch(coreApiSource, /export interface CoreApiDependencies/u);
+  assert.doesNotMatch(coreApiSource, /async function handleCoreProjectWrite\(/u);
+  assert.doesNotMatch(coreApiSource, /async function handleCoreRunWrite\(/u);
+  assert.doesNotMatch(coreApiSource, /async function handleCoreTaskWrite\(/u);
+  assert.doesNotMatch(coreApiSource, /async function handleCoreTaskCheckout\(/u);
+  assert.doesNotMatch(coreApiSource, /async function handleCoreApprovals\(/u);
+  assert.doesNotMatch(coreApiSource, /async function handleCoreOperatorActionWrite\(/u);
+  assert.doesNotMatch(coreApiSource, /async function handleOwnerProfileWrite\(/u);
+  assert.doesNotMatch(coreApiSource, /const CORE_TASK_STATUSES = \[/u);
+  assert.match(controlRoutesSource, /export async function routeCoreControlApi/u);
+  assert.match(controlRoutesSource, /apiTypes\.js/u);
+  assert.match(controlRoutesSource, /apiConstants\.js/u);
+  assert.match(recordRoutesSource, /export async function routeCoreRecordApi/u);
+  assert.match(recordRoutesSource, /apiTypes\.js/u);
+  assert.match(recordRoutesSource, /apiConstants\.js/u);
+  assert.match(taskRoutesSource, /export async function routeCoreTaskApi/u);
+  assert.match(taskRoutesSource, /apiTypes\.js/u);
+  assert.match(taskRoutesSource, /apiConstants\.js/u);
+  assert.match(constantsSource, /export const CORE_TASK_STATUSES/u);
+  assert.match(constantsSource, /export const CORE_APPROVAL_ACTIONS/u);
+  assert.match(typesSource, /export interface CoreApiDependencies/u);
+  assert.match(typesSource, /export interface CoreOrchestratorAutoResumeSummary/u);
 });
 
 test('store consumes dedicated chat snapshot normalization instead of defining it inline', async () => {
