@@ -882,12 +882,24 @@ test('store consumes dedicated core snapshot normalization instead of defining i
     new URL('../src/products/chat/state/coreSnapshot.ts', import.meta.url),
     'utf8',
   );
+  const snapshotSharedModule = await readFile(
+    new URL('../src/products/chat/state/coreSnapshotShared.ts', import.meta.url),
+    'utf8',
+  );
+  const snapshotRecordsModule = await readFile(
+    new URL('../src/products/chat/state/coreSnapshotRecords.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(storeSource, /coreSnapshot\.js/u);
   assert.doesNotMatch(storeSource, /function normalizeCoreTask\(/u);
   assert.doesNotMatch(storeSource, /function buildPersistedChatSnapshot\(/u);
-  assert.match(snapshotModule, /export function normalizeCoreTask/u);
+  assert.match(snapshotModule, /normalizeCoreTask,/u);
   assert.match(snapshotModule, /export function buildPersistedChatSnapshot/u);
+  assert.match(snapshotModule, /coreSnapshotRecords\.js/u);
+  assert.doesNotMatch(snapshotModule, /function asRecord\(/u);
+  assert.match(snapshotSharedModule, /export function asRecord/u);
+  assert.match(snapshotRecordsModule, /export function normalizeCoreTask/u);
 });
 
 test('core route modules consume dedicated parsing and error helpers instead of defining them inline', async () => {
