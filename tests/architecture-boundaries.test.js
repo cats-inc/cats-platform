@@ -408,6 +408,30 @@ test('core model composes dedicated task-control and memory-binding modules inst
   assert.match(memoryBindingSource, /export function createBotBinding/u);
 });
 
+test('task lifecycle composes dedicated shared and watcher modules instead of defining runtime observation helpers inline', async () => {
+  const lifecycleSource = await readFile(
+    new URL('../src/core/taskLifecycle.ts', import.meta.url),
+    'utf8',
+  );
+  const sharedSource = await readFile(
+    new URL('../src/core/taskLifecycleShared.ts', import.meta.url),
+    'utf8',
+  );
+  const watcherSource = await readFile(
+    new URL('../src/core/taskLifecycleWatchers.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(lifecycleSource, /taskLifecycleShared\.js/u);
+  assert.match(lifecycleSource, /taskLifecycleWatchers\.js/u);
+  assert.doesNotMatch(lifecycleSource, /function asRecord\(/u);
+  assert.doesNotMatch(lifecycleSource, /const activeTaskRunWatchers = new Map/u);
+  assert.match(sharedSource, /export function asRecord/u);
+  assert.match(sharedSource, /export function buildTerminalTaskMessage/u);
+  assert.match(watcherSource, /export interface StartTaskRunWatcherInput/u);
+  assert.match(watcherSource, /export function startTaskRunWatcher/u);
+});
+
 test('store consumes dedicated chat snapshot normalization instead of defining it inline', async () => {
   const storeSource = await readFile(
     new URL('../src/products/chat/state/store.ts', import.meta.url),
