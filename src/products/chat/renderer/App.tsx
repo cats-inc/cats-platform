@@ -16,19 +16,13 @@ import {
 } from '../shared/channelPaths';
 import { getDefaultModel } from '../../../shared/providerCatalog';
 import {
-  normalizeSelectedChannelView,
-  resolveSelectedChannelEntryLifecycle,
-} from '../shared/channelEntry';
-import {
   BootShell,
   emptyCatForm,
   pickGreeting,
-  resolveBossCatName,
   type CatFormState,
-  type SelectedChannelView,
-  type Surface,
 } from './chatUtils';
 import { AppRoutes } from './AppRoutes';
+import { deriveAppRouteState, deriveAppViewState, type AppLoadState } from './appViewState';
 import { useAppChrome } from './useAppChrome';
 import { useAppDraftUiActions } from './useAppDraftUiActions';
 import { useAppNavigationActions } from './useAppNavigationActions';
@@ -43,24 +37,6 @@ import {
   Sidebar,
   type SidebarViewMode,
 } from './components/Sidebar';
-import { findDirectLaneForCat } from './myCatNavigation';
-
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'ready'; payload: AppShellPayload }
-  | { status: 'error'; message: string };
-
-function isDirectLaneSelectedForCat(
-  channel: SelectedChannelView | null,
-  catId: string | null,
-): channel is SelectedChannelView {
-  if (!channel || !catId) {
-    return false;
-  }
-
-  return channel.roomRouting.mode === 'direct_cat_chat'
-    && channel.roomRouting.leadParticipantId === catId;
-}
 
 export default function App() {
   const navigate = useNavigate();
@@ -73,7 +49,7 @@ export default function App() {
   const draftLeadCatId = routeMyCatId ?? readNewChatLeadCatId(location.search);
   const showingMyCatDirectLane = Boolean(routeMyCatId);
 
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const [state, setState] = useState<AppLoadState>({ status: 'loading' });
   const [composerDraft, setComposerDraft] = useState('');
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [busy, setBusy] = useState('');
@@ -186,43 +162,25 @@ export default function App() {
     setChannelFiles,
   });
 
-  const readyPayload = state.status === 'ready' ? state.payload : null;
-  const readyChat = state.status === 'ready' ? state.payload.chat : null;
-  const readySelectedChannel = normalizeSelectedChannelView(readyChat?.selectedChannel ?? null);
-  const selectedChannelId = readyChat?.selectedChannelId ?? null;
-  const selectedChannelViewId = readySelectedChannel?.id ?? null;
-  const selectedChannelEntryLifecycle =
-    resolveSelectedChannelEntryLifecycle(readySelectedChannel);
-  const routeChannelExists = Boolean(
-    routeChannelId && readyChat?.channels.some((channel) => channel.id === routeChannelId),
-  );
-  const routeChannelTitle = routeChannelId
-    ? readyChat?.channels.find((channel) => channel.id === routeChannelId)?.title ?? null
-    : null;
-  const routeDirectLaneSummary =
-    showingMyCatDirectLane && draftLeadCatId && readyChat
-      ? findDirectLaneForCat(readyChat.channels, draftLeadCatId)
-      : null;
-  const selectedChannel = routeChannelId
-    && readySelectedChannel?.id === routeChannelId
-    ? readySelectedChannel
-    : null;
-  const selectedDirectLane =
-    showingMyCatDirectLane
-    && draftLeadCatId
-    && isDirectLaneSelectedForCat(readySelectedChannel, draftLeadCatId)
-      ? readySelectedChannel
-      : null;
-  const operatorRefreshKey = readyChat
-    ? [
-        readyChat.selectedChannelId,
-        readySelectedChannel?.id ?? '',
-        readySelectedChannel?.updatedAt ?? '',
-        readySelectedChannel?.messages.length ?? 0,
-        readySelectedChannel?.roomRouting.workflow.activeTurn?.updatedAt ?? '',
-        readyChat.channels.length,
-      ].join('|')
-    : '';
+  const {
+    readyPayload,
+    readyChat,
+    readySelectedChannel,
+    selectedChannelId,
+    selectedChannelViewId,
+    selectedChannelEntryLifecycle,
+    routeChannelExists,
+    routeChannelTitle,
+    routeDirectLaneSummary,
+    selectedChannel,
+    selectedDirectLane,
+    operatorRefreshKey,
+  } = deriveAppRouteState({
+    state,
+    routeChannelId,
+    draftLeadCatId,
+    showingMyCatDirectLane,
+  });
   const {
     operatorState,
     setOperatorState,
@@ -371,36 +329,32 @@ export default function App() {
   }
 
   const { payload } = state;
-  const surface: Surface = location.pathname.startsWith('/settings')
-    ? 'settings'
-    : 'chats';
-  const directLaneChannel = showingMyCatDirectLane ? selectedDirectLane : null;
-  const activeChannelView = selectedChannel ?? directLaneChannel;
-  const activeMyCatId = draftLeadCatId
-    ? draftLeadCatId
-    : selectedChannel?.roomRouting.mode === 'direct_cat_chat'
-      ? selectedChannel.roomRouting.leadParticipantId ?? null
-      : null;
-  const activeAssignedCats =
-    activeChannelView?.assignedCats.filter((cat) => cat.status === 'active') ?? [];
-  const assignedCatIds = new Set(
-    activeChannelView?.assignedCats.map((cat) => cat.catId) ?? [],
-  );
-  const bossCatName = resolveBossCatName(payload) ?? 'Orchestrator';
-  const bossCatAvatarColor = payload.chat.cats.find(
-    (cat) => cat.id === payload.chat.bossCatId,
-  )?.avatarColor ?? null;
-  const showBossCatAvatar = Boolean(payload.chat.bossCatId)
-    && selectedChannel?.composerMode !== 'solo'
-    && !activeAssignedCats.some((cat) => cat.catId === payload.chat.bossCatId);
-  const selectableCats = payload.chat.cats.filter(
-    (cat) => cat.status === 'active' && cat.id !== payload.chat.bossCatId,
-  );
-  const assignableCatCount = selectableCats.length;
-  const draftCatIdSet = new Set(draftCatIds);
-  const showDirectLaneBoot = Boolean(routeDirectLaneSummary && !directLaneChannel);
-  const showAddCatPanel =
-    addCatOpen && (Boolean(selectedChannel) || (showingNewChatDraft && !draftLeadCatId));
+  const {
+    surface,
+    directLaneChannel,
+    activeMyCatId,
+    activeAssignedCats,
+    assignedCatIds,
+    bossCatName,
+    bossCatAvatarColor,
+    showBossCatAvatar,
+    selectableCats,
+    assignableCatCount,
+    draftCatIdSet,
+    showDirectLaneBoot,
+    showAddCatPanel,
+  } = deriveAppViewState({
+    pathname: location.pathname,
+    payload,
+    draftLeadCatId,
+    selectedChannel,
+    selectedDirectLane,
+    routeDirectLaneSummary,
+    showingMyCatDirectLane,
+    addCatOpen,
+    showingNewChatDraft,
+    draftCatIds,
+  });
 
   return (
     <div

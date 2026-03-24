@@ -8,15 +8,19 @@ test('persisted chat view wires the solo model selector and suppresses visible b
     path.join(process.cwd(), 'src/products/chat/renderer/App.tsx'),
     'utf8',
   );
+  const viewStateSource = await readFile(
+    path.join(process.cwd(), 'src/products/chat/renderer/appViewState.ts'),
+    'utf8',
+  );
   const chatViewSource = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/components/ChatView.tsx'),
     'utf8',
   );
 
   assert.match(
-    appSource,
+    viewStateSource,
     /selectedChannel\?\.composerMode !== 'solo'/,
-    'App should suppress the visible Boss avatar for solo persisted chats',
+    'appViewState should suppress the visible Boss avatar for solo persisted chats',
   );
   assert.match(
     appSource,

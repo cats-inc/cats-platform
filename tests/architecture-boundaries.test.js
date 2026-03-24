@@ -516,6 +516,26 @@ test('renderer app consumes a dedicated routes module instead of defining the ro
   assert.match(routesSource, /path="\/chats\/:channelId"/u);
 });
 
+test('renderer app consumes dedicated derived-state helpers instead of defining route and view-model derivations inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const viewStateSource = await readFile(
+    new URL('../src/products/chat/renderer/appViewState.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /deriveAppRouteState/u);
+  assert.match(appSource, /deriveAppViewState/u);
+  assert.doesNotMatch(appSource, /const routeChannelTitle =/u);
+  assert.doesNotMatch(appSource, /const showBossCatAvatar =/u);
+  assert.match(viewStateSource, /export function deriveAppRouteState/u);
+  assert.match(viewStateSource, /export function deriveAppViewState/u);
+  assert.match(viewStateSource, /resolveBossCatName/u);
+  assert.match(viewStateSource, /findDirectLaneForCat/u);
+});
+
 test('renderer app consumes dedicated navigation actions instead of defining route-side effects inline', async () => {
   const appSource = await readFile(
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
