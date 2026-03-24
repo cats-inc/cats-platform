@@ -342,8 +342,8 @@ Write-time rules:
 - [Architecture](../architecture.md)
 - [API](../api.md)
 - `src/products/chat/api/shared.ts`
-- `src/products/chat/state/runtimeSessionWake.ts`
-- `src/products/chat/state/runtimeSessionState.ts`
+- `src/products/chat/state/runtime-session/wake.ts`
+- `src/products/chat/state/runtime-session/state.ts`
 
 ---
 

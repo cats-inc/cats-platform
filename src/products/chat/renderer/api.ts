@@ -1,10 +1,10 @@
-export { normalizeAppShellPayload } from './apiNormalization.js';
-export { expectJson, readErrorMessage } from './apiShared.js';
+export { normalizeAppShellPayload } from './api/normalization.js';
+export { expectJson, readErrorMessage } from './api/shared.js';
 
 export {
   fetchProviders,
   fetchProviderModels,
-} from './apiProviders.js';
+} from './api/providers.js';
 
 export {
   fetchAppShell,
@@ -12,7 +12,7 @@ export {
   updateChatOrchestrator,
   updateSelectedChannel,
   updateVerbosePreference,
-} from './apiAppShell.js';
+} from './api/appShell.js';
 
 export {
   fetchOperatorLoopSnapshot,
@@ -20,7 +20,7 @@ export {
   type CoreOperatorActionInput,
   writeCoreApprovalDecision,
   writeCoreOperatorAction,
-} from './apiOperator.js';
+} from './api/operator.js';
 
 export {
   activateChatChannel,
@@ -33,19 +33,19 @@ export {
   sendChatMessage,
   updateCatProfile,
   uploadChannelAttachments,
-} from './apiChat.js';
+} from './api/chat.js';
 
 export {
   type BrowseDirectoriesResult,
   type BrowseDirectoryEntry,
   browseDirectories,
   openFolderInExplorer,
-} from './apiShell.js';
+} from './api/shell.js';
 
 export {
   completeSetup,
   resetSetup,
-} from './apiSetup.js';
+} from './api/setup.js';
 
 export {
   createBotBindingApi,
@@ -60,11 +60,11 @@ export {
   type TelegramTransportRoomRouting,
   type TelegramTransportStatus,
   updateBotBindingApi,
-} from './apiTelegram.js';
+} from './api/telegram.js';
 
 export {
   createCatMemory,
   deleteCatMemory,
   type DurableMemoryItem,
   listCatMemory,
-} from './apiMemory.js';
+} from './api/memory.js';

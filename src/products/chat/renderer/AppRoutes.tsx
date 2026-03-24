@@ -23,7 +23,7 @@ import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
-import { SettingsCats } from './components/SettingsCats.js';
+import { SettingsCats } from './components/settings-cats/SettingsCats.js';
 import { SettingsData } from './components/SettingsData.js';
 import { SettingsGeneral } from './components/SettingsGeneral.js';
 import { SetupWizard } from './components/SetupWizard.js';

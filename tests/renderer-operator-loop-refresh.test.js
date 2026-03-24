@@ -9,7 +9,7 @@ test('App refreshes the operator loop in the background while the chat view stay
     'utf8',
   );
   const hookSource = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/useOperatorLoop.ts'),
+    path.join(process.cwd(), 'src/products/chat/renderer/hooks/useOperatorLoop.ts'),
     'utf8',
   );
 

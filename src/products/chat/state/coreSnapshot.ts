@@ -18,7 +18,7 @@ export {
   normalizeCoreWorkItem,
   normalizeDurableMemoryRecord,
   normalizeOwnerProfile,
-} from './coreSnapshotRecords.js';
+} from './core-snapshot/records.js';
 
 export interface PersistedChatSnapshot extends CatsCoreState {
   chat: ChatState;

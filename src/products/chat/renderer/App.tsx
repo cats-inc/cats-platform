@@ -23,15 +23,15 @@ import {
 } from './chatUtils';
 import { AppRoutes } from './AppRoutes';
 import { deriveAppRouteState, deriveAppViewState, type AppLoadState } from './appViewState';
-import { useAppChrome } from './useAppChrome';
-import { useAppDraftUiActions } from './useAppDraftUiActions';
-import { useAppNavigationActions } from './useAppNavigationActions';
-import { useAppShellRouting } from './useAppShellRouting';
-import { useCatAssignmentActions } from './useCatAssignmentActions';
-import { useComposerSubmit } from './useComposerSubmit';
-import { useFolderBrowser } from './useFolderBrowser';
-import { useGovernanceActions } from './useGovernanceActions';
-import { useOperatorLoop } from './useOperatorLoop';
+import { useAppChrome } from './hooks/useAppChrome';
+import { useAppDraftUiActions } from './hooks/useAppDraftUiActions';
+import { useAppNavigationActions } from './hooks/useAppNavigationActions';
+import { useAppShellRouting } from './hooks/useAppShellRouting';
+import { useCatAssignmentActions } from './hooks/useCatAssignmentActions';
+import { useComposerSubmit } from './hooks/useComposerSubmit';
+import { useFolderBrowser } from './hooks/useFolderBrowser';
+import { useGovernanceActions } from './hooks/useGovernanceActions';
+import { useOperatorLoop } from './hooks/useOperatorLoop';
 import type { ModelSelectorValue } from './components/ModelSelector';
 import {
   Sidebar,

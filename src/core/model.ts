@@ -15,7 +15,7 @@ import {
   upsertCoreProject,
   upsertCoreRun,
   upsertCoreWorkItem,
-} from './modelRecords.js';
+} from './model/records.js';
 import {
   addDurableMemory,
   createBotBinding,
@@ -23,17 +23,17 @@ import {
   removeBotBinding,
   removeDurableMemory,
   updateDurableMemory,
-} from './modelMemoryBindings.js';
+} from './model/memoryBindings.js';
 import {
   patchOwnerProfile,
   upsertCoreTask,
   writeApprovalDecision,
-} from './modelTaskControls.js';
+} from './model/taskControls.js';
 import {
   createDefaultOrchestratorActor,
   createOwnerActor,
   DEFAULT_APPROVAL_DECISION_OPTIONS,
-} from './modelShared.js';
+} from './model/shared.js';
 import type {
   BotBindingRecord,
   CatsCoreState,
@@ -57,7 +57,7 @@ import type {
   CoreTraceWriteInput,
   CoreWorkItemWriteInput,
   OwnerProfilePatchInput,
-} from './modelInputs.js';
+} from './model/inputs.js';
 
 export {
   addDurableMemory,

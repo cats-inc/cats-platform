@@ -1,18 +1,18 @@
 import {
   deriveCompanionBoxStatePath,
   resolveCompanionStorageRoot,
-} from './companionBoxSnapshot.js';
-import { FileCompanionBoxStore } from './companionBoxFileStore.js';
-import { MemoryCompanionBoxStore } from './companionBoxMemoryStore.js';
-import type { CompanionBoxStore } from './companionBoxStoreTypes.js';
+} from './companion-box/snapshot.js';
+import { FileCompanionBoxStore } from './companion-box/fileStore.js';
+import { MemoryCompanionBoxStore } from './companion-box/memoryStore.js';
+import type { CompanionBoxStore } from './companion-box/storeTypes.js';
 
 export { deriveCompanionBoxStatePath };
 export type {
   CompanionBoxStore,
   CompanionSessionContextInput,
-} from './companionBoxStoreTypes.js';
-export { FileCompanionBoxStore } from './companionBoxFileStore.js';
-export { MemoryCompanionBoxStore } from './companionBoxMemoryStore.js';
+} from './companion-box/storeTypes.js';
+export { FileCompanionBoxStore } from './companion-box/fileStore.js';
+export { MemoryCompanionBoxStore } from './companion-box/memoryStore.js';
 
 export function createFileBackedCompanionBoxStore(
   chatStatePath: string,

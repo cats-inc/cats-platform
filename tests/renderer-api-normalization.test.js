@@ -5,7 +5,7 @@ import test from 'node:test';
 
 test('renderer app-shell normalizer does not reference the legacy pre-rename identifier', async () => {
   const source = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/apiNormalization.ts'),
+    path.join(process.cwd(), 'src/products/chat/renderer/api/normalization.ts'),
     'utf8',
   );
   const start = source.indexOf('export function normalizeAppShellPayload');
@@ -23,7 +23,7 @@ test('renderer app-shell normalizer does not reference the legacy pre-rename ide
 
 test('renderer bot binding client uses the catId contract instead of the removed boundCatId field', async () => {
   const source = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/apiTelegram.ts'),
+    path.join(process.cwd(), 'src/products/chat/renderer/api/telegram.ts'),
     'utf8',
   );
 
@@ -37,7 +37,7 @@ test('renderer bot binding client uses the catId contract instead of the removed
 
 test('renderer cat memory client reads the single-record create response shape', async () => {
   const source = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/apiMemory.ts'),
+    path.join(process.cwd(), 'src/products/chat/renderer/api/memory.ts'),
     'utf8',
   );
 

@@ -1,4 +1,4 @@
-export { routeChannelMessage } from './runtimeDispatchRouting.js';
+export { routeChannelMessage } from './runtime-dispatch/routing.js';
 export {
   activateChannelSessions,
   wakeChannelEntryParticipant,

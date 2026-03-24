@@ -49,13 +49,13 @@ import {
   normalizeChannel,
   normalizeChatCat,
   normalizeGlobalOrchestrator,
-} from './chatSnapshotEntities.js';
+} from './chat-snapshot/entities.js';
 import {
   asRecord,
   readBoolean,
   readNullableString,
   readString,
-} from './chatSnapshotShared.js';
+} from './chat-snapshot/shared.js';
 import { createDefaultCoreState } from '../../../core/model.js';
 import { syncCoreStateWithChatState } from './coreProjection.js';
 

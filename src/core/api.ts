@@ -1,7 +1,7 @@
-import type { CoreApiRouteContext } from './apiTypes.js';
-import { routeCoreControlApi } from './apiControlRoutes.js';
-import { routeCoreRecordApi } from './apiRecordRoutes.js';
-import { routeCoreTaskApi } from './apiTaskRoutes.js';
+import type { CoreApiRouteContext } from './api/types.js';
+import { routeCoreControlApi } from './api/controlRoutes.js';
+import { routeCoreRecordApi } from './api/recordRoutes.js';
+import { routeCoreTaskApi } from './api/taskRoutes.js';
 import { sendJson, sendMethodNotAllowed } from '../shared/http.js';
 
 async function handleCoreState(

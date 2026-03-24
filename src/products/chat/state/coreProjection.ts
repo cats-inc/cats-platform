@@ -18,7 +18,7 @@ import {
   preserveCoreOwnedConversations,
   preserveCoreOwnedTasks,
   syncBotBindings,
-} from './coreProjectionEntities.js';
+} from './core-projection/entities.js';
 import {
   collectWorkflowTurns,
   createWorkflowActivity,
@@ -31,7 +31,7 @@ import {
   preserveCoreOwnedOutcomes,
   preserveCoreOwnedRuns,
   preserveCoreOwnedTraces,
-} from './coreProjectionWorkflow.js';
+} from './core-projection/workflow.js';
 
 export function syncCoreStateWithChatState(
   chat: ChatState,

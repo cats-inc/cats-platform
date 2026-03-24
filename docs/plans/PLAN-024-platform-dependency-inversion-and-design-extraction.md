@@ -18,6 +18,21 @@ Execution checkpoint on 2026-03-25:
 - Phase 3 substantially advanced
 - Phase 4 substantially advanced
 - Phase 5 substantially advanced
+- Directory normalization has landed for the main extracted module families:
+  `src/core/api/*`, `src/core/model/*`,
+  `src/products/chat/state/runtime-dispatch/*`,
+  `src/products/chat/state/runtime-session/*`,
+  `src/products/chat/state/room-routing/*`,
+  `src/products/chat/state/core-snapshot/*`,
+  `src/products/chat/state/chat-snapshot/*`,
+  `src/products/chat/state/core-projection/*`,
+  `src/products/chat/state/companion-box/*`,
+  `src/products/chat/renderer/api/*`,
+  `src/products/chat/renderer/hooks/*`, and
+  `src/products/chat/renderer/components/settings-cats/*`
+- The current directory layout keeps mobile companion scope viable by
+  preserving product API/contracts as the cross-client seam instead of
+  pushing web renderer concerns down into `core/` or shared runtime code.
 - Phases 6 through 8 pending
 
 ## Date
@@ -88,8 +103,9 @@ removed. The current structural pressure points are:
 
 - `src/app/server/index.ts` is now the main composition root and must not grow
   into a new integration God file as more product lines are wired in.
-- Several module families are still organized as flat prefix groups rather than
-  clearer subdirectories, which hurts navigability even after the file splits.
+- Several major module families have now been normalized into subdirectories,
+  but a smaller set of remaining flat prefix groups still needs active
+  governance so navigability does not regress as new product lines land.
 - A shrinking set of `*Shared.ts`, compatibility barrels, and transitional
   re-exports still need active governance so they do not become new dumping
   grounds.

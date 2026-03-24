@@ -300,16 +300,16 @@ test('chat snapshot composes dedicated shared and entity helper modules', async 
     'utf8',
   );
   const sharedModule = await readFile(
-    new URL('../src/products/chat/state/chatSnapshotShared.ts', import.meta.url),
+    new URL('../src/products/chat/state/chat-snapshot/shared.ts', import.meta.url),
     'utf8',
   );
   const entitiesModule = await readFile(
-    new URL('../src/products/chat/state/chatSnapshotEntities.ts', import.meta.url),
+    new URL('../src/products/chat/state/chat-snapshot/entities.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(snapshotModule, /chatSnapshotShared\.js/u);
-  assert.match(snapshotModule, /chatSnapshotEntities\.js/u);
+  assert.match(snapshotModule, /chat-snapshot\/shared\.js/u);
+  assert.match(snapshotModule, /chat-snapshot\/entities\.js/u);
   assert.doesNotMatch(snapshotModule, /function normalizeMessage\(/u);
   assert.doesNotMatch(snapshotModule, /function normalizeExecutionLease\(/u);
   assert.match(sharedModule, /export function normalizeExecutionLease/u);
@@ -448,7 +448,7 @@ test('runtimeActions is a thin facade over dedicated routing seams', async () =>
     'utf8',
   );
 
-  assert.match(runtimeActions, /runtimeDispatchRouting\.js/u);
+  assert.match(runtimeActions, /runtime-dispatch\/routing\.js/u);
   assert.match(runtimeActions, /runtimeSessionRouting\.js/u);
   assert.doesNotMatch(runtimeActions, /export async function routeChannelMessage\(/u);
   assert.doesNotMatch(runtimeActions, /export async function activateChannelSessions\(/u);
@@ -457,25 +457,25 @@ test('runtimeActions is a thin facade over dedicated routing seams', async () =>
 
 test('runtime dispatch turn and loop consume dedicated room-routing workflow helpers instead of defining them inline', async () => {
   const dispatchRouting = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/routing.ts', import.meta.url),
     'utf8',
   );
   const dispatchTurn = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchTurn.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/turn.ts', import.meta.url),
     'utf8',
   );
   const dispatchLoop = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/loop.ts', import.meta.url),
     'utf8',
   );
   const workflowModule = await readFile(
-    new URL('../src/products/chat/state/roomRoutingWorkflow.ts', import.meta.url),
+    new URL('../src/products/chat/state/room-routing/workflow.ts', import.meta.url),
     'utf8',
   );
 
-  assert.doesNotMatch(dispatchRouting, /roomRoutingWorkflow\.js/u);
-  assert.match(dispatchTurn, /roomRoutingWorkflow\.js/u);
-  assert.match(dispatchLoop, /roomRoutingWorkflow\.js/u);
+  assert.doesNotMatch(dispatchRouting, /room-routing\/workflow\.js/u);
+  assert.match(dispatchTurn, /room-routing\/workflow\.js/u);
+  assert.match(dispatchLoop, /room-routing\/workflow\.js/u);
   assert.doesNotMatch(dispatchTurn, /function createWorkflowTurn\(/u);
   assert.doesNotMatch(dispatchLoop, /function addWorkflowCheckpoint\(/u);
   assert.match(workflowModule, /export function createWorkflowTurn/u);
@@ -484,23 +484,23 @@ test('runtime dispatch turn and loop consume dedicated room-routing workflow hel
 
 test('room routing runtime keeps routing contracts while workflow and wake helpers live in dedicated modules', async () => {
   const runtimeModule = await readFile(
-    new URL('../src/products/chat/state/roomRoutingRuntime.ts', import.meta.url),
+    new URL('../src/products/chat/state/room-routing/runtime.ts', import.meta.url),
     'utf8',
   );
   const workflowModule = await readFile(
-    new URL('../src/products/chat/state/roomRoutingWorkflow.ts', import.meta.url),
+    new URL('../src/products/chat/state/room-routing/workflow.ts', import.meta.url),
     'utf8',
   );
   const wakeModule = await readFile(
-    new URL('../src/products/chat/state/roomRoutingWake.ts', import.meta.url),
+    new URL('../src/products/chat/state/room-routing/wake.ts', import.meta.url),
     'utf8',
   );
   const sessionWakeModule = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionWake.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/wake.ts', import.meta.url),
     'utf8',
   );
   const sessionStateModule = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionState.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/state.ts', import.meta.url),
     'utf8',
   );
 
@@ -513,21 +513,21 @@ test('room routing runtime keeps routing contracts while workflow and wake helpe
   assert.match(workflowModule, /export function finalizeWorkflowTurn/u);
   assert.match(wakeModule, /export function createRecordedWakeRequest/u);
   assert.match(wakeModule, /export function createRoomRoutingSnapshot/u);
-  assert.match(sessionWakeModule, /roomRoutingWake\.js/u);
-  assert.match(sessionStateModule, /roomRoutingWake\.js/u);
+  assert.match(sessionWakeModule, /room-routing\/wake\.js/u);
+  assert.match(sessionStateModule, /room-routing\/wake\.js/u);
 });
 
 test('runtime dispatch routing consumes dedicated turn bootstrap helpers instead of defining initial turn setup inline', async () => {
   const dispatchRouting = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/routing.ts', import.meta.url),
     'utf8',
   );
   const dispatchTurnModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchTurn.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/turn.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(dispatchRouting, /runtimeDispatchTurn\.js/u);
+  assert.match(dispatchRouting, /turn\.js/u);
   assert.doesNotMatch(dispatchRouting, /const initialResolution =/u);
   assert.doesNotMatch(dispatchRouting, /const outcome = createRoutingOutcome/u);
   assert.doesNotMatch(dispatchRouting, /const activeTurn = createWorkflowTurn/u);
@@ -536,15 +536,15 @@ test('runtime dispatch routing consumes dedicated turn bootstrap helpers instead
 
 test('runtime dispatch routing consumes dedicated turn finalization helpers instead of defining terminal workflow updates inline', async () => {
   const dispatchRouting = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/routing.ts', import.meta.url),
     'utf8',
   );
   const dispatchFinalizeModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchFinalize.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/finalize.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(dispatchRouting, /runtimeDispatchFinalize\.js/u);
+  assert.match(dispatchRouting, /finalize\.js/u);
   assert.doesNotMatch(dispatchRouting, /const terminalStatuses = deriveTerminalTurnStatuses/u);
   assert.doesNotMatch(dispatchRouting, /finalizeWorkflowTurn\(/u);
   assert.match(dispatchFinalizeModule, /export function finalizeDispatchTurn/u);
@@ -552,15 +552,15 @@ test('runtime dispatch routing consumes dedicated turn finalization helpers inst
 
 test('runtime dispatch loop consumes dedicated wake/readiness helpers instead of defining target wake flows inline', async () => {
   const dispatchLoopModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/loop.ts', import.meta.url),
     'utf8',
   );
   const dispatchWakeModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchWake.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/wake.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(dispatchLoopModule, /runtimeDispatchWake\.js/u);
+  assert.match(dispatchLoopModule, /wake\.js/u);
   assert.doesNotMatch(dispatchLoopModule, /const ensured = await ensureTargetSession\(/u);
   assert.doesNotMatch(dispatchLoopModule, /await maybeAutoCheckoutChannelTask\(/u);
   assert.match(dispatchWakeModule, /export async function prepareReadyRequests/u);
@@ -568,15 +568,15 @@ test('runtime dispatch loop consumes dedicated wake/readiness helpers instead of
 
 test('runtime dispatch routing consumes a dedicated dispatch-loop module instead of defining queue processing inline', async () => {
   const dispatchRouting = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/routing.ts', import.meta.url),
     'utf8',
   );
   const dispatchLoopModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/loop.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(dispatchRouting, /runtimeDispatchLoop\.js/u);
+  assert.match(dispatchRouting, /loop\.js/u);
   assert.doesNotMatch(dispatchRouting, /while \(queue\.length > 0\)/u);
   assert.doesNotMatch(dispatchRouting, /const allowedRequests: DispatchRequest\[\] = \[\]/u);
   assert.match(dispatchLoopModule, /export async function processDispatchQueue/u);
@@ -585,15 +585,15 @@ test('runtime dispatch routing consumes a dedicated dispatch-loop module instead
 
 test('runtime dispatch loop consumes dedicated runtime dispatch execution helpers instead of defining them inline', async () => {
   const dispatchLoopModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/loop.ts', import.meta.url),
     'utf8',
   );
   const dispatchExecutionModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchExecution.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/execution.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(dispatchLoopModule, /runtimeDispatchExecution\.js/u);
+  assert.match(dispatchLoopModule, /execution\.js/u);
   assert.doesNotMatch(dispatchLoopModule, /async function executeDispatch\(/u);
   assert.doesNotMatch(dispatchLoopModule, /async function settleInCompletionOrder/u);
   assert.doesNotMatch(dispatchLoopModule, /function shouldBlockAntiPingPong\(/u);
@@ -604,7 +604,7 @@ test('runtime dispatch loop consumes dedicated runtime dispatch execution helper
 
 test('runtime dispatch execution consumes dedicated runtime targeting helpers instead of defining them inline', async () => {
   const dispatchExecutionModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchExecution.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/execution.ts', import.meta.url),
     'utf8',
   );
   const targetingModule = await readFile(
@@ -621,7 +621,7 @@ test('runtime dispatch execution consumes dedicated runtime targeting helpers in
 
 test('runtime dispatch routing consumes dedicated runtime targeting helpers instead of defining choice resolution inline', async () => {
   const dispatchRouting = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/routing.ts', import.meta.url),
     'utf8',
   );
   const targetingModule = await readFile(
@@ -636,22 +636,22 @@ test('runtime dispatch routing consumes dedicated runtime targeting helpers inst
 
 test('runtime dispatch execution consumes dedicated runtime session-state helpers instead of defining them inline', async () => {
   const dispatchExecutionModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchExecution.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/execution.ts', import.meta.url),
     'utf8',
   );
   const sessionStateModule = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionState.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/state.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(dispatchExecutionModule, /runtimeSessionState\.js/u);
+  assert.match(dispatchExecutionModule, /runtime-session\/state\.js/u);
   assert.doesNotMatch(dispatchExecutionModule, /function participantKey\(/u);
   assert.match(sessionStateModule, /export function participantKey/u);
 });
 
 test('runtime dispatch execution consumes dedicated runtime session-routing helpers instead of defining rewrite logic inline', async () => {
   const dispatchExecutionModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchExecution.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/execution.ts', import.meta.url),
     'utf8',
   );
   const sessionRoutingModule = await readFile(
@@ -659,27 +659,27 @@ test('runtime dispatch execution consumes dedicated runtime session-routing help
     'utf8',
   );
   const sessionSharedModule = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionShared.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/shared.ts', import.meta.url),
     'utf8',
   );
 
   assert.match(dispatchExecutionModule, /runtimeSessionRouting\.js/u);
   assert.doesNotMatch(dispatchExecutionModule, /function shouldRewriteOrchestratorReply\(/u);
-  assert.match(sessionRoutingModule, /runtimeSessionShared\.js/u);
+  assert.match(sessionRoutingModule, /runtime-session\/shared\.js/u);
   assert.match(sessionSharedModule, /export function shouldRewriteOrchestratorReply/u);
 });
 
 test('runtime dispatch loop consumes dedicated dispatch-result helpers instead of defining response handling inline', async () => {
   const dispatchLoopModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/loop.ts', import.meta.url),
     'utf8',
   );
   const dispatchResultsModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchResults.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/results.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(dispatchLoopModule, /runtimeDispatchResults\.js/u);
+  assert.match(dispatchLoopModule, /results\.js/u);
   assert.doesNotMatch(dispatchLoopModule, /const continuationResolution = resolveTargets/u);
   assert.doesNotMatch(dispatchLoopModule, /nextState = setReadyAfterMessage\(/u);
   assert.doesNotMatch(dispatchLoopModule, /resolveExecutionMetadataForTarget\(/u);
@@ -690,7 +690,7 @@ test('runtime dispatch loop consumes dedicated dispatch-result helpers instead o
 
 test('runtime dispatch wake consumes dedicated runtime session-routing helpers instead of defining wake flows inline', async () => {
   const dispatchWakeModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchWake.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-dispatch/wake.ts', import.meta.url),
     'utf8',
   );
   const sessionRoutingModule = await readFile(
@@ -698,14 +698,14 @@ test('runtime dispatch wake consumes dedicated runtime session-routing helpers i
     'utf8',
   );
   const sessionWakeModule = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionWake.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/wake.ts', import.meta.url),
     'utf8',
   );
 
   assert.match(dispatchWakeModule, /runtimeSessionRouting\.js/u);
   assert.doesNotMatch(dispatchWakeModule, /async function ensureTargetSession\(/u);
   assert.doesNotMatch(dispatchWakeModule, /async function maybeAutoCheckoutChannelTask\(/u);
-  assert.match(sessionRoutingModule, /runtimeSessionWake\.js/u);
+  assert.match(sessionRoutingModule, /runtime-session\/wake\.js/u);
   assert.match(sessionWakeModule, /export async function ensureTargetSession/u);
   assert.match(sessionWakeModule, /export async function maybeAutoCheckoutChannelTask/u);
 });
@@ -716,13 +716,13 @@ test('runtime session routing composes dedicated wake and activation modules ins
     'utf8',
   );
   const sessionActivationModule = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionActivation.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/activation.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(sessionRoutingModule, /runtimeSessionShared\.js/u);
-  assert.match(sessionRoutingModule, /runtimeSessionWake\.js/u);
-  assert.match(sessionRoutingModule, /runtimeSessionActivation\.js/u);
+  assert.match(sessionRoutingModule, /runtime-session\/shared\.js/u);
+  assert.match(sessionRoutingModule, /runtime-session\/wake\.js/u);
+  assert.match(sessionRoutingModule, /runtime-session\/activation\.js/u);
   assert.doesNotMatch(sessionRoutingModule, /export async function ensureTargetSession\(/u);
   assert.doesNotMatch(sessionRoutingModule, /export async function wakeChannelEntryParticipant\(/u);
   assert.doesNotMatch(sessionRoutingModule, /export async function activateChannelSessions\(/u);
@@ -735,7 +735,7 @@ test('renderer app consumes a dedicated operator-loop hook instead of defining p
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/useOperatorLoop.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useOperatorLoop.ts', import.meta.url),
     'utf8',
   );
 
@@ -752,7 +752,7 @@ test('renderer app consumes a dedicated app-shell routing hook instead of defini
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/useAppShellRouting.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useAppShellRouting.ts', import.meta.url),
     'utf8',
   );
 
@@ -770,7 +770,7 @@ test('renderer app consumes a dedicated folder-browser hook instead of defining 
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/useFolderBrowser.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useFolderBrowser.ts', import.meta.url),
     'utf8',
   );
 
@@ -789,7 +789,7 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/useComposerSubmit.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useComposerSubmit.ts', import.meta.url),
     'utf8',
   );
 
@@ -809,7 +809,7 @@ test('renderer app consumes dedicated cat-assignment actions instead of defining
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/useCatAssignmentActions.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useCatAssignmentActions.ts', import.meta.url),
     'utf8',
   );
 
@@ -830,7 +830,7 @@ test('renderer app consumes dedicated governance actions instead of defining app
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/useGovernanceActions.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useGovernanceActions.ts', import.meta.url),
     'utf8',
   );
 
@@ -850,7 +850,7 @@ test('renderer app consumes a dedicated chrome hook instead of defining shell me
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/useAppChrome.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useAppChrome.ts', import.meta.url),
     'utf8',
   );
 
@@ -907,7 +907,7 @@ test('renderer app consumes dedicated navigation actions instead of defining rou
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/useAppNavigationActions.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useAppNavigationActions.ts', import.meta.url),
     'utf8',
   );
 
@@ -929,7 +929,7 @@ test('renderer app consumes dedicated draft-ui actions instead of defining menu 
     'utf8',
   );
   const hookSource = await readFile(
-    new URL('../src/products/chat/renderer/useAppDraftUiActions.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useAppDraftUiActions.ts', import.meta.url),
     'utf8',
   );
 
@@ -946,15 +946,15 @@ test('renderer app consumes dedicated draft-ui actions instead of defining menu 
 
 test('settings cats consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {
   const settingsCatsSource = await readFile(
-    new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
+    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
   );
   const telegramHookSource = await readFile(
-    new URL('../src/products/chat/renderer/useSettingsCatsTelegram.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useSettingsCatsTelegram.ts', import.meta.url),
     'utf8',
   );
   const memoryHookSource = await readFile(
-    new URL('../src/products/chat/renderer/useSettingsCatsMemory.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useSettingsCatsMemory.ts', import.meta.url),
     'utf8',
   );
 
@@ -969,11 +969,11 @@ test('settings cats consumes dedicated telegram and memory hooks instead of defi
 
 test('settings cats consumes dedicated registry actions instead of defining cat and binding mutations inline', async () => {
   const settingsCatsSource = await readFile(
-    new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
+    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
   );
   const registryHookSource = await readFile(
-    new URL('../src/products/chat/renderer/useSettingsCatsRegistryActions.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/hooks/useSettingsCatsRegistryActions.ts', import.meta.url),
     'utf8',
   );
 
@@ -992,11 +992,11 @@ test('settings cats consumes dedicated registry actions instead of defining cat 
 
 test('settings cats consumes a dedicated transport panel instead of rendering telegram diagnostics inline', async () => {
   const settingsCatsSource = await readFile(
-    new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
+    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
   );
   const transportPanelSource = await readFile(
-    new URL('../src/products/chat/renderer/components/SettingsCatsTransportPanel.tsx', import.meta.url),
+    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsTransportPanel.tsx', import.meta.url),
     'utf8',
   );
 
@@ -1010,19 +1010,19 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
 
 test('settings cats composes dedicated registry and create-form components instead of rendering all cat detail UI inline', async () => {
   const settingsCatsSource = await readFile(
-    new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
+    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
   );
   const registrySource = await readFile(
-    new URL('../src/products/chat/renderer/components/SettingsCatsRegistry.tsx', import.meta.url),
+    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsRegistry.tsx', import.meta.url),
     'utf8',
   );
   const detailPanelSource = await readFile(
-    new URL('../src/products/chat/renderer/components/SettingsCatsDetailPanel.tsx', import.meta.url),
+    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsDetailPanel.tsx', import.meta.url),
     'utf8',
   );
   const createFormSource = await readFile(
-    new URL('../src/products/chat/renderer/components/SettingsCatsCreateForm.tsx', import.meta.url),
+    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsCreateForm.tsx', import.meta.url),
     'utf8',
   );
 
@@ -1137,21 +1137,21 @@ test('renderer api facade composes dedicated client modules instead of defining 
     'utf8',
   );
   const normalizationSource = await readFile(
-    new URL('../src/products/chat/renderer/apiNormalization.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/api/normalization.ts', import.meta.url),
     'utf8',
   );
   const operatorSource = await readFile(
-    new URL('../src/products/chat/renderer/apiOperator.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/api/operator.ts', import.meta.url),
     'utf8',
   );
   const chatSource = await readFile(
-    new URL('../src/products/chat/renderer/apiChat.ts', import.meta.url),
+    new URL('../src/products/chat/renderer/api/chat.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(apiSource, /from '\.\/apiNormalization\.js'/u);
-  assert.match(apiSource, /from '\.\/apiOperator\.js'/u);
-  assert.match(apiSource, /from '\.\/apiChat\.js'/u);
+  assert.match(apiSource, /from '\.\/api\/normalization\.js'/u);
+  assert.match(apiSource, /from '\.\/api\/operator\.js'/u);
+  assert.match(apiSource, /from '\.\/api\/chat\.js'/u);
   assert.doesNotMatch(apiSource, /async function readErrorMessage\(/u);
   assert.doesNotMatch(apiSource, /export async function fetchAppShell\(/u);
   assert.doesNotMatch(apiSource, /export async function sendChatMessage\(/u);
@@ -1166,18 +1166,18 @@ test('chat snapshot consumes dedicated room-routing snapshot normalization inste
     'utf8',
   );
   const entityModule = await readFile(
-    new URL('../src/products/chat/state/chatSnapshotEntities.ts', import.meta.url),
+    new URL('../src/products/chat/state/chat-snapshot/entities.ts', import.meta.url),
     'utf8',
   );
   const snapshotModule = await readFile(
-    new URL('../src/products/chat/state/roomRoutingSnapshot.ts', import.meta.url),
+    new URL('../src/products/chat/state/room-routing/snapshot.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(snapshotConsumer, /chatSnapshotEntities\.js/u);
+  assert.match(snapshotConsumer, /chat-snapshot\/entities\.js/u);
   assert.doesNotMatch(snapshotConsumer, /function normalizeRoomRouting\(/u);
   assert.doesNotMatch(snapshotConsumer, /function normalizeRoomWorkflowTurn\(/u);
-  assert.match(entityModule, /roomRoutingSnapshot\.js/u);
+  assert.match(entityModule, /room-routing\/snapshot\.js/u);
   assert.match(snapshotModule, /export function normalizeRoomRouting/u);
 });
 
@@ -1224,23 +1224,23 @@ test('store consumes dedicated core snapshot normalization instead of defining i
     'utf8',
   );
   const snapshotSharedModule = await readFile(
-    new URL('../src/products/chat/state/coreSnapshotShared.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-snapshot/shared.ts', import.meta.url),
     'utf8',
   );
   const snapshotRecordsModule = await readFile(
-    new URL('../src/products/chat/state/coreSnapshotRecords.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-snapshot/records.ts', import.meta.url),
     'utf8',
   );
   const snapshotActorRecordsModule = await readFile(
-    new URL('../src/products/chat/state/coreSnapshotActorRecords.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-snapshot/actorRecords.ts', import.meta.url),
     'utf8',
   );
   const snapshotWorkflowRecordsModule = await readFile(
-    new URL('../src/products/chat/state/coreSnapshotWorkflowRecords.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-snapshot/workflowRecords.ts', import.meta.url),
     'utf8',
   );
   const snapshotAuxiliaryRecordsModule = await readFile(
-    new URL('../src/products/chat/state/coreSnapshotAuxiliaryRecords.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-snapshot/auxiliaryRecords.ts', import.meta.url),
     'utf8',
   );
 
@@ -1249,12 +1249,12 @@ test('store consumes dedicated core snapshot normalization instead of defining i
   assert.doesNotMatch(storeSource, /function buildPersistedChatSnapshot\(/u);
   assert.match(snapshotModule, /normalizeCoreTask,/u);
   assert.match(snapshotModule, /export function buildPersistedChatSnapshot/u);
-  assert.match(snapshotModule, /coreSnapshotRecords\.js/u);
+  assert.match(snapshotModule, /core-snapshot\/records\.js/u);
   assert.doesNotMatch(snapshotModule, /function asRecord\(/u);
   assert.match(snapshotSharedModule, /export function asRecord/u);
-  assert.match(snapshotRecordsModule, /coreSnapshotActorRecords\.js/u);
-  assert.match(snapshotRecordsModule, /coreSnapshotWorkflowRecords\.js/u);
-  assert.match(snapshotRecordsModule, /coreSnapshotAuxiliaryRecords\.js/u);
+  assert.match(snapshotRecordsModule, /\.\/actorRecords\.js/u);
+  assert.match(snapshotRecordsModule, /\.\/workflowRecords\.js/u);
+  assert.match(snapshotRecordsModule, /\.\/auxiliaryRecords\.js/u);
   assert.doesNotMatch(snapshotRecordsModule, /export function normalizeCoreTask\(/u);
   assert.match(snapshotActorRecordsModule, /export function normalizeOwnerProfile/u);
   assert.match(snapshotActorRecordsModule, /export function normalizeCoreProject/u);
@@ -1266,59 +1266,59 @@ test('store consumes dedicated core snapshot normalization instead of defining i
 
 test('core route modules consume dedicated parsing and error helpers instead of defining them inline', async () => {
   const controlRoutesSource = await readFile(
-    new URL('../src/core/apiControlRoutes.ts', import.meta.url),
+    new URL('../src/core/api/controlRoutes.ts', import.meta.url),
     'utf8',
   );
   const controlApprovalsSource = await readFile(
-    new URL('../src/core/apiControlApprovals.ts', import.meta.url),
+    new URL('../src/core/api/controlApprovals.ts', import.meta.url),
     'utf8',
   );
   const controlOperatorActionsSource = await readFile(
-    new URL('../src/core/apiControlOperatorActions.ts', import.meta.url),
+    new URL('../src/core/api/controlOperatorActions.ts', import.meta.url),
     'utf8',
   );
   const controlOwnerProfileSource = await readFile(
-    new URL('../src/core/apiControlOwnerProfile.ts', import.meta.url),
+    new URL('../src/core/api/controlOwnerProfile.ts', import.meta.url),
     'utf8',
   );
   const recordRoutesSource = await readFile(
-    new URL('../src/core/apiRecordRoutes.ts', import.meta.url),
+    new URL('../src/core/api/recordRoutes.ts', import.meta.url),
     'utf8',
   );
   const recordPlanningRoutesSource = await readFile(
-    new URL('../src/core/apiRecordPlanningRoutes.ts', import.meta.url),
+    new URL('../src/core/api/recordPlanningRoutes.ts', import.meta.url),
     'utf8',
   );
   const recordExecutionRoutesSource = await readFile(
-    new URL('../src/core/apiRecordExecutionRoutes.ts', import.meta.url),
+    new URL('../src/core/api/recordExecutionRoutes.ts', import.meta.url),
     'utf8',
   );
   const recordGovernanceRoutesSource = await readFile(
-    new URL('../src/core/apiRecordGovernanceRoutes.ts', import.meta.url),
+    new URL('../src/core/api/recordGovernanceRoutes.ts', import.meta.url),
     'utf8',
   );
   const taskRoutesSource = await readFile(
-    new URL('../src/core/apiTaskRoutes.ts', import.meta.url),
+    new URL('../src/core/api/taskRoutes.ts', import.meta.url),
     'utf8',
   );
   const sharedModule = await readFile(
-    new URL('../src/core/apiShared.ts', import.meta.url),
+    new URL('../src/core/api/shared.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(controlApprovalsSource, /apiShared\.js/u);
-  assert.match(controlOperatorActionsSource, /apiShared\.js/u);
-  assert.match(controlOwnerProfileSource, /apiShared\.js/u);
-  assert.match(recordPlanningRoutesSource, /apiShared\.js/u);
-  assert.match(recordExecutionRoutesSource, /apiShared\.js/u);
-  assert.match(recordGovernanceRoutesSource, /apiShared\.js/u);
-  assert.match(taskRoutesSource, /apiShared\.js/u);
-  assert.match(controlRoutesSource, /apiControlApprovals\.js/u);
-  assert.match(controlRoutesSource, /apiControlOperatorActions\.js/u);
-  assert.match(controlRoutesSource, /apiControlOwnerProfile\.js/u);
-  assert.match(recordRoutesSource, /apiRecordPlanningRoutes\.js/u);
-  assert.match(recordRoutesSource, /apiRecordExecutionRoutes\.js/u);
-  assert.match(recordRoutesSource, /apiRecordGovernanceRoutes\.js/u);
+  assert.match(controlApprovalsSource, /shared\.js/u);
+  assert.match(controlOperatorActionsSource, /shared\.js/u);
+  assert.match(controlOwnerProfileSource, /shared\.js/u);
+  assert.match(recordPlanningRoutesSource, /shared\.js/u);
+  assert.match(recordExecutionRoutesSource, /shared\.js/u);
+  assert.match(recordGovernanceRoutesSource, /shared\.js/u);
+  assert.match(taskRoutesSource, /shared\.js/u);
+  assert.match(controlRoutesSource, /controlApprovals\.js/u);
+  assert.match(controlRoutesSource, /controlOperatorActions\.js/u);
+  assert.match(controlRoutesSource, /controlOwnerProfile\.js/u);
+  assert.match(recordRoutesSource, /recordPlanningRoutes\.js/u);
+  assert.match(recordRoutesSource, /recordExecutionRoutes\.js/u);
+  assert.match(recordRoutesSource, /recordGovernanceRoutes\.js/u);
   assert.doesNotMatch(controlApprovalsSource, /function readRequiredString\(/u);
   assert.doesNotMatch(controlOperatorActionsSource, /function readObjectBody\(/u);
   assert.doesNotMatch(controlOwnerProfileSource, /function readOptionalString\(/u);
@@ -1341,54 +1341,54 @@ test('core api consumes dedicated control route modules and api contracts instea
     'utf8',
   );
   const controlRoutesSource = await readFile(
-    new URL('../src/core/apiControlRoutes.ts', import.meta.url),
+    new URL('../src/core/api/controlRoutes.ts', import.meta.url),
     'utf8',
   );
   const controlApprovalsSource = await readFile(
-    new URL('../src/core/apiControlApprovals.ts', import.meta.url),
+    new URL('../src/core/api/controlApprovals.ts', import.meta.url),
     'utf8',
   );
   const controlOperatorActionsSource = await readFile(
-    new URL('../src/core/apiControlOperatorActions.ts', import.meta.url),
+    new URL('../src/core/api/controlOperatorActions.ts', import.meta.url),
     'utf8',
   );
   const controlOwnerProfileSource = await readFile(
-    new URL('../src/core/apiControlOwnerProfile.ts', import.meta.url),
+    new URL('../src/core/api/controlOwnerProfile.ts', import.meta.url),
     'utf8',
   );
   const recordRoutesSource = await readFile(
-    new URL('../src/core/apiRecordRoutes.ts', import.meta.url),
+    new URL('../src/core/api/recordRoutes.ts', import.meta.url),
     'utf8',
   );
   const recordPlanningRoutesSource = await readFile(
-    new URL('../src/core/apiRecordPlanningRoutes.ts', import.meta.url),
+    new URL('../src/core/api/recordPlanningRoutes.ts', import.meta.url),
     'utf8',
   );
   const recordExecutionRoutesSource = await readFile(
-    new URL('../src/core/apiRecordExecutionRoutes.ts', import.meta.url),
+    new URL('../src/core/api/recordExecutionRoutes.ts', import.meta.url),
     'utf8',
   );
   const recordGovernanceRoutesSource = await readFile(
-    new URL('../src/core/apiRecordGovernanceRoutes.ts', import.meta.url),
+    new URL('../src/core/api/recordGovernanceRoutes.ts', import.meta.url),
     'utf8',
   );
   const taskRoutesSource = await readFile(
-    new URL('../src/core/apiTaskRoutes.ts', import.meta.url),
+    new URL('../src/core/api/taskRoutes.ts', import.meta.url),
     'utf8',
   );
   const constantsSource = await readFile(
-    new URL('../src/core/apiConstants.ts', import.meta.url),
+    new URL('../src/core/api/constants.ts', import.meta.url),
     'utf8',
   );
   const typesSource = await readFile(
-    new URL('../src/core/apiTypes.ts', import.meta.url),
+    new URL('../src/core/api/types.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(coreApiSource, /apiControlRoutes\.js/u);
-  assert.match(coreApiSource, /apiRecordRoutes\.js/u);
-  assert.match(coreApiSource, /apiTaskRoutes\.js/u);
-  assert.match(coreApiSource, /apiTypes\.js/u);
+  assert.match(coreApiSource, /api\/controlRoutes\.js/u);
+  assert.match(coreApiSource, /api\/recordRoutes\.js/u);
+  assert.match(coreApiSource, /api\/taskRoutes\.js/u);
+  assert.match(coreApiSource, /api\/types\.js/u);
   assert.doesNotMatch(coreApiSource, /export interface CoreApiDependencies/u);
   assert.doesNotMatch(coreApiSource, /async function handleCoreProjectWrite\(/u);
   assert.doesNotMatch(coreApiSource, /async function handleCoreRunWrite\(/u);
@@ -1398,40 +1398,40 @@ test('core api consumes dedicated control route modules and api contracts instea
   assert.doesNotMatch(coreApiSource, /async function handleCoreOperatorActionWrite\(/u);
   assert.doesNotMatch(coreApiSource, /async function handleOwnerProfileWrite\(/u);
   assert.doesNotMatch(coreApiSource, /const CORE_TASK_STATUSES = \[/u);
-  assert.match(typesSource, /from '\.\/store\.js'/u);
+  assert.match(typesSource, /from '\.\.\/store\.js'/u);
   assert.match(typesSource, /taskExecutionLocator\.js/u);
   assert.doesNotMatch(typesSource, /products\/chat\/state\/store\.js/u);
   assert.match(controlRoutesSource, /export async function routeCoreControlApi/u);
-  assert.match(controlRoutesSource, /apiTypes\.js/u);
-  assert.match(controlRoutesSource, /apiControlApprovals\.js/u);
-  assert.match(controlRoutesSource, /apiControlOperatorActions\.js/u);
-  assert.match(controlRoutesSource, /apiControlOwnerProfile\.js/u);
+  assert.match(controlRoutesSource, /\.\/types\.js/u);
+  assert.match(controlRoutesSource, /controlApprovals\.js/u);
+  assert.match(controlRoutesSource, /controlOperatorActions\.js/u);
+  assert.match(controlRoutesSource, /controlOwnerProfile\.js/u);
   assert.match(controlApprovalsSource, /export async function routeCoreApprovalsApi/u);
   assert.match(controlOperatorActionsSource, /export async function routeCoreOperatorActionsApi/u);
   assert.match(controlOwnerProfileSource, /export async function routeCoreOwnerProfileApi/u);
   assert.match(recordRoutesSource, /export async function routeCoreRecordApi/u);
-  assert.match(recordRoutesSource, /apiTypes\.js/u);
-  assert.match(recordRoutesSource, /apiRecordPlanningRoutes\.js/u);
-  assert.match(recordRoutesSource, /apiRecordExecutionRoutes\.js/u);
-  assert.match(recordRoutesSource, /apiRecordGovernanceRoutes\.js/u);
+  assert.match(recordRoutesSource, /\.\/types\.js/u);
+  assert.match(recordRoutesSource, /recordPlanningRoutes\.js/u);
+  assert.match(recordRoutesSource, /recordExecutionRoutes\.js/u);
+  assert.match(recordRoutesSource, /recordGovernanceRoutes\.js/u);
   assert.doesNotMatch(recordRoutesSource, /async function handleCoreProjectWrite\(/u);
   assert.doesNotMatch(recordRoutesSource, /async function handleCoreRunWrite\(/u);
   assert.doesNotMatch(recordRoutesSource, /async function handleCoreApprovalBindingWrite\(/u);
   assert.match(recordPlanningRoutesSource, /export async function routeCorePlanningRecordApi/u);
-  assert.match(recordPlanningRoutesSource, /apiConstants\.js/u);
+  assert.match(recordPlanningRoutesSource, /constants\.js/u);
   assert.match(recordPlanningRoutesSource, /async function handleCoreProjectWrite\(/u);
   assert.match(recordExecutionRoutesSource, /export async function routeCoreExecutionRecordApi/u);
   assert.doesNotMatch(taskRoutesSource, /context\.dependencies\.chatStore/u);
   assert.match(taskRoutesSource, /context\.dependencies\.coreStore/u);
   assert.match(taskRoutesSource, /taskExecutionLocator/u);
-  assert.match(recordExecutionRoutesSource, /apiConstants\.js/u);
+  assert.match(recordExecutionRoutesSource, /constants\.js/u);
   assert.match(recordExecutionRoutesSource, /async function handleCoreRunWrite\(/u);
   assert.match(recordGovernanceRoutesSource, /export async function routeCoreGovernanceRecordApi/u);
-  assert.match(recordGovernanceRoutesSource, /apiConstants\.js/u);
+  assert.match(recordGovernanceRoutesSource, /constants\.js/u);
   assert.match(recordGovernanceRoutesSource, /async function handleCoreApprovalBindingWrite\(/u);
   assert.match(taskRoutesSource, /export async function routeCoreTaskApi/u);
-  assert.match(taskRoutesSource, /apiTypes\.js/u);
-  assert.match(taskRoutesSource, /apiConstants\.js/u);
+  assert.match(taskRoutesSource, /\.\/types\.js/u);
+  assert.match(taskRoutesSource, /constants\.js/u);
   assert.match(constantsSource, /export const CORE_TASK_STATUSES/u);
   assert.match(constantsSource, /export const CORE_APPROVAL_ACTIONS/u);
   assert.match(typesSource, /export interface CoreApiDependencies/u);
@@ -1444,16 +1444,16 @@ test('core model consumes dedicated shared helpers and input contracts instead o
     'utf8',
   );
   const sharedSource = await readFile(
-    new URL('../src/core/modelShared.ts', import.meta.url),
+    new URL('../src/core/model/shared.ts', import.meta.url),
     'utf8',
   );
   const inputsSource = await readFile(
-    new URL('../src/core/modelInputs.ts', import.meta.url),
+    new URL('../src/core/model/inputs.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(modelSource, /modelShared\.js/u);
-  assert.match(modelSource, /modelInputs\.js/u);
+  assert.match(modelSource, /model\/shared\.js/u);
+  assert.match(modelSource, /model\/inputs\.js/u);
   assert.doesNotMatch(modelSource, /function normalizeMetadata\(/u);
   assert.doesNotMatch(modelSource, /function replaceById\(/u);
   assert.doesNotMatch(modelSource, /export interface CoreProjectWriteInput/u);
@@ -1470,29 +1470,29 @@ test('core model composes dedicated record write modules instead of defining rec
     'utf8',
   );
   const recordModuleSource = await readFile(
-    new URL('../src/core/modelRecords.ts', import.meta.url),
+    new URL('../src/core/model/records.ts', import.meta.url),
     'utf8',
   );
   const planningRecordModuleSource = await readFile(
-    new URL('../src/core/modelPlanningRecords.ts', import.meta.url),
+    new URL('../src/core/model/planningRecords.ts', import.meta.url),
     'utf8',
   );
   const executionRecordModuleSource = await readFile(
-    new URL('../src/core/modelExecutionRecords.ts', import.meta.url),
+    new URL('../src/core/model/executionRecords.ts', import.meta.url),
     'utf8',
   );
   const governanceRecordModuleSource = await readFile(
-    new URL('../src/core/modelGovernanceRecords.ts', import.meta.url),
+    new URL('../src/core/model/governanceRecords.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(modelSource, /modelRecords\.js/u);
+  assert.match(modelSource, /model\/records\.js/u);
   assert.doesNotMatch(modelSource, /export function upsertCoreProject\(/u);
   assert.doesNotMatch(modelSource, /export function upsertCoreRun\(/u);
   assert.doesNotMatch(modelSource, /export function appendCoreActivity\(/u);
-  assert.match(recordModuleSource, /modelPlanningRecords\.js/u);
-  assert.match(recordModuleSource, /modelExecutionRecords\.js/u);
-  assert.match(recordModuleSource, /modelGovernanceRecords\.js/u);
+  assert.match(recordModuleSource, /planningRecords\.js/u);
+  assert.match(recordModuleSource, /executionRecords\.js/u);
+  assert.match(recordModuleSource, /governanceRecords\.js/u);
   assert.doesNotMatch(recordModuleSource, /export function upsertCoreProject\(/u);
   assert.doesNotMatch(recordModuleSource, /export function appendCoreActivity\(/u);
   assert.doesNotMatch(recordModuleSource, /export function upsertCoreApprovalBinding\(/u);
@@ -1509,16 +1509,16 @@ test('core model composes dedicated task-control and memory-binding modules inst
     'utf8',
   );
   const taskControlSource = await readFile(
-    new URL('../src/core/modelTaskControls.ts', import.meta.url),
+    new URL('../src/core/model/taskControls.ts', import.meta.url),
     'utf8',
   );
   const memoryBindingSource = await readFile(
-    new URL('../src/core/modelMemoryBindings.ts', import.meta.url),
+    new URL('../src/core/model/memoryBindings.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(modelSource, /modelTaskControls\.js/u);
-  assert.match(modelSource, /modelMemoryBindings\.js/u);
+  assert.match(modelSource, /model\/taskControls\.js/u);
+  assert.match(modelSource, /model\/memoryBindings\.js/u);
   assert.doesNotMatch(modelSource, /export function upsertCoreTask\(/u);
   assert.doesNotMatch(modelSource, /export function writeApprovalDecision\(/u);
   assert.doesNotMatch(modelSource, /export function addDurableMemory\(/u);
@@ -1573,11 +1573,11 @@ test('core projection composes a dedicated workflow projection module instead of
     'utf8',
   );
   const workflowProjectionSource = await readFile(
-    new URL('../src/products/chat/state/coreProjectionWorkflow.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-projection/workflow.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(projectionSource, /coreProjectionWorkflow\.js/u);
+  assert.match(projectionSource, /core-projection\/workflow\.js/u);
   assert.doesNotMatch(projectionSource, /function createWorkflowRun\(/u);
   assert.doesNotMatch(projectionSource, /function createWorkflowActivity\(/u);
   assert.match(workflowProjectionSource, /export function createWorkflowRun/u);
@@ -1590,11 +1590,11 @@ test('core projection composes a dedicated entity projection module instead of d
     'utf8',
   );
   const entityProjectionSource = await readFile(
-    new URL('../src/products/chat/state/coreProjectionEntities.ts', import.meta.url),
+    new URL('../src/products/chat/state/core-projection/entities.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(projectionSource, /coreProjectionEntities\.js/u);
+  assert.match(projectionSource, /core-projection\/entities\.js/u);
   assert.doesNotMatch(projectionSource, /function createConversationFromChannel\(/u);
   assert.doesNotMatch(projectionSource, /function createTaskFromChannel\(/u);
   assert.match(entityProjectionSource, /export function createConversationFromChannel/u);
@@ -1625,16 +1625,16 @@ test('companion box store composes dedicated file and memory store modules inste
     'utf8',
   );
   const fileStoreSource = await readFile(
-    new URL('../src/products/chat/state/companionBoxFileStore.ts', import.meta.url),
+    new URL('../src/products/chat/state/companion-box/fileStore.ts', import.meta.url),
     'utf8',
   );
   const memoryStoreSource = await readFile(
-    new URL('../src/products/chat/state/companionBoxMemoryStore.ts', import.meta.url),
+    new URL('../src/products/chat/state/companion-box/memoryStore.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(storeSource, /companionBoxFileStore\.js/u);
-  assert.match(storeSource, /companionBoxMemoryStore\.js/u);
+  assert.match(storeSource, /companion-box\/fileStore\.js/u);
+  assert.match(storeSource, /companion-box\/memoryStore\.js/u);
   assert.doesNotMatch(storeSource, /export class FileCompanionBoxStore/u);
   assert.doesNotMatch(storeSource, /export class MemoryCompanionBoxStore/u);
   assert.match(fileStoreSource, /export class FileCompanionBoxStore/u);
@@ -1643,15 +1643,15 @@ test('companion box store composes dedicated file and memory store modules inste
 
 test('companion box file store consumes dedicated snapshot helpers instead of defining normalization inline', async () => {
   const fileStoreSource = await readFile(
-    new URL('../src/products/chat/state/companionBoxFileStore.ts', import.meta.url),
+    new URL('../src/products/chat/state/companion-box/fileStore.ts', import.meta.url),
     'utf8',
   );
   const snapshotModule = await readFile(
-    new URL('../src/products/chat/state/companionBoxSnapshot.ts', import.meta.url),
+    new URL('../src/products/chat/state/companion-box/snapshot.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(fileStoreSource, /companionBoxSnapshot\.js/u);
+  assert.match(fileStoreSource, /\.\/snapshot\.js/u);
   assert.doesNotMatch(fileStoreSource, /function normalizeSnapshot\(/u);
   assert.doesNotMatch(fileStoreSource, /function deriveCompanionBoxStatePath\(/u);
   assert.doesNotMatch(fileStoreSource, /function buildStorageLayout\(/u);
@@ -1662,20 +1662,20 @@ test('companion box file store consumes dedicated snapshot helpers instead of de
 
 test('companion box file and memory stores consume dedicated operations helpers instead of defining mutation flows inline', async () => {
   const fileStoreSource = await readFile(
-    new URL('../src/products/chat/state/companionBoxFileStore.ts', import.meta.url),
+    new URL('../src/products/chat/state/companion-box/fileStore.ts', import.meta.url),
     'utf8',
   );
   const memoryStoreSource = await readFile(
-    new URL('../src/products/chat/state/companionBoxMemoryStore.ts', import.meta.url),
+    new URL('../src/products/chat/state/companion-box/memoryStore.ts', import.meta.url),
     'utf8',
   );
   const operationsModule = await readFile(
-    new URL('../src/products/chat/state/companionBoxOperations.ts', import.meta.url),
+    new URL('../src/products/chat/state/companion-box/operations.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(fileStoreSource, /companionBoxOperations\.js/u);
-  assert.match(memoryStoreSource, /companionBoxOperations\.js/u);
+  assert.match(fileStoreSource, /\.\/operations\.js/u);
+  assert.match(memoryStoreSource, /\.\/operations\.js/u);
   assert.doesNotMatch(fileStoreSource, /function ensureBox\(/u);
   assert.doesNotMatch(fileStoreSource, /function summarizeBox\(/u);
   assert.doesNotMatch(fileStoreSource, /function replaceDerivedForSource\(/u);
@@ -1815,7 +1815,7 @@ test('actor and owner-profile helpers are consumed from the dedicated core actor
     'utf8',
   );
   const runtimeSessionState = await readFile(
-    new URL('../src/products/chat/state/runtimeSessionState.ts', import.meta.url),
+    new URL('../src/products/chat/state/runtime-session/state.ts', import.meta.url),
     'utf8',
   );
 
