@@ -198,6 +198,23 @@ test('runtime dispatch routing consumes dedicated room-routing workflow helpers 
   assert.match(workflowModule, /export function addWorkflowCheckpoint/u);
 });
 
+test('runtime dispatch routing consumes dedicated turn bootstrap helpers instead of defining initial turn setup inline', async () => {
+  const dispatchRouting = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+    'utf8',
+  );
+  const dispatchTurnModule = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchTurn.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(dispatchRouting, /runtimeDispatchTurn\.js/u);
+  assert.doesNotMatch(dispatchRouting, /const initialResolution =/u);
+  assert.doesNotMatch(dispatchRouting, /const outcome = createRoutingOutcome/u);
+  assert.doesNotMatch(dispatchRouting, /const activeTurn = createWorkflowTurn/u);
+  assert.match(dispatchTurnModule, /export function prepareDispatchTurn/u);
+});
+
 test('runtime dispatch routing consumes dedicated runtime dispatch execution helpers instead of defining them inline', async () => {
   const dispatchRouting = await readFile(
     new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
