@@ -1,5 +1,4 @@
 import {
-  CoreApiError,
   CoreValidationError,
 } from './errors.js';
 import type { ChatStore } from '../products/chat/state/store.js';
@@ -53,8 +52,20 @@ import {
   startTaskRunWatcher,
 } from './taskLifecycle.js';
 import {
+  asRecord,
+  handleCoreError,
+  readEnumValue,
+  readMetadata,
+  readNullableNumber,
+  readNullableString,
+  readObjectBody,
+  readOptionalString,
+  readRequiredString,
+  readStringArray,
+  readWrappedBody,
+} from './apiShared.js';
+import {
   matchRoute,
-  readJsonBody,
   sendJson,
   sendMethodNotAllowed,
 } from '../shared/http.js';
@@ -208,173 +219,6 @@ const CORE_APPROVAL_BINDING_SUBJECT_KINDS = [
   'artifact',
   'conversation',
 ] as const satisfies readonly CoreApprovalBindingSubjectKind[];
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-
-  return value as Record<string, unknown>;
-}
-
-function readRequiredString(value: unknown, fieldName: string): string {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new CoreValidationError(`${fieldName} is required`);
-  }
-
-  return value;
-}
-
-function readOptionalString(value: unknown, fieldName: string): string | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (typeof value !== 'string') {
-    throw new CoreValidationError(`${fieldName} must be a string`);
-  }
-
-  return value;
-}
-
-function readNullableString(
-  value: unknown,
-  fieldName: string,
-): string | null | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (value === null) {
-    return null;
-  }
-  if (typeof value !== 'string') {
-    throw new CoreValidationError(`${fieldName} must be a string or null`);
-  }
-
-  return value;
-}
-
-function readNullableNumber(
-  value: unknown,
-  fieldName: string,
-): number | null | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (value === null) {
-    return null;
-  }
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new CoreValidationError(`${fieldName} must be a number or null`);
-  }
-  if (value < 0) {
-    throw new CoreValidationError(
-      `${fieldName} must be a non-negative number or null`,
-      'bad_request',
-    );
-  }
-
-  return value;
-}
-
-function readStringArray(value: unknown, fieldName: string): string[] | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
-    throw new CoreValidationError(`${fieldName} must be an array of strings`);
-  }
-
-  return value;
-}
-
-function readMetadata(
-  value: unknown,
-  fieldName: string,
-): CoreRecordMetadata | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const metadata = asRecord(value);
-  if (!metadata) {
-    throw new CoreValidationError(`${fieldName} must be an object`);
-  }
-
-  return metadata;
-}
-
-function readEnumValue<T extends string>(
-  value: unknown,
-  fieldName: string,
-  allowed: readonly T[],
-): T | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (typeof value !== 'string' || !allowed.includes(value as T)) {
-    throw new CoreValidationError(
-      `${fieldName} must be one of: ${allowed.join(', ')}`,
-    );
-  }
-
-  return value as T;
-}
-
-async function readObjectBody(
-  context: RouteContext<CoreApiDependencies>,
-): Promise<Record<string, unknown>> {
-  const body = await readJsonBody<unknown>(context.request);
-  const record = asRecord(body);
-  if (!record) {
-    throw new CoreValidationError('Request body must be a JSON object');
-  }
-
-  return record;
-}
-
-async function readWrappedBody(
-  context: RouteContext<CoreApiDependencies>,
-  key: string,
-): Promise<Record<string, unknown>> {
-  const body = await readObjectBody(context);
-  const wrapped = asRecord(body[key]);
-  if (!wrapped) {
-    throw new CoreValidationError(`${key} payload is required`);
-  }
-
-  return wrapped;
-}
-
-function sendCoreError(
-  context: RouteContext<CoreApiDependencies>,
-  statusCode: number,
-  code: string,
-  message: string,
-): void {
-  sendJson(context.response, statusCode, {
-    error: {
-      code,
-      message,
-    },
-  });
-}
-
-function handleCoreError(
-  context: RouteContext<CoreApiDependencies>,
-  error: unknown,
-): void {
-  if (error instanceof CoreApiError) {
-    sendCoreError(context, error.statusCode, error.code, error.message);
-    return;
-  }
-
-  if (error instanceof SyntaxError) {
-    sendCoreError(context, 400, 'invalid_json', 'Request body must be valid JSON');
-    return;
-  }
-
-  sendCoreError(context, 500, 'internal_error', 'Internal server error');
-}
 
 async function handleCoreState(
   context: RouteContext<CoreApiDependencies>,

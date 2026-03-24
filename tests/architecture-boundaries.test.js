@@ -256,6 +256,25 @@ test('store consumes dedicated core snapshot normalization instead of defining i
   assert.match(snapshotModule, /export function buildPersistedChatSnapshot/u);
 });
 
+test('core api consumes dedicated parsing and error helpers instead of defining them inline', async () => {
+  const coreApiSource = await readFile(
+    new URL('../src/core/api.ts', import.meta.url),
+    'utf8',
+  );
+  const sharedModule = await readFile(
+    new URL('../src/core/apiShared.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(coreApiSource, /apiShared\.js/u);
+  assert.doesNotMatch(coreApiSource, /function readRequiredString\(/u);
+  assert.doesNotMatch(coreApiSource, /function readObjectBody\(/u);
+  assert.doesNotMatch(coreApiSource, /function handleCoreError\(/u);
+  assert.match(sharedModule, /export function readRequiredString/u);
+  assert.match(sharedModule, /export async function readObjectBody/u);
+  assert.match(sharedModule, /export function handleCoreError/u);
+});
+
 test('store consumes dedicated chat snapshot normalization instead of defining it inline', async () => {
   const storeSource = await readFile(
     new URL('../src/products/chat/state/store.ts', import.meta.url),
