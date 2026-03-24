@@ -38,6 +38,7 @@ imports directly from `products/chat/`:
 | `platform/memory/service.ts` | `requireChannel`, `CompanionBoxStore`, `ChatStore` |
 | `platform/memory/companionStore.ts` | `CompanionBoxStore` |
 | `platform/memory/runtimeMaintenance.ts` | `CompanionBoxStore` |
+| `platform/transports/telegram/bridge.ts` | `ChatStore`, `CompanionBoxStore`, `appendMessage`, `createChannel`, `requireChannel`, `routeChannelMessage` |
 
 This creates a hard coupling: any new product (Work, Code) that needs
 orchestration or memory must either route through Chat's state layer, or
@@ -53,12 +54,13 @@ barrel, perpetuating the illusion that Chat types are shared types.
 
 Current line counts for the largest files:
 
-- `products/chat/renderer/styles.css` — **3,422 lines** (tokens + tooltip + sidebar + chat bubbles + settings + all components in one file)
-- `products/chat/state/runtimeActions.ts` — **2,990 lines** (all runtime interaction logic)
-- `core/api.ts` — **1,894 lines** (fat controller handling actors, conversations, tasks, runs, traces, checkpoints, outcomes, artifacts, activities, approvals, memory sync)
-- `core/model.ts` — **1,486 lines** (all upsert/mutation helpers for every core entity)
-- `products/chat/state/store.ts` — **1,676 lines**
-- `products/chat/renderer/App.tsx` — **1,449 lines** (God Component: sidebar + canvas + routing + state wiring)
+- `products/chat/renderer/styles.css` — **2,924 lines** (tokens + tooltip + sidebar + chat bubbles + settings + all components in one file)
+- `products/chat/state/runtimeActions.ts` — **2,897 lines** (all runtime interaction logic)
+- `core/api.ts` — **1,761 lines** (fat controller handling actors, conversations, tasks, runs, traces, checkpoints, outcomes, artifacts, activities, approvals, memory sync)
+- `core/model.ts` — **1,376 lines** (all upsert/mutation helpers for every core entity)
+- `products/chat/state/store.ts` — **1,536 lines**
+- `products/chat/renderer/App.tsx` — **1,353 lines** (God Component: sidebar + canvas + routing + state wiring)
+- `core/taskLifecycle.ts` — **552 lines** (task/run checkout and runtime lifecycle logic already concentrated in one file)
 
 These files are already difficult to review, test, and modify safely.
 Adding Work and Code will increase pressure on the shared files (core/api,
@@ -83,20 +85,22 @@ The product switcher UX (sidebar top dropdown, chat-app-style layout) requires
 that all surfaces share the same shell chrome, sidebar structure, typography
 scale, and color palette.
 
-### Issue 4: Zero test files
+### Issue 4: Tests exist, but the refactor guardrails are still inadequate
 
-`cats` currently has **0** test files. `cats-runtime` has **72**. Any
-refactoring without tests is high-risk, and any new feature added without
-tests perpetuates the gap.
+`cats` currently has **39** repo-owned test files under `tests/`. That is not
+zero, but it is also not yet the architectural safety net this refactor needs.
+The hotspot seams called out above still need stronger boundary, contract, and
+integration coverage. `cats-runtime` remains the denser, more focused testing
+reference for runtime-facing infrastructure work.
 
 ### Comparison with cats-runtime
 
 `cats-runtime` demonstrates the target architectural quality:
 
-- `backends/` has zero imports from `core/` (correct dependency inversion)
-- `core/` does not import from `http/`
+- HTTP routing, runtime services, and backend adapters are separated more
+  cleanly than in `cats`
 - Each concern has focused files (sessionBranching, sessionCompaction, sessionMaintenance, sessionWakeup)
-- 72 test files covering services and utilities
+- Runtime-focused tests cover services and utilities more systematically
 - Adapter/Strategy pattern for providers — adding a new CLI provider does not touch core
 
 This ADR aims to bring `cats` closer to that standard.
@@ -164,7 +168,7 @@ them false suite-level status. This file will be removed.
 
 Target: no production file exceeds **400 lines**. Test files may be longer.
 
-#### 3a. `core/api.ts` (1,894 lines) → domain-scoped route handlers
+#### 3a. `core/api.ts` (1,761 lines) → domain-scoped route handlers
 
 Split by resource domain:
 
@@ -180,7 +184,7 @@ Split by resource domain:
 - `core/api/ownerRoutes.ts` — owner profile
 - `core/api/index.ts` — re-exports `routeCoreApi` that delegates to the above
 
-#### 3b. `core/model.ts` (1,486 lines) → domain-scoped mutation helpers
+#### 3b. `core/model.ts` (1,376 lines) → domain-scoped mutation helpers
 
 Each `upsertCore*` function group moves to its own file under `core/model/`:
 
@@ -195,7 +199,7 @@ Each `upsertCore*` function group moves to its own file under `core/model/`:
 - `core/model/index.ts` — re-exports all (preserving current import paths
   via the barrel)
 
-#### 3c. `products/chat/state/runtimeActions.ts` (2,990 lines) → action groups
+#### 3c. `products/chat/state/runtimeActions.ts` (2,897 lines) → action groups
 
 Split by action domain:
 
@@ -206,7 +210,7 @@ Split by action domain:
 - `state/actions/deliveryActions.ts` — delivery policy enforcement
 - `state/actions/index.ts` — re-exports
 
-#### 3d. `products/chat/renderer/App.tsx` (1,449 lines) → composed layout
+#### 3d. `products/chat/renderer/App.tsx` (1,353 lines) → composed layout
 
 - `renderer/ChatApp.tsx` — top-level layout composition (~50 lines)
 - `renderer/ChatSidebar.tsx` — sidebar panel
@@ -339,11 +343,11 @@ Each product then imports only its own styles:
 
 #### `styles.css` decomposition target
 
-The current 3,422-line file splits roughly as:
+The current 2,924-line file splits roughly as:
 
 - `design/` — ~150 lines (tokens + typography + spacing + layout)
 - `design/components/` — ~300 lines (tooltip, badge, sidebar chrome, avatar)
-- `products/chat/renderer/styles/` — ~2,900 lines remaining, further split:
+- `products/chat/renderer/styles/` — ~2,500 lines remaining, further split:
   - `chatView.css` — chat message area styles
   - `chatSidebar.css` — chat-specific sidebar items (channel list, cat list)
   - `settings.css` — settings panel
@@ -354,7 +358,7 @@ The current 3,422-line file splits roughly as:
 Each file targets 200-500 lines. If any exceeds 500, it should be split
 further by component.
 
-### 5. Establish testing baseline
+### 5. Strengthen the testing baseline
 
 Before or during the refactor, introduce tests for the modules being touched:
 
@@ -367,8 +371,9 @@ Before or during the refactor, introduce tests for the modules being touched:
   rule or CI grep
 
 Target: every file created or significantly modified during this refactor
-must have a corresponding `.test.ts`. This establishes the testing culture
-for subsequent Work and Code development.
+must have a corresponding `.test.ts` or automated boundary check. This
+strengthens the testing culture that already exists and turns it into a real
+architectural safety net for subsequent Work and Code development.
 
 ### 6. Product switcher preparation
 
@@ -408,7 +413,8 @@ to the active product's components.
   manageable
 - Design tokens are shared by definition, not by accident — adding a new
   product surface automatically inherits the correct visual identity
-- The refactor establishes the testing baseline that `cats` currently lacks
+- The refactor strengthens the testing baseline instead of pretending the repo
+  starts from zero
 - The suite shell chrome (sidebar frame, product switcher) is owned at the
   correct level, not inside Chat
 
@@ -447,7 +453,7 @@ to the active product's components.
 ### Alternative 2: Adopt a CSS framework (Tailwind, Radix Themes) instead of custom tokens
 
 - **Pros**: well-documented, widely understood, rich component set
-- **Cons**: the current CSS is only ~3,400 lines and already uses custom
+- **Cons**: the current CSS is only ~2,900 lines and already uses custom
   properties; introducing a framework adds build complexity and learning
   overhead; the existing visual identity would need to be re-expressed in
   the framework's idiom

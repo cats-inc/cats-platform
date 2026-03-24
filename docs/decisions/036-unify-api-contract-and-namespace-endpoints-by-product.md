@@ -3,7 +3,8 @@
 > Establish a single, consistent API contract across all endpoints — error
 > handling, response envelopes, request bodies, status codes, pagination —
 > and namespace endpoints so that shared resources live at `/api/*` and
-> product-specific resources live under `/api/{product}/*`.
+> product-specific resources live under `/api/{product}/*`, while runtime
+> tooling lives under `/runtime/*`.
 
 ## Status
 
@@ -158,22 +159,32 @@ Suite-level infrastructure endpoints keep their current paths:
 - `/api/transports/telegram/*` — unchanged (transport layer, not product)
 - `/api/shell/browse` — unchanged (host utility)
 - `/api/shell/open-folder` — unchanged (host utility)
+- `/runtime/dashboard` — suite-hosted runtime dashboard HTML
+- `/runtime/playground` — suite-hosted runtime playground HTML
+- `/runtime/api/*` — suite-hosted runtime JSON seam
 
-### 3. Backward compatibility via redirect layer
+Runtime tooling is intentionally kept out of `/api/*` because `/api/*` is
+reserved for suite and product JSON APIs. Runtime HTML and runtime JSON live
+under their own `/runtime/*` tree, as defined by ADR-037.
 
-During migration, old paths return `301 Moved Permanently` with the new
-location. This allows the renderer to be updated incrementally.
+### 3. Backward compatibility via compatibility handlers
+
+During migration, old paths stay registered as compatibility handlers that
+dispatch to the same logic as the final routes. This allows the renderer and
+other in-repo callers to migrate incrementally without changing HTTP semantics.
 
 ```typescript
-// Example redirect rule
+// Example compatibility alias
 if (url.pathname === '/api/core/actors') {
-  response.writeHead(301, { Location: '/api/actors' });
-  response.end();
+  url.pathname = '/api/actors';
+  routeSharedApi(request, response, url);
   return;
 }
 ```
 
-Redirects are removed after all consumers have migrated.
+Do not use `301 Moved Permanently` for mutation routes. If an actual redirect is
+ever used for a safe read-only route, it must preserve method semantics.
+Compatibility handlers are removed after all consumers have migrated.
 
 ### 4. Unify error handling — one error class hierarchy for all products
 
@@ -462,7 +473,7 @@ Invalid filter values return `400`:
 ### Negative
 
 - Every `fetch()` URL in the renderer must be updated
-- Redirect layer adds temporary routing complexity
+- Compatibility handlers add temporary routing complexity
 - Pagination adds implementation work for endpoints that currently just
   return arrays
 - Request body convention change (wrapped → flat) touches every Core
@@ -471,7 +482,7 @@ Invalid filter values return `400`:
 ### Neutral
 
 - Error class rename (`CoreApiError` → `ApiError`) is mechanical
-- The redirect layer is temporary and self-documenting
+- The compatibility handler layer is temporary and self-documenting
 - This ADR does not change the data model or storage format
 - This ADR does not introduce authentication or rate limiting
 
@@ -485,12 +496,12 @@ Invalid filter values return `400`:
 - **Why rejected**: if we're already moving Chat routes, removing the
   unnecessary prefix at the same time costs almost nothing extra
 
-### Alternative 2: Use API versioning (`/api/v2/`) instead of redirects
+### Alternative 2: Use API versioning (`/api/v2/`) instead of compatibility handlers
 
 - **Pros**: clean break; old clients continue to work on `/api/v1/`
 - **Cons**: premature — there is currently one client (the renderer);
   maintaining two API versions doubles the surface area
-- **Why rejected**: redirects achieve backward compatibility without
+- **Why rejected**: compatibility handlers achieve backward compatibility without
   version proliferation; versioning can be introduced later when
   there are external consumers
 
@@ -513,19 +524,21 @@ Invalid filter values return `400`:
 
 ## Migration Ordering
 
-This work should be sequenced **after** [PLAN-024](../plans/PLAN-024-platform-dependency-inversion-and-design-extraction.md)
-Phase 2 (file decomposition), because Phase 2 splits `core/api.ts` into
-domain-scoped route files — modifying those files before they're split
-would create an unnecessarily large diff in a single file.
+This work should be sequenced inside
+[PLAN-024](../plans/PLAN-024-platform-dependency-inversion-and-design-extraction.md)
+Phase 6 and Phase 7, after the earlier phases have inverted platform
+dependencies, extracted shared contracts, and decomposed the largest core and
+Chat hotspots.
 
 Recommended order:
 
 1. PLAN-024 Phase 1 (dependency inversion)
-2. PLAN-024 Phase 2 (file decomposition) — splits `core/api.ts` into
-   focused route files
-3. **This ADR** — unify contract + rename endpoints on the already-split
-   files
-4. PLAN-024 Phases 3-5 (design tokens, testing, suite shell)
+2. PLAN-024 Phase 2 (shared contract extraction)
+3. PLAN-024 Phase 3 and Phase 4 (core/chat decomposition)
+4. PLAN-024 Phase 5 (renderer/shell/design extraction)
+5. **This ADR in PLAN-024 Phase 6** — unify contract behavior on current paths
+6. **This ADR in PLAN-024 Phase 7** — migrate to final namespaces and align the
+   runtime subtree
 
 ## References
 

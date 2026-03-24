@@ -174,6 +174,15 @@ Exit criteria:
 Remove the worst reverse dependencies by introducing ports at the platform
 boundary and wiring Chat adapters from the composition root.
 
+Key files:
+
+- `src/platform/orchestration/dispatch.ts`
+- `src/platform/orchestration/planner.ts`
+- `src/platform/memory/service.ts`
+- `src/platform/transports/telegram/bridge.ts`
+- `src/app/server/index.ts`
+- new adapter modules under `src/products/chat/`
+
 Deliverables:
 
 - Define platform-facing interfaces for orchestration, memory, operator
@@ -199,6 +208,16 @@ Exit criteria:
 ### Phase 2 - Shared Contract Extraction and `shared/app-shell.ts` Burn-Down
 
 Replace the fake shared barrel with real contracts and a deliberate shell model.
+
+Key files:
+
+- `src/shared/app-shell.ts`
+- `src/products/chat/api/contracts.ts`
+- `src/platform/orchestration/contracts.ts`
+- `src/platform/orchestration/toolIntent.ts`
+- `src/platform/memory/companionStore.ts`
+- `src/platform/memory/extraction.ts`
+- new shared contract modules under `src/shared/` or equivalent
 
 Deliverables:
 
@@ -229,6 +248,14 @@ Exit criteria:
 Break the central core hot spots into domain-scoped modules while preserving
 runtime behavior.
 
+Key files:
+
+- `src/core/api.ts`
+- `src/core/model.ts`
+- `src/core/taskLifecycle.ts`
+- new domain modules under `src/core/api/`
+- new domain modules under `src/core/model/`
+
 Deliverables:
 
 - Split `src/core/api.ts` into domain route modules for actors, conversations,
@@ -236,6 +263,9 @@ Deliverables:
   and owner/system resources.
 - Split `src/core/model.ts` into domain-focused mutation/query modules with a
   stable public index.
+- Evaluate `src/core/taskLifecycle.ts` alongside the task/run split and either
+  keep it bounded or absorb its responsibilities into the new task/run domain
+  modules if it continues to grow as a secondary hotspot.
 - Consolidate API error classes into one shared hierarchy usable by both shared
   and product routes.
 - Add focused tests around each extracted module boundary.
@@ -254,6 +284,15 @@ Exit criteria:
 ### Phase 4 - Chat State, Routing, and Orchestration Decomposition
 
 Split the Chat execution hot spots without losing the current product behavior.
+
+Key files:
+
+- `src/products/chat/state/runtimeActions.ts`
+- `src/products/chat/state/store.ts`
+- `src/products/chat/state/model.ts`
+- `src/products/chat/state/mentionRouter.ts`
+- `src/products/chat/state/roomRouting.ts`
+- new action/state slices under `src/products/chat/state/`
 
 Deliverables:
 
@@ -281,6 +320,15 @@ Exit criteria:
 Pull suite-level shell and design concerns out of Chat while preserving the
 visual identity that already works.
 
+Key files:
+
+- `src/products/chat/renderer/App.tsx`
+- `src/products/chat/renderer/styles.css`
+- `src/app/renderer/App.tsx`
+- `src/app/renderer/main.tsx`
+- `src/renderer/styles.css`
+- new shared design modules under `src/design/`
+
 Deliverables:
 
 - Extract design tokens, spacing, typography, shared shell chrome, and reusable
@@ -306,10 +354,21 @@ Exit criteria:
 
 Normalize HTTP behavior before performing the public namespace move.
 
+Key files:
+
+- `src/core/api.ts` or its extracted route modules
+- `src/products/chat/api/shared.ts`
+- `src/products/chat/api/resourceRoutes.ts`
+- `src/products/chat/api/orchestratorRoutes.ts`
+- `src/app/server/index.ts`
+- shared HTTP/error utilities under `src/shared/`
+
 Deliverables:
 
 - Use one error class hierarchy and one top-level API error handler across core,
   Chat, host, and transport routes where appropriate.
+- Implement the response envelope, request body, pagination, and filtering
+  rules defined in ADR-036 sections 5 through 8.
 - Normalize request parsing, invalid JSON handling, success envelopes, mutation
   responses, and list pagination/filtering semantics.
 - Remove string-matching error classification from Chat route handling.
@@ -324,11 +383,20 @@ Required outcome:
 Exit criteria:
 
 - Shared and Chat routes follow the same HTTP contract rules.
-- API tests assert envelopes, codes, and pagination/filtering behavior.
+- API tests assert the ADR-036 sections 5 through 8 contract for envelopes,
+  codes, request bodies, pagination, and filtering behavior.
 
 ### Phase 7 - Namespace Migration and Runtime Tool Hosting
 
 Land the visible public URL cleanup and suite-host the runtime tools.
+
+Key files:
+
+- `src/app/server/index.ts`
+- `src/products/chat/api/index.ts`
+- Chat renderer/client call sites that still target legacy paths
+- runtime page host/proxy wiring under the server entrypoint
+- packaging/build scripts that copy or expose runtime pages
 
 Deliverables:
 
