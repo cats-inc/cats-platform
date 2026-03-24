@@ -13,15 +13,17 @@
 Connect the existing `CoreTaskRecord` lifecycle in the Cats Core layer to the
 existing `RuntimeWakeupService` in cats-runtime, so that task assignment
 automatically triggers a session wakeup, task execution is tracked through
-atomic checkout, and task completion is recorded when the runtime session
-finishes. This enables Chat to use tasks behind the scenes and Work to display
-them on a dashboard — from the same data source.
+atomic checkout, and task completion is recorded by observing the runtime
+session through its live stream with observe-based reconciliation. This enables
+Chat to use tasks behind the scenes and Work to display them on a dashboard —
+from the same data source.
 
 ## Goals
 
 - Wire task assignment to runtime wakeup without modifying cats-runtime
 - Provide atomic checkout semantics to prevent double-work
-- Track task completion via runtime session observation
+- Track task completion via runtime session stream observation with snapshot
+  reconciliation after disconnects or restarts
 - Support fan-out sub-tasks for multi-Cat workflows (e.g., peer review)
 - Enable budget pre-check before task dispatch
 
@@ -48,14 +50,19 @@ them on a dashboard — from the same data source.
    fail with a conflict error.
 
 3. When a Cat's runtime session completes work on a task, the product layer
-   shall update the task status to `completed` or `failed` based on the
-   session outcome.
+   shall observe execution through `GET /sessions/:id/stream` while the
+   session is active and shall reconcile final session/run state through
+   `GET /sessions/:id/observe` when the stream ends, is unavailable, or the
+   product restarts. The reconciled outcome shall update the task status to
+   `completed`, `failed`, `blocked`, or `cancelled` as appropriate.
 
 4. The product layer shall support fan-out sub-tasks:
-   - A parent task may have N child tasks (via `CoreWorkItemRecord.parentWorkItemId`
-     or a new `parentTaskId` field)
+   - `CoreTaskRecord` shall gain an optional `parentTaskId` field
+   - A parent task may have N child tasks via `parentTaskId`
    - Each child task triggers its own wakeup independently
    - The parent task converges when all child tasks reach a terminal status
+   - `CoreWorkItemRecord.parentWorkItemId` remains a work/backlog hierarchy
+     field and shall not be overloaded for execution fan-out tracking
 
 5. Before dispatching a task, the product layer shall query runtime metering
    (`GET /metering`) to check whether the assigned Cat's budget allows
@@ -69,9 +76,12 @@ them on a dashboard — from the same data source.
 
 - Task assignment to wakeup trigger latency shall be negligible (single HTTP
   call to runtime)
-- Fan-out convergence check shall be a simple query on child task statuses,
-  not a background polling loop
+- Fan-out convergence check shall be a simple query on child task statuses
+  keyed by `parentTaskId`, not a background polling loop
 - All task state transitions shall be persisted immediately
+- Steady-state completion tracking shall not rely on periodic polling; polling
+  is only acceptable as a bootstrap/recovery fallback when stream observation
+  is temporarily unavailable
 
 ## Design Overview
 
@@ -85,6 +95,10 @@ them on a dashboard — from the same data source.
 │  [Assignment Hook]                                    │
 │    → POST cats-runtime/wakeups                        │
 │    { target: { sessionId }, coalesceKey: "task:xxx" } │
+│                                                       │
+│  [Execution Watcher]                                  │
+│    → subscribe GET /sessions/:id/stream               │
+│    → reconcile GET /sessions/:id/observe on close     │
 │                                                       │
 │  ← Runtime session completes                          │
 │    ↓                                                  │
@@ -112,7 +126,8 @@ them on a dashboard — from the same data source.
 
 - Assignment hook: on `assignedActorIds` change → `POST /wakeups`
 - Atomic checkout: `approved` → `in_progress` with conflict guard
-- Completion callback: product layer polls or observes session → updates task
+- Completion tracking: product layer subscribes to `/stream` and reconciles via
+  `/observe` when the session exits or observation is interrupted
 
 **Phase 2 — Budget Gate + Run History**
 
@@ -136,18 +151,20 @@ them on a dashboard — from the same data source.
   (existing functions)
 - `cats-runtime` wakeup API — `POST /wakeups`, `GET /wakeups` (existing,
   no changes needed)
+- `cats-runtime` session stream API — `GET /sessions/:id/stream` (existing)
 - `cats-runtime` session observe API — `GET /sessions/:id/observe` (existing)
 - `cats-runtime` metering API — `GET /metering` (existing)
 
-## Open Questions
+## Resolved Direction
 
-- [ ] Should the completion callback use session observe (SSE push) or polling
-  against session status? SSE is more responsive but adds connection management
-  complexity.
-- [ ] Should fan-out convergence be checked synchronously on each child
-  completion, or via a lightweight product-layer scan?
-- [ ] Does `CoreTaskRecord` need a dedicated `parentTaskId` field, or is
-  `CoreWorkItemRecord.parentWorkItemId` sufficient for the fan-out pattern?
+- Use `GET /sessions/:id/stream` as the primary live completion signal and
+  `GET /sessions/:id/observe` as the recovery/reconciliation path. Do not build
+  a product-owned polling loop as the steady-state design.
+- Add `parentTaskId` to `CoreTaskRecord` for execution fan-out/converge. Do not
+  overload `CoreWorkItemRecord.parentWorkItemId` for runtime execution graphs.
+- Check fan-out convergence synchronously when each child task reaches a
+  terminal state; a broader scan may exist only as repair tooling after missed
+  events.
 
 ## References
 

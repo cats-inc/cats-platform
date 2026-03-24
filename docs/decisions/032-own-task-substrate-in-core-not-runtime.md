@@ -35,12 +35,14 @@ completion) live?
 Specifically:
 
 - **Core owns**: task CRUD, assignment, status transitions, approval gates,
-  budget pre-checks, completion callbacks, fan-out sub-task tracking
+  budget pre-checks, completion tracking, fan-out sub-task tracking via
+  parent-child task relationships
 - **Runtime owns**: session wakeup, session execution, metering facts,
   workspace isolation
 - **Integration contract**: Core calls runtime's existing `POST /wakeups` when
-  a task is assigned; runtime calls back (or Core polls session observe) when
-  execution completes
+  a task is assigned; Core observes live execution through
+  `GET /sessions/:id/stream` while the session is active and reconciles final
+  state through `GET /sessions/:id/observe`
 
 This follows the established separation pattern:
 
@@ -61,15 +63,17 @@ This follows the established separation pattern:
 
 ### Negative
 
-- Requires a well-defined callback or polling mechanism for Core to learn when
-  a runtime session completes a task
+- Requires a product-owned execution watcher/reconciliation loop to subscribe
+  to session streams and recover with observe snapshots after disconnects or
+  restarts
 - Two-hop communication (Core → runtime wakeup → runtime session → Core
   callback) adds latency compared to Paperclip's single-service model
 
 ### Neutral
 
-- `CoreTaskRecord` and `CoreWorkItemRecord` types already exist and do not
-  need redesign
+- `CoreTaskRecord` and `CoreWorkItemRecord` types already exist; task
+  fan-out/converge now implies an additive parent-child task field rather than
+  overloading work-item hierarchy
 - Runtime's wakeup HTTP API already exists and does not need changes
 
 ## Alternatives Considered

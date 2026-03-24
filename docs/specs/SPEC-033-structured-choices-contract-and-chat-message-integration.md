@@ -13,9 +13,10 @@
 Define a `ChatMessageChoice` data contract that allows any Cat to present
 clickable structured options to the owner within a chat message. The owner
 selects options via buttons (not typing), and the selection is sent back to the
-Cat's runtime session to continue the conversation. This mechanism is the
-standard implementation for all human approval gates (ADR-034) and pre-dispatch
-clarification workflows.
+Cat's runtime session to continue the conversation. The contract is
+first-class in the chat message model, and answered choices remain replayable
+in transcript history. This mechanism is the standard implementation for all
+human approval gates (ADR-034) and pre-dispatch clarification workflows.
 
 ## Goals
 
@@ -24,6 +25,8 @@ clarification workflows.
 - Provide a clickable button UI that requires no typing from the owner
 - Support multi-select, custom input, and skip
 - Route owner selections back to the originating Cat's runtime session
+- Preserve owner choice responses in transcript history and governance audit
+  records
 - Serve as the standard mechanism for ADR-034 approval gates
 
 ## Non-Goals
@@ -31,8 +34,8 @@ clarification workflows.
 - Telegram / LINE inline keyboard rendering (future transport mapping)
 - Rich card / widget system beyond simple choice buttons
 - Modifying cats-runtime (existing session message API is sufficient)
-- Replacing the existing approval queue panel (it continues to work for
-  formal dispatch approvals)
+- Replacing the existing approval queue panel immediately (it remains as a
+  secondary inbox/fallback surface backed by the same approval source)
 
 ## User Stories
 
@@ -50,7 +53,11 @@ clarification workflows.
 1. The chat message data model shall support an optional `choices` field
    containing an array of `ChatMessageChoice` objects.
 
-2. Each `ChatMessageChoice` shall contain:
+2. The chat message data model shall support an optional
+   `choiceResponse` field on reply messages so answered choices remain
+   replayable in transcript history.
+
+3. Each `ChatMessageChoice` shall contain:
    - `question` (string, required) — the question text
    - `options` (array of `ChatMessageOption`, required) — the available choices
    - `multiSelect` (boolean, optional, default false) — allow selecting
@@ -59,32 +66,60 @@ clarification workflows.
      input field alongside options
    - `allowSkip` (boolean, optional, default false) — show a skip button
 
-3. Each `ChatMessageOption` shall contain:
+4. Each `ChatMessageOption` shall contain:
    - `id` (string, required) — option identifier sent back in the response
    - `label` (string, required) — button display text
    - `description` (string, optional) — tooltip or secondary text
    - `style` (enum: `primary` | `secondary` | `danger`, optional) — visual
      styling hint
 
-4. The chat renderer shall detect messages with `choices` and render them as
+5. Each `ChatMessageChoiceResponse` shall contain:
+   - `sourceMessageId` (string, required) — the choice-bearing message being
+     answered
+   - `status` (enum: `submitted` | `skipped`, required)
+   - `answers` (array, required) — one item per answered or skipped question
+   - `submittedAt` (string, required)
+
+6. The chat renderer shall detect messages with `choices` and render them as
    interactive button groups below the message body.
 
-5. When the owner selects option(s) and confirms, the product layer shall send
+7. When the owner selects option(s) and confirms, the product layer shall send
    the selection back to the Cat's runtime session via the existing
    `POST /sessions/:id/messages` API. The response payload shall include:
    - The original question text
    - Selected option id(s)
    - Custom input text (if provided)
 
-6. After the owner submits a choice, the buttons shall become disabled and show
+8. After the owner submits a choice, the buttons shall become disabled and show
    the selected state (visual confirmation of what was chosen).
 
-7. A Cat shall be able to include multiple `ChatMessageChoice` objects in a
+9. A Cat shall be able to include multiple `ChatMessageChoice` objects in a
    single message (e.g., 3 questions at once).
 
-8. If `allowSkip` is true and the owner clicks skip, the product layer shall
+10. If `allowSkip` is true and the owner clicks skip, the product layer shall
    send a skip signal to the Cat's session, and the Cat shall proceed without
    the clarification.
+
+11. After a choice submission or skip, the product layer shall append a new
+    transcript message containing `choiceResponse` and a human-readable summary
+    of what the owner selected. This transcript message is the replay/export
+    record for the decision.
+
+12. If a choice corresponds to a governance event (approval, budget override,
+    release gate, etc.), the product layer shall also record the decision in
+    the existing Core approval/activity records. Transcript history does not
+    replace governance audit state.
+
+13. The canonical product contract shall be first-class `choices` and
+    `choiceResponse` fields on `ChatMessage`. If a model emits an embedded JSON
+    block in the message body, an adapter layer may parse it once and normalize
+    it before persistence/rendering. The renderer, store, and transport layers
+    shall not depend on regex/body parsing as the steady-state contract.
+
+14. `ApprovalQueuePanel` shall continue to surface pending approvals as a
+    secondary inbox/fallback view, but any active-conversation approval prompt
+    shall prefer inline structured choices backed by the same underlying
+    approval record.
 
 ### Non-Functional Requirements
 
@@ -114,10 +149,25 @@ interface ChatMessageOption {
   style?: 'primary' | 'secondary' | 'danger';
 }
 
+interface ChatMessageChoiceAnswer {
+  question: string;
+  selectedOptionIds: string[];
+  customText?: string;
+  skipped?: boolean;
+}
+
+interface ChatMessageChoiceResponse {
+  sourceMessageId: string;
+  status: 'submitted' | 'skipped';
+  answers: ChatMessageChoiceAnswer[];
+  submittedAt: string;
+}
+
 // Extension to existing ChatMessage
 interface ChatMessage {
   // ...existing fields (id, body, senderName, senderKind, metadata)
   choices?: ChatMessageChoice[];
+  choiceResponse?: ChatMessageChoiceResponse | null;
 }
 ```
 
@@ -143,8 +193,9 @@ in its response when it needs owner input:
 ]}
 ```
 
-The product layer detects and parses this JSON from the message body, then
-renders it as buttons.
+The product layer may parse this embedded JSON as a compatibility shim, but it
+must normalize the result into first-class `choices` before persistence and
+rendering.
 
 **Via structured tool output:**
 
@@ -157,8 +208,10 @@ renders accordingly.
 ```
 Cat message with choices → Chat renderer shows buttons
   → Owner clicks [簡約現代]
+  → Product layer appends a response message with `choiceResponse`
   → Product layer sends to POST /sessions/:id/messages:
     { message: "Q: 你偏好哪種風格？\nA: 簡約現代" }
+  → Source choice message becomes resolved/disabled
   → Cat receives answer, continues conversation
 ```
 
@@ -183,15 +236,18 @@ implementation of:
   `ClarifyQuestion` / `ClarifyResult` data structure reference
 - cats-runtime session message API — `POST /sessions/:id/messages` (existing,
   no changes needed)
+- `cats` approval queue / core approval APIs — inline choices and
+  `ApprovalQueuePanel` share the same approval source of truth
 
-## Open Questions
+## Resolved Direction
 
-- [ ] Should the JSON choices block be detected via regex in the message body,
-  or should it be a first-class field set by the product layer before rendering?
-- [ ] Should answered choices be stored in the message record (for history/
-  replay), or only forwarded to the session?
-- [ ] How should the existing `ApprovalQueuePanel` (approve/reroute/reject)
-  relate to this new mechanism? Coexist? Migrate to structured choices?
+- The canonical contract is first-class `choices` / `choiceResponse` on
+  `ChatMessage`. Embedded JSON in `body` is only an adapter-layer compatibility
+  input.
+- Answered choices are stored as transcript messages with `choiceResponse` and,
+  when governance-relevant, also written to core approval/activity records.
+- `ApprovalQueuePanel` coexists as a secondary inbox/fallback surface; inline
+  structured choices are the primary UX inside an active conversation.
 
 ## References
 

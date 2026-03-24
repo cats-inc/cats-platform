@@ -53,7 +53,8 @@ is permanent and cannot be overridden by a global toggle.**
 - The opt-in decision itself must be presented as a structured choice with
   clear risk disclosure
 - Audit trail must record every approval decision (who, when, what was
-  approved)
+  approved), and chat-surfaced decisions must remain replayable in transcript
+  history as well as in core governance records
 - Default state for all gates is **approval required**
 
 ### What this decision does NOT restrict
