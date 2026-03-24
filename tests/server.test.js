@@ -9,6 +9,12 @@ import { createServer } from '../dist-server/server.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
 import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
 import {
+  assignCatToChannel,
+  createCat,
+  createChannel,
+  setChannelCatLease,
+} from '../dist-server/chat/model.js';
+import {
   createCatsMemoryService,
   MemoryCanonicalMemoryStore,
 } from '../dist-server/platform/memory/index.js';
@@ -24,10 +30,17 @@ const baseConfig = {
 
 function createRuntimeStub() {
   let nextSession = 1;
+  let nextWakeup = 1;
   return {
     createdSessions: [],
     sentMessages: [],
     closedSessions: [],
+    wakeups: [],
+    streamedSessions: [],
+    observedSessionPayloads: new Map(),
+    setObservedSession(sessionId, payload) {
+      this.observedSessionPayloads.set(sessionId, payload);
+    },
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -77,6 +90,45 @@ function createRuntimeStub() {
     },
     async closeSession(sessionId) {
       this.closedSessions.push(sessionId);
+    },
+    async createWakeup(input) {
+      const request = {
+        id: `wakeup-${nextWakeup++}`,
+        scheduleAt: input.scheduleAt ?? null,
+        target: input.target,
+        metadata: input.metadata ?? {},
+      };
+      this.wakeups.push({
+        ...input,
+        request,
+      });
+      return {
+        request,
+        coalesced: false,
+      };
+    },
+    async observeSession(sessionId) {
+      return this.observedSessionPayloads.get(sessionId) ?? {
+        session: {
+          id: sessionId,
+          inspection: {
+            state: 'idle',
+          },
+        },
+        observePath: `/sessions/${sessionId}/observe`,
+        stream: {
+          path: `/sessions/${sessionId}/stream`,
+          available: false,
+        },
+      };
+    },
+    async streamSession(sessionId, onEvent) {
+      this.streamedSessions.push(sessionId);
+      const payload = this.observedSessionPayloads.get(sessionId);
+      const events = Array.isArray(payload?.stream?.events) ? payload.stream.events : [];
+      for (const event of events) {
+        await onEvent(event);
+      }
     },
   };
 }
@@ -382,11 +434,17 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({ task: fixtures.task }),
+      body: JSON.stringify({
+        task: {
+          ...fixtures.task,
+          parentTaskId: 'task-parent-suite',
+        },
+      }),
     });
     assert.equal(taskResponse.status, 201);
     const taskPayload = await taskResponse.json();
     assert.equal(taskPayload.task.id, fixtures.task.id);
+    assert.equal(taskPayload.task.parentTaskId, 'task-parent-suite');
 
     const projectResponse = await fetch(`${baseUrl}/api/core/projects`, {
       method: 'POST',
@@ -501,6 +559,10 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.ok(statePayload.projects.some((project) => project.id === fixtures.project.id));
     assert.ok(statePayload.workItems.some((workItem) => workItem.id === fixtures.workItem.id));
     assert.ok(statePayload.tasks.some((task) => task.id === fixtures.task.id));
+    assert.equal(
+      statePayload.tasks.find((task) => task.id === fixtures.task.id)?.parentTaskId,
+      'task-parent-suite',
+    );
     assert.ok(statePayload.runs.some((run) => run.id === fixtures.run.id));
     assert.ok(statePayload.traces.some((trace) => trace.id === fixtures.trace.id));
     assert.ok(
@@ -514,6 +576,185 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
         (approvalBinding) => approvalBinding.id === fixtures.approvalBinding.id,
       ),
     );
+  }, chatStore);
+});
+
+test('approved task assignment queues runtime wakeups for active assigned cat sessions', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-24T01:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Coder Cat',
+      provider: 'claude',
+      roles: ['coder'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Spec 032 Task Flow',
+      topic: 'Wire approved task assignment into runtime wakeups.',
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  state = setChannelCatLease(
+    state,
+    channelId,
+    catId,
+    {
+      sessionId: 'session-coder',
+      status: 'ready',
+      cwd: 'C:/repo/cats',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+  const core = await chatStore.readCore();
+  const conversationId = core.conversations.find((candidate) => candidate.sourceChannelId === channelId)?.id;
+  assert.ok(conversationId);
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-runtime-wakeup',
+          title: 'Implement the task lifecycle hook',
+          status: 'approved',
+          conversationId,
+          assignedActorIds: [`actor-cat-${catId}`],
+        },
+      }),
+    });
+    assert.equal(response.status, 201);
+    const payload = await response.json();
+    assert.equal(payload.task.id, 'task-runtime-wakeup');
+    assert.equal(payload.wakeups.length, 1);
+    assert.equal(payload.wakeups[0].request.target.sessionId, 'session-coder');
+    assert.equal(runtime.wakeups.length, 1);
+    assert.equal(runtime.wakeups[0].metadata.taskId, 'task-runtime-wakeup');
+    assert.equal(payload.activities.length, 1);
+    assert.match(payload.activities[0].message, /queued runtime wakeup/i);
+
+    const stateResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(stateResponse.status, 200);
+    const statePayload = await stateResponse.json();
+    const task = statePayload.tasks.find((candidate) => candidate.id === 'task-runtime-wakeup');
+    assert.ok(task);
+    assert.equal(task.metadata.taskLifecycle.wakeups.length, 1);
+    assert.equal(task.metadata.taskLifecycle.wakeups[0].sessionId, 'session-coder');
+  }, chatStore);
+});
+
+test('task checkout creates a run and reconciles runtime completion back into core state', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  runtime.setObservedSession('session-task-1', {
+    session: {
+      id: 'session-task-1',
+      inspection: {
+        state: 'idle',
+        lastRun: {
+          id: 'runtime-run-1',
+          status: 'succeeded',
+          startedAt: '2026-03-24T02:00:00.000Z',
+          endedAt: '2026-03-24T02:01:00.000Z',
+          resultSummary: 'Implemented the requested task.',
+          usage: {
+            inputTokens: 11,
+            outputTokens: 7,
+          },
+        },
+      },
+    },
+    observePath: '/sessions/session-task-1/observe',
+    stream: {
+      path: '/sessions/session-task-1/stream',
+      available: true,
+      events: [
+        {
+          event: 'result',
+          data: {
+            type: 'result',
+          },
+        },
+        {
+          event: 'session_closed',
+          data: {
+            type: 'session_closed',
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-checkout-runtime',
+          title: 'Run task checkout',
+          status: 'approved',
+          assignedActorIds: ['actor-cat-runtime'],
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const checkoutResponse = await fetch(`${baseUrl}/api/core/tasks/task-checkout-runtime/checkout`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        actorId: 'actor-cat-runtime',
+        sessionId: 'session-task-1',
+      }),
+    });
+    assert.equal(checkoutResponse.status, 200);
+    const checkoutPayload = await checkoutResponse.json();
+    assert.equal(checkoutPayload.task.status, 'in_progress');
+    assert.equal(checkoutPayload.run.status, 'running');
+    assert.equal(checkoutPayload.watcherStarted, true);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const stateResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(stateResponse.status, 200);
+    const statePayload = await stateResponse.json();
+    const task = statePayload.tasks.find((candidate) => candidate.id === 'task-checkout-runtime');
+    const run = statePayload.runs.find((candidate) => candidate.id === checkoutPayload.run.id);
+    const completionActivity = statePayload.activities.find((candidate) =>
+      candidate.taskId === 'task-checkout-runtime'
+      && /completed/i.test(candidate.message));
+
+    assert.ok(task);
+    assert.equal(task.status, 'completed');
+    assert.ok(run);
+    assert.equal(run.status, 'completed');
+    assert.equal(run.metadata.runtimeRunStatus, 'succeeded');
+    assert.ok(completionActivity);
+    assert.ok(runtime.streamedSessions.includes('session-task-1'));
   }, chatStore);
 });
 

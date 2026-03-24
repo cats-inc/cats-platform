@@ -231,6 +231,7 @@ export interface CoreTaskRecord {
   title: string;
   status: CoreTaskStatus;
   conversationId: string | null;
+  parentTaskId?: string | null;
   ownerActorId: string;
   orchestratorActorId: string | null;
   assignedActorIds: string[];

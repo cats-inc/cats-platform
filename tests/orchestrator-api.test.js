@@ -24,10 +24,12 @@ function usage(content) {
 
 function createRuntimeStub(options = {}) {
   let nextSession = 1;
+  let nextWakeup = 1;
   const sessions = new Map();
   return {
     createdSessions: [],
     sentMessages: [],
+    wakeups: [],
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -89,6 +91,38 @@ function createRuntimeStub(options = {}) {
           : 'Boss Cat acknowledged the turn.',
       );
     },
+    async createWakeup(input) {
+      const request = {
+        id: `wakeup-${nextWakeup++}`,
+        scheduleAt: input.scheduleAt ?? null,
+        target: input.target,
+        metadata: input.metadata ?? {},
+      };
+      this.wakeups.push({
+        ...input,
+        request,
+      });
+      return {
+        request,
+        coalesced: false,
+      };
+    },
+    async observeSession(sessionId) {
+      return {
+        session: {
+          id: sessionId,
+          inspection: {
+            state: 'idle',
+          },
+        },
+        observePath: `/sessions/${sessionId}/observe`,
+        stream: {
+          path: `/sessions/${sessionId}/stream`,
+          available: false,
+        },
+      };
+    },
+    async streamSession() {},
     async closeSession() {},
   };
 }

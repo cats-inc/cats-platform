@@ -326,6 +326,7 @@ export interface CoreTaskWriteInput {
   title: string;
   status?: CoreTaskStatus;
   conversationId?: string | null;
+  parentTaskId?: string | null;
   ownerActorId?: string;
   orchestratorActorId?: string | null;
   assignedActorIds?: string[];
@@ -615,6 +616,10 @@ export function upsertCoreTask(
       input.conversationId === undefined
         ? existingTask?.conversationId ?? null
         : normalizeNullableString(input.conversationId),
+    parentTaskId:
+      input.parentTaskId === undefined
+        ? existingTask?.parentTaskId ?? null
+        : normalizeNullableString(input.parentTaskId),
     ownerActorId:
       normalizeNullableString(input.ownerActorId)
       ?? existingTask?.ownerActorId

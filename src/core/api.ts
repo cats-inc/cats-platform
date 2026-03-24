@@ -2,8 +2,9 @@ import {
   CoreApiError,
   CoreValidationError,
 } from './errors.js';
-import type { CoreStore } from './store.js';
+import type { ChatStore } from '../products/chat/state/store.js';
 import type { CatsMemoryService } from '../platform/memory/index.js';
+import type { RuntimeClient } from '../platform/runtime/client.js';
 import type { OrchestratorDispatchResponse } from '../platform/orchestration/contracts.js';
 import type { PendingOrchestratorDispatchRequest } from '../platform/orchestration/pendingDispatch.js';
 import {
@@ -11,6 +12,7 @@ import {
   writePendingOrchestratorDispatchMetadata,
 } from '../platform/orchestration/pendingDispatch.js';
 import type {
+  CatsCoreState,
   CoreActivityKind,
   CoreApprovalDecisionAction,
   CoreApprovalBindingKind,
@@ -46,14 +48,21 @@ import {
 } from './model.js';
 import { deriveCoreGovernanceSummary } from './governance.js';
 import {
+  applyTaskAssignmentLifecycle,
+  checkoutTaskExecution,
+  startTaskRunWatcher,
+} from './taskLifecycle.js';
+import {
+  matchRoute,
   readJsonBody,
   sendJson,
   sendMethodNotAllowed,
 } from '../shared/http.js';
 
 export interface CoreApiDependencies {
-  chatStore: Pick<CoreStore, 'readCore' | 'writeCore'>;
+  chatStore: Pick<ChatStore, 'read' | 'readCore' | 'writeCore'>;
   memoryService?: CatsMemoryService;
+  runtimeClient?: Pick<RuntimeClient, 'createWakeup' | 'observeSession' | 'streamSession'>;
   now?: () => Date;
   resumePendingOrchestratorDispatch?: (
     request: PendingOrchestratorDispatchRequest,
@@ -503,13 +512,20 @@ async function handleCoreTaskWrite(
   try {
     const task = await readWrappedBody(context, 'task');
     const approval = asRecord(task.approval);
-    const next = upsertCoreTask(
-      await context.dependencies.chatStore.readCore(),
+    const now = context.dependencies.now?.() ?? new Date();
+    const initialCore = await context.dependencies.chatStore.readCore();
+    const taskId = readOptionalString(task.id, 'task.id') ?? null;
+    const previousTask = taskId
+      ? initialCore.tasks.find((candidate) => candidate.id === taskId) ?? null
+      : null;
+    let next = upsertCoreTask(
+      initialCore,
       {
-        id: readOptionalString(task.id, 'task.id'),
+        id: taskId ?? undefined,
         title: readRequiredString(task.title, 'task.title'),
         status: readEnumValue(task.status, 'task.status', CORE_TASK_STATUSES),
         conversationId: readNullableString(task.conversationId, 'task.conversationId'),
+        parentTaskId: readNullableString(task.parentTaskId, 'task.parentTaskId'),
         ownerActorId: readOptionalString(task.ownerActorId, 'task.ownerActorId'),
         orchestratorActorId: readNullableString(
           task.orchestratorActorId,
@@ -547,9 +563,33 @@ async function handleCoreTaskWrite(
         createdAt: readOptionalString(task.createdAt, 'task.createdAt'),
         metadata: readMetadata(task.metadata, 'task.metadata'),
       },
+      now,
     );
+    let wakeups = [] as Array<{ request: { id: string }; coalesced: boolean }>;
+    let lifecycleActivities = [] as Array<{ id: string }>;
+
+    if (context.dependencies.runtimeClient) {
+      const lifecycle = await applyTaskAssignmentLifecycle({
+        core: next.core,
+        previousTask,
+        task: next.task,
+        chat: await context.dependencies.chatStore.read(),
+        runtimeClient: context.dependencies.runtimeClient,
+        now,
+      });
+      next = {
+        ...next,
+        core: lifecycle.core,
+        task: lifecycle.task,
+      };
+      wakeups = lifecycle.wakeups;
+      lifecycleActivities = lifecycle.activities;
+    }
+
     const persisted = await context.dependencies.chatStore.writeCore(next.core);
     const persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
+    const persistedActivities = lifecycleActivities.map((activity) =>
+      persisted.activities.find((candidate) => candidate.id === activity.id) ?? activity);
 
     sendJson(
       context.response,
@@ -557,8 +597,55 @@ async function handleCoreTaskWrite(
       {
         task: persistedTask ?? next.task,
         created: next.created,
+        ...(wakeups.length > 0 ? { wakeups } : {}),
+        ...(persistedActivities.length > 0 ? { activities: persistedActivities } : {}),
       },
     );
+  } catch (error) {
+    handleCoreError(context, error);
+  }
+}
+
+async function handleCoreTaskCheckout(
+  context: RouteContext<CoreApiDependencies>,
+  taskId: string,
+): Promise<void> {
+  try {
+    const body = await readObjectBody(context);
+    const now = context.dependencies.now?.() ?? new Date();
+    const actorId = readRequiredString(body.actorId, 'actorId');
+    const sessionId = readRequiredString(body.sessionId, 'sessionId');
+    const result = checkoutTaskExecution({
+      core: await context.dependencies.chatStore.readCore(),
+      taskId,
+      actorId,
+      sessionId,
+      now,
+    });
+    const persisted = await context.dependencies.chatStore.writeCore(result.core);
+    const persistedTask = persisted.tasks.find((candidate) => candidate.id === result.task.id) ?? result.task;
+    const persistedRun = persisted.runs.find((candidate) => candidate.id === result.run.id) ?? result.run;
+    const persistedActivity = persisted.activities.find(
+      (candidate) => candidate.id === result.activity.id,
+    ) ?? result.activity;
+    const watcherStarted = context.dependencies.runtimeClient
+      ? startTaskRunWatcher({
+          chatStore: context.dependencies.chatStore,
+          runtimeClient: context.dependencies.runtimeClient,
+          taskId: persistedTask.id,
+          runId: persistedRun.id,
+          sessionId,
+          actorId,
+          now: context.dependencies.now,
+        })
+      : false;
+
+    sendJson(context.response, 200, {
+      task: persistedTask,
+      run: persistedRun,
+      activity: persistedActivity,
+      watcherStarted,
+    });
   } catch (error) {
     handleCoreError(context, error);
   }
@@ -998,7 +1085,7 @@ function mergeOperatorActionMetadata(
 }
 
 function findLatestRunForTask(
-  core: Awaited<ReturnType<CoreStore['readCore']>>,
+  core: CatsCoreState,
   taskId: string | null,
 ) {
   if (!taskId) {
@@ -1012,13 +1099,13 @@ function findLatestRunForTask(
 }
 
 function overwriteTaskMetadata(
-  core: Awaited<ReturnType<CoreStore['readCore']>>,
+  core: CatsCoreState,
   taskId: string,
   metadata: CoreRecordMetadata,
   now: Date,
 ): {
-  core: Awaited<ReturnType<CoreStore['readCore']>>;
-  task: Awaited<ReturnType<CoreStore['readCore']>>['tasks'][number];
+  core: CatsCoreState;
+  task: CatsCoreState['tasks'][number];
 } | null {
   const task = core.tasks.find((candidate) => candidate.id === taskId);
   if (!task) {
@@ -1032,6 +1119,7 @@ function overwriteTaskMetadata(
       title: task.title,
       status: task.status,
       conversationId: task.conversationId,
+      parentTaskId: task.parentTaskId ?? null,
       ownerActorId: task.ownerActorId,
       orchestratorActorId: task.orchestratorActorId,
       assignedActorIds: task.assignedActorIds,
@@ -1080,13 +1168,13 @@ function buildAutoResumeFailureSummary(
 
 async function persistTaskMetadata(
   context: RouteContext<CoreApiDependencies>,
-  core: Awaited<ReturnType<CoreStore['readCore']>>,
+  core: CatsCoreState,
   taskId: string,
   metadata: CoreRecordMetadata,
   now: Date,
 ): Promise<{
-  core: Awaited<ReturnType<CoreStore['readCore']>>;
-  task: Awaited<ReturnType<CoreStore['readCore']>>['tasks'][number] | null;
+  core: CatsCoreState;
+  task: CatsCoreState['tasks'][number] | null;
 }> {
   const updated = overwriteTaskMetadata(core, taskId, metadata, now);
   if (!updated) {
@@ -1109,8 +1197,8 @@ async function maybeAutoResumePendingDispatch(
   trigger: 'approve' | 'reroute',
   now: Date,
 ): Promise<{
-  core: Awaited<ReturnType<CoreStore['readCore']>>;
-  task: Awaited<ReturnType<CoreStore['readCore']>>['tasks'][number] | null;
+  core: CatsCoreState;
+  task: CatsCoreState['tasks'][number] | null;
   autoResume?: CoreOrchestratorAutoResumeSummary;
 }> {
   const initialCore = await context.dependencies.chatStore.readCore();
@@ -1125,8 +1213,8 @@ async function maybeAutoResumePendingDispatch(
 
   const replayAttemptAt = now.toISOString();
   let persistedBeforeDispatch: {
-    core: Awaited<ReturnType<CoreStore['readCore']>>;
-    task: Awaited<ReturnType<CoreStore['readCore']>>['tasks'][number] | null;
+    core: CatsCoreState;
+    task: CatsCoreState['tasks'][number] | null;
   } = {
     core: initialCore,
     task,
@@ -1252,10 +1340,12 @@ async function handleCoreApprovalWrite(
     const approval = await readObjectBody(context);
     const now = context.dependencies.now?.() ?? new Date();
     let nextCore = await context.dependencies.chatStore.readCore();
+    const taskId = readRequiredString(approval.taskId, 'taskId');
+    const previousTask = nextCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
     const next = writeApprovalDecision(
       nextCore,
       {
-        taskId: readRequiredString(approval.taskId, 'taskId'),
+        taskId,
         status:
           readEnumValue(approval.status, 'status', CORE_APPROVAL_STATUSES)
           ?? 'pending',
@@ -1313,12 +1403,30 @@ async function handleCoreApprovalWrite(
       persistedTask = resumed.task ?? persistedTask;
       autoResume = resumed.autoResume;
     }
+    let wakeups = [] as Array<{ request: { id: string }; coalesced: boolean }>;
+    let lifecycleActivities = [] as Array<{ id: string }>;
+    if (context.dependencies.runtimeClient && persistedTask) {
+      const lifecycle = await applyTaskAssignmentLifecycle({
+        core: persisted,
+        previousTask,
+        task: persistedTask,
+        chat: await context.dependencies.chatStore.read(),
+        runtimeClient: context.dependencies.runtimeClient,
+        now,
+      });
+      persisted = await context.dependencies.chatStore.writeCore(lifecycle.core);
+      persistedTask = persisted.tasks.find((candidate) => candidate.id === lifecycle.task.id) ?? lifecycle.task;
+      wakeups = lifecycle.wakeups;
+      lifecycleActivities = lifecycle.activities;
+    }
     const queueItem = buildApprovalQueue(persisted).find(
       (candidate) => candidate.taskId === next.task.id,
     ) ?? null;
     const persistedActivity = persisted.activities.find(
       (candidate) => candidate.id === activity.activity.id,
     ) ?? activity.activity;
+    const persistedLifecycleActivities = lifecycleActivities.map((candidate) =>
+      persisted.activities.find((activityRecord) => activityRecord.id === candidate.id) ?? candidate);
     const latestRun = findLatestRunForTask(
       persisted,
       (persistedTask ?? next.task).id,
@@ -1333,6 +1441,8 @@ async function handleCoreApprovalWrite(
         persistedTask ?? next.task,
         latestRun,
       ),
+      ...(wakeups.length > 0 ? { wakeups } : {}),
+      ...(persistedLifecycleActivities.length > 0 ? { activities: persistedLifecycleActivities } : {}),
       ...(autoResume ? { autoResume } : {}),
     });
   } catch (error) {
@@ -1575,6 +1685,19 @@ async function handleOwnerProfileWrite(
 export async function routeCoreApi(
   context: RouteContext<CoreApiDependencies>,
 ): Promise<boolean> {
+  const taskCheckoutMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/core\/tasks\/([^/]+)\/checkout$/u,
+  );
+  if (taskCheckoutMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleCoreTaskCheckout(context, taskCheckoutMatch[0]!);
+    return true;
+  }
+
   if (context.url.pathname === '/api/core') {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);

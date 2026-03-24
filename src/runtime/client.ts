@@ -133,6 +133,36 @@ export interface RuntimeObservedSessionPayload {
   };
 }
 
+export interface RuntimeSessionStreamEvent {
+  event: string;
+  data: Record<string, unknown>;
+}
+
+export interface RuntimeWakeupTarget {
+  sessionId?: string;
+}
+
+export interface RuntimeWakeupCreateInput {
+  reason: string;
+  target: RuntimeWakeupTarget;
+  scheduleAt?: string;
+  coalesceKey?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RuntimeWakeupRequestRecord {
+  id: string;
+  scheduleAt?: string;
+  target?: RuntimeWakeupTarget;
+  status?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RuntimeWakeupCreateResult {
+  request: RuntimeWakeupRequestRecord;
+  coalesced: boolean;
+}
+
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
   getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
@@ -144,6 +174,11 @@ export interface RuntimeClient {
     input?: RuntimeSendMessageInput,
   ): Promise<RuntimeMessageResult>;
   observeSession(sessionId: string): Promise<RuntimeObservedSessionPayload>;
+  streamSession(
+    sessionId: string,
+    onEvent: (event: RuntimeSessionStreamEvent) => void | Promise<void>,
+  ): Promise<void>;
+  createWakeup(input: RuntimeWakeupCreateInput): Promise<RuntimeWakeupCreateResult>;
   callMcp(request: unknown): Promise<Record<string, unknown> | null>;
   closeSession(sessionId: string): Promise<void>;
 }
@@ -338,6 +373,68 @@ async function readNdjsonResponse(response: Response): Promise<RuntimeMessageRes
     outputTokens,
     tokensUsed: inputTokens + outputTokens,
   };
+}
+
+async function readSseResponse(
+  response: Response,
+  onEvent: (event: RuntimeSessionStreamEvent) => void | Promise<void>,
+): Promise<void> {
+  if (!response.body) {
+    throw new Error('cats-runtime did not provide a response stream');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) {
+      break;
+    }
+
+    buffer += decoder.decode(chunk.value, { stream: true });
+
+    while (true) {
+      const boundaryIndex = buffer.search(/\r?\n\r?\n/u);
+      if (boundaryIndex === -1) {
+        break;
+      }
+
+      const rawEvent = buffer.slice(0, boundaryIndex);
+      const separatorLength = buffer[boundaryIndex] === '\r' ? 4 : 2;
+      buffer = buffer.slice(boundaryIndex + separatorLength);
+
+      let eventName = 'message';
+      const dataLines: string[] = [];
+      for (const line of rawEvent.split(/\r?\n/u)) {
+        if (line.startsWith('event:')) {
+          eventName = line.slice(6).trim() || 'message';
+          continue;
+        }
+        if (line.startsWith('data:')) {
+          dataLines.push(line.slice(5).trimStart());
+        }
+      }
+
+      const dataText = dataLines.join('\n').trim();
+      if (!dataText) {
+        continue;
+      }
+
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(dataText) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+
+      await onEvent({
+        event: eventName,
+        data: parsed,
+      });
+    }
+  }
 }
 
 export class CatsRuntimeClient implements RuntimeClient {
@@ -536,6 +633,51 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     return (await response.json()) as RuntimeObservedSessionPayload;
+  }
+
+  async streamSession(
+    sessionId: string,
+    onEvent: (event: RuntimeSessionStreamEvent) => void | Promise<void>,
+  ): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/stream`, {
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'text/event-stream',
+      },
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new Error(readErrorText(rawBody, `Failed to stream session (${response.status})`));
+    }
+
+    await readSseResponse(response, onEvent);
+  }
+
+  async createWakeup(input: RuntimeWakeupCreateInput): Promise<RuntimeWakeupCreateResult> {
+    const response = await fetch(`${this.baseUrl}/wakeups`, {
+      method: 'POST',
+      headers: {
+        ...this.authHeaders(),
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        reason: input.reason,
+        target: input.target,
+        ...(input.scheduleAt ? { scheduleAt: input.scheduleAt } : {}),
+        ...(input.coalesceKey ? { coalesceKey: input.coalesceKey } : {}),
+        ...(input.metadata ? { metadata: input.metadata } : {}),
+      }),
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new Error(readErrorText(rawBody, `Failed to create wakeup (${response.status})`));
+    }
+
+    return (await response.json()) as RuntimeWakeupCreateResult;
   }
 
   async callMcp(request: unknown): Promise<Record<string, unknown> | null> {

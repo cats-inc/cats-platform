@@ -999,6 +999,7 @@ function normalizeCoreTask(rawTask: unknown): CoreTaskRecord | null {
     title: readString(taskRecord.title, 'Untitled task'),
     status,
     conversationId: readNullableString(taskRecord.conversationId),
+    parentTaskId: readNullableString(taskRecord.parentTaskId),
     ownerActorId: readString(taskRecord.ownerActorId),
     orchestratorActorId: readNullableString(taskRecord.orchestratorActorId),
     assignedActorIds: readStringArray(taskRecord.assignedActorIds),
