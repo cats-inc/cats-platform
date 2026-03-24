@@ -168,9 +168,22 @@ test('chat internals use the product channel-paths module instead of the shared 
   }
 });
 
-test('runtimeActions consumes dedicated room-routing workflow helpers instead of defining them inline', async () => {
+test('runtimeActions is a thin facade over dedicated routing seams', async () => {
   const runtimeActions = await readFile(
     new URL('../src/products/chat/state/runtimeActions.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(runtimeActions, /runtimeDispatchRouting\.js/u);
+  assert.match(runtimeActions, /runtimeSessionRouting\.js/u);
+  assert.doesNotMatch(runtimeActions, /export async function routeChannelMessage\(/u);
+  assert.doesNotMatch(runtimeActions, /export async function activateChannelSessions\(/u);
+  assert.doesNotMatch(runtimeActions, /export async function wakeChannelEntryParticipant\(/u);
+});
+
+test('runtime dispatch routing consumes dedicated room-routing workflow helpers instead of defining them inline', async () => {
+  const dispatchRouting = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
     'utf8',
   );
   const workflowModule = await readFile(
@@ -178,16 +191,16 @@ test('runtimeActions consumes dedicated room-routing workflow helpers instead of
     'utf8',
   );
 
-  assert.match(runtimeActions, /roomRoutingRuntime\.js/u);
-  assert.doesNotMatch(runtimeActions, /function createWorkflowTurn\(/u);
-  assert.doesNotMatch(runtimeActions, /function addWorkflowCheckpoint\(/u);
+  assert.match(dispatchRouting, /roomRoutingRuntime\.js/u);
+  assert.doesNotMatch(dispatchRouting, /function createWorkflowTurn\(/u);
+  assert.doesNotMatch(dispatchRouting, /function addWorkflowCheckpoint\(/u);
   assert.match(workflowModule, /export function createWorkflowTurn/u);
   assert.match(workflowModule, /export function addWorkflowCheckpoint/u);
 });
 
-test('runtimeActions consumes dedicated runtime targeting helpers instead of defining them inline', async () => {
-  const runtimeActions = await readFile(
-    new URL('../src/products/chat/state/runtimeActions.ts', import.meta.url),
+test('runtime dispatch routing consumes dedicated runtime targeting helpers instead of defining them inline', async () => {
+  const dispatchRouting = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
     'utf8',
   );
   const targetingModule = await readFile(
@@ -195,18 +208,18 @@ test('runtimeActions consumes dedicated runtime targeting helpers instead of def
     'utf8',
   );
 
-  assert.match(runtimeActions, /runtimeTargeting\.js/u);
-  assert.doesNotMatch(runtimeActions, /function buildPromptForTarget\(/u);
-  assert.doesNotMatch(runtimeActions, /async function resolveRuntimeEnvelopeForTarget\(/u);
-  assert.doesNotMatch(runtimeActions, /function resolveChoiceResponseTarget\(/u);
+  assert.match(dispatchRouting, /runtimeTargeting\.js/u);
+  assert.doesNotMatch(dispatchRouting, /function buildPromptForTarget\(/u);
+  assert.doesNotMatch(dispatchRouting, /async function resolveRuntimeEnvelopeForTarget\(/u);
+  assert.doesNotMatch(dispatchRouting, /function resolveChoiceResponseTarget\(/u);
   assert.match(targetingModule, /export function buildPromptForTarget/u);
   assert.match(targetingModule, /export async function resolveRuntimeEnvelopeForTarget/u);
   assert.match(targetingModule, /export function resolveChoiceResponseTarget/u);
 });
 
-test('runtimeActions consumes dedicated runtime session-state helpers instead of defining them inline', async () => {
-  const runtimeActions = await readFile(
-    new URL('../src/products/chat/state/runtimeActions.ts', import.meta.url),
+test('runtime dispatch routing consumes dedicated runtime session-state helpers instead of defining them inline', async () => {
+  const dispatchRouting = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
     'utf8',
   );
   const sessionStateModule = await readFile(
@@ -214,18 +227,18 @@ test('runtimeActions consumes dedicated runtime session-state helpers instead of
     'utf8',
   );
 
-  assert.match(runtimeActions, /runtimeSessionState\.js/u);
-  assert.doesNotMatch(runtimeActions, /function setStartedSession\(/u);
-  assert.doesNotMatch(runtimeActions, /function markTargetWaking\(/u);
-  assert.doesNotMatch(runtimeActions, /function applyRoomRoutingSnapshot\(/u);
+  assert.match(dispatchRouting, /runtimeSessionState\.js/u);
+  assert.doesNotMatch(dispatchRouting, /function setStartedSession\(/u);
+  assert.doesNotMatch(dispatchRouting, /function markTargetWaking\(/u);
+  assert.doesNotMatch(dispatchRouting, /function applyRoomRoutingSnapshot\(/u);
   assert.match(sessionStateModule, /export function setStartedSession/u);
   assert.match(sessionStateModule, /export function markTargetWaking/u);
   assert.match(sessionStateModule, /export function applyRoomRoutingSnapshot/u);
 });
 
-test('runtimeActions consumes dedicated runtime session-routing helpers instead of defining wake and activation flows inline', async () => {
-  const runtimeActions = await readFile(
-    new URL('../src/products/chat/state/runtimeActions.ts', import.meta.url),
+test('runtime dispatch routing consumes dedicated runtime session-routing helpers instead of defining wake and activation flows inline', async () => {
+  const dispatchRouting = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
     'utf8',
   );
   const sessionRoutingModule = await readFile(
@@ -233,10 +246,10 @@ test('runtimeActions consumes dedicated runtime session-routing helpers instead 
     'utf8',
   );
 
-  assert.match(runtimeActions, /runtimeSessionRouting\.js/u);
-  assert.doesNotMatch(runtimeActions, /async function ensureTargetSession\(/u);
-  assert.doesNotMatch(runtimeActions, /export async function activateChannelSessions\(/u);
-  assert.doesNotMatch(runtimeActions, /export async function wakeChannelEntryParticipant\(/u);
+  assert.match(dispatchRouting, /runtimeSessionRouting\.js/u);
+  assert.doesNotMatch(dispatchRouting, /async function ensureTargetSession\(/u);
+  assert.doesNotMatch(dispatchRouting, /export async function activateChannelSessions\(/u);
+  assert.doesNotMatch(dispatchRouting, /export async function wakeChannelEntryParticipant\(/u);
   assert.match(sessionRoutingModule, /export async function ensureTargetSession/u);
   assert.match(sessionRoutingModule, /export async function activateChannelSessions/u);
   assert.match(sessionRoutingModule, /export async function wakeChannelEntryParticipant/u);
