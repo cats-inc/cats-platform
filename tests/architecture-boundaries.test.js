@@ -432,6 +432,41 @@ test('task lifecycle composes dedicated shared and watcher modules instead of de
   assert.match(watcherSource, /export function startTaskRunWatcher/u);
 });
 
+test('core projection composes a dedicated workflow projection module instead of defining workflow record derivation inline', async () => {
+  const projectionSource = await readFile(
+    new URL('../src/products/chat/state/coreProjection.ts', import.meta.url),
+    'utf8',
+  );
+  const workflowProjectionSource = await readFile(
+    new URL('../src/products/chat/state/coreProjectionWorkflow.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(projectionSource, /coreProjectionWorkflow\.js/u);
+  assert.doesNotMatch(projectionSource, /function createWorkflowRun\(/u);
+  assert.doesNotMatch(projectionSource, /function createWorkflowActivity\(/u);
+  assert.match(workflowProjectionSource, /export function createWorkflowRun/u);
+  assert.match(workflowProjectionSource, /export function createWorkflowActivity/u);
+});
+
+test('core projection composes a dedicated entity projection module instead of defining actor and channel record derivation inline', async () => {
+  const projectionSource = await readFile(
+    new URL('../src/products/chat/state/coreProjection.ts', import.meta.url),
+    'utf8',
+  );
+  const entityProjectionSource = await readFile(
+    new URL('../src/products/chat/state/coreProjectionEntities.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(projectionSource, /coreProjectionEntities\.js/u);
+  assert.doesNotMatch(projectionSource, /function createConversationFromChannel\(/u);
+  assert.doesNotMatch(projectionSource, /function createTaskFromChannel\(/u);
+  assert.match(entityProjectionSource, /export function createConversationFromChannel/u);
+  assert.match(entityProjectionSource, /export function createTaskFromChannel/u);
+  assert.match(entityProjectionSource, /export function syncBotBindings/u);
+});
+
 test('store consumes dedicated chat snapshot normalization instead of defining it inline', async () => {
   const storeSource = await readFile(
     new URL('../src/products/chat/state/store.ts', import.meta.url),
