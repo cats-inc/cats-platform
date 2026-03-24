@@ -168,6 +168,39 @@ test('chat internals use the product channel-paths module instead of the shared 
   }
 });
 
+test('runtimeActions consumes dedicated room-routing workflow helpers instead of defining them inline', async () => {
+  const runtimeActions = await readFile(
+    new URL('../src/products/chat/state/runtimeActions.ts', import.meta.url),
+    'utf8',
+  );
+  const workflowModule = await readFile(
+    new URL('../src/products/chat/state/roomRoutingRuntime.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(runtimeActions, /roomRoutingRuntime\.js/u);
+  assert.doesNotMatch(runtimeActions, /function createWorkflowTurn\(/u);
+  assert.doesNotMatch(runtimeActions, /function addWorkflowCheckpoint\(/u);
+  assert.match(workflowModule, /export function createWorkflowTurn/u);
+  assert.match(workflowModule, /export function addWorkflowCheckpoint/u);
+});
+
+test('store consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
+  const storeSource = await readFile(
+    new URL('../src/products/chat/state/store.ts', import.meta.url),
+    'utf8',
+  );
+  const snapshotModule = await readFile(
+    new URL('../src/products/chat/state/roomRoutingSnapshot.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(storeSource, /roomRoutingSnapshot\.js/u);
+  assert.doesNotMatch(storeSource, /function normalizeRoomRouting\(/u);
+  assert.doesNotMatch(storeSource, /function normalizeRoomWorkflowTurn\(/u);
+  assert.match(snapshotModule, /export function normalizeRoomRouting/u);
+});
+
 test('platform consumes room-routing types from the shared roomRouting module', async () => {
   const orchestratorContracts = await readFile(
     new URL('../src/platform/orchestration/contracts.ts', import.meta.url),
