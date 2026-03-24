@@ -322,10 +322,15 @@ test('runtime dispatch execution consumes dedicated runtime session-routing help
     new URL('../src/products/chat/state/runtimeSessionRouting.ts', import.meta.url),
     'utf8',
   );
+  const sessionSharedModule = await readFile(
+    new URL('../src/products/chat/state/runtimeSessionShared.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(dispatchExecutionModule, /runtimeSessionRouting\.js/u);
   assert.doesNotMatch(dispatchExecutionModule, /function shouldRewriteOrchestratorReply\(/u);
-  assert.match(sessionRoutingModule, /export function shouldRewriteOrchestratorReply/u);
+  assert.match(sessionRoutingModule, /runtimeSessionShared\.js/u);
+  assert.match(sessionSharedModule, /export function shouldRewriteOrchestratorReply/u);
 });
 
 test('runtime dispatch routing consumes dedicated dispatch-result helpers instead of defining response handling inline', async () => {
@@ -356,12 +361,36 @@ test('runtime dispatch wake consumes dedicated runtime session-routing helpers i
     new URL('../src/products/chat/state/runtimeSessionRouting.ts', import.meta.url),
     'utf8',
   );
+  const sessionWakeModule = await readFile(
+    new URL('../src/products/chat/state/runtimeSessionWake.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(dispatchWakeModule, /runtimeSessionRouting\.js/u);
   assert.doesNotMatch(dispatchWakeModule, /async function ensureTargetSession\(/u);
   assert.doesNotMatch(dispatchWakeModule, /async function maybeAutoCheckoutChannelTask\(/u);
-  assert.match(sessionRoutingModule, /export async function ensureTargetSession/u);
-  assert.match(sessionRoutingModule, /export async function maybeAutoCheckoutChannelTask/u);
+  assert.match(sessionRoutingModule, /runtimeSessionWake\.js/u);
+  assert.match(sessionWakeModule, /export async function ensureTargetSession/u);
+  assert.match(sessionWakeModule, /export async function maybeAutoCheckoutChannelTask/u);
+});
+
+test('runtime session routing composes dedicated wake and activation modules instead of defining session flows inline', async () => {
+  const sessionRoutingModule = await readFile(
+    new URL('../src/products/chat/state/runtimeSessionRouting.ts', import.meta.url),
+    'utf8',
+  );
+  const sessionActivationModule = await readFile(
+    new URL('../src/products/chat/state/runtimeSessionActivation.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(sessionRoutingModule, /runtimeSessionShared\.js/u);
+  assert.match(sessionRoutingModule, /runtimeSessionWake\.js/u);
+  assert.match(sessionRoutingModule, /runtimeSessionActivation\.js/u);
+  assert.doesNotMatch(sessionRoutingModule, /export async function ensureTargetSession\(/u);
+  assert.doesNotMatch(sessionRoutingModule, /export async function wakeChannelEntryParticipant\(/u);
+  assert.doesNotMatch(sessionRoutingModule, /export async function activateChannelSessions\(/u);
+  assert.match(sessionActivationModule, /export async function activateChannelSessions/u);
 });
 
 test('renderer app consumes a dedicated operator-loop hook instead of defining polling inline', async () => {
