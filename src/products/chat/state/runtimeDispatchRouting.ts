@@ -2,18 +2,14 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   ChannelDispatchResult,
-  MessageUsageSummary,
   SendChannelMessageInput,
   ChatChannelState,
-  ChatMessage,
   ChatState,
 } from '../api/contracts.js';
 import type {
   RoomRouteResolution,
   RoomRoutingCheckpoint,
   RoomRoutingGuardReason,
-  RoomRoutingOutcome,
-  RoomRoutingParticipantRef,
   RoomRoutingTrigger,
   RoomWorkflowEvent,
   RoomWorkflowBranchStrategy,
@@ -49,9 +45,6 @@ import {
   type RoutingTarget,
 } from './mentionRouter.js';
 import {
-  buildOrchestratorRewritePrompt,
-} from './prompts.js';
-import {
   DEFAULT_MAX_ROUTING_CONTINUATIONS,
   DEFAULT_MAX_ROUTING_DISPATCHES,
   DEFAULT_MAX_ROUTING_TARGET_VISITS,
@@ -83,10 +76,8 @@ import {
 } from './roomRoutingRuntime.js';
 import {
   type RuntimeTransportContext,
-  buildPromptForTarget,
   resolveChoiceResponseTarget,
   resolveExecutionMetadataForTarget,
-  resolveRuntimeEnvelopeForTarget,
 } from './runtimeTargeting.js';
 import {
   applyRoomRoutingSnapshot,
@@ -100,14 +91,13 @@ import {
 import {
   ensureTargetSession,
   maybeAutoCheckoutChannelTask,
-  shouldRewriteOrchestratorReply,
 } from './runtimeSessionRouting.js';
-
-interface DispatchExecution extends DispatchRequest {
-  responseBody: string | null;
-  usage: MessageUsageSummary | null;
-  error: string | null;
-}
+import {
+  type DispatchExecution,
+  executeDispatch,
+  settleInCompletionOrder,
+  shouldBlockAntiPingPong,
+} from './runtimeDispatchExecution.js';
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
   companionStore?: CompanionBoxStore;
@@ -133,128 +123,6 @@ function describeGuardReason(reason: Exclude<RoomRoutingGuardReason, null>): str
     default:
       return 'a routing guard';
   }
-}
-
-async function executeDispatch(
-  state: ChatState,
-  channelId: string,
-  request: DispatchRequest,
-  runtimeClient: RuntimeClient,
-  now: Date,
-  transport?: RuntimeTransportContext,
-  companionStore?: CompanionBoxStore,
-): Promise<DispatchExecution> {
-  try {
-    const prompt = buildPromptForTarget(state, channelId, request, transport);
-    const channel = buildChannelView(state, channelId);
-    const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
-      state,
-      channel,
-      request.target,
-      transport,
-      now,
-      companionStore,
-    );
-    const runtimeResult = await runtimeClient.sendMessage(
-      request.target.sessionId ?? '',
-      prompt,
-      {
-        context: runtimeEnvelope.context,
-        skills: runtimeEnvelope.skills,
-      },
-    );
-    let responseBody = runtimeResult.content
-      || `${request.target.participantName} completed the routed turn without text output.`;
-    let usage: MessageUsageSummary | null = {
-      inputTokens: runtimeResult.inputTokens,
-      outputTokens: runtimeResult.outputTokens,
-      tokensUsed: runtimeResult.tokensUsed,
-    };
-
-    if (request.target.participantKind === 'orchestrator') {
-      if (
-        shouldRewriteOrchestratorReply(
-          responseBody,
-          request.target.participantName,
-          channel,
-        )
-      ) {
-        try {
-          const rewrite = await runtimeClient.sendMessage(
-            request.target.sessionId ?? '',
-            buildOrchestratorRewritePrompt(
-              channel,
-              request.sourceMessage,
-              request.target.participantName,
-              responseBody,
-            ),
-          );
-          if (rewrite.content) {
-            responseBody = rewrite.content;
-          }
-          usage = {
-            inputTokens: (usage?.inputTokens ?? 0) + rewrite.inputTokens,
-            outputTokens: (usage?.outputTokens ?? 0) + rewrite.outputTokens,
-            tokensUsed: (usage?.tokensUsed ?? 0) + rewrite.tokensUsed,
-          };
-        } catch {
-          // Keep the original draft if the repair pass fails.
-        }
-      }
-    }
-
-    return {
-      ...request,
-      responseBody,
-      usage,
-      error: null,
-    };
-  } catch (error) {
-    return {
-      ...request,
-      responseBody: null,
-      usage: null,
-      error: error instanceof Error ? error.message : 'Unknown runtime error',
-    };
-  }
-}
-
-async function settleInCompletionOrder<T>(promises: Array<Promise<T>>): Promise<T[]> {
-  const wrapped = promises.map((promise, index) =>
-    promise.then((value) => ({ index, value })),
-  );
-  const pending = new Map(wrapped.map((promise, index) => [index, promise]));
-  const results: T[] = [];
-
-  while (pending.size > 0) {
-    const settled = await Promise.race(pending.values());
-    pending.delete(settled.index);
-    results.push(settled.value);
-  }
-
-  return results;
-}
-
-function shouldBlockAntiPingPong(
-  sourceParticipant: RoomRoutingParticipantRef,
-  target: RoutingTarget,
-  dispatches: RoomRoutingOutcome['dispatches'],
-): boolean {
-  const completedDispatches = dispatches.filter((dispatch) => dispatch.status === 'completed');
-  if (completedDispatches.length < 2) {
-    return false;
-  }
-
-  const lastDispatch = completedDispatches[completedDispatches.length - 1];
-  const previousDispatch = completedDispatches[completedDispatches.length - 2];
-  if (!lastDispatch.source || !previousDispatch.source) {
-    return false;
-  }
-
-  return participantKey(previousDispatch.source) === participantKey(sourceParticipant)
-    && participantKey(previousDispatch.target) === participantKey(target)
-    && participantKey(lastDispatch.source) === participantKey(target)
-    && participantKey(lastDispatch.target) === participantKey(sourceParticipant);
 }
 
 export async function routeChannelMessage(
