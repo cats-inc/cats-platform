@@ -77,6 +77,8 @@ runtime cwd state.
 6. Bootstrap must be idempotent per room.
    - concurrent wake or assignment flows for one room reuse the same bootstrap
      result
+   - the first slice assumes one `cats` host process serializes room-state
+     mutation for a given persisted chat-state store
    - failure persists as room workspace error state instead of silently falling
      back to participant-private isolated sandboxes
 
@@ -87,8 +89,10 @@ runtime cwd state.
 
 8. Persisted legacy room state must migrate conservatively.
    - `repoPath` maps into room-owned `user_selected` workspace state
-   - legacy `chatCwd` may be imported as compatibility-only managed room
-     workspace state
+   - legacy `chatCwd` only auto-imports as `managed_room` if it still exists
+     under the known managed-room workspace root
+   - otherwise, legacy `chatCwd` is preserved as `legacy_unknown`
+     compatibility data and must not become authoritative shared workspace state
    - new writes stop mutating `chatCwd`
 
 9. Cleanup ownership follows workspace ownership.
@@ -114,6 +118,8 @@ runtime cwd state.
   participant spawn.
 - `cats-runtime` may eventually need a dedicated bootstrap contract if the host
   cannot own managed room workspace creation alone.
+- A future multi-process deployment will need explicit coordination beyond the
+  first-slice single-process assumption.
 
 ### Neutral
 

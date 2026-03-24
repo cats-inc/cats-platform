@@ -96,9 +96,11 @@ This spec defines the state model, wake flow, and cleanup rules needed to keep
   - `preparing`
   - `ready`
   - `error`
-- Room workspace state shall record whether the resolved workspace is:
+- Room workspace state shall record what kind of room workspace record is
+  currently active:
   - `user_selected`
   - `managed_room`
+  - `legacy_unknown`
 - Room workspace bootstrap shall be idempotent per room. Concurrent wake or
   assignment flows for the same room shall reuse one `preparing` or `ready`
   room workspace record instead of racing to create separate directories.
@@ -109,8 +111,12 @@ This spec defines the state model, wake flow, and cleanup rules needed to keep
   legacy `chatCwd` state:
   - if `repoPath` exists and `roomWorkspace` does not, derive
     `roomWorkspace.kind = user_selected` from `repoPath`
-  - if `chatCwd` exists and `repoPath` does not, import that path into
-    `roomWorkspace.kind = managed_room` as a legacy compatibility value
+  - if `chatCwd` exists, `repoPath` does not, and that path still exists under
+    the stable managed-room workspace root, import it as
+    `roomWorkspace.kind = managed_room`
+  - otherwise, import legacy `chatCwd` as `roomWorkspace.kind =
+    legacy_unknown`, do not treat it as authoritative shared workspace state,
+    and require explicit repair or fresh bootstrap before new shared spawn
   - new writes shall stop mutating `chatCwd`
 - Resetting, closing, or cleaning up one participant session shall not delete a
   managed room workspace while the room still depends on it.
@@ -128,6 +134,10 @@ This spec defines the state model, wake flow, and cleanup rules needed to keep
   model.
 - The model should allow a later `cats-runtime` bootstrap API without forcing
   that API shape now.
+- The first slice assumes a single `cats` host process serializes room-state
+  mutation and bootstrap coordination for a given persisted chat-state store.
+- A later multi-process deployment will need external locking or an atomic
+  bootstrap primitive; that coordination is out of scope for this slice.
 
 ## Design Overview
 
@@ -157,7 +167,7 @@ The room should gain an explicit resolved workspace record:
 ```ts
 interface ChatRoomWorkspaceState {
   status: 'unbound' | 'preparing' | 'ready' | 'error';
-  kind: 'user_selected' | 'managed_room' | null;
+  kind: 'user_selected' | 'managed_room' | 'legacy_unknown' | null;
   requestedCwd: string | null;
   resolvedCwd: string | null;
   lastError: string | null;
@@ -169,6 +179,9 @@ State responsibilities:
 - `requestedCwd`
   - operator intent
   - derived from the current `repoPath` in the first slice
+- `kind = legacy_unknown`
+  - compatibility-only state derived from legacy `chatCwd`
+  - not authoritative for new shared participant spawn
 - `resolvedCwd`
   - authoritative shared cwd for participant session spawn
 - participant lease `cwd`
@@ -220,6 +233,12 @@ In the first compatibility slice:
 ### Bootstrap Locking and Idempotency
 
 Bootstrap is keyed by room/channel ID.
+
+The first slice assumes one `cats` host process owns chat-state mutation for a
+given room. In that scope, "wait" means later wake or assignment flows observe a
+persisted `preparing` record and reuse it instead of launching a second
+bootstrap. Cross-process locking is intentionally out of scope until the
+product grows a dedicated coordination primitive.
 
 Rules:
 
@@ -284,8 +303,15 @@ Load-time rules:
 - if `roomWorkspace` already exists, trust it
 - else if `repoPath` exists, materialize `roomWorkspace.kind = user_selected`
   from `repoPath`
-- else if legacy `chatCwd` exists, import that value into
-  `roomWorkspace.kind = managed_room` as a compatibility shim
+- else if legacy `chatCwd` exists under the stable managed-room workspace root
+  and the directory still exists, materialize `roomWorkspace.kind =
+  managed_room` from that path
+- else if legacy `chatCwd` exists, materialize:
+  - `roomWorkspace.kind = legacy_unknown`
+  - `roomWorkspace.status = error`
+  - `roomWorkspace.lastError = 'Legacy chatCwd provenance is unknown; explicit room workspace repair is required.'`
+  - no authoritative `resolvedCwd` for new shared participant spawn
+  - retain legacy `chatCwd` only for compatibility/debug visibility during migration
 
 Write-time rules:
 
