@@ -52,8 +52,6 @@ import {
   appendWorkflowEvent,
   createPendingDispatch,
   createWorkflowEvent,
-  deriveTerminalTurnStatuses,
-  finalizeWorkflowTurn,
   mergeUnresolvedMentions,
   queueWorkflowTarget,
   resolveTargets,
@@ -81,10 +79,6 @@ import {
   toParticipantRef,
 } from './runtimeSessionState.js';
 import {
-  ensureTargetSession,
-  maybeAutoCheckoutChannelTask,
-} from './runtimeSessionRouting.js';
-import {
   type DispatchExecution,
   executeDispatch,
   settleInCompletionOrder,
@@ -93,6 +87,12 @@ import {
 import {
   prepareDispatchTurn,
 } from './runtimeDispatchTurn.js';
+import {
+  finalizeDispatchTurn,
+} from './runtimeDispatchFinalize.js';
+import {
+  prepareReadyRequests,
+} from './runtimeDispatchWake.js';
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
   companionStore?: CompanionBoxStore;
@@ -493,135 +493,29 @@ export async function routeChannelMessage(
       );
     }
 
-    const readyRequests: DispatchRequest[] = [];
-    for (const request of allowedRequests) {
-      const ensured = await ensureTargetSession(
-        nextState,
-        channelId,
-        request.target,
-        runtimeClient,
-        now,
-        {
-          transport: options.transport,
-          companionStore: options.companionStore,
-          memoryService: options.memoryService,
-          roomRouting: baseRoomRouting,
-          wakeTrigger: 'route_target',
-          wakeReason: request.trigger === 'continuation_mention'
-            ? 'workflow_continuation'
-            : resolveWakeReasonFromRoutingTrigger(request.trigger),
-          sourceMessageId: request.sourceMessage.id,
-        },
-      );
-      nextState = ensured.state;
-      if (ensured.error) {
-        updateDispatch(outcome, request.dispatchId, {
-          status: 'error',
-          completedAt: nowIso,
-          error: ensured.error,
-        });
-        updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
-          wakeRequestId: ensured.wakeRequest?.id ?? null,
-          status: 'failed',
-          completedAt: nowIso,
-          error: ensured.error,
-        });
-        appendWorkflowEvent(
-          workflow,
-          activeTurn,
-          createWorkflowEvent(
-            activeTurn.id,
-            'target_failed',
-            'failed',
-            `Failed to wake ${request.target.participantName}: ${ensured.error}`,
-            nowIso,
-            request.sourceParticipant,
-            request.sourceMessage.id,
-            [toParticipantRef(request.target)],
-            {
-              dispatchId: request.dispatchId,
-              metadata: {
-                phase: 'wake',
-                parentCheckpointId: request.parentCheckpointId,
-                branchStrategy: request.branchStrategy,
-                handoffReason: request.handoffReason,
-              },
-            },
-          ),
-        );
-        latestCheckpoint = addWorkflowCheckpoint(
-          outcome,
-          workflow,
-          activeTurn,
-          'runtime_error',
-          `Failed to wake ${request.target.participantName}: ${ensured.error}`,
-          nowIso,
-          request.sourceParticipant,
-          [toParticipantRef(request.target)],
-        );
-        results.push({
-          targetKind: request.target.participantKind,
-          targetId: request.target.participantId,
-          targetName: request.target.participantName,
-          sessionId: null,
-          status: 'error',
-          dispatchId: request.dispatchId,
-          turnId: activeTurn.id,
-          targetStatus: 'failed',
-          error: ensured.error,
-          sourceMessageId: request.sourceMessage.id,
-          trigger: request.trigger,
-          dispatchDepth: request.depth,
-        });
-        continue;
-      }
-
-      nextState = ensureChannelMarkedActive(nextState, channelId, now);
-      await maybeAutoCheckoutChannelTask(
-        options.chatStore,
-        runtimeClient,
-        channelId,
-        ensured.target,
-        now,
-      );
-      readyRequests.push({
-        ...request,
-        target: ensured.target,
-      });
-      updateDispatch(outcome, request.dispatchId, {
-        status: 'running',
-        startedAt: nowIso,
-      });
-      updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
-        wakeRequestId: ensured.wakeRequest?.id ?? null,
-        status: 'running',
-        startedAt: nowIso,
-      });
-      appendWorkflowEvent(
+    const wakePrepared = await prepareReadyRequests(
+      nextState,
+      channelId,
+      allowedRequests,
+      runtimeClient,
+      now,
+      {
+        nowIso,
+        baseRoomRouting,
         workflow,
         activeTurn,
-        createWorkflowEvent(
-          activeTurn.id,
-          'target_running',
-          'running',
-          `${ensured.target.participantName} is running this room dispatch.`,
-          nowIso,
-          request.sourceParticipant,
-          request.sourceMessage.id,
-          [toParticipantRef(ensured.target)],
-            {
-              dispatchId: request.dispatchId,
-              metadata: {
-                depth: request.depth,
-                trigger: request.trigger,
-                parentCheckpointId: request.parentCheckpointId,
-                branchStrategy: request.branchStrategy,
-                handoffReason: request.handoffReason,
-              },
-            },
-          ),
-        );
-    }
+        outcome,
+        latestCheckpoint,
+        results,
+        transport: options.transport,
+        companionStore: options.companionStore,
+        memoryService: options.memoryService,
+        chatStore: options.chatStore,
+      },
+    );
+    nextState = wakePrepared.state;
+    latestCheckpoint = wakePrepared.latestCheckpoint;
+    const readyRequests = wakePrepared.readyRequests;
 
     if (readyRequests.length === 0) {
       continue;
@@ -911,71 +805,17 @@ export async function routeChannelMessage(
     }
   }
 
-  outcome.guard = guardReason;
-  activeTurn.guard = guardReason;
-  activeTurn.continuationCount = outcome.continuationCount;
-  activeTurn.dispatchCount = outcome.totalDispatchCount;
-  activeTurn.stageId = guardReason ? 'guard_blocked' : 'turn_completed';
-  const terminalStatuses = deriveTerminalTurnStatuses(outcome, guardReason);
-  outcome.status = terminalStatuses.outcomeStatus;
-  activeTurn.status = terminalStatuses.workflowStatus;
-  outcome.completedAt = nowIso;
-  activeTurn.completedAt = nowIso;
-  activeTurn.updatedAt = nowIso;
-  latestCheckpoint = addWorkflowCheckpoint(
-    outcome,
-    workflow,
-    activeTurn,
-    'completed',
-    guardReason
-      ? `Room routing stopped because it hit ${describeGuardReason(guardReason)}.`
-      : 'Room routing completed for this turn.',
+  nextState = finalizeDispatchTurn(nextState, channelId, now, {
     nowIso,
-    null,
-  );
-  appendWorkflowEvent(
-    workflow,
-    activeTurn,
-    createWorkflowEvent(
-      activeTurn.id,
-      'outcome',
-      activeTurn.status,
-      guardReason
-        ? `Room workflow ended in a blocked state because it hit ${describeGuardReason(guardReason)}.`
-        : activeTurn.status === 'completed'
-          ? 'Room workflow completed for this turn.'
-          : 'Room workflow ended with failures for this turn.',
-      nowIso,
-      null,
-      userMessage.id,
-      outcome.resolvedTargets,
-      {
-        outcomeId: randomUUID(),
-        metadata: {
-          guard: guardReason,
-          workflowStageId: activeTurn.stageId,
-          workflowShape: activeTurn.workflowShape,
-          workflowLastCheckpointId: activeTurn.lastCheckpointId,
-          selectionKind: outcome.resolution.selectionKind,
-          defaultTargetReason: outcome.resolution.defaultTargetReason,
-          blockedReason: outcome.resolution.blockedReason,
-          continuationCount: outcome.continuationCount,
-          totalDispatchCount: outcome.totalDispatchCount,
-          unresolvedMentions: structuredClone(outcome.unresolvedMentions),
-        },
-      },
-    ),
-  );
-  finalizeWorkflowTurn(workflow, activeTurn);
-  nextState = applyRoomRoutingSnapshot(
-    nextState,
-    channelId,
     baseRoomRouting,
     workflow,
+    activeTurn,
     outcome,
     latestCheckpoint,
-    now,
-  );
+    guardReason,
+    userMessageId: userMessage.id,
+    describeGuardReason,
+  });
 
   return { state: nextState, results };
 }
