@@ -950,9 +950,31 @@ test('store consumes dedicated chat snapshot normalization instead of defining i
   assert.match(snapshotModule, /export function normalizePersistedChatSnapshot/u);
 });
 
-test('companion box store consumes dedicated snapshot helpers instead of defining normalization inline', async () => {
+test('companion box store composes dedicated file and memory store modules instead of defining both stores inline', async () => {
   const storeSource = await readFile(
     new URL('../src/products/chat/state/companionBoxStore.ts', import.meta.url),
+    'utf8',
+  );
+  const fileStoreSource = await readFile(
+    new URL('../src/products/chat/state/companionBoxFileStore.ts', import.meta.url),
+    'utf8',
+  );
+  const memoryStoreSource = await readFile(
+    new URL('../src/products/chat/state/companionBoxMemoryStore.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(storeSource, /companionBoxFileStore\.js/u);
+  assert.match(storeSource, /companionBoxMemoryStore\.js/u);
+  assert.doesNotMatch(storeSource, /export class FileCompanionBoxStore/u);
+  assert.doesNotMatch(storeSource, /export class MemoryCompanionBoxStore/u);
+  assert.match(fileStoreSource, /export class FileCompanionBoxStore/u);
+  assert.match(memoryStoreSource, /export class MemoryCompanionBoxStore/u);
+});
+
+test('companion box file store consumes dedicated snapshot helpers instead of defining normalization inline', async () => {
+  const fileStoreSource = await readFile(
+    new URL('../src/products/chat/state/companionBoxFileStore.ts', import.meta.url),
     'utf8',
   );
   const snapshotModule = await readFile(
@@ -960,18 +982,22 @@ test('companion box store consumes dedicated snapshot helpers instead of definin
     'utf8',
   );
 
-  assert.match(storeSource, /companionBoxSnapshot\.js/u);
-  assert.doesNotMatch(storeSource, /function normalizeSnapshot\(/u);
-  assert.doesNotMatch(storeSource, /function deriveCompanionBoxStatePath\(/u);
-  assert.doesNotMatch(storeSource, /function buildStorageLayout\(/u);
+  assert.match(fileStoreSource, /companionBoxSnapshot\.js/u);
+  assert.doesNotMatch(fileStoreSource, /function normalizeSnapshot\(/u);
+  assert.doesNotMatch(fileStoreSource, /function deriveCompanionBoxStatePath\(/u);
+  assert.doesNotMatch(fileStoreSource, /function buildStorageLayout\(/u);
   assert.match(snapshotModule, /export function normalizeSnapshot/u);
   assert.match(snapshotModule, /export function deriveCompanionBoxStatePath/u);
   assert.match(snapshotModule, /export function buildStorageLayout/u);
 });
 
-test('companion box store consumes dedicated operations helpers instead of defining mutation flows inline', async () => {
-  const storeSource = await readFile(
-    new URL('../src/products/chat/state/companionBoxStore.ts', import.meta.url),
+test('companion box file and memory stores consume dedicated operations helpers instead of defining mutation flows inline', async () => {
+  const fileStoreSource = await readFile(
+    new URL('../src/products/chat/state/companionBoxFileStore.ts', import.meta.url),
+    'utf8',
+  );
+  const memoryStoreSource = await readFile(
+    new URL('../src/products/chat/state/companionBoxMemoryStore.ts', import.meta.url),
     'utf8',
   );
   const operationsModule = await readFile(
@@ -979,10 +1005,12 @@ test('companion box store consumes dedicated operations helpers instead of defin
     'utf8',
   );
 
-  assert.match(storeSource, /companionBoxOperations\.js/u);
-  assert.doesNotMatch(storeSource, /function ensureBox\(/u);
-  assert.doesNotMatch(storeSource, /function summarizeBox\(/u);
-  assert.doesNotMatch(storeSource, /function replaceDerivedForSource\(/u);
+  assert.match(fileStoreSource, /companionBoxOperations\.js/u);
+  assert.match(memoryStoreSource, /companionBoxOperations\.js/u);
+  assert.doesNotMatch(fileStoreSource, /function ensureBox\(/u);
+  assert.doesNotMatch(fileStoreSource, /function summarizeBox\(/u);
+  assert.doesNotMatch(fileStoreSource, /function replaceDerivedForSource\(/u);
+  assert.doesNotMatch(memoryStoreSource, /function ensureBox\(/u);
   assert.match(operationsModule, /export function ensureCompanionBox/u);
   assert.match(operationsModule, /export function ingestCompanionSource/u);
   assert.match(operationsModule, /export function updateCompanionSource/u);
