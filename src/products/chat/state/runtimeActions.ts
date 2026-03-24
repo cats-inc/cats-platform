@@ -35,6 +35,7 @@ import type {
 import type {
   CompanionBoxStore,
 } from './companionBoxStore.js';
+import type { ChatStore } from './store.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import type {
@@ -42,6 +43,14 @@ import type {
   RuntimeSessionInfo,
   RuntimeSkillManifest,
 } from '../../../platform/runtime/client.js';
+import {
+  checkoutTaskExecution,
+  startTaskRunWatcher,
+} from '../../../core/taskLifecycle.js';
+import {
+  createCatActorId,
+  GLOBAL_ORCHESTRATOR_ACTOR_ID,
+} from '../../../core/model.js';
 import { shouldHydrateCompanionSession } from '../companion/hydration.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import {
@@ -122,6 +131,7 @@ interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
 }
 
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_PROMPT_RECENT_MESSAGES;
@@ -176,6 +186,57 @@ function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantRef {
     participantId: target.participantId,
     participantName: target.participantName,
   };
+}
+
+function resolveActorIdForTarget(target: RoutingTarget): string {
+  return target.participantKind === 'orchestrator'
+    ? GLOBAL_ORCHESTRATOR_ACTOR_ID
+    : createCatActorId(target.participantId);
+}
+
+async function maybeAutoCheckoutChannelTask(
+  chatStore: Pick<ChatStore, 'readCore' | 'writeCore'> | undefined,
+  runtimeClient: Pick<RuntimeClient, 'observeSession' | 'streamSession'>,
+  channelId: string,
+  target: RoutingTarget,
+  now: Date,
+): Promise<void> {
+  if (!chatStore || !target.sessionId) {
+    return;
+  }
+
+  const core = await chatStore.readCore();
+  const taskId = `task-channel-${channelId}`;
+  const task = core.tasks.find((candidate) => candidate.id === taskId);
+  if (!task || task.status !== 'approved') {
+    return;
+  }
+
+  const actorId = resolveActorIdForTarget(target);
+  if (!task.assignedActorIds.includes(actorId)) {
+    return;
+  }
+
+  const checkout = checkoutTaskExecution({
+    core,
+    taskId,
+    actorId,
+    sessionId: target.sessionId,
+    now,
+  });
+  const persisted = await chatStore.writeCore(checkout.core);
+  const persistedTask = persisted.tasks.find((candidate) => candidate.id === checkout.task.id)
+    ?? checkout.task;
+  const persistedRun = persisted.runs.find((candidate) => candidate.id === checkout.run.id)
+    ?? checkout.run;
+  startTaskRunWatcher({
+    chatStore,
+    runtimeClient,
+    taskId: persistedTask.id,
+    runId: persistedRun.id,
+    sessionId: target.sessionId,
+    actorId,
+  });
 }
 
 function setStartedSession(
@@ -2593,6 +2654,13 @@ export async function routeChannelMessage(
       }
 
       nextState = ensureChannelMarkedActive(nextState, channelId, now);
+      await maybeAutoCheckoutChannelTask(
+        options.chatStore,
+        runtimeClient,
+        channelId,
+        ensured.target,
+        now,
+      );
       readyRequests.push({
         ...request,
         target: ensured.target,

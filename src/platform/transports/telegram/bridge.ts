@@ -364,6 +364,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
         transport: 'telegram',
         companionStore: input.companionStore,
         memoryService: input.memoryService,
+        chatStore: input.chatStore,
       },
     );
     dispatchedState = dispatch.state;

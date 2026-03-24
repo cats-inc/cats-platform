@@ -225,6 +225,104 @@ test('explicit multi-target mentions fan out in parallel and persist replies in 
   );
 });
 
+test('routeChannelMessage auto-checks out an approved channel task for the assigned cat session', async () => {
+  const { state, channelId } = await createChannelState();
+  const store = new MemoryChatStore();
+  const now = new Date('2026-03-24T03:00:00.000Z');
+  await store.write(state);
+
+  const taskId = `task-channel-${channelId}`;
+  const approvedCore = await store.readCore();
+  await store.writeCore({
+    ...approvedCore,
+    tasks: approvedCore.tasks.map((task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: 'approved',
+            approval: {
+              ...task.approval,
+              status: 'approved',
+              decidedAt: now.toISOString(),
+              decidedByActorId: 'actor-owner',
+            },
+          }
+        : task),
+  });
+
+  const watcherGate = createDeferred();
+  let runCompleted = false;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    runCompleted = true;
+    watcherGate.resolve();
+    if (content.includes('You are Agent-1')) {
+      return usage('Agent-1 finished the review.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+  runtimeClient.observeSession = async (sessionId) => ({
+    session: {
+      id: sessionId,
+      inspection: runCompleted
+        ? {
+            state: 'idle',
+            lastRun: {
+              id: `runtime-run-${sessionId}`,
+              status: 'succeeded',
+              startedAt: now.toISOString(),
+              endedAt: '2026-03-24T03:01:00.000Z',
+              resultSummary: 'Agent-1 finished the review.',
+            },
+          }
+        : {
+            state: 'running',
+            currentRun: {
+              id: `runtime-run-${sessionId}`,
+              status: 'running',
+              startedAt: now.toISOString(),
+            },
+          },
+    },
+    observePath: `/sessions/${sessionId}/observe`,
+    stream: {
+      path: `/sessions/${sessionId}/stream`,
+      available: true,
+    },
+  });
+  runtimeClient.streamSession = async () => {
+    await watcherGate.promise;
+  };
+
+  const dispatched = await routeChannelMessage(
+    await store.read(),
+    channelId,
+    { body: '@Agent-1 review this change.' },
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  const core = await store.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === taskId);
+  const run = core.runs.find((candidate) =>
+    candidate.taskId === taskId && candidate.metadata?.source === 'task-lifecycle');
+
+  assert.ok(task);
+  assert.ok(run);
+  assert.equal(run?.status, 'completed');
+  assert.equal(run?.metadata.sessionId, 'session-1');
+  assert.equal(task?.status, 'completed');
+  assert.equal(task?.metadata?.taskLifecycle?.runId, run?.id);
+  assert.ok(
+    core.activities.some((activity) => activity.runId === run?.id && /started/i.test(activity.message)),
+  );
+  assert.ok(
+    core.activities.some((activity) => activity.runId === run?.id && /completed/i.test(activity.message)),
+  );
+});
+
 test('solo composer mode restarts orchestrator sessions when the pending model changes and records provenance', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');

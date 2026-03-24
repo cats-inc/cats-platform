@@ -120,6 +120,7 @@ export async function dispatchOrchestratorTurn(
       transport: input.transport === 'telegram' ? 'telegram' : 'web',
       companionStore: input.companionStore,
       memoryService: input.memoryService,
+      chatStore: input.chatStore,
     },
   );
   const persisted = await input.chatStore.write(routed.state);

@@ -400,6 +400,24 @@ test('POST /api/orchestrator/dispatch persists approval-blocked requests and aut
     const executionLoopPayload = await executionLoopResponse.json();
     assert.equal(executionLoopPayload.executionLoop.execution.state, 'completed');
     assert.equal(executionLoopPayload.executionLoop.execution.approval.status, 'approved');
+
+    const coreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(coreResponse.status, 200);
+    const corePayload = await coreResponse.json();
+    const task = corePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    const run = corePayload.runs.find((candidate) =>
+      candidate.taskId === `task-channel-${channelId}`
+      && candidate.metadata?.source === 'task-lifecycle');
+    assert.ok(task);
+    assert.ok(run);
+    assert.equal(task.status, 'in_progress');
+    assert.equal(run.status, 'running');
+    assert.equal(run.metadata.sessionId, runtimeClient.sentMessages[0]?.sessionId ?? null);
+    assert.equal(task.metadata.taskLifecycle.runId, run.id);
+    assert.ok(
+      corePayload.activities.some((activity) =>
+        activity.runId === run.id && /started/i.test(activity.message)),
+    );
   });
 });
 

@@ -71,6 +71,10 @@ function mapChannelStatusToTaskStatus(channel: ChatChannelState): CoreTaskStatus
   return 'draft';
 }
 
+function shouldPreserveActiveChannelTaskStatus(status: CoreTaskStatus | null | undefined): boolean {
+  return status === 'blocked' || status === 'completed' || status === 'cancelled';
+}
+
 function latestWorkflowTurn(channel: ChatChannelState): RoomWorkflowTurn | null {
   const workflow = channel.roomRouting?.workflow;
   return workflow?.activeTurn ?? workflow?.turnHistory[0] ?? null;
@@ -279,9 +283,13 @@ function createTaskFromChannel(
     decisionAction: null,
     notes: null,
   };
-  const status = derivedStatus === 'in_progress' || derivedStatus === 'archived'
+  const status = derivedStatus === 'archived'
     ? derivedStatus
-    : existingTask?.status ?? derivedStatus;
+    : derivedStatus === 'in_progress'
+      ? shouldPreserveActiveChannelTaskStatus(existingTask?.status)
+        ? existingTask?.status ?? derivedStatus
+        : derivedStatus
+      : existingTask?.status ?? derivedStatus;
 
   return {
     id: `task-channel-${channel.id}`,
