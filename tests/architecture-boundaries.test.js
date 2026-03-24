@@ -185,6 +185,25 @@ test('runtimeActions consumes dedicated room-routing workflow helpers instead of
   assert.match(workflowModule, /export function addWorkflowCheckpoint/u);
 });
 
+test('runtimeActions consumes dedicated runtime targeting helpers instead of defining them inline', async () => {
+  const runtimeActions = await readFile(
+    new URL('../src/products/chat/state/runtimeActions.ts', import.meta.url),
+    'utf8',
+  );
+  const targetingModule = await readFile(
+    new URL('../src/products/chat/state/runtimeTargeting.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(runtimeActions, /runtimeTargeting\.js/u);
+  assert.doesNotMatch(runtimeActions, /function buildPromptForTarget\(/u);
+  assert.doesNotMatch(runtimeActions, /async function resolveRuntimeEnvelopeForTarget\(/u);
+  assert.doesNotMatch(runtimeActions, /function resolveChoiceResponseTarget\(/u);
+  assert.match(targetingModule, /export function buildPromptForTarget/u);
+  assert.match(targetingModule, /export async function resolveRuntimeEnvelopeForTarget/u);
+  assert.match(targetingModule, /export function resolveChoiceResponseTarget/u);
+});
+
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
