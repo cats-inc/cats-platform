@@ -181,9 +181,17 @@ test('runtimeActions is a thin facade over dedicated routing seams', async () =>
   assert.doesNotMatch(runtimeActions, /export async function wakeChannelEntryParticipant\(/u);
 });
 
-test('runtime dispatch routing consumes dedicated room-routing workflow helpers instead of defining them inline', async () => {
+test('runtime dispatch turn and loop consume dedicated room-routing workflow helpers instead of defining them inline', async () => {
   const dispatchRouting = await readFile(
     new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+    'utf8',
+  );
+  const dispatchTurn = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchTurn.ts', import.meta.url),
+    'utf8',
+  );
+  const dispatchLoop = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
     'utf8',
   );
   const workflowModule = await readFile(
@@ -191,9 +199,11 @@ test('runtime dispatch routing consumes dedicated room-routing workflow helpers 
     'utf8',
   );
 
-  assert.match(dispatchRouting, /roomRoutingWorkflow\.js/u);
-  assert.doesNotMatch(dispatchRouting, /function createWorkflowTurn\(/u);
-  assert.doesNotMatch(dispatchRouting, /function addWorkflowCheckpoint\(/u);
+  assert.doesNotMatch(dispatchRouting, /roomRoutingWorkflow\.js/u);
+  assert.match(dispatchTurn, /roomRoutingWorkflow\.js/u);
+  assert.match(dispatchLoop, /roomRoutingWorkflow\.js/u);
+  assert.doesNotMatch(dispatchTurn, /function createWorkflowTurn\(/u);
+  assert.doesNotMatch(dispatchLoop, /function addWorkflowCheckpoint\(/u);
   assert.match(workflowModule, /export function createWorkflowTurn/u);
   assert.match(workflowModule, /export function addWorkflowCheckpoint/u);
 });
@@ -266,9 +276,9 @@ test('runtime dispatch routing consumes dedicated turn finalization helpers inst
   assert.match(dispatchFinalizeModule, /export function finalizeDispatchTurn/u);
 });
 
-test('runtime dispatch routing consumes dedicated wake/readiness helpers instead of defining target wake flows inline', async () => {
-  const dispatchRouting = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+test('runtime dispatch loop consumes dedicated wake/readiness helpers instead of defining target wake flows inline', async () => {
+  const dispatchLoopModule = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
     'utf8',
   );
   const dispatchWakeModule = await readFile(
@@ -276,15 +286,32 @@ test('runtime dispatch routing consumes dedicated wake/readiness helpers instead
     'utf8',
   );
 
-  assert.match(dispatchRouting, /runtimeDispatchWake\.js/u);
-  assert.doesNotMatch(dispatchRouting, /const ensured = await ensureTargetSession\(/u);
-  assert.doesNotMatch(dispatchRouting, /await maybeAutoCheckoutChannelTask\(/u);
+  assert.match(dispatchLoopModule, /runtimeDispatchWake\.js/u);
+  assert.doesNotMatch(dispatchLoopModule, /const ensured = await ensureTargetSession\(/u);
+  assert.doesNotMatch(dispatchLoopModule, /await maybeAutoCheckoutChannelTask\(/u);
   assert.match(dispatchWakeModule, /export async function prepareReadyRequests/u);
 });
 
-test('runtime dispatch routing consumes dedicated runtime dispatch execution helpers instead of defining them inline', async () => {
+test('runtime dispatch routing consumes a dedicated dispatch-loop module instead of defining queue processing inline', async () => {
   const dispatchRouting = await readFile(
     new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+    'utf8',
+  );
+  const dispatchLoopModule = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(dispatchRouting, /runtimeDispatchLoop\.js/u);
+  assert.doesNotMatch(dispatchRouting, /while \(queue\.length > 0\)/u);
+  assert.doesNotMatch(dispatchRouting, /const allowedRequests: DispatchRequest\[\] = \[\]/u);
+  assert.match(dispatchLoopModule, /export async function processDispatchQueue/u);
+  assert.match(dispatchLoopModule, /while \(queue\.length > 0\)/u);
+});
+
+test('runtime dispatch loop consumes dedicated runtime dispatch execution helpers instead of defining them inline', async () => {
+  const dispatchLoopModule = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
     'utf8',
   );
   const dispatchExecutionModule = await readFile(
@@ -292,10 +319,10 @@ test('runtime dispatch routing consumes dedicated runtime dispatch execution hel
     'utf8',
   );
 
-  assert.match(dispatchRouting, /runtimeDispatchExecution\.js/u);
-  assert.doesNotMatch(dispatchRouting, /async function executeDispatch\(/u);
-  assert.doesNotMatch(dispatchRouting, /async function settleInCompletionOrder/u);
-  assert.doesNotMatch(dispatchRouting, /function shouldBlockAntiPingPong\(/u);
+  assert.match(dispatchLoopModule, /runtimeDispatchExecution\.js/u);
+  assert.doesNotMatch(dispatchLoopModule, /async function executeDispatch\(/u);
+  assert.doesNotMatch(dispatchLoopModule, /async function settleInCompletionOrder/u);
+  assert.doesNotMatch(dispatchLoopModule, /function shouldBlockAntiPingPong\(/u);
   assert.match(dispatchExecutionModule, /export async function executeDispatch/u);
   assert.match(dispatchExecutionModule, /export async function settleInCompletionOrder/u);
   assert.match(dispatchExecutionModule, /export function shouldBlockAntiPingPong/u);
@@ -368,9 +395,9 @@ test('runtime dispatch execution consumes dedicated runtime session-routing help
   assert.match(sessionSharedModule, /export function shouldRewriteOrchestratorReply/u);
 });
 
-test('runtime dispatch routing consumes dedicated dispatch-result helpers instead of defining response handling inline', async () => {
-  const dispatchRoutingModule = await readFile(
-    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+test('runtime dispatch loop consumes dedicated dispatch-result helpers instead of defining response handling inline', async () => {
+  const dispatchLoopModule = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchLoop.ts', import.meta.url),
     'utf8',
   );
   const dispatchResultsModule = await readFile(
@@ -378,10 +405,10 @@ test('runtime dispatch routing consumes dedicated dispatch-result helpers instea
     'utf8',
   );
 
-  assert.match(dispatchRoutingModule, /runtimeDispatchResults\.js/u);
-  assert.doesNotMatch(dispatchRoutingModule, /const continuationResolution = resolveTargets/u);
-  assert.doesNotMatch(dispatchRoutingModule, /nextState = setReadyAfterMessage\(/u);
-  assert.doesNotMatch(dispatchRoutingModule, /resolveExecutionMetadataForTarget\(/u);
+  assert.match(dispatchLoopModule, /runtimeDispatchResults\.js/u);
+  assert.doesNotMatch(dispatchLoopModule, /const continuationResolution = resolveTargets/u);
+  assert.doesNotMatch(dispatchLoopModule, /nextState = setReadyAfterMessage\(/u);
+  assert.doesNotMatch(dispatchLoopModule, /resolveExecutionMetadataForTarget\(/u);
   assert.match(dispatchResultsModule, /export function applyDispatchExecutions/u);
   assert.match(dispatchResultsModule, /setReadyAfterMessage/u);
   assert.match(dispatchResultsModule, /resolveExecutionMetadataForTarget/u);
