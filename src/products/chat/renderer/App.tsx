@@ -27,12 +27,9 @@ import {
 } from '../../../shared/sidebarPreference';
 import type { AppShellPayload } from '../api/contracts';
 import {
-  assignCatToChannelApi,
-  createGlobalCat,
   deleteGlobalCat,
   resetSetup,
   deleteChatChannel,
-  removeCatFromChannelApi,
   writeCoreApprovalDecision,
   writeCoreOperatorAction,
 } from './api';
@@ -55,6 +52,7 @@ import {
 import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
 import { useOperatorLoop } from './useOperatorLoop';
 import { useAppShellRouting } from './useAppShellRouting';
+import { useCatAssignmentActions } from './useCatAssignmentActions';
 import { useComposerSubmit } from './useComposerSubmit';
 import { useFolderBrowser } from './useFolderBrowser';
 
@@ -213,6 +211,22 @@ export default function App() {
     selectedChannel,
     setBusy,
     setFeedback,
+  });
+  const {
+    onAssignExistingCat,
+    onCreateAndAssignCat,
+    onCreateAndDraftCat,
+    onRemoveAssignedCat,
+    toggleDraftCat,
+  } = useCatAssignmentActions({
+    state,
+    setState,
+    catForm,
+    setCatForm,
+    setBusy,
+    setFeedback,
+    setAddCatOpen,
+    setDraftCatIds,
   });
 
   // --- Effects ---
@@ -474,94 +488,6 @@ export default function App() {
     }
   }
 
-  async function onCreateAndAssignCat(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (state.status !== 'ready') return;
-    const channelId = state.payload.chat.selectedChannelId;
-    if (!channelId) return;
-
-    setBusy('cat:create-assign');
-    try {
-      const trimmedName = catForm.name.trim();
-      const previousIds = new Set(state.payload.chat.cats.map((p) => p.id));
-      const created = await createGlobalCat({
-        name: trimmedName,
-        provider: catForm.provider,
-        instance: catForm.instance || undefined,
-        model: catForm.model || undefined,
-      });
-      startTransition(() => setState({ status: 'ready', payload: created }));
-
-      const newCat = created.chat.cats.find((p) => !previousIds.has(p.id));
-      if (!newCat) {
-        setCatForm(emptyCatForm());
-        setFeedback('Cat created. Open "Choose existing" to assign it.');
-        setBusy('');
-        return;
-      }
-
-      const assigned = await assignCatToChannelApi(channelId, {
-        catId: newCat.id,
-        provider: newCat.defaultExecutionTarget.provider,
-        instance: newCat.defaultExecutionTarget.instance ?? undefined,
-        model: newCat.defaultExecutionTarget.model ?? undefined,
-      });
-      startTransition(() => {
-        setState({ status: 'ready', payload: assigned });
-        setCatForm(emptyCatForm());
-        setAddCatOpen(false);
-        setFeedback('');
-      });
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to create cat.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onAssignExistingCat(cat: { id: string; defaultExecutionTarget: { provider: string; instance: string | null; model: string | null } }): Promise<void> {
-    if (state.status !== 'ready') return;
-    const channelId = state.payload.chat.selectedChannelId;
-    if (!channelId) return;
-
-    setBusy(`cat:assign:${cat.id}`);
-    try {
-      const payload = await assignCatToChannelApi(channelId, {
-        catId: cat.id,
-        provider: cat.defaultExecutionTarget.provider,
-        instance: cat.defaultExecutionTarget.instance ?? undefined,
-        model: cat.defaultExecutionTarget.model ?? undefined,
-      });
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setFeedback('');
-      });
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to assign cat.');
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function onRemoveAssignedCat(cat: { id: string }): Promise<void> {
-    if (state.status !== 'ready') return;
-    const channelId = state.payload.chat.selectedChannelId;
-    if (!channelId) return;
-
-    setBusy(`cat:remove:${cat.id}`);
-    try {
-      const payload = await removeCatFromChannelApi(channelId, cat.id);
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setFeedback('');
-      });
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to remove cat.');
-    } finally {
-      setBusy('');
-    }
-  }
-
   async function onResetSetup(): Promise<void> {
     if (!window.confirm('This will erase all chats, cats, and settings. Continue?')) return;
     setBusy('setup:reset');
@@ -588,39 +514,6 @@ export default function App() {
     setDraftCwd(null);
     setDraftCatIds([]);
     setDraftFiles([]);
-  }
-
-  function toggleDraftCat(catId: string): void {
-    setDraftCatIds((prev) =>
-      prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId],
-    );
-  }
-
-  async function onCreateAndDraftCat(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (state.status !== 'ready') return;
-    setBusy('cat:create-assign');
-    try {
-      const previousIds = new Set(state.payload.chat.cats.map((p) => p.id));
-      const created = await createGlobalCat({
-        name: catForm.name.trim(),
-        provider: catForm.provider,
-        instance: catForm.instance || undefined,
-        model: catForm.model || undefined,
-      });
-      startTransition(() => setState({ status: 'ready', payload: created }));
-      const newCat = created.chat.cats.find((p) => !previousIds.has(p.id));
-      if (newCat) {
-        setDraftCatIds((prev) => [...prev, newCat.id]);
-      }
-      setCatForm(emptyCatForm());
-      setAddCatOpen(false);
-      setFeedback('');
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to create cat.');
-    } finally {
-      setBusy('');
-    }
   }
 
   // --- Render ---

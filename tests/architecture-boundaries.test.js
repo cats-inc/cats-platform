@@ -419,6 +419,27 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
   assert.match(hookSource, /sendChatMessage/u);
 });
 
+test('renderer app consumes dedicated cat-assignment actions instead of defining cat create/assign flows inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/chat/renderer/useCatAssignmentActions.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /useCatAssignmentActions/u);
+  assert.doesNotMatch(appSource, /async function onCreateAndAssignCat\(/u);
+  assert.doesNotMatch(appSource, /async function onCreateAndDraftCat\(/u);
+  assert.doesNotMatch(appSource, /async function onAssignExistingCat\(/u);
+  assert.doesNotMatch(appSource, /async function onRemoveAssignedCat\(/u);
+  assert.match(hookSource, /export function useCatAssignmentActions/u);
+  assert.match(hookSource, /createGlobalCat/u);
+  assert.match(hookSource, /assignCatToChannelApi/u);
+  assert.match(hookSource, /removeCatFromChannelApi/u);
+});
+
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
