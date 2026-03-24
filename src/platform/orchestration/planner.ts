@@ -2,9 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   ChatState,
+} from '../../shared/app-shell.js';
+import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
-} from '../../shared/app-shell.js';
+} from '../../shared/roomRouting.js';
 import { resolveSkillProfileManifest } from '../../shared/skillProfiles.js';
 import type { CatsCoreState } from '../../core/types.js';
 import type {

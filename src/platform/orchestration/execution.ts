@@ -8,7 +8,7 @@ import type {
   RoomWorkflowTargetState,
   RoomWorkflowTargetStatus,
   RoomWorkflowTurn,
-} from '../../shared/app-shell.js';
+} from '../../shared/roomRouting.js';
 import type { CatsCoreState } from '../../core/types.js';
 import type {
   OrchestratorActionEnvelope,

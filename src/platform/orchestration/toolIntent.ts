@@ -1,4 +1,4 @@
-import type { RoomRoutingMode } from '../../shared/app-shell.js';
+import type { RoomRoutingMode } from '../../shared/roomRouting.js';
 import type {
   OrchestratorTransportContext,
   ToolIntentManifest,

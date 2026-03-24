@@ -82,6 +82,38 @@ test('platform orchestrator contracts own their operator-loop view types', async
   );
 });
 
+test('shared room-routing contracts are extracted from chat api contracts', async () => {
+  const chatContracts = await readFile(
+    new URL('../src/products/chat/api/contracts.ts', import.meta.url),
+    'utf8',
+  );
+  const appShell = await readFile(
+    new URL('../src/shared/app-shell.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(chatContracts, /shared\/roomRouting\.js/u);
+  assert.doesNotMatch(
+    chatContracts,
+    /export interface RoomRoutingState/u,
+  );
+  assert.match(appShell, /from '\.\/roomRouting\.js'/u);
+});
+
+test('platform consumes room-routing types from the shared roomRouting module', async () => {
+  const orchestratorContracts = await readFile(
+    new URL('../src/platform/orchestration/contracts.ts', import.meta.url),
+    'utf8',
+  );
+  const telegramBridge = await readFile(
+    new URL('../src/platform/transports/telegram/bridge.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(orchestratorContracts, /shared\/roomRouting\.js/u);
+  assert.match(telegramBridge, /shared\/roomRouting\.js/u);
+});
+
 test('platform telegram bridge stays behind an injected room bridge seam', async () => {
   const source = await readFile(
     new URL('../src/platform/transports/telegram/bridge.ts', import.meta.url),

@@ -1,6 +1,7 @@
 import { createCatActorId } from '../../../core/model.js';
 import type { BotBindingRecord } from '../../../core/types.js';
-import type { ChatState, RoomRoutingMode } from '../../../shared/app-shell.js';
+import type { ChatState } from '../../../shared/app-shell.js';
+import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import type { CatsMemoryService } from '../../memory/index.js';
 import type {

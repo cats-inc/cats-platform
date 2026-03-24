@@ -1,8 +1,11 @@
 import type {
   ChannelDispatchResult,
   ChatState,
+} from '../../shared/app-shell.js';
+import type {
   ParticipantSessionStatus,
   RoomRoutingCheckpointKind,
+  RoomRoutingMode,
   RoomRoutingParticipantRef,
   RoomRouteResolution,
   RoomRoutingState,
@@ -10,8 +13,7 @@ import type {
   RoomWorkflowBranchStrategy,
   RoomWorkflowHandoffReason,
   RoomWorkflowShape,
-  RoomRoutingMode,
-} from '../../shared/app-shell.js';
+} from '../../shared/roomRouting.js';
 import type {
   CatsCoreState,
   CoreApprovalDecisionAction,
