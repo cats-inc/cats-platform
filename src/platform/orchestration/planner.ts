@@ -1,9 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-  ChatState,
-} from '../../shared/app-shell.js';
-import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
 } from '../../shared/roomRouting.js';
@@ -22,6 +19,7 @@ import type {
   OrchestratorExecutionLoopContract,
   OrchestratorChannelCat,
   OrchestratorChannelView,
+  OrchestratorStateView,
   OrchestratorPlannerChannelContext,
   OrchestratorPlannerSurface,
 } from './contracts.js';
@@ -67,10 +65,10 @@ function resolveWorkflowHandoffReason(trigger: RoomRoutingTrigger) {
   }
 }
 
-function buildOrchestratorOperatorSeams(
+function buildOrchestratorOperatorSeams<TState extends OrchestratorStateView>(
   core: CatsCoreState,
   channelId: string,
-  plannerSurface: OrchestratorPlannerSurface,
+  plannerSurface: OrchestratorPlannerSurface<TState>,
 ): OrchestratorOperatorSeams {
   const operatorView = plannerSurface.buildOperatorView(core, channelId);
 
@@ -85,19 +83,19 @@ function buildOrchestratorOperatorSeams(
   };
 }
 
-export function resolveOrchestratorOperatorSeams(
+export function resolveOrchestratorOperatorSeams<TState extends OrchestratorStateView>(
   core: CatsCoreState,
   channelId: string,
-  plannerSurface: OrchestratorPlannerSurface,
+  plannerSurface: OrchestratorPlannerSurface<TState>,
 ): OrchestratorOperatorSeams {
   return buildOrchestratorOperatorSeams(core, channelId, plannerSurface);
 }
 
-function buildExecutionLoopContract(
+function buildExecutionLoopContract<TState extends OrchestratorStateView>(
   channel: OrchestratorChannelView,
   initialTargetCount: number,
   trigger: RoomRoutingTrigger,
-  plannerSurface: OrchestratorPlannerSurface,
+  plannerSurface: OrchestratorPlannerSurface<TState>,
 ): OrchestratorExecutionLoopContract {
   const roomRouting = plannerSurface.resolveRoomRoutingState(channel.roomRouting);
   return {
@@ -114,10 +112,10 @@ function buildExecutionLoopContract(
   };
 }
 
-function buildOrchestratorParticipantPlan(
-  state: ChatState,
+function buildOrchestratorParticipantPlan<TState extends OrchestratorStateView>(
+  state: TState,
   channelContext: OrchestratorPlannerChannelContext,
-  plannerSurface: OrchestratorPlannerSurface,
+  plannerSurface: OrchestratorPlannerSurface<TState>,
 ): OrchestratorParticipantPlan {
   return {
     participantKind: 'orchestrator',
@@ -211,11 +209,11 @@ function buildInitialTargetPlan(
   };
 }
 
-export function buildOrchestratorTurnPlan(
-  state: ChatState,
+export function buildOrchestratorTurnPlan<TState extends OrchestratorStateView>(
+  state: TState,
   core: CatsCoreState,
   input: OrchestratorPlanRequest,
-  plannerSurface: OrchestratorPlannerSurface,
+  plannerSurface: OrchestratorPlannerSurface<TState>,
 ): OrchestratorTurnPlan {
   const channel = plannerSurface.buildChannelView(state, input.channelId);
   const transport = resolveTransport(input.transport);
@@ -294,11 +292,11 @@ export function buildOrchestratorTurnPlan(
   };
 }
 
-export function buildOrchestratorExecutionLoopSnapshot(
-  state: ChatState,
+export function buildOrchestratorExecutionLoopSnapshot<TState extends OrchestratorStateView>(
+  state: TState,
   core: CatsCoreState,
   channelId: string,
-  plannerSurface: OrchestratorPlannerSurface,
+  plannerSurface: OrchestratorPlannerSurface<TState>,
   selection: {
     runId?: string | null;
     turnId?: string | null;
@@ -322,11 +320,11 @@ export function buildOrchestratorExecutionLoopSnapshot(
   };
 }
 
-export function buildOrchestratorPlanResponse(
-  state: ChatState,
+export function buildOrchestratorPlanResponse<TState extends OrchestratorStateView>(
+  state: TState,
   core: CatsCoreState,
   input: OrchestratorPlanRequest,
-  plannerSurface: OrchestratorPlannerSurface,
+  plannerSurface: OrchestratorPlannerSurface<TState>,
 ): OrchestratorPlanResponse {
   return {
     contractVersion: ORCHESTRATOR_CONTRACT_VERSION,
@@ -336,11 +334,11 @@ export function buildOrchestratorPlanResponse(
   };
 }
 
-export function buildOrchestratorExecutionLoopResponse(
-  state: ChatState,
+export function buildOrchestratorExecutionLoopResponse<TState extends OrchestratorStateView>(
+  state: TState,
   core: CatsCoreState,
   channelId: string,
-  plannerSurface: OrchestratorPlannerSurface,
+  plannerSurface: OrchestratorPlannerSurface<TState>,
   runId?: string | null,
 ): OrchestratorExecutionLoopResponse {
   return {

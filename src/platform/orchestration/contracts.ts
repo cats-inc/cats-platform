@@ -1,8 +1,4 @@
 import type {
-  ChannelDispatchResult,
-  ChatState,
-} from '../../shared/app-shell.js';
-import type {
   ParticipantSessionStatus,
   RoomRoutingCheckpointKind,
   RoomRoutingMode,
@@ -13,6 +9,7 @@ import type {
   RoomWorkflowBranchStrategy,
   RoomWorkflowHandoffReason,
   RoomWorkflowShape,
+  RoomWorkflowTargetStatus,
 } from '../../shared/roomRouting.js';
 import type {
   CatsCoreState,
@@ -246,6 +243,16 @@ export interface OrchestratorParticipantExecutionState {
   lease: OrchestratorParticipantExecutionLease;
 }
 
+export interface OrchestratorGlobalView {
+  executionTarget: ExecutionTargetSummary;
+  skillProfile: string | null;
+  mcpProfile: string | null;
+}
+
+export interface OrchestratorStateView {
+  globalOrchestrator: OrchestratorGlobalView;
+}
+
 export interface OrchestratorChannelCat {
   catId: string;
   name: string;
@@ -271,33 +278,54 @@ export interface OrchestratorChannelView {
   roomRouting?: RoomRoutingState;
 }
 
-export interface OrchestratorChatStore {
-  read(): Promise<ChatState>;
-  write(state: ChatState): Promise<ChatState>;
+export interface OrchestratorDispatchResult {
+  targetKind: 'orchestrator' | 'cat';
+  targetId: string;
+  targetName: string;
+  sessionId: string | null;
+  status: 'sent' | 'skipped' | 'error';
+  dispatchId?: string;
+  turnId?: string;
+  targetStatus?: RoomWorkflowTargetStatus;
+  error?: string;
+  sourceMessageId?: string;
+  trigger?: RoomRoutingTrigger;
+  dispatchDepth?: number;
+}
+
+export interface OrchestratorChatStore<TState extends OrchestratorStateView = OrchestratorStateView> {
+  read(): Promise<TState>;
+  write(state: TState): Promise<TState>;
   readCore(): Promise<CatsCoreState>;
   writeCore(state: CatsCoreState): Promise<CatsCoreState>;
 }
 
-export interface OrchestratorChannelRouteInput<TCompanionStore = unknown> {
-  state: ChatState;
+export interface OrchestratorChannelRouteInput<
+  TCompanionStore = unknown,
+  TState extends OrchestratorStateView = OrchestratorStateView,
+> {
+  state: TState;
   channelId: string;
   body: string;
   senderName?: string;
   runtimeClient: RuntimeClient;
   now: Date;
   transport: 'telegram' | 'web';
-  chatStore: OrchestratorChatStore;
+  chatStore: OrchestratorChatStore<TState>;
   companionStore?: TCompanionStore;
   memoryService?: CatsMemoryService;
 }
 
-export interface OrchestratorChannelRouter<TCompanionStore = unknown> {
-  buildChannelView(state: ChatState, channelId: string): OrchestratorChannelView;
+export interface OrchestratorChannelRouter<
+  TCompanionStore = unknown,
+  TState extends OrchestratorStateView = OrchestratorStateView,
+> {
+  buildChannelView(state: TState, channelId: string): OrchestratorChannelView;
   routeChannelMessage(
-    input: OrchestratorChannelRouteInput<TCompanionStore>,
+    input: OrchestratorChannelRouteInput<TCompanionStore, TState>,
   ): Promise<{
-    state: ChatState;
-    results: ChannelDispatchResult[];
+    state: TState;
+    results: OrchestratorDispatchResult[];
   }>;
 }
 
@@ -314,10 +342,10 @@ export interface OrchestratorMentionRouteResult {
   resolution: RoomRouteResolution;
 }
 
-export interface OrchestratorPlannerSurface {
-  buildChannelView(state: ChatState, channelId: string): OrchestratorChannelView;
+export interface OrchestratorPlannerSurface<TState extends OrchestratorStateView = OrchestratorStateView> {
+  buildChannelView(state: TState, channelId: string): OrchestratorChannelView;
   resolveMentionRoute(
-    state: ChatState,
+    state: TState,
     channelId: string,
     body: string,
     options: {
@@ -326,7 +354,7 @@ export interface OrchestratorPlannerSurface {
     },
   ): OrchestratorMentionRouteResult;
   resolveRoomRoutingState(roomRouting: RoomRoutingState | null | undefined): RoomRoutingState;
-  resolveOrchestratorDisplayName(state: ChatState): string;
+  resolveOrchestratorDisplayName(state: TState): string;
   buildOperatorView(core: CatsCoreState, channelId: string): OrchestratorOperatorView | null;
   buildRunInspectorView(
     operatorView: OrchestratorOperatorView | null,
@@ -546,7 +574,7 @@ export interface OrchestratorDispatchResponse {
     status: 'dispatched' | 'blocked';
     blockedReason: 'approval_pending' | null;
     sourceMessageId: string | null;
-    results: ChannelDispatchResult[];
+    results: OrchestratorDispatchResult[];
   };
   executionLoop: OrchestratorExecutionLoopSnapshot;
 }

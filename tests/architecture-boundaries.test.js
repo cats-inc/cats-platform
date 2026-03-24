@@ -52,6 +52,10 @@ test('platform orchestrator planner stays behind an injected planner surface sea
     source,
     /products\/chat\/shared\/operatorLoop\.js/u,
   );
+  assert.doesNotMatch(
+    source,
+    /shared\/app-shell\.js/u,
+  );
 });
 
 test('platform orchestrator contracts own their operator-loop view types', async () => {
@@ -80,6 +84,12 @@ test('platform orchestrator contracts own their operator-loop view types', async
     source,
     /\bParticipantExecutionLease\b/u,
   );
+  assert.doesNotMatch(
+    source,
+    /shared\/app-shell\.js/u,
+  );
+  assert.match(source, /export interface OrchestratorStateView/u);
+  assert.match(source, /export interface OrchestratorDispatchResult/u);
 });
 
 test('shared room-routing contracts are extracted from chat api contracts', async () => {
@@ -234,6 +244,11 @@ test('platform telegram bridge stays behind an injected room bridge seam', async
     source,
     /products\/chat\/state\/companionBoxStore\.js/u,
   );
+  assert.doesNotMatch(
+    source,
+    /shared\/app-shell\.js/u,
+  );
+  assert.match(source, /export interface TelegramRoomBridgeState/u);
 });
 
 test('platform telegram polling stays behind an injected room bridge seam', async () => {

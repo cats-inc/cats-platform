@@ -1,4 +1,5 @@
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
+import type { ChatState } from '../api/contracts.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
 import { appendMessage, createChannel, requireChannel } from './model.js';
 import { routeChannelMessage } from './runtimeActions.js';
@@ -8,7 +9,7 @@ import type { ChatStore } from './store.js';
 export function createChatTelegramRoomBridge(input: {
   chatStore: ChatStore;
   companionStore: CompanionBoxStore;
-}): TelegramRoomBridge {
+}): TelegramRoomBridge<ChatState> {
   return {
     readState() {
       return input.chatStore.read();

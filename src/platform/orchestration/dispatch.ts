@@ -7,6 +7,7 @@ import type {
   OrchestratorDispatchResponse,
   OrchestratorPlannerSurface,
   OrchestratorPlanRequest,
+  OrchestratorStateView,
 } from './contracts.js';
 import {
   ORCHESTRATOR_CONTRACT_VERSION,
@@ -22,18 +23,21 @@ import {
   resolveOrchestratorOperatorSeams,
 } from './planner.js';
 
-interface DispatchOrchestratorTurnInput<TCompanionStore = unknown> extends OrchestratorPlanRequest {
-  chatStore: OrchestratorChatStore;
-  channelRouter: OrchestratorChannelRouter<TCompanionStore>;
-  plannerSurface: OrchestratorPlannerSurface;
+interface DispatchOrchestratorTurnInput<
+  TCompanionStore = unknown,
+  TState extends OrchestratorStateView = OrchestratorStateView,
+> extends OrchestratorPlanRequest {
+  chatStore: OrchestratorChatStore<TState>;
+  channelRouter: OrchestratorChannelRouter<TCompanionStore, TState>;
+  plannerSurface: OrchestratorPlannerSurface<TState>;
   runtimeClient: RuntimeClient;
   now?: Date;
   companionStore?: TCompanionStore;
   memoryService?: CatsMemoryService;
 }
 
-async function persistPendingApprovalDispatch<TCompanionStore>(
-  input: DispatchOrchestratorTurnInput<TCompanionStore>,
+async function persistPendingApprovalDispatch<TCompanionStore, TState extends OrchestratorStateView>(
+  input: DispatchOrchestratorTurnInput<TCompanionStore, TState>,
   taskId: string,
   now: Date,
 ): Promise<void> {
@@ -72,8 +76,8 @@ async function persistPendingApprovalDispatch<TCompanionStore>(
   await input.chatStore.writeCore(next.core);
 }
 
-export async function dispatchOrchestratorTurn<TCompanionStore>(
-  input: DispatchOrchestratorTurnInput<TCompanionStore>,
+export async function dispatchOrchestratorTurn<TCompanionStore, TState extends OrchestratorStateView>(
+  input: DispatchOrchestratorTurnInput<TCompanionStore, TState>,
 ): Promise<OrchestratorDispatchResponse> {
   const now = input.now ?? new Date();
   const stateBefore = await input.chatStore.read();

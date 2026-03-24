@@ -47,10 +47,10 @@ export interface ChatApiDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
   chatStore: ChatStore;
-  orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore>;
-  orchestratorPlannerSurface: OrchestratorPlannerSurface;
+  orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
+  orchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState>;
   telegramRelay?: TelegramRelay;
-  telegramRoomBridge: TelegramRoomBridge;
+  telegramRoomBridge: TelegramRoomBridge<ChatState>;
   pollingSupervisor?: TelegramPollingSupervisor;
   companionStore: CompanionBoxStore;
   memoryService: CatsMemoryService;

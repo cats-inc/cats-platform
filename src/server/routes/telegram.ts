@@ -21,7 +21,7 @@ interface TelegramQueryDependencies {
 }
 
 interface TelegramWebhookDependencies extends TelegramQueryDependencies {
-  telegramRoomBridge: TelegramRoomBridge;
+  telegramRoomBridge: TelegramRoomBridge<ChatState>;
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   now?: () => Date;
@@ -263,7 +263,7 @@ interface TelegramPollingQueryDependencies {
 interface TelegramPollingReconnectDependencies {
   bindingId: string;
   chatStore: ChatStore;
-  telegramRoomBridge: TelegramRoomBridge;
+  telegramRoomBridge: TelegramRoomBridge<ChatState>;
   memoryService: CatsMemoryService;
   telegramRelay: TelegramRelay;
   runtimeClient: RuntimeClient;

@@ -4,6 +4,7 @@ import type {
 } from '../../../platform/orchestration/contracts.js';
 import { buildApprovalQueue } from '../../../core/model.js';
 import type { CompanionBoxStore } from './companionBoxStore.js';
+import type { ChatState } from '../api/contracts.js';
 import type { ChatStore } from './store.js';
 import { buildChannelView, resolveOrchestratorDisplayName } from './model.js';
 import { resolveMentionRoute } from './mentionRouter.js';
@@ -15,7 +16,7 @@ import {
   resolveChatConversationId,
 } from '../shared/operatorLoop.js';
 
-export const chatOrchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore> = {
+export const chatOrchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState> = {
   buildChannelView,
   async routeChannelMessage(input) {
     return routeChannelMessage(
@@ -37,7 +38,7 @@ export const chatOrchestratorChannelRouter: OrchestratorChannelRouter<CompanionB
   },
 };
 
-export const chatOrchestratorPlannerSurface: OrchestratorPlannerSurface = {
+export const chatOrchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState> = {
   buildChannelView,
   resolveMentionRoute,
   resolveRoomRoutingState,

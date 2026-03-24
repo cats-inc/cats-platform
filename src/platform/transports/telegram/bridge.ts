@@ -1,6 +1,5 @@
 import { createCatActorId } from '../../../core/model.js';
 import type { BotBindingRecord } from '../../../core/types.js';
-import type { ChatState } from '../../../shared/app-shell.js';
 import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import type { CatsMemoryService } from '../../memory/index.js';
@@ -42,8 +41,14 @@ export interface TelegramRoomBridgeCreateRoomInput {
   participantCatIds: string[];
 }
 
-export interface TelegramRoomBridgeRecoveryInput {
-  state: ChatState;
+export interface TelegramRoomBridgeState {
+  selectedChannelId: string;
+  channels: Array<{ id: string }>;
+  cats: Array<{ id: string; name: string }>;
+}
+
+export interface TelegramRoomBridgeRecoveryInput<TState extends TelegramRoomBridgeState = TelegramRoomBridgeState> {
+  state: TState;
   roomId: string;
   senderName: string;
   inboundBody: string;
@@ -52,25 +57,25 @@ export interface TelegramRoomBridgeRecoveryInput {
   includeInboundMessage: boolean;
 }
 
-export interface TelegramRoomBridge {
-  readState(): Promise<ChatState>;
-  writeState(state: ChatState): Promise<ChatState>;
+export interface TelegramRoomBridge<TState extends TelegramRoomBridgeState = TelegramRoomBridgeState> {
+  readState(): Promise<TState>;
+  writeState(state: TState): Promise<TState>;
   createRoom(
-    state: ChatState,
+    state: TState,
     input: TelegramRoomBridgeCreateRoomInput,
     timestamp: Date,
-  ): { state: ChatState; roomId: string };
-  readRoom(state: ChatState, roomId: string): TelegramRoomBridgeView;
+  ): { state: TState; roomId: string };
+  readRoom(state: TState, roomId: string): TelegramRoomBridgeView;
   routeRoomMessage(input: {
-    state: ChatState;
+    state: TState;
     roomId: string;
     body: string;
     senderName: string;
     runtimeClient: RuntimeClient;
     memoryService: CatsMemoryService;
     timestamp: Date;
-  }): Promise<{ state: ChatState }>;
-  buildRecoveryState(input: TelegramRoomBridgeRecoveryInput): ChatState;
+  }): Promise<{ state: TState }>;
+  buildRecoveryState(input: TelegramRoomBridgeRecoveryInput<TState>): TState;
 }
 
 function collapseWhitespace(value: string | null | undefined): string | null {
@@ -146,7 +151,7 @@ function resolveInternalRoomMode(binding: BotBindingRecord | null): RoomRoutingM
 }
 
 function resolveBoundCat(
-  state: ChatState,
+  state: TelegramRoomBridgeState,
   binding: BotBindingRecord | null,
   context: TelegramRelayContext,
 ): { catId: string | null; catName: string | null } {
@@ -186,7 +191,10 @@ function buildRoomTopic(
   return `Telegram inbox ${viaBot} from ${sender}`;
 }
 
-function restoreSelection(state: ChatState, selectedChannelId: string): ChatState {
+function restoreSelection<TState extends TelegramRoomBridgeState>(
+  state: TState,
+  selectedChannelId: string,
+): TState {
   if (!selectedChannelId || state.selectedChannelId === selectedChannelId) {
     return state;
   }
@@ -201,9 +209,9 @@ function restoreSelection(state: ChatState, selectedChannelId: string): ChatStat
   };
 }
 
-function buildTelegramReplyText(input: {
-  roomBridge: TelegramRoomBridge;
-  state: ChatState;
+function buildTelegramReplyText<TState extends TelegramRoomBridgeState>(input: {
+  roomBridge: TelegramRoomBridge<TState>;
+  state: TState;
   roomId: string;
   roomCreated: boolean;
   messageCountBeforeDispatch: number;
@@ -224,9 +232,9 @@ function buildTelegramReplyText(input: {
     : `${combined.slice(0, TELEGRAM_REPLY_LIMIT - 1)}…`;
 }
 
-function roomHasInboundMessage(input: {
-  roomBridge: TelegramRoomBridge;
-  state: ChatState;
+function roomHasInboundMessage<TState extends TelegramRoomBridgeState>(input: {
+  roomBridge: TelegramRoomBridge<TState>;
+  state: TState;
   roomId: string;
   senderName: string;
   inboundBody: string;
@@ -269,11 +277,11 @@ export interface TelegramWebhookBridgeResult {
   deliveryReceipt: TelegramDeliveryReceipt | null;
 }
 
-export async function bridgeTelegramWebhookToRoom(input: {
+export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBridgeState>(input: {
   update: TelegramWebhookUpdate;
   receipt: TelegramWebhookReceipt;
   context: TelegramRelayContext;
-  roomBridge: TelegramRoomBridge;
+  roomBridge: TelegramRoomBridge<TState>;
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
@@ -307,7 +315,7 @@ export async function bridgeTelegramWebhookToRoom(input: {
   let roomId = existingBinding?.linkedRoomId ?? null;
   let nextState = currentState;
   let roomCreated = false;
-  let dispatchedState: ChatState | null = null;
+  let dispatchedState: TState | null = null;
   let messageCountBeforeDispatch: number | null = null;
   const inboundBody = buildInboundBody(message);
 

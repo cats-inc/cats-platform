@@ -38,6 +38,7 @@ import {
   InMemoryTelegramRelayStore,
 } from '../../platform/transports/telegram/store.js';
 import { routeChatApi } from '../../products/chat/api/index.js';
+import type { ChatState } from '../../products/chat/api/contracts.js';
 import {
   createFileBackedCompanionBoxStore,
   MemoryCompanionBoxStore,
@@ -88,12 +89,12 @@ export interface ServerDependencies {
   chatStore: ChatStore;
   startup?: AppStartupState;
   companionStore?: CompanionBoxStore;
-  orchestratorChannelRouter?: OrchestratorChannelRouter<CompanionBoxStore>;
-  orchestratorPlannerSurface?: OrchestratorPlannerSurface;
+  orchestratorChannelRouter?: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
+  orchestratorPlannerSurface?: OrchestratorPlannerSurface<ChatState>;
   memoryStore?: CanonicalMemoryStore;
   memoryService?: CatsMemoryService;
   telegramRelay?: TelegramRelay;
-  telegramRoomBridge?: TelegramRoomBridge;
+  telegramRoomBridge?: TelegramRoomBridge<ChatState>;
   pollingSupervisor?: TelegramPollingSupervisor;
   now?: () => Date;
   resumePendingOrchestratorDispatch?: (
@@ -107,12 +108,12 @@ export interface ServerDependencies {
 type ResolvedServerDependencies = ServerDependencies & {
   startup: AppStartupState;
   companionStore: CompanionBoxStore;
-  orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore>;
-  orchestratorPlannerSurface: OrchestratorPlannerSurface;
+  orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
+  orchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState>;
   memoryStore: CanonicalMemoryStore;
   memoryService: CatsMemoryService;
   telegramRelay: TelegramRelay;
-  telegramRoomBridge: TelegramRoomBridge;
+  telegramRoomBridge: TelegramRoomBridge<ChatState>;
   pollingSupervisor: TelegramPollingSupervisor;
 };
 
