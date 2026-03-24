@@ -155,7 +155,7 @@ async function persistTaskMetadata(
     };
   }
 
-  const persisted = await context.dependencies.chatStore.writeCore(updated.core);
+  const persisted = await context.dependencies.coreStore.writeCore(updated.core);
   return {
     core: persisted,
     task: persisted.tasks.find((candidate) => candidate.id === taskId) ?? updated.task,
@@ -172,7 +172,7 @@ async function maybeAutoResumePendingDispatch(
   task: CatsCoreState['tasks'][number] | null;
   autoResume?: CoreOrchestratorAutoResumeSummary;
 }> {
-  const initialCore = await context.dependencies.chatStore.readCore();
+  const initialCore = await context.dependencies.coreStore.readCore();
   const task = initialCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
   const pendingDispatch = readPendingOrchestratorDispatch(task?.metadata);
   if (!task || !pendingDispatch || !context.dependencies.resumePendingOrchestratorDispatch) {
@@ -211,7 +211,7 @@ async function maybeAutoResumePendingDispatch(
       pendingDispatch,
       { trigger },
     );
-    const latestCore = await context.dependencies.chatStore.readCore();
+    const latestCore = await context.dependencies.coreStore.readCore();
     const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
     const autoResume = summarizeAutoResumeDispatch(trigger, dispatch);
 
@@ -270,7 +270,7 @@ async function maybeAutoResumePendingDispatch(
     }
   } catch (error) {
     const autoResume = buildAutoResumeFailureSummary(trigger, error);
-    const latestCore = await context.dependencies.chatStore.readCore();
+    const latestCore = await context.dependencies.coreStore.readCore();
     const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
 
     try {
@@ -307,7 +307,7 @@ async function maybeAutoResumePendingDispatch(
 async function handleCoreApprovals(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  const core = await context.dependencies.chatStore.readCore();
+  const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, { approvals: buildApprovalQueue(core) });
 }
 
@@ -317,7 +317,7 @@ async function handleCoreApprovalWrite(
   try {
     const approval = await readObjectBody(context);
     const now = context.dependencies.now?.() ?? new Date();
-    let nextCore = await context.dependencies.chatStore.readCore();
+    let nextCore = await context.dependencies.coreStore.readCore();
     const taskId = readRequiredString(approval.taskId, 'taskId');
     const previousTask = nextCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
     const next = writeApprovalDecision(
@@ -367,7 +367,7 @@ async function handleCoreApprovalWrite(
       },
       now,
     );
-    let persisted = await context.dependencies.chatStore.writeCore(activity.core);
+    let persisted = await context.dependencies.coreStore.writeCore(activity.core);
     let persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
     let autoResume: CoreOrchestratorAutoResumeSummary | undefined;
     if (
@@ -391,11 +391,11 @@ async function handleCoreApprovalWrite(
         core: persisted,
         previousTask,
         task: persistedTask,
-        chat: await context.dependencies.chatStore.read(),
+        executionLocator: context.dependencies.taskExecutionLocator,
         runtimeClient: context.dependencies.runtimeClient,
         now,
       });
-      persisted = await context.dependencies.chatStore.writeCore(lifecycle.core);
+      persisted = await context.dependencies.coreStore.writeCore(lifecycle.core);
       persistedTask = persisted.tasks.find((candidate) => candidate.id === lifecycle.task.id)
         ?? lifecycle.task;
       wakeups = lifecycle.wakeups;

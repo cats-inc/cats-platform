@@ -26,7 +26,7 @@ import { sendJson, sendMethodNotAllowed } from '../shared/http.js';
 async function handleCoreProjects(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  const core = await context.dependencies.chatStore.readCore();
+  const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, { projects: core.projects });
 }
 
@@ -36,7 +36,7 @@ async function handleCoreProjectWrite(
   try {
     const project = await readWrappedBody(context, 'project');
     const next = upsertCoreProject(
-      await context.dependencies.chatStore.readCore(),
+      await context.dependencies.coreStore.readCore(),
       {
         id: readOptionalString(project.id, 'project.id'),
         title: readRequiredString(project.title, 'project.title'),
@@ -56,7 +56,7 @@ async function handleCoreProjectWrite(
         metadata: readMetadata(project.metadata, 'project.metadata'),
       },
     );
-    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persisted = await context.dependencies.coreStore.writeCore(next.core);
     const persistedProject = persisted.projects.find(
       (candidate) => candidate.id === next.project.id,
     );
@@ -73,7 +73,7 @@ async function handleCoreProjectWrite(
 async function handleCoreWorkItems(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  const core = await context.dependencies.chatStore.readCore();
+  const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, { workItems: core.workItems });
 }
 
@@ -83,7 +83,7 @@ async function handleCoreWorkItemWrite(
   try {
     const workItem = await readWrappedBody(context, 'workItem');
     const next = upsertCoreWorkItem(
-      await context.dependencies.chatStore.readCore(),
+      await context.dependencies.coreStore.readCore(),
       {
         id: readOptionalString(workItem.id, 'workItem.id'),
         title: readRequiredString(workItem.title, 'workItem.title'),
@@ -112,7 +112,7 @@ async function handleCoreWorkItemWrite(
         metadata: readMetadata(workItem.metadata, 'workItem.metadata'),
       },
     );
-    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persisted = await context.dependencies.coreStore.writeCore(next.core);
     const persistedWorkItem = persisted.workItems.find(
       (candidate) => candidate.id === next.workItem.id,
     );
@@ -129,7 +129,7 @@ async function handleCoreWorkItemWrite(
 async function handleCoreArtifacts(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  const core = await context.dependencies.chatStore.readCore();
+  const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, { artifacts: core.artifacts });
 }
 
@@ -139,7 +139,7 @@ async function handleCoreArtifactWrite(
   try {
     const artifact = await readWrappedBody(context, 'artifact');
     const next = upsertCoreArtifact(
-      await context.dependencies.chatStore.readCore(),
+      await context.dependencies.coreStore.readCore(),
       {
         id: readOptionalString(artifact.id, 'artifact.id'),
         title: readRequiredString(artifact.title, 'artifact.title'),
@@ -165,7 +165,7 @@ async function handleCoreArtifactWrite(
         metadata: readMetadata(artifact.metadata, 'artifact.metadata'),
       },
     );
-    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persisted = await context.dependencies.coreStore.writeCore(next.core);
     const persistedArtifact = persisted.artifacts.find(
       (candidate) => candidate.id === next.artifact.id,
     );

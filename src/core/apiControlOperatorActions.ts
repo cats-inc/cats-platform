@@ -70,7 +70,7 @@ async function handleCoreOperatorActionWrite(
     const taskId = readNullableString(body.taskId, 'taskId') ?? null;
     const now = new Date();
     const nowIso = now.toISOString();
-    let core = await context.dependencies.chatStore.readCore();
+    let core = await context.dependencies.coreStore.readCore();
 
     let conversationId: string | null = null;
     let resolvedTaskId: string | null = taskId;
@@ -200,7 +200,7 @@ async function handleCoreOperatorActionWrite(
       },
       now,
     );
-    const persisted = await context.dependencies.chatStore.writeCore(activity.core);
+    const persisted = await context.dependencies.coreStore.writeCore(activity.core);
     const persistedActivity = persisted.activities.find(
       (candidate) => candidate.id === activity.activity.id,
     ) ?? activity.activity;

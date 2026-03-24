@@ -46,6 +46,16 @@ test('app server wires the chat orchestrator adapter into platform orchestration
   assert.match(source, /orchestratorChannelRouter/u);
 });
 
+test('app server wires the chat task-execution locator into core lifecycle routes', async () => {
+  const source = await readFile(
+    new URL('../src/app/server/index.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /createChatTaskExecutionLocator/u);
+  assert.match(source, /taskExecutionLocator/u);
+});
+
 test('platform orchestrator planner stays behind an injected planner surface seam', async () => {
   const source = await readFile(
     new URL('../src/platform/orchestration/planner.ts', import.meta.url),
@@ -1388,6 +1398,9 @@ test('core api consumes dedicated control route modules and api contracts instea
   assert.doesNotMatch(coreApiSource, /async function handleCoreOperatorActionWrite\(/u);
   assert.doesNotMatch(coreApiSource, /async function handleOwnerProfileWrite\(/u);
   assert.doesNotMatch(coreApiSource, /const CORE_TASK_STATUSES = \[/u);
+  assert.match(typesSource, /from '\.\/store\.js'/u);
+  assert.match(typesSource, /taskExecutionLocator\.js/u);
+  assert.doesNotMatch(typesSource, /products\/chat\/state\/store\.js/u);
   assert.match(controlRoutesSource, /export async function routeCoreControlApi/u);
   assert.match(controlRoutesSource, /apiTypes\.js/u);
   assert.match(controlRoutesSource, /apiControlApprovals\.js/u);
@@ -1408,6 +1421,9 @@ test('core api consumes dedicated control route modules and api contracts instea
   assert.match(recordPlanningRoutesSource, /apiConstants\.js/u);
   assert.match(recordPlanningRoutesSource, /async function handleCoreProjectWrite\(/u);
   assert.match(recordExecutionRoutesSource, /export async function routeCoreExecutionRecordApi/u);
+  assert.doesNotMatch(taskRoutesSource, /context\.dependencies\.chatStore/u);
+  assert.match(taskRoutesSource, /context\.dependencies\.coreStore/u);
+  assert.match(taskRoutesSource, /taskExecutionLocator/u);
   assert.match(recordExecutionRoutesSource, /apiConstants\.js/u);
   assert.match(recordExecutionRoutesSource, /async function handleCoreRunWrite\(/u);
   assert.match(recordGovernanceRoutesSource, /export async function routeCoreGovernanceRecordApi/u);
@@ -1525,15 +1541,30 @@ test('task lifecycle composes dedicated shared and watcher modules instead of de
     new URL('../src/core/taskLifecycleWatchers.ts', import.meta.url),
     'utf8',
   );
+  const locatorSource = await readFile(
+    new URL('../src/core/taskExecutionLocator.ts', import.meta.url),
+    'utf8',
+  );
+  const chatLocatorSource = await readFile(
+    new URL('../src/products/chat/state/taskExecutionLocator.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(lifecycleSource, /taskLifecycleShared\.js/u);
   assert.match(lifecycleSource, /taskLifecycleWatchers\.js/u);
+  assert.match(lifecycleSource, /taskExecutionLocator\.js/u);
   assert.doesNotMatch(lifecycleSource, /function asRecord\(/u);
   assert.doesNotMatch(lifecycleSource, /const activeTaskRunWatchers = new Map/u);
+  assert.doesNotMatch(lifecycleSource, /products\/chat\/api\/contracts\.js/u);
   assert.match(sharedSource, /export function asRecord/u);
   assert.match(sharedSource, /export function buildTerminalTaskMessage/u);
+  assert.doesNotMatch(sharedSource, /products\/chat\/api\/contracts\.js/u);
   assert.match(watcherSource, /export interface StartTaskRunWatcherInput/u);
   assert.match(watcherSource, /export function startTaskRunWatcher/u);
+  assert.doesNotMatch(watcherSource, /products\/chat\/state\/store\.js/u);
+  assert.match(locatorSource, /export interface TaskExecutionLocator/u);
+  assert.match(locatorSource, /export function resolveTaskConversationSessionId/u);
+  assert.match(chatLocatorSource, /export function createChatTaskExecutionLocator/u);
 });
 
 test('core projection composes a dedicated workflow projection module instead of defining workflow record derivation inline', async () => {

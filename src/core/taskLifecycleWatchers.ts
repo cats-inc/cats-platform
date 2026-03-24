@@ -8,7 +8,7 @@ import type {
   CoreRunRecord,
   CoreTaskRecord,
 } from './types.js';
-import type { ChatStore } from '../products/chat/state/store.js';
+import type { CoreStore } from './store.js';
 import type {
   RuntimeClient,
   RuntimeObservedSessionPayload,
@@ -32,7 +32,7 @@ import {
 const activeTaskRunWatchers = new Map<string, Promise<void>>();
 
 export interface StartTaskRunWatcherInput {
-  chatStore: Pick<ChatStore, 'readCore' | 'writeCore'>;
+  coreStore: CoreStore;
   runtimeClient: Pick<RuntimeClient, 'observeSession' | 'streamSession'>;
   taskId: string;
   runId: string;
@@ -60,7 +60,7 @@ async function reconcileObservedTaskRun(
   const error = readNullableString(observedRun.error);
   const usage = asRecord(observedRun.usage);
 
-  const coreBefore = await input.chatStore.readCore();
+  const coreBefore = await input.coreStore.readCore();
   const taskBefore = coreBefore.tasks.find((candidate) => candidate.id === input.taskId);
   const runBefore = coreBefore.runs.find((candidate) => candidate.id === input.runId);
   if (!taskBefore || !runBefore) {
@@ -131,7 +131,7 @@ async function reconcileObservedTaskRun(
     ).core;
   }
 
-  await input.chatStore.writeCore(nextCore);
+  await input.coreStore.writeCore(nextCore);
 }
 
 export function startTaskRunWatcher(input: StartTaskRunWatcherInput): boolean {

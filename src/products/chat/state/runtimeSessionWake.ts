@@ -78,7 +78,7 @@ export async function maybeAutoCheckoutChannelTask(
   const persistedRun = persisted.runs.find((candidate) => candidate.id === checkout.run.id)
     ?? checkout.run;
   startTaskRunWatcher({
-    chatStore,
+    coreStore: chatStore,
     runtimeClient,
     taskId: persistedTask.id,
     runId: persistedRun.id,

@@ -7,20 +7,20 @@ import { sendJson, sendMethodNotAllowed } from '../shared/http.js';
 async function handleCoreState(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  sendJson(context.response, 200, await context.dependencies.chatStore.readCore());
+  sendJson(context.response, 200, await context.dependencies.coreStore.readCore());
 }
 
 async function handleCoreActors(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  const core = await context.dependencies.chatStore.readCore();
+  const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, { actors: core.actors });
 }
 
 async function handleCoreConversations(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  const core = await context.dependencies.chatStore.readCore();
+  const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, { conversations: core.conversations });
 }
 

@@ -13,18 +13,19 @@ import type {
   CoreRunRecord,
   CoreTaskRecord,
 } from './types.js';
-import type { ChatState } from '../products/chat/api/contracts.js';
 import type {
   RuntimeClient,
   RuntimeWakeupCreateResult,
 } from '../platform/runtime/client.js';
 import {
+  resolveTaskConversationSessionId,
+  type TaskExecutionLocator,
+} from './taskExecutionLocator.js';
+import {
   cloneTaskInput,
   isDispatchableTaskStatus,
   mergeTaskLifecycleMetadata,
   resolveActorName,
-  resolveActorSessionId,
-  resolveConversationChannel,
 } from './taskLifecycleShared.js';
 import {
   startTaskRunWatcher,
@@ -40,7 +41,7 @@ export interface ApplyTaskAssignmentLifecycleInput {
   core: CatsCoreState;
   previousTask: CoreTaskRecord | null;
   task: CoreTaskRecord;
-  chat: ChatState;
+  executionLocator?: TaskExecutionLocator;
   runtimeClient?: Pick<RuntimeClient, 'createWakeup'>;
   now?: Date;
 }
@@ -62,7 +63,12 @@ export async function applyTaskAssignmentLifecycle(
   let nextCore = input.core;
   let nextTask = input.task;
 
-  if (!input.runtimeClient || !isDispatchableTaskStatus(nextTask.status) || nextTask.assignedActorIds.length === 0) {
+  if (
+    !input.runtimeClient
+    || !input.executionLocator
+    || !isDispatchableTaskStatus(nextTask.status)
+    || nextTask.assignedActorIds.length === 0
+  ) {
     return {
       core: nextCore,
       task: nextTask,
@@ -85,11 +91,11 @@ export async function applyTaskAssignmentLifecycle(
     };
   }
 
-  const channel = resolveConversationChannel(nextCore, input.chat, nextTask);
+  const conversation = await input.executionLocator.resolveTaskConversation(nextCore, nextTask);
   const wakeupSummaries: Array<Record<string, unknown>> = [];
 
   for (const actorId of actorsToWake) {
-    const sessionId = resolveActorSessionId(channel, actorId);
+    const sessionId = resolveTaskConversationSessionId(conversation, actorId);
     if (!sessionId) {
       continue;
     }

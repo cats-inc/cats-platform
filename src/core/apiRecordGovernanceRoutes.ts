@@ -18,7 +18,7 @@ import { sendJson, sendMethodNotAllowed } from '../shared/http.js';
 async function handleCoreApprovalBindings(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  const core = await context.dependencies.chatStore.readCore();
+  const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, { approvalBindings: core.approvalBindings });
 }
 
@@ -28,7 +28,7 @@ async function handleCoreApprovalBindingWrite(
   try {
     const approvalBinding = await readWrappedBody(context, 'approvalBinding');
     const next = upsertCoreApprovalBinding(
-      await context.dependencies.chatStore.readCore(),
+      await context.dependencies.coreStore.readCore(),
       {
         id: readOptionalString(approvalBinding.id, 'approvalBinding.id'),
         kind: readEnumValue(
@@ -80,7 +80,7 @@ async function handleCoreApprovalBindingWrite(
         ),
       },
     );
-    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persisted = await context.dependencies.coreStore.writeCore(next.core);
     const persistedApprovalBinding = persisted.approvalBindings.find(
       (candidate) => candidate.id === next.approvalBinding.id,
     );

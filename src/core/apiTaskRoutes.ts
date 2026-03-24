@@ -27,7 +27,7 @@ import { matchRoute, sendJson, sendMethodNotAllowed } from '../shared/http.js';
 async function handleCoreTasks(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  const core = await context.dependencies.chatStore.readCore();
+  const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, { tasks: core.tasks });
 }
 
@@ -38,7 +38,7 @@ async function handleCoreTaskWrite(
     const task = await readWrappedBody(context, 'task');
     const approval = asRecord(task.approval);
     const now = context.dependencies.now?.() ?? new Date();
-    const initialCore = await context.dependencies.chatStore.readCore();
+    const initialCore = await context.dependencies.coreStore.readCore();
     const taskId = readOptionalString(task.id, 'task.id') ?? null;
     const previousTask = taskId
       ? initialCore.tasks.find((candidate) => candidate.id === taskId) ?? null
@@ -98,7 +98,7 @@ async function handleCoreTaskWrite(
         core: next.core,
         previousTask,
         task: next.task,
-        chat: await context.dependencies.chatStore.read(),
+        executionLocator: context.dependencies.taskExecutionLocator,
         runtimeClient: context.dependencies.runtimeClient,
         now,
       });
@@ -111,7 +111,7 @@ async function handleCoreTaskWrite(
       lifecycleActivities = lifecycle.activities;
     }
 
-    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persisted = await context.dependencies.coreStore.writeCore(next.core);
     const persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
     const persistedActivities = lifecycleActivities.map((activity) =>
       persisted.activities.find((candidate) => candidate.id === activity.id) ?? activity);
@@ -141,13 +141,13 @@ async function handleCoreTaskCheckout(
     const actorId = readRequiredString(body.actorId, 'actorId');
     const sessionId = readRequiredString(body.sessionId, 'sessionId');
     const result = checkoutTaskExecution({
-      core: await context.dependencies.chatStore.readCore(),
+      core: await context.dependencies.coreStore.readCore(),
       taskId,
       actorId,
       sessionId,
       now,
     });
-    const persisted = await context.dependencies.chatStore.writeCore(result.core);
+    const persisted = await context.dependencies.coreStore.writeCore(result.core);
     const persistedTask = persisted.tasks.find((candidate) => candidate.id === result.task.id)
       ?? result.task;
     const persistedRun = persisted.runs.find((candidate) => candidate.id === result.run.id)
@@ -157,7 +157,7 @@ async function handleCoreTaskCheckout(
     ) ?? result.activity;
     const watcherStarted = context.dependencies.runtimeClient
       ? startTaskRunWatcher({
-          chatStore: context.dependencies.chatStore,
+          coreStore: context.dependencies.coreStore,
           runtimeClient: context.dependencies.runtimeClient,
           taskId: persistedTask.id,
           runId: persistedRun.id,

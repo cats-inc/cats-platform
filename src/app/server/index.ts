@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 import type { AppConfig } from '../../config.js';
 import { routeCoreApi } from '../../core/api.js';
+import type { CoreStore } from '../../core/store.js';
+import type { TaskExecutionLocator } from '../../core/taskExecutionLocator.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type {
   OrchestratorChannelRouter,
@@ -48,6 +50,7 @@ import {
   MemoryChatStore,
   type ChatStore,
 } from '../../products/chat/state/store.js';
+import { createChatTaskExecutionLocator } from '../../products/chat/state/taskExecutionLocator.js';
 import {
   chatOrchestratorChannelRouter,
   chatOrchestratorPlannerSurface,
@@ -87,10 +90,12 @@ export interface ServerDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
   chatStore: ChatStore;
+  coreStore?: CoreStore;
   startup?: AppStartupState;
   companionStore?: CompanionBoxStore;
   orchestratorChannelRouter?: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
   orchestratorPlannerSurface?: OrchestratorPlannerSurface<ChatState>;
+  taskExecutionLocator?: TaskExecutionLocator;
   memoryStore?: CanonicalMemoryStore;
   memoryService?: CatsMemoryService;
   telegramRelay?: TelegramRelay;
@@ -106,10 +111,12 @@ export interface ServerDependencies {
 }
 
 type ResolvedServerDependencies = ServerDependencies & {
+  coreStore: CoreStore;
   startup: AppStartupState;
   companionStore: CompanionBoxStore;
   orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
   orchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState>;
+  taskExecutionLocator: TaskExecutionLocator;
   memoryStore: CanonicalMemoryStore;
   memoryService: CatsMemoryService;
   telegramRelay: TelegramRelay;
@@ -326,7 +333,7 @@ async function routeRequest(
       sendMethodNotAllowed(response, ['GET']);
       return;
     }
-    handleWorkPlaceholder(response, await dependencies.chatStore.readCore());
+    handleWorkPlaceholder(response, await dependencies.coreStore.readCore());
     return;
   }
 
@@ -335,7 +342,7 @@ async function routeRequest(
       sendMethodNotAllowed(response, ['GET']);
       return;
     }
-    handleCodePlaceholder(response, await dependencies.chatStore.readCore());
+    handleCodePlaceholder(response, await dependencies.coreStore.readCore());
     return;
   }
 
@@ -491,6 +498,7 @@ export function createServer(dependencies: ServerDependencies) {
 
   const resolvedDependencies: ResolvedServerDependencies = {
     ...dependencies,
+    coreStore: dependencies.coreStore ?? dependencies.chatStore,
     startup: dependencies.startup ?? createAppStartupState({
       phase: 'ready',
       ready: true,
@@ -498,6 +506,8 @@ export function createServer(dependencies: ServerDependencies) {
     companionStore,
     orchestratorChannelRouter: dependencies.orchestratorChannelRouter ?? chatOrchestratorChannelRouter,
     orchestratorPlannerSurface: dependencies.orchestratorPlannerSurface ?? chatOrchestratorPlannerSurface,
+    taskExecutionLocator: dependencies.taskExecutionLocator
+      ?? createChatTaskExecutionLocator(dependencies.chatStore),
     memoryStore,
     memoryService,
     telegramRelay,

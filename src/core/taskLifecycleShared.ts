@@ -1,14 +1,9 @@
-import { createCatActorId, GLOBAL_ORCHESTRATOR_ACTOR_ID } from './actors.js';
 import type {
   CatsCoreState,
   CoreRecordMetadata,
   CoreRunRecord,
   CoreTaskRecord,
 } from './types.js';
-import type {
-  ChatChannelState,
-  ChatState,
-} from '../products/chat/api/contracts.js';
 import type { RuntimeObservedSessionPayload } from '../platform/runtime/client.js';
 
 export function asRecord(value: unknown): Record<string, unknown> | null {
@@ -97,40 +92,6 @@ export function cloneRunInput(run: CoreRunRecord): {
 
 export function isDispatchableTaskStatus(status: CoreTaskRecord['status']): boolean {
   return status === 'approved' || status === 'in_progress';
-}
-
-export function resolveConversationChannel(
-  core: CatsCoreState,
-  chat: ChatState,
-  task: CoreTaskRecord,
-): ChatChannelState | null {
-  if (!task.conversationId) {
-    return null;
-  }
-
-  const conversation = core.conversations.find((candidate) => candidate.id === task.conversationId);
-  if (!conversation?.sourceChannelId) {
-    return null;
-  }
-
-  return chat.channels.find((candidate) => candidate.id === conversation.sourceChannelId) ?? null;
-}
-
-export function resolveActorSessionId(
-  channel: ChatChannelState | null,
-  actorId: string,
-): string | null {
-  if (!channel) {
-    return null;
-  }
-
-  if (actorId === GLOBAL_ORCHESTRATOR_ACTOR_ID) {
-    return channel.orchestratorLease.sessionId;
-  }
-
-  const assignment = channel.catAssignments.find((candidate) =>
-    candidate.status === 'active' && createCatActorId(candidate.catId) === actorId);
-  return assignment?.execution.lease.sessionId ?? null;
 }
 
 export function resolveActorName(core: CatsCoreState, actorId: string): string {

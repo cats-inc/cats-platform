@@ -17,7 +17,7 @@ function reportCoreMemorySyncFailure(error: unknown): void {
 async function handleOwnerProfile(
   context: CoreApiRouteContext,
 ): Promise<void> {
-  const core = await context.dependencies.chatStore.readCore();
+  const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, { ownerProfile: core.ownerProfile });
 }
 
@@ -27,7 +27,7 @@ async function handleOwnerProfileWrite(
   try {
     const body = await readObjectBody(context);
     const next = patchOwnerProfile(
-      await context.dependencies.chatStore.readCore(),
+      await context.dependencies.coreStore.readCore(),
       {
         displayName: readOptionalString(body.displayName, 'displayName'),
         avatarColor: readNullableString(body.avatarColor, 'avatarColor'),
@@ -46,7 +46,7 @@ async function handleOwnerProfileWrite(
         ),
       },
     );
-    const persisted = await context.dependencies.chatStore.writeCore(next.core);
+    const persisted = await context.dependencies.coreStore.writeCore(next.core);
     if (context.dependencies.memoryService) {
       try {
         await context.dependencies.memoryService.flushOwnerProfile({

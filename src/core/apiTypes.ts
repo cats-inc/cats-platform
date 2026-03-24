@@ -1,12 +1,14 @@
-import type { ChatStore } from '../products/chat/state/store.js';
 import type { CatsMemoryService } from '../platform/memory/index.js';
 import type { RuntimeClient } from '../platform/runtime/client.js';
 import type { OrchestratorDispatchResponse } from '../platform/orchestration/contracts.js';
 import type { PendingOrchestratorDispatchRequest } from '../platform/orchestration/pendingDispatch.js';
 import type { RouteContext } from '../shared/http.js';
+import type { CoreStore } from './store.js';
+import type { TaskExecutionLocator } from './taskExecutionLocator.js';
 
 export interface CoreApiDependencies {
-  chatStore: Pick<ChatStore, 'read' | 'readCore' | 'writeCore'>;
+  coreStore: CoreStore;
+  taskExecutionLocator?: TaskExecutionLocator;
   memoryService?: CatsMemoryService;
   runtimeClient?: Pick<RuntimeClient, 'createWakeup' | 'observeSession' | 'streamSession'>;
   now?: () => Date;
