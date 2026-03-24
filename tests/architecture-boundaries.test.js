@@ -339,6 +339,32 @@ test('core api consumes dedicated control route modules and api contracts instea
   assert.match(typesSource, /export interface CoreOrchestratorAutoResumeSummary/u);
 });
 
+test('core model consumes dedicated shared helpers and input contracts instead of defining them inline', async () => {
+  const modelSource = await readFile(
+    new URL('../src/core/model.ts', import.meta.url),
+    'utf8',
+  );
+  const sharedSource = await readFile(
+    new URL('../src/core/modelShared.ts', import.meta.url),
+    'utf8',
+  );
+  const inputsSource = await readFile(
+    new URL('../src/core/modelInputs.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(modelSource, /modelShared\.js/u);
+  assert.match(modelSource, /modelInputs\.js/u);
+  assert.doesNotMatch(modelSource, /function normalizeMetadata\(/u);
+  assert.doesNotMatch(modelSource, /function replaceById\(/u);
+  assert.doesNotMatch(modelSource, /export interface CoreProjectWriteInput/u);
+  assert.doesNotMatch(modelSource, /export interface CoreApprovalBindingWriteInput/u);
+  assert.match(sharedSource, /export function normalizeMetadata/u);
+  assert.match(sharedSource, /export function replaceById/u);
+  assert.match(inputsSource, /export interface CoreProjectWriteInput/u);
+  assert.match(inputsSource, /export interface CoreApprovalBindingWriteInput/u);
+});
+
 test('store consumes dedicated chat snapshot normalization instead of defining it inline', async () => {
   const storeSource = await readFile(
     new URL('../src/products/chat/state/store.ts', import.meta.url),

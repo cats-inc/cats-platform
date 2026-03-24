@@ -12,44 +12,54 @@ import {
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
   OWNER_ACTOR_ID,
 } from './actors.js';
+import {
+  ALLOWED_APPROVAL_TRANSITIONS,
+  createDefaultOrchestratorActor,
+  createOwnerActor,
+  DEFAULT_APPROVAL_DECISION_OPTIONS,
+  normalizeArtifactSizeBytes,
+  normalizeMetadata,
+  normalizeNullableString,
+  normalizeStringArray,
+  replaceById,
+  replaceOwnerActor,
+  touchCoreState,
+} from './modelShared.js';
 import type {
   CatsCoreState,
-  CoreActivityKind,
   CoreActivityRecord,
   CoreActorRecord,
-  CoreApprovalDecisionAction,
-  CoreApprovalBindingKind,
   CoreApprovalBindingRecord,
-  CoreApprovalBindingSubjectKind,
-  CoreApprovalDecisionOptionRecord,
   CoreApprovalQueueItem,
-  CoreApprovalStatus,
-  CoreArtifactKind,
   CoreArtifactRecord,
-  CoreArtifactStatus,
   CoreCheckpointRecord,
-  CoreCheckpointStatus,
   CoreOrchestrationOutcomeRecord,
-  CoreOrchestrationOutcomeStatus,
   CoreProjectRecord,
-  CoreProjectStatus,
   CoreRecordMetadata,
   CoreRunRecord,
-  CoreRunStatus,
   CoreTaskRecord,
-  CoreTaskStatus,
-  CoreTraceKind,
   CoreTraceRecord,
   CoreWorkItemRecord,
-  CoreWorkItemStatus,
   BotBindingRecord,
   DurableMemoryRecord,
   DurableMemorySubjectType,
-  ExecutionTargetSummary,
-  MemoryCheckpointSummary,
   OwnerProfileRecord,
 } from './types.js';
 import { CATS_CORE_STATE_VERSION } from './types.js';
+import type {
+  CoreActivityWriteInput,
+  CoreApprovalBindingWriteInput,
+  CoreApprovalWriteInput,
+  CoreArtifactWriteInput,
+  CoreCheckpointWriteInput,
+  CoreOutcomeWriteInput,
+  CoreProjectWriteInput,
+  CoreRunWriteInput,
+  CoreTaskWriteInput,
+  CoreTraceWriteInput,
+  CoreWorkItemWriteInput,
+  OwnerProfilePatchInput,
+} from './modelInputs.js';
 
 export {
   createCatActorId,
@@ -58,167 +68,20 @@ export {
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
   OWNER_ACTOR_ID,
 };
-
-function createDefaultExecutionTarget(): ExecutionTargetSummary {
-  return {
-    provider: 'claude',
-    instance: null,
-    model: null,
-  };
-}
-
-const DEFAULT_APPROVAL_DECISION_OPTIONS: CoreApprovalDecisionOptionRecord[] = [
-  {
-    action: 'approve',
-    label: 'Approve',
-    description: 'Allow the orchestrator plan to proceed.',
-  },
-  {
-    action: 'reroute',
-    label: 'Reroute',
-    description: 'Send the plan back for a different handoff or dispatch path.',
-  },
-  {
-    action: 'reject',
-    label: 'Reject',
-    description: 'Do not allow the plan to proceed.',
-  },
-];
-
-const ALLOWED_APPROVAL_TRANSITIONS: Record<
-  CoreApprovalStatus,
-  readonly CoreApprovalStatus[]
-> = {
-  not_requested: ['not_requested', 'pending', 'approved', 'rejected'],
-  pending: ['pending', 'approved', 'rejected'],
-  approved: ['approved'],
-  rejected: ['rejected'],
-};
-
-function createOwnerActor(ownerProfile: OwnerProfileRecord): CoreActorRecord {
-  return {
-    id: ownerProfile.actorId,
-    name: ownerProfile.displayName,
-    kind: 'owner',
-    status: 'active',
-    roles: ['owner'],
-    skillProfile: null,
-    mcpProfile: null,
-    defaultExecutionTarget: null,
-    memory: createEmptyMemoryCheckpoint(),
-    source: 'owner_profile',
-    sourceId: ownerProfile.actorId,
-    createdAt: ownerProfile.updatedAt,
-    updatedAt: ownerProfile.updatedAt,
-    archivedAt: null,
-  };
-}
-
-function createDefaultOrchestratorActor(updatedAt: string): CoreActorRecord {
-  return {
-    id: GLOBAL_ORCHESTRATOR_ACTOR_ID,
-    name: 'Orchestrator',
-    kind: 'orchestrator',
-    status: 'active',
-    roles: ['orchestrator', 'coordinator'],
-    skillProfile: 'aaif-a2a-default',
-    mcpProfile: 'chat-memory',
-    defaultExecutionTarget: createDefaultExecutionTarget(),
-    memory: createEmptyMemoryCheckpoint(),
-    source: 'global_orchestrator',
-    sourceId: 'global',
-    createdAt: updatedAt,
-    updatedAt,
-    archivedAt: null,
-  };
-}
-
-function normalizeMetadata(
-  metadata: CoreRecordMetadata | null | undefined,
-): CoreRecordMetadata {
-  if (!metadata) {
-    return {};
-  }
-
-  return structuredClone(metadata);
-}
-
-function normalizeNullableString(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
-}
-
-function normalizeStringArray(values: string[] | undefined): string[] {
-  if (!values) {
-    return [];
-  }
-
-  return values.filter(
-    (value, index) => value.trim().length > 0 && values.indexOf(value) === index,
-  );
-}
-
-function normalizeArtifactSizeBytes(value: number | null | undefined): number | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (!Number.isFinite(value) || value < 0) {
-    throw new CoreValidationError(
-      'sizeBytes must be a non-negative number',
-      'artifact_size_bytes_invalid',
-    );
-  }
-
-  return value;
-}
-
-function replaceById<T extends { id: string }>(
-  records: T[],
-  nextRecord: T,
-): { records: T[]; created: boolean } {
-  const index = records.findIndex((record) => record.id === nextRecord.id);
-  if (index === -1) {
-    return {
-      records: [...records, nextRecord],
-      created: true,
-    };
-  }
-
-  const nextRecords = structuredClone(records);
-  nextRecords[index] = nextRecord;
-  return {
-    records: nextRecords,
-    created: false,
-  };
-}
-
-function touchCoreState(core: CatsCoreState, updatedAt: string): CatsCoreState {
-  return {
-    ...core,
-    version: CATS_CORE_STATE_VERSION,
-    updatedAt,
-  };
-}
-
-function replaceOwnerActor(
-  actors: CoreActorRecord[],
-  ownerProfile: OwnerProfileRecord,
-): CoreActorRecord[] {
-  const ownerActor = createOwnerActor(ownerProfile);
-  const ownerIndex = actors.findIndex((actor) => actor.id === ownerProfile.actorId);
-
-  if (ownerIndex === -1) {
-    return [ownerActor, ...structuredClone(actors)];
-  }
-
-  const nextActors = structuredClone(actors);
-  nextActors[ownerIndex] = ownerActor;
-  return nextActors;
-}
+export type {
+  CoreActivityWriteInput,
+  CoreApprovalBindingWriteInput,
+  CoreApprovalWriteInput,
+  CoreArtifactWriteInput,
+  CoreCheckpointWriteInput,
+  CoreOutcomeWriteInput,
+  CoreProjectWriteInput,
+  CoreRunWriteInput,
+  CoreTaskWriteInput,
+  CoreTraceWriteInput,
+  CoreWorkItemWriteInput,
+  OwnerProfilePatchInput,
+} from './modelInputs.js';
 
 export function createDefaultCoreState(): CatsCoreState {
   const updatedAt = new Date().toISOString();
@@ -276,177 +139,6 @@ export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[]
         ...option,
       })),
     }));
-}
-
-export interface CoreProjectWriteInput {
-  id?: string;
-  title: string;
-  status?: CoreProjectStatus;
-  ownerActorId?: string;
-  summary?: string | null;
-  repoPath?: string | null;
-  primaryConversationId?: string | null;
-  createdAt?: string;
-  metadata?: CoreRecordMetadata;
-}
-
-export interface CoreWorkItemWriteInput {
-  id?: string;
-  title: string;
-  status?: CoreWorkItemStatus;
-  projectId?: string | null;
-  conversationId?: string | null;
-  taskId?: string | null;
-  parentWorkItemId?: string | null;
-  ownerActorId?: string;
-  assignedActorIds?: string[];
-  summary?: string | null;
-  createdAt?: string;
-  metadata?: CoreRecordMetadata;
-}
-
-export interface CoreTaskWriteInput {
-  id?: string;
-  title: string;
-  status?: CoreTaskStatus;
-  conversationId?: string | null;
-  parentTaskId?: string | null;
-  ownerActorId?: string;
-  orchestratorActorId?: string | null;
-  assignedActorIds?: string[];
-  summary?: string | null;
-  approval?: Partial<{
-    status: CoreApprovalStatus;
-    requestedAt: string | null;
-    decidedAt: string | null;
-    decidedByActorId: string | null;
-    decisionAction: CoreApprovalDecisionAction | null;
-    notes: string | null;
-  }>;
-  createdAt?: string;
-  metadata?: CoreRecordMetadata;
-}
-
-export interface OwnerProfilePatchInput {
-  displayName?: string;
-  avatarColor?: string | null;
-  summary?: string | null;
-  communicationPreferences?: string[];
-  decisionPreferences?: string[];
-  escalationPreferences?: string[];
-}
-
-export interface CoreApprovalWriteInput {
-  taskId: string;
-  status: CoreApprovalStatus;
-  action?: CoreApprovalDecisionAction | null;
-  requestedByActorId?: string | null;
-  decidedByActorId?: string | null;
-  notes?: string | null;
-  taskStatus?: CoreTaskStatus;
-}
-
-export interface CoreRunWriteInput {
-  id?: string;
-  title: string;
-  status?: CoreRunStatus;
-  conversationId?: string | null;
-  taskId?: string | null;
-  parentRunId?: string | null;
-  orchestratorActorId?: string | null;
-  traceId?: string | null;
-  summary?: string | null;
-  createdAt?: string;
-  startedAt?: string | null;
-  completedAt?: string | null;
-  metadata?: CoreRecordMetadata;
-}
-
-export interface CoreTraceWriteInput {
-  id?: string;
-  traceId: string;
-  kind: CoreTraceKind;
-  conversationId?: string | null;
-  runId?: string | null;
-  taskId?: string | null;
-  actorId?: string | null;
-  message: string;
-  createdAt?: string;
-  metadata?: CoreRecordMetadata;
-}
-
-export interface CoreCheckpointWriteInput {
-  id?: string;
-  label: string;
-  status?: CoreCheckpointStatus;
-  conversationId?: string | null;
-  runId?: string | null;
-  taskId?: string | null;
-  sourceTraceId?: string | null;
-  summary?: string | null;
-  createdAt?: string;
-  completedAt?: string | null;
-  metadata?: CoreRecordMetadata;
-}
-
-export interface CoreOutcomeWriteInput {
-  id?: string;
-  title: string;
-  status?: CoreOrchestrationOutcomeStatus;
-  conversationId?: string | null;
-  runId?: string | null;
-  taskId?: string | null;
-  summary?: string | null;
-  recordedAt?: string;
-  metadata?: CoreRecordMetadata;
-}
-
-export interface CoreArtifactWriteInput {
-  id?: string;
-  title: string;
-  kind?: CoreArtifactKind;
-  status?: CoreArtifactStatus;
-  projectId?: string | null;
-  workItemId?: string | null;
-  conversationId?: string | null;
-  taskId?: string | null;
-  runId?: string | null;
-  path?: string | null;
-  mimeType?: string | null;
-  sizeBytes?: number | null;
-  summary?: string | null;
-  createdAt?: string;
-  metadata?: CoreRecordMetadata;
-}
-
-export interface CoreActivityWriteInput {
-  id?: string;
-  kind: CoreActivityKind;
-  actorId?: string | null;
-  projectId?: string | null;
-  workItemId?: string | null;
-  conversationId?: string | null;
-  taskId?: string | null;
-  runId?: string | null;
-  artifactId?: string | null;
-  message: string;
-  createdAt?: string;
-  metadata?: CoreRecordMetadata;
-}
-
-export interface CoreApprovalBindingWriteInput {
-  id?: string;
-  kind?: CoreApprovalBindingKind;
-  approvalTaskId: string;
-  subjectKind: CoreApprovalBindingSubjectKind;
-  subjectId: string;
-  projectId?: string | null;
-  workItemId?: string | null;
-  conversationId?: string | null;
-  requestedByActorId?: string | null;
-  requestedForActorId?: string;
-  createdAt?: string;
-  metadata?: CoreRecordMetadata;
 }
 
 export function upsertCoreProject(
