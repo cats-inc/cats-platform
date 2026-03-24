@@ -518,3 +518,86 @@ This plan is complete only when:
   created.
 - The final repo is easier to review, test, and extend than the one that
   existed on 2026-03-24.
+
+## Post-Plan Governance Follow-Up
+
+Completing PLAN-024 does not mean `cats` will stop growing. `Chat`, `Work`,
+`Code`, and future product lines will continue to add modules and routes. This
+follow-up workstream exists so growth happens on top of the corrected seams
+instead of quietly rebuilding the old coupling.
+
+This is not a second all-repo rewrite. It is the maintenance and governance
+track that should remain active after the main refactor lands.
+
+### Follow-Up Objectives
+
+- Improve navigability now that the main boundary corrections are in place.
+- Prevent `*Shared.ts`, compatibility barrels, and re-export shims from
+  turning into new dumping grounds.
+- Rebalance test coverage so new modules gain behavior tests, not only static
+  boundary checks.
+- Keep future product growth aligned to the approved `core/platform/product`
+  dependency direction.
+
+### Follow-Up Workstreams
+
+#### 1. Directory Normalization
+
+Once module families are stable, move them from flat prefix-based naming into
+clearer subdirectories so the repo is easier to navigate:
+
+- `src/core/api/*`
+- `src/core/model/*`
+- `src/products/chat/state/runtime-dispatch/*`
+- `src/products/chat/renderer/styles/*`
+
+The goal is not more abstraction. The goal is to make ownership visible from
+the filesystem and reduce prefix sprawl as more product surfaces land.
+
+#### 2. Shared and Shim Audit
+
+Audit every `*Shared.ts`, compatibility barrel, and transitional re-export and
+classify it as one of:
+
+- keep as a real shared helper
+- rename to a more specific ownership name
+- delete because it exists only as migration residue
+
+No generic shared file should survive without a clear ownership story and a
+bounded responsibility.
+
+#### 3. Test Rebalancing
+
+Boundary tests remain mandatory, but future work should not rely on boundary
+tests alone. For every newly extracted or newly expanded module family, add:
+
+- at least one behavior-level test covering the owned flow
+- at least one boundary or contract test protecting the seam
+
+Priority follow-up areas include task lifecycle, orchestrator dispatch,
+Telegram ingress, suite shell navigation, and runtime tool hosting.
+
+#### 4. Growth Rules and Enforcement
+
+As `Chat`, `Work`, `Code`, and later product lines expand, enforce the
+following rules:
+
+- cross-product sharing must happen through `core/` or an explicitly approved
+  shared contract module
+- product growth must not reintroduce direct `core -> product` or
+  `platform -> product implementation` imports
+- new compatibility shims must name their removal target and removal phase
+- feature work that grows an existing module family should prefer landing in
+  the owned slice/directory rather than reopening a generic integration file
+
+### Follow-Up Success Criteria
+
+The follow-up track is healthy when all of the following are true:
+
+- new product capabilities can usually land by adding or extending a focused
+  module, not by reopening a monolithic integration sink
+- shared/helper files stay specific instead of becoming anonymous catch-alls
+- test growth tracks module growth with both behavior coverage and boundary
+  enforcement
+- future `Chat`, `Work`, `Code`, and `Learn` work continues to strengthen the
+  architecture instead of eroding it
