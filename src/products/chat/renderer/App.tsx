@@ -38,7 +38,6 @@ import {
   resetSetup,
   createChatChannel,
   deleteChatChannel,
-  fetchOperatorLoopSnapshot,
   fetchAppShell,
   removeCatFromChannelApi,
   sendChatMessage,
@@ -68,6 +67,7 @@ import {
   shouldWakeRouteChannelOnEntry,
 } from '../shared/channelEntry';
 import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
+import { useOperatorLoop } from './useOperatorLoop';
 
 import { SetupWizard } from './components/SetupWizard';
 import type { ModelSelectorValue } from './components/ModelSelector';
@@ -87,14 +87,6 @@ type LoadState =
   | { status: 'loading' }
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
-
-type OperatorLoadState =
-  | { status: 'idle'; snapshot: null; message: string }
-  | { status: 'loading'; snapshot: ChatOperatorSnapshot | null; message: string }
-  | { status: 'ready'; snapshot: ChatOperatorSnapshot; message: string }
-  | { status: 'error'; snapshot: ChatOperatorSnapshot | null; message: string };
-
-const OPERATOR_BACKGROUND_REFRESH_MS = 5_000;
 
 function isDirectLaneSelectedForCat(
   channel: SelectedChannelView | null,
@@ -145,11 +137,6 @@ export default function App() {
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(() => ({
     provider: 'claude', model: getDefaultModel('claude') || null, instance: null,
   }));
-  const [operatorState, setOperatorState] = useState<OperatorLoadState>({
-    status: 'idle',
-    snapshot: null,
-    message: '',
-  });
   const [folderBrowserOpen, setFolderBrowserOpen] = useState(false);
   const [folderBrowsePath, setFolderBrowsePath] = useState('');
   const [folderBrowseCurrentPath, setFolderBrowseCurrentPath] = useState('');
@@ -157,7 +144,6 @@ export default function App() {
   const [folderBrowseEntries, setFolderBrowseEntries] = useState<BrowseDirectoryEntry[]>([]);
   const [folderBrowseLoading, setFolderBrowseLoading] = useState(false);
   const [folderBrowseError, setFolderBrowseError] = useState('');
-  const operatorRequestIdRef = useRef(0);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const addCatPanelRef = useRef<HTMLDivElement>(null);
@@ -194,6 +180,11 @@ export default function App() {
         readyChat.channels.length,
       ].join('|')
     : '';
+  const {
+    operatorState,
+    refreshOperatorSnapshot,
+    setOperatorState,
+  } = useOperatorLoop(readyPayload, operatorRefreshKey);
 
   // --- Effects ---
 
@@ -287,62 +278,6 @@ export default function App() {
       el.style.overflowY = 'hidden';
     }
   }, []);
-
-  const refreshOperatorSnapshot = useCallback((
-    options: { background?: boolean } = {},
-  ) => {
-    if (!readyPayload?.setupCompleteAt) {
-      operatorRequestIdRef.current += 1;
-      setOperatorState({
-        status: 'idle',
-        snapshot: null,
-        message: '',
-      });
-      return () => {};
-    }
-
-    const controller = new AbortController();
-    const requestId = operatorRequestIdRef.current + 1;
-    operatorRequestIdRef.current = requestId;
-    if (!options.background) {
-      setOperatorState((current) => ({
-        status: 'loading',
-        snapshot: current.snapshot,
-        message: '',
-      }));
-    }
-
-    void fetchOperatorLoopSnapshot(controller.signal)
-      .then((snapshot) => {
-        if (controller.signal.aborted || requestId !== operatorRequestIdRef.current) {
-          return;
-        }
-        startTransition(() => {
-          setOperatorState({
-            status: 'ready',
-            snapshot,
-            message: '',
-          });
-        });
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted || requestId !== operatorRequestIdRef.current) {
-          return;
-        }
-        setOperatorState((current) => {
-          if (options.background && current.snapshot) {
-            return current;
-          }
-          return {
-            status: 'error',
-            snapshot: current.snapshot,
-            message: error instanceof Error ? error.message : 'Failed to load operator loop.',
-          };
-        });
-      });
-
-    return () => controller.abort();
-  }, [readyPayload?.setupCompleteAt]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -451,10 +386,6 @@ export default function App() {
     state.status,
   ]);
 
-  useEffect(() => {
-    return refreshOperatorSnapshot();
-  }, [operatorRefreshKey, refreshOperatorSnapshot]);
-
   // Sync solo channel model from the selected channel's pending state
   useEffect(() => {
     if (!readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
@@ -469,37 +400,6 @@ export default function App() {
       });
     }
   }, [readySelectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!readyPayload?.setupCompleteAt || typeof window === 'undefined' || typeof document === 'undefined') {
-      return;
-    }
-
-    const refreshInBackground = () => {
-      if (document.visibilityState === 'hidden') {
-        return;
-      }
-      void refreshOperatorSnapshot({ background: true });
-    };
-
-    const intervalId = window.setInterval(refreshInBackground, OPERATOR_BACKGROUND_REFRESH_MS);
-    const handleFocus = () => {
-      refreshInBackground();
-    };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshInBackground();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [readyPayload?.setupCompleteAt, refreshOperatorSnapshot]);
 
   // --- Callbacks ---
 

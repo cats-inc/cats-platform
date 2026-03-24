@@ -345,6 +345,23 @@ test('runtime dispatch wake consumes dedicated runtime session-routing helpers i
   assert.match(sessionRoutingModule, /export async function maybeAutoCheckoutChannelTask/u);
 });
 
+test('renderer app consumes a dedicated operator-loop hook instead of defining polling inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/chat/renderer/useOperatorLoop.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /useOperatorLoop/u);
+  assert.doesNotMatch(appSource, /const refreshOperatorSnapshot = useCallback/u);
+  assert.doesNotMatch(appSource, /const operatorRequestIdRef = useRef/u);
+  assert.match(hookSource, /export function useOperatorLoop/u);
+  assert.match(hookSource, /fetchOperatorLoopSnapshot/u);
+});
+
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
   const snapshotConsumer = await readFile(
     new URL('../src/products/chat/state/chatSnapshot.ts', import.meta.url),
