@@ -10,7 +10,6 @@ import {
 } from 'react-router-dom';
 
 import {
-  buildNewChatPath,
   isNewChatPath,
   NEW_CHAT_PATH,
   readNewChatLeadCatId,
@@ -32,11 +31,11 @@ import { getDefaultModel } from '../../../shared/providerCatalog';
 import {
   normalizeSelectedChannelView,
   resolveSelectedChannelEntryLifecycle,
-  shouldWakeRouteChannelOnEntry,
 } from '../shared/channelEntry';
 import { useOperatorLoop } from './useOperatorLoop';
 import { useAppShellRouting } from './useAppShellRouting';
 import { useAppChrome } from './useAppChrome';
+import { useAppDraftUiActions } from './useAppDraftUiActions';
 import { useAppNavigationActions } from './useAppNavigationActions';
 import { useCatAssignmentActions } from './useCatAssignmentActions';
 import { useComposerSubmit } from './useComposerSubmit';
@@ -71,6 +70,8 @@ function isDirectLaneSelectedForCat(
   return channel.roomRouting.mode === 'direct_cat_chat'
     && channel.roomRouting.leadParticipantId === catId;
 }
+
+function noop(): void {}
 
 export default function App() {
   const navigate = useNavigate();
@@ -123,6 +124,48 @@ export default function App() {
     onToggleSidebar,
     onCollapsedSidebarClick,
   } = useAppChrome();
+  const {
+    browseFolder,
+    closeFolderBrowser,
+    folderBrowserOpen,
+    folderBrowseCurrentPath,
+    folderBrowseEntries,
+    folderBrowseError,
+    folderBrowseLoading,
+    folderBrowseParentPath,
+    folderBrowsePath,
+    openFolderBrowser,
+    selectCurrentFolder,
+    setFolderBrowsePath,
+  } = useFolderBrowser({
+    onSelectPath: setDraftCwd,
+  });
+  const {
+    toggleAddCatPanel,
+    toggleChannelPlusMenu,
+    openChannelFilePicker,
+    toggleDraftPlusMenu,
+    openDraftFilePicker,
+    openDraftFolderPicker,
+    openDraftAddCatPanel,
+    changeDraftLeadCat,
+  } = useAppDraftUiActions({
+    addCatOpen,
+    channelPlusMenuOpen,
+    plusMenuOpen,
+    draftCwd,
+    draftLeadCatId,
+    navigate,
+    setAddCatOpen,
+    setAddCatTab,
+    setFeedback,
+    setCatForm,
+    setPlusMenuOpen,
+    setChannelPlusMenuOpen,
+    channelFileInputRef,
+    fileInputRef,
+    openFolderBrowser,
+  });
   const {
     onOpenChatsOverview,
     onSelect,
@@ -184,25 +227,8 @@ export default function App() {
     : '';
   const {
     operatorState,
-    refreshOperatorSnapshot,
     setOperatorState,
   } = useOperatorLoop(readyPayload, operatorRefreshKey);
-  const {
-    browseFolder,
-    closeFolderBrowser,
-    folderBrowserOpen,
-    folderBrowseCurrentPath,
-    folderBrowseEntries,
-    folderBrowseError,
-    folderBrowseLoading,
-    folderBrowseParentPath,
-    folderBrowsePath,
-    openFolderBrowser,
-    selectCurrentFolder,
-    setFolderBrowsePath,
-  } = useFolderBrowser({
-    onSelectPath: setDraftCwd,
-  });
   const {
     onComposerKeyDown,
     onSendMessage,
@@ -420,17 +446,17 @@ export default function App() {
         onToggleSidebar={onToggleSidebar}
         onCollapsedSidebarClick={onCollapsedSidebarClick}
         onOpenChatsOverview={onOpenChatsOverview}
-        onStartNewChat={() => void onStartNewChat()}
+        onStartNewChat={onStartNewChat}
         onSelect={onSelect}
-        onDeleteChannel={(id) => void onDeleteChannel(id)}
-        onDeleteCat={(catId) => void onDeleteCat(catId)}
+        onDeleteChannel={onDeleteChannel}
+        onDeleteCat={onDeleteCat}
         onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
         onOverflowMenuToggle={setOverflowMenuOpenId}
         onNavigateSettings={onNavigateSettings}
         sidebarView={sidebarView}
         onSidebarViewChange={setSidebarView}
         activeMyCatId={activeMyCatId}
-        onDirectChatCat={(catId) => void onDirectChatCat(catId)}
+        onDirectChatCat={onDirectChatCat}
       />
 
       <main className="canvas">
@@ -466,7 +492,7 @@ export default function App() {
             <SettingsData
               feedback={feedback}
               busy={busy}
-              onResetSetup={() => void onResetSetup()}
+              onResetSetup={onResetSetup}
             />
           } />
           <Route path="/chats/:channelId" element={
@@ -491,20 +517,15 @@ export default function App() {
                 showBossCatAvatar={showBossCatAvatar}
                 addCatOpen={addCatOpen}
                 onComposerChange={setComposerDraft}
-                onComposerKeyDown={(e) => void onComposerKeyDown(e)}
-                onSendMessage={(e) => void onSendMessage(e)}
-                onToggleAddCat={() => {
-                  setAddCatOpen(!addCatOpen);
-                  setAddCatTab('existing');
-                  setFeedback('');
-                  setCatForm(emptyCatForm());
-                }}
-                onToggleChannelPlusMenu={() => setChannelPlusMenuOpen(!channelPlusMenuOpen)}
-                onChannelFileSelect={() => { channelFileInputRef.current?.click(); setChannelPlusMenuOpen(false); }}
+                onComposerKeyDown={onComposerKeyDown}
+                onSendMessage={onSendMessage}
+                onToggleAddCat={toggleAddCatPanel}
+                onToggleChannelPlusMenu={toggleChannelPlusMenu}
+                onChannelFileSelect={openChannelFilePicker}
                 onChannelFilesChange={setChannelFiles}
-                onApprovalDecision={(taskId, status) => void onApprovalDecision(taskId, status)}
-                onChoiceSubmit={(input) => void onChoiceSubmit(input)}
-                onOperatorAction={(input) => void onOperatorAction(input)}
+                onApprovalDecision={onApprovalDecision}
+                onChoiceSubmit={onChoiceSubmit}
+                onOperatorAction={onOperatorAction}
                 autoResize={autoResize}
                 selectedModel={
                   selectedChannel.composerMode === 'solo'
@@ -551,15 +572,15 @@ export default function App() {
                   showBossCatAvatar={showBossCatAvatar}
                   addCatOpen={false}
                   onComposerChange={setComposerDraft}
-                  onComposerKeyDown={(e) => void onComposerKeyDown(e)}
-                  onSendMessage={(e) => void onSendMessage(e)}
-                  onToggleAddCat={() => {}}
-                  onToggleChannelPlusMenu={() => setChannelPlusMenuOpen(!channelPlusMenuOpen)}
-                  onChannelFileSelect={() => { channelFileInputRef.current?.click(); setChannelPlusMenuOpen(false); }}
+                  onComposerKeyDown={onComposerKeyDown}
+                  onSendMessage={onSendMessage}
+                  onToggleAddCat={noop}
+                  onToggleChannelPlusMenu={toggleChannelPlusMenu}
+                  onChannelFileSelect={openChannelFilePicker}
                   onChannelFilesChange={setChannelFiles}
-                  onApprovalDecision={(taskId, status) => void onApprovalDecision(taskId, status)}
-                  onChoiceSubmit={(input) => void onChoiceSubmit(input)}
-                  onOperatorAction={(input) => void onOperatorAction(input)}
+                  onApprovalDecision={onApprovalDecision}
+                  onChoiceSubmit={onChoiceSubmit}
+                  onOperatorAction={onOperatorAction}
                   autoResize={autoResize}
                   showAddCatButton={false}
                 />
@@ -578,18 +599,18 @@ export default function App() {
                   bossCatName={bossCatName}
                   bossCatAvatarColor={bossCatAvatarColor}
                   onComposerChange={setComposerDraft}
-                  onComposerKeyDown={(e) => void onComposerKeyDown(e)}
-                  onSendMessage={(e) => void onSendMessage(e)}
-                  onTogglePlusMenu={() => setPlusMenuOpen(!plusMenuOpen)}
-                  onFileSelect={() => { fileInputRef.current?.click(); setPlusMenuOpen(false); }}
-                  onPickFolder={() => { void openFolderBrowser(draftCwd); setPlusMenuOpen(false); }}
-                  onOpenAddCat={() => {}}
+                  onComposerKeyDown={onComposerKeyDown}
+                  onSendMessage={onSendMessage}
+                  onTogglePlusMenu={toggleDraftPlusMenu}
+                  onFileSelect={openDraftFilePicker}
+                  onPickFolder={openDraftFolderPicker}
+                  onOpenAddCat={noop}
                   onDraftFilesChange={setDraftFiles}
                   onDraftCwdClear={() => setDraftCwd(null)}
                   onToggleDraftCat={toggleDraftCat}
                   autoResize={autoResize}
                   draftLeadCatId={draftLeadCatId}
-                  onDraftLeadCatChange={() => {}}
+                  onDraftLeadCatChange={noop}
                   allowAddCat={false}
                 />
               )
@@ -610,29 +631,18 @@ export default function App() {
               bossCatName={bossCatName}
               bossCatAvatarColor={bossCatAvatarColor}
               onComposerChange={setComposerDraft}
-              onComposerKeyDown={(e) => void onComposerKeyDown(e)}
-              onSendMessage={(e) => void onSendMessage(e)}
-              onTogglePlusMenu={() => setPlusMenuOpen(!plusMenuOpen)}
-              onFileSelect={() => { fileInputRef.current?.click(); setPlusMenuOpen(false); }}
-              onPickFolder={() => { void openFolderBrowser(draftCwd); setPlusMenuOpen(false); }}
-              onOpenAddCat={() => {
-                setPlusMenuOpen(false);
-                setAddCatOpen(true);
-                setAddCatTab('existing');
-                setCatForm(emptyCatForm());
-                setFeedback('');
-              }}
+              onComposerKeyDown={onComposerKeyDown}
+              onSendMessage={onSendMessage}
+              onTogglePlusMenu={toggleDraftPlusMenu}
+              onFileSelect={openDraftFilePicker}
+              onPickFolder={openDraftFolderPicker}
+              onOpenAddCat={openDraftAddCatPanel}
               onDraftFilesChange={setDraftFiles}
               onDraftCwdClear={() => setDraftCwd(null)}
               onToggleDraftCat={toggleDraftCat}
               autoResize={autoResize}
               draftLeadCatId={draftLeadCatId}
-              onDraftLeadCatChange={(catId) => {
-                if (catId === draftLeadCatId) {
-                  return;
-                }
-                navigate(buildNewChatPath(catId), { replace: true });
-              }}
+              onDraftLeadCatChange={changeDraftLeadCat}
               selectedModel={!draftLeadCatId ? draftModel : undefined}
               onModelChange={!draftLeadCatId ? setDraftModel : undefined}
             />
@@ -658,8 +668,8 @@ export default function App() {
           catForm={catForm}
           onClose={() => setAddCatOpen(false)}
           onTabChange={setAddCatTab}
-          onAssignExistingCat={(cat) => void onAssignExistingCat(cat)}
-          onRemoveAssignedCat={(cat) => void onRemoveAssignedCat(cat)}
+          onAssignExistingCat={onAssignExistingCat}
+          onRemoveAssignedCat={onRemoveAssignedCat}
           onToggleDraftCat={toggleDraftCat}
           onCatFormChange={setCatForm}
           onCreateCat={(e) => {

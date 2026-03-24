@@ -14,7 +14,8 @@ test('App refreshes the operator loop in the background while the chat view stay
   );
 
   assert.match(appSource, /useOperatorLoop/u);
-  assert.match(appSource, /refreshOperatorSnapshot/u);
+  assert.match(appSource, /operatorRefreshKey/u);
+  assert.match(appSource, /useOperatorLoop\(readyPayload,\s*operatorRefreshKey\)/u);
   assert.match(hookSource, /setInterval\(refreshInBackground,\s*OPERATOR_BACKGROUND_REFRESH_MS\)/u);
   assert.match(hookSource, /addEventListener\('focus', handleFocus\)/u);
   assert.match(hookSource, /addEventListener\('visibilitychange', handleVisibilityChange\)/u);

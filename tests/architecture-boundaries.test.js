@@ -520,6 +520,27 @@ test('renderer app consumes dedicated navigation actions instead of defining rou
   assert.match(hookSource, /resolveMyCatNavigationTarget/u);
 });
 
+test('renderer app consumes dedicated draft-ui actions instead of defining menu toggles inline', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/chat/renderer/useAppDraftUiActions.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(appSource, /useAppDraftUiActions/u);
+  assert.doesNotMatch(appSource, /setAddCatOpen\(!addCatOpen\)/u);
+  assert.doesNotMatch(appSource, /setPlusMenuOpen\(!plusMenuOpen\)/u);
+  assert.doesNotMatch(appSource, /fileInputRef\.current\?\.click\(\)/u);
+  assert.doesNotMatch(appSource, /navigate\(buildNewChatPath\(catId\), \{ replace: true \}\)/u);
+  assert.match(hookSource, /export function useAppDraftUiActions/u);
+  assert.match(hookSource, /openDraftFilePicker/u);
+  assert.match(hookSource, /openDraftAddCatPanel/u);
+  assert.match(hookSource, /changeDraftLeadCat/u);
+});
+
 test('settings cats consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {
   const settingsCatsSource = await readFile(
     new URL('../src/products/chat/renderer/components/SettingsCats.tsx', import.meta.url),
