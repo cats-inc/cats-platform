@@ -52,6 +52,7 @@ import {
   chatOrchestratorChannelRouter,
   chatOrchestratorPlannerSurface,
 } from '../../products/chat/state/orchestratorAdapter.js';
+import { createChatMemorySurface } from '../../products/chat/state/memoryAdapter.js';
 import { createChatTelegramRoomBridge } from '../../products/chat/state/telegramBridgeAdapter.js';
 import { handleCodePlaceholder } from '../../products/code/api/index.js';
 import { handleWorkPlaceholder } from '../../products/work/api/index.js';
@@ -462,7 +463,7 @@ export function createServer(dependencies: ServerDependencies) {
   const memoryStore = dependencies.memoryStore
     ?? createDefaultMemoryStore(dependencies);
   const memoryService = dependencies.memoryService
-    ?? createCatsMemoryService(dependencies.chatStore, memoryStore);
+    ?? createCatsMemoryService(createChatMemorySurface(dependencies.chatStore), memoryStore);
   const pollingSupervisor = dependencies.pollingSupervisor
     ?? createTelegramPollingSupervisor({ now: dependencies.now });
   const telegramRelay = dependencies.telegramRelay

@@ -4,7 +4,6 @@ import type {
   DurableMemoryRecord,
   OwnerProfileRecord,
 } from '../../core/types.js';
-import type { ChatChannelState } from '../../shared/app-shell.js';
 import type {
   CompanionBox,
   CompanionDerivedRecord,
@@ -14,6 +13,7 @@ import type {
 } from '../../products/chat/companion/contracts.js';
 import type {
   CanonicalMemoryLineage,
+  MemoryChannelSnapshot,
   CanonicalMemoryRecord,
   CanonicalMemoryPromotionRule,
   MemoryFlushReason,
@@ -312,7 +312,7 @@ export function extractCanonicalMemoryFromCompanionBox(input: {
 }
 
 export function extractCanonicalMemoryFromChannel(input: {
-  channel: ChatChannelState;
+  channel: MemoryChannelSnapshot;
   reason: MemoryFlushReason;
   now: Date;
 }): Array<Omit<CanonicalMemoryRecord, 'id'>> {

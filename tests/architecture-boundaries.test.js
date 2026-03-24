@@ -114,6 +114,33 @@ test('platform consumes room-routing types from the shared roomRouting module', 
   assert.match(telegramBridge, /shared\/roomRouting\.js/u);
 });
 
+test('platform memory service stays behind a chat memory surface seam', async () => {
+  const source = await readFile(
+    new URL('../src/platform/memory/service.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /\bMemoryChatSurface\b/u);
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/model\.js/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /products\/chat\/state\/store\.js/u,
+  );
+});
+
+test('app server wires the chat memory adapter into platform memory', async () => {
+  const source = await readFile(
+    new URL('../src/app/server/index.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /createChatMemorySurface/u);
+  assert.match(source, /createCatsMemoryService/u);
+});
+
 test('platform telegram bridge stays behind an injected room bridge seam', async () => {
   const source = await readFile(
     new URL('../src/platform/transports/telegram/bridge.ts', import.meta.url),

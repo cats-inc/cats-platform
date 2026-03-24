@@ -17,6 +17,7 @@ import {
 } from '../dist-server/platform/memory/extraction.js';
 import { buildMemoryRetrievalContext } from '../dist-server/platform/memory/retrieval.js';
 import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companionBoxStore.js';
+import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
 
 function buildCompanionCat(catId, nowIso) {
@@ -84,7 +85,7 @@ test('memory substrate flushes companion and owner data into canonical records a
   const chatStore = new MemoryChatStore();
   const companionStore = new MemoryCompanionBoxStore();
   const memoryStore = new MemoryCanonicalMemoryStore();
-  const memoryService = createCatsMemoryService(chatStore, memoryStore);
+  const memoryService = createCatsMemoryService(createChatMemorySurface(chatStore), memoryStore);
 
   const core = await chatStore.readCore();
   await chatStore.writeCore({
@@ -232,7 +233,7 @@ test('scope-aware canonical flush removes stale durable memory when curated note
   const chatStore = new MemoryChatStore();
   const companionStore = new MemoryCompanionBoxStore();
   const memoryStore = new MemoryCanonicalMemoryStore();
-  const memoryService = createCatsMemoryService(chatStore, memoryStore);
+  const memoryService = createCatsMemoryService(createChatMemorySurface(chatStore), memoryStore);
 
   const core = await chatStore.readCore();
   await chatStore.writeCore({
@@ -293,7 +294,7 @@ test('memory-aware companion store auto-syncs direct source mutations without ro
   const chatStore = new MemoryChatStore();
   const baseCompanionStore = new MemoryCompanionBoxStore();
   const memoryStore = new MemoryCanonicalMemoryStore();
-  const memoryService = createCatsMemoryService(chatStore, memoryStore);
+  const memoryService = createCatsMemoryService(createChatMemorySurface(chatStore), memoryStore);
   const companionStore = createMemoryAwareCompanionBoxStore(baseCompanionStore, memoryService);
 
   const ingested = await companionStore.ingestSource(

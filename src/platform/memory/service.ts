@@ -2,17 +2,14 @@ import {
   createCatActorId,
   listDurableMemoryBySubject,
 } from '../../core/model.js';
-import type { MemoryCheckpointSummary } from '../../core/types.js';
-import type {
-  ChatCat,
-  ChatChannelView,
-} from '../../shared/app-shell.js';
-import { requireChannel } from '../../products/chat/state/model.js';
 import type { CompanionBoxStore } from '../../products/chat/state/companionBoxStore.js';
-import type { ChatStore } from '../../products/chat/state/store.js';
 import type { CanonicalMemoryStore } from './store.js';
 import type {
   CanonicalMemoryOriginKind,
+  MemoryCatRef,
+  MemoryChannelContext,
+  MemoryChannelSnapshot,
+  MemoryChatSurface,
   CanonicalMemoryRecord,
   MemoryFlushReason,
   MemoryFlushPayload,
@@ -60,14 +57,8 @@ export interface CatsMemoryService {
     now?: Date;
   }): Promise<MemoryFlushResult>;
   buildCompanionRetrievalContext(input: {
-    cat: ChatCat;
-    channel: {
-      id: string | null;
-      title: string;
-      topic: string;
-      workingMemory?: MemoryCheckpointSummary;
-      roomRouting?: ChatChannelView['roomRouting'];
-    };
+    cat: MemoryCatRef;
+    channel: MemoryChannelContext;
     transport?: 'telegram' | 'line' | 'web' | null;
     companionStore: CompanionBoxStore;
     now?: Date;
@@ -117,7 +108,7 @@ function buildFlushPayload(input: {
 
 export class DefaultCatsMemoryService implements CatsMemoryService {
   constructor(
-    private readonly chatStore: ChatStore,
+    private readonly chatSurface: MemoryChatSurface,
     private readonly memoryStore: CanonicalMemoryStore,
   ) {}
 
@@ -137,7 +128,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     const now = input.now ?? new Date();
     const reason = input.reason ?? 'manual';
     const [core, box, sources, derived, memory, responseProfile] = await Promise.all([
-      this.chatStore.readCore(),
+      this.chatSurface.readCore(),
       input.companionStore.getBox(input.catId, now),
       input.companionStore.listSources(input.catId, now),
       input.companionStore.listDerived(input.catId, now),
@@ -205,8 +196,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
   }): Promise<MemoryFlushResult> {
     const now = input.now ?? new Date();
     const reason = input.reason ?? 'manual';
-    const state = await this.chatStore.read();
-    const channel = requireChannel(state, input.channelId);
+    const channel = await this.chatSurface.readChannel(input.channelId);
     const { persisted, removedRecordIds } = await this.memoryStore.replaceRecordsWithResult(
       {
         subjectKind: 'channel',
@@ -248,7 +238,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
   }): Promise<MemoryFlushResult> {
     const now = input?.now ?? new Date();
     const reason = input?.reason ?? 'owner_profile_sync';
-    const core = await this.chatStore.readCore();
+    const core = await this.chatSurface.readCore();
     const durableMemory = listDurableMemoryBySubject(
       core,
       'owner',
@@ -299,20 +289,14 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
   }
 
   async buildCompanionRetrievalContext(input: {
-    cat: ChatCat;
-    channel: {
-      id: string | null;
-      title: string;
-      topic: string;
-      workingMemory?: MemoryCheckpointSummary;
-      roomRouting?: ChatChannelView['roomRouting'];
-    };
+    cat: MemoryCatRef;
+    channel: MemoryChannelContext;
     transport?: 'telegram' | 'line' | 'web' | null;
     companionStore: CompanionBoxStore;
     now?: Date;
   }): Promise<MemoryRetrievalContext> {
     const now = input.now ?? new Date();
-    const core = await this.chatStore.readCore();
+    const core = await this.chatSurface.readCore();
     const [sources, derived, memory, catRecords, ownerRecords, channelRecords] = await Promise.all([
       input.companionStore.listSources(input.cat.id, now),
       input.companionStore.listDerived(input.cat.id, now),
@@ -358,11 +342,8 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     now?: Date;
   }): Promise<MemoryRetrievalContext> {
     const now = input.now ?? new Date();
-    const state = await this.chatStore.read();
-    const channel = requireChannel(state, input.channelId);
-    const cat = input.catId
-      ? state.cats.find((candidate) => candidate.id === input.catId) ?? null
-      : null;
+    const channel = await this.chatSurface.readChannel(input.channelId);
+    const cat = input.catId ? await this.chatSurface.findCat(input.catId) : null;
 
     if (cat && input.companionStore) {
       return this.buildCompanionRetrievalContext({
@@ -380,7 +361,7 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
       });
     }
 
-    const core = await this.chatStore.readCore();
+    const core = await this.chatSurface.readCore();
     const [channelRecords, ownerRecords] = await Promise.all([
       this.memoryStore.listRecords({ subjectKind: 'channel', subjectId: channel.id }),
       this.memoryStore.listRecords({ subjectKind: 'owner', subjectId: core.ownerProfile.actorId }),
@@ -409,8 +390,8 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
 }
 
 export function createCatsMemoryService(
-  chatStore: ChatStore,
+  chatSurface: MemoryChatSurface,
   memoryStore: CanonicalMemoryStore,
 ): CatsMemoryService {
-  return new DefaultCatsMemoryService(chatStore, memoryStore);
+  return new DefaultCatsMemoryService(chatSurface, memoryStore);
 }

@@ -18,6 +18,7 @@ import {
   createCatsMemoryService,
   MemoryCanonicalMemoryStore,
 } from '../dist-server/platform/memory/index.js';
+import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
 
 const baseConfig = {
@@ -184,7 +185,10 @@ test('GET /health reports runtime reachability', async () => {
 
 test('cat durable-memory writes stay successful when canonical sync fails', async () => {
   const chatStore = new MemoryChatStore();
-  const baseMemoryService = createCatsMemoryService(chatStore, new MemoryCanonicalMemoryStore());
+  const baseMemoryService = createCatsMemoryService(
+    createChatMemorySurface(chatStore),
+    new MemoryCanonicalMemoryStore(),
+  );
   const failingMemoryService = {
     async listCanonicalRecords(filter) {
       return baseMemoryService.listCanonicalRecords(filter);
@@ -242,7 +246,10 @@ test('cat durable-memory writes stay successful when canonical sync fails', asyn
 
 test('owner-profile writes stay successful when canonical sync fails', async () => {
   const chatStore = new MemoryChatStore();
-  const baseMemoryService = createCatsMemoryService(chatStore, new MemoryCanonicalMemoryStore());
+  const baseMemoryService = createCatsMemoryService(
+    createChatMemorySurface(chatStore),
+    new MemoryCanonicalMemoryStore(),
+  );
   const failingMemoryService = {
     async listCanonicalRecords(filter) {
       return baseMemoryService.listCanonicalRecords(filter);
@@ -285,7 +292,10 @@ test('owner-profile writes stay successful when canonical sync fails', async () 
 
 test('owner durable-memory writes stay successful when canonical sync fails', async () => {
   const chatStore = new MemoryChatStore();
-  const baseMemoryService = createCatsMemoryService(chatStore, new MemoryCanonicalMemoryStore());
+  const baseMemoryService = createCatsMemoryService(
+    createChatMemorySurface(chatStore),
+    new MemoryCanonicalMemoryStore(),
+  );
   const failingMemoryService = {
     async listCanonicalRecords(filter) {
       return baseMemoryService.listCanonicalRecords(filter);

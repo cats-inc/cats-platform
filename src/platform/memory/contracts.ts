@@ -1,5 +1,8 @@
 import type { DurableMemoryCategory } from '../../core/types.js';
 
+import type { CatsCoreState, MemoryCheckpointSummary } from '../../core/types.js';
+import type { RoomRoutingState } from '../../shared/roomRouting.js';
+
 export type CanonicalMemorySubjectKind =
   | 'cat'
   | 'owner'
@@ -198,4 +201,30 @@ export interface MemoryRetrievalContext {
   ownerProfileHints: string[];
   ownerProfile: MemoryOwnerProfileContext;
   openLoops: string[];
+}
+
+export interface MemoryCatRef {
+  id: string;
+}
+
+export interface MemoryChannelSnapshot {
+  id: string;
+  title: string;
+  topic: string;
+  workingMemory?: MemoryCheckpointSummary;
+  roomRouting?: RoomRoutingState;
+}
+
+export interface MemoryChannelContext {
+  id: string | null;
+  title: string;
+  topic: string;
+  workingMemory?: MemoryCheckpointSummary;
+  roomRouting?: RoomRoutingState;
+}
+
+export interface MemoryChatSurface {
+  readCore(): Promise<CatsCoreState>;
+  readChannel(channelId: string): Promise<MemoryChannelSnapshot>;
+  findCat(catId: string): Promise<MemoryCatRef | null>;
 }
