@@ -328,6 +328,25 @@ test('runtime dispatch execution consumes dedicated runtime session-routing help
   assert.match(sessionRoutingModule, /export function shouldRewriteOrchestratorReply/u);
 });
 
+test('runtime dispatch routing consumes dedicated dispatch-result helpers instead of defining response handling inline', async () => {
+  const dispatchRoutingModule = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchRouting.ts', import.meta.url),
+    'utf8',
+  );
+  const dispatchResultsModule = await readFile(
+    new URL('../src/products/chat/state/runtimeDispatchResults.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(dispatchRoutingModule, /runtimeDispatchResults\.js/u);
+  assert.doesNotMatch(dispatchRoutingModule, /const continuationResolution = resolveTargets/u);
+  assert.doesNotMatch(dispatchRoutingModule, /nextState = setReadyAfterMessage\(/u);
+  assert.doesNotMatch(dispatchRoutingModule, /resolveExecutionMetadataForTarget\(/u);
+  assert.match(dispatchResultsModule, /export function applyDispatchExecutions/u);
+  assert.match(dispatchResultsModule, /setReadyAfterMessage/u);
+  assert.match(dispatchResultsModule, /resolveExecutionMetadataForTarget/u);
+});
+
 test('runtime dispatch wake consumes dedicated runtime session-routing helpers instead of defining wake flows inline', async () => {
   const dispatchWakeModule = await readFile(
     new URL('../src/products/chat/state/runtimeDispatchWake.ts', import.meta.url),
