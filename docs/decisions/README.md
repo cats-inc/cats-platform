@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [039-use-core-task-metadata-as-cross-product-plan-exchange](./039-use-core-task-metadata-as-cross-product-plan-exchange.md) | Use Core task metadata as the cross-product plan exchange surface | Proposed | 2026-03-26 |
 | [038-separate-room-owned-workspaces-from-session-owned-sandboxes](./038-separate-room-owned-workspaces-from-session-owned-sandboxes.md) | Separate room-owned workspaces from session-owned sandboxes | Proposed | 2026-03-25 |
 | [031-separate-composer-lead-control-from-boss-orchestration-authority](./031-separate-composer-lead-control-from-boss-orchestration-authority.md) | Separate composer lead control from Boss orchestration authority | Draft (Pending Review) | 2026-03-23 |
 | [030-own-per-cat-companion-boxes-in-product-and-hydrate-runtime-sessions](./030-own-per-cat-companion-boxes-in-product-and-hydrate-runtime-sessions.md) | Own per-Cat companion boxes in product and hydrate runtime sessions | Draft (Pending Review) | 2026-03-23 |
@@ -81,6 +82,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-03-25*
+*Last updated: 2026-03-26*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*
