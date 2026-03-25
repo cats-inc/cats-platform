@@ -107,6 +107,33 @@ function buildSelectionForEntry(
   });
 }
 
+export function shouldDeferCatalogTargetReconciliation(input: {
+  catalogSource: ProviderModelCatalog['source'];
+  advancedCatalogSource: ProviderAdvancedModelCatalog['source'];
+  model: string;
+  modelSelection?: ProviderModelSelection | null;
+}): boolean {
+  return (
+    input.catalogSource === 'static'
+    && input.advancedCatalogSource === 'static'
+    && (Boolean(input.model) || Boolean(input.modelSelection))
+  );
+}
+
+function instanceKey(value: string | null | undefined): string {
+  return value?.trim() || '';
+}
+
+export function catalogMatchesTarget(input: {
+  catalogProvider: string;
+  catalogInstance: string | null | undefined;
+  provider: string;
+  instance: string;
+}): boolean {
+  return input.catalogProvider === input.provider
+    && instanceKey(input.catalogInstance) === instanceKey(input.instance);
+}
+
 export function ProviderModelFields({
   provider,
   instance,
@@ -126,6 +153,11 @@ export function ProviderModelFields({
   );
   const manualSelectionTargetKey = useRef<string | null>(null);
   const previousTargetKey = useRef<string>('');
+  const onTargetChangeRef = useRef(onTargetChange);
+
+  useEffect(() => {
+    onTargetChangeRef.current = onTargetChange;
+  }, [onTargetChange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,6 +181,26 @@ export function ProviderModelFields({
   const selectedProvider =
     providerOptions.find((option) => option.id === provider) ?? createFallbackProvider(provider);
   const resolvedInstance = resolveSelectedProviderInstance(selectedProvider, instance);
+  const fallbackCatalog = createStaticProviderModelCatalog(provider, {
+    instance: resolvedInstance || null,
+  });
+  const fallbackAdvancedCatalog = createProviderAdvancedCatalogFromModelCatalog(fallbackCatalog);
+  const effectiveCatalog = catalogMatchesTarget({
+    catalogProvider: catalog.provider,
+    catalogInstance: catalog.instance,
+    provider,
+    instance: resolvedInstance,
+  })
+    ? catalog
+    : fallbackCatalog;
+  const effectiveAdvancedCatalog = catalogMatchesTarget({
+    catalogProvider: advancedCatalog.provider,
+    catalogInstance: advancedCatalog.instance,
+    provider,
+    instance: resolvedInstance,
+  })
+    ? advancedCatalog
+    : fallbackAdvancedCatalog;
   const targetKey = `${provider}::${resolvedInstance}`;
   const preserveExistingSelection = manualSelectionTargetKey.current === targetKey || Boolean(modelSelection);
 
@@ -158,23 +210,23 @@ export function ProviderModelFields({
       manualSelectionTargetKey.current = null;
     }
     if (resolvedInstance !== instance) {
-      onTargetChange({
+      onTargetChangeRef.current({
         provider,
         instance: resolvedInstance,
         model,
         modelSelection,
       });
     }
-  }, [instance, model, modelSelection, onTargetChange, provider, resolvedInstance, targetKey]);
+  }, [instance, model, modelSelection, provider, resolvedInstance, targetKey]);
 
   useEffect(() => {
     let cancelled = false;
-    const fallbackCatalog = createStaticProviderModelCatalog(provider, {
+    const nextFallbackCatalog = createStaticProviderModelCatalog(provider, {
       instance: resolvedInstance || null,
     });
 
-    setCatalog(fallbackCatalog);
-    setAdvancedCatalog(createProviderAdvancedCatalogFromModelCatalog(fallbackCatalog));
+    setCatalog(nextFallbackCatalog);
+    setAdvancedCatalog(createProviderAdvancedCatalogFromModelCatalog(nextFallbackCatalog));
 
     void Promise.allSettled([
       fetchProviderModels(provider, resolvedInstance || null),
@@ -186,7 +238,7 @@ export function ProviderModelFields({
 
       const nextCatalog = modelsResult.status === 'fulfilled'
         ? modelsResult.value
-        : fallbackCatalog;
+        : nextFallbackCatalog;
       setCatalog(nextCatalog);
 
       if (advancedResult.status === 'fulfilled') {
@@ -208,7 +260,17 @@ export function ProviderModelFields({
   ]);
 
   useEffect(() => {
-    if (catalog.models.length === 0) {
+    if (effectiveCatalog.models.length === 0) {
+      return;
+    }
+
+    const deferStaticCatalogReconciliation = shouldDeferCatalogTargetReconciliation({
+      catalogSource: effectiveCatalog.source,
+      advancedCatalogSource: effectiveAdvancedCatalog.source,
+      model,
+      modelSelection,
+    });
+    if (deferStaticCatalogReconciliation) {
       return;
     }
 
@@ -219,8 +281,8 @@ export function ProviderModelFields({
         model,
         modelSelection,
       },
-      catalog,
-      advancedCatalog,
+      catalog: effectiveCatalog,
+      advancedCatalog: effectiveAdvancedCatalog,
       preserveCurrentModel: preserveExistingSelection,
       preserveCurrentSelection: preserveExistingSelection,
     });
@@ -230,15 +292,14 @@ export function ProviderModelFields({
       || nextTarget.model !== model
       || !sameProviderModelSelection(nextTarget.modelSelection, modelSelection)
     ) {
-      onTargetChange(nextTarget);
+      onTargetChangeRef.current(nextTarget);
     }
   }, [
-    advancedCatalog,
-    catalog,
+    effectiveAdvancedCatalog,
+    effectiveCatalog,
     instance,
     model,
     modelSelection,
-    onTargetChange,
     provider,
     resolvedInstance,
     preserveExistingSelection,
@@ -255,18 +316,18 @@ export function ProviderModelFields({
           backend: null,
         }, ...selectedProvider.instances]
       : selectedProvider.instances;
-  const entryOptions = advancedCatalog.entries.length > 0
-    ? advancedCatalog.entries
-    : catalog.models;
+  const entryOptions = effectiveAdvancedCatalog.entries.length > 0
+    ? effectiveAdvancedCatalog.entries
+    : effectiveCatalog.models;
   const selectedEntryId = entryOptions.some((option) => option.id === model)
     ? model
     : entryOptions[0]?.id ?? '';
-  const presetOptions = advancedCatalog.presets.filter((preset) =>
+  const presetOptions = effectiveAdvancedCatalog.presets.filter((preset) =>
     presetAppliesToEntry(preset, selectedEntryId));
   const selectedPresetId = presetOptions.some((preset) => preset.id === modelSelection?.presetId)
     ? modelSelection?.presetId ?? ''
     : '';
-  const controlOptions = advancedCatalog.controls.filter((control) =>
+  const controlOptions = effectiveAdvancedCatalog.controls.filter((control) =>
     controlAppliesToEntry(control, selectedEntryId));
   const controlValues = modelSelection?.controls ?? {};
 
@@ -500,9 +561,9 @@ export function ProviderModelFields({
           </label>
         );
       })}
-      {advancedCatalog.warnings.length > 0 ? (
+      {effectiveAdvancedCatalog.warnings.length > 0 ? (
         <span className="fieldHint providerCatalogHint">
-          {advancedCatalog.warnings[0]}
+          {effectiveAdvancedCatalog.warnings[0]}
         </span>
       ) : null}
     </>

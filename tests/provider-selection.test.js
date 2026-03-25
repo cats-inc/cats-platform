@@ -25,6 +25,20 @@ test('resolveSelectedProviderInstance picks the runtime default instance when no
   assert.equal(resolveSelectedProviderInstance(provider, 'ubuntu'), 'ubuntu');
 });
 
+test('resolveSelectedProviderInstance preserves an existing instance until the runtime registry is loaded', () => {
+  const provider = {
+    id: 'claude',
+    label: 'Claude',
+    defaultModel: null,
+    defaultInstance: null,
+    defaultBackend: null,
+    instances: [],
+    modelsPath: '/api/providers/claude/models',
+  };
+
+  assert.equal(resolveSelectedProviderInstance(provider, 'native'), 'native');
+});
+
 test('resolveCatalogTargetSelection prefers the runtime catalog default over a stale initial model', () => {
   const nextTarget = resolveCatalogTargetSelection({
     target: {

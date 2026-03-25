@@ -266,6 +266,12 @@ export function resolveSelectedProviderInstance(
     return normalizedRequested;
   }
 
+  // Before the runtime-backed provider registry arrives we may not know any instances yet.
+  // Preserve the caller's current choice instead of clearing it to the empty fallback.
+  if (normalizedRequested && provider.instances.length === 0) {
+    return normalizedRequested;
+  }
+
   if (normalizedRequested && provider.instances.length > 0) {
     console.warn(`Unknown provider instance "${normalizedRequested}" for ${provider.id}, falling back to default`);
   }

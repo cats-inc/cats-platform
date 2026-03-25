@@ -105,6 +105,8 @@ export default function App() {
   const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
   const latestNewChatDefaultsSaveId = useRef(0);
+  const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
 
   const {
     accountMenuOpen,
@@ -299,6 +301,17 @@ export default function App() {
   ]);
 
   useEffect(() => {
+    return () => {
+      if (pendingNewChatDefaultsSaveTimeout.current) {
+        clearTimeout(pendingNewChatDefaultsSaveTimeout.current);
+        pendingNewChatDefaultsSaveTimeout.current = null;
+      }
+      pendingNewChatDefaultsSaveAbort.current?.abort();
+      pendingNewChatDefaultsSaveAbort.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
       return;
     }
@@ -367,42 +380,78 @@ export default function App() {
 
   const onDraftModelChange = useCallback((nextDraftModel: ModelSelectorValue): void => {
     setDraftModel(nextDraftModel);
+  }, []);
 
+  useEffect(() => {
     if (state.status !== 'ready') {
       return;
     }
 
     const persistedDraftModel = toModelSelectorValue(state.payload.chat.newChatDefaults);
-    if (sameModelSelectorValue(nextDraftModel, persistedDraftModel)) {
+    if (sameModelSelectorValue(draftModel, persistedDraftModel)) {
       return;
     }
 
+    if (pendingNewChatDefaultsSaveTimeout.current) {
+      clearTimeout(pendingNewChatDefaultsSaveTimeout.current);
+      pendingNewChatDefaultsSaveTimeout.current = null;
+    }
+    pendingNewChatDefaultsSaveAbort.current?.abort();
+
     const saveId = latestNewChatDefaultsSaveId.current + 1;
     latestNewChatDefaultsSaveId.current = saveId;
+    const controller = new AbortController();
+    pendingNewChatDefaultsSaveAbort.current = controller;
+    const nextDraftModel = {
+      provider: draftModel.provider,
+      instance: draftModel.instance,
+      model: draftModel.model,
+      modelSelection: draftModel.modelSelection,
+    };
 
-    void updateNewChatDefaultsPreference({
-      provider: nextDraftModel.provider,
-      instance: nextDraftModel.instance,
-      model: nextDraftModel.model,
-      modelSelection: nextDraftModel.modelSelection,
-    })
-      .then((payload) => {
-        if (latestNewChatDefaultsSaveId.current !== saveId) {
-          return;
-        }
-        startTransition(() => setState({ status: 'ready', payload }));
-      })
-      .catch((error) => {
-        if (latestNewChatDefaultsSaveId.current !== saveId) {
-          return;
-        }
-        setFeedback(
-          error instanceof Error
-            ? error.message
-            : 'Failed to save new chat model defaults.',
-        );
-      });
-  }, [setFeedback, setState, state, latestNewChatDefaultsSaveId]);
+    pendingNewChatDefaultsSaveTimeout.current = setTimeout(() => {
+      pendingNewChatDefaultsSaveTimeout.current = null;
+
+      void updateNewChatDefaultsPreference(nextDraftModel, controller.signal)
+        .then((payload) => {
+          if (controller.signal.aborted || latestNewChatDefaultsSaveId.current !== saveId) {
+            return;
+          }
+          pendingNewChatDefaultsSaveAbort.current = null;
+          startTransition(() => setState({ status: 'ready', payload }));
+        })
+        .catch((error) => {
+          if (controller.signal.aborted || latestNewChatDefaultsSaveId.current !== saveId) {
+            return;
+          }
+          pendingNewChatDefaultsSaveAbort.current = null;
+          setFeedback(
+            error instanceof Error
+              ? error.message
+              : 'Failed to save new chat model defaults.',
+          );
+        });
+    }, 150);
+
+    return () => {
+      if (pendingNewChatDefaultsSaveTimeout.current) {
+        clearTimeout(pendingNewChatDefaultsSaveTimeout.current);
+        pendingNewChatDefaultsSaveTimeout.current = null;
+      }
+      controller.abort();
+    };
+  }, [
+    draftModel.instance,
+    draftModel.model,
+    draftModel.modelSelection,
+    draftModel.provider,
+    setFeedback,
+    state.status,
+    state.status === 'ready' ? state.payload.chat.newChatDefaults.instance : null,
+    state.status === 'ready' ? state.payload.chat.newChatDefaults.model : null,
+    state.status === 'ready' ? state.payload.chat.newChatDefaults.modelSelection : null,
+    state.status === 'ready' ? state.payload.chat.newChatDefaults.provider : null,
+  ]);
 
   function updatePayload(payload: AppShellPayload): void {
     startTransition(() => setState({ status: 'ready', payload }));
