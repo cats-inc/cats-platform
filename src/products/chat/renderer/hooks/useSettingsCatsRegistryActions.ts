@@ -32,6 +32,7 @@ export function useSettingsCatsRegistryActions(options: {
   onBusy: (key: string) => void;
   onFeedback: (message: string) => void;
   onPayloadUpdate: (payload: AppShellPayload) => void;
+  confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }) {
   const {
     expandedCatId,
@@ -39,6 +40,7 @@ export function useSettingsCatsRegistryActions(options: {
     onBusy,
     onFeedback,
     onPayloadUpdate,
+    confirm: confirmDialog,
   } = options;
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [renameValue, setRenameValue] = useState('');
@@ -54,6 +56,8 @@ export function useSettingsCatsRegistryActions(options: {
         instance: catForm.instance || undefined,
         model: catForm.model || undefined,
         modelSelection: catForm.modelSelection,
+        makeBoss: catForm.makeBoss || undefined,
+        products: catForm.products.length > 0 ? catForm.products : undefined,
       });
       onPayloadUpdate(result);
       setCatForm(emptyCatForm());
@@ -85,6 +89,10 @@ export function useSettingsCatsRegistryActions(options: {
   }
 
   async function onDeleteCat(catId: string, catName: string): Promise<void> {
+    const confirmed = confirmDialog
+      ? await confirmDialog({ title: 'Delete cat', message: `Delete "${catName}"? This cannot be undone.` })
+      : true;
+    if (!confirmed) return;
     onBusy(`cat:delete:${catId}`);
     onFeedback('');
     try {
@@ -123,6 +131,18 @@ export function useSettingsCatsRegistryActions(options: {
       onPayloadUpdate(result);
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : 'Failed to update skill.');
+    } finally {
+      onBusy('');
+    }
+  }
+
+  async function onUpdateProducts(catId: string, products: string[]): Promise<void> {
+    onBusy(`cat:products:${catId}`);
+    try {
+      const result = await updateCatProfile(catId, { products });
+      onPayloadUpdate(result);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'Failed to update products.');
     } finally {
       onBusy('');
     }
@@ -182,5 +202,6 @@ export function useSettingsCatsRegistryActions(options: {
     onMakeBossCat,
     onRenameCat,
     onSkillChange,
+    onUpdateProducts,
   };
 }

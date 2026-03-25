@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts';
-import { catInitials, truncatePath } from '../chatUtils';
+import { catInitials, isChatCat, truncatePath } from '../chatUtils';
 import { CatInspectPanel, type CatInspectTarget } from './CatInspectPanel';
 import { ModelSelector, type ModelSelectorValue } from './ModelSelector';
 
@@ -66,8 +66,9 @@ export function NewChatDraft({
   selectedModel,
   onModelChange,
 }: NewChatDraftProps) {
+  const chatCats = payload.chat.cats.filter(isChatCat);
   const leadCat = draftLeadCatId
-    ? payload.chat.cats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
+    ? chatCats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
     : null;
   const hasTelegramBinding = Boolean(
     leadCat && payload.chat.botBindings.some((binding) =>
@@ -76,7 +77,7 @@ export function NewChatDraft({
       && binding.catId === leadCat.id),
   );
   const draftLeadCat = !leadCat && draftCatIds.length > 0
-    ? payload.chat.cats.find((c) => c.id === draftCatIds[0] && c.status === 'active') ?? null
+    ? chatCats.find((c) => c.id === draftCatIds[0] && c.status === 'active') ?? null
     : null;
   const effectiveLeadCat = leadCat ?? draftLeadCat;
   const hasDraftCats = draftCatIds.length > 0;
@@ -91,7 +92,7 @@ export function NewChatDraft({
     : draftCatIds;
   const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
   const [inspectOpen, setInspectOpen] = useState(false);
-  const hasMultipleCats = payload.chat.cats.filter((c) => c.status === 'active').length > 1;
+  const hasMultipleCats = chatCats.filter((c) => c.status === 'active').length > 1;
 
   return (
     <div className="viewShell viewShellDraft">
@@ -229,7 +230,7 @@ export function NewChatDraft({
               {nonLeadDraftCatIds.length > 0 ? (
                 <div className="composerAvatarStack">
                   {nonLeadDraftCatIds.map((id) => {
-                    const cat = payload.chat.cats.find((p) => p.id === id);
+                    const cat = chatCats.find((p) => p.id === id);
                     if (!cat) return null;
                     return (
                       <div key={id} className="composerStackItem">

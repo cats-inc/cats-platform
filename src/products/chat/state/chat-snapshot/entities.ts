@@ -104,6 +104,7 @@ export function normalizeChatCat(rawCat: unknown): ChatCat | null {
     avatarColor: readNullableString(catRecord.avatarColor),
     defaultExecutionTarget,
     defaultModelSelection: parseProviderModelSelection(catRecord.defaultModelSelection),
+    products: readStringArray(catRecord.products),
     memory: asRecord(catRecord.memory)
       ? normalizeMemoryCheckpoint(catRecord.memory)
       : createEmptyMemoryCheckpoint(),
@@ -240,6 +241,15 @@ export function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilitie
         ? 'basic'
         : fallback.participantManagement,
     runtimeSessions: true,
+    maxBossCats: typeof capabilitiesRecord?.maxBossCats === 'number' && capabilitiesRecord.maxBossCats > 0
+      ? capabilitiesRecord.maxBossCats
+      : fallback.maxBossCats,
+    maxCats: typeof capabilitiesRecord?.maxCats === 'number' && capabilitiesRecord.maxCats > 0
+      ? capabilitiesRecord.maxCats
+      : fallback.maxCats,
+    availableSurfaces: Array.isArray(capabilitiesRecord?.availableSurfaces)
+      ? (capabilitiesRecord.availableSurfaces as unknown[]).filter((v): v is string => typeof v === 'string')
+      : fallback.availableSurfaces,
   };
 }
 

@@ -6,11 +6,15 @@ export interface AppConfig {
   runtimeBaseUrl: string;
   runtimeApiKey: string;
   chatStatePath: string;
+  maxBossCats: number;
+  maxCats: number;
 }
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8181;
 const DEFAULT_RUNTIME_BASE_URL = 'http://127.0.0.1:3110';
+const DEFAULT_MAX_BOSS_CATS = 1;
+const DEFAULT_MAX_CATS = 5;
 
 function readFirstDefined(env: NodeJS.ProcessEnv, keys: string[]): string | undefined {
   for (const key of keys) {
@@ -37,6 +41,13 @@ function parsePort(rawValue: string | undefined, fallback: number): number {
   return parsed;
 }
 
+function parsePositiveInt(raw: string | undefined, fallback: number): number {
+  const trimmed = raw?.trim();
+  if (!trimmed) return fallback;
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
@@ -46,5 +57,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     chatStatePath:
       readFirstDefined(env, ['CATS_STATE_PATH', 'CATS_INC_STATE_PATH'])
       || path.join(process.cwd(), 'config', 'chat-state.local.json'),
+    maxBossCats: parsePositiveInt(env.CATS_MAX_BOSS_CATS, DEFAULT_MAX_BOSS_CATS),
+    maxCats: parsePositiveInt(env.CATS_MAX_CATS, DEFAULT_MAX_CATS),
   };
 }

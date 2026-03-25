@@ -1,7 +1,7 @@
 import type { RefObject, MouseEvent as ReactMouseEvent } from 'react';
 
 import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts';
-import { catInitials, presentChannelTitle, type Surface } from '../chatUtils';
+import { catInitials, isChatCat, presentChannelTitle, type Surface } from '../chatUtils';
 import {
   findDirectLaneForCat,
   resolveMyCatStatusDot,
@@ -180,7 +180,8 @@ export function Sidebar({
   activeMyCatId,
   onDirectChatCat,
 }: SidebarProps) {
-  const showMyCats = payload.chat.cats.length > 0;
+  const chatCats = payload.chat.cats.filter(isChatCat);
+  const showMyCats = chatCats.length > 0;
   const telegramBoundCatIds = new Set(
     (payload.chat.botBindings ?? [])
       .filter((binding) => binding.platform === 'telegram' && binding.status === 'active')
@@ -324,7 +325,7 @@ export function Sidebar({
           <section className="myCatsSection">
             <p className="sectionLabel">My Cats</p>
             <div className="myCatsList">
-              {[...payload.chat.cats]
+              {[...chatCats]
                 .filter((cat) => cat.status === 'active')
                 .sort((a, b) => {
                   const aIsBoss = a.id === payload.chat.bossCatId ? 0 : 1;
@@ -375,7 +376,7 @@ export function Sidebar({
                         <div className="myCatOverflowMenu">
                           <button
                             type="button"
-                            disabled={isBoss}
+                            disabled={false}
                             onClick={() => {
                               onOverflowMenuToggle(null);
                               if (directLane) {

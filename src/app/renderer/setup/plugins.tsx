@@ -25,6 +25,8 @@ function ChatBossCatStep({
         namePlaceholder="Boss Cat"
         nameHint="Your personal AI agent that manages tasks and coordinates other cats."
         autoFocusName
+        hideMakeBoss
+        hideProductToggles
       />
       <div className="setupRuntimeStatus">
         <span

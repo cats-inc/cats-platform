@@ -150,6 +150,7 @@ export interface ChatCat {
   avatarColor: string | null;
   defaultExecutionTarget: ExecutionTargetSummary;
   defaultModelSelection?: ProviderModelSelection | null;
+  products: string[];
   memory: MemoryCheckpointSummary;
 }
 
@@ -311,6 +312,9 @@ export interface ChatCapabilities {
   transcriptExport: true;
   participantManagement: 'basic';
   runtimeSessions: true;
+  maxBossCats: number;
+  maxCats: number;
+  availableSurfaces: string[];
 }
 
 export interface ChatState {
@@ -385,7 +389,10 @@ export interface CatDraftInput {
   mcpProfile?: string;
 }
 
-export interface CreateCatInput extends CatDraftInput {}
+export interface CreateCatInput extends CatDraftInput {
+  makeBoss?: boolean;
+  products?: string[];
+}
 
 export interface AssignChannelCatInput {
   catId: string;

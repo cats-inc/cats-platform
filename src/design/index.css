@@ -12,3 +12,6 @@
 @import './components/choices.css';
 @import './components/product-placeholder.css';
 @import './components/suite-setup.css';
+@import './components/toast.css';
+@import './components/confirm-dialog.css';
+@import './components/notification.css';

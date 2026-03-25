@@ -55,6 +55,7 @@ async function handleSuiteSetupComplete(
         instance: body.bossCatInstance,
         model: body.bossCatModel,
         modelSelection: body.bossCatModelSelection,
+        products: [...chatState.capabilities.availableSurfaces],
       },
       now,
     );

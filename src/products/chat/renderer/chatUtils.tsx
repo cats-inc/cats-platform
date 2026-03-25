@@ -18,6 +18,8 @@ export interface CatFormState {
   instance: string;
   model: string;
   modelSelection: ProviderModelSelection | null;
+  makeBoss: boolean;
+  products: string[];
 }
 
 export function emptyCatForm(): CatFormState {
@@ -27,7 +29,13 @@ export function emptyCatForm(): CatFormState {
     instance: '',
     model: '',
     modelSelection: null,
+    makeBoss: false,
+    products: ['chat'],
   };
+}
+
+export function isChatCat(cat: ChatCat): boolean {
+  return cat.products.length === 0 || cat.products.includes('chat');
 }
 
 export function executionLabel(cat: ChatCat): string {

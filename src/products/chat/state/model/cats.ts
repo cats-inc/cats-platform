@@ -22,11 +22,34 @@ export function isDefaultCatName(name: string): boolean {
   return name.trim() === DEFAULT_CAT_NAME;
 }
 
+function assertUniqueCatName(state: ChatState, name: string, excludeCatId?: string): void {
+  const normalized = name.trim().toLowerCase();
+  const duplicate = state.cats.find(
+    (c) => c.id !== excludeCatId && c.name.trim().toLowerCase() === normalized,
+  );
+  if (duplicate) {
+    throw new Error(`A cat named "${duplicate.name}" already exists`);
+  }
+}
+
 export function createCat(
   state: ChatState,
   input: CreateCatInput,
   now: Date = new Date(),
 ): ChatState {
+  const maxCats = state.capabilities.maxCats ?? Infinity;
+  const activeCats = state.cats.filter((c) => c.status === 'active');
+  if (activeCats.length >= maxCats) {
+    throw new Error(`Cat limit reached (max ${maxCats})`);
+  }
+  if (input.makeBoss) {
+    const maxBossCats = state.capabilities.maxBossCats ?? 1;
+    const bossCatCount = state.bossCatId ? 1 : 0;
+    if (bossCatCount >= maxBossCats && !state.bossCatId) {
+      throw new Error(`Boss Cat limit reached (max ${maxBossCats})`);
+    }
+  }
+  assertUniqueCatName(state, input.name);
   const nextState = cloneState(state);
   const cat = createCatRecord(input, isoAt(now));
   if (!cat.avatarColor) {
@@ -35,6 +58,9 @@ export function createCat(
       : pickAvatarColor(nextState.cats.length);
   }
   nextState.cats.unshift(cat);
+  if (input.makeBoss) {
+    nextState.bossCatId = cat.id;
+  }
   return nextState;
 }
 
@@ -48,7 +74,7 @@ export function deleteCat(
     throw new Error(`Cat not found: ${catId}`);
   }
   if (nextState.bossCatId === catId) {
-    throw new Error('Cannot delete Boss Cat');
+    nextState.bossCatId = null;
   }
   nextState.cats.splice(catIndex, 1);
   for (const channel of nextState.channels) {
@@ -88,6 +114,21 @@ export function setBossCat(
   return nextState;
 }
 
+export function updateCatProducts(
+  state: ChatState,
+  catId: string,
+  products: string[],
+): ChatState {
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((p) => p.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  cat.products = products.filter((s) => typeof s === 'string' && s.trim().length > 0);
+  cat.updatedAt = new Date().toISOString();
+  return nextState;
+}
+
 export function renameCat(
   state: ChatState,
   catId: string,
@@ -97,6 +138,7 @@ export function renameCat(
   if (!trimmed) {
     throw new Error('Cat name cannot be empty');
   }
+  assertUniqueCatName(state, trimmed, catId);
   const nextState = cloneState(state);
   const cat = nextState.cats.find((p) => p.id === catId);
   if (!cat) {

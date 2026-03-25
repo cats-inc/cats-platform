@@ -98,6 +98,7 @@ export function createCatRecord(input: CreateCatInput, nowIso: string): ChatCat 
       model: normalizeOptionalText(input.model),
     },
     defaultModelSelection: cloneProviderModelSelection(input.modelSelection),
+    products: normalizeList(input.products),
     memory: createEmptyMemoryCheckpoint(),
   };
 }

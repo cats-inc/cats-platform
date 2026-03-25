@@ -4,6 +4,7 @@ import {
   resolveSelectedChannelEntryLifecycle,
 } from '../shared/channelEntry';
 import {
+  isChatCat,
   resolveBossCatName,
   type SelectedChannelView,
   type Surface,
@@ -138,7 +139,7 @@ export function deriveAppViewState(input: {
     && selectedChannel?.composerMode !== 'solo'
     && !activeAssignedCats.some((cat) => cat.catId === payload.chat.bossCatId);
   const selectableCats = payload.chat.cats.filter(
-    (cat) => cat.status === 'active' && cat.id !== payload.chat.bossCatId,
+    (cat) => cat.status === 'active' && cat.id !== payload.chat.bossCatId && isChatCat(cat),
   );
   const assignableCatCount = selectableCats.length;
   const draftCatIdSet = new Set(draftCatIds);

@@ -67,3 +67,52 @@
 .tagChipMuted {
   background: transparent;
 }
+
+.productToggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.productToggle {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.productToggle:hover {
+  background: var(--panel-hover);
+  color: var(--muted);
+}
+
+.productToggleActive {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.productToggleActive:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.productBadge {
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: var(--muted-bg);
+  color: var(--muted-text);
+}
+
+.productBadgeAccent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}

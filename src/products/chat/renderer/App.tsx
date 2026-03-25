@@ -12,6 +12,7 @@ import {
 } from 'react-router-dom';
 
 import type { AppShellPayload } from '../api/contracts';
+import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog';
 import {
   CHAT_PREFIX,
   isNewChatPath,
@@ -107,6 +108,7 @@ export default function App() {
   const latestNewChatDefaultsSaveId = useRef(0);
   const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
+  const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
   const {
     accountMenuOpen,
@@ -196,6 +198,7 @@ export default function App() {
     setDraftCatIds,
     setDraftFiles,
     setChannelFiles,
+    confirm: appConfirm,
   });
 
   const {
@@ -648,6 +651,7 @@ export default function App() {
           onChangeDraftLeadCat={changeDraftLeadCat}
         />
       </main>
+      <ConfirmDialog dialog={appDialog} onClose={appHandleClose} />
     </div>
   );
 }

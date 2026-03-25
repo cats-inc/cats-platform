@@ -18,6 +18,7 @@ interface SettingsCatsRegistryController {
   onMakeBossCat: (catId: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
+  onUpdateProducts: (catId: string, products: string[]) => Promise<void>;
 }
 
 export interface SettingsCatsRegistryProps {
@@ -29,6 +30,8 @@ export interface SettingsCatsRegistryProps {
   registryController: SettingsCatsRegistryController;
   setExpandedCatId: Dispatch<SetStateAction<string | null>>;
   telegramDiagnostics: TelegramTransportDiagnostics | null;
+  availableSurfaces?: string[];
+  confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
 
 export function SettingsCatsRegistry({
@@ -40,6 +43,8 @@ export function SettingsCatsRegistry({
   registryController,
   setExpandedCatId,
   telegramDiagnostics,
+  availableSurfaces,
+  confirm: confirmDialog,
 }: SettingsCatsRegistryProps) {
   const sortedCats = [...payload.chat.cats].sort((left, right) => {
     const leftRank = left.id === payload.chat.bossCatId ? 0 : 1;
@@ -79,6 +84,13 @@ export function SettingsCatsRegistry({
                       ) : null}
                     </div>
                     <p>{executionLabel(cat)}</p>
+                    {cat.products.length > 0 ? (
+                      <div className="chipRow" style={{ marginTop: 4 }}>
+                        {cat.products.map((surface) => (
+                          <span key={surface} className="productBadge">{surface}</span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                   <div
                     style={{ display: 'flex', alignSelf: 'start', alignItems: 'center', gap: 8 }}
@@ -92,20 +104,18 @@ export function SettingsCatsRegistry({
                     >
                       {cat.status}
                     </span>
-                    {!isBossCat ? (
-                      <button
-                        className="chromeButton"
-                        type="button"
-                        disabled={busy === `cat:delete:${cat.id}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void registryController.onDeleteCat(cat.id, cat.name);
-                        }}
-                        data-tooltip={`Delete ${cat.name}`}
-                      >
-                        &#x2715;
-                      </button>
-                    ) : null}
+                    <button
+                      className="chromeButton"
+                      type="button"
+                      disabled={busy === `cat:delete:${cat.id}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void registryController.onDeleteCat(cat.id, cat.name);
+                      }}
+                      data-tooltip={`Delete ${cat.name}`}
+                    >
+                      &#x2715;
+                    </button>
                   </div>
                 </div>
 
@@ -126,6 +136,8 @@ export function SettingsCatsRegistry({
                     memoryController={memoryController}
                     registryController={registryController}
                     telegramDiagnostics={telegramDiagnostics}
+                    availableSurfaces={availableSurfaces}
+                    confirm={confirmDialog}
                   />
                 ) : null}
               </article>

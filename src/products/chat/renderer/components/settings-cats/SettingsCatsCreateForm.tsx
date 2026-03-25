@@ -8,6 +8,8 @@ export interface SettingsCatsCreateFormProps {
   catForm: CatFormState;
   onCatFormChange: (value: CatFormState) => void;
   onCreateCat: (event: FormEvent<HTMLFormElement>) => void;
+  atCatLimit?: boolean;
+  availableSurfaces?: string[];
 }
 
 export function SettingsCatsCreateForm({
@@ -15,6 +17,8 @@ export function SettingsCatsCreateForm({
   catForm,
   onCatFormChange,
   onCreateCat,
+  atCatLimit,
+  availableSurfaces,
 }: SettingsCatsCreateFormProps) {
   return (
     <section className="contentCard contentCardForm">
@@ -44,10 +48,15 @@ export function SettingsCatsCreateForm({
               modelSelection: target.modelSelection ?? null,
             })}
           namePlaceholder="Ops reviewer"
+          makeBoss={catForm.makeBoss}
+          onMakeBossChange={(makeBoss) => onCatFormChange({ ...catForm, makeBoss })}
+          products={catForm.products}
+          onProductsChange={(products) => onCatFormChange({ ...catForm, products })}
+          availableSurfaces={availableSurfaces}
         />
         <button
           className="primaryButton"
-          disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim()}
+          disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim() || atCatLimit}
           type="submit"
         >
           {busy === 'cat:create' ? 'Saving...' : 'Save Cat'}

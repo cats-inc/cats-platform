@@ -222,7 +222,7 @@ export async function sendChatMessage(
 
 export async function updateCatProfile(
   catId: string,
-  input: { skillProfile?: string | null; name?: string; makeBoss?: boolean },
+  input: { skillProfile?: string | null; name?: string; makeBoss?: boolean; products?: string[] },
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
   const response = await fetch(`/api/cats/${encodeURIComponent(catId)}`, {

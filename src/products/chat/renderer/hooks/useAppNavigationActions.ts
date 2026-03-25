@@ -39,6 +39,7 @@ export function useAppNavigationActions(options: {
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
+  confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }) {
   const {
     state,
@@ -55,6 +56,7 @@ export function useAppNavigationActions(options: {
     setDraftCatIds,
     setDraftFiles,
     setChannelFiles,
+    confirm: confirmDialog,
   } = options;
 
   const clearDraftRouteState = useCallback(() => {
@@ -117,6 +119,10 @@ export function useAppNavigationActions(options: {
   }, [navigate, setAddCatOpen, setBusy, setFeedback, setState]);
 
   const onDeleteCat = useCallback(async (catId: string): Promise<void> => {
+    const confirmed = confirmDialog
+      ? await confirmDialog({ title: 'Delete cat', message: 'Delete this cat? This cannot be undone.' })
+      : true;
+    if (!confirmed) return;
     setBusy(`cat:delete:${catId}`);
     try {
       const payload = await deleteGlobalCat(catId);
@@ -126,7 +132,7 @@ export function useAppNavigationActions(options: {
     } finally {
       setBusy('');
     }
-  }, [setBusy, setFeedback, setState]);
+  }, [confirmDialog, setBusy, setFeedback, setState]);
 
   const onNavigateSettings = useCallback((): void => {
     navigate('/settings/general');
@@ -147,9 +153,10 @@ export function useAppNavigationActions(options: {
   }, [clearDraftRouteState, navigate, setFeedback, state]);
 
   const onResetSetup = useCallback(async (): Promise<void> => {
-    if (!window.confirm('This will erase all chats, cats, and settings. Continue?')) {
-      return;
-    }
+    const confirmed = confirmDialog
+      ? await confirmDialog({ title: 'Reset all data', message: 'This will erase all chats, cats, and settings. Continue?', confirmLabel: 'Reset' })
+      : true;
+    if (!confirmed) return;
 
     setBusy('setup:reset');
     try {

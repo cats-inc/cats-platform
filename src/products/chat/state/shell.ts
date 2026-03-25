@@ -39,7 +39,11 @@ export function createAppShell(
         status: runtime.reachable ? 'ready' : 'warming',
       },
       newChatDefaults: structuredClone(chat.newChatDefaults),
-      capabilities: chat.capabilities,
+      capabilities: {
+        ...chat.capabilities,
+        maxBossCats: config.maxBossCats,
+        maxCats: config.maxCats,
+      },
       showVerboseMessages: chat.showVerboseMessages,
       botBindings,
     },

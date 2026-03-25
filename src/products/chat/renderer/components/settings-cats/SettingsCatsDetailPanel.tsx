@@ -19,6 +19,7 @@ interface SettingsCatsRegistryController {
   onMakeBossCat: (catId: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
+  onUpdateProducts: (catId: string, products: string[]) => Promise<void>;
 }
 
 export interface SettingsCatsDetailPanelProps {
@@ -31,6 +32,8 @@ export interface SettingsCatsDetailPanelProps {
   telegramDiagnostics: {
     bindings: TelegramTransportBindingDiagnostics[];
   } | null;
+  availableSurfaces?: string[];
+  confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
 
 export function SettingsCatsDetailPanel({
@@ -41,6 +44,8 @@ export function SettingsCatsDetailPanel({
   memoryController,
   registryController,
   telegramDiagnostics,
+  availableSurfaces,
+  confirm: confirmDialog,
 }: SettingsCatsDetailPanelProps) {
   const {
     botForm,
@@ -52,6 +57,7 @@ export function SettingsCatsDetailPanel({
     onMakeBossCat,
     onRenameCat,
     onSkillChange,
+    onUpdateProducts,
   } = registryController;
   const {
     memoryForm,
@@ -93,6 +99,33 @@ export function SettingsCatsDetailPanel({
         </div>
       </div>
 
+      {availableSurfaces && availableSurfaces.length > 0 ? (
+        <div className="catDetailSection">
+          <p className="sectionLabel">Available in</p>
+          <div className="productToggles">
+            {availableSurfaces.map((surface) => {
+              const active = cat.products.includes(surface);
+              return (
+                <button
+                  key={surface}
+                  type="button"
+                  className={active ? 'productToggle productToggleActive' : 'productToggle'}
+                  disabled={busy === `cat:products:${cat.id}`}
+                  onClick={() => {
+                    const next = active
+                      ? cat.products.filter((s) => s !== surface)
+                      : [...cat.products, surface];
+                    void onUpdateProducts(cat.id, next);
+                  }}
+                >
+                  {surface}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       {!isBossCat ? (
         <div className="catDetailSection">
           <p className="sectionLabel">Boss Cat</p>
@@ -100,10 +133,11 @@ export function SettingsCatsDetailPanel({
             className="primaryButton"
             type="button"
             disabled={busy === `cat:makeBoss:${cat.id}`}
-            onClick={() => {
-              if (window.confirm(`Make ${cat.name} the Boss Cat? This will change the default lead for new chats.`)) {
-                void onMakeBossCat(cat.id);
-              }
+            onClick={async () => {
+              const confirmed = confirmDialog
+                ? await confirmDialog({ title: 'Change Boss Cat', message: `Make ${cat.name} the Boss Cat? This will change the default lead for new chats.`, confirmLabel: 'Confirm' })
+                : true;
+              if (confirmed) void onMakeBossCat(cat.id);
             }}
           >
             {busy === `cat:makeBoss:${cat.id}` ? 'Setting...' : `Make ${cat.name} the Boss Cat`}

@@ -57,7 +57,7 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
   };
 }
 
-function createCapabilities(): ChatCapabilities {
+function createCapabilities(limits?: { maxBossCats?: number; maxCats?: number; availableSurfaces?: string[] }): ChatCapabilities {
   return {
     multiChannel: true,
     persistence: 'file-backed',
@@ -66,6 +66,9 @@ function createCapabilities(): ChatCapabilities {
     transcriptExport: true,
     participantManagement: 'basic',
     runtimeSessions: true,
+    maxBossCats: limits?.maxBossCats ?? 1,
+    maxCats: limits?.maxCats ?? 5,
+    availableSurfaces: limits?.availableSurfaces ?? ['chat', 'work', 'code'],
   };
 }
 

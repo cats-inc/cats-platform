@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../api/contracts';
+import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog';
+import { ToastContainer, useToast } from '../../../../../design/components/Toast';
 import { useSettingsCatsRegistryActions } from '../../hooks/useSettingsCatsRegistryActions';
 import { useSettingsCatsMemory } from '../../hooks/useSettingsCatsMemory';
 import { useSettingsCatsTelegram } from '../../hooks/useSettingsCatsTelegram';
@@ -28,6 +30,14 @@ export function SettingsCats({
 }: SettingsCatsProps) {
   const navigate = useNavigate();
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
+  const { toasts, showToast } = useToast();
+  const { dialog, confirm, handleClose } = useConfirmDialog();
+
+  const toastFeedback = useCallback((message: string) => {
+    onFeedback(message);
+    if (message) showToast(message);
+  }, [onFeedback, showToast]);
+
   const {
     botForm,
     catForm,
@@ -42,12 +52,14 @@ export function SettingsCats({
     onMakeBossCat,
     onRenameCat,
     onSkillChange,
+    onUpdateProducts,
   } = useSettingsCatsRegistryActions({
     expandedCatId,
     setExpandedCatId,
     onBusy,
-    onFeedback,
+    onFeedback: toastFeedback,
     onPayloadUpdate,
+    confirm,
   });
   const {
     botBindings,
@@ -60,7 +72,7 @@ export function SettingsCats({
   const memoryController = useSettingsCatsMemory({
     expandedCatId,
     onBusy,
-    onFeedback,
+    onFeedback: toastFeedback,
   });
 
   return (
@@ -86,19 +98,10 @@ export function SettingsCats({
           <p className="heroNote">
             Manage your cats, assign skills, bind Telegram bots, and view memory.
           </p>
-          {feedback ? <p className="feedbackText">{feedback}</p> : null}
         </div>
 
         <div className="catsLayout">
           <section className="contentCard">
-            <SettingsCatsTransportPanel
-              telegramDiagnostics={telegramDiagnostics}
-              telegramError={telegramError}
-              telegramLoading={telegramLoading}
-              telegramStatus={telegramStatus}
-              onRefresh={() => void refreshTelegramDiagnostics()}
-            />
-
             <SettingsCatsRegistry
               botBindings={botBindings}
               busy={busy}
@@ -116,9 +119,12 @@ export function SettingsCats({
                 onMakeBossCat,
                 onRenameCat,
                 onSkillChange,
+                onUpdateProducts,
               }}
               setExpandedCatId={setExpandedCatId}
               telegramDiagnostics={telegramDiagnostics}
+              availableSurfaces={payload.chat.capabilities.availableSurfaces}
+              confirm={confirm}
             />
           </section>
 
@@ -127,9 +133,23 @@ export function SettingsCats({
             catForm={catForm}
             onCatFormChange={setCatForm}
             onCreateCat={onCreateCat}
+            atCatLimit={payload.chat.cats.filter((c) => c.status === 'active').length >= payload.chat.capabilities.maxCats}
+            availableSurfaces={payload.chat.capabilities.availableSurfaces}
           />
+
+          <section className="contentCard">
+            <SettingsCatsTransportPanel
+              telegramDiagnostics={telegramDiagnostics}
+              telegramError={telegramError}
+              telegramLoading={telegramLoading}
+              telegramStatus={telegramStatus}
+              onRefresh={() => void refreshTelegramDiagnostics()}
+            />
+          </section>
         </div>
       </div>
+      <ConfirmDialog dialog={dialog} onClose={handleClose} />
+      <ToastContainer toasts={toasts} />
     </div>
   );
 }

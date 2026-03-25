@@ -18,6 +18,8 @@ export interface CatCreationFieldsProps {
   namePlaceholder?: string;
   nameHint?: string;
   autoFocusName?: boolean;
+  hideMakeBoss?: boolean;
+  hideProductToggles?: boolean;
 }
 
 export function CatCreationFields(props: CatCreationFieldsProps) {

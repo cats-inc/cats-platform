@@ -61,6 +61,7 @@ export {
   pickAvatarColor,
   renameCat,
   setBossCat,
+  updateCatProducts,
   updateCatSkillProfile,
 } from './cats.js';
 
