@@ -80,7 +80,7 @@ export function NewChatDraft({
     : null;
   const effectiveLeadCat = leadCat ?? draftLeadCat;
   const hasDraftCats = draftCatIds.length > 0;
-  const showSoloSelector = Boolean(payload.chat.bossCatId) && !effectiveLeadCat;
+  const showSoloSelector = !effectiveLeadCat;
   const nonLeadDraftCatIds = draftLeadCat
     ? draftCatIds.filter((id) => id !== draftLeadCat.id)
     : leadCat
