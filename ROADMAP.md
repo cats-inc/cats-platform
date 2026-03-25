@@ -99,7 +99,7 @@ contracts.
       recovery contracts
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
-- [ ] Follow up the Chat-first task-strategy handoff slice by deduplicating
+- [x] Follow up the Chat-first task-strategy handoff slice by deduplicating
       shared planning/runtime normalization helpers and keeping additive
       runtime execution payload serialization behind one reusable bridge path
 - [x] Tighten task lifecycle watcher convergence so additive

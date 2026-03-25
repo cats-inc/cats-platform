@@ -12,6 +12,8 @@ import {
 } from '../dist-server/core/model/index.js';
 import {
   buildTaskRuntimeExecutionRequest,
+  cloneTaskRuntimeExecutionRequest,
+  serializeTaskRuntimeExecutionRequest,
 } from '../dist-server/shared/taskExecutionBridge.js';
 import {
   patchTaskPlanningMetadata,
@@ -289,6 +291,36 @@ test('task runtime bridge resolves product defaults from planning handoff metada
   });
 });
 
+test('task runtime execution request helpers trim strings and drop empty objects consistently', () => {
+  const request = cloneTaskRuntimeExecutionRequest({
+    requestedStrategy: '  react  ',
+    acceptanceCriteria: '  Ship it  ',
+    strategyContext: {},
+    correlation: {
+      taskId: '  task-trim  ',
+      conversationId: '   ',
+      product: 'chat',
+    },
+  });
+
+  assert.deepEqual(request, {
+    requestedStrategy: 'react',
+    acceptanceCriteria: 'Ship it',
+    correlation: {
+      taskId: 'task-trim',
+      product: 'chat',
+    },
+  });
+  assert.deepEqual(
+    serializeTaskRuntimeExecutionRequest({
+      requestedStrategy: '   ',
+      strategyContext: {},
+      correlation: {},
+    }),
+    null,
+  );
+});
+
 test('planning product handoff stays authoritative over conversation kind when no explicit product is supplied', () => {
   const now = new Date('2026-03-26T03:45:00.000Z');
   const nowIso = now.toISOString();
@@ -436,6 +468,106 @@ test('task lifecycle sends additive runtime bridge fields without changing check
       taskId: 'task-bridge',
       conversationId: 'conversation-chat-bridge',
       workItemId: 'work-item-bridge',
+      product: 'chat',
+    },
+  });
+});
+
+test('task lifecycle normalizes ad hoc execution requests before persistence and wakeups', async () => {
+  const now = new Date('2026-03-26T04:00:00.000Z');
+  const taskWrite = upsertCoreTask(
+    createDefaultCoreState(),
+    {
+      id: 'task-bridge-normalized',
+      title: 'Normalize ad hoc execution request',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-cat-bridge'],
+      metadata: {},
+    },
+    now,
+  );
+  const executionRequest = {
+    requestedStrategy: '  react  ',
+    acceptanceCriteria: '  Ship it  ',
+    strategyContext: {},
+    correlation: {
+      taskId: '  task-bridge-normalized  ',
+      conversationId: ' ',
+      product: 'chat',
+    },
+  };
+  const wakeupInputs = [];
+
+  const assignment = await applyTaskAssignmentLifecycle({
+    core: taskWrite.core,
+    previousTask: {
+      ...taskWrite.task,
+      status: 'draft',
+      assignedActorIds: [],
+    },
+    task: taskWrite.task,
+    executionRequest,
+    executionLocator: {
+      resolveTaskConversation() {
+        return {
+          orchestratorActorId: 'actor-orchestrator-global',
+          orchestratorSessionId: null,
+          participants: [
+            {
+              actorId: 'actor-cat-bridge',
+              status: 'active',
+              sessionId: 'session-bridge-normalized',
+            },
+          ],
+        };
+      },
+    },
+    runtimeClient: {
+      async createWakeup(input) {
+        wakeupInputs.push(input);
+        return {
+          request: {
+            id: 'wakeup-bridge-normalized',
+            scheduleAt: input.scheduleAt ?? null,
+            target: input.target,
+            metadata: input.metadata ?? {},
+          },
+          coalesced: false,
+        };
+      },
+    },
+    now,
+  });
+
+  assert.equal(wakeupInputs.length, 1);
+  assert.deepEqual(wakeupInputs[0].correlation, {
+    taskId: 'task-bridge-normalized',
+    product: 'chat',
+  });
+  assert.deepEqual(assignment.task.metadata.taskLifecycle.execution, {
+    requestedStrategy: 'react',
+    acceptanceCriteria: 'Ship it',
+    correlation: {
+      taskId: 'task-bridge-normalized',
+      product: 'chat',
+    },
+  });
+
+  const checkout = checkoutTaskExecution({
+    core: taskWrite.core,
+    taskId: taskWrite.task.id,
+    actorId: 'actor-cat-bridge',
+    sessionId: 'session-bridge-normalized',
+    executionRequest,
+    now,
+  });
+
+  assert.deepEqual(checkout.run.metadata.execution, {
+    requestedStrategy: 'react',
+    acceptanceCriteria: 'Ship it',
+    correlation: {
+      taskId: 'task-bridge-normalized',
       product: 'chat',
     },
   });

@@ -36,6 +36,11 @@ export interface BuildTaskRuntimeExecutionRequestInput {
   workItemId?: string | null;
 }
 
+function readNonEmptyString(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
 function mapConversationKindToProduct(
   kind: CoreConversationKind | null | undefined,
 ): TaskExecutionProduct | null {
@@ -69,14 +74,45 @@ function resolveTaskWorkItemId(
 }
 
 function hasCorrelation(
-  correlation: TaskExecutionCorrelation,
+  correlation: TaskExecutionCorrelation | null | undefined,
 ): boolean {
   return Boolean(
-    correlation.taskId
-    || correlation.conversationId
-    || correlation.workItemId
-    || correlation.product,
+    correlation?.taskId
+    || correlation?.conversationId
+    || correlation?.workItemId
+    || correlation?.product,
   );
+}
+
+function cloneNonEmptyRecord(
+  value: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | undefined {
+  return value && Object.keys(value).length > 0
+    ? structuredClone(value)
+    : undefined;
+}
+
+export function cloneTaskExecutionCorrelation(
+  correlation: TaskExecutionCorrelation | null | undefined,
+): TaskExecutionCorrelation | undefined {
+  if (!correlation) {
+    return undefined;
+  }
+
+  const next: TaskExecutionCorrelation = {
+    ...(readNonEmptyString(correlation.taskId) ? { taskId: readNonEmptyString(correlation.taskId)! } : {}),
+    ...(readNonEmptyString(correlation.conversationId)
+      ? { conversationId: readNonEmptyString(correlation.conversationId)! }
+      : {}),
+    ...(readNonEmptyString(correlation.workItemId)
+      ? { workItemId: readNonEmptyString(correlation.workItemId)! }
+      : {}),
+    ...(correlation.product ? { product: correlation.product } : {}),
+  };
+
+  return hasCorrelation(next)
+    ? next
+    : undefined;
 }
 
 export function resolveTaskExecutionProduct(
@@ -113,23 +149,32 @@ export function cloneTaskRuntimeExecutionRequest(
     return undefined;
   }
 
-  const next: TaskRuntimeExecutionRequest = {};
-  if (request.requestedStrategy) {
-    next.requestedStrategy = request.requestedStrategy;
-  }
-  if (request.acceptanceCriteria) {
-    next.acceptanceCriteria = request.acceptanceCriteria;
-  }
-  if (request.strategyContext) {
-    next.strategyContext = structuredClone(request.strategyContext);
-  }
-  if (request.correlation && hasCorrelation(request.correlation)) {
-    next.correlation = { ...request.correlation };
-  }
+  const requestedStrategy = readNonEmptyString(request.requestedStrategy);
+  const acceptanceCriteria = readNonEmptyString(request.acceptanceCriteria);
+  const strategyContext = cloneNonEmptyRecord(request.strategyContext);
+  const correlation = cloneTaskExecutionCorrelation(request.correlation);
+  const next: TaskRuntimeExecutionRequest = {
+    ...(requestedStrategy ? { requestedStrategy } : {}),
+    ...(acceptanceCriteria ? { acceptanceCriteria } : {}),
+    ...(strategyContext ? { strategyContext } : {}),
+    ...(correlation ? { correlation } : {}),
+  };
 
   return Object.keys(next).length > 0
     ? next
     : undefined;
+}
+
+export function appendTaskRuntimeExecutionRequestFields(
+  payload: Record<string, unknown>,
+  request: TaskRuntimeExecutionRequest | null | undefined,
+): void {
+  const serialized = serializeTaskRuntimeExecutionRequest(request);
+  if (!serialized) {
+    return;
+  }
+
+  Object.assign(payload, serialized);
 }
 
 export function serializeTaskRuntimeExecutionRequest(

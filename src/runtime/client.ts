@@ -12,6 +12,11 @@ import {
   type ProviderModelSelection,
 } from '../shared/providerSelection.js';
 import {
+  appendTaskRuntimeExecutionRequestFields,
+  type TaskExecutionCorrelation,
+  type TaskRuntimeExecutionRequest,
+} from '../shared/taskExecutionBridge.js';
+import {
   normalizeRuntimeProviderConfigRegistry,
   readRuntimeErrorText,
 } from './clientParsing.js';
@@ -19,10 +24,6 @@ import {
   readRuntimeNdjsonResponse,
   readRuntimeSseResponse,
 } from './clientStreams.js';
-import type {
-  TaskExecutionCorrelation,
-  TaskRuntimeExecutionRequest,
-} from '../shared/taskExecutionBridge.js';
 
 export interface RuntimeProviderInstanceConfig {
   id: string;
@@ -194,32 +195,6 @@ export interface RuntimeWakeupRequestRecord {
 export interface RuntimeWakeupCreateResult {
   request: RuntimeWakeupRequestRecord;
   coalesced: boolean;
-}
-
-function readNonEmptyString(value: string | null | undefined): string | null {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
-
-function appendRuntimeExecutionRequestFields(
-  payload: Record<string, unknown>,
-  input: TaskRuntimeExecutionRequest | RuntimeExecutionRequestInput | null | undefined,
-): void {
-  const requestedStrategy = readNonEmptyString(input?.requestedStrategy);
-  const acceptanceCriteria = readNonEmptyString(input?.acceptanceCriteria);
-
-  if (requestedStrategy) {
-    payload.requestedStrategy = requestedStrategy;
-  }
-  if (acceptanceCriteria) {
-    payload.acceptanceCriteria = acceptanceCriteria;
-  }
-  if (input?.strategyContext && Object.keys(input.strategyContext).length > 0) {
-    payload.strategyContext = input.strategyContext;
-  }
-  if (input?.correlation && Object.keys(input.correlation).length > 0) {
-    payload.correlation = input.correlation;
-  }
 }
 
 export interface RuntimeClient {
@@ -425,7 +400,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (input.skills) {
       payload.skills = input.skills;
     }
-    appendRuntimeExecutionRequestFields(payload, input);
+    appendTaskRuntimeExecutionRequestFields(payload, input);
 
     const response = await fetch(`${this.baseUrl}/sessions`, {
       method: 'POST',
@@ -479,7 +454,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (input?.skills) {
       payload.skills = input.skills;
     }
-    appendRuntimeExecutionRequestFields(payload, input);
+    appendTaskRuntimeExecutionRequestFields(payload, input);
 
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/messages`, {
       method: 'POST',
@@ -543,7 +518,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       ...(input.coalesceKey ? { coalesceKey: input.coalesceKey } : {}),
       ...(input.metadata ? { metadata: input.metadata } : {}),
     };
-    appendRuntimeExecutionRequestFields(payload, input);
+    appendTaskRuntimeExecutionRequestFields(payload, input);
 
     const response = await fetch(`${this.baseUrl}/wakeups`, {
       method: 'POST',
