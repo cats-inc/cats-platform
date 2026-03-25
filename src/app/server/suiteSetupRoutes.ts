@@ -85,9 +85,13 @@ async function handleSuiteSetupComplete(
     await context.dependencies.chatStore.write(chatState);
     await context.dependencies.chatStore.writeCore(core);
 
-    await writeSuitePreferences(context.dependencies.config.chatStatePath, {
-      lastProductSurface: body.selectedProduct,
-    });
+    try {
+      await writeSuitePreferences(context.dependencies.config.chatStatePath, {
+        lastProductSurface: body.selectedProduct,
+      });
+    } catch (error) {
+      reportSyncFailure('setup_complete_prefs', error);
+    }
 
     try {
       await context.dependencies.memoryService.flushOwnerProfile({
@@ -111,6 +115,32 @@ async function handleSuiteSetupComplete(
   }
 }
 
+async function handleSuitePreferencesUpdate(
+  context: SuiteSetupContext,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<{ lastProductSurface?: string }>(context.request);
+    const surface = body.lastProductSurface;
+    if (surface !== 'chat' && surface !== 'work' && surface !== 'code') {
+      sendJson(context.response, 400, {
+        error: { code: 'bad_request', message: 'Invalid product surface' },
+      });
+      return;
+    }
+
+    await writeSuitePreferences(context.dependencies.config.chatStatePath, {
+      lastProductSurface: surface,
+    });
+
+    sendJson(context.response, 200, { lastProductSurface: surface });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    sendJson(context.response, 400, {
+      error: { code: 'bad_request', message },
+    });
+  }
+}
+
 export async function routeSuiteSetupApi(
   context: SuiteSetupContext,
 ): Promise<boolean> {
@@ -120,6 +150,15 @@ export async function routeSuiteSetupApi(
       return true;
     }
     await handleSuiteSetupComplete(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/suite/preferences') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleSuitePreferencesUpdate(context);
     return true;
   }
 

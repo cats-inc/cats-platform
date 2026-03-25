@@ -268,3 +268,63 @@ test('old POST /api/setup/complete still works alongside new endpoint', async ()
     assert.ok(payload.chat.bossCatId, 'old endpoint still creates Boss Cat');
   });
 });
+
+test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: false,
+      }),
+    });
+
+    const resetResponse = await fetch(`${baseUrl}/api/setup/reset`, {
+      method: 'POST',
+    });
+    assert.equal(resetResponse.status, 200);
+    const payload = await resetResponse.json();
+
+    assert.equal(payload.setupCompleteAt, null, 'setupCompleteAt should be cleared');
+    assert.equal(payload.lastProductSurface, null, 'lastProductSurface should be cleared');
+    assert.equal(payload.chat.bossCatId, null, 'bossCatId should be cleared');
+  });
+});
+
+test('POST /api/suite/preferences updates lastProductSurface', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: false,
+      }),
+    });
+
+    const prefsResponse = await fetch(`${baseUrl}/api/suite/preferences`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ lastProductSurface: 'work' }),
+    });
+    assert.equal(prefsResponse.status, 200);
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    const shell = await shellResponse.json();
+    assert.equal(shell.lastProductSurface, 'work', 'lastProductSurface should be updated to work');
+  });
+});
+
+test('POST /api/suite/preferences rejects invalid surface', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/suite/preferences`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ lastProductSurface: 'invalid' }),
+    });
+    assert.equal(response.status, 400);
+  });
+});

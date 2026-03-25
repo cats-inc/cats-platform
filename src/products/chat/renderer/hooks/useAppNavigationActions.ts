@@ -153,18 +153,13 @@ export function useAppNavigationActions(options: {
 
     setBusy('setup:reset');
     try {
-      const payload = await resetSetup();
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setAccountMenuOpen(false);
-      });
-      navigate('/setup');
+      await resetSetup();
+      window.location.href = '/';
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to reset setup.');
-    } finally {
       setBusy('');
     }
-  }, [navigate, setAccountMenuOpen, setBusy, setFeedback, setState]);
+  }, [setBusy, setFeedback]);
 
   const onStartNewChat = useCallback(async (): Promise<void> => {
     navigate(buildNewChatPath(null));

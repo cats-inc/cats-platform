@@ -1,11 +1,11 @@
-import { startTransition, useEffect, useState } from 'react';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { startTransition, useEffect, useRef, useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import type { SuiteHostEnvelope } from '../../shared/suite-contract';
 import ChatApp from '../../products/chat/renderer/App';
 import WorkApp from '../../products/work/renderer/App';
 import CodeApp from '../../products/code/renderer/App';
-import { SUITE_SURFACE_ROUTES } from './routeMap';
+import { resolveSuiteSurfaceForPath, SUITE_SURFACE_ROUTES } from './routeMap';
 import { SuiteSetupWizard } from './setup';
 import { fetchSuiteEnvelope } from './setup/api';
 
@@ -81,6 +81,23 @@ export default function SuiteApp() {
   }
 
   const targetSurface = envelope.lastProductSurface ?? 'chat';
+  const location = useLocation();
+  const lastSyncedSurface = useRef(targetSurface);
+
+  useEffect(() => {
+    if (!envelope.setupCompleteAt) {
+      return;
+    }
+    const currentSurface = resolveSuiteSurfaceForPath(location.pathname);
+    if (currentSurface !== lastSyncedSurface.current) {
+      lastSyncedSurface.current = currentSurface;
+      void fetch('/api/suite/preferences', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ lastProductSurface: currentSurface }),
+      }).catch(() => {});
+    }
+  }, [envelope.setupCompleteAt, location.pathname]);
 
   return (
     <Routes>

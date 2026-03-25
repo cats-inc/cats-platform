@@ -1,5 +1,6 @@
 import { createDefaultCoreState } from '../../../core/model/index.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
+import { writeSuitePreferences } from '../../../shared/suitePreferences.js';
 import { createDefaultChatState } from '../state/defaults.js';
 import { createCat } from '../state/model/index.js';
 import type { SetupCompleteInput } from './contracts.js';
@@ -11,7 +12,7 @@ import {
   type ChatApiRouteContext,
 } from './routeSupport.js';
 
-function reportOwnerMemorySyncFailure(scope: 'setup_complete' | 'setup_reset', error: unknown): void {
+function reportOwnerMemorySyncFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
   process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
 }
@@ -107,6 +108,13 @@ async function handleSetupReset(
     const now = nowFrom(context.dependencies);
     await context.dependencies.chatStore.write(createDefaultChatState());
     await context.dependencies.chatStore.writeCore(createDefaultCoreState());
+    try {
+      await writeSuitePreferences(context.dependencies.config.chatStatePath, {
+        lastProductSurface: null,
+      });
+    } catch (error) {
+      reportOwnerMemorySyncFailure('setup_reset_prefs', error);
+    }
     try {
       await context.dependencies.memoryService.flushOwnerProfile({
         reason: 'owner_profile_sync',
