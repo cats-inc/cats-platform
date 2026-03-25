@@ -10,6 +10,10 @@ import type {
   DurableMemoryRecord,
 } from '../../../../core/types.js';
 import type { MemoryFlushReason } from '../../../../platform/memory/index.js';
+import {
+  syncCanonicalCompanionMemoryBestEffort,
+  syncCanonicalOwnerMemoryBestEffort,
+} from '../../../../platform/memory/maintenance.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 
 export interface CreateDurableMemoryInput {
@@ -87,39 +91,30 @@ export async function readOptionalFlushBody(
   return readJsonBody<FlushMemoryInput>(context.request);
 }
 
-function reportCanonicalSyncFailure(scope: string, error: unknown): void {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
-}
-
 export async function trySyncCanonicalCatMemory(
   context: ChatApiRouteContext,
   catId: string,
 ): Promise<void> {
-  try {
-    await context.dependencies.memoryService.flushCompanionBox({
-      catId,
-      companionStore: context.dependencies.companionStore,
-      reason: 'manual',
-      now: context.dependencies.now?.(),
-    });
-  } catch (error) {
-    reportCanonicalSyncFailure(`cat:${catId}`, error);
-  }
+  await syncCanonicalCompanionMemoryBestEffort({
+    catId,
+    companionStore: context.dependencies.companionStore,
+    memoryService: context.dependencies.memoryService,
+    reason: 'manual',
+    now: context.dependencies.now?.(),
+    coreStore: context.dependencies.chatStore,
+  });
 }
 
 export async function trySyncCanonicalOwnerMemory(
   context: ChatApiRouteContext,
   reason: MemoryFlushReason = 'owner_profile_sync',
 ): Promise<void> {
-  try {
-    await context.dependencies.memoryService.flushOwnerProfile({
-      reason,
-      now: context.dependencies.now?.(),
-    });
-  } catch (error) {
-    reportCanonicalSyncFailure('owner', error);
-  }
+  await syncCanonicalOwnerMemoryBestEffort({
+    memoryService: context.dependencies.memoryService,
+    reason,
+    now: context.dependencies.now?.(),
+    coreStore: context.dependencies.chatStore,
+  });
 }
 
 export function findCatMemoryRecord(

@@ -111,6 +111,7 @@ export async function routeChannelMessage(
       requestedPhase: 'pre_reset',
       memoryService: options.memoryService,
       companionStore: options.companionStore,
+      coreStore: options.chatStore,
       now,
     });
     await runtimeClient.closeSession(channelBeforeMessage.orchestratorLease.sessionId);

@@ -1,4 +1,5 @@
 import { patchOwnerProfile } from '../model/index.js';
+import { syncCanonicalOwnerMemoryBestEffort } from '../../platform/memory/maintenance.js';
 import {
   handleCoreError,
   readNullableString,
@@ -8,11 +9,6 @@ import {
 } from './shared.js';
 import type { CoreApiRouteContext } from './types.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
-
-function reportCoreMemorySyncFailure(error: unknown): void {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`[cats-memory-sync] owner-profile: ${message}\n`);
-}
 
 async function handleOwnerProfile(
   context: CoreApiRouteContext,
@@ -49,13 +45,12 @@ async function handleOwnerProfileWrite(
     );
     const persisted = await context.dependencies.coreStore.writeCore(next.core);
     if (context.dependencies.memoryService) {
-      try {
-        await context.dependencies.memoryService.flushOwnerProfile({
-          reason: 'owner_profile_sync',
-        });
-      } catch (error) {
-        reportCoreMemorySyncFailure(error);
-      }
+      await syncCanonicalOwnerMemoryBestEffort({
+        memoryService: context.dependencies.memoryService,
+        reason: 'owner_profile_sync',
+        now: context.dependencies.now?.(),
+        coreStore: context.dependencies.coreStore,
+      });
     }
     sendJson(context.response, 200, {
       ownerProfile: persisted.ownerProfile,

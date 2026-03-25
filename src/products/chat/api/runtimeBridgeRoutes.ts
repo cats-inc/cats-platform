@@ -3,6 +3,7 @@ import {
   flushObservedRuntimeSessionMemory,
   resolveRuntimeMaintenancePhase,
 } from '../../../platform/memory/runtimeMaintenance.js';
+import { appendMemoryMaintenanceActivity } from '../../../platform/memory/maintenance.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 import { handleRestError, sendRestError } from './routeSupport.js';
 
@@ -43,11 +44,21 @@ async function handleFlushRuntimeSessionMemory(
         executed: false,
         reason: result.reason,
         flushes: [],
+        summary: null,
       });
       return;
     }
 
     if (result.reason === 'runtime_memory_context_missing') {
+      await appendMemoryMaintenanceActivity({
+        coreStore: context.dependencies.chatStore,
+        trigger: 'runtime_hook',
+        status: 'missing_context',
+        phase: result.phase,
+        sessionId,
+        reason: result.phase,
+        now: context.dependencies.now?.(),
+      });
       sendRestError(
         context,
         409,
@@ -57,12 +68,28 @@ async function handleFlushRuntimeSessionMemory(
       return;
     }
 
+    if (result.phase && result.summary) {
+      await appendMemoryMaintenanceActivity({
+        coreStore: context.dependencies.chatStore,
+        trigger: 'runtime_hook',
+        status: 'executed',
+        phase: result.phase,
+        sessionId,
+        channelId: result.targets.channelId,
+        catId: result.targets.catId,
+        reason: result.phase,
+        summary: result.summary,
+        now: context.dependencies.now?.(),
+      });
+    }
+
     sendJson(context.response, 200, {
       sessionId,
       phase: result.phase,
       executed: true,
       requestedHookCount: result.requestedHookCount,
       flushes: result.flushes,
+      summary: result.summary,
     });
   } catch (error) {
     handleRestError(context, error);

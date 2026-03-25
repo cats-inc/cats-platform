@@ -6,6 +6,7 @@ import {
   updateDurableMemory,
 } from '../../../../core/model/index.js';
 import { OWNER_ACTOR_ID } from '../../../../core/actors.js';
+import { buildMemoryFlushSummary } from '../../../../platform/memory/maintenance.js';
 import {
   handleRestError,
   sendRestError,
@@ -144,7 +145,10 @@ async function handleFlushCanonicalOwnerMemory(
       reason: body.reason,
       now: context.dependencies.now?.(),
     });
-    sendJson(context.response, 200, { flush });
+    sendJson(context.response, 200, {
+      flush,
+      summary: buildMemoryFlushSummary([flush]),
+    });
   } catch (error) {
     handleRestError(context, error);
   }

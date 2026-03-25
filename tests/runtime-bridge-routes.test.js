@@ -110,6 +110,7 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
 
 test('runtime bridge flushes cats-owned memory when runtime inspection advertises a pending memory_flush hook', async () => {
   const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
 
   await withServer(runtimeClient, async (baseUrl) => {
     const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
@@ -205,6 +206,13 @@ test('runtime bridge flushes cats-owned memory when runtime inspection advertise
     const flushPayload = await flushResponse.json();
     assert.equal(flushPayload.executed, true);
     assert.equal(flushPayload.phase, 'pre_reset');
+    assert.ok(flushPayload.summary);
+    assert.equal(flushPayload.summary.flushCount, 2);
+    assert.ok(flushPayload.summary.persistedCount > 0);
+    assert.deepEqual(
+      flushPayload.summary.subjects.map((subject) => subject.kind).sort(),
+      ['cat', 'channel'],
+    );
     assert.deepEqual(
       flushPayload.flushes.map((flush) => flush.scope).sort(),
       ['cat', 'channel'],
@@ -219,7 +227,15 @@ test('runtime bridge flushes cats-owned memory when runtime inspection advertise
         && Array.isArray(flush.payload.persistedRecords),
       ),
     );
-  });
+    const core = await chatStore.readCore();
+    const activity = core.activities.find((candidate) =>
+      candidate.metadata?.category === 'memory_maintenance'
+      && candidate.metadata?.trigger === 'runtime_hook'
+      && candidate.metadata?.status === 'executed');
+    assert.ok(activity);
+    assert.equal(activity?.conversationId, `conversation-channel-${channel.id}`);
+    assert.equal(activity?.metadata?.summary?.flushCount, 2);
+  }, chatStore);
 });
 
 test('runtime bridge proxies MCP JSON-RPC calls to cats-runtime', async () => {

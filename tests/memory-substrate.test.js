@@ -9,6 +9,7 @@ import {
   FileCanonicalMemoryStore,
   MemoryCanonicalMemoryStore,
 } from '../dist-server/platform/memory/index.js';
+import { buildMemoryFlushSummary } from '../dist-server/platform/memory/maintenance.js';
 import { createCatActorId } from '../dist-server/core/actors.js';
 import {
   extractCanonicalMemoryFromChannel,
@@ -587,4 +588,96 @@ test('array-backed channel and owner records emit distinct replacement groups pe
   assert.equal(new Set(channelFactGroups).size, channelFactGroups.length);
   assert.equal(new Set(channelLoopGroups).size, channelLoopGroups.length);
   assert.equal(new Set(ownerCommunicationGroups).size, ownerCommunicationGroups.length);
+});
+
+test('buildMemoryFlushSummary deduplicates source scopes and replacement groups across flushes', () => {
+  const summary = buildMemoryFlushSummary([
+    {
+      scope: 'cat',
+      subjectId: 'cat-memory',
+      reason: 'manual',
+      generatedAt: '2026-03-26T07:10:00.000Z',
+      persistedCount: 2,
+      persistedRecordIds: ['cats-memory-1', 'cats-memory-2'],
+      removedRecordIds: ['cats-memory-old-1'],
+      payload: {
+        version: 1,
+        reason: 'manual',
+        generatedAt: '2026-03-26T07:10:00.000Z',
+        subject: {
+          kind: 'cat',
+          id: 'cat-memory',
+        },
+        replacementMode: 'subject_projection_replace',
+        sourceScopeKeys: ['cat:memory', 'cat:memory'],
+        persistedRecords: [
+          {
+            recordId: 'cats-memory-1',
+            category: 'fact',
+            originKind: 'companion_memory',
+            promotionRule: 'companion_curated_memory',
+            visibility: 'owner_private',
+            sourceRefs: [],
+            sourceScopeKeys: ['cat:memory'],
+            replacementGroup: 'cat:group-1',
+          },
+          {
+            recordId: 'cats-memory-2',
+            category: 'preference',
+            originKind: 'response_profile',
+            promotionRule: 'companion_response_profile',
+            visibility: 'owner_private',
+            sourceRefs: [],
+            sourceScopeKeys: ['cat:memory'],
+            replacementGroup: 'cat:group-1',
+          },
+        ],
+        removedRecordIds: ['cats-memory-old-1'],
+      },
+    },
+    {
+      scope: 'channel',
+      subjectId: 'channel-memory',
+      reason: 'pre_reset',
+      generatedAt: '2026-03-26T07:10:05.000Z',
+      persistedCount: 1,
+      persistedRecordIds: ['cats-memory-3'],
+      removedRecordIds: ['cats-memory-old-1', 'cats-memory-old-2'],
+      payload: {
+        version: 1,
+        reason: 'pre_reset',
+        generatedAt: '2026-03-26T07:10:05.000Z',
+        subject: {
+          kind: 'channel',
+          id: 'channel-memory',
+        },
+        replacementMode: 'subject_projection_replace',
+        sourceScopeKeys: ['channel:working-memory'],
+        persistedRecords: [
+          {
+            recordId: 'cats-memory-3',
+            category: 'fact',
+            originKind: 'channel_working_memory',
+            promotionRule: 'channel_fact',
+            visibility: 'channel_private',
+            sourceRefs: [],
+            sourceScopeKeys: ['channel:working-memory'],
+            replacementGroup: 'channel:group-1',
+          },
+        ],
+        removedRecordIds: ['cats-memory-old-1', 'cats-memory-old-2'],
+      },
+    },
+  ]);
+
+  assert.deepEqual(summary.subjects, [
+    { kind: 'cat', id: 'cat-memory' },
+    { kind: 'channel', id: 'channel-memory' },
+  ]);
+  assert.equal(summary.flushCount, 2);
+  assert.equal(summary.persistedCount, 3);
+  assert.equal(summary.removedCount, 3);
+  assert.deepEqual(summary.removedRecordIds, ['cats-memory-old-1', 'cats-memory-old-2']);
+  assert.deepEqual(summary.sourceScopeKeys, ['cat:memory', 'channel:working-memory']);
+  assert.deepEqual(summary.replacementGroups, ['cat:group-1', 'channel:group-1']);
 });

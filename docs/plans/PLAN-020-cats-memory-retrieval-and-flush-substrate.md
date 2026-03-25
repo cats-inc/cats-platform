@@ -124,6 +124,7 @@ service to exist first.
 | 2026-03-23 | Plan created after the first Cats-owned canonical-memory and retrieval slice landed |
 | 2026-03-23 | Canonical-memory storage, extraction/flush routes, and direct companion retrieval hydration implemented |
 | 2026-03-24 | Source update/delete convergence, promotion-rule metadata, policy-aware retrieval read model, and Team 5-ready flush payloads implemented |
+| 2026-03-26 | Maintenance follow-through landed: additive flush summaries, reusable best-effort canonical sync helpers, and core activity logging for runtime-hook or deferred memory maintenance |
 
 ---
 

@@ -3,20 +3,15 @@ import type {
 } from './companion-box/index.js';
 import type {
   CatsMemoryService,
-  MemoryFlushResult,
 } from '../../../platform/memory/index.js';
+import type { CoreStore } from '../../../core/store.js';
+import type { CanonicalMemorySyncResult } from '../../../platform/memory/maintenance.js';
+import { syncCanonicalCompanionMemoryBestEffort } from '../../../platform/memory/maintenance.js';
 
-export type CompanionCanonicalSyncResult =
-  | { status: 'synced'; flush: MemoryFlushResult }
-  | { status: 'deferred'; flush: null };
+export type CompanionCanonicalSyncResult = CanonicalMemorySyncResult;
 
 export interface CanonicalSyncAwareCompanionBoxStore extends CompanionBoxStore {
   consumePendingCanonicalSync(catId: string): CompanionCanonicalSyncResult | null;
-}
-
-function reportCanonicalSyncFailure(scope: string, error: unknown): void {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
 }
 
 export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanionBoxStore {
@@ -25,6 +20,7 @@ export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanion
   constructor(
     private readonly delegate: CompanionBoxStore,
     private readonly memoryService: CatsMemoryService,
+    private readonly coreStore?: CoreStore,
   ) {}
 
   consumePendingCanonicalSync(catId: string): CompanionCanonicalSyncResult | null {
@@ -34,18 +30,15 @@ export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanion
   }
 
   private async syncCanonicalCompanionMemory(catId: string, now?: Date): Promise<void> {
-    try {
-      const flush = await this.memoryService.flushCompanionBox({
-        catId,
-        companionStore: this,
-        reason: 'manual',
-        now,
-      });
-      this.pendingCanonicalSync.set(catId, { status: 'synced', flush });
-    } catch (error) {
-      reportCanonicalSyncFailure(`companion:${catId}`, error);
-      this.pendingCanonicalSync.set(catId, { status: 'deferred', flush: null });
-    }
+    const result = await syncCanonicalCompanionMemoryBestEffort({
+      catId,
+      companionStore: this,
+      memoryService: this.memoryService,
+      reason: 'manual',
+      now,
+      coreStore: this.coreStore,
+    });
+    this.pendingCanonicalSync.set(catId, result);
   }
 
   async readSnapshot() {
@@ -133,6 +126,7 @@ export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanion
 export function createMemoryAwareCompanionBoxStore(
   delegate: CompanionBoxStore,
   memoryService: CatsMemoryService,
+  coreStore?: CoreStore,
 ): CanonicalSyncAwareCompanionBoxStore {
-  return new MemoryAwareCompanionBoxStore(delegate, memoryService);
+  return new MemoryAwareCompanionBoxStore(delegate, memoryService, coreStore);
 }

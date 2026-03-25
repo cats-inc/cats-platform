@@ -279,6 +279,7 @@ async function closeSessionIds(
         requestedPhase: 'pre_reset',
         memoryService: context.dependencies.memoryService,
         companionStore: context.dependencies.companionStore,
+        coreStore: context.dependencies.chatStore,
         now: context.dependencies.now?.(),
       });
       await context.dependencies.runtimeClient.closeSession(sessionId);
@@ -382,6 +383,7 @@ export async function persistCatAssignmentUpdate(
         requestedPhase: 'pre_reset',
         memoryService: context.dependencies.memoryService,
         companionStore: context.dependencies.companionStore,
+        coreStore: context.dependencies.chatStore,
         now: context.dependencies.now?.(),
       });
       await context.dependencies.runtimeClient.closeSession(previousSessionId);
@@ -553,6 +555,7 @@ export async function persistCatAssignmentRemoval(
         requestedPhase: 'pre_reset',
         memoryService: context.dependencies.memoryService,
         companionStore: context.dependencies.companionStore,
+        coreStore: context.dependencies.chatStore,
         now: context.dependencies.now?.(),
       });
       await context.dependencies.runtimeClient.closeSession(

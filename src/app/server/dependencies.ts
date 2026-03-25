@@ -113,7 +113,11 @@ export function resolveServerDependencies(
     ?? createDefaultTelegramRelay(dependencies.shared, dependencies.chat, pollingSupervisor);
   const baseCompanionStore = dependencies.chat.companionStore
     ?? createDefaultCompanionStore(dependencies.shared, dependencies.chat);
-  const companionStore = createMemoryAwareCompanionBoxStore(baseCompanionStore, memoryService);
+  const companionStore = createMemoryAwareCompanionBoxStore(
+    baseCompanionStore,
+    memoryService,
+    dependencies.chat.chatStore,
+  );
   const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter
     ?? chatOrchestratorChannelRouter;
   const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface

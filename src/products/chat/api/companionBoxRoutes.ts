@@ -15,6 +15,7 @@ import type {
   UpdateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
+import { syncCanonicalCompanionMemoryBestEffort } from '../../../platform/memory/maintenance.js';
 import {
   type CanonicalSyncAwareCompanionBoxStore,
   type CompanionCanonicalSyncResult,
@@ -38,11 +39,6 @@ function isCanonicalSyncAwareCompanionBoxStore(
   return typeof (store as CanonicalSyncAwareCompanionBoxStore).consumePendingCanonicalSync === 'function';
 }
 
-function reportCanonicalSyncFailure(scope: string, error: unknown): void {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
-}
-
 async function syncCanonicalCompanionMemory(
   context: ChatApiRouteContext,
   catId: string,
@@ -53,18 +49,14 @@ async function syncCanonicalCompanionMemory(
       return pending;
     }
   }
-  try {
-    const flush = await context.dependencies.memoryService.flushCompanionBox({
-      catId,
-      companionStore: context.dependencies.companionStore,
-      reason: 'manual',
-      now: context.dependencies.now?.(),
-    });
-    return { status: 'synced', flush };
-  } catch (error) {
-    reportCanonicalSyncFailure(`companion:${catId}`, error);
-    return { status: 'deferred', flush: null };
-  }
+  return syncCanonicalCompanionMemoryBestEffort({
+    catId,
+    companionStore: context.dependencies.companionStore,
+    memoryService: context.dependencies.memoryService,
+    reason: 'manual',
+    now: context.dependencies.now?.(),
+    coreStore: context.dependencies.chatStore,
+  });
 }
 
 async function handleGetCompanionBox(

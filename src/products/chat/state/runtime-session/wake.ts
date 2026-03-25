@@ -184,6 +184,7 @@ export async function ensureTargetSession(
           requestedPhase: 'pre_reset',
           memoryService: options.memoryService,
           companionStore: options.companionStore,
+          coreStore: options.chatStore,
           now,
         });
         await runtimeClient.closeSession(target.sessionId);

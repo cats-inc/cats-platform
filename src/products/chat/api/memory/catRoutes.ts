@@ -6,6 +6,7 @@ import {
   updateDurableMemory,
 } from '../../../../core/model/index.js';
 import { createCatActorId } from '../../../../core/actors.js';
+import { buildMemoryFlushSummary } from '../../../../platform/memory/maintenance.js';
 import { requireCat } from '../../state/model/index.js';
 import {
   handleRestError,
@@ -157,7 +158,10 @@ async function handleFlushCanonicalCatMemory(
       reason: body.reason,
       now: context.dependencies.now?.(),
     });
-    sendJson(context.response, 200, { flush });
+    sendJson(context.response, 200, {
+      flush,
+      summary: buildMemoryFlushSummary([flush]),
+    });
   } catch (error) {
     handleRestError(context, error);
   }

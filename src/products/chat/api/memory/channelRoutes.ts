@@ -1,4 +1,5 @@
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
+import { buildMemoryFlushSummary } from '../../../../platform/memory/maintenance.js';
 import {
   handleRestError,
   sendRestError,
@@ -24,7 +25,10 @@ async function handleFlushChannelMemory(
       reason: body.reason,
       now: context.dependencies.now?.(),
     });
-    sendJson(context.response, 200, { flush });
+    sendJson(context.response, 200, {
+      flush,
+      summary: buildMemoryFlushSummary([flush]),
+    });
   } catch (error) {
     handleRestError(context, error);
   }

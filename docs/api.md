@@ -216,7 +216,7 @@ Canonical-memory records include:
   flushed, including curated durable-memory notes synced from the product CRUD
   layer
 
-Flush responses return `{ flush }`, where `flush` also includes:
+Flush responses now return `{ flush, summary }`, where `flush` also includes:
 
 - `removedRecordIds`
 - `payload.version`
@@ -224,6 +224,17 @@ Flush responses return `{ flush }`, where `flush` also includes:
 - `payload.sourceScopeKeys`
 - `payload.persistedRecords[*].promotionRule`
 - `payload.persistedRecords[*].replacementGroup`
+
+`summary` is an additive aggregate for downstream callers that do not want to
+re-parse every persisted record. It includes:
+
+- `subjects`
+- `flushCount`
+- `persistedCount`
+- `removedCount`
+- `removedRecordIds`
+- `sourceScopeKeys`
+- `replacementGroups`
 
 `removedRecordIds` is computed from the same subject-replace transaction that
 persists the new canonical projection, so pre-reset / pre-compaction callers can
@@ -563,6 +574,14 @@ POST /api/runtime/mcp
   - `persistedRecords[*].promotionRule`
   - `persistedRecords[*].replacementGroup`
   This is the Team 5-ready pre-reset / pre-compaction memory contract.
+- The route now also returns additive `summary` metadata with aggregate
+  `subjects`, `removedRecordIds`, and `replacementGroups` so downstream
+  maintenance or recovery callers can inspect the flush result without
+  re-walking every payload entry.
+- When runtime-hook maintenance actually executes, or when the runtime asks for
+  a memory flush but Cats cannot resolve channel/companion context, Cats now
+  appends a core activity record with `metadata.category = "memory_maintenance"`
+  for later operator or recovery inspection.
 - `POST /api/runtime/mcp` proxies raw MCP JSON-RPC requests to the runtime MCP
   facade. This keeps direct product APIs and MCP access available side by side:
   product routes can stay HTTP-native while orchestrator-style agents still use
@@ -1521,4 +1540,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-26*

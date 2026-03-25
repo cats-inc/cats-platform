@@ -1,4 +1,7 @@
 import type {
+  CoreStore,
+} from '../../core/store.js';
+import type {
   RuntimeClient,
   RuntimeObservedSessionPayload,
 } from '../../runtime/client.js';
@@ -7,7 +10,12 @@ import type {
   MemoryCompanionSurface,
   MemoryFlushReason,
   MemoryFlushResult,
+  MemoryFlushSummary,
 } from './index.js';
+import {
+  appendMemoryMaintenanceActivity,
+  buildMemoryFlushSummary,
+} from './maintenance.js';
 
 export type RuntimeMaintenancePhase = 'pre_reset' | 'pre_compaction';
 
@@ -104,6 +112,11 @@ export async function flushObservedRuntimeSessionMemory(input: {
   phase: RuntimeMaintenancePhase | null;
   requestedHookCount: number;
   flushes: MemoryFlushResult[];
+  summary: MemoryFlushSummary | null;
+  targets: {
+    channelId: string | null;
+    catId: string | null;
+  };
   reason: 'no_pending_memory_flush_hooks' | 'runtime_memory_context_missing' | null;
 }> {
   const sessionPayload = asRecord(input.observed.session);
@@ -121,6 +134,11 @@ export async function flushObservedRuntimeSessionMemory(input: {
       phase,
       requestedHookCount: 0,
       flushes: [],
+      summary: null,
+      targets: {
+        channelId: null,
+        catId: null,
+      },
       reason: 'no_pending_memory_flush_hooks',
     };
   }
@@ -149,6 +167,8 @@ export async function flushObservedRuntimeSessionMemory(input: {
     phase,
     requestedHookCount: memoryFlushHooks.length,
     flushes,
+    summary: flushes.length > 0 ? buildMemoryFlushSummary(flushes) : null,
+    targets,
     reason: flushes.length === 0 ? 'runtime_memory_context_missing' : null,
   };
 }
@@ -159,6 +179,7 @@ export async function bestEffortFlushRuntimeSessionMemory(input: {
   requestedPhase?: RuntimeMaintenancePhase | null;
   memoryService?: CatsMemoryService;
   companionStore?: MemoryCompanionSurface;
+  coreStore?: CoreStore;
   now?: Date;
 }): Promise<void> {
   if (
@@ -177,14 +198,54 @@ export async function bestEffortFlushRuntimeSessionMemory(input: {
 
   try {
     const observed = await observeSession.call(input.runtimeClient, input.sessionId);
-    await flushObservedRuntimeSessionMemory({
+    const result = await flushObservedRuntimeSessionMemory({
       observed,
       requestedPhase: input.requestedPhase ?? null,
       memoryService: input.memoryService,
       companionStore: input.companionStore,
       now: input.now,
     });
-  } catch {
+    if (input.coreStore && result.phase) {
+      if (result.summary) {
+        await appendMemoryMaintenanceActivity({
+          coreStore: input.coreStore,
+          trigger: 'runtime_hook',
+          status: 'executed',
+          phase: result.phase,
+          sessionId: input.sessionId,
+          channelId: result.targets.channelId,
+          catId: result.targets.catId,
+          reason: result.phase,
+          summary: result.summary,
+          now: input.now,
+        });
+      } else if (result.reason === 'runtime_memory_context_missing') {
+        await appendMemoryMaintenanceActivity({
+          coreStore: input.coreStore,
+          trigger: 'runtime_hook',
+          status: 'missing_context',
+          phase: result.phase,
+          sessionId: input.sessionId,
+          reason: result.phase,
+          now: input.now,
+        });
+      }
+    }
+  } catch (error) {
+    if (input.coreStore && input.requestedPhase) {
+      await appendMemoryMaintenanceActivity({
+        coreStore: input.coreStore,
+        trigger: 'runtime_hook',
+        status: 'error',
+        phase: input.requestedPhase,
+        sessionId: input.sessionId,
+        reason: input.requestedPhase,
+        error: error instanceof Error ? error.message : String(error),
+        now: input.now,
+      }).catch(() => {
+        // Activity logging is also best-effort.
+      });
+    }
     // Best-effort maintenance hooks should not block session cleanup/restart.
   }
 }

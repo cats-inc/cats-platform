@@ -137,6 +137,21 @@ export interface MemoryFlushResult {
   payload: MemoryFlushPayload;
 }
 
+export interface MemoryFlushSummarySubject {
+  kind: CanonicalMemorySubjectKind;
+  id: string;
+}
+
+export interface MemoryFlushSummary {
+  subjects: MemoryFlushSummarySubject[];
+  flushCount: number;
+  persistedCount: number;
+  removedCount: number;
+  removedRecordIds: string[];
+  sourceScopeKeys: string[];
+  replacementGroups: string[];
+}
+
 export interface MemoryRetrievalHit {
   recordId: string;
   subjectKind: CanonicalMemorySubjectKind;

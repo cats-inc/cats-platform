@@ -326,6 +326,15 @@ test('cat durable-memory writes stay successful when canonical sync fails', asyn
     const listMemoryPayload = await listMemoryResponse.json();
     assert.equal(listMemoryPayload.records.length, 1);
     assert.equal(listMemoryPayload.records[0].content, 'Memory Cat likes rooftop naps.');
+
+    const coreState = await chatStore.readCore();
+    assert.ok(
+      coreState.activities.some((activity) =>
+        activity.metadata?.category === 'memory_maintenance'
+        && activity.metadata?.trigger === 'companion_sync'
+        && activity.metadata?.status === 'deferred'
+        && activity.metadata?.catId === cat.id),
+    );
   }, chatStore, { memoryService: failingMemoryService });
 });
 
@@ -372,6 +381,12 @@ test('owner-profile writes stay successful when canonical sync fails', async () 
 
     const coreState = await chatStore.readCore();
     assert.equal(coreState.ownerProfile.displayName, 'Resilient Owner');
+    assert.ok(
+      coreState.activities.some((activity) =>
+        activity.metadata?.category === 'memory_maintenance'
+        && activity.metadata?.trigger === 'owner_sync'
+        && activity.metadata?.status === 'deferred'),
+    );
   }, chatStore, { memoryService: failingMemoryService });
 });
 
@@ -436,6 +451,14 @@ test('owner durable-memory writes stay successful when canonical sync fails', as
     assert.equal(listMemoryResponse.status, 200);
     const listMemoryPayload = await listMemoryResponse.json();
     assert.equal(listMemoryPayload.records.length, 0);
+
+    const coreState = await chatStore.readCore();
+    assert.ok(
+      coreState.activities.some((activity) =>
+        activity.metadata?.category === 'memory_maintenance'
+        && activity.metadata?.trigger === 'owner_sync'
+        && activity.metadata?.status === 'deferred'),
+    );
   }, chatStore, { memoryService: failingMemoryService });
 });
 

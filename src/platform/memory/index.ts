@@ -36,6 +36,8 @@ export type {
   MemoryFlushPayload,
   MemoryFlushRecordPayload,
   MemoryFlushResult,
+  MemoryFlushSummary,
+  MemoryFlushSummarySubject,
   MemoryRetrievalContext,
   MemoryRetrievalExcluded,
   MemoryRetrievalHit,

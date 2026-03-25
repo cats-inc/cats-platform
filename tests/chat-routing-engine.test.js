@@ -464,7 +464,8 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
 });
 
 test('solo composer mode honors pending runtime memory flush hooks before restarting the session', async () => {
-  let state = await new MemoryChatStore().read();
+  const store = new MemoryChatStore();
+  let state = await store.read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
@@ -519,9 +520,35 @@ test('solo composer mode honors pending runtime memory flush hooks before restar
         generatedAt: (input.now ?? now).toISOString(),
         persistedCount: 1,
         persistedRecordIds: ['cats-memory-1'],
+        removedRecordIds: [],
+        payload: {
+          version: 1,
+          reason: input.reason ?? 'manual',
+          generatedAt: (input.now ?? now).toISOString(),
+          subject: {
+            kind: 'channel',
+            id: input.channelId,
+          },
+          replacementMode: 'subject_projection_replace',
+          sourceScopeKeys: ['channel:working-memory'],
+          persistedRecords: [
+            {
+              recordId: 'cats-memory-1',
+              category: 'fact',
+              originKind: 'channel_working_memory',
+              promotionRule: 'channel_fact',
+              visibility: 'channel_private',
+              sourceRefs: [],
+              sourceScopeKeys: ['channel:working-memory'],
+              replacementGroup: `channel:${input.channelId}:fact:0`,
+            },
+          ],
+          removedRecordIds: [],
+        },
       };
     },
   };
+  await store.write(state);
 
   const firstDispatch = await routeChannelMessage(
     state,
@@ -533,8 +560,9 @@ test('solo composer mode honors pending runtime memory flush hooks before restar
     },
     runtimeClient,
     now,
-    { memoryService },
+    { memoryService, chatStore: store },
   );
+  await store.write(firstDispatch.state);
   await routeChannelMessage(
     firstDispatch.state,
     channelId,
@@ -545,7 +573,7 @@ test('solo composer mode honors pending runtime memory flush hooks before restar
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
-    { memoryService },
+    { memoryService, chatStore: store },
   );
 
   assert.deepEqual(flushedChannels, [
@@ -556,6 +584,15 @@ test('solo composer mode honors pending runtime memory flush hooks before restar
     },
   ]);
   assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  const core = await store.readCore();
+  assert.ok(
+    core.activities.some((activity) =>
+      activity.metadata?.category === 'memory_maintenance'
+      && activity.metadata?.trigger === 'runtime_hook'
+      && activity.metadata?.status === 'executed'
+      && activity.metadata?.phase === 'pre_reset'
+      && activity.metadata?.channelId === channelId),
+  );
 });
 
 test('cat-led room routing continues across agent mentions and auto-wakes targeted participants', async () => {

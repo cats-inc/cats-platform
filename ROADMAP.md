@@ -122,6 +122,9 @@ contracts.
       memory maintenance contract, including reusable source-mutation sync,
       background-safe flush invocation, and clearer downstream expectations for
       `removedRecordIds` and entry-scoped `replacementGroup` consumers
+      Progress: additive flush summaries, reusable best-effort sync helpers,
+      and core activity logging for runtime-hook / deferred maintenance are now
+      landed; broader downstream consumer contracts still remain.
 - [x] Surface the new orchestrator execution-loop contract in product-owned
       operator rails so Chat can consume step state, next actions, approval
       gates, and recovery hints without scraping transcript text
