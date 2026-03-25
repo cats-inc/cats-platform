@@ -206,33 +206,41 @@ test('task run watcher persists observed runtime strategy metadata additively', 
   const core = await coreStore.readCore();
   const task = core.tasks.find((candidate) => candidate.id === checkout.task.id);
   const run = core.runs.find((candidate) => candidate.id === checkout.run.id);
+  const runExecution = run?.metadata.execution;
+  const runStrategyState = runExecution?.strategyState;
+  const taskExecution = task?.metadata.taskLifecycle.execution;
+  const taskStrategyState = taskExecution?.strategyState;
 
   assert.equal(task?.status, 'completed');
   assert.equal(run?.status, 'completed');
-  assert.equal(run?.metadata.execution.requestedStrategy, 'react');
-  assert.equal(run?.metadata.execution.effectiveStrategy, 'react');
-  assert.equal(run?.metadata.execution.strategyState.effectiveStrategy, 'react');
+  assert.ok(runExecution);
+  assert.ok(runStrategyState);
+  assert.ok(taskExecution);
+  assert.ok(taskStrategyState);
+  assert.equal(runExecution.requestedStrategy, 'react');
+  assert.equal(runExecution.effectiveStrategy, 'react');
+  assert.equal(runStrategyState.effectiveStrategy, 'react');
   assert.equal(
-    run?.metadata.execution.strategyState.resolutionSource,
+    runStrategyState.resolutionSource,
     'explicit_request',
   );
-  assert.equal(run?.metadata.execution.strategyState.summary.status, 'completed');
+  assert.equal(runStrategyState.summary.status, 'completed');
   assert.equal(
-    run?.metadata.execution.strategyState.localState,
+    runStrategyState.localState,
     undefined,
   );
-  assert.equal(task?.metadata.taskLifecycle.execution.requestedStrategy, 'react');
-  assert.equal(task?.metadata.taskLifecycle.execution.effectiveStrategy, 'react');
+  assert.equal(taskExecution.requestedStrategy, 'react');
+  assert.equal(taskExecution.effectiveStrategy, 'react');
   assert.equal(
-    task?.metadata.taskLifecycle.execution.strategyState.resolutionSource,
+    taskStrategyState.resolutionSource,
     'explicit_request',
   );
   assert.equal(
-    task?.metadata.taskLifecycle.execution.strategyState.summary.stepCount,
+    taskStrategyState.summary.stepCount,
     2,
   );
   assert.equal(
-    task?.metadata.taskLifecycle.execution.strategyState.localState,
+    taskStrategyState.localState,
     undefined,
   );
 });

@@ -236,6 +236,9 @@ function sanitizeObservedStrategyState(
   const effectiveStrategy = readString(strategyState.effectiveStrategy);
   const resolutionSource = readString(strategyState.resolutionSource);
   const updatedAt = readString(strategyState.updatedAt);
+  // Keep task lifecycle metadata focused on observed execution facts. Runtime
+  // session preferences such as preferredStrategy remain runtime-owned and do
+  // not need to become persisted Cats Core contract.
 
   if (effectiveStrategy) {
     sanitized.effectiveStrategy = effectiveStrategy;
