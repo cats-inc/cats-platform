@@ -102,7 +102,7 @@ contracts.
 - [ ] Follow up the Chat-first task-strategy handoff slice by deduplicating
       shared planning/runtime normalization helpers and keeping additive
       runtime execution payload serialization behind one reusable bridge path
-- [ ] Tighten task lifecycle watcher convergence so additive
+- [x] Tighten task lifecycle watcher convergence so additive
       `effectiveStrategy` and `strategyState` metadata can settle into UI/read
       models before full runtime stream teardown where observe payloads already
       provide enough signal, without regressing no-planning compatibility paths

@@ -45,44 +45,51 @@ export interface StartTaskRunWatcherInput {
 
 async function reconcileObservedTaskRun(
   input: StartTaskRunWatcherInput,
-): Promise<void> {
+  observed: RuntimeObservedSessionPayload,
+): Promise<boolean> {
   const now = input.now?.() ?? new Date();
-  const observed = await input.runtimeClient.observeSession(input.sessionId);
   const inspection = readObservedInspection(observed);
   const observedRun = inspection.currentRun ?? inspection.lastRun;
-  if (!observedRun) {
-    return;
+  const observedExecution = readObservedExecutionMetadata(observed);
+  if (!observedRun && !observedExecution) {
+    return false;
   }
 
-  const runtimeRunStatus = readString(observedRun.status);
-  const nextRunStatus = mapRuntimeRunStatusToCoreStatus(runtimeRunStatus, inspection.state);
-  const startedAt = readString(observedRun.startedAt) ?? now.toISOString();
-  const endedAt = readNullableString(observedRun.endedAt);
-  const resultSummary = readNullableString(observedRun.resultSummary);
-  const error = readNullableString(observedRun.error);
-  const usage = asRecord(observedRun.usage);
-  const observedExecution = readObservedExecutionMetadata(observed);
+  const observedAt = now.toISOString();
+  const runtimeRunStatus = readString(observedRun?.status);
+  const nextRunStatus = observedRun
+    ? mapRuntimeRunStatusToCoreStatus(runtimeRunStatus, inspection.state)
+    : null;
+  const terminal = nextRunStatus
+    ? isTerminalCoreRunStatus(nextRunStatus)
+    : false;
 
   const coreBefore = await input.coreStore.readCore();
   const taskBefore = coreBefore.tasks.find((candidate) => candidate.id === input.taskId);
   const runBefore = coreBefore.runs.find((candidate) => candidate.id === input.runId);
   if (!taskBefore || !runBefore) {
-    return;
+    return terminal;
   }
-  const observedAt = now.toISOString();
+
+  const startedAt = readString(observedRun?.startedAt) ?? runBefore.startedAt ?? observedAt;
+  const endedAt = readNullableString(observedRun?.endedAt);
+  const resultSummary = readNullableString(observedRun?.resultSummary);
+  const error = readNullableString(observedRun?.error);
+  const usage = asRecord(observedRun?.usage);
   const executionMetadata = mergeObservedExecutionMetadata(
     runBefore.metadata?.execution,
     observedExecution,
     observedAt,
   );
+  const resolvedRunStatus = nextRunStatus ?? runBefore.status;
 
   const runWrite = upsertCoreRun(
     coreBefore,
     {
       ...cloneRunInput(runBefore),
-      status: nextRunStatus,
+      status: resolvedRunStatus,
       startedAt,
-      completedAt: isTerminalCoreRunStatus(nextRunStatus) ? endedAt ?? observedAt : runBefore.completedAt,
+      completedAt: isTerminalCoreRunStatus(resolvedRunStatus) ? endedAt ?? observedAt : runBefore.completedAt,
       summary: resultSummary ?? error ?? runBefore.summary,
       metadata: {
         ...cloneMetadata(runBefore.metadata),
@@ -99,7 +106,7 @@ async function reconcileObservedTaskRun(
     now,
   );
 
-  const nextTaskStatus = mapCoreRunStatusToTaskStatus(nextRunStatus);
+  const nextTaskStatus = mapCoreRunStatusToTaskStatus(resolvedRunStatus);
   const taskWrite = upsertCoreTask(
     runWrite.core,
     {
@@ -112,7 +119,7 @@ async function reconcileObservedTaskRun(
         observedAt,
         runtimeState: inspection.state,
         runtimeRunStatus,
-        completedAt: isTerminalCoreRunStatus(nextRunStatus) ? endedAt ?? observedAt : null,
+        completedAt: isTerminalCoreRunStatus(resolvedRunStatus) ? endedAt ?? observedAt : null,
         ...(executionMetadata ? { execution: executionMetadata } : {}),
       }),
     },
@@ -120,7 +127,7 @@ async function reconcileObservedTaskRun(
   );
 
   let nextCore = taskWrite.core;
-  if (taskBefore.status !== nextTaskStatus || runBefore.status !== nextRunStatus) {
+  if (taskBefore.status !== nextTaskStatus || runBefore.status !== resolvedRunStatus) {
     const actorName = resolveActorName(nextCore, input.actorId);
     nextCore = appendCoreActivity(
       nextCore,
@@ -130,7 +137,7 @@ async function reconcileObservedTaskRun(
         conversationId: taskWrite.task.conversationId,
         taskId: taskWrite.task.id,
         runId: input.runId,
-        message: buildTerminalTaskMessage(taskWrite.task, actorName, nextRunStatus),
+        message: buildTerminalTaskMessage(taskWrite.task, actorName, resolvedRunStatus),
         metadata: {
           source: 'task-lifecycle',
           sessionId: input.sessionId,
@@ -143,6 +150,8 @@ async function reconcileObservedTaskRun(
   }
 
   await input.coreStore.writeCore(nextCore);
+
+  return terminal;
 }
 
 export function startTaskRunWatcher(input: StartTaskRunWatcherInput): boolean {
@@ -154,14 +163,19 @@ export function startTaskRunWatcher(input: StartTaskRunWatcherInput): boolean {
   const watcher = (async () => {
     try {
       const initialObserve = await input.runtimeClient.observeSession(input.sessionId);
-      if (initialObserve.stream?.available) {
-        try {
-          await input.runtimeClient.streamSession(input.sessionId, async () => {});
-        } catch {
-          // Reconciliation falls back to observe even if the live stream disappears.
-        }
+      const initialTerminal = await reconcileObservedTaskRun(input, initialObserve);
+      if (initialTerminal || !initialObserve.stream?.available) {
+        return;
       }
-      await reconcileObservedTaskRun(input);
+
+      try {
+        await input.runtimeClient.streamSession(input.sessionId, async () => {});
+      } catch {
+        // Reconciliation falls back to observe even if the live stream disappears.
+      }
+
+      const finalObserve = await input.runtimeClient.observeSession(input.sessionId);
+      await reconcileObservedTaskRun(input, finalObserve);
     } finally {
       activeTaskRunWatchers.delete(watcherKey);
     }

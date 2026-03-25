@@ -100,7 +100,7 @@ session execution requests.
 - [ ] Integrate planning metadata resolution into task checkout/wakeup flow
 - [ ] Ensure assigned task wakeups carry the effective requested strategy into
       the runtime bridge
-- [ ] Thread additive strategy metadata through execution watcher / observe
+- [x] Thread additive strategy metadata through execution watcher / observe
       reconciliation paths
 - [ ] Preserve existing task lifecycle ownership in Core:
       checkout, `in_progress`, completion, blocked/cancelled handling
@@ -199,6 +199,7 @@ existing task lifecycle behavior.
 | Date | Update |
 |------|--------|
 | 2026-03-26 | Plan created to implement `metadata.planning` conventions and the task-to-runtime execution bridge |
+| 2026-03-26 | Task lifecycle watchers now reconcile initial observe snapshots early so additive strategy metadata lands before stream teardown and terminal observe payloads can short-circuit redundant stream attachment |
 
 ---
 

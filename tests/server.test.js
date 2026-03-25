@@ -780,7 +780,7 @@ test('approved task assignment queues runtime wakeups for active assigned cat se
   }, chatStore);
 });
 
-test('task checkout creates a run and reconciles runtime completion back into core state', async () => {
+test('task checkout short-circuits terminal observe payloads and reconciles completion back into core state', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();
   runtime.setObservedSession('session-task-1', {
@@ -872,7 +872,7 @@ test('task checkout creates a run and reconciles runtime completion back into co
     assert.equal(run.status, 'completed');
     assert.equal(run.metadata.runtimeRunStatus, 'succeeded');
     assert.ok(completionActivity);
-    assert.ok(runtime.streamedSessions.includes('session-task-1'));
+    assert.ok(!runtime.streamedSessions.includes('session-task-1'));
   }, chatStore);
 });
 

@@ -11,6 +11,17 @@ import {
   readObservedExecutionMetadata,
 } from '../dist-server/core/taskLifecycleShared.js';
 
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 async function waitFor(assertion, timeoutMs = 1000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -95,6 +106,256 @@ test('observed execution metadata prefers nested runtime strategy state and sani
       },
     },
   });
+});
+
+test('task run watcher settles execution metadata before live stream teardown', async () => {
+  const now = new Date('2026-03-26T05:10:00.000Z');
+  const taskWrite = upsertCoreTask(
+    createDefaultCoreState(),
+    {
+      id: 'task-watch-running',
+      title: 'Persist running execution metadata early',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-worker'],
+      metadata: {},
+    },
+    now,
+  );
+
+  const checkout = checkoutTaskExecution({
+    core: taskWrite.core,
+    taskId: taskWrite.task.id,
+    actorId: 'actor-worker',
+    sessionId: 'session-watch-running',
+    executionRequest: {
+      requestedStrategy: 'react',
+      acceptanceCriteria: 'Persist strategy metadata before teardown.',
+      correlation: {
+        taskId: taskWrite.task.id,
+        product: 'chat',
+      },
+    },
+    now,
+  });
+  const coreStore = new MemoryCoreStore(checkout.core);
+  const streamGate = createDeferred();
+  let observePhase = 'running';
+
+  const started = startTaskRunWatcher({
+    coreStore,
+    runtimeClient: {
+      async observeSession() {
+        if (observePhase === 'final') {
+          return {
+            session: {
+              id: 'session-watch-running',
+              inspection: {
+                state: 'idle',
+                strategy: {
+                  state: {
+                    request: {
+                      requestedStrategy: 'react',
+                    },
+                    effectiveStrategy: 'react',
+                    resolutionSource: 'explicit_request',
+                    summary: {
+                      status: 'completed',
+                      stepCount: 2,
+                    },
+                    updatedAt: '2026-03-26T05:11:00.000Z',
+                  },
+                },
+                lastRun: {
+                  id: 'runtime-run-watch-running',
+                  status: 'succeeded',
+                  startedAt: '2026-03-26T05:10:00.000Z',
+                  endedAt: '2026-03-26T05:11:00.000Z',
+                  resultSummary: 'Finished after stream teardown.',
+                },
+              },
+            },
+            observePath: '/sessions/session-watch-running/observe',
+            stream: {
+              path: '/sessions/session-watch-running/stream',
+              available: true,
+            },
+          };
+        }
+
+        return {
+          session: {
+            id: 'session-watch-running',
+            inspection: {
+              state: 'running',
+              strategy: {
+                state: {
+                  request: {
+                    requestedStrategy: 'react',
+                    acceptanceCriteria: 'Persist strategy metadata before teardown.',
+                    correlation: {
+                      taskId: taskWrite.task.id,
+                      product: 'chat',
+                    },
+                  },
+                  effectiveStrategy: 'react',
+                  resolutionSource: 'explicit_request',
+                  summary: {
+                    status: 'running',
+                    stepCount: 1,
+                  },
+                  updatedAt: '2026-03-26T05:10:30.000Z',
+                },
+              },
+              currentRun: {
+                id: 'runtime-run-watch-running',
+                status: 'running',
+                startedAt: '2026-03-26T05:10:00.000Z',
+              },
+            },
+          },
+          observePath: '/sessions/session-watch-running/observe',
+          stream: {
+            path: '/sessions/session-watch-running/stream',
+            available: true,
+          },
+        };
+      },
+      async streamSession() {
+        await streamGate.promise;
+        observePhase = 'final';
+      },
+    },
+    taskId: checkout.task.id,
+    runId: checkout.run.id,
+    sessionId: 'session-watch-running',
+    actorId: 'actor-worker',
+    now: () => new Date('2026-03-26T05:11:00.000Z'),
+  });
+
+  assert.equal(started, true);
+  await waitFor(async () => {
+    const core = await coreStore.readCore();
+    const run = core.runs.find((candidate) => candidate.id === checkout.run.id);
+    const task = core.tasks.find((candidate) => candidate.id === checkout.task.id);
+    assert.equal(run?.status, 'running');
+    assert.equal(run?.metadata.execution?.effectiveStrategy, 'react');
+    assert.equal(
+      run?.metadata.execution?.strategyState?.summary?.status,
+      'running',
+    );
+    assert.equal(task?.metadata.taskLifecycle?.execution?.effectiveStrategy, 'react');
+  });
+
+  streamGate.resolve();
+
+  await waitFor(async () => {
+    const core = await coreStore.readCore();
+    const run = core.runs.find((candidate) => candidate.id === checkout.run.id);
+    assert.equal(run?.status, 'completed');
+  });
+});
+
+test('task run watcher skips live stream when initial observe already shows a terminal run', async () => {
+  const now = new Date('2026-03-26T05:20:00.000Z');
+  const taskWrite = upsertCoreTask(
+    createDefaultCoreState(),
+    {
+      id: 'task-watch-terminal',
+      title: 'Short-circuit terminal observe payloads',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-worker'],
+      metadata: {},
+    },
+    now,
+  );
+
+  const checkout = checkoutTaskExecution({
+    core: taskWrite.core,
+    taskId: taskWrite.task.id,
+    actorId: 'actor-worker',
+    sessionId: 'session-watch-terminal',
+    executionRequest: {
+      requestedStrategy: 'react',
+      correlation: {
+        taskId: taskWrite.task.id,
+        product: 'chat',
+      },
+    },
+    now,
+  });
+  const coreStore = new MemoryCoreStore(checkout.core);
+  let streamCalls = 0;
+
+  const started = startTaskRunWatcher({
+    coreStore,
+    runtimeClient: {
+      async observeSession() {
+        return {
+          session: {
+            id: 'session-watch-terminal',
+            inspection: {
+              state: 'idle',
+              strategy: {
+                state: {
+                  request: {
+                    requestedStrategy: 'react',
+                  },
+                  effectiveStrategy: 'react',
+                  resolutionSource: 'explicit_request',
+                  summary: {
+                    status: 'completed',
+                    stepCount: 1,
+                  },
+                  updatedAt: '2026-03-26T05:21:00.000Z',
+                },
+              },
+              lastRun: {
+                id: 'runtime-run-watch-terminal',
+                status: 'succeeded',
+                startedAt: '2026-03-26T05:20:00.000Z',
+                endedAt: '2026-03-26T05:21:00.000Z',
+                resultSummary: 'Completed before stream attach.',
+              },
+            },
+          },
+          observePath: '/sessions/session-watch-terminal/observe',
+          stream: {
+            path: '/sessions/session-watch-terminal/stream',
+            available: true,
+          },
+        };
+      },
+      async streamSession() {
+        streamCalls += 1;
+      },
+    },
+    taskId: checkout.task.id,
+    runId: checkout.run.id,
+    sessionId: 'session-watch-terminal',
+    actorId: 'actor-worker',
+    now: () => new Date('2026-03-26T05:21:00.000Z'),
+  });
+
+  assert.equal(started, true);
+  await waitFor(async () => {
+    const core = await coreStore.readCore();
+    const run = core.runs.find((candidate) => candidate.id === checkout.run.id);
+    assert.equal(run?.status, 'completed');
+  });
+
+  const core = await coreStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === checkout.task.id);
+  const run = core.runs.find((candidate) => candidate.id === checkout.run.id);
+
+  assert.equal(streamCalls, 0);
+  assert.equal(task?.status, 'completed');
+  assert.equal(run?.metadata.execution?.effectiveStrategy, 'react');
+  assert.equal(
+    run?.metadata.execution?.strategyState?.summary?.status,
+    'completed',
+  );
 });
 
 test('task run watcher persists observed runtime strategy metadata additively', async () => {
