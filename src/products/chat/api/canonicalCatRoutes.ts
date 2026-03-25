@@ -1,11 +1,12 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { archiveCat, buildChannelView, renameCat, requireCat, setBossCat, updateCatProducts, updateCatSkillProfile } from '../state/model/index.js';
+import { buildChannelView, renameCat, requireCat, setBossCat, updateCatProducts, updateCatSkillProfile } from '../state/model/index.js';
 import type { AssignChannelCatInput, CreateCatInput } from './contracts.js';
 import {
   buildAppShellPayload,
   handleCanonicalCatError,
   handleRestError,
   mapChannelCat,
+  persistArchivedCat,
   persistCatAssignmentRemoval,
   persistCatAssignmentUpdate,
   persistCreatedCat,
@@ -68,13 +69,14 @@ async function handleCanonicalUpdateCat(
       state = updateCatProducts(state, catId, body.products);
     }
     if (body.archive) {
-      state = archiveCat(state, catId);
+      state = await persistArchivedCat(context, state, catId);
+    } else {
+      await context.dependencies.chatStore.write(state);
     }
-    await context.dependencies.chatStore.write(state);
     sendJson(
       context.response,
       200,
-      await buildAppShellPayload(context.dependencies),
+      await buildAppShellPayload(context.dependencies, state),
     );
   } catch (error) {
     handleRestError(context, error);

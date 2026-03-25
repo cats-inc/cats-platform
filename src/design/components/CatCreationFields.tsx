@@ -7,6 +7,7 @@ import type {
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
+import { buildProductSurfaceToggleStates } from './productSurfaceToggles.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
 
 export interface CatCreationFieldsProps {
@@ -27,6 +28,7 @@ export interface CatCreationFieldsProps {
   products?: string[];
   onProductsChange?: (products: string[]) => void;
   availableSurfaces?: string[];
+  enabledSurfaces?: string[];
   hideProductToggles?: boolean;
   fetchProviders: () => Promise<ProductProviderDescriptor[]>;
   fetchProviderModels: (provider: string, instance?: string | null) => Promise<ProviderModelCatalog>;
@@ -54,6 +56,7 @@ export function CatCreationFields({
   products,
   onProductsChange,
   availableSurfaces,
+  enabledSurfaces,
   hideProductToggles,
   fetchProviders,
   fetchProviderModels,
@@ -61,6 +64,12 @@ export function CatCreationFields({
 }: CatCreationFieldsProps) {
   const normalizedProducts = products ?? [];
   const selectableSurfaces = availableSurfaces ?? [];
+  const toggleStates = buildProductSurfaceToggleStates({
+    surfaces: selectableSurfaces,
+    selected: normalizedProducts,
+    enabledSurfaces,
+    requiredSurfaces: (makeBoss ?? false) ? ['chat'] : [],
+  });
 
   return (
     <>
@@ -89,20 +98,15 @@ export function CatCreationFields({
         <div className="fieldLabel">
           <span>Available in</span>
           <div className="productToggles">
-            {selectableSurfaces.map((surface) => {
-              const active = normalizedProducts.includes(surface);
-              const preventRemoval = active && (
-                normalizedProducts.length === 1
-                || (makeBoss ?? false) && surface === 'chat'
-              );
+            {toggleStates.map(({ surface, active, disabled, unavailable }) => {
               return (
                 <button
                   key={surface}
                   type="button"
                   className={active ? 'productToggle productToggleActive' : 'productToggle'}
-                  disabled={preventRemoval}
+                  disabled={disabled}
                   onClick={() => {
-                    if (preventRemoval) {
+                    if (disabled) {
                       return;
                     }
                     const next = active
@@ -110,6 +114,7 @@ export function CatCreationFields({
                       : [...normalizedProducts, surface];
                     onProductsChange(next);
                   }}
+                  data-tooltip={unavailable ? `${surface} is not enabled yet` : undefined}
                 >
                   {surface}
                 </button>

@@ -1689,6 +1689,76 @@ test('PATCH /api/preferences wakes the selected direct chat lead', async () => {
   });
 });
 
+test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts the room back to a visible chat', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: false,
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Companion Direct',
+        topic: 'Archive should not leave a hidden zombie lane.',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [catId],
+        leadParticipantId: catId,
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const wakeResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+    assert.equal(wakeResponse.status, 200);
+    assert.equal(runtimeClient.createdSessions.length, 1);
+
+    const archiveResponse = await fetch(`${baseUrl}/api/cats/${catId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ archive: true }),
+    });
+    assert.equal(archiveResponse.status, 200);
+    const archivePayload = await archiveResponse.json();
+
+    assert.ok(runtimeClient.closedSessions.includes('session-1'));
+    assert.equal(archivePayload.chat.selectedChannel.id, channelId);
+    assert.equal(archivePayload.chat.selectedChannel.roomRouting.mode, 'boss_chat');
+    assert.equal(archivePayload.chat.selectedChannel.roomRouting.leadParticipantId, null);
+    assert.equal(archivePayload.chat.selectedChannel.composerMode, 'solo');
+    assert.equal(archivePayload.chat.selectedChannel.assignedCats[0]?.status, 'removed');
+    assert.equal(archivePayload.chat.channels[0]?.roomMode, 'boss_chat');
+  });
+});
+
 test('PATCH /api/preferences does not fall back to Boss Cat when a direct chat lead is missing', async () => {
   const runtimeClient = createRuntimeStub();
 

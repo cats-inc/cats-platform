@@ -32,6 +32,7 @@ export interface SettingsCatsRegistryProps {
   setExpandedCatId: Dispatch<SetStateAction<string | null>>;
   telegramDiagnostics: TelegramTransportDiagnostics | null;
   availableSurfaces?: string[];
+  enabledSurfaces?: string[];
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
 
@@ -45,6 +46,7 @@ export function SettingsCatsRegistry({
   setExpandedCatId,
   telegramDiagnostics,
   availableSurfaces,
+  enabledSurfaces,
   confirm: confirmDialog,
 }: SettingsCatsRegistryProps) {
   const [showArchived, setShowArchived] = useState(false);
@@ -164,6 +166,7 @@ export function SettingsCatsRegistry({
                     registryController={registryController}
                     telegramDiagnostics={telegramDiagnostics}
                     availableSurfaces={availableSurfaces}
+                    enabledSurfaces={enabledSurfaces}
                     confirm={confirmDialog}
                   />
                 ) : null}

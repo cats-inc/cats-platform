@@ -4,11 +4,14 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { createDefaultChatState } from '../dist-server/chat/defaults.js';
 import {
+  archiveCat,
   appendMessage,
   assignCatToChannel,
   createChannel,
   createCat,
+  deleteCat,
   deleteChannel,
   exportChannel,
   removeCatFromChannel,
@@ -145,6 +148,88 @@ test('assigning the first cat upgrades a solo chat into cat-led mode and removin
   );
   assert.equal(state.channels[0].composerMode, 'solo');
   assert.equal(state.channels[0].roomRouting?.leadParticipantId, null);
+});
+
+test('archiving a direct-lane cat preserves history but demotes the room back to a visible chat', () => {
+  const now = new Date('2026-03-26T00:00:00.000Z');
+  let state = createDefaultChatState();
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const catId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion Direct',
+      topic: 'Keep this transcript visible after archiving the cat.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [catId],
+      leadParticipantId: catId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  state = archiveCat(state, catId);
+  const archivedCat = state.cats.find((cat) => cat.id === catId);
+  const channel = state.channels[0];
+  const assignment = channel.catAssignments.find((candidate) => candidate.catId === catId);
+
+  assert.equal(archivedCat?.status, 'archived');
+  assert.ok(assignment);
+  assert.equal(assignment.status, 'removed');
+  assert.ok(assignment.leftAt);
+  assert.equal(assignment.execution.lease.sessionId, null);
+  assert.equal(assignment.execution.lease.status, 'removed');
+  assert.equal(channel.roomRouting?.mode, 'boss_chat');
+  assert.equal(channel.roomRouting?.leadParticipantId, null);
+  assert.equal(channel.composerMode, 'solo');
+});
+
+test('deleting a direct-lane cat clears hidden-lane routing state so the room stays reachable', () => {
+  const now = new Date('2026-03-26T00:00:00.000Z');
+  let state = createDefaultChatState();
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const catId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion Direct',
+      topic: 'Deleting the cat should not strand the channel.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [catId],
+      leadParticipantId: catId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  state = deleteCat(state, catId);
+  const channel = state.channels[0];
+
+  assert.equal(state.cats.length, 0);
+  assert.equal(channel.catAssignments.length, 0);
+  assert.equal(channel.roomRouting?.mode, 'boss_chat');
+  assert.equal(channel.roomRouting?.leadParticipantId, null);
+  assert.equal(channel.composerMode, 'solo');
 });
 
 test('FileChatStore round-trips per-message execution provenance', async () => {

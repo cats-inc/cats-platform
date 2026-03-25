@@ -7,8 +7,13 @@ import {
   ensureSuiteSurfaceIncluded,
   normalizeSuiteSurfaceList,
 } from '../../../../shared/suiteSurfaces.js';
+import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createCatRecord } from './recordBuilders.js';
-import { cloneState, isoAt } from './shared.js';
+import {
+  cloneState,
+  isoAt,
+  syncChannelLeadAndComposerMode,
+} from './shared.js';
 
 export const AVATAR_PALETTE = [
   '#7986CB', '#4DB6AC', '#FFB74D', '#BA68C8',
@@ -18,6 +23,58 @@ export const AVATAR_PALETTE = [
 
 const DEFAULT_CAT_NAME = 'Boss Cat';
 const DEFAULT_AVATAR_COLOR = '#90A4AE';
+
+function demoteDirectLaneIfLeadingCatRemoved(
+  channel: ChatState['channels'][number],
+  catId: string,
+): void {
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  if (
+    roomRouting.mode === 'direct_cat_chat'
+    && roomRouting.leadParticipantId === catId
+  ) {
+    roomRouting.mode = 'boss_chat';
+    roomRouting.leadParticipantId = null;
+    channel.roomRouting = roomRouting;
+  }
+}
+
+function detachCatFromChannels(
+  state: ChatState,
+  catId: string,
+  detachedAt: string,
+  options: { preserveAssignmentHistory: boolean },
+): void {
+  for (const channel of state.channels) {
+    if (options.preserveAssignmentHistory) {
+      for (const assignment of channel.catAssignments) {
+        if (assignment.catId !== catId) {
+          continue;
+        }
+        assignment.status = 'removed';
+        assignment.leftAt = detachedAt;
+        assignment.execution.lease = {
+          ...assignment.execution.lease,
+          sessionId: null,
+          status: 'removed',
+          cwd: null,
+          lastError: null,
+          provider: null,
+          model: null,
+          startedAt: null,
+          lastUsedAt: null,
+        };
+      }
+    } else {
+      channel.catAssignments = channel.catAssignments.filter(
+        (assignment) => assignment.catId !== catId,
+      );
+    }
+
+    demoteDirectLaneIfLeadingCatRemoved(channel, catId);
+    syncChannelLeadAndComposerMode(channel);
+  }
+}
 
 export function pickAvatarColor(index: number): string {
   return AVATAR_PALETTE[index % AVATAR_PALETTE.length];
@@ -76,6 +133,7 @@ export function createCat(
 export function archiveCat(
   state: ChatState,
   catId: string,
+  now: Date = new Date(),
 ): ChatState {
   const nextState = cloneState(state);
   const cat = nextState.cats.find((p) => p.id === catId);
@@ -89,17 +147,18 @@ export function archiveCat(
     nextState.bossCatId = null;
   }
   cat.status = 'archived';
-  cat.archivedAt = new Date().toISOString();
+  cat.archivedAt = isoAt(now);
   cat.updatedAt = cat.archivedAt;
-  for (const channel of nextState.channels) {
-    channel.catAssignments = channel.catAssignments.filter((a) => a.catId !== catId);
-  }
+  detachCatFromChannels(nextState, catId, cat.archivedAt, {
+    preserveAssignmentHistory: true,
+  });
   return nextState;
 }
 
 export function deleteCat(
   state: ChatState,
   catId: string,
+  now: Date = new Date(),
 ): ChatState {
   const nextState = cloneState(state);
   const catIndex = nextState.cats.findIndex((p) => p.id === catId);
@@ -110,9 +169,9 @@ export function deleteCat(
     nextState.bossCatId = null;
   }
   nextState.cats.splice(catIndex, 1);
-  for (const channel of nextState.channels) {
-    channel.catAssignments = channel.catAssignments.filter((a) => a.catId !== catId);
-  }
+  detachCatFromChannels(nextState, catId, isoAt(now), {
+    preserveAssignmentHistory: false,
+  });
   return nextState;
 }
 

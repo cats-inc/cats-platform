@@ -7,6 +7,7 @@ import type {
 } from '../../api';
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory';
 import type { BotFormState } from '../../hooks/useSettingsCatsRegistryActions';
+import { buildProductSurfaceToggleStates } from '../../../../../design/components/productSurfaceToggles.js';
 import { MEMORY_CATEGORIES, SKILL_PROFILES, formatTransportTimestamp } from './viewSupport';
 
 interface SettingsCatsRegistryController {
@@ -33,6 +34,7 @@ export interface SettingsCatsDetailPanelProps {
     bindings: TelegramTransportBindingDiagnostics[];
   } | null;
   availableSurfaces?: string[];
+  enabledSurfaces?: string[];
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
 
@@ -45,6 +47,7 @@ export function SettingsCatsDetailPanel({
   registryController,
   telegramDiagnostics,
   availableSurfaces,
+  enabledSurfaces,
   confirm: confirmDialog,
 }: SettingsCatsDetailPanelProps) {
   const {
@@ -71,6 +74,13 @@ export function SettingsCatsDetailPanel({
   const catBindingDiagnostics = telegramDiagnostics?.bindings.filter((binding) =>
     binding.bindingId && catBindings.some((candidate) => candidate.id === binding.bindingId),
   ) ?? [];
+  const surfaceToggleStates = buildProductSurfaceToggleStates({
+    surfaces: availableSurfaces ?? [],
+    selected: cat.products,
+    enabledSurfaces,
+    requiredSurfaces: isBossCat ? ['chat'] : [],
+    disabled: busy === `cat:products:${cat.id}`,
+  });
 
   return (
     <div className="catDetailPanel">
@@ -103,20 +113,15 @@ export function SettingsCatsDetailPanel({
         <div className="catDetailSection">
           <p className="sectionLabel">Available in</p>
           <div className="productToggles">
-            {availableSurfaces.map((surface) => {
-              const active = cat.products.includes(surface);
-              const preventRemoval = active && (
-                cat.products.length === 1
-                || isBossCat && surface === 'chat'
-              );
+            {surfaceToggleStates.map(({ surface, active, disabled, unavailable }) => {
               return (
                 <button
                   key={surface}
                   type="button"
                   className={active ? 'productToggle productToggleActive' : 'productToggle'}
-                  disabled={busy === `cat:products:${cat.id}` || preventRemoval}
+                  disabled={disabled}
                   onClick={() => {
-                    if (preventRemoval) {
+                    if (disabled) {
                       return;
                     }
                     const next = active
@@ -124,6 +129,7 @@ export function SettingsCatsDetailPanel({
                       : [...cat.products, surface];
                     void onUpdateProducts(cat.id, next);
                   }}
+                  data-tooltip={unavailable ? `${surface} is not enabled yet` : undefined}
                 >
                   {surface}
                 </button>

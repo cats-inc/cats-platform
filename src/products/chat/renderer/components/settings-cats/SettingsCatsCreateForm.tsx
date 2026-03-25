@@ -10,6 +10,7 @@ export interface SettingsCatsCreateFormProps {
   onCreateCat: (event: FormEvent<HTMLFormElement>) => void;
   atCatLimit?: boolean;
   availableSurfaces?: string[];
+  enabledSurfaces?: string[];
 }
 
 export function SettingsCatsCreateForm({
@@ -19,6 +20,7 @@ export function SettingsCatsCreateForm({
   onCreateCat,
   atCatLimit,
   availableSurfaces,
+  enabledSurfaces,
 }: SettingsCatsCreateFormProps) {
   return (
     <section className="contentCard contentCardForm">
@@ -53,6 +55,7 @@ export function SettingsCatsCreateForm({
           products={catForm.products}
           onProductsChange={(products) => onCatFormChange({ ...catForm, products })}
           availableSurfaces={availableSurfaces}
+          enabledSurfaces={enabledSurfaces}
         />
         <button
           className="primaryButton"

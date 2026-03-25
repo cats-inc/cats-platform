@@ -24,6 +24,7 @@ export interface CatCreationFieldsProps {
   products?: string[];
   onProductsChange?: (products: string[]) => void;
   availableSurfaces?: string[];
+  enabledSurfaces?: string[];
   hideProductToggles?: boolean;
 }
 

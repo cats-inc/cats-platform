@@ -16,6 +16,7 @@ import { readSuitePreferences } from '../../../shared/suitePreferences.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import {
   appendMessage,
+  archiveCat,
   assignCatToChannel,
   buildChannelExportFilename,
   buildChannelView,
@@ -284,6 +285,18 @@ async function closeSessionIds(
   );
 }
 
+function collectCatSessionIds(
+  state: ChatState,
+  catId: string,
+): string[] {
+  return state.channels.flatMap((channel) =>
+    channel.catAssignments
+      .filter((assignment) => assignment.catId === catId)
+      .map((assignment) => assignment.execution.lease.sessionId)
+      .filter((sessionId): sessionId is string => Boolean(sessionId)),
+  );
+}
+
 export async function persistDeletedChannel(
   context: ChatApiRouteContext,
   channelId: string,
@@ -316,6 +329,16 @@ export async function persistCreatedCat(
   );
 
   return context.dependencies.chatStore.write(nextState);
+}
+
+export async function persistArchivedCat(
+  context: ChatApiRouteContext,
+  currentState: ChatState,
+  catId: string,
+): Promise<ChatState> {
+  const now = nowFrom(context.dependencies);
+  await closeSessionIds(context, collectCatSessionIds(currentState, catId));
+  return context.dependencies.chatStore.write(archiveCat(currentState, catId, now));
 }
 
 export async function persistCatAssignmentUpdate(
@@ -589,7 +612,10 @@ export async function persistDeletedCat(
   context: ChatApiRouteContext,
   catId: string,
 ): Promise<void> {
-  const nextState = deleteCat(await context.dependencies.chatStore.read(), catId);
+  const currentState = await context.dependencies.chatStore.read();
+  const now = nowFrom(context.dependencies);
+  await closeSessionIds(context, collectCatSessionIds(currentState, catId));
+  const nextState = deleteCat(currentState, catId, now);
   await context.dependencies.chatStore.write(nextState);
 }
 

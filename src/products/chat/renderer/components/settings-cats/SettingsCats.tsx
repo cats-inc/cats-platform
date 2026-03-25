@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import type { AppShellPayload } from '../../../api/contracts';
 import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog';
 import { ToastContainer, useToast } from '../../../../../design/components/Toast';
+import { ALL_SUITE_SURFACES } from '../../../../../shared/suiteSurfaces';
 import { useSettingsCatsRegistryActions } from '../../hooks/useSettingsCatsRegistryActions';
 import { useSettingsCatsMemory } from '../../hooks/useSettingsCatsMemory';
 import { useSettingsCatsTelegram } from '../../hooks/useSettingsCatsTelegram';
@@ -75,6 +76,8 @@ export function SettingsCats({
     onBusy,
     onFeedback: toastFeedback,
   });
+  const enabledSurfaces = payload.chat.capabilities.availableSurfaces;
+  const configurableSurfaces = [...ALL_SUITE_SURFACES];
 
   return (
     <div className="settingsShell">
@@ -125,7 +128,8 @@ export function SettingsCats({
               }}
               setExpandedCatId={setExpandedCatId}
               telegramDiagnostics={telegramDiagnostics}
-              availableSurfaces={payload.chat.capabilities.availableSurfaces}
+              availableSurfaces={configurableSurfaces}
+              enabledSurfaces={enabledSurfaces}
               confirm={confirm}
             />
           </section>
@@ -136,7 +140,8 @@ export function SettingsCats({
             onCatFormChange={setCatForm}
             onCreateCat={onCreateCat}
             atCatLimit={payload.chat.cats.filter((c) => c.status === 'active').length >= payload.chat.capabilities.maxCats}
-            availableSurfaces={payload.chat.capabilities.availableSurfaces}
+            availableSurfaces={configurableSurfaces}
+            enabledSurfaces={enabledSurfaces}
           />
 
           <section className="contentCard">
