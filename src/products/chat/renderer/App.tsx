@@ -178,6 +178,7 @@ export default function App() {
     onOpenChatsOverview,
     onSelect,
     onDeleteChannel,
+    onArchiveCat,
     onDeleteCat,
     onNavigateSettings,
     onDirectChatCat,
@@ -527,7 +528,7 @@ export default function App() {
         onStartNewChat={onStartNewChat}
         onSelect={onSelect}
         onDeleteChannel={onDeleteChannel}
-        onDeleteCat={onDeleteCat}
+        onArchiveCat={onArchiveCat}
         onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
         onOverflowMenuToggle={setOverflowMenuOpenId}
         onNavigateSettings={onNavigateSettings}

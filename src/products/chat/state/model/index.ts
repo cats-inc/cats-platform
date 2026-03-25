@@ -55,6 +55,7 @@ export {
 } from './readModels.js';
 export { requireCat, requireChannel } from './shared.js';
 export {
+  archiveCat,
   createCat,
   deleteCat,
   isDefaultCatName,

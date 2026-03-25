@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../../api/contracts';
 import type { TelegramTransportDiagnostics } from '../../api';
@@ -14,6 +14,7 @@ interface SettingsCatsRegistryController {
   setRenameValue: Dispatch<SetStateAction<string>>;
   onCreateBinding: (catId: string) => Promise<void>;
   onDeleteBinding: (bindingId: string) => Promise<void>;
+  onArchiveCat: (catId: string, catName: string) => Promise<void>;
   onDeleteCat: (catId: string, catName: string) => Promise<void>;
   onMakeBossCat: (catId: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
@@ -46,7 +47,15 @@ export function SettingsCatsRegistry({
   availableSurfaces,
   confirm: confirmDialog,
 }: SettingsCatsRegistryProps) {
-  const sortedCats = [...payload.chat.cats].sort((left, right) => {
+  const [showArchived, setShowArchived] = useState(false);
+  const archivedCount = payload.chat.cats.filter((c) => c.status === 'archived').length;
+  const visibleCats = showArchived
+    ? payload.chat.cats
+    : payload.chat.cats.filter((c) => c.status !== 'archived');
+  const sortedCats = [...visibleCats].sort((left, right) => {
+    const leftArchived = left.status === 'archived' ? 1 : 0;
+    const rightArchived = right.status === 'archived' ? 1 : 0;
+    if (leftArchived !== rightArchived) return leftArchived - rightArchived;
     const leftRank = left.id === payload.chat.bossCatId ? 0 : 1;
     const rightRank = right.id === payload.chat.bossCatId ? 0 : 1;
     return leftRank - rightRank;
@@ -59,8 +68,19 @@ export function SettingsCatsRegistry({
           <p className="sectionLabel">Registry</p>
           <h2>{payload.chat.cats.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
         </div>
-        <span className="countBadge">{payload.chat.cats.length}</span>
+        <span className="countBadge">{visibleCats.length}</span>
       </div>
+
+      {archivedCount > 0 ? (
+        <label className="fieldLabel fieldLabelInline" style={{ marginBottom: 4 }}>
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          <span>Show archived ({archivedCount})</span>
+        </label>
+      ) : null}
 
       <div className="catList">
         {sortedCats.length > 0 ? (
@@ -107,12 +127,19 @@ export function SettingsCatsRegistry({
                     <button
                       className="chromeButton"
                       type="button"
-                      disabled={busy === `cat:delete:${cat.id}`}
+                      disabled={
+                        busy === `cat:archive:${cat.id}`
+                        || busy === `cat:delete:${cat.id}`
+                      }
                       onClick={(event) => {
                         event.stopPropagation();
-                        void registryController.onDeleteCat(cat.id, cat.name);
+                        if (cat.status === 'archived') {
+                          void registryController.onDeleteCat(cat.id, cat.name);
+                        } else {
+                          void registryController.onArchiveCat(cat.id, cat.name);
+                        }
                       }}
-                      data-tooltip={`Delete ${cat.name}`}
+                      data-tooltip={cat.status === 'archived' ? `Delete ${cat.name}` : `Archive ${cat.name}`}
                     >
                       &#x2715;
                     </button>

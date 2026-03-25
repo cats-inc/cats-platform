@@ -73,6 +73,30 @@ export function createCat(
   return nextState;
 }
 
+export function archiveCat(
+  state: ChatState,
+  catId: string,
+): ChatState {
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((p) => p.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  if (cat.status === 'archived') {
+    throw new Error('Cat is already archived');
+  }
+  if (nextState.bossCatId === catId) {
+    nextState.bossCatId = null;
+  }
+  cat.status = 'archived';
+  cat.archivedAt = new Date().toISOString();
+  cat.updatedAt = cat.archivedAt;
+  for (const channel of nextState.channels) {
+    channel.catAssignments = channel.catAssignments.filter((a) => a.catId !== catId);
+  }
+  return nextState;
+}
+
 export function deleteCat(
   state: ChatState,
   catId: string,

@@ -27,7 +27,7 @@ export interface SidebarProps {
   onStartNewChat: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
-  onDeleteCat: (catId: string) => void;
+  onArchiveCat: (catId: string) => void;
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
@@ -172,7 +172,7 @@ export function Sidebar({
   onStartNewChat,
   onSelect,
   onDeleteChannel,
-  onDeleteCat,
+  onArchiveCat,
   onAccountMenuToggle,
   onOverflowMenuToggle,
   onNavigateSettings,
@@ -379,14 +379,10 @@ export function Sidebar({
                             disabled={false}
                             onClick={() => {
                               onOverflowMenuToggle(null);
-                              if (directLane) {
-                                void onDeleteChannel(directLane.id);
-                              } else {
-                                void onDeleteCat(cat.id);
-                              }
+                              void onArchiveCat(cat.id);
                             }}
                           >
-                            Delete
+                            Archive
                           </button>
                         </div>
                       ) : null}

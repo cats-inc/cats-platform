@@ -1,5 +1,5 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { buildChannelView, renameCat, requireCat, setBossCat, updateCatProducts, updateCatSkillProfile } from '../state/model/index.js';
+import { archiveCat, buildChannelView, renameCat, requireCat, setBossCat, updateCatProducts, updateCatSkillProfile } from '../state/model/index.js';
 import type { AssignChannelCatInput, CreateCatInput } from './contracts.js';
 import {
   buildAppShellPayload,
@@ -53,7 +53,7 @@ async function handleCanonicalUpdateCat(
   catId: string,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<{ skillProfile?: string | null; name?: string; makeBoss?: boolean; products?: string[] }>(context.request);
+    const body = await readJsonBody<{ skillProfile?: string | null; name?: string; makeBoss?: boolean; products?: string[]; archive?: boolean }>(context.request);
     let state = await context.dependencies.chatStore.read();
     if (body.name !== undefined) {
       state = renameCat(state, catId, body.name);
@@ -66,6 +66,9 @@ async function handleCanonicalUpdateCat(
     }
     if (body.products !== undefined) {
       state = updateCatProducts(state, catId, body.products);
+    }
+    if (body.archive) {
+      state = archiveCat(state, catId);
     }
     await context.dependencies.chatStore.write(state);
     sendJson(

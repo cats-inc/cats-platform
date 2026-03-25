@@ -17,6 +17,7 @@ import {
   deleteChatChannel,
   deleteGlobalCat,
   resetSetup,
+  updateCatProfile,
 } from '../api/index.js';
 
 type LoadStateLike =
@@ -118,6 +119,18 @@ export function useAppNavigationActions(options: {
     }
   }, [navigate, setAddCatOpen, setBusy, setFeedback, setState]);
 
+  const onArchiveCat = useCallback(async (catId: string): Promise<void> => {
+    setBusy(`cat:archive:${catId}`);
+    try {
+      const payload = await updateCatProfile(catId, { archive: true });
+      startTransition(() => setState({ status: 'ready', payload }));
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to archive cat.');
+    } finally {
+      setBusy('');
+    }
+  }, [setBusy, setFeedback, setState]);
+
   const onDeleteCat = useCallback(async (catId: string): Promise<void> => {
     const confirmed = confirmDialog
       ? await confirmDialog({ title: 'Delete cat', message: 'Delete this cat? This cannot be undone.' })
@@ -192,6 +205,7 @@ export function useAppNavigationActions(options: {
     onOpenChatsOverview,
     onSelect,
     onDeleteChannel,
+    onArchiveCat,
     onDeleteCat,
     onNavigateSettings,
     onDirectChatCat,

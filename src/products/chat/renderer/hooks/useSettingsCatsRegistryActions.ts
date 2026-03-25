@@ -88,6 +88,23 @@ export function useSettingsCatsRegistryActions(options: {
     }
   }
 
+  async function onArchiveCat(catId: string, catName: string): Promise<void> {
+    onBusy(`cat:archive:${catId}`);
+    onFeedback('');
+    try {
+      const next = await updateCatProfile(catId, { archive: true });
+      onPayloadUpdate(next);
+      onFeedback(`${catName} archived.`);
+      if (expandedCatId === catId) {
+        setExpandedCatId(null);
+      }
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'Failed to archive cat');
+    } finally {
+      onBusy('');
+    }
+  }
+
   async function onDeleteCat(catId: string, catName: string): Promise<void> {
     const confirmed = confirmDialog
       ? await confirmDialog({ title: 'Delete cat', message: `Delete "${catName}"? This cannot be undone.` })
@@ -195,6 +212,7 @@ export function useSettingsCatsRegistryActions(options: {
     setBotForm,
     setCatForm,
     setRenameValue,
+    onArchiveCat,
     onCreateBinding,
     onCreateCat,
     onDeleteBinding,
