@@ -66,17 +66,17 @@ export function SettingsCats({
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/general')}>
+        <button className="settingsTab" type="button" onClick={() => navigate('/chat/settings/general')}>
           General
         </button>
         <button
           className="settingsTab settingsTabActive"
           type="button"
-          onClick={() => navigate('/settings/cats')}
+          onClick={() => navigate('/chat/settings/cats')}
         >
           Cats
         </button>
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/data')}>
+        <button className="settingsTab" type="button" onClick={() => navigate('/chat/settings/data')}>
           Data
         </button>
       </nav>

@@ -11,7 +11,7 @@ export interface SuiteSurfaceRoute {
 export const SUITE_SURFACE_ROUTES: Record<SuiteSurfaceId, SuiteSurfaceRoute> = {
   chat: {
     surface: 'chat',
-    routePrefix: '/',
+    routePrefix: '/chat',
     apiBase: null,
     placeholder: false,
   },
@@ -36,6 +36,10 @@ export function resolveSuiteSurfaceForPath(pathname: string): SuiteSurfaceId {
 
   if (pathname === '/code' || pathname.startsWith('/code/')) {
     return 'code';
+  }
+
+  if (pathname === '/chat' || pathname.startsWith('/chat/')) {
+    return 'chat';
   }
 
   return 'chat';

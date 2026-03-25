@@ -14,6 +14,11 @@ type SuiteLoadState =
   | { status: 'ready'; envelope: SuiteHostEnvelope }
   | { status: 'error'; message: string };
 
+function resolveProductEntryPath(surface: string): string {
+  const route = SUITE_SURFACE_ROUTES[surface as keyof typeof SUITE_SURFACE_ROUTES];
+  return route ? route.routePrefix : '/';
+}
+
 export default function SuiteApp() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,8 +55,12 @@ export default function SuiteApp() {
       return;
     }
     const currentSurface = resolveSuiteSurfaceForPath(location.pathname);
-    // Skip sync when at `/` and about to redirect to non-chat product.
+    // Skip sync when at `/` and about to redirect to a non-chat product.
     if (location.pathname === '/' && storedSurface !== 'chat') {
+      return;
+    }
+    // Also skip sync when at `/setup` — user is being redirected away.
+    if (location.pathname === '/setup') {
       return;
     }
     // First render: seed the ref AND sync if the current surface differs
@@ -100,32 +109,38 @@ export default function SuiteApp() {
     );
   }
 
-  if (!state.envelope.setupCompleteAt) {
+  const { envelope: readyEnvelope } = state;
+
+  if (!readyEnvelope.setupCompleteAt) {
+    // Setup incomplete: `/setup` shows wizard, everything else redirects to `/setup`.
     return (
-      <SuiteSetupWizard
-        envelope={state.envelope}
-        onComplete={() => {
-          // Full reload so the suite re-fetches a clean envelope and
-          // ChatApp mounts fresh with its own routing.
-          window.location.href = '/';
-        }}
-      />
+      <Routes>
+        <Route
+          path="/setup"
+          element={
+            <SuiteSetupWizard
+              envelope={readyEnvelope}
+              onComplete={() => {
+                window.location.href = '/';
+              }}
+            />
+          }
+        />
+        <Route path="*" element={<Navigate to="/setup" replace />} />
+      </Routes>
     );
   }
 
+  // Setup complete: each product at its own prefix, `/` and `/setup` redirect.
+  const entryPath = resolveProductEntryPath(storedSurface);
   return (
     <Routes>
+      <Route path={`${SUITE_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.code.routePrefix}/*`} element={<CodeApp />} />
-      <Route
-        path="/"
-        element={
-          storedSurface !== 'chat'
-            ? <Navigate to={SUITE_SURFACE_ROUTES[storedSurface].routePrefix} replace />
-            : <ChatApp />
-        }
-      />
-      <Route path="*" element={<ChatApp />} />
+      <Route path="/setup" element={<Navigate to={entryPath} replace />} />
+      <Route path="/" element={<Navigate to={entryPath} replace />} />
+      <Route path="*" element={<Navigate to={entryPath} replace />} />
     </Routes>
   );
 }

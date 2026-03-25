@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import type { AppShellPayload } from '../api/contracts.js';
 import {
+  CHAT_PREFIX,
   NEW_CHAT_PATH,
   resolveAppEntryPath,
   resolveVisibleChatPath,
@@ -88,16 +89,12 @@ export function AppRoutes({
     <>
       <Routes>
         <Route
-          path="/"
+          index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
+        <Route path="settings" element={<Navigate to={`${CHAT_PREFIX}/settings/general`} replace />} />
         <Route
-          path="/setup"
-          element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
-        />
-        <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
-        <Route
-          path="/settings/general"
+          path="settings/general"
           element={
             <SettingsGeneral
               payload={payload}
@@ -108,7 +105,7 @@ export function AppRoutes({
           }
         />
         <Route
-          path="/settings/cats"
+          path="settings/cats"
           element={
             <SettingsCats
               payload={payload}
@@ -121,7 +118,7 @@ export function AppRoutes({
           }
         />
         <Route
-          path="/settings/data"
+          path="settings/data"
           element={
             <SettingsData
               feedback={feedback}
@@ -131,7 +128,7 @@ export function AppRoutes({
           }
         />
         <Route
-          path="/chats/:channelId"
+          path="chats/:channelId"
           element={
             selectedChannel ? (
               <ChatView
@@ -147,7 +144,7 @@ export function AppRoutes({
           }
         />
         <Route
-          path="/chats"
+          path="chats"
           element={
             <Navigate
               to={resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId)}
@@ -156,7 +153,7 @@ export function AppRoutes({
           }
         />
         <Route
-          path="/my-cats/:catId"
+          path="my-cats/:catId"
           element={
             showDirectLaneBoot ? (
               <BootShell />
@@ -181,7 +178,7 @@ export function AppRoutes({
           }
         />
         <Route
-          path={NEW_CHAT_PATH}
+          path="new"
           element={
             <NewChatDraft
               {...draftSurfaceProps}

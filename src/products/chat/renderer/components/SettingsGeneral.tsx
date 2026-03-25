@@ -22,9 +22,9 @@ export function SettingsGeneral({
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
-        <button className="settingsTab settingsTabActive" type="button" onClick={() => navigate('/settings/general')}>General</button>
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/cats')}>Cats</button>
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/data')}>Data</button>
+        <button className="settingsTab settingsTabActive" type="button" onClick={() => navigate('/chat/settings/general')}>General</button>
+        <button className="settingsTab" type="button" onClick={() => navigate('/chat/settings/cats')}>Cats</button>
+        <button className="settingsTab" type="button" onClick={() => navigate('/chat/settings/data')}>Data</button>
       </nav>
       <div className="settingsContent">
         <h1>General</h1>

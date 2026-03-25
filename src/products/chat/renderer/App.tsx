@@ -11,6 +11,7 @@ import {
 
 import type { AppShellPayload } from '../api/contracts';
 import {
+  CHAT_PREFIX,
   isNewChatPath,
   readNewChatLeadCatId,
 } from '../shared/channelPaths';
@@ -42,8 +43,8 @@ import './styles.css';
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const channelMatch = useMatch('/chats/:channelId');
-  const myCatMatch = useMatch('/my-cats/:catId');
+  const channelMatch = useMatch(`${CHAT_PREFIX}/chats/:channelId`);
+  const myCatMatch = useMatch(`${CHAT_PREFIX}/my-cats/:catId`);
   const routeChannelId = channelMatch?.params.channelId ?? null;
   const routeMyCatId = myCatMatch?.params.catId ?? null;
   const showingNewChatDraft = isNewChatPath(location.pathname);

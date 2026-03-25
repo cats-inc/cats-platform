@@ -31,11 +31,11 @@ test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overv
 
   assert.equal(
     resolveVisibleChatPath(channels, 'direct-1'),
-    '/chats/boss-1',
+    '/chat/chats/boss-1',
   );
   assert.equal(
     resolveVisibleChatPath(channels, 'boss-1'),
-    '/chats/boss-1',
+    '/chat/chats/boss-1',
   );
   assert.equal(
     resolveVisibleChatPath([{ id: 'direct-1', roomMode: 'direct_cat_chat' }], 'direct-1'),
@@ -52,14 +52,15 @@ test('resolveAppEntryPath routes setup and initialized chats to the correct entr
 test('buildChannelPath and id helpers treat persisted channel ids as opaque', () => {
   const channelId = '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae';
 
-  assert.equal(buildChannelPath(channelId), `/chats/${channelId}`);
+  assert.equal(buildChannelPath(channelId), `/chat/chats/${channelId}`);
   assert.equal(isOpaqueChannelId(channelId), true);
   assert.equal(isOpaqueChannelId('ops-radar'), false);
 });
 
 test('new-chat route detection and export filenames remain title-based', () => {
-  assert.equal(isNewChatPath('/new'), true);
-  assert.equal(isNewChatPath('/chats'), false);
+  assert.equal(isNewChatPath('/chat/new'), true);
+  assert.equal(isNewChatPath('/new'), false);
+  assert.equal(isNewChatPath('/chat/chats'), false);
   assert.equal(
     createChannelExportFilename('Ops Radar', '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae'),
     'channel-ops-radar.json',
@@ -73,8 +74,8 @@ test('new-chat route detection and export filenames remain title-based', () => {
 test('new-chat route helpers preserve direct-cat draft state without creating a thread', () => {
   const catId = '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae';
 
-  assert.equal(buildNewChatPath(catId), `/new?cat=${catId}`);
-  assert.equal(buildMyCatPath(catId), `/my-cats/${catId}`);
+  assert.equal(buildNewChatPath(catId), `/chat/new?cat=${catId}`);
+  assert.equal(buildMyCatPath(catId), `/chat/my-cats/${catId}`);
   assert.equal(buildNewChatPath('   '), NEW_CHAT_PATH);
   assert.equal(readNewChatLeadCatId(`?cat=${catId}`), catId);
   assert.equal(readNewChatLeadCatId(''), null);

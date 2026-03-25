@@ -19,7 +19,8 @@
   "include": ["src/**/*.ts"],
   "exclude": [
     "src/renderer/**/*",
-    "src/app/renderer/**/*",
+    "src/app/renderer/setup/**/*",
+    "src/app/renderer/**/*.tsx",
     "src/products/*/renderer/**/*",
     "node_modules",
     "dist",

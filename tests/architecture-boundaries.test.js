@@ -922,10 +922,10 @@ test('renderer app consumes a dedicated routes module instead of defining the ro
 
   assert.match(appSource, /AppRoutes/u);
   assert.doesNotMatch(appSource, /<Routes>/u);
-  assert.doesNotMatch(appSource, /path="\/settings\/general"/u);
+  assert.doesNotMatch(appSource, /settings\/general/u);
   assert.match(routesSource, /export function AppRoutes/u);
-  assert.match(routesSource, /path="\/settings\/general"/u);
-  assert.match(routesSource, /path="\/chats\/:channelId"/u);
+  assert.match(routesSource, /settings\/general/u);
+  assert.match(routesSource, /chats\/:channelId/u);
 });
 
 test('renderer app consumes dedicated derived-state helpers instead of defining route and view-model derivations inline', async () => {

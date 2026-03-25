@@ -15,8 +15,9 @@ import {
 
 test('resolveSuiteSurfaceForPath routes work and code prefixes to their dedicated suite surfaces', () => {
   assert.equal(resolveSuiteSurfaceForPath('/'), 'chat');
-  assert.equal(resolveSuiteSurfaceForPath('/chats/abc'), 'chat');
-  assert.equal(resolveSuiteSurfaceForPath('/settings/general'), 'chat');
+  assert.equal(resolveSuiteSurfaceForPath('/chat'), 'chat');
+  assert.equal(resolveSuiteSurfaceForPath('/chat/chats/abc'), 'chat');
+  assert.equal(resolveSuiteSurfaceForPath('/chat/settings/general'), 'chat');
   assert.equal(resolveSuiteSurfaceForPath('/work'), 'work');
   assert.equal(resolveSuiteSurfaceForPath('/work/war-room'), 'work');
   assert.equal(resolveSuiteSurfaceForPath('/code'), 'code');
@@ -30,7 +31,7 @@ test('resolveSuiteSurfaceForPath routes work and code prefixes to their dedicate
       ]),
     ),
     {
-      chat: { routePrefix: '/', placeholder: false, apiBase: null },
+      chat: { routePrefix: '/chat', placeholder: false, apiBase: null },
       work: { routePrefix: '/work', placeholder: true, apiBase: '/api/work' },
       code: { routePrefix: '/code', placeholder: true, apiBase: '/api/code' },
     },

@@ -112,7 +112,7 @@ export function deriveAppViewState(input: {
     showingMyCatDirectLane,
     showingNewChatDraft,
   } = input;
-  const surface: Surface = pathname.startsWith('/settings')
+  const surface: Surface = pathname.startsWith('/chat/settings')
     ? 'settings'
     : 'chats';
   const directLaneChannel = showingMyCatDirectLane ? selectedDirectLane : null;
