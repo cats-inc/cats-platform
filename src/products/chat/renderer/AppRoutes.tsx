@@ -91,20 +91,8 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        {/* Settings: "settings/*" matches /chat/settings/*, "general" etc. match /settings/* */}
+        {/* Settings: "general" etc. match /settings/* when ChatApp is mounted there */}
         <Route path="settings" element={<Navigate to="/settings/general" replace />} />
-        <Route
-          path="settings/general"
-          element={<SettingsGeneral payload={payload} feedback={feedback} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} />}
-        />
-        <Route
-          path="settings/cats"
-          element={<SettingsCats payload={payload} feedback={feedback} busy={busy} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} onBusy={onBusy} />}
-        />
-        <Route
-          path="settings/data"
-          element={<SettingsData feedback={feedback} busy={busy} onResetSetup={onResetSetup} />}
-        />
         <Route
           path="general"
           element={<SettingsGeneral payload={payload} feedback={feedback} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} />}
