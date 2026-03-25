@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { SuiteHostEnvelope } from '../../../shared/suite-contract';
 import type { SuiteSurfaceId } from '../../../shared/suite-contract';
@@ -60,26 +60,35 @@ export function SuiteSetupWizard({
     ? selectedPlugin.validateConditionalStep({ provider, instance, model, catName: bossCatName })
     : true;
 
-  function handleKeyDown(event: React.KeyboardEvent): void {
-    if (event.key !== 'Enter') {
-      return;
+  // Global Enter key handler — fires regardless of focus target.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key !== 'Enter' || busy) {
+        return;
+      }
+      // Don't hijack Enter inside <select> elements.
+      if (e.target instanceof HTMLSelectElement) {
+        return;
+      }
+      e.preventDefault();
+      if (step === 1 && ownerName.trim()) {
+        setStep(2);
+      } else if (step === 2 && canFinishStep2) {
+        void finishSetup();
+      } else if (step === 2 && !canFinishStep2) {
+        setStep(3);
+      } else if (step === 3 && canFinishStep3) {
+        void finishSetup();
+      }
     }
-    event.preventDefault();
-    if (step === 1 && ownerName.trim()) {
-      setStep(2);
-    } else if (step === 2 && canFinishStep2 && !busy) {
-      void finishSetup();
-    } else if (step === 2 && !canFinishStep2) {
-      setStep(3);
-    } else if (step === 3 && canFinishStep3 && !busy) {
-      void finishSetup();
-    }
-  }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [step, busy, ownerName, canFinishStep2, canFinishStep3, finishSetup]);
 
   const dots = Array.from({ length: totalSteps }, (_, i) => i + 1);
 
   return (
-    <div className="screen screenCentered" onKeyDown={handleKeyDown}>
+    <div className="screen screenCentered">
       <div className="setupWizard">
         <div className="setupStepIndicator">
           {dots.map((n) => (
@@ -166,24 +175,19 @@ export function SuiteSetupWizard({
               >
                 Back
               </button>
-              {canFinishStep2 ? (
-                <button
-                  className="primaryButton"
-                  disabled={busy}
-                  type="button"
-                  onClick={() => void finishSetup()}
-                >
-                  {busy ? 'Setting up...' : 'Finish setup'}
-                </button>
-              ) : (
-                <button
-                  className="primaryButton"
-                  type="button"
-                  onClick={() => setStep(3)}
-                >
-                  Continue
-                </button>
-              )}
+              <button
+                className="primaryButton"
+                disabled={busy}
+                type="button"
+                onClick={() => {
+                  if (canFinishStep2) { void finishSetup(); }
+                  else { setStep(3); }
+                }}
+              >
+                {canFinishStep2
+                  ? (busy ? 'Setting up...' : 'Finish setup')
+                  : 'Continue'}
+              </button>
             </div>
           </div>
         ) : null}
