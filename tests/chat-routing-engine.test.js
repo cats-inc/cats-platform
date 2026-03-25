@@ -106,6 +106,15 @@ class TrackingChatStore extends MemoryChatStore {
   }
 }
 
+class CountingCoreChatStore extends MemoryChatStore {
+  readCoreCount = 0;
+
+  async readCore() {
+    this.readCoreCount += 1;
+    return super.readCore();
+  }
+}
+
 async function createChannelState() {
   const store = new MemoryChatStore();
   let state = await store.read();
@@ -321,7 +330,7 @@ test('routeChannelMessage persists in-flight workflow snapshots before the full 
 
 test('routeChannelMessage auto-checks out an approved channel task for the assigned cat session', async () => {
   const { state, channelId } = await createChannelState();
-  const store = new MemoryChatStore();
+  const store = new CountingCoreChatStore();
   const now = new Date('2026-03-24T03:00:00.000Z');
   await store.write(state);
 
@@ -343,6 +352,7 @@ test('routeChannelMessage auto-checks out an approved channel task for the assig
           }
         : task),
   });
+  store.readCoreCount = 0;
 
   const watcherGate = createDeferred();
   let runCompleted = false;
@@ -397,6 +407,7 @@ test('routeChannelMessage auto-checks out an approved channel task for the assig
   );
   await store.write(dispatched.state);
   await new Promise((resolve) => setTimeout(resolve, 10));
+  const routeReadCoreCount = store.readCoreCount;
 
   const core = await store.readCore();
   const task = core.tasks.find((candidate) => candidate.id === taskId);
@@ -405,6 +416,9 @@ test('routeChannelMessage auto-checks out an approved channel task for the assig
 
   assert.ok(task);
   assert.ok(run);
+  // One read primes the task-aware session request, then the watcher performs
+  // its initial and terminal reconciliation reads.
+  assert.equal(routeReadCoreCount, 3);
   assert.equal(runtimeClient.createdSessions[0]?.requestedStrategy, 'react');
   assert.deepEqual(runtimeClient.createdSessions[0]?.correlation, {
     taskId,

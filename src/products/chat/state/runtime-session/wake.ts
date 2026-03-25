@@ -9,6 +9,7 @@ import type {
   RoomWakeTrigger,
 } from '../../../../shared/roomRouting.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
+import type { CatsCoreState, CoreTaskRecord } from '../../../../core/types.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import {
   buildTaskRuntimeExecutionRequest,
@@ -51,7 +52,12 @@ async function resolveChannelTaskExecutionRequest(
   chatStore: RuntimeSessionRoutingOptions['chatStore'],
   channelId: string,
   target: RoutingTarget,
-): Promise<TaskRuntimeExecutionRequest | undefined> {
+): Promise<{
+  core: CatsCoreState;
+  task: CoreTaskRecord;
+  actorId: string;
+  executionRequest: TaskRuntimeExecutionRequest;
+} | undefined> {
   if (!chatStore) {
     return undefined;
   }
@@ -71,11 +77,16 @@ async function resolveChannelTaskExecutionRequest(
     return undefined;
   }
 
-  return buildTaskRuntimeExecutionRequest({
+  return {
     core,
     task,
-    product: 'chat',
-  });
+    actorId,
+    executionRequest: buildTaskRuntimeExecutionRequest({
+      core,
+      task,
+      product: 'chat',
+    }),
+  };
 }
 
 export async function maybeAutoCheckoutChannelTask(
@@ -84,34 +95,23 @@ export async function maybeAutoCheckoutChannelTask(
   channelId: string,
   target: RoutingTarget,
   now: Date,
+  taskExecutionContext?: Awaited<ReturnType<typeof resolveChannelTaskExecutionRequest>>,
 ): Promise<void> {
-  if (!chatStore || !target.sessionId) {
+  if (
+    !chatStore
+    || !target.sessionId
+    || !taskExecutionContext
+    || taskExecutionContext.task.status !== 'approved'
+  ) {
     return;
   }
 
-  const core = await chatStore.readCore();
-  const taskId = `task-channel-${channelId}`;
-  const task = core.tasks.find((candidate) => candidate.id === taskId);
-  if (!task || task.status !== 'approved') {
-    return;
-  }
-
-  const actorId = resolveActorIdForTarget(target);
-  if (!task.assignedActorIds.includes(actorId)) {
-    return;
-  }
-
-  const executionRequest = buildTaskRuntimeExecutionRequest({
-    core,
-    task,
-    product: 'chat',
-  });
   const checkout = checkoutTaskExecution({
-    core,
-    taskId,
-    actorId,
+    core: taskExecutionContext.core,
+    taskId: taskExecutionContext.task.id,
+    actorId: taskExecutionContext.actorId,
     sessionId: target.sessionId,
-    executionRequest,
+    executionRequest: taskExecutionContext.executionRequest,
     now,
   });
   const persisted = await chatStore.writeCore(checkout.core);
@@ -125,7 +125,7 @@ export async function maybeAutoCheckoutChannelTask(
     taskId: persistedTask.id,
     runId: persistedRun.id,
     sessionId: target.sessionId,
-    actorId,
+    actorId: taskExecutionContext.actorId,
   });
 }
 
@@ -146,12 +146,18 @@ export async function ensureTargetSession(
   target: RoutingTarget;
   error: string | null;
   wakeRequest: RoomWakeRequest | null;
+  taskExecutionContext: Awaited<ReturnType<typeof resolveChannelTaskExecutionRequest>>;
 }> {
   const nowIso = now.toISOString();
   const wakeTrigger = options.wakeTrigger ?? 'route_target';
   const wakeReason = options.wakeReason ?? 'room_default';
   const sourceMessageId = options.sourceMessageId ?? null;
   const participant = toParticipantRef(target);
+  const taskExecutionContext = await resolveChannelTaskExecutionRequest(
+    options.chatStore,
+    channelId,
+    target,
+  );
   const recordTargetWake = (
     status: RoomWakeRequest['status'],
     error: string | null = null,
@@ -218,6 +224,7 @@ export async function ensureTargetSession(
       target,
       error: null,
       wakeRequest: recordTargetWake('skipped'),
+      taskExecutionContext,
     };
   }
 
@@ -236,11 +243,6 @@ export async function ensureTargetSession(
       now,
       options.companionStore,
     );
-    const taskExecutionRequest = await resolveChannelTaskExecutionRequest(
-      options.chatStore,
-      channelId,
-      target,
-    );
     if (target.participantKind === 'orchestrator') {
       const sessionTarget = resolveOrchestratorExecutionTarget(
         nextState,
@@ -258,7 +260,7 @@ export async function ensureTargetSession(
         workspaceAccess: 'read_write',
         context: runtimeEnvelope.context,
         skills: runtimeEnvelope.skills,
-        ...taskExecutionRequest,
+        ...(taskExecutionContext?.executionRequest ?? {}),
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       // TODO(room-workspace): stop promoting participant session cwd into
@@ -291,6 +293,7 @@ export async function ensureTargetSession(
         target: { ...target, sessionId: session.id },
         error: null,
         wakeRequest: recordTargetWake('completed'),
+        taskExecutionContext,
       };
     }
 
@@ -302,6 +305,7 @@ export async function ensureTargetSession(
         target,
         error,
         wakeRequest: recordTargetWake('failed', error),
+        taskExecutionContext,
       };
     }
 
@@ -317,7 +321,7 @@ export async function ensureTargetSession(
       workspaceAccess: 'read_write',
       context: runtimeEnvelope.context,
       skills: runtimeEnvelope.skills,
-      ...taskExecutionRequest,
+      ...(taskExecutionContext?.executionRequest ?? {}),
     });
     nextState = setStartedSession(
       nextState,
@@ -357,6 +361,7 @@ export async function ensureTargetSession(
       target: { ...target, sessionId: session.id },
       error: null,
       wakeRequest: recordTargetWake('completed'),
+      taskExecutionContext,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown runtime error';
@@ -385,6 +390,7 @@ export async function ensureTargetSession(
       target,
       error: message,
       wakeRequest: recordTargetWake('failed', message),
+      taskExecutionContext,
     };
   }
 }

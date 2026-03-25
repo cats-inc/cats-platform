@@ -314,6 +314,9 @@ Known follow-ups:
 - shared task/runtime execution-request helpers now normalize trim/drop-empty
   semantics once and feed lifecycle persistence plus runtime-client outbound
   payloads through the same reusable bridge path
+- routed wake paths now precompute one channel-task execution context and
+  reuse it across runtime session creation plus auto-checkout, reducing
+  duplicate `Cats Core` reads inside the same task-aware room dispatch
 - validation coverage now includes `/api/work`, `/api/code`, and the current
   suite route map
 - `electron/*` now also stages cross-platform packaging manifests under

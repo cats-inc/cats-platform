@@ -161,6 +161,7 @@ export async function prepareReadyRequests(
       channelId,
       ensured.target,
       now,
+      ensured.taskExecutionContext,
     );
     readyRequests.push({
       ...request,
