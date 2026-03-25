@@ -289,6 +289,59 @@ test('task runtime bridge resolves product defaults from planning handoff metada
   });
 });
 
+test('planning product handoff stays authoritative over conversation kind when no explicit product is supplied', () => {
+  const now = new Date('2026-03-26T03:45:00.000Z');
+  const nowIso = now.toISOString();
+  const core = createDefaultCoreState();
+
+  core.conversations.push({
+    id: 'conversation-chat-handoff',
+    title: 'Chat thread with product handoff',
+    kind: 'chat_channel',
+    status: 'active',
+    participantActorIds: ['actor-owner', 'actor-worker'],
+    sourceChannelId: 'channel-chat-handoff',
+    repoPath: null,
+    responseLanguage: 'en',
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    lastMessageAt: null,
+  });
+
+  const taskWrite = upsertCoreTask(
+    core,
+    {
+      id: 'task-handoff-work',
+      title: 'Work handoff from chat thread',
+      status: 'approved',
+      conversationId: 'conversation-chat-handoff',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-worker'],
+      metadata: writeTaskPlanningMetadata(
+        {},
+        {
+          productHint: 'work',
+        },
+      ),
+    },
+    now,
+  );
+
+  const request = buildTaskRuntimeExecutionRequest({
+    core: taskWrite.core,
+    task: taskWrite.task,
+  });
+
+  assert.deepEqual(request, {
+    requestedStrategy: 'pdca',
+    correlation: {
+      taskId: 'task-handoff-work',
+      conversationId: 'conversation-chat-handoff',
+      product: 'work',
+    },
+  });
+});
+
 test('task lifecycle sends additive runtime bridge fields without changing checkout semantics', async () => {
   const fixture = createTaskBridgeFixture();
   assert.ok(fixture.task);

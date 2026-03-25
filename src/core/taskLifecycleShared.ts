@@ -176,6 +176,85 @@ export interface ObservedRuntimeExecutionMetadata {
   strategyState?: Record<string, unknown>;
 }
 
+function readObservedStrategyRequest(
+  inspectionStrategy: Record<string, unknown> | null,
+  sessionStrategy: Record<string, unknown> | null,
+  session: Record<string, unknown> | null,
+): {
+  requestedStrategy: string | null;
+  acceptanceCriteria: string | null;
+  strategyContext: Record<string, unknown> | null;
+  correlation: Record<string, unknown> | null;
+} {
+  const inspectionStrategyState = asRecord(inspectionStrategy?.state);
+  const inspectionRequest = asRecord(inspectionStrategyState?.request);
+  const sessionRequest = asRecord(sessionStrategy?.request);
+
+  // Runtime nested strategy state is canonical. Flat inspection/session fields
+  // are compatibility projections and only backfill missing values.
+  return {
+    requestedStrategy: readString(inspectionRequest?.requestedStrategy)
+      ?? readString(sessionRequest?.requestedStrategy)
+      ?? readString(inspectionStrategy?.requestedStrategy)
+      ?? readString(session?.requestedStrategy),
+    acceptanceCriteria: readString(inspectionRequest?.acceptanceCriteria)
+      ?? readString(sessionRequest?.acceptanceCriteria)
+      ?? readString(inspectionStrategy?.acceptanceCriteria)
+      ?? readString(session?.acceptanceCriteria),
+    strategyContext: asRecord(inspectionRequest?.strategyContext)
+      ?? asRecord(sessionRequest?.strategyContext)
+      ?? asRecord(inspectionStrategy?.strategyContext)
+      ?? asRecord(session?.strategyContext),
+    correlation: asRecord(inspectionRequest?.correlation)
+      ?? asRecord(sessionRequest?.correlation)
+      ?? asRecord(inspectionStrategy?.correlation)
+      ?? asRecord(session?.correlation),
+  };
+}
+
+function readObservedEffectiveStrategy(
+  inspectionStrategy: Record<string, unknown> | null,
+  sessionStrategy: Record<string, unknown> | null,
+  session: Record<string, unknown> | null,
+): string | null {
+  const inspectionStrategyState = asRecord(inspectionStrategy?.state);
+  return readString(inspectionStrategyState?.effectiveStrategy)
+    ?? readString(sessionStrategy?.effectiveStrategy)
+    ?? readString(inspectionStrategy?.effectiveStrategy)
+    ?? readString(session?.effectiveStrategy);
+}
+
+function sanitizeObservedStrategyState(
+  strategyState: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  if (!strategyState) {
+    return null;
+  }
+
+  const summary = asRecord(strategyState.summary);
+  const sanitized: Record<string, unknown> = {};
+  const effectiveStrategy = readString(strategyState.effectiveStrategy);
+  const resolutionSource = readString(strategyState.resolutionSource);
+  const updatedAt = readString(strategyState.updatedAt);
+
+  if (effectiveStrategy) {
+    sanitized.effectiveStrategy = effectiveStrategy;
+  }
+  if (resolutionSource) {
+    sanitized.resolutionSource = resolutionSource;
+  }
+  if (updatedAt) {
+    sanitized.updatedAt = updatedAt;
+  }
+  if (summary) {
+    sanitized.summary = structuredClone(summary);
+  }
+
+  return Object.keys(sanitized).length > 0
+    ? sanitized
+    : null;
+}
+
 export function readObservedExecutionMetadata(
   payload: RuntimeObservedSessionPayload,
 ): ObservedRuntimeExecutionMetadata | null {
@@ -183,23 +262,23 @@ export function readObservedExecutionMetadata(
   const inspection = asRecord(session?.inspection);
   const inspectionStrategy = asRecord(inspection?.strategy);
   const sessionStrategy = asRecord(session?.strategy);
-  const strategyRequest = asRecord(sessionStrategy?.request);
-  const strategyState = asRecord(inspectionStrategy?.state) ?? sessionStrategy;
-  const requestedStrategy = readString(inspectionStrategy?.requestedStrategy)
-    ?? readString(strategyRequest?.requestedStrategy)
-    ?? readString(session?.requestedStrategy);
-  const effectiveStrategy = readString(inspectionStrategy?.effectiveStrategy)
-    ?? readString(sessionStrategy?.effectiveStrategy)
-    ?? readString(session?.effectiveStrategy);
-  const acceptanceCriteria = readString(inspectionStrategy?.acceptanceCriteria)
-    ?? readString(strategyRequest?.acceptanceCriteria)
-    ?? readString(session?.acceptanceCriteria);
-  const strategyContext = asRecord(inspectionStrategy?.strategyContext)
-    ?? asRecord(strategyRequest?.strategyContext)
-    ?? asRecord(session?.strategyContext);
-  const correlation = asRecord(inspectionStrategy?.correlation)
-    ?? asRecord(strategyRequest?.correlation)
-    ?? asRecord(session?.correlation);
+  const strategyRequest = readObservedStrategyRequest(
+    inspectionStrategy,
+    sessionStrategy,
+    session,
+  );
+  const strategyState = sanitizeObservedStrategyState(
+    asRecord(inspectionStrategy?.state) ?? sessionStrategy,
+  );
+  const requestedStrategy = strategyRequest.requestedStrategy;
+  const effectiveStrategy = readObservedEffectiveStrategy(
+    inspectionStrategy,
+    sessionStrategy,
+    session,
+  );
+  const acceptanceCriteria = strategyRequest.acceptanceCriteria;
+  const strategyContext = strategyRequest.strategyContext;
+  const correlation = strategyRequest.correlation;
 
   if (
     !requestedStrategy

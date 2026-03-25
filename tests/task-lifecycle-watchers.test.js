@@ -7,6 +7,95 @@ import {
   checkoutTaskExecution,
   startTaskRunWatcher,
 } from '../dist-server/core/taskLifecycle.js';
+import {
+  readObservedExecutionMetadata,
+} from '../dist-server/core/taskLifecycleShared.js';
+
+async function waitFor(assertion, timeoutMs = 1000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await assertion();
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+
+  await assertion();
+}
+
+test('observed execution metadata prefers nested runtime strategy state and sanitizes strategy state', () => {
+  const observed = readObservedExecutionMetadata({
+    session: {
+      strategy: {
+        request: {
+          requestedStrategy: 'react',
+          acceptanceCriteria: 'Use the nested request.',
+          strategyContext: {
+            phase: 'execute',
+          },
+          correlation: {
+            taskId: 'task-watch',
+            product: 'chat',
+          },
+        },
+        effectiveStrategy: 'react',
+        resolutionSource: 'explicit_request',
+        summary: {
+          status: 'running',
+          stepCount: 1,
+        },
+        localState: {
+          consecutiveDuplicateToolCalls: 2,
+        },
+        updatedAt: '2026-03-26T05:00:30.000Z',
+      },
+      requestedStrategy: 'simple_tool_call',
+      acceptanceCriteria: 'Use the flat request.',
+      strategyContext: {
+        phase: 'fallback',
+      },
+      correlation: {
+        taskId: 'task-flat',
+        product: 'work',
+      },
+      inspection: {
+        strategy: {
+          requestedStrategy: 'pdca',
+          effectiveStrategy: 'simple_tool_call',
+        },
+      },
+    },
+    observePath: '/sessions/session-watch/observe',
+    stream: {
+      path: '/sessions/session-watch/stream',
+      available: false,
+    },
+  });
+
+  assert.deepEqual(observed, {
+    requestedStrategy: 'react',
+    effectiveStrategy: 'react',
+    acceptanceCriteria: 'Use the nested request.',
+    strategyContext: {
+      phase: 'execute',
+    },
+    correlation: {
+      taskId: 'task-watch',
+      product: 'chat',
+    },
+    strategyState: {
+      effectiveStrategy: 'react',
+      resolutionSource: 'explicit_request',
+      updatedAt: '2026-03-26T05:00:30.000Z',
+      summary: {
+        status: 'running',
+        stepCount: 1,
+      },
+    },
+  });
+});
 
 test('task run watcher persists observed runtime strategy metadata additively', async () => {
   const now = new Date('2026-03-26T05:00:00.000Z');
@@ -56,6 +145,10 @@ test('task run watcher persists observed runtime strategy metadata additively', 
       resolutionSource: 'explicit_request',
       updatedAt: '2026-03-26T05:01:00.000Z',
     },
+    localState: {
+      consecutiveDuplicateToolCalls: 1,
+      lastToolCallSignature: 'shell:{"command":"pwd"}',
+    },
     updatedAt: '2026-03-26T05:01:00.000Z',
   };
 
@@ -104,7 +197,11 @@ test('task run watcher persists observed runtime strategy metadata additively', 
   });
 
   assert.equal(started, true);
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await waitFor(async () => {
+    const core = await coreStore.readCore();
+    const run = core.runs.find((candidate) => candidate.id === checkout.run.id);
+    assert.equal(run?.status, 'completed');
+  });
 
   const core = await coreStore.readCore();
   const task = core.tasks.find((candidate) => candidate.id === checkout.task.id);
@@ -114,11 +211,28 @@ test('task run watcher persists observed runtime strategy metadata additively', 
   assert.equal(run?.status, 'completed');
   assert.equal(run?.metadata.execution.requestedStrategy, 'react');
   assert.equal(run?.metadata.execution.effectiveStrategy, 'react');
+  assert.equal(run?.metadata.execution.strategyState.effectiveStrategy, 'react');
+  assert.equal(
+    run?.metadata.execution.strategyState.resolutionSource,
+    'explicit_request',
+  );
   assert.equal(run?.metadata.execution.strategyState.summary.status, 'completed');
+  assert.equal(
+    run?.metadata.execution.strategyState.localState,
+    undefined,
+  );
   assert.equal(task?.metadata.taskLifecycle.execution.requestedStrategy, 'react');
   assert.equal(task?.metadata.taskLifecycle.execution.effectiveStrategy, 'react');
   assert.equal(
+    task?.metadata.taskLifecycle.execution.strategyState.resolutionSource,
+    'explicit_request',
+  );
+  assert.equal(
     task?.metadata.taskLifecycle.execution.strategyState.summary.stepCount,
     2,
+  );
+  assert.equal(
+    task?.metadata.taskLifecycle.execution.strategyState.localState,
+    undefined,
   );
 });

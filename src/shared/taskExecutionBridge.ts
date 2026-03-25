@@ -87,6 +87,8 @@ export function resolveTaskExecutionProduct(
   }
 
   const planning = readTaskPlanningMetadataFromTask(input.task);
+  // Product-owned planning handoff is authoritative when present. Conversation
+  // kind only backfills product selection for legacy/no-planning flows.
   if (planning.productHint) {
     return planning.productHint;
   }
