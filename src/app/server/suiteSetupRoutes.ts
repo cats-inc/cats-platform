@@ -118,8 +118,11 @@ async function handleSuiteSetupComplete(
     payload = await buildAppShellPayload(context.dependencies);
   } catch (error) {
     reportSyncFailure('setup_complete_payload', error);
-    // Return a minimal success envelope so the client knows setup committed.
+    // Return a minimal SuiteHostEnvelope so the client knows setup committed.
     payload = {
+      app: { name: 'cats', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
+      runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
+      metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },
       setupCompleteAt: core.setupCompleteAt,
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,

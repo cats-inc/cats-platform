@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import type { SuiteHostEnvelope } from '../../../shared/suite-contract';
 import type { SuiteSurfaceId } from '../../../shared/suite-contract';
@@ -31,7 +31,7 @@ export function SuiteSetupWizard({
   const showStep3 = createFirstCat && selectedPlugin?.hasConditionalStep;
   const totalSteps = showStep3 ? 3 : 2;
 
-  async function finishSetup(): Promise<void> {
+  const finishSetup = useCallback(async (): Promise<void> => {
     setBusy(true);
     setFeedback('');
     try {
@@ -50,17 +50,36 @@ export function SuiteSetupWizard({
     } finally {
       setBusy(false);
     }
-  }
+  }, [
+    ownerName, selectedProduct, createFirstCat, bossCatName,
+    provider, instance, model, onComplete,
+  ]);
 
   const canFinishStep2 = !createFirstCat;
   const canFinishStep3 = selectedPlugin?.validateConditionalStep
     ? selectedPlugin.validateConditionalStep({ provider, instance, model, catName: bossCatName })
     : true;
 
+  function handleKeyDown(event: React.KeyboardEvent): void {
+    if (event.key !== 'Enter') {
+      return;
+    }
+    event.preventDefault();
+    if (step === 1 && ownerName.trim()) {
+      setStep(2);
+    } else if (step === 2 && canFinishStep2 && !busy) {
+      void finishSetup();
+    } else if (step === 2 && !canFinishStep2) {
+      setStep(3);
+    } else if (step === 3 && canFinishStep3 && !busy) {
+      void finishSetup();
+    }
+  }
+
   const dots = Array.from({ length: totalSteps }, (_, i) => i + 1);
 
   return (
-    <div className="screen screenCentered">
+    <div className="screen screenCentered" onKeyDown={handleKeyDown}>
       <div className="setupWizard">
         <div className="setupStepIndicator">
           {dots.map((n) => (

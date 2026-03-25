@@ -54,26 +54,26 @@
   color: var(--muted-soft);
 }
 
-.primaryButton,
-.sendButton,
 .dangerButton {
   color: #fff;
 }
 
 .primaryButton {
   padding: 10px 14px;
-  border: 0;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--text);
+  background: var(--panel);
+  color: var(--text);
 }
 
 .sendButton {
   width: 36px;
   height: 36px;
   padding: 0;
-  border: 0;
+  border: 1px solid var(--border);
   border-radius: 50%;
-  background: var(--text);
+  background: var(--panel);
+  color: var(--text);
   display: grid;
   place-items: center;
   flex-shrink: 0;

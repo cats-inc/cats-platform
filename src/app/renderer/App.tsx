@@ -43,20 +43,28 @@ export default function SuiteApp() {
 
   const envelope = state.status === 'ready' ? state.envelope : null;
   const setupComplete = Boolean(envelope?.setupCompleteAt);
-  const targetSurface = envelope?.lastProductSurface ?? 'chat';
+  const storedSurface = envelope?.lastProductSurface ?? 'chat';
 
   useEffect(() => {
     if (!setupComplete) {
       return;
     }
     const currentSurface = resolveSuiteSurfaceForPath(location.pathname);
-    // Don't sync when we're at `/` and about to redirect to a non-chat product —
-    // the redirect will fire the correct sync on the next render.
-    if (location.pathname === '/' && targetSurface !== 'chat') {
+    // Skip sync when at `/` and about to redirect to non-chat product.
+    if (location.pathname === '/' && storedSurface !== 'chat') {
       return;
     }
+    // First render: seed the ref AND sync if the current surface differs
+    // from what's stored (e.g. deep-linked to /work when stored is chat).
     if (lastSyncedSurface.current === null) {
       lastSyncedSurface.current = currentSurface;
+      if (currentSurface !== storedSurface) {
+        void fetch('/api/suite/preferences', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ lastProductSurface: currentSurface }),
+        }).catch(() => {});
+      }
       return;
     }
     if (currentSurface !== lastSyncedSurface.current) {
@@ -67,7 +75,7 @@ export default function SuiteApp() {
         body: JSON.stringify({ lastProductSurface: currentSurface }),
       }).catch(() => {});
     }
-  }, [setupComplete, targetSurface, location.pathname]);
+  }, [setupComplete, storedSurface, location.pathname]);
 
   if (state.status === 'loading') {
     return (
@@ -96,13 +104,10 @@ export default function SuiteApp() {
     return (
       <SuiteSetupWizard
         envelope={state.envelope}
-        onComplete={(updatedEnvelope) => {
-          startTransition(() =>
-            setState({ status: 'ready', envelope: updatedEnvelope }),
-          );
-          const surface = updatedEnvelope.lastProductSurface ?? 'chat';
-          const route = SUITE_SURFACE_ROUTES[surface];
-          navigate(route.routePrefix, { replace: true });
+        onComplete={() => {
+          // Full reload so the suite re-fetches a clean envelope and
+          // ChatApp mounts fresh with its own routing.
+          window.location.href = '/';
         }}
       />
     );
@@ -115,8 +120,8 @@ export default function SuiteApp() {
       <Route
         path="/"
         element={
-          targetSurface !== 'chat'
-            ? <Navigate to={SUITE_SURFACE_ROUTES[targetSurface].routePrefix} replace />
+          storedSurface !== 'chat'
+            ? <Navigate to={SUITE_SURFACE_ROUTES[storedSurface].routePrefix} replace />
             : <ChatApp />
         }
       />
