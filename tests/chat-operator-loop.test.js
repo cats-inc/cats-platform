@@ -15,7 +15,7 @@ import {
 import {
   buildChatOperatorView,
   buildRunInspectorView,
-} from '../dist-server/products/chat/shared/operatorLoop.js';
+} from '../dist-server/products/chat/shared/operator-loop/index.js';
 
 test('buildChatOperatorView narrows approvals and activity to the selected chat conversation', () => {
   let core = createDefaultCoreState();

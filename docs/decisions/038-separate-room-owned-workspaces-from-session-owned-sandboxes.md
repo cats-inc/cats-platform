@@ -160,7 +160,7 @@ runtime cwd state.
 - [ADR-001](./001-use-cats-runtime-boundary.md)
 - [ADR-017](./017-allow-direct-cat-chat-and-move-routing-into-system-layer.md)
 - [SPEC-016](../specs/SPEC-016-chat-session-sleep-wake-lifecycle.md)
-- `src/products/chat/api/shared.ts`
+- `src/products/chat/api/routeSupport.ts`
 - `src/products/chat/state/runtime-session/wake.ts`
 - `src/products/chat/state/runtime-session/state.ts`
 

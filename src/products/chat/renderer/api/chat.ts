@@ -9,7 +9,7 @@ import type {
 } from '../../api/contracts';
 
 import { fetchAppShell, refetchAfterMutation } from './appShell.js';
-import { expectJson } from './shared.js';
+import { expectJson } from './http.js';
 
 export async function deleteGlobalCat(
   catId: string,

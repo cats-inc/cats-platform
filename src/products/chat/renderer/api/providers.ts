@@ -1,6 +1,6 @@
 import type { ProductProviderDescriptor, ProviderModelCatalog } from '../../../shared/providerCatalog';
 
-import { readErrorMessage } from './shared.js';
+import { readErrorMessage } from './http.js';
 
 export async function fetchProviders(): Promise<ProductProviderDescriptor[]> {
   const response = await fetch('/api/providers');

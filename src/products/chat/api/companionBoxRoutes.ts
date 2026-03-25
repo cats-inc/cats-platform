@@ -1,6 +1,6 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
-import { createDefaultRoomRoutingState } from '../state/roomRouting.js';
+import { createDefaultRoomRoutingState } from '../state/room-routing/index.js';
 import { requireCat, requireChannel } from '../state/model/index.js';
 import {
   isCompanionExpressionMode,
@@ -24,7 +24,7 @@ import {
   handleRestError,
   sendRestError,
   type ChatApiRouteContext,
-} from './shared.js';
+} from './routeSupport.js';
 
 async function resolveCatContext(context: ChatApiRouteContext, catId: string) {
   const state = await context.dependencies.chatStore.read();

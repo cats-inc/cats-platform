@@ -4,7 +4,7 @@ import type {
   CoreRunRecord,
   CoreTraceRecord,
 } from '../../../../core/types';
-import type { ChatOperatorSeverity } from '../../shared/operatorLoop';
+import type { ChatOperatorSeverity } from '../../shared/operator-loop/index';
 
 export function formatOperatorTimestamp(timestamp: string | null): string {
   if (!timestamp) {

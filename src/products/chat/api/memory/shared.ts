@@ -10,7 +10,7 @@ import type {
   DurableMemoryRecord,
 } from '../../../../core/types.js';
 import type { MemoryFlushReason } from '../../../../platform/memory/index.js';
-import type { ChatApiRouteContext } from '../shared.js';
+import type { ChatApiRouteContext } from '../routeSupport.js';
 
 export interface CreateDurableMemoryInput {
   category: DurableMemoryCategory;

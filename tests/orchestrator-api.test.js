@@ -7,7 +7,7 @@ import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
 import { createServer } from '../dist-server/server.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
 import { resolveMentionRoute } from '../dist-server/products/chat/state/mentionRouter.js';
-import { resolveRoomRoutingState } from '../dist-server/products/chat/state/roomRouting.js';
+import { resolveRoomRoutingState } from '../dist-server/products/chat/state/room-routing/index.js';
 
 const baseConfig = {
   host: '127.0.0.1',

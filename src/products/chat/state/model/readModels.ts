@@ -16,7 +16,7 @@ import {
   resolveChatLifecycleState,
   type ChatLifecycleState,
 } from '../../shared/lifecycle.js';
-import { createDefaultRoomRoutingState, resolveRoomRoutingState } from '../roomRouting.js';
+import { createDefaultRoomRoutingState, resolveRoomRoutingState } from '../room-routing/index.js';
 import { requireCat, requireChannel } from './shared.js';
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';

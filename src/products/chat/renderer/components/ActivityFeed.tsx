@@ -1,4 +1,4 @@
-import type { ChatOperatorActivityItem } from '../../shared/operatorLoop';
+import type { ChatOperatorActivityItem } from '../../shared/operator-loop/index';
 import {
   formatOperatorTimestamp,
   operatorSeverityClassName,

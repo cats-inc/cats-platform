@@ -9,7 +9,7 @@ import {
   nowFrom,
   sendRestError,
   type ChatApiRouteContext,
-} from './shared.js';
+} from './routeSupport.js';
 
 function reportOwnerMemorySyncFailure(scope: 'setup_complete' | 'setup_reset', error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);

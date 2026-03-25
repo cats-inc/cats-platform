@@ -5,9 +5,9 @@ import type {
   CoreApprovalStatus,
   CoreOperatorActionKind,
 } from '../../../core/types';
-import type { ChatOperatorSnapshot } from '../shared/operatorLoop';
+import type { ChatOperatorSnapshot } from '../shared/operator-loop/index';
 
-import { expectJson, readErrorMessage } from './shared.js';
+import { expectJson, readErrorMessage } from './http.js';
 
 async function fetchCoreState(signal?: AbortSignal): Promise<CatsCoreState> {
   const response = await fetch('/api/core', {

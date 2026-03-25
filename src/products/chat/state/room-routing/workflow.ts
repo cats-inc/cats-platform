@@ -22,7 +22,7 @@ import {
   DEFAULT_WORKFLOW_EVENT_HISTORY_LIMIT,
   DEFAULT_WORKFLOW_TURN_HISTORY_LIMIT,
   resolveRoomRoutingState,
-} from '../roomRouting.js';
+} from './index.js';
 import type {
   DispatchRequest,
   TargetResolution,

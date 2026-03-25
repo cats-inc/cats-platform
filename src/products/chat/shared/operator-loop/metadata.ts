@@ -6,16 +6,16 @@ import type {
   CoreRecordMetadata,
   CoreRunRecord,
   CoreTraceRecord,
-} from '../../../core/types.js';
+} from '../../../../core/types.js';
 import {
   deriveCoreWorkflowSummary,
-} from '../../../core/governance.js';
+} from '../../../../core/governance.js';
 import type {
   ChatOperatorActivityItem,
   ChatOperatorSeverity,
   ChatRunMetrics,
   ChatWorkflowBranchView,
-} from './operatorLoopTypes.js';
+} from './types.js';
 
 export function compareIsoDesc(left: string, right: string): number {
   return right.localeCompare(left);

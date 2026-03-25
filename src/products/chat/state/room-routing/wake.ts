@@ -11,7 +11,7 @@ import type {
   RoomWakeRequest,
   RoomWakeTrigger,
 } from '../../../../shared/roomRouting.js';
-import { DEFAULT_WAKE_HISTORY_LIMIT } from '../roomRouting.js';
+import { DEFAULT_WAKE_HISTORY_LIMIT } from './index.js';
 
 export function createRoomRoutingSnapshot(
   baseRoomRouting: RoomRoutingState,

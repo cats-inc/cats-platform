@@ -11,7 +11,7 @@ import {
   nowFrom,
   requireValidChatScopeId,
   type ChatApiRouteContext,
-} from '../shared.js';
+} from '../routeSupport.js';
 
 const ORCHESTRATOR_ALLOWED_METHODS = ['GET', 'PATCH', 'PUT'];
 

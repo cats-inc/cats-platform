@@ -8,13 +8,13 @@ import type { ChatState } from '../api/contracts.js';
 import type { ChatStore } from './store.js';
 import { buildChannelView, resolveOrchestratorDisplayName } from './model/index.js';
 import { resolveMentionRoute } from './mentionRouter.js';
-import { resolveRoomRoutingState } from './roomRouting.js';
+import { resolveRoomRoutingState } from './room-routing/index.js';
 import { routeChannelMessage } from './runtimeActions.js';
 import {
   buildChatOperatorView,
   buildRunInspectorView,
   resolveChatConversationId,
-} from '../shared/operatorLoop.js';
+} from '../shared/operator-loop/index.js';
 
 export const chatOrchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState> = {
   buildChannelView,

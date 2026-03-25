@@ -5,8 +5,8 @@ import {
   dispatchOrchestratorTurn,
   type OrchestratorPlanRequest,
 } from '../../../platform/orchestration/index.js';
-import type { ChatApiRouteContext } from './shared.js';
-import { handleRestError } from './shared.js';
+import type { ChatApiRouteContext } from './routeSupport.js';
+import { handleRestError } from './routeSupport.js';
 
 async function handlePlan(
   context: ChatApiRouteContext,

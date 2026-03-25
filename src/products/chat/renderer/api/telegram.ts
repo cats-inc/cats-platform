@@ -1,7 +1,7 @@
 import type { AppShellPayload } from '../../api/contracts';
 
 import { refetchAfterMutation } from './appShell.js';
-import { expectJson } from './shared.js';
+import { expectJson } from './http.js';
 
 export async function createBotBindingApi(
   input: {

@@ -34,7 +34,7 @@ imports directly from `products/chat/`:
 |---|---|
 | `platform/orchestration/dispatch.ts` | `ChatStore`, `CompanionBoxStore`, `buildChannelView`, `routeChannelMessage` |
 | `platform/orchestration/planner.ts` | `buildChannelView`, `resolveOrchestratorDisplayName`, `resolveMentionRoute`, `resolveRoomRoutingState` |
-| `platform/orchestration/execution.ts` | `ChatRunInspectorView` (from `products/chat/shared/operatorLoop`) |
+| `platform/orchestration/execution.ts` | `ChatRunInspectorView` (from `products/chat/shared/operator-loop/index`) |
 | `platform/memory/service.ts` | `requireChannel`, `CompanionBoxStore`, `ChatStore` |
 | `platform/memory/companionStore.ts` | `CompanionBoxStore` |
 | `platform/memory/runtimeMaintenance.ts` | `CompanionBoxStore` |
@@ -142,12 +142,13 @@ The specific interfaces to extract:
 - **`ChannelViewProvider`** — resolve a channel view for a given conversation
   or channel ID, resolve orchestrator display name, resolve mention routes,
   resolve room routing state. Currently scattered across
-  `products/chat/state/model.ts`, `mentionRouter.ts`, `roomRouting.ts`.
+  `products/chat/state/model/index.ts`, `mentionRouter.ts`,
+  `room-routing/index.ts`.
 - **`MemoryStoreProvider`** — read/write companion box data, resolve channel
   for memory flush. Currently satisfied by `CompanionBoxStore` and
   `requireChannel()`.
 - **`OperatorInspector`** — provide `ChatRunInspectorView` for execution
-  monitoring. Currently in `products/chat/shared/operatorLoop.ts`.
+  monitoring. Currently in `products/chat/shared/operator-loop/index.ts`.
 
 ### 2. Retire `shared/app-shell.ts` as a re-export barrel
 

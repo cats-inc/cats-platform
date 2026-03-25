@@ -329,7 +329,7 @@ Key files:
 - `src/products/chat/state/store.ts`
 - `src/products/chat/state/model.ts`
 - `src/products/chat/state/mentionRouter.ts`
-- `src/products/chat/state/roomRouting.ts`
+- `src/products/chat/state/room-routing/index.ts`
 - new action/state slices under `src/products/chat/state/`
 
 Deliverables:
@@ -395,7 +395,7 @@ Normalize HTTP behavior before performing the public namespace move.
 Key files:
 
 - `src/core/api.ts` or its extracted route modules
-- `src/products/chat/api/shared.ts`
+- `src/products/chat/api/routeSupport.ts`
 - `src/products/chat/api/resources/index.ts`
 - `src/products/chat/api/orchestratorRoutes.ts`
 - `src/app/server/index.ts`

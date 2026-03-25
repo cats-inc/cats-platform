@@ -14,7 +14,7 @@ import type {
   CoreTaskRecord,
   CoreTraceRecord,
   CoreWorkflowSummary,
-} from '../../../core/types.js';
+} from '../../../../core/types.js';
 
 export interface ChatOperatorSnapshot {
   core: CatsCoreState;

@@ -6,7 +6,7 @@ import {
 } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts';
-import type { ChatOperatorSnapshot } from '../../shared/operatorLoop';
+import type { ChatOperatorSnapshot } from '../../shared/operator-loop/index';
 import {
   sendChatMessage,
   writeCoreApprovalDecision,

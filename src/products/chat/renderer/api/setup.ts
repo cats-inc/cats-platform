@@ -1,7 +1,7 @@
 import type { AppShellPayload } from '../../api/contracts';
 
 import { normalizeAppShellPayload } from './normalization.js';
-import { expectJson } from './shared.js';
+import { expectJson } from './http.js';
 
 export async function completeSetup(
   input: {

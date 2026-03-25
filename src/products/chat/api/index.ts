@@ -11,7 +11,7 @@ import {
   CHAT_API_SLICE,
   type ChatApiDependencies,
   type ChatApiRouteContext,
-} from './shared.js';
+} from './routeSupport.js';
 
 export { CHAT_API_SLICE };
 export type { ChatApiDependencies };

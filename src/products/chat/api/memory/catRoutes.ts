@@ -11,7 +11,7 @@ import {
   handleRestError,
   sendRestError,
   type ChatApiRouteContext,
-} from '../shared.js';
+} from '../routeSupport.js';
 import {
   buildCatMemoryRecord,
   buildDurableMemoryUpdates,

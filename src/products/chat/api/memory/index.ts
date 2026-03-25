@@ -1,4 +1,4 @@
-import type { ChatApiRouteContext } from '../shared.js';
+import type { ChatApiRouteContext } from '../routeSupport.js';
 import { routeCatMemoryApi } from './catRoutes.js';
 import { routeChannelMemoryApi } from './channelRoutes.js';
 import { routeOwnerMemoryApi } from './ownerRoutes.js';

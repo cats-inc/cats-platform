@@ -7,7 +7,7 @@ import type {
   ParticipantExecutionLease,
 } from '../../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
-import { resolveRoomRoutingState } from '../roomRouting.js';
+import { resolveRoomRoutingState } from '../room-routing/index.js';
 
 export function cloneState(state: ChatState): ChatState {
   return structuredClone(state);

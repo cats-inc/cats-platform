@@ -2,7 +2,7 @@ import type {
   TelegramTransportDiagnostics,
   TelegramTransportStatus,
 } from '../../api/index.js';
-import { formatTransportTimestamp } from './shared.js';
+import { formatTransportTimestamp } from './viewSupport.js';
 
 export interface SettingsCatsTransportPanelProps {
   telegramDiagnostics: TelegramTransportDiagnostics | null;

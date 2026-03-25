@@ -3,8 +3,8 @@ import {
   flushObservedRuntimeSessionMemory,
   resolveRuntimeMaintenancePhase,
 } from '../../../platform/memory/runtimeMaintenance.js';
-import type { ChatApiRouteContext } from './shared.js';
-import { handleRestError, sendRestError } from './shared.js';
+import type { ChatApiRouteContext } from './routeSupport.js';
+import { handleRestError, sendRestError } from './routeSupport.js';
 
 async function handleObserveRuntimeSession(
   context: ChatApiRouteContext,

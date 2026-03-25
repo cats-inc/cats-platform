@@ -1,7 +1,7 @@
 import type { AppShellPayload, UpdateGlobalOrchestratorInput } from '../../api/contracts';
 
 import { normalizeAppShellPayload } from './normalization.js';
-import { expectJson, readErrorMessage } from './shared.js';
+import { expectJson, readErrorMessage } from './http.js';
 
 export async function fetchAppShell(signal?: AbortSignal): Promise<AppShellPayload> {
   const response = await fetch('/api/app-shell', {

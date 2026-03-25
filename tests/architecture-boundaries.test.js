@@ -73,11 +73,11 @@ test('platform orchestrator planner stays behind an injected planner surface sea
   );
   assert.doesNotMatch(
     source,
-    /products\/chat\/state\/roomRouting\.js/u,
+    /products\/chat\/state\/room-routing\/index\.js/u,
   );
   assert.doesNotMatch(
     source,
-    /products\/chat\/shared\/operatorLoop\.js/u,
+    /products\/chat\/shared\/operator-loop\/index\.js/u,
   );
   assert.doesNotMatch(
     source,
@@ -97,7 +97,7 @@ test('platform orchestrator contracts own their operator-loop view types', async
   assert.match(source, /export interface OrchestratorParticipantExecutionLease/u);
   assert.doesNotMatch(
     source,
-    /products\/chat\/shared\/operatorLoop\.js/u,
+    /products\/chat\/shared\/operator-loop\/index\.js/u,
   );
   assert.doesNotMatch(
     source,
@@ -149,21 +149,21 @@ test('platform orchestrator execution is a thin facade over dedicated execution 
 
 test('chat operator loop composes dedicated metadata and action helper modules', async () => {
   const operatorLoopModule = await readFile(
-    new URL('../src/products/chat/shared/operatorLoop.ts', import.meta.url),
+    new URL('../src/products/chat/shared/operator-loop/index.ts', import.meta.url),
     'utf8',
   );
   const metadataModule = await readFile(
-    new URL('../src/products/chat/shared/operatorLoopMetadata.ts', import.meta.url),
+    new URL('../src/products/chat/shared/operator-loop/metadata.ts', import.meta.url),
     'utf8',
   );
   const actionsModule = await readFile(
-    new URL('../src/products/chat/shared/operatorLoopActions.ts', import.meta.url),
+    new URL('../src/products/chat/shared/operator-loop/actions.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(operatorLoopModule, /operatorLoopMetadata\.js/u);
-  assert.match(operatorLoopModule, /operatorLoopActions\.js/u);
-  assert.match(operatorLoopModule, /operatorLoopTypes\.js/u);
+  assert.match(operatorLoopModule, /metadata\.js/u);
+  assert.match(operatorLoopModule, /actions\.js/u);
+  assert.match(operatorLoopModule, /types\.js/u);
   assert.doesNotMatch(operatorLoopModule, /function readMetadataRecord\(/u);
   assert.doesNotMatch(operatorLoopModule, /function buildIncidentActions\(/u);
   assert.match(metadataModule, /export function readMetadataRecord/u);
@@ -1803,7 +1803,7 @@ test('actor and owner-profile helpers are consumed from the dedicated core actor
     'utf8',
   );
   const apiShared = await readFile(
-    new URL('../src/products/chat/api/shared.ts', import.meta.url),
+    new URL('../src/products/chat/api/routeSupport.ts', import.meta.url),
     'utf8',
   );
   const botBindingRoutes = await readFile(

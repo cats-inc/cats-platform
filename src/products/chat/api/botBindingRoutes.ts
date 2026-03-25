@@ -16,7 +16,7 @@ import {
   handleRestError,
   nowFrom,
   type ChatApiRouteContext,
-} from './shared.js';
+} from './routeSupport.js';
 
 async function reconcilePollingAfterMutation(context: ChatApiRouteContext): Promise<void> {
   const {

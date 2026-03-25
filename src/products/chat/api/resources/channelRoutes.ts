@@ -25,7 +25,7 @@ import {
   sendChannelExport,
   sendRestError,
   type ChatApiRouteContext,
-} from '../shared.js';
+} from '../routeSupport.js';
 
 function sanitizeAttachmentName(rawName: string): string {
   const basename = path.basename(rawName).trim();

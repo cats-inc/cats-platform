@@ -25,7 +25,7 @@ import {
   buildCatPrompt,
   MAX_PROMPT_RECENT_MESSAGES,
 } from './prompts.js';
-import { resolveRoomRoutingState } from './roomRouting.js';
+import { resolveRoomRoutingState } from './room-routing/index.js';
 import type { DispatchRequest } from './room-routing/runtime.js';
 
 export type RuntimeTransportContext = 'telegram' | 'web';

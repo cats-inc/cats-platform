@@ -37,7 +37,7 @@ import {
 } from './shared.js';
 import {
   createDefaultRoomRoutingState,
-} from '../roomRouting.js';
+} from '../room-routing/index.js';
 
 export type { ChatLifecycleState } from '../../shared/lifecycle.js';
 export {

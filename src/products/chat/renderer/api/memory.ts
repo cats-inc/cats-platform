@@ -1,4 +1,4 @@
-import { expectJson } from './shared.js';
+import { expectJson } from './http.js';
 
 export interface DurableMemoryItem {
   id: string;

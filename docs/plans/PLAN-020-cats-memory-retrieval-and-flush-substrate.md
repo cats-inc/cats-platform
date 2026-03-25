@@ -83,7 +83,7 @@ service to exist first.
 | `src/products/chat/companion/contracts.ts` | Modify | Add additive retrieval payload to `CompanionSessionContext` |
 | `src/products/chat/companion/hydration.ts` | Modify | Build session context with retrieval support |
 | `src/products/chat/api/memory/index.ts` | Modify | Add canonical-memory, flush, and retrieval routes |
-| `src/products/chat/api/shared.ts` | Modify | Inject Cats memory service into chat API dependencies |
+| `src/products/chat/api/routeSupport.ts` | Modify | Inject Cats memory service into chat API dependencies |
 | `src/app/server/index.ts` | Modify | Minimal wiring for default memory store/service and memory-aware companion store |
 | `tests/memory-substrate.test.js` | Create | Canonical-memory and retrieval regression coverage |
 | `tests/companion-box-routes.test.js` | Modify | Route and hydration assertions for retrieval/flush seams |

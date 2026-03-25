@@ -11,7 +11,7 @@ import {
   nowFrom,
   requireValidChatScopeId,
   type ChatApiRouteContext,
-} from '../shared.js';
+} from '../routeSupport.js';
 
 async function handleRestGetPreferences(
   context: ChatApiRouteContext,

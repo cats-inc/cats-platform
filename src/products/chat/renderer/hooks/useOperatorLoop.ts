@@ -8,7 +8,7 @@ import {
 
 import type { AppShellPayload } from '../../api/contracts';
 import { fetchOperatorLoopSnapshot } from '../api';
-import type { ChatOperatorSnapshot } from '../../shared/operatorLoop';
+import type { ChatOperatorSnapshot } from '../../shared/operator-loop/index';
 
 type OperatorLoadState =
   | { status: 'idle'; snapshot: null; message: string }

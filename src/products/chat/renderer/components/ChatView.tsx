@@ -20,11 +20,11 @@ import {
   chatLifecycleLabel,
   resolveChatLifecycleState,
 } from '../../shared/lifecycle';
-import type { ChatOperatorSnapshot } from '../../shared/operatorLoop';
+import type { ChatOperatorSnapshot } from '../../shared/operator-loop/index';
 import {
   buildChatOperatorView,
   buildRunInspectorView,
-} from '../../shared/operatorLoop';
+} from '../../shared/operator-loop/index';
 import { ActivityFeed } from './ActivityFeed';
 import { CatInspectPanel } from './CatInspectPanel';
 import { ModelSelector, type ModelSelectorValue } from './ModelSelector';

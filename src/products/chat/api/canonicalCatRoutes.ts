@@ -11,7 +11,7 @@ import {
   persistCreatedCat,
   persistDeletedCat,
   type ChatApiRouteContext,
-} from './shared.js';
+} from './routeSupport.js';
 
 async function handleCanonicalListCats(
   context: ChatApiRouteContext,

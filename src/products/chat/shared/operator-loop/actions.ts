@@ -7,17 +7,17 @@ import type {
   CoreRunRecord,
   CoreTaskRecord,
   CoreTraceRecord,
-} from '../../../core/types.js';
+} from '../../../../core/types.js';
 import {
   readCoreEffectiveBudgetPolicy,
   readCoreEffectiveDeliveryPolicy,
-} from '../../../core/governance.js';
+} from '../../../../core/governance.js';
 import type {
   ChatApprovalActionView,
   ChatEffectivePolicyView,
   ChatOperatorActionView,
   ChatOperatorActivityItem,
-} from './operatorLoopTypes.js';
+} from './types.js';
 import {
   compareIsoDesc,
   labelForActivity,
@@ -29,7 +29,7 @@ import {
   severityForOutcome,
   severityForTrace,
   uniqueActivityItems,
-} from './operatorLoopMetadata.js';
+} from './metadata.js';
 
 const CORE_DELIVERY_GATE_SET = new Set<string>([
   'manual_review_required',

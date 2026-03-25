@@ -2,7 +2,7 @@ import type {
   ChatEffectivePolicyView,
   ChatOperatorActionView,
   ChatRunInspectorView,
-} from '../../shared/operatorLoop';
+} from '../../shared/operator-loop/index';
 import {
   formatOperatorTimestamp,
   operatorSeverityClassName,

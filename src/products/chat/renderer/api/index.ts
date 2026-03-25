@@ -1,5 +1,5 @@
 export { normalizeAppShellPayload } from './api/normalization.js';
-export { expectJson, readErrorMessage } from './api/shared.js';
+export { expectJson, readErrorMessage } from './api/http.js';
 
 export {
   fetchProviders,

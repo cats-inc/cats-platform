@@ -1,6 +1,6 @@
 import type { AppShellPayload } from '../api/contracts.js';
 import type { RoomRoutingState } from '../../../shared/roomRouting.js';
-import { resolveRoomRoutingState } from '../state/roomRouting.js';
+import { resolveRoomRoutingState } from '../state/room-routing/index.js';
 import {
   resolveChatLifecycleState,
   type ChatLifecycleState,

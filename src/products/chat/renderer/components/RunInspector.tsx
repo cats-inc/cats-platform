@@ -1,4 +1,4 @@
-import type { ChatRunInspectorView } from '../../shared/operatorLoop';
+import type { ChatRunInspectorView } from '../../shared/operator-loop/index';
 import {
   checkpointStatusLabel,
   checkpointStatusSeverity,

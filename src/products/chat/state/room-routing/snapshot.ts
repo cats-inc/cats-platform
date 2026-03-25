@@ -39,7 +39,7 @@ import {
   normalizeRoomWorkflowShape,
   normalizeRoomWorkflowStatus,
   normalizeRoomWorkflowTargetStatus,
-} from '../roomRouting.js';
+} from './index.js';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {

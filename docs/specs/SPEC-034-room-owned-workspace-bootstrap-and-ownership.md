@@ -341,7 +341,7 @@ Write-time rules:
 - [ADR-038](../decisions/038-separate-room-owned-workspaces-from-session-owned-sandboxes.md)
 - [Architecture](../architecture.md)
 - [API](../api.md)
-- `src/products/chat/api/shared.ts`
+- `src/products/chat/api/routeSupport.ts`
 - `src/products/chat/state/runtime-session/wake.ts`
 - `src/products/chat/state/runtime-session/state.ts`
 

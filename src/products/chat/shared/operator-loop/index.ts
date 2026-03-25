@@ -1,13 +1,13 @@
 import {
   deriveCoreGovernanceSummary,
   deriveCoreWorkflowSummary,
-} from '../../../core/governance.js';
+} from '../../../../core/governance.js';
 import {
   buildActivityFeed,
   buildApprovalActions,
   buildEffectivePolicyView,
   buildIncidentActions,
-} from './operatorLoopActions.js';
+} from './actions.js';
 import {
   buildActorNameById,
   buildBranchStates,
@@ -15,12 +15,12 @@ import {
   metricsForRun,
   resolveCooldownLabel,
   resolveGuardReason,
-} from './operatorLoopMetadata.js';
+} from './metadata.js';
 import type {
   ChatOperatorSnapshot,
   ChatOperatorView,
   ChatRunInspectorView,
-} from './operatorLoopTypes.js';
+} from './types.js';
 
 export type {
   ChatApprovalActionView,
@@ -33,7 +33,7 @@ export type {
   ChatRunInspectorView,
   ChatRunMetrics,
   ChatWorkflowBranchView,
-} from './operatorLoopTypes.js';
+} from './types.js';
 
 export function resolveChatConversationId(channelId: string): string {
   return `conversation-channel-${channelId}`;

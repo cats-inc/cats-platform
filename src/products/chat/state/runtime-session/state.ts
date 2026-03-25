@@ -22,7 +22,7 @@ import {
   setChannelStatus,
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
-import { resolveRoomRoutingState } from '../roomRouting.js';
+import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createRoomRoutingSnapshot } from '../room-routing/wake.js';
 import type { RuntimeSessionInfo } from '../../../../platform/runtime/client.js';
 

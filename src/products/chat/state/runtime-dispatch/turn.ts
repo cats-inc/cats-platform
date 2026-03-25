@@ -24,7 +24,7 @@ import {
   DEFAULT_MAX_ROUTING_TARGET_VISITS,
   resolveRoomRoutingState,
   resolveRoomWorkflowState,
-} from '../roomRouting.js';
+} from '../room-routing/index.js';
 import {
   mergeUnresolvedMentions,
   resolveTargets,

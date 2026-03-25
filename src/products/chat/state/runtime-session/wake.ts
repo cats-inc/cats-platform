@@ -24,7 +24,7 @@ import {
   setChannelRoomRouting,
 } from '../model/index.js';
 import { resolveRoomDefaultRoutingTarget, type RoutingTarget } from '../mentionRouter.js';
-import { resolveRoomRoutingState } from '../roomRouting.js';
+import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createRecordedWakeRequest } from '../room-routing/wake.js';
 import { formatSessionStartedMessage } from '../runtimeMessages.js';
 import {

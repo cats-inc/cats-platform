@@ -5,7 +5,7 @@ import {
   errorStatusCode,
   type ChatApiRouteContext,
   nowFrom,
-} from './shared.js';
+} from './routeSupport.js';
 import { selectChannel } from '../state/model/index.js';
 
 async function handleAppShell(

@@ -47,7 +47,7 @@ throw new CoreConflictError('id already exists');      // → 409
 ```
 
 **Chat API** uses string-prefix matching on error messages
-(`products/chat/api/shared.ts`):
+(`products/chat/api/routeSupport.ts`):
 
 ```typescript
 function handleRestError(context, error) {

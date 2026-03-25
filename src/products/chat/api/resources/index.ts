@@ -1,6 +1,6 @@
 import type {
   ChatApiRouteContext,
-} from '../shared.js';
+} from '../routeSupport.js';
 import { routeChatChannelResourceApi } from './channelRoutes.js';
 import { routeChatOrchestratorResourceApi } from './orchestratorRoutes.js';
 import { routeChatPreferenceResourceApi } from './preferenceRoutes.js';
