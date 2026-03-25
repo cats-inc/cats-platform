@@ -131,10 +131,11 @@ export default function SuiteApp() {
     );
   }
 
-  // Setup complete: each product at its own prefix, `/` and `/setup` redirect.
+  // Setup complete: products at their own prefix, settings at /settings/*.
   const entryPath = resolveProductEntryPath(storedSurface);
   return (
     <Routes>
+      <Route path="/settings/*" element={<ChatApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.code.routePrefix}/*`} element={<CodeApp />} />

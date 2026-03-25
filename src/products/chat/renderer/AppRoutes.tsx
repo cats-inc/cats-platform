@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import type { AppShellPayload } from '../api/contracts.js';
 import {
-  CHAT_PREFIX,
   NEW_CHAT_PATH,
   resolveAppEntryPath,
   resolveVisibleChatPath,
@@ -92,40 +91,31 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        <Route path="settings" element={<Navigate to={`${CHAT_PREFIX}/settings/general`} replace />} />
+        {/* Settings: "settings/*" matches /chat/settings/*, "general" etc. match /settings/* */}
+        <Route path="settings" element={<Navigate to="/settings/general" replace />} />
         <Route
           path="settings/general"
-          element={
-            <SettingsGeneral
-              payload={payload}
-              feedback={feedback}
-              onPayloadUpdate={onPayloadUpdate}
-              onFeedback={onFeedback}
-            />
-          }
+          element={<SettingsGeneral payload={payload} feedback={feedback} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} />}
         />
         <Route
           path="settings/cats"
-          element={
-            <SettingsCats
-              payload={payload}
-              feedback={feedback}
-              busy={busy}
-              onPayloadUpdate={onPayloadUpdate}
-              onFeedback={onFeedback}
-              onBusy={onBusy}
-            />
-          }
+          element={<SettingsCats payload={payload} feedback={feedback} busy={busy} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} onBusy={onBusy} />}
         />
         <Route
           path="settings/data"
-          element={
-            <SettingsData
-              feedback={feedback}
-              busy={busy}
-              onResetSetup={onResetSetup}
-            />
-          }
+          element={<SettingsData feedback={feedback} busy={busy} onResetSetup={onResetSetup} />}
+        />
+        <Route
+          path="general"
+          element={<SettingsGeneral payload={payload} feedback={feedback} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} />}
+        />
+        <Route
+          path="cats"
+          element={<SettingsCats payload={payload} feedback={feedback} busy={busy} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} onBusy={onBusy} />}
+        />
+        <Route
+          path="data"
+          element={<SettingsData feedback={feedback} busy={busy} onResetSetup={onResetSetup} />}
         />
         <Route
           path="chats/:channelId"

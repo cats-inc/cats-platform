@@ -10,7 +10,6 @@ import type { AppShellPayload } from '../../api/contracts.js';
 import {
   buildChannelPath,
   buildNewChatPath,
-  CHAT_PREFIX,
   resolveVisibleChatPath,
 } from '../../shared/channelPaths.js';
 import { resolveMyCatNavigationTarget } from '../myCatNavigation.js';
@@ -130,7 +129,7 @@ export function useAppNavigationActions(options: {
   }, [setBusy, setFeedback, setState]);
 
   const onNavigateSettings = useCallback((): void => {
-    navigate(`${CHAT_PREFIX}/settings/general`);
+    navigate('/settings/general');
     setAccountMenuOpen(false);
     setAddCatOpen(false);
     setFeedback('');
