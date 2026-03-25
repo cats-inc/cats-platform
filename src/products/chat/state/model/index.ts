@@ -2,6 +2,7 @@ import type {
   AssignChannelCatInput,
   CreateChatChannelInput,
   MessageUsageSummary,
+  NewChatDefaults,
   ParticipantExecutionLease,
   SendChannelMessageInput,
   ChatChannelState,
@@ -386,6 +387,28 @@ export function updateGlobalOrchestrator(
     mcpProfile: normalizeOptionalText(input.mcpProfile),
     telegramBotName: normalizeOptionalText(input.telegramBotName),
     updatedAt: isoAt(now),
+  };
+  return nextState;
+}
+
+export function updateNewChatDefaults(
+  state: ChatState,
+  input: Partial<NewChatDefaults>,
+): ChatState {
+  const nextState = cloneState(state);
+  nextState.newChatDefaults = {
+    provider: input.provider?.trim() || nextState.newChatDefaults.provider,
+    instance:
+      input.instance === undefined
+        ? nextState.newChatDefaults.instance
+        : normalizeOptionalText(input.instance),
+    model:
+      input.model === undefined
+        ? nextState.newChatDefaults.model
+        : normalizeOptionalText(input.model),
+    modelSelection: input.modelSelection === undefined
+      ? cloneProviderModelSelection(nextState.newChatDefaults.modelSelection)
+      : cloneProviderModelSelection(input.modelSelection),
   };
   return nextState;
 }

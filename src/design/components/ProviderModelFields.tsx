@@ -150,6 +150,7 @@ export function ProviderModelFields({
     providerOptions.find((option) => option.id === provider) ?? createFallbackProvider(provider);
   const resolvedInstance = resolveSelectedProviderInstance(selectedProvider, instance);
   const targetKey = `${provider}::${resolvedInstance}`;
+  const preserveExistingSelection = manualSelectionTargetKey.current === targetKey || Boolean(modelSelection);
 
   useEffect(() => {
     if (previousTargetKey.current !== targetKey) {
@@ -220,8 +221,8 @@ export function ProviderModelFields({
       },
       catalog,
       advancedCatalog,
-      preserveCurrentModel: manualSelectionTargetKey.current === targetKey,
-      preserveCurrentSelection: manualSelectionTargetKey.current === targetKey,
+      preserveCurrentModel: preserveExistingSelection,
+      preserveCurrentSelection: preserveExistingSelection,
     });
 
     if (
@@ -240,6 +241,7 @@ export function ProviderModelFields({
     onTargetChange,
     provider,
     resolvedInstance,
+    preserveExistingSelection,
     targetKey,
   ]);
 

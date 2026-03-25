@@ -8,6 +8,7 @@ import type {
   ChatMessage,
   ChatState,
   GlobalOrchestratorSummary,
+  NewChatDefaults,
 } from '../../api/contracts.js';
 import type {
   CoreRecordMetadata,
@@ -273,6 +274,19 @@ export function normalizeGlobalOrchestrator(rawOrchestrator: unknown): GlobalOrc
       : fallback.memory,
     telegramBotName: readNullableString(orchestratorRecord?.telegramBotName),
     updatedAt: readString(orchestratorRecord?.updatedAt, new Date().toISOString()),
+  };
+}
+
+export function normalizeNewChatDefaults(rawDefaults: unknown): NewChatDefaults {
+  const fallback = createDefaultChatState().newChatDefaults;
+  const defaultsRecord = asRecord(rawDefaults);
+  const executionTarget = normalizeExecutionTarget(defaultsRecord, fallback);
+
+  return {
+    provider: executionTarget.provider,
+    instance: executionTarget.instance,
+    model: executionTarget.model,
+    modelSelection: parseProviderModelSelection(defaultsRecord?.modelSelection),
   };
 }
 

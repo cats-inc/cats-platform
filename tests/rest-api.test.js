@@ -195,6 +195,7 @@ test('GET /api/preferences returns preferences', async () => {
 
     const payload = await response.json();
     assert.equal(typeof payload.preferences.selectedChannelId, 'string');
+    assert.equal(payload.preferences.newChatDefaults.provider, 'claude');
   });
 });
 
@@ -416,6 +417,76 @@ test('canonical 405 for unsupported methods', async () => {
     const deleteOnOrchestrator = await fetch(`${baseUrl}/api/orchestrator`, { method: 'DELETE' });
     assert.equal(deleteOnOrchestrator.status, 405);
     assert.equal(deleteOnOrchestrator.headers.get('allow'), 'GET, PATCH, PUT');
+  });
+});
+
+test('PATCH /api/preferences persists new chat model defaults across subsequent reads', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const updateResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        newChatDefaults: {
+          provider: 'codex',
+          instance: 'default',
+          model: 'gpt-5.4',
+          modelSelection: {
+            entryMode: 'auto',
+            presetId: 'balanced',
+            controls: {
+              'openai.reasoning_effort': 'high',
+            },
+          },
+        },
+      }),
+    });
+    assert.equal(updateResponse.status, 200);
+
+    const updatePayload = await updateResponse.json();
+    assert.deepEqual(updatePayload.preferences.newChatDefaults, {
+      provider: 'codex',
+      instance: 'default',
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryMode: 'auto',
+        presetId: 'balanced',
+        controls: {
+          'openai.reasoning_effort': 'high',
+        },
+      },
+    });
+
+    const readResponse = await fetch(`${baseUrl}/api/preferences`);
+    assert.equal(readResponse.status, 200);
+    const readPayload = await readResponse.json();
+    assert.deepEqual(readPayload.preferences.newChatDefaults, {
+      provider: 'codex',
+      instance: 'default',
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryMode: 'auto',
+        presetId: 'balanced',
+        controls: {
+          'openai.reasoning_effort': 'high',
+        },
+      },
+    });
+
+    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(appShellResponse.status, 200);
+    const appShellPayload = await appShellResponse.json();
+    assert.deepEqual(appShellPayload.chat.newChatDefaults, {
+      provider: 'codex',
+      instance: 'default',
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryMode: 'auto',
+        presetId: 'balanced',
+        controls: {
+          'openai.reasoning_effort': 'high',
+        },
+      },
+    });
   });
 });
 

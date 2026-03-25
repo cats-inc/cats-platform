@@ -2,10 +2,12 @@ import type {
   GlobalOrchestratorSummary,
   ChatCapabilities,
   ChatState,
+  NewChatDefaults,
   ParticipantExecutionLease,
 } from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
 import { createEmptyMemoryCheckpoint } from '../../../core/actors.js';
+import { getDefaultModel } from '../../../shared/providerCatalog.js';
 export { createEmptyMemoryCheckpoint };
 
 function isoNow(): string {
@@ -67,6 +69,15 @@ function createCapabilities(): ChatCapabilities {
   };
 }
 
+export function createDefaultNewChatDefaults(): NewChatDefaults {
+  return {
+    provider: 'claude',
+    instance: null,
+    model: getDefaultModel('claude') || null,
+    modelSelection: null,
+  };
+}
+
 export function createDefaultChatState(): ChatState {
   const createdAt = isoNow();
 
@@ -78,6 +89,7 @@ export function createDefaultChatState(): ChatState {
     cats: [],
     channels: [],
     globalOrchestrator: createDefaultOrchestrator(createdAt),
+    newChatDefaults: createDefaultNewChatDefaults(),
     capabilities: createCapabilities(),
     showVerboseMessages: false,
   };

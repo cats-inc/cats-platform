@@ -38,6 +38,7 @@ export function createAppShell(
         ...summary.globalOrchestrator,
         status: runtime.reachable ? 'ready' : 'warming',
       },
+      newChatDefaults: structuredClone(chat.newChatDefaults),
       capabilities: chat.capabilities,
       showVerboseMessages: chat.showVerboseMessages,
       botBindings,

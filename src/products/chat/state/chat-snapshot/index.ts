@@ -49,6 +49,7 @@ import {
   normalizeChannel,
   normalizeChatCat,
   normalizeGlobalOrchestrator,
+  normalizeNewChatDefaults,
 } from './entities.js';
 import {
   asRecord,
@@ -92,6 +93,7 @@ export function normalizeChatState(rawState: unknown): ChatState {
     cats: Array.from(catsById.values()),
     channels: normalizedChannels.length > 0 ? normalizedChannels : fallback.channels,
     globalOrchestrator: normalizeGlobalOrchestrator(stateRecord.globalOrchestrator),
+    newChatDefaults: normalizeNewChatDefaults(stateRecord.newChatDefaults),
     capabilities: normalizeCapabilities(stateRecord.capabilities),
     showVerboseMessages: readBoolean(stateRecord.showVerboseMessages, false),
   };

@@ -4,7 +4,9 @@ import {
 } from '../../state/runtimeActions.js';
 import {
   selectChannel,
+  updateNewChatDefaults,
 } from '../../state/model/index.js';
+import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
 import {
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
@@ -24,6 +26,7 @@ async function handleRestGetPreferences(
       preferences: {
         selectedChannelId: state.selectedChannelId,
         showVerboseMessages: state.showVerboseMessages,
+        newChatDefaults: state.newChatDefaults,
       },
     });
   } catch (error) {
@@ -40,6 +43,12 @@ async function handleRestUpdatePreferences(
     const body = await readJsonBody<{
       selectedChannelId?: string;
       showVerboseMessages?: boolean;
+      newChatDefaults?: {
+        provider?: string;
+        instance?: string | null;
+        model?: string | null;
+        modelSelection?: unknown;
+      };
     }>(context.request);
     let nextState = await context.dependencies.chatStore.read();
 
@@ -69,11 +78,21 @@ async function handleRestUpdatePreferences(
       };
     }
 
+    if (body.newChatDefaults && typeof body.newChatDefaults === 'object') {
+      nextState = updateNewChatDefaults(nextState, {
+        provider: body.newChatDefaults.provider,
+        instance: body.newChatDefaults.instance,
+        model: body.newChatDefaults.model,
+        modelSelection: parseProviderModelSelection(body.newChatDefaults.modelSelection),
+      });
+    }
+
     const persisted = await context.dependencies.chatStore.write(nextState);
     sendJson(context.response, 200, {
       preferences: {
         selectedChannelId: persisted.selectedChannelId,
         showVerboseMessages: persisted.showVerboseMessages,
+        newChatDefaults: persisted.newChatDefaults,
       },
     });
   } catch (error) {

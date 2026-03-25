@@ -1,6 +1,8 @@
 import {
   startTransition,
+  useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -16,6 +18,7 @@ import {
   readNewChatLeadCatId,
 } from '../shared/channelPaths';
 import { getDefaultModel } from '../../../shared/providerCatalog';
+import { sameProviderModelSelection } from '../../../shared/providerSelection';
 import {
   BootShell,
   emptyCatForm,
@@ -33,12 +36,48 @@ import { useComposerSubmit } from './hooks/useComposerSubmit';
 import { useFolderBrowser } from './hooks/useFolderBrowser';
 import { useGovernanceActions } from './hooks/useGovernanceActions';
 import { useOperatorLoop } from './hooks/useOperatorLoop';
+import { updateNewChatDefaultsPreference } from './api';
 import type { ModelSelectorValue } from './components/ModelSelector';
 import {
   Sidebar,
   type SidebarViewMode,
 } from './components/Sidebar';
 import './styles.css';
+
+function createDefaultModelSelectorValue(): ModelSelectorValue {
+  return {
+    provider: 'claude',
+    model: getDefaultModel('claude') || null,
+    instance: null,
+    modelSelection: null,
+  };
+}
+
+function toModelSelectorValue(
+  defaults: AppShellPayload['chat']['newChatDefaults'] | null | undefined,
+): ModelSelectorValue {
+  if (!defaults) {
+    return createDefaultModelSelectorValue();
+  }
+
+  const provider = defaults.provider?.trim() || 'claude';
+  return {
+    provider,
+    model: defaults.model ?? (getDefaultModel(provider) || null),
+    instance: defaults.instance ?? null,
+    modelSelection: defaults.modelSelection ?? null,
+  };
+}
+
+function sameModelSelectorValue(
+  left: ModelSelectorValue,
+  right: ModelSelectorValue,
+): boolean {
+  return left.provider === right.provider
+    && (left.instance ?? null) === (right.instance ?? null)
+    && (left.model ?? null) === (right.model ?? null)
+    && sameProviderModelSelection(left.modelSelection, right.modelSelection);
+}
 
 export default function App() {
   const navigate = useNavigate();
@@ -63,18 +102,9 @@ export default function App() {
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
-  const [draftModel, setDraftModel] = useState<ModelSelectorValue>(() => ({
-    provider: 'claude',
-    model: getDefaultModel('claude') || null,
-    instance: null,
-    modelSelection: null,
-  }));
-  const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(() => ({
-    provider: 'claude',
-    model: getDefaultModel('claude') || null,
-    instance: null,
-    modelSelection: null,
-  }));
+  const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
+  const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
+  const latestNewChatDefaultsSaveId = useRef(0);
 
   const {
     accountMenuOpen,
@@ -252,6 +282,23 @@ export default function App() {
   }, [routeChannelTitle]);
 
   useEffect(() => {
+    if (!readyChat) {
+      return;
+    }
+
+    const nextDraftModel = toModelSelectorValue(readyChat.newChatDefaults);
+    setDraftModel((currentDraftModel) =>
+      sameModelSelectorValue(currentDraftModel, nextDraftModel)
+        ? currentDraftModel
+        : nextDraftModel);
+  }, [
+    readyChat?.newChatDefaults.instance,
+    readyChat?.newChatDefaults.model,
+    readyChat?.newChatDefaults.modelSelection,
+    readyChat?.newChatDefaults.provider,
+  ]);
+
+  useEffect(() => {
     if (!readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
       return;
     }
@@ -317,6 +364,45 @@ export default function App() {
       });
     }
   }, [readySelectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onDraftModelChange = useCallback((nextDraftModel: ModelSelectorValue): void => {
+    setDraftModel(nextDraftModel);
+
+    if (state.status !== 'ready') {
+      return;
+    }
+
+    const persistedDraftModel = toModelSelectorValue(state.payload.chat.newChatDefaults);
+    if (sameModelSelectorValue(nextDraftModel, persistedDraftModel)) {
+      return;
+    }
+
+    const saveId = latestNewChatDefaultsSaveId.current + 1;
+    latestNewChatDefaultsSaveId.current = saveId;
+
+    void updateNewChatDefaultsPreference({
+      provider: nextDraftModel.provider,
+      instance: nextDraftModel.instance,
+      model: nextDraftModel.model,
+      modelSelection: nextDraftModel.modelSelection,
+    })
+      .then((payload) => {
+        if (latestNewChatDefaultsSaveId.current !== saveId) {
+          return;
+        }
+        startTransition(() => setState({ status: 'ready', payload }));
+      })
+      .catch((error) => {
+        if (latestNewChatDefaultsSaveId.current !== saveId) {
+          return;
+        }
+        setFeedback(
+          error instanceof Error
+            ? error.message
+            : 'Failed to save new chat model defaults.',
+        );
+      });
+  }, [setFeedback, setState, state, latestNewChatDefaultsSaveId]);
 
   function updatePayload(payload: AppShellPayload): void {
     startTransition(() => setState({ status: 'ready', payload }));
@@ -463,7 +549,7 @@ export default function App() {
             autoResize,
             draftLeadCatId,
             selectedModel: !draftLeadCatId ? draftModel : undefined,
-            onModelChange: !draftLeadCatId ? setDraftModel : undefined,
+            onModelChange: !draftLeadCatId ? onDraftModelChange : undefined,
           }}
           onToggleAddCat={toggleAddCatPanel}
           onPayloadUpdate={updatePayload}

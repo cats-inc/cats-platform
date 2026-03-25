@@ -11,6 +11,7 @@ export {
   fetchAppShell,
   refetchAfterMutation,
   updateChatOrchestrator,
+  updateNewChatDefaultsPreference,
   updateSelectedChannel,
   updateVerbosePreference,
 } from './appShell.js';

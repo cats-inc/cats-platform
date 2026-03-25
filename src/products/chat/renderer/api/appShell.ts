@@ -1,4 +1,8 @@
-import type { AppShellPayload, UpdateGlobalOrchestratorInput } from '../../api/contracts';
+import type {
+  AppShellPayload,
+  NewChatDefaults,
+  UpdateGlobalOrchestratorInput,
+} from '../../api/contracts';
 
 import { normalizeAppShellPayload } from './normalization.js';
 import { expectJson, readErrorMessage } from './http.js';
@@ -69,6 +73,27 @@ export async function updateVerbosePreference(
   return mutateAndRefetch(
     response,
     `cats verbose preference update returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function updateNewChatDefaultsPreference(
+  input: NewChatDefaults,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch('/api/preferences', {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ newChatDefaults: input }),
+    signal,
+  });
+
+  return mutateAndRefetch(
+    response,
+    `cats new chat defaults update returned ${response.status}`,
     signal,
   );
 }

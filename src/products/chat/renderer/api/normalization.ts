@@ -148,6 +148,14 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   if (chatState.showVerboseMessages === undefined) {
     chatState.showVerboseMessages = false;
   }
+  if (!asRecord(chatState.newChatDefaults)) {
+    chatState.newChatDefaults = {
+      provider: readString(orchestratorExecutionTarget?.provider, 'claude'),
+      instance: readNullableString(orchestratorExecutionTarget?.instance),
+      model: readNullableString(orchestratorExecutionTarget?.model),
+      modelSelection: null,
+    };
+  }
 
   if (Array.isArray(chatState.channels)) {
     chatState.channels = chatState.channels.map((channelValue) => {

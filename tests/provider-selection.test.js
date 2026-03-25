@@ -169,6 +169,100 @@ test('resolveCatalogTargetSelection adopts advanced default selection presets an
   });
 });
 
+test('resolveCatalogTargetSelection preserves an existing preset selection for the same target', () => {
+  const nextTarget = resolveCatalogTargetSelection({
+    target: {
+      provider: 'codex',
+      instance: 'main',
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryMode: 'auto',
+        entryId: 'gpt-5.4',
+        presetId: 'deep-think',
+        controls: {
+          'openai.reasoning_effort': 'high',
+        },
+      },
+    },
+    catalog: {
+      provider: 'codex',
+      backend: 'api',
+      instance: 'main',
+      defaultModel: 'gpt-5.4',
+      source: 'config',
+      cache: null,
+      models: [
+        { id: 'gpt-5.4', label: 'GPT-5.4', default: true },
+      ],
+      warnings: [],
+    },
+    advancedCatalog: normalizeProviderAdvancedModelCatalog({
+      provider: 'codex',
+      backend: 'api',
+      instance: 'main',
+      defaultModel: 'gpt-5.4',
+      source: 'config',
+      cache: null,
+      entries: [
+        { id: 'gpt-5.4', label: 'GPT-5.4', default: true },
+      ],
+      presets: [
+        {
+          id: 'balanced',
+          label: 'Balanced',
+          availability: 'supported',
+          applicableEntryIds: ['gpt-5.4'],
+          controlDefaults: {
+            'openai.reasoning_effort': 'medium',
+          },
+        },
+        {
+          id: 'deep-think',
+          label: 'Deep Think',
+          availability: 'supported',
+          applicableEntryIds: ['gpt-5.4'],
+          controlDefaults: {
+            'openai.reasoning_effort': 'high',
+          },
+        },
+      ],
+      controls: [
+        {
+          key: 'openai.reasoning_effort',
+          label: 'Reasoning effort',
+          kind: 'enum',
+          scope: 'session_default',
+          values: ['low', 'medium', 'high'],
+        },
+      ],
+      defaultSelection: {
+        entryMode: 'auto',
+        entryId: 'gpt-5.4',
+        presetId: 'balanced',
+        controls: {
+          'openai.reasoning_effort': 'medium',
+        },
+      },
+      support: {
+        tier: 'entry_only',
+      },
+      warnings: [],
+    }, 'codex'),
+    preserveCurrentModel: true,
+    preserveCurrentSelection: true,
+  });
+
+  assert.equal(nextTarget.model, 'gpt-5.4');
+  assert.deepEqual(nextTarget.modelSelection, {
+    entryMode: 'auto',
+    entryId: 'gpt-5.4',
+    presetId: 'deep-think',
+    controls: {
+      'openai.reasoning_effort': 'high',
+    },
+  });
+});
+
 test('normalizeProviderAdvancedModelCatalog preserves runtime preset availability and enum values', () => {
   const catalog = normalizeProviderAdvancedModelCatalog({
     provider: 'codex',

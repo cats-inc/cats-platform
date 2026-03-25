@@ -296,6 +296,13 @@ export interface GlobalOrchestratorSummary {
   updatedAt: string;
 }
 
+export interface NewChatDefaults {
+  provider: string;
+  instance: string | null;
+  model: string | null;
+  modelSelection?: ProviderModelSelection | null;
+}
+
 export interface ChatCapabilities {
   multiChannel: true;
   persistence: 'file-backed';
@@ -314,6 +321,7 @@ export interface ChatState {
   cats: ChatCat[];
   channels: ChatChannelState[];
   globalOrchestrator: GlobalOrchestratorSummary;
+  newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
 }
@@ -356,6 +364,7 @@ export interface ChatShellState {
   channels: ChatChannelSummary[];
   selectedChannel: ChatChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
+  newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
   botBindings: ChatBotBindingSummary[];
