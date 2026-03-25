@@ -745,6 +745,124 @@ test('cat-led room routing continues across agent mentions and auto-wakes target
   );
 });
 
+test('structured workflow recommendations drive continuation when no explicit @mention is present', async () => {
+  const { state, channelId } = await createChannelState();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage([
+        'Passing implementation to the next specialist.',
+        '```json',
+        JSON.stringify({
+          workflowRecommendation: {
+            workflowShape: 'sequential',
+            candidateTargetNames: ['Agent-2'],
+            branchStrategy: 'transplant_context',
+            rationale: 'Agent-2 should implement the change.',
+          },
+        }),
+        '```',
+      ].join('\n'));
+    }
+    if (content.includes('You are Agent-2')) {
+      return usage('I implemented the change.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Kick off the work.' },
+    runtimeClient,
+    new Date('2026-03-21T00:00:00.000Z'),
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+  const replies = channel.messages.filter(
+    (message) => message.senderKind === 'orchestrator' || message.senderKind === 'agent',
+  );
+  const continuationEvent = channel.roomRouting?.workflow.turnHistory[0]?.events.find(
+    (event) => event.kind === 'checkpoint' && event.metadata.checkpointKind === 'continuation',
+  );
+
+  assert.deepEqual(
+    replies.map((message) => message.senderName),
+    ['Agent-1', 'Agent-2'],
+  );
+  assert.equal(replies[0]?.body, 'Passing implementation to the next specialist.');
+  assert.equal(
+    replies[0]?.metadata.workflowRecommendation?.workflowShape,
+    'sequential',
+  );
+  assert.equal(channel.roomRouting?.lastOutcome?.continuationCount, 1);
+  assert.equal(continuationEvent?.metadata.continuationSource, 'workflow_recommendation');
+  assert.equal(
+    continuationEvent?.metadata.workflowRecommendation?.candidateTargets?.[0]?.participantName,
+    'Agent-2',
+  );
+  assert.ok(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.some(
+      (target) =>
+        target.participant.participantName === 'Agent-2'
+        && target.branchStrategy === 'transplant_context',
+    ),
+  );
+});
+
+test('explicit @mentions stay authoritative over structured workflow recommendations', async () => {
+  const { state, channelId } = await createChannelState();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage([
+        '@Agent-2 take this next.',
+        '```json',
+        JSON.stringify({
+          workflowRecommendation: {
+            workflowShape: 'sequential',
+            candidateTargetNames: ['Agent-1'],
+            branchStrategy: 'fork_if_possible',
+            rationale: 'Conflicting recommendation should not override the explicit handoff.',
+          },
+        }),
+        '```',
+      ].join('\n'));
+    }
+    if (content.includes('You are Agent-2')) {
+      return usage('Handled after the explicit handoff.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Kick off the work.' },
+    runtimeClient,
+    new Date('2026-03-21T00:00:00.000Z'),
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+  const replies = channel.messages.filter(
+    (message) => message.senderKind === 'orchestrator' || message.senderKind === 'agent',
+  );
+  const continuationEvent = channel.roomRouting?.workflow.turnHistory[0]?.events.find(
+    (event) => event.kind === 'checkpoint' && event.metadata.checkpointKind === 'continuation',
+  );
+  const agent2Target = channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+    (target) => target.participant.participantName === 'Agent-2',
+  );
+
+  assert.deepEqual(
+    replies.map((message) => message.senderName),
+    ['Agent-1', 'Agent-2'],
+  );
+  assert.equal(replies[0]?.body, '@Agent-2 take this next.');
+  assert.equal(continuationEvent?.metadata.continuationSource, 'explicit_mentions');
+  assert.equal(
+    continuationEvent?.targets[0]?.participantName,
+    'Agent-2',
+  );
+  assert.equal(agent2Target?.branchStrategy, 'transplant_context');
+});
+
 test('direct cat chat routes unmentioned turns to the lead cat without waking Boss Cat first', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();

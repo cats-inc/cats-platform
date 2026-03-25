@@ -16,8 +16,15 @@ import {
   resolveTargets,
   resolveWorkflowBranchStrategy,
   type DispatchFrame,
+  type TargetResolution,
   workflowShapeForTargets,
 } from '../room-routing/runtime.js';
+import {
+  extractWorkflowRecommendationFromBody,
+  resolveWorkflowRecommendationTargets,
+  serializeWorkflowRecommendation,
+  type WorkflowRecommendation,
+} from '../room-routing/recommendations.js';
 import {
   addWorkflowCheckpoint,
   appendWorkflowEvent,
@@ -32,6 +39,63 @@ import {
   setReadyAfterMessage,
   toParticipantRef,
 } from '../runtime-session/state.js';
+
+type ContinuationSource = 'explicit_mentions' | 'workflow_recommendation';
+
+function buildRecommendationContinuationResolution(
+  state: ChatState,
+  channelId: string,
+  recommendation: WorkflowRecommendation,
+): TargetResolution {
+  const resolved = resolveWorkflowRecommendationTargets(state, channelId, recommendation);
+  const resolvedTargets = resolved.targets.map((target) => toParticipantRef(target));
+  const routingMode = resolved.targets.length === 0
+    ? 'room_default'
+    : resolved.targets.length === 1
+      ? 'explicit_single'
+      : 'explicit_multi';
+
+  return {
+    targets: resolved.targets,
+    unresolved: resolved.unresolved,
+    mentionNames: resolved.mentionNames,
+    trigger: 'continuation_mention',
+    resolution: {
+      routingMode,
+      selectionKind: resolved.targets.length === 0 ? 'blocked' : 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: resolved.targets.length === 0 ? 'no_valid_targets' : null,
+      note: resolved.targets.length === 0
+        ? 'Structured workflow recommendation did not resolve to an active room participant.'
+        : 'Structured workflow recommendation routed the next room stage.',
+    },
+  };
+}
+
+function resolveContinuationStage(
+  recommendation: WorkflowRecommendation | null,
+  targetCount: number,
+): {
+  stageId: string;
+  workflowShape: RoomWorkflowTurn['workflowShape'];
+  reviewRequired: boolean;
+} {
+  if (recommendation?.workflowShape === 'converge' && targetCount === 1) {
+    return {
+      stageId: 'converge_review',
+      workflowShape: 'converge',
+      reviewRequired: true,
+    };
+  }
+
+  return {
+    stageId: targetCount > 1 ? 'parallel_fan_out' : 'continuation_handoff',
+    workflowShape: workflowShapeForTargets(targetCount),
+    reviewRequired: false,
+  };
+}
 
 export function applyDispatchExecutions(
   state: ChatState,
@@ -179,6 +243,12 @@ export function applyDispatchExecutions(
         : 'orchestrator',
       now,
     );
+    const extractedWorkflowRecommendation = extractWorkflowRecommendationFromBody(
+      execution.responseBody ?? '',
+    );
+    const serializedWorkflowRecommendation = extractedWorkflowRecommendation.recommendation
+      ? serializeWorkflowRecommendation(extractedWorkflowRecommendation.recommendation)
+      : null;
     const appendedResponse = appendMessage(
       nextState,
       channelId,
@@ -187,7 +257,7 @@ export function applyDispatchExecutions(
           ? 'orchestrator'
           : 'agent',
         senderName: execution.target.participantName,
-        body: execution.responseBody ?? '',
+        body: extractedWorkflowRecommendation.body,
       },
       now,
       {
@@ -200,6 +270,11 @@ export function applyDispatchExecutions(
           sourceMessageId: execution.sourceMessage.id,
           routingTrigger: execution.trigger,
           dispatchDepth: execution.depth,
+          ...(serializedWorkflowRecommendation
+            ? {
+                workflowRecommendation: serializedWorkflowRecommendation,
+              }
+            : {}),
         },
         usage: execution.usage,
         execution: resolveExecutionMetadataForTarget(nextState, channelId, execution.target),
@@ -240,6 +315,7 @@ export function applyDispatchExecutions(
             parentCheckpointId: execution.parentCheckpointId,
             branchStrategy: execution.branchStrategy,
             handoffReason: execution.handoffReason,
+            workflowRecommendation: serializedWorkflowRecommendation,
           },
         },
       ),
@@ -258,16 +334,33 @@ export function applyDispatchExecutions(
       dispatchDepth: execution.depth,
     });
 
-    const continuationResolution = resolveTargets(nextState, channelId, responseMessage.body, {
+    let continuationResolution = resolveTargets(nextState, channelId, responseMessage.body, {
       allowDefaultTarget: false,
       explicitTrigger: 'continuation_mention',
     });
+    let continuationSource: ContinuationSource = 'explicit_mentions';
+
+    if (
+      continuationResolution.targets.length === 0
+      && extractedWorkflowRecommendation.recommendation
+    ) {
+      continuationResolution = buildRecommendationContinuationResolution(
+        nextState,
+        channelId,
+        extractedWorkflowRecommendation.recommendation,
+      );
+      continuationSource = 'workflow_recommendation';
+    }
+
     if (continuationResolution.unresolved.length > 0) {
       mergeUnresolvedMentions(outcome, continuationResolution.unresolved);
     }
 
     if (continuationResolution.targets.length === 0) {
-      if (continuationResolution.unresolved.length > 0) {
+      if (
+        continuationResolution.unresolved.length > 0
+        || serializedWorkflowRecommendation
+      ) {
         latestCheckpoint = addWorkflowCheckpoint(
           outcome,
           workflow,
@@ -276,6 +369,12 @@ export function applyDispatchExecutions(
           `No valid continuation targets were resolved from ${execution.target.participantName}'s handoff.`,
           nowIso,
           toParticipantRef(execution.target),
+          [],
+          {
+            continuationSource,
+            workflowRecommendation: serializedWorkflowRecommendation,
+            unresolvedTargets: structuredClone(continuationResolution.unresolved),
+          },
         );
       }
       continue;
@@ -294,14 +393,36 @@ export function applyDispatchExecutions(
         nowIso,
         toParticipantRef(execution.target),
         continuationResolution.targets.map((target) => toParticipantRef(target)),
+        {
+          continuationSource,
+          workflowRecommendation: serializedWorkflowRecommendation,
+        },
       );
       break;
     }
 
     outcome.continuationCount += 1;
     activeTurn.continuationCount = outcome.continuationCount;
-    activeTurn.stageId = 'continuation_handoff';
-    activeTurn.workflowShape = workflowShapeForTargets(continuationResolution.targets.length);
+    const continuationStage = resolveContinuationStage(
+      extractedWorkflowRecommendation.recommendation,
+      continuationResolution.targets.length,
+    );
+    activeTurn.stageId = continuationStage.stageId;
+    activeTurn.workflowShape = continuationStage.workflowShape;
+    activeTurn.reviewRequired = continuationStage.reviewRequired;
+    const branchStrategy = (
+      continuationSource === 'workflow_recommendation'
+        ? extractedWorkflowRecommendation.recommendation?.branchStrategy
+        : null
+    ) ?? (
+      continuationResolution.targets.length > 1
+        ? 'transplant_context'
+        : resolveWorkflowBranchStrategy(
+            toParticipantRef(execution.target),
+            continuationResolution.targets[0]!,
+            execution.depth + 1,
+          )
+    );
     latestCheckpoint = addWorkflowCheckpoint(
       outcome,
       workflow,
@@ -315,14 +436,12 @@ export function applyDispatchExecutions(
         mentionNames: structuredClone(continuationResolution.mentionNames),
         workflowStageId: activeTurn.stageId,
         workflowShape: activeTurn.workflowShape,
+        reviewRequired: activeTurn.reviewRequired,
         handoffReason: 'workflow_continuation',
-        branchStrategy: continuationResolution.targets.length > 1
-          ? 'transplant_context'
-          : resolveWorkflowBranchStrategy(
-              toParticipantRef(execution.target),
-              continuationResolution.targets[0]!,
-              execution.depth + 1,
-            ),
+        branchStrategy,
+        continuationSource,
+        workflowRecommendation: serializedWorkflowRecommendation,
+        unresolvedTargets: structuredClone(continuationResolution.unresolved),
       },
     );
     queue.push({
@@ -333,6 +452,12 @@ export function applyDispatchExecutions(
       mentionNames: continuationResolution.mentionNames,
       trigger: continuationResolution.trigger,
       depth: execution.depth + 1,
+      branchStrategyOverride: branchStrategy,
+      workflowShapeOverride: activeTurn.workflowShape,
+      workflowStageId: activeTurn.stageId,
+      reviewRequired: activeTurn.reviewRequired,
+      continuationSource,
+      workflowRecommendation: serializedWorkflowRecommendation,
     });
   }
 

@@ -32,6 +32,12 @@ export interface DispatchFrame {
   mentionNames: string[];
   trigger: RoomRoutingTrigger;
   depth: number;
+  branchStrategyOverride?: RoomWorkflowBranchStrategy | null;
+  workflowShapeOverride?: RoomWorkflowShape | null;
+  workflowStageId?: string | null;
+  reviewRequired?: boolean;
+  continuationSource?: 'explicit_mentions' | 'workflow_recommendation';
+  workflowRecommendation?: Record<string, unknown> | null;
 }
 
 export interface DispatchRequest extends DispatchFrame {

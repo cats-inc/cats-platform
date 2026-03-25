@@ -126,6 +126,16 @@ export async function processDispatchQueue(
       break;
     }
 
+    if (frame.workflowShapeOverride) {
+      activeTurn.workflowShape = frame.workflowShapeOverride;
+    }
+    if (frame.workflowStageId) {
+      activeTurn.stageId = frame.workflowStageId;
+    }
+    if (frame.reviewRequired !== undefined) {
+      activeTurn.reviewRequired = frame.reviewRequired;
+    }
+
     const allowedRequests: DispatchRequest[] = [];
     for (const target of frame.targets) {
       if (outcome.totalDispatchCount >= maxDispatches) {
@@ -151,11 +161,12 @@ export async function processDispatchQueue(
         dispatchId: randomUUID(),
         targetStateId: randomUUID(),
         parentCheckpointId: latestCheckpoint?.id ?? null,
-        branchStrategy: resolveWorkflowBranchStrategy(
-          frame.sourceParticipant,
-          target,
-          frame.depth,
-        ),
+        branchStrategy: frame.branchStrategyOverride
+          ?? resolveWorkflowBranchStrategy(
+            frame.sourceParticipant,
+            target,
+            frame.depth,
+          ),
         handoffReason: resolveWorkflowHandoffReason(frame.trigger),
       };
       createPendingDispatch(outcome, request, nowIso);
@@ -181,6 +192,10 @@ export async function processDispatchQueue(
               branchStrategy: request.branchStrategy,
               handoffReason: request.handoffReason,
               mentionNames: structuredClone(frame.mentionNames),
+              continuationSource: frame.continuationSource ?? null,
+              workflowRecommendation: frame.workflowRecommendation
+                ? structuredClone(frame.workflowRecommendation)
+                : null,
             },
           },
         ),
@@ -218,6 +233,10 @@ export async function processDispatchQueue(
                 parentCheckpointId: request.parentCheckpointId,
                 branchStrategy: request.branchStrategy,
                 handoffReason: request.handoffReason,
+                continuationSource: frame.continuationSource ?? null,
+                workflowRecommendation: frame.workflowRecommendation
+                  ? structuredClone(frame.workflowRecommendation)
+                  : null,
               },
             },
           ),
@@ -286,6 +305,10 @@ export async function processDispatchQueue(
                 parentCheckpointId: request.parentCheckpointId,
                 branchStrategy: request.branchStrategy,
                 handoffReason: request.handoffReason,
+                continuationSource: frame.continuationSource ?? null,
+                workflowRecommendation: frame.workflowRecommendation
+                  ? structuredClone(frame.workflowRecommendation)
+                  : null,
               },
             },
           ),
@@ -353,6 +376,10 @@ export async function processDispatchQueue(
               branchCount: allowedRequests.length,
               workflowStageId: activeTurn.stageId,
               workflowShape: activeTurn.workflowShape,
+              continuationSource: frame.continuationSource ?? null,
+              workflowRecommendation: frame.workflowRecommendation
+                ? structuredClone(frame.workflowRecommendation)
+                : null,
             },
           },
         ),
@@ -369,6 +396,10 @@ export async function processDispatchQueue(
         {
           workflowStageId: activeTurn.stageId,
           workflowShape: activeTurn.workflowShape,
+          continuationSource: frame.continuationSource ?? null,
+          workflowRecommendation: frame.workflowRecommendation
+            ? structuredClone(frame.workflowRecommendation)
+            : null,
         },
       );
     }

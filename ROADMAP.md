@@ -156,7 +156,11 @@ contracts.
       longer-running branch continuation behavior
       Progress: direct `ChatStore`-backed routing paths now persist in-flight
       room-workflow snapshots before the full route completes, so partial
-      branch and continuation status no longer waits on the terminal write.
+      branch and continuation status no longer waits on the terminal write,
+      and structured `workflowRecommendation` payloads can now normalize into
+      product-owned checkpoint metadata that drives sequential or parallel
+      continuation plus single-target converge review when no explicit
+      `@mention` handoff is present.
 - [ ] Finish companion product surfaces above the current data/runtime seams,
       especially composer avatar inspect flows, companion preset inspection or
       editing boundaries, companion memory/debug inspector panels, and clearer

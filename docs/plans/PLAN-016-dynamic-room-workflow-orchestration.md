@@ -113,6 +113,11 @@ Deferred M1 follow-ups still intentionally open:
   `ChatStore`-backed routing paths now persist intermediate workflow snapshots
   before the full route completes so long-running fan-out or continuation loops
   stay inspectable and recoverable outside the final response write.
+- Structured `workflowRecommendation` JSON payloads can now be normalized into
+  product-owned checkpoint metadata, and when explicit continuation mentions are
+  absent they can drive the next sequential or parallel handoff plus a
+  single-target converge review stage without making raw provider output the
+  routing truth.
 - `anti_ping_pong` currently detects direct `A -> B -> A -> B` loops only;
   longer cycles still rely on `maxTargetVisitsPerTurn` and
   `maxDispatchesPerTurn` guards until a broader cycle detector is justified.
@@ -120,14 +125,14 @@ Deferred M1 follow-ups still intentionally open:
 ### Phase 4: Room Workflow State and Event-Driven Replanning
 
 - [x] Introduce room workflow state separate from mention-routing output.
-- [ ] Define a normalized workflow-recommendation envelope that can be attached
+- [x] Define a normalized workflow-recommendation envelope that can be attached
       to or derived from a completed checkpoint.
 - [ ] Allow `Boss Cat` or the system layer to set or update workflow state when:
       - the room starts
       - membership changes
       - a checkpoint completes
       - an explicit replan is requested
-- [ ] Normalize checkpoint recommendations before policy evaluation so provider-
+- [x] Normalize checkpoint recommendations before policy evaluation so provider-
       specific output formats do not become room-workflow truth directly.
 - [ ] Add completion events that can trigger:
       - sequential handoff
@@ -187,7 +192,7 @@ the room is waiting on.
 
 - [x] Add tests for explicit multi-target fan-out and completion-order reply
       handling.
-- [ ] Add tests for workflow checkpoint completion triggering next-step routing.
+- [x] Add tests for workflow checkpoint completion triggering next-step routing.
 - [ ] Add tests for native fork selection when supported.
 - [ ] Add tests for context-transplant fallback when native fork is not
       available or not appropriate.
@@ -246,5 +251,4 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-20*
-
 
