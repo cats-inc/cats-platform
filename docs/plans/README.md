@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-021](./PLAN-021-cross-product-task-strategy-handoff-and-runtime-bridge.md) | Cross-Product Task Strategy Handoff and Runtime Bridge | Draft | [SPEC-035](../specs/SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md), [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md) |
 | [PLAN-023](./PLAN-023-orchestrator-execution-loop-and-recovery.md) | Orchestrator Execution Loop and Recovery Contract | In Progress (First Slice Landed) | [SPEC-011](../specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md), [SPEC-015](../specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md), [SPEC-021](../specs/SPEC-021-contextual-mcp-profiles-and-lazy-tool-activation.md), [SPEC-026](../specs/SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) |
 | [PLAN-020](./PLAN-020-cats-memory-retrieval-and-flush-substrate.md) | Cats Memory Retrieval and Flush Substrate | In Progress (First Slice Landed) | [SPEC-022](../specs/SPEC-022-cats-memory-layering-and-ownership.md), [SPEC-029](../specs/SPEC-029-companion-boxes-ingestion-and-response-profiles.md) |
 | [PLAN-019](./PLAN-019-companion-box-sidecar-and-session-hydration.md) | Companion Box Sidecar and Session Hydration | In Progress (First Slice Landed) | [SPEC-029](../specs/SPEC-029-companion-boxes-ingestion-and-response-profiles.md) |
@@ -78,6 +79,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-03-25*
+*Last updated: 2026-03-26*
 
 *See also: [specs/](../specs/) for feature specifications*
