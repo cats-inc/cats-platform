@@ -16,7 +16,9 @@ type SuiteLoadState =
 
 export default function SuiteApp() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [state, setState] = useState<SuiteLoadState>({ status: 'loading' });
+  const lastSyncedSurface = useRef<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -38,6 +40,34 @@ export default function SuiteApp() {
 
     return () => controller.abort();
   }, []);
+
+  const envelope = state.status === 'ready' ? state.envelope : null;
+  const setupComplete = Boolean(envelope?.setupCompleteAt);
+  const targetSurface = envelope?.lastProductSurface ?? 'chat';
+
+  useEffect(() => {
+    if (!setupComplete) {
+      return;
+    }
+    const currentSurface = resolveSuiteSurfaceForPath(location.pathname);
+    // Don't sync when we're at `/` and about to redirect to a non-chat product —
+    // the redirect will fire the correct sync on the next render.
+    if (location.pathname === '/' && targetSurface !== 'chat') {
+      return;
+    }
+    if (lastSyncedSurface.current === null) {
+      lastSyncedSurface.current = currentSurface;
+      return;
+    }
+    if (currentSurface !== lastSyncedSurface.current) {
+      lastSyncedSurface.current = currentSurface;
+      void fetch('/api/suite/preferences', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ lastProductSurface: currentSurface }),
+      }).catch(() => {});
+    }
+  }, [setupComplete, targetSurface, location.pathname]);
 
   if (state.status === 'loading') {
     return (
@@ -62,12 +92,10 @@ export default function SuiteApp() {
     );
   }
 
-  const { envelope } = state;
-
-  if (!envelope.setupCompleteAt) {
+  if (!state.envelope.setupCompleteAt) {
     return (
       <SuiteSetupWizard
-        envelope={envelope}
+        envelope={state.envelope}
         onComplete={(updatedEnvelope) => {
           startTransition(() =>
             setState({ status: 'ready', envelope: updatedEnvelope }),
@@ -79,25 +107,6 @@ export default function SuiteApp() {
       />
     );
   }
-
-  const targetSurface = envelope.lastProductSurface ?? 'chat';
-  const location = useLocation();
-  const lastSyncedSurface = useRef(targetSurface);
-
-  useEffect(() => {
-    if (!envelope.setupCompleteAt) {
-      return;
-    }
-    const currentSurface = resolveSuiteSurfaceForPath(location.pathname);
-    if (currentSurface !== lastSyncedSurface.current) {
-      lastSyncedSurface.current = currentSurface;
-      void fetch('/api/suite/preferences', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ lastProductSurface: currentSurface }),
-      }).catch(() => {});
-    }
-  }, [envelope.setupCompleteAt, location.pathname]);
 
   return (
     <Routes>

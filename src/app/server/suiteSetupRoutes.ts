@@ -18,101 +18,116 @@ function reportSyncFailure(scope: string, error: unknown): void {
 async function handleSuiteSetupComplete(
   context: SuiteSetupContext,
 ): Promise<void> {
+  let body: SuiteSetupCompleteInput;
   try {
-    const body = await readJsonBody<SuiteSetupCompleteInput>(context.request);
-    const now = context.dependencies.now?.() ?? new Date();
-    let core = await context.dependencies.chatStore.readCore();
-    let chatState = await context.dependencies.chatStore.read();
+    body = await readJsonBody<SuiteSetupCompleteInput>(context.request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid request body';
+    sendJson(context.response, 400, {
+      error: { code: 'bad_request', message },
+    });
+    return;
+  }
 
-    if (core.setupCompleteAt) {
-      sendJson(context.response, 409, {
-        error: {
-          code: 'already_complete',
-          message: 'Setup has already been completed',
-        },
+  const now = context.dependencies.now?.() ?? new Date();
+  let core = await context.dependencies.chatStore.readCore();
+  let chatState = await context.dependencies.chatStore.read();
+
+  if (core.setupCompleteAt) {
+    sendJson(context.response, 409, {
+      error: {
+        code: 'already_complete',
+        message: 'Setup has already been completed',
+      },
+    });
+    return;
+  }
+
+  const ownerDisplayName = body.ownerDisplayName?.trim() || 'Owner';
+
+  if (body.createBossCat && body.selectedProduct === 'chat') {
+    const previousCatIds = new Set(chatState.cats.map((cat) => cat.id));
+    chatState = createCat(
+      chatState,
+      {
+        name: body.bossCatName?.trim() || 'Boss Cat',
+        provider: body.bossCatProvider || 'claude',
+        instance: body.bossCatInstance,
+        model: body.bossCatModel,
+      },
+      now,
+    );
+
+    const bossCat = chatState.cats.find((cat) => !previousCatIds.has(cat.id));
+    if (!bossCat) {
+      sendJson(context.response, 500, {
+        error: { code: 'internal_error', message: 'Failed to create Boss Cat' },
       });
       return;
     }
 
-    const ownerDisplayName = body.ownerDisplayName?.trim() || 'Owner';
-
-    if (body.createBossCat && body.selectedProduct === 'chat') {
-      const previousCatIds = new Set(chatState.cats.map((cat) => cat.id));
-      chatState = createCat(
-        chatState,
-        {
-          name: body.bossCatName?.trim() || 'Boss Cat',
+    chatState = {
+      ...chatState,
+      bossCatId: bossCat.id,
+      globalOrchestrator: {
+        ...chatState.globalOrchestrator,
+        executionTarget: {
           provider: body.bossCatProvider || 'claude',
-          instance: body.bossCatInstance,
-          model: body.bossCatModel,
+          instance: body.bossCatInstance?.trim() || null,
+          model: body.bossCatModel ?? null,
         },
-        now,
-      );
-
-      const bossCat = chatState.cats.find((cat) => !previousCatIds.has(cat.id));
-      if (!bossCat) {
-        sendJson(context.response, 500, {
-          error: { code: 'internal_error', message: 'Failed to create Boss Cat' },
-        });
-        return;
-      }
-
-      chatState = {
-        ...chatState,
-        bossCatId: bossCat.id,
-        globalOrchestrator: {
-          ...chatState.globalOrchestrator,
-          executionTarget: {
-            provider: body.bossCatProvider || 'claude',
-            instance: body.bossCatInstance?.trim() || null,
-            model: body.bossCatModel ?? null,
-          },
-        },
-      };
-    }
-
-    core = {
-      ...core,
-      setupCompleteAt: now.toISOString(),
-      ownerProfile: {
-        ...core.ownerProfile,
-        displayName: ownerDisplayName,
-        avatarColor: core.ownerProfile.avatarColor ?? '#90A4AE',
-        updatedAt: now.toISOString(),
       },
     };
-
-    await context.dependencies.chatStore.write(chatState);
-    await context.dependencies.chatStore.writeCore(core);
-
-    try {
-      await writeSuitePreferences(context.dependencies.config.chatStatePath, {
-        lastProductSurface: body.selectedProduct,
-      });
-    } catch (error) {
-      reportSyncFailure('setup_complete_prefs', error);
-    }
-
-    try {
-      await context.dependencies.memoryService.flushOwnerProfile({
-        reason: 'owner_profile_sync',
-        now,
-      });
-    } catch (error) {
-      reportSyncFailure('setup_complete', error);
-    }
-
-    sendJson(
-      context.response,
-      200,
-      await buildAppShellPayload(context.dependencies),
-    );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    sendJson(context.response, 400, {
-      error: { code: 'bad_request', message },
-    });
   }
+
+  core = {
+    ...core,
+    setupCompleteAt: now.toISOString(),
+    ownerProfile: {
+      ...core.ownerProfile,
+      displayName: ownerDisplayName,
+      avatarColor: core.ownerProfile.avatarColor ?? '#90A4AE',
+      updatedAt: now.toISOString(),
+    },
+  };
+
+  // --- Point of no return: state is committed after these writes ---
+  await context.dependencies.chatStore.write(chatState);
+  await context.dependencies.chatStore.writeCore(core);
+
+  // Best-effort side effects — failures must not prevent the 200.
+  try {
+    await writeSuitePreferences(context.dependencies.config.chatStatePath, {
+      lastProductSurface: body.selectedProduct,
+    });
+  } catch (error) {
+    reportSyncFailure('setup_complete_prefs', error);
+  }
+
+  try {
+    await context.dependencies.memoryService.flushOwnerProfile({
+      reason: 'owner_profile_sync',
+      now,
+    });
+  } catch (error) {
+    reportSyncFailure('setup_complete_memory', error);
+  }
+
+  let payload: object;
+  try {
+    payload = await buildAppShellPayload(context.dependencies);
+  } catch (error) {
+    reportSyncFailure('setup_complete_payload', error);
+    // Return a minimal success envelope so the client knows setup committed.
+    payload = {
+      setupCompleteAt: core.setupCompleteAt,
+      ownerDisplayName: core.ownerProfile.displayName,
+      ownerAvatarColor: core.ownerProfile.avatarColor,
+      lastProductSurface: body.selectedProduct,
+    };
+  }
+
+  sendJson(context.response, 200, payload);
 }
 
 async function handleSuitePreferencesUpdate(
