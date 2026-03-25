@@ -1,16 +1,15 @@
 import {
   appendCoreActivity,
   buildApprovalQueue,
-  upsertCoreTask,
   writeApprovalDecision,
 } from '../model/index.js';
 import { deriveCoreGovernanceSummary } from '../governance.js';
 import { applyTaskAssignmentLifecycle } from '../taskLifecycle.js';
-import type { OrchestratorDispatchResponse } from '../../platform/orchestration/contracts.js';
 import {
   readPendingOrchestratorDispatch,
   writePendingOrchestratorDispatchMetadata,
 } from '../../platform/orchestration/pendingDispatch.js';
+import { writeOrchestratorDispatchReplayMetadata } from '../../platform/orchestration/dispatchReplay.js';
 import { buildTaskRuntimeExecutionRequest } from '../../shared/taskExecutionBridge.js';
 import {
   handleCoreError,
@@ -28,12 +27,16 @@ import type {
   CatsCoreState,
   CoreApprovalDecisionAction,
   CoreApprovalStatus,
-  CoreRecordMetadata,
 } from '../types.js';
 import type {
   CoreApiRouteContext,
   CoreOrchestratorAutoResumeSummary,
 } from './types.js';
+import {
+  buildOrchestratorReplayFailureSummary,
+  persistTaskMetadata,
+  summarizeOrchestratorReplayDispatch,
+} from './orchestratorReplay.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
 function buildApprovalActivityMessage(
@@ -70,99 +73,6 @@ function findLatestRunForTask(
     ?? null;
 }
 
-function overwriteTaskMetadata(
-  core: CatsCoreState,
-  taskId: string,
-  metadata: CoreRecordMetadata,
-  now: Date,
-): {
-  core: CatsCoreState;
-  task: CatsCoreState['tasks'][number];
-} | null {
-  const task = core.tasks.find((candidate) => candidate.id === taskId);
-  if (!task) {
-    return null;
-  }
-
-  const next = upsertCoreTask(
-    core,
-    {
-      id: task.id,
-      title: task.title,
-      status: task.status,
-      conversationId: task.conversationId,
-      parentTaskId: task.parentTaskId ?? null,
-      ownerActorId: task.ownerActorId,
-      orchestratorActorId: task.orchestratorActorId,
-      assignedActorIds: task.assignedActorIds,
-      summary: task.summary,
-      approval: task.approval,
-      createdAt: task.createdAt,
-      metadata,
-    },
-    now,
-  );
-
-  return {
-    core: next.core,
-    task: next.task,
-  };
-}
-
-function summarizeAutoResumeDispatch(
-  trigger: 'approve' | 'reroute',
-  dispatch: OrchestratorDispatchResponse,
-): CoreOrchestratorAutoResumeSummary {
-  return {
-    trigger,
-    status: dispatch.dispatch.status === 'dispatched' ? 'dispatched' : 'blocked',
-    blockedReason: dispatch.dispatch.blockedReason,
-    sourceMessageId: dispatch.dispatch.sourceMessageId,
-    resultCount: dispatch.dispatch.results.length,
-    executionState: dispatch.executionLoop.execution.state,
-  };
-}
-
-function buildAutoResumeFailureSummary(
-  trigger: 'approve' | 'reroute',
-  error: unknown,
-): CoreOrchestratorAutoResumeSummary {
-  return {
-    trigger,
-    status: 'failed',
-    blockedReason: null,
-    sourceMessageId: null,
-    resultCount: 0,
-    executionState: null,
-    error: error instanceof Error ? error.message : String(error),
-  };
-}
-
-async function persistTaskMetadata(
-  context: CoreApiRouteContext,
-  core: CatsCoreState,
-  taskId: string,
-  metadata: CoreRecordMetadata,
-  now: Date,
-): Promise<{
-  core: CatsCoreState;
-  task: CatsCoreState['tasks'][number] | null;
-}> {
-  const updated = overwriteTaskMetadata(core, taskId, metadata, now);
-  if (!updated) {
-    return {
-      core,
-      task: core.tasks.find((candidate) => candidate.id === taskId) ?? null,
-    };
-  }
-
-  const persisted = await context.dependencies.coreStore.writeCore(updated.core);
-  return {
-    core: persisted,
-    task: persisted.tasks.find((candidate) => candidate.id === taskId) ?? updated.task,
-  };
-}
-
 async function maybeAutoResumePendingDispatch(
   context: CoreApiRouteContext,
   taskId: string,
@@ -196,9 +106,24 @@ async function maybeAutoResumePendingDispatch(
       context,
       initialCore,
       taskId,
-      writePendingOrchestratorDispatchMetadata(
-        task.metadata,
-        pendingDispatch,
+      writeOrchestratorDispatchReplayMetadata(
+        writePendingOrchestratorDispatchMetadata(
+          task.metadata,
+          pendingDispatch,
+          {
+            replayState: 'in_progress',
+            replayTrigger: trigger,
+            replayAttemptAt,
+            replayError: null,
+          },
+        ),
+        {
+          channelId: pendingDispatch.channelId,
+          body: pendingDispatch.body,
+          senderName: pendingDispatch.senderName,
+          transport: pendingDispatch.transport,
+          recordedAt: task.updatedAt,
+        },
         {
           replayState: 'in_progress',
           replayTrigger: trigger,
@@ -214,7 +139,7 @@ async function maybeAutoResumePendingDispatch(
     );
     const latestCore = await context.dependencies.coreStore.readCore();
     const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
-    const autoResume = summarizeAutoResumeDispatch(trigger, dispatch);
+    const autoResume = summarizeOrchestratorReplayDispatch(trigger, dispatch);
 
     if (dispatch.dispatch.status !== 'dispatched') {
       try {
@@ -222,14 +147,30 @@ async function maybeAutoResumePendingDispatch(
           context,
           latestCore,
           taskId,
-          writePendingOrchestratorDispatchMetadata(
-            latestTask?.metadata,
-            pendingDispatch,
+          writeOrchestratorDispatchReplayMetadata(
+            writePendingOrchestratorDispatchMetadata(
+              latestTask?.metadata,
+              pendingDispatch,
+              {
+                replayState: 'failed',
+                replayTrigger: trigger,
+                replayAttemptAt,
+                replayError: dispatch.dispatch.blockedReason,
+              },
+            ),
+            {
+              channelId: pendingDispatch.channelId,
+              body: pendingDispatch.body,
+              senderName: pendingDispatch.senderName,
+              transport: pendingDispatch.transport,
+              recordedAt: latestTask?.updatedAt ?? task.updatedAt,
+            },
             {
               replayState: 'failed',
               replayTrigger: trigger,
               replayAttemptAt,
               replayError: dispatch.dispatch.blockedReason,
+              sourceMessageId: dispatch.dispatch.sourceMessageId,
             },
           ),
           now,
@@ -252,9 +193,25 @@ async function maybeAutoResumePendingDispatch(
         context,
         latestCore,
         taskId,
-        writePendingOrchestratorDispatchMetadata(
-          latestTask?.metadata,
-          null,
+        writeOrchestratorDispatchReplayMetadata(
+          writePendingOrchestratorDispatchMetadata(
+            latestTask?.metadata,
+            null,
+          ),
+          {
+            channelId: pendingDispatch.channelId,
+            body: pendingDispatch.body,
+            senderName: pendingDispatch.senderName,
+            transport: pendingDispatch.transport,
+            recordedAt: latestTask?.updatedAt ?? task.updatedAt,
+          },
+          {
+            replayState: 'ready',
+            replayTrigger: trigger,
+            replayAttemptAt,
+            replayError: null,
+            sourceMessageId: dispatch.dispatch.sourceMessageId,
+          },
         ),
         now,
       );
@@ -270,7 +227,7 @@ async function maybeAutoResumePendingDispatch(
       };
     }
   } catch (error) {
-    const autoResume = buildAutoResumeFailureSummary(trigger, error);
+    const autoResume = buildOrchestratorReplayFailureSummary(trigger, error);
     const latestCore = await context.dependencies.coreStore.readCore();
     const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
 
@@ -279,9 +236,24 @@ async function maybeAutoResumePendingDispatch(
         context,
         latestCore,
         taskId,
-        writePendingOrchestratorDispatchMetadata(
-          latestTask?.metadata,
-          pendingDispatch,
+        writeOrchestratorDispatchReplayMetadata(
+          writePendingOrchestratorDispatchMetadata(
+            latestTask?.metadata,
+            pendingDispatch,
+            {
+              replayState: 'failed',
+              replayTrigger: trigger,
+              replayAttemptAt,
+              replayError: autoResume.error ?? null,
+            },
+          ),
+          {
+            channelId: pendingDispatch.channelId,
+            body: pendingDispatch.body,
+            senderName: pendingDispatch.senderName,
+            transport: pendingDispatch.transport,
+            recordedAt: latestTask?.updatedAt ?? task.updatedAt,
+          },
           {
             replayState: 'failed',
             replayTrigger: trigger,

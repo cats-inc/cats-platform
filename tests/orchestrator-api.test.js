@@ -799,6 +799,94 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
   });
 });
 
+test('POST /api/core/operator-actions auto-resumes stored dispatch replay on retry', async () => {
+  const runtimeClient = createRuntimeStub({
+    sendMessage: ({ content }) => {
+      if (content.includes('You are Inline-Agent')) {
+        return usage('@Followup-Agent please take first pass.');
+      }
+      if (content.includes('You are Followup-Agent')) {
+        return usage('@Inline-Agent please review.');
+      }
+      return usage('Boss Cat acknowledged the turn.');
+    },
+  });
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+          skillProfile: 'companion',
+          mcpProfile: 'chat-memory',
+        },
+        {
+          name: 'Followup-Agent',
+          provider: 'claude',
+          roles: ['auditor'],
+          skillProfile: 'companion',
+          mcpProfile: 'chat-memory',
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+
+    const dispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Ask @Inline-Agent to start the routing loop.',
+      }),
+    });
+    assert.equal(dispatchResponse.status, 200);
+    const dispatchPayload = await dispatchResponse.json();
+    const blockedRunId = dispatchPayload.operator.latestRunId;
+    assert.ok(blockedRunId);
+    const sentBeforeRetry = runtimeClient.sentMessages.length;
+    assert.ok(sentBeforeRetry >= 2);
+
+    const operatorActionResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'retry',
+        actorId: 'actor-owner',
+        taskId: `task-channel-${channelId}`,
+        runId: blockedRunId,
+      }),
+    });
+    assert.equal(operatorActionResponse.status, 200);
+    const operatorActionPayload = await operatorActionResponse.json();
+    assert.equal(operatorActionPayload.action, 'retry');
+    assert.deepEqual(operatorActionPayload.autoResume, {
+      trigger: 'retry',
+      status: 'dispatched',
+      blockedReason: null,
+      sourceMessageId: operatorActionPayload.autoResume.sourceMessageId,
+      resultCount: operatorActionPayload.autoResume.resultCount,
+      executionState: 'blocked',
+    });
+    assert.ok(operatorActionPayload.autoResume.sourceMessageId);
+    assert.ok(operatorActionPayload.autoResume.resultCount >= 2);
+    assert.equal(operatorActionPayload.governanceSummary.latestOperatorAction.kind, 'retry');
+    assert.ok(runtimeClient.sentMessages.length > sentBeforeRetry);
+
+    const coreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(coreResponse.status, 200);
+    const corePayload = await coreResponse.json();
+    const task = corePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    assert.ok(task);
+    assert.equal(task.metadata.orchestratorDispatchReplay.replayTrigger, 'retry');
+    assert.equal(task.metadata.orchestratorDispatchReplay.replayState, 'ready');
+    assert.equal(
+      task.metadata.orchestratorDispatchReplay.sourceMessageId,
+      operatorActionPayload.autoResume.sourceMessageId,
+    );
+  });
+});
+
 test('GET /api/orchestrator/channels/:id/execution-loop accepts a projected room-workflow runId', async () => {
   const runtimeClient = createRuntimeStub();
   await withServer(runtimeClient, async (baseUrl) => {

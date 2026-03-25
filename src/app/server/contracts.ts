@@ -7,6 +7,7 @@ import type {
   OrchestratorPlannerSurface,
 } from '../../platform/orchestration/contracts.js';
 import type { PendingOrchestratorDispatchRequest } from '../../platform/orchestration/pendingDispatch.js';
+import type { OrchestratorDispatchReplayTrigger } from '../../platform/orchestration/dispatchReplay.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
@@ -26,7 +27,7 @@ import type { AppStartupState } from './startup.js';
 export type ResumePendingOrchestratorDispatch = (
   request: PendingOrchestratorDispatchRequest,
   options: {
-    trigger: 'approve' | 'reroute';
+    trigger: OrchestratorDispatchReplayTrigger;
   },
 ) => Promise<OrchestratorDispatchResponse>;
 

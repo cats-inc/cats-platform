@@ -129,10 +129,10 @@ contracts.
       Recents threads, including when background orchestration may silently
       assist, when it must surface itself, and how that policy differs when
       Boss is absent, backgrounded, or currently the lead cat
-- [ ] Extend automatic resume beyond the landed approve/reroute replay of
-      stored approval-blocked dispatches so retry decisions and deeper workflow
-      continuation paths also become a closed loop instead of write-only
-      markers
+- [ ] Extend automatic resume beyond the landed approve/reroute and retry
+      replay of stored product-owned dispatch requests so deeper workflow
+      continuation and group replan paths also become a closed loop instead of
+      write-only markers
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent

@@ -130,7 +130,7 @@ export function resolveServerDependencies(
     ?? (async (
       request: PendingOrchestratorDispatchRequest,
       _options: {
-        trigger: 'approve' | 'reroute';
+        trigger: 'dispatch' | 'approve' | 'reroute' | 'retry';
       },
     ) => dispatchOrchestratorTurn({
       ...request,

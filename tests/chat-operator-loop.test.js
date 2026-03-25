@@ -253,6 +253,79 @@ test('buildChatOperatorView filters invalid effective policy metadata enum value
   assert.equal(view.effectivePolicy?.budgetAlertSource, null);
 });
 
+test('buildChatOperatorView keeps retry available after a failed replay attempt', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-channel-room-retry-failed',
+      title: 'Retry failed task',
+      status: 'blocked',
+      conversationId: 'conversation-channel-room-retry-failed',
+      createdAt: '2026-03-26T01:00:00.000Z',
+      metadata: {
+        operatorRetryRequestedAt: '2026-03-26T01:03:00.000Z',
+        orchestratorDispatchReplay: {
+          channelId: 'room-retry-failed',
+          body: 'Retry the blocked routing loop.',
+          transport: 'web',
+          recordedAt: '2026-03-26T01:01:00.000Z',
+          replayTrigger: 'retry',
+          replayState: 'failed',
+          replayAttemptAt: '2026-03-26T01:03:00.000Z',
+          replayError: 'rate limited',
+          sourceMessageId: 'message-room-retry-failed',
+        },
+      },
+    },
+    new Date('2026-03-26T01:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-room-retry-failed',
+      title: 'Retry failed run',
+      status: 'blocked',
+      conversationId: 'conversation-channel-room-retry-failed',
+      taskId: 'task-channel-room-retry-failed',
+      summary: 'Blocked after a failed recovery replay.',
+      createdAt: '2026-03-26T01:01:00.000Z',
+      metadata: {},
+    },
+    new Date('2026-03-26T01:02:00.000Z'),
+  ).core;
+  core = upsertCoreOutcome(
+    core,
+    {
+      id: 'outcome-room-retry-failed',
+      title: 'Blocked outcome',
+      status: 'blocked',
+      conversationId: 'conversation-channel-room-retry-failed',
+      runId: 'run-room-retry-failed',
+      taskId: 'task-channel-room-retry-failed',
+      summary: 'Still blocked after retry.',
+      recordedAt: '2026-03-26T01:03:00.000Z',
+      metadata: {},
+    },
+    new Date('2026-03-26T01:03:00.000Z'),
+  ).core;
+
+  const view = buildChatOperatorView(
+    {
+      core,
+      approvals: buildApprovalQueue(core),
+    },
+    'room-retry-failed',
+  );
+
+  assert.ok(view);
+  assert.equal(view.incidentActions[0].kind, 'retry');
+  assert.equal(view.incidentActions[0].label, 'Retry Again');
+  assert.equal(view.incidentActions[0].disabled, false);
+  assert.match(view.incidentActions[0].statusLabel ?? '', /retry failed/i);
+});
+
 test('buildChatOperatorView filters invalid embedded governance summary enum values', () => {
   let core = createDefaultCoreState();
 

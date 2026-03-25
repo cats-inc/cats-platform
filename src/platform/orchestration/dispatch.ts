@@ -17,6 +17,11 @@ import {
   writePendingOrchestratorDispatchMetadata,
 } from './pendingDispatch.js';
 import {
+  buildOrchestratorDispatchReplayRequest,
+  writeOrchestratorDispatchReplayMetadata,
+  type OrchestratorDispatchReplayTrigger,
+} from './dispatchReplay.js';
+import {
   buildOrchestratorExecutionLoopSnapshot,
   buildOrchestratorExecutionLoopResponse,
   buildOrchestratorTurnPlan,
@@ -36,15 +41,57 @@ interface DispatchOrchestratorTurnInput<
   memoryService?: CatsMemoryService;
 }
 
-async function persistPendingApprovalDispatch<TCompanionStore, TState extends OrchestratorStateView>(
+async function persistDispatchReplayMetadata<TCompanionStore, TState extends OrchestratorStateView>(
   input: DispatchOrchestratorTurnInput<TCompanionStore, TState>,
   taskId: string,
   now: Date,
+  options: {
+    replayTrigger: OrchestratorDispatchReplayTrigger;
+    replayState?: 'ready' | 'in_progress' | 'failed';
+    replayAttemptAt?: string | null;
+    replayError?: string | null;
+    sourceMessageId?: string | null;
+    keepPendingApprovalRequest?: boolean;
+  } = {
+    replayTrigger: 'dispatch',
+  },
 ): Promise<void> {
   const core = await input.chatStore.readCore();
   const task = core.tasks.find((candidate) => candidate.id === taskId);
   if (!task) {
     return;
+  }
+
+  const replayRequest = buildOrchestratorDispatchReplayRequest({
+    channelId: input.channelId,
+    body: input.body,
+    senderName: input.senderName,
+    transport: input.transport,
+    recordedAt: now.toISOString(),
+  });
+  let metadata = writeOrchestratorDispatchReplayMetadata(
+    task.metadata,
+    replayRequest,
+    {
+      replayState: options.replayState,
+      replayTrigger: options.replayTrigger,
+      replayAttemptAt: options.replayAttemptAt ?? null,
+      replayError: options.replayError ?? null,
+      sourceMessageId: options.sourceMessageId ?? null,
+    },
+  );
+
+  if (options.keepPendingApprovalRequest) {
+    metadata = writePendingOrchestratorDispatchMetadata(
+      metadata,
+      buildPendingOrchestratorDispatchRequest({
+        channelId: input.channelId,
+        body: input.body,
+        senderName: input.senderName,
+        transport: input.transport,
+        blockedAt: now.toISOString(),
+      }),
+    );
   }
 
   const next = upsertCoreTask(
@@ -60,20 +107,23 @@ async function persistPendingApprovalDispatch<TCompanionStore, TState extends Or
       summary: task.summary,
       approval: task.approval,
       createdAt: task.createdAt,
-      metadata: writePendingOrchestratorDispatchMetadata(
-        task.metadata,
-        buildPendingOrchestratorDispatchRequest({
-          channelId: input.channelId,
-          body: input.body,
-          senderName: input.senderName,
-          transport: input.transport,
-          blockedAt: now.toISOString(),
-        }),
-      ),
+      metadata,
     },
     now,
   );
   await input.chatStore.writeCore(next.core);
+}
+
+async function persistPendingApprovalDispatch<TCompanionStore, TState extends OrchestratorStateView>(
+  input: DispatchOrchestratorTurnInput<TCompanionStore, TState>,
+  taskId: string,
+  now: Date,
+): Promise<void> {
+  await persistDispatchReplayMetadata(input, taskId, now, {
+    replayTrigger: 'dispatch',
+    replayState: 'ready',
+    keepPendingApprovalRequest: true,
+  });
 }
 
 export async function dispatchOrchestratorTurn<TCompanionStore, TState extends OrchestratorStateView>(
@@ -138,12 +188,17 @@ export async function dispatchOrchestratorTurn<TCompanionStore, TState extends O
     chatStore: input.chatStore,
   });
   const persisted = await input.chatStore.write(routed.state);
-  const coreAfter = await input.chatStore.readCore();
   const persistedChannel = input.channelRouter.buildChannelView(
     persisted,
     input.channelId,
   );
   const sourceMessage = persistedChannel.messages[messageCountBefore] ?? null;
+  await persistDispatchReplayMetadata(input, plan.execution.approval.taskId, now, {
+    replayTrigger: 'dispatch',
+    replayState: 'ready',
+    sourceMessageId: sourceMessage?.id ?? null,
+  });
+  const coreAfter = await input.chatStore.readCore();
   const executionLoop = buildOrchestratorExecutionLoopSnapshot(
     persisted,
     coreAfter,

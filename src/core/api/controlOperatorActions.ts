@@ -8,6 +8,10 @@ import {
 import { deriveCoreGovernanceSummary } from '../governance.js';
 import { CoreValidationError } from '../errors.js';
 import {
+  readOrchestratorDispatchReplay,
+  writeOrchestratorDispatchReplayMetadata,
+} from '../../platform/orchestration/dispatchReplay.js';
+import {
   handleCoreError,
   readEnumValue,
   readNullableString,
@@ -15,10 +19,19 @@ import {
 } from './shared.js';
 import { CORE_OPERATOR_ACTIONS } from './constants.js';
 import type {
+  CatsCoreState,
   CoreOperatorActionKind,
   CoreRecordMetadata,
 } from '../types.js';
-import type { CoreApiRouteContext } from './types.js';
+import type {
+  CoreApiRouteContext,
+  CoreOrchestratorAutoResumeSummary,
+} from './types.js';
+import {
+  buildOrchestratorReplayFailureSummary,
+  persistTaskMetadata,
+  summarizeOrchestratorReplayDispatch,
+} from './orchestratorReplay.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
 function mergeOperatorActionMetadata(
@@ -52,6 +65,170 @@ function mergeOperatorActionMetadata(
   return nextMetadata;
 }
 
+function findLatestRunForTask(
+  core: CatsCoreState,
+  taskId: string | null,
+) {
+  if (!taskId) {
+    return null;
+  }
+
+  return core.runs
+    .filter((candidate) => candidate.taskId === taskId)
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0]
+    ?? null;
+}
+
+async function maybeAutoResumeRetryDispatch(
+  context: CoreApiRouteContext,
+  taskId: string,
+  now: Date,
+): Promise<{
+  core: CatsCoreState;
+  task: CatsCoreState['tasks'][number] | null;
+  autoResume?: CoreOrchestratorAutoResumeSummary;
+}> {
+  const initialCore = await context.dependencies.coreStore.readCore();
+  const task = initialCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
+  const replay = readOrchestratorDispatchReplay(task?.metadata);
+  if (!task || !replay || !context.dependencies.resumePendingOrchestratorDispatch) {
+    return {
+      core: initialCore,
+      task,
+    };
+  }
+
+  const replayAttemptAt = now.toISOString();
+  let persistedBeforeReplay: {
+    core: CatsCoreState;
+    task: CatsCoreState['tasks'][number] | null;
+  } = {
+    core: initialCore,
+    task,
+  };
+
+  try {
+    persistedBeforeReplay = await persistTaskMetadata(
+      context,
+      initialCore,
+      taskId,
+      writeOrchestratorDispatchReplayMetadata(
+        task.metadata,
+        {
+          channelId: replay.channelId,
+          body: replay.body,
+          senderName: replay.senderName,
+          transport: replay.transport,
+          recordedAt: replay.recordedAt,
+        },
+        {
+          replayState: 'in_progress',
+          replayTrigger: 'retry',
+          replayAttemptAt,
+          replayError: null,
+          sourceMessageId: replay.sourceMessageId,
+        },
+      ),
+      now,
+    );
+
+    const dispatch = await context.dependencies.resumePendingOrchestratorDispatch(
+      {
+        channelId: replay.channelId,
+        body: replay.body,
+        senderName: replay.senderName,
+        transport: replay.transport,
+        blockedAt: replay.recordedAt,
+        blockedReason: 'approval_pending',
+      },
+      { trigger: 'retry' },
+    );
+    const latestCore = await context.dependencies.coreStore.readCore();
+    const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
+    const autoResume = summarizeOrchestratorReplayDispatch('retry', dispatch);
+
+    const replayMetadata = writeOrchestratorDispatchReplayMetadata(
+      latestTask?.metadata,
+      {
+        channelId: replay.channelId,
+        body: replay.body,
+        senderName: replay.senderName,
+        transport: replay.transport,
+        recordedAt: latestTask?.updatedAt ?? replay.recordedAt,
+      },
+      {
+        replayState: dispatch.dispatch.status === 'dispatched' ? 'ready' : 'failed',
+        replayTrigger: 'retry',
+        replayAttemptAt,
+        replayError: dispatch.dispatch.status === 'dispatched'
+          ? null
+          : dispatch.dispatch.blockedReason,
+        sourceMessageId: dispatch.dispatch.sourceMessageId,
+      },
+    );
+
+    try {
+      const persisted = await persistTaskMetadata(
+        context,
+        latestCore,
+        taskId,
+        replayMetadata,
+        now,
+      );
+      return {
+        ...persisted,
+        autoResume,
+      };
+    } catch {
+      return {
+        core: latestCore,
+        task: latestTask ?? persistedBeforeReplay.task,
+        autoResume,
+      };
+    }
+  } catch (error) {
+    const autoResume = buildOrchestratorReplayFailureSummary('retry', error);
+    const latestCore = await context.dependencies.coreStore.readCore();
+    const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
+
+    try {
+      const failed = await persistTaskMetadata(
+        context,
+        latestCore,
+        taskId,
+        writeOrchestratorDispatchReplayMetadata(
+          latestTask?.metadata,
+          {
+            channelId: replay.channelId,
+            body: replay.body,
+            senderName: replay.senderName,
+            transport: replay.transport,
+            recordedAt: latestTask?.updatedAt ?? replay.recordedAt,
+          },
+          {
+            replayState: 'failed',
+            replayTrigger: 'retry',
+            replayAttemptAt,
+            replayError: autoResume.error ?? null,
+            sourceMessageId: replay.sourceMessageId,
+          },
+        ),
+        now,
+      );
+      return {
+        ...failed,
+        autoResume,
+      };
+    } catch {
+      return {
+        core: latestCore,
+        task: latestTask ?? persistedBeforeReplay.task,
+        autoResume,
+      };
+    }
+  }
+}
+
 async function handleCoreOperatorActionWrite(
   context: CoreApiRouteContext,
 ): Promise<void> {
@@ -68,7 +245,7 @@ async function handleCoreOperatorActionWrite(
     const checkpointId = readNullableString(body.checkpointId, 'checkpointId') ?? null;
     const outcomeId = readNullableString(body.outcomeId, 'outcomeId') ?? null;
     const taskId = readNullableString(body.taskId, 'taskId') ?? null;
-    const now = new Date();
+    const now = context.dependencies.now?.() ?? new Date();
     const nowIso = now.toISOString();
     let core = await context.dependencies.coreStore.readCore();
 
@@ -154,10 +331,10 @@ async function handleCoreOperatorActionWrite(
       messageSubject = outcome.title;
     }
 
-    if (taskId) {
-      const task = core.tasks.find((candidate) => candidate.id === taskId);
+    if (resolvedTaskId) {
+      const task = core.tasks.find((candidate) => candidate.id === resolvedTaskId);
       if (!task) {
-        throw new CoreValidationError(`taskId not found: ${taskId}`, 'task_not_found');
+        throw new CoreValidationError(`taskId not found: ${resolvedTaskId}`, 'task_not_found');
       }
       const updatedTask = upsertCoreTask(
         core,
@@ -200,13 +377,26 @@ async function handleCoreOperatorActionWrite(
       },
       now,
     );
-    const persisted = await context.dependencies.coreStore.writeCore(activity.core);
+    let persisted = await context.dependencies.coreStore.writeCore(activity.core);
+    let persistedTask = resolvedTaskId
+      ? persisted.tasks.find((candidate) => candidate.id === resolvedTaskId) ?? null
+      : null;
+    let autoResume: CoreOrchestratorAutoResumeSummary | undefined;
+
+    if (action === 'retry' && resolvedTaskId) {
+      const resumed = await maybeAutoResumeRetryDispatch(
+        context,
+        resolvedTaskId,
+        now,
+      );
+      persisted = resumed.core;
+      persistedTask = resumed.task ?? persistedTask;
+      autoResume = resumed.autoResume;
+    }
+
     const persistedActivity = persisted.activities.find(
       (candidate) => candidate.id === activity.activity.id,
     ) ?? activity.activity;
-    const persistedTask = resolvedTaskId
-      ? persisted.tasks.find((candidate) => candidate.id === resolvedTaskId) ?? null
-      : null;
     const persistedRun = resolvedRunId
       ? persisted.runs.find((candidate) => candidate.id === resolvedRunId) ?? null
       : null;
@@ -216,6 +406,7 @@ async function handleCoreOperatorActionWrite(
     const persistedOutcome = outcomeId
       ? persisted.outcomes.find((candidate) => candidate.id === outcomeId) ?? null
       : null;
+    const latestRun = findLatestRunForTask(persisted, persistedTask?.id ?? resolvedTaskId);
 
     sendJson(context.response, 200, {
       action,
@@ -226,8 +417,9 @@ async function handleCoreOperatorActionWrite(
       activity: persistedActivity,
       governanceSummary: deriveCoreGovernanceSummary(
         persistedTask,
-        persistedRun,
+        latestRun ?? persistedRun,
       ),
+      ...(autoResume ? { autoResume } : {}),
     });
   } catch (error) {
     handleCoreError(context, error);

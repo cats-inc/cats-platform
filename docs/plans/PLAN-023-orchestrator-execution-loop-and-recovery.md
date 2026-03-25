@@ -50,7 +50,8 @@ MCP tool plane.
 
 ## Follow-up Watchpoints
 
-- automatic resume after approval or retry decisions
+- deeper workflow continuation beyond the landed approval and retry replay
+  loops
 - converge-stage richer planning once group/branch policies land
 - future export of the orchestrator execution contract to other product
   surfaces once Team 3 / Team 6 consume it directly

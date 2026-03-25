@@ -2,6 +2,7 @@ import type { CatsMemoryService } from '../../platform/memory/index.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type { OrchestratorDispatchResponse } from '../../platform/orchestration/contracts.js';
 import type { PendingOrchestratorDispatchRequest } from '../../platform/orchestration/pendingDispatch.js';
+import type { OrchestratorDispatchReplayTrigger } from '../../platform/orchestration/dispatchReplay.js';
 import type { RouteContext } from '../../shared/http.js';
 import type { CoreStore } from '../store.js';
 import type { TaskExecutionLocator } from '../taskExecutionLocator.js';
@@ -15,13 +16,13 @@ export interface CoreApiDependencies {
   resumePendingOrchestratorDispatch?: (
     request: PendingOrchestratorDispatchRequest,
     options: {
-      trigger: 'approve' | 'reroute';
+      trigger: OrchestratorDispatchReplayTrigger;
     },
   ) => Promise<OrchestratorDispatchResponse>;
 }
 
 export interface CoreOrchestratorAutoResumeSummary {
-  trigger: 'approve' | 'reroute';
+  trigger: OrchestratorDispatchReplayTrigger;
   status: 'dispatched' | 'blocked' | 'failed';
   blockedReason: string | null;
   sourceMessageId: string | null;

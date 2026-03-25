@@ -99,24 +99,53 @@ export function buildIncidentActions(
     return [];
   }
 
-  const metadata = readMetadataRecord(run.metadata);
+  const taskMetadata = readMetadataRecord(task?.metadata);
+  const runMetadata = readMetadataRecord(run.metadata);
+  const metadata = runMetadata ?? {};
+  const replay = readMetadataRecord(taskMetadata?.orchestratorDispatchReplay);
   const incidentUpdatedAt = latestOutcome?.updatedAt ?? latestCheckpoint?.updatedAt ?? run.updatedAt;
   const acknowledgedAt = readMetadataString(metadata, 'operatorAcknowledgedAt');
-  const retryRequestedAt = readMetadataString(metadata, 'operatorRetryRequestedAt');
+  const retryRequestedAt = readMetadataString(taskMetadata, 'operatorRetryRequestedAt')
+    ?? readMetadataString(metadata, 'operatorRetryRequestedAt');
   const acknowledgedFresh = Boolean(
     acknowledgedAt && acknowledgedAt.localeCompare(incidentUpdatedAt) >= 0,
   );
   const retryFresh = Boolean(
     retryRequestedAt && retryRequestedAt.localeCompare(incidentUpdatedAt) >= 0,
   );
+  const retryReplayTrigger = readMetadataString(replay, 'replayTrigger');
+  const retryReplayState = readMetadataString(replay, 'replayState');
+  const retryReplayError = readMetadataString(replay, 'replayError');
+  const retryStatusLabel = retryFresh && retryReplayTrigger === 'retry'
+    ? retryReplayState === 'in_progress'
+      ? 'Retry in progress'
+      : retryReplayState === 'failed'
+        ? retryReplayError
+          ? `Retry failed: ${retryReplayError}`
+          : 'Retry failed'
+        : 'Retry dispatched'
+    : retryFresh
+      ? 'Retry requested'
+      : null;
+  const retryDisabled = retryFresh && retryReplayState !== 'failed';
+  const retryLabel = retryFresh && retryReplayState === 'failed'
+    ? 'Retry Again'
+    : retryFresh && retryReplayState === 'in_progress'
+      ? 'Retrying'
+      : retryFresh
+        ? 'Retry Requested'
+        : 'Request Retry';
+  const retryDescription = retryReplayState === 'failed'
+    ? 'Retry failed. Operators can request another replay of the stored dispatch.'
+    : 'Record that the operator wants this blocked or failed run retried.';
 
   return [
     {
       kind: 'retry',
-      label: retryFresh ? 'Retry Requested' : 'Request Retry',
-      description: 'Record that the operator wants this blocked or failed run retried.',
-      disabled: retryFresh,
-      statusLabel: retryFresh ? 'Retry requested' : null,
+      label: retryLabel,
+      description: retryDescription,
+      disabled: retryDisabled,
+      statusLabel: retryStatusLabel,
       taskId: task?.id ?? run.taskId,
       runId: run.id,
       checkpointId: latestCheckpoint?.id ?? null,
