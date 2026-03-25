@@ -463,6 +463,24 @@ export class CatsRuntimeClient implements RuntimeClient {
     content: string,
     input?: RuntimeSendMessageInput,
   ): Promise<RuntimeMessageResult> {
+    const payload: Record<string, unknown> = {
+      message: content,
+    };
+
+    if (input?.instructions?.trim()) {
+      payload.instructions = input.instructions.trim();
+    }
+    if (input?.context) {
+      payload.context = input.context;
+    }
+    if (input?.outputDir?.trim()) {
+      payload.outputDir = input.outputDir.trim();
+    }
+    if (input?.skills) {
+      payload.skills = input.skills;
+    }
+    appendRuntimeExecutionRequestFields(payload, input);
+
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/messages`, {
       method: 'POST',
       headers: {
@@ -470,25 +488,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         'content-type': 'application/json',
         Accept: 'application/x-ndjson',
       },
-      body: JSON.stringify({
-        message: content,
-        ...(input?.instructions?.trim() ? { instructions: input.instructions.trim() } : {}),
-        ...(input?.context ? { context: input.context } : {}),
-        ...(input?.outputDir?.trim() ? { outputDir: input.outputDir.trim() } : {}),
-        ...(input?.skills ? { skills: input.skills } : {}),
-        ...(readNonEmptyString(input?.requestedStrategy)
-          ? { requestedStrategy: readNonEmptyString(input?.requestedStrategy) }
-          : {}),
-        ...(readNonEmptyString(input?.acceptanceCriteria)
-          ? { acceptanceCriteria: readNonEmptyString(input?.acceptanceCriteria) }
-          : {}),
-        ...(input?.strategyContext && Object.keys(input.strategyContext).length > 0
-          ? { strategyContext: input.strategyContext }
-          : {}),
-        ...(input?.correlation && Object.keys(input.correlation).length > 0
-          ? { correlation: input.correlation }
-          : {}),
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {

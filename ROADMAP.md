@@ -99,6 +99,9 @@ contracts.
       recovery contracts
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
+- [ ] Follow up the Chat-first task-strategy handoff slice by deduplicating
+      shared planning/runtime normalization helpers and keeping additive
+      runtime execution payload serialization behind one reusable bridge path
 - [x] Land product-owned companion boxes, session hydration, and Cats-owned
       canonical memory/retrieval first slices without changing visible Chat UI
 - [ ] Extend Cats-owned canonical memory beyond the current cat/owner/channel
@@ -153,6 +156,9 @@ contracts.
 - [ ] Broaden behavior-regression coverage for the now-modular Chat runtime,
       operator, transport, and setup flows so test depth catches product
       regressions in addition to architecture drift
+- [ ] Reduce redundant `Cats Core` reads during task-aware session wake and
+      checkout flows by threading an already-loaded core snapshot through the
+      Chat runtime-session bridge where correctness allows
 - [ ] Revisit a limited Chat mobile companion only after the desktop Chat
       surface is stable
 
@@ -164,6 +170,10 @@ contracts.
       actors/resources, and artifact metadata
 - [ ] Keep work surfaces product-owned and avoid leaking provider or runtime
       internals into the UI model
+- [ ] Extend task-strategy handoff beyond the current Chat-first
+      `product: 'chat'` call sites so `Cats Work` and `Cats Code` resolve
+      product defaults and runtime bridge inputs through their own
+      product-owned adapters
 
 ### Exploratory: Paperclip-Informed Control Plane Evolution (Pending Review)
 
@@ -185,4 +195,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-03-25*
+*Last updated: 2026-03-26*

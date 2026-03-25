@@ -219,19 +219,14 @@ export function resolveDesktopHostConfig(
     update,
     paths: {
       appEntryScript: resolveDesktopPath(
-        env.CATS_DESKTOP_APP_ENTRY?.trim()
-          ? resolveDesktopPath(env.CATS_DESKTOP_APP_ENTRY.trim())
-          : joinDesktopPath(packageRoot, 'dist-server', 'index.js'),
+        env.CATS_DESKTOP_APP_ENTRY?.trim() || joinDesktopPath(packageRoot, 'dist-server', 'index.js'),
       ),
       runtimeEntryScript: resolveDesktopPath(
-        env.CATS_DESKTOP_RUNTIME_ENTRY?.trim()
-          ? resolveDesktopPath(env.CATS_DESKTOP_RUNTIME_ENTRY.trim())
-          : joinDesktopPath(runtimePackageRoot, 'dist', 'index.js'),
+        env.CATS_DESKTOP_RUNTIME_ENTRY?.trim() || joinDesktopPath(runtimePackageRoot, 'dist', 'index.js'),
       ),
       preloadScript: resolveDesktopPath(
         env.CATS_DESKTOP_PRELOAD_SCRIPT?.trim()
-          ? resolveDesktopPath(env.CATS_DESKTOP_PRELOAD_SCRIPT.trim())
-          : joinDesktopPath(packageRoot, 'dist-electron', 'preload.cjs'),
+          || joinDesktopPath(packageRoot, 'dist-electron', 'preload.cjs'),
       ),
       appStatePath: resolveDesktopPath(
         env.CATS_DESKTOP_STATE_PATH?.trim()
