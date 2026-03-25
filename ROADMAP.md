@@ -154,6 +154,9 @@ contracts.
 - [ ] Deepen room-workflow semantics beyond the current summary contract,
       especially richer checkpoint recommendations, converge policy, and
       longer-running branch continuation behavior
+      Progress: direct `ChatStore`-backed routing paths now persist in-flight
+      room-workflow snapshots before the full route completes, so partial
+      branch and continuation status no longer waits on the terminal write.
 - [ ] Finish companion product surfaces above the current data/runtime seams,
       especially composer avatar inspect flows, companion preset inspection or
       editing boundaries, companion memory/debug inspector panels, and clearer

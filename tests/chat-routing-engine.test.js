@@ -97,6 +97,15 @@ function createDeferred() {
   return { promise, resolve };
 }
 
+class TrackingChatStore extends MemoryChatStore {
+  writeCount = 0;
+
+  async write(state) {
+    this.writeCount += 1;
+    return super.write(state);
+  }
+}
+
 async function createChannelState() {
   const store = new MemoryChatStore();
   let state = await store.read();
@@ -240,6 +249,74 @@ test('explicit multi-target mentions fan out in parallel and persist replies in 
   assert.ok(
     channel.roomRouting?.workflow.eventHistory.some((event) => event.kind === 'outcome'),
   );
+});
+
+test('routeChannelMessage persists in-flight workflow snapshots before the full route completes', async () => {
+  const { state, channelId } = await createChannelState();
+  const store = new TrackingChatStore(state);
+  const agent1Reply = createDeferred();
+  const agent2Reply = createDeferred();
+  const bothRequested = createDeferred();
+  let agent1Requested = false;
+  let agent2Requested = false;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      agent1Requested = true;
+      if (agent2Requested) {
+        bothRequested.resolve();
+      }
+      return agent1Reply.promise;
+    }
+    if (content.includes('You are Agent-2')) {
+      agent2Requested = true;
+      if (agent1Requested) {
+        bothRequested.resolve();
+      }
+      return agent2Reply.promise;
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatchedPromise = routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 @Agent-2 review this change.' },
+    runtimeClient,
+    new Date('2026-03-21T00:00:00.000Z'),
+    { chatStore: store },
+  );
+  await bothRequested.promise;
+
+  const persistedState = await store.read();
+  const persistedChannel = buildChannelView(persistedState, channelId);
+  const persistedCore = await store.readCore();
+  const persistedRun = persistedCore.runs.find((candidate) =>
+    candidate.conversationId === `conversation-channel-${channelId}`,
+  );
+
+  assert.ok(store.writeCount >= 2);
+  assert.equal(persistedChannel.roomRouting?.workflow.activeTurn?.status, 'running');
+  assert.equal(persistedChannel.roomRouting?.workflow.turnHistory.length, 0);
+  assert.equal(
+    persistedChannel.roomRouting?.workflow.activeTurn?.targetStatuses.length,
+    2,
+  );
+  assert.ok(
+    persistedChannel.roomRouting?.workflow.activeTurn?.targetStatuses.every(
+      (target) => target.status === 'pending' || target.status === 'running',
+    ),
+  );
+  assert.ok(persistedRun);
+  assert.equal(persistedRun?.status, 'running');
+
+  agent2Reply.resolve(usage('Agent-2 finished the review.'));
+  await Promise.resolve();
+  agent1Reply.resolve(usage('Agent-1 finished the review.'));
+  const dispatched = await dispatchedPromise;
+  const finalChannel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(finalChannel.roomRouting?.workflow.activeTurn, null);
+  assert.equal(finalChannel.roomRouting?.workflow.turnHistory.length, 1);
 });
 
 test('routeChannelMessage auto-checks out an approved channel task for the assigned cat session', async () => {

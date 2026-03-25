@@ -46,6 +46,10 @@ import {
   participantKey,
   toParticipantRef,
 } from '../runtime-session/state.js';
+import {
+  materializeInFlightDispatchState,
+  persistInFlightDispatchState,
+} from './persistence.js';
 
 export interface ProcessDispatchQueueOptions {
   state: ChatState;
@@ -68,7 +72,7 @@ export interface ProcessDispatchQueueOptions {
   transport?: RuntimeTransportContext;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
-  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
+  chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
 }
 
 export async function processDispatchQueue(
@@ -389,7 +393,16 @@ export async function processDispatchQueue(
         chatStore,
       },
     );
-    nextState = wakePrepared.state;
+    nextState = materializeInFlightDispatchState(
+      wakePrepared.state,
+      channelId,
+      baseRoomRouting,
+      workflow,
+      outcome,
+      wakePrepared.latestCheckpoint,
+      now,
+    );
+    nextState = await persistInFlightDispatchState(chatStore, nextState);
     latestCheckpoint = wakePrepared.latestCheckpoint;
     const readyRequests = wakePrepared.readyRequests;
 
@@ -430,7 +443,16 @@ export async function processDispatchQueue(
         describeGuardReason,
       },
     );
-    nextState = appliedExecutions.state;
+    nextState = materializeInFlightDispatchState(
+      appliedExecutions.state,
+      channelId,
+      baseRoomRouting,
+      workflow,
+      outcome,
+      appliedExecutions.latestCheckpoint,
+      now,
+    );
+    nextState = await persistInFlightDispatchState(chatStore, nextState);
     latestCheckpoint = appliedExecutions.latestCheckpoint;
     guardReason = guardReason ?? appliedExecutions.guardReason;
 

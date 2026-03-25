@@ -34,6 +34,10 @@ import {
   prepareDispatchTurn,
 } from './turn.js';
 import {
+  materializeInFlightDispatchState,
+  persistInFlightDispatchState,
+} from './persistence.js';
+import {
   finalizeDispatchTurn,
 } from './finalize.js';
 import { processDispatchQueue } from './loop.js';
@@ -42,7 +46,7 @@ interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
-  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
+  chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
 }
 
 function normalizePendingTargetValue(value: string | null | undefined): string | null {
@@ -163,9 +167,21 @@ export async function routeChannelMessage(
   nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
 
   const preparedTurn = prepareDispatchTurn(nextState, channelId, payload, now);
-  nextState = preparedTurn.state;
+  nextState = materializeInFlightDispatchState(
+    preparedTurn.state,
+    channelId,
+    preparedTurn.baseRoomRouting,
+    preparedTurn.workflow,
+    preparedTurn.outcome,
+    preparedTurn.latestCheckpoint,
+    now,
+  );
+  nextState = await persistInFlightDispatchState(options.chatStore, nextState);
   if (preparedTurn.terminalResult) {
-    return preparedTurn.terminalResult;
+    return {
+      state: nextState,
+      results: preparedTurn.terminalResult.results,
+    };
   }
   const {
     activeTurn,
@@ -220,6 +236,7 @@ export async function routeChannelMessage(
     userMessageId: userMessage.id,
     describeGuardReason,
   });
+  nextState = await persistInFlightDispatchState(options.chatStore, nextState);
 
   return { state: nextState, results };
 }

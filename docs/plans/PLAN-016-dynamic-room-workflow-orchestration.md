@@ -80,7 +80,7 @@ spreads across routing, runtime integration, and renderer code.
       - running
       - completed
       - failed
-- [ ] Persist partial branch or target status before all targets finish.
+- [x] Persist partial branch or target status before all targets finish.
 - [x] Return or surface completed replies in finish order instead of mention
       order.
 - [x] Keep first-slice transcript insertion as one stable reply per target.
@@ -109,9 +109,10 @@ Deferred M1 follow-ups still intentionally open:
 - `roomRouting` remains optional at the shared contract boundary as a
   compatibility seam even though normalized chat state now guarantees it
   for live channels.
-- Partial state is now maintained in the room-workflow read model, but the
-  current HTTP write path still persists the channel snapshot after the full
-  route completes rather than streaming intermediate writes to the store.
+- Partial state is now maintained in the room-workflow read model, and direct
+  `ChatStore`-backed routing paths now persist intermediate workflow snapshots
+  before the full route completes so long-running fan-out or continuation loops
+  stay inspectable and recoverable outside the final response write.
 - `anti_ping_pong` currently detects direct `A -> B -> A -> B` loops only;
   longer cycles still rely on `maxTargetVisitsPerTurn` and
   `maxDispatchesPerTurn` guards until a broader cycle detector is justified.
@@ -245,6 +246,5 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-20*
-
 
 
