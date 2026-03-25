@@ -21,8 +21,10 @@ import {
   isTerminalCoreRunStatus,
   mapCoreRunStatusToTaskStatus,
   mapRuntimeRunStatusToCoreStatus,
+  mergeObservedExecutionMetadata,
   mergeTaskLifecycleMetadata,
   readNullableString,
+  readObservedExecutionMetadata,
   readObservedInspection,
   readString,
   resolveActorName,
@@ -59,6 +61,7 @@ async function reconcileObservedTaskRun(
   const resultSummary = readNullableString(observedRun.resultSummary);
   const error = readNullableString(observedRun.error);
   const usage = asRecord(observedRun.usage);
+  const observedExecution = readObservedExecutionMetadata(observed);
 
   const coreBefore = await input.coreStore.readCore();
   const taskBefore = coreBefore.tasks.find((candidate) => candidate.id === input.taskId);
@@ -66,6 +69,12 @@ async function reconcileObservedTaskRun(
   if (!taskBefore || !runBefore) {
     return;
   }
+  const observedAt = now.toISOString();
+  const executionMetadata = mergeObservedExecutionMetadata(
+    runBefore.metadata?.execution,
+    observedExecution,
+    observedAt,
+  );
 
   const runWrite = upsertCoreRun(
     coreBefore,
@@ -73,7 +82,7 @@ async function reconcileObservedTaskRun(
       ...cloneRunInput(runBefore),
       status: nextRunStatus,
       startedAt,
-      completedAt: isTerminalCoreRunStatus(nextRunStatus) ? endedAt ?? now.toISOString() : runBefore.completedAt,
+      completedAt: isTerminalCoreRunStatus(nextRunStatus) ? endedAt ?? observedAt : runBefore.completedAt,
       summary: resultSummary ?? error ?? runBefore.summary,
       metadata: {
         ...cloneMetadata(runBefore.metadata),
@@ -82,6 +91,7 @@ async function reconcileObservedTaskRun(
         actorId: input.actorId,
         runtimeState: inspection.state,
         runtimeRunStatus,
+        ...(executionMetadata ? { execution: executionMetadata } : {}),
         ...(usage ? { usage } : {}),
         ...(error ? { error } : {}),
       },
@@ -99,10 +109,11 @@ async function reconcileObservedTaskRun(
         actorId: input.actorId,
         sessionId: input.sessionId,
         runId: input.runId,
-        observedAt: now.toISOString(),
+        observedAt,
         runtimeState: inspection.state,
         runtimeRunStatus,
-        completedAt: isTerminalCoreRunStatus(nextRunStatus) ? endedAt ?? now.toISOString() : null,
+        completedAt: isTerminalCoreRunStatus(nextRunStatus) ? endedAt ?? observedAt : null,
+        ...(executionMetadata ? { execution: executionMetadata } : {}),
       }),
     },
     now,

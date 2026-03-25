@@ -221,6 +221,74 @@ test('task runtime bridge falls back to the product default when planning metada
   });
 });
 
+test('task runtime bridge resolves product defaults from planning handoff metadata when no explicit product is supplied', () => {
+  const now = new Date('2026-03-26T03:30:00.000Z');
+  const core = createDefaultCoreState();
+
+  const workTaskWrite = upsertCoreTask(
+    core,
+    {
+      id: 'task-work-default',
+      title: 'Work default strategy',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-worker'],
+      metadata: writeTaskPlanningMetadata(
+        {},
+        {
+          productHint: 'work',
+        },
+      ),
+    },
+    now,
+  );
+
+  const workRequest = buildTaskRuntimeExecutionRequest({
+    core: workTaskWrite.core,
+    task: workTaskWrite.task,
+  });
+  assert.deepEqual(workRequest, {
+    requestedStrategy: 'pdca',
+    correlation: {
+      taskId: 'task-work-default',
+      product: 'work',
+    },
+  });
+
+  const codeTaskWrite = upsertCoreTask(
+    workTaskWrite.core,
+    {
+      id: 'task-code-default',
+      title: 'Code default strategy',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-coder'],
+      metadata: writeTaskPlanningMetadata(
+        {},
+        {
+          transfer: {
+            suggestedProduct: 'code',
+            rationale: 'Implementation should continue in Cats Code.',
+          },
+        },
+      ),
+    },
+    now,
+  );
+
+  const codeRequest = buildTaskRuntimeExecutionRequest({
+    core: codeTaskWrite.core,
+    task: codeTaskWrite.task,
+  });
+  assert.deepEqual(codeRequest, {
+    requestedStrategy: 'reflexion',
+    correlation: {
+      taskId: 'task-code-default',
+      product: 'code',
+    },
+  });
+});
+
 test('task lifecycle sends additive runtime bridge fields without changing checkout semantics', async () => {
   const fixture = createTaskBridgeFixture();
   assert.ok(fixture.task);

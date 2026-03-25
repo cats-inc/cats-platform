@@ -25,7 +25,7 @@ export interface TaskRuntimeExecutionRequest {
 
 export interface ResolveTaskExecutionProductInput {
   core?: Pick<CatsCoreState, 'conversations'> | null;
-  task: Pick<CoreTaskRecord, 'conversationId'>;
+  task: Pick<CoreTaskRecord, 'conversationId' | 'metadata'>;
   product?: TaskExecutionProduct | null;
 }
 
@@ -84,6 +84,14 @@ export function resolveTaskExecutionProduct(
 ): TaskExecutionProduct | null {
   if (input.product) {
     return input.product;
+  }
+
+  const planning = readTaskPlanningMetadataFromTask(input.task);
+  if (planning.productHint) {
+    return planning.productHint;
+  }
+  if (planning.transfer?.suggestedProduct) {
+    return planning.transfer.suggestedProduct;
   }
 
   if (!input.core || !input.task.conversationId) {

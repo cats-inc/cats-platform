@@ -391,7 +391,6 @@ async function handleCoreApprovalWrite(
       const executionRequest = buildTaskRuntimeExecutionRequest({
         core: persisted,
         task: persistedTask,
-        product: 'chat',
       });
       const lifecycle = await applyTaskAssignmentLifecycle({
         core: persisted,

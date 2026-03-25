@@ -167,6 +167,97 @@ export function readObservedInspection(
   };
 }
 
+export interface ObservedRuntimeExecutionMetadata {
+  requestedStrategy?: string;
+  effectiveStrategy?: string;
+  acceptanceCriteria?: string;
+  strategyContext?: Record<string, unknown>;
+  correlation?: Record<string, unknown>;
+  strategyState?: Record<string, unknown>;
+}
+
+export function readObservedExecutionMetadata(
+  payload: RuntimeObservedSessionPayload,
+): ObservedRuntimeExecutionMetadata | null {
+  const session = asRecord(payload.session);
+  const inspection = asRecord(session?.inspection);
+  const inspectionStrategy = asRecord(inspection?.strategy);
+  const sessionStrategy = asRecord(session?.strategy);
+  const strategyRequest = asRecord(sessionStrategy?.request);
+  const strategyState = asRecord(inspectionStrategy?.state) ?? sessionStrategy;
+  const requestedStrategy = readString(inspectionStrategy?.requestedStrategy)
+    ?? readString(strategyRequest?.requestedStrategy)
+    ?? readString(session?.requestedStrategy);
+  const effectiveStrategy = readString(inspectionStrategy?.effectiveStrategy)
+    ?? readString(sessionStrategy?.effectiveStrategy)
+    ?? readString(session?.effectiveStrategy);
+  const acceptanceCriteria = readString(inspectionStrategy?.acceptanceCriteria)
+    ?? readString(strategyRequest?.acceptanceCriteria)
+    ?? readString(session?.acceptanceCriteria);
+  const strategyContext = asRecord(inspectionStrategy?.strategyContext)
+    ?? asRecord(strategyRequest?.strategyContext)
+    ?? asRecord(session?.strategyContext);
+  const correlation = asRecord(inspectionStrategy?.correlation)
+    ?? asRecord(strategyRequest?.correlation)
+    ?? asRecord(session?.correlation);
+
+  if (
+    !requestedStrategy
+    && !effectiveStrategy
+    && !acceptanceCriteria
+    && !strategyContext
+    && !correlation
+    && !strategyState
+  ) {
+    return null;
+  }
+
+  return {
+    ...(requestedStrategy ? { requestedStrategy } : {}),
+    ...(effectiveStrategy ? { effectiveStrategy } : {}),
+    ...(acceptanceCriteria ? { acceptanceCriteria } : {}),
+    ...(strategyContext ? { strategyContext: structuredClone(strategyContext) } : {}),
+    ...(correlation ? { correlation: structuredClone(correlation) } : {}),
+    ...(strategyState ? { strategyState: structuredClone(strategyState) } : {}),
+  };
+}
+
+export function mergeObservedExecutionMetadata(
+  existing: unknown,
+  observed: ObservedRuntimeExecutionMetadata | null | undefined,
+  observedAt: string,
+): Record<string, unknown> | undefined {
+  const next: Record<string, unknown> = asRecord(existing)
+    ? structuredClone(asRecord(existing)!)
+    : {};
+
+  if (observed?.requestedStrategy) {
+    next.requestedStrategy = observed.requestedStrategy;
+  }
+  if (observed?.effectiveStrategy) {
+    next.effectiveStrategy = observed.effectiveStrategy;
+  }
+  if (observed?.acceptanceCriteria) {
+    next.acceptanceCriteria = observed.acceptanceCriteria;
+  }
+  if (observed?.strategyContext) {
+    next.strategyContext = structuredClone(observed.strategyContext);
+  }
+  if (observed?.correlation) {
+    next.correlation = structuredClone(observed.correlation);
+  }
+  if (observed?.strategyState) {
+    next.strategyState = structuredClone(observed.strategyState);
+  }
+
+  if (Object.keys(next).length === 0) {
+    return undefined;
+  }
+
+  next.observedAt = observedAt;
+  return next;
+}
+
 export function isTerminalCoreRunStatus(status: CoreRunRecord['status']): boolean {
   return status === 'completed' || status === 'failed' || status === 'blocked' || status === 'cancelled';
 }

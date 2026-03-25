@@ -98,7 +98,6 @@ async function handleCoreTaskWrite(
       const executionRequest = buildTaskRuntimeExecutionRequest({
         core: next.core,
         task: next.task,
-        product: 'chat',
       });
       const lifecycle = await applyTaskAssignmentLifecycle({
         core: next.core,
@@ -153,7 +152,6 @@ async function handleCoreTaskCheckout(
       ? buildTaskRuntimeExecutionRequest({
           core,
           task,
-          product: 'chat',
         })
       : undefined;
     const result = checkoutTaskExecution({
