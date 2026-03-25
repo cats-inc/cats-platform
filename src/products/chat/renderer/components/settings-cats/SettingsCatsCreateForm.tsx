@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { type CatFormState } from '../../chatUtils';
-import { ProviderModelFields } from '../ProviderModelFields';
+import { CatCreationFields } from '../CatCreationFields';
 
 export interface SettingsCatsCreateFormProps {
   busy: string;
@@ -28,16 +28,9 @@ export function SettingsCatsCreateForm({
         className="stackForm"
         onSubmit={(event) => void onCreateCat(event)}
       >
-        <label className="fieldLabel">
-          <span>Name</span>
-          <input
-            className="textInput"
-            value={catForm.name}
-            onChange={(event) => onCatFormChange({ ...catForm, name: event.target.value })}
-            placeholder="Ops reviewer"
-          />
-        </label>
-        <ProviderModelFields
+        <CatCreationFields
+          name={catForm.name}
+          onNameChange={(name) => onCatFormChange({ ...catForm, name })}
           provider={catForm.provider}
           instance={catForm.instance}
           model={catForm.model}
@@ -50,6 +43,7 @@ export function SettingsCatsCreateForm({
               model: target.model,
               modelSelection: target.modelSelection ?? null,
             })}
+          namePlaceholder="Ops reviewer"
         />
         <button
           className="primaryButton"

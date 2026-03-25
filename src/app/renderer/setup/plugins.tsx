@@ -1,4 +1,4 @@
-import { ProviderModelFields } from './ProviderModelFields.js';
+import { CatCreationFields } from './CatCreationFields.js';
 import type { ConditionalStepProps, ProductSetupPlugin } from './types.js';
 
 function ChatBossCatStep({
@@ -13,25 +13,18 @@ function ChatBossCatStep({
 }: ConditionalStepProps) {
   return (
     <>
-      <label className="fieldLabel">
-        <span>Boss Cat name</span>
-        <input
-          className="textInput"
-          value={catName}
-          onChange={(e) => onCatNameChange(e.target.value)}
-          placeholder="Boss Cat"
-          autoFocus
-        />
-        <span className="fieldHint">
-          Your personal AI agent that manages tasks and coordinates other cats.
-        </span>
-      </label>
-      <ProviderModelFields
+      <CatCreationFields
+        name={catName}
+        onNameChange={onCatNameChange}
         provider={provider}
         instance={instance}
         model={model}
         modelSelection={modelSelection}
         onTargetChange={onTargetChange}
+        nameLabel="Boss Cat name"
+        namePlaceholder="Boss Cat"
+        nameHint="Your personal AI agent that manages tasks and coordinates other cats."
+        autoFocusName
       />
       <div className="setupRuntimeStatus">
         <span
