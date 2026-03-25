@@ -32,7 +32,7 @@ contracts.
 
 ### Phase 3: Suite Foundation
 
-- [ ] Freeze `Cats Core v1` shared contracts for identity, actors/resources,
+- [x] Freeze `Cats Core v1` shared contracts for identity, actors/resources,
       permissions, conversations, bot bindings, tasks/approvals, owner profile,
       and archive metadata
 - [x] Keep the full desktop suite on one `Electron + React/TypeScript` path

@@ -1,109 +1,180 @@
-# PLAN-014: Parallel Workstream Ownership and Integration Seams
+# PLAN-014: Parallel Product Workstream Ownership and Integration Seams
 
 ## Metadata
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft (Ready for Specialist Handoff) |
+| **Status** | In Progress (Execution Baseline Landed) |
 | **Owner** | Codex |
-| **Assigned To** | Parallel workstreams A/B/C |
+| **Assigned To** | Chat / Work / Code parallel workstreams |
 | **Reviewer** | User |
 
-## Related Specs
+## Related Decisions
 
-- [SPEC-013](../specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md)
-- [SPEC-014](../specs/SPEC-014-telegram-boss-cat-relay-mvp.md)
-- [SPEC-015](../specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md)
+- [ADR-007](../decisions/007-establish-cats-core-v1-for-chat-and-work.md)
+- [ADR-025](../decisions/025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
+- [ADR-035](../decisions/035-invert-platform-dependency-and-extract-shared-design-layer.md)
+- [ADR-036](../decisions/036-unify-api-contract-and-namespace-endpoints-by-product.md)
+
+## Related Plans
+
+- [PLAN-017](./PLAN-017-suite-host-refactor-for-chat-work-code-and-core.md)
+- [PLAN-024](./PLAN-024-platform-dependency-inversion-and-design-extraction.md)
 
 ## Overview
 
-This plan turns the new provider, Telegram, and capability directions into a
-parallelizable work map for `cats`.
+`cats` is now structurally ready for three parallel product teams:
 
-The main rule is simple:
+1. `Cats Chat`
+2. `Cats Work`
+3. `Cats Code`
 
-- new provider logic should land in provider seam files
-- new Telegram logic should land in transport seam files
-- new chat/capability logic should land in capability and chat files
-- `src/server.ts` and `src/renderer/App.tsx` should only absorb minimal wiring
+The main refactor work has already landed:
+
+- `core/` and `platform/` no longer source-import product implementations
+- `src/app/server/index.ts` is now a thin composition root
+- `src/app/server/requestRouter.ts` owns suite-host route assembly
+- graph-based dependency enforcement now runs in `npm test`
+- product and module directory normalization has landed
+
+That means the remaining risk is no longer architectural ambiguity. The
+remaining risk is coordination failure:
+
+- multiple teams editing the same shared contracts
+- multiple teams editing suite-host wiring directly
+- product teams drifting back into cross-product imports
+
+This plan freezes the ownership map needed to start parallel delivery safely.
+
+## Canonical Shared Contract Freeze
+
+The following files are the canonical shared-contract freeze set for the start
+of parallel product delivery:
+
+- `src/core/types.ts`
+- `src/platform/orchestration/contracts.ts`
+- `src/shared/roomRouting.ts`
+- `src/products/chat/api/contracts.ts`
+
+Rules:
+
+1. These files are now treated as shared contract surfaces, not local product
+   convenience modules.
+2. Chat, Work, and Code teams must not independently reshape these files while
+   implementing product features.
+3. Any shape change to these files must be routed through explicit design
+   review:
+   - update the relevant ADR/SPEC/PLAN when the change is structural
+   - or land through a single integration owner when the change is a narrow,
+     agreed compatibility extension
+4. New cross-product types should not be added elsewhere if they belong in one
+   of the frozen files above.
+5. New product-local types must stay inside the owning product tree instead of
+   being promoted to shared scope prematurely.
 
 ## Workstream Ownership
 
-| Workstream | Primary Scope | Files / Areas |
-|------------|---------------|---------------|
-| A | Provider catalog consumption and UI | `src/shared/providerCatalog.ts`, `src/server/routes/providers.ts`, `src/runtime/client.ts`, `src/renderer/components/ProviderModelFields.tsx`, renderer provider API helpers |
-| B | Telegram Boss Cat bridge | `src/transports/telegram/**`, `src/server/routes/telegram.ts`, bot-binding integration seams |
-| C | Chat behavior and capability mapping | chat routing/behavior files, capability registry files, skill/MCP mapping files |
+| Workstream | Primary Scope | Owns | Avoids |
+|------------|---------------|------|--------|
+| Chat | `src/products/chat/**` | chat transcript UX, routing behavior, setup, chat renderer, chat-specific APIs, companion and operator surfaces | changing shared-core contracts without integration review; editing Work or Code product modules |
+| Work | `src/products/work/**` | work dashboard, inbox, approval and activity views, work-specific projection surfaces above core | editing Chat renderer/state; introducing Work-only types into shared contracts |
+| Code | `src/products/code/**` | code-specific product views, project/build surfaces, code-specific projections above core | editing Chat renderer/state; introducing Code-only types into shared contracts |
+| Integrator | `src/app/server/**`, suite entrypoints, shared-contract freeze set | suite-host wiring, route registration, shared contract review, cross-product convergence | implementing product-specific UX inside host composition modules |
 
-## Phases
+## Suite Host Integration Rule
 
-### Phase 1: Freeze Docs and Seams
+Parallel product teams must treat the suite host as a controlled integration
+surface, not as open shared workspace.
 
-- [ ] Land ADR/spec/plan set for the three workstreams
-- [ ] Add extracted provider/model UI seam
-- [ ] Add server route seam files for provider and Telegram work
-- [ ] Add Telegram transport skeleton files
+Primary host-owned integration files:
 
-### Phase 2: Provider Catalog Consumption
+- `src/app/server/index.ts`
+- `src/app/server/requestRouter.ts`
+- `src/app/server/dependencies.ts`
 
-- [ ] Keep curated product provider families in a shared product seam
-- [ ] Add `GET /api/providers`
-- [ ] Add `GET /api/providers/{provider}/models`
-- [ ] Call `cats-runtime` server-side for per-provider model catalog reads
-- [ ] Preserve static fallback with warnings while runtime adoption rolls out,
-      but keep it confined to `src/shared/providerCatalog.ts`
-- [ ] Migrate provider forms from inline markup toward product-API-fed options
-- [ ] Stop adding new renderer-only provider/model hardcodes once the product
-      API seam is in place
+Rules:
 
-### Phase 3: Telegram Relay MVP
+1. Product teams should land functionality in their own product modules first.
+2. Product teams should not directly expand suite-host route assembly as part
+   of feature work unless acting as the designated integrator for that change.
+3. Host wiring should converge through one integration owner to prevent
+   repeated merge conflicts in `requestRouter.ts`.
+4. Product routes should remain callable through product-owned modules; the
+   suite host should only register and compose them.
 
-- [x] Add Telegram relay status route
-- [x] Add Telegram webhook ingress route
-- [x] Persist update dedupe state and Telegram chat mapping through the relay
-- [x] Bind Telegram ingress to the `Boss Cat` as the single visible identity
-- [x] Keep worker cats internal to orchestration
+## Directory Ownership Map
 
-### Phase 4: Capability Registry and Multi-Cat Validation
+| Area | Owner | Notes |
+|------|-------|-------|
+| `src/core/**` | shared integration owner | suite-owned shared truth and persistence |
+| `src/platform/**` | shared integration owner | runtime, transport, memory, and orchestration infrastructure |
+| `src/shared/**` | shared integration owner | product-neutral contracts and utilities only |
+| `src/products/chat/**` | Chat team | Chat-specific behavior and renderer surfaces |
+| `src/products/work/**` | Work team | Work-specific product slice |
+| `src/products/code/**` | Code team | Code-specific product slice |
+| `src/app/server/**` | integration owner | suite-host composition only |
+| `src/app/renderer/**` | integration owner | top-level suite composition only |
 
-- [ ] Define capability registry structure for cats
-- [ ] Map product capability profiles to runtime-managed skills and MCP profiles
-- [ ] Validate multi-cat conversation flow using explicit capability metadata
-- [ ] Keep capability-to-runtime mapping out of provider and Telegram seams
+## Start-Now Execution Rules
 
-### Phase 5: Integration and Follow-Ons
+### Chat team
 
-- [ ] Update product forms to consume product provider APIs by default
-- [ ] Reduce duplicated provider/model fallback data once runtime-backed reads
-      are stable enough to stop treating `cats` as a second catalog owner
-- [ ] Add real Telegram conversation/channel mapping
-- [ ] Add capability-aware assignment heuristics for `Boss Cat`
-- [ ] Update docs and tests once all three workstreams converge
+- default write scope: `src/products/chat/**`
+- may request shared-contract additions only through integration review
+- should not edit `src/products/work/**` or `src/products/code/**`
 
-## Hotspot Rules
+### Work team
 
-- `src/server.ts`
-  - allowed changes: route registration, dependency wiring
-  - discouraged changes: new route-local business logic
-- `src/renderer/App.tsx`
-  - allowed changes: component composition, existing screen wiring
-  - discouraged changes: new provider domain logic or transport-specific logic
+- default write scope: `src/products/work/**`
+- should consume `Cats Core v1` contracts rather than inventing parallel work
+  schemas
+- should not edit Chat state or renderer modules
+
+### Code team
+
+- default write scope: `src/products/code/**`
+- should consume `Cats Core v1` contracts rather than inventing parallel code
+  workflow schemas
+- should not edit Chat state or renderer modules
+
+### Integration owner
+
+- owns convergence in shared contracts and suite-host route registration
+- decides when a product-local type graduates into shared scope
+- keeps `requestRouter.ts` and `app/server` from becoming the next merge hotspot
+
+## Baseline Readiness
+
+The baseline needed for parallel delivery is now in place:
+
+- `src/app/server/index.ts` has been reduced to a thin composition root
+- `src/app/server/requestRouter.ts` owns suite-host route assembly
+- graph-based dependency enforcement runs under `npm test`
+- architecture boundary tests cover the refactored seams
+- folder/file normalization is complete enough for product ownership to be
+  visible from the directory tree
+
+This means the blocker is no longer structural refactor. The blocker is team
+discipline around the ownership map above.
 
 ## Verification
 
-- provider routes covered by server tests
-- Telegram status/webhook seam covered by server tests
-- build/typecheck/test remain green after seam extraction
+- `npm test` must stay green
+- `tests/dependency-graph.test.js` must continue to reject cross-layer
+  regressions
+- shared-contract freeze files should only change with explicit integration
+  review
+- new feature work should land under `src/products/<product>/` by default
 
 ## Progress Log
 
 | Date | Update |
 |------|--------|
-| 2026-03-19 | Plan created to coordinate provider, Telegram, and capability workstreams after cats-runtime catalog direction landed |
-| 2026-03-21 | Telegram Phase 3 seam landed under `src/platform/transports/telegram/` with status/webhook routes, durable dedupe, and placeholder inbox-to-conversation mapping; real room-routing policy stays deferred to Phase 5 |
+| 2026-03-19 | Original provider/Telegram/capability parallel-workstream plan created |
+| 2026-03-25 | Rewritten for the current Chat/Work/Code execution baseline after suite-host refactor, server composition slimming, graph dependency enforcement, and module directory normalization landed |
 
 ---
 
 *Created: 2026-03-19*
-*Last updated: 2026-03-21*
+*Last updated: 2026-03-25*
 *Author: Codex*
