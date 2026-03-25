@@ -4,6 +4,7 @@ import {
   checkoutTaskExecution,
   startTaskRunWatcher,
 } from '../taskLifecycle.js';
+import { buildTaskRuntimeExecutionRequest } from '../../shared/taskExecutionBridge.js';
 import {
   asRecord,
   handleCoreError,
@@ -94,10 +95,16 @@ async function handleCoreTaskWrite(
     let lifecycleActivities = [] as Array<{ id: string }>;
 
     if (context.dependencies.runtimeClient) {
+      const executionRequest = buildTaskRuntimeExecutionRequest({
+        core: next.core,
+        task: next.task,
+        product: 'chat',
+      });
       const lifecycle = await applyTaskAssignmentLifecycle({
         core: next.core,
         previousTask,
         task: next.task,
+        executionRequest,
         executionLocator: context.dependencies.taskExecutionLocator,
         runtimeClient: context.dependencies.runtimeClient,
         now,
@@ -140,11 +147,21 @@ async function handleCoreTaskCheckout(
     const now = context.dependencies.now?.() ?? new Date();
     const actorId = readRequiredString(body.actorId, 'actorId');
     const sessionId = readRequiredString(body.sessionId, 'sessionId');
+    const core = await context.dependencies.coreStore.readCore();
+    const task = core.tasks.find((candidate) => candidate.id === taskId);
+    const executionRequest = task
+      ? buildTaskRuntimeExecutionRequest({
+          core,
+          task,
+          product: 'chat',
+        })
+      : undefined;
     const result = checkoutTaskExecution({
-      core: await context.dependencies.coreStore.readCore(),
+      core,
       taskId,
       actorId,
       sessionId,
+      executionRequest,
       now,
     });
     const persisted = await context.dependencies.coreStore.writeCore(result.core);

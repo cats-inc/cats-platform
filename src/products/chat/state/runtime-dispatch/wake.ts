@@ -82,6 +82,7 @@ export async function prepareReadyRequests(
         transport: options.transport,
         companionStore: options.companionStore,
         memoryService: options.memoryService,
+        chatStore: options.chatStore,
         roomRouting: baseRoomRouting,
         wakeTrigger: 'route_target',
         wakeReason: request.trigger === 'continuation_mention'

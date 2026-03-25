@@ -10,6 +10,7 @@ import {
 } from '../dist-server/chat/model.js';
 import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { patchTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
 
 function createRuntimeStub(responder) {
   let nextSession = 1;
@@ -60,6 +61,22 @@ function createRuntimeStub(responder) {
     async closeSession(sessionId) {
       this.closedSessions.push(sessionId);
     },
+    async observeSession(sessionId) {
+      return {
+        session: {
+          id: sessionId,
+          inspection: {
+            state: 'idle',
+          },
+        },
+        observePath: `/sessions/${sessionId}/observe`,
+        stream: {
+          path: `/sessions/${sessionId}/stream`,
+          available: false,
+        },
+      };
+    },
+    async streamSession() {},
   };
 }
 
@@ -311,6 +328,12 @@ test('routeChannelMessage auto-checks out an approved channel task for the assig
 
   assert.ok(task);
   assert.ok(run);
+  assert.equal(runtimeClient.createdSessions[0]?.requestedStrategy, 'react');
+  assert.deepEqual(runtimeClient.createdSessions[0]?.correlation, {
+    taskId,
+    conversationId: `conversation-channel-${channelId}`,
+    product: 'chat',
+  });
   assert.equal(run?.status, 'completed');
   assert.equal(run?.metadata.sessionId, 'session-1');
   assert.equal(task?.status, 'completed');
@@ -321,6 +344,65 @@ test('routeChannelMessage auto-checks out an approved channel task for the assig
   assert.ok(
     core.activities.some((activity) => activity.runId === run?.id && /completed/i.test(activity.message)),
   );
+});
+
+test('routeChannelMessage forwards planning metadata into chat session creation for approved tasks', async () => {
+  const { state, channelId } = await createChannelState();
+  const store = new MemoryChatStore();
+  const now = new Date('2026-03-24T04:00:00.000Z');
+  await store.write(state);
+
+  const taskId = `task-channel-${channelId}`;
+  const approvedCore = await store.readCore();
+  await store.writeCore({
+    ...approvedCore,
+    tasks: approvedCore.tasks.map((task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: 'approved',
+            approval: {
+              ...task.approval,
+              status: 'approved',
+              decidedAt: now.toISOString(),
+              decidedByActorId: 'actor-owner',
+            },
+            metadata: patchTaskPlanningMetadata(task.metadata, {
+              strategyHint: 'tree_of_thoughts',
+              acceptanceCriteria: 'Summarize the review and flag any blockers.',
+              strategyContext: {
+                reviewMode: 'strict',
+              },
+            }),
+          }
+        : task),
+  });
+
+  const runtimeClient = createRuntimeStub(async () => usage('Agent-1 completed the turn.'));
+
+  await routeChannelMessage(
+    await store.read(),
+    channelId,
+    { body: '@Agent-1 review the latest diff.' },
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(runtimeClient.createdSessions[0].requestedStrategy, 'tree_of_thoughts');
+  assert.equal(
+    runtimeClient.createdSessions[0].acceptanceCriteria,
+    'Summarize the review and flag any blockers.',
+  );
+  assert.deepEqual(runtimeClient.createdSessions[0].strategyContext, {
+    reviewMode: 'strict',
+  });
+  assert.deepEqual(runtimeClient.createdSessions[0].correlation, {
+    taskId,
+    conversationId: `conversation-channel-${channelId}`,
+    product: 'chat',
+  });
 });
 
 test('solo composer mode restarts orchestrator sessions when the pending model changes and records provenance', async () => {

@@ -11,6 +11,10 @@ import type {
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import {
+  buildTaskRuntimeExecutionRequest,
+  type TaskRuntimeExecutionRequest,
+} from '../../../../shared/taskExecutionBridge.js';
+import {
   checkoutTaskExecution,
   startTaskRunWatcher,
 } from '../../../../core/taskLifecycle.js';
@@ -43,6 +47,37 @@ import {
 } from './state.js';
 import type { RuntimeSessionRoutingOptions } from './shared.js';
 
+async function resolveChannelTaskExecutionRequest(
+  chatStore: RuntimeSessionRoutingOptions['chatStore'],
+  channelId: string,
+  target: RoutingTarget,
+): Promise<TaskRuntimeExecutionRequest | undefined> {
+  if (!chatStore) {
+    return undefined;
+  }
+
+  const core = await chatStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+  if (!task) {
+    return undefined;
+  }
+
+  const actorId = resolveActorIdForTarget(target);
+  if (!task.assignedActorIds.includes(actorId)) {
+    return undefined;
+  }
+
+  if (task.status !== 'approved' && task.status !== 'in_progress') {
+    return undefined;
+  }
+
+  return buildTaskRuntimeExecutionRequest({
+    core,
+    task,
+    product: 'chat',
+  });
+}
+
 export async function maybeAutoCheckoutChannelTask(
   chatStore: RuntimeSessionRoutingOptions['chatStore'],
   runtimeClient: Pick<RuntimeClient, 'observeSession' | 'streamSession'>,
@@ -66,11 +101,17 @@ export async function maybeAutoCheckoutChannelTask(
     return;
   }
 
+  const executionRequest = buildTaskRuntimeExecutionRequest({
+    core,
+    task,
+    product: 'chat',
+  });
   const checkout = checkoutTaskExecution({
     core,
     taskId,
     actorId,
     sessionId: target.sessionId,
+    executionRequest,
     now,
   });
   const persisted = await chatStore.writeCore(checkout.core);
@@ -194,6 +235,11 @@ export async function ensureTargetSession(
       now,
       options.companionStore,
     );
+    const taskExecutionRequest = await resolveChannelTaskExecutionRequest(
+      options.chatStore,
+      channelId,
+      target,
+    );
     if (target.participantKind === 'orchestrator') {
       const sessionTarget = resolveOrchestratorExecutionTarget(
         nextState,
@@ -211,6 +257,7 @@ export async function ensureTargetSession(
         workspaceAccess: 'read_write',
         context: runtimeEnvelope.context,
         skills: runtimeEnvelope.skills,
+        ...taskExecutionRequest,
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       // TODO(room-workspace): stop promoting participant session cwd into
@@ -269,6 +316,7 @@ export async function ensureTargetSession(
       workspaceAccess: 'read_write',
       context: runtimeEnvelope.context,
       skills: runtimeEnvelope.skills,
+      ...taskExecutionRequest,
     });
     nextState = setStartedSession(
       nextState,

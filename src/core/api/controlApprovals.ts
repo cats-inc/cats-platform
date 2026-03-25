@@ -11,6 +11,7 @@ import {
   readPendingOrchestratorDispatch,
   writePendingOrchestratorDispatchMetadata,
 } from '../../platform/orchestration/pendingDispatch.js';
+import { buildTaskRuntimeExecutionRequest } from '../../shared/taskExecutionBridge.js';
 import {
   handleCoreError,
   readEnumValue,
@@ -387,10 +388,16 @@ async function handleCoreApprovalWrite(
     let wakeups = [] as Array<{ request: { id: string }; coalesced: boolean }>;
     let lifecycleActivities = [] as Array<{ id: string }>;
     if (context.dependencies.runtimeClient && persistedTask) {
+      const executionRequest = buildTaskRuntimeExecutionRequest({
+        core: persisted,
+        task: persistedTask,
+        product: 'chat',
+      });
       const lifecycle = await applyTaskAssignmentLifecycle({
         core: persisted,
         previousTask,
         task: persistedTask,
+        executionRequest,
         executionLocator: context.dependencies.taskExecutionLocator,
         runtimeClient: context.dependencies.runtimeClient,
         now,

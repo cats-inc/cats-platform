@@ -1,4 +1,4 @@
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -61,6 +61,32 @@ const DEFAULT_DESKTOP_TRAY_ENABLED = true;
 const DEFAULT_KEEP_SERVICES_RUNNING = true;
 const DEFAULT_CLOSE_BEHAVIOR = 'minimize_to_tray';
 
+function isWindowsAbsolutePath(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return /^[A-Za-z]:[\\/]/u.test(value) || value.startsWith('\\\\');
+}
+
+function resolveDesktopPath(value: string): string {
+  return isWindowsAbsolutePath(value)
+    ? win32.normalize(value)
+    : resolve(value);
+}
+
+function joinDesktopPath(basePath: string, ...segments: string[]): string {
+  return isWindowsAbsolutePath(basePath)
+    ? win32.join(basePath, ...segments)
+    : join(basePath, ...segments);
+}
+
+function dirnameDesktopPath(value: string): string {
+  return isWindowsAbsolutePath(value)
+    ? win32.dirname(win32.normalize(value))
+    : dirname(resolve(value));
+}
+
 function readCurrentPackageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), '..');
 }
@@ -78,15 +104,17 @@ function resolveHostRuntimeRoot(
     return {
       hostPackageRoot: currentPackageRoot,
       appSidecarRoot: currentPackageRoot,
-      runtimePackageRoot: resolve(join(currentPackageRoot, '..', 'cats-runtime')),
+      runtimePackageRoot: resolve(joinDesktopPath(currentPackageRoot, '..', 'cats-runtime')),
     };
   }
 
-  const bundledResourcesRoot = resolve(resourcesPath || join(currentPackageRoot, '..'));
+  const bundledResourcesRoot = resourcesPath
+    ? resolveDesktopPath(resourcesPath)
+    : resolve(joinDesktopPath(currentPackageRoot, '..'));
   return {
     hostPackageRoot: currentPackageRoot,
-    appSidecarRoot: resolve(join(bundledResourcesRoot, 'app-sidecar')),
-    runtimePackageRoot: resolve(join(bundledResourcesRoot, 'cats-runtime')),
+    appSidecarRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'app-sidecar')),
+    runtimePackageRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'cats-runtime')),
   };
 }
 
@@ -124,12 +152,12 @@ export function resolveDesktopHostConfig(
   );
   const explicitAppEntry = env.CATS_DESKTOP_APP_ENTRY?.trim();
   const inferredPackageRoot = explicitAppEntry
-    ? resolve(dirname(resolve(explicitAppEntry)), '..')
+    ? resolveDesktopPath(joinDesktopPath(dirnameDesktopPath(explicitAppEntry), '..'))
     : undefined;
-  const packageRoot = resolve(
+  const packageRoot = resolveDesktopPath(
     env.CATS_DESKTOP_APP_ROOT?.trim() || inferredPackageRoot || layout.appSidecarRoot,
   );
-  const runtimePackageRoot = resolve(
+  const runtimePackageRoot = resolveDesktopPath(
     env.CATS_DESKTOP_RUNTIME_ROOT?.trim() || layout.runtimePackageRoot,
   );
   const appHost = normalizeDesktopHost(
@@ -160,7 +188,7 @@ export function resolveDesktopHostConfig(
     env.CATS_DESKTOP_GRACEFUL_SHUTDOWN_MS,
     DEFAULT_GRACEFUL_SHUTDOWN_MS,
   );
-  const userDataDir = resolve(options.userDataDir);
+  const userDataDir = resolveDesktopPath(options.userDataDir);
   const background: DesktopHostBackgroundConfig = {
     trayEnabled: parseDesktopBoolean(
       env.CATS_DESKTOP_TRAY_ENABLED,
@@ -190,38 +218,44 @@ export function resolveDesktopHostConfig(
     background,
     update,
     paths: {
-      appEntryScript: resolve(
-        env.CATS_DESKTOP_APP_ENTRY?.trim() || join(packageRoot, 'dist-server', 'index.js'),
+      appEntryScript: resolveDesktopPath(
+        env.CATS_DESKTOP_APP_ENTRY?.trim()
+          ? resolveDesktopPath(env.CATS_DESKTOP_APP_ENTRY.trim())
+          : joinDesktopPath(packageRoot, 'dist-server', 'index.js'),
       ),
-      runtimeEntryScript: resolve(
-        env.CATS_DESKTOP_RUNTIME_ENTRY?.trim() || join(runtimePackageRoot, 'dist', 'index.js'),
+      runtimeEntryScript: resolveDesktopPath(
+        env.CATS_DESKTOP_RUNTIME_ENTRY?.trim()
+          ? resolveDesktopPath(env.CATS_DESKTOP_RUNTIME_ENTRY.trim())
+          : joinDesktopPath(runtimePackageRoot, 'dist', 'index.js'),
       ),
-      preloadScript: resolve(
-        env.CATS_DESKTOP_PRELOAD_SCRIPT?.trim() || join(packageRoot, 'dist-electron', 'preload.cjs'),
+      preloadScript: resolveDesktopPath(
+        env.CATS_DESKTOP_PRELOAD_SCRIPT?.trim()
+          ? resolveDesktopPath(env.CATS_DESKTOP_PRELOAD_SCRIPT.trim())
+          : joinDesktopPath(packageRoot, 'dist-electron', 'preload.cjs'),
       ),
-      appStatePath: resolve(
+      appStatePath: resolveDesktopPath(
         env.CATS_DESKTOP_STATE_PATH?.trim()
-          || join(userDataDir, 'config', 'chat-state.local.json'),
+          || joinDesktopPath(userDataDir, 'config', 'chat-state.local.json'),
       ),
-      runtimeDataDir: resolve(
+      runtimeDataDir: resolveDesktopPath(
         env.CATS_DESKTOP_RUNTIME_DATA_DIR?.trim()
-          || join(userDataDir, 'runtime', 'data'),
+          || joinDesktopPath(userDataDir, 'runtime', 'data'),
       ),
-      runtimeSessionBaseDir: resolve(
+      runtimeSessionBaseDir: resolveDesktopPath(
         env.CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR?.trim()
-          || join(userDataDir, 'runtime', 'sessions'),
+          || joinDesktopPath(userDataDir, 'runtime', 'sessions'),
       ),
-      runtimeConfigPath: resolve(
+      runtimeConfigPath: resolveDesktopPath(
         env.CATS_DESKTOP_RUNTIME_CONFIG_PATH?.trim()
-          || join(userDataDir, 'runtime', 'providers.yaml'),
+          || joinDesktopPath(userDataDir, 'runtime', 'providers.yaml'),
       ),
-      hostStatePath: resolve(
+      hostStatePath: resolveDesktopPath(
         env.CATS_DESKTOP_HOST_STATE_PATH?.trim()
-          || join(userDataDir, 'desktop-host', 'state.json'),
+          || joinDesktopPath(userDataDir, 'desktop-host', 'state.json'),
       ),
-      packagingOutputRoot: resolve(
+      packagingOutputRoot: resolveDesktopPath(
         env.CATS_DESKTOP_PACKAGING_OUTPUT_ROOT?.trim()
-          || join(packageRoot, 'build', 'desktop-packaging'),
+          || joinDesktopPath(packageRoot, 'build', 'desktop-packaging'),
       ),
     },
   };

@@ -19,6 +19,10 @@ import {
   readRuntimeNdjsonResponse,
   readRuntimeSseResponse,
 } from './clientStreams.js';
+import type {
+  TaskExecutionCorrelation,
+  TaskRuntimeExecutionRequest,
+} from '../shared/taskExecutionBridge.js';
 
 export interface RuntimeProviderInstanceConfig {
   id: string;
@@ -124,7 +128,14 @@ export interface RuntimeSessionInvocationContext {
   metadata?: Record<string, unknown>;
 }
 
-export interface RuntimeSessionCreateInput {
+export interface RuntimeExecutionRequestInput {
+  requestedStrategy?: string;
+  acceptanceCriteria?: string;
+  strategyContext?: Record<string, unknown>;
+  correlation?: TaskExecutionCorrelation;
+}
+
+export interface RuntimeSessionCreateInput extends RuntimeExecutionRequestInput {
   provider: string;
   instance?: string | null;
   model?: string | null;
@@ -138,7 +149,7 @@ export interface RuntimeSessionCreateInput {
   skills?: RuntimeSkillManifest;
 }
 
-export interface RuntimeSendMessageInput {
+export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
   outputDir?: string | null;
@@ -164,7 +175,7 @@ export interface RuntimeWakeupTarget {
   sessionId?: string;
 }
 
-export interface RuntimeWakeupCreateInput {
+export interface RuntimeWakeupCreateInput extends RuntimeExecutionRequestInput {
   reason: string;
   target: RuntimeWakeupTarget;
   scheduleAt?: string;
@@ -183,6 +194,32 @@ export interface RuntimeWakeupRequestRecord {
 export interface RuntimeWakeupCreateResult {
   request: RuntimeWakeupRequestRecord;
   coalesced: boolean;
+}
+
+function readNonEmptyString(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+function appendRuntimeExecutionRequestFields(
+  payload: Record<string, unknown>,
+  input: TaskRuntimeExecutionRequest | RuntimeExecutionRequestInput | null | undefined,
+): void {
+  const requestedStrategy = readNonEmptyString(input?.requestedStrategy);
+  const acceptanceCriteria = readNonEmptyString(input?.acceptanceCriteria);
+
+  if (requestedStrategy) {
+    payload.requestedStrategy = requestedStrategy;
+  }
+  if (acceptanceCriteria) {
+    payload.acceptanceCriteria = acceptanceCriteria;
+  }
+  if (input?.strategyContext && Object.keys(input.strategyContext).length > 0) {
+    payload.strategyContext = input.strategyContext;
+  }
+  if (input?.correlation && Object.keys(input.correlation).length > 0) {
+    payload.correlation = input.correlation;
+  }
 }
 
 export interface RuntimeClient {
@@ -388,6 +425,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (input.skills) {
       payload.skills = input.skills;
     }
+    appendRuntimeExecutionRequestFields(payload, input);
 
     const response = await fetch(`${this.baseUrl}/sessions`, {
       method: 'POST',
@@ -438,6 +476,18 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...(input?.context ? { context: input.context } : {}),
         ...(input?.outputDir?.trim() ? { outputDir: input.outputDir.trim() } : {}),
         ...(input?.skills ? { skills: input.skills } : {}),
+        ...(readNonEmptyString(input?.requestedStrategy)
+          ? { requestedStrategy: readNonEmptyString(input?.requestedStrategy) }
+          : {}),
+        ...(readNonEmptyString(input?.acceptanceCriteria)
+          ? { acceptanceCriteria: readNonEmptyString(input?.acceptanceCriteria) }
+          : {}),
+        ...(input?.strategyContext && Object.keys(input.strategyContext).length > 0
+          ? { strategyContext: input.strategyContext }
+          : {}),
+        ...(input?.correlation && Object.keys(input.correlation).length > 0
+          ? { correlation: input.correlation }
+          : {}),
       }),
     });
 
@@ -486,6 +536,15 @@ export class CatsRuntimeClient implements RuntimeClient {
   }
 
   async createWakeup(input: RuntimeWakeupCreateInput): Promise<RuntimeWakeupCreateResult> {
+    const payload: Record<string, unknown> = {
+      reason: input.reason,
+      target: input.target,
+      ...(input.scheduleAt ? { scheduleAt: input.scheduleAt } : {}),
+      ...(input.coalesceKey ? { coalesceKey: input.coalesceKey } : {}),
+      ...(input.metadata ? { metadata: input.metadata } : {}),
+    };
+    appendRuntimeExecutionRequestFields(payload, input);
+
     const response = await fetch(`${this.baseUrl}/wakeups`, {
       method: 'POST',
       headers: {
@@ -493,13 +552,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         'content-type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify({
-        reason: input.reason,
-        target: input.target,
-        ...(input.scheduleAt ? { scheduleAt: input.scheduleAt } : {}),
-        ...(input.coalesceKey ? { coalesceKey: input.coalesceKey } : {}),
-        ...(input.metadata ? { metadata: input.metadata } : {}),
-      }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(this.timeoutMs),
     });
 
@@ -558,4 +611,3 @@ export class CatsRuntimeClient implements RuntimeClient {
     };
   }
 }
-

@@ -22,6 +22,11 @@ import {
   type TaskExecutionLocator,
 } from './taskExecutionLocator.js';
 import {
+  cloneTaskRuntimeExecutionRequest,
+  serializeTaskRuntimeExecutionRequest,
+  type TaskRuntimeExecutionRequest,
+} from '../shared/taskExecutionBridge.js';
+import {
   cloneTaskInput,
   isDispatchableTaskStatus,
   mergeTaskLifecycleMetadata,
@@ -41,6 +46,7 @@ export interface ApplyTaskAssignmentLifecycleInput {
   core: CatsCoreState;
   previousTask: CoreTaskRecord | null;
   task: CoreTaskRecord;
+  executionRequest?: TaskRuntimeExecutionRequest;
   executionLocator?: TaskExecutionLocator;
   runtimeClient?: Pick<RuntimeClient, 'createWakeup'>;
   now?: Date;
@@ -58,6 +64,8 @@ export async function applyTaskAssignmentLifecycle(
 ): Promise<ApplyTaskAssignmentLifecycleResult> {
   const now = input.now ?? new Date();
   const nowIso = now.toISOString();
+  const executionRequest = cloneTaskRuntimeExecutionRequest(input.executionRequest);
+  const serializedExecution = serializeTaskRuntimeExecutionRequest(executionRequest);
   const activities: CoreActivityRecord[] = [];
   const wakeups: RuntimeWakeupCreateResult[] = [];
   let nextCore = input.core;
@@ -111,6 +119,7 @@ export async function applyTaskAssignmentLifecycle(
         assignedActorId: actorId,
         conversationId: nextTask.conversationId,
       },
+      ...executionRequest,
     });
     wakeups.push(created);
     wakeupSummaries.push({
@@ -119,6 +128,7 @@ export async function applyTaskAssignmentLifecycle(
       assignedActorId: actorId,
       coalesced: created.coalesced,
       scheduledAt: created.request.scheduleAt ?? nowIso,
+      ...(serializedExecution ? { execution: serializedExecution } : {}),
     });
     const actorName = resolveActorName(nextCore, actorId);
     const activity = appendCoreActivity(
@@ -152,6 +162,7 @@ export async function applyTaskAssignmentLifecycle(
         metadata: mergeTaskLifecycleMetadata(nextTask.metadata, {
           lastWakeupAt: nowIso,
           wakeups: wakeupSummaries,
+          ...(serializedExecution ? { execution: serializedExecution } : {}),
         }),
       },
       now,
@@ -173,6 +184,7 @@ export interface CheckoutTaskExecutionInput {
   taskId: string;
   actorId: string;
   sessionId: string;
+  executionRequest?: TaskRuntimeExecutionRequest;
   now?: Date;
 }
 
@@ -188,6 +200,8 @@ export function checkoutTaskExecution(
 ): CheckoutTaskExecutionResult {
   const now = input.now ?? new Date();
   const nowIso = now.toISOString();
+  const executionRequest = cloneTaskRuntimeExecutionRequest(input.executionRequest);
+  const serializedExecution = serializeTaskRuntimeExecutionRequest(executionRequest);
   const task = input.core.tasks.find((candidate) => candidate.id === input.taskId);
   if (!task) {
     throw new CoreValidationError(`taskId not found: ${input.taskId}`, 'task_not_found');
@@ -222,6 +236,7 @@ export function checkoutTaskExecution(
         source: 'task-lifecycle',
         sessionId: input.sessionId,
         actorId: input.actorId,
+        ...(serializedExecution ? { execution: serializedExecution } : {}),
       },
     },
     now,
@@ -236,6 +251,7 @@ export function checkoutTaskExecution(
         sessionId: input.sessionId,
         checkoutAt: nowIso,
         runId: runWrite.run.id,
+        ...(serializedExecution ? { execution: serializedExecution } : {}),
       }),
     },
     now,
