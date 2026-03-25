@@ -1184,6 +1184,7 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(designIndexSource, /@import '\.\/layout\.css';/u);
   assert.match(designIndexSource, /@import '\.\/components\/choices\.css';/u);
   assert.match(designIndexSource, /@import '\.\/components\/product-placeholder\.css';/u);
+  assert.match(designIndexSource, /@import '\.\/components\/suite-setup\.css';/u);
   assert.match(badgeStylesSource, /\.planPill/u);
   assert.match(badgeStylesSource, /\.promptChip/u);
   assert.match(panelStylesSource, /\.contentCard/u);
@@ -1221,7 +1222,7 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(chatThreadStylesSource, /\.recentOverflowMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusButton/u);
-  assert.match(chatSetupStylesSource, /\.setupWizard/u);
+  assert.match(chatSetupStylesSource, /suite-setup\.css/u);
   assert.match(extraStylesSource, /\.myCatsSection/u);
   await assert.rejects(
     readFile(new URL('../src/products/chat/renderer/styles/base.css', import.meta.url), 'utf8'),

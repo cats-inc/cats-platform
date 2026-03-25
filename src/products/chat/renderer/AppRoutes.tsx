@@ -26,7 +26,6 @@ import {
 import { SettingsCats } from './components/settings-cats/SettingsCats.js';
 import { SettingsData } from './components/SettingsData.js';
 import { SettingsGeneral } from './components/SettingsGeneral.js';
-import { SetupWizard } from './components/SetupWizard.js';
 
 function noop(): void {}
 
@@ -84,23 +83,6 @@ export function AppRoutes({
   onChangeDraftLeadCat,
 }: AppRoutesProps) {
   const { folderBrowserOpen, ...folderBrowserSurfaceProps } = folderBrowserProps;
-
-  if (!payload.setupCompleteAt) {
-    return (
-      <Routes>
-        <Route
-          path="/setup"
-          element={
-            <SetupWizard
-              payload={payload}
-              onComplete={onPayloadUpdate}
-            />
-          }
-        />
-        <Route path="*" element={<Navigate to="/setup" replace />} />
-      </Routes>
-    );
-  }
 
   return (
     <>

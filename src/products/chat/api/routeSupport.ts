@@ -12,6 +12,7 @@ import type {
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
+import { readSuitePreferences } from '../../../shared/suitePreferences.js';
 import {
   appendMessage,
   assignCatToChannel,
@@ -223,6 +224,8 @@ export async function buildAppShellPayload(
     };
   });
 
+  const suitePrefs = await readSuitePreferences(dependencies.config.chatStatePath);
+
   return createAppShell(
     dependencies.config,
     runtime,
@@ -233,6 +236,7 @@ export async function buildAppShellPayload(
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,
       botBindings,
+      lastProductSurface: suitePrefs.lastProductSurface,
     },
   );
 }

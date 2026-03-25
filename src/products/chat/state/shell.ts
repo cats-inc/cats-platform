@@ -1,5 +1,6 @@
 import type { AppConfig } from '../../../config.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
+import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
 import { summarizeState } from './model/index.js';
 
@@ -13,6 +14,7 @@ export function createAppShell(
     ownerDisplayName: string;
     ownerAvatarColor: string | null;
     botBindings?: ChatBotBindingSummary[];
+    lastProductSurface?: SuiteSurfaceId | null;
   },
 ): AppShellPayload {
   const summary = summarizeState(chat);
@@ -49,6 +51,7 @@ export function createAppShell(
     setupCompleteAt: setup?.setupCompleteAt ?? null,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
     ownerAvatarColor: setup?.ownerAvatarColor ?? null,
+    lastProductSurface: setup?.lastProductSurface ?? null,
   };
 }
 

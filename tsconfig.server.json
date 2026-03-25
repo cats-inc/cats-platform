@@ -19,6 +19,7 @@
   "include": ["src/**/*.ts"],
   "exclude": [
     "src/renderer/**/*",
+    "src/app/renderer/**/*",
     "src/products/*/renderer/**/*",
     "node_modules",
     "dist",

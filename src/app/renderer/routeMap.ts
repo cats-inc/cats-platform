@@ -1,4 +1,5 @@
-export type SuiteSurfaceId = 'chat' | 'work' | 'code';
+export type { SuiteSurfaceId } from '../../shared/suite-contract.js';
+import type { SuiteSurfaceId } from '../../shared/suite-contract.js';
 
 export interface SuiteSurfaceRoute {
   surface: SuiteSurfaceId;

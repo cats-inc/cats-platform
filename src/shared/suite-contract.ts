@@ -1,5 +1,7 @@
 import type { RuntimeStatusSummary } from '../platform/runtime/client.js';
 
+export type SuiteSurfaceId = 'chat' | 'work' | 'code';
+
 export interface SuiteAppDescriptor {
   name: 'cats';
   stage: 'phase-2-shell';
@@ -16,10 +18,21 @@ export interface SuiteOwnerContext {
   setupCompleteAt: string | null;
   ownerDisplayName: string;
   ownerAvatarColor: string | null;
+  lastProductSurface: SuiteSurfaceId | null;
 }
 
 export interface SuiteHostEnvelope extends SuiteOwnerContext {
   app: SuiteAppDescriptor;
   runtime: RuntimeStatusSummary;
   metadata: SuiteResponseMetadata;
+}
+
+export interface SuiteSetupCompleteInput {
+  ownerDisplayName: string;
+  selectedProduct: SuiteSurfaceId;
+  createBossCat: boolean;
+  bossCatName?: string;
+  bossCatProvider?: string;
+  bossCatInstance?: string;
+  bossCatModel?: string;
 }

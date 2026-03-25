@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ResolvedServerDependencies } from './contracts.js';
+import { routeSuiteSetupApi } from './suiteSetupRoutes.js';
 
 import { routeCoreApi } from '../../core/api/index.js';
 import { handleProviderModels, handleProviderRegistry } from '../../server/routes/providers.js';
@@ -275,6 +276,10 @@ export async function routeRequest(
       return;
     }
     await handleShellOpenFolder(request, response);
+    return;
+  }
+
+  if (await routeSuiteSetupApi(chatContext)) {
     return;
   }
 
