@@ -181,7 +181,7 @@ export async function ensureTargetSession(
 
   const channel = buildChannelView(state, channelId);
   const spawnCwd = spawnCwdFor(requireChannel(state, channelId));
-  const sharingMode = spawnCwd ? 'shared' : 'isolated';
+  const workspaceKind = spawnCwd ? 'source' : 'sandbox';
   let nextState = state;
 
   try {
@@ -207,7 +207,8 @@ export async function ensureTargetSession(
           sessionTarget.modelSelection
           ?? createExplicitProviderModelSelection(sessionTarget.model),
         cwd: spawnCwd,
-        sharingMode,
+        workspaceKind,
+        workspaceAccess: 'read_write',
         context: runtimeEnvelope.context,
         skills: runtimeEnvelope.skills,
       });
@@ -264,7 +265,8 @@ export async function ensureTargetSession(
         cat.execution.modelSelection
         ?? createExplicitProviderModelSelection(cat.execution.target.model),
       cwd: spawnCwd,
-      sharingMode,
+      workspaceKind,
+      workspaceAccess: 'read_write',
       context: runtimeEnvelope.context,
       skills: runtimeEnvelope.skills,
     });

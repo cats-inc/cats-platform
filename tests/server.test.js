@@ -1543,7 +1543,8 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     const messagePayload = await messageResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 1);
-    assert.equal(runtimeClient.createdSessions[0].sharingMode, 'isolated');
+    assert.equal(runtimeClient.createdSessions[0].workspaceKind, 'sandbox');
+    assert.equal(runtimeClient.createdSessions[0].workspaceAccess, 'read_write');
     assert.equal(runtimeClient.createdSessions[0].cwd, null);
     assert.equal(messagePayload.dispatch.results[0].status, 'sent');
     assert.equal(messagePayload.dispatch.results[0].targetKind, 'orchestrator');

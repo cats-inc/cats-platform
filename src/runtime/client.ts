@@ -130,6 +130,8 @@ export interface RuntimeSessionCreateInput {
   model?: string | null;
   modelSelection?: ProviderModelSelection | null;
   cwd?: string | null;
+  workspaceKind?: 'source' | 'sandbox' | 'worktree' | null;
+  workspaceAccess?: 'read_write' | 'read_only' | null;
   sharingMode?: 'shared' | 'isolated' | null;
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
@@ -369,8 +371,13 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (input.cwd?.trim()) {
       payload.cwd = input.cwd.trim();
     }
-    if (input.sharingMode) {
+    if (input.workspaceKind) {
+      payload.workspaceKind = input.workspaceKind;
+    } else if (input.sharingMode) {
       payload.workspaceMode = input.sharingMode;
+    }
+    if (input.workspaceAccess) {
+      payload.workspaceAccess = input.workspaceAccess;
     }
     if (input.instructions?.trim()) {
       payload.instructions = input.instructions.trim();

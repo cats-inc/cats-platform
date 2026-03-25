@@ -429,7 +429,8 @@ export async function persistCatAssignmentUpdate(
           updatedCat.execution.modelSelection
           ?? createExplicitProviderModelSelection(updatedCat.execution.target.model),
         cwd: spawnCwd,
-        sharingMode: spawnCwd ? 'shared' : 'isolated',
+        workspaceKind: spawnCwd ? 'source' : 'sandbox',
+        workspaceAccess: 'read_write',
       });
       const timestamp = now.toISOString();
       nextState = setChannelCatLease(nextState, channelId, input.catId, {
