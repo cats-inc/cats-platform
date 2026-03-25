@@ -181,7 +181,7 @@ export async function ensureTargetSession(
 
   const channel = buildChannelView(state, channelId);
   const spawnCwd = spawnCwdFor(requireChannel(state, channelId));
-  const sharingMode = spawnCwd ? 'shared' : null;
+  const sharingMode = spawnCwd ? 'shared' : 'isolated';
   let nextState = state;
 
   try {

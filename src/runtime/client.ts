@@ -130,7 +130,7 @@ export interface RuntimeSessionCreateInput {
   model?: string | null;
   modelSelection?: ProviderModelSelection | null;
   cwd?: string | null;
-  sharingMode?: 'shared' | null;
+  sharingMode?: 'shared' | 'isolated' | null;
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
   skills?: RuntimeSkillManifest;

@@ -1498,6 +1498,66 @@ test('PATCH /api/preferences wakes the selected Boss Chat entry participant', as
   });
 });
 
+test('solo chats without a cwd create isolated runtime sessions', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: false,
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Solo Draft',
+        topic: 'Start without a repo path.',
+        composerMode: 'solo',
+        pendingProvider: 'claude',
+        pendingInstance: 'native',
+        pendingModel: 'claude-opus-4-6',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const { channel } = await createChannelResponse.json();
+
+    const messageResponse = await fetch(`${baseUrl}/api/channels/${channel.id}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        body: 'Hello from solo mode',
+        pendingProvider: 'claude',
+        pendingInstance: 'native',
+        pendingModel: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(messageResponse.status, 200);
+    const messagePayload = await messageResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.createdSessions[0].sharingMode, 'isolated');
+    assert.equal(runtimeClient.createdSessions[0].cwd, null);
+    assert.equal(messagePayload.dispatch.results[0].status, 'sent');
+    assert.equal(messagePayload.dispatch.results[0].targetKind, 'orchestrator');
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+
+    assert.equal(channelPayload.channel.composerMode, 'solo');
+    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
+    assert.equal(channelPayload.channel.orchestratorLease.status, 'ready');
+  });
+});
+
 test('PATCH /api/preferences does not overwrite the last wake request when the selected room is already awake', async () => {
   const runtimeClient = createRuntimeStub();
 
