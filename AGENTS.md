@@ -81,15 +81,20 @@ If an agent realizes it has violated a MUST/MUST NOT directive:
 but were directly coupled to lower-level runtime backends. `cats` now carries
 two jobs:
 it is the current Node.js/TypeScript product shell, and it is the planning home
-for shared `Cats Core v1` contracts that both `Cats Chat` and `Cats Work` must
-reuse. The project MUST continue to depend on `cats-runtime` as its runtime
-boundary.
+for shared `Cats Core v1` contracts that `Cats Chat`, `Cats Work`, and
+`Cats Code` must reuse. The project MUST continue to depend on
+`cats-runtime` as its runtime boundary.
 
 **Key Features**:
 - Shared `Cats Core v1` domain contracts for actors, channels, approvals,
   owner profile, and archive metadata
 - Chat-first product shell above runtime-backed agent sessions
-- Planned `Cats Work` surfaces that reuse the same shared product contracts
+- Parallel `Cats Chat`, `Cats Work`, and `Cats Code` product trees that reuse
+  the same shared product contracts
+- Shared suite design layer in `src/design/` plus product-owned renderer
+  surfaces above it
+- Product-owned API delegates and server dependency slices for suite-host
+  integration
 - Runtime integration through `cats-runtime` direct APIs, with a planned MCP
   facade for orchestrator-style tool use
 
@@ -97,22 +102,38 @@ boundary.
 
 ## Current Product Direction
 
-- `Cats Chat` is the first launch surface and remains the main implementation
-  focus inside this repo.
-- `Cats Work` is expected to follow immediately after `Cats Chat`, so shared
-  contracts MUST be defined before the product surfaces diverge.
-- The full desktop surfaces for both `Cats Chat` and `Cats Work` should stay on
-  one React/TypeScript renderer stack inside the Electron host chosen by
-  ADR-003.
+- `Cats Chat`, `Cats Work`, and `Cats Code` now share one suite host and one
+  `Cats Core v1` contract layer, and should be treated as parallel product
+  tracks rather than ad hoc one-off expansions.
+- `Cats Chat` remains the most mature launch surface inside this repo, but
+  Work and Code are no longer speculative enough to justify Chat-centric shared
+  contracts or suite-host wiring.
+- The full desktop surfaces for `Cats Chat`, `Cats Work`, and `Cats Code`
+  should stay on one React/TypeScript renderer stack inside the Electron host
+  chosen by ADR-003.
 - `Cats Core v1` should stay minimal: shared identity, actors/resources,
   permissions, conversations, bot bindings, tasks/approvals, owner profile, and
   archive metadata.
 - `cats-runtime` remains the only runtime boundary. Product services should use
   direct APIs; MCP is an additional tool surface for orchestrators, not a
   replacement boundary.
+- Product teams should integrate through product-owned API delegates and the
+  suite host registration protocol documented in
+  `docs/product-integration-guide.md`.
+- Shared visual primitives may live in `src/design/`, but product-specific UI
+  behavior should remain in the owning product tree unless a real multi-product
+  use case has been proven.
+- The suite host is integration-owned. Product teams should not directly grow
+  `src/app/server/**` as part of routine feature work.
+- The shared-contract freeze for parallel delivery currently includes:
+  - `src/core/types.ts`
+  - `src/platform/orchestration/contracts.ts`
+  - `src/shared/roomRouting.ts`
+  - `src/products/chat/api/contracts.ts`
 - Flutter and Tauri are not part of the current execution path. If a mobile
   client is added later, treat it as a companion scope rather than a second
-  full primary shell.
+  full primary shell. The current bootstrap direction is a companion
+  React Native / Expo app under `mobile/`, not a second desktop-first shell.
 - The Paperclip-derived control-plane documents remain useful research, but
   they are exploratory and not the current execution path unless explicitly
   reactivated.
@@ -154,6 +175,7 @@ boundary.
 **Quick Reference**:
 - Specs & Plans: `docs/specs/`, `docs/plans/`
 - Decisions: `docs/decisions/` (ADR)
+- Product integration: `docs/product-integration-guide.md`
 - Shortcuts: `cnp` (commit & push), `umd` (update docs)
 
 ---
@@ -177,6 +199,7 @@ boundary.
 | `AGENTS.md` | Rules, conventions, structure | Always read first |
 | `CLAUDE.md` / `GEMINI.md` / `CODEX.md` | Agent-specific configs | After AGENTS.md |
 | `docs/AGENT-GUIDE.md` | Project SOPs, domain knowledge, common task procedures | When performing tasks |
+| `docs/product-integration-guide.md` | Parallel product registration, dependency-slice, and suite-host integration rules | When touching product boundaries or suite-host wiring |
 
 ---
 
@@ -526,6 +549,13 @@ usage() {
     *   Gemini maintains `GEMINI.md` only
     *   Codex maintains `CODEX.md` only
     *   All agents MAY update `AGENTS.md` but MUST provide clear justification in commit message
+8.  **Parallel delivery ownership**:
+    *   Product-local feature work SHOULD stay inside the owning product tree:
+        `src/products/chat/**`, `src/products/work/**`, or `src/products/code/**`
+    *   `src/app/server/**` is suite-host integration space and SHOULD converge
+        through an integration owner rather than routine product feature edits
+    *   The frozen shared-contract set MUST NOT be reshaped casually during
+        product feature work; follow `docs/product-integration-guide.md`
 
 ### Handoff Protocol
 
@@ -605,6 +635,7 @@ When completing a task or handing off to another agent:
 | `setup-guide.md` | Environment setup |
 | `testing.md` | Testing strategy |
 | `deployment.md` | Deployment instructions |
+| `product-integration-guide.md` | Parallel product integration protocol |
 | `security-guidelines.md` | Security policies |
 | `SCRIPT-STANDARDS.md` | Script standards and naming conventions |
 | `research/` | External research notes and sources |
@@ -701,6 +732,7 @@ chore: maintenance tasks
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2.2 | 2026-03-25 | Refresh current product direction, parallel delivery rules, and product integration references |
 | 1.2.1 | 2026-01-05 | Normalize compliance headings and template guidance |
 | 1.2.0 | 2025-01 | Add Development Workflow overview, Feature Specifications, Implementation Plans (CDD support) |
 | 1.1.0 | 2025-01 | Add Project Overview, Tech Stack, Coding Conventions, Testing Protocols, PR Guidelines (AAIF compliance) |

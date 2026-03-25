@@ -131,10 +131,43 @@ working memory for Codex, not yet a ratified product spec or ADR.
   native-feeling desktop experience with simple installation and guided setup,
   especially to reduce the friction of deploying local runtime dependencies.
 
+### Parallel Product Delivery Rules
+
+`cats` is now in parallel delivery mode for `Cats Chat`, `Cats Work`, and
+`Cats Code`.
+
+- Stay inside your assigned product tree by default:
+  - Chat: `src/products/chat/**`
+  - Work: `src/products/work/**`
+  - Code: `src/products/code/**`
+- Do not edit other product trees unless explicitly acting as the integrator.
+- Treat these files as frozen shared contracts:
+  - `src/core/types.ts`
+  - `src/platform/orchestration/contracts.ts`
+  - `src/shared/roomRouting.ts`
+  - `src/products/chat/api/contracts.ts`
+- Do not reshape frozen shared contracts during feature work. Shared contract
+  changes must go through integration review plus docs (`SPEC/ADR/PLAN`) first.
+- Do not expand suite-host wiring directly during product work.
+  `src/app/server/**` is integration-owned.
+- Product APIs must land through product-owned delegates:
+  - Chat: `src/products/chat/api/index.ts`
+  - Work: `src/products/work/api/index.ts`
+  - Code: `src/products/code/api/index.ts`
+- Shared visual primitives may live in `src/design/**`, but do not upstream
+  Chat-specific UI behavior into shared components prematurely.
+- Keep layering intact: `core/` and `platform/` must not import product
+  implementations.
+- Before handoff or commit, run `npm test` and keep dependency and boundary
+  tests green.
+- Follow `docs/product-integration-guide.md` and
+  `docs/plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md`
+  when integrating product work into the suite host.
+
 ---
 
 ## Maintenance
 
 This file is maintained by Codex only. Other agents should not modify this file.
 
-Last updated: 2026-03-23
+Last updated: 2026-03-25
