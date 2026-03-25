@@ -66,8 +66,8 @@ export function SuiteSetupWizard({
       if (e.key !== 'Enter' || busy) {
         return;
       }
-      // Don't hijack Enter inside <select> elements.
-      if (e.target instanceof HTMLSelectElement) {
+      // Don't hijack Enter inside <select> or <textarea> elements.
+      if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
       e.preventDefault();

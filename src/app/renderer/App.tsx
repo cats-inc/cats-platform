@@ -59,8 +59,8 @@ export default function SuiteApp() {
     if (location.pathname === '/' && storedSurface !== 'chat') {
       return;
     }
-    // Also skip sync when at `/setup` — user is being redirected away.
-    if (location.pathname === '/setup') {
+    // Skip sync for suite-level routes that aren't product surfaces.
+    if (location.pathname === '/setup' || location.pathname.startsWith('/settings')) {
       return;
     }
     // First render: seed the ref AND sync if the current surface differs
@@ -135,6 +135,7 @@ export default function SuiteApp() {
   const entryPath = resolveProductEntryPath(storedSurface);
   return (
     <Routes>
+      <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
       <Route path="/settings/*" element={<ChatApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
