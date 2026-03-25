@@ -22,6 +22,15 @@
   font-weight: 400;
 }
 
+.providerControlField {
+  margin-top: 2px;
+}
+
+.providerCatalogHint {
+  display: block;
+  margin-top: 2px;
+}
+
 .textInput {
   width: 100%;
   padding: 10px 12px;

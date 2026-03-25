@@ -3,13 +3,17 @@ import {
   getProviderDisplayName,
   getProviderModels,
 } from '../../../../shared/providerCatalog';
-import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
+import type {
+  ProviderModelSelection,
+  ProviderTargetSelection,
+} from '../../../../shared/providerSelection';
 import { ProviderModelFields } from './ProviderModelFields';
 
 export interface ModelSelectorValue {
   provider: string;
   model: string | null;
   instance: string | null;
+  modelSelection: ProviderModelSelection | null;
 }
 
 interface ModelSelectorProps {
@@ -44,6 +48,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       provider: target.provider,
       model: target.model || null,
       instance: target.instance || null,
+      modelSelection: target.modelSelection ?? null,
     });
   }
 
@@ -78,6 +83,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
               provider={value.provider}
               instance={value.instance ?? ''}
               model={value.model ?? ''}
+              modelSelection={value.modelSelection}
               onTargetChange={handleTargetChange}
             />
           </div>

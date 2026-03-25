@@ -182,6 +182,7 @@ export function useComposerSubmit(options: {
             pendingProvider: draftModel.provider,
             pendingModel: draftModel.model,
             pendingInstance: draftModel.instance,
+            pendingModelSelection: draftModel.modelSelection,
           },
         );
         payload = optimisticDraft.payload;
@@ -207,6 +208,7 @@ export function useComposerSubmit(options: {
             pendingProvider: draftModel.provider,
             pendingModel: draftModel.model ?? undefined,
             pendingInstance: draftModel.instance ?? undefined,
+            pendingModelSelection: draftModel.modelSelection ?? undefined,
           } : {}),
         });
         channelId = createdPayload.chat.selectedChannelId;
@@ -280,6 +282,7 @@ export function useComposerSubmit(options: {
                 pendingProvider: soloChannelModel.provider,
                 pendingModel: soloChannelModel.model,
                 pendingInstance: soloChannelModel.instance,
+                pendingModelSelection: soloChannelModel.modelSelection,
               }
             : {}
         ),
@@ -318,6 +321,7 @@ export function useComposerSubmit(options: {
     draftFiles,
     draftLeadCatId,
     draftModel.instance,
+    draftModel.modelSelection,
     draftModel.model,
     draftModel.provider,
     navigate,
@@ -333,6 +337,7 @@ export function useComposerSubmit(options: {
     showingMyCatDirectLane,
     showingNewChatDraft,
     soloChannelModel.instance,
+    soloChannelModel.modelSelection,
     soloChannelModel.model,
     soloChannelModel.provider,
     state,

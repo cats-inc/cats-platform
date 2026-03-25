@@ -67,6 +67,56 @@ function createRuntimeStub() {
         warnings: [],
       };
     },
+    async getAdvancedProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: `${provider}-default`,
+        source: 'config',
+        cache: null,
+        entries: [
+          { id: `${provider}-default`, label: `${provider} default`, default: true },
+        ],
+        presets: [
+          {
+            id: 'balanced',
+            label: 'Balanced',
+            availability: 'supported',
+            applicableEntryIds: [`${provider}-default`],
+            preferredEntryId: `${provider}-default`,
+            controlDefaults: {
+              'openai.reasoning_effort': 'medium',
+            },
+          },
+        ],
+        controls: [
+          {
+            key: 'openai.reasoning_effort',
+            label: 'Reasoning effort',
+            kind: 'enum',
+            scope: 'session_default',
+            values: [
+              { value: 'low', label: 'low' },
+              { value: 'medium', label: 'medium' },
+              { value: 'high', label: 'high' },
+            ],
+          },
+        ],
+        defaultSelection: {
+          entryMode: 'auto',
+          entryId: `${provider}-default`,
+          presetId: 'balanced',
+          controls: {
+            'openai.reasoning_effort': 'medium',
+          },
+        },
+        support: {
+          tier: 'entry_only',
+        },
+        warnings: [],
+      };
+    },
     async createSession(input) {
       const session = {
         id: `session-${nextSession++}`,
@@ -197,6 +247,24 @@ test('GET /health reports runtime reachability', async () => {
     assert.equal(payload.startup.phase, 'ready');
     assert.equal(payload.shutdown.stdinCloseEnabled, false);
     assert.equal(payload.runtime.service, 'cats-runtime');
+  });
+});
+
+test('GET /api/providers/:provider/models/advanced returns the runtime advanced catalog additively', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/codex/models/advanced`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.catalog.provider, 'codex');
+    assert.equal(payload.catalog.defaultSelection.entryMode, 'auto');
+    assert.equal(payload.catalog.defaultSelection.presetId, 'balanced');
+    assert.equal(payload.catalog.presets[0].availability, 'supported');
+    assert.deepEqual(payload.catalog.controls[0].values, [
+      { value: 'low', label: 'low' },
+      { value: 'medium', label: 'medium' },
+      { value: 'high', label: 'high' },
+    ]);
   });
 });
 
@@ -1237,6 +1305,78 @@ test('assigning a cat to a channel immediately creates a runtime session in the 
       sessionStartedMessage.body,
       'Agent-Spawn connected to cats-runtime session session-1 (cwd: C:/repo/cats).',
     );
+  });
+});
+
+test('assigning a cat forwards structured modelSelection to cats-runtime session creation', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Advanced Session Spawn',
+        topic: 'Verify model selection reaches cats-runtime.',
+        repoPath: 'C:/repo/cats',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Agent-Advanced',
+        provider: 'codex',
+        model: 'gpt-5.4',
+        modelSelection: {
+          entryMode: 'auto',
+          presetId: 'balanced',
+          controls: {
+            'openai.reasoning_effort': 'medium',
+          },
+        },
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const assignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${catId}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider: 'codex',
+        model: 'gpt-5.4',
+        modelSelection: {
+          entryMode: 'auto',
+          presetId: 'balanced',
+          controls: {
+            'openai.reasoning_effort': 'high',
+          },
+        },
+      }),
+    });
+    assert.equal(assignResponse.status, 201);
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.deepEqual(runtimeClient.createdSessions[0].modelSelection, {
+      entryMode: 'auto',
+      presetId: 'balanced',
+      controls: {
+        'openai.reasoning_effort': 'high',
+      },
+    });
   });
 });
 

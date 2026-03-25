@@ -31,6 +31,7 @@ import {
   resolveOrchestratorExecutionTarget,
   resolveRuntimeEnvelopeForTarget,
 } from '../runtimeTargeting.js';
+import { createExplicitProviderModelSelection } from '../../../../shared/providerSelection.js';
 import {
   ensureChannelMarkedActive,
   markTargetWaking,
@@ -202,6 +203,9 @@ export async function ensureTargetSession(
         provider: sessionTarget.provider,
         instance: sessionTarget.instance,
         model: sessionTarget.model,
+        modelSelection:
+          sessionTarget.modelSelection
+          ?? createExplicitProviderModelSelection(sessionTarget.model),
         cwd: spawnCwd,
         sharingMode,
         context: runtimeEnvelope.context,
@@ -256,6 +260,9 @@ export async function ensureTargetSession(
       provider: cat.execution.target.provider,
       instance: cat.execution.target.instance,
       model: cat.execution.target.model,
+      modelSelection:
+        cat.execution.modelSelection
+        ?? createExplicitProviderModelSelection(cat.execution.target.model),
       cwd: spawnCwd,
       sharingMode,
       context: runtimeEnvelope.context,

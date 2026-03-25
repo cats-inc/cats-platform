@@ -2,6 +2,7 @@ export { normalizeAppShellPayload } from './normalization.js';
 export { expectJson, readErrorMessage } from './http.js';
 
 export {
+  fetchAdvancedProviderModels,
   fetchProviders,
   fetchProviderModels,
 } from './providers.js';

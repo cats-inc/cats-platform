@@ -53,6 +53,7 @@ export function useSettingsCatsRegistryActions(options: {
         provider: catForm.provider,
         instance: catForm.instance || undefined,
         model: catForm.model || undefined,
+        modelSelection: catForm.modelSelection,
       });
       onPayloadUpdate(result);
       setCatForm(emptyCatForm());

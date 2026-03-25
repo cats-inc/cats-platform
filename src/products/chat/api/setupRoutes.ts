@@ -44,6 +44,7 @@ async function handleSetupComplete(
         provider: body.bossCatProvider,
         instance: body.bossCatInstance,
         model: body.bossCatModel,
+        modelSelection: body.bossCatModelSelection,
       },
       now,
     );
@@ -67,6 +68,7 @@ async function handleSetupComplete(
           instance: body.bossCatInstance?.trim() || null,
           model: body.bossCatModel ?? null,
         },
+        executionModelSelection: body.bossCatModelSelection ?? null,
       },
     };
 

@@ -5,6 +5,7 @@ function ChatBossCatStep({
   provider,
   instance,
   model,
+  modelSelection,
   catName,
   runtimeReachable,
   onTargetChange,
@@ -29,6 +30,7 @@ function ChatBossCatStep({
         provider={provider}
         instance={instance}
         model={model}
+        modelSelection={modelSelection}
         onTargetChange={onTargetChange}
       />
       <div className="setupRuntimeStatus">

@@ -5,6 +5,7 @@ import {
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
 } from '../dist-server/shared/providerSelection.js';
+import { normalizeProviderAdvancedModelCatalog } from '../dist-server/shared/providerCatalog.js';
 
 test('resolveSelectedProviderInstance picks the runtime default instance when none is selected', () => {
   const provider = {
@@ -75,4 +76,149 @@ test('resolveCatalogTargetSelection keeps a manual model choice for the same pro
   });
 
   assert.equal(nextTarget.model, 'claude-opus-4-6');
+});
+
+test('resolveCatalogTargetSelection adopts advanced default selection presets and controls', () => {
+  const nextTarget = resolveCatalogTargetSelection({
+    target: {
+      provider: 'codex',
+      instance: 'main',
+      model: '',
+      modelSelection: null,
+    },
+    catalog: {
+      provider: 'codex',
+      backend: 'api',
+      instance: 'main',
+      defaultModel: 'gpt-5.4',
+      source: 'config',
+      cache: null,
+      models: [
+        { id: 'gpt-5.4', label: 'GPT-5.4', default: true },
+        { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex' },
+      ],
+      warnings: [],
+    },
+    advancedCatalog: normalizeProviderAdvancedModelCatalog({
+      provider: 'codex',
+      backend: 'api',
+      instance: 'main',
+      defaultModel: 'gpt-5.4',
+      source: 'config',
+      cache: null,
+      entries: [
+        { id: 'gpt-5.4', label: 'GPT-5.4', default: true },
+        { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex' },
+      ],
+      presets: [
+        {
+          id: 'balanced',
+          label: 'Balanced',
+          availability: 'supported',
+          applicableEntryIds: ['gpt-5.4'],
+          preferredEntryId: 'gpt-5.4',
+          controlDefaults: {
+            'openai.reasoning_effort': 'medium',
+          },
+        },
+      ],
+      controls: [
+        {
+          key: 'openai.reasoning_effort',
+          label: 'Reasoning effort',
+          kind: 'enum',
+          scope: 'session_default',
+          values: ['low', 'medium', 'high'],
+        },
+      ],
+      defaultSelection: {
+        entryMode: 'auto',
+        entryId: 'gpt-5.4',
+        presetId: 'balanced',
+        controls: {
+          'openai.reasoning_effort': 'medium',
+        },
+      },
+      support: {
+        tier: 'entry_only',
+      },
+      warnings: ['Advanced catalog is runtime-owned.'],
+    }, 'codex'),
+    preserveCurrentModel: false,
+  });
+
+  assert.equal(nextTarget.model, 'gpt-5.4');
+  assert.deepEqual(nextTarget.modelSelection, {
+    entryMode: 'auto',
+    entryId: 'gpt-5.4',
+    presetId: 'balanced',
+    controls: {
+      'openai.reasoning_effort': 'medium',
+    },
+  });
+  assert.deepEqual(nextTarget.modelResolution, {
+    entryId: 'gpt-5.4',
+    model: 'gpt-5.4',
+    entryMode: 'auto',
+    presetId: 'balanced',
+    controls: {
+      'openai.reasoning_effort': 'medium',
+    },
+    supportTier: 'entry_only',
+    warnings: ['Advanced catalog is runtime-owned.'],
+  });
+});
+
+test('normalizeProviderAdvancedModelCatalog preserves runtime preset availability and enum values', () => {
+  const catalog = normalizeProviderAdvancedModelCatalog({
+    provider: 'codex',
+    backend: 'api',
+    instance: 'main',
+    defaultModel: 'gpt-5.4',
+    source: 'config',
+    cache: null,
+    entries: [
+      {
+        id: 'gpt-5.4',
+        label: 'GPT-5.4',
+        default: true,
+        limits: {
+          contextWindowTokens: 200000,
+          maxOutputTokens: 32000,
+        },
+      },
+    ],
+    presets: [
+      {
+        id: 'balanced',
+        label: 'Balanced',
+        availability: 'supported',
+      },
+    ],
+    controls: [
+      {
+        key: 'openai.reasoning_effort',
+        label: 'Reasoning effort',
+        kind: 'enum',
+        scope: 'session_default',
+        values: ['low', 'medium', 'high'],
+      },
+    ],
+    defaultSelection: {
+      entryMode: 'auto',
+      presetId: 'balanced',
+    },
+    support: {
+      tier: 'entry_only',
+    },
+    warnings: [],
+  }, 'codex');
+
+  assert.equal(catalog.presets[0]?.availability, 'supported');
+  assert.deepEqual(catalog.controls[0]?.values, [
+    { value: 'low', label: 'low' },
+    { value: 'medium', label: 'medium' },
+    { value: 'high', label: 'high' },
+  ]);
+  assert.equal(catalog.entries[0]?.limits?.contextWindowTokens, 200000);
 });

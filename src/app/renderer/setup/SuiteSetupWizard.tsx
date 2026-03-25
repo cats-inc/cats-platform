@@ -5,6 +5,7 @@ import type { SuiteSurfaceId } from '../../../shared/suite-contract';
 import { completeSuiteSetup } from './api';
 import { getSuiteSetupPlugins } from './plugins';
 import type { ProductSetupPlugin } from './types';
+import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 
 type SetupStep = 1 | 2 | 3;
 
@@ -23,6 +24,7 @@ export function SuiteSetupWizard({
   const [provider, setProvider] = useState('claude');
   const [instance, setInstance] = useState('');
   const [model, setModel] = useState('');
+  const [modelSelection, setModelSelection] = useState<ProviderModelSelection | null>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
 
@@ -43,6 +45,7 @@ export function SuiteSetupWizard({
         bossCatProvider: createFirstCat ? provider : undefined,
         bossCatInstance: createFirstCat ? (instance || undefined) : undefined,
         bossCatModel: createFirstCat ? (model || undefined) : undefined,
+        bossCatModelSelection: createFirstCat ? modelSelection : undefined,
       });
       onComplete(result);
     } catch (error) {
@@ -52,12 +55,18 @@ export function SuiteSetupWizard({
     }
   }, [
     ownerName, selectedProduct, createFirstCat, bossCatName,
-    provider, instance, model, onComplete,
+    provider, instance, model, modelSelection, onComplete,
   ]);
 
   const canFinishStep2 = !createFirstCat;
   const canFinishStep3 = selectedPlugin?.validateConditionalStep
-    ? selectedPlugin.validateConditionalStep({ provider, instance, model, catName: bossCatName })
+    ? selectedPlugin.validateConditionalStep({
+        provider,
+        instance,
+        model,
+        modelSelection,
+        catName: bossCatName,
+      })
     : true;
 
   // Global Enter key handler — fires regardless of focus target.
@@ -203,12 +212,14 @@ export function SuiteSetupWizard({
               provider,
               instance,
               model,
+              modelSelection,
               catName: bossCatName,
               runtimeReachable: envelope.runtime.reachable,
               onTargetChange: (target) => {
                 setProvider(target.provider);
                 setInstance(target.instance);
                 setModel(target.model);
+                setModelSelection(target.modelSelection ?? null);
               },
               onCatNameChange: setBossCatName,
             })}

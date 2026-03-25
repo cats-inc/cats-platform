@@ -151,6 +151,7 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     composerMode: channel.composerMode ?? 'solo',
     pendingProvider: channel.pendingProvider ?? null,
     pendingModel: channel.pendingModel ?? null,
+    pendingModelSelection: structuredClone(channel.pendingModelSelection ?? null),
     leadCatId: channel.roomRouting?.leadParticipantId ?? null,
     leadParticipantLeaseStatus: resolveLeadParticipantLeaseStatus(channel),
     roomMode: roomRouting.mode,

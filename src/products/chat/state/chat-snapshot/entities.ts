@@ -18,6 +18,9 @@ import {
   extractChatMessageChoicesFromBody,
   normalizeChatMessageChoiceResponse,
 } from '../../shared/messageChoices.js';
+import {
+  parseProviderModelSelection,
+} from '../../../../shared/providerSelection.js';
 import { normalizeRoomRouting } from '../room-routing/snapshot.js';
 import {
   asRecord,
@@ -99,6 +102,7 @@ export function normalizeChatCat(rawCat: unknown): ChatCat | null {
     archivedAt: readNullableString(catRecord.archivedAt),
     avatarColor: readNullableString(catRecord.avatarColor),
     defaultExecutionTarget,
+    defaultModelSelection: parseProviderModelSelection(catRecord.defaultModelSelection),
     memory: asRecord(catRecord.memory)
       ? normalizeMemoryCheckpoint(catRecord.memory)
       : createEmptyMemoryCheckpoint(),
@@ -126,7 +130,11 @@ export function normalizeChannelAssignment(
     roles: readStringArray(assignmentRecord.roles),
     joinedAt: readString(assignmentRecord.joinedAt, new Date().toISOString()),
     leftAt: readNullableString(assignmentRecord.leftAt),
-    execution,
+    execution: {
+      ...execution,
+      modelSelection: parseProviderModelSelection(assignmentRecord.modelSelection)
+        ?? parseProviderModelSelection(asRecord(assignmentRecord.execution)?.modelSelection),
+    },
   };
 }
 
@@ -199,6 +207,7 @@ export function normalizeChannel(
     pendingProvider: readNullableString(channelRecord.pendingProvider),
     pendingModel: readNullableString(channelRecord.pendingModel),
     pendingInstance: readNullableString(channelRecord.pendingInstance),
+    pendingModelSelection: parseProviderModelSelection(channelRecord.pendingModelSelection),
     createdAt: readString(channelRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(channelRecord.updatedAt, new Date().toISOString()),
     lastMessageAt: readNullableString(channelRecord.lastMessageAt),
@@ -255,6 +264,7 @@ export function normalizeGlobalOrchestrator(rawOrchestrator: unknown): GlobalOrc
       ? readStringArray(orchestratorRecord?.notes)
       : fallback.notes,
     executionTarget,
+    executionModelSelection: parseProviderModelSelection(orchestratorRecord?.executionModelSelection),
     systemPrompt: readString(orchestratorRecord?.systemPrompt, fallback.systemPrompt),
     skillProfile: readNullableString(orchestratorRecord?.skillProfile) ?? fallback.skillProfile,
     mcpProfile: readNullableString(orchestratorRecord?.mcpProfile) ?? fallback.mcpProfile,

@@ -9,7 +9,11 @@ import type { ResolvedServerDependencies } from './contracts.js';
 import { routeSuiteSetupApi } from './suiteSetupRoutes.js';
 
 import { routeCoreApi } from '../../core/api/index.js';
-import { handleProviderModels, handleProviderRegistry } from '../../server/routes/providers.js';
+import {
+  handleAdvancedProviderModels,
+  handleProviderModels,
+  handleProviderRegistry,
+} from '../../server/routes/providers.js';
 import {
   handleTelegramDiagnostics,
   handleTelegramPollingReconnect,
@@ -317,6 +321,24 @@ export async function routeRequest(
       response,
       { runtimeClient: dependencies.shared.runtimeClient },
       providerModelsMatch[0]!,
+      url.searchParams.get('instance'),
+    );
+    return;
+  }
+
+  const advancedProviderModelsMatch = matchRoute(
+    url.pathname,
+    /^\/api\/providers\/([^/]+)\/models\/advanced$/u,
+  );
+  if (advancedProviderModelsMatch) {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return;
+    }
+    await handleAdvancedProviderModels(
+      response,
+      { runtimeClient: dependencies.shared.runtimeClient },
+      advancedProviderModelsMatch[0]!,
       url.searchParams.get('instance'),
     );
     return;

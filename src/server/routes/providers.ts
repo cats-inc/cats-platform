@@ -1,6 +1,7 @@
 import type { ServerResponse } from 'node:http';
 
 import {
+  createStaticProviderAdvancedModelCatalog,
   createStaticProviderModelCatalog,
   isKnownProvider,
   listProductProviders,
@@ -111,6 +112,45 @@ export async function handleProviderModels(
       : 'Runtime catalog unavailable.';
     sendJson(response, 200, {
       catalog: createStaticProviderModelCatalog(provider, {
+        instance: instance ?? null,
+        warnings: [warning],
+      }),
+    });
+  }
+}
+
+export async function handleAdvancedProviderModels(
+  response: ServerResponse,
+  dependencies: ProviderRouteDependencies,
+  provider: string,
+  instance?: string | null,
+): Promise<void> {
+  if (!isKnownProvider(provider)) {
+    sendRestError(response, 404, 'provider_not_found', `Provider not found: ${provider}`);
+    return;
+  }
+
+  try {
+    const catalog = await dependencies.runtimeClient.getAdvancedProviderModels(provider, instance);
+    sendJson(response, 200, { catalog });
+  } catch (error) {
+    const runtimeError = error as RuntimeRequestError | Error;
+    if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
+      sendRestError(
+        response,
+        runtimeError.status === 404 ? 404 : 400,
+        'provider_advanced_catalog_lookup_failed',
+        runtimeError.message,
+        { provider, instance: instance ?? null },
+      );
+      return;
+    }
+
+    const warning = error instanceof Error
+      ? `Runtime advanced catalog unavailable: ${error.message}`
+      : 'Runtime advanced catalog unavailable.';
+    sendJson(response, 200, {
+      catalog: createStaticProviderAdvancedModelCatalog(provider, {
         instance: instance ?? null,
         warnings: [warning],
       }),

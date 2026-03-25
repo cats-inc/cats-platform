@@ -14,6 +14,7 @@ import type {
   ChatMessageSenderKind,
   ParticipantSessionStatus,
 } from '../../../../shared/roomRouting.js';
+import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
   applyMessageToChannel,
@@ -138,6 +139,7 @@ export function createChannel(
       {
         provider: catDrafts[index]?.provider,
         model: catDrafts[index]?.model,
+        modelSelection: catDrafts[index]?.modelSelection,
         roles: catDrafts[index]?.roles,
       },
       nowIso,
@@ -175,6 +177,7 @@ export function createChannel(
     pendingProvider: normalizeOptionalText(input.pendingProvider),
     pendingModel: normalizeOptionalText(input.pendingModel),
     pendingInstance: normalizeOptionalText(input.pendingInstance),
+    pendingModelSelection: cloneProviderModelSelection(input.pendingModelSelection),
     createdAt: nowIso,
     updatedAt: nowIso,
     lastMessageAt: nowIso,
@@ -219,6 +222,7 @@ export function assignCatToChannel(
           provider: input.provider,
           instance: input.instance,
           model: input.model,
+          modelSelection: input.modelSelection,
           roles: input.roles,
         },
         nowIso,
@@ -257,10 +261,14 @@ export function assignCatToChannel(
     input.model === undefined
       ? existing.execution.target.model
       : normalizeOptionalText(input.model);
+  const nextModelSelection = input.modelSelection === undefined
+    ? cloneProviderModelSelection(existing.execution.modelSelection)
+    : cloneProviderModelSelection(input.modelSelection);
   const targetChanged =
     existing.execution.target.provider !== nextProvider
     || existing.execution.target.instance !== nextInstance
-    || existing.execution.target.model !== nextModel;
+    || existing.execution.target.model !== nextModel
+    || JSON.stringify(existing.execution.modelSelection ?? null) !== JSON.stringify(nextModelSelection);
 
   existing.status = 'active';
   existing.leftAt = null;
@@ -270,6 +278,7 @@ export function assignCatToChannel(
     instance: nextInstance,
     model: nextModel,
   };
+  existing.execution.modelSelection = nextModelSelection;
 
   if (targetChanged) {
     existing.execution.lease = createEmptyExecutionLease();
@@ -368,6 +377,9 @@ export function updateGlobalOrchestrator(
           ? nextState.globalOrchestrator.executionTarget.model
           : normalizeOptionalText(input.model),
     },
+    executionModelSelection: input.modelSelection === undefined
+      ? cloneProviderModelSelection(nextState.globalOrchestrator.executionModelSelection)
+      : cloneProviderModelSelection(input.modelSelection),
     systemPrompt:
       input.systemPrompt?.trim() || nextState.globalOrchestrator.systemPrompt,
     skillProfile: normalizeOptionalText(input.skillProfile),
@@ -437,6 +449,7 @@ export function setChannelPendingExecutionTarget(
     provider?: string | null;
     model?: string | null;
     instance?: string | null;
+    modelSelection?: AssignChannelCatInput['modelSelection'];
   },
   now: Date = new Date(),
 ): ChatState {
@@ -451,6 +464,9 @@ export function setChannelPendingExecutionTarget(
   }
   if (input.instance !== undefined) {
     channel.pendingInstance = normalizeOptionalText(input.instance);
+  }
+  if (input.modelSelection !== undefined) {
+    channel.pendingModelSelection = cloneProviderModelSelection(input.modelSelection);
   }
 
   channel.updatedAt = isoAt(now);

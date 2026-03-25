@@ -42,6 +42,7 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
       instance: null,
       model: null,
     },
+    executionModelSelection: null,
     systemPrompt:
       'You are the global coordinator for Cats Inc. This conversation happens in the Chat ' +
       'module. Keep team chats clear, respect explicit @mentions, and tell the user who ' +

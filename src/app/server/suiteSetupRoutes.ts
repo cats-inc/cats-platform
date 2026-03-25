@@ -54,6 +54,7 @@ async function handleSuiteSetupComplete(
         provider: body.bossCatProvider || 'claude',
         instance: body.bossCatInstance,
         model: body.bossCatModel,
+        modelSelection: body.bossCatModelSelection,
       },
       now,
     );
@@ -76,6 +77,7 @@ async function handleSuiteSetupComplete(
           instance: body.bossCatInstance?.trim() || null,
           model: body.bossCatModel ?? null,
         },
+        executionModelSelection: body.bossCatModelSelection ?? null,
       },
     };
   }

@@ -1,7 +1,16 @@
 import {
+  createStaticProviderAdvancedModelCatalog,
+  normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
+  type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../shared/providerCatalog.js';
+import {
+  parseProviderModelResolution,
+  parseProviderModelSelection,
+  type ProviderModelResolution,
+  type ProviderModelSelection,
+} from '../shared/providerSelection.js';
 import {
   normalizeRuntimeProviderConfigRegistry,
   readRuntimeErrorText,
@@ -49,6 +58,8 @@ export interface RuntimeSessionInfo {
   id: string;
   provider: string;
   model: string | null;
+  modelSelection?: ProviderModelSelection | null;
+  modelResolution?: ProviderModelResolution | null;
   status: string;
   cwd: string | null;
   skills?: RuntimeSessionSkillState;
@@ -117,6 +128,7 @@ export interface RuntimeSessionCreateInput {
   provider: string;
   instance?: string | null;
   model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
   cwd?: string | null;
   sharingMode?: 'shared' | null;
   instructions?: string | null;
@@ -175,6 +187,7 @@ export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
   getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
   getProviderModels(provider: string, instance?: string | null): Promise<ProviderModelCatalog>;
+  getAdvancedProviderModels(provider: string, instance?: string | null): Promise<ProviderAdvancedModelCatalog>;
   createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo>;
   sendMessage(
     sessionId: string,
@@ -298,6 +311,46 @@ export class CatsRuntimeClient implements RuntimeClient {
     return normalizeProviderModelCatalog(await response.json(), provider);
   }
 
+  async getAdvancedProviderModels(
+    provider: string,
+    instance?: string | null,
+  ): Promise<ProviderAdvancedModelCatalog> {
+    const url = new URL(`${this.baseUrl}/providers/${encodeURIComponent(provider)}/models/advanced`);
+    if (instance?.trim()) {
+      url.searchParams.set('instance', instance.trim());
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      if (response.status >= 400 && response.status < 500) {
+        throw new RuntimeRequestError(
+          readRuntimeErrorText(rawBody, `Failed to fetch advanced provider models (${response.status})`),
+          response.status,
+        );
+      }
+
+      return createStaticProviderAdvancedModelCatalog(provider, {
+        instance: instance?.trim() || null,
+        warnings: [
+          readRuntimeErrorText(
+            rawBody,
+            `Advanced provider catalog unavailable (${response.status})`,
+          ),
+        ],
+      });
+    }
+
+    return normalizeProviderAdvancedModelCatalog(await response.json(), provider);
+  }
+
   async createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {
     const payload: Record<string, unknown> = {
       provider: input.provider,
@@ -309,6 +362,9 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
     if (input.model?.trim()) {
       payload.model = input.model.trim();
+    }
+    if (input.modelSelection) {
+      payload.modelSelection = input.modelSelection;
     }
     if (input.cwd?.trim()) {
       payload.cwd = input.cwd.trim();
@@ -347,6 +403,8 @@ export class CatsRuntimeClient implements RuntimeClient {
       id: String(data.id ?? ''),
       provider: String(data.providerName ?? input.provider),
       model: typeof data.model === 'string' ? data.model : input.model?.trim() || null,
+      modelSelection: parseProviderModelSelection(data.modelSelection),
+      modelResolution: parseProviderModelResolution(data.modelResolution),
       status: typeof data.status === 'string' ? data.status : 'initializing',
       cwd: typeof data.cwd === 'string' ? data.cwd : input.cwd?.trim() || null,
       skills: data.skills && typeof data.skills === 'object'

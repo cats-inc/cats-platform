@@ -38,6 +38,7 @@ import type {
   RoomWorkflowTurn,
 } from '../../../shared/roomRouting.js';
 import type { SuiteHostEnvelope } from '../../../shared/suite-contract.js';
+import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 
 export type { BotBindingInboundMode, ExecutionTargetSummary, MemoryCheckpointSummary } from '../../../core/types.js';
 export type {
@@ -132,6 +133,7 @@ export interface ParticipantExecutionLease extends ParticipantSessionSummary {
 
 export interface ParticipantExecutionState {
   target: ExecutionTargetSummary;
+  modelSelection?: ProviderModelSelection | null;
   lease: ParticipantExecutionLease;
 }
 
@@ -147,6 +149,7 @@ export interface ChatCat {
   archivedAt: string | null;
   avatarColor: string | null;
   defaultExecutionTarget: ExecutionTargetSummary;
+  defaultModelSelection?: ProviderModelSelection | null;
   memory: MemoryCheckpointSummary;
 }
 
@@ -237,6 +240,7 @@ export interface ChatChannelState {
   pendingProvider: string | null;
   pendingModel: string | null;
   pendingInstance: string | null;
+  pendingModelSelection?: ProviderModelSelection | null;
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
@@ -267,6 +271,7 @@ export interface ChatChannelSummary {
   composerMode?: ComposerMode;
   pendingProvider?: string | null;
   pendingModel?: string | null;
+  pendingModelSelection?: ProviderModelSelection | null;
   leadCatId?: string | null;
   leadParticipantLeaseStatus?: ParticipantSessionStatus | null;
   roomMode?: RoomRoutingMode;
@@ -282,6 +287,7 @@ export interface GlobalOrchestratorSummary {
   referenceProjects: string[];
   notes: string[];
   executionTarget: ExecutionTargetSummary;
+  executionModelSelection?: ProviderModelSelection | null;
   systemPrompt: string;
   skillProfile: string | null;
   mcpProfile: string | null;
@@ -364,6 +370,7 @@ export interface CatDraftInput {
   provider: string;
   instance?: string;
   model?: string;
+  modelSelection?: ProviderModelSelection | null;
   roles?: string[];
   skillProfile?: string;
   mcpProfile?: string;
@@ -376,6 +383,7 @@ export interface AssignChannelCatInput {
   provider?: string;
   instance?: string;
   model?: string;
+  modelSelection?: ProviderModelSelection | null;
   roles?: string[];
 }
 
@@ -396,6 +404,7 @@ export interface CreateChatChannelInput {
   pendingProvider?: string;
   pendingModel?: string;
   pendingInstance?: string;
+  pendingModelSelection?: ProviderModelSelection | null;
   skillProfile?: string;
   mcpProfile?: string;
   orchestratorRoles?: string[];
@@ -410,6 +419,7 @@ export interface UpdateGlobalOrchestratorInput {
   provider: string;
   instance?: string;
   model?: string;
+  modelSelection?: ProviderModelSelection | null;
   systemPrompt?: string;
   skillProfile?: string;
   mcpProfile?: string;
@@ -422,6 +432,7 @@ export interface SendChannelMessageInput {
   pendingProvider?: string;
   pendingModel?: string | null;
   pendingInstance?: string | null;
+  pendingModelSelection?: ProviderModelSelection | null;
   choiceResponse?: ChatMessageChoiceResponse | null;
 }
 
@@ -472,6 +483,7 @@ export interface SetupCompleteInput {
   bossCatProvider: string;
   bossCatInstance?: string;
   bossCatModel?: string;
+  bossCatModelSelection?: ProviderModelSelection | null;
 }
 
 export interface CreateBotBindingInput {

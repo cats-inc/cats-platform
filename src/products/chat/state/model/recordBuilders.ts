@@ -13,6 +13,7 @@ import {
   extractChatMessageChoicesFromBody,
   normalizeChatMessageChoiceResponse,
 } from '../../shared/messageChoices.js';
+import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import { parseMentions } from '../mentionParsing.js';
 import { normalizeList, normalizeOptionalText } from './shared.js';
@@ -96,6 +97,7 @@ export function createCatRecord(input: CreateCatInput, nowIso: string): ChatCat 
       instance: normalizeOptionalText(input.instance),
       model: normalizeOptionalText(input.model),
     },
+    defaultModelSelection: cloneProviderModelSelection(input.modelSelection),
     memory: createEmptyMemoryCheckpoint(),
   };
 }
@@ -106,6 +108,7 @@ export function createAssignmentRecord(
     provider?: string;
     instance?: string | null;
     model?: string | null;
+    modelSelection?: ChatCat['defaultModelSelection'];
     roles?: string[];
   },
   nowIso: string,
@@ -130,6 +133,11 @@ export function createAssignmentRecord(
             ? cat.defaultExecutionTarget.model
             : normalizeOptionalText(input.model),
       },
+      modelSelection: cloneProviderModelSelection(
+        input.modelSelection === undefined
+          ? cat.defaultModelSelection
+          : input.modelSelection,
+      ),
       lease: createEmptyExecutionLease(),
     },
   };

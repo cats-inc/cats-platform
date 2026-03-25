@@ -11,6 +11,7 @@ import type {
 } from '../../../shared/roomRouting.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
 import type { RuntimeSkillManifest } from '../../../platform/runtime/client.js';
+import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { shouldHydrateCompanionSession } from '../companion/hydration.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import {
@@ -55,12 +56,14 @@ export function resolveOrchestratorExecutionTarget(
   provider: string;
   model: string | null;
   instance: string | null;
+  modelSelection?: ProviderModelSelection | null;
 } {
   if (channel.composerMode === 'solo' && channel.pendingProvider) {
     return {
       provider: channel.pendingProvider,
       instance: channel.pendingInstance ?? null,
       model: channel.pendingModel ?? null,
+      modelSelection: channel.pendingModelSelection ?? null,
     };
   }
 
@@ -68,6 +71,7 @@ export function resolveOrchestratorExecutionTarget(
     provider: state.globalOrchestrator.executionTarget.provider,
     instance: state.globalOrchestrator.executionTarget.instance,
     model: state.globalOrchestrator.executionTarget.model,
+    modelSelection: state.globalOrchestrator.executionModelSelection ?? null,
   };
 }
 
@@ -79,6 +83,7 @@ export function resolveExecutionMetadataForTarget(
   provider: string | null;
   model: string | null;
   instance: string | null;
+  modelSelection?: ProviderModelSelection | null;
 } {
   const channel = requireChannel(state, channelId);
   if (target.participantKind === 'orchestrator') {
@@ -87,6 +92,7 @@ export function resolveExecutionMetadataForTarget(
       provider: executionTarget.provider,
       model: executionTarget.model,
       instance: executionTarget.instance,
+      modelSelection: executionTarget.modelSelection ?? null,
     };
   }
 
@@ -97,6 +103,7 @@ export function resolveExecutionMetadataForTarget(
     provider: assignment?.execution.target.provider ?? null,
     model: assignment?.execution.target.model ?? null,
     instance: assignment?.execution.target.instance ?? null,
+    modelSelection: assignment?.execution.modelSelection ?? null,
   };
 }
 

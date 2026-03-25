@@ -16,6 +16,7 @@ import {
   emptyCatForm,
   type CatFormState,
 } from '../chatUtils';
+import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -29,6 +30,7 @@ type AssignableCat = {
     instance: string | null;
     model: string | null;
   };
+  defaultModelSelection?: ProviderModelSelection | null;
 };
 
 export function useCatAssignmentActions(options: {
@@ -72,6 +74,7 @@ export function useCatAssignmentActions(options: {
         provider: catForm.provider,
         instance: catForm.instance || undefined,
         model: catForm.model || undefined,
+        modelSelection: catForm.modelSelection,
       });
       startTransition(() => setState({ status: 'ready', payload: created }));
 
@@ -88,6 +91,7 @@ export function useCatAssignmentActions(options: {
         provider: newCat.defaultExecutionTarget.provider,
         instance: newCat.defaultExecutionTarget.instance ?? undefined,
         model: newCat.defaultExecutionTarget.model ?? undefined,
+        modelSelection: newCat.defaultModelSelection ?? undefined,
       });
       startTransition(() => {
         setState({ status: 'ready', payload: assigned });
@@ -102,6 +106,7 @@ export function useCatAssignmentActions(options: {
     }
   }, [
     catForm.instance,
+    catForm.modelSelection,
     catForm.model,
     catForm.name,
     catForm.provider,
@@ -130,6 +135,7 @@ export function useCatAssignmentActions(options: {
         provider: cat.defaultExecutionTarget.provider,
         instance: cat.defaultExecutionTarget.instance ?? undefined,
         model: cat.defaultExecutionTarget.model ?? undefined,
+        modelSelection: cat.defaultModelSelection ?? undefined,
       });
       startTransition(() => {
         setState({ status: 'ready', payload });
@@ -186,6 +192,7 @@ export function useCatAssignmentActions(options: {
         provider: catForm.provider,
         instance: catForm.instance || undefined,
         model: catForm.model || undefined,
+        modelSelection: catForm.modelSelection,
       });
       startTransition(() => setState({ status: 'ready', payload: created }));
       const newCat = created.chat.cats.find((participant) => !previousIds.has(participant.id));
@@ -202,6 +209,7 @@ export function useCatAssignmentActions(options: {
     }
   }, [
     catForm.instance,
+    catForm.modelSelection,
     catForm.model,
     catForm.name,
     catForm.provider,

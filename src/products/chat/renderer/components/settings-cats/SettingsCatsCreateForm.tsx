@@ -41,12 +41,14 @@ export function SettingsCatsCreateForm({
           provider={catForm.provider}
           instance={catForm.instance}
           model={catForm.model}
+          modelSelection={catForm.modelSelection}
           onTargetChange={(target) =>
             onCatFormChange({
               ...catForm,
               provider: target.provider,
               instance: target.instance,
               model: target.model,
+              modelSelection: target.modelSelection ?? null,
             })}
         />
         <button

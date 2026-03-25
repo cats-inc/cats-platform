@@ -1,4 +1,9 @@
-import type { ProductProviderDescriptor, ProviderModelCatalog } from '../../../shared/providerCatalog';
+import type {
+  ProductProviderDescriptor,
+  ProductProviderInstanceDescriptor,
+  ProviderAdvancedModelCatalog,
+  ProviderModelCatalog,
+} from '../../../../shared/providerCatalog.js';
 
 import { readErrorMessage } from './http.js';
 
@@ -20,7 +25,7 @@ export async function fetchProviders(): Promise<ProductProviderDescriptor[]> {
     defaultInstance: provider.defaultInstance ?? null,
     defaultBackend: provider.defaultBackend ?? null,
     instances: Array.isArray(provider.instances)
-      ? provider.instances.map((instance) => ({
+      ? provider.instances.map((instance: ProductProviderInstanceDescriptor) => ({
           id: instance.id,
           label: instance.label,
           target: instance.target ?? null,
@@ -49,6 +54,31 @@ export async function fetchProviderModels(
   const payload = (await response.json()) as { catalog?: ProviderModelCatalog };
   if (!payload.catalog) {
     throw new Error('Provider catalog response was incomplete.');
+  }
+
+  return payload.catalog;
+}
+
+export async function fetchAdvancedProviderModels(
+  provider: string,
+  instance?: string | null,
+): Promise<ProviderAdvancedModelCatalog> {
+  const url = new URL(
+    `/api/providers/${encodeURIComponent(provider)}/models/advanced`,
+    window.location.origin,
+  );
+  if (instance?.trim()) {
+    url.searchParams.set('instance', instance.trim());
+  }
+
+  const response = await fetch(`${url.pathname}${url.search}`);
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to load advanced provider models.'));
+  }
+
+  const payload = (await response.json()) as { catalog?: ProviderAdvancedModelCatalog };
+  if (!payload.catalog) {
+    throw new Error('Advanced provider catalog response was incomplete.');
   }
 
   return payload.catalog;

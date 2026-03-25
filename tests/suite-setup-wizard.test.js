@@ -155,6 +155,49 @@ test('POST /api/suite/setup/complete with createBossCat=true creates Boss Cat', 
   });
 });
 
+test('POST /api/suite/setup/complete persists Boss Cat modelSelection and orchestrator selection', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: true,
+        bossCatName: 'Meowster',
+        bossCatProvider: 'codex',
+        bossCatModel: 'gpt-5.4',
+        bossCatModelSelection: {
+          entryMode: 'auto',
+          presetId: 'balanced',
+          controls: {
+            'openai.reasoning_effort': 'high',
+          },
+        },
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const bossCat = payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId);
+
+    assert.deepEqual(bossCat.defaultModelSelection, {
+      entryMode: 'auto',
+      presetId: 'balanced',
+      controls: {
+        'openai.reasoning_effort': 'high',
+      },
+    });
+    assert.deepEqual(payload.chat.globalOrchestrator.executionModelSelection, {
+      entryMode: 'auto',
+      presetId: 'balanced',
+      controls: {
+        'openai.reasoning_effort': 'high',
+      },
+    });
+  });
+});
+
 test('POST /api/suite/setup/complete with createBossCat=false does not create Boss Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {

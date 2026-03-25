@@ -21,6 +21,11 @@ import {
   setChannelPendingExecutionTarget,
   setChannelOrchestratorLease,
 } from '../model/index.js';
+import {
+  cloneProviderModelSelection,
+  createExplicitProviderModelSelection,
+  sameProviderModelSelection,
+} from '../../../../shared/providerSelection.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
   type RuntimeTransportContext,
@@ -79,11 +84,21 @@ export async function routeChannelMessage(
   const nextPendingInstance = payload.pendingInstance === undefined
     ? channelBeforeMessage.pendingInstance
     : normalizePendingTargetValue(payload.pendingInstance);
+  const nextPendingModelSelection = payload.pendingModelSelection === undefined
+    ? cloneProviderModelSelection(channelBeforeMessage.pendingModelSelection)
+    : cloneProviderModelSelection(payload.pendingModelSelection)
+      ?? createExplicitProviderModelSelection(
+        payload.pendingModel ?? channelBeforeMessage.pendingModel,
+      );
   const pendingTargetChanged = channelBeforeMessage.composerMode === 'solo'
     && (
       nextPendingProvider !== channelBeforeMessage.pendingProvider
       || nextPendingModel !== channelBeforeMessage.pendingModel
       || nextPendingInstance !== channelBeforeMessage.pendingInstance
+      || !sameProviderModelSelection(
+        channelBeforeMessage.pendingModelSelection,
+        nextPendingModelSelection,
+      )
     );
 
   if (
@@ -121,6 +136,7 @@ export async function routeChannelMessage(
       provider: nextPendingProvider,
       model: nextPendingModel,
       instance: nextPendingInstance,
+      modelSelection: nextPendingModelSelection,
     },
     now,
   );

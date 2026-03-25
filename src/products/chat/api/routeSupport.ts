@@ -13,6 +13,7 @@ import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/ru
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readSuitePreferences } from '../../../shared/suitePreferences.js';
+import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import {
   appendMessage,
   assignCatToChannel,
@@ -424,6 +425,9 @@ export async function persistCatAssignmentUpdate(
         provider: updatedCat.execution.target.provider,
         instance: updatedCat.execution.target.instance,
         model: updatedCat.execution.target.model,
+        modelSelection:
+          updatedCat.execution.modelSelection
+          ?? createExplicitProviderModelSelection(updatedCat.execution.target.model),
         cwd: spawnCwd,
         sharingMode: spawnCwd ? 'shared' : undefined,
       });

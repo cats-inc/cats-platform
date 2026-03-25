@@ -1,4 +1,5 @@
 import type { RuntimeStatusSummary } from '../platform/runtime/client.js';
+import type { ProviderModelSelection } from './providerSelection.js';
 
 export type SuiteSurfaceId = 'chat' | 'work' | 'code';
 
@@ -35,4 +36,5 @@ export interface SuiteSetupCompleteInput {
   bossCatProvider?: string;
   bossCatInstance?: string;
   bossCatModel?: string;
+  bossCatModelSelection?: ProviderModelSelection | null;
 }

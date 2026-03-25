@@ -3,6 +3,7 @@ import type {
   ChatCat,
   ChatChannelSummary,
 } from '../api/contracts';
+import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { getProviderDisplayName } from './providerCatalog';
 import {
   normalizeSelectedChannelView,
@@ -16,6 +17,7 @@ export interface CatFormState {
   provider: string;
   instance: string;
   model: string;
+  modelSelection: ProviderModelSelection | null;
 }
 
 export function emptyCatForm(): CatFormState {
@@ -24,6 +26,7 @@ export function emptyCatForm(): CatFormState {
     provider: 'claude',
     instance: '',
     model: '',
+    modelSelection: null,
   };
 }
 
@@ -147,6 +150,7 @@ export function createOptimisticDraftPayload(
     pendingProvider?: string | null;
     pendingModel?: string | null;
     pendingInstance?: string | null;
+    pendingModelSelection?: ProviderModelSelection | null;
   } = {},
 ): { payload: AppShellPayload; channelId: string } {
   const createdAt = new Date().toISOString();
@@ -170,6 +174,7 @@ export function createOptimisticDraftPayload(
     composerMode,
     pendingProvider: options.pendingProvider ?? null,
     pendingModel: options.pendingModel ?? null,
+    pendingModelSelection: options.pendingModelSelection ?? null,
     ...(leadCatId ? {
       roomMode: 'direct_cat_chat' as const,
       leadCatId,
@@ -193,6 +198,7 @@ export function createOptimisticDraftPayload(
     pendingProvider: options.pendingProvider ?? null,
     pendingModel: options.pendingModel ?? null,
     pendingInstance: options.pendingInstance ?? null,
+    pendingModelSelection: options.pendingModelSelection ?? null,
     createdAt,
     updatedAt: createdAt,
     lastMessageAt: createdAt,

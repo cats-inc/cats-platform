@@ -67,11 +67,13 @@ export default function App() {
     provider: 'claude',
     model: getDefaultModel('claude') || null,
     instance: null,
+    modelSelection: null,
   }));
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(() => ({
     provider: 'claude',
     model: getDefaultModel('claude') || null,
     instance: null,
+    modelSelection: null,
   }));
 
   const {
@@ -266,6 +268,10 @@ export default function App() {
         readySelectedChannel.pendingInstance
         ?? readyChat.globalOrchestrator.executionTarget.instance
         ?? null,
+      modelSelection:
+        readySelectedChannel.pendingModelSelection
+        ?? readyChat.globalOrchestrator.executionModelSelection
+        ?? null,
     });
   }, [
     readyChat,
@@ -274,6 +280,7 @@ export default function App() {
     readySelectedChannel?.pendingProvider,
     readySelectedChannel?.pendingModel,
     readySelectedChannel?.pendingInstance,
+    readySelectedChannel?.pendingModelSelection,
   ]);
 
   useAppShellRouting({
@@ -306,6 +313,7 @@ export default function App() {
         provider: pending.pendingProvider,
         model: pending.pendingModel ?? null,
         instance: pending.pendingInstance ?? null,
+        modelSelection: readySelectedChannel.pendingModelSelection ?? null,
       });
     }
   }, [readySelectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
