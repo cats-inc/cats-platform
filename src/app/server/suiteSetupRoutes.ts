@@ -1,5 +1,6 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 import type { SuiteSetupCompleteInput } from '../../shared/suite-contract.js';
+import { defaultCatProducts, normalizeSuiteSurfaceList } from '../../shared/suiteSurfaces.js';
 import { readSuitePreferences, writeSuitePreferences } from '../../shared/suitePreferences.js';
 import { createCat } from '../../products/chat/state/model/index.js';
 import {
@@ -55,7 +56,9 @@ async function handleSuiteSetupComplete(
         instance: body.bossCatInstance,
         model: body.bossCatModel,
         modelSelection: body.bossCatModelSelection,
-        products: [...chatState.capabilities.availableSurfaces],
+        products: normalizeSuiteSurfaceList([body.selectedProduct], {
+          fallback: defaultCatProducts(),
+        }),
       },
       now,
     );

@@ -1,5 +1,6 @@
 export type { SuiteSurfaceId } from '../../shared/suite-contract.js';
 import type { SuiteSurfaceId } from '../../shared/suite-contract.js';
+import { isEnabledSuiteSurface } from '../../shared/suiteSurfaces.js';
 
 export interface SuiteSurfaceRoute {
   surface: SuiteSurfaceId;
@@ -13,19 +14,19 @@ export const SUITE_SURFACE_ROUTES: Record<SuiteSurfaceId, SuiteSurfaceRoute> = {
     surface: 'chat',
     routePrefix: '/chat',
     apiBase: null,
-    placeholder: false,
+    placeholder: !isEnabledSuiteSurface('chat'),
   },
   work: {
     surface: 'work',
     routePrefix: '/work',
     apiBase: '/api/work',
-    placeholder: true,
+    placeholder: !isEnabledSuiteSurface('work'),
   },
   code: {
     surface: 'code',
     routePrefix: '/code',
     apiBase: '/api/code',
-    placeholder: true,
+    placeholder: !isEnabledSuiteSurface('code'),
   },
 };
 

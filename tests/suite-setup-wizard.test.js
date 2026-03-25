@@ -148,10 +148,12 @@ test('POST /api/suite/setup/complete with createBossCat=true creates Boss Cat', 
     assert.equal(payload.ownerDisplayName, 'Kenny');
     assert.equal(payload.lastProductSurface, 'chat');
     assert.ok(payload.chat.bossCatId, 'bossCatId should be non-null');
+    assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat']);
 
     const bossCat = payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId);
     assert.ok(bossCat, 'Boss Cat should exist in cats array');
     assert.equal(bossCat.name, 'Meowster');
+    assert.deepEqual(bossCat.products, ['chat']);
   });
 });
 

@@ -8,6 +8,7 @@ import type {
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
 import { createEmptyMemoryCheckpoint } from '../../../core/actors.js';
 import { getDefaultModel } from '../../../shared/providerCatalog.js';
+import { listEnabledSuiteSurfaces } from '../../../shared/suiteSurfaces.js';
 export { createEmptyMemoryCheckpoint };
 
 function isoNow(): string {
@@ -68,7 +69,7 @@ function createCapabilities(limits?: { maxBossCats?: number; maxCats?: number; a
     runtimeSessions: true,
     maxBossCats: limits?.maxBossCats ?? 1,
     maxCats: limits?.maxCats ?? 5,
-    availableSurfaces: limits?.availableSurfaces ?? ['chat', 'work', 'code'],
+    availableSurfaces: limits?.availableSurfaces ?? listEnabledSuiteSurfaces(),
   };
 }
 

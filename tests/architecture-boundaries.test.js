@@ -1081,7 +1081,7 @@ test('settings cats composes dedicated registry and create-form components inste
   assert.doesNotMatch(registrySource, /className="memoryForm"/u);
   assert.match(detailPanelSource, /formatTransportTimestamp/u);
   assert.match(detailPanelSource, /export function SettingsCatsDetailPanel/u);
-  assert.match(createFormSource, /ProviderModelFields/u);
+  assert.match(createFormSource, /CatCreationFields/u);
   assert.match(createFormSource, /export function SettingsCatsCreateForm/u);
 });
 

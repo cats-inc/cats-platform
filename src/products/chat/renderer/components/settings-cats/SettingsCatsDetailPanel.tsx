@@ -99,19 +99,26 @@ export function SettingsCatsDetailPanel({
         </div>
       </div>
 
-      {availableSurfaces && availableSurfaces.length > 0 ? (
+      {availableSurfaces && availableSurfaces.length > 1 ? (
         <div className="catDetailSection">
           <p className="sectionLabel">Available in</p>
           <div className="productToggles">
             {availableSurfaces.map((surface) => {
               const active = cat.products.includes(surface);
+              const preventRemoval = active && (
+                cat.products.length === 1
+                || isBossCat && surface === 'chat'
+              );
               return (
                 <button
                   key={surface}
                   type="button"
                   className={active ? 'productToggle productToggleActive' : 'productToggle'}
-                  disabled={busy === `cat:products:${cat.id}`}
+                  disabled={busy === `cat:products:${cat.id}` || preventRemoval}
                   onClick={() => {
+                    if (preventRemoval) {
+                      return;
+                    }
                     const next = active
                       ? cat.products.filter((s) => s !== surface)
                       : [...cat.products, surface];

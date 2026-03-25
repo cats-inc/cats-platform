@@ -4,6 +4,7 @@ import type {
   ChatChannelSummary,
 } from '../api/contracts';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { defaultCatProducts } from '../../../shared/suiteSurfaces.js';
 import { getProviderDisplayName } from './providerCatalog';
 import {
   normalizeSelectedChannelView,
@@ -30,12 +31,13 @@ export function emptyCatForm(): CatFormState {
     model: '',
     modelSelection: null,
     makeBoss: false,
-    products: ['chat'],
+    products: defaultCatProducts(),
   };
 }
 
 export function isChatCat(cat: ChatCat): boolean {
-  return cat.products.length === 0 || cat.products.includes('chat');
+  const products = Array.isArray(cat.products) ? cat.products : defaultCatProducts();
+  return products.includes('chat');
 }
 
 export function executionLabel(cat: ChatCat): string {

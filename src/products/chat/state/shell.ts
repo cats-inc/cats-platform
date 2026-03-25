@@ -1,6 +1,7 @@
 import type { AppConfig } from '../../../config.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
+import { listEnabledSuiteSurfaces } from '../../../shared/suiteSurfaces.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
 import { summarizeState } from './model/index.js';
 
@@ -43,6 +44,7 @@ export function createAppShell(
         ...chat.capabilities,
         maxBossCats: config.maxBossCats,
         maxCats: config.maxCats,
+        availableSurfaces: listEnabledSuiteSurfaces(),
       },
       showVerboseMessages: chat.showVerboseMessages,
       botBindings,

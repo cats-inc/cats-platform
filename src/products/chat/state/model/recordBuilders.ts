@@ -14,6 +14,7 @@ import {
   normalizeChatMessageChoiceResponse,
 } from '../../shared/messageChoices.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
+import { defaultCatProducts, normalizeSuiteSurfaceList } from '../../../../shared/suiteSurfaces.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import { parseMentions } from '../mentionParsing.js';
 import { normalizeList, normalizeOptionalText } from './shared.js';
@@ -98,7 +99,9 @@ export function createCatRecord(input: CreateCatInput, nowIso: string): ChatCat 
       model: normalizeOptionalText(input.model),
     },
     defaultModelSelection: cloneProviderModelSelection(input.modelSelection),
-    products: normalizeList(input.products),
+    products: normalizeSuiteSurfaceList(normalizeList(input.products), {
+      fallback: defaultCatProducts(),
+    }),
     memory: createEmptyMemoryCheckpoint(),
   };
 }

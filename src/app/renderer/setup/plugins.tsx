@@ -1,4 +1,5 @@
 import { CatCreationFields } from './CatCreationFields.js';
+import { isEnabledSuiteSurface } from '../../../shared/suiteSurfaces.js';
 import type { ConditionalStepProps, ProductSetupPlugin } from './types.js';
 
 function ChatBossCatStep({
@@ -51,7 +52,7 @@ export function getSuiteSetupPlugins(): ProductSetupPlugin[] {
       surface: 'chat',
       label: 'Cats Chat',
       description: 'AI companion chat \u2014 talk to your personal cat agents',
-      enabled: true,
+      enabled: isEnabledSuiteSurface('chat'),
       hasConditionalStep: true,
       renderConditionalStep: (props) => <ChatBossCatStep {...props} />,
       validateConditionalStep: (state) => Boolean(state.model.trim()),
@@ -60,7 +61,7 @@ export function getSuiteSetupPlugins(): ProductSetupPlugin[] {
       surface: 'work',
       label: 'Cats Work',
       description: 'Project dashboard and task management',
-      enabled: false,
+      enabled: isEnabledSuiteSurface('work'),
       disabledReason: 'Coming soon',
       hasConditionalStep: false,
     },
@@ -68,7 +69,7 @@ export function getSuiteSetupPlugins(): ProductSetupPlugin[] {
       surface: 'code',
       label: 'Cats Code',
       description: 'Code workspace and reviews',
-      enabled: false,
+      enabled: isEnabledSuiteSurface('code'),
       disabledReason: 'Coming soon',
       hasConditionalStep: false,
     },

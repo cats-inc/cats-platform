@@ -23,7 +23,8 @@ export function normalizeOptionalText(value: string | null | undefined): string 
 }
 
 export function normalizeList(values: string[] | undefined): string[] {
-  return (values ?? [])
+  const list = Array.isArray(values) ? values : [];
+  return list
     .map((value) => value.trim())
     .filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
 }

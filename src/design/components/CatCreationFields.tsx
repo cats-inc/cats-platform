@@ -59,6 +59,9 @@ export function CatCreationFields({
   fetchProviderModels,
   fetchAdvancedProviderModels,
 }: CatCreationFieldsProps) {
+  const normalizedProducts = products ?? [];
+  const selectableSurfaces = availableSurfaces ?? [];
+
   return (
     <>
       <label className="fieldLabel">
@@ -82,21 +85,29 @@ export function CatCreationFields({
           <span>Set as Boss Cat</span>
         </label>
       ) : null}
-      {!hideProductToggles && availableSurfaces && availableSurfaces.length > 0 && onProductsChange ? (
+      {!hideProductToggles && selectableSurfaces.length > 1 && onProductsChange ? (
         <div className="fieldLabel">
           <span>Available in</span>
           <div className="productToggles">
-            {availableSurfaces.map((surface) => {
-              const active = products?.includes(surface) ?? false;
+            {selectableSurfaces.map((surface) => {
+              const active = normalizedProducts.includes(surface);
+              const preventRemoval = active && (
+                normalizedProducts.length === 1
+                || (makeBoss ?? false) && surface === 'chat'
+              );
               return (
                 <button
                   key={surface}
                   type="button"
                   className={active ? 'productToggle productToggleActive' : 'productToggle'}
+                  disabled={preventRemoval}
                   onClick={() => {
+                    if (preventRemoval) {
+                      return;
+                    }
                     const next = active
-                      ? (products ?? []).filter((s) => s !== surface)
-                      : [...(products ?? []), surface];
+                      ? normalizedProducts.filter((s) => s !== surface)
+                      : [...normalizedProducts, surface];
                     onProductsChange(next);
                   }}
                 >

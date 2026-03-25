@@ -22,6 +22,11 @@ import {
 import {
   parseProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
+import {
+  defaultCatProducts,
+  listEnabledSuiteSurfaces,
+  normalizeSuiteSurfaceList,
+} from '../../../../shared/suiteSurfaces.js';
 import { normalizeRoomRouting } from '../room-routing/snapshot.js';
 import {
   asRecord,
@@ -104,7 +109,9 @@ export function normalizeChatCat(rawCat: unknown): ChatCat | null {
     avatarColor: readNullableString(catRecord.avatarColor),
     defaultExecutionTarget,
     defaultModelSelection: parseProviderModelSelection(catRecord.defaultModelSelection),
-    products: readStringArray(catRecord.products),
+    products: normalizeSuiteSurfaceList(readStringArray(catRecord.products), {
+      fallback: defaultCatProducts(),
+    }),
     memory: asRecord(catRecord.memory)
       ? normalizeMemoryCheckpoint(catRecord.memory)
       : createEmptyMemoryCheckpoint(),
@@ -247,9 +254,15 @@ export function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilitie
     maxCats: typeof capabilitiesRecord?.maxCats === 'number' && capabilitiesRecord.maxCats > 0
       ? capabilitiesRecord.maxCats
       : fallback.maxCats,
-    availableSurfaces: Array.isArray(capabilitiesRecord?.availableSurfaces)
-      ? (capabilitiesRecord.availableSurfaces as unknown[]).filter((v): v is string => typeof v === 'string')
-      : fallback.availableSurfaces,
+    availableSurfaces: normalizeSuiteSurfaceList(
+      Array.isArray(capabilitiesRecord?.availableSurfaces)
+        ? (capabilitiesRecord.availableSurfaces as unknown[]).filter((v): v is string => typeof v === 'string')
+        : null,
+      {
+        allowed: listEnabledSuiteSurfaces(),
+        fallback: listEnabledSuiteSurfaces(),
+      },
+    ),
   };
 }
 

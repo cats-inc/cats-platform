@@ -2,6 +2,11 @@ import type {
   CreateCatInput,
   ChatState,
 } from '../../api/contracts.js';
+import {
+  defaultCatProducts,
+  ensureSuiteSurfaceIncluded,
+  normalizeSuiteSurfaceList,
+} from '../../../../shared/suiteSurfaces.js';
 import { createCatRecord } from './recordBuilders.js';
 import { cloneState, isoAt } from './shared.js';
 
@@ -42,16 +47,20 @@ export function createCat(
   if (activeCats.length >= maxCats) {
     throw new Error(`Cat limit reached (max ${maxCats})`);
   }
-  if (input.makeBoss) {
-    const maxBossCats = state.capabilities.maxBossCats ?? 1;
-    const bossCatCount = state.bossCatId ? 1 : 0;
-    if (bossCatCount >= maxBossCats && !state.bossCatId) {
-      throw new Error(`Boss Cat limit reached (max ${maxBossCats})`);
-    }
-  }
   assertUniqueCatName(state, input.name);
   const nextState = cloneState(state);
-  const cat = createCatRecord(input, isoAt(now));
+  const normalizedProducts = normalizeSuiteSurfaceList(input.products, {
+    allowed: normalizeSuiteSurfaceList(state.capabilities.availableSurfaces, {
+      fallback: defaultCatProducts(),
+    }),
+    fallback: defaultCatProducts(),
+  });
+  const cat = createCatRecord({
+    ...input,
+    products: input.makeBoss
+      ? ensureSuiteSurfaceIncluded(normalizedProducts, 'chat')
+      : normalizedProducts,
+  }, isoAt(now));
   if (!cat.avatarColor) {
     cat.avatarColor = isDefaultCatName(cat.name)
       ? DEFAULT_AVATAR_COLOR
@@ -110,6 +119,8 @@ export function setBossCat(
   if (cat.status !== 'active') {
     throw new Error(`Cat is not active: ${catId}`);
   }
+  cat.products = ensureSuiteSurfaceIncluded(cat.products, 'chat');
+  cat.updatedAt = new Date().toISOString();
   nextState.bossCatId = catId;
   return nextState;
 }
@@ -124,7 +135,17 @@ export function updateCatProducts(
   if (!cat) {
     throw new Error(`Cat not found: ${catId}`);
   }
-  cat.products = products.filter((s) => typeof s === 'string' && s.trim().length > 0);
+  const normalizedProducts = normalizeSuiteSurfaceList(products, {
+    allowed: normalizeSuiteSurfaceList(state.capabilities.availableSurfaces, {
+      fallback: defaultCatProducts(),
+    }),
+  });
+  if (normalizedProducts.length === 0) {
+    throw new Error('Cat must be available in at least one product');
+  }
+  cat.products = nextState.bossCatId === catId
+    ? ensureSuiteSurfaceIncluded(normalizedProducts, 'chat')
+    : normalizedProducts;
   cat.updatedAt = new Date().toISOString();
   return nextState;
 }
