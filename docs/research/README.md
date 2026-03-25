@@ -12,6 +12,7 @@
 | [2026-03-20-paperclip-killer-feature-gap-analysis](./2026-03-20-paperclip-killer-feature-gap-analysis.md) | 2026-03-20 | Paperclip killer-feature gaps for Chat + runtime | Re-audit the latest local Paperclip submodule and identify the highest-value remaining `Cats Chat + cats-runtime` killer features after the 2026-03-20 spec/ADR pass |
 | [paperclip-control-plane-analysis](./paperclip-control-plane-analysis.md) | 2026-03-16 | Paperclip concepts and feature map | Unreviewed local analysis of Paperclip's control-plane model and rewrite takeaways for `cats` |
 | [2026-03-26-openmanus-killer-feature-gap-analysis](./2026-03-26-openmanus-killer-feature-gap-analysis.md) | 2026-03-26 | OpenManus killer-feature gaps for Chat + runtime | Identify execution-engine gaps (structured planning, stuck detection, container sandbox, A2A, multimodal tools, unified tool registry) from OpenManus submodule v0.3.0 |
+| [2026-03-26-unified-planning-language-and-cross-product-strategy](./2026-03-26-unified-planning-language-and-cross-product-strategy.md) | 2026-03-26 | Unified planning language and cross-product strategy | CoreTaskRecord as cross-strategy plan exchange format, pluggable strategy selection (Chat=ReAct, Work=PDCA, Code=Reflexion), cross-product plan handoff |
 
 ## Entry Template
 
