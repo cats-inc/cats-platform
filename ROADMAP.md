@@ -67,6 +67,12 @@ contracts.
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
 - [ ] Persist solo-composer model changes immediately on selector change instead of
       only committing the pending provider/model when the next message is sent
+- [ ] Add a suite-local provider catalog cache for runtime-backed model catalogs and
+      advanced catalogs so repeated setup, cat-creation, and selector mounts do not
+      refetch the same provider/instance metadata on every reopen
+- [ ] Refine advanced provider-model UX now that runtime presets and controls are
+      first-class, including an `Advanced settings` disclosure pattern that prevents
+      large control sets from overwhelming the base provider/instance/model flow
 - [ ] Shift cat UX to a chat-contextual `Add cat` flow while moving registry
       administration into `Settings > Cats`
 - [x] Desktop host and tray lifecycle management above the existing Node server boundary
