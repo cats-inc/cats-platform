@@ -41,9 +41,18 @@ contracts.
       both `Cats Chat` and `Cats Work`
 - [x] Define the split between `cats-runtime` direct product APIs and the
       planned MCP facade for orchestrator tool use
+- [ ] Thin `src/app/server/index.ts` into smaller composition-root factories
+      and route-registration modules while keeping one suite-owned server
+      bootstrap surface
 - [ ] Introduce a storage abstraction so the current file-backed shell can grow
       into operational DB plus archive/RAG pipelines without a flag-day rewrite
 - [x] Keep the current chat shell loadable while the shared contracts land
+- [ ] Add graph-based dependency enforcement on top of the existing
+      architecture-boundary tests so `core/` and `platform/` regressions are
+      blocked mechanically rather than only by targeted assertions
+- [ ] Finish extracting shared suite shell and design primitives into a
+      dedicated `src/design/` layer without pushing Chat-specific visuals into
+      shared modules
 
 ### Phase 4: Cats Chat Launch Track
 
@@ -129,6 +138,9 @@ contracts.
 - [ ] Evolve the current local lexical/hybrid memory retrieval seam into a
       stronger archive/vector-backed retrieval pipeline without making `cats`
       depend on `personal-rag-system`
+- [ ] Broaden behavior-regression coverage for the now-modular Chat runtime,
+      operator, transport, and setup flows so test depth catches product
+      regressions in addition to architecture drift
 - [ ] Revisit a limited Chat mobile companion only after the desktop Chat
       surface is stable
 
@@ -161,4 +173,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-25*
