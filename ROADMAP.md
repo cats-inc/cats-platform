@@ -136,6 +136,10 @@ contracts.
       replay of stored product-owned dispatch requests so deeper workflow
       continuation and group replan paths also become a closed loop instead of
       write-only markers
+      Progress: startup recovery now downgrades stranded `in_progress`
+      approval/retry replay metadata to failed on boot so manual approve/retry
+      can reopen the loop after restarts; deeper workflow continuation and
+      group replan still remain.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent

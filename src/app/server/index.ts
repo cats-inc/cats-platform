@@ -4,6 +4,7 @@ import { sendJson } from '../../shared/http.js';
 
 import type { ServerDependencies } from './contracts.js';
 import { resolveServerDependencies } from './dependencies.js';
+import { reconcileOrchestratorRecoveryOnStartup } from './orchestratorRecovery.js';
 import { reconcilePollingOnStartup } from './polling.js';
 import { routeRequest } from './requestRouter.js';
 
@@ -28,6 +29,7 @@ export function createServer(dependencies: ServerDependencies) {
   });
 
   void reconcilePollingOnStartup(resolvedDependencies).catch(() => {});
+  void reconcileOrchestratorRecoveryOnStartup(resolvedDependencies).catch(() => {});
 
   return server;
 }

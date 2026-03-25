@@ -26,6 +26,20 @@ function usage(content) {
   };
 }
 
+async function waitFor(assertion, timeoutMs = 1000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await assertion();
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+
+  await assertion();
+}
+
 function createRuntimeStub(options = {}) {
   let nextSession = 1;
   let nextWakeup = 1;
@@ -731,6 +745,95 @@ test('POST /api/core/approvals does not replay the same blocked dispatch twice w
     const repeatedApprovePayload = await repeatedApproveResponse.json();
     assert.equal(repeatedApprovePayload.autoResume, undefined);
     assert.equal(runtimeClient.sentMessages.length, 1);
+  }, chatStore);
+});
+
+test('server startup recovery reopens stranded approval replay after restart', async () => {
+  const chatStore = new FailingPendingDispatchCleanupStore();
+  const runtimeClient = createRuntimeStub({
+    sendMessage: ({ content }) => {
+      if (content.includes('You are Inline-Agent')) {
+        return usage('Inline-Agent completed the recovered review.');
+      }
+      return usage('Boss Cat acknowledged the turn.');
+    },
+  });
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const channelId = created.channel.id;
+
+    const pendingApprovalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: `task-channel-${channelId}`,
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+      }),
+    });
+    assert.equal(pendingApprovalResponse.status, 200);
+
+    const blockedDispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Please ask @Inline-Agent to review this change',
+      }),
+    });
+    assert.equal(blockedDispatchResponse.status, 200);
+
+    const approvedResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: `task-channel-${channelId}`,
+        status: 'approved',
+        decidedByActorId: 'actor-owner',
+      }),
+    });
+    assert.equal(approvedResponse.status, 200);
+    assert.equal(runtimeClient.sentMessages.length, 1);
+  }, chatStore);
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    await waitFor(async () => {
+      const core = await chatStore.readCore();
+      const task = core.tasks.find((candidate) => candidate.id.startsWith('task-channel-'));
+      assert.equal(readPendingDispatchMetadata(task)?.replayState, 'failed');
+    });
+
+    const core = await chatStore.readCore();
+    const task = core.tasks.find((candidate) => candidate.id.startsWith('task-channel-'));
+    assert.ok(task);
+
+    const repeatedApproveResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: task.id,
+        status: 'approved',
+        decidedByActorId: 'actor-owner',
+      }),
+    });
+    assert.equal(repeatedApproveResponse.status, 200);
+    const repeatedApprovePayload = await repeatedApproveResponse.json();
+
+    assert.deepEqual(repeatedApprovePayload.autoResume, {
+      trigger: 'approve',
+      status: 'dispatched',
+      blockedReason: null,
+      sourceMessageId: repeatedApprovePayload.autoResume.sourceMessageId,
+      resultCount: repeatedApprovePayload.autoResume.resultCount,
+      executionState: 'completed',
+    });
+    assert.equal(runtimeClient.sentMessages.length, 2);
+
+    const updatedCore = await chatStore.readCore();
+    const updatedTask = updatedCore.tasks.find((candidate) => candidate.id === task.id);
+    assert.equal(readPendingDispatchMetadata(updatedTask), null);
+    assert.equal(updatedTask?.metadata?.orchestratorDispatchReplay?.replayState, 'ready');
   }, chatStore);
 });
 

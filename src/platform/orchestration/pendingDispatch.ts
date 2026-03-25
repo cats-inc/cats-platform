@@ -23,11 +23,11 @@ export interface PendingOrchestratorDispatchMetadataOptions {
   replayError?: string | null;
 }
 
-interface StoredPendingOrchestratorDispatchRequest extends PendingOrchestratorDispatchRequest {
-  replayState?: PendingOrchestratorDispatchReplayState;
-  replayTrigger?: PendingOrchestratorDispatchReplayTrigger;
-  replayAttemptAt?: string;
-  replayError?: string | null;
+export interface PendingOrchestratorDispatchSnapshot extends PendingOrchestratorDispatchRequest {
+  replayState: PendingOrchestratorDispatchReplayState;
+  replayTrigger: PendingOrchestratorDispatchReplayTrigger | null;
+  replayAttemptAt: string | null;
+  replayError: string | null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -87,6 +87,25 @@ export function buildPendingOrchestratorDispatchRequest(input: {
 export function readPendingOrchestratorDispatch(
   metadata: CoreRecordMetadata | null | undefined,
 ): PendingOrchestratorDispatchRequest | null {
+  const snapshot = readPendingOrchestratorDispatchSnapshot(metadata);
+  return snapshot
+    ? {
+        channelId: snapshot.channelId,
+        body: snapshot.body,
+        senderName: snapshot.senderName,
+        transport: snapshot.transport,
+        blockedAt: snapshot.blockedAt,
+        blockedReason: snapshot.blockedReason,
+      }
+    : null;
+}
+
+export function readPendingOrchestratorDispatchSnapshot(
+  metadata: CoreRecordMetadata | null | undefined,
+  options: {
+    includeInProgress?: boolean;
+  } = {},
+): PendingOrchestratorDispatchSnapshot | null {
   const record = asRecord(metadata?.[PENDING_ORCHESTRATOR_DISPATCH_METADATA_KEY]);
   if (!record) {
     return null;
@@ -103,7 +122,7 @@ export function readPendingOrchestratorDispatch(
   if (!channelId || !body || !transport || !blockedAt || !blockedReason) {
     return null;
   }
-  if (replayState === 'in_progress') {
+  if (replayState === 'in_progress' && !options.includeInProgress) {
     return null;
   }
 
@@ -114,6 +133,12 @@ export function readPendingOrchestratorDispatch(
     transport,
     blockedAt,
     blockedReason,
+    replayState: replayState ?? 'pending',
+    replayTrigger: (record.replayTrigger === 'approve' || record.replayTrigger === 'reroute')
+      ? record.replayTrigger
+      : null,
+    replayAttemptAt: readNullableString(record.replayAttemptAt),
+    replayError: readNullableString(record.replayError),
   };
 }
 
@@ -131,7 +156,7 @@ export function writePendingOrchestratorDispatchMetadata(
     return nextMetadata;
   }
 
-  const nextRequest: StoredPendingOrchestratorDispatchRequest = {
+  const nextRequest: PendingOrchestratorDispatchSnapshot = {
     channelId: request.channelId,
     body: request.body,
     senderName: request.senderName,
@@ -139,9 +164,9 @@ export function writePendingOrchestratorDispatchMetadata(
     blockedAt: request.blockedAt,
     blockedReason: request.blockedReason,
     replayState: options.replayState ?? 'pending',
-    ...(options.replayTrigger ? { replayTrigger: options.replayTrigger } : {}),
-    ...(options.replayAttemptAt ? { replayAttemptAt: options.replayAttemptAt } : {}),
-    ...(options.replayError !== undefined ? { replayError: options.replayError } : {}),
+    replayTrigger: options.replayTrigger ?? null,
+    replayAttemptAt: options.replayAttemptAt ?? null,
+    replayError: options.replayError ?? null,
   };
   nextMetadata[PENDING_ORCHESTRATOR_DISPATCH_METADATA_KEY] = nextRequest;
   return nextMetadata;
