@@ -91,8 +91,12 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        {/* Settings: "general" etc. match /settings/* when ChatApp is mounted there */}
+        {/* Canonical settings live at /settings/*; /chat/settings/* remains redirect-only. */}
         <Route path="settings" element={<Navigate to="/settings/general" replace />} />
+        <Route path="settings/general" element={<Navigate to="/settings/general" replace />} />
+        <Route path="settings/cats" element={<Navigate to="/settings/cats" replace />} />
+        <Route path="settings/data" element={<Navigate to="/settings/data" replace />} />
+        <Route path="settings/*" element={<Navigate to="/settings/general" replace />} />
         <Route
           path="general"
           element={<SettingsGeneral payload={payload} feedback={feedback} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} />}

@@ -5,7 +5,11 @@ import type { SuiteHostEnvelope } from '../../shared/suite-contract';
 import ChatApp from '../../products/chat/renderer/App';
 import WorkApp from '../../products/work/renderer/App';
 import CodeApp from '../../products/code/renderer/App';
-import { resolveSuiteSurfaceForPath, SUITE_SURFACE_ROUTES } from './routeMap';
+import {
+  isSuiteNonProductPath,
+  resolveSuiteSurfaceForPath,
+  SUITE_SURFACE_ROUTES,
+} from './routeMap';
 import { SuiteSetupWizard } from './setup';
 import { fetchSuiteEnvelope } from './setup/api';
 
@@ -60,7 +64,7 @@ export default function SuiteApp() {
       return;
     }
     // Skip sync for suite-level routes that aren't product surfaces.
-    if (location.pathname === '/setup' || location.pathname.startsWith('/settings')) {
+    if (isSuiteNonProductPath(location.pathname)) {
       return;
     }
     // First render: seed the ref AND sync if the current surface differs

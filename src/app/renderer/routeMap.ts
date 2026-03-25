@@ -29,6 +29,18 @@ export const SUITE_SURFACE_ROUTES: Record<SuiteSurfaceId, SuiteSurfaceRoute> = {
   },
 };
 
+export function isSuiteNonProductPath(pathname: string): boolean {
+  if (pathname === '/setup') {
+    return true;
+  }
+
+  if (pathname === '/settings' || pathname.startsWith('/settings/')) {
+    return true;
+  }
+
+  return pathname === '/chat/settings' || pathname.startsWith('/chat/settings/');
+}
+
 export function resolveSuiteSurfaceForPath(pathname: string): SuiteSurfaceId {
   if (pathname === '/work' || pathname.startsWith('/work/')) {
     return 'work';

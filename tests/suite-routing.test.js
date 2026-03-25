@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { createDefaultCoreState } from '../dist-server/core/model/index.js';
 import {
+  isSuiteNonProductPath,
   resolveSuiteSurfaceForPath,
   SUITE_SURFACE_ROUTES,
 } from '../dist-server/app/renderer/routeMap.js';
@@ -36,6 +37,16 @@ test('resolveSuiteSurfaceForPath routes work and code prefixes to their dedicate
       code: { routePrefix: '/code', placeholder: true, apiBase: '/api/code' },
     },
   );
+});
+
+test('isSuiteNonProductPath excludes suite settings and legacy chat settings from product sync', () => {
+  assert.equal(isSuiteNonProductPath('/setup'), true);
+  assert.equal(isSuiteNonProductPath('/settings'), true);
+  assert.equal(isSuiteNonProductPath('/settings/general'), true);
+  assert.equal(isSuiteNonProductPath('/chat/settings'), true);
+  assert.equal(isSuiteNonProductPath('/chat/settings/general'), true);
+  assert.equal(isSuiteNonProductPath('/chat/new'), false);
+  assert.equal(isSuiteNonProductPath('/work'), false);
 });
 
 test('Work and Code placeholder projections reserve product-specific extension points while staying core-backed', () => {
