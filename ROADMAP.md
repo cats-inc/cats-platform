@@ -41,13 +41,13 @@ contracts.
       both `Cats Chat` and `Cats Work`
 - [x] Define the split between `cats-runtime` direct product APIs and the
       planned MCP facade for orchestrator tool use
-- [ ] Thin `src/app/server/index.ts` into smaller composition-root factories
+- [x] Thin `src/app/server/index.ts` into smaller composition-root factories
       and route-registration modules while keeping one suite-owned server
       bootstrap surface
 - [ ] Introduce a storage abstraction so the current file-backed shell can grow
       into operational DB plus archive/RAG pipelines without a flag-day rewrite
 - [x] Keep the current chat shell loadable while the shared contracts land
-- [ ] Add graph-based dependency enforcement on top of the existing
+- [x] Add graph-based dependency enforcement on top of the existing
       architecture-boundary tests so `core/` and `platform/` regressions are
       blocked mechanically rather than only by targeted assertions
 - [ ] Finish extracting shared suite shell and design primitives into a

@@ -18,6 +18,12 @@ Execution checkpoint on 2026-03-25:
 - Phase 3 substantially advanced
 - Phase 4 substantially advanced
 - Phase 5 substantially advanced
+- `src/app/server/index.ts` has been reduced to a thin composition root that
+  delegates dependency assembly, startup polling reconciliation, and route
+  registration to dedicated modules under `src/app/server/`
+- graph-based dependency enforcement now runs alongside the existing
+  architecture-boundary test suite so cross-layer ownership regressions are
+  blocked mechanically in CI and local test runs
 - Directory normalization has landed for the main extracted module families:
   `src/core/api/*`, `src/core/model/*`,
   `src/products/chat/state/runtime-dispatch/*`,
@@ -89,20 +95,22 @@ current execution checkpoint below.
 
 Current notable hotspot files and measured line counts as of 2026-03-25:
 
-- `src/app/server/index.ts` - 573 lines
-- `src/platform/orchestration/contracts.ts` - 544 lines
-- `src/products/chat/renderer/styles/extras.css` - 507 lines
-- `src/products/chat/state/model.ts` - 496 lines
-- `src/products/chat/renderer/App.tsx` - 491 lines
-- `src/runtime/client.ts` - 434 lines
+- `src/platform/orchestration/contracts.ts` - 592 lines
+- `src/products/chat/renderer/styles/extras.css` - 594 lines
+- `src/products/chat/state/model/index.ts` - 543 lines
+- `src/products/chat/renderer/App.tsx` - 508 lines
+- `src/runtime/client.ts` - 496 lines
+- `src/app/server/requestRouter.ts` - 393 lines
 
 ### Dependency problems
 
 The worst reverse dependencies from the original baseline have largely been
 removed. The current structural pressure points are:
 
-- `src/app/server/index.ts` is now the main composition root and must not grow
-  into a new integration God file as more product lines are wired in.
+- `src/app/server/index.ts` is now a thin composition root, but the
+  `src/app/server/` module family must keep wiring concerns separated so the
+  suite host does not regrow a new integration God file under a different
+  filename.
 - Several major module families have now been normalized into subdirectories,
   but a smaller set of remaining flat prefix groups still needs active
   governance so navigability does not regress as new product lines land.
@@ -112,7 +120,7 @@ removed. The current structural pressure points are:
 
 ### Test baseline
 
-`cats` is not starting from zero tests. The repo currently has 40 repo-owned
+`cats` is not starting from zero tests. The repo currently has 41 repo-owned
 test files under `tests/`, and `npm test` already protects substantial server,
 renderer, routing, and orchestrator behavior. The job is to reshape and expand
 that protection while refactoring, not to invent testing from scratch.

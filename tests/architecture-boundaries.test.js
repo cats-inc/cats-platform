@@ -36,9 +36,9 @@ test('platform orchestrator dispatch stays behind an injected channel router sea
   );
 });
 
-test('app server wires the chat orchestrator adapter into platform orchestration', async () => {
+test('app server dependency resolver wires the chat orchestrator adapter into platform orchestration', async () => {
   const source = await readFile(
-    new URL('../src/app/server/index.ts', import.meta.url),
+    new URL('../src/app/server/dependencies.ts', import.meta.url),
     'utf8',
   );
 
@@ -46,9 +46,36 @@ test('app server wires the chat orchestrator adapter into platform orchestration
   assert.match(source, /orchestratorChannelRouter/u);
 });
 
-test('app server wires the chat task-execution locator into core lifecycle routes', async () => {
+test('app server composes dedicated dependency and routing modules instead of owning route assembly inline', async () => {
   const source = await readFile(
     new URL('../src/app/server/index.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /resolveServerDependencies/u);
+  assert.match(source, /reconcilePollingOnStartup/u);
+  assert.match(source, /routeRequest/u);
+  assert.doesNotMatch(source, /async function routeRequest/u);
+  assert.doesNotMatch(source, /async function reconcilePollingOnStartup/u);
+  assert.doesNotMatch(source, /function createDefaultTelegramRelay/u);
+});
+
+test('app server request router owns shell, provider, transport, and static-route assembly', async () => {
+  const source = await readFile(
+    new URL('../src/app/server/requestRouter.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /routeCoreApi/u);
+  assert.match(source, /routeChatApi/u);
+  assert.match(source, /handleProviderRegistry/u);
+  assert.match(source, /handleTelegramWebhook/u);
+  assert.match(source, /tryServeWebAsset/u);
+});
+
+test('app server dependency resolver wires the chat task-execution locator into core lifecycle routes', async () => {
+  const source = await readFile(
+    new URL('../src/app/server/dependencies.ts', import.meta.url),
     'utf8',
   );
 
@@ -1721,9 +1748,9 @@ test('platform memory service stays behind a chat memory surface seam', async ()
   );
 });
 
-test('app server wires the chat memory adapter into platform memory', async () => {
+test('app server dependency resolver wires the chat memory adapter into platform memory', async () => {
   const source = await readFile(
-    new URL('../src/app/server/index.ts', import.meta.url),
+    new URL('../src/app/server/dependencies.ts', import.meta.url),
     'utf8',
   );
 
@@ -1887,9 +1914,9 @@ test('platform telegram polling stays behind an injected room bridge seam', asyn
   );
 });
 
-test('app server wires the chat telegram bridge adapter into platform transports', async () => {
+test('app server dependency resolver wires the chat telegram bridge adapter into platform transports', async () => {
   const source = await readFile(
-    new URL('../src/app/server/index.ts', import.meta.url),
+    new URL('../src/app/server/dependencies.ts', import.meta.url),
     'utf8',
   );
 
