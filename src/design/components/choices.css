@@ -1,0 +1,90 @@
+.messageChoices {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.messageChoiceSection {
+  display: grid;
+  gap: 8px;
+}
+
+.messageChoiceQuestion {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.messageChoiceOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.messageChoiceButton,
+.messageChoiceActionButton {
+  appearance: none;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 0.84rem;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.messageChoiceButton:hover:not(:disabled),
+.messageChoiceActionButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(15, 23, 42, 0.22);
+}
+
+.messageChoiceButton:disabled,
+.messageChoiceActionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.messageChoiceButtonSelected {
+  background: rgba(17, 24, 39, 0.08);
+  border-color: rgba(15, 23, 42, 0.3);
+}
+
+.messageChoiceActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.messageChoiceActionButtonPrimary {
+  background: #1E293B;
+  border-color: #1E293B;
+  color: #FFFFFF;
+}
+
+.messageChoiceActionButtonPrimary:hover:not(:disabled) {
+  background: #0F172A;
+  border-color: #0F172A;
+}
+
+.messageChoiceCustomInput {
+  width: 100%;
+  min-height: 74px;
+  resize: vertical;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.messageChoiceResolved {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted-soft);
+}

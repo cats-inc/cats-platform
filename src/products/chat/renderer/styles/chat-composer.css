@@ -1,5 +1,52 @@
 /* Composer plus menu and draft context */
 
+.composerPlusButton {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.composerPlusButton:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composerBottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.composerSendButton {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.composerSendButton:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.composerSendButton:hover:not(:disabled) {
+  background: #333;
+}
+
 .composerLeftGroup {
   display: flex;
   align-items: center;

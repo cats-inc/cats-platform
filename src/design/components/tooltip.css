@@ -1,0 +1,19 @@
+.tooltipPortal {
+  position: fixed;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--app-bg);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 99999;
+}
+
+.tooltipPortal.tooltipVisible {
+  opacity: 1;
+}

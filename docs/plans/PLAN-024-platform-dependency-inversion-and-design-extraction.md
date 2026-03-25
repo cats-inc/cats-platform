@@ -17,7 +17,7 @@ Execution checkpoint on 2026-03-25:
 - Phase 2 in progress
 - Phase 3 substantially advanced
 - Phase 4 substantially advanced
-- Phase 5 substantially advanced
+- Phase 5 completed
 - `src/app/server/index.ts` has been reduced to a thin composition root that
   delegates dependency assembly, startup polling reconciliation, and route
   registration to dedicated modules under `src/app/server/`
@@ -142,8 +142,9 @@ The plan is no longer at the untouched baseline:
 - Phase 1 seam injection and composition-root inversion have landed.
 - Phase 3 and Phase 4 hotspot decomposition have substantially reduced the
   earlier monoliths.
-- Phase 5 renderer extraction has materially progressed, though the shared
-  shell/design end state is not complete yet.
+- Phase 5 renderer extraction is complete: shared suite shell and reusable
+  design primitives now live under `src/design/`, while Chat-specific visuals
+  stay product-owned.
 - Phase 6 through Phase 8 remain the major unfinished work.
 
 ## Execution Principles

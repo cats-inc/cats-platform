@@ -1,0 +1,126 @@
+.welcomeShell {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(100%, var(--content-reading-width));
+  margin: 90px auto 0;
+}
+
+.catsShell {
+  display: grid;
+  gap: 18px;
+}
+
+.viewIntro {
+  display: grid;
+  gap: 10px;
+}
+
+.welcomeShell h1,
+.viewIntro h1,
+.loadingPanel h1,
+.errorPanel h1,
+.productPlaceholderCard h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.heroNote {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.feedbackText {
+  margin: 4px 0 0;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.composerCard,
+.contentCard,
+.loadingPanel,
+.errorPanel,
+.productPlaceholderCard {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.contentCard,
+.loadingPanel,
+.errorPanel {
+  border-radius: 16px;
+}
+
+.composerCard {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 24px;
+}
+
+.contentCard {
+  padding: 16px;
+}
+
+.contentCardForm {
+  align-self: start;
+}
+
+.contentCardHeader,
+.recentTitleRow,
+.catCardTop,
+.catMeta,
+.composerFooter,
+.transcriptHeader,
+.transcriptMessageTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.contentCardHeader h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.emptyStateCard {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+}
+
+.emptyStateCard p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.loadingPanel,
+.errorPanel {
+  min-width: min(420px, 100%);
+  padding: 24px;
+  border-radius: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.errorPanel p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}

@@ -1065,25 +1065,57 @@ test('settings cats composes dedicated registry and create-form components inste
   assert.match(createFormSource, /export function SettingsCatsCreateForm/u);
 });
 
-test('renderer styles compose dedicated partials instead of keeping the full stylesheet inline', async () => {
+test('renderer styles compose a shared design layer and product-owned chat partials', async () => {
+  const appRendererMainSource = await readFile(
+    new URL('../src/app/renderer/main.tsx', import.meta.url),
+    'utf8',
+  );
+  const chatRendererMainSource = await readFile(
+    new URL('../src/products/chat/renderer/main.tsx', import.meta.url),
+    'utf8',
+  );
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const rendererStylesCompatSource = await readFile(
+    new URL('../src/renderer/styles.css', import.meta.url),
+    'utf8',
+  );
+  const designIndexSource = await readFile(
+    new URL('../src/design/index.css', import.meta.url),
+    'utf8',
+  );
+  const badgeStylesSource = await readFile(
+    new URL('../src/design/components/badge.css', import.meta.url),
+    'utf8',
+  );
+  const panelStylesSource = await readFile(
+    new URL('../src/design/components/panel.css', import.meta.url),
+    'utf8',
+  );
+  const formsStylesSource = await readFile(
+    new URL('../src/design/components/forms.css', import.meta.url),
+    'utf8',
+  );
+  const sidebarChromeStylesSource = await readFile(
+    new URL('../src/design/components/sidebar-chrome.css', import.meta.url),
+    'utf8',
+  );
+  const menuStylesSource = await readFile(
+    new URL('../src/design/components/menu.css', import.meta.url),
+    'utf8',
+  );
+  const choiceStylesSource = await readFile(
+    new URL('../src/design/components/choices.css', import.meta.url),
+    'utf8',
+  );
+  const placeholderStylesSource = await readFile(
+    new URL('../src/design/components/product-placeholder.css', import.meta.url),
+    'utf8',
+  );
   const stylesIndexSource = await readFile(
     new URL('../src/products/chat/renderer/styles.css', import.meta.url),
-    'utf8',
-  );
-  const baseStylesSource = await readFile(
-    new URL('../src/products/chat/renderer/styles/base.css', import.meta.url),
-    'utf8',
-  );
-  const baseFoundationStylesSource = await readFile(
-    new URL('../src/products/chat/renderer/styles/base-foundation.css', import.meta.url),
-    'utf8',
-  );
-  const baseSurfacesStylesSource = await readFile(
-    new URL('../src/products/chat/renderer/styles/base-surfaces.css', import.meta.url),
-    'utf8',
-  );
-  const baseOverlaysStylesSource = await readFile(
-    new URL('../src/products/chat/renderer/styles/base-overlays.css', import.meta.url),
     'utf8',
   );
   const settingsStylesSource = await readFile(
@@ -1123,18 +1155,34 @@ test('renderer styles compose dedicated partials instead of keeping the full sty
     'utf8',
   );
 
-  assert.match(stylesIndexSource, /@import '\.\/styles\/base\.css';/u);
+  assert.match(appRendererMainSource, /import '\.\.\/\.\.\/design\/index\.css';/u);
+  assert.match(chatRendererMainSource, /import '\.\.\/\.\.\/\.\.\/design\/index\.css';/u);
+  assert.match(appSource, /import '\.\/styles\.css';/u);
+  assert.match(rendererStylesCompatSource, /@import '\.\.\/design\/index\.css';/u);
+  assert.match(rendererStylesCompatSource, /@import '\.\.\/products\/chat\/renderer\/styles\.css';/u);
+  assert.match(designIndexSource, /@import '\.\/tokens\.css';/u);
+  assert.match(designIndexSource, /@import '\.\/layout\.css';/u);
+  assert.match(designIndexSource, /@import '\.\/components\/choices\.css';/u);
+  assert.match(designIndexSource, /@import '\.\/components\/product-placeholder\.css';/u);
+  assert.match(badgeStylesSource, /\.planPill/u);
+  assert.match(badgeStylesSource, /\.promptChip/u);
+  assert.match(panelStylesSource, /\.contentCard/u);
+  assert.match(panelStylesSource, /\.feedbackText/u);
+  assert.match(formsStylesSource, /\.fieldLabel/u);
+  assert.match(formsStylesSource, /\.sendButton/u);
+  assert.match(sidebarChromeStylesSource, /\.sidebarFooter/u);
+  assert.match(sidebarChromeStylesSource, /\.profileBadge/u);
+  assert.match(menuStylesSource, /\.accountMenu/u);
+  assert.match(choiceStylesSource, /\.messageChoices/u);
+  assert.match(choiceStylesSource, /\.messageChoiceActionButtonPrimary/u);
+  assert.match(placeholderStylesSource, /\.productPlaceholderSurface/u);
   assert.match(stylesIndexSource, /@import '\.\/styles\/settings\.css';/u);
   assert.match(stylesIndexSource, /@import '\.\/styles\/chat\.css';/u);
   assert.match(stylesIndexSource, /@import '\.\/styles\/extras\.css';/u);
+  assert.doesNotMatch(stylesIndexSource, /@import '\.\/styles\/base\.css';/u);
   assert.doesNotMatch(stylesIndexSource, /\.tooltipPortal/u);
   assert.doesNotMatch(stylesIndexSource, /\.settingsShell/u);
   assert.doesNotMatch(stylesIndexSource, /\.myCatsSection/u);
-  assert.match(baseStylesSource, /@import '\.\/base-foundation\.css';/u);
-  assert.match(baseStylesSource, /@import '\.\/base-surfaces\.css';/u);
-  assert.match(baseStylesSource, /@import '\.\/base-overlays\.css';/u);
-  assert.doesNotMatch(baseStylesSource, /\.tooltipPortal/u);
-  assert.doesNotMatch(baseStylesSource, /\.accountMenu/u);
   assert.match(chatStylesSource, /@import '\.\/chat-workspace\.css';/u);
   assert.match(chatStylesSource, /@import '\.\/chat-composer\.css';/u);
   assert.match(chatStylesSource, /@import '\.\/chat-setup\.css';/u);
@@ -1146,16 +1194,36 @@ test('renderer styles compose dedicated partials instead of keeping the full sty
   assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-thread\.css';/u);
   assert.doesNotMatch(chatWorkspaceStylesSource, /\.channelWorkspace/u);
   assert.doesNotMatch(chatWorkspaceStylesSource, /\.recentOverflowMenu/u);
-  assert.match(baseFoundationStylesSource, /\.tooltipPortal/u);
-  assert.match(baseSurfacesStylesSource, /\.messageChoices/u);
-  assert.match(baseOverlaysStylesSource, /\.accountMenu/u);
   assert.match(settingsStylesSource, /\.settingsShell/u);
+  assert.match(settingsStylesSource, /\.catsLayout/u);
   assert.match(chatShellStylesSource, /\.sidebarCollapsed \.brandCopy/u);
   assert.match(chatOperatorStylesSource, /\.channelWorkspace/u);
   assert.match(chatThreadStylesSource, /\.recentOverflowMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusMenu/u);
+  assert.match(chatComposerStylesSource, /\.composerPlusButton/u);
   assert.match(chatSetupStylesSource, /\.setupWizard/u);
   assert.match(extraStylesSource, /\.myCatsSection/u);
+  await assert.rejects(
+    readFile(new URL('../src/products/chat/renderer/styles/base.css', import.meta.url), 'utf8'),
+  );
+  await assert.rejects(
+    readFile(
+      new URL('../src/products/chat/renderer/styles/base-foundation.css', import.meta.url),
+      'utf8',
+    ),
+  );
+  await assert.rejects(
+    readFile(
+      new URL('../src/products/chat/renderer/styles/base-surfaces.css', import.meta.url),
+      'utf8',
+    ),
+  );
+  await assert.rejects(
+    readFile(
+      new URL('../src/products/chat/renderer/styles/base-overlays.css', import.meta.url),
+      'utf8',
+    ),
+  );
 });
 
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {

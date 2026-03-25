@@ -1,0 +1,48 @@
+.screen {
+  min-height: 100vh;
+}
+
+.screenCentered,
+.bootShell {
+  display: grid;
+  place-items: center;
+  padding: var(--space-8);
+}
+
+.bootSpinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid rgba(196, 101, 58, 0.16);
+  border-top-color: rgba(196, 101, 58, 0.72);
+  animation: bootSpin 0.72s linear infinite;
+}
+
+@keyframes bootSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.claudeShell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  background: var(--app-bg);
+}
+
+.claudeShellSidebarCollapsed {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.canvas {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  min-height: 100vh;
+  padding: 40px 24px;
+  background: var(--canvas-bg);
+}
+
+.viewShell {
+  width: min(100%, var(--content-max-width));
+}

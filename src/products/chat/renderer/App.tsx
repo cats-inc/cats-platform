@@ -37,6 +37,7 @@ import {
   Sidebar,
   type SidebarViewMode,
 } from './components/Sidebar';
+import './styles.css';
 
 export default function App() {
   const navigate = useNavigate();

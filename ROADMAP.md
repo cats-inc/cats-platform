@@ -50,7 +50,7 @@ contracts.
 - [x] Add graph-based dependency enforcement on top of the existing
       architecture-boundary tests so `core/` and `platform/` regressions are
       blocked mechanically rather than only by targeted assertions
-- [ ] Finish extracting shared suite shell and design primitives into a
+- [x] Finish extracting shared suite shell and design primitives into a
       dedicated `src/design/` layer without pushing Chat-specific visuals into
       shared modules
 

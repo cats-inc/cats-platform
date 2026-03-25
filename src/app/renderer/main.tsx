@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import App from './App';
 import { initTooltipPortal } from '../../products/chat/renderer/tooltipPortal';
-import '../../products/chat/renderer/styles.css';
+import '../../design/index.css';
 
 initTooltipPortal();
 

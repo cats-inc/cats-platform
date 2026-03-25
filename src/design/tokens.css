@@ -1,0 +1,37 @@
+:root {
+  --app-bg: #FAFAF7;
+  --sidebar-bg: #EDE9E1;
+  --canvas-bg: #FAFAF7;
+  --panel: #ffffff;
+  --panel-hover: #E8E4DC;
+  --panel-subtle: #FBFAF8;
+  --border: #E4DFD7;
+  --text: #1A1A1A;
+  --muted: #6B6560;
+  --muted-soft: #8C857D;
+  --accent: #C4653A;
+  --accent-soft: rgba(196, 101, 58, 0.1);
+  --user-bubble-bg: #EDE9DD;
+  --ready-bg: rgba(61, 167, 121, 0.11);
+  --ready-text: #207A53;
+  --warm-bg: rgba(191, 146, 73, 0.12);
+  --warm-text: #8D6830;
+  --muted-bg: rgba(122, 116, 108, 0.1);
+  --muted-text: #756D64;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-raised: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-sheet: 0 24px 80px rgba(15, 23, 42, 0.25);
+  --sidebar-hover-bg: rgba(0, 0, 0, 0.04);
+  --sidebar-active-bg: rgba(0, 0, 0, 0.06);
+  --surface: var(--panel);
+  --surface-subtle: var(--panel-subtle);
+  --surface-raised: rgba(255, 255, 255, 0.82);
+  --text-primary: var(--text);
+  --text-muted: var(--muted);
+  --focus-ring: rgba(196, 101, 58, 0.08);
+  --danger: #C0392B;
+  --danger-hover: #A93226;
+  --sidebar-width: 260px;
+  --content-max-width: 940px;
+  --content-reading-width: 720px;
+}
