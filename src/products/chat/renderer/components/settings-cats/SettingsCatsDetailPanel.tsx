@@ -7,7 +7,7 @@ import type {
 } from '../../api';
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory';
 import type { BotFormState } from '../../hooks/useSettingsCatsRegistryActions';
-import { MEMORY_CATEGORIES, SKILL_PROFILES, formatTransportTimestamp } from './shared';
+import { MEMORY_CATEGORIES, SKILL_PROFILES, formatTransportTimestamp } from './viewSupport';
 
 interface SettingsCatsRegistryController {
   botForm: BotFormState;

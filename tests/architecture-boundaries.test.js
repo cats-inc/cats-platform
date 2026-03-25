@@ -1176,9 +1176,9 @@ test('renderer api facade composes dedicated client modules instead of defining 
     'utf8',
   );
 
-  assert.match(apiSource, /from '\.\/api\/normalization\.js'/u);
-  assert.match(apiSource, /from '\.\/api\/operator\.js'/u);
-  assert.match(apiSource, /from '\.\/api\/chat\.js'/u);
+  assert.match(apiSource, /from '\.\/normalization\.js'/u);
+  assert.match(apiSource, /from '\.\/operator\.js'/u);
+  assert.match(apiSource, /from '\.\/chat\.js'/u);
   assert.doesNotMatch(apiSource, /async function readErrorMessage\(/u);
   assert.doesNotMatch(apiSource, /export async function fetchAppShell\(/u);
   assert.doesNotMatch(apiSource, /export async function sendChatMessage\(/u);

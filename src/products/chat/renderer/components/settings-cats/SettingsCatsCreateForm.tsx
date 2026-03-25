@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react';
 
 import { type CatFormState } from '../../chatUtils';
-import { ProviderModelFields } from './ProviderModelFields';
+import { ProviderModelFields } from '../ProviderModelFields';
 
 export interface SettingsCatsCreateFormProps {
   busy: string;
