@@ -384,3 +384,73 @@ test('buildChatOperatorView filters invalid embedded governance summary enum val
     ['owner_approval_required'],
   );
 });
+
+test('buildChatOperatorView classifies orchestrator replay lifecycle notes for operator feeds', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-channel-room-replay-audit',
+      title: 'Replay audit task',
+      conversationId: 'conversation-channel-room-replay-audit',
+      createdAt: '2026-03-26T03:00:00.000Z',
+    },
+    new Date('2026-03-26T03:00:00.000Z'),
+  ).core;
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-replay-failed',
+      kind: 'note',
+      actorId: null,
+      conversationId: 'conversation-channel-room-replay-audit',
+      taskId: 'task-channel-room-replay-audit',
+      runId: null,
+      message: 'Replay failed note.',
+      createdAt: '2026-03-26T03:01:00.000Z',
+      metadata: {
+        source: 'orchestrator-replay',
+        replayPhase: 'replay_failed',
+        replayTrigger: 'retry',
+      },
+    },
+    new Date('2026-03-26T03:01:00.000Z'),
+  ).core;
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-recovery-note',
+      kind: 'note',
+      actorId: null,
+      conversationId: 'conversation-channel-room-replay-audit',
+      taskId: 'task-channel-room-replay-audit',
+      runId: null,
+      message: 'Startup recovery note.',
+      createdAt: '2026-03-26T03:02:00.000Z',
+      metadata: {
+        source: 'orchestrator-startup-recovery',
+        replayPhase: 'startup_recovered',
+      },
+    },
+    new Date('2026-03-26T03:02:00.000Z'),
+  ).core;
+
+  const view = buildChatOperatorView(
+    {
+      core,
+      approvals: buildApprovalQueue(core),
+    },
+    'room-replay-audit',
+  );
+
+  assert.ok(view);
+  const replayItem = view.activityFeed.find((item) => item.id === 'activity:activity-replay-failed');
+  const recoveryItem = view.activityFeed.find((item) => item.id === 'activity:activity-recovery-note');
+  assert.ok(replayItem);
+  assert.equal(replayItem?.label, 'Replay');
+  assert.equal(replayItem?.severity, 'error');
+  assert.ok(recoveryItem);
+  assert.equal(recoveryItem?.label, 'Recovery');
+  assert.equal(recoveryItem?.severity, 'attention');
+});

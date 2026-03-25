@@ -98,6 +98,29 @@ export function uniqueActivityItems(
   return result;
 }
 
+function readReplayPhase(
+  metadata: CoreRecordMetadata | null | undefined,
+): string | null {
+  return readMetadataString(metadata, 'replayPhase');
+}
+
+function replaySeverityForPhase(phase: string | null): ChatOperatorSeverity | null {
+  switch (phase) {
+    case 'pending_dispatch_stored':
+    case 'replay_blocked':
+    case 'startup_recovered':
+      return 'attention';
+    case 'replay_started':
+      return 'progress';
+    case 'replay_dispatched':
+      return 'success';
+    case 'replay_failed':
+      return 'error';
+    default:
+      return null;
+  }
+}
+
 export function severityForOutcome(
   outcome: CoreOrchestrationOutcomeRecord,
 ): ChatOperatorSeverity {
@@ -127,6 +150,11 @@ export function severityForTrace(trace: CoreTraceRecord): ChatOperatorSeverity {
 }
 
 export function severityForActivity(activity: CoreActivityRecord): ChatOperatorSeverity {
+  const replaySeverity = replaySeverityForPhase(readReplayPhase(activity.metadata));
+  if (replaySeverity) {
+    return replaySeverity;
+  }
+
   switch (activity.kind) {
     case 'approval_requested':
       return 'attention';
@@ -157,6 +185,11 @@ export function severityForCheckpoint(
 }
 
 export function labelForActivity(activity: CoreActivityRecord): string {
+  const replayPhase = readReplayPhase(activity.metadata);
+  if (replayPhase) {
+    return replayPhase === 'startup_recovered' ? 'Recovery' : 'Replay';
+  }
+
   switch (activity.kind) {
     case 'approval_requested':
       return 'Approval';

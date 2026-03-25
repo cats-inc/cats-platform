@@ -88,4 +88,9 @@ test('startup recovery turns stranded orchestrator replay metadata into retryabl
   );
   assert.ok(recoveryNote);
   assert.equal(recoveryNote?.kind, 'note');
+  assert.equal(recoveryNote?.metadata?.replayPhase, 'startup_recovered');
+  assert.equal(
+    recoveryNote?.metadata?.error,
+    'Cats server restarted before orchestrator replay cleanup completed.',
+  );
 });

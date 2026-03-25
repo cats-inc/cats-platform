@@ -22,6 +22,9 @@ import {
   type OrchestratorDispatchReplayTrigger,
 } from './dispatchReplay.js';
 import {
+  persistOrchestratorReplayActivity,
+} from './replayActivity.js';
+import {
   buildOrchestratorExecutionLoopSnapshot,
   buildOrchestratorExecutionLoopResponse,
   buildOrchestratorTurnPlan,
@@ -124,6 +127,26 @@ async function persistPendingApprovalDispatch<TCompanionStore, TState extends Or
     replayState: 'ready',
     keepPendingApprovalRequest: true,
   });
+
+  try {
+    const core = await input.chatStore.readCore();
+    const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
+    if (!task) {
+      return;
+    }
+    await persistOrchestratorReplayActivity(
+      input.chatStore,
+      core,
+      {
+        task,
+        actorId: task.orchestratorActorId,
+        phase: 'pending_dispatch_stored',
+      },
+      now,
+    );
+  } catch {
+    // Replay inspectability is additive; do not block dispatch persistence.
+  }
 }
 
 export async function dispatchOrchestratorTurn<TCompanionStore, TState extends OrchestratorStateView>(

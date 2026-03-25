@@ -149,6 +149,14 @@ function readPendingDispatchMetadata(task) {
   return task?.metadata?.pendingOrchestratorDispatch ?? null;
 }
 
+function findReplayActivity(corePayload, taskId, replayPhase, replayTrigger = undefined) {
+  return corePayload.activities.find((activity) =>
+    activity.taskId === taskId
+    && activity.metadata?.replayPhase === replayPhase
+    && (replayTrigger === undefined || activity.metadata?.replayTrigger === replayTrigger)
+  ) ?? null;
+}
+
 class FailingPendingDispatchCleanupStore extends MemoryChatStore {
   failCleanupOnce = true;
 
@@ -505,6 +513,16 @@ test('POST /api/orchestrator/dispatch persists approval-blocked requests and aut
       ['approve', 'reroute', 'reject'],
     );
     assert.equal(runtimeClient.sentMessages.length, 0);
+    const blockedCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(blockedCoreResponse.status, 200);
+    const blockedCorePayload = await blockedCoreResponse.json();
+    const storedReplayActivity = findReplayActivity(
+      blockedCorePayload,
+      `task-channel-${channelId}`,
+      'pending_dispatch_stored',
+    );
+    assert.ok(storedReplayActivity);
+    assert.equal(storedReplayActivity?.metadata?.source, 'orchestrator-replay');
 
     const approvedResponse = await fetch(`${baseUrl}/api/core/approvals`, {
       method: 'POST',
@@ -553,6 +571,22 @@ test('POST /api/orchestrator/dispatch persists approval-blocked requests and aut
     assert.ok(
       corePayload.activities.some((activity) =>
         activity.runId === run.id && /started/i.test(activity.message)),
+    );
+    assert.ok(
+      findReplayActivity(
+        corePayload,
+        `task-channel-${channelId}`,
+        'replay_started',
+        'approve',
+      ),
+    );
+    assert.ok(
+      findReplayActivity(
+        corePayload,
+        `task-channel-${channelId}`,
+        'replay_dispatched',
+        'approve',
+      ),
     );
   });
 });
@@ -609,6 +643,17 @@ test('POST /api/core/approvals uses an injected pending-dispatch resume seam whe
     assert.equal(replayCalls.length, 1);
     assert.equal(replayCalls[0].options.trigger, 'approve');
     assert.equal(replayCalls[0].request.channelId, channelId);
+    const coreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(coreResponse.status, 200);
+    const corePayload = await coreResponse.json();
+    assert.ok(
+      findReplayActivity(
+        corePayload,
+        `task-channel-${channelId}`,
+        'replay_failed',
+        'approve',
+      ),
+    );
   }, new MemoryChatStore(), {
     resumePendingOrchestratorDispatch: async (request, options) => {
       replayCalls.push({ request, options });
@@ -682,6 +727,17 @@ test('POST /api/core/approvals auto-resumes stored approval-blocked dispatches a
     assert.equal(
       executionLoopPayload.executionLoop.execution.approval.latestDecisionAction,
       'reroute',
+    );
+    const coreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(coreResponse.status, 200);
+    const corePayload = await coreResponse.json();
+    assert.ok(
+      findReplayActivity(
+        corePayload,
+        `task-channel-${channelId}`,
+        'replay_dispatched',
+        'reroute',
+      ),
     );
   });
 });
@@ -986,6 +1042,22 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
     assert.equal(
       task.metadata.orchestratorDispatchReplay.sourceMessageId,
       operatorActionPayload.autoResume.sourceMessageId,
+    );
+    assert.ok(
+      findReplayActivity(
+        corePayload,
+        `task-channel-${channelId}`,
+        'replay_started',
+        'retry',
+      ),
+    );
+    assert.ok(
+      findReplayActivity(
+        corePayload,
+        `task-channel-${channelId}`,
+        'replay_dispatched',
+        'retry',
+      ),
     );
   });
 });

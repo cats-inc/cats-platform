@@ -1,5 +1,4 @@
 import {
-  appendCoreActivity,
   upsertCoreTask,
 } from '../../core/model/index.js';
 import type {
@@ -14,6 +13,9 @@ import {
   readPendingOrchestratorDispatchSnapshot,
   writePendingOrchestratorDispatchMetadata,
 } from '../../platform/orchestration/pendingDispatch.js';
+import {
+  appendOrchestratorReplayActivity,
+} from '../../platform/orchestration/replayActivity.js';
 import type { ResolvedServerDependencies } from './contracts.js';
 
 const INTERRUPTED_REPLAY_ERROR = 'Cats server restarted before orchestrator replay cleanup completed.';
@@ -94,21 +96,15 @@ export async function reconcileOrchestratorRecoveryOnStartup(
     }
 
     nextCore = overwriteTaskMetadata(nextCore, task, metadata, now);
-    nextCore = appendCoreActivity(
+    nextCore = appendOrchestratorReplayActivity(
       nextCore,
       {
-        kind: 'note',
-        actorId: null,
-        conversationId: task.conversationId,
-        taskId: task.id,
-        runId: null,
-        message: `Recovered interrupted orchestrator replay metadata for "${task.title}".`,
-        metadata: {
-          source: 'orchestrator-startup-recovery',
-          pendingDispatchRecovered: recoverPendingDispatch,
-          dispatchReplayRecovered: recoverReplay,
-          recoveryError: INTERRUPTED_REPLAY_ERROR,
-        },
+        task,
+        source: 'orchestrator-startup-recovery',
+        phase: 'startup_recovered',
+        error: INTERRUPTED_REPLAY_ERROR,
+        pendingDispatchRecovered: recoverPendingDispatch,
+        dispatchReplayRecovered: recoverReplay,
       },
       now,
     ).core;

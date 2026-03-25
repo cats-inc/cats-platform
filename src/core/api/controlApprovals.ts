@@ -10,6 +10,9 @@ import {
   writePendingOrchestratorDispatchMetadata,
 } from '../../platform/orchestration/pendingDispatch.js';
 import { writeOrchestratorDispatchReplayMetadata } from '../../platform/orchestration/dispatchReplay.js';
+import {
+  persistOrchestratorReplayActivity,
+} from '../../platform/orchestration/replayActivity.js';
 import { buildTaskRuntimeExecutionRequest } from '../../shared/taskExecutionBridge.js';
 import {
   handleCoreError,
@@ -78,6 +81,7 @@ async function maybeAutoResumePendingDispatch(
   taskId: string,
   trigger: 'approve' | 'reroute',
   now: Date,
+  actorId: string | null,
 ): Promise<{
   core: CatsCoreState;
   task: CatsCoreState['tasks'][number] | null;
@@ -133,6 +137,28 @@ async function maybeAutoResumePendingDispatch(
       ),
       now,
     );
+    if (persistedBeforeDispatch.task) {
+      try {
+        const replayActivity = await persistOrchestratorReplayActivity(
+          context.dependencies.coreStore,
+          persistedBeforeDispatch.core,
+          {
+            task: persistedBeforeDispatch.task,
+            actorId,
+            phase: 'replay_started',
+            trigger,
+          },
+          now,
+        );
+        persistedBeforeDispatch = {
+          core: replayActivity.core,
+          task: replayActivity.core.tasks.find((candidate) => candidate.id === taskId)
+            ?? persistedBeforeDispatch.task,
+        };
+      } catch {
+        // Replay inspectability is additive; keep the main replay path running.
+      }
+    }
     const dispatch = await context.dependencies.resumePendingOrchestratorDispatch(
       pendingDispatch,
       { trigger },
@@ -175,6 +201,34 @@ async function maybeAutoResumePendingDispatch(
           ),
           now,
         );
+        if (failed.task) {
+          try {
+            const replayActivity = await persistOrchestratorReplayActivity(
+              context.dependencies.coreStore,
+              failed.core,
+              {
+                task: failed.task,
+                actorId,
+                phase: 'replay_blocked',
+                trigger,
+                blockedReason: dispatch.dispatch.blockedReason,
+                resultCount: dispatch.dispatch.results.length,
+              },
+              now,
+            );
+            return {
+              core: replayActivity.core,
+              task: replayActivity.core.tasks.find((candidate) => candidate.id === taskId)
+                ?? failed.task,
+              autoResume,
+            };
+          } catch {
+            return {
+              ...failed,
+              autoResume,
+            };
+          }
+        }
         return {
           ...failed,
           autoResume,
@@ -215,6 +269,33 @@ async function maybeAutoResumePendingDispatch(
         ),
         now,
       );
+      if (cleared.task) {
+        try {
+          const replayActivity = await persistOrchestratorReplayActivity(
+            context.dependencies.coreStore,
+            cleared.core,
+            {
+              task: cleared.task,
+              actorId,
+              phase: 'replay_dispatched',
+              trigger,
+              resultCount: dispatch.dispatch.results.length,
+            },
+            now,
+          );
+          return {
+            core: replayActivity.core,
+            task: replayActivity.core.tasks.find((candidate) => candidate.id === taskId)
+              ?? cleared.task,
+            autoResume,
+          };
+        } catch {
+          return {
+            ...cleared,
+            autoResume,
+          };
+        }
+      }
       return {
         ...cleared,
         autoResume,
@@ -263,6 +344,33 @@ async function maybeAutoResumePendingDispatch(
         ),
         now,
       );
+      if (failed.task) {
+        try {
+          const replayActivity = await persistOrchestratorReplayActivity(
+            context.dependencies.coreStore,
+            failed.core,
+            {
+              task: failed.task,
+              actorId,
+              phase: 'replay_failed',
+              trigger,
+              error: autoResume.error ?? null,
+            },
+            now,
+          );
+          return {
+            core: replayActivity.core,
+            task: replayActivity.core.tasks.find((candidate) => candidate.id === taskId)
+              ?? failed.task,
+            autoResume,
+          };
+        } catch {
+          return {
+            ...failed,
+            autoResume,
+          };
+        }
+      }
       return {
         ...failed,
         autoResume,
@@ -352,6 +460,7 @@ async function handleCoreApprovalWrite(
         next.task.id,
         next.task.approval.decisionAction,
         now,
+        next.task.approval.decidedByActorId,
       );
       persisted = resumed.core;
       persistedTask = resumed.task ?? persistedTask;

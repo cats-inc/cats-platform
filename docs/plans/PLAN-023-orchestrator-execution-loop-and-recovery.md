@@ -50,6 +50,10 @@ MCP tool plane.
 
 ## Follow-up Watchpoints
 
+- additive replay lifecycle activities are now landed for approval-blocked
+  dispatch storage, approve/reroute/retry replay attempts, replay outcomes,
+  and startup recovery; keep future control-plane work building on that shared
+  inspectability path rather than inventing a second replay log
 - deeper workflow continuation beyond the landed approval and retry replay
   loops
 - converge-stage richer planning once group/branch policies land
