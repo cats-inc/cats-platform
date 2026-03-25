@@ -73,10 +73,14 @@ function createRuntimeStub() {
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const server = createServer({
-    config: baseConfig,
-    runtimeClient,
-    chatStore,
-    now: () => new Date('2026-03-19T00:00:00.000Z'),
+    shared: {
+      config: baseConfig,
+      runtimeClient,
+      now: () => new Date('2026-03-19T00:00:00.000Z'),
+    },
+    chat: {
+      chatStore,
+    },
   });
 
   server.listen(0, '127.0.0.1');

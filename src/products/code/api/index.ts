@@ -1,29 +1,44 @@
-import type { ServerResponse } from 'node:http';
-
-import type { CatsCoreState } from '../../../core/types.js';
+import type { CoreStore } from '../../../core/store.js';
 import {
   buildCodePlaceholderProjection,
   type CodePlaceholderProjection,
 } from './projection.js';
+import {
+  sendJson,
+  sendMethodNotAllowed,
+  type RouteContext,
+} from '../../../shared/http.js';
 
 export const CODE_API_SLICE = 'code';
 
-function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
-  const body = JSON.stringify(payload, null, 2);
-  response.writeHead(statusCode, {
-    'content-type': 'application/json; charset=utf-8',
-    'content-length': Buffer.byteLength(body).toString(),
-  });
-  response.end(body);
+export interface CodeApiDependencies {
+  coreStore: CoreStore;
 }
 
-export function createCodePlaceholderPayload(core: CatsCoreState): CodePlaceholderProjection {
+export type CodeApiRouteContext = RouteContext<CodeApiDependencies>;
+
+export function createCodePlaceholderPayload(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+): CodePlaceholderProjection {
   return buildCodePlaceholderProjection(core);
 }
 
-export function handleCodePlaceholder(
-  response: ServerResponse,
-  core: CatsCoreState,
-): void {
-  sendJson(response, 200, createCodePlaceholderPayload(core));
+export async function routeCodeApi(
+  context: CodeApiRouteContext,
+): Promise<boolean> {
+  if (context.url.pathname !== '/api/code') {
+    return false;
+  }
+
+  if (context.method !== 'GET') {
+    sendMethodNotAllowed(context.response, ['GET']);
+    return true;
+  }
+
+  sendJson(
+    context.response,
+    200,
+    createCodePlaceholderPayload(await context.dependencies.coreStore.readCore()),
+  );
+  return true;
 }

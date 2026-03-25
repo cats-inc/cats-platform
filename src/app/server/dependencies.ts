@@ -1,7 +1,10 @@
 import { createAppStartupState } from './startup.js';
 import type {
+  ChatServerDependencies,
+  ResolvedChatServerDependencies,
   ResolvedServerDependencies,
   ServerDependencies,
+  SharedServerDependencies,
 } from './contracts.js';
 
 import {
@@ -35,25 +38,28 @@ import { createChatTaskExecutionLocator } from '../../products/chat/state/taskEx
 import { createChatTelegramRoomBridge } from '../../products/chat/state/telegramBridgeAdapter.js';
 
 function createDefaultCompanionStore(
-  dependencies: ServerDependencies,
+  shared: SharedServerDependencies,
+  chat: ChatServerDependencies,
 ): CompanionBoxStore {
-  return dependencies.chatStore instanceof MemoryChatStore
+  return chat.chatStore instanceof MemoryChatStore
     ? new MemoryCompanionBoxStore()
-    : createFileBackedCompanionBoxStore(dependencies.config.chatStatePath);
+    : createFileBackedCompanionBoxStore(shared.config.chatStatePath);
 }
 
 function createDefaultMemoryStore(
-  dependencies: ServerDependencies,
+  shared: SharedServerDependencies,
+  chat: ChatServerDependencies,
 ): CanonicalMemoryStore {
-  return dependencies.chatStore instanceof MemoryChatStore
+  return chat.chatStore instanceof MemoryChatStore
     ? new MemoryCanonicalMemoryStore()
-    : createFileBackedCanonicalMemoryStore(dependencies.config.chatStatePath);
+    : createFileBackedCanonicalMemoryStore(shared.config.chatStatePath);
 }
 
 function createDefaultTelegramRelay(
-  dependencies: ServerDependencies,
-  pollingSupervisor: ResolvedServerDependencies['pollingSupervisor'],
-): ResolvedServerDependencies['telegramRelay'] {
+  shared: SharedServerDependencies,
+  chat: ChatServerDependencies,
+  pollingSupervisor: ResolvedChatServerDependencies['pollingSupervisor'],
+): ResolvedChatServerDependencies['telegramRelay'] {
   const webhookSecretToken = process.env.CATS_TELEGRAM_WEBHOOK_SECRET?.trim() || null;
   const botToken = process.env.CATS_TELEGRAM_BOT_TOKEN?.trim() || null;
   const parsedMaxBodyBytes = Number.parseInt(
@@ -63,10 +69,10 @@ function createDefaultTelegramRelay(
   const deliveryClientCache = new Map<string, ReturnType<typeof createTelegramBotApiDeliveryClient>>();
 
   return createTelegramRelay({
-    now: dependencies.now,
-    store: dependencies.chatStore instanceof MemoryChatStore
+    now: shared.now,
+    store: chat.chatStore instanceof MemoryChatStore
       ? new InMemoryTelegramRelayStore()
-      : createFileBackedTelegramRelayStore(dependencies.config.chatStatePath),
+      : createFileBackedTelegramRelayStore(shared.config.chatStatePath),
     webhookSecretToken,
     maxBodyBytes: Number.isFinite(parsedMaxBodyBytes) ? parsedMaxBodyBytes : undefined,
     getPollingStatuses: () => pollingSupervisor.getAllPollingStatuses(),
@@ -91,28 +97,36 @@ function createDefaultTelegramRelay(
 export function resolveServerDependencies(
   dependencies: ServerDependencies,
 ): ResolvedServerDependencies {
-  const memoryStore = dependencies.memoryStore ?? createDefaultMemoryStore(dependencies);
-  const memoryService = dependencies.memoryService
-    ?? createCatsMemoryService(createChatMemorySurface(dependencies.chatStore), memoryStore);
-  const pollingSupervisor = dependencies.pollingSupervisor
-    ?? createTelegramPollingSupervisor({ now: dependencies.now });
-  const telegramRelay = dependencies.telegramRelay
-    ?? createDefaultTelegramRelay(dependencies, pollingSupervisor);
-  const baseCompanionStore = dependencies.companionStore ?? createDefaultCompanionStore(dependencies);
+  const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
+  const startup = dependencies.shared.startup ?? createAppStartupState({
+    phase: 'ready',
+    ready: true,
+  });
+
+  const memoryStore = dependencies.chat.memoryStore
+    ?? createDefaultMemoryStore(dependencies.shared, dependencies.chat);
+  const memoryService = dependencies.chat.memoryService
+    ?? createCatsMemoryService(createChatMemorySurface(dependencies.chat.chatStore), memoryStore);
+  const pollingSupervisor = dependencies.chat.pollingSupervisor
+    ?? createTelegramPollingSupervisor({ now: dependencies.shared.now });
+  const telegramRelay = dependencies.chat.telegramRelay
+    ?? createDefaultTelegramRelay(dependencies.shared, dependencies.chat, pollingSupervisor);
+  const baseCompanionStore = dependencies.chat.companionStore
+    ?? createDefaultCompanionStore(dependencies.shared, dependencies.chat);
   const companionStore = createMemoryAwareCompanionBoxStore(baseCompanionStore, memoryService);
-  const orchestratorChannelRouter = dependencies.orchestratorChannelRouter
+  const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter
     ?? chatOrchestratorChannelRouter;
-  const orchestratorPlannerSurface = dependencies.orchestratorPlannerSurface
+  const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface
     ?? chatOrchestratorPlannerSurface;
-  const taskExecutionLocator = dependencies.taskExecutionLocator
-    ?? createChatTaskExecutionLocator(dependencies.chatStore);
-  const telegramRoomBridge = dependencies.telegramRoomBridge
+  const taskExecutionLocator = dependencies.chat.taskExecutionLocator
+    ?? createChatTaskExecutionLocator(dependencies.chat.chatStore);
+  const telegramRoomBridge = dependencies.chat.telegramRoomBridge
     ?? createChatTelegramRoomBridge({
-      chatStore: dependencies.chatStore,
+      chatStore: dependencies.chat.chatStore,
       companionStore,
     });
-
-  const resumePendingOrchestratorDispatch = dependencies.resumePendingOrchestratorDispatch
+  const resumePendingOrchestratorDispatch =
+    dependencies.shared.resumePendingOrchestratorDispatch
     ?? (async (
       request: PendingOrchestratorDispatchRequest,
       _options: {
@@ -121,31 +135,39 @@ export function resolveServerDependencies(
     ) => dispatchOrchestratorTurn({
       ...request,
       senderName: request.senderName ?? undefined,
-      chatStore: dependencies.chatStore,
+      chatStore: dependencies.chat.chatStore,
       channelRouter: orchestratorChannelRouter,
       plannerSurface: orchestratorPlannerSurface,
-      runtimeClient: dependencies.runtimeClient,
-      now: dependencies.now?.(),
+      runtimeClient: dependencies.shared.runtimeClient,
+      now: dependencies.shared.now?.(),
       companionStore,
       memoryService,
     }));
 
   return {
-    ...dependencies,
-    coreStore: dependencies.coreStore ?? dependencies.chatStore,
-    startup: dependencies.startup ?? createAppStartupState({
-      phase: 'ready',
-      ready: true,
-    }),
-    companionStore,
-    orchestratorChannelRouter,
-    orchestratorPlannerSurface,
-    taskExecutionLocator,
-    memoryStore,
-    memoryService,
-    telegramRelay,
-    telegramRoomBridge,
-    pollingSupervisor,
-    resumePendingOrchestratorDispatch,
+    shared: {
+      ...dependencies.shared,
+      coreStore: sharedCoreStore,
+      startup,
+      resumePendingOrchestratorDispatch,
+    },
+    chat: {
+      ...dependencies.chat,
+      companionStore,
+      orchestratorChannelRouter,
+      orchestratorPlannerSurface,
+      taskExecutionLocator,
+      memoryStore,
+      memoryService,
+      telegramRelay,
+      telegramRoomBridge,
+      pollingSupervisor,
+    },
+    work: {
+      coreStore: dependencies.work?.coreStore ?? sharedCoreStore,
+    },
+    code: {
+      coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
+    },
   };
 }

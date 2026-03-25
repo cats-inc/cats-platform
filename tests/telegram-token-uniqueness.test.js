@@ -15,15 +15,19 @@ function createTestServer() {
   const chatStore = new MemoryChatStore();
   const runtimeClient = createRuntimeStub();
   const server = createServer({
-    config: {
-      host: '127.0.0.1',
-      port: 0,
-      chatStatePath: ':memory:',
-      suiteId: 'cats-test',
-      publicUrl: null,
+    shared: {
+      config: {
+        host: '127.0.0.1',
+        port: 0,
+        chatStatePath: ':memory:',
+        suiteId: 'cats-test',
+        publicUrl: null,
+      },
+      runtimeClient,
     },
-    runtimeClient,
-    chatStore,
+    chat: {
+      chatStore,
+    },
   });
   return { server, chatStore };
 }

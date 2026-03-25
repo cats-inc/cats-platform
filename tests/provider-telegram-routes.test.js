@@ -142,12 +142,29 @@ async function withServer(
   chatStore = new MemoryChatStore(),
   extraDependencies = {},
 ) {
+  const {
+    startup,
+    coreStore,
+    resumePendingOrchestratorDispatch,
+    work,
+    code,
+    ...chatOverrides
+  } = extraDependencies;
   const server = createServer({
-    config: baseConfig,
-    runtimeClient,
-    chatStore,
-    now: () => new Date('2026-03-19T00:00:00.000Z'),
-    ...extraDependencies,
+    shared: {
+      config: baseConfig,
+      runtimeClient,
+      now: () => new Date('2026-03-19T00:00:00.000Z'),
+      startup,
+      coreStore,
+      resumePendingOrchestratorDispatch,
+    },
+    chat: {
+      chatStore,
+      ...chatOverrides,
+    },
+    work,
+    code,
   });
 
   server.listen(0, '127.0.0.1');
@@ -173,12 +190,29 @@ async function withServerConfig(
   callback,
   extraDependencies = {},
 ) {
+  const {
+    startup,
+    coreStore,
+    resumePendingOrchestratorDispatch,
+    work,
+    code,
+    ...chatOverrides
+  } = extraDependencies;
   const server = createServer({
-    config,
-    runtimeClient,
-    chatStore,
-    now: () => new Date('2026-03-19T00:00:00.000Z'),
-    ...extraDependencies,
+    shared: {
+      config,
+      runtimeClient,
+      now: () => new Date('2026-03-19T00:00:00.000Z'),
+      startup,
+      coreStore,
+      resumePendingOrchestratorDispatch,
+    },
+    chat: {
+      chatStore,
+      ...chatOverrides,
+    },
+    work,
+    code,
   });
 
   server.listen(0, '127.0.0.1');
@@ -366,11 +400,15 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
     },
   };
   const server = createServer({
-    config: baseConfig,
-    runtimeClient: createRuntimeStub(),
-    chatStore,
-    telegramRelay: createTelegramRelay(),
-    now: () => new Date('2026-03-19T00:00:00.000Z'),
+    shared: {
+      config: baseConfig,
+      runtimeClient: createRuntimeStub(),
+      now: () => new Date('2026-03-19T00:00:00.000Z'),
+    },
+    chat: {
+      chatStore,
+      telegramRelay: createTelegramRelay(),
+    },
   });
 
   server.listen(0, '127.0.0.1');

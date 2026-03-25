@@ -18,6 +18,8 @@ import type {
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { CompanionBoxStore } from '../../products/chat/state/companion-box/index.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
+import type { WorkApiDependencies } from '../../products/work/api/index.js';
+import type { CodeApiDependencies } from '../../products/code/api/index.js';
 
 import type { AppStartupState } from './startup.js';
 
@@ -28,12 +30,17 @@ export type ResumePendingOrchestratorDispatch = (
   },
 ) => Promise<OrchestratorDispatchResponse>;
 
-export interface ServerDependencies {
+export interface SharedServerDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
-  chatStore: ChatStore;
   coreStore?: CoreStore;
   startup?: AppStartupState;
+  now?: () => Date;
+  resumePendingOrchestratorDispatch?: ResumePendingOrchestratorDispatch;
+}
+
+export interface ChatServerDependencies {
+  chatStore: ChatStore;
   companionStore?: CompanionBoxStore;
   orchestratorChannelRouter?: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
   orchestratorPlannerSurface?: OrchestratorPlannerSurface<ChatState>;
@@ -43,13 +50,26 @@ export interface ServerDependencies {
   telegramRelay?: TelegramRelay;
   telegramRoomBridge?: TelegramRoomBridge<ChatState>;
   pollingSupervisor?: TelegramPollingSupervisor;
-  now?: () => Date;
-  resumePendingOrchestratorDispatch?: ResumePendingOrchestratorDispatch;
 }
 
-export type ResolvedServerDependencies = ServerDependencies & {
+export interface WorkServerDependencies extends Partial<WorkApiDependencies> {}
+
+export interface CodeServerDependencies extends Partial<CodeApiDependencies> {}
+
+export interface ServerDependencies {
+  shared: SharedServerDependencies;
+  chat: ChatServerDependencies;
+  work?: WorkServerDependencies;
+  code?: CodeServerDependencies;
+}
+
+export interface ResolvedSharedServerDependencies extends SharedServerDependencies {
   coreStore: CoreStore;
   startup: AppStartupState;
+  resumePendingOrchestratorDispatch: ResumePendingOrchestratorDispatch;
+}
+
+export interface ResolvedChatServerDependencies extends ChatServerDependencies {
   companionStore: CompanionBoxStore;
   orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
   orchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState>;
@@ -59,5 +79,11 @@ export type ResolvedServerDependencies = ServerDependencies & {
   telegramRelay: TelegramRelay;
   telegramRoomBridge: TelegramRoomBridge<ChatState>;
   pollingSupervisor: TelegramPollingSupervisor;
-  resumePendingOrchestratorDispatch: ResumePendingOrchestratorDispatch;
-};
+}
+
+export interface ResolvedServerDependencies {
+  shared: ResolvedSharedServerDependencies;
+  chat: ResolvedChatServerDependencies;
+  work: WorkApiDependencies;
+  code: CodeApiDependencies;
+}

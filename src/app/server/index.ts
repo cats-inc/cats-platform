@@ -24,7 +24,7 @@ export function createServer(dependencies: ServerDependencies) {
   });
 
   server.on('close', () => {
-    resolvedDependencies.pollingSupervisor.stopAll();
+    resolvedDependencies.chat.pollingSupervisor.stopAll();
   });
 
   void reconcilePollingOnStartup(resolvedDependencies).catch(() => {});

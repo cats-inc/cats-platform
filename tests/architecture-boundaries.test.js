@@ -68,9 +68,29 @@ test('app server request router owns shell, provider, transport, and static-rout
 
   assert.match(source, /routeCoreApi/u);
   assert.match(source, /routeChatApi/u);
+  assert.match(source, /routeWorkApi/u);
+  assert.match(source, /routeCodeApi/u);
   assert.match(source, /handleProviderRegistry/u);
   assert.match(source, /handleTelegramWebhook/u);
   assert.match(source, /tryServeWebAsset/u);
+  assert.doesNotMatch(source, /handleWorkPlaceholder/u);
+  assert.doesNotMatch(source, /handleCodePlaceholder/u);
+});
+
+test('app server contracts expose shared and per-product dependency slices for parallel delivery', async () => {
+  const source = await readFile(
+    new URL('../src/app/server/contracts.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /export interface SharedServerDependencies/u);
+  assert.match(source, /export interface ChatServerDependencies/u);
+  assert.match(source, /export interface WorkServerDependencies/u);
+  assert.match(source, /export interface CodeServerDependencies/u);
+  assert.match(source, /shared:\s+SharedServerDependencies/u);
+  assert.match(source, /chat:\s+ChatServerDependencies/u);
+  assert.match(source, /work\?:\s+WorkServerDependencies/u);
+  assert.match(source, /code\?:\s+CodeServerDependencies/u);
 });
 
 test('app server dependency resolver wires the chat task-execution locator into core lifecycle routes', async () => {

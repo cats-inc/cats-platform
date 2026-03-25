@@ -1,29 +1,44 @@
-import type { ServerResponse } from 'node:http';
-
-import type { CatsCoreState } from '../../../core/types.js';
+import type { CoreStore } from '../../../core/store.js';
 import {
   buildWorkPlaceholderProjection,
   type WorkPlaceholderProjection,
 } from './projection.js';
+import {
+  sendJson,
+  sendMethodNotAllowed,
+  type RouteContext,
+} from '../../../shared/http.js';
 
 export const WORK_API_SLICE = 'work';
 
-function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
-  const body = JSON.stringify(payload, null, 2);
-  response.writeHead(statusCode, {
-    'content-type': 'application/json; charset=utf-8',
-    'content-length': Buffer.byteLength(body).toString(),
-  });
-  response.end(body);
+export interface WorkApiDependencies {
+  coreStore: CoreStore;
 }
 
-export function createWorkPlaceholderPayload(core: CatsCoreState): WorkPlaceholderProjection {
+export type WorkApiRouteContext = RouteContext<WorkApiDependencies>;
+
+export function createWorkPlaceholderPayload(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+): WorkPlaceholderProjection {
   return buildWorkPlaceholderProjection(core);
 }
 
-export function handleWorkPlaceholder(
-  response: ServerResponse,
-  core: CatsCoreState,
-): void {
-  sendJson(response, 200, createWorkPlaceholderPayload(core));
+export async function routeWorkApi(
+  context: WorkApiRouteContext,
+): Promise<boolean> {
+  if (context.url.pathname !== '/api/work') {
+    return false;
+  }
+
+  if (context.method !== 'GET') {
+    sendMethodNotAllowed(context.response, ['GET']);
+    return true;
+  }
+
+  sendJson(
+    context.response,
+    200,
+    createWorkPlaceholderPayload(await context.dependencies.coreStore.readCore()),
+  );
+  return true;
 }

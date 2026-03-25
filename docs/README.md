@@ -26,6 +26,7 @@ These important documents live in the project root:
 | [setup-guide.md](./setup-guide.md) | Complete | Environment setup |
 | [testing.md](./testing.md) | Complete | Current testing strategy and coverage boundaries |
 | [deployment.md](./deployment.md) | Complete | Current local deployment plus planned desktop-first packaged topology and onboarding direction |
+| [product-integration-guide.md](./product-integration-guide.md) | Complete | Product registration, dependency-slice, and suite-host integration rules for parallel Chat/Work/Code delivery |
 | [security-guidelines.md](./security-guidelines.md) | Template | Security policies placeholder inherited from bootstrap |
 | [mcp-config.md](./mcp-config.md) | Partial | Planning notes for the future `cats-runtime` MCP facade used by orchestrators |
 | [services.md](./services.md) | Complete | Service registry, port assignments, and shared service-boundary notes |

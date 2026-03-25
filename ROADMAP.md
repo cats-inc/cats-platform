@@ -44,6 +44,9 @@ contracts.
 - [x] Thin `src/app/server/index.ts` into smaller composition-root factories
       and route-registration modules while keeping one suite-owned server
       bootstrap surface
+- [x] Land product-owned route delegates and per-product server dependency
+      slices so Chat/Work/Code teams can extend their own API surfaces without
+      reopening a shared host-wiring merge hotspot
 - [ ] Introduce a storage abstraction so the current file-backed shell can grow
       into operational DB plus archive/RAG pipelines without a flag-day rewrite
 - [x] Keep the current chat shell loadable while the shared contracts land
@@ -53,6 +56,9 @@ contracts.
 - [x] Finish extracting shared suite shell and design primitives into a
       dedicated `src/design/` layer without pushing Chat-specific visuals into
       shared modules
+- [x] Publish a product integration guide that freezes shared contracts,
+      clarifies dependency-slice ownership, and defines the suite-host
+      registration protocol for parallel Chat/Work/Code delivery
 
 ### Phase 4: Cats Chat Launch Track
 

@@ -37,7 +37,10 @@ async function main(): Promise<void> {
     apiKey: config.runtimeApiKey,
   });
   const chatStore = new FileChatStore(config.chatStatePath);
-  const server = createServer({ config, runtimeClient, chatStore, startup });
+  const server = createServer({
+    shared: { config, runtimeClient, startup },
+    chat: { chatStore },
+  });
   let shutdownPromise: Promise<void> | null = null;
 
   const writeLifecycle = (line: string | null) => {

@@ -34,6 +34,11 @@ The main refactor work has already landed:
 - `core/` and `platform/` no longer source-import product implementations
 - `src/app/server/index.ts` is now a thin composition root
 - `src/app/server/requestRouter.ts` owns suite-host route assembly
+- `Cats Work` and `Cats Code` now register through product-owned API delegates
+  instead of expanding suite-host placeholder routes inline
+- `ServerDependencies` is now split into `shared`, `chat`, `work`, and `code`
+  slices so product teams can declare needs without extending Chat-centric
+  wiring
 - graph-based dependency enforcement now runs in `npm test`
 - product and module directory normalization has landed
 
@@ -91,6 +96,7 @@ Primary host-owned integration files:
 - `src/app/server/index.ts`
 - `src/app/server/requestRouter.ts`
 - `src/app/server/dependencies.ts`
+- `src/app/server/contracts.ts`
 
 Rules:
 
@@ -101,6 +107,17 @@ Rules:
    repeated merge conflicts in `requestRouter.ts`.
 4. Product routes should remain callable through product-owned modules; the
    suite host should only register and compose them.
+
+## Product Registration Protocol
+
+Parallel product work must integrate through the following protocol:
+
+1. each product owns a route delegate under `src/products/<product>/api/`
+2. each product consumes a dedicated dependency slice from
+   `src/app/server/contracts.ts`
+3. suite-host dispatch stays in `src/app/server/requestRouter.ts`
+4. renderer and navigation convergence is documented in
+   [product-integration-guide.md](../product-integration-guide.md)
 
 ## Directory Ownership Map
 
@@ -149,6 +166,8 @@ The baseline needed for parallel delivery is now in place:
 
 - `src/app/server/index.ts` has been reduced to a thin composition root
 - `src/app/server/requestRouter.ts` owns suite-host route assembly
+- product-owned route delegates now exist for Chat, Work, and Code
+- `ServerDependencies` now exposes `shared/chat/work/code` slices
 - graph-based dependency enforcement runs under `npm test`
 - architecture boundary tests cover the refactored seams
 - folder/file normalization is complete enough for product ownership to be

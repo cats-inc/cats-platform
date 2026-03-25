@@ -23,8 +23,8 @@ import {
   sendMethodNotAllowed,
 } from '../../shared/http.js';
 import { routeChatApi } from '../../products/chat/api/index.js';
-import { handleCodePlaceholder } from '../../products/code/api/index.js';
-import { handleWorkPlaceholder } from '../../products/work/api/index.js';
+import { routeCodeApi } from '../../products/code/api/index.js';
+import { routeWorkApi } from '../../products/work/api/index.js';
 import {
   getAppLifecycleContract,
   getAppOperationalStatus,
@@ -45,10 +45,10 @@ async function handleHealth(
   dependencies: ResolvedServerDependencies,
   response: import('node:http').ServerResponse,
 ): Promise<void> {
-  const runtime = await dependencies.runtimeClient.getHealth();
-  const now = dependencies.now?.() ?? new Date();
-  const appStatus = getAppOperationalStatus(dependencies.startup);
-  const readiness = getAppReadinessSnapshot(dependencies.startup);
+  const runtime = await dependencies.shared.runtimeClient.getHealth();
+  const now = dependencies.shared.now?.() ?? new Date();
+  const appStatus = getAppOperationalStatus(dependencies.shared.startup);
+  const readiness = getAppReadinessSnapshot(dependencies.shared.startup);
   const status = appStatus.status === 'unavailable'
     ? 'unavailable'
     : runtime.reachable
@@ -63,23 +63,23 @@ async function handleHealth(
     status,
     summary,
     timestamp: now.toISOString(),
-    version: dependencies.startup.version,
-    contract: getAppLifecycleContract(dependencies.startup),
+    version: dependencies.shared.startup.version,
+    contract: getAppLifecycleContract(dependencies.shared.startup),
     readiness,
     startup: {
-      contractVersion: dependencies.startup.contractVersion,
-      mode: dependencies.startup.mode,
-      managedBy: dependencies.startup.managedBy,
-      phase: dependencies.startup.phase,
-      readySignal: dependencies.startup.readySignal,
+      contractVersion: dependencies.shared.startup.contractVersion,
+      mode: dependencies.shared.startup.mode,
+      managedBy: dependencies.shared.startup.managedBy,
+      phase: dependencies.shared.startup.phase,
+      readySignal: dependencies.shared.startup.readySignal,
       ready: readiness.ready,
-      pid: dependencies.startup.pid,
-      startedAt: dependencies.startup.startedAt,
-      address: dependencies.startup.address,
-      shutdownReason: dependencies.startup.shutdownReason,
-      lastEvent: dependencies.startup.lastEvent,
+      pid: dependencies.shared.startup.pid,
+      startedAt: dependencies.shared.startup.startedAt,
+      address: dependencies.shared.startup.address,
+      shutdownReason: dependencies.shared.startup.shutdownReason,
+      lastEvent: dependencies.shared.startup.lastEvent,
     },
-    shutdown: getAppShutdownContract(dependencies.startup),
+    shutdown: getAppShutdownContract(dependencies.shared.startup),
     runtime,
   });
 }
@@ -214,7 +214,41 @@ export async function routeRequest(
     response,
     url,
     method,
-    dependencies,
+  };
+  const coreContext = {
+    ...context,
+    dependencies: {
+      coreStore: dependencies.shared.coreStore,
+      taskExecutionLocator: dependencies.chat.taskExecutionLocator,
+      memoryService: dependencies.chat.memoryService,
+      runtimeClient: dependencies.shared.runtimeClient,
+      now: dependencies.shared.now,
+      resumePendingOrchestratorDispatch: dependencies.shared.resumePendingOrchestratorDispatch,
+    },
+  };
+  const chatContext = {
+    ...context,
+    dependencies: {
+      config: dependencies.shared.config,
+      runtimeClient: dependencies.shared.runtimeClient,
+      chatStore: dependencies.chat.chatStore,
+      orchestratorChannelRouter: dependencies.chat.orchestratorChannelRouter,
+      orchestratorPlannerSurface: dependencies.chat.orchestratorPlannerSurface,
+      telegramRelay: dependencies.chat.telegramRelay,
+      telegramRoomBridge: dependencies.chat.telegramRoomBridge,
+      pollingSupervisor: dependencies.chat.pollingSupervisor,
+      companionStore: dependencies.chat.companionStore,
+      memoryService: dependencies.chat.memoryService,
+      now: dependencies.shared.now,
+    },
+  };
+  const workContext = {
+    ...context,
+    dependencies: dependencies.work,
+  };
+  const codeContext = {
+    ...context,
+    dependencies: dependencies.code,
   };
 
   if (url.pathname === '/health') {
@@ -244,25 +278,15 @@ export async function routeRequest(
     return;
   }
 
-  if (await routeCoreApi(context)) {
+  if (await routeCoreApi(coreContext)) {
     return;
   }
 
-  if (url.pathname === '/api/work') {
-    if (method !== 'GET') {
-      sendMethodNotAllowed(response, ['GET']);
-      return;
-    }
-    handleWorkPlaceholder(response, await dependencies.coreStore.readCore());
+  if (await routeWorkApi(workContext)) {
     return;
   }
 
-  if (url.pathname === '/api/code') {
-    if (method !== 'GET') {
-      sendMethodNotAllowed(response, ['GET']);
-      return;
-    }
-    handleCodePlaceholder(response, await dependencies.coreStore.readCore());
+  if (await routeCodeApi(codeContext)) {
     return;
   }
 
@@ -271,7 +295,7 @@ export async function routeRequest(
       sendMethodNotAllowed(response, ['GET']);
       return;
     }
-    await handleProviderRegistry(dependencies, response);
+    await handleProviderRegistry({ runtimeClient: dependencies.shared.runtimeClient }, response);
     return;
   }
 
@@ -286,7 +310,7 @@ export async function routeRequest(
     }
     await handleProviderModels(
       response,
-      { runtimeClient: dependencies.runtimeClient },
+      { runtimeClient: dependencies.shared.runtimeClient },
       providerModelsMatch[0]!,
       url.searchParams.get('instance'),
     );
@@ -299,8 +323,8 @@ export async function routeRequest(
       return;
     }
     await handleTelegramStatus(response, {
-      chatStore: dependencies.chatStore,
-      telegramRelay: dependencies.telegramRelay,
+      chatStore: dependencies.chat.chatStore,
+      telegramRelay: dependencies.chat.telegramRelay,
     });
     return;
   }
@@ -311,8 +335,8 @@ export async function routeRequest(
       return;
     }
     await handleTelegramDiagnostics(response, {
-      chatStore: dependencies.chatStore,
-      telegramRelay: dependencies.telegramRelay,
+      chatStore: dependencies.chat.chatStore,
+      telegramRelay: dependencies.chat.telegramRelay,
     });
     return;
   }
@@ -330,12 +354,12 @@ export async function routeRequest(
       request,
       response,
       {
-        chatStore: dependencies.chatStore,
-        telegramRoomBridge: dependencies.telegramRoomBridge,
-        memoryService: dependencies.memoryService,
-        telegramRelay: dependencies.telegramRelay,
-        runtimeClient: dependencies.runtimeClient,
-        now: dependencies.now,
+        chatStore: dependencies.chat.chatStore,
+        telegramRoomBridge: dependencies.chat.telegramRoomBridge,
+        memoryService: dependencies.chat.memoryService,
+        telegramRelay: dependencies.chat.telegramRelay,
+        runtimeClient: dependencies.shared.runtimeClient,
+        now: dependencies.shared.now,
       },
       telegramWebhookMatch[0],
     );
@@ -348,7 +372,7 @@ export async function routeRequest(
       return;
     }
     handleTelegramPollingStatus(response, {
-      pollingSupervisor: dependencies.pollingSupervisor,
+      pollingSupervisor: dependencies.chat.pollingSupervisor,
     });
     return;
   }
@@ -364,18 +388,18 @@ export async function routeRequest(
     }
     await handleTelegramPollingReconnect(response, {
       bindingId: pollingReconnectMatch[0]!,
-      chatStore: dependencies.chatStore,
-      telegramRoomBridge: dependencies.telegramRoomBridge,
-      memoryService: dependencies.memoryService,
-      telegramRelay: dependencies.telegramRelay,
-      runtimeClient: dependencies.runtimeClient,
-      pollingSupervisor: dependencies.pollingSupervisor,
-      now: dependencies.now,
+      chatStore: dependencies.chat.chatStore,
+      telegramRoomBridge: dependencies.chat.telegramRoomBridge,
+      memoryService: dependencies.chat.memoryService,
+      telegramRelay: dependencies.chat.telegramRelay,
+      runtimeClient: dependencies.shared.runtimeClient,
+      pollingSupervisor: dependencies.chat.pollingSupervisor,
+      now: dependencies.shared.now,
     });
     return;
   }
 
-  if (await routeChatApi(context)) {
+  if (await routeChatApi(chatContext)) {
     return;
   }
 

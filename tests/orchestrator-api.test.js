@@ -163,12 +163,29 @@ async function withServer(
   chatStore = new MemoryChatStore(),
   overrides = {},
 ) {
+  const {
+    startup,
+    coreStore,
+    resumePendingOrchestratorDispatch,
+    work,
+    code,
+    ...chatOverrides
+  } = overrides;
   const server = createServer({
-    config: baseConfig,
-    runtimeClient,
-    chatStore,
-    now: () => new Date('2026-03-23T00:00:00.000Z'),
-    ...overrides,
+    shared: {
+      config: baseConfig,
+      runtimeClient,
+      now: () => new Date('2026-03-23T00:00:00.000Z'),
+      startup,
+      coreStore,
+      resumePendingOrchestratorDispatch,
+    },
+    chat: {
+      chatStore,
+      ...chatOverrides,
+    },
+    work,
+    code,
   });
 
   server.listen(0, '127.0.0.1');
