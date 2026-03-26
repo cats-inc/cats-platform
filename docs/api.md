@@ -1363,9 +1363,13 @@ Semantics:
   - `reason`
   - `needsOperatorAttention`
   - `nextAction`
+  - `deliveryMode`
+  - `deliveryAction`
+  - `workflowStageId`
   - `limit`
 - repeated and comma-separated values are both accepted for enum filters such
-  as `taskStatus`, `severity`, `reason`, and `nextAction`
+  as `taskStatus`, `severity`, `reason`, `nextAction`, `deliveryMode`, and
+  `deliveryAction`
 - list responses now include a `summary` block with:
   - `totalAvailable`
   - `matching`
@@ -1440,6 +1444,9 @@ Semantics:
   - `reason`
   - `needsOperatorAttention`
   - `nextAction`
+  - `deliveryMode`
+  - `deliveryAction`
+  - `workflowStageId`
   - `limit`
 - the response now includes the same shape of list `summary` counts so later
   operator automation or non-UI inbox consumers can page or facet the inbox

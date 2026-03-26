@@ -76,6 +76,23 @@ export const CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS = [
   'complete',
 ] as const satisfies readonly CoreTaskControlPlaneNextAction['kind'][];
 
+export const CORE_TASK_CONTROL_PLANE_DELIVERY_MODES = [
+  'artifact_only',
+  'commit_only',
+  'push_branch',
+  'pr_with_checks',
+  'deploy_preview',
+] as const satisfies readonly CoreDeliveryMode[];
+
+export const CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS = [
+  'prepare_artifact',
+  'create_commit',
+  'push_branch',
+  'open_pull_request',
+  'wait_for_checks',
+  'publish_preview',
+] as const satisfies readonly CoreRuntimeDeliveryAction[];
+
 export interface CoreTaskControlPlaneApprovalAction {
   kind: CoreApprovalDecisionAction;
   label: string;
@@ -183,6 +200,9 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   reasons?: CoreTaskControlPlaneReason[];
   needsOperatorAttention?: boolean | null;
   nextActions?: CoreTaskControlPlaneNextAction['kind'][];
+  deliveryModes?: CoreDeliveryMode[];
+  deliveryActions?: CoreRuntimeDeliveryAction[];
+  workflowStageIds?: string[];
 }
 
 export interface CoreTaskControlPlaneListSummary {
@@ -756,6 +776,33 @@ function matchesControlPlaneListOptions(
   if (
     options.nextActions?.length
     && !view.nextActions.some((action) => options.nextActions?.includes(action.kind))
+  ) {
+    return false;
+  }
+
+  if (
+    options.deliveryModes?.length
+    && (!view.runtimeDeliveryIntent?.mode || !options.deliveryModes.includes(view.runtimeDeliveryIntent.mode))
+  ) {
+    return false;
+  }
+
+  if (
+    options.deliveryActions?.length
+    && !view.runtimeDeliveryIntent?.requestedActions.some((action) =>
+      options.deliveryActions?.includes(action))
+  ) {
+    return false;
+  }
+
+  if (
+    options.workflowStageIds?.length
+    && !options.workflowStageIds.includes(
+      view.workflowContinuation?.stageId
+      ?? view.runtimeDeliveryIntent?.workflowStageId
+      ?? view.workflowSummary?.stageId
+      ?? '',
+    )
   ) {
     return false;
   }

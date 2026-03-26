@@ -253,7 +253,17 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
       status: 'blocked',
       conversationId: 'conversation-channel-control-plane',
       metadata: writeOrchestratorDispatchReplayMetadata(
-        {},
+        {
+          effectiveDeliveryPolicy: {
+            mode: 'commit_only',
+            gates: ['owner_approval_required'],
+            source: 'task_override',
+            rationale: 'Retry blocked rollout with owner approval.',
+          },
+          channelId: 'channel-control-plane',
+          transport: 'web',
+          roomRoutingMode: 'boss_chat',
+        },
         buildOrchestratorDispatchReplayRequest({
           channelId: 'channel-control-plane',
           body: 'Retry the blocked rollout after approval.',
@@ -289,6 +299,10 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
       status: 'blocked',
       taskId: 'task-control-plane-match',
       conversationId: 'conversation-channel-control-plane',
+      metadata: {
+        workflowStageId: 'continuation_handoff',
+        workflowShape: 'sequential',
+      },
       createdAt: '2026-03-26T16:05:00.000Z',
     },
     now,
@@ -310,6 +324,9 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
     severities: ['attention'],
     nextActions: ['retry'],
     taskStatuses: ['blocked'],
+    deliveryModes: ['commit_only'],
+    deliveryActions: ['create_commit'],
+    workflowStageIds: ['continuation_handoff'],
   });
 
   assert.deepEqual(result.tasks.map((task) => task.taskId), [

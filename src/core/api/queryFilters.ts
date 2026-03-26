@@ -1,4 +1,6 @@
 import {
+  CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS,
+  CORE_TASK_CONTROL_PLANE_DELIVERY_MODES,
   CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
   CORE_TASK_CONTROL_PLANE_REASONS,
   CORE_TASK_CONTROL_PLANE_SEVERITIES,
@@ -106,6 +108,17 @@ export function readTaskAttentionListOptions(
       'nextAction',
       CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
     ),
+    deliveryModes: readEnumQueryValues(
+      searchParams,
+      'deliveryMode',
+      CORE_TASK_CONTROL_PLANE_DELIVERY_MODES,
+    ),
+    deliveryActions: readEnumQueryValues(
+      searchParams,
+      'deliveryAction',
+      CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS,
+    ),
+    workflowStageIds: readQueryValues(searchParams, 'workflowStageId'),
     needsOperatorAttention: readBooleanQuery(searchParams, 'needsOperatorAttention'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };

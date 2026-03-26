@@ -190,7 +190,8 @@ contracts.
       tasks with active child work, and operator-attention classification,
       without forcing later consumers to parse opaque task metadata blobs or
       re-filter the full core snapshot client-side, and those non-UI list
-      routes now also support additive query filters plus summary counts so
+      routes now also support additive query filters plus summary counts,
+      including delivery-aware and workflow-stage-aware list filtering, so
       later operator automation can page/facet control-plane, inbox, and
       recovery surfaces without rebuilding the read model outside `cats`.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as

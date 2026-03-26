@@ -2408,7 +2408,17 @@ test('core operator inspection routes support additive filters and summaries', a
           status: 'pending_approval',
           conversationId: 'conversation-channel-ops',
           metadata: writeOrchestratorDispatchReplayMetadata(
-            {},
+            {
+              effectiveDeliveryPolicy: {
+                mode: 'commit_only',
+                gates: ['owner_approval_required'],
+                source: 'task_override',
+                rationale: 'Owner-approved retry.',
+              },
+              channelId: 'channel-ops',
+              transport: 'web',
+              roomRoutingMode: 'boss_chat',
+            },
             buildOrchestratorDispatchReplayRequest({
               channelId: 'channel-ops',
               body: 'Retry the blocked rollout.',
@@ -2453,6 +2463,10 @@ test('core operator inspection routes support additive filters and summaries', a
           taskId: 'task-ops-attention',
           conversationId: 'conversation-channel-ops',
           summary: 'Blocked pending operator review.',
+          metadata: {
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'sequential',
+          },
         },
       }),
     });
@@ -2521,7 +2535,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(workflowRunResponse.status, 201);
 
     const inboxResponse = await fetch(
-      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=retry&needsOperatorAttention=true&limit=1`,
+      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&limit=1`,
     );
     assert.equal(inboxResponse.status, 200);
     const inboxPayload = await inboxResponse.json();
@@ -2533,7 +2547,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.tasks.length, 1);
 
     const controlPlaneResponse = await fetch(
-      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=retry_available&nextAction=retry&limit=1`,
+      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&limit=1`,
     );
     assert.equal(controlPlaneResponse.status, 200);
     const controlPlanePayload = await controlPlaneResponse.json();

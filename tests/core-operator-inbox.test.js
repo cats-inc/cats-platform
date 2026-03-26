@@ -164,7 +164,17 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
       status: 'pending_approval',
       conversationId: 'conversation-channel-inbox',
       metadata: writeOrchestratorDispatchReplayMetadata(
-        {},
+        {
+          effectiveDeliveryPolicy: {
+            mode: 'commit_only',
+            gates: ['owner_approval_required'],
+            source: 'task_override',
+            rationale: 'Owner-approved retry.',
+          },
+          channelId: 'channel-inbox',
+          transport: 'web',
+          roomRoutingMode: 'boss_chat',
+        },
         buildOrchestratorDispatchReplayRequest({
           channelId: 'channel-inbox',
           body: 'Retry the blocked rollout.',
@@ -210,6 +220,10 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
       status: 'blocked',
       taskId: 'task-inbox-match',
       conversationId: 'conversation-channel-inbox',
+      metadata: {
+        workflowStageId: 'continuation_handoff',
+        workflowShape: 'sequential',
+      },
       createdAt: '2026-03-26T17:45:00.000Z',
     },
     now,
@@ -246,6 +260,9 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     conversationIds: ['conversation-channel-inbox'],
     nextActions: ['retry'],
     needsOperatorAttention: true,
+    deliveryModes: ['commit_only'],
+    deliveryActions: ['create_commit'],
+    workflowStageIds: ['continuation_handoff'],
   });
 
   assert.deepEqual(result.tasks.map((task) => task.taskId), [

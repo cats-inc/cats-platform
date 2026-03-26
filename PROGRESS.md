@@ -339,9 +339,11 @@ Known follow-ups:
   consume a single task-level control-plane view instead of reassembling
   recovery, inspection, and records responses client-side
 - those same non-UI operator inspection routes now also support additive
-  query filters plus summary counts, so automation and later product surfaces
-  can page/facet inbox, control-plane, and recovery lists without hydrating
-  the full core snapshot and re-filtering client-side
+  query filters plus summary counts, including delivery-aware and workflow-
+  stage-aware filtering on the shared control-plane/operator-inbox seam, so
+  automation and later product surfaces can page/facet inbox, control-plane,
+  and recovery lists without hydrating the full core snapshot and re-
+  filtering client-side
 - task lifecycle watchers now reconcile initial observe payloads before waiting
   on live stream teardown, so running `effectiveStrategy` / `strategyState`
   metadata lands in task/run read models earlier and terminal observe snapshots
