@@ -1380,6 +1380,9 @@ Semantics:
   - `attentionSeverityCounts`
   - `reasonCounts`
   - `nextActionCounts`
+  - `deliveryModeCounts`
+  - `deliveryActionCounts`
+  - `workflowStageCounts`
 - `approvalActions` and `incidentActions` already point at the existing
   `/api/core/approvals` and `/api/core/operator-actions` write seams through
   additive action envelopes; this route does not invent a second mutation bus
@@ -1450,7 +1453,8 @@ Semantics:
   - `limit`
 - the response now includes the same shape of list `summary` counts so later
   operator automation or non-UI inbox consumers can page or facet the inbox
-  without hydrating the full core snapshot client-side
+  without hydrating the full core snapshot client-side, including
+  `deliveryModeCounts`, `deliveryActionCounts`, and `workflowStageCounts`
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not
   have to join those surfaces client-side to answer "what needs attention and

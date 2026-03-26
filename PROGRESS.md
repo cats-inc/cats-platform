@@ -344,6 +344,9 @@ Known follow-ups:
   automation and later product surfaces can page/facet inbox, control-plane,
   and recovery lists without hydrating the full core snapshot and re-
   filtering client-side
+- control-plane and operator-inbox summaries now expose delivery/workflow
+  facet counts alongside severity/action counts, so later operator automation
+  can drive queue slices without rescanning full task lists client-side
 - `src/core/recovery.ts` now also lifts delivery/workflow context into the
   recovery read model itself, so recovery filters and summary counts can facet
   by `deliveryMode`, `deliveryAction`, and `workflowStageId` without forcing

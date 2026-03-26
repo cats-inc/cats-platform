@@ -339,6 +339,9 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.taskStatusCounts.blocked, 1);
   assert.equal(result.summary.reasonCounts.retry_available, 1);
   assert.equal(result.summary.nextActionCounts.retry, 1);
+  assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
+  assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
+  assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
 });
 
 test('buildCoreTaskControlPlaneView surfaces waiting parent tasks with active child work', () => {

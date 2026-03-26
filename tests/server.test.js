@@ -2576,6 +2576,9 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.summary.returned, 1);
     assert.equal(inboxPayload.summary.nextActionCounts.approve, 1);
     assert.equal(inboxPayload.summary.attentionSeverityCounts.attention, 1);
+    assert.equal(inboxPayload.summary.deliveryModeCounts.commit_only, 1);
+    assert.equal(inboxPayload.summary.deliveryActionCounts.create_commit, 1);
+    assert.equal(inboxPayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(inboxPayload.tasks.length, 1);
 
     const controlPlaneResponse = await fetch(
@@ -2588,6 +2591,9 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.summary.returned, 1);
     assert.equal(controlPlanePayload.summary.reasonCounts.approval_pending, 1);
     assert.equal(controlPlanePayload.summary.taskStatusCounts.pending_approval, 1);
+    assert.equal(controlPlanePayload.summary.deliveryModeCounts.commit_only, 1);
+    assert.equal(controlPlanePayload.summary.deliveryActionCounts.create_commit, 1);
+    assert.equal(controlPlanePayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(controlPlanePayload.tasks.length, 1);
 
     const recoveryResponse = await fetch(

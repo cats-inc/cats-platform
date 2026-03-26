@@ -288,4 +288,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.conversationCount, 1);
   assert.equal(result.summary.reasonCounts.retry_available, 1);
   assert.equal(result.summary.nextActionCounts.retry, 1);
+  assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
+  assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
+  assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
 });

@@ -215,6 +215,9 @@ export interface CoreTaskControlPlaneListSummary {
   attentionSeverityCounts: Record<CoreTaskControlPlaneSeverity, number>;
   reasonCounts: Record<CoreTaskControlPlaneReason, number>;
   nextActionCounts: Record<CoreTaskControlPlaneNextAction['kind'], number>;
+  deliveryModeCounts: Record<CoreDeliveryMode, number>;
+  deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
+  workflowStageCounts: Record<string, number>;
 }
 
 function asRecord(value: unknown): CoreRecordMetadata | null {
@@ -856,6 +859,57 @@ function buildNextActionCounts(
   return counts;
 }
 
+function buildDeliveryModeCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreDeliveryMode, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_DELIVERY_MODES.map((mode) => [mode, 0]),
+  ) as Record<CoreDeliveryMode, number>;
+
+  for (const view of views) {
+    if (view.runtimeDeliveryIntent?.mode) {
+      counts[view.runtimeDeliveryIntent.mode] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildDeliveryActionCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreRuntimeDeliveryAction, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS.map((action) => [action, 0]),
+  ) as Record<CoreRuntimeDeliveryAction, number>;
+
+  for (const view of views) {
+    for (const action of view.runtimeDeliveryIntent?.requestedActions ?? []) {
+      counts[action] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildWorkflowStageCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+
+  for (const view of views) {
+    const stageId = view.workflowContinuation?.stageId
+      ?? view.runtimeDeliveryIntent?.workflowStageId
+      ?? view.workflowSummary?.stageId
+      ?? null;
+    if (!stageId) {
+      continue;
+    }
+    counts[stageId] = (counts[stageId] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
 export function summarizeCoreTaskControlPlaneViews(input: {
   totalAvailable: number;
   matching: number;
@@ -872,6 +926,9 @@ export function summarizeCoreTaskControlPlaneViews(input: {
     attentionSeverityCounts: buildAttentionSeverityCounts(input.views),
     reasonCounts: buildReasonCounts(input.views),
     nextActionCounts: buildNextActionCounts(input.views),
+    deliveryModeCounts: buildDeliveryModeCounts(input.views),
+    deliveryActionCounts: buildDeliveryActionCounts(input.views),
+    workflowStageCounts: buildWorkflowStageCounts(input.views),
   };
 }
 

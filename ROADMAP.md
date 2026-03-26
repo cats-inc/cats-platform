@@ -196,7 +196,9 @@ contracts.
       recovery surfaces without rebuilding the read model outside `cats`, and
       the recovery read model itself now lifts delivery/workflow context into
       a first-class inspectable contract instead of forcing later consumers to
-      re-read raw task metadata.
+      re-read raw task metadata, while control-plane/inbox summaries now also
+      expose delivery/workflow facet counts for queueing and operator
+      automation.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

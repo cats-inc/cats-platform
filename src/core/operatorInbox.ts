@@ -1,4 +1,6 @@
 import {
+  CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS,
+  CORE_TASK_CONTROL_PLANE_DELIVERY_MODES,
   CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
   CORE_TASK_CONTROL_PLANE_REASONS,
   CORE_TASK_CONTROL_PLANE_SEVERITIES,
@@ -10,7 +12,13 @@ import {
   type CoreTaskControlPlaneWorkflowContinuationView,
   type CoreTaskControlPlaneWorkflowRecommendationView,
 } from './taskControlPlane.js';
-import type { CatsCoreState, CoreTaskRecord, CoreWorkflowSummary } from './types.js';
+import type {
+  CatsCoreState,
+  CoreDeliveryMode,
+  CoreRuntimeDeliveryAction,
+  CoreTaskRecord,
+  CoreWorkflowSummary,
+} from './types.js';
 import { buildCoreTaskTimelineView, type CoreTaskTimelineItem } from './taskTimeline.js';
 import type { CoreTaskRecoveryView } from './recovery.js';
 import {
@@ -51,6 +59,9 @@ export interface CoreOperatorInboxSummary {
   attentionSeverityCounts: Record<CoreTaskControlPlaneAttention['severity'], number>;
   reasonCounts: Record<NonNullable<CoreTaskControlPlaneAttention['reasons'][number]>, number>;
   nextActionCounts: Record<CoreTaskControlPlaneNextAction['kind'], number>;
+  deliveryModeCounts: Record<CoreDeliveryMode, number>;
+  deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
+  workflowStageCounts: Record<string, number>;
 }
 
 function compareInboxItems(left: CoreOperatorInboxItem, right: CoreOperatorInboxItem): number {
@@ -204,6 +215,57 @@ function buildNextActionCounts(
   return counts;
 }
 
+function buildDeliveryModeCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreDeliveryMode, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_DELIVERY_MODES.map((mode) => [mode, 0]),
+  ) as Record<CoreDeliveryMode, number>;
+
+  for (const item of items) {
+    if (item.runtimeDeliveryIntent?.mode) {
+      counts[item.runtimeDeliveryIntent.mode] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildDeliveryActionCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreRuntimeDeliveryAction, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS.map((action) => [action, 0]),
+  ) as Record<CoreRuntimeDeliveryAction, number>;
+
+  for (const item of items) {
+    for (const action of item.runtimeDeliveryIntent?.requestedActions ?? []) {
+      counts[action] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildWorkflowStageCounts(
+  items: CoreOperatorInboxItem[],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+
+  for (const item of items) {
+    const stageId = item.workflowContinuation?.stageId
+      ?? item.runtimeDeliveryIntent?.workflowStageId
+      ?? item.workflowSummary?.stageId
+      ?? null;
+    if (!stageId) {
+      continue;
+    }
+    counts[stageId] = (counts[stageId] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
 export function summarizeCoreOperatorInboxItems(input: {
   totalAvailable: number;
   matching: number;
@@ -220,6 +282,9 @@ export function summarizeCoreOperatorInboxItems(input: {
     attentionSeverityCounts: buildAttentionSeverityCounts(input.items),
     reasonCounts: buildReasonCounts(input.items),
     nextActionCounts: buildNextActionCounts(input.items),
+    deliveryModeCounts: buildDeliveryModeCounts(input.items),
+    deliveryActionCounts: buildDeliveryActionCounts(input.items),
+    workflowStageCounts: buildWorkflowStageCounts(input.items),
   };
 }
 
