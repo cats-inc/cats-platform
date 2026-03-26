@@ -697,6 +697,156 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
   }, chatStore);
 });
 
+test('core project memory routes persist durable memory, sync canonical records, and expose retrieval context', async () => {
+  const chatStore = new MemoryChatStore();
+  const fixtures = createSharedCoreFixtureBundle();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const projectResponse = await fetch(`${baseUrl}/api/core/projects`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ project: fixtures.project }),
+    });
+    assert.equal(projectResponse.status, 201);
+
+    const createMemoryResponse = await fetch(
+      `${baseUrl}/api/core/projects/${fixtures.project.id}/memory`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: 'policy',
+          content: 'Keep launch migrations additive and compatibility-safe.',
+        }),
+      },
+    );
+    assert.equal(createMemoryResponse.status, 201);
+    const createMemoryPayload = await createMemoryResponse.json();
+    assert.equal(createMemoryPayload.memory.subjectType, 'project');
+    assert.equal(createMemoryPayload.canonicalSync.status, 'synced');
+
+    const memoryId = createMemoryPayload.memory.id;
+    assert.ok(memoryId);
+
+    const listResponse = await fetch(`${baseUrl}/api/core/projects/${fixtures.project.id}/memory`);
+    assert.equal(listResponse.status, 200);
+    const listPayload = await listResponse.json();
+    assert.equal(listPayload.records.length, 1);
+
+    const canonicalResponse = await fetch(
+      `${baseUrl}/api/core/projects/${fixtures.project.id}/memory/canonical`,
+    );
+    assert.equal(canonicalResponse.status, 200);
+    const canonicalPayload = await canonicalResponse.json();
+    assert.ok(
+      canonicalPayload.records.some((record) =>
+        record.content.includes('compatibility-safe'),
+      ),
+    );
+
+    const retrievalResponse = await fetch(
+      `${baseUrl}/api/core/projects/${fixtures.project.id}/memory/retrieval-context`,
+    );
+    assert.equal(retrievalResponse.status, 200);
+    const retrievalPayload = await retrievalResponse.json();
+    assert.deepEqual(retrievalPayload.retrieval.scope.projectIds, [fixtures.project.id]);
+    assert.ok(
+      retrievalPayload.retrieval.selectedMemories.some((hit) =>
+        hit.subjectKind === 'project'
+        && hit.selectionReasons.includes('project_scope_match'),
+      ),
+    );
+
+    const updateMemoryResponse = await fetch(
+      `${baseUrl}/api/core/projects/${fixtures.project.id}/memory/${memoryId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: 'Keep launch migrations additive, compatibility-safe, and staged.',
+        }),
+      },
+    );
+    assert.equal(updateMemoryResponse.status, 200);
+    const updateMemoryPayload = await updateMemoryResponse.json();
+    assert.equal(updateMemoryPayload.canonicalSync.status, 'synced');
+
+    const flushResponse = await fetch(
+      `${baseUrl}/api/core/projects/${fixtures.project.id}/memory/flush`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'manual' }),
+      },
+    );
+    assert.equal(flushResponse.status, 200);
+    const flushPayload = await flushResponse.json();
+    assert.equal(flushPayload.canonicalSync.status, 'synced');
+
+    const deleteMemoryResponse = await fetch(
+      `${baseUrl}/api/core/projects/${fixtures.project.id}/memory/${memoryId}`,
+      {
+        method: 'DELETE',
+      },
+    );
+    assert.equal(deleteMemoryResponse.status, 200);
+    const deleteMemoryPayload = await deleteMemoryResponse.json();
+    assert.equal(deleteMemoryPayload.canonicalSync.status, 'synced');
+
+    const finalCanonicalResponse = await fetch(
+      `${baseUrl}/api/core/projects/${fixtures.project.id}/memory/canonical`,
+    );
+    assert.equal(finalCanonicalResponse.status, 200);
+    const finalCanonicalPayload = await finalCanonicalResponse.json();
+    assert.equal(finalCanonicalPayload.records.length, 0);
+  }, chatStore);
+});
+
+test('core relationship memory routes expose scoped retrieval without requiring a chat product route', async () => {
+  const relationshipId = 'relationship-owner-inline-agent';
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const createMemoryResponse = await fetch(
+      `${baseUrl}/api/core/relationships/${relationshipId}/memory`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: 'relationship',
+          content: 'Owner trusts Inline-Agent for the first draft but expects a final summary.',
+        }),
+      },
+    );
+    assert.equal(createMemoryResponse.status, 201);
+    const createMemoryPayload = await createMemoryResponse.json();
+    assert.equal(createMemoryPayload.memory.subjectType, 'relationship');
+    assert.equal(createMemoryPayload.canonicalSync.status, 'synced');
+
+    const retrievalResponse = await fetch(
+      `${baseUrl}/api/core/relationships/${relationshipId}/memory/retrieval-context`,
+    );
+    assert.equal(retrievalResponse.status, 200);
+    const retrievalPayload = await retrievalResponse.json();
+    assert.deepEqual(retrievalPayload.retrieval.scope.relationshipIds, [relationshipId]);
+    assert.ok(
+      retrievalPayload.retrieval.selectedMemories.some((hit) =>
+        hit.subjectKind === 'relationship'
+        && hit.selectionReasons.includes('relationship_scope_match'),
+      ),
+    );
+  });
+});
+
 test('approved task assignment queues runtime wakeups for active assigned cat sessions', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();

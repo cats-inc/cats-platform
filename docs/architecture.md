@@ -499,9 +499,13 @@ See
   product-owned sidecar store for per-Cat companion boxes, derived companion
   knowledge, response profiles, and direct-session hydration context.
 - `src/platform/memory/*` now adds a Cats-owned canonical-memory and retrieval
-  substrate that flushes companion, owner, and channel context into local
-  durable records and hydrates direct companion sessions with retrieval
-  context.
+  substrate that flushes companion, owner, channel, project, and relationship
+  context into local durable records and hydrates direct companion sessions or
+  future core-owned consumers with retrieval context.
+- `src/core/api/recordMemoryRoutes.ts` now exposes non-UI project and
+  relationship durable-memory routes above that same substrate, so later Work
+  or orchestration flows can manage scoped memory without depending on
+  Chat-owned endpoints.
 - `cats` now also exposes a small runtime-bridge layer for two cross-team seams:
   runtime session observe payloads can be proxied through product APIs, and
   runtime `memory_flush` maintenance hooks can trigger Cats-owned

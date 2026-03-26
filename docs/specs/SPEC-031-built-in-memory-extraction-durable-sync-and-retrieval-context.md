@@ -50,6 +50,9 @@ The current slice now lands the core substrate in-tree:
 - generic retrieval-context assembly now accepts additive `relationshipIds`
   and `projectIds`, and the service can flush curated durable-memory records
   for those scopes into canonical storage without a UI-specific dependency
+- core-owned non-UI routes can now manage project and relationship durable
+  memory above that same substrate, including canonical sync and retrieval
+  inspection without going through Chat-only endpoints
 - runtime-facing memory flushes now return a Team 5-ready payload with
   `removedRecordIds`, `sourceScopeKeys`, and per-record promotion/replacement
   metadata; `removedRecordIds` must come from the same subject-replace

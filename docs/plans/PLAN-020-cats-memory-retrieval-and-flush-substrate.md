@@ -76,6 +76,8 @@ service to exist first.
 - [x] Update API, architecture, README, PROGRESS, and plan indexes
 - [x] Land project/relationship durable-memory scope follow-through inside the
       same canonical substrate and generic retrieval-context builder
+- [x] Expose non-UI core project/relationship memory routes above the same
+      substrate for CRUD, canonical sync, and retrieval inspection
 - [ ] Extend the substrate with vector/embedding backends once the product
       needs deeper semantic recall
 
@@ -84,6 +86,7 @@ service to exist first.
 | File | Action | Description |
 |------|--------|-------------|
 | `src/platform/memory/*` | Create | Canonical-memory contracts, extraction, retrieval, stores, and service layer |
+| `src/core/api/recordMemoryRoutes.ts` | Create | Core-owned project/relationship durable-memory CRUD, canonical, flush, and retrieval routes |
 | `src/products/chat/companion/contracts.ts` | Modify | Add additive retrieval payload to `CompanionSessionContext` |
 | `src/products/chat/companion/hydration.ts` | Modify | Build session context with retrieval support |
 | `src/products/chat/api/memory/index.ts` | Modify | Add canonical-memory, flush, and retrieval routes |
@@ -130,6 +133,7 @@ service to exist first.
 | 2026-03-24 | Source update/delete convergence, promotion-rule metadata, policy-aware retrieval read model, and Team 5-ready flush payloads implemented |
 | 2026-03-26 | Maintenance follow-through landed: additive flush summaries, reusable best-effort canonical sync helpers, and core activity logging for runtime-hook or deferred memory maintenance |
 | 2026-03-26 | Relationship/project durable-memory follow-through landed: generic retrieval-context assembly now accepts those scopes and the service can flush their canonical records without depending on Chat UI routes |
+| 2026-03-26 | Core-owned project/relationship memory routes landed: CRUD, canonical sync, and retrieval-context inspection now sit above the same memory substrate without leaking Chat route ownership |
 
 ---
 

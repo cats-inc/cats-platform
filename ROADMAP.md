@@ -113,9 +113,11 @@ contracts.
       participate in retrieval and later `Cats Work` flows
       Progress: project and relationship durable-memory scopes now have
       product-owned canonical flush plus generic retrieval-context support
-      inside `src/platform/memory/*`; future work still needs higher-level
-      product adapters, richer relationship identity, and Work-native
-      consumption.
+      inside `src/platform/memory/*`, and core-owned non-UI project/
+      relationship memory routes now expose CRUD, canonical sync, and
+      retrieval-context surfaces above that substrate; future work still needs
+      higher-level product adapters, richer relationship identity, and
+      Work-native consumption.
 - [x] Complete owner durable-memory CRUD beyond the current `GET/POST`
       surface, including update/delete paths that keep canonical retrieval
       synchronized

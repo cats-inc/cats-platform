@@ -1,6 +1,7 @@
 import type { CoreApiRouteContext } from './types.js';
 import { routeCoreExecutionRecordApi } from './recordExecutionRoutes.js';
 import { routeCoreGovernanceRecordApi } from './recordGovernanceRoutes.js';
+import { routeCoreMemoryRecordApi } from './recordMemoryRoutes.js';
 import { routeCorePlanningRecordApi } from './recordPlanningRoutes.js';
 
 export async function routeCoreRecordApi(
@@ -15,6 +16,10 @@ export async function routeCoreRecordApi(
   }
 
   if (await routeCoreGovernanceRecordApi(context)) {
+    return true;
+  }
+
+  if (await routeCoreMemoryRecordApi(context)) {
     return true;
   }
 

@@ -808,6 +808,66 @@ POST /api/core/projects
 
 `POST` upserts reusable suite-level project records.
 
+### Core Project Memory
+
+```text
+GET    /api/core/projects/{projectId}/memory
+POST   /api/core/projects/{projectId}/memory
+PUT    /api/core/projects/{projectId}/memory/{memoryId}
+DELETE /api/core/projects/{projectId}/memory/{memoryId}
+GET    /api/core/projects/{projectId}/memory/canonical
+POST   /api/core/projects/{projectId}/memory/flush
+GET    /api/core/projects/{projectId}/memory/retrieval-context
+```
+
+Semantics:
+
+- these routes manage project-scoped durable memory inside `Cats Core v1`
+- `POST`/`PUT`/`DELETE` mutate durable-memory records with `subjectType:
+  "project"` and then trigger a best-effort canonical-memory sync through the
+  Cats-owned memory substrate
+- mutation responses include additive `canonicalSync` metadata:
+  - `status`
+    - `synced`
+    - `deferred`
+  - `flush` when a canonical flush succeeded
+  - `summary` when a canonical flush succeeded
+  - `error` when canonical sync had to defer
+- `/memory/canonical` returns the current canonical records for that project
+- `/memory/flush` forces a canonical refresh from project durable memory and
+  accepts the same optional flush `reason` values as other Cats-owned memory
+  maintenance hooks
+- `/memory/retrieval-context` returns a machine-readable retrieval payload for
+  that project scope; callers may add:
+  - optional `catId`
+  - optional `channelId`
+  - repeated `relationshipId`
+  - repeated `queryHint`
+  - optional `transport`
+  - optional `includeOwnerProfile=false`
+
+### Core Relationship Memory
+
+```text
+GET    /api/core/relationships/{relationshipId}/memory
+POST   /api/core/relationships/{relationshipId}/memory
+PUT    /api/core/relationships/{relationshipId}/memory/{memoryId}
+DELETE /api/core/relationships/{relationshipId}/memory/{memoryId}
+GET    /api/core/relationships/{relationshipId}/memory/canonical
+POST   /api/core/relationships/{relationshipId}/memory/flush
+GET    /api/core/relationships/{relationshipId}/memory/retrieval-context
+```
+
+Semantics:
+
+- these routes manage opaque relationship-scoped durable memory without
+  requiring a visible Chat route or UI surface
+- they behave like the project-scoped memory routes, but the path id itself is
+  the relationship scope key
+- `/memory/retrieval-context` may also take repeated `projectId` and
+  `queryHint` parameters so callers can assemble a cross-scope retrieval view
+  without scraping transcripts or companion-box state
+
 ### List Core Work Items
 
 ```text

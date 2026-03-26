@@ -211,3 +211,41 @@ export async function syncCanonicalOwnerMemoryBestEffort(input: {
     };
   }
 }
+
+export async function syncCanonicalScopedMemoryBestEffort(input: {
+  subjectKind: 'project' | 'relationship';
+  subjectId: string;
+  memoryService: CatsMemoryService;
+  reason?: MemoryFlushReason;
+  now?: Date;
+}): Promise<CanonicalMemorySyncResult> {
+  try {
+    const flush = input.subjectKind === 'project'
+      ? await input.memoryService.flushProject({
+          projectId: input.subjectId,
+          reason: input.reason ?? 'manual',
+          now: input.now,
+        })
+      : await input.memoryService.flushRelationship({
+          relationshipId: input.subjectId,
+          reason: input.reason ?? 'manual',
+          now: input.now,
+        });
+    return {
+      status: 'synced',
+      flush,
+      summary: buildMemoryFlushSummary([flush]),
+    };
+  } catch (error) {
+    const message = reportMemoryMaintenanceFailure(
+      `${input.subjectKind}:${input.subjectId}`,
+      error,
+    );
+    return {
+      status: 'deferred',
+      flush: null,
+      summary: null,
+      error: message,
+    };
+  }
+}
