@@ -85,6 +85,10 @@ MCP tool plane.
   through the existing operator `retry` seam and startup recovery path; keep
   deeper group replan or converge-stage continuation using the same
   product-owned replay metadata pattern instead of inventing a parallel loop
+- startup recovery now also finalizes stranded room-workflow `activeTurn`
+  snapshots into blocked terminal history before the app starts serving
+  requests, so shared task/run/timeline read models do not keep phantom
+  in-flight execution after restart
 - converge-stage richer planning once group/branch policies land
 - future export of the orchestrator execution contract to other product
   surfaces once Team 3 / Team 6 consume it directly

@@ -146,7 +146,9 @@ contracts.
       write-only markers
       Progress: startup recovery now downgrades stranded `in_progress`
       approval/retry replay metadata to failed on boot so manual approve/retry
-      can reopen the loop after restarts, additive replay lifecycle
+      can reopen the loop after restarts, startup recovery now also finalizes
+      stranded room-workflow `activeTurn` snapshots into blocked terminal
+      history so inspectability stays truthful after restart, additive replay lifecycle
       activities now make blocked dispatch storage plus approve/reroute/retry
       replay start/result visible in product-owned operator read models, and
       core-owned recovery routes now normalize pending dispatch, stored
