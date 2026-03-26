@@ -52,7 +52,7 @@ export interface WorkflowContinuationReplayMetadataOptions {
 export interface WorkflowContinuationReplayResult {
   channelId: string;
   sourceMessageId: string;
-  status: 'dispatched';
+  status: 'dispatched' | 'blocked';
   blockedReason: string | null;
   results: Array<unknown>;
   executionState: 'running' | 'completed' | 'blocked' | 'failed';

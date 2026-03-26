@@ -1021,8 +1021,8 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
     assert.equal(operatorActionPayload.action, 'retry');
     assert.deepEqual(operatorActionPayload.autoResume, {
       trigger: 'retry',
-      status: 'dispatched',
-      blockedReason: null,
+      status: 'blocked',
+      blockedReason: 'anti_ping_pong',
       sourceMessageId: operatorActionPayload.autoResume.sourceMessageId,
       resultCount: operatorActionPayload.autoResume.resultCount,
       executionState: 'blocked',
@@ -1055,7 +1055,7 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
       findReplayActivity(
         corePayload,
         `task-channel-${channelId}`,
-        'replay_dispatched',
+        'replay_blocked',
         'retry',
       ),
     );
@@ -1390,7 +1390,7 @@ test('POST /api/core/operator-actions re-resolves stale workflow continuation ta
   }, chatStore);
 });
 
-test('POST /api/core/operator-actions retries blocked recommendation-only continuations after targets become active', async () => {
+test('POST /api/core/operator-actions keeps recommendation-only continuation retry blocked until targets become active', async () => {
   const runtimeClient = createRuntimeStub({
     sendMessage: ({ content }) => {
       if (content.includes('You are Inline-Agent')) {
@@ -1470,6 +1470,44 @@ test('POST /api/core/operator-actions retries blocked recommendation-only contin
     assert.equal(
       blockedTask.metadata.workflowContinuationReplay.workflowRecommendation.candidateTargets[0].participantName,
       'Followup-Agent',
+    );
+
+    const blockedRetryResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'retry',
+        actorId: 'actor-owner',
+        taskId: `task-channel-${channelId}`,
+        runId: blockedRunId,
+      }),
+    });
+    assert.equal(blockedRetryResponse.status, 200);
+    const blockedRetryPayload = await blockedRetryResponse.json();
+    assert.equal(blockedRetryPayload.action, 'retry');
+    assert.deepEqual(blockedRetryPayload.autoResume, {
+      trigger: 'retry',
+      status: 'blocked',
+      blockedReason: 'no_valid_targets',
+      sourceMessageId: blockedRetryPayload.autoResume.sourceMessageId,
+      resultCount: 0,
+      executionState: 'blocked',
+    });
+    assert.equal(runtimeClient.sentMessages.length, 1);
+
+    const stillBlockedCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(stillBlockedCoreResponse.status, 200);
+    const stillBlockedCorePayload = await stillBlockedCoreResponse.json();
+    const stillBlockedTask = stillBlockedCorePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    assert.ok(stillBlockedTask);
+    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.blockedReason, 'no_valid_targets');
+    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.replayState, 'ready');
+    assert.ok(
+      stillBlockedCorePayload.activities.some((activity) =>
+        activity.taskId === `task-channel-${channelId}`
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_blocked'
+        && activity.metadata?.blockedReason === 'no_valid_targets'),
     );
 
     const resumedState = await chatStore.read();

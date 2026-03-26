@@ -94,9 +94,11 @@ MCP tool plane.
   targets already exist, recommendation-only handoffs can now also persist a
   retryable `no_valid_targets` replay snapshot when a structured
   `workflowRecommendation` exists but no active participant currently matches
-  it, and retry can now re-resolve stale stored targets from the persisted
-  `workflowRecommendation` payload when the original target identities are no
-  longer active, while broader group replan or
+  it, while retry can now keep that replay `blocked` plus ready until a
+  matching participant becomes active and can also re-resolve stale stored
+  targets from the persisted `workflowRecommendation` payload when the
+  original target identities are no longer active, while broader group replan
+  or
   converge-stage continuation still remains
 - startup recovery now also finalizes stranded room-workflow `activeTurn`
   snapshots into blocked terminal history before the app starts serving

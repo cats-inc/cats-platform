@@ -317,6 +317,10 @@ Known follow-ups:
   it, so the same operator `retry` seam can resume that handoff after the
   recommended target becomes active instead of leaving a write-only
   `no_targets` marker
+- that same recommendation-only replay path now stays `blocked` rather than
+  degrading to `failed` when operators retry before a matching participant is
+  active again, so the replay remains ready for a later retry once the target
+  comes back
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without

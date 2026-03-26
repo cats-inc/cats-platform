@@ -136,29 +136,49 @@ function buildRecommendationReplayResolution(
 function buildReplayResolution(
   request: WorkflowContinuationReplaySnapshot,
   state: ChatState,
-): TargetResolution {
+): {
+  resolution: TargetResolution | null;
+  blockedReason: WorkflowContinuationReplayResult['blockedReason'];
+  note: string | null;
+} {
   const replayTargets = resolveReplayTargets(state, request);
   if (replayTargets.length > 0) {
     return {
-      targets: replayTargets,
-      unresolved: [...request.unresolvedTargets],
-      mentionNames: [...request.mentionNames],
-      trigger: request.trigger,
       resolution: {
-        routingMode: toResolutionMode(replayTargets.length),
-        selectionKind: 'explicit_mentions',
-        defaultTarget: null,
-        defaultTargetReason: null,
-        fallbackTarget: null,
-        blockedReason: null,
-        note: 'Stored workflow continuation replay resumed the next room stage.',
+        targets: replayTargets,
+        unresolved: [...request.unresolvedTargets],
+        mentionNames: [...request.mentionNames],
+        trigger: request.trigger,
+        resolution: {
+          routingMode: toResolutionMode(replayTargets.length),
+          selectionKind: 'explicit_mentions',
+          defaultTarget: null,
+          defaultTargetReason: null,
+          fallbackTarget: null,
+          blockedReason: null,
+          note: 'Stored workflow continuation replay resumed the next room stage.',
+        },
       },
+      blockedReason: null,
+      note: null,
     };
   }
 
   const recommendationResolution = buildRecommendationReplayResolution(state, request);
   if (recommendationResolution) {
-    return recommendationResolution;
+    return {
+      resolution: recommendationResolution,
+      blockedReason: null,
+      note: null,
+    };
+  }
+
+  if (request.workflowRecommendation) {
+    return {
+      resolution: null,
+      blockedReason: 'no_valid_targets',
+      note: 'Stored workflow continuation replay still has no active targets for its workflow recommendation.',
+    };
   }
 
   throw new Error(
@@ -254,7 +274,18 @@ export async function resumeWorkflowContinuationReplay(input: {
     throw new Error(`Stored workflow continuation source message not found: ${input.request.sourceMessageId}`);
   }
 
-  const initialResolution = buildReplayResolution(input.request, state);
+  const initialReplayResolution = buildReplayResolution(input.request, state);
+  if (!initialReplayResolution.resolution) {
+    return {
+      channelId: input.request.channelId,
+      sourceMessageId: sourceMessage.id,
+      status: 'blocked',
+      blockedReason: initialReplayResolution.blockedReason,
+      results: [],
+      executionState: 'blocked',
+    };
+  }
+  const initialResolution = initialReplayResolution.resolution;
   const nowIso = input.now.toISOString();
   const baseRoomRouting = resolveRoomRoutingState(requireChannel(state, input.request.channelId).roomRouting);
   const workflow = resolveRoomWorkflowState(baseRoomRouting.workflow);
@@ -371,13 +402,15 @@ export async function resumeWorkflowContinuationReplay(input: {
   const latestTurn = persistedChannel.roomRouting?.workflow.turnHistory[0]
     ?? persistedChannel.roomRouting?.workflow.activeTurn
     ?? null;
+  const executionState = mapTurnStatusToExecutionState(latestTurn?.status);
+  const finalBlockedReason = blockedResolution?.blockedReason ?? guardReason;
 
   return {
     channelId: input.request.channelId,
     sourceMessageId: sourceMessage.id,
-    status: 'dispatched',
-    blockedReason: null,
+    status: executionState === 'blocked' ? 'blocked' : 'dispatched',
+    blockedReason: finalBlockedReason,
     results,
-    executionState: mapTurnStatusToExecutionState(latestTurn?.status),
+    executionState,
   };
 }

@@ -1924,6 +1924,11 @@ Semantics:
   - `resultCount`
   - `executionState`
   - optional `error` when the replay attempt fails
+- retrying stored workflow-continuation replay may legitimately return
+  `status: "blocked"` with `blockedReason: "no_valid_targets"` when the
+  persisted handoff recommendation still has no active matching participant;
+  in that case the replay stays ready for a later retry instead of being
+  downgraded to a failed replay attempt
 - the stored pending dispatch request is cleared only after a successful
   replay; failed attempts leave the request in task metadata so later recovery
   or deeper follow-through slices can retry it

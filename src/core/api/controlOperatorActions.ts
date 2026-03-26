@@ -87,6 +87,7 @@ function findLatestRunForTask(
 }
 
 function summarizeWorkflowContinuationReplayResult(input: {
+  status: 'dispatched' | 'blocked';
   sourceMessageId: string;
   blockedReason: string | null;
   results: Array<unknown>;
@@ -94,7 +95,7 @@ function summarizeWorkflowContinuationReplayResult(input: {
 }): CoreOrchestratorAutoResumeSummary {
   return {
     trigger: 'retry',
-    status: 'dispatched',
+    status: input.status,
     blockedReason: input.blockedReason,
     sourceMessageId: input.sourceMessageId,
     resultCount: input.results.length,
