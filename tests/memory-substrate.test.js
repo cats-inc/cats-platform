@@ -20,6 +20,7 @@ import { createMemoryAwareCompanionBoxStore } from '../dist-server/products/chat
 import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companion-box/index.js';
 import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
 
 function buildCompanionCat(catId, nowIso) {
   return {
@@ -290,6 +291,73 @@ test('scope-aware canonical flush removes stale durable memory when curated note
   );
 });
 
+test('memory service flushes project and relationship durable memory into canonical records', async () => {
+  const now = new Date('2026-03-24T09:00:00.000Z');
+  const fixtures = createSharedCoreFixtureBundle();
+  const relationshipId = 'relationship-owner-inline-agent';
+  const chatStore = new MemoryChatStore();
+  const memoryStore = new MemoryCanonicalMemoryStore();
+  const memoryService = createCatsMemoryService(createChatMemorySurface(chatStore), memoryStore);
+
+  const core = await chatStore.readCore();
+  await chatStore.writeCore({
+    ...core,
+    projects: [fixtures.project],
+    durableMemory: [
+      {
+        id: 'project-durable-1',
+        subjectType: 'project',
+        subjectId: fixtures.project.id,
+        category: 'policy',
+        content: 'Launch work should keep compatibility fixes additive and low-risk.',
+        confidence: 0.92,
+        sourceRefs: [],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      },
+      {
+        id: 'relationship-durable-1',
+        subjectType: 'relationship',
+        subjectId: relationshipId,
+        category: 'relationship',
+        content: 'Owner trusts Inline-Agent for first-pass audits but wants a final summary.',
+        confidence: 0.88,
+        sourceRefs: [],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      },
+    ],
+  });
+
+  const projectFlush = await memoryService.flushProject({
+    projectId: fixtures.project.id,
+    reason: 'manual',
+    now,
+  });
+  const relationshipFlush = await memoryService.flushRelationship({
+    relationshipId,
+    reason: 'manual',
+    now,
+  });
+
+  assert.equal(projectFlush.scope, 'project');
+  assert.equal(relationshipFlush.scope, 'relationship');
+
+  const projectRecords = await memoryService.listCanonicalRecords({
+    subjectKind: 'project',
+    subjectId: fixtures.project.id,
+  });
+  const relationshipRecords = await memoryService.listCanonicalRecords({
+    subjectKind: 'relationship',
+    subjectId: relationshipId,
+  });
+
+  assert.ok(projectRecords.some((record) => record.content.includes('additive and low-risk')));
+  assert.ok(
+    relationshipRecords.some((record) => record.content.includes('final summary')),
+  );
+});
+
 test('memory-aware companion store auto-syncs direct source mutations without route-owned flushes', async () => {
   const now = new Date('2026-03-23T18:00:00.000Z');
   const chatStore = new MemoryChatStore();
@@ -418,6 +486,79 @@ test('retrieval policy keeps owner-private cat memory out of shared-room context
   assert.ok(context.hits.some((hit) => hit.subjectKind === 'channel'));
   assert.ok(context.excludedMemories.some((record) => record.reason === 'policy_scope'));
   assert.ok(context.ownerProfileHints.some((hint) => hint.includes('concise')));
+});
+
+test('generic retrieval context includes scoped project and relationship memory', async () => {
+  const now = new Date('2026-03-24T10:00:00.000Z');
+  const fixtures = createSharedCoreFixtureBundle();
+  const relationshipId = 'relationship-owner-inline-agent';
+  const chatStore = new MemoryChatStore();
+  const memoryStore = new MemoryCanonicalMemoryStore();
+  const memoryService = createCatsMemoryService(createChatMemorySurface(chatStore), memoryStore);
+
+  const core = await chatStore.readCore();
+  await chatStore.writeCore({
+    ...core,
+    projects: [fixtures.project],
+    ownerProfile: {
+      ...core.ownerProfile,
+      summary: 'Owner wants one concise recommendation first.',
+      updatedAt: now.toISOString(),
+    },
+    durableMemory: [
+      {
+        id: 'project-durable-1',
+        subjectType: 'project',
+        subjectId: fixtures.project.id,
+        category: 'policy',
+        content: 'Cats Suite Launch keeps rollout notes additive and migration-safe.',
+        confidence: 0.93,
+        sourceRefs: [],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      },
+      {
+        id: 'relationship-durable-1',
+        subjectType: 'relationship',
+        subjectId: relationshipId,
+        category: 'relationship',
+        content: 'Inline-Agent should bring the first draft, but the owner expects a final summary.',
+        confidence: 0.89,
+        sourceRefs: [],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      },
+    ],
+  });
+
+  await memoryService.flushOwnerProfile({ now });
+  await memoryService.flushProject({ projectId: fixtures.project.id, now });
+  await memoryService.flushRelationship({ relationshipId, now });
+
+  const context = await memoryService.buildRetrievalContext({
+    projectIds: [fixtures.project.id],
+    relationshipIds: [relationshipId],
+    roomMode: 'boss_chat',
+    transport: 'web',
+    includeOwnerProfile: true,
+    now,
+  });
+
+  assert.deepEqual(context.scope.projectIds, [fixtures.project.id]);
+  assert.deepEqual(context.scope.relationshipIds, [relationshipId]);
+  assert.ok(
+    context.selectedMemories.some((hit) =>
+      hit.subjectKind === 'project'
+      && hit.selectionReasons.includes('project_scope_match'),
+    ),
+  );
+  assert.ok(
+    context.selectedMemories.some((hit) =>
+      hit.subjectKind === 'relationship'
+      && hit.selectionReasons.includes('relationship_scope_match'),
+    ),
+  );
+  assert.ok(context.ownerProfileHints.some((hint) => hint.includes('concise recommendation')));
 });
 
 test('replaceRecords rejects an empty selector filter instead of clearing the full store', async () => {

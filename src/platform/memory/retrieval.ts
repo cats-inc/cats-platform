@@ -215,6 +215,8 @@ function selectionReasonsForCanonical(input: {
   record: CanonicalMemoryRecord;
   catId: string | null;
   channelId: string | null;
+  relationshipIds: string[];
+  projectIds: string[];
   includeOwnerProfile: boolean;
 }): string[] {
   const reasons: string[] = [];
@@ -226,6 +228,18 @@ function selectionReasonsForCanonical(input: {
   }
   if (input.record.subjectKind === 'channel' && input.record.subjectId === input.channelId) {
     reasons.push('channel_scope_match');
+  }
+  if (
+    input.record.subjectKind === 'relationship'
+    && input.relationshipIds.includes(input.record.subjectId)
+  ) {
+    reasons.push('relationship_scope_match');
+  }
+  if (
+    input.record.subjectKind === 'project'
+    && input.projectIds.includes(input.record.subjectId)
+  ) {
+    reasons.push('project_scope_match');
   }
   if (input.record.subjectKind === 'owner' && input.includeOwnerProfile) {
     reasons.push('owner_profile_hint');
@@ -271,16 +285,22 @@ export function buildMemoryRetrievalContext(input: {
   workingMemory?: MemoryCheckpointSummary;
   roomMode?: 'boss_chat' | 'direct_cat_chat' | null;
   transport?: 'telegram' | 'line' | 'web' | null;
+  relationshipIds?: string[];
+  projectIds?: string[];
+  queryHints?: string[];
   canonicalRecords: CanonicalMemoryRecord[];
   companionSources?: MemoryCompanionSourceRecord[];
   companionDerived?: MemoryCompanionDerivedRecord[];
   companionMemory?: MemoryCompanionMemoryRecord[];
 }): MemoryRetrievalContext {
+  const relationshipIds = uniqueStrings(input.relationshipIds ?? []);
+  const projectIds = uniqueStrings(input.projectIds ?? []);
   const nowIso = input.now.toISOString();
   const query = uniqueStrings([
     input.channelTitle,
     input.channelTopic,
     input.workingMemory?.summary,
+    ...(input.queryHints ?? []),
     ...(input.workingMemory?.facts ?? []),
   ]).join(' | ');
   const queryTokens = tokenize(query);
@@ -306,6 +326,12 @@ export function buildMemoryRetrievalContext(input: {
     ].filter((value): value is string => typeof value === 'string')).flatMap(tokenize);
     const matchedScore = scoreMatch(queryTokens, candidateTokens);
     let score = matchedScore + (record.subjectKind === 'cat' && record.subjectId === input.catId ? 2 : 0);
+    if (record.subjectKind === 'relationship' && relationshipIds.includes(record.subjectId)) {
+      score += 2;
+    }
+    if (record.subjectKind === 'project' && projectIds.includes(record.subjectId)) {
+      score += 2;
+    }
 
     if (
       record.subjectKind === 'owner'
@@ -330,6 +356,8 @@ export function buildMemoryRetrievalContext(input: {
       record,
       catId: input.catId,
       channelId: input.channelId,
+      relationshipIds,
+      projectIds,
       includeOwnerProfile: policy.includeOwnerProfile,
     });
 
@@ -496,6 +524,8 @@ export function buildMemoryRetrievalContext(input: {
     scope: {
       catId: input.catId,
       channelId: input.channelId,
+      relationshipIds,
+      projectIds,
       includeOwnerProfile: policy.includeOwnerProfile,
     },
     policy,

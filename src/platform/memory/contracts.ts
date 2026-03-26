@@ -202,6 +202,8 @@ export interface MemoryRetrievalContext {
   scope: {
     catId: string | null;
     channelId: string | null;
+    relationshipIds: string[];
+    projectIds: string[];
     includeOwnerProfile: boolean;
   };
   policy: MemoryRetrievalPolicy;

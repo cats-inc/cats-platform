@@ -47,6 +47,9 @@ The current slice now lands the core substrate in-tree:
   `supportingEvidence`, `excludedMemories`, and `ownerProfile` so direct
   companion hydration and later orchestrator flows can consume the same
   machine-readable contract
+- generic retrieval-context assembly now accepts additive `relationshipIds`
+  and `projectIds`, and the service can flush curated durable-memory records
+  for those scopes into canonical storage without a UI-specific dependency
 - runtime-facing memory flushes now return a Team 5-ready payload with
   `removedRecordIds`, `sourceScopeKeys`, and per-record promotion/replacement
   metadata; `removedRecordIds` must come from the same subject-replace
@@ -353,8 +356,9 @@ needs a stable hook and payload contract.
 
 - [ ] Which durable-memory families should be curated-only versus
       extraction-promotable in the first slice?
-- [ ] Should relationship and project memory ship as empty-first-class scopes
-      now, or remain reserved schema only until Work uses them?
+- [x] Relationship and project memory now ship as empty-first-class durable
+      scopes: canonical flush and retrieval support are landed even though
+      richer product adapters and relationship identity remain future work.
 - [ ] When archive/vector augmentation arrives, should lexical-first retrieval
       remain the deterministic fallback path for maintenance hooks?
 

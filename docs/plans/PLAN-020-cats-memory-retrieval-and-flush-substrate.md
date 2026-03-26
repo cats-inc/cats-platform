@@ -2,7 +2,7 @@
 
 > Implement the first Cats-owned memory extraction, canonical-memory, and
 > retrieval slice inside `cats`, with explicit flush seams for companion,
-> owner, and channel scopes.
+> owner, channel, and later cross-product durable scopes.
 
 ## Metadata
 
@@ -32,6 +32,8 @@ The initial landing focuses on:
   working memory
 - retrieval-context assembly that can hydrate direct companion sessions and
   give Team 4 an explicit pre-reset / pre-compaction seam
+- additive follow-through for project and relationship durable-memory scopes so
+  later Work or orchestration consumers can reuse the same substrate
 
 ## Implementation Phases
 
@@ -72,6 +74,8 @@ service to exist first.
 
 - [x] Add regression coverage for flush, retrieval, and runtime hydration
 - [x] Update API, architecture, README, PROGRESS, and plan indexes
+- [x] Land project/relationship durable-memory scope follow-through inside the
+      same canonical substrate and generic retrieval-context builder
 - [ ] Extend the substrate with vector/embedding backends once the product
       needs deeper semantic recall
 
@@ -125,6 +129,7 @@ service to exist first.
 | 2026-03-23 | Canonical-memory storage, extraction/flush routes, and direct companion retrieval hydration implemented |
 | 2026-03-24 | Source update/delete convergence, promotion-rule metadata, policy-aware retrieval read model, and Team 5-ready flush payloads implemented |
 | 2026-03-26 | Maintenance follow-through landed: additive flush summaries, reusable best-effort canonical sync helpers, and core activity logging for runtime-hook or deferred memory maintenance |
+| 2026-03-26 | Relationship/project durable-memory follow-through landed: generic retrieval-context assembly now accepts those scopes and the service can flush their canonical records without depending on Chat UI routes |
 
 ---
 

@@ -7,7 +7,6 @@ import type {
   CanonicalMemoryOriginKind,
   MemoryCatRef,
   MemoryChannelContext,
-  MemoryChannelSnapshot,
   MemoryChatSurface,
   MemoryCompanionSurface,
   CanonicalMemoryRecord,
@@ -35,6 +34,55 @@ const COMPANION_BOX_ORIGIN_KINDS: CanonicalMemoryOriginKind[] = [
 const CHANNEL_ORIGIN_KINDS: CanonicalMemoryOriginKind[] = ['channel_working_memory'];
 
 const OWNER_ORIGIN_KINDS: CanonicalMemoryOriginKind[] = ['owner_profile', 'durable_memory'];
+const DURABLE_ONLY_ORIGIN_KINDS: CanonicalMemoryOriginKind[] = ['durable_memory'];
+
+function readNonEmptyString(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+function uniqueNonEmptyStrings(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const normalized = readNonEmptyString(value);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+async function listScopedCanonicalRecords(
+  memoryStore: CanonicalMemoryStore,
+  subjectKind: CanonicalMemoryRecord['subjectKind'],
+  subjectIds: string[],
+): Promise<CanonicalMemoryRecord[]> {
+  const recordGroups = await Promise.all(
+    subjectIds.map((subjectId) => memoryStore.listRecords({ subjectKind, subjectId })),
+  );
+  return recordGroups.flatMap((records) => records);
+}
+
+export interface BuildMemoryRetrievalContextInput {
+  catId?: string | null;
+  channelId?: string | null;
+  channelTitle?: string;
+  channelTopic?: string;
+  workingMemory?: MemoryChannelContext['workingMemory'];
+  roomMode?: 'boss_chat' | 'direct_cat_chat' | null;
+  transport?: 'telegram' | 'line' | 'web' | null;
+  includeOwnerProfile?: boolean;
+  companionStore?: MemoryCompanionSurface;
+  relationshipIds?: string[];
+  projectIds?: string[];
+  queryHints?: string[];
+  now?: Date;
+}
 
 export interface CatsMemoryService {
   listCanonicalRecords(filter?: {
@@ -56,11 +104,25 @@ export interface CatsMemoryService {
     reason?: MemoryFlushReason;
     now?: Date;
   }): Promise<MemoryFlushResult>;
+  flushProject(input: {
+    projectId: string;
+    reason?: MemoryFlushReason;
+    now?: Date;
+  }): Promise<MemoryFlushResult>;
+  flushRelationship(input: {
+    relationshipId: string;
+    reason?: MemoryFlushReason;
+    now?: Date;
+  }): Promise<MemoryFlushResult>;
+  buildRetrievalContext(input: BuildMemoryRetrievalContextInput): Promise<MemoryRetrievalContext>;
   buildCompanionRetrievalContext(input: {
     cat: MemoryCatRef;
     channel: MemoryChannelContext;
     transport?: 'telegram' | 'line' | 'web' | null;
     companionStore: MemoryCompanionSurface;
+    relationshipIds?: string[];
+    projectIds?: string[];
+    queryHints?: string[];
     now?: Date;
   }): Promise<MemoryRetrievalContext>;
   buildChannelRetrievalContext(input: {
@@ -68,6 +130,9 @@ export interface CatsMemoryService {
     catId?: string | null;
     transport?: 'telegram' | 'line' | 'web' | null;
     companionStore?: MemoryCompanionSurface;
+    relationshipIds?: string[];
+    projectIds?: string[];
+    queryHints?: string[];
     now?: Date;
   }): Promise<MemoryRetrievalContext>;
 }
@@ -111,6 +176,53 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     private readonly chatSurface: MemoryChatSurface,
     private readonly memoryStore: CanonicalMemoryStore,
   ) {}
+
+  private async flushDurableSubject(input: {
+    subjectKind: 'project' | 'relationship';
+    subjectId: string;
+    reason?: MemoryFlushReason;
+    now?: Date;
+  }): Promise<MemoryFlushResult> {
+    const now = input.now ?? new Date();
+    const reason = input.reason ?? 'manual';
+    const core = await this.chatSurface.readCore();
+    const durableMemory = listDurableMemoryBySubject(core, input.subjectKind, input.subjectId);
+    const { persisted, removedRecordIds } = await this.memoryStore.replaceRecordsWithResult(
+      {
+        subjectKind: input.subjectKind,
+        subjectId: input.subjectId,
+        originKinds: DURABLE_ONLY_ORIGIN_KINDS,
+      },
+      extractCanonicalMemoryFromDurableMemory({
+        subjectKind: input.subjectKind,
+        subjectId: input.subjectId,
+        records: durableMemory,
+        reason,
+        now,
+      }),
+      now,
+    );
+    const generatedAt = now.toISOString();
+    const payload = buildFlushPayload({
+      scope: input.subjectKind,
+      subjectId: input.subjectId,
+      reason,
+      generatedAt,
+      records: persisted,
+      removedRecordIds,
+    });
+
+    return {
+      scope: input.subjectKind,
+      subjectId: input.subjectId,
+      reason,
+      generatedAt,
+      persistedCount: persisted.length,
+      persistedRecordIds: persisted.map((record) => record.id),
+      removedRecordIds,
+      payload,
+    };
+  }
 
   async listCanonicalRecords(filter?: {
     subjectKind?: CanonicalMemoryRecord['subjectKind'];
@@ -288,42 +400,103 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     };
   }
 
-  async buildCompanionRetrievalContext(input: {
-    cat: MemoryCatRef;
-    channel: MemoryChannelContext;
-    transport?: 'telegram' | 'line' | 'web' | null;
-    companionStore: MemoryCompanionSurface;
+  async flushProject(input: {
+    projectId: string;
+    reason?: MemoryFlushReason;
     now?: Date;
-  }): Promise<MemoryRetrievalContext> {
+  }): Promise<MemoryFlushResult> {
+    return this.flushDurableSubject({
+      subjectKind: 'project',
+      subjectId: input.projectId,
+      reason: input.reason,
+      now: input.now,
+    });
+  }
+
+  async flushRelationship(input: {
+    relationshipId: string;
+    reason?: MemoryFlushReason;
+    now?: Date;
+  }): Promise<MemoryFlushResult> {
+    return this.flushDurableSubject({
+      subjectKind: 'relationship',
+      subjectId: input.relationshipId,
+      reason: input.reason,
+      now: input.now,
+    });
+  }
+
+  async buildRetrievalContext(
+    input: BuildMemoryRetrievalContextInput,
+  ): Promise<MemoryRetrievalContext> {
     const now = input.now ?? new Date();
     const core = await this.chatSurface.readCore();
-    const [sources, derived, memory, catRecords, ownerRecords, channelRecords] = await Promise.all([
-      input.companionStore.listSources(input.cat.id, now),
-      input.companionStore.listDerived(input.cat.id, now),
-      input.companionStore.listMemory(input.cat.id, now),
-      this.memoryStore.listRecords({ subjectKind: 'cat', subjectId: input.cat.id }),
-      this.memoryStore.listRecords({ subjectKind: 'owner', subjectId: core.ownerProfile.actorId }),
-      input.channel.id
-        ? this.memoryStore.listRecords({ subjectKind: 'channel', subjectId: input.channel.id })
+    const normalizedCatId = readNonEmptyString(input.catId);
+    const normalizedChannelId = readNonEmptyString(input.channelId);
+    const relationshipIds = uniqueNonEmptyStrings(input.relationshipIds ?? []);
+    const projectIds = uniqueNonEmptyStrings(input.projectIds ?? []);
+    const shouldReadChannel = Boolean(
+      normalizedChannelId
+      && (
+        input.channelTitle === undefined
+        || input.channelTopic === undefined
+        || input.workingMemory === undefined
+        || input.roomMode === undefined
+      ),
+    );
+    const channel = shouldReadChannel && normalizedChannelId
+      ? await this.chatSurface.readChannel(normalizedChannelId)
+      : null;
+    const [companionSources, companionDerived, companionMemory, catRecords, ownerRecords, channelRecords, relationshipRecords, projectRecords] = await Promise.all([
+      input.companionStore && normalizedCatId
+        ? input.companionStore.listSources(normalizedCatId, now)
         : Promise.resolve([]),
+      input.companionStore && normalizedCatId
+        ? input.companionStore.listDerived(normalizedCatId, now)
+        : Promise.resolve([]),
+      input.companionStore && normalizedCatId
+        ? input.companionStore.listMemory(normalizedCatId, now)
+        : Promise.resolve([]),
+      normalizedCatId
+        ? this.memoryStore.listRecords({ subjectKind: 'cat', subjectId: normalizedCatId })
+        : Promise.resolve([]),
+      this.memoryStore.listRecords({ subjectKind: 'owner', subjectId: core.ownerProfile.actorId }),
+      normalizedChannelId
+        ? this.memoryStore.listRecords({ subjectKind: 'channel', subjectId: normalizedChannelId })
+        : Promise.resolve([]),
+      listScopedCanonicalRecords(this.memoryStore, 'relationship', relationshipIds),
+      listScopedCanonicalRecords(this.memoryStore, 'project', projectIds),
     ]);
+    const projectHints = uniqueNonEmptyStrings(
+      core.projects
+        .filter((project) => projectIds.includes(project.id))
+        .flatMap((project) => [project.title, project.summary]),
+    );
 
     const context = buildMemoryRetrievalContext({
       now,
-      catId: input.cat.id,
-      channelId: input.channel.id,
-      includeOwnerProfile: true,
-      channelTitle: input.channel.title,
-      channelTopic: input.channel.topic,
-      workingMemory: input.channel.workingMemory,
-      roomMode: input.channel.roomRouting?.mode ?? null,
+      catId: normalizedCatId,
+      channelId: normalizedChannelId,
+      includeOwnerProfile: input.includeOwnerProfile,
+      channelTitle: readNonEmptyString(input.channelTitle) ?? channel?.title,
+      channelTopic: readNonEmptyString(input.channelTopic) ?? channel?.topic,
+      workingMemory: input.workingMemory ?? channel?.workingMemory,
+      roomMode: input.roomMode ?? channel?.roomRouting?.mode ?? null,
       transport: input.transport ?? null,
-      canonicalRecords: [...catRecords, ...ownerRecords, ...channelRecords],
-      companionSources: sources,
-      companionDerived: derived,
-      companionMemory: memory,
+      relationshipIds,
+      projectIds,
+      queryHints: [...(input.queryHints ?? []), ...projectHints],
+      canonicalRecords: [
+        ...catRecords,
+        ...ownerRecords,
+        ...channelRecords,
+        ...relationshipRecords,
+        ...projectRecords,
+      ],
+      companionSources,
+      companionDerived,
+      companionMemory,
     });
-
     await this.memoryStore.touchRecords(
       context.hits
         .map((hit) => hit.recordId)
@@ -334,58 +507,52 @@ export class DefaultCatsMemoryService implements CatsMemoryService {
     return context;
   }
 
+  async buildCompanionRetrievalContext(input: {
+    cat: MemoryCatRef;
+    channel: MemoryChannelContext;
+    transport?: 'telegram' | 'line' | 'web' | null;
+    companionStore: MemoryCompanionSurface;
+    relationshipIds?: string[];
+    projectIds?: string[];
+    queryHints?: string[];
+    now?: Date;
+  }): Promise<MemoryRetrievalContext> {
+    return this.buildRetrievalContext({
+      catId: input.cat.id,
+      channelId: input.channel.id,
+      channelTitle: input.channel.title,
+      channelTopic: input.channel.topic,
+      workingMemory: input.channel.workingMemory,
+      roomMode: input.channel.roomRouting?.mode ?? null,
+      transport: input.transport ?? null,
+      companionStore: input.companionStore,
+      relationshipIds: input.relationshipIds,
+      projectIds: input.projectIds,
+      queryHints: input.queryHints,
+      now: input.now,
+    });
+  }
+
   async buildChannelRetrievalContext(input: {
     channelId: string;
     catId?: string | null;
     transport?: 'telegram' | 'line' | 'web' | null;
     companionStore?: MemoryCompanionSurface;
+    relationshipIds?: string[];
+    projectIds?: string[];
+    queryHints?: string[];
     now?: Date;
   }): Promise<MemoryRetrievalContext> {
-    const now = input.now ?? new Date();
-    const channel = await this.chatSurface.readChannel(input.channelId);
-    const cat = input.catId ? await this.chatSurface.findCat(input.catId) : null;
-
-    if (cat && input.companionStore) {
-      return this.buildCompanionRetrievalContext({
-        cat,
-        channel: {
-          id: channel.id,
-          title: channel.title,
-          topic: channel.topic,
-          workingMemory: channel.workingMemory,
-          roomRouting: channel.roomRouting,
-        },
-        transport: input.transport ?? null,
-        companionStore: input.companionStore,
-        now,
-      });
-    }
-
-    const core = await this.chatSurface.readCore();
-    const [channelRecords, ownerRecords] = await Promise.all([
-      this.memoryStore.listRecords({ subjectKind: 'channel', subjectId: channel.id }),
-      this.memoryStore.listRecords({ subjectKind: 'owner', subjectId: core.ownerProfile.actorId }),
-    ]);
-
-    const context = buildMemoryRetrievalContext({
-      now,
-      catId: cat?.id ?? null,
-      channelId: channel.id,
-      includeOwnerProfile: true,
-      channelTitle: channel.title,
-      channelTopic: channel.topic,
-      workingMemory: channel.workingMemory,
-      roomMode: channel.roomRouting?.mode ?? null,
+    return this.buildRetrievalContext({
+      catId: input.catId,
+      channelId: input.channelId,
       transport: input.transport ?? null,
-      canonicalRecords: [...channelRecords, ...ownerRecords],
+      companionStore: input.companionStore,
+      relationshipIds: input.relationshipIds,
+      projectIds: input.projectIds,
+      queryHints: input.queryHints,
+      now: input.now,
     });
-    await this.memoryStore.touchRecords(
-      context.hits
-        .map((hit) => hit.recordId)
-        .filter((recordId) => recordId.startsWith('cats-memory-')),
-      now,
-    );
-    return context;
   }
 }
 
