@@ -165,9 +165,12 @@ contracts.
       room-routing events, `/api/core/recovery/tasks` plus
       `/api/core/tasks/{taskId}/recovery` now expose normalized replay state,
       `GET /api/core/tasks/{taskId}` now returns a derived inspection view
-      with latest execution pointers plus governance/workflow summaries, and
+      with latest execution pointers plus governance/workflow summaries,
       `GET /api/core/tasks/{taskId}/records` now returns grouped task-scoped
-      record history, while `GET /api/core/control-plane/tasks` plus
+      record history, `GET /api/core/tasks/{taskId}/timeline` now returns a
+      normalized chronological narrative across task, governance, execution,
+      workflow, recovery, and operator events, while
+      `GET /api/core/control-plane/tasks` plus
       `GET /api/core/tasks/{taskId}/control-plane` now expose stable task-
       scoped approval actions, retry/acknowledge actions, workflow
       recommendation summaries, and operator-attention classification, without

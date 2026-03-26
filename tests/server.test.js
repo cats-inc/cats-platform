@@ -1348,6 +1348,212 @@ test('GET /api/core/tasks/:taskId/records returns grouped task-scoped records wi
   });
 });
 
+test('GET /api/core/tasks/:taskId/timeline returns a normalized task execution narrative', async () => {
+  const fixtures = createSharedCoreFixtureBundle();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          ...fixtures.task,
+          status: 'blocked',
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(fixtures.approvalDecision),
+    });
+    assert.equal(approvalResponse.status, 200);
+
+    const approvalBindingResponse = await fetch(`${baseUrl}/api/core/approval-bindings`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        approvalBinding: {
+          ...fixtures.approvalBinding,
+          subjectKind: 'task',
+          subjectId: fixtures.task.id,
+        },
+      }),
+    });
+    assert.equal(approvalBindingResponse.status, 201);
+
+    const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          ...fixtures.run,
+          status: 'blocked',
+          summary: 'Blocked while waiting for retry.',
+        },
+      }),
+    });
+    assert.equal(runResponse.status, 201);
+
+    const traceResponse = await fetch(`${baseUrl}/api/core/traces`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ trace: fixtures.trace }),
+    });
+    assert.equal(traceResponse.status, 201);
+
+    const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        checkpoint: {
+          ...fixtures.checkpoint,
+          summary: 'Review the recovery step.',
+        },
+      }),
+    });
+    assert.equal(checkpointResponse.status, 201);
+
+    const outcomeResponse = await fetch(`${baseUrl}/api/core/outcomes`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        outcome: {
+          ...fixtures.outcome,
+          status: 'blocked',
+          summary: 'Outcome stayed blocked pending operator retry.',
+        },
+      }),
+    });
+    assert.equal(outcomeResponse.status, 201);
+
+    const operatorActivityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        activity: {
+          id: 'activity-system-operator',
+          kind: 'operator_action',
+          actorId: 'actor-owner',
+          conversationId: fixtures.task.conversationId,
+          taskId: fixtures.task.id,
+          runId: fixtures.run.id,
+          message: 'Operator requested a retry.',
+          createdAt: '2026-03-21T01:01:00.000Z',
+          metadata: {
+            source: 'core-operator-actions',
+          },
+        },
+      }),
+    });
+    assert.equal(operatorActivityResponse.status, 201);
+
+    const recoveryActivityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        activity: {
+          id: 'activity-system-recovery',
+          kind: 'note',
+          conversationId: fixtures.task.conversationId,
+          taskId: fixtures.task.id,
+          message: 'Dispatch replay failed during startup recovery.',
+          createdAt: '2026-03-21T01:02:00.000Z',
+          metadata: {
+            source: 'orchestrator-startup-recovery',
+            replayPhase: 'dispatch_replay_result',
+            replayTrigger: 'startup_recovery',
+          },
+        },
+      }),
+    });
+    assert.equal(recoveryActivityResponse.status, 201);
+
+    const timelineResponse = await fetch(`${baseUrl}/api/core/tasks/${fixtures.task.id}/timeline`);
+    assert.equal(timelineResponse.status, 200);
+    const timelinePayload = await timelineResponse.json();
+
+    assert.equal(timelinePayload.taskId, fixtures.task.id);
+    assert.equal(
+      timelinePayload.timeline.latestTimestamp,
+      timelinePayload.timeline.items[0]?.timestamp ?? null,
+    );
+    assert.deepEqual(timelinePayload.timeline.counts, {
+      total: 9,
+      taskLifecycle: 1,
+      governance: 2,
+      execution: 2,
+      workflow: 2,
+      recovery: 1,
+      operator: 1,
+    });
+    assert.deepEqual(
+      timelinePayload.timeline.items.find((item) => item.recordId === 'activity-system-recovery'),
+      {
+        timelineId: 'activity:activity-system-recovery',
+        kind: 'activity',
+        recordId: 'activity-system-recovery',
+        category: 'recovery',
+        timestamp: '2026-03-21T01:02:00.000Z',
+        status: 'note',
+        title: 'Note',
+        summary: 'Dispatch replay failed during startup recovery.',
+        taskId: fixtures.task.id,
+        conversationId: fixtures.task.conversationId,
+        runId: null,
+        traceId: null,
+        actorId: null,
+      },
+    );
+    assert.deepEqual(
+      timelinePayload.timeline.items.find((item) => item.recordId === 'activity-system-operator'),
+      {
+        timelineId: 'activity:activity-system-operator',
+        kind: 'activity',
+        recordId: 'activity-system-operator',
+        category: 'operator',
+        timestamp: '2026-03-21T01:01:00.000Z',
+        status: 'operator_action',
+        title: 'Operator action',
+        summary: 'Operator requested a retry.',
+        taskId: fixtures.task.id,
+        conversationId: fixtures.task.conversationId,
+        runId: fixtures.run.id,
+        traceId: null,
+        actorId: 'actor-owner',
+      },
+    );
+    assert.equal(
+      timelinePayload.timeline.items.find((item) => item.kind === 'task')?.recordId,
+      fixtures.task.id,
+    );
+    assert.equal(
+      timelinePayload.timeline.items.find((item) => item.kind === 'run')?.traceId,
+      fixtures.run.traceId,
+    );
+  });
+});
+
 test('core control-plane routes expose grouped operator actions and workflow attention signals', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {

@@ -67,6 +67,10 @@ MCP tool plane.
   approval-binding, run, trace, checkpoint, outcome, and activity rows, so
   future control-plane or recovery tooling can inspect exact task history
   without client-side re-filtering of the whole core store
+- `GET /api/core/tasks/{taskId}/timeline` now exposes a normalized
+  chronological task narrative across those same record families, so later
+  operator/recovery consumers can read one task-scoped history seam without
+  manually stitching raw rows into timeline order or category buckets
 - `GET /api/core/control-plane/tasks` plus
   `GET /api/core/tasks/{taskId}/control-plane` now expose stable task-scoped
   approval actions, retry/acknowledge actions, workflow recommendation

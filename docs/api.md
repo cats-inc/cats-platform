@@ -938,6 +938,7 @@ tasks without depending on chat-local state shapes.
 GET /api/core/tasks
 GET /api/core/tasks/{taskId}
 GET /api/core/tasks/{taskId}/records
+GET /api/core/tasks/{taskId}/timeline
 GET /api/core/tasks/{taskId}/control-plane
 ```
 
@@ -1059,6 +1060,55 @@ Semantics:
   heavy and summary-light, so later replay/recovery tooling can inspect the
   exact task-scoped rows without reassembling them client-side from global
   collections
+
+`GET /api/core/tasks/{taskId}/timeline` returns a normalized chronological
+task narrative assembled from the task row plus task-scoped approval bindings,
+runs, traces, checkpoints, outcomes, and activities:
+
+```json
+{
+  "taskId": "task-system-1",
+  "timeline": {
+    "taskId": "task-system-1",
+    "conversationId": "conversation-system-1",
+    "latestTimestamp": "2026-03-21T01:02:00.000Z",
+    "counts": {
+      "total": 9,
+      "taskLifecycle": 1,
+      "governance": 2,
+      "execution": 2,
+      "workflow": 2,
+      "recovery": 1,
+      "operator": 1
+    },
+    "items": [
+      {
+        "timelineId": "activity:activity-system-recovery",
+        "kind": "activity",
+        "category": "recovery",
+        "recordId": "activity-system-recovery",
+        "timestamp": "2026-03-21T01:02:00.000Z",
+        "title": "Note",
+        "summary": "Dispatch replay failed during startup recovery."
+      }
+    ]
+  }
+}
+```
+
+Semantics:
+
+- this route is a summary-heavy, record-normalized complement to
+  `GET /api/core/tasks/{taskId}/records`
+- timeline ordering uses the natural record timestamp for each family:
+  - `createdAt` for append-only task, trace, and activity rows
+  - `updatedAt` for mutable approval-binding, run, checkpoint, and outcome rows
+- `category` normalizes mixed record families into operator-relevant buckets:
+  `task_lifecycle`, `governance`, `execution`, `workflow`, `recovery`, and
+  `operator`
+- recovery and operator activities stay visible in the same narrative without
+  forcing consumers to separately join recovery, control-plane, and record
+  routes client-side
 
 ### Inspect Core Task Control Plane
 

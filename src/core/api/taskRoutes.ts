@@ -27,6 +27,7 @@ import { routeCoreTaskControlPlaneApi } from './taskControlPlaneRoutes.js';
 import { routeCoreTaskInspectionApi } from './taskInspectionRoutes.js';
 import { routeCoreTaskRecordApi } from './taskRecordRoutes.js';
 import { routeCoreTaskRecoveryApi } from './taskRecoveryRoutes.js';
+import { routeCoreTaskTimelineApi } from './taskTimelineRoutes.js';
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
 async function handleCoreTasks(
@@ -209,6 +210,10 @@ export async function routeCoreTaskApi(
   }
 
   if (await routeCoreTaskRecordApi(context)) {
+    return true;
+  }
+
+  if (await routeCoreTaskTimelineApi(context)) {
     return true;
   }
 
