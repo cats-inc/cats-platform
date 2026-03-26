@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { createCat } from '../dist-server/chat/model.js';
 
 let tempDir;
 
@@ -372,4 +373,27 @@ test('POST /api/suite/preferences rejects invalid surface', async () => {
     });
     assert.equal(response.status, 400);
   });
+});
+
+test('GET /api/app-shell treats legacy active chat state as setup-complete even when setupCompleteAt is missing', async () => {
+  const chatStore = new MemoryChatStore();
+  const seeded = createCat(
+    await chatStore.read(),
+    {
+      name: 'Boss Cat',
+      provider: 'claude',
+      makeBoss: true,
+    },
+    new Date('2026-03-25T00:00:00.000Z'),
+  );
+  await chatStore.write(seeded);
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.ok(payload.setupCompleteAt, 'legacy active state should not be forced back into setup');
+    assert.ok(payload.chat.bossCatId, 'boss cat should remain visible');
+  }, chatStore);
 });

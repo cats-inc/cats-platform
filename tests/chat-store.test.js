@@ -150,6 +150,36 @@ test('assigning the first cat upgrades a solo chat into cat-led mode and removin
   assert.equal(state.channels[0].roomRouting?.leadParticipantId, null);
 });
 
+test('FileChatStore repairs legacy active snapshots that are missing setupCompleteAt', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const store = new FileChatStore(statePath);
+  const now = new Date('2026-03-26T00:00:00.000Z');
+
+  let state = await store.read();
+  state = createCat(
+    state,
+    {
+      name: 'Boss Cat',
+      provider: 'claude',
+      makeBoss: true,
+    },
+    now,
+  );
+  await store.write(state);
+
+  const brokenSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
+  brokenSnapshot.setupCompleteAt = null;
+  await writeFile(statePath, `${JSON.stringify(brokenSnapshot, null, 2)}\n`, 'utf-8');
+
+  const reloaded = new FileChatStore(statePath);
+  const repairedCore = await reloaded.readCore();
+  const repairedSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
+
+  assert.ok(repairedCore.setupCompleteAt, 'setupCompleteAt should be recovered');
+  assert.equal(repairedSnapshot.setupCompleteAt, repairedCore.setupCompleteAt);
+});
+
 test('archiving a direct-lane cat preserves history but demotes the room back to a visible chat', () => {
   const now = new Date('2026-03-26T00:00:00.000Z');
   let state = createDefaultChatState();

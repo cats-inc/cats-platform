@@ -11,7 +11,11 @@ import {
   fetchAppShell,
   updateSelectedChannel,
 } from '../api';
-import { NEW_CHAT_PATH, resolveVisibleChatPath } from '../../shared/channelPaths';
+import {
+  isOptimisticDraftChannelId,
+  NEW_CHAT_PATH,
+  resolveVisibleChatPath,
+} from '../../shared/channelPaths';
 import { shouldWakeRouteChannelOnEntry } from '../../shared/channelEntry';
 import type { SelectedChannelView } from '../chatUtils';
 
@@ -72,6 +76,10 @@ export function useAppShellRouting(options: {
 
   useEffect(() => {
     if (state.status !== 'ready' || !routeChannelId) {
+      return;
+    }
+
+    if (isOptimisticDraftChannelId(routeChannelId)) {
       return;
     }
 

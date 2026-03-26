@@ -4,6 +4,28 @@ import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
 import { listEnabledSuiteSurfaces } from '../../../shared/suiteSurfaces.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
 import { summarizeState } from './model/index.js';
+import { resolveSetupCompletionTimestamp } from './setupCompletion.js';
+
+function resolveSetupCompleteAt(
+  chat: ChatState,
+  now: Date,
+  setup?: {
+    setupCompleteAt: string | null;
+    ownerDisplayName: string;
+    ownerAvatarColor: string | null;
+    ownerAvatarUrl?: string | null;
+    botBindings?: ChatBotBindingSummary[];
+    lastProductSurface?: SuiteSurfaceId | null;
+  },
+): string | null {
+  return resolveSetupCompletionTimestamp(chat, {
+    explicitSetupCompleteAt: setup?.setupCompleteAt,
+    ownerDisplayName: setup?.ownerDisplayName,
+    botBindingCount: setup?.botBindings?.length ?? 0,
+    fallbackTimestamp: chat.globalOrchestrator.updatedAt,
+    now,
+  });
+}
 
 export function createAppShell(
   config: AppConfig,
@@ -21,6 +43,7 @@ export function createAppShell(
 ): AppShellPayload {
   const summary = summarizeState(chat);
   const botBindings: ChatBotBindingSummary[] = setup?.botBindings ?? [];
+  const resolvedSetupCompleteAt = resolveSetupCompleteAt(chat, now, setup);
 
   return {
     app: {
@@ -56,7 +79,7 @@ export function createAppShell(
       host: config.host,
       port: config.port,
     },
-    setupCompleteAt: setup?.setupCompleteAt ?? null,
+    setupCompleteAt: resolvedSetupCompleteAt,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
     ownerAvatarColor: setup?.ownerAvatarColor ?? null,
     ownerAvatarUrl: setup?.ownerAvatarUrl ?? null,

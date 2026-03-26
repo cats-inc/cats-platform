@@ -16,7 +16,6 @@ import {
 } from '../../shared/channelPaths';
 import { normalizeSelectedChannelView } from '../../shared/channelEntry';
 import {
-  assignCatToChannelApi,
   createChatChannel,
   sendChatMessage,
   updateSelectedChannel,
@@ -24,6 +23,7 @@ import {
 } from '../api';
 import {
   appendOptimisticUserMessage,
+  buildNewChatChannelInput,
   createDraftChannelTitle,
   createDraftChannelTopic,
   createOptimisticDraftPayload,
@@ -145,22 +145,8 @@ export function useComposerSubmit(options: {
           if (!channelId) {
             throw new Error('No chat is available for sending messages.');
           }
-
-          let latestPayload = createdPayload;
-          for (const catId of draftCatIds.filter((id) => id !== draftLeadCatId)) {
-            const cat = initialPayload.chat.cats.find((participant) => participant.id === catId);
-            if (cat) {
-              latestPayload = await assignCatToChannelApi(channelId, {
-                catId: cat.id,
-                provider: cat.defaultExecutionTarget.provider,
-                instance: cat.defaultExecutionTarget.instance ?? undefined,
-                model: cat.defaultExecutionTarget.model ?? undefined,
-              });
-            }
-          }
-
-          rollbackPayload = latestPayload;
-          payload = appendOptimisticUserMessage(latestPayload, channelId, body);
+          rollbackPayload = createdPayload;
+          payload = appendOptimisticUserMessage(createdPayload, channelId, body);
           setState({ status: 'ready', payload });
           setComposerDraft('');
           navigate(rollbackPath, { replace: true });
@@ -190,48 +176,21 @@ export function useComposerSubmit(options: {
         setComposerDraft('');
         navigate(buildChannelPath(optimisticDraft.channelId), { replace: true });
 
-        const isSoloDraft = !draftLeadCatId && draftCatIds.length === 0;
-        const createdPayload = await createChatChannel({
-          title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
-          topic: createDraftChannelTopic(body),
-          skipBossCatGreeting: true,
-          repoPath: draftCwd ?? undefined,
-          ...(draftLeadCatId ? {
-            roomMode: 'direct_cat_chat' as const,
-            leadParticipantId: draftLeadCatId,
-            participantCatIds: [draftLeadCatId, ...draftCatIds.filter((id) => id !== draftLeadCatId)],
-          } : draftCatIds.length > 0 ? {
-            participantCatIds: draftCatIds,
-          } : {}),
-          ...(isSoloDraft ? {
-            composerMode: 'solo' as const,
-            pendingProvider: draftModel.provider,
-            pendingModel: draftModel.model ?? undefined,
-            pendingInstance: draftModel.instance ?? undefined,
-            pendingModelSelection: draftModel.modelSelection ?? undefined,
-          } : {}),
-        });
+        const createdPayload = await createChatChannel(buildNewChatChannelInput({
+          body,
+          existingCount: initialPayload.chat.channels.length,
+          repoPath: draftCwd,
+          leadCatId: draftLeadCatId,
+          participantCatIds: draftCatIds,
+          draftModel,
+        }));
         channelId = createdPayload.chat.selectedChannelId;
         if (!channelId) {
           throw new Error('No chat is available for sending messages.');
         }
-
-        let latestPayload = createdPayload;
-        for (const catId of draftCatIds.filter((id) => id !== draftLeadCatId)) {
-          const cat = initialPayload.chat.cats.find((participant) => participant.id === catId);
-          if (cat) {
-            latestPayload = await assignCatToChannelApi(channelId, {
-              catId: cat.id,
-              provider: cat.defaultExecutionTarget.provider,
-              instance: cat.defaultExecutionTarget.instance ?? undefined,
-              model: cat.defaultExecutionTarget.model ?? undefined,
-            });
-          }
-        }
-
-        rollbackPayload = latestPayload;
+        rollbackPayload = createdPayload;
         rollbackPath = buildChannelPath(channelId);
-        payload = appendOptimisticUserMessage(latestPayload, channelId, body);
+        payload = appendOptimisticUserMessage(createdPayload, channelId, body);
         setState({ status: 'ready', payload });
         navigate(rollbackPath, { replace: true });
       } else {

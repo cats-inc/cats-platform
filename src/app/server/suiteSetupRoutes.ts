@@ -97,9 +97,8 @@ async function handleSuiteSetupComplete(
     },
   };
 
-  // --- Point of no return: state is committed after these writes ---
-  await context.dependencies.chatStore.write(chatState);
-  await context.dependencies.chatStore.writeCore(core);
+  // Commit chat/core as one persisted snapshot so setup cannot land in a half-written state.
+  await context.dependencies.chatStore.writeSnapshot(chatState, core);
 
   // Best-effort side effects — failures must not prevent the 200.
   try {

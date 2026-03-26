@@ -2,6 +2,7 @@ import type {
   AppShellPayload,
   ChatCat,
   ChatChannelSummary,
+  CreateChatChannelInput,
 } from '../api/contracts';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
@@ -61,6 +62,61 @@ export function createDraftChannelTitle(body: string, existingCount: number): st
 export function createDraftChannelTopic(body: string): string {
   const normalized = body.replace(/\s+/g, ' ').trim();
   return normalized.slice(0, 120);
+}
+
+export function buildNewChatChannelInput(options: {
+  body: string;
+  existingCount: number;
+  repoPath?: string | null;
+  leadCatId?: string | null;
+  participantCatIds?: string[];
+  draftModel?: {
+    provider: string;
+    model: string | null;
+    instance: string | null;
+    modelSelection?: ProviderModelSelection | null;
+  };
+}): CreateChatChannelInput {
+  const {
+    body,
+    existingCount,
+    repoPath,
+    leadCatId,
+    participantCatIds = [],
+    draftModel,
+  } = options;
+  const normalizedLeadCatId = leadCatId?.trim() || null;
+  const normalizedParticipantCatIds = participantCatIds.filter((id) => id !== normalizedLeadCatId);
+  const baseInput: CreateChatChannelInput = {
+    title: createDraftChannelTitle(body, existingCount),
+    topic: createDraftChannelTopic(body),
+    skipBossCatGreeting: true,
+    repoPath: repoPath ?? undefined,
+  };
+
+  if (normalizedLeadCatId) {
+    return {
+      ...baseInput,
+      leadParticipantId: normalizedLeadCatId,
+      participantCatIds: [normalizedLeadCatId, ...normalizedParticipantCatIds],
+    };
+  }
+
+  if (normalizedParticipantCatIds.length > 0) {
+    return {
+      ...baseInput,
+      participantCatIds: normalizedParticipantCatIds,
+    };
+  }
+
+  return {
+    ...baseInput,
+    composerMode: 'solo',
+    pendingProvider: draftModel?.provider,
+    pendingModel: draftModel?.model ?? undefined,
+    pendingInstance: draftModel?.instance ?? undefined,
+    pendingModelSelection: draftModel?.modelSelection ?? undefined,
+  };
 }
 
 export function messageTone(senderKind: string): string {
@@ -179,7 +235,6 @@ export function createOptimisticDraftPayload(
     pendingModel: options.pendingModel ?? null,
     pendingModelSelection: options.pendingModelSelection ?? null,
     ...(leadCatId ? {
-      roomMode: 'direct_cat_chat' as const,
       leadCatId,
     } : {}),
   };

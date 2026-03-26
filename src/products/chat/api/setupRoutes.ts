@@ -83,8 +83,7 @@ async function handleSetupComplete(
       },
     };
 
-    await context.dependencies.chatStore.write(chatState);
-    await context.dependencies.chatStore.writeCore(core);
+    await context.dependencies.chatStore.writeSnapshot(chatState, core);
     try {
       await context.dependencies.memoryService.flushOwnerProfile({
         reason: 'owner_profile_sync',
@@ -108,8 +107,10 @@ async function handleSetupReset(
 ): Promise<void> {
   try {
     const now = nowFrom(context.dependencies);
-    await context.dependencies.chatStore.write(createDefaultChatState());
-    await context.dependencies.chatStore.writeCore(createDefaultCoreState());
+    await context.dependencies.chatStore.writeSnapshot(
+      createDefaultChatState(),
+      createDefaultCoreState(),
+    );
     try {
       await writeSuitePreferences(context.dependencies.config.chatStatePath, {
         lastProductSurface: null,

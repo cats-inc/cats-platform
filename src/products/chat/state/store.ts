@@ -13,10 +13,12 @@ import {
   buildPersistedChatSnapshot,
   extractCoreState,
 } from './core-snapshot/index.js';
+import { resolveSetupCompletionTimestamp } from './setupCompletion.js';
 
 export interface ChatStore extends CoreStore {
   read(): Promise<ChatState>;
   write(state: ChatState): Promise<ChatState>;
+  writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot>;
 }
 
 async function writePersistedChatSnapshot(
@@ -27,13 +29,48 @@ async function writePersistedChatSnapshot(
   await writeFile(filePath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf-8');
 }
 
+function repairPersistedSetupCompletion(
+  snapshot: PersistedChatSnapshot,
+  now: Date = new Date(),
+): PersistedChatSnapshot {
+  const repairedSetupCompleteAt = resolveSetupCompletionTimestamp(snapshot.chat, {
+    explicitSetupCompleteAt: snapshot.setupCompleteAt,
+    ownerDisplayName: snapshot.ownerProfile.displayName,
+    botBindingCount: snapshot.botBindings.length,
+    fallbackTimestamp:
+      snapshot.updatedAt
+      || snapshot.ownerProfile.updatedAt
+      || snapshot.chat.globalOrchestrator.updatedAt,
+    now,
+  });
+
+  if (repairedSetupCompleteAt === snapshot.setupCompleteAt) {
+    return snapshot;
+  }
+
+  return buildPersistedChatSnapshot(snapshot.chat, {
+    ...extractCoreState(snapshot),
+    setupCompleteAt: repairedSetupCompleteAt,
+    updatedAt: snapshot.updatedAt || repairedSetupCompleteAt || now.toISOString(),
+    ownerProfile: {
+      ...snapshot.ownerProfile,
+      updatedAt: snapshot.ownerProfile.updatedAt || repairedSetupCompleteAt || now.toISOString(),
+    },
+  });
+}
+
 export class FileChatStore implements ChatStore {
   constructor(private readonly filePath: string) {}
 
   private async readPersistedSnapshot(): Promise<PersistedChatSnapshot> {
     try {
       const raw = await readFile(this.filePath, 'utf-8');
-      return normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
+      const normalized = normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
+      const repaired = repairPersistedSetupCompletion(normalized);
+      if (repaired.setupCompleteAt !== normalized.setupCompleteAt) {
+        await writePersistedChatSnapshot(this.filePath, repaired);
+      }
+      return repaired;
     } catch {
       const chat = createDefaultChatState();
       const core = syncCoreStateWithChatState(chat, createDefaultCoreState());
@@ -51,25 +88,24 @@ export class FileChatStore implements ChatStore {
     return structuredClone(extractCoreState(await this.readPersistedSnapshot()));
   }
 
+  async writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot> {
+    const nextChatState = structuredClone(chat);
+    const nextCore = syncCoreStateWithChatState(nextChatState, structuredClone(core));
+    const snapshot = buildPersistedChatSnapshot(nextChatState, nextCore);
+    await writePersistedChatSnapshot(this.filePath, snapshot);
+    return structuredClone(snapshot);
+  }
+
   async write(state: ChatState): Promise<ChatState> {
     const nextChatState = structuredClone(state);
-    const nextCore = syncCoreStateWithChatState(nextChatState, await this.readCore());
-    await writePersistedChatSnapshot(
-      this.filePath,
-      buildPersistedChatSnapshot(nextChatState, nextCore),
-    );
+    await this.writeSnapshot(nextChatState, await this.readCore());
     return structuredClone(nextChatState);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
     const snapshot = await this.readPersistedSnapshot();
-    const nextChatState = structuredClone(snapshot.chat);
-    const nextCore = syncCoreStateWithChatState(nextChatState, structuredClone(state));
-    await writePersistedChatSnapshot(
-      this.filePath,
-      buildPersistedChatSnapshot(nextChatState, nextCore),
-    );
-    return structuredClone(nextCore);
+    const persisted = await this.writeSnapshot(snapshot.chat, state);
+    return structuredClone(extractCoreState(persisted));
   }
 }
 
@@ -80,7 +116,7 @@ export class MemoryChatStore implements ChatStore {
   constructor(
     initialState: ChatState | CatsCoreState | PersistedChatSnapshot = createDefaultChatState(),
   ) {
-    const snapshot = normalizePersistedChatSnapshot(initialState);
+    const snapshot = repairPersistedSetupCompletion(normalizePersistedChatSnapshot(initialState));
     this.chatState = snapshot.chat;
     this.coreState = extractCoreState(snapshot);
   }
@@ -93,14 +129,20 @@ export class MemoryChatStore implements ChatStore {
     return structuredClone(this.coreState);
   }
 
+  async writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot> {
+    this.chatState = structuredClone(chat);
+    this.coreState = syncCoreStateWithChatState(this.chatState, structuredClone(core));
+    const snapshot = buildPersistedChatSnapshot(this.chatState, this.coreState);
+    return structuredClone(snapshot);
+  }
+
   async write(state: ChatState): Promise<ChatState> {
-    this.chatState = structuredClone(state);
-    this.coreState = syncCoreStateWithChatState(this.chatState, this.coreState);
+    await this.writeSnapshot(state, this.coreState);
     return structuredClone(this.chatState);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
-    this.coreState = syncCoreStateWithChatState(this.chatState, structuredClone(state));
+    await this.writeSnapshot(this.chatState, state);
     return structuredClone(this.coreState);
   }
 }

@@ -46,6 +46,11 @@ export function buildChannelPath(channelId: string): string {
   return `${CHAT_PREFIX}/chats/${encodeURIComponent(channelId)}`;
 }
 
+export function isOptimisticDraftChannelId(channelId: string | null | undefined): boolean {
+  const normalized = channelId?.trim() ?? '';
+  return normalized.startsWith('draft-');
+}
+
 export function resolveDefaultChatPath(selectedChannelId: string | null | undefined): string {
   const normalized = selectedChannelId?.trim();
   return normalized ? buildChannelPath(normalized) : NEW_CHAT_PATH;
