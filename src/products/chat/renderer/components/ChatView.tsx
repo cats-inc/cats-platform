@@ -44,6 +44,7 @@ import {
   getProviderDisplayName,
   getProviderModels,
 } from '../../../../shared/providerCatalog';
+import { buildExecutionLabel } from '../../../../shared/executionLabel';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -268,6 +269,10 @@ export function ChatView({
                               {senderCat.avatarUrl ? null : catInitials(senderCat.name)}
                             </div>
                             <strong>{message.senderName}</strong>
+                          </div>
+                        ) : message.executionProvider ? (
+                          <div className="transcriptMessageTop">
+                            <strong>{buildExecutionLabel(message.executionProvider, message.executionInstance, null)}</strong>
                           </div>
                         ) : message.senderName !== 'Orchestrator' ? (
                           <div className="transcriptMessageTop">
