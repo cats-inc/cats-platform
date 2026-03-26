@@ -284,6 +284,9 @@ Known follow-ups:
   `GET` / `POST /api/core/memory-maintenance` inspection/action seams so
   recovery or operator tooling can inspect or manually replay the same
   product-owned contract outside route-local code paths
+- the core memory-maintenance inspection seam now supports additive
+  `trigger` / `status` / `phase` / `subjectKey` / `limit` query filters plus
+  route-level queue summaries for operator and recovery faceting
 - the new memory substrate deliberately treats runtime sandboxes and provider
   continuity as inputs, not long-lived product truth
 - orchestrator plan/dispatch/execution-loop payloads now expose a

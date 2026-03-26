@@ -599,6 +599,11 @@ test('GET /api/core/memory-maintenance returns normalized maintenance activity h
     assert.equal(listResponse.status, 200);
     const listPayload = await listResponse.json();
 
+    assert.deepEqual(listPayload.summary, {
+      totalAvailable: 2,
+      matching: 2,
+      returned: 2,
+    });
     assert.deepEqual(listPayload.maintenance.totals, {
       recentCount: 2,
       executed: 1,
@@ -633,6 +638,29 @@ test('GET /api/core/memory-maintenance returns normalized maintenance activity h
       listPayload.maintenance.latestByTrigger.companionSync.subjectKeys,
       ['cat:cat-memory-route'],
     );
+
+    const filteredResponse = await fetch(
+      `${baseUrl}/api/core/memory-maintenance`
+      + '?trigger=runtime_hook&status=executed&phase=pre_reset'
+      + '&subjectKey=channel:channel-memory-route&limit=1',
+    );
+    assert.equal(filteredResponse.status, 200);
+    const filteredPayload = await filteredResponse.json();
+
+    assert.deepEqual(filteredPayload.summary, {
+      totalAvailable: 2,
+      matching: 1,
+      returned: 1,
+    });
+    assert.deepEqual(
+      filteredPayload.maintenance.recent.map((activity) => activity.id),
+      ['activity-memory-route-runtime'],
+    );
+    assert.equal(
+      filteredPayload.maintenance.latestByTrigger.runtimeHook?.id,
+      'activity-memory-route-runtime',
+    );
+    assert.equal(filteredPayload.maintenance.latestByTrigger.companionSync, null);
   });
 });
 

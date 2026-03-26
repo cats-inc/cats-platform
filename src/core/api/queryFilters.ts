@@ -1,4 +1,10 @@
 import {
+  CORE_MEMORY_MAINTENANCE_PHASES,
+  CORE_MEMORY_MAINTENANCE_STATUSES,
+  CORE_MEMORY_MAINTENANCE_TRIGGERS,
+  type CoreMemoryMaintenanceQuery,
+} from '../memoryMaintenance.js';
+import {
   CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS,
   CORE_TASK_CONTROL_PLANE_DELIVERY_MODES,
   CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
@@ -195,6 +201,30 @@ export function readTaskTimelineQuery(
     ),
     actorIds: readQueryValues(searchParams, 'actorId'),
     runIds: readQueryValues(searchParams, 'runId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readMemoryMaintenanceQuery(
+  searchParams: URLSearchParams,
+): CoreMemoryMaintenanceQuery {
+  return {
+    triggers: readEnumQueryValues(
+      searchParams,
+      'trigger',
+      CORE_MEMORY_MAINTENANCE_TRIGGERS,
+    ),
+    statuses: readEnumQueryValues(
+      searchParams,
+      'status',
+      CORE_MEMORY_MAINTENANCE_STATUSES,
+    ),
+    phases: readEnumQueryValues(
+      searchParams,
+      'phase',
+      CORE_MEMORY_MAINTENANCE_PHASES,
+    ),
+    subjectKeys: readQueryValues(searchParams, 'subjectKey'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

@@ -13,6 +13,26 @@ export type CoreMemoryMaintenanceTrigger =
 export type CoreMemoryMaintenanceStatus = 'executed' | 'deferred' | 'missing_context' | 'error';
 export type CoreMemoryMaintenancePhase = 'pre_reset' | 'pre_compaction' | null;
 
+export const CORE_MEMORY_MAINTENANCE_TRIGGERS = [
+  'runtime_hook',
+  'companion_sync',
+  'owner_sync',
+  'project_sync',
+  'relationship_sync',
+] as const satisfies readonly CoreMemoryMaintenanceTrigger[];
+
+export const CORE_MEMORY_MAINTENANCE_STATUSES = [
+  'executed',
+  'deferred',
+  'missing_context',
+  'error',
+] as const satisfies readonly CoreMemoryMaintenanceStatus[];
+
+export const CORE_MEMORY_MAINTENANCE_PHASES = [
+  'pre_reset',
+  'pre_compaction',
+] as const satisfies readonly NonNullable<CoreMemoryMaintenancePhase>[];
+
 export interface CoreMemoryMaintenanceSubjectView {
   kind: CanonicalMemorySubjectKind;
   id: string;
@@ -52,6 +72,20 @@ export interface CoreMemoryMaintenanceSummaryView {
     relationshipSync: CoreMemoryMaintenanceActivityView | null;
   };
   recent: CoreMemoryMaintenanceActivityView[];
+}
+
+export interface CoreMemoryMaintenanceQuery {
+  triggers?: CoreMemoryMaintenanceTrigger[];
+  statuses?: CoreMemoryMaintenanceStatus[];
+  phases?: NonNullable<CoreMemoryMaintenancePhase>[];
+  subjectKeys?: string[];
+  limit?: number | null;
+}
+
+export interface CoreMemoryMaintenanceQuerySummary {
+  totalAvailable: number;
+  matching: number;
+  returned: number;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -215,10 +249,9 @@ export function listCoreMemoryMaintenanceActivities(
     .filter((activity): activity is CoreMemoryMaintenanceActivityView => activity !== null);
 }
 
-export function buildCoreMemoryMaintenanceSummary(
-  core: CatsCoreState,
+export function summarizeCoreMemoryMaintenanceActivities(
+  recent: CoreMemoryMaintenanceActivityView[],
 ): CoreMemoryMaintenanceSummaryView {
-  const recent = listCoreMemoryMaintenanceActivities(core);
   const latestByTrigger = {
     runtimeHook: recent.find((activity) => activity.trigger === 'runtime_hook') ?? null,
     companionSync: recent.find((activity) => activity.trigger === 'companion_sync') ?? null,
@@ -238,5 +271,60 @@ export function buildCoreMemoryMaintenanceSummary(
     },
     latestByTrigger,
     recent,
+  };
+}
+
+export function buildCoreMemoryMaintenanceSummary(
+  core: CatsCoreState,
+): CoreMemoryMaintenanceSummaryView {
+  return summarizeCoreMemoryMaintenanceActivities(listCoreMemoryMaintenanceActivities(core));
+}
+
+function matchesMemoryMaintenanceQuery(
+  activity: CoreMemoryMaintenanceActivityView,
+  query: CoreMemoryMaintenanceQuery,
+): boolean {
+  if (query.triggers?.length && !query.triggers.includes(activity.trigger)) {
+    return false;
+  }
+
+  if (query.statuses?.length && !query.statuses.includes(activity.status)) {
+    return false;
+  }
+
+  if (query.phases?.length && (!activity.phase || !query.phases.includes(activity.phase))) {
+    return false;
+  }
+
+  if (
+    query.subjectKeys?.length
+    && !activity.subjectKeys.some((subjectKey) => query.subjectKeys?.includes(subjectKey))
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+export function queryCoreMemoryMaintenanceSummary(
+  core: CatsCoreState,
+  query: CoreMemoryMaintenanceQuery = {},
+): {
+  maintenance: CoreMemoryMaintenanceSummaryView;
+  summary: CoreMemoryMaintenanceQuerySummary;
+} {
+  const activities = listCoreMemoryMaintenanceActivities(core);
+  const matching = activities.filter((activity) => matchesMemoryMaintenanceQuery(activity, query));
+  const returned = !query.limit || query.limit >= matching.length
+    ? matching
+    : matching.slice(0, query.limit);
+
+  return {
+    maintenance: summarizeCoreMemoryMaintenanceActivities(returned),
+    summary: {
+      totalAvailable: activities.length,
+      matching: matching.length,
+      returned: returned.length,
+    },
   };
 }

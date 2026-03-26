@@ -906,6 +906,11 @@ Returns a normalized summary of product-owned memory-maintenance activity:
         "subjectKeys": ["channel:channel-memory-route"]
       }
     ]
+  },
+  "summary": {
+    "totalAvailable": 2,
+    "matching": 2,
+    "returned": 2
   }
 }
 ```
@@ -914,10 +919,16 @@ Semantics:
 
 - this route is a core-owned inspectability seam over `memory_maintenance`
   activities already persisted in `Cats Core`
+- repeated `trigger`, `status`, `phase`, and `subjectKey` query parameters plus
+  an additive `limit` let operator or recovery tooling facet the same
+  maintenance queue without scraping raw activities
 - `totals` gives a lightweight rollup by normalized maintenance status
 - `latestByTrigger` exposes the most recent runtime-hook, companion-sync,
   owner-sync, project-sync, and relationship-sync entries without requiring
   callers to re-scan the full activity log
+- route-level `summary.totalAvailable`, `summary.matching`, and
+  `summary.returned` make filtered queue views inspectable without changing the
+  underlying `maintenance` contract
 - `recent[*].summary` reuses the additive flush-summary contract already
   emitted by Cats-owned canonical-memory maintenance, including
   `removedRecordIds`, `sourceScopeKeys`, and `replacementGroups`

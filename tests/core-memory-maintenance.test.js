@@ -6,7 +6,10 @@ import {
   createDefaultCoreState,
 } from '../dist-server/core/model/index.js';
 import { executeCoreMemoryMaintenanceAction } from '../dist-server/core/memoryMaintenanceActions.js';
-import { buildCoreMemoryMaintenanceSummary } from '../dist-server/core/memoryMaintenance.js';
+import {
+  buildCoreMemoryMaintenanceSummary,
+  queryCoreMemoryMaintenanceSummary,
+} from '../dist-server/core/memoryMaintenance.js';
 import { MemoryCoreStore } from '../dist-server/core/store.js';
 
 test('buildCoreMemoryMaintenanceSummary normalizes memory maintenance activity history', () => {
@@ -120,6 +123,91 @@ test('buildCoreMemoryMaintenanceSummary normalizes memory maintenance activity h
   assert.deepEqual(maintenance.recent[0]?.subjectKeys, ['channel:channel-runtime']);
   assert.deepEqual(maintenance.recent[1]?.subjectKeys, ['cat:cat-companion']);
   assert.deepEqual(maintenance.recent[2]?.subjectKeys, ['owner:actor-owner']);
+});
+
+test('queryCoreMemoryMaintenanceSummary filters recent activity additively', () => {
+  const now = new Date('2026-03-26T17:10:00.000Z');
+  let core = createDefaultCoreState();
+
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-memory-filter-runtime',
+      kind: 'note',
+      message: 'Runtime channel flush completed.',
+      createdAt: '2026-03-26T17:09:00.000Z',
+      metadata: {
+        category: 'memory_maintenance',
+        trigger: 'runtime_hook',
+        status: 'executed',
+        phase: 'pre_reset',
+        channelId: 'channel-memory-filter',
+        summary: {
+          subjects: [
+            {
+              kind: 'channel',
+              id: 'channel-memory-filter',
+            },
+          ],
+        },
+      },
+    },
+    now,
+  ).core;
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-memory-filter-project',
+      kind: 'note',
+      message: 'Project sync completed.',
+      createdAt: '2026-03-26T17:08:00.000Z',
+      metadata: {
+        category: 'memory_maintenance',
+        trigger: 'project_sync',
+        status: 'executed',
+        projectId: 'project-filter',
+        reason: 'manual',
+      },
+    },
+    now,
+  ).core;
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-memory-filter-companion',
+      kind: 'note',
+      message: 'Companion sync deferred.',
+      createdAt: '2026-03-26T17:07:00.000Z',
+      metadata: {
+        category: 'memory_maintenance',
+        trigger: 'companion_sync',
+        status: 'deferred',
+        catId: 'cat-filter',
+      },
+    },
+    now,
+  ).core;
+
+  const filtered = queryCoreMemoryMaintenanceSummary(core, {
+    triggers: ['runtime_hook', 'project_sync'],
+    statuses: ['executed'],
+    subjectKeys: ['channel:channel-memory-filter', 'project:project-filter'],
+    limit: 1,
+  });
+
+  assert.deepEqual(filtered.summary, {
+    totalAvailable: 3,
+    matching: 2,
+    returned: 1,
+  });
+  assert.equal(filtered.maintenance.totals.recentCount, 1);
+  assert.equal(filtered.maintenance.totals.executed, 1);
+  assert.deepEqual(
+    filtered.maintenance.recent.map((activity) => activity.id),
+    ['activity-memory-filter-runtime'],
+  );
+  assert.equal(filtered.maintenance.latestByTrigger.runtimeHook?.id, 'activity-memory-filter-runtime');
+  assert.equal(filtered.maintenance.latestByTrigger.projectSync, null);
 });
 
 test('executeCoreMemoryMaintenanceAction records executed companion sync activity', async () => {
