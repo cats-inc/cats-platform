@@ -338,15 +338,34 @@ At minimum, each message or turn record should keep:
 - provider
 - model
 - instance or target identifier when available
+- an immutable execution-label snapshot when the transcript needs to present a
+  provider/backend tag such as `Claude-CLI` or `OpenClaw-AGENT`
 
 This matters because:
 
 - the thread may start in solo mode and later become Cat-led
 - Cat preset changes may affect future turns but must not rewrite past turns
+- provider catalog metadata may change later, but historical solo/provider-tag
+  transcript labels must continue to reflect what the user saw when the message
+  was created
 
 The product may also keep helpful thread-level convenience metadata such as
 `lastUsedProvider` or `lastUsedModel`, but those are summaries only, not
 replacements for per-message provenance.
+
+### Transcript Attribution Rules
+
+Transcript sender presentation shall distinguish execution provenance from Cat
+identity:
+
+- solo-mode or hidden-orchestrator replies may present a provider/backend tag
+  derived from the per-message execution-label snapshot
+- that provider/backend tag shall not be recomputed from the current provider
+  catalog if a historical snapshot is available
+- Cat-authored messages shall resolve sender presentation through the current
+  Cat identity by stable Cat ID when available
+  - rename and archive update historical Cat attribution globally
+  - delete falls back to a tombstone label such as `Deleted Cat`
 
 ## Suggested State Contract
 

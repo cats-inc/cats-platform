@@ -2,6 +2,7 @@ import type {
   AppShellPayload,
   ChatCat,
   ChatChannelSummary,
+  ChatMessage,
   CreateChatChannelInput,
 } from '../api/contracts';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
@@ -48,6 +49,86 @@ export function executionLabel(cat: ChatCat): string {
     cat.defaultExecutionTarget.instance,
     cat.defaultExecutionTarget.model,
   );
+}
+
+export interface TranscriptMessageSpeaker {
+  kind: 'none' | 'cat' | 'provider' | 'deleted_cat' | 'name';
+  label: string | null;
+  cat: ChatCat | null;
+}
+
+function readExecutionLabelSnapshot(message: ChatMessage): string | null {
+  const snapshot = message.metadata?.executionLabelSnapshot;
+  return typeof snapshot === 'string' && snapshot.trim() ? snapshot.trim() : null;
+}
+
+export function resolveTranscriptMessageSpeaker(
+  message: ChatMessage,
+  cats: ChatCat[],
+): TranscriptMessageSpeaker {
+  if (message.senderKind === 'user' || message.senderKind === 'system') {
+    return { kind: 'none', label: null, cat: null };
+  }
+
+  const targetKind = message.metadata?.targetKind === 'cat' || message.metadata?.targetKind === 'orchestrator'
+    ? message.metadata.targetKind
+    : null;
+  const targetId = typeof message.metadata?.targetId === 'string' && message.metadata.targetId
+    ? message.metadata.targetId
+    : null;
+
+  if (targetKind === 'cat' && targetId) {
+    const liveCat = cats.find((cat) => cat.id === targetId) ?? null;
+    if (liveCat) {
+      return {
+        kind: 'cat',
+        label: liveCat.name,
+        cat: liveCat,
+      };
+    }
+    return {
+      kind: 'deleted_cat',
+      label: 'Deleted Cat',
+      cat: null,
+    };
+  }
+
+  const fallbackCat = message.senderName && message.senderName !== 'Orchestrator'
+    ? cats.find((cat) => cat.name === message.senderName) ?? null
+    : null;
+  if (fallbackCat) {
+    return {
+      kind: 'cat',
+      label: fallbackCat.name,
+      cat: fallbackCat,
+    };
+  }
+
+  if (
+    message.executionProvider
+    && (targetKind === 'orchestrator' || message.senderName === 'Orchestrator')
+  ) {
+    return {
+      kind: 'provider',
+      label: readExecutionLabelSnapshot(message)
+        ?? buildExecutionLabel(
+          message.executionProvider,
+          message.executionInstance,
+          null,
+        ),
+      cat: null,
+    };
+  }
+
+  if (message.senderName !== 'Orchestrator') {
+    return {
+      kind: 'name',
+      label: message.senderName,
+      cat: null,
+    };
+  }
+
+  return { kind: 'none', label: null, cat: null };
 }
 
 export function createDraftChannelTitle(body: string, existingCount: number): string {

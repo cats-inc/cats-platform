@@ -339,6 +339,7 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
   assert.equal(lastMessage?.executionProvider, 'gemini');
   assert.equal(lastMessage?.executionModel, 'gemini-default');
   assert.equal(lastMessage?.executionInstance, 'default');
+  assert.equal(lastMessage?.metadata.executionLabelSnapshot, 'Gemini-CLI');
 });
 
 test('FileChatStore preserves first-class choices, embedded-json extraction, and choice responses', async () => {

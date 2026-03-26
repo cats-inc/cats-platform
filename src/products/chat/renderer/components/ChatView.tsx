@@ -14,6 +14,7 @@ import {
   catInitials,
   messageTone,
   presentChannelTitle,
+  resolveTranscriptMessageSpeaker,
   truncatePath,
   type SelectedChannelView,
 } from '../chatUtils';
@@ -44,7 +45,6 @@ import {
   getProviderDisplayName,
   getProviderModels,
 } from '../../../../shared/providerCatalog';
-import { buildExecutionLabel } from '../../../../shared/executionLabel';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -257,26 +257,22 @@ export function ChatView({
                   {selectedChannel.messages.filter((msg) => payload.chat.showVerboseMessages || msg.metadata?.verbosity !== 'verbose').map((message) => (
                     <article key={message.id} className={messageTone(message.senderKind)}>
                       {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
-                        const senderCat = payload.chat.cats.find((c) => c.name === message.senderName);
-                        return senderCat ? (
+                        const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
+                        return speaker.kind === 'cat' && speaker.cat ? (
                           <div className="transcriptMessageTop">
                             <div
-                              className={senderCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
-                              style={senderCat.avatarUrl
-                                ? { backgroundImage: `url(${senderCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                : senderCat.avatarColor ? { background: senderCat.avatarColor } : undefined}
+                              className={speaker.cat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
+                              style={speaker.cat.avatarUrl
+                                ? { backgroundImage: `url(${speaker.cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                : speaker.cat.avatarColor ? { background: speaker.cat.avatarColor } : undefined}
                             >
-                              {senderCat.avatarUrl ? null : catInitials(senderCat.name)}
+                              {speaker.cat.avatarUrl ? null : catInitials(speaker.cat.name)}
                             </div>
-                            <strong>{message.senderName}</strong>
+                            <strong>{speaker.label}</strong>
                           </div>
-                        ) : message.executionProvider ? (
+                        ) : speaker.label ? (
                           <div className="transcriptMessageTop">
-                            <strong>{buildExecutionLabel(message.executionProvider, message.executionInstance, null)}</strong>
-                          </div>
-                        ) : message.senderName !== 'Orchestrator' ? (
-                          <div className="transcriptMessageTop">
-                            <strong>{message.senderName}</strong>
+                            <strong>{speaker.label}</strong>
                           </div>
                         ) : null;
                       })() : null}

@@ -15,6 +15,7 @@ import {
 } from '../../shared/messageChoices.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { defaultCatProducts, normalizeSuiteSurfaceList } from '../../../../shared/suiteSurfaces.js';
+import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import { parseMentions } from '../mentionParsing.js';
 import { normalizeList, normalizeOptionalText } from './shared.js';
@@ -42,6 +43,21 @@ export function createMessageRecord(
     structured.choices,
   );
   const choiceResponse = normalizeChatMessageChoiceResponse(structured.choiceResponse);
+  const executionInstanceForSnapshot = execution.instance === 'default'
+    ? null
+    : execution.instance ?? null;
+  const normalizedMetadata = {
+    ...metadata,
+    ...(execution.provider
+      ? {
+          executionLabelSnapshot: buildExecutionLabel(
+            execution.provider,
+            executionInstanceForSnapshot,
+            null,
+          ),
+        }
+      : {}),
+  };
 
   return {
     id: randomUUID(),
@@ -52,7 +68,7 @@ export function createMessageRecord(
     ...(choices ? { choices } : {}),
     ...(choiceResponse ? { choiceResponse } : {}),
     mentions: parseMentions(normalizedBody),
-    metadata,
+    metadata: normalizedMetadata,
     usage,
     executionProvider: execution.provider ?? null,
     executionModel: execution.model ?? null,

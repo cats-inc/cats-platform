@@ -54,10 +54,17 @@ For the current `cats` phase, this means:
 - move provider/model out of the cat identity fields
 - store provider/model under explicit execution settings instead
 - persist execution lease metadata separately from identity metadata
+- persist per-message execution provenance separately from reusable Cat
+  identity, including an immutable display snapshot for any provider/backend tag
+  rendered in the transcript
 - add product-owned memory checkpoint fields that are independent from any one
   provider session
 - treat provider-native session state as an optimization, not the source of
   truth
+- resolve Cat-authored transcript messages through live Cat identity references
+  while the Cat still exists
+  - rename and archive should update historical Cat attribution globally
+  - delete should fall back to a tombstone label such as `Deleted Cat`
 
 This decision applies to cats first, and it also sets the direction for the
 global orchestrator path.
@@ -124,7 +131,6 @@ global orchestrator path.
 
 *Decision made: 2026-03-13*
 *Decision makers: Codex + user direction*
-
 
 
 
