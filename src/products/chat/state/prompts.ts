@@ -167,6 +167,40 @@ export function buildOrchestratorPrompt(
   ]);
 }
 
+export function buildSoloChatPrompt(
+  channel: ChatChannelView,
+  orchestrator: GlobalOrchestratorSummary,
+  sourceMessage: ChatMessage,
+  participantName = 'the room assistant',
+  routingContext?: PromptRoutingContext,
+): string {
+  const recentMessages = routingContext?.recentMessages ?? channel.messages;
+  const sourceLabel = sourceMessage.senderKind === 'user'
+    ? 'Latest user message'
+    : 'Latest routed handoff';
+  const transportGuidance = transportInstruction(routingContext?.transport);
+
+  return joinPromptSections([
+    `You are ${participantName}, the default hidden chat assistant for this room in Cats Inc.`,
+    'The system layer has already routed this turn to you. Do not reinterpret target selection.',
+    'Do not present yourself as Boss Cat, an orchestrator, or a visible teammate.',
+    routingContext?.reason ?? 'System routing selected you as the current turn owner.',
+    routingContext?.sourceParticipantName
+      ? `This handoff came from ${routingContext.sourceParticipantName}.`
+      : 'This turn currently originates from the operator.',
+    'Answer directly as the current room assistant unless the user explicitly asks to involve another cat.',
+    'Never output internal routing notes, self-instructions, or coordinator scratchpad text.',
+    transportGuidance,
+    'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.',
+    languageInstruction(channel.responseLanguage),
+    `Global system prompt:\n${orchestrator.systemPrompt}`,
+    `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
+    `Recent messages:\n${formatRecentMessages(recentMessages)}`,
+    `${sourceLabel}:\n${sourceMessage.body}`,
+    'Respond with the next useful contribution for the user.',
+  ]);
+}
+
 export function buildOrchestratorRewritePrompt(
   channel: ChatChannelView,
   userMessage: ChatMessage,

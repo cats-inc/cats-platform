@@ -25,7 +25,7 @@ export function ApprovalQueuePanel({
       </div>
       {approvals.length === 0 ? (
         <p className="operatorEmptyState">
-          Boss Cat can keep moving until a plan asks for an owner decision.
+          The room can keep moving until a plan asks for an owner decision.
         </p>
       ) : (
         <div className="operatorStack">

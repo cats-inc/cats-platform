@@ -244,12 +244,17 @@ export function extractWorkflowRecommendationFromBody(
   };
 }
 
+function isSoloChatChannel(channel: ReturnType<typeof buildChannelView>): boolean {
+  return channel.composerMode === 'solo'
+    && channel.roomRouting?.mode !== 'direct_cat_chat';
+}
+
 function buildOrchestratorTarget(state: ChatState, channelId: string): RoutingTarget {
   const channel = buildChannelView(state, channelId);
   return {
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
-    participantName: resolveOrchestratorDisplayName(state),
+    participantName: isSoloChatChannel(channel) ? 'Chat' : resolveOrchestratorDisplayName(state),
     sessionId: channel.orchestratorLease.sessionId,
   };
 }

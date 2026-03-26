@@ -540,7 +540,9 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
     new Date('2026-03-23T00:01:00.000Z'),
   );
   const channel = buildChannelView(secondDispatch.state, channelId);
-  const orchestratorReplies = channel.messages.filter((message) => message.senderKind === 'orchestrator');
+  const soloReplies = channel.messages.filter(
+    (message) => message.metadata?.targetKind === 'orchestrator' && message.senderName === 'Orchestrator',
+  );
 
   assert.equal(runtimeClient.createdSessions.length, 2);
   assert.equal(runtimeClient.createdSessions[0].provider, 'claude');
@@ -548,10 +550,12 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
   assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
   assert.equal(channel.pendingProvider, 'gemini');
   assert.equal(channel.pendingModel, 'gemini-default');
-  assert.equal(orchestratorReplies[0]?.executionProvider, 'claude');
-  assert.equal(orchestratorReplies[0]?.executionModel, 'claude-default');
-  assert.equal(orchestratorReplies[1]?.executionProvider, 'gemini');
-  assert.equal(orchestratorReplies[1]?.executionModel, 'gemini-default');
+  assert.equal(soloReplies[0]?.senderKind, 'agent');
+  assert.equal(soloReplies[0]?.executionProvider, 'claude');
+  assert.equal(soloReplies[0]?.executionModel, 'claude-default');
+  assert.equal(soloReplies[1]?.senderKind, 'agent');
+  assert.equal(soloReplies[1]?.executionProvider, 'gemini');
+  assert.equal(soloReplies[1]?.executionModel, 'gemini-default');
 });
 
 test('solo composer mode honors pending runtime memory flush hooks before restarting the session', async () => {

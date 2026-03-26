@@ -3521,6 +3521,11 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     assert.equal(channelPayload.channel.composerMode, 'solo');
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
     assert.equal(channelPayload.channel.orchestratorLease.status, 'ready');
+    const soloReply = channelPayload.channel.messages.findLast(
+      (message) => message.metadata?.targetKind === 'orchestrator',
+    );
+    assert.equal(soloReply?.senderKind, 'agent');
+    assert.equal(soloReply?.senderName, 'Orchestrator');
   });
 });
 

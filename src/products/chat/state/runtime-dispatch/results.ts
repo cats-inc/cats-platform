@@ -9,7 +9,12 @@ import type {
   RoomWorkflowState,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
-import { appendMessage, setChannelCatLease, setChannelOrchestratorLease } from '../model/index.js';
+import {
+  appendMessage,
+  requireChannel,
+  setChannelCatLease,
+  setChannelOrchestratorLease,
+} from '../model/index.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
   mergeUnresolvedMentions,
@@ -34,6 +39,7 @@ import {
 } from '../room-routing/workflow.js';
 import type { DispatchExecution } from './execution.js';
 import { resolveExecutionMetadataForTarget } from '../runtimeTargeting.js';
+import { isSoloChatChannel } from '../runtimeTargeting.js';
 import {
   participantKey,
   setReadyAfterMessage,
@@ -246,6 +252,9 @@ export function applyDispatchExecutions(
     const extractedWorkflowRecommendation = extractWorkflowRecommendationFromBody(
       execution.responseBody ?? '',
     );
+    const channel = requireChannel(nextState, channelId);
+    const hiddenSoloReply = execution.target.participantKind === 'orchestrator'
+      && isSoloChatChannel(channel);
     const serializedWorkflowRecommendation = extractedWorkflowRecommendation.recommendation
       ? serializeWorkflowRecommendation(extractedWorkflowRecommendation.recommendation)
       : null;
@@ -254,9 +263,9 @@ export function applyDispatchExecutions(
       channelId,
       {
         senderKind: execution.target.participantKind === 'orchestrator'
-          ? 'orchestrator'
+          ? (hiddenSoloReply ? 'agent' : 'orchestrator')
           : 'agent',
-        senderName: execution.target.participantName,
+        senderName: hiddenSoloReply ? 'Orchestrator' : execution.target.participantName,
         body: extractedWorkflowRecommendation.body,
       },
       now,

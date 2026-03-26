@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   buildCatPrompt,
   buildOrchestratorPrompt,
+  buildSoloChatPrompt,
 } from '../dist-server/products/chat/state/prompts.js';
 
 function createChannel() {
@@ -103,4 +104,25 @@ test('cat prompt omits blank transport sections when no transport context is pro
   );
 
   assert.ok(!prompt.includes('\n\n\n'));
+});
+
+test('solo chat prompt keeps the hidden chat assistant separate from Boss Cat', () => {
+  const channel = {
+    ...createChannel(),
+    composerMode: 'solo',
+  };
+  const prompt = buildSoloChatPrompt(
+    channel,
+    createOrchestrator(),
+    createSourceMessage(),
+    'the room assistant',
+    {
+      reason: 'System routing selected you as the current turn owner.',
+      recentMessages: [],
+    },
+  );
+
+  assert.match(prompt, /hidden chat assistant/i);
+  assert.match(prompt, /Do not present yourself as Boss Cat/i);
+  assert.ok(!prompt.includes('visible Boss Cat and chat coordinator'));
 });

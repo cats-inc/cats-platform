@@ -59,11 +59,16 @@ function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
   return channel.assignedCats.filter((cat) => cat.status === 'active');
 }
 
+function isSoloChatChannel(channel: Pick<ChatChannelView, 'composerMode' | 'roomRouting'>): boolean {
+  return channel.composerMode === 'solo'
+    && channel.roomRouting?.mode !== 'direct_cat_chat';
+}
+
 function buildOrchestratorTarget(state: ChatState, channel: ChatChannelView): RoutingTarget {
   return {
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
-    participantName: resolveOrchestratorDisplayName(state),
+    participantName: isSoloChatChannel(channel) ? 'Chat' : resolveOrchestratorDisplayName(state),
     sessionId: channel.orchestratorLease.sessionId,
   };
 }

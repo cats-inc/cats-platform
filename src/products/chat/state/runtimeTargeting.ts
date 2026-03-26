@@ -23,6 +23,7 @@ import {
 import type { RoutingTarget } from './mentionRouter.js';
 import {
   buildOrchestratorPrompt,
+  buildSoloChatPrompt,
   buildCatPrompt,
   MAX_PROMPT_RECENT_MESSAGES,
 } from './prompts.js';
@@ -37,6 +38,13 @@ function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
   return channel.assignedCats.filter((cat) => cat.status === 'active');
 }
 
+export function isSoloChatChannel(
+  channel: Pick<ChatChannelState | ChatChannelView, 'composerMode' | 'roomRouting'>,
+): boolean {
+  return channel.composerMode === 'solo'
+    && channel.roomRouting?.mode !== 'direct_cat_chat';
+}
+
 export function buildOrchestratorTarget(
   state: ChatState,
   channel: ChatChannelView,
@@ -44,7 +52,7 @@ export function buildOrchestratorTarget(
   return {
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
-    participantName: resolveOrchestratorDisplayName(state),
+    participantName: isSoloChatChannel(channel) ? 'Orchestrator' : resolveOrchestratorDisplayName(state),
     sessionId: channel.orchestratorLease.sessionId,
   };
 }
@@ -423,6 +431,15 @@ export function buildPromptForTarget(
   };
 
   if (request.target.participantKind === 'orchestrator') {
+    if (isSoloChatChannel(channel)) {
+      return buildSoloChatPrompt(
+        channel,
+        state.globalOrchestrator,
+        request.sourceMessage,
+        request.target.participantName,
+        routingContext,
+      );
+    }
     return buildOrchestratorPrompt(
       channel,
       state.globalOrchestrator,
