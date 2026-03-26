@@ -362,6 +362,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
       createdAt: '2026-03-26T16:04:00.000Z',
       metadata: {
         source: 'orchestrator-replay',
+        replayTrigger: 'retry',
         replayPhase: 'replay_failed',
         resumeReason: 'target_recovered',
       },
@@ -383,6 +384,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
     workflowContinuationBlockedReasons: ['max_dispatches'],
     workflowUnresolvedTargets: ['Reviewer'],
     hasUnresolvedWorkflowTargets: true,
+    latestReplayTriggers: ['retry'],
     latestReplayPhases: ['replay_failed'],
     latestReplayResumeReasons: ['target_recovered'],
     latestTimelineCategories: ['execution'],
@@ -408,6 +410,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.workflowContinuationSourceCounts.workflow_recommendation, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
   assert.equal(result.summary.withUnresolvedWorkflowTargetsCount, 1);
+  assert.equal(result.summary.latestReplayTriggerCounts.retry, 1);
   assert.equal(result.summary.latestReplayPhaseCounts.replay_failed, 1);
   assert.equal(result.summary.latestReplayResumeReasonCounts.target_recovered, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);

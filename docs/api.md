@@ -1424,6 +1424,7 @@ Semantics:
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
   - `workflowContinuationBlockedReason`
+  - `latestReplayTrigger`
   - `latestReplayPhase`
   - `latestReplayResumeReason`
   - `latestTimelineCategory`
@@ -1437,8 +1438,8 @@ Semantics:
   as `taskStatus`, `severity`, `reason`, `nextAction`, `deliveryMode`, and
   `deliveryAction`, plus `workflowShape`,
   `workflowContinuationSource`, `workflowContinuationBlockedReason`,
-  `latestReplayPhase`, `latestReplayResumeReason`, `latestTimelineCategory`,
-  and `latestTimelineKind`
+  `latestReplayTrigger`, `latestReplayPhase`, `latestReplayResumeReason`,
+  `latestTimelineCategory`, and `latestTimelineKind`
 - list responses now include a `summary` block with:
   - `totalAvailable`
   - `matching`
@@ -1458,6 +1459,7 @@ Semantics:
   - `workflowContinuationSourceCounts`
   - `withUnresolvedWorkflowTargetsCount`
   - `workflowContinuationBlockedReasonCounts`
+  - `latestReplayTriggerCounts`
   - `latestReplayPhaseCounts`
   - `latestReplayResumeReasonCounts`
   - `latestTimelineCategoryCounts`
@@ -1481,10 +1483,10 @@ Semantics:
 - `workflowContinuationSource` / `workflowContinuationSourceCounts` let
   control-plane consumers distinguish explicit-mention continuations from
   workflow-recommendation replays without reopening raw continuation metadata
-- `latestReplayPhase` / `latestReplayResumeReason` plus their summary counts
-  let control-plane consumers facet retry/recovery queues by the newest
-  normalized replay lifecycle signal without redirecting that automation
-  through the recovery route first
+- `latestReplayTrigger`, `latestReplayPhase`, and `latestReplayResumeReason`
+  plus their summary counts let control-plane consumers facet retry/recovery
+  queues by the newest normalized replay lifecycle signal without redirecting
+  that automation through the recovery route first
 - `family` reuses the same task-family summary exposed by
   `GET /api/core/tasks/{taskId}`, so control-plane consumers can see whether a
   task is a parent, child, or root plus how many immediate child tasks are
@@ -1558,6 +1560,7 @@ Semantics:
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
   - `workflowContinuationBlockedReason`
+  - `latestReplayTrigger`
   - `latestReplayPhase`
   - `latestReplayResumeReason`
   - `latestTimelineCategory`
@@ -1574,12 +1577,13 @@ Semantics:
   `workflowShapeCounts`, `workflowReviewRequiredCount`,
   `workflowConvergeTargetCount`, `workflowContinuationSourceCounts`,
   `withUnresolvedWorkflowTargetsCount`, `workflowContinuationBlockedReasonCounts`,
-  `latestReplayPhaseCounts`, `latestReplayResumeReasonCounts`,
+  `latestReplayTriggerCounts`, `latestReplayPhaseCounts`,
+  `latestReplayResumeReasonCounts`,
   `latestTimelineCategoryCounts`, and `latestTimelineKindCounts`, plus
   `withChildrenCount` and `withActiveChildrenCount`
-- `latestReplayPhase` / `latestReplayResumeReason` give the inbox the same
-  replay-lifecycle queue faceting as recovery, while staying on the
-  operator-facing shortlist surface
+- `latestReplayTrigger`, `latestReplayPhase`, and `latestReplayResumeReason`
+  give the inbox the same replay-lifecycle queue faceting as recovery, while
+  staying on the operator-facing shortlist surface
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not
   have to join those surfaces client-side to answer "what needs attention and
@@ -1776,6 +1780,7 @@ Semantics:
   - `workflowContinuationSource`
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
+  - `latestReplayTrigger`
   - `latestReplayPhase`
   - `latestReplayResumeReason`
   - `rootTaskId`
@@ -1803,6 +1808,7 @@ Semantics:
   - `deliveryActionCounts`
   - `workflowStageCounts`
   - `workflowShapeCounts`
+  - `latestReplayTriggerCounts`
   - `latestReplayPhaseCounts`
   - `latestReplayResumeReasonCounts`
   - `workflowReviewRequiredCount`
@@ -1846,6 +1852,9 @@ Semantics:
 - `latestActivity.resumeReason` now exposes additive replay-resume context when
   the latest replay lifecycle note came from a normalized recovery path such as
   `target_recovered`
+- `latestReplayTrigger` / `latestReplayTriggerCounts` let recovery automation
+  distinguish dispatch-, approval-, reroute-, or retry-driven replay notes
+  without scraping raw activity metadata
 - `latestReplayPhase` / `latestReplayPhaseCounts` let recovery automation facet
   `startup_recovered`, `replay_blocked`, or `replay_failed` queues without
   scraping raw activity metadata

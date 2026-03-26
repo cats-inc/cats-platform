@@ -182,7 +182,11 @@ contracts.
       recovery routes now also support `latestReplayPhase` plus
       `latestReplayPhaseCounts` so automation can facet
       `startup_recovered`, `replay_blocked`, or `replay_failed` queues
-      without reopening raw activity metadata, while core
+      without reopening raw activity metadata, while core recovery routes now
+      also support `latestReplayTrigger` plus
+      `latestReplayTriggerCounts` so automation can distinguish dispatch-,
+      approval-, reroute-, and retry-driven replay notes without scraping raw
+      activity metadata, while core
       recovery routes can now also project/filter/count that normalized latest
       replay resume reason for operator automation, recommendation-driven
       `parallel` replay now also waits for every candidate target to recover
@@ -258,10 +262,11 @@ contracts.
       `workflowContinuationSourceCounts` so queue automation can distinguish
       explicit-mention continuations from workflow-recommendation replays,
       while control-plane and operator-inbox list routes now also support
-      `latestReplayPhase` plus `latestReplayResumeReason` and summarize
-      `latestReplayPhaseCounts` / `latestReplayResumeReasonCounts` so
-      operator queues can facet replay lifecycle state without detouring
-      through the dedicated recovery route,
+      `latestReplayTrigger`, `latestReplayPhase`, and
+      `latestReplayResumeReason` and summarize
+      `latestReplayTriggerCounts` / `latestReplayPhaseCounts` /
+      `latestReplayResumeReasonCounts` so operator queues can facet replay
+      lifecycle state without detouring through the dedicated recovery route,
       while recovery, control-plane, and operator-inbox list routes now also
       support `workflowUnresolvedTarget` plus
       `hasUnresolvedWorkflowTargets` and summarize

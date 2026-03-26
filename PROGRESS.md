@@ -351,6 +351,10 @@ Known follow-ups:
   `latestReplayPhaseCounts`, so automation can directly target
   `startup_recovered`, `replay_blocked`, or `replay_failed` queues without
   reopening raw activity metadata
+- those same core recovery routes now also support `latestReplayTrigger` plus
+  `latestReplayTriggerCounts`, so automation can distinguish dispatch-,
+  approval-, reroute-, and retry-driven replay notes without scraping raw
+  activity metadata
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without
@@ -371,10 +375,12 @@ Known follow-ups:
   mention-driven continuations from workflow-recommendation replays without
   scraping raw continuation blobs
 - control-plane and operator-inbox list routes now also support
-  `latestReplayPhase` plus `latestReplayResumeReason`, and summarize
-  `latestReplayPhaseCounts` / `latestReplayResumeReasonCounts`, so operator
-  queue automation can facet replay lifecycle state without bouncing out to
-  the dedicated recovery route first
+  `latestReplayTrigger`, `latestReplayPhase`, and
+  `latestReplayResumeReason`, and summarize
+  `latestReplayTriggerCounts` / `latestReplayPhaseCounts` /
+  `latestReplayResumeReasonCounts`, so operator queue automation can facet
+  replay lifecycle state without bouncing out to the dedicated recovery route
+  first
 - server startup now downgrades stranded `pendingOrchestratorDispatch` /
   `orchestratorDispatchReplay` `in_progress` markers to failed so crash or
   cleanup-failure cases remain operator-recoverable after restart

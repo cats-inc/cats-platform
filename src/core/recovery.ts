@@ -31,6 +31,7 @@ import {
   type CoreTaskViewCommonQuery,
 } from './taskViewQuery.js';
 import {
+  type OrchestratorDispatchReplayTrigger,
   type OrchestratorDispatchReplayState,
   readOrchestratorDispatchReplay,
 } from '../platform/orchestration/dispatchReplay.js';
@@ -48,6 +49,7 @@ import {
 } from '../platform/orchestration/workflowContinuationReplay.js';
 import {
   ORCHESTRATOR_REPLAY_ACTIVITY_PHASES,
+  ORCHESTRATOR_REPLAY_ACTIVITY_TRIGGERS,
   type OrchestratorReplayActivityPhase,
 } from '../platform/orchestration/replayActivity.js';
 
@@ -104,6 +106,7 @@ export const CORE_TASK_RECOVERY_DELIVERY_ACTIONS = [
 export type CoreTaskRecoveryWorkflowShape = 'sequential' | 'parallel' | 'converge';
 export type CoreTaskRecoveryResumeReason = 'target_recovered';
 export type CoreTaskRecoveryReplayPhase = OrchestratorReplayActivityPhase;
+export type CoreTaskRecoveryReplayTrigger = OrchestratorDispatchReplayTrigger;
 
 export const CORE_TASK_RECOVERY_WORKFLOW_SHAPES = [
   'sequential',
@@ -114,6 +117,8 @@ export const CORE_TASK_RECOVERY_WORKFLOW_SHAPES = [
 export const CORE_TASK_RECOVERY_RESUME_REASONS = [
   'target_recovered',
 ] as const satisfies readonly CoreTaskRecoveryResumeReason[];
+export const CORE_TASK_RECOVERY_REPLAY_TRIGGERS =
+  ORCHESTRATOR_REPLAY_ACTIVITY_TRIGGERS;
 export const CORE_TASK_RECOVERY_REPLAY_PHASES =
   ORCHESTRATOR_REPLAY_ACTIVITY_PHASES;
 
@@ -194,7 +199,7 @@ export interface CoreTaskRecoveryActivityView {
   id: string;
   source: string | null;
   phase: string;
-  trigger: string | null;
+  trigger: CoreTaskRecoveryReplayTrigger | null;
   resumeReason: CoreTaskRecoveryResumeReason | null;
   createdAt: string;
   message: string;
@@ -255,6 +260,7 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   workflowContinuationSources?: WorkflowContinuationReplaySource[];
   workflowUnresolvedTargets?: string[];
   hasUnresolvedWorkflowTargets?: boolean | null;
+  latestReplayTriggers?: CoreTaskRecoveryReplayTrigger[];
   latestReplayPhases?: CoreTaskRecoveryReplayPhase[];
   latestReplayResumeReasons?: CoreTaskRecoveryResumeReason[];
   rootTaskIds?: string[];
@@ -283,6 +289,7 @@ export interface CoreTaskRecoveryListSummary {
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
   workflowShapeCounts: Record<CoreTaskRecoveryWorkflowShape, number>;
+  latestReplayTriggerCounts: Record<CoreTaskRecoveryReplayTrigger, number>;
   latestReplayPhaseCounts: Record<CoreTaskRecoveryReplayPhase, number>;
   latestReplayResumeReasonCounts: Record<CoreTaskRecoveryResumeReason, number>;
   workflowReviewRequiredCount: number;
@@ -311,6 +318,13 @@ function readNumber(value: unknown): number | null {
 
 function readResumeReason(value: unknown): CoreTaskRecoveryResumeReason | null {
   return value === 'target_recovered' ? value : null;
+}
+
+function readReplayTrigger(value: unknown): CoreTaskRecoveryReplayTrigger | null {
+  return typeof value === 'string'
+    && CORE_TASK_RECOVERY_REPLAY_TRIGGERS.includes(value as CoreTaskRecoveryReplayTrigger)
+    ? value as CoreTaskRecoveryReplayTrigger
+    : null;
 }
 
 function readReplayPhase(value: unknown): CoreTaskRecoveryReplayPhase | null {
@@ -351,7 +365,7 @@ function buildLatestRecoveryActivity(
     id: latest.id,
     source: readString(metadata?.source),
     phase: readString(metadata?.replayPhase) ?? 'unknown',
-    trigger: readString(metadata?.replayTrigger),
+    trigger: readReplayTrigger(metadata?.replayTrigger),
     resumeReason: readResumeReason(metadata?.resumeReason),
     createdAt: latest.createdAt,
     message: latest.message,
@@ -834,6 +848,14 @@ function matchesRecoveryListOptions(
   }
 
   if (
+    options.latestReplayTriggers?.length
+    && (!readReplayTrigger(recovery.latestActivity?.trigger)
+      || !options.latestReplayTriggers.includes(readReplayTrigger(recovery.latestActivity?.trigger)!))
+  ) {
+    return false;
+  }
+
+  if (
     options.latestReplayPhases?.length
     && (!readReplayPhase(recovery.latestActivity?.phase)
       || !options.latestReplayPhases.includes(readReplayPhase(recovery.latestActivity?.phase)!))
@@ -1070,6 +1092,24 @@ function buildRecoveryReplayPhaseCounts(
   return counts;
 }
 
+function buildRecoveryReplayTriggerCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<CoreTaskRecoveryReplayTrigger, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_REPLAY_TRIGGERS.map((trigger) => [trigger, 0]),
+  ) as Record<CoreTaskRecoveryReplayTrigger, number>;
+
+  for (const recovery of recoveries) {
+    const trigger = readReplayTrigger(recovery.latestActivity?.trigger);
+    if (!trigger) {
+      continue;
+    }
+    counts[trigger] += 1;
+  }
+
+  return counts;
+}
+
 function buildRecoveryContinuationSourceCounts(
   recoveries: CoreTaskRecoveryView[],
 ): Record<WorkflowContinuationReplaySource, number> {
@@ -1120,6 +1160,7 @@ export function summarizeCoreTaskRecoveryViews(input: {
     deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),
     workflowStageCounts: buildRecoveryWorkflowStageCounts(input.recoveries),
     workflowShapeCounts: buildRecoveryWorkflowShapeCounts(input.recoveries),
+    latestReplayTriggerCounts: buildRecoveryReplayTriggerCounts(input.recoveries),
     latestReplayPhaseCounts: buildRecoveryReplayPhaseCounts(input.recoveries),
     latestReplayResumeReasonCounts: buildRecoveryResumeReasonCounts(input.recoveries),
     workflowReviewRequiredCount: input.recoveries.filter((recovery) =>

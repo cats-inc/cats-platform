@@ -90,10 +90,11 @@ MCP tool plane.
   queue automation can distinguish explicit-mention continuations from
   workflow-recommendation replays without reopening raw continuation metadata
 - control-plane and operator-inbox list routes now also support
-  `latestReplayPhase` plus `latestReplayResumeReason`, and summarize
-  `latestReplayPhaseCounts` / `latestReplayResumeReasonCounts`, so operator
-  queue automation can facet replay lifecycle state without detouring through
-  the dedicated recovery route
+  `latestReplayTrigger`, `latestReplayPhase`, and
+  `latestReplayResumeReason`, and summarize
+  `latestReplayTriggerCounts` / `latestReplayPhaseCounts` /
+  `latestReplayResumeReasonCounts`, so operator queue automation can facet
+  replay lifecycle state without detouring through the dedicated recovery route
 - those same operator/recovery list routes now also support
   `workflowUnresolvedTarget` plus `hasUnresolvedWorkflowTargets`, and summarize
   `withUnresolvedWorkflowTargetsCount`, so missing-target continuation work can
@@ -119,7 +120,10 @@ MCP tool plane.
   core recovery routes now also support `latestReplayPhase` plus
   `latestReplayPhaseCounts` so recovery automation can facet
   `startup_recovered`, `replay_blocked`, or `replay_failed` queues without
-  scraping raw activity metadata,
+  scraping raw activity metadata, while core recovery routes now also support
+  `latestReplayTrigger` plus `latestReplayTriggerCounts` so recovery
+  automation can distinguish dispatch-, approval-, reroute-, and
+  retry-driven replay notes without scraping raw activity metadata,
   core recovery routes now also project/filter
   that normalized latest replay resume reason, recommendation-driven
   `parallel` replay now also waits for every candidate target in the stored

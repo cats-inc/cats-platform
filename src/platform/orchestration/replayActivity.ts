@@ -15,6 +15,12 @@ export type OrchestratorReplayActivityPhase =
   | 'replay_blocked'
   | 'replay_failed'
   | 'startup_recovered';
+export const ORCHESTRATOR_REPLAY_ACTIVITY_TRIGGERS = [
+  'dispatch',
+  'approve',
+  'reroute',
+  'retry',
+] as const satisfies readonly OrchestratorDispatchReplayTrigger[];
 export const ORCHESTRATOR_REPLAY_ACTIVITY_PHASES = [
   'pending_dispatch_stored',
   'replay_started',
