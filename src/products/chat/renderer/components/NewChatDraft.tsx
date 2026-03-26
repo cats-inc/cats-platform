@@ -2,8 +2,12 @@ import { useState, type FormEvent, type KeyboardEvent, type RefObject } from 're
 
 import type { AppShellPayload } from '../../api/contracts';
 import { catInitials, isChatCat, truncatePath } from '../chatUtils';
-import { CatInspectPanel, type CatInspectTarget } from './CatInspectPanel';
-import { ModelSelector, type ModelSelectorValue } from './ModelSelector';
+import {
+  buildModelSelectorLabel,
+  ModelSelectorChip,
+  ModelSelectorPanel,
+  type ModelSelectorValue,
+} from './ModelSelector';
 
 export interface NewChatDraftProps {
   payload: AppShellPayload;
@@ -34,6 +38,10 @@ export interface NewChatDraftProps {
   allowAddCat?: boolean;
   selectedModel?: ModelSelectorValue;
   onModelChange?: (value: ModelSelectorValue) => void;
+  draftHighlightedCatId: string | null;
+  onHighlightDraftCat: (catId: string | null) => void;
+  draftCatModelOverrides: Map<string, ModelSelectorValue>;
+  onDraftCatModelOverride: (catId: string, value: ModelSelectorValue) => void;
 }
 
 export function NewChatDraft({
@@ -65,6 +73,10 @@ export function NewChatDraft({
   allowAddCat = true,
   selectedModel,
   onModelChange,
+  draftHighlightedCatId,
+  onHighlightDraftCat,
+  draftCatModelOverrides,
+  onDraftCatModelOverride,
 }: NewChatDraftProps) {
   const chatCats = payload.chat.cats.filter(isChatCat);
   const leadCat = draftLeadCatId
@@ -91,8 +103,23 @@ export function NewChatDraft({
     ? [leadCat.id, ...draftCatIds.filter((id) => id !== leadCat.id)]
     : draftCatIds;
   const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
-  const [inspectOpen, setInspectOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const hasMultipleCats = chatCats.filter((c) => c.status === 'active').length > 1;
+
+  const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
+    ? chatCats.find((c) => c.id === draftHighlightedCatId) ?? null
+    : null;
+  const activePanelModel: ModelSelectorValue | null = highlightedCat
+    ? (draftCatModelOverrides.get(highlightedCat.id) ?? {
+        provider: highlightedCat.defaultExecutionTarget.provider,
+        model: highlightedCat.defaultExecutionTarget.model,
+        instance: highlightedCat.defaultExecutionTarget.instance,
+        modelSelection: highlightedCat.defaultModelSelection ?? null,
+      })
+    : selectedModel ?? null;
+  const chipLabel = selectedModel
+    ? buildModelSelectorLabel(selectedModel)
+    : '';
 
   return (
     <div className="viewShell viewShellDraft">
@@ -192,19 +219,6 @@ export function NewChatDraft({
                       </svg>
                       Set working directory
                     </button>
-                    {allowAddCat ? (
-                      <button
-                        className="composerPlusMenuItem"
-                        type="button"
-                        onClick={onOpenAddCat}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="8" cy="5" r="3" />
-                          <path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5" />
-                        </svg>
-                        Add cat to chat
-                      </button>
-                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -227,66 +241,63 @@ export function NewChatDraft({
                   </button>
                 </span>
               ) : null}
-              {nonLeadDraftCatIds.length > 0 ? (
-                <div className="composerAvatarStack">
-                  {nonLeadDraftCatIds.map((id) => {
-                    const cat = chatCats.find((p) => p.id === id);
-                    if (!cat) return null;
-                    return (
-                      <div key={id} className="composerStackItem">
-                        <div
-                          className="catAvatar composerStackAvatar"
-                          data-tooltip={cat.name}
-                          style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
-                        >
-                          {catInitials(cat.name)}
-                        </div>
-                        <button
-                          className="composerStackRemove"
-                          type="button"
-                          onClick={() => onToggleDraftCat(id)}
-                          aria-label={`Remove ${cat.name}`}
-                        >
-                          &times;
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
             </div>
-            {showSoloSelector && selectedModel && onModelChange ? (
-              <div style={{ marginRight: 8 }}>
-                <ModelSelector value={selectedModel} onChange={onModelChange} />
+            {effectiveLeadCat ? (
+              <div
+                className="composerCatStack"
+                style={{ marginRight: 10 }}
+                onClick={() => setPanelOpen(!panelOpen)}
+                role="button"
+                tabIndex={0}
+              >
+                {[effectiveLeadCat.id, ...nonLeadDraftCatIds].map((id, index) => {
+                  const cat = id === effectiveLeadCat.id ? effectiveLeadCat : chatCats.find((c) => c.id === id);
+                  if (!cat) return null;
+                  const isBoss = cat.id === payload.chat.bossCatId;
+                  const isLead = index === 0;
+                  return (
+                    <div
+                      key={id}
+                      className={`catAvatar composerStackAvatar${isBoss ? ' catAvatarBoss' : ''}`}
+                      data-tooltip={cat.name}
+                      style={{
+                        ...(cat.avatarColor ? { background: cat.avatarColor } : {}),
+                        zIndex: visibleDraftCatIds.length - index,
+                      }}
+                    >
+                      {catInitials(cat.name)}
+                      {isLead ? <span className="catAvatarLeadBadge">&#x1F451;</span> : null}
+                    </div>
+                  );
+                })}
               </div>
-            ) : effectiveLeadCat ? (
-              <>
-                <div
-                  className={effectiveLeadCat.id === payload.chat.bossCatId ? 'catAvatar composerStackAvatar catAvatarBoss composerLeadAvatar' : 'catAvatar composerStackAvatar composerLeadAvatar'}
-                  data-tooltip={effectiveLeadCat.name}
-                  style={effectiveLeadCat.avatarColor ? { background: effectiveLeadCat.avatarColor } : undefined}
-                  onClick={() => setInspectOpen(!inspectOpen)}
-                  role="button"
-                  tabIndex={0}
-                >
-                  {catInitials(effectiveLeadCat.name)}
-                </div>
-                {inspectOpen ? (
-                  <CatInspectPanel
-                    cat={{
-                      id: effectiveLeadCat.id,
-                      name: effectiveLeadCat.name,
-                      avatarColor: effectiveLeadCat.avatarColor,
-                      provider: effectiveLeadCat.defaultExecutionTarget.provider,
-                      instance: effectiveLeadCat.defaultExecutionTarget.instance,
-                      model: effectiveLeadCat.defaultExecutionTarget.model,
-                      skillProfile: effectiveLeadCat.skillProfile ?? null,
-                      isBoss: effectiveLeadCat.id === payload.chat.bossCatId,
-                    }}
-                    onClose={() => setInspectOpen(false)}
-                  />
-                ) : null}
-              </>
+            ) : activePanelModel && chipLabel ? (
+              <div style={{ marginRight: 8 }}>
+                <ModelSelectorChip
+                  label={chipLabel}
+                  onClick={() => setPanelOpen(!panelOpen)}
+                />
+              </div>
+            ) : null}
+            {panelOpen && activePanelModel ? (
+              <ModelSelectorPanel
+                mode="draft"
+                cats={chatCats}
+                bossCatId={payload.chat.bossCatId}
+                selectedCatIds={draftCatIds}
+                highlightedCatId={draftHighlightedCatId}
+                leadCatId={effectiveLeadCat?.id ?? null}
+                onToggleCat={onToggleDraftCat}
+                onHighlightCat={(id) => onHighlightDraftCat(id)}
+                modelValue={activePanelModel}
+                onModelChange={(value) => {
+                  if (!effectiveLeadCat && onModelChange) {
+                    onModelChange(value);
+                  }
+                }}
+                fieldsDisabled={Boolean(effectiveLeadCat)}
+                onClose={() => setPanelOpen(false)}
+              />
             ) : null}
             <button
               className="composerSendButton"

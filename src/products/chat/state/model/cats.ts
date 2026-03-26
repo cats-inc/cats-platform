@@ -233,6 +233,32 @@ export function updateCatProducts(
   return nextState;
 }
 
+export function updateCatExecutionTarget(
+  state: ChatState,
+  catId: string,
+  target: { provider?: string; instance?: string | null; model?: string | null; modelSelection?: import('../../../../shared/providerSelection.js').ProviderModelSelection | null },
+): ChatState {
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((p) => p.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  if (target.provider !== undefined) {
+    cat.defaultExecutionTarget.provider = target.provider;
+  }
+  if (target.instance !== undefined) {
+    cat.defaultExecutionTarget.instance = target.instance || null;
+  }
+  if (target.model !== undefined) {
+    cat.defaultExecutionTarget.model = target.model || null;
+  }
+  if (target.modelSelection !== undefined) {
+    cat.defaultModelSelection = target.modelSelection ?? null;
+  }
+  cat.updatedAt = new Date().toISOString();
+  return nextState;
+}
+
 export function renameCat(
   state: ChatState,
   catId: string,

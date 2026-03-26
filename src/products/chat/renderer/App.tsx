@@ -37,7 +37,7 @@ import { useComposerSubmit } from './hooks/useComposerSubmit';
 import { useFolderBrowser } from './hooks/useFolderBrowser';
 import { useGovernanceActions } from './hooks/useGovernanceActions';
 import { useOperatorLoop } from './hooks/useOperatorLoop';
-import { updateNewChatDefaultsPreference } from './api';
+import { updateCatProfile, updateNewChatDefaultsPreference } from './api';
 import type { ModelSelectorValue } from './components/ModelSelector';
 import {
   Sidebar,
@@ -105,10 +105,53 @@ export default function App() {
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
   const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
+  const [draftHighlightedCatId, setDraftHighlightedCatId] = useState<string | null>(null);
+  const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<Map<string, ModelSelectorValue>>(new Map);
   const latestNewChatDefaultsSaveId = useRef(0);
   const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
+
+  const onToggleDraftCat = useCallback((catId: string) => {
+    setDraftCatIds((prev) => {
+      const isRemoving = prev.includes(catId);
+      const next = isRemoving ? prev.filter((id) => id !== catId) : [...prev, catId];
+      if (isRemoving) {
+        setDraftHighlightedCatId((current) =>
+          current === catId ? (next.length > 0 ? next[0] : null) : current);
+        setDraftCatModelOverrides((overrides) => {
+          const copy = new Map(overrides);
+          copy.delete(catId);
+          return copy;
+        });
+      } else {
+        setDraftHighlightedCatId(catId);
+      }
+      return next;
+    });
+  }, []);
+
+  const onDirectLaneModelSave = useCallback(async (catId: string, value: ModelSelectorValue) => {
+    try {
+      const result = await updateCatProfile(catId, {
+        provider: value.provider,
+        instance: value.instance,
+        model: value.model,
+        modelSelection: value.modelSelection,
+      });
+      startTransition(() => setState({ status: 'ready', payload: result }));
+    } catch {
+      // Silent fail — the panel shows current state from payload
+    }
+  }, [setState]);
+
+  const onDraftCatModelOverride = useCallback((catId: string, value: ModelSelectorValue) => {
+    setDraftCatModelOverrides((prev) => {
+      const copy = new Map(prev);
+      copy.set(catId, value);
+      return copy;
+    });
+  }, []);
 
   const {
     accountMenuOpen,
@@ -577,6 +620,7 @@ export default function App() {
               selectedChannel?.composerMode === 'solo' ? soloChannelModel : undefined,
             onModelChange:
               selectedChannel?.composerMode === 'solo' ? setSoloChannelModel : undefined,
+            onDirectLaneModelChange: onDirectLaneModelSave,
           }}
           draftSurfaceProps={{
             composerDraft,
@@ -598,11 +642,15 @@ export default function App() {
             onPickFolder: openDraftFolderPicker,
             onDraftFilesChange: setDraftFiles,
             onDraftCwdClear: () => setDraftCwd(null),
-            onToggleDraftCat: toggleDraftCat,
+            onToggleDraftCat: onToggleDraftCat,
             autoResize,
             draftLeadCatId,
-            selectedModel: !draftLeadCatId ? draftModel : undefined,
-            onModelChange: !draftLeadCatId ? onDraftModelChange : undefined,
+            selectedModel: draftModel,
+            onModelChange: onDraftModelChange,
+            draftHighlightedCatId,
+            onHighlightDraftCat: setDraftHighlightedCatId,
+            draftCatModelOverrides,
+            onDraftCatModelOverride,
           }}
           onToggleAddCat={toggleAddCatPanel}
           onPayloadUpdate={updatePayload}
@@ -623,7 +671,7 @@ export default function App() {
             onTabChange: setAddCatTab,
             onAssignExistingCat,
             onRemoveAssignedCat,
-            onToggleDraftCat: toggleDraftCat,
+            onToggleDraftCat: onToggleDraftCat,
             onCatFormChange: setCatForm,
             onCreateCat: (event) => {
               if (showingNewChatDraft && !draftLeadCatId) {

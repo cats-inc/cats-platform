@@ -27,7 +27,12 @@ import {
 } from '../../shared/operator-loop/index';
 import { ActivityFeed } from './ActivityFeed';
 import { CatInspectPanel } from './CatInspectPanel';
-import { ModelSelector, type ModelSelectorValue } from './ModelSelector';
+import {
+  buildModelSelectorLabel,
+  ModelSelectorChip,
+  ModelSelectorPanel,
+  type ModelSelectorValue,
+} from './ModelSelector';
 import { ApprovalQueuePanel } from './ApprovalQueuePanel';
 import {
   MessageChoices,
@@ -75,6 +80,7 @@ export interface ChatViewProps {
   showAddCatButton?: boolean;
   selectedModel?: ModelSelectorValue;
   onModelChange?: (value: ModelSelectorValue) => void;
+  onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
 }
 
 export function ChatView({
@@ -109,6 +115,7 @@ export function ChatView({
   showAddCatButton = true,
   selectedModel,
   onModelChange,
+  onDirectLaneModelChange,
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
@@ -121,6 +128,20 @@ export function ChatView({
   const bossLifecycle = resolveChatLifecycleState(selectedChannel.orchestratorLease.status);
   const isSoloComposer = selectedChannel.composerMode === 'solo'
     && roomMode !== 'direct_cat_chat';
+  const isDirectLane = roomMode === 'direct_cat_chat';
+  const [directLanePanelOpen, setDirectLanePanelOpen] = useState(false);
+
+  const directLaneCat = isDirectLane && leadCat
+    ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
+    : null;
+  const directLaneModelValue: ModelSelectorValue | null = directLaneCat
+    ? {
+        provider: directLaneCat.defaultExecutionTarget.provider,
+        model: directLaneCat.defaultExecutionTarget.model,
+        instance: directLaneCat.defaultExecutionTarget.instance,
+        modelSelection: directLaneCat.defaultModelSelection ?? null,
+      }
+    : null;
   const presenceItems = roomMode === 'direct_cat_chat' && leadCat
     ? [
         {
@@ -414,9 +435,51 @@ export function ChatView({
                   );
                 })()}
               </div>
-                {isSoloComposer && selectedModel && onModelChange ? (
+                {isDirectLane && directLaneCat && directLaneModelValue ? (
+                  <>
+                    <div
+                      className={directLaneCat.id === payload.chat.bossCatId ? 'catAvatar composerStackAvatar catAvatarBoss composerLeadAvatar' : 'catAvatar composerStackAvatar composerLeadAvatar'}
+                      data-tooltip={directLaneCat.name}
+                      style={directLaneCat.avatarColor ? { background: directLaneCat.avatarColor } : undefined}
+                      onClick={() => setDirectLanePanelOpen(!directLanePanelOpen)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {catInitials(directLaneCat.name)}
+                    </div>
+                    {directLanePanelOpen ? (
+                      <ModelSelectorPanel
+                        mode="direct-lane"
+                        cats={[directLaneCat]}
+                        bossCatId={payload.chat.bossCatId}
+                        selectedCatIds={[directLaneCat.id]}
+                        highlightedCatId={directLaneCat.id}
+                        modelValue={directLaneModelValue}
+                        onModelChange={(value) => {
+                          onDirectLaneModelChange?.(directLaneCat.id, value);
+                        }}
+                        onClose={() => setDirectLanePanelOpen(false)}
+                      />
+                    ) : null}
+                  </>
+                ) : isSoloComposer && selectedModel && onModelChange ? (
                   <div style={{ marginRight: 8 }}>
-                    <ModelSelector value={selectedModel} onChange={onModelChange} />
+                    <ModelSelectorChip
+                      label={buildModelSelectorLabel(selectedModel)}
+                      onClick={() => setDirectLanePanelOpen(!directLanePanelOpen)}
+                    />
+                    {directLanePanelOpen ? (
+                      <ModelSelectorPanel
+                        mode="draft"
+                        cats={[]}
+                        bossCatId={payload.chat.bossCatId}
+                        selectedCatIds={[]}
+                        highlightedCatId={null}
+                        modelValue={selectedModel}
+                        onModelChange={onModelChange}
+                        onClose={() => setDirectLanePanelOpen(false)}
+                      />
+                    ) : null}
                   </div>
                 ) : !isSoloComposer && leadCat ? (
                   <ComposerLeadCatAvatar
