@@ -166,8 +166,12 @@ contracts.
       `GET /api/core/tasks/{taskId}` now returns a derived inspection view
       with latest execution pointers plus governance/workflow summaries, and
       `GET /api/core/tasks/{taskId}/records` now returns grouped task-scoped
-      record history, without forcing later consumers to parse opaque task
-      metadata blobs or re-filter the full core snapshot client-side.
+      record history, while `GET /api/core/control-plane/tasks` plus
+      `GET /api/core/tasks/{taskId}/control-plane` now expose stable task-
+      scoped approval actions, retry/acknowledge actions, workflow
+      recommendation summaries, and operator-attention classification, without
+      forcing later consumers to parse opaque task metadata blobs or
+      re-filter the full core snapshot client-side.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

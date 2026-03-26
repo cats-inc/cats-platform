@@ -67,6 +67,12 @@ MCP tool plane.
   approval-binding, run, trace, checkpoint, outcome, and activity rows, so
   future control-plane or recovery tooling can inspect exact task history
   without client-side re-filtering of the whole core store
+- `GET /api/core/control-plane/tasks` plus
+  `GET /api/core/tasks/{taskId}/control-plane` now expose stable task-scoped
+  approval actions, retry/acknowledge actions, workflow recommendation
+  summaries, and operator-attention classification on top of the existing core
+  write seams, so future control-plane work can consume one task-level read
+  model instead of stitching together recovery, inspection, and records views
 - blocked `max_continuations` workflow continuation replay is now landed
   through the existing operator `retry` seam and startup recovery path; keep
   deeper group replan or converge-stage continuation using the same

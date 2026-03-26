@@ -1242,6 +1242,187 @@ test('GET /api/core/tasks/:taskId/records returns grouped task-scoped records wi
   });
 });
 
+test('core control-plane routes expose grouped operator actions and workflow attention signals', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-control-plane-route',
+          title: 'Inspect control-plane route',
+          status: 'pending_approval',
+          conversationId: 'conversation-channel-control-plane-route',
+          metadata: writeOrchestratorDispatchReplayMetadata(
+            {
+              effectiveDeliveryPolicy: {
+                mode: 'commit_only',
+                gates: ['owner_approval_required'],
+                source: 'task_override',
+                rationale: 'Owner-gated retry.',
+              },
+              channelId: 'channel-control-plane-route',
+              transport: 'web',
+              roomRoutingMode: 'boss_chat',
+            },
+            buildOrchestratorDispatchReplayRequest({
+              channelId: 'channel-control-plane-route',
+              body: 'Retry the blocked rollout after approval.',
+              recordedAt: '2026-03-26T14:20:00.000Z',
+            }),
+            {
+              replayState: 'failed',
+              replayTrigger: 'retry',
+              replayAttemptAt: '2026-03-26T14:21:00.000Z',
+              replayError: 'rate limited',
+              sourceMessageId: 'message-control-plane-route',
+            },
+          ),
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const otherTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-control-plane-other',
+          title: 'Other task',
+          status: 'draft',
+        },
+      }),
+    });
+    assert.equal(otherTaskResponse.status, 201);
+
+    const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-control-plane-route',
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+        notes: 'Need approval before retry.',
+      }),
+    });
+    assert.equal(approvalResponse.status, 200);
+
+    const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-control-plane-route',
+          title: 'Blocked run',
+          status: 'blocked',
+          conversationId: 'conversation-channel-control-plane-route',
+          taskId: 'task-control-plane-route',
+          metadata: {
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'sequential',
+            dispatchCount: 1,
+            continuationCount: 1,
+            targetCount: 1,
+          },
+        },
+      }),
+    });
+    assert.equal(runResponse.status, 201);
+
+    const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        checkpoint: {
+          id: 'checkpoint-control-plane-route',
+          label: 'review',
+          status: 'open',
+          conversationId: 'conversation-channel-control-plane-route',
+          taskId: 'task-control-plane-route',
+          runId: 'run-control-plane-route',
+          metadata: {
+            continuationSource: 'workflow_recommendation',
+            unresolvedTargets: ['Reviewer'],
+            workflowRecommendation: {
+              source: 'checkpoint',
+              workflowShape: 'converge',
+              branchStrategy: 'single_target_review',
+              rationale: 'Need reviewer signoff before continuing.',
+              reviewRequired: true,
+              candidateTargets: [
+                {
+                  participantKind: 'cat',
+                  participantId: 'cat-reviewer',
+                  participantName: 'Reviewer',
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+    assert.equal(checkpointResponse.status, 201);
+
+    const listResponse = await fetch(`${baseUrl}/api/core/control-plane/tasks`);
+    assert.equal(listResponse.status, 200);
+    const listPayload = await listResponse.json();
+    assert.deepEqual(listPayload.tasks.map((task) => task.taskId), [
+      'task-control-plane-route',
+    ]);
+    assert.deepEqual(listPayload.tasks[0].attention.reasons, [
+      'approval_pending',
+      'run_blocked',
+      'retry_available',
+      'workflow_review_required',
+    ]);
+    assert.deepEqual(listPayload.tasks[0].nextActions.map((action) => action.kind), [
+      'approve',
+      'reroute',
+      'reject',
+      'retry',
+      'acknowledge',
+    ]);
+
+    const detailResponse = await fetch(
+      `${baseUrl}/api/core/tasks/task-control-plane-route/control-plane`,
+    );
+    assert.equal(detailResponse.status, 200);
+    const detailPayload = await detailResponse.json();
+    assert.equal(detailPayload.controlPlane.taskId, 'task-control-plane-route');
+    assert.equal(
+      detailPayload.controlPlane.latestWorkflowRecommendation.reviewRequired,
+      true,
+    );
+    assert.equal(
+      detailPayload.controlPlane.latestWorkflowRecommendation.candidateTargets[0].participantName,
+      'Reviewer',
+    );
+    assert.deepEqual(
+      detailPayload.controlPlane.governanceSummary.runtimeDeliveryManifest.requestedActions,
+      ['create_commit'],
+    );
+    assert.equal(detailPayload.controlPlane.recovery.dispatchReplay.replayState, 'failed');
+
+    const missingResponse = await fetch(
+      `${baseUrl}/api/core/tasks/task-missing/control-plane`,
+    );
+    assert.equal(missingResponse.status, 404);
+    const missingPayload = await missingResponse.json();
+    assert.equal(missingPayload.error.code, 'task_not_found');
+  });
+});
+
 test('core project memory routes persist durable memory, sync canonical records, and expose retrieval context', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

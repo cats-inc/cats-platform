@@ -884,6 +884,7 @@ tasks without depending on chat-local state shapes.
 GET /api/core/tasks
 GET /api/core/tasks/{taskId}
 GET /api/core/tasks/{taskId}/records
+GET /api/core/tasks/{taskId}/control-plane
 ```
 
 Returns:
@@ -1004,6 +1005,93 @@ Semantics:
   heavy and summary-light, so later replay/recovery tooling can inspect the
   exact task-scoped rows without reassembling them client-side from global
   collections
+
+### Inspect Core Task Control Plane
+
+```text
+GET /api/core/control-plane/tasks
+GET /api/core/tasks/{taskId}/control-plane
+```
+
+`GET /api/core/control-plane/tasks` returns the current task-scoped
+control-plane items that already have meaningful governance, workflow,
+recovery, or operator-attention signals:
+
+```json
+{
+  "tasks": [
+    {
+      "taskId": "task-system-1",
+      "attention": {
+        "severity": "attention",
+        "reasons": ["approval_pending", "retry_available"],
+        "needsOperatorAttention": true
+      }
+    }
+  ]
+}
+```
+
+`GET /api/core/tasks/{taskId}/control-plane` returns the full core-owned
+control-plane view for one task:
+
+```json
+{
+  "taskId": "task-system-1",
+  "controlPlane": {
+    "taskId": "task-system-1",
+    "latestRunId": "run-system-1",
+    "governanceSummary": {
+      "approval": {
+        "pending": true
+      }
+    },
+    "workflowSummary": {
+      "stageId": "continuation_handoff"
+    },
+    "latestWorkflowRecommendation": {
+      "workflowShape": "converge",
+      "reviewRequired": true
+    },
+    "approvalActions": [
+      {
+        "kind": "approve"
+      }
+    ],
+    "incidentActions": [
+      {
+        "kind": "retry"
+      }
+    ],
+    "nextActions": [
+      {
+        "kind": "approve"
+      },
+      {
+        "kind": "retry"
+      }
+    ],
+    "recovery": {
+      "canRetry": true
+    }
+  }
+}
+```
+
+Semantics:
+
+- these routes are core-owned control-plane read models for later operator,
+  recovery, or orchestration consumers that should not scrape `/api/core`,
+  Chat operator rails, or raw task metadata blobs
+- `approvalActions` and `incidentActions` already point at the existing
+  `/api/core/approvals` and `/api/core/operator-actions` write seams through
+  additive action envelopes; this route does not invent a second mutation bus
+- `latestWorkflowRecommendation` lifts the newest structured continuation hint
+  out of checkpoint/outcome/run/trace metadata into a stable task-scoped read
+  model
+- `attention` classifies whether a task is in progress, completed, muted, or
+  needs operator attention because of pending approval, blocked runs, retryable
+  recovery, or workflow review requirements
 
 ### Create or Upsert Core Task
 

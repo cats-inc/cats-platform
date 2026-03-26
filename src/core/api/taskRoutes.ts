@@ -23,6 +23,7 @@ import {
   CORE_TASK_STATUSES,
 } from './constants.js';
 import type { CoreApiRouteContext } from './types.js';
+import { routeCoreTaskControlPlaneApi } from './taskControlPlaneRoutes.js';
 import { routeCoreTaskInspectionApi } from './taskInspectionRoutes.js';
 import { routeCoreTaskRecordApi } from './taskRecordRoutes.js';
 import { routeCoreTaskRecoveryApi } from './taskRecoveryRoutes.js';
@@ -199,6 +200,10 @@ async function handleCoreTaskCheckout(
 export async function routeCoreTaskApi(
   context: CoreApiRouteContext,
 ): Promise<boolean> {
+  if (await routeCoreTaskControlPlaneApi(context)) {
+    return true;
+  }
+
   if (await routeCoreTaskRecoveryApi(context)) {
     return true;
   }
