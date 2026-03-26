@@ -1,4 +1,5 @@
 import type { CatsMemoryService } from '../../platform/memory/index.js';
+import type { MemoryCompanionSurface } from '../../platform/memory/contracts.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type { OrchestratorDispatchResponse } from '../../platform/orchestration/contracts.js';
 import type { PendingOrchestratorDispatchRequest } from '../../platform/orchestration/pendingDispatch.js';
@@ -15,6 +16,7 @@ export interface CoreApiDependencies {
   coreStore: CoreStore;
   taskExecutionLocator?: TaskExecutionLocator;
   memoryService?: CatsMemoryService;
+  companionStore?: MemoryCompanionSurface;
   runtimeClient?: Pick<RuntimeClient, 'createWakeup' | 'observeSession' | 'streamSession'>;
   now?: () => Date;
   resumePendingOrchestratorDispatch?: (

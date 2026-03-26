@@ -636,6 +636,133 @@ test('GET /api/core/memory-maintenance returns normalized maintenance activity h
   });
 });
 
+test('POST /api/core/memory-maintenance runs companion canonical sync through the core route', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Maintenance Cat',
+        provider: 'claude',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const { cat } = await createCatResponse.json();
+
+    const createMemoryResponse = await fetch(`${baseUrl}/api/cats/${cat.id}/memory`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        category: 'fact',
+        content: 'Maintenance Cat likes deterministic sync checks.',
+      }),
+    });
+    assert.equal(createMemoryResponse.status, 201);
+
+    const actionResponse = await fetch(`${baseUrl}/api/core/memory-maintenance`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'sync_companion',
+        catId: cat.id,
+        reason: 'manual',
+      }),
+    });
+    assert.equal(actionResponse.status, 200);
+    const actionPayload = await actionResponse.json();
+
+    assert.equal(actionPayload.maintenanceAction.action, 'sync_companion');
+    assert.equal(actionPayload.maintenanceAction.trigger, 'companion_sync');
+    assert.equal(actionPayload.maintenanceAction.status, 'executed');
+    assert.equal(actionPayload.maintenanceAction.subject.kind, 'cat');
+    assert.equal(actionPayload.maintenanceAction.subject.id, cat.id);
+    assert.equal(actionPayload.maintenanceAction.reason, 'manual');
+    assert.ok(actionPayload.maintenanceAction.summary.persistedCount >= 1);
+
+    const listResponse = await fetch(`${baseUrl}/api/core/memory-maintenance`);
+    assert.equal(listResponse.status, 200);
+    const listPayload = await listResponse.json();
+
+    assert.equal(listPayload.maintenance.latestByTrigger.companionSync?.status, 'executed');
+    assert.equal(listPayload.maintenance.latestByTrigger.companionSync?.catId, cat.id);
+    assert.deepEqual(
+      listPayload.maintenance.latestByTrigger.companionSync?.subjectKeys,
+      [`cat:${cat.id}`],
+    );
+  });
+});
+
+test('POST /api/core/memory-maintenance reports deferred owner sync when canonical flush fails', async () => {
+  const chatStore = new MemoryChatStore();
+  const baseMemoryService = createCatsMemoryService(
+    createChatMemorySurface(chatStore),
+    new MemoryCanonicalMemoryStore(),
+  );
+  const failingMemoryService = {
+    async listCanonicalRecords(filter) {
+      return baseMemoryService.listCanonicalRecords(filter);
+    },
+    async flushCompanionBox(input) {
+      return baseMemoryService.flushCompanionBox(input);
+    },
+    async flushChannel(input) {
+      return baseMemoryService.flushChannel(input);
+    },
+    async flushOwnerProfile() {
+      throw new Error('canonical owner sync failed');
+    },
+    async buildCompanionRetrievalContext(input) {
+      return baseMemoryService.buildCompanionRetrievalContext(input);
+    },
+    async buildChannelRetrievalContext(input) {
+      return baseMemoryService.buildChannelRetrievalContext(input);
+    },
+  };
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const actionResponse = await fetch(`${baseUrl}/api/core/memory-maintenance`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'sync_owner',
+        reason: 'owner_profile_sync',
+      }),
+    });
+    assert.equal(actionResponse.status, 200);
+    const actionPayload = await actionResponse.json();
+
+    assert.equal(actionPayload.maintenanceAction.action, 'sync_owner');
+    assert.equal(actionPayload.maintenanceAction.trigger, 'owner_sync');
+    assert.equal(actionPayload.maintenanceAction.status, 'deferred');
+    assert.equal(actionPayload.maintenanceAction.subject.kind, 'owner');
+    assert.equal(actionPayload.maintenanceAction.subject.id, 'actor-owner');
+    assert.equal(actionPayload.maintenanceAction.reason, 'owner_profile_sync');
+    assert.match(actionPayload.maintenanceAction.error ?? '', /canonical owner sync failed/i);
+
+    const listResponse = await fetch(`${baseUrl}/api/core/memory-maintenance`);
+    assert.equal(listResponse.status, 200);
+    const listPayload = await listResponse.json();
+
+    assert.equal(listPayload.maintenance.latestByTrigger.ownerSync?.status, 'deferred');
+    assert.equal(
+      listPayload.maintenance.latestByTrigger.ownerSync?.reason,
+      'owner_profile_sync',
+    );
+    assert.deepEqual(
+      listPayload.maintenance.latestByTrigger.ownerSync?.subjectKeys,
+      ['owner:actor-owner'],
+    );
+  }, chatStore, { memoryService: failingMemoryService });
+});
+
 test('core write APIs persist shared project, work, approval, trace, artifact, and owner records', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

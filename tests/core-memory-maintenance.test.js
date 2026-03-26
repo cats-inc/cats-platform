@@ -5,7 +5,9 @@ import {
   appendCoreActivity,
   createDefaultCoreState,
 } from '../dist-server/core/model/index.js';
+import { executeCoreMemoryMaintenanceAction } from '../dist-server/core/memoryMaintenanceActions.js';
 import { buildCoreMemoryMaintenanceSummary } from '../dist-server/core/memoryMaintenance.js';
+import { MemoryCoreStore } from '../dist-server/core/store.js';
 
 test('buildCoreMemoryMaintenanceSummary normalizes memory maintenance activity history', () => {
   const now = new Date('2026-03-26T17:00:00.000Z');
@@ -116,4 +118,134 @@ test('buildCoreMemoryMaintenanceSummary normalizes memory maintenance activity h
   assert.deepEqual(maintenance.recent[0]?.subjectKeys, ['channel:channel-runtime']);
   assert.deepEqual(maintenance.recent[1]?.subjectKeys, ['cat:cat-companion']);
   assert.deepEqual(maintenance.recent[2]?.subjectKeys, ['owner:actor-owner']);
+});
+
+test('executeCoreMemoryMaintenanceAction records executed companion sync activity', async () => {
+  const coreStore = new MemoryCoreStore(createDefaultCoreState());
+  const memoryService = {
+    async listCanonicalRecords() {
+      return [];
+    },
+    async flushCompanionBox() {
+      return {
+        scope: 'cat',
+        subjectId: 'cat-companion',
+        reason: 'manual',
+        persistedCount: 2,
+        removedRecordIds: ['cats-memory-old-1'],
+        payload: {
+          version: 1,
+          subject: {
+            kind: 'cat',
+            id: 'cat-companion',
+          },
+          sourceScopeKeys: ['cat:cat-companion'],
+          persistedRecords: [
+            {
+              replacementGroup: 'cat:cat-companion:summary',
+            },
+          ],
+        },
+      };
+    },
+    async flushChannel() {
+      throw new Error('not used');
+    },
+    async flushOwnerProfile() {
+      throw new Error('not used');
+    },
+    async flushProject() {
+      throw new Error('not used');
+    },
+    async flushRelationship() {
+      throw new Error('not used');
+    },
+    async buildRetrievalContext() {
+      throw new Error('not used');
+    },
+    async buildCompanionRetrievalContext() {
+      throw new Error('not used');
+    },
+    async buildChannelRetrievalContext() {
+      throw new Error('not used');
+    },
+  };
+  const companionStore = {};
+
+  const result = await executeCoreMemoryMaintenanceAction({
+    action: 'sync_companion',
+    catId: 'cat-companion',
+    coreStore,
+    memoryService,
+    companionStore,
+    now: new Date('2026-03-26T18:30:00.000Z'),
+  });
+
+  assert.equal(result.status, 'executed');
+  assert.equal(result.summary?.persistedCount, 2);
+
+  const core = await coreStore.readCore();
+  const maintenance = buildCoreMemoryMaintenanceSummary(core);
+  assert.equal(maintenance.totals.executed, 1);
+  assert.equal(maintenance.latestByTrigger.companionSync?.status, 'executed');
+  assert.match(
+    maintenance.latestByTrigger.companionSync?.message ?? '',
+    /Synchronized Cats-owned canonical companion memory/i,
+  );
+});
+
+test('executeCoreMemoryMaintenanceAction records deferred owner sync activity', async () => {
+  const coreStore = new MemoryCoreStore(createDefaultCoreState());
+  const memoryService = {
+    async listCanonicalRecords() {
+      return [];
+    },
+    async flushCompanionBox() {
+      throw new Error('not used');
+    },
+    async flushChannel() {
+      throw new Error('not used');
+    },
+    async flushOwnerProfile() {
+      throw new Error('owner sync failed');
+    },
+    async flushProject() {
+      throw new Error('not used');
+    },
+    async flushRelationship() {
+      throw new Error('not used');
+    },
+    async buildRetrievalContext() {
+      throw new Error('not used');
+    },
+    async buildCompanionRetrievalContext() {
+      throw new Error('not used');
+    },
+    async buildChannelRetrievalContext() {
+      throw new Error('not used');
+    },
+  };
+
+  const result = await executeCoreMemoryMaintenanceAction({
+    action: 'sync_owner',
+    coreStore,
+    memoryService,
+    reason: 'owner_profile_sync',
+    now: new Date('2026-03-26T18:45:00.000Z'),
+  });
+
+  assert.equal(result.status, 'deferred');
+  assert.equal(result.summary, null);
+  assert.match(result.error ?? '', /owner sync failed/i);
+
+  const core = await coreStore.readCore();
+  const maintenance = buildCoreMemoryMaintenanceSummary(core);
+  assert.equal(maintenance.totals.deferred, 1);
+  assert.equal(maintenance.latestByTrigger.ownerSync?.status, 'deferred');
+  assert.equal(maintenance.latestByTrigger.ownerSync?.reason, 'owner_profile_sync');
+  assert.deepEqual(maintenance.latestByTrigger.ownerSync?.subjectKeys, ['owner:actor-owner']);
+  assert.match(
+    maintenance.latestByTrigger.ownerSync?.message ?? '',
+    /Cats-owned owner memory sync failed/i,
+  );
 });

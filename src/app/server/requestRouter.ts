@@ -226,6 +226,7 @@ export async function routeRequest(
       coreStore: dependencies.shared.coreStore,
       taskExecutionLocator: dependencies.chat.taskExecutionLocator,
       memoryService: dependencies.chat.memoryService,
+      companionStore: dependencies.chat.companionStore,
       runtimeClient: dependencies.shared.runtimeClient,
       now: dependencies.shared.now,
       resumePendingOrchestratorDispatch: dependencies.shared.resumePendingOrchestratorDispatch,

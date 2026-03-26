@@ -93,12 +93,20 @@ function buildMemoryMaintenanceMessage(
   }
 
   if (input.trigger === 'companion_sync') {
+    if (input.status === 'executed') {
+      const persistedCount = input.summary?.persistedCount ?? 0;
+      return `Synchronized Cats-owned canonical companion memory for cat ${input.catId ?? 'unknown'} with ${persistedCount} persisted record(s).`;
+    }
     const detail = input.error?.trim();
     return detail
       ? `Cats-owned canonical companion memory sync failed for cat ${input.catId ?? 'unknown'}: ${detail}`
       : `Cats-owned canonical companion memory sync failed for cat ${input.catId ?? 'unknown'}.`;
   }
 
+  if (input.status === 'executed') {
+    const persistedCount = input.summary?.persistedCount ?? 0;
+    return `Synchronized Cats-owned owner memory with ${persistedCount} persisted record(s).`;
+  }
   const detail = input.error?.trim();
   return detail
     ? `Cats-owned owner memory sync failed: ${detail}`

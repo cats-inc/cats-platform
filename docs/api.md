@@ -872,6 +872,7 @@ Semantics:
 
 ```text
 GET /api/core/memory-maintenance
+POST /api/core/memory-maintenance
 ```
 
 Returns a normalized summary of product-owned memory-maintenance activity:
@@ -921,6 +922,63 @@ Semantics:
 - `subjectKeys` prefers explicit flush-summary subjects and otherwise falls
   back to stable `cat:*`, `channel:*`, or owner scope keys so downstream
   recovery or operator tooling can group maintenance events consistently
+
+`POST /api/core/memory-maintenance` triggers a core-owned manual maintenance
+action without going through a product UI route:
+
+```json
+{
+  "action": "sync_companion",
+  "catId": "cat-123",
+  "reason": "manual"
+}
+```
+
+or
+
+```json
+{
+  "action": "sync_owner",
+  "reason": "owner_profile_sync"
+}
+```
+
+Response:
+
+```json
+{
+  "maintenanceAction": {
+    "action": "sync_companion",
+    "trigger": "companion_sync",
+    "status": "executed",
+    "subject": {
+      "kind": "cat",
+      "id": "cat-123"
+    },
+    "reason": "manual",
+    "flush": {
+      "scope": "cat",
+      "subjectId": "cat-123"
+    },
+    "summary": {
+      "persistedCount": 1
+    },
+    "error": null
+  }
+}
+```
+
+Semantics:
+
+- `sync_companion` requires `catId` and reuses the Cats-owned canonical
+  companion flush seam behind the core route
+- `sync_owner` reuses the Cats-owned owner-profile flush seam behind the same
+  core route
+- `status` is `executed` when canonical flush succeeds and `deferred` when the
+  maintenance request is captured but the canonical sync failed
+- both actions append normalized `memory_maintenance` activity into Cats Core,
+  so `GET /api/core/memory-maintenance` becomes the stable inspection surface
+  for the outcome
 
 ### List Core Work Items
 
