@@ -267,6 +267,82 @@ Current candidates:
 `Disturb` does not need to be a separate toggle. If the companion is sleeping
 and the user switches it to awake, that action is already the disturbance.
 
+## Task Surfaces in Cats Chat
+
+`Cats Chat` should not be fully task-blind. A bounded amount of
+cross-thread/cross-room orchestration is appropriate for Chat, especially when
+`Boss Cat` needs to spin up a small number of supporting threads or delegated
+subtasks.
+
+However, that does not mean Chat should inherit the full visual weight of a
+`Cats Work` task board.
+
+### Recommended three-layer task model
+
+#### 1. Thread-scoped task slice
+
+Every thread should have a stable `Tasks` entry in the transcript-pane header.
+
+That entry opens a transcript-scoped task slice for:
+
+- tasks created in this thread
+- tasks linked to this thread
+- thread-local blockers, approvals, and recent completions
+- linked cross-product tasks when this thread hands work off to Work or Code
+
+This should be the normal day-to-day task view inside Chat.
+
+#### 2. Chat-wide lightweight dashboard
+
+If Chat allows `Boss Cat` to open supporting threads or do bounded
+cross-thread work, Chat also needs a lightweight dashboard above the
+thread-scoped slice.
+
+This dashboard should answer:
+
+- which chat threads currently have active work
+- which chat tasks are blocked
+- which tasks are waiting for approval
+- which supporting threads were opened by `Boss Cat`
+- which task results are ready to be folded back into the main thread
+
+This is the minimal operator view needed to keep bounded Chat orchestration
+legible.
+
+#### 3. Suite-wide global task dashboard
+
+The suite should also have a higher-level task dashboard for:
+
+- all Chat tasks
+- all Work tasks
+- all Code tasks
+- cross-product filtering and operator-level inspection
+
+This is not a Chat-local surface. It is the suite-wide control plane.
+
+### Why Chat still needs its own dashboard
+
+Thread-scoped tasks alone are not enough once Chat allows bounded
+cross-thread orchestration. Without a Chat-wide view, the user loses sight of:
+
+- which supporting threads were opened
+- whether those threads are still running
+- whether any subtask is blocked or waiting
+- whether `Boss Cat` has spread activity across several rooms
+
+So the correct model is:
+
+- thread-local task slice for local context
+- Chat-wide lightweight dashboard for Chat-level orchestration awareness
+- suite-wide global dashboard for full multi-product oversight
+
+### Scope guard
+
+`Cats Chat` should allow bounded orchestration, not a full Work-style
+multi-team task board. If Chat opens too many hidden threads or parallel lanes
+without a corresponding Chat-wide dashboard and visibility rules, the product
+will feel opaque and untrustworthy.
+
 ## Recommended Default Behavior
 
 ### Solo/direct chat
@@ -281,6 +357,8 @@ and the user switches it to awake, that action is already the disturbance.
 - same spatial model as solo/direct chat
 - cat-led orchestration does not justify permanent operator clutter
 - blocking events may show indicator badges or notifications
+- thread-local tasks remain available, while broader Chat work should surface
+  through a lightweight Chat-wide dashboard rather than permanent canvas cards
 
 ### Artifact-focused session
 
@@ -305,6 +383,8 @@ and the user switches it to awake, that action is already the disturbance.
 6. In split artifact mode, make transcript-side drawers pane-scoped.
 7. Treat companion right-side space as a dashboard/workspace, not merely an
    artifact viewer.
+8. Give Chat both thread-scoped task slices and a lightweight Chat-wide
+   dashboard once bounded cross-thread orchestration is allowed.
 
 ---
 
