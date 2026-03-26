@@ -294,6 +294,11 @@ contracts.
       `latestReplayPhaseCounts` / `latestReplayResumeReasonCounts` so
       operator queues can facet replay lifecycle state without detouring
       through the dedicated recovery route,
+      while control-plane and operator-inbox payloads now also lift normalized
+      `planning` plus `runtimeBridge` views and support
+      `executionProduct` / `requestedStrategy` filters plus summary counts, so
+      bridge-aware queue automation can inspect cross-product handoff intent
+      without reopening task detail first,
       while recovery, control-plane, and operator-inbox list routes now also
       support `workflowUnresolvedTarget` plus
       `hasUnresolvedWorkflowTargets` and summarize

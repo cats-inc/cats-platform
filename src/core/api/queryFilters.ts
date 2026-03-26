@@ -39,6 +39,13 @@ import {
 import {
   WORKFLOW_CONTINUATION_REPLAY_SOURCES,
 } from '../../platform/orchestration/workflowContinuationReplay.js';
+import type { TaskExecutionProduct } from '../../shared/taskPlanning.js';
+
+const TASK_EXECUTION_PRODUCTS = [
+  'chat',
+  'work',
+  'code',
+] as const satisfies readonly TaskExecutionProduct[];
 
 function readQueryValues(
   searchParams: URLSearchParams,
@@ -128,6 +135,12 @@ export function readTaskAttentionListOptions(
   return {
     conversationIds: readConversationIds(searchParams),
     taskStatuses: readEnumQueryValues(searchParams, 'taskStatus', CORE_TASK_VIEW_STATUSES),
+    executionProducts: readEnumQueryValues(
+      searchParams,
+      'executionProduct',
+      TASK_EXECUTION_PRODUCTS,
+    ),
+    requestedStrategies: readQueryValues(searchParams, 'requestedStrategy'),
     severities: readEnumQueryValues(searchParams, 'severity', CORE_TASK_CONTROL_PLANE_SEVERITIES),
     reasons: readEnumQueryValues(searchParams, 'reason', CORE_TASK_CONTROL_PLANE_REASONS),
     nextActions: readEnumQueryValues(

@@ -14,6 +14,8 @@ import {
 import {
   buildCoreTaskInspectionView,
   type CoreTaskInspectionFamilyView,
+  type CoreTaskInspectionPlanningView,
+  type CoreTaskInspectionRuntimeBridgeView,
 } from './taskInspection.js';
 import {
   buildTaskApprovalActionEnvelope,
@@ -57,6 +59,7 @@ import type {
   CoreTraceRecord,
   CoreWorkflowSummary,
 } from './types.js';
+import type { TaskExecutionProduct } from '../shared/taskPlanning.js';
 
 export type CoreTaskControlPlaneSeverity =
   | 'muted'
@@ -224,6 +227,8 @@ export interface CoreTaskControlPlaneView {
   workflowSummary: CoreWorkflowSummary | null;
   recovery: CoreTaskRecoveryView;
   family: CoreTaskInspectionFamilyView;
+  planning: CoreTaskInspectionPlanningView;
+  runtimeBridge: CoreTaskInspectionRuntimeBridgeView;
   latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
   workflowContinuation: CoreTaskControlPlaneWorkflowContinuationView | null;
   runtimeDeliveryIntent: CoreTaskControlPlaneRuntimeDeliveryIntentView | null;
@@ -234,6 +239,8 @@ export interface CoreTaskControlPlaneView {
 }
 
 export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery {
+  executionProducts?: TaskExecutionProduct[];
+  requestedStrategies?: string[];
   severities?: CoreTaskControlPlaneSeverity[];
   reasons?: CoreTaskControlPlaneReason[];
   needsOperatorAttention?: boolean | null;
@@ -267,6 +274,8 @@ export interface CoreTaskControlPlaneListSummary {
   conversationCount: number;
   needsOperatorAttentionCount: number;
   taskStatusCounts: Record<CoreTaskRecord['status'], number>;
+  executionProductCounts: Record<TaskExecutionProduct, number>;
+  requestedStrategyCounts: Record<string, number>;
   attentionSeverityCounts: Record<CoreTaskControlPlaneSeverity, number>;
   reasonCounts: Record<CoreTaskControlPlaneReason, number>;
   nextActionCounts: Record<CoreTaskControlPlaneNextAction['kind'], number>;
@@ -576,6 +585,21 @@ function readEffectiveWorkflowShape(
     ?? readWorkflowShape(view.runtimeDeliveryIntent?.workflowShape)
     ?? readWorkflowShape(view.workflowSummary?.shape)
     ?? null;
+}
+
+function readExecutionProduct(
+  view: Pick<CoreTaskControlPlaneView, 'runtimeBridge'>,
+): TaskExecutionProduct | null {
+  return view.runtimeBridge.product ?? null;
+}
+
+function readRequestedStrategy(
+  view: Pick<CoreTaskControlPlaneView, 'runtimeBridge'>,
+): string | null {
+  const requestedStrategy = view.runtimeBridge.request.requestedStrategy;
+  return typeof requestedStrategy === 'string' && requestedStrategy.trim().length > 0
+    ? requestedStrategy
+    : null;
 }
 
 function readEffectiveWorkflowReviewRequired(
@@ -915,6 +939,22 @@ function matchesControlPlaneListOptions(
   }
 
   if (
+    options.executionProducts?.length
+    && (!readExecutionProduct(view)
+      || !options.executionProducts.includes(readExecutionProduct(view)!))
+  ) {
+    return false;
+  }
+
+  if (
+    options.requestedStrategies?.length
+    && (!readRequestedStrategy(view)
+      || !options.requestedStrategies.includes(readRequestedStrategy(view)!))
+  ) {
+    return false;
+  }
+
+  if (
     options.severities?.length
     && !options.severities.includes(view.attention.severity)
   ) {
@@ -1121,6 +1161,42 @@ function buildAttentionSeverityCounts(
 
   for (const view of views) {
     counts[view.attention.severity] += 1;
+  }
+
+  return counts;
+}
+
+function buildExecutionProductCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<TaskExecutionProduct, number> {
+  const counts: Record<TaskExecutionProduct, number> = {
+    chat: 0,
+    work: 0,
+    code: 0,
+  };
+
+  for (const view of views) {
+    const executionProduct = readExecutionProduct(view);
+    if (!executionProduct) {
+      continue;
+    }
+    counts[executionProduct] += 1;
+  }
+
+  return counts;
+}
+
+function buildRequestedStrategyCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+
+  for (const view of views) {
+    const requestedStrategy = readRequestedStrategy(view);
+    if (!requestedStrategy) {
+      continue;
+    }
+    counts[requestedStrategy] = (counts[requestedStrategy] ?? 0) + 1;
   }
 
   return counts;
@@ -1382,6 +1458,8 @@ export function summarizeCoreTaskControlPlaneViews(input: {
     needsOperatorAttentionCount: input.views.filter((view) => view.attention.needsOperatorAttention)
       .length,
     taskStatusCounts: buildCoreTaskStatusCounts(input.views),
+    executionProductCounts: buildExecutionProductCounts(input.views),
+    requestedStrategyCounts: buildRequestedStrategyCounts(input.views),
     attentionSeverityCounts: buildAttentionSeverityCounts(input.views),
     reasonCounts: buildReasonCounts(input.views),
     nextActionCounts: buildNextActionCounts(input.views),
@@ -1476,6 +1554,8 @@ export function buildCoreTaskControlPlaneView(
     workflowSummary: inspection.workflowSummary,
     recovery: inspection.recovery,
     family: inspection.family,
+    planning: inspection.planning,
+    runtimeBridge: inspection.runtimeBridge,
     latestWorkflowRecommendation,
     workflowContinuation,
     runtimeDeliveryIntent,

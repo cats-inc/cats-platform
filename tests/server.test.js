@@ -2135,63 +2135,69 @@ test('core control-plane routes expose grouped operator actions and workflow att
           title: 'Inspect control-plane route',
           status: 'pending_approval',
           conversationId: 'conversation-channel-control-plane-route',
-          metadata: writeWorkflowContinuationReplayMetadata(
-            writeOrchestratorDispatchReplayMetadata(
-              {
-                effectiveDeliveryPolicy: {
-                  mode: 'commit_only',
-                  gates: ['owner_approval_required'],
-                  source: 'task_override',
-                  rationale: 'Owner-gated retry.',
+          metadata: writeTaskPlanningMetadata(
+            writeWorkflowContinuationReplayMetadata(
+              writeOrchestratorDispatchReplayMetadata(
+                {
+                  effectiveDeliveryPolicy: {
+                    mode: 'commit_only',
+                    gates: ['owner_approval_required'],
+                    source: 'task_override',
+                    rationale: 'Owner-gated retry.',
+                  },
+                  channelId: 'channel-control-plane-route',
+                  transport: 'web',
+                  roomRoutingMode: 'boss_chat',
                 },
+                buildOrchestratorDispatchReplayRequest({
+                  channelId: 'channel-control-plane-route',
+                  body: 'Retry the blocked rollout after approval.',
+                  recordedAt: '2026-03-26T14:20:00.000Z',
+                }),
+                {
+                  replayState: 'failed',
+                  replayTrigger: 'retry',
+                  replayAttemptAt: '2026-03-26T14:21:00.000Z',
+                  replayError: 'rate limited',
+                  sourceMessageId: 'message-control-plane-route',
+                },
+              ),
+              buildWorkflowContinuationReplayRequest({
                 channelId: 'channel-control-plane-route',
-                transport: 'web',
-                roomRoutingMode: 'boss_chat',
-              },
-              buildOrchestratorDispatchReplayRequest({
-                channelId: 'channel-control-plane-route',
-                body: 'Retry the blocked rollout after approval.',
-                recordedAt: '2026-03-26T14:20:00.000Z',
+                checkpointId: 'checkpoint-control-plane-route',
+                sourceMessageId: 'message-control-plane-route',
+                sourceParticipant: {
+                  participantKind: 'orchestrator',
+                  participantId: 'actor-orchestrator-global',
+                  participantName: 'Orchestrator',
+                },
+                targets: [
+                  {
+                    participantKind: 'cat',
+                    participantId: 'cat-reviewer',
+                    participantName: 'Reviewer',
+                  },
+                ],
+                trigger: 'continuation_mention',
+                branchStrategy: 'transplant_context',
+                workflowStageId: 'continuation_handoff',
+                workflowShape: 'converge',
+                reviewRequired: true,
+                continuationSource: 'workflow_recommendation',
+                unresolvedTargets: ['Reviewer'],
+                blockedReason: 'anti_ping_pong',
+                recordedAt: '2026-03-26T14:22:00.000Z',
               }),
               {
                 replayState: 'failed',
                 replayTrigger: 'retry',
-                replayAttemptAt: '2026-03-26T14:21:00.000Z',
-                replayError: 'rate limited',
-                sourceMessageId: 'message-control-plane-route',
+                replayAttemptAt: '2026-03-26T14:23:00.000Z',
+                replayError: 'reviewer offline',
               },
             ),
-            buildWorkflowContinuationReplayRequest({
-              channelId: 'channel-control-plane-route',
-              checkpointId: 'checkpoint-control-plane-route',
-              sourceMessageId: 'message-control-plane-route',
-              sourceParticipant: {
-                participantKind: 'orchestrator',
-                participantId: 'actor-orchestrator-global',
-                participantName: 'Orchestrator',
-              },
-              targets: [
-                {
-                  participantKind: 'cat',
-                  participantId: 'cat-reviewer',
-                  participantName: 'Reviewer',
-                },
-              ],
-              trigger: 'continuation_mention',
-              branchStrategy: 'transplant_context',
-              workflowStageId: 'continuation_handoff',
-              workflowShape: 'converge',
-              reviewRequired: true,
-              continuationSource: 'workflow_recommendation',
-              unresolvedTargets: ['Reviewer'],
-              blockedReason: 'anti_ping_pong',
-              recordedAt: '2026-03-26T14:22:00.000Z',
-            }),
             {
-              replayState: 'failed',
-              replayTrigger: 'retry',
-              replayAttemptAt: '2026-03-26T14:23:00.000Z',
-              replayError: 'reviewer offline',
+              productHint: 'code',
+              strategyHint: 'reflexion',
             },
           ),
         },
@@ -2310,6 +2316,8 @@ test('core control-plane routes expose grouped operator actions and workflow att
       'retry',
       'acknowledge',
     ]);
+    assert.equal(listPayload.tasks[0].planning.effectiveProduct, 'code');
+    assert.equal(listPayload.tasks[0].runtimeBridge.request.requestedStrategy, 'reflexion');
 
     const detailResponse = await fetch(
       `${baseUrl}/api/core/tasks/task-control-plane-route/control-plane`,
@@ -2317,6 +2325,9 @@ test('core control-plane routes expose grouped operator actions and workflow att
     assert.equal(detailResponse.status, 200);
     const detailPayload = await detailResponse.json();
     assert.equal(detailPayload.controlPlane.taskId, 'task-control-plane-route');
+    assert.equal(detailPayload.controlPlane.planning.effectiveProduct, 'code');
+    assert.equal(detailPayload.controlPlane.runtimeBridge.product, 'code');
+    assert.equal(detailPayload.controlPlane.runtimeBridge.request.requestedStrategy, 'reflexion');
     assert.equal(detailPayload.controlPlane.latestTimelineItem.recordId, 'checkpoint-control-plane-route');
     assert.equal(detailPayload.controlPlane.latestTimelineItem.category, 'workflow');
     assert.equal(
@@ -2747,45 +2758,51 @@ test('core operator inspection routes support additive filters and summaries', a
           status: 'blocked',
           parentTaskId: 'task-ops-root',
           conversationId: 'conversation-channel-ops',
-          metadata: writeWorkflowContinuationReplayMetadata(
-            {
-              effectiveDeliveryPolicy: {
-                mode: 'commit_only',
-                gates: ['owner_approval_required'],
-                source: 'task_override',
-                rationale: 'Workflow retry with owner gate.',
-              },
-              roomRoutingMode: 'boss_chat',
-            },
-            buildWorkflowContinuationReplayRequest({
-              channelId: 'channel-ops',
-              checkpointId: 'checkpoint-ops',
-              sourceMessageId: 'message-ops',
-              continuationSource: 'workflow_recommendation',
-              sourceParticipant: {
-                participantKind: 'cat',
-                participantId: 'cat-inline',
-                participantName: 'Inline-Agent',
-              },
-              targets: [
-                {
-                  participantKind: 'cat',
-                  participantId: 'cat-reviewer',
-                  participantName: 'Reviewer',
+          metadata: writeTaskPlanningMetadata(
+            writeWorkflowContinuationReplayMetadata(
+              {
+                effectiveDeliveryPolicy: {
+                  mode: 'commit_only',
+                  gates: ['owner_approval_required'],
+                  source: 'task_override',
+                  rationale: 'Workflow retry with owner gate.',
                 },
-              ],
-              workflowStageId: 'continuation_handoff',
-              workflowShape: 'converge',
-              reviewRequired: true,
-              blockedReason: 'max_dispatches',
-              unresolvedTargets: ['Reviewer'],
-              recordedAt: '2026-03-26T18:12:00.000Z',
-            }),
+                roomRoutingMode: 'boss_chat',
+              },
+              buildWorkflowContinuationReplayRequest({
+                channelId: 'channel-ops',
+                checkpointId: 'checkpoint-ops',
+                sourceMessageId: 'message-ops',
+                continuationSource: 'workflow_recommendation',
+                sourceParticipant: {
+                  participantKind: 'cat',
+                  participantId: 'cat-inline',
+                  participantName: 'Inline-Agent',
+                },
+                targets: [
+                  {
+                    participantKind: 'cat',
+                    participantId: 'cat-reviewer',
+                    participantName: 'Reviewer',
+                  },
+                ],
+                workflowStageId: 'continuation_handoff',
+                workflowShape: 'converge',
+                reviewRequired: true,
+                blockedReason: 'max_dispatches',
+                unresolvedTargets: ['Reviewer'],
+                recordedAt: '2026-03-26T18:12:00.000Z',
+              }),
+              {
+                replayState: 'failed',
+                replayTrigger: 'retry',
+                replayAttemptAt: '2026-03-26T18:13:00.000Z',
+                replayError: 'checkpoint guard',
+              },
+            ),
             {
-              replayState: 'failed',
-              replayTrigger: 'retry',
-              replayAttemptAt: '2026-03-26T18:13:00.000Z',
-              replayError: 'checkpoint guard',
+              productHint: 'code',
+              strategyHint: 'reflexion',
             },
           ),
         },
@@ -2836,13 +2853,15 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(replayActivityResponse.status, 201);
 
     const inboxResponse = await fetch(
-      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&executionProduct=code&requestedStrategy=reflexion&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(inboxResponse.status, 200);
     const inboxPayload = await inboxResponse.json();
     assert.equal(inboxPayload.summary.totalAvailable, 2);
     assert.equal(inboxPayload.summary.matching, 1);
     assert.equal(inboxPayload.summary.returned, 1);
+    assert.equal(inboxPayload.summary.executionProductCounts.code, 1);
+    assert.equal(inboxPayload.summary.requestedStrategyCounts.reflexion, 1);
     assert.equal(inboxPayload.summary.nextActionCounts.retry, 1);
     assert.equal(inboxPayload.summary.attentionSeverityCounts.attention, 1);
     assert.equal(inboxPayload.summary.deliveryModeCounts.commit_only, 1);
@@ -2865,16 +2884,20 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.tasks.length, 1);
     assert.equal(inboxPayload.tasks[0].family.rootTaskId, 'task-ops-root');
     assert.equal(inboxPayload.tasks[0].family.parent.taskId, 'task-ops-root');
+    assert.equal(inboxPayload.tasks[0].planning.effectiveProduct, 'code');
+    assert.equal(inboxPayload.tasks[0].runtimeBridge.request.requestedStrategy, 'reflexion');
     assert.equal(inboxPayload.tasks[0].workflowContinuation.convergeTargetId, 'cat-reviewer');
 
     const controlPlaneResponse = await fetch(
-      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&executionProduct=code&requestedStrategy=reflexion&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(controlPlaneResponse.status, 200);
     const controlPlanePayload = await controlPlaneResponse.json();
     assert.equal(controlPlanePayload.summary.totalAvailable, 3);
     assert.equal(controlPlanePayload.summary.matching, 1);
     assert.equal(controlPlanePayload.summary.returned, 1);
+    assert.equal(controlPlanePayload.summary.executionProductCounts.code, 1);
+    assert.equal(controlPlanePayload.summary.requestedStrategyCounts.reflexion, 1);
     assert.equal(controlPlanePayload.summary.reasonCounts.retry_available, 1);
     assert.equal(controlPlanePayload.summary.taskStatusCounts.blocked, 1);
     assert.equal(controlPlanePayload.summary.deliveryModeCounts.commit_only, 1);
@@ -2907,6 +2930,8 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.summary.withChildrenCount, 0);
     assert.equal(controlPlanePayload.summary.withActiveChildrenCount, 0);
     assert.equal(controlPlanePayload.tasks.length, 1);
+    assert.equal(controlPlanePayload.tasks[0].planning.effectiveProduct, 'code');
+    assert.equal(controlPlanePayload.tasks[0].runtimeBridge.request.requestedStrategy, 'reflexion');
     assert.equal(controlPlanePayload.tasks[0].workflowContinuation.convergeTargetId, 'cat-reviewer');
 
     const recoveryResponse = await fetch(

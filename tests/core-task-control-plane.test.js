@@ -22,6 +22,7 @@ import {
   buildWorkflowContinuationReplayRequest,
   writeWorkflowContinuationReplayMetadata,
 } from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
+import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
 
 test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow recommendation signals', () => {
   const now = new Date('2026-03-26T16:00:00.000Z');
@@ -34,63 +35,70 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
       title: 'Control-plane task',
       status: 'pending_approval',
       conversationId: 'conversation-channel-control-plane',
-      metadata: writeWorkflowContinuationReplayMetadata(
-        writeOrchestratorDispatchReplayMetadata(
-          {
-            effectiveDeliveryPolicy: {
-              mode: 'commit_only',
-              gates: ['owner_approval_required'],
-              source: 'task_override',
-              rationale: 'Owner-gated retry.',
+      metadata: writeTaskPlanningMetadata(
+        writeWorkflowContinuationReplayMetadata(
+          writeOrchestratorDispatchReplayMetadata(
+            {
+              effectiveDeliveryPolicy: {
+                mode: 'commit_only',
+                gates: ['owner_approval_required'],
+                source: 'task_override',
+                rationale: 'Owner-gated retry.',
+              },
+              channelId: 'channel-control-plane',
+              transport: 'web',
+              roomRoutingMode: 'boss_chat',
             },
+            buildOrchestratorDispatchReplayRequest({
+              channelId: 'channel-control-plane',
+              body: 'Retry the blocked rollout after approval.',
+              recordedAt: '2026-03-26T15:50:00.000Z',
+            }),
+            {
+              replayState: 'failed',
+              replayTrigger: 'retry',
+              replayAttemptAt: '2026-03-26T15:55:00.000Z',
+              replayError: 'rate limited',
+              sourceMessageId: 'message-control-plane',
+            },
+          ),
+          buildWorkflowContinuationReplayRequest({
             channelId: 'channel-control-plane',
-            transport: 'web',
-            roomRoutingMode: 'boss_chat',
-          },
-          buildOrchestratorDispatchReplayRequest({
-            channelId: 'channel-control-plane',
-            body: 'Retry the blocked rollout after approval.',
-            recordedAt: '2026-03-26T15:50:00.000Z',
+            checkpointId: 'checkpoint-control-plane',
+            sourceMessageId: 'message-control-plane',
+            sourceParticipant: {
+              participantKind: 'orchestrator',
+              participantId: 'actor-orchestrator-global',
+              participantName: 'Orchestrator',
+            },
+            targets: [
+              {
+                participantKind: 'cat',
+                participantId: 'cat-reviewer',
+                participantName: 'Reviewer',
+              },
+            ],
+            trigger: 'continuation_mention',
+            branchStrategy: 'transplant_context',
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'converge',
+            reviewRequired: true,
+            continuationSource: 'workflow_recommendation',
+            unresolvedTargets: ['Reviewer'],
+            blockedReason: 'anti_ping_pong',
+            recordedAt: '2026-03-26T15:53:00.000Z',
           }),
           {
             replayState: 'failed',
             replayTrigger: 'retry',
-            replayAttemptAt: '2026-03-26T15:55:00.000Z',
-            replayError: 'rate limited',
-            sourceMessageId: 'message-control-plane',
+            replayAttemptAt: '2026-03-26T15:56:00.000Z',
+            replayError: 'reviewer offline',
           },
         ),
-        buildWorkflowContinuationReplayRequest({
-          channelId: 'channel-control-plane',
-          checkpointId: 'checkpoint-control-plane',
-          sourceMessageId: 'message-control-plane',
-          sourceParticipant: {
-            participantKind: 'orchestrator',
-            participantId: 'actor-orchestrator-global',
-            participantName: 'Orchestrator',
-          },
-          targets: [
-            {
-              participantKind: 'cat',
-              participantId: 'cat-reviewer',
-              participantName: 'Reviewer',
-            },
-          ],
-          trigger: 'continuation_mention',
-          branchStrategy: 'transplant_context',
-          workflowStageId: 'continuation_handoff',
-          workflowShape: 'converge',
-          reviewRequired: true,
-          continuationSource: 'workflow_recommendation',
-          unresolvedTargets: ['Reviewer'],
-          blockedReason: 'anti_ping_pong',
-          recordedAt: '2026-03-26T15:53:00.000Z',
-        }),
         {
-          replayState: 'failed',
-          replayTrigger: 'retry',
-          replayAttemptAt: '2026-03-26T15:56:00.000Z',
-          replayError: 'reviewer offline',
+          productHint: 'code',
+          strategyHint: 'tree_of_thoughts',
+          acceptanceCriteria: 'Ship deterministic control-plane queueing.',
         },
       ),
       createdAt: '2026-03-26T15:45:00.000Z',
@@ -223,6 +231,10 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
   assert.equal(view.workflowContinuation?.replayTrigger, 'retry');
   assert.equal(view.workflowContinuation?.replayError, 'reviewer offline');
   assert.equal(view.workflowContinuation?.retryAvailable, true);
+  assert.equal(view.planning.effectiveProduct, 'code');
+  assert.equal(view.planning.effectiveStrategy, 'tree_of_thoughts');
+  assert.equal(view.runtimeBridge.product, 'code');
+  assert.equal(view.runtimeBridge.request.requestedStrategy, 'tree_of_thoughts');
   assert.equal(view.runtimeDeliveryIntent?.mode, 'commit_only');
   assert.equal(view.runtimeDeliveryIntent?.source, 'task_override');
   assert.equal(view.runtimeDeliveryIntent?.rationale, 'Owner-gated retry.');
@@ -259,55 +271,60 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
       title: 'Matching task',
       status: 'blocked',
       conversationId: 'conversation-channel-control-plane',
-      metadata: writeWorkflowContinuationReplayMetadata(
-        writeOrchestratorDispatchReplayMetadata(
-          {
-            effectiveDeliveryPolicy: {
-              mode: 'commit_only',
-              gates: ['owner_approval_required'],
-              source: 'task_override',
-              rationale: 'Retry blocked rollout with owner approval.',
-            },
-            channelId: 'channel-control-plane',
-            transport: 'web',
-            roomRoutingMode: 'boss_chat',
-          },
-          buildOrchestratorDispatchReplayRequest({
-            channelId: 'channel-control-plane',
-            body: 'Retry the blocked rollout after approval.',
-            recordedAt: '2026-03-26T16:10:00.000Z',
-          }),
-          {
-            replayState: 'failed',
-            replayTrigger: 'retry',
-            replayAttemptAt: '2026-03-26T16:11:00.000Z',
-            replayError: 'rate limited',
-          },
-        ),
-        buildWorkflowContinuationReplayRequest({
-          channelId: 'channel-control-plane',
-          checkpointId: 'checkpoint-control-plane-match',
-          sourceMessageId: 'message-control-plane-match',
-          continuationSource: 'workflow_recommendation',
-          sourceParticipant: {
-            participantKind: 'cat',
-            participantId: 'cat-inline',
-            participantName: 'Inline-Agent',
-          },
-          targets: [
+      metadata: writeTaskPlanningMetadata(
+        writeWorkflowContinuationReplayMetadata(
+          writeOrchestratorDispatchReplayMetadata(
             {
-              participantKind: 'cat',
-              participantId: 'cat-reviewer',
-              participantName: 'Reviewer',
+              effectiveDeliveryPolicy: {
+                mode: 'commit_only',
+                gates: ['owner_approval_required'],
+                source: 'task_override',
+                rationale: 'Retry blocked rollout with owner approval.',
+              },
+              channelId: 'channel-control-plane',
+              transport: 'web',
+              roomRoutingMode: 'boss_chat',
             },
-          ],
-          workflowStageId: 'continuation_handoff',
-          workflowShape: 'converge',
-          reviewRequired: true,
-          blockedReason: 'max_dispatches',
-          unresolvedTargets: ['Reviewer'],
-          recordedAt: '2026-03-26T16:09:00.000Z',
-        }),
+            buildOrchestratorDispatchReplayRequest({
+              channelId: 'channel-control-plane',
+              body: 'Retry the blocked rollout after approval.',
+              recordedAt: '2026-03-26T16:10:00.000Z',
+            }),
+            {
+              replayState: 'failed',
+              replayTrigger: 'retry',
+              replayAttemptAt: '2026-03-26T16:11:00.000Z',
+              replayError: 'rate limited',
+            },
+          ),
+          buildWorkflowContinuationReplayRequest({
+            channelId: 'channel-control-plane',
+            checkpointId: 'checkpoint-control-plane-match',
+            sourceMessageId: 'message-control-plane-match',
+            continuationSource: 'workflow_recommendation',
+            sourceParticipant: {
+              participantKind: 'cat',
+              participantId: 'cat-inline',
+              participantName: 'Inline-Agent',
+            },
+            targets: [
+              {
+                participantKind: 'cat',
+                participantId: 'cat-reviewer',
+                participantName: 'Reviewer',
+              },
+            ],
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'converge',
+            reviewRequired: true,
+            blockedReason: 'max_dispatches',
+            unresolvedTargets: ['Reviewer'],
+            recordedAt: '2026-03-26T16:09:00.000Z',
+          }),
+        ),
+        {
+          productHint: 'work',
+        },
       ),
       createdAt: '2026-03-26T16:00:00.000Z',
     },
@@ -371,6 +388,8 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   ).core;
 
   const result = queryCoreTaskControlPlaneViews(core, {
+    executionProducts: ['work'],
+    requestedStrategies: ['pdca'],
     severities: ['attention'],
     nextActions: ['retry'],
     taskStatuses: ['blocked'],
@@ -398,6 +417,8 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.totalAvailable, 2);
   assert.equal(result.summary.matching, 1);
   assert.equal(result.summary.returned, 1);
+  assert.equal(result.summary.executionProductCounts.work, 1);
+  assert.equal(result.summary.requestedStrategyCounts.pdca, 1);
   assert.equal(result.summary.attentionSeverityCounts.attention, 1);
   assert.equal(result.summary.taskStatusCounts.blocked, 1);
   assert.equal(result.summary.reasonCounts.retry_available, 1);

@@ -503,6 +503,11 @@ Known follow-ups:
 - shared task/runtime execution-request helpers now normalize trim/drop-empty
   semantics once and feed lifecycle persistence plus runtime-client outbound
   payloads through the same reusable bridge path
+- control-plane and operator-inbox read models now also lift normalized
+  `planning` plus `runtimeBridge` views from task inspection and support
+  `executionProduct` / `requestedStrategy` filters plus summary counts, so
+  queue automation can facet cross-product handoff and runtime-bridge intent
+  without reopening task detail or re-reading raw metadata
 - routed wake paths now precompute one channel-task execution context and
   reuse it across runtime session creation plus auto-checkout, reducing
   duplicate `Cats Core` reads inside the same task-aware room dispatch
@@ -522,4 +527,4 @@ Known follow-ups:
 
 ---
 
-*Last updated: 2026-03-26*
+*Last updated: 2026-03-27*

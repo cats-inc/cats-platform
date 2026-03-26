@@ -15,7 +15,11 @@ import {
   type CoreTaskControlPlaneWorkflowContinuationView,
   type CoreTaskControlPlaneWorkflowRecommendationView,
 } from './taskControlPlane.js';
-import type { CoreTaskInspectionFamilyView } from './taskInspection.js';
+import type {
+  CoreTaskInspectionFamilyView,
+  CoreTaskInspectionPlanningView,
+  CoreTaskInspectionRuntimeBridgeView,
+} from './taskInspection.js';
 import type {
   CatsCoreState,
   CoreDeliveryMode,
@@ -59,6 +63,8 @@ export interface CoreOperatorInboxItem {
   latestRunId: string | null;
   latestCheckpointId: string | null;
   latestOutcomeId: string | null;
+  planning: CoreTaskInspectionPlanningView;
+  runtimeBridge: CoreTaskInspectionRuntimeBridgeView;
   workflowSummary: CoreWorkflowSummary | null;
   latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
   workflowContinuation: CoreTaskControlPlaneWorkflowContinuationView | null;
@@ -77,6 +83,8 @@ export interface CoreOperatorInboxSummary {
   conversationCount: number;
   needsOperatorAttentionCount: number;
   taskStatusCounts: Record<CoreTaskRecord['status'], number>;
+  executionProductCounts: Record<'chat' | 'work' | 'code', number>;
+  requestedStrategyCounts: Record<string, number>;
   attentionSeverityCounts: Record<CoreTaskControlPlaneAttention['severity'], number>;
   reasonCounts: Record<NonNullable<CoreTaskControlPlaneAttention['reasons'][number]>, number>;
   nextActionCounts: Record<CoreTaskControlPlaneNextAction['kind'], number>;
@@ -151,6 +159,21 @@ function readEffectiveWorkflowContinuationSource(
   return item.workflowContinuation?.continuationSource === 'explicit_mentions'
     || item.workflowContinuation?.continuationSource === 'workflow_recommendation'
     ? item.workflowContinuation.continuationSource
+    : null;
+}
+
+function readExecutionProduct(
+  item: Pick<CoreOperatorInboxItem, 'runtimeBridge'>,
+): 'chat' | 'work' | 'code' | null {
+  return item.runtimeBridge.product ?? null;
+}
+
+function readRequestedStrategy(
+  item: Pick<CoreOperatorInboxItem, 'runtimeBridge'>,
+): string | null {
+  const requestedStrategy = item.runtimeBridge.request.requestedStrategy;
+  return typeof requestedStrategy === 'string' && requestedStrategy.trim().length > 0
+    ? requestedStrategy
     : null;
 }
 
@@ -237,6 +260,22 @@ function matchesOperatorInboxQuery(
   query: CoreOperatorInboxQuery,
 ): boolean {
   if (!matchesCoreTaskViewCommonQuery(item, query)) {
+    return false;
+  }
+
+  if (
+    query.executionProducts?.length
+    && (!readExecutionProduct(item)
+      || !query.executionProducts.includes(readExecutionProduct(item)!))
+  ) {
+    return false;
+  }
+
+  if (
+    query.requestedStrategies?.length
+    && (!readRequestedStrategy(item)
+      || !query.requestedStrategies.includes(readRequestedStrategy(item)!))
+  ) {
     return false;
   }
 
@@ -447,6 +486,42 @@ function buildAttentionSeverityCounts(
 
   for (const item of items) {
     counts[item.attention.severity] += 1;
+  }
+
+  return counts;
+}
+
+function buildExecutionProductCounts(
+  items: CoreOperatorInboxItem[],
+): Record<'chat' | 'work' | 'code', number> {
+  const counts = {
+    chat: 0,
+    work: 0,
+    code: 0,
+  };
+
+  for (const item of items) {
+    const executionProduct = readExecutionProduct(item);
+    if (!executionProduct) {
+      continue;
+    }
+    counts[executionProduct] += 1;
+  }
+
+  return counts;
+}
+
+function buildRequestedStrategyCounts(
+  items: CoreOperatorInboxItem[],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+
+  for (const item of items) {
+    const requestedStrategy = readRequestedStrategy(item);
+    if (!requestedStrategy) {
+      continue;
+    }
+    counts[requestedStrategy] = (counts[requestedStrategy] ?? 0) + 1;
   }
 
   return counts;
@@ -709,6 +784,8 @@ export function summarizeCoreOperatorInboxItems(input: {
     needsOperatorAttentionCount: input.items.filter((item) => item.attention.needsOperatorAttention)
       .length,
     taskStatusCounts: buildCoreTaskStatusCounts(input.items),
+    executionProductCounts: buildExecutionProductCounts(input.items),
+    requestedStrategyCounts: buildRequestedStrategyCounts(input.items),
     attentionSeverityCounts: buildAttentionSeverityCounts(input.items),
     reasonCounts: buildReasonCounts(input.items),
     nextActionCounts: buildNextActionCounts(input.items),
@@ -759,6 +836,8 @@ export function listCoreOperatorInboxItems(
       latestRunId: controlPlane.latestRunId,
       latestCheckpointId: controlPlane.latestCheckpointId,
       latestOutcomeId: controlPlane.latestOutcomeId,
+      planning: controlPlane.planning,
+      runtimeBridge: controlPlane.runtimeBridge,
       workflowSummary: controlPlane.workflowSummary,
       latestWorkflowRecommendation: controlPlane.latestWorkflowRecommendation,
       workflowContinuation: controlPlane.workflowContinuation,

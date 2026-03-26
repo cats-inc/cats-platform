@@ -1549,6 +1549,16 @@ control-plane view for one task:
     ],
     "recovery": {
       "canRetry": true
+    },
+    "planning": {
+      "effectiveProduct": "code",
+      "effectiveStrategy": "reflexion"
+    },
+    "runtimeBridge": {
+      "product": "code",
+      "request": {
+        "requestedStrategy": "reflexion"
+      }
     }
   }
 }
@@ -1569,6 +1579,10 @@ Semantics:
   delivery manifest into one task-scoped view so callers do not have to join
   `governanceSummary.delivery` with `governanceSummary.runtimeDeliveryManifest`
   themselves,
+- `planning` and `runtimeBridge` lift the same normalized task-planning and
+  task-to-runtime bridge views exposed by `GET /api/core/tasks/{taskId}`, so
+  control-plane consumers can inspect the effective product/strategy handoff
+  without reopening raw task metadata or issuing a second task-detail read,
 - `latestTimelineItem` lifts the newest normalized timeline row into the same
   task-scoped control-plane payload, so attention/recovery consumers do not
   have to separately fetch `/api/core/tasks/{taskId}/timeline` just to explain
@@ -1577,6 +1591,8 @@ Semantics:
 - `GET /api/core/control-plane/tasks` now also supports additive list filters:
   - `conversationId`
   - `taskStatus`
+  - `executionProduct`
+  - `requestedStrategy`
   - `severity`
   - `reason`
   - `needsOperatorAttention`
@@ -1603,8 +1619,8 @@ Semantics:
   - `hasActiveChildren`
   - `limit`
 - repeated and comma-separated values are both accepted for enum filters such
-  as `taskStatus`, `severity`, `reason`, `nextAction`, `deliveryMode`, and
-  `deliveryAction`, plus `workflowShape`,
+  as `taskStatus`, `executionProduct`, `severity`, `reason`, `nextAction`,
+  `deliveryMode`, and `deliveryAction`, plus `workflowShape`,
   `workflowContinuationSource`, `workflowContinuationBlockedReason`,
   `latestReplaySource`, `latestReplayTrigger`, `latestReplayPhase`,
   `latestReplayResumeReason`,
@@ -1616,6 +1632,8 @@ Semantics:
   - `conversationCount`
   - `needsOperatorAttentionCount`
   - `taskStatusCounts`
+  - `executionProductCounts`
+  - `requestedStrategyCounts`
   - `attentionSeverityCounts`
   - `reasonCounts`
   - `nextActionCounts`
@@ -1689,6 +1707,16 @@ Returns actionable task summaries curated for operator-facing inbox consumers:
       "taskId": "task-operator-inbox",
       "taskTitle": "Operator inbox task",
       "taskStatus": "pending_approval",
+      "planning": {
+        "effectiveProduct": "code",
+        "effectiveStrategy": "reflexion"
+      },
+      "runtimeBridge": {
+        "product": "code",
+        "request": {
+          "requestedStrategy": "reflexion"
+        }
+      },
       "attention": {
         "severity": "attention",
         "reasons": ["approval_pending", "retry_available"],
@@ -1717,6 +1745,8 @@ Semantics:
   `GET /api/core/control-plane/tasks`:
   - `conversationId`
   - `taskStatus`
+  - `executionProduct`
+  - `requestedStrategy`
   - `severity`
   - `reason`
   - `needsOperatorAttention`
@@ -1745,6 +1775,7 @@ Semantics:
 - the response now includes the same shape of list `summary` counts so later
   operator automation or non-UI inbox consumers can page or facet the inbox
   without hydrating the full core snapshot client-side, including
+  `executionProductCounts`, `requestedStrategyCounts`,
   `deliveryModeCounts`, `deliveryActionCounts`, `workflowStageCounts`,
   `workflowShapeCounts`, `workflowReviewRequiredCount`,
   `workflowConvergeTargetCount`, `workflowContinuationSourceCounts`,
@@ -1754,6 +1785,10 @@ Semantics:
   `latestReplayResumeReasonCounts`,
   `latestTimelineCategoryCounts`, and `latestTimelineKindCounts`, plus
   `withChildrenCount` and `withActiveChildrenCount`
+- each entry now also carries the same normalized `planning` plus
+  `runtimeBridge` views as the task detail/control-plane routes, so operator
+  queue consumers can facet by effective product or bridge request intent
+  without rejoining task detail first
 - `latestReplaySource`, `latestReplayTrigger`, `latestReplayPhase`, and
   `latestReplayResumeReason` give the inbox the same replay-lifecycle queue
   faceting as recovery, while staying on the operator-facing shortlist surface

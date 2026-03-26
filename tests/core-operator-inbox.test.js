@@ -21,6 +21,7 @@ import {
   buildWorkflowContinuationReplayRequest,
   writeWorkflowContinuationReplayMetadata,
 } from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
+import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
 
 test('listCoreOperatorInboxItems returns actionable task summaries with latest timeline context', () => {
   const now = new Date('2026-03-26T18:00:00.000Z');
@@ -34,18 +35,24 @@ test('listCoreOperatorInboxItems returns actionable task summaries with latest t
       status: 'pending_approval',
       conversationId: 'conversation-channel-inbox',
       summary: 'Needs operator review.',
-      metadata: writeOrchestratorDispatchReplayMetadata(
-        {},
-        buildOrchestratorDispatchReplayRequest({
-          channelId: 'channel-inbox',
-          body: 'Retry the blocked rollout.',
-          recordedAt: '2026-03-26T17:50:00.000Z',
-        }),
+      metadata: writeTaskPlanningMetadata(
+        writeOrchestratorDispatchReplayMetadata(
+          {},
+          buildOrchestratorDispatchReplayRequest({
+            channelId: 'channel-inbox',
+            body: 'Retry the blocked rollout.',
+            recordedAt: '2026-03-26T17:50:00.000Z',
+          }),
+          {
+            replayState: 'failed',
+            replayTrigger: 'retry',
+            replayAttemptAt: '2026-03-26T17:55:00.000Z',
+            replayError: 'rate limited',
+          },
+        ),
         {
-          replayState: 'failed',
-          replayTrigger: 'retry',
-          replayAttemptAt: '2026-03-26T17:55:00.000Z',
-          replayError: 'rate limited',
+          productHint: 'code',
+          strategyHint: 'reflexion',
         },
       ),
       createdAt: '2026-03-26T17:40:00.000Z',
@@ -153,6 +160,9 @@ test('listCoreOperatorInboxItems returns actionable task summaries with latest t
     items[0]?.latestTimelineItem?.summary,
     'Dispatch replay failed during startup recovery.',
   );
+  assert.equal(items[0]?.planning.effectiveProduct, 'code');
+  assert.equal(items[0]?.runtimeBridge.product, 'code');
+  assert.equal(items[0]?.runtimeBridge.request.requestedStrategy, 'reflexion');
   assert.deepEqual(
     items[0]?.nextActions.map((action) => action.kind),
     ['approve', 'reroute', 'reject', 'retry', 'acknowledge'],
@@ -182,55 +192,61 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
       status: 'pending_approval',
       parentTaskId: 'task-inbox-root',
       conversationId: 'conversation-channel-inbox',
-      metadata: writeWorkflowContinuationReplayMetadata(
-        writeOrchestratorDispatchReplayMetadata(
-          {
-            effectiveDeliveryPolicy: {
-              mode: 'commit_only',
-              gates: ['owner_approval_required'],
-              source: 'task_override',
-              rationale: 'Owner-approved retry.',
-            },
-            channelId: 'channel-inbox',
-            transport: 'web',
-            roomRoutingMode: 'boss_chat',
-          },
-          buildOrchestratorDispatchReplayRequest({
-            channelId: 'channel-inbox',
-            body: 'Retry the blocked rollout.',
-            recordedAt: '2026-03-26T17:50:00.000Z',
-          }),
-          {
-            replayState: 'failed',
-            replayTrigger: 'retry',
-            replayAttemptAt: '2026-03-26T17:55:00.000Z',
-            replayError: 'rate limited',
-          },
-        ),
-        buildWorkflowContinuationReplayRequest({
-          channelId: 'channel-inbox',
-          checkpointId: 'checkpoint-inbox-match',
-          sourceMessageId: 'message-inbox-match',
-          continuationSource: 'workflow_recommendation',
-          sourceParticipant: {
-            participantKind: 'cat',
-            participantId: 'cat-inline',
-            participantName: 'Inline-Agent',
-          },
-          targets: [
+      metadata: writeTaskPlanningMetadata(
+        writeWorkflowContinuationReplayMetadata(
+          writeOrchestratorDispatchReplayMetadata(
             {
-              participantKind: 'cat',
-              participantId: 'cat-reviewer',
-              participantName: 'Reviewer',
+              effectiveDeliveryPolicy: {
+                mode: 'commit_only',
+                gates: ['owner_approval_required'],
+                source: 'task_override',
+                rationale: 'Owner-approved retry.',
+              },
+              channelId: 'channel-inbox',
+              transport: 'web',
+              roomRoutingMode: 'boss_chat',
             },
-          ],
-          workflowStageId: 'continuation_handoff',
-          workflowShape: 'converge',
-          reviewRequired: true,
-          blockedReason: 'max_dispatches',
-          unresolvedTargets: ['Reviewer'],
-          recordedAt: '2026-03-26T17:49:00.000Z',
-        }),
+            buildOrchestratorDispatchReplayRequest({
+              channelId: 'channel-inbox',
+              body: 'Retry the blocked rollout.',
+              recordedAt: '2026-03-26T17:50:00.000Z',
+            }),
+            {
+              replayState: 'failed',
+              replayTrigger: 'retry',
+              replayAttemptAt: '2026-03-26T17:55:00.000Z',
+              replayError: 'rate limited',
+            },
+          ),
+          buildWorkflowContinuationReplayRequest({
+            channelId: 'channel-inbox',
+            checkpointId: 'checkpoint-inbox-match',
+            sourceMessageId: 'message-inbox-match',
+            continuationSource: 'workflow_recommendation',
+            sourceParticipant: {
+              participantKind: 'cat',
+              participantId: 'cat-inline',
+              participantName: 'Inline-Agent',
+            },
+            targets: [
+              {
+                participantKind: 'cat',
+                participantId: 'cat-reviewer',
+                participantName: 'Reviewer',
+              },
+            ],
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'converge',
+            reviewRequired: true,
+            blockedReason: 'max_dispatches',
+            unresolvedTargets: ['Reviewer'],
+            recordedAt: '2026-03-26T17:49:00.000Z',
+          }),
+        ),
+        {
+          productHint: 'code',
+          strategyHint: 'reflexion',
+        },
       ),
       createdAt: '2026-03-26T17:40:00.000Z',
     },
@@ -319,6 +335,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
 
   const result = queryCoreOperatorInboxItems(core, {
     conversationIds: ['conversation-channel-inbox'],
+    executionProducts: ['code'],
+    requestedStrategies: ['reflexion'],
     nextActions: ['retry'],
     needsOperatorAttention: true,
     deliveryModes: ['commit_only'],
@@ -335,8 +353,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     latestReplayTriggers: ['retry'],
     latestReplayPhases: ['replay_failed'],
     latestReplayResumeReasons: ['target_recovered'],
-    latestTimelineCategories: ['execution'],
-    latestTimelineKinds: ['run'],
+    latestTimelineCategories: ['recovery'],
+    latestTimelineKinds: ['activity'],
     rootTaskIds: ['task-inbox-root'],
     parentTaskIds: ['task-inbox-root'],
     hasChildren: false,
@@ -350,6 +368,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.matching, 1);
   assert.equal(result.summary.returned, 1);
   assert.equal(result.summary.conversationCount, 1);
+  assert.equal(result.summary.executionProductCounts.code, 1);
+  assert.equal(result.summary.requestedStrategyCounts.reflexion, 1);
   assert.equal(result.summary.reasonCounts.retry_available, 1);
   assert.equal(result.summary.nextActionCounts.retry, 1);
   assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
@@ -365,10 +385,12 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.latestReplayTriggerCounts.retry, 1);
   assert.equal(result.summary.latestReplayPhaseCounts.replay_failed, 1);
   assert.equal(result.summary.latestReplayResumeReasonCounts.target_recovered, 1);
-  assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
-  assert.equal(result.summary.latestTimelineKindCounts.run, 1);
+  assert.equal(result.summary.latestTimelineCategoryCounts.recovery, 1);
+  assert.equal(result.summary.latestTimelineKindCounts.activity, 1);
   assert.equal(result.tasks[0]?.family.rootTaskId, 'task-inbox-root');
   assert.equal(result.tasks[0]?.family.parent?.taskId, 'task-inbox-root');
+  assert.equal(result.tasks[0]?.planning.effectiveProduct, 'code');
+  assert.equal(result.tasks[0]?.runtimeBridge.request.requestedStrategy, 'reflexion');
   assert.equal(result.tasks[0]?.workflowContinuation?.convergeTargetId, 'cat-reviewer');
   assert.equal(result.summary.withChildrenCount, 0);
   assert.equal(result.summary.withActiveChildrenCount, 0);
