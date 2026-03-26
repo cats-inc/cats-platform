@@ -30,7 +30,13 @@ import {
   type CoreTaskTimelineItem,
   type CoreTaskTimelineItemKind,
 } from './taskTimeline.js';
-import type { CoreTaskRecoveryView } from './recovery.js';
+import {
+  CORE_TASK_RECOVERY_REPLAY_PHASES,
+  CORE_TASK_RECOVERY_RESUME_REASONS,
+  type CoreTaskRecoveryReplayPhase,
+  type CoreTaskRecoveryResumeReason,
+  type CoreTaskRecoveryView,
+} from './recovery.js';
 import {
   applyCoreTaskViewLimit,
   buildCoreTaskStatusCounts,
@@ -81,6 +87,8 @@ export interface CoreOperatorInboxSummary {
     number
   >;
   withUnresolvedWorkflowTargetsCount: number;
+  latestReplayPhaseCounts: Record<CoreTaskRecoveryReplayPhase, number>;
+  latestReplayResumeReasonCounts: Record<CoreTaskRecoveryResumeReason, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
   workflowContinuationBlockedReasonCounts: Record<
@@ -137,6 +145,26 @@ function readEffectiveWorkflowContinuationSource(
   return item.workflowContinuation?.continuationSource === 'explicit_mentions'
     || item.workflowContinuation?.continuationSource === 'workflow_recommendation'
     ? item.workflowContinuation.continuationSource
+    : null;
+}
+
+function readLatestReplayPhase(
+  item: Pick<CoreOperatorInboxItem, 'recovery'>,
+): CoreTaskRecoveryReplayPhase | null {
+  const phase = item.recovery.latestActivity?.phase;
+  return typeof phase === 'string'
+    && CORE_TASK_RECOVERY_REPLAY_PHASES.includes(phase as CoreTaskRecoveryReplayPhase)
+    ? phase as CoreTaskRecoveryReplayPhase
+    : null;
+}
+
+function readLatestReplayResumeReason(
+  item: Pick<CoreOperatorInboxItem, 'recovery'>,
+): CoreTaskRecoveryResumeReason | null {
+  const reason = item.recovery.latestActivity?.resumeReason;
+  return typeof reason === 'string'
+    && CORE_TASK_RECOVERY_RESUME_REASONS.includes(reason as CoreTaskRecoveryResumeReason)
+    ? reason as CoreTaskRecoveryResumeReason
     : null;
 }
 
@@ -299,6 +327,22 @@ function matchesOperatorInboxQuery(
     query.hasUnresolvedWorkflowTargets !== undefined
     && query.hasUnresolvedWorkflowTargets !== null
     && (unresolvedTargets.length > 0) !== query.hasUnresolvedWorkflowTargets
+  ) {
+    return false;
+  }
+
+  if (
+    query.latestReplayPhases?.length
+    && (!readLatestReplayPhase(item)
+      || !query.latestReplayPhases.includes(readLatestReplayPhase(item)!))
+  ) {
+    return false;
+  }
+
+  if (
+    query.latestReplayResumeReasons?.length
+    && (!readLatestReplayResumeReason(item)
+      || !query.latestReplayResumeReasons.includes(readLatestReplayResumeReason(item)!))
   ) {
     return false;
   }
@@ -521,6 +565,42 @@ function buildWorkflowContinuationSourceCounts(
   return counts;
 }
 
+function buildLatestReplayPhaseCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreTaskRecoveryReplayPhase, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_REPLAY_PHASES.map((phase) => [phase, 0]),
+  ) as Record<CoreTaskRecoveryReplayPhase, number>;
+
+  for (const item of items) {
+    const phase = readLatestReplayPhase(item);
+    if (!phase) {
+      continue;
+    }
+    counts[phase] += 1;
+  }
+
+  return counts;
+}
+
+function buildLatestReplayResumeReasonCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreTaskRecoveryResumeReason, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_RESUME_REASONS.map((reason) => [reason, 0]),
+  ) as Record<CoreTaskRecoveryResumeReason, number>;
+
+  for (const item of items) {
+    const reason = readLatestReplayResumeReason(item);
+    if (!reason) {
+      continue;
+    }
+    counts[reason] += 1;
+  }
+
+  return counts;
+}
+
 function buildLatestTimelineKindCounts(
   items: CoreOperatorInboxItem[],
 ): Record<CoreTaskTimelineItemKind, number> {
@@ -565,6 +645,8 @@ export function summarizeCoreOperatorInboxItems(input: {
     workflowContinuationSourceCounts: buildWorkflowContinuationSourceCounts(input.items),
     withUnresolvedWorkflowTargetsCount: input.items.filter((item) =>
       readEffectiveWorkflowUnresolvedTargets(item).length > 0).length,
+    latestReplayPhaseCounts: buildLatestReplayPhaseCounts(input.items),
+    latestReplayResumeReasonCounts: buildLatestReplayResumeReasonCounts(input.items),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),
     latestTimelineKindCounts: buildLatestTimelineKindCounts(input.items),
     workflowContinuationBlockedReasonCounts:

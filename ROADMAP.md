@@ -257,6 +257,11 @@ contracts.
       support `workflowContinuationSource` plus
       `workflowContinuationSourceCounts` so queue automation can distinguish
       explicit-mention continuations from workflow-recommendation replays,
+      while control-plane and operator-inbox list routes now also support
+      `latestReplayPhase` plus `latestReplayResumeReason` and summarize
+      `latestReplayPhaseCounts` / `latestReplayResumeReasonCounts` so
+      operator queues can facet replay lifecycle state without detouring
+      through the dedicated recovery route,
       while recovery, control-plane, and operator-inbox list routes now also
       support `workflowUnresolvedTarget` plus
       `hasUnresolvedWorkflowTargets` and summarize

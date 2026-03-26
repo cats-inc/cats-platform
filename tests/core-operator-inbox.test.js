@@ -127,7 +127,7 @@ test('listCoreOperatorInboxItems returns actionable task summaries with latest t
       createdAt: '2026-03-26T18:01:00.000Z',
       metadata: {
         source: 'orchestrator-startup-recovery',
-        replayPhase: 'dispatch_replay_result',
+        replayPhase: 'replay_failed',
       },
     },
     now,
@@ -308,7 +308,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
       createdAt: '2026-03-26T18:01:00.000Z',
       metadata: {
         source: 'orchestrator-startup-recovery',
-        replayPhase: 'dispatch_replay_result',
+        replayPhase: 'replay_failed',
+        resumeReason: 'target_recovered',
       },
     },
     now,
@@ -328,6 +329,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     workflowContinuationBlockedReasons: ['max_dispatches'],
     workflowUnresolvedTargets: ['Reviewer'],
     hasUnresolvedWorkflowTargets: true,
+    latestReplayPhases: ['replay_failed'],
+    latestReplayResumeReasons: ['target_recovered'],
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
     rootTaskIds: ['task-inbox-root'],
@@ -354,6 +357,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.workflowContinuationSourceCounts.workflow_recommendation, 1);
   assert.equal(result.summary.withUnresolvedWorkflowTargetsCount, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
+  assert.equal(result.summary.latestReplayPhaseCounts.replay_failed, 1);
+  assert.equal(result.summary.latestReplayResumeReasonCounts.target_recovered, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
   assert.equal(result.summary.latestTimelineKindCounts.run, 1);
   assert.equal(result.tasks[0]?.family.rootTaskId, 'task-inbox-root');

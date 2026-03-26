@@ -89,6 +89,11 @@ MCP tool plane.
   `workflowContinuationSource` plus `workflowContinuationSourceCounts`, so
   queue automation can distinguish explicit-mention continuations from
   workflow-recommendation replays without reopening raw continuation metadata
+- control-plane and operator-inbox list routes now also support
+  `latestReplayPhase` plus `latestReplayResumeReason`, and summarize
+  `latestReplayPhaseCounts` / `latestReplayResumeReasonCounts`, so operator
+  queue automation can facet replay lifecycle state without detouring through
+  the dedicated recovery route
 - those same operator/recovery list routes now also support
   `workflowUnresolvedTarget` plus `hasUnresolvedWorkflowTargets`, and summarize
   `withUnresolvedWorkflowTargetsCount`, so missing-target continuation work can

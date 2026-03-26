@@ -1924,7 +1924,7 @@ test('GET /api/core/tasks/:taskId/timeline returns a normalized task execution n
           createdAt: '2026-03-21T01:02:00.000Z',
           metadata: {
             source: 'orchestrator-startup-recovery',
-            replayPhase: 'dispatch_replay_result',
+            replayPhase: 'replay_failed',
             replayTrigger: 'startup_recovery',
           },
         },
@@ -2497,7 +2497,7 @@ test('GET /api/core/operator-inbox returns actionable task summaries with latest
           createdAt: '2026-03-26T17:59:00.000Z',
           metadata: {
             source: 'orchestrator-startup-recovery',
-            replayPhase: 'dispatch_replay_result',
+            replayPhase: 'replay_failed',
           },
         },
       }),
@@ -2703,8 +2703,31 @@ test('core operator inspection routes support additive filters and summaries', a
     });
     assert.equal(workflowRunResponse.status, 201);
 
+    const replayActivityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        activity: {
+          id: 'activity-ops-workflow-replay',
+          kind: 'note',
+          taskId: 'task-ops-workflow',
+          conversationId: 'conversation-channel-ops',
+          message: 'Workflow continuation replay failed after target recovery.',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          metadata: {
+            source: 'workflow-continuation-replay',
+            replayPhase: 'replay_failed',
+            resumeReason: 'target_recovered',
+          },
+        },
+      }),
+    });
+    assert.equal(replayActivityResponse.status, 201);
+
     const inboxResponse = await fetch(
-      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(inboxResponse.status, 200);
     const inboxPayload = await inboxResponse.json();
@@ -2722,6 +2745,8 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.summary.workflowContinuationSourceCounts.workflow_recommendation, 1);
     assert.equal(inboxPayload.summary.withUnresolvedWorkflowTargetsCount, 1);
     assert.equal(inboxPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
+    assert.equal(inboxPayload.summary.latestReplayPhaseCounts.replay_failed, 1);
+    assert.equal(inboxPayload.summary.latestReplayResumeReasonCounts.target_recovered, 1);
     assert.equal(inboxPayload.summary.latestTimelineCategoryCounts.execution, 1);
     assert.equal(inboxPayload.summary.latestTimelineKindCounts.run, 1);
     assert.equal(inboxPayload.summary.withChildrenCount, 0);
@@ -2732,7 +2757,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.tasks[0].workflowContinuation.convergeTargetId, 'cat-reviewer');
 
     const controlPlaneResponse = await fetch(
-      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(controlPlaneResponse.status, 200);
     const controlPlanePayload = await controlPlaneResponse.json();
@@ -2754,6 +2779,11 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.summary.withUnresolvedWorkflowTargetsCount, 1);
     assert.equal(
       controlPlanePayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches,
+      1,
+    );
+    assert.equal(controlPlanePayload.summary.latestReplayPhaseCounts.replay_failed, 1);
+    assert.equal(
+      controlPlanePayload.summary.latestReplayResumeReasonCounts.target_recovered,
       1,
     );
     assert.equal(controlPlanePayload.summary.latestTimelineCategoryCounts.execution, 1);

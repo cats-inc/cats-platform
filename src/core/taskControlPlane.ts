@@ -1,5 +1,12 @@
 import { buildApprovalQueue } from './model/index.js';
-import { buildCoreTaskRecoveryView, type CoreTaskRecoveryView } from './recovery.js';
+import {
+  buildCoreTaskRecoveryView,
+  CORE_TASK_RECOVERY_REPLAY_PHASES,
+  CORE_TASK_RECOVERY_RESUME_REASONS,
+  type CoreTaskRecoveryReplayPhase,
+  type CoreTaskRecoveryResumeReason,
+  type CoreTaskRecoveryView,
+} from './recovery.js';
 import {
   buildCoreTaskInspectionView,
   type CoreTaskInspectionFamilyView,
@@ -237,6 +244,8 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   workflowContinuationBlockedReasons?: WorkflowContinuationReplayBlockedReason[];
   workflowUnresolvedTargets?: string[];
   hasUnresolvedWorkflowTargets?: boolean | null;
+  latestReplayPhases?: CoreTaskRecoveryReplayPhase[];
+  latestReplayResumeReasons?: CoreTaskRecoveryResumeReason[];
   latestTimelineCategories?: CoreTaskTimelineCategory[];
   latestTimelineKinds?: CoreTaskTimelineItemKind[];
   rootTaskIds?: string[];
@@ -264,6 +273,8 @@ export interface CoreTaskControlPlaneListSummary {
   workflowContinuationSourceCounts: Record<WorkflowContinuationReplaySource, number>;
   workflowContinuationBlockedReasonCounts: Record<WorkflowContinuationReplayBlockedReason, number>;
   withUnresolvedWorkflowTargetsCount: number;
+  latestReplayPhaseCounts: Record<CoreTaskRecoveryReplayPhase, number>;
+  latestReplayResumeReasonCounts: Record<CoreTaskRecoveryResumeReason, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
   withChildrenCount: number;
@@ -596,6 +607,26 @@ function readWorkflowContinuationReplayState(
 ): 'ready' | 'in_progress' | 'failed' | null {
   return value === 'ready' || value === 'in_progress' || value === 'failed'
     ? value
+    : null;
+}
+
+function readLatestReplayPhase(
+  view: Pick<CoreTaskControlPlaneView, 'recovery'>,
+): CoreTaskRecoveryReplayPhase | null {
+  const phase = view.recovery.latestActivity?.phase;
+  return typeof phase === 'string'
+    && CORE_TASK_RECOVERY_REPLAY_PHASES.includes(phase as CoreTaskRecoveryReplayPhase)
+    ? phase as CoreTaskRecoveryReplayPhase
+    : null;
+}
+
+function readLatestReplayResumeReason(
+  view: Pick<CoreTaskControlPlaneView, 'recovery'>,
+): CoreTaskRecoveryResumeReason | null {
+  const reason = view.recovery.latestActivity?.resumeReason;
+  return typeof reason === 'string'
+    && CORE_TASK_RECOVERY_RESUME_REASONS.includes(reason as CoreTaskRecoveryResumeReason)
+    ? reason as CoreTaskRecoveryResumeReason
     : null;
 }
 
@@ -973,6 +1004,22 @@ function matchesControlPlaneListOptions(
   }
 
   if (
+    options.latestReplayPhases?.length
+    && (!readLatestReplayPhase(view)
+      || !options.latestReplayPhases.includes(readLatestReplayPhase(view)!))
+  ) {
+    return false;
+  }
+
+  if (
+    options.latestReplayResumeReasons?.length
+    && (!readLatestReplayResumeReason(view)
+      || !options.latestReplayResumeReasons.includes(readLatestReplayResumeReason(view)!))
+  ) {
+    return false;
+  }
+
+  if (
     options.latestTimelineCategories?.length
     && (!view.latestTimelineItem?.category
       || !options.latestTimelineCategories.includes(view.latestTimelineItem.category))
@@ -1172,6 +1219,42 @@ function buildWorkflowContinuationSourceCounts(
   return counts;
 }
 
+function buildLatestReplayPhaseCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreTaskRecoveryReplayPhase, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_REPLAY_PHASES.map((phase) => [phase, 0]),
+  ) as Record<CoreTaskRecoveryReplayPhase, number>;
+
+  for (const view of views) {
+    const phase = readLatestReplayPhase(view);
+    if (!phase) {
+      continue;
+    }
+    counts[phase] += 1;
+  }
+
+  return counts;
+}
+
+function buildLatestReplayResumeReasonCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreTaskRecoveryResumeReason, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_RESUME_REASONS.map((reason) => [reason, 0]),
+  ) as Record<CoreTaskRecoveryResumeReason, number>;
+
+  for (const view of views) {
+    const reason = readLatestReplayResumeReason(view);
+    if (!reason) {
+      continue;
+    }
+    counts[reason] += 1;
+  }
+
+  return counts;
+}
+
 function buildLatestTimelineCategoryCounts(
   views: CoreTaskControlPlaneView[],
 ): Record<CoreTaskTimelineCategory, number> {
@@ -1235,6 +1318,8 @@ export function summarizeCoreTaskControlPlaneViews(input: {
       buildWorkflowContinuationBlockedReasonCounts(input.views),
     withUnresolvedWorkflowTargetsCount: input.views.filter((view) =>
       readEffectiveWorkflowUnresolvedTargets(view).length > 0).length,
+    latestReplayPhaseCounts: buildLatestReplayPhaseCounts(input.views),
+    latestReplayResumeReasonCounts: buildLatestReplayResumeReasonCounts(input.views),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.views),
     latestTimelineKindCounts: buildLatestTimelineKindCounts(input.views),
     withChildrenCount: input.views.filter((view) => view.family.childCount > 0).length,

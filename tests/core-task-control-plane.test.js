@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  appendCoreActivity,
   createDefaultCoreState,
   upsertCoreCheckpoint,
   upsertCoreRun,
@@ -351,6 +352,22 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
     },
     now,
   ).core;
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-control-plane-match-recovery',
+      kind: 'note',
+      taskId: 'task-control-plane-match',
+      message: 'Dispatch replay failed after target recovery retry.',
+      createdAt: '2026-03-26T16:04:00.000Z',
+      metadata: {
+        source: 'orchestrator-replay',
+        replayPhase: 'replay_failed',
+        resumeReason: 'target_recovered',
+      },
+    },
+    now,
+  ).core;
 
   const result = queryCoreTaskControlPlaneViews(core, {
     severities: ['attention'],
@@ -366,6 +383,8 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
     workflowContinuationBlockedReasons: ['max_dispatches'],
     workflowUnresolvedTargets: ['Reviewer'],
     hasUnresolvedWorkflowTargets: true,
+    latestReplayPhases: ['replay_failed'],
+    latestReplayResumeReasons: ['target_recovered'],
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
   });
@@ -389,6 +408,8 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.workflowContinuationSourceCounts.workflow_recommendation, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
   assert.equal(result.summary.withUnresolvedWorkflowTargetsCount, 1);
+  assert.equal(result.summary.latestReplayPhaseCounts.replay_failed, 1);
+  assert.equal(result.summary.latestReplayResumeReasonCounts.target_recovered, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
   assert.equal(result.summary.latestTimelineKindCounts.run, 1);
   assert.equal(result.tasks[0]?.workflowContinuation?.convergeTargetId, 'cat-reviewer');

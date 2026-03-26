@@ -370,6 +370,11 @@ Known follow-ups:
   `workflowContinuationSourceCounts`, so automation can distinguish explicit
   mention-driven continuations from workflow-recommendation replays without
   scraping raw continuation blobs
+- control-plane and operator-inbox list routes now also support
+  `latestReplayPhase` plus `latestReplayResumeReason`, and summarize
+  `latestReplayPhaseCounts` / `latestReplayResumeReasonCounts`, so operator
+  queue automation can facet replay lifecycle state without bouncing out to
+  the dedicated recovery route first
 - server startup now downgrades stranded `pendingOrchestratorDispatch` /
   `orchestratorDispatchReplay` `in_progress` markers to failed so crash or
   cleanup-failure cases remain operator-recoverable after restart

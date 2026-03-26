@@ -163,6 +163,16 @@ export function readTaskAttentionListOptions(
       'workflowContinuationBlockedReason',
       CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
     ),
+    latestReplayPhases: readEnumQueryValues(
+      searchParams,
+      'latestReplayPhase',
+      CORE_TASK_RECOVERY_REPLAY_PHASES,
+    ),
+    latestReplayResumeReasons: readEnumQueryValues(
+      searchParams,
+      'latestReplayResumeReason',
+      CORE_TASK_RECOVERY_RESUME_REASONS,
+    ),
     latestTimelineCategories: readEnumQueryValues(
       searchParams,
       'latestTimelineCategory',

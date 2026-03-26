@@ -1424,6 +1424,8 @@ Semantics:
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
   - `workflowContinuationBlockedReason`
+  - `latestReplayPhase`
+  - `latestReplayResumeReason`
   - `latestTimelineCategory`
   - `latestTimelineKind`
   - `rootTaskId`
@@ -1435,7 +1437,8 @@ Semantics:
   as `taskStatus`, `severity`, `reason`, `nextAction`, `deliveryMode`, and
   `deliveryAction`, plus `workflowShape`,
   `workflowContinuationSource`, `workflowContinuationBlockedReason`,
-  `latestTimelineCategory`, and `latestTimelineKind`
+  `latestReplayPhase`, `latestReplayResumeReason`, `latestTimelineCategory`,
+  and `latestTimelineKind`
 - list responses now include a `summary` block with:
   - `totalAvailable`
   - `matching`
@@ -1455,6 +1458,8 @@ Semantics:
   - `workflowContinuationSourceCounts`
   - `withUnresolvedWorkflowTargetsCount`
   - `workflowContinuationBlockedReasonCounts`
+  - `latestReplayPhaseCounts`
+  - `latestReplayResumeReasonCounts`
   - `latestTimelineCategoryCounts`
   - `latestTimelineKindCounts`
   - `withChildrenCount`
@@ -1476,6 +1481,10 @@ Semantics:
 - `workflowContinuationSource` / `workflowContinuationSourceCounts` let
   control-plane consumers distinguish explicit-mention continuations from
   workflow-recommendation replays without reopening raw continuation metadata
+- `latestReplayPhase` / `latestReplayResumeReason` plus their summary counts
+  let control-plane consumers facet retry/recovery queues by the newest
+  normalized replay lifecycle signal without redirecting that automation
+  through the recovery route first
 - `family` reuses the same task-family summary exposed by
   `GET /api/core/tasks/{taskId}`, so control-plane consumers can see whether a
   task is a parent, child, or root plus how many immediate child tasks are
@@ -1549,6 +1558,8 @@ Semantics:
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
   - `workflowContinuationBlockedReason`
+  - `latestReplayPhase`
+  - `latestReplayResumeReason`
   - `latestTimelineCategory`
   - `latestTimelineKind`
   - `rootTaskId`
@@ -1563,8 +1574,12 @@ Semantics:
   `workflowShapeCounts`, `workflowReviewRequiredCount`,
   `workflowConvergeTargetCount`, `workflowContinuationSourceCounts`,
   `withUnresolvedWorkflowTargetsCount`, `workflowContinuationBlockedReasonCounts`,
+  `latestReplayPhaseCounts`, `latestReplayResumeReasonCounts`,
   `latestTimelineCategoryCounts`, and `latestTimelineKindCounts`, plus
   `withChildrenCount` and `withActiveChildrenCount`
+- `latestReplayPhase` / `latestReplayResumeReason` give the inbox the same
+  replay-lifecycle queue faceting as recovery, while staying on the
+  operator-facing shortlist surface
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not
   have to join those surfaces client-side to answer "what needs attention and

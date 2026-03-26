@@ -135,7 +135,7 @@ test('buildCoreTaskTimelineView normalizes task history into a chronological nar
       createdAt: '2026-03-26T15:50:00.000Z',
       metadata: {
         source: 'orchestrator-startup-recovery',
-        replayPhase: 'dispatch_replay_result',
+        replayPhase: 'replay_failed',
         replayTrigger: 'startup_recovery',
       },
     },
@@ -242,7 +242,7 @@ test('queryCoreTaskTimelineView filters task history by category, kind, actor, a
       createdAt: '2026-03-26T16:06:00.000Z',
       metadata: {
         source: 'orchestrator-startup-recovery',
-        replayPhase: 'dispatch_replay_result',
+        replayPhase: 'replay_failed',
       },
     },
     new Date('2026-03-26T16:06:00.000Z'),
