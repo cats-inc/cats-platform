@@ -76,11 +76,12 @@
 }
 
 .channelTopBar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   margin: 0 -28px;
-  padding: 10px 28px;
+  padding: 0 28px;
   border: none;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
@@ -91,11 +92,75 @@
   z-index: 5;
   flex-shrink: 0;
   width: calc(100% + 56px);
+  min-height: 60px;
+}
+
+.channelTopBarStart,
+.channelTopBarCenter,
+.channelTopBarEnd {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.channelTopBarStart {
+  justify-content: flex-start;
+}
+
+.channelTopBarCenter {
+  justify-content: center;
+}
+
+.channelTopBarEnd {
+  justify-content: flex-end;
+}
+
+.sidePanelToggle {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: center;
+  position: relative;
+}
+
+.sidePanelToggle:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.sidePanelBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
 }
 
 .rosterAvatars {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.channelTopBarTitle {
+  text-align: center;
 }
 
 .rosterAvatars .catAvatar {

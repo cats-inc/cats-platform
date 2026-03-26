@@ -652,7 +652,6 @@ export default function App() {
             onDraftCatModelOverride,
             onDirectLaneModelChange: onDirectLaneModelSave,
           }}
-          onToggleAddCat={toggleAddCatPanel}
           onPayloadUpdate={updatePayload}
           onFeedback={setFeedback}
           onBusy={setBusy}
@@ -693,7 +692,6 @@ export default function App() {
             onBrowse: (path) => {
               void browseFolder(path);
             },
-            onClose: closeFolderBrowser,
             onSelect: selectCurrentFolder,
           }}
           onOpenDraftAddCat={openDraftAddCatPanel}

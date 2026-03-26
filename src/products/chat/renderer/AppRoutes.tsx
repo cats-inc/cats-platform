@@ -11,10 +11,7 @@ import {
   AddCatPanel,
   type AddCatPanelProps,
 } from './components/AddCatPanel.js';
-import {
-  FolderBrowser,
-  type FolderBrowserProps,
-} from './components/FolderBrowser.js';
+import type { FolderBrowserContentProps } from './components/FolderBrowser.js';
 import {
   ChatView,
   type ChatViewProps,
@@ -31,7 +28,7 @@ function noop(): void {}
 
 type ChatSurfaceProps = Omit<
   ChatViewProps,
-  'payload' | 'selectedChannel' | 'addCatOpen' | 'onToggleAddCat' | 'showAddCatButton'
+  'payload' | 'selectedChannel'
 >;
 
 type DraftSurfaceProps = Omit<
@@ -48,14 +45,13 @@ export interface AppRoutesProps {
   busy: string;
   chatSurfaceProps: ChatSurfaceProps;
   draftSurfaceProps: DraftSurfaceProps;
-  onToggleAddCat: () => void;
   onPayloadUpdate: (payload: AppShellPayload) => void;
   onFeedback: (message: string) => void;
   onBusy: (key: string) => void;
   onResetSetup: () => void;
   addCatOpen: boolean;
   addCatPanelProps: Omit<AddCatPanelProps, 'busy' | 'feedback'>;
-  folderBrowserProps: FolderBrowserProps & {
+  folderBrowserProps: FolderBrowserContentProps & {
     folderBrowserOpen: boolean;
   };
   onOpenDraftAddCat: () => void;
@@ -71,7 +67,6 @@ export function AppRoutes({
   busy,
   chatSurfaceProps,
   draftSurfaceProps,
-  onToggleAddCat,
   onPayloadUpdate,
   onFeedback,
   onBusy,
@@ -82,7 +77,7 @@ export function AppRoutes({
   onOpenDraftAddCat,
   onChangeDraftLeadCat,
 }: AppRoutesProps) {
-  const { folderBrowserOpen, ...folderBrowserSurfaceProps } = folderBrowserProps;
+  const { folderBrowserOpen: _fbOpen, ...folderBrowserSurfaceProps } = folderBrowserProps;
 
   return (
     <>
@@ -117,8 +112,6 @@ export function AppRoutes({
                 {...chatSurfaceProps}
                 payload={payload}
                 selectedChannel={selectedChannel}
-                addCatOpen={addCatOpen}
-                onToggleAddCat={onToggleAddCat}
               />
             ) : (
               <BootShell />
@@ -144,9 +137,6 @@ export function AppRoutes({
                 {...chatSurfaceProps}
                 payload={payload}
                 selectedChannel={directLaneChannel}
-                addCatOpen={false}
-                onToggleAddCat={noop}
-                showAddCatButton={false}
               />
             ) : (
               <NewChatDraft
@@ -155,6 +145,15 @@ export function AppRoutes({
                 onOpenAddCat={noop}
                 onDraftLeadCatChange={noop}
                 allowAddCat={false}
+                folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
+                folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
+                folderBrowseParentPath={folderBrowserSurfaceProps.folderBrowseParentPath}
+                folderBrowseEntries={folderBrowserSurfaceProps.folderBrowseEntries}
+                folderBrowseLoading={folderBrowserSurfaceProps.folderBrowseLoading}
+                folderBrowseError={folderBrowserSurfaceProps.folderBrowseError}
+                onFolderBrowsePathChange={folderBrowserSurfaceProps.onPathChange}
+                onFolderBrowse={folderBrowserSurfaceProps.onBrowse}
+                onFolderBrowseSelect={folderBrowserSurfaceProps.onSelect}
               />
             )
           }
@@ -167,6 +166,15 @@ export function AppRoutes({
               payload={payload}
               onOpenAddCat={onOpenDraftAddCat}
               onDraftLeadCatChange={onChangeDraftLeadCat}
+              folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
+              folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
+              folderBrowseParentPath={folderBrowserSurfaceProps.folderBrowseParentPath}
+              folderBrowseEntries={folderBrowserSurfaceProps.folderBrowseEntries}
+              folderBrowseLoading={folderBrowserSurfaceProps.folderBrowseLoading}
+              folderBrowseError={folderBrowserSurfaceProps.folderBrowseError}
+              onFolderBrowsePathChange={folderBrowserSurfaceProps.onPathChange}
+              onFolderBrowse={folderBrowserSurfaceProps.onBrowse}
+              onFolderBrowseSelect={folderBrowserSurfaceProps.onSelect}
             />
           }
         />
@@ -184,9 +192,6 @@ export function AppRoutes({
         />
       ) : null}
 
-      {folderBrowserOpen ? (
-        <FolderBrowser {...folderBrowserSurfaceProps} />
-      ) : null}
     </>
   );
 }

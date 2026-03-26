@@ -2,22 +2,50 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  width: min(100%, 1320px);
+  width: 100%;
 }
 
 .channelWorkspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 380px);
-  gap: 24px;
+  grid-template-columns: 1fr;
   align-items: start;
 }
 
-.operatorRail {
-  display: grid;
-  gap: 16px;
-  align-self: start;
-  position: sticky;
-  top: 72px;
+/* ─── Chat Side Panel ─── */
+
+.chatSidePanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 100vh;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.06);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+}
+
+.chatSidePanelBelowBar {
+  top: 60px;
+  height: calc(100vh - 60px);
+}
+
+.chatSidePanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.chatSidePanelBody {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
 }
 
 .operatorPanel {
@@ -309,20 +337,6 @@
 .operatorInspectorSection {
   display: grid;
   gap: 10px;
-}
-
-@media (max-width: 1180px) {
-  .channelWorkspace {
-    grid-template-columns: 1fr;
-  }
-
-  .operatorRail {
-    position: static;
-  }
-
-  .viewShellChannel {
-    width: min(100%, 940px);
-  }
 }
 
 @media (max-width: 720px) {

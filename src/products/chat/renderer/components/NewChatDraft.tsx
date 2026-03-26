@@ -1,14 +1,19 @@
 import { useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts';
+import type { BrowseDirectoryEntry } from '../api';
 import { isChatCat, truncatePath } from '../chatUtils';
+import { CatAvatarRow } from './CatAvatarRow';
+import { ChatSidePanel, type SidePanelSection } from './ChatSidePanel';
 import { ComposerCatStack } from './ComposerCatStack';
+import { FolderBrowserContent } from './FolderBrowser';
 import {
   buildModelSelectorLabel,
   ModelSelectorChip,
-  ModelSelectorPanel,
   type ModelSelectorValue,
 } from './ModelSelector';
+import { ProviderModelFields } from './ProviderModelFields';
+import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
 
 export interface NewChatDraftProps {
   payload: AppShellPayload;
@@ -44,6 +49,15 @@ export interface NewChatDraftProps {
   draftCatModelOverrides: Map<string, ModelSelectorValue>;
   onDraftCatModelOverride: (catId: string, value: ModelSelectorValue) => void;
   onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  folderBrowsePath?: string;
+  folderBrowseCurrentPath?: string;
+  folderBrowseParentPath?: string;
+  folderBrowseEntries?: BrowseDirectoryEntry[];
+  folderBrowseLoading?: boolean;
+  folderBrowseError?: string;
+  onFolderBrowsePathChange?: (path: string) => void;
+  onFolderBrowse?: (path: string) => void;
+  onFolderBrowseSelect?: () => void;
 }
 
 export function NewChatDraft({
@@ -80,6 +94,15 @@ export function NewChatDraft({
   draftCatModelOverrides,
   onDraftCatModelOverride,
   onDirectLaneModelChange,
+  folderBrowsePath = '',
+  folderBrowseCurrentPath = '',
+  folderBrowseParentPath = '',
+  folderBrowseEntries = [],
+  folderBrowseLoading = false,
+  folderBrowseError = '',
+  onFolderBrowsePathChange,
+  onFolderBrowse,
+  onFolderBrowseSelect,
 }: NewChatDraftProps) {
   const chatCats = payload.chat.cats.filter(isChatCat);
   const leadCat = draftLeadCatId
@@ -106,7 +129,18 @@ export function NewChatDraft({
     ? [leadCat.id, ...draftCatIds.filter((id) => id !== leadCat.id)]
     : draftCatIds;
   const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [sidePanelSection, setSidePanelSection] = useState<string | null>('execution');
+  function openSidePanelTo(section: string): void {
+    setSidePanelOpen(true);
+    switchSection(section);
+  }
+  function switchSection(section: string): void {
+    setSidePanelSection(section);
+    if (section === 'cwd' && !folderBrowseCurrentPath) {
+      onPickFolder();
+    }
+  }
   const hasMultipleCats = chatCats.filter((c) => c.status === 'active').length > 1;
   const isDirectLaneContext = !allowAddCat && Boolean(draftLeadCatId) && Boolean(leadCat);
 
@@ -223,7 +257,10 @@ export function NewChatDraft({
                     <button
                       className="composerPlusMenuItem"
                       type="button"
-                      onClick={onPickFolder}
+                      onClick={() => {
+                        onPickFolder();
+                        openSidePanelTo('cwd');
+                      }}
                     >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
@@ -260,51 +297,15 @@ export function NewChatDraft({
                   .filter((c): c is NonNullable<typeof c> => c != null)]}
                 bossCatId={payload.chat.bossCatId}
                 leadCatId={effectiveLeadCat.id}
-                onClick={() => setPanelOpen(!panelOpen)}
+                onClick={() => openSidePanelTo('execution')}
               />
             ) : activePanelModel && chipLabel ? (
               <div style={{ marginRight: 8 }}>
                 <ModelSelectorChip
                   label={chipLabel}
-                  onClick={() => setPanelOpen(!panelOpen)}
+                  onClick={() => openSidePanelTo('execution')}
                 />
               </div>
-            ) : null}
-            {panelOpen && activePanelModel ? (
-              isDirectLaneContext && leadCat ? (
-                <ModelSelectorPanel
-                  mode="direct-lane"
-                  cats={[leadCat]}
-                  bossCatId={payload.chat.bossCatId}
-                  selectedCatIds={[leadCat.id]}
-                  highlightedCatId={leadCat.id}
-                  leadCatId={leadCat.id}
-                  modelValue={activePanelModel}
-                  onModelChange={(value) => {
-                    onDirectLaneModelChange?.(leadCat.id, value);
-                  }}
-                  onClose={() => setPanelOpen(false)}
-                />
-              ) : (
-                <ModelSelectorPanel
-                  mode="draft"
-                  cats={chatCats}
-                  bossCatId={payload.chat.bossCatId}
-                  selectedCatIds={draftCatIds}
-                  highlightedCatId={draftHighlightedCatId}
-                  leadCatId={effectiveLeadCat?.id ?? null}
-                  onToggleCat={onToggleDraftCat}
-                  onHighlightCat={(id) => onHighlightDraftCat(id)}
-                  modelValue={activePanelModel}
-                  onModelChange={(value) => {
-                    if (!effectiveLeadCat && onModelChange) {
-                      onModelChange(value);
-                    }
-                  }}
-                  fieldsDisabled={Boolean(effectiveLeadCat) && !isDirectLaneContext}
-                  onClose={() => setPanelOpen(false)}
-                />
-              )
             ) : null}
             <button
               className="composerSendButton"
@@ -334,6 +335,122 @@ export function NewChatDraft({
           />
         </form>
       </section>
+      {sidePanelOpen ? (
+        <ChatSidePanel
+          activeSection={sidePanelSection}
+          onSectionToggle={switchSection}
+          onClose={() => setSidePanelOpen(false)}
+          sections={buildDraftSidePanelSections()}
+        />
+      ) : null}
     </div>
   );
+
+  function buildDraftSidePanelSections(): SidePanelSection[] {
+    const sections: SidePanelSection[] = [];
+
+    // --- Execution Target ---
+    const executionChildren = (() => {
+      if (isDirectLaneContext && leadCat && activePanelModel) {
+        return (
+          <>
+            <CatAvatarRow
+              cats={[leadCat]}
+              bossCatId={payload.chat.bossCatId}
+              selectedIds={[leadCat.id]}
+              highlightedId={leadCat.id}
+              leadCatId={leadCat.id}
+              toggleable={false}
+              showLeadBadge
+              onToggle={() => {}}
+              onHighlight={() => {}}
+            />
+            <ProviderModelFields
+              provider={activePanelModel.provider}
+              instance={activePanelModel.instance ?? ''}
+              model={activePanelModel.model ?? ''}
+              modelSelection={activePanelModel.modelSelection}
+              onTargetChange={(target: ProviderTargetSelection) => {
+                onDirectLaneModelChange?.(leadCat.id, {
+                  provider: target.provider,
+                  model: target.model || null,
+                  instance: target.instance || null,
+                  modelSelection: target.modelSelection ?? null,
+                });
+              }}
+            />
+          </>
+        );
+      }
+      if (activePanelModel) {
+        return (
+          <>
+            {chatCats.filter((c) => c.status === 'active').length > 0 ? (
+              <CatAvatarRow
+                cats={chatCats}
+                bossCatId={payload.chat.bossCatId}
+                selectedIds={draftCatIds}
+                highlightedId={draftHighlightedCatId}
+                leadCatId={effectiveLeadCat?.id ?? null}
+                toggleable
+                showLeadBadge
+                onToggle={onToggleDraftCat}
+                onHighlight={(id) => onHighlightDraftCat(id)}
+              />
+            ) : null}
+            <div style={effectiveLeadCat && !isDirectLaneContext ? { pointerEvents: 'none', opacity: 0.45 } : undefined}>
+              <ProviderModelFields
+                provider={activePanelModel.provider}
+                instance={activePanelModel.instance ?? ''}
+                model={activePanelModel.model ?? ''}
+                modelSelection={activePanelModel.modelSelection}
+                onTargetChange={(target: ProviderTargetSelection) => {
+                  if (!effectiveLeadCat && onModelChange) {
+                    onModelChange({
+                      provider: target.provider,
+                      model: target.model || null,
+                      instance: target.instance || null,
+                      modelSelection: target.modelSelection ?? null,
+                    });
+                  }
+                }}
+              />
+            </div>
+          </>
+        );
+      }
+      return null;
+    })();
+    sections.push({ id: 'execution', title: 'Execution Target', children: executionChildren });
+
+    // --- Working Directory ---
+    sections.push({
+      id: 'cwd',
+      title: 'Working Directory',
+      children: onFolderBrowsePathChange && onFolderBrowse && onFolderBrowseSelect ? (
+        <FolderBrowserContent
+          folderBrowsePath={folderBrowsePath}
+          folderBrowseCurrentPath={folderBrowseCurrentPath}
+          folderBrowseParentPath={folderBrowseParentPath}
+          folderBrowseEntries={folderBrowseEntries}
+          folderBrowseLoading={folderBrowseLoading}
+          folderBrowseError={folderBrowseError}
+          onPathChange={onFolderBrowsePathChange}
+          onBrowse={onFolderBrowse}
+          onSelect={() => {
+            onFolderBrowseSelect();
+            setSidePanelOpen(false);
+          }}
+        />
+      ) : (
+        draftCwd ? (
+          <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{draftCwd}</p>
+        ) : (
+          <p className="operatorEmptyState">No working directory set.</p>
+        )
+      ),
+    });
+
+    return sections;
+  }
 }

@@ -11,27 +11,23 @@ import type { AppShellPayload } from '../../api/contracts';
 import {
   catInitials,
   messageTone,
+  presentChannelTitle,
   truncatePath,
   type SelectedChannelView,
 } from '../chatUtils';
 import { openFolderInExplorer } from '../api';
-import {
-  chatLifecycleClassName,
-  chatLifecycleLabel,
-  resolveChatLifecycleState,
-} from '../../shared/lifecycle';
 import type { ChatOperatorSnapshot } from '../../shared/operator-loop/index';
 import {
   buildChatOperatorView,
   buildRunInspectorView,
 } from '../../shared/operator-loop/index';
 import { ActivityFeed } from './ActivityFeed';
-import { CatInspectPanel } from './CatInspectPanel';
+import { CatAvatarRow } from './CatAvatarRow';
+import { ChatSidePanel, type SidePanelSection } from './ChatSidePanel';
 import { ComposerCatStack } from './ComposerCatStack';
 import {
   buildModelSelectorLabel,
   ModelSelectorChip,
-  ModelSelectorPanel,
   type ModelSelectorValue,
 } from './ModelSelector';
 import { ApprovalQueuePanel } from './ApprovalQueuePanel';
@@ -40,7 +36,13 @@ import {
   type MessageChoicesSubmitInput,
 } from './MessageChoices';
 import { ProgressSummaryPanel } from './ProgressSummaryPanel';
+import { ProviderModelFields } from './ProviderModelFields';
 import { RunInspector } from './RunInspector';
+import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
+import {
+  getProviderDisplayName,
+  getProviderModels,
+} from '../../../../shared/providerCatalog';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -60,11 +62,9 @@ export interface ChatViewProps {
   bossCatName: string;
   bossCatAvatarColor: string | null;
   showBossCatAvatar: boolean;
-  addCatOpen: boolean;
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
-  onToggleAddCat: () => void;
   onToggleChannelPlusMenu: () => void;
   onChannelFileSelect: () => void;
   onChannelFilesChange: (files: File[]) => void;
@@ -78,7 +78,6 @@ export interface ChatViewProps {
     outcomeId?: string | null;
   }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
-  showAddCatButton?: boolean;
   selectedModel?: ModelSelectorValue;
   onModelChange?: (value: ModelSelectorValue) => void;
   onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
@@ -105,7 +104,6 @@ export function ChatView({
   onComposerChange,
   onComposerKeyDown,
   onSendMessage,
-  onToggleAddCat,
   onToggleChannelPlusMenu,
   onChannelFileSelect,
   onChannelFilesChange,
@@ -113,7 +111,6 @@ export function ChatView({
   onChoiceSubmit,
   onOperatorAction,
   autoResize,
-  showAddCatButton = true,
   selectedModel,
   onModelChange,
   onDirectLaneModelChange,
@@ -126,15 +123,22 @@ export function ChatView({
   const leadCat = leadParticipantId
     ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
     : null;
-  const bossLifecycle = resolveChatLifecycleState(selectedChannel.orchestratorLease.status);
   const isSoloComposer = selectedChannel.composerMode === 'solo'
     && roomMode !== 'direct_cat_chat';
   const isDirectLane = roomMode === 'direct_cat_chat';
-  const [directLanePanelOpen, setDirectLanePanelOpen] = useState(false);
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [sidePanelSection, setSidePanelSection] = useState<string | null>('operator');
+  function openSidePanelTo(section: string): void {
+    setSidePanelOpen(true);
+    setSidePanelSection(section);
+  }
 
   const directLaneCat = isDirectLane && leadCat
     ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
     : null;
+  const showRosterAvatars = isDirectLane
+    ? Boolean(leadCat)
+    : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedCats.length > 0);
   const directLaneModelValue: ModelSelectorValue | null = directLaneCat
     ? {
         provider: directLaneCat.defaultExecutionTarget.provider,
@@ -143,66 +147,6 @@ export function ChatView({
         modelSelection: directLaneCat.defaultModelSelection ?? null,
       }
     : null;
-  const presenceItems = roomMode === 'direct_cat_chat' && leadCat
-    ? [
-        {
-          id: `cat:${leadCat.catId}`,
-          name: leadCat.name,
-          state: resolveChatLifecycleState(leadCat.execution.lease.status),
-          isEntry: true,
-        },
-        ...activeAssignedCats
-          .filter((cat) => cat.catId !== leadCat.catId)
-          .map((cat) => ({
-            id: `cat:${cat.catId}`,
-            name: cat.name,
-            state: resolveChatLifecycleState(cat.execution.lease.status),
-            isEntry: false,
-          })),
-      ]
-    : isSoloComposer
-      ? [
-          {
-            id: 'chat',
-            name: 'Chat',
-            state: bossLifecycle,
-            isEntry: true,
-          },
-          ...activeAssignedCats.map((cat) => ({
-            id: `cat:${cat.catId}`,
-            name: cat.name,
-            state: resolveChatLifecycleState(cat.execution.lease.status),
-            isEntry: false,
-          })),
-        ]
-    : [
-        {
-          id: 'orchestrator',
-          name: bossCatName,
-          state: bossLifecycle,
-          isEntry: true,
-        },
-        ...activeAssignedCats.map((cat) => ({
-          id: `cat:${cat.catId}`,
-          name: cat.name,
-          state: resolveChatLifecycleState(cat.execution.lease.status),
-          isEntry: false,
-        })),
-      ];
-  const entryPresence = presenceItems[0] ?? {
-    id: 'orchestrator',
-    name: bossCatName,
-    state: bossLifecycle,
-    isEntry: true,
-  };
-
-  const modeLabel = roomMode === 'direct_cat_chat'
-    ? 'Direct chat'
-    : isSoloComposer
-      ? 'Chat'
-    : activeAssignedCats.length > 0
-      ? 'Group'
-      : 'Boss Chat';
   const operatorView = useMemo(
     () => buildChatOperatorView(operatorSnapshot, selectedChannel.id),
     [operatorSnapshot, selectedChannel.id],
@@ -242,64 +186,54 @@ export function ChatView({
 
   return (
     <>
-      <header className="channelTopBar">
-        <div className="rosterAvatars">
-          {roomMode === 'direct_cat_chat' && leadCat ? (
-            <div className="catAvatar" data-tooltip={leadCat.name} style={leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}>
-              {catInitials(leadCat.name)}
-            </div>
-          ) : (
-            <>
-              {showBossCatAvatar && !isSoloComposer ? (
-                <div className="catAvatar catAvatarBoss" data-tooltip={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
-                  {catInitials(bossCatName)}
-                </div>
-              ) : null}
-              {activeAssignedCats.map((cat) => (
-                <div key={cat.catId} className="catAvatar" data-tooltip={cat.name} style={cat.avatarColor ? { background: cat.avatarColor } : undefined}>
-                  {catInitials(cat.name)}
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-        <div className="channelTopBarMeta">
-          <div className="channelTopBarHeading">
-            {roomMode === 'direct_cat_chat' && leadCat ? (
-              <span className="channelTopBarTitle">{leadCat.name}</span>
+      <div className="viewShell viewShellChannel">
+        <header className="channelTopBar">
+          <div className="channelTopBarStart">
+            {showRosterAvatars ? (
+              <div className="rosterAvatars">
+                {roomMode === 'direct_cat_chat' && leadCat ? (
+                  <div className="catAvatar" data-tooltip={leadCat.name} style={leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}>
+                    {catInitials(leadCat.name)}
+                  </div>
+                ) : (
+                  <>
+                    {showBossCatAvatar && !isSoloComposer ? (
+                      <div className="catAvatar catAvatarBoss" data-tooltip={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
+                        {catInitials(bossCatName)}
+                      </div>
+                    ) : null}
+                    {activeAssignedCats.map((cat) => (
+                      <div key={cat.catId} className="catAvatar" data-tooltip={cat.name} style={cat.avatarColor ? { background: cat.avatarColor } : undefined}>
+                        {catInitials(cat.name)}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
             ) : null}
-            <span className="channelModeBadge">{modeLabel}</span>
-            {roomMode === 'boss_chat' && activeAssignedCats.length > 0 && leadCat ? (
-              <span className="channelLeadLabel">Lead: {leadCat.name}</span>
-            ) : null}
-            <span className={`channelPresenceBadge ${chatLifecycleClassName(entryPresence.state)}`}>
-              {entryPresence.name} {chatLifecycleLabel(entryPresence.state)}
+          </div>
+          <div className="channelTopBarCenter">
+            <span className="channelTopBarTitle">
+              {presentChannelTitle(selectedChannel.title)}
             </span>
           </div>
-          <div className="channelPresenceRow">
-            {presenceItems
-              .filter((item) => !item.isEntry)
-              .map((item) => (
-                <span
-                  key={item.id}
-                  className={`channelPresencePill ${chatLifecycleClassName(item.state)}`}
-                >
-                  {item.name} {chatLifecycleLabel(item.state)}
-                </span>
-              ))}
+          <div className="channelTopBarEnd">
+            <button
+              className="sidePanelToggle"
+              type="button"
+              onClick={() => setSidePanelOpen(!sidePanelOpen)}
+              aria-label="Toggle inspector panel"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 2v12" />
+                <rect x="2" y="2" width="12" height="12" rx="2" />
+              </svg>
+              {(operatorView?.approvals.length ?? 0) > 0 ? (
+                <span className="sidePanelBadge">{operatorView?.approvals.length}</span>
+              ) : null}
+            </button>
           </div>
-        </div>
-        {showAddCatButton ? (
-          <button
-            className="addCatButton"
-            type="button"
-            onClick={onToggleAddCat}
-          >
-            +
-          </button>
-        ) : null}
-      </header>
-      <div className="viewShell viewShellChannel">
+        </header>
         <div className="channelWorkspace">
           <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
             {feedback ? <p className="feedbackText channelFeedback">{feedback}</p> : null}
@@ -441,7 +375,7 @@ export function ChatView({
                       data-tooltip={cwd}
                       role="button"
                       tabIndex={0}
-                      onClick={() => void openFolderInExplorer(cwd)}
+                      onClick={() => openSidePanelTo('cwd')}
                     >
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
@@ -452,55 +386,36 @@ export function ChatView({
                 })()}
               </div>
                 {isDirectLane && directLaneCat && directLaneModelValue ? (
-                  <>
-                    <ComposerCatStack
-                      cats={[directLaneCat]}
-                      bossCatId={payload.chat.bossCatId}
-                      leadCatId={directLaneCat.id}
-                      onClick={() => setDirectLanePanelOpen(!directLanePanelOpen)}
-                    />
-                    {directLanePanelOpen ? (
-                      <ModelSelectorPanel
-                        mode="direct-lane"
-                        cats={[directLaneCat]}
-                        bossCatId={payload.chat.bossCatId}
-                        selectedCatIds={[directLaneCat.id]}
-                        highlightedCatId={directLaneCat.id}
-                        leadCatId={directLaneCat.id}
-                        modelValue={directLaneModelValue}
-                        onModelChange={(value) => {
-                          onDirectLaneModelChange?.(directLaneCat.id, value);
-                        }}
-                        onClose={() => setDirectLanePanelOpen(false)}
-                      />
-                    ) : null}
-                  </>
+                  <ComposerCatStack
+                    cats={[directLaneCat]}
+                    bossCatId={payload.chat.bossCatId}
+                    leadCatId={directLaneCat.id}
+                    onClick={() => openSidePanelTo('execution')}
+                  />
                 ) : isSoloComposer && selectedModel && onModelChange ? (
                   <div style={{ marginRight: 8 }}>
                     <ModelSelectorChip
                       label={buildModelSelectorLabel(selectedModel)}
-                      onClick={() => setDirectLanePanelOpen(!directLanePanelOpen)}
+                      onClick={() => openSidePanelTo('execution')}
                     />
-                    {directLanePanelOpen ? (
-                      <ModelSelectorPanel
-                        mode="draft"
-                        cats={[]}
-                        bossCatId={payload.chat.bossCatId}
-                        selectedCatIds={[]}
-                        highlightedCatId={null}
-                        modelValue={selectedModel}
-                        onModelChange={onModelChange}
-                        onClose={() => setDirectLanePanelOpen(false)}
-                      />
-                    ) : null}
                   </div>
-                ) : !isSoloComposer && leadCat ? (
-                  <ComposerLeadCatAvatar
-                    cat={leadCat}
-                    isBoss={leadCat.catId === payload.chat.bossCatId}
-                    payload={payload}
-                  />
-                ) : null}
+                ) : !isSoloComposer && leadCat ? (() => {
+                  const catRecord = payload.chat.cats.find((c) => c.id === leadCat.catId);
+                  return (
+                    <div
+                      className={leadCat.catId === payload.chat.bossCatId ? 'catAvatar composerStackAvatar catAvatarBoss composerLeadAvatar' : 'catAvatar composerStackAvatar composerLeadAvatar'}
+                      data-tooltip={leadCat.name}
+                      style={catRecord?.avatarUrl
+                        ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                        : leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}
+                      onClick={() => openSidePanelTo('execution')}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {catRecord?.avatarUrl ? null : catInitials(leadCat.name)}
+                    </div>
+                  );
+                })() : null}
                 <button
                   className="composerSendButton"
                   disabled={!composerDraft.trim() || busy === 'message:send'}
@@ -530,100 +445,196 @@ export function ChatView({
             </form>
           </section>
 
-          <aside className="operatorRail">
-            {operatorError ? (
-              <section className="operatorPanel operatorPanelError">
-                <div className="operatorPanelHeader">
-                  <div>
-                    <p className="operatorEyebrow">Operator loop</p>
-                    <h2>Inspector unavailable</h2>
-                  </div>
-                </div>
-                <p className="operatorEmptyState">{operatorError}</p>
-              </section>
-            ) : null}
-            {operatorLoading && !operatorView ? (
-              <section className="operatorPanel">
-                <div className="operatorPanelHeader">
-                  <div>
-                    <p className="operatorEyebrow">Operator loop</p>
-                    <h2>Loading</h2>
-                  </div>
-                </div>
-                <p className="operatorEmptyState">Loading approval, trace, and run state.</p>
-              </section>
-            ) : null}
-            <ApprovalQueuePanel
-              approvals={operatorView?.approvals ?? []}
-              actorNameById={operatorView?.actorNameById ?? {}}
-              busy={busy}
-              onDecision={onApprovalDecision}
-            />
-            <ProgressSummaryPanel
-              inspector={inspectedRun}
-              effectivePolicy={operatorView?.effectivePolicy ?? null}
-              incidentActions={inspectedRun?.incidentActions ?? operatorView?.incidentActions ?? []}
-              pendingApprovalCount={operatorView?.approvals.length ?? 0}
-              guardReason={inspectedRun?.guardReason ?? operatorView?.guardReason ?? null}
-              cooldownLabel={inspectedRun?.cooldownLabel ?? operatorView?.cooldownLabel ?? null}
-              onInspectRun={setInspectedRunId}
-              onOperatorAction={onOperatorAction}
-            />
-            <ActivityFeed items={operatorView?.activityFeed ?? []} />
-            <RunInspector
-              runs={operatorView?.runs ?? []}
-              actorNameById={operatorView?.actorNameById ?? {}}
-              inspector={inspectedRun}
-              onSelectRun={setInspectedRunId}
-            />
-          </aside>
         </div>
       </div>
-    </>
-  );
-}
-
-function ComposerLeadCatAvatar({
-  cat,
-  isBoss,
-  payload,
-}: {
-  cat: { catId: string; name: string; avatarColor: string | null; avatarUrl?: string | null; execution: { target: { provider: string; instance: string | null; model: string | null } }; skillProfile?: string | null };
-  isBoss: boolean;
-  payload: AppShellPayload;
-}) {
-  const [inspectOpen, setInspectOpen] = useState(false);
-
-  return (
-    <>
-      <div
-        className={isBoss ? 'catAvatar composerStackAvatar catAvatarBoss composerLeadAvatar' : 'catAvatar composerStackAvatar composerLeadAvatar'}
-        data-tooltip={cat.name}
-        style={cat.avatarUrl
-          ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-          : cat.avatarColor ? { background: cat.avatarColor } : undefined}
-        onClick={() => setInspectOpen(!inspectOpen)}
-        role="button"
-        tabIndex={0}
-      >
-        {cat.avatarUrl ? null : catInitials(cat.name)}
-      </div>
-      {inspectOpen ? (
-        <CatInspectPanel
-          cat={{
-            id: cat.catId,
-            name: cat.name,
-            avatarColor: cat.avatarColor,
-            avatarUrl: cat.avatarUrl,
-            provider: cat.execution.target.provider,
-            instance: cat.execution.target.instance,
-            model: cat.execution.target.model,
-            skillProfile: cat.skillProfile ?? null,
-            isBoss,
-          }}
-          onClose={() => setInspectOpen(false)}
+      {sidePanelOpen ? (
+        <ChatSidePanel
+          activeSection={sidePanelSection}
+          onSectionToggle={setSidePanelSection}
+          onClose={() => setSidePanelOpen(false)}
+          belowBar
+          sections={buildSidePanelSections()}
         />
       ) : null}
     </>
   );
+
+  function buildSidePanelSections(): SidePanelSection[] {
+    const sections: SidePanelSection[] = [];
+
+    // --- Operator section ---
+    sections.push({
+      id: 'operator',
+      title: 'Operator',
+      badge: operatorView?.approvals.length ?? 0,
+      children: (
+        <>
+          {operatorError ? (
+            <section className="operatorPanel operatorPanelError">
+              <div className="operatorPanelHeader">
+                <div>
+                  <p className="operatorEyebrow">Operator loop</p>
+                  <h2>Inspector unavailable</h2>
+                </div>
+              </div>
+              <p className="operatorEmptyState">{operatorError}</p>
+            </section>
+          ) : null}
+          {operatorLoading && !operatorView ? (
+            <section className="operatorPanel">
+              <div className="operatorPanelHeader">
+                <div>
+                  <p className="operatorEyebrow">Operator loop</p>
+                  <h2>Loading</h2>
+                </div>
+              </div>
+              <p className="operatorEmptyState">Loading approval, trace, and run state.</p>
+            </section>
+          ) : null}
+          <ApprovalQueuePanel
+            approvals={operatorView?.approvals ?? []}
+            actorNameById={operatorView?.actorNameById ?? {}}
+            busy={busy}
+            onDecision={onApprovalDecision}
+          />
+          <ProgressSummaryPanel
+            inspector={inspectedRun}
+            effectivePolicy={operatorView?.effectivePolicy ?? null}
+            incidentActions={inspectedRun?.incidentActions ?? operatorView?.incidentActions ?? []}
+            pendingApprovalCount={operatorView?.approvals.length ?? 0}
+            guardReason={inspectedRun?.guardReason ?? operatorView?.guardReason ?? null}
+            cooldownLabel={inspectedRun?.cooldownLabel ?? operatorView?.cooldownLabel ?? null}
+            onInspectRun={setInspectedRunId}
+            onOperatorAction={onOperatorAction}
+          />
+          <ActivityFeed items={operatorView?.activityFeed ?? []} />
+          <RunInspector
+            runs={operatorView?.runs ?? []}
+            actorNameById={operatorView?.actorNameById ?? {}}
+            inspector={inspectedRun}
+            onSelectRun={setInspectedRunId}
+          />
+        </>
+      ),
+    });
+
+    // --- Execution Target section ---
+    const executionChildren = (() => {
+      if (isDirectLane && directLaneCat && directLaneModelValue) {
+        return (
+          <>
+            <CatAvatarRow
+              cats={[directLaneCat]}
+              bossCatId={payload.chat.bossCatId}
+              selectedIds={[directLaneCat.id]}
+              highlightedId={directLaneCat.id}
+              leadCatId={directLaneCat.id}
+              toggleable={false}
+              showLeadBadge
+              onToggle={() => {}}
+              onHighlight={() => {}}
+            />
+            <ProviderModelFields
+              provider={directLaneModelValue.provider}
+              instance={directLaneModelValue.instance ?? ''}
+              model={directLaneModelValue.model ?? ''}
+              modelSelection={directLaneModelValue.modelSelection}
+              onTargetChange={(target: ProviderTargetSelection) => {
+                onDirectLaneModelChange?.(directLaneCat.id, {
+                  provider: target.provider,
+                  model: target.model || null,
+                  instance: target.instance || null,
+                  modelSelection: target.modelSelection ?? null,
+                });
+              }}
+            />
+          </>
+        );
+      }
+      if (isSoloComposer && selectedModel && onModelChange) {
+        return (
+          <ProviderModelFields
+            provider={selectedModel.provider}
+            instance={selectedModel.instance ?? ''}
+            model={selectedModel.model ?? ''}
+            modelSelection={selectedModel.modelSelection}
+            onTargetChange={(target: ProviderTargetSelection) => {
+              onModelChange({
+                provider: target.provider,
+                model: target.model || null,
+                instance: target.instance || null,
+                modelSelection: target.modelSelection ?? null,
+              });
+            }}
+          />
+        );
+      }
+      if (!isSoloComposer && leadCat) {
+        const catRecord = payload.chat.cats.find((c) => c.id === leadCat.catId);
+        const providerName = getProviderDisplayName(leadCat.execution.target.provider);
+        const modelLabel = leadCat.execution.target.model
+          ? (getProviderModels(leadCat.execution.target.provider)
+              .find((m) => m.value === leadCat.execution.target.model)?.label ?? leadCat.execution.target.model)
+              .replace(/\s*\(default\)\s*/iu, '')
+          : null;
+        return (
+          <div className="catInspectPanelBody">
+            <div className="catInspectIdentity">
+              <div
+                className={leadCat.catId === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
+                style={catRecord?.avatarUrl
+                  ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}
+              >
+                {catRecord?.avatarUrl ? null : catInitials(leadCat.name)}
+              </div>
+              <div>
+                <strong>{leadCat.name}</strong>
+                {leadCat.catId === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
+              </div>
+            </div>
+            <div className="catInspectField">
+              <span className="catInspectFieldLabel">Provider</span>
+              <span>{providerName}</span>
+            </div>
+            {leadCat.execution.target.instance ? (
+              <div className="catInspectField">
+                <span className="catInspectFieldLabel">Instance</span>
+                <span>{leadCat.execution.target.instance}</span>
+              </div>
+            ) : null}
+            <div className="catInspectField">
+              <span className="catInspectFieldLabel">Model</span>
+              <span>{modelLabel ?? 'default'}</span>
+            </div>
+          </div>
+        );
+      }
+      return <p className="operatorEmptyState">No execution target configured.</p>;
+    })();
+    sections.push({ id: 'execution', title: 'Execution Target', children: executionChildren });
+
+    // --- Working Directory section ---
+    const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
+    sections.push({
+      id: 'cwd',
+      title: 'Working Directory',
+      children: cwd ? (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{cwd}</p>
+          <button
+            type="button"
+            className="operatorActionButton"
+            onClick={() => void openFolderInExplorer(cwd)}
+          >
+            Open in Explorer
+          </button>
+        </div>
+      ) : (
+        <p className="operatorEmptyState">No working directory set.</p>
+      ),
+    });
+
+    return sections;
+  }
 }
