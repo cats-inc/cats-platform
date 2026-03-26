@@ -29,6 +29,7 @@ export interface WorkflowContinuationReplayRequest {
   continuationSource: WorkflowContinuationReplaySource | null;
   workflowRecommendation: Record<string, unknown> | null;
   unresolvedTargets: string[];
+  blockedReason: string | null;
   recordedAt: string;
 }
 
@@ -174,6 +175,7 @@ export function buildWorkflowContinuationReplayRequest(input: {
   continuationSource?: WorkflowContinuationReplaySource | null;
   workflowRecommendation?: Record<string, unknown> | null;
   unresolvedTargets?: string[];
+  blockedReason?: string | null;
   recordedAt: string;
 }): WorkflowContinuationReplayRequest {
   return {
@@ -193,6 +195,7 @@ export function buildWorkflowContinuationReplayRequest(input: {
       ? structuredClone(input.workflowRecommendation)
       : null,
     unresolvedTargets: [...(input.unresolvedTargets ?? [])],
+    blockedReason: input.blockedReason ?? null,
     recordedAt: input.recordedAt,
   };
 }
@@ -251,6 +254,7 @@ export function readWorkflowContinuationReplay(
     continuationSource: readContinuationSource(record.continuationSource),
     workflowRecommendation: asRecord(record.workflowRecommendation),
     unresolvedTargets: readStringArray(record.unresolvedTargets),
+    blockedReason: readNullableString(record.blockedReason),
     recordedAt,
     replayState,
     replayTrigger,
@@ -290,6 +294,7 @@ export function writeWorkflowContinuationReplayMetadata(
       ? structuredClone(request.workflowRecommendation)
       : null,
     unresolvedTargets: [...request.unresolvedTargets],
+    blockedReason: request.blockedReason,
     recordedAt: request.recordedAt,
     replayState: options.replayState ?? 'ready',
     replayTrigger: options.replayTrigger ?? 'retry',

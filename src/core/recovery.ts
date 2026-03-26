@@ -164,6 +164,7 @@ export interface CoreTaskWorkflowContinuationRecoveryView {
   reviewRequired: boolean;
   continuationSource: string | null;
   unresolvedTargets: string[];
+  blockedReason: string | null;
   replayState: string;
   replayTrigger: string | null;
   replayAttemptAt: string | null;
@@ -399,6 +400,7 @@ function buildWorkflowContinuationReplayView(
     reviewRequired: snapshot.reviewRequired,
     continuationSource: snapshot.continuationSource,
     unresolvedTargets: [...snapshot.unresolvedTargets],
+    blockedReason: snapshot.blockedReason,
     replayState: snapshot.replayState,
     replayTrigger: snapshot.replayTrigger,
     replayAttemptAt: snapshot.replayAttemptAt,

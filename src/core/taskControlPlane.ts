@@ -162,6 +162,7 @@ export interface CoreTaskControlPlaneWorkflowContinuationView {
   workflowShape: 'sequential' | 'parallel' | 'converge' | null;
   continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
   reviewRequired: boolean;
+  blockedReason: string | null;
   targetCount: number;
   targetNames: string[];
   unresolvedTargets: string[];
@@ -619,6 +620,7 @@ function buildWorkflowContinuationState(input: {
     workflowShape,
     continuationSource,
     reviewRequired,
+    blockedReason: replay?.blockedReason ?? null,
     targetCount: targetNames.length,
     targetNames: [...targetNames],
     unresolvedTargets,

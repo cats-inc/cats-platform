@@ -101,6 +101,7 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
           reviewRequired: true,
           continuationSource: 'workflow_recommendation',
           unresolvedTargets: ['Ghost Cat'],
+          blockedReason: 'max_dispatches',
           recordedAt: '2026-03-26T11:59:00.000Z',
         }),
         {
@@ -157,6 +158,7 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
   assert.equal(recovery.dispatchReplay?.replayState, 'ready');
   assert.equal(recovery.workflowContinuationReplay?.checkpointId, 'checkpoint-recovery');
   assert.equal(recovery.workflowContinuationReplay?.reviewRequired, true);
+  assert.equal(recovery.workflowContinuationReplay?.blockedReason, 'max_dispatches');
   assert.equal(recovery.context?.deliveryMode, 'commit_only');
   assert.equal(recovery.context?.deliverySource, 'task_override');
   assert.deepEqual(recovery.context?.deliveryGates, ['owner_approval_required']);

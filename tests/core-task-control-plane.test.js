@@ -82,6 +82,7 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
           reviewRequired: true,
           continuationSource: 'workflow_recommendation',
           unresolvedTargets: ['Reviewer'],
+          blockedReason: 'anti_ping_pong',
           recordedAt: '2026-03-26T15:53:00.000Z',
         }),
         {
@@ -212,6 +213,7 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
   assert.equal(view.workflowContinuation?.workflowShape, 'converge');
   assert.equal(view.workflowContinuation?.continuationSource, 'workflow_recommendation');
   assert.equal(view.workflowContinuation?.reviewRequired, true);
+  assert.equal(view.workflowContinuation?.blockedReason, 'anti_ping_pong');
   assert.equal(view.workflowContinuation?.targetCount, 1);
   assert.deepEqual(view.workflowContinuation?.targetNames, ['Reviewer']);
   assert.deepEqual(view.workflowContinuation?.unresolvedTargets, ['Reviewer']);

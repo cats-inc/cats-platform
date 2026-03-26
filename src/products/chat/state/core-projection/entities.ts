@@ -222,6 +222,7 @@ function readWorkflowContinuationReplayRequest(
     })(),
     workflowRecommendation: readMetadataRecord(metadata.workflowRecommendation),
     unresolvedTargets: readMetadataStringArray(metadata, 'unresolvedTargets'),
+    blockedReason: readMetadataString(metadata, 'reason'),
     recordedAt: event.createdAt,
   });
 }

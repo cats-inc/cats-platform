@@ -1136,6 +1136,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
         reviewRequired: true,
         continuationSource: 'workflow_recommendation',
         unresolvedTargets: ['Ghost Cat'],
+        blockedReason: 'max_dispatches',
         recordedAt: '2026-03-26T13:03:00.000Z',
       }),
       {
@@ -1273,6 +1274,10 @@ test('core recovery routes expose normalized orchestrator replay state without l
       ['Followup-Agent'],
     );
     assert.equal(detailPayload.recovery.workflowContinuationReplay.reviewRequired, true);
+    assert.equal(
+      detailPayload.recovery.workflowContinuationReplay.blockedReason,
+      'max_dispatches',
+    );
     assert.equal(detailPayload.recovery.context.deliveryMode, 'commit_only');
     assert.equal(detailPayload.recovery.context.deliverySource, 'task_override');
     assert.deepEqual(detailPayload.recovery.context.deliveryGates, ['owner_approval_required']);
@@ -2061,6 +2066,7 @@ test('core control-plane routes expose grouped operator actions and workflow att
               reviewRequired: true,
               continuationSource: 'workflow_recommendation',
               unresolvedTargets: ['Reviewer'],
+              blockedReason: 'anti_ping_pong',
               recordedAt: '2026-03-26T14:22:00.000Z',
             }),
             {
@@ -2218,6 +2224,10 @@ test('core control-plane routes expose grouped operator actions and workflow att
     assert.equal(
       detailPayload.controlPlane.workflowContinuation.continuationSource,
       'workflow_recommendation',
+    );
+    assert.equal(
+      detailPayload.controlPlane.workflowContinuation.blockedReason,
+      'anti_ping_pong',
     );
     assert.deepEqual(detailPayload.controlPlane.workflowContinuation.targetNames, ['Reviewer']);
     assert.deepEqual(

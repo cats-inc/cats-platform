@@ -306,6 +306,10 @@ Known follow-ups:
   step already had a concrete continuation source plus target set, so the same
   operator `retry` seam can auto-resume a broader set of deeper continuation
   failures without inventing a second replay substrate
+- that same workflow-continuation replay contract now also carries a normalized
+  `blockedReason` into recovery and control-plane read models, so operator
+  automation can tell which guard persisted the replay snapshot without
+  scraping raw checkpoint metadata
 - server startup now downgrades stranded `pendingOrchestratorDispatch` /
   `orchestratorDispatchReplay` `in_progress` markers to failed so crash or
   cleanup-failure cases remain operator-recoverable after restart

@@ -217,7 +217,11 @@ contracts.
       now also carries the same family topology plus family-aware filters,
       child-activity summary counts, and workflow-shape faceting so
       replay/retry automation does not need a separate task-detail join to
-      scope parent/child recovery work, and the
+      scope parent/child recovery work, while workflow-continuation replay
+      now also carries a normalized continuation `blockedReason` into recovery
+      plus control-plane payloads so operator automation can distinguish which
+      guard persisted a retryable replay snapshot without scraping raw
+      checkpoint metadata, and the
       task-timeline route now also supports server-side narrative filters plus
       a lightweight query summary so operator tooling can slice one task's
       chronology without hydrating the full unfiltered timeline first.

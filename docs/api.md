@@ -1338,6 +1338,7 @@ control-plane view for one task:
       "workflowShape": "converge",
       "continuationSource": "workflow_recommendation",
       "reviewRequired": true,
+      "blockedReason": "anti_ping_pong",
       "targetCount": 1,
       "targetNames": ["Reviewer"],
       "unresolvedTargets": ["Reviewer"],
@@ -1393,7 +1394,9 @@ Semantics:
 - `workflowContinuation` is the normalized continuation contract for operator
   automation; it lifts the latest checkpoint recommendation, workflow summary,
   and stored workflow-continuation replay state into one task-scoped view so
-  callers do not have to stitch them together themselves,
+  callers do not have to stitch them together themselves, including the
+  normalized replay `blockedReason` when the continuation was persisted from a
+  guard-blocked room step,
 - `runtimeDeliveryIntent` is the normalized delivery-policy contract for
   operator automation; it lifts the effective delivery policy and runtime
   delivery manifest into one task-scoped view so callers do not have to join
@@ -1673,6 +1676,7 @@ for one task:
     "workflowContinuationReplay": {
       "checkpointId": "checkpoint-123",
       "workflowShape": "sequential",
+      "blockedReason": "max_dispatches",
       "replayState": "failed"
     },
     "latestActivity": {
@@ -1752,6 +1756,10 @@ Semantics:
 - `context` lifts delivery policy, runtime delivery actions, and workflow-stage
   routing context into the recovery view so recovery automation can filter and
   facet by delivery/workflow intent without re-reading raw task metadata
+- `workflowContinuationReplay.blockedReason` exposes the normalized workflow
+  guard that persisted the retryable continuation snapshot, so recovery
+  consumers can distinguish different continuation failure modes without
+  scraping raw checkpoint metadata
 - `workflowShape` / `workflowShapeCounts` let recovery automation distinguish
   sequential, parallel, or converge replay topology without inferring it from
   stage ids alone
