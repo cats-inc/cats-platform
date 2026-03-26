@@ -223,7 +223,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
             },
           ],
           workflowStageId: 'continuation_handoff',
-          workflowShape: 'sequential',
+          workflowShape: 'converge',
+          reviewRequired: true,
           blockedReason: 'max_dispatches',
           recordedAt: '2026-03-26T17:49:00.000Z',
         }),
@@ -318,7 +319,9 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     deliveryModes: ['commit_only'],
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
-    workflowShapes: ['sequential'],
+    workflowShapes: ['converge'],
+    workflowReviewRequired: true,
+    workflowConvergeTargetIds: ['cat-reviewer'],
     workflowContinuationBlockedReasons: ['max_dispatches'],
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
@@ -340,12 +343,13 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
-  assert.equal(result.summary.workflowShapeCounts.sequential, 1);
+  assert.equal(result.summary.workflowShapeCounts.converge, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
   assert.equal(result.summary.latestTimelineKindCounts.run, 1);
   assert.equal(result.tasks[0]?.family.rootTaskId, 'task-inbox-root');
   assert.equal(result.tasks[0]?.family.parent?.taskId, 'task-inbox-root');
+  assert.equal(result.tasks[0]?.workflowContinuation?.convergeTargetId, 'cat-reviewer');
   assert.equal(result.summary.withChildrenCount, 0);
   assert.equal(result.summary.withActiveChildrenCount, 0);
 });

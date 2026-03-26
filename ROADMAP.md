@@ -232,7 +232,11 @@ contracts.
       list routes now also support `workflowContinuationBlockedReason`
       filtering plus `workflowContinuationBlockedReasonCounts` so queue
       automation can facet retryable continuation work by that persisted guard
-      reason, and the
+      reason, while control-plane and operator-inbox workflow-continuation
+      views now also propagate a resolved `convergeTargetId` for single-target
+      review stages and support `workflowReviewRequired` plus
+      `workflowConvergeTargetId` filters for reviewer-targeted queue faceting,
+      and the
       task-timeline route now also supports server-side narrative filters plus
       a lightweight query summary so operator tooling can slice one task's
       chronology without hydrating the full unfiltered timeline first.

@@ -144,6 +144,8 @@ export function readTaskAttentionListOptions(
       'workflowShape',
       CORE_TASK_WORKFLOW_SHAPES,
     ),
+    workflowReviewRequired: readBooleanQuery(searchParams, 'workflowReviewRequired'),
+    workflowConvergeTargetIds: readQueryValues(searchParams, 'workflowConvergeTargetId'),
     workflowContinuationBlockedReasons: readEnumQueryValues(
       searchParams,
       'workflowContinuationBlockedReason',

@@ -1418,6 +1418,8 @@ Semantics:
   - `deliveryAction`
   - `workflowStageId`
   - `workflowShape`
+  - `workflowReviewRequired`
+  - `workflowConvergeTargetId`
   - `workflowContinuationBlockedReason`
   - `latestTimelineCategory`
   - `latestTimelineKind`
@@ -1456,6 +1458,10 @@ Semantics:
 - `latestWorkflowRecommendation` lifts the newest structured continuation hint
   out of checkpoint/outcome/run/trace metadata into a stable task-scoped read
   model
+- `workflowContinuation.convergeTargetId` exposes the current single-target
+  converge reviewer when that workflow stage has already resolved one, so
+  operator automation can target review queues without re-reading raw branch
+  state
 - `family` reuses the same task-family summary exposed by
   `GET /api/core/tasks/{taskId}`, so control-plane consumers can see whether a
   task is a parent, child, or root plus how many immediate child tasks are
@@ -1523,6 +1529,8 @@ Semantics:
   - `deliveryAction`
   - `workflowStageId`
   - `workflowShape`
+  - `workflowReviewRequired`
+  - `workflowConvergeTargetId`
   - `workflowContinuationBlockedReason`
   - `latestTimelineCategory`
   - `latestTimelineKind`

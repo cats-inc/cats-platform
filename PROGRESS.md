@@ -384,6 +384,11 @@ Known follow-ups:
   `workflowShape` filtering plus `workflowShapeCounts`, so sequential /
   parallel / converge topology becomes a first-class operator facet instead of
   something consumers must infer from stage ids or raw metadata
+- that same workflow continuation seam now also propagates a resolved
+  `convergeTargetId` for single-target review stages and lets
+  control-plane/operator-inbox queries filter by `workflowReviewRequired` plus
+  `workflowConvergeTargetId`, so review queues can target the active reviewer
+  without scraping raw branch state
 - the recovery list route now also supports the same `workflowShape` filtering
   plus `workflowShapeCounts`, so retry/resume automation can facet replay work
   by topology without re-reading raw task metadata

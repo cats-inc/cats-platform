@@ -213,6 +213,7 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
   assert.equal(view.workflowContinuation?.workflowShape, 'converge');
   assert.equal(view.workflowContinuation?.continuationSource, 'workflow_recommendation');
   assert.equal(view.workflowContinuation?.reviewRequired, true);
+  assert.equal(view.workflowContinuation?.convergeTargetId, 'cat-reviewer');
   assert.equal(view.workflowContinuation?.blockedReason, 'anti_ping_pong');
   assert.equal(view.workflowContinuation?.targetCount, 1);
   assert.deepEqual(view.workflowContinuation?.targetNames, ['Reviewer']);
@@ -299,7 +300,8 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
             },
           ],
           workflowStageId: 'continuation_handoff',
-          workflowShape: 'sequential',
+          workflowShape: 'converge',
+          reviewRequired: true,
           blockedReason: 'max_dispatches',
           recordedAt: '2026-03-26T16:09:00.000Z',
         }),
@@ -355,7 +357,9 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
     deliveryModes: ['commit_only'],
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
-    workflowShapes: ['sequential'],
+    workflowShapes: ['converge'],
+    workflowReviewRequired: true,
+    workflowConvergeTargetIds: ['cat-reviewer'],
     workflowContinuationBlockedReasons: ['max_dispatches'],
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
@@ -374,10 +378,11 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
-  assert.equal(result.summary.workflowShapeCounts.sequential, 1);
+  assert.equal(result.summary.workflowShapeCounts.converge, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
   assert.equal(result.summary.latestTimelineKindCounts.run, 1);
+  assert.equal(result.tasks[0]?.workflowContinuation?.convergeTargetId, 'cat-reviewer');
 });
 
 test('buildCoreTaskControlPlaneView surfaces waiting parent tasks with active child work', () => {

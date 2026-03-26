@@ -169,6 +169,7 @@ export interface CoreTaskControlPlaneWorkflowContinuationView {
   workflowShape: 'sequential' | 'parallel' | 'converge' | null;
   continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
   reviewRequired: boolean;
+  convergeTargetId: string | null;
   blockedReason: WorkflowContinuationReplayBlockedReason | null;
   targetCount: number;
   targetNames: string[];
@@ -228,6 +229,8 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   deliveryActions?: CoreRuntimeDeliveryAction[];
   workflowStageIds?: string[];
   workflowShapes?: CoreTaskWorkflowShape[];
+  workflowReviewRequired?: boolean | null;
+  workflowConvergeTargetIds?: string[];
   workflowContinuationBlockedReasons?: WorkflowContinuationReplayBlockedReason[];
   latestTimelineCategories?: CoreTaskTimelineCategory[];
   latestTimelineKinds?: CoreTaskTimelineItemKind[];
@@ -547,6 +550,22 @@ function readEffectiveWorkflowShape(
     ?? null;
 }
 
+function readEffectiveWorkflowReviewRequired(
+  view: Pick<CoreTaskControlPlaneView, 'workflowContinuation' | 'workflowSummary'>,
+): boolean {
+  return view.workflowContinuation?.reviewRequired
+    ?? view.workflowSummary?.reviewRequired
+    ?? false;
+}
+
+function readEffectiveWorkflowConvergeTargetId(
+  view: Pick<CoreTaskControlPlaneView, 'workflowContinuation' | 'workflowSummary'>,
+): string | null {
+  return view.workflowContinuation?.convergeTargetId
+    ?? view.workflowSummary?.convergeTargetId
+    ?? null;
+}
+
 function readContinuationSource(
   value: unknown,
 ): 'explicit_mentions' | 'workflow_recommendation' | null {
@@ -610,6 +629,19 @@ function buildWorkflowContinuationState(input: {
   const stageId = replay?.workflowStageId
     ?? input.workflowSummary?.stageId
     ?? null;
+  const convergeTargetId = input.workflowSummary?.convergeTargetId
+    ?? (
+      replay?.workflowShape === 'converge'
+      && replay.targets.length === 1
+      ? replay.targets[0]?.participantId ?? null
+      : null
+    )
+    ?? (
+      workflowShape === 'converge'
+      && input.latestWorkflowRecommendation?.candidateTargets.length === 1
+      ? input.latestWorkflowRecommendation.candidateTargets[0]?.participantId ?? null
+      : null
+    );
 
   if (
     !replay
@@ -629,6 +661,7 @@ function buildWorkflowContinuationState(input: {
     workflowShape,
     continuationSource,
     reviewRequired,
+    convergeTargetId,
     blockedReason: replay?.blockedReason ?? null,
     targetCount: targetNames.length,
     targetNames: [...targetNames],
@@ -865,6 +898,23 @@ function matchesControlPlaneListOptions(
     options.workflowShapes?.length
     && (!readEffectiveWorkflowShape(view)
       || !options.workflowShapes.includes(readEffectiveWorkflowShape(view)!))
+  ) {
+    return false;
+  }
+
+  if (
+    options.workflowReviewRequired !== undefined
+    && options.workflowReviewRequired !== null
+    && readEffectiveWorkflowReviewRequired(view) !== options.workflowReviewRequired
+  ) {
+    return false;
+  }
+
+  if (
+    options.workflowConvergeTargetIds?.length
+    && !options.workflowConvergeTargetIds.includes(
+      readEffectiveWorkflowConvergeTargetId(view) ?? '',
+    )
   ) {
     return false;
   }

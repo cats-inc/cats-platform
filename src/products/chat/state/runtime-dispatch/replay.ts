@@ -301,6 +301,10 @@ export async function resumeWorkflowContinuationReplay(input: {
   );
   activeTurn.id = outcome.turnId;
   activeTurn.reviewRequired = input.request.reviewRequired;
+  activeTurn.convergeTargetId = activeTurn.workflowShape === 'converge'
+    && initialResolution.targets.length === 1
+    ? initialResolution.targets[0]!.participantId
+    : null;
   workflow.activeTurn = activeTurn;
   const replayTargets = buildReplayResolutionSourceTargets(initialResolution);
   const replayEventMetadata = buildReplayEventMetadata({

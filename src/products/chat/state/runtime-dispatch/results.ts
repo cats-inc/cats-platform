@@ -380,6 +380,10 @@ export function applyDispatchExecutions(
       extractedWorkflowRecommendation.recommendation,
       continuationResolution.targets.length,
     );
+    const convergeTargetId = continuationStage.workflowShape === 'converge'
+      && continuationResolution.targets.length === 1
+      ? continuationResolution.targets[0]!.participantId
+      : null;
     const recommendationBranchStrategy = continuationSource === 'workflow_recommendation'
       ? extractedWorkflowRecommendation.recommendation?.branchStrategy ?? null
       : null;
@@ -454,6 +458,7 @@ export function applyDispatchExecutions(
       guardReason = 'max_continuations';
       activeTurn.guard = guardReason;
       activeTurn.status = 'blocked';
+      activeTurn.convergeTargetId = convergeTargetId;
       latestCheckpoint = addWorkflowCheckpoint(
         outcome,
         workflow,
@@ -487,6 +492,7 @@ export function applyDispatchExecutions(
     activeTurn.stageId = continuationStage.stageId;
     activeTurn.workflowShape = continuationStage.workflowShape;
     activeTurn.reviewRequired = continuationStage.reviewRequired;
+    activeTurn.convergeTargetId = convergeTargetId;
     latestCheckpoint = addWorkflowCheckpoint(
       outcome,
       workflow,

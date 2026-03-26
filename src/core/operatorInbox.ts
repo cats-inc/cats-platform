@@ -100,6 +100,22 @@ function readEffectiveWorkflowShape(item: Pick<
     ?? null;
 }
 
+function readEffectiveWorkflowReviewRequired(
+  item: Pick<CoreOperatorInboxItem, 'workflowContinuation' | 'workflowSummary'>,
+): boolean {
+  return item.workflowContinuation?.reviewRequired
+    ?? item.workflowSummary?.reviewRequired
+    ?? false;
+}
+
+function readEffectiveWorkflowConvergeTargetId(
+  item: Pick<CoreOperatorInboxItem, 'workflowContinuation' | 'workflowSummary'>,
+): string | null {
+  return item.workflowContinuation?.convergeTargetId
+    ?? item.workflowSummary?.convergeTargetId
+    ?? null;
+}
+
 function compareInboxItems(left: CoreOperatorInboxItem, right: CoreOperatorInboxItem): number {
   const severityRank = (value: CoreTaskControlPlaneAttention['severity']): number => {
     switch (value) {
@@ -206,6 +222,23 @@ function matchesOperatorInboxQuery(
     query.workflowShapes?.length
     && (!readEffectiveWorkflowShape(item)
       || !query.workflowShapes.includes(readEffectiveWorkflowShape(item)!))
+  ) {
+    return false;
+  }
+
+  if (
+    query.workflowReviewRequired !== undefined
+    && query.workflowReviewRequired !== null
+    && readEffectiveWorkflowReviewRequired(item) !== query.workflowReviewRequired
+  ) {
+    return false;
+  }
+
+  if (
+    query.workflowConvergeTargetIds?.length
+    && !query.workflowConvergeTargetIds.includes(
+      readEffectiveWorkflowConvergeTargetId(item) ?? '',
+    )
   ) {
     return false;
   }
