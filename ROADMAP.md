@@ -106,6 +106,9 @@ contracts.
       `effectiveStrategy` and `strategyState` metadata can settle into UI/read
       models before full runtime stream teardown where observe payloads already
       provide enough signal, without regressing no-planning compatibility paths
+- [x] Close the first parent-task fan-out convergence loop inside Cats Core so
+      child task terminal transitions synchronously settle `parentTaskId`
+      parents without a background poller or runtime-side task graph
 - [x] Land product-owned companion boxes, session hydration, and Cats-owned
       canonical memory/retrieval first slices without changing visible Chat UI
 - [ ] Extend Cats-owned canonical memory beyond the current cat/owner/channel

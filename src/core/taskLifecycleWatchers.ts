@@ -30,6 +30,7 @@ import {
   resolveActorName,
   asRecord,
 } from './taskLifecycleShared.js';
+import { reconcileParentTaskConvergence } from './taskConvergence.js';
 
 const activeTaskRunWatchers = new Map<string, Promise<void>>();
 
@@ -82,6 +83,7 @@ async function reconcileObservedTaskRun(
     observedAt,
   );
   const resolvedRunStatus = nextRunStatus ?? runBefore.status;
+  const taskStatusChanged = taskBefore.status !== mapCoreRunStatusToTaskStatus(resolvedRunStatus);
 
   const runWrite = upsertCoreRun(
     coreBefore,
@@ -147,6 +149,15 @@ async function reconcileObservedTaskRun(
       },
       now,
     ).core;
+  }
+
+  if (taskStatusChanged && isTerminalCoreRunStatus(resolvedRunStatus)) {
+    nextCore = reconcileParentTaskConvergence({
+      core: nextCore,
+      childTaskId: taskWrite.task.id,
+      actorId: input.actorId,
+      now,
+    }).core;
   }
 
   await input.coreStore.writeCore(nextCore);
