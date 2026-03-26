@@ -344,6 +344,10 @@ Known follow-ups:
   automation and later product surfaces can page/facet inbox, control-plane,
   and recovery lists without hydrating the full core snapshot and re-
   filtering client-side
+- `src/core/recovery.ts` now also lifts delivery/workflow context into the
+  recovery read model itself, so recovery filters and summary counts can facet
+  by `deliveryMode`, `deliveryAction`, and `workflowStageId` without forcing
+  later automation to join task metadata back onto replay rows
 - task lifecycle watchers now reconcile initial observe payloads before waiting
   on live stream teardown, so running `effectiveStrategy` / `strategyState`
   metadata lands in task/run read models earlier and terminal observe snapshots

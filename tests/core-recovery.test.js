@@ -43,7 +43,15 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
       metadata: writeWorkflowContinuationReplayMetadata(
         writeOrchestratorDispatchReplayMetadata(
           writePendingOrchestratorDispatchMetadata(
-            {},
+            {
+              effectiveDeliveryPolicy: {
+                mode: 'commit_only',
+                gates: ['owner_approval_required'],
+                source: 'task_override',
+                rationale: 'Safer retry rollout.',
+              },
+              roomRoutingMode: 'boss_chat',
+            },
             buildPendingOrchestratorDispatchRequest({
               channelId: 'channel-recovery',
               body: 'Please continue the blocked workflow with a narrower plan.',
@@ -149,6 +157,15 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
   assert.equal(recovery.dispatchReplay?.replayState, 'ready');
   assert.equal(recovery.workflowContinuationReplay?.checkpointId, 'checkpoint-recovery');
   assert.equal(recovery.workflowContinuationReplay?.reviewRequired, true);
+  assert.equal(recovery.context?.deliveryMode, 'commit_only');
+  assert.equal(recovery.context?.deliverySource, 'task_override');
+  assert.deepEqual(recovery.context?.deliveryGates, ['owner_approval_required']);
+  assert.deepEqual(recovery.context?.deliveryActions, ['create_commit']);
+  assert.equal(recovery.context?.workflowStageId, 'continuation_handoff');
+  assert.equal(recovery.context?.workflowShape, 'sequential');
+  assert.equal(recovery.context?.channelId, 'channel-recovery');
+  assert.equal(recovery.context?.transport, 'web');
+  assert.equal(recovery.context?.roomMode, 'boss_chat');
   assert.equal(
     recovery.workflowContinuationReplay?.targets[0]?.participantName,
     'Followup-Agent',
@@ -274,7 +291,15 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
       conversationId: 'conversation-recovery',
       createdAt: '2026-03-26T13:02:00.000Z',
       metadata: writeWorkflowContinuationReplayMetadata(
-        {},
+        {
+          effectiveDeliveryPolicy: {
+            mode: 'commit_only',
+            gates: ['owner_approval_required'],
+            source: 'task_override',
+            rationale: 'Workflow retry with owner gate.',
+          },
+          roomRoutingMode: 'boss_chat',
+        },
         buildWorkflowContinuationReplayRequest({
           channelId: 'channel-workflow',
           checkpointId: 'checkpoint-workflow',
@@ -292,6 +317,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
             },
           ],
           recordedAt: '2026-03-26T13:03:00.000Z',
+          workflowStageId: 'continuation_handoff',
           workflowShape: 'sequential',
         }),
       ),
@@ -302,6 +328,9 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   const result = queryCoreTaskRecoveryViews(core, {
     conversationIds: ['conversation-recovery'],
     hasWorkflowContinuationReplay: true,
+    deliveryModes: ['commit_only'],
+    deliveryActions: ['create_commit'],
+    workflowStageIds: ['continuation_handoff'],
     limit: 1,
   });
 
@@ -314,6 +343,9 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   assert.equal(result.summary.withWorkflowContinuationReplayCount, 1);
   assert.equal(result.summary.withPendingDispatchCount, 0);
   assert.equal(result.summary.taskStatusCounts.blocked, 1);
+  assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
+  assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
+  assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
 });
 
 test('queryCoreTaskRecoveryViews filters by available recovery action kinds', () => {

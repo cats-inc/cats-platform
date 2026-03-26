@@ -193,7 +193,10 @@ contracts.
       routes now also support additive query filters plus summary counts,
       including delivery-aware and workflow-stage-aware list filtering, so
       later operator automation can page/facet control-plane, inbox, and
-      recovery surfaces without rebuilding the read model outside `cats`.
+      recovery surfaces without rebuilding the read model outside `cats`, and
+      the recovery read model itself now lifts delivery/workflow context into
+      a first-class inspectable contract instead of forcing later consumers to
+      re-read raw task metadata.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

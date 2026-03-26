@@ -3,8 +3,17 @@ import type {
   CoreActivityRecord,
   CoreApprovalDecisionAction,
   CoreApprovalStatus,
+  CoreDeliveryGate,
+  CoreDeliveryMode,
+  CoreEffectivePolicySource,
+  CoreRuntimeDeliveryAction,
   CoreTaskRecord,
 } from './types.js';
+import {
+  buildRuntimeDeliveryManifestSummary,
+  readCoreEffectiveDeliveryPolicy,
+  readCoreRuntimeDeliveryManifestSummary,
+} from './governance.js';
 import {
   buildTaskApprovalActionEnvelope,
   buildTaskOperatorActionEnvelope,
@@ -59,6 +68,23 @@ export const CORE_TASK_RECOVERY_ACTION_KINDS = [
   'reject',
   'retry',
 ] as const satisfies readonly CoreTaskRecoveryActionKind[];
+
+export const CORE_TASK_RECOVERY_DELIVERY_MODES = [
+  'artifact_only',
+  'commit_only',
+  'push_branch',
+  'pr_with_checks',
+  'deploy_preview',
+] as const satisfies readonly CoreDeliveryMode[];
+
+export const CORE_TASK_RECOVERY_DELIVERY_ACTIONS = [
+  'prepare_artifact',
+  'create_commit',
+  'push_branch',
+  'open_pull_request',
+  'wait_for_checks',
+  'publish_preview',
+] as const satisfies readonly CoreRuntimeDeliveryAction[];
 
 export interface CoreTaskRecoveryMessageReplayView {
   channelId: string;
@@ -123,11 +149,24 @@ export interface CoreTaskRecoveryActivityView {
   resultCount: number | null;
 }
 
+export interface CoreTaskRecoveryContextView {
+  deliveryMode: CoreDeliveryMode | null;
+  deliverySource: CoreEffectivePolicySource | null;
+  deliveryGates: CoreDeliveryGate[];
+  deliveryActions: CoreRuntimeDeliveryAction[];
+  workflowStageId: string | null;
+  workflowShape: string | null;
+  channelId: string | null;
+  transport: 'telegram' | 'line' | 'web' | null;
+  roomMode: string | null;
+}
+
 export interface CoreTaskRecoveryView {
   taskId: string;
   taskStatus: CoreTaskRecord['status'];
   conversationId: string | null;
   approval: CoreTaskRecoveryApprovalView;
+  context: CoreTaskRecoveryContextView | null;
   pendingDispatch: CoreTaskPendingDispatchRecoveryView | null;
   dispatchReplay: CoreTaskDispatchReplayView | null;
   workflowContinuationReplay: CoreTaskWorkflowContinuationRecoveryView | null;
@@ -146,6 +185,9 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   hasDispatchReplay?: boolean | null;
   hasWorkflowContinuationReplay?: boolean | null;
   actionKinds?: CoreTaskRecoveryActionKind[];
+  deliveryModes?: CoreDeliveryMode[];
+  deliveryActions?: CoreRuntimeDeliveryAction[];
+  workflowStageIds?: string[];
 }
 
 export interface CoreTaskRecoveryListSummary {
@@ -160,6 +202,9 @@ export interface CoreTaskRecoveryListSummary {
   withDispatchReplayCount: number;
   withWorkflowContinuationReplayCount: number;
   actionKindCounts: Record<CoreTaskRecoveryActionKind, number>;
+  deliveryModeCounts: Record<CoreDeliveryMode, number>;
+  deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
+  workflowStageCounts: Record<string, number>;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -313,6 +358,84 @@ function buildWorkflowContinuationReplayView(
   };
 }
 
+function buildRecoveryContext(input: {
+  task: CoreTaskRecord;
+  pendingDispatch: CoreTaskPendingDispatchRecoveryView | null;
+  dispatchReplay: CoreTaskDispatchReplayView | null;
+  workflowContinuationReplay: CoreTaskWorkflowContinuationRecoveryView | null;
+}): CoreTaskRecoveryContextView | null {
+  const delivery = readCoreEffectiveDeliveryPolicy(input.task.metadata);
+  const manifest = readCoreRuntimeDeliveryManifestSummary(input.task.metadata)
+    ?? (delivery
+      ? buildRuntimeDeliveryManifestSummary({
+          deliveryMode: delivery.mode,
+          deliveryGates: delivery.gates,
+          channelId:
+            input.workflowContinuationReplay?.channelId
+            ?? input.dispatchReplay?.channelId
+            ?? input.pendingDispatch?.channelId
+            ?? readString(input.task.metadata?.channelId),
+          conversationId: input.task.conversationId,
+          taskId: input.task.id,
+          roomMode: readString(input.task.metadata?.roomRoutingMode),
+          transport:
+            input.dispatchReplay?.transport
+            ?? input.pendingDispatch?.transport
+            ?? readString(input.task.metadata?.transport),
+          workflowStageId:
+            input.workflowContinuationReplay?.workflowStageId
+            ?? readString(input.task.metadata?.workflowStageId),
+          workflowShape:
+            input.workflowContinuationReplay?.workflowShape
+            ?? readString(input.task.metadata?.workflowShape),
+        })
+      : null);
+  const channelId = input.workflowContinuationReplay?.channelId
+    ?? input.dispatchReplay?.channelId
+    ?? input.pendingDispatch?.channelId
+    ?? manifest?.context.channelId
+    ?? null;
+  const transport = input.dispatchReplay?.transport
+    ?? input.pendingDispatch?.transport
+    ?? (() => {
+      const value = manifest?.context.transport;
+      return value === 'telegram' || value === 'line' || value === 'web'
+        ? value
+        : null;
+    })();
+  const workflowStageId = input.workflowContinuationReplay?.workflowStageId
+    ?? manifest?.context.workflowStageId
+    ?? null;
+  const workflowShape = input.workflowContinuationReplay?.workflowShape
+    ?? manifest?.context.workflowShape
+    ?? null;
+  const roomMode = manifest?.context.roomMode ?? null;
+
+  if (
+    !delivery
+    && !manifest
+    && !channelId
+    && !transport
+    && !workflowStageId
+    && !workflowShape
+    && !roomMode
+  ) {
+    return null;
+  }
+
+  return {
+    deliveryMode: delivery?.mode ?? null,
+    deliverySource: delivery?.source ?? null,
+    deliveryGates: [...(delivery?.gates ?? manifest?.gates ?? [])],
+    deliveryActions: [...(manifest?.requestedActions ?? [])],
+    workflowStageId,
+    workflowShape,
+    channelId,
+    transport,
+    roomMode,
+  };
+}
+
 function buildRecoveryApprovalActions(
   task: CoreTaskRecord,
   canResumeViaApproval: boolean,
@@ -374,6 +497,12 @@ export function buildCoreTaskRecoveryView(
   const pendingDispatch = buildPendingDispatchView(task);
   const dispatchReplay = buildDispatchReplayView(task);
   const workflowContinuationReplay = buildWorkflowContinuationReplayView(task);
+  const context = buildRecoveryContext({
+    task,
+    pendingDispatch,
+    dispatchReplay,
+    workflowContinuationReplay,
+  });
   const latestActivity = buildLatestRecoveryActivity(core, task.id);
   const canResumeViaApproval = Boolean(
     pendingDispatch && task.approval.status === 'pending',
@@ -394,6 +523,7 @@ export function buildCoreTaskRecoveryView(
       latestDecisionAction: task.approval.decisionAction ?? null,
       notes: task.approval.notes ?? null,
     },
+    context,
     pendingDispatch,
     dispatchReplay,
     workflowContinuationReplay,
@@ -469,6 +599,27 @@ function matchesRecoveryListOptions(
     return false;
   }
 
+  if (
+    options.deliveryModes?.length
+    && (!recovery.context?.deliveryMode || !options.deliveryModes.includes(recovery.context.deliveryMode))
+  ) {
+    return false;
+  }
+
+  if (
+    options.deliveryActions?.length
+    && !recovery.context?.deliveryActions.some((action) => options.deliveryActions?.includes(action))
+  ) {
+    return false;
+  }
+
+  if (
+    options.workflowStageIds?.length
+    && !options.workflowStageIds.includes(recovery.context?.workflowStageId ?? '')
+  ) {
+    return false;
+  }
+
   return true;
 }
 
@@ -486,6 +637,54 @@ function buildRecoveryActionKindCounts(
     for (const action of recovery.incidentActions) {
       counts[action.kind] += 1;
     }
+  }
+
+  return counts;
+}
+
+function buildRecoveryDeliveryModeCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<CoreDeliveryMode, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_DELIVERY_MODES.map((mode) => [mode, 0]),
+  ) as Record<CoreDeliveryMode, number>;
+
+  for (const recovery of recoveries) {
+    if (recovery.context?.deliveryMode) {
+      counts[recovery.context.deliveryMode] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildRecoveryDeliveryActionCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<CoreRuntimeDeliveryAction, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_DELIVERY_ACTIONS.map((action) => [action, 0]),
+  ) as Record<CoreRuntimeDeliveryAction, number>;
+
+  for (const recovery of recoveries) {
+    for (const action of recovery.context?.deliveryActions ?? []) {
+      counts[action] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildRecoveryWorkflowStageCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+
+  for (const recovery of recoveries) {
+    const stageId = recovery.context?.workflowStageId;
+    if (!stageId) {
+      continue;
+    }
+    counts[stageId] = (counts[stageId] ?? 0) + 1;
   }
 
   return counts;
@@ -510,6 +709,9 @@ export function summarizeCoreTaskRecoveryViews(input: {
     withWorkflowContinuationReplayCount: input.recoveries.filter((recovery) =>
       recovery.workflowContinuationReplay).length,
     actionKindCounts: buildRecoveryActionKindCounts(input.recoveries),
+    deliveryModeCounts: buildRecoveryDeliveryModeCounts(input.recoveries),
+    deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),
+    workflowStageCounts: buildRecoveryWorkflowStageCounts(input.recoveries),
   };
 }
 

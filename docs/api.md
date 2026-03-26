@@ -1559,11 +1559,20 @@ for one task:
 
 ```json
 {
-  "recovery": {
-    "taskId": "task-system-1",
-    "pendingDispatch": {
-      "channelId": "channel-123",
-      "blockedReason": "approval_pending",
+    "recovery": {
+      "context": {
+        "deliveryMode": "commit_only",
+        "deliveryActions": ["create_commit"],
+        "workflowStageId": "continuation_handoff",
+        "workflowShape": "sequential",
+        "channelId": "channel-123",
+        "transport": "web",
+        "roomMode": "boss_chat"
+      },
+      "taskId": "task-system-1",
+      "pendingDispatch": {
+        "channelId": "channel-123",
+        "blockedReason": "approval_pending",
       "replayState": "failed"
     },
     "dispatchReplay": {
@@ -1612,6 +1621,9 @@ Semantics:
   - `hasDispatchReplay`
   - `hasWorkflowContinuationReplay`
   - `actionKind`
+  - `deliveryMode`
+  - `deliveryAction`
+  - `workflowStageId`
   - `limit`
 - the collection response now includes a `summary` block with:
   - `totalAvailable`
@@ -1625,10 +1637,16 @@ Semantics:
   - `withDispatchReplayCount`
   - `withWorkflowContinuationReplayCount`
   - `actionKindCounts`
+  - `deliveryModeCounts`
+  - `deliveryActionCounts`
+  - `workflowStageCounts`
 - the payload normalizes three product-owned recovery records when present:
   - approval-blocked pending dispatch metadata
   - stored orchestrator dispatch replay metadata
   - stored workflow-continuation replay metadata
+- `context` lifts delivery policy, runtime delivery actions, and workflow-stage
+  routing context into the recovery view so recovery automation can filter and
+  facet by delivery/workflow intent without re-reading raw task metadata
 - `approvalActions` and `incidentActions` now expose machine-readable action
   envelopes that point back to those existing write seams, so recovery-aware
   automation does not have to reconstruct POST bodies from raw booleans

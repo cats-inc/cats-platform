@@ -8,6 +8,8 @@ import {
 } from '../taskControlPlane.js';
 import {
   CORE_TASK_RECOVERY_ACTION_KINDS,
+  CORE_TASK_RECOVERY_DELIVERY_ACTIONS,
+  CORE_TASK_RECOVERY_DELIVERY_MODES,
   type CoreTaskRecoveryListOptions,
 } from '../recovery.js';
 import { CoreValidationError } from '../errors.js';
@@ -139,6 +141,17 @@ export function readTaskRecoveryListOptions(
       'hasWorkflowContinuationReplay',
     ),
     actionKinds: readEnumQueryValues(searchParams, 'actionKind', CORE_TASK_RECOVERY_ACTION_KINDS),
+    deliveryModes: readEnumQueryValues(
+      searchParams,
+      'deliveryMode',
+      CORE_TASK_RECOVERY_DELIVERY_MODES,
+    ),
+    deliveryActions: readEnumQueryValues(
+      searchParams,
+      'deliveryAction',
+      CORE_TASK_RECOVERY_DELIVERY_ACTIONS,
+    ),
+    workflowStageIds: readQueryValues(searchParams, 'workflowStageId'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }
