@@ -59,6 +59,10 @@ MCP tool plane.
   dispatch replay, workflow-continuation replay, and latest replay activity
   into one inspectable surface; future operator/control-plane work should build
   on that read model instead of re-parsing raw task metadata blobs
+- `GET /api/core/tasks/{taskId}` now also exposes a derived inspection read
+  model with latest run/outcome/checkpoint pointers plus governance/workflow
+  summaries, so future product surfaces can inspect task state without
+  hydrating the full core snapshot
 - blocked `max_continuations` workflow continuation replay is now landed
   through the existing operator `retry` seam and startup recovery path; keep
   deeper group replan or converge-stage continuation using the same

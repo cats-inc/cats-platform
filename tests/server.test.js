@@ -852,6 +852,166 @@ test('core recovery routes expose normalized orchestrator replay state without l
   });
 });
 
+test('GET /api/core/tasks/:taskId returns derived inspection detail alongside the raw task', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-inspection-route',
+          title: 'Inspect task route',
+          status: 'pending_approval',
+          conversationId: 'conversation-channel-inspection-route',
+          metadata: writeOrchestratorDispatchReplayMetadata(
+            {
+              effectiveDeliveryMode: 'commit_only',
+              effectiveDeliveryGates: ['owner_approval_required'],
+            },
+            buildOrchestratorDispatchReplayRequest({
+              channelId: 'channel-inspection-route',
+              body: 'Retry the blocked rollout after approval.',
+              recordedAt: '2026-03-26T14:10:00.000Z',
+            }),
+            {
+              replayState: 'failed',
+              replayTrigger: 'retry',
+              replayAttemptAt: '2026-03-26T14:11:00.000Z',
+              replayError: 'rate limited',
+              sourceMessageId: 'message-inspection-route',
+            },
+          ),
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-inspection-route',
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+        notes: 'Need approval before retry.',
+      }),
+    });
+    assert.equal(approvalResponse.status, 200);
+
+    const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-inspection-route',
+          title: 'Inspection run',
+          status: 'blocked',
+          conversationId: 'conversation-channel-inspection-route',
+          taskId: 'task-inspection-route',
+          summary: 'Blocked while waiting for approval.',
+          metadata: {
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'sequential',
+            dispatchCount: 1,
+            continuationCount: 1,
+            targetCount: 1,
+          },
+        },
+      }),
+    });
+    assert.equal(runResponse.status, 201);
+
+    const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        checkpoint: {
+          id: 'checkpoint-inspection-route',
+          label: 'owner-gate',
+          status: 'open',
+          conversationId: 'conversation-channel-inspection-route',
+          taskId: 'task-inspection-route',
+          runId: 'run-inspection-route',
+          summary: 'Awaiting approval.',
+        },
+      }),
+    });
+    assert.equal(checkpointResponse.status, 201);
+
+    const outcomeResponse = await fetch(`${baseUrl}/api/core/outcomes`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        outcome: {
+          id: 'outcome-inspection-route',
+          title: 'Blocked',
+          status: 'blocked',
+          conversationId: 'conversation-channel-inspection-route',
+          taskId: 'task-inspection-route',
+          runId: 'run-inspection-route',
+          summary: 'Blocked before retry.',
+        },
+      }),
+    });
+    assert.equal(outcomeResponse.status, 201);
+
+    const activityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        activity: {
+          id: 'activity-inspection-route',
+          kind: 'note',
+          taskId: 'task-inspection-route',
+          runId: 'run-inspection-route',
+          conversationId: 'conversation-channel-inspection-route',
+          message: 'Replay failed after retry.',
+          metadata: {
+            source: 'orchestrator-replay',
+            replayPhase: 'replay_failed',
+          },
+        },
+      }),
+    });
+    assert.equal(activityResponse.status, 201);
+
+    const detailResponse = await fetch(`${baseUrl}/api/core/tasks/task-inspection-route`);
+    assert.equal(detailResponse.status, 200);
+    const detailPayload = await detailResponse.json();
+    assert.equal(detailPayload.task.id, 'task-inspection-route');
+    assert.equal(detailPayload.inspection.approvalQueueItem.taskId, 'task-inspection-route');
+    assert.equal(detailPayload.inspection.latestRun.id, 'run-inspection-route');
+    assert.equal(detailPayload.inspection.latestCheckpoint.id, 'checkpoint-inspection-route');
+    assert.equal(detailPayload.inspection.latestOutcome.id, 'outcome-inspection-route');
+    assert.equal(detailPayload.inspection.governanceSummary.approval.pending, true);
+    assert.equal(detailPayload.inspection.workflowSummary.dispatchCount, 1);
+    assert.equal(detailPayload.inspection.recovery.dispatchReplay.sourceMessageId, 'message-inspection-route');
+    assert.equal(detailPayload.inspection.recovery.latestActivity.phase, 'replay_failed');
+    assert.deepEqual(detailPayload.inspection.counts, {
+      runs: 1,
+      outcomes: 1,
+      checkpoints: 1,
+      traces: 0,
+      activities: 2,
+    });
+
+    const missingResponse = await fetch(`${baseUrl}/api/core/tasks/task-missing-inspection`);
+    assert.equal(missingResponse.status, 404);
+  });
+});
+
 test('core project memory routes persist durable memory, sync canonical records, and expose retrieval context', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

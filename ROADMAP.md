@@ -161,8 +161,10 @@ contracts.
       normalized workflow recommendation out of checkpoint metadata into a
       first-class product view, so continuation source, candidate targets,
       branch strategy, and rationale are inspectable without scraping raw
-      room-routing events, and `/api/core/recovery/tasks` plus
-      `/api/core/tasks/{taskId}/recovery` now expose normalized replay state
+      room-routing events, `/api/core/recovery/tasks` plus
+      `/api/core/tasks/{taskId}/recovery` now expose normalized replay state,
+      and `GET /api/core/tasks/{taskId}` now returns a derived inspection
+      view with latest execution pointers plus governance/workflow summaries
       without forcing later consumers to parse opaque task metadata blobs.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as

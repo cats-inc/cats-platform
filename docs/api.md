@@ -882,6 +882,7 @@ tasks without depending on chat-local state shapes.
 
 ```text
 GET /api/core/tasks
+GET /api/core/tasks/{taskId}
 ```
 
 Returns:
@@ -891,6 +892,62 @@ Returns:
   "tasks": []
 }
 ```
+
+`GET /api/core/tasks/{taskId}` returns the raw task plus a derived inspection
+view:
+
+```json
+{
+  "task": {
+    "id": "task-system-1",
+    "status": "blocked"
+  },
+  "inspection": {
+    "approvalQueueItem": {
+      "taskId": "task-system-1"
+    },
+    "latestRun": {
+      "id": "run-system-1"
+    },
+    "latestOutcome": {
+      "id": "outcome-system-1"
+    },
+    "latestCheckpoint": {
+      "id": "checkpoint-system-1"
+    },
+    "governanceSummary": {
+      "approval": {
+        "pending": true
+      }
+    },
+    "workflowSummary": {
+      "dispatchCount": 1
+    },
+    "recovery": {
+      "canRetry": true
+    },
+    "counts": {
+      "runs": 1,
+      "outcomes": 1,
+      "checkpoints": 1,
+      "traces": 0,
+      "activities": 2
+    }
+  }
+}
+```
+
+Semantics:
+
+- this route is a core-owned inspectability seam for product/control-plane
+  consumers that need more than the raw task row
+- `inspection.governanceSummary` and `inspection.workflowSummary` reuse the
+  same derived contracts already embedded into product-owned task/run metadata
+- `inspection.recovery` reuses the normalized replay view exposed by
+  `/api/core/tasks/{taskId}/recovery`
+- `inspection.counts` gives lightweight related-record cardinality without
+  forcing callers to fetch the full core snapshot just to know whether a task
+  has runs, outcomes, checkpoints, traces, or activity history
 
 ### Create or Upsert Core Task
 
