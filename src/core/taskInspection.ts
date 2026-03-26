@@ -190,7 +190,7 @@ function compareTaskFamilyMemberDesc(
   return left.id.localeCompare(right.id);
 }
 
-function resolveTaskFamily(
+export function buildCoreTaskInspectionFamilyView(
   core: CatsCoreState,
   task: CoreTaskRecord,
 ): CoreTaskInspectionFamilyView {
@@ -270,7 +270,7 @@ export function buildCoreTaskInspectionView(
     governanceSummary: deriveCoreGovernanceSummary(task, latestRun),
     workflowSummary: deriveCoreWorkflowSummary(latestRun),
     recovery: buildCoreTaskRecoveryView(core, task),
-    family: resolveTaskFamily(core, task),
+    family: buildCoreTaskInspectionFamilyView(core, task),
     counts: {
       runs: core.runs.filter((candidate) => candidate.taskId === task.id).length,
       outcomes: core.outcomes.filter((candidate) => candidate.taskId === task.id).length,

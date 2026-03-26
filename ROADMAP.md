@@ -206,7 +206,10 @@ contracts.
       queue faceting by the newest normalized narrative signal, and those same
       list routes now also expose family-aware filters plus child-activity
       summary counts so queue automation can target parent/child work without
-      rebuilding the task graph outside `cats`.
+      rebuilding the task graph outside `cats`, while the recovery read model
+      now also carries the same family topology plus family-aware filters and
+      child-activity summary counts so replay/retry automation does not need a
+      separate task-detail join to scope parent/child recovery work.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

@@ -1584,6 +1584,10 @@ currently carry product-owned orchestrator recovery state:
       "taskStatus": "blocked",
       "canResumeViaApproval": true,
       "canRetry": true,
+      "family": {
+        "rootTaskId": "task-system-root",
+        "childCount": 0
+      },
       "approvalActions": [
         {
           "kind": "approve"
@@ -1611,6 +1615,10 @@ for one task:
 ```json
 {
     "recovery": {
+      "family": {
+        "rootTaskId": "task-system-root",
+        "childCount": 0
+      },
       "context": {
         "deliveryMode": "commit_only",
         "deliveryActions": ["create_commit"],
@@ -1675,6 +1683,10 @@ Semantics:
   - `deliveryMode`
   - `deliveryAction`
   - `workflowStageId`
+  - `rootTaskId`
+  - `parentTaskId`
+  - `hasChildren`
+  - `hasActiveChildren`
   - `limit`
 - the collection response now includes a `summary` block with:
   - `totalAvailable`
@@ -1691,6 +1703,8 @@ Semantics:
   - `deliveryModeCounts`
   - `deliveryActionCounts`
   - `workflowStageCounts`
+  - `withChildrenCount`
+  - `withActiveChildrenCount`
 - the payload normalizes three product-owned recovery records when present:
   - approval-blocked pending dispatch metadata
   - stored orchestrator dispatch replay metadata
@@ -1698,6 +1712,9 @@ Semantics:
 - `context` lifts delivery policy, runtime delivery actions, and workflow-stage
   routing context into the recovery view so recovery automation can filter and
   facet by delivery/workflow intent without re-reading raw task metadata
+- `family` reuses the same immediate task-family topology summary exposed by
+  `GET /api/core/tasks/{taskId}`, so recovery automation can target parent/
+  child work without rebuilding the task graph outside `cats`
 - `approvalActions` and `incidentActions` now expose machine-readable action
   envelopes that point back to those existing write seams, so recovery-aware
   automation does not have to reconstruct POST bodies from raw booleans

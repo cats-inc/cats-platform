@@ -358,6 +358,10 @@ Known follow-ups:
   filters (`rootTaskId`, `parentTaskId`, `hasChildren`, `hasActiveChildren`)
   plus `withChildrenCount` / `withActiveChildrenCount`, so queue automation can
   target parent/child work without rebuilding the task graph outside `cats`
+- the recovery read model now also carries the same family topology plus
+  family-aware filters and child-activity summary counts, so replay/retry
+  automation no longer needs a separate task-detail join just to scope parent/
+  child recovery work
 - `src/core/recovery.ts` now also lifts delivery/workflow context into the
   recovery read model itself, so recovery filters and summary counts can facet
   by `deliveryMode`, `deliveryAction`, and `workflowStageId` without forcing

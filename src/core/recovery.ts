@@ -20,6 +20,10 @@ import {
   type CoreTaskActionEnvelope,
 } from './taskActionEnvelopes.js';
 import {
+  buildCoreTaskInspectionFamilyView,
+  type CoreTaskInspectionFamilyView,
+} from './taskInspection.js';
+import {
   applyCoreTaskViewLimit,
   buildCoreTaskStatusCounts,
   countCoreTaskViewConversations,
@@ -166,6 +170,7 @@ export interface CoreTaskRecoveryView {
   taskStatus: CoreTaskRecord['status'];
   conversationId: string | null;
   approval: CoreTaskRecoveryApprovalView;
+  family: CoreTaskInspectionFamilyView;
   context: CoreTaskRecoveryContextView | null;
   pendingDispatch: CoreTaskPendingDispatchRecoveryView | null;
   dispatchReplay: CoreTaskDispatchReplayView | null;
@@ -188,6 +193,10 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   deliveryModes?: CoreDeliveryMode[];
   deliveryActions?: CoreRuntimeDeliveryAction[];
   workflowStageIds?: string[];
+  rootTaskIds?: string[];
+  parentTaskIds?: string[];
+  hasChildren?: boolean | null;
+  hasActiveChildren?: boolean | null;
 }
 
 export interface CoreTaskRecoveryListSummary {
@@ -205,6 +214,8 @@ export interface CoreTaskRecoveryListSummary {
   deliveryModeCounts: Record<CoreDeliveryMode, number>;
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
+  withChildrenCount: number;
+  withActiveChildrenCount: number;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -504,6 +515,7 @@ export function buildCoreTaskRecoveryView(
     workflowContinuationReplay,
   });
   const latestActivity = buildLatestRecoveryActivity(core, task.id);
+  const family = buildCoreTaskInspectionFamilyView(core, task);
   const canResumeViaApproval = Boolean(
     pendingDispatch && task.approval.status === 'pending',
   );
@@ -523,6 +535,7 @@ export function buildCoreTaskRecoveryView(
       latestDecisionAction: task.approval.decisionAction ?? null,
       notes: task.approval.notes ?? null,
     },
+    family,
     context,
     pendingDispatch,
     dispatchReplay,
@@ -620,6 +633,37 @@ function matchesRecoveryListOptions(
     return false;
   }
 
+  if (
+    options.rootTaskIds?.length
+    && !options.rootTaskIds.includes(recovery.family.rootTaskId)
+  ) {
+    return false;
+  }
+
+  if (
+    options.parentTaskIds?.length
+    && !options.parentTaskIds.includes(recovery.family.parent?.taskId ?? '')
+  ) {
+    return false;
+  }
+
+  if (
+    options.hasChildren !== undefined
+    && options.hasChildren !== null
+    && (recovery.family.childCount > 0) !== options.hasChildren
+  ) {
+    return false;
+  }
+
+  if (
+    options.hasActiveChildren !== undefined
+    && options.hasActiveChildren !== null
+    && (recovery.family.childCount > 0 && !recovery.family.allChildrenTerminal)
+      !== options.hasActiveChildren
+  ) {
+    return false;
+  }
+
   return true;
 }
 
@@ -712,6 +756,9 @@ export function summarizeCoreTaskRecoveryViews(input: {
     deliveryModeCounts: buildRecoveryDeliveryModeCounts(input.recoveries),
     deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),
     workflowStageCounts: buildRecoveryWorkflowStageCounts(input.recoveries),
+    withChildrenCount: input.recoveries.filter((recovery) => recovery.family.childCount > 0).length,
+    withActiveChildrenCount: input.recoveries.filter((recovery) =>
+      recovery.family.childCount > 0 && !recovery.family.allChildrenTerminal).length,
   };
 }
 

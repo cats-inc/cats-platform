@@ -1118,6 +1118,22 @@ test('core recovery routes expose normalized orchestrator replay state without l
       },
     );
 
+    const rootTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-recovery-routes-root',
+          title: 'Inspect recovery routes root',
+          status: 'in_progress',
+          conversationId: 'conversation-channel-recovery-routes',
+        },
+      }),
+    });
+    assert.equal(rootTaskResponse.status, 201);
+
     const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
       method: 'POST',
       headers: {
@@ -1128,6 +1144,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
           id: 'task-recovery-routes',
           title: 'Inspect recovery routes',
           status: 'blocked',
+          parentTaskId: 'task-recovery-routes-root',
           conversationId: 'conversation-channel-recovery-routes',
           approval: {
             status: 'pending',
@@ -1182,6 +1199,8 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.ok(listPayload.recoveries[0].pendingDispatch.bodyLength > 40);
     assert.match(listPayload.recoveries[0].pendingDispatch.bodyPreview, /blocked rollout/i);
     assert.equal(listPayload.recoveries[0].latestActivity.phase, 'replay_failed');
+    assert.equal(listPayload.recoveries[0].family.rootTaskId, 'task-recovery-routes-root');
+    assert.equal(listPayload.recoveries[0].family.parent.taskId, 'task-recovery-routes-root');
     assert.equal(listPayload.recoveries[0].context.deliveryMode, 'commit_only');
     assert.deepEqual(listPayload.recoveries[0].context.deliveryActions, ['create_commit']);
     assert.equal(listPayload.recoveries[0].context.workflowStageId, 'continuation_handoff');
@@ -1190,9 +1209,11 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(listPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(listPayload.summary.workflowStageCounts.continuation_handoff, 1);
+    assert.equal(listPayload.summary.withChildrenCount, 0);
+    assert.equal(listPayload.summary.withActiveChildrenCount, 0);
 
     const filteredListResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff`,
+      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(filteredListResponse.status, 200);
     const filteredListPayload = await filteredListResponse.json();
@@ -1225,6 +1246,8 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(detailPayload.recovery.context.channelId, 'channel-recovery-routes');
     assert.equal(detailPayload.recovery.context.transport, 'web');
     assert.equal(detailPayload.recovery.context.roomMode, 'boss_chat');
+    assert.equal(detailPayload.recovery.family.rootTaskId, 'task-recovery-routes-root');
+    assert.equal(detailPayload.recovery.family.parent.taskId, 'task-recovery-routes-root');
     assert.equal(detailPayload.recovery.approval.status, 'pending');
     assert.equal(detailPayload.recovery.approvalActions[0].action.path, '/api/core/approvals');
     assert.equal(detailPayload.recovery.incidentActions[0].action.path, '/api/core/operator-actions');
@@ -2539,6 +2562,7 @@ test('core operator inspection routes support additive filters and summaries', a
           id: 'task-ops-workflow',
           title: 'Workflow task',
           status: 'blocked',
+          parentTaskId: 'task-ops-root',
           conversationId: 'conversation-channel-ops',
           metadata: writeWorkflowContinuationReplayMetadata(
             {
@@ -2639,7 +2663,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.tasks.length, 1);
 
     const recoveryResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff`,
+      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(recoveryResponse.status, 200);
     const recoveryPayload = await recoveryResponse.json();
@@ -2651,10 +2675,14 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(recoveryPayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(recoveryPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(recoveryPayload.summary.workflowStageCounts.continuation_handoff, 1);
+    assert.equal(recoveryPayload.summary.withChildrenCount, 0);
+    assert.equal(recoveryPayload.summary.withActiveChildrenCount, 0);
     assert.deepEqual(
       recoveryPayload.recoveries.map((recovery) => recovery.taskId),
       ['task-ops-workflow'],
     );
+    assert.equal(recoveryPayload.recoveries[0].family.rootTaskId, 'task-ops-root');
+    assert.equal(recoveryPayload.recoveries[0].family.parent.taskId, 'task-ops-root');
   });
 });
 

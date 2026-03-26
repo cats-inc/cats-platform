@@ -170,6 +170,10 @@ export function readTaskRecoveryListOptions(
       CORE_TASK_RECOVERY_DELIVERY_ACTIONS,
     ),
     workflowStageIds: readQueryValues(searchParams, 'workflowStageId'),
+    rootTaskIds: readQueryValues(searchParams, 'rootTaskId'),
+    parentTaskIds: readQueryValues(searchParams, 'parentTaskId'),
+    hasChildren: readBooleanQuery(searchParams, 'hasChildren'),
+    hasActiveChildren: readBooleanQuery(searchParams, 'hasActiveChildren'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

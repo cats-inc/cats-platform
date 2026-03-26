@@ -166,6 +166,8 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
   assert.equal(recovery.context?.channelId, 'channel-recovery');
   assert.equal(recovery.context?.transport, 'web');
   assert.equal(recovery.context?.roomMode, 'boss_chat');
+  assert.equal(recovery.family.rootTaskId, 'task-recovery-view');
+  assert.equal(recovery.family.childCount, 0);
   assert.equal(
     recovery.workflowContinuationReplay?.targets[0]?.participantName,
     'Followup-Agent',
@@ -266,9 +268,21 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   core = upsertCoreTask(
     core,
     {
+      id: 'task-recovery-root',
+      title: 'Recovery root task',
+      status: 'in_progress',
+      conversationId: 'conversation-recovery',
+      createdAt: '2026-03-26T12:59:00.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
       id: 'task-recovery-dispatch',
       title: 'Dispatch recovery task',
       status: 'blocked',
+      parentTaskId: 'task-recovery-root',
       conversationId: 'conversation-recovery',
       createdAt: '2026-03-26T13:00:00.000Z',
       metadata: writePendingOrchestratorDispatchMetadata(
@@ -288,6 +302,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
       id: 'task-recovery-workflow',
       title: 'Workflow recovery task',
       status: 'blocked',
+      parentTaskId: 'task-recovery-root',
       conversationId: 'conversation-recovery',
       createdAt: '2026-03-26T13:02:00.000Z',
       metadata: writeWorkflowContinuationReplayMetadata(
@@ -331,6 +346,10 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
     deliveryModes: ['commit_only'],
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
+    rootTaskIds: ['task-recovery-root'],
+    parentTaskIds: ['task-recovery-root'],
+    hasChildren: false,
+    hasActiveChildren: false,
     limit: 1,
   });
 
@@ -346,6 +365,10 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
+  assert.equal(result.recoveries[0]?.family.rootTaskId, 'task-recovery-root');
+  assert.equal(result.recoveries[0]?.family.parent?.taskId, 'task-recovery-root');
+  assert.equal(result.summary.withChildrenCount, 0);
+  assert.equal(result.summary.withActiveChildrenCount, 0);
 });
 
 test('queryCoreTaskRecoveryViews filters by available recovery action kinds', () => {
