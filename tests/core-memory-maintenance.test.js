@@ -123,6 +123,18 @@ test('buildCoreMemoryMaintenanceSummary normalizes memory maintenance activity h
   assert.deepEqual(maintenance.recent[0]?.subjectKeys, ['channel:channel-runtime']);
   assert.deepEqual(maintenance.recent[1]?.subjectKeys, ['cat:cat-companion']);
   assert.deepEqual(maintenance.recent[2]?.subjectKeys, ['owner:actor-owner']);
+  assert.deepEqual(maintenance.facets, {
+    sourceScopeKeyCounts: {
+      'channel:channel-runtime': 1,
+    },
+    replacementGroupCounts: {
+      'channel:channel-runtime:summary': 1,
+    },
+    removedRecordIdCounts: {
+      'cats-memory-old-1': 1,
+    },
+    withRemovedRecordsCount: 1,
+  });
 });
 
 test('queryCoreMemoryMaintenanceSummary filters recent activity additively', () => {
@@ -149,6 +161,12 @@ test('queryCoreMemoryMaintenanceSummary filters recent activity additively', () 
               id: 'channel-memory-filter',
             },
           ],
+          flushCount: 1,
+          persistedCount: 1,
+          removedCount: 1,
+          removedRecordIds: ['cats-memory-filter-old-1'],
+          sourceScopeKeys: ['channel:channel-memory-filter'],
+          replacementGroups: ['channel:channel-memory-filter:summary'],
         },
       },
     },
@@ -192,12 +210,15 @@ test('queryCoreMemoryMaintenanceSummary filters recent activity additively', () 
     triggers: ['runtime_hook', 'project_sync'],
     statuses: ['executed'],
     subjectKeys: ['channel:channel-memory-filter', 'project:project-filter'],
+    sourceScopeKeys: ['channel:channel-memory-filter'],
+    replacementGroups: ['channel:channel-memory-filter:summary'],
+    removedRecordIds: ['cats-memory-filter-old-1'],
     limit: 1,
   });
 
   assert.deepEqual(filtered.summary, {
     totalAvailable: 3,
-    matching: 2,
+    matching: 1,
     returned: 1,
   });
   assert.equal(filtered.maintenance.totals.recentCount, 1);
@@ -206,6 +227,18 @@ test('queryCoreMemoryMaintenanceSummary filters recent activity additively', () 
     filtered.maintenance.recent.map((activity) => activity.id),
     ['activity-memory-filter-runtime'],
   );
+  assert.deepEqual(filtered.maintenance.facets, {
+    sourceScopeKeyCounts: {
+      'channel:channel-memory-filter': 1,
+    },
+    replacementGroupCounts: {
+      'channel:channel-memory-filter:summary': 1,
+    },
+    removedRecordIdCounts: {
+      'cats-memory-filter-old-1': 1,
+    },
+    withRemovedRecordsCount: 1,
+  });
   assert.equal(filtered.maintenance.latestByTrigger.runtimeHook?.id, 'activity-memory-filter-runtime');
   assert.equal(filtered.maintenance.latestByTrigger.projectSync, null);
 });

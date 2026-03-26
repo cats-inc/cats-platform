@@ -997,6 +997,18 @@ Returns a normalized summary of product-owned memory-maintenance activity:
       "projectSync": null,
       "relationshipSync": null
     },
+    "facets": {
+      "sourceScopeKeyCounts": {
+        "channel:channel-memory-route": 1
+      },
+      "replacementGroupCounts": {
+        "channel:channel-memory-route:summary": 1
+      },
+      "removedRecordIdCounts": {
+        "cats-memory-old-1": 1
+      },
+      "withRemovedRecordsCount": 1
+    },
     "recent": [
       {
         "id": "activity-memory-route-runtime",
@@ -1019,12 +1031,17 @@ Semantics:
 - this route is a core-owned inspectability seam over `memory_maintenance`
   activities already persisted in `Cats Core`
 - repeated `trigger`, `status`, `phase`, and `subjectKey` query parameters plus
-  an additive `limit` let operator or recovery tooling facet the same
-  maintenance queue without scraping raw activities
+  repeated `sourceScopeKey`, `replacementGroup`, and `removedRecordId`
+  query parameters plus an additive `limit` let operator or recovery tooling
+  facet the same maintenance queue without scraping raw activities
 - `totals` gives a lightweight rollup by normalized maintenance status
 - `latestByTrigger` exposes the most recent runtime-hook, companion-sync,
   owner-sync, project-sync, and relationship-sync entries without requiring
   callers to re-scan the full activity log
+- `facets` lifts stable downstream impact counts for `sourceScopeKeys`,
+  entry-scoped `replacementGroups`, and concrete `removedRecordIds`, plus
+  `withRemovedRecordsCount`, so later automation can page or group maintenance
+  impact without reparsing each activity payload
 - route-level `summary.totalAvailable`, `summary.matching`, and
   `summary.returned` make filtered queue views inspectable without changing the
   underlying `maintenance` contract

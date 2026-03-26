@@ -639,11 +639,26 @@ test('GET /api/core/memory-maintenance returns normalized maintenance activity h
       listPayload.maintenance.latestByTrigger.companionSync.subjectKeys,
       ['cat:cat-memory-route'],
     );
+    assert.deepEqual(listPayload.maintenance.facets, {
+      sourceScopeKeyCounts: {
+        'channel:channel-memory-route': 1,
+      },
+      replacementGroupCounts: {
+        'channel:channel-memory-route:summary': 1,
+      },
+      removedRecordIdCounts: {
+        'cats-memory-old-1': 1,
+      },
+      withRemovedRecordsCount: 1,
+    });
 
     const filteredResponse = await fetch(
       `${baseUrl}/api/core/memory-maintenance`
       + '?trigger=runtime_hook&status=executed&phase=pre_reset'
-      + '&subjectKey=channel:channel-memory-route&limit=1',
+      + '&subjectKey=channel:channel-memory-route'
+      + '&sourceScopeKey=channel:channel-memory-route'
+      + '&replacementGroup=channel:channel-memory-route:summary'
+      + '&removedRecordId=cats-memory-old-1&limit=1',
     );
     assert.equal(filteredResponse.status, 200);
     const filteredPayload = await filteredResponse.json();
@@ -657,6 +672,18 @@ test('GET /api/core/memory-maintenance returns normalized maintenance activity h
       filteredPayload.maintenance.recent.map((activity) => activity.id),
       ['activity-memory-route-runtime'],
     );
+    assert.deepEqual(filteredPayload.maintenance.facets, {
+      sourceScopeKeyCounts: {
+        'channel:channel-memory-route': 1,
+      },
+      replacementGroupCounts: {
+        'channel:channel-memory-route:summary': 1,
+      },
+      removedRecordIdCounts: {
+        'cats-memory-old-1': 1,
+      },
+      withRemovedRecordsCount: 1,
+    });
     assert.equal(
       filteredPayload.maintenance.latestByTrigger.runtimeHook?.id,
       'activity-memory-route-runtime',

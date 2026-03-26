@@ -137,8 +137,10 @@ contracts.
       `GET` / `POST /api/core/memory-maintenance` inspection-plus-action routes
       are now landed, including core-owned manual companion/owner/project/
       relationship canonical sync replay plus additive queue/query filters for
-      `trigger`, `status`, `phase`, `subjectKey`, and `limit`; broader
-      downstream consumer contracts still remain.
+      `trigger`, `status`, `phase`, `subjectKey`, and `limit`, while the same
+      inspection seam now also facets `sourceScopeKey`, `replacementGroup`,
+      and `removedRecordId` impact plus stable facet counts for downstream
+      automation; broader downstream consumer contracts still remain.
 - [x] Surface the new orchestrator execution-loop contract in product-owned
       operator rails so Chat can consume step state, next actions, approval
       gates, and recovery hints without scraping transcript text

@@ -137,6 +137,7 @@ service to exist first.
 | 2026-03-26 | Scoped maintenance follow-through landed: the same core-owned `POST /api/core/memory-maintenance` seam now also replays project and relationship canonical sync and surfaces their outcomes in the normalized maintenance read model |
 | 2026-03-26 | Relationship/project durable-memory follow-through landed: generic retrieval-context assembly now accepts those scopes and the service can flush their canonical records without depending on Chat UI routes |
 | 2026-03-26 | Core-owned project/relationship memory routes landed: CRUD, canonical sync, and retrieval-context inspection now sit above the same memory substrate without leaking Chat route ownership |
+| 2026-03-27 | Memory-maintenance downstream impact faceting landed: the same core-owned inspection seam now supports additive `sourceScopeKey`, `replacementGroup`, and `removedRecordId` filters plus stable facet counts so later automation can group flush impact without reopening raw activity metadata |
 
 ---
 

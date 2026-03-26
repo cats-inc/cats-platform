@@ -56,6 +56,13 @@ export interface CoreMemoryMaintenanceActivityView {
   subjectKeys: string[];
 }
 
+export interface CoreMemoryMaintenanceFacetCountsView {
+  sourceScopeKeyCounts: Record<string, number>;
+  replacementGroupCounts: Record<string, number>;
+  removedRecordIdCounts: Record<string, number>;
+  withRemovedRecordsCount: number;
+}
+
 export interface CoreMemoryMaintenanceSummaryView {
   totals: {
     recentCount: number;
@@ -69,8 +76,9 @@ export interface CoreMemoryMaintenanceSummaryView {
     companionSync: CoreMemoryMaintenanceActivityView | null;
     ownerSync: CoreMemoryMaintenanceActivityView | null;
     projectSync: CoreMemoryMaintenanceActivityView | null;
-    relationshipSync: CoreMemoryMaintenanceActivityView | null;
+      relationshipSync: CoreMemoryMaintenanceActivityView | null;
   };
+  facets: CoreMemoryMaintenanceFacetCountsView;
   recent: CoreMemoryMaintenanceActivityView[];
 }
 
@@ -79,6 +87,9 @@ export interface CoreMemoryMaintenanceQuery {
   statuses?: CoreMemoryMaintenanceStatus[];
   phases?: NonNullable<CoreMemoryMaintenancePhase>[];
   subjectKeys?: string[];
+  sourceScopeKeys?: string[];
+  replacementGroups?: string[];
+  removedRecordIds?: string[];
   limit?: number | null;
 }
 
@@ -254,11 +265,20 @@ export function summarizeCoreMemoryMaintenanceActivities(
 ): CoreMemoryMaintenanceSummaryView {
   const latestByTrigger = {
     runtimeHook: recent.find((activity) => activity.trigger === 'runtime_hook') ?? null,
-    companionSync: recent.find((activity) => activity.trigger === 'companion_sync') ?? null,
-    ownerSync: recent.find((activity) => activity.trigger === 'owner_sync') ?? null,
-    projectSync: recent.find((activity) => activity.trigger === 'project_sync') ?? null,
-    relationshipSync:
+      companionSync: recent.find((activity) => activity.trigger === 'companion_sync') ?? null,
+      ownerSync: recent.find((activity) => activity.trigger === 'owner_sync') ?? null,
+      projectSync: recent.find((activity) => activity.trigger === 'project_sync') ?? null,
+      relationshipSync:
       recent.find((activity) => activity.trigger === 'relationship_sync') ?? null,
+  };
+  const buildFacetCounts = (values: string[]): Record<string, number> => {
+    const counts = new Map<string, number>();
+    for (const value of values) {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+    return Object.fromEntries(
+      [...counts.entries()].sort(([left], [right]) => left.localeCompare(right)),
+    );
   };
 
   return {
@@ -270,6 +290,20 @@ export function summarizeCoreMemoryMaintenanceActivities(
       error: recent.filter((activity) => activity.status === 'error').length,
     },
     latestByTrigger,
+    facets: {
+      sourceScopeKeyCounts: buildFacetCounts(
+        recent.flatMap((activity) => activity.summary?.sourceScopeKeys ?? []),
+      ),
+      replacementGroupCounts: buildFacetCounts(
+        recent.flatMap((activity) => activity.summary?.replacementGroups ?? []),
+      ),
+      removedRecordIdCounts: buildFacetCounts(
+        recent.flatMap((activity) => activity.summary?.removedRecordIds ?? []),
+      ),
+      withRemovedRecordsCount: recent.filter(
+        (activity) => (activity.summary?.removedRecordIds.length ?? 0) > 0,
+      ).length,
+    },
     recent,
   };
 }
@@ -299,6 +333,29 @@ function matchesMemoryMaintenanceQuery(
   if (
     query.subjectKeys?.length
     && !activity.subjectKeys.some((subjectKey) => query.subjectKeys?.includes(subjectKey))
+  ) {
+    return false;
+  }
+
+  if (
+    query.sourceScopeKeys?.length
+    && !activity.summary?.sourceScopeKeys.some((value) => query.sourceScopeKeys?.includes(value))
+  ) {
+    return false;
+  }
+
+  if (
+    query.replacementGroups?.length
+    && !activity.summary?.replacementGroups.some(
+      (value) => query.replacementGroups?.includes(value),
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    query.removedRecordIds?.length
+    && !activity.summary?.removedRecordIds.some((value) => query.removedRecordIds?.includes(value))
   ) {
     return false;
   }

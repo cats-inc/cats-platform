@@ -332,6 +332,9 @@ export function readMemoryMaintenanceQuery(
       CORE_MEMORY_MAINTENANCE_PHASES,
     ),
     subjectKeys: readQueryValues(searchParams, 'subjectKey'),
+    sourceScopeKeys: readQueryValues(searchParams, 'sourceScopeKey'),
+    replacementGroups: readQueryValues(searchParams, 'replacementGroup'),
+    removedRecordIds: readQueryValues(searchParams, 'removedRecordId'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }
