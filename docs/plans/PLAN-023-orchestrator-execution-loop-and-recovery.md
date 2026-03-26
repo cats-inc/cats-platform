@@ -81,6 +81,10 @@ MCP tool plane.
   summaries, and operator-attention classification on top of the existing core
   write seams, so future control-plane work can consume one task-level read
   model instead of stitching together recovery, inspection, and records views
+- those non-UI operator inspection list routes now also expose additive query
+  filters plus summary counts, so later operator automation can facet inbox,
+  control-plane, and recovery queues without hydrating the whole core snapshot
+  or reimplementing the same filtering semantics client-side
 - blocked `max_continuations` workflow continuation replay is now landed
   through the existing operator `retry` seam and startup recovery path; keep
   deeper group replan or converge-stage continuation using the same

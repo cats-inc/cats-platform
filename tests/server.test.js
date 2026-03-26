@@ -1890,6 +1890,173 @@ test('GET /api/core/operator-inbox returns actionable task summaries with latest
   });
 });
 
+test('core operator inspection routes support additive filters and summaries', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const attentionTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-ops-attention',
+          title: 'Attention task',
+          status: 'pending_approval',
+          conversationId: 'conversation-channel-ops',
+          metadata: writeOrchestratorDispatchReplayMetadata(
+            {},
+            buildOrchestratorDispatchReplayRequest({
+              channelId: 'channel-ops',
+              body: 'Retry the blocked rollout.',
+              recordedAt: '2026-03-26T18:10:00.000Z',
+            }),
+            {
+              replayState: 'failed',
+              replayTrigger: 'retry',
+              replayAttemptAt: '2026-03-26T18:11:00.000Z',
+              replayError: 'rate limited',
+            },
+          ),
+        },
+      }),
+    });
+    assert.equal(attentionTaskResponse.status, 201);
+
+    const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-ops-attention',
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+        notes: 'Need approval before retry.',
+      }),
+    });
+    assert.equal(approvalResponse.status, 200);
+
+    const attentionRunResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-ops-attention',
+          title: 'Blocked run',
+          status: 'blocked',
+          taskId: 'task-ops-attention',
+          conversationId: 'conversation-channel-ops',
+          summary: 'Blocked pending operator review.',
+        },
+      }),
+    });
+    assert.equal(attentionRunResponse.status, 201);
+
+    const workflowTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-ops-workflow',
+          title: 'Workflow task',
+          status: 'blocked',
+          conversationId: 'conversation-channel-ops',
+          metadata: writeWorkflowContinuationReplayMetadata(
+            {},
+            buildWorkflowContinuationReplayRequest({
+              channelId: 'channel-ops',
+              checkpointId: 'checkpoint-ops',
+              sourceMessageId: 'message-ops',
+              sourceParticipant: {
+                participantKind: 'cat',
+                participantId: 'cat-inline',
+                participantName: 'Inline-Agent',
+              },
+              targets: [
+                {
+                  participantKind: 'cat',
+                  participantId: 'cat-reviewer',
+                  participantName: 'Reviewer',
+                },
+              ],
+              workflowShape: 'sequential',
+              recordedAt: '2026-03-26T18:12:00.000Z',
+            }),
+            {
+              replayState: 'failed',
+              replayTrigger: 'retry',
+              replayAttemptAt: '2026-03-26T18:13:00.000Z',
+              replayError: 'checkpoint guard',
+            },
+          ),
+        },
+      }),
+    });
+    assert.equal(workflowTaskResponse.status, 201);
+
+    const workflowRunResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-ops-workflow',
+          title: 'Blocked workflow run',
+          status: 'blocked',
+          taskId: 'task-ops-workflow',
+          conversationId: 'conversation-channel-ops',
+          summary: 'Blocked while waiting for workflow continuation retry.',
+        },
+      }),
+    });
+    assert.equal(workflowRunResponse.status, 201);
+
+    const inboxResponse = await fetch(
+      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=retry&needsOperatorAttention=true&limit=1`,
+    );
+    assert.equal(inboxResponse.status, 200);
+    const inboxPayload = await inboxResponse.json();
+    assert.equal(inboxPayload.summary.totalAvailable, 2);
+    assert.equal(inboxPayload.summary.matching, 2);
+    assert.equal(inboxPayload.summary.returned, 1);
+    assert.equal(inboxPayload.summary.nextActionCounts.retry, 1);
+    assert.equal(inboxPayload.summary.attentionSeverityCounts.attention, 1);
+    assert.equal(inboxPayload.tasks.length, 1);
+
+    const controlPlaneResponse = await fetch(
+      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=retry_available&nextAction=retry&limit=1`,
+    );
+    assert.equal(controlPlaneResponse.status, 200);
+    const controlPlanePayload = await controlPlaneResponse.json();
+    assert.equal(controlPlanePayload.summary.totalAvailable, 2);
+    assert.equal(controlPlanePayload.summary.matching, 2);
+    assert.equal(controlPlanePayload.summary.returned, 1);
+    assert.equal(controlPlanePayload.summary.reasonCounts.retry_available, 1);
+    assert.equal(controlPlanePayload.summary.taskStatusCounts.blocked, 1);
+    assert.equal(controlPlanePayload.tasks.length, 1);
+
+    const recoveryResponse = await fetch(
+      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&canRetry=true`,
+    );
+    assert.equal(recoveryResponse.status, 200);
+    const recoveryPayload = await recoveryResponse.json();
+    assert.equal(recoveryPayload.summary.totalAvailable, 2);
+    assert.equal(recoveryPayload.summary.matching, 1);
+    assert.equal(recoveryPayload.summary.returned, 1);
+    assert.equal(recoveryPayload.summary.withWorkflowContinuationReplayCount, 1);
+    assert.equal(recoveryPayload.summary.withDispatchReplayCount, 0);
+    assert.deepEqual(
+      recoveryPayload.recoveries.map((recovery) => recovery.taskId),
+      ['task-ops-workflow'],
+    );
+  });
+});
+
 test('core project memory routes persist durable memory, sync canonical records, and expose retrieval context', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

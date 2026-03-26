@@ -1,9 +1,10 @@
 import { CoreNotFoundError } from '../errors.js';
 import {
   buildCoreTaskRecoveryView,
-  listCoreTaskRecoveryViews,
+  queryCoreTaskRecoveryViews,
 } from '../recovery.js';
 import type { CoreApiRouteContext } from './types.js';
+import { readTaskRecoveryListOptions } from './queryFilters.js';
 import { handleCoreError } from './shared.js';
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
@@ -11,8 +12,11 @@ async function handleCoreRecoveryTasks(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
+  const query = readTaskRecoveryListOptions(context.url.searchParams);
+  const result = queryCoreTaskRecoveryViews(core, query);
   sendJson(context.response, 200, {
-    recoveries: listCoreTaskRecoveryViews(core),
+    recoveries: result.recoveries,
+    summary: result.summary,
   });
 }
 

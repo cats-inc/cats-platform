@@ -9,6 +9,7 @@ import {
 import {
   buildCoreTaskRecoveryView,
   listCoreTaskRecoveryViews,
+  queryCoreTaskRecoveryViews,
 } from '../dist-server/core/recovery.js';
 import {
   buildOrchestratorDispatchReplayRequest,
@@ -231,4 +232,78 @@ test('listCoreTaskRecoveryViews filters plain tasks and sorts latest recovery fi
     recoveries.map((recovery) => recovery.taskId),
     ['task-newer-recovery', 'task-older-recovery'],
   );
+});
+
+test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned tasks', () => {
+  const now = new Date('2026-03-26T13:10:00.000Z');
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-recovery-dispatch',
+      title: 'Dispatch recovery task',
+      status: 'blocked',
+      conversationId: 'conversation-recovery',
+      createdAt: '2026-03-26T13:00:00.000Z',
+      metadata: writePendingOrchestratorDispatchMetadata(
+        {},
+        buildPendingOrchestratorDispatchRequest({
+          channelId: 'channel-dispatch',
+          body: 'Dispatch recovery body.',
+          blockedAt: '2026-03-26T13:01:00.000Z',
+        }),
+      ),
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-recovery-workflow',
+      title: 'Workflow recovery task',
+      status: 'blocked',
+      conversationId: 'conversation-recovery',
+      createdAt: '2026-03-26T13:02:00.000Z',
+      metadata: writeWorkflowContinuationReplayMetadata(
+        {},
+        buildWorkflowContinuationReplayRequest({
+          channelId: 'channel-workflow',
+          checkpointId: 'checkpoint-workflow',
+          sourceMessageId: 'message-workflow',
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: 'cat-inline',
+            participantName: 'Inline-Agent',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: 'cat-followup',
+              participantName: 'Followup-Agent',
+            },
+          ],
+          recordedAt: '2026-03-26T13:03:00.000Z',
+          workflowShape: 'sequential',
+        }),
+      ),
+    },
+    now,
+  ).core;
+
+  const result = queryCoreTaskRecoveryViews(core, {
+    conversationIds: ['conversation-recovery'],
+    hasWorkflowContinuationReplay: true,
+    limit: 1,
+  });
+
+  assert.deepEqual(result.recoveries.map((recovery) => recovery.taskId), [
+    'task-recovery-workflow',
+  ]);
+  assert.equal(result.summary.totalAvailable, 2);
+  assert.equal(result.summary.matching, 1);
+  assert.equal(result.summary.returned, 1);
+  assert.equal(result.summary.withWorkflowContinuationReplayCount, 1);
+  assert.equal(result.summary.withPendingDispatchCount, 0);
+  assert.equal(result.summary.taskStatusCounts.blocked, 1);
 });

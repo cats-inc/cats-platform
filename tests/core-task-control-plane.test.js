@@ -11,6 +11,7 @@ import {
 import {
   buildCoreTaskControlPlaneView,
   listCoreTaskControlPlaneViews,
+  queryCoreTaskControlPlaneViews,
 } from '../dist-server/core/taskControlPlane.js';
 import {
   buildOrchestratorDispatchReplayRequest,
@@ -174,4 +175,87 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
     listCoreTaskControlPlaneViews(core).map((candidate) => candidate.taskId),
     ['task-control-plane'],
   );
+});
+
+test('queryCoreTaskControlPlaneViews filters and summarizes attention views', () => {
+  const now = new Date('2026-03-26T16:30:00.000Z');
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-control-plane-match',
+      title: 'Matching task',
+      status: 'blocked',
+      conversationId: 'conversation-channel-control-plane',
+      metadata: writeOrchestratorDispatchReplayMetadata(
+        {},
+        buildOrchestratorDispatchReplayRequest({
+          channelId: 'channel-control-plane',
+          body: 'Retry the blocked rollout after approval.',
+          recordedAt: '2026-03-26T16:10:00.000Z',
+        }),
+        {
+          replayState: 'failed',
+          replayTrigger: 'retry',
+          replayAttemptAt: '2026-03-26T16:11:00.000Z',
+          replayError: 'rate limited',
+        },
+      ),
+      createdAt: '2026-03-26T16:00:00.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-control-plane-running',
+      title: 'Running task',
+      status: 'in_progress',
+      conversationId: 'conversation-channel-progress',
+      createdAt: '2026-03-26T16:01:00.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-control-plane-match',
+      title: 'Blocked run',
+      status: 'blocked',
+      taskId: 'task-control-plane-match',
+      conversationId: 'conversation-channel-control-plane',
+      createdAt: '2026-03-26T16:05:00.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-control-plane-running',
+      title: 'Running run',
+      status: 'running',
+      taskId: 'task-control-plane-running',
+      conversationId: 'conversation-channel-progress',
+      createdAt: '2026-03-26T16:06:00.000Z',
+    },
+    now,
+  ).core;
+
+  const result = queryCoreTaskControlPlaneViews(core, {
+    severities: ['attention'],
+    nextActions: ['retry'],
+    taskStatuses: ['blocked'],
+  });
+
+  assert.deepEqual(result.tasks.map((task) => task.taskId), [
+    'task-control-plane-match',
+  ]);
+  assert.equal(result.summary.totalAvailable, 2);
+  assert.equal(result.summary.matching, 1);
+  assert.equal(result.summary.returned, 1);
+  assert.equal(result.summary.attentionSeverityCounts.attention, 1);
+  assert.equal(result.summary.taskStatusCounts.blocked, 1);
+  assert.equal(result.summary.reasonCounts.retry_available, 1);
+  assert.equal(result.summary.nextActionCounts.retry, 1);
 });

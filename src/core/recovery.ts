@@ -5,6 +5,13 @@ import type {
   CoreTaskRecord,
 } from './types.js';
 import {
+  applyCoreTaskViewLimit,
+  buildCoreTaskStatusCounts,
+  countCoreTaskViewConversations,
+  matchesCoreTaskViewCommonQuery,
+  type CoreTaskViewCommonQuery,
+} from './taskViewQuery.js';
+import {
   readOrchestratorDispatchReplay,
 } from '../platform/orchestration/dispatchReplay.js';
 import {
@@ -97,6 +104,27 @@ export interface CoreTaskRecoveryView {
   canResumeViaApproval: boolean;
   canRetry: boolean;
   recoveryRequired: boolean;
+}
+
+export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
+  canRetry?: boolean | null;
+  canResumeViaApproval?: boolean | null;
+  hasPendingDispatch?: boolean | null;
+  hasDispatchReplay?: boolean | null;
+  hasWorkflowContinuationReplay?: boolean | null;
+}
+
+export interface CoreTaskRecoveryListSummary {
+  totalAvailable: number;
+  matching: number;
+  returned: number;
+  conversationCount: number;
+  taskStatusCounts: Record<CoreTaskRecord['status'], number>;
+  canRetryCount: number;
+  canResumeViaApprovalCount: number;
+  withPendingDispatchCount: number;
+  withDispatchReplayCount: number;
+  withWorkflowContinuationReplayCount: number;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -290,6 +318,78 @@ export function buildCoreTaskRecoveryView(
   };
 }
 
+function matchesRecoveryListOptions(
+  recovery: CoreTaskRecoveryView,
+  options: CoreTaskRecoveryListOptions,
+): boolean {
+  if (!matchesCoreTaskViewCommonQuery(recovery, options)) {
+    return false;
+  }
+
+  if (
+    options.canRetry !== undefined
+    && options.canRetry !== null
+    && recovery.canRetry !== options.canRetry
+  ) {
+    return false;
+  }
+
+  if (
+    options.canResumeViaApproval !== undefined
+    && options.canResumeViaApproval !== null
+    && recovery.canResumeViaApproval !== options.canResumeViaApproval
+  ) {
+    return false;
+  }
+
+  if (
+    options.hasPendingDispatch !== undefined
+    && options.hasPendingDispatch !== null
+    && Boolean(recovery.pendingDispatch) !== options.hasPendingDispatch
+  ) {
+    return false;
+  }
+
+  if (
+    options.hasDispatchReplay !== undefined
+    && options.hasDispatchReplay !== null
+    && Boolean(recovery.dispatchReplay) !== options.hasDispatchReplay
+  ) {
+    return false;
+  }
+
+  if (
+    options.hasWorkflowContinuationReplay !== undefined
+    && options.hasWorkflowContinuationReplay !== null
+    && Boolean(recovery.workflowContinuationReplay) !== options.hasWorkflowContinuationReplay
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+export function summarizeCoreTaskRecoveryViews(input: {
+  totalAvailable: number;
+  matching: number;
+  recoveries: CoreTaskRecoveryView[];
+}): CoreTaskRecoveryListSummary {
+  return {
+    totalAvailable: input.totalAvailable,
+    matching: input.matching,
+    returned: input.recoveries.length,
+    conversationCount: countCoreTaskViewConversations(input.recoveries),
+    taskStatusCounts: buildCoreTaskStatusCounts(input.recoveries),
+    canRetryCount: input.recoveries.filter((recovery) => recovery.canRetry).length,
+    canResumeViaApprovalCount: input.recoveries.filter((recovery) => recovery.canResumeViaApproval)
+      .length,
+    withPendingDispatchCount: input.recoveries.filter((recovery) => recovery.pendingDispatch).length,
+    withDispatchReplayCount: input.recoveries.filter((recovery) => recovery.dispatchReplay).length,
+    withWorkflowContinuationReplayCount: input.recoveries.filter((recovery) =>
+      recovery.workflowContinuationReplay).length,
+  };
+}
+
 export function listCoreTaskRecoveryViews(
   core: CatsCoreState,
 ): CoreTaskRecoveryView[] {
@@ -315,4 +415,25 @@ export function listCoreTaskRecoveryViews(
         ?? '';
       return rightTimestamp.localeCompare(leftTimestamp);
     });
+}
+
+export function queryCoreTaskRecoveryViews(
+  core: CatsCoreState,
+  options: CoreTaskRecoveryListOptions = {},
+): {
+  recoveries: CoreTaskRecoveryView[];
+  summary: CoreTaskRecoveryListSummary;
+} {
+  const recoveries = listCoreTaskRecoveryViews(core);
+  const matching = recoveries.filter((recovery) => matchesRecoveryListOptions(recovery, options));
+  const returned = applyCoreTaskViewLimit(matching, options.limit);
+
+  return {
+    recoveries: returned,
+    summary: summarizeCoreTaskRecoveryViews({
+      totalAvailable: recoveries.length,
+      matching: matching.length,
+      recoveries: returned,
+    }),
+  };
 }

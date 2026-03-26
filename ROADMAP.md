@@ -179,7 +179,10 @@ contracts.
       scoped approval actions, retry/acknowledge actions, workflow
       recommendation summaries, and operator-attention classification, without
       forcing later consumers to parse opaque task metadata blobs or
-      re-filter the full core snapshot client-side.
+      re-filter the full core snapshot client-side, and those non-UI list
+      routes now also support additive query filters plus summary counts so
+      later operator automation can page/facet control-plane, inbox, and
+      recovery surfaces without rebuilding the read model outside `cats`.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

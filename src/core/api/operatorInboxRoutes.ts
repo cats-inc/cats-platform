@@ -1,5 +1,6 @@
-import { listCoreOperatorInboxItems } from '../operatorInbox.js';
+import { queryCoreOperatorInboxItems } from '../operatorInbox.js';
 import type { CoreApiRouteContext } from './types.js';
+import { readTaskAttentionListOptions } from './queryFilters.js';
 import { handleCoreError } from './shared.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
@@ -7,8 +8,11 @@ async function handleCoreOperatorInbox(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
+  const query = readTaskAttentionListOptions(context.url.searchParams);
+  const result = queryCoreOperatorInboxItems(core, query);
   sendJson(context.response, 200, {
-    tasks: listCoreOperatorInboxItems(core),
+    tasks: result.tasks,
+    summary: result.summary,
   });
 }
 

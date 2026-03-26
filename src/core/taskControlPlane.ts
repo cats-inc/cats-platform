@@ -1,6 +1,13 @@
 import { buildApprovalQueue } from './model/index.js';
 import { buildCoreTaskRecoveryView, type CoreTaskRecoveryView } from './recovery.js';
 import { buildCoreTaskInspectionView } from './taskInspection.js';
+import {
+  applyCoreTaskViewLimit,
+  buildCoreTaskStatusCounts,
+  countCoreTaskViewConversations,
+  matchesCoreTaskViewCommonQuery,
+  type CoreTaskViewCommonQuery,
+} from './taskViewQuery.js';
 import type {
   CatsCoreState,
   CoreApprovalDecisionAction,
@@ -28,6 +35,32 @@ export type CoreTaskControlPlaneReason =
   | 'run_failed'
   | 'retry_available'
   | 'workflow_review_required';
+
+export const CORE_TASK_CONTROL_PLANE_SEVERITIES = [
+  'muted',
+  'progress',
+  'attention',
+  'error',
+  'success',
+] as const satisfies readonly CoreTaskControlPlaneSeverity[];
+
+export const CORE_TASK_CONTROL_PLANE_REASONS = [
+  'approval_pending',
+  'run_blocked',
+  'run_failed',
+  'retry_available',
+  'workflow_review_required',
+] as const satisfies readonly CoreTaskControlPlaneReason[];
+
+export const CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS = [
+  'approve',
+  'reroute',
+  'reject',
+  'retry',
+  'acknowledge',
+  'wait',
+  'complete',
+] as const satisfies readonly CoreTaskControlPlaneNextAction['kind'][];
 
 export interface CoreTaskControlPlaneActionEnvelope {
   method: 'POST';
@@ -99,6 +132,25 @@ export interface CoreTaskControlPlaneView {
   incidentActions: CoreTaskControlPlaneIncidentAction[];
   nextActions: CoreTaskControlPlaneNextAction[];
   attention: CoreTaskControlPlaneAttention;
+}
+
+export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery {
+  severities?: CoreTaskControlPlaneSeverity[];
+  reasons?: CoreTaskControlPlaneReason[];
+  needsOperatorAttention?: boolean | null;
+  nextActions?: CoreTaskControlPlaneNextAction['kind'][];
+}
+
+export interface CoreTaskControlPlaneListSummary {
+  totalAvailable: number;
+  matching: number;
+  returned: number;
+  conversationCount: number;
+  needsOperatorAttentionCount: number;
+  taskStatusCounts: Record<CoreTaskRecord['status'], number>;
+  attentionSeverityCounts: Record<CoreTaskControlPlaneSeverity, number>;
+  reasonCounts: Record<CoreTaskControlPlaneReason, number>;
+  nextActionCounts: Record<CoreTaskControlPlaneNextAction['kind'], number>;
 }
 
 function asRecord(value: unknown): CoreRecordMetadata | null {
@@ -501,6 +553,111 @@ function compareControlPlaneViews(
   return rightTimestamp.localeCompare(leftTimestamp);
 }
 
+function matchesControlPlaneListOptions(
+  view: CoreTaskControlPlaneView,
+  options: CoreTaskControlPlaneListOptions,
+): boolean {
+  if (!matchesCoreTaskViewCommonQuery(view, options)) {
+    return false;
+  }
+
+  if (
+    options.severities?.length
+    && !options.severities.includes(view.attention.severity)
+  ) {
+    return false;
+  }
+
+  if (
+    options.reasons?.length
+    && !view.attention.reasons.some((reason) => options.reasons?.includes(reason))
+  ) {
+    return false;
+  }
+
+  if (
+    options.needsOperatorAttention !== undefined
+    && options.needsOperatorAttention !== null
+    && view.attention.needsOperatorAttention !== options.needsOperatorAttention
+  ) {
+    return false;
+  }
+
+  if (
+    options.nextActions?.length
+    && !view.nextActions.some((action) => options.nextActions?.includes(action.kind))
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildAttentionSeverityCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreTaskControlPlaneSeverity, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_SEVERITIES.map((severity) => [severity, 0]),
+  ) as Record<CoreTaskControlPlaneSeverity, number>;
+
+  for (const view of views) {
+    counts[view.attention.severity] += 1;
+  }
+
+  return counts;
+}
+
+function buildReasonCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreTaskControlPlaneReason, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_REASONS.map((reason) => [reason, 0]),
+  ) as Record<CoreTaskControlPlaneReason, number>;
+
+  for (const view of views) {
+    for (const reason of view.attention.reasons) {
+      counts[reason] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildNextActionCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreTaskControlPlaneNextAction['kind'], number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS.map((kind) => [kind, 0]),
+  ) as Record<CoreTaskControlPlaneNextAction['kind'], number>;
+
+  for (const view of views) {
+    for (const action of view.nextActions) {
+      counts[action.kind] += 1;
+    }
+  }
+
+  return counts;
+}
+
+export function summarizeCoreTaskControlPlaneViews(input: {
+  totalAvailable: number;
+  matching: number;
+  views: CoreTaskControlPlaneView[];
+}): CoreTaskControlPlaneListSummary {
+  return {
+    totalAvailable: input.totalAvailable,
+    matching: input.matching,
+    returned: input.views.length,
+    conversationCount: countCoreTaskViewConversations(input.views),
+    needsOperatorAttentionCount: input.views.filter((view) => view.attention.needsOperatorAttention)
+      .length,
+    taskStatusCounts: buildCoreTaskStatusCounts(input.views),
+    attentionSeverityCounts: buildAttentionSeverityCounts(input.views),
+    reasonCounts: buildReasonCounts(input.views),
+    nextActionCounts: buildNextActionCounts(input.views),
+  };
+}
+
 export function buildCoreTaskControlPlaneView(
   core: CatsCoreState,
   task: CoreTaskRecord,
@@ -567,4 +724,25 @@ export function listCoreTaskControlPlaneViews(
     .map((task) => buildCoreTaskControlPlaneView(core, task))
     .filter(hasVisibleControlPlaneSignal)
     .sort(compareControlPlaneViews);
+}
+
+export function queryCoreTaskControlPlaneViews(
+  core: CatsCoreState,
+  options: CoreTaskControlPlaneListOptions = {},
+): {
+  tasks: CoreTaskControlPlaneView[];
+  summary: CoreTaskControlPlaneListSummary;
+} {
+  const tasks = listCoreTaskControlPlaneViews(core);
+  const matching = tasks.filter((view) => matchesControlPlaneListOptions(view, options));
+  const returned = applyCoreTaskViewLimit(matching, options.limit);
+
+  return {
+    tasks: returned,
+    summary: summarizeCoreTaskControlPlaneViews({
+      totalAvailable: tasks.length,
+      matching: matching.length,
+      views: returned,
+    }),
+  };
 }

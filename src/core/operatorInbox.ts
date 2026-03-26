@@ -1,5 +1,9 @@
 import {
+  CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
+  CORE_TASK_CONTROL_PLANE_REASONS,
+  CORE_TASK_CONTROL_PLANE_SEVERITIES,
   listCoreTaskControlPlaneViews,
+  type CoreTaskControlPlaneListOptions,
   type CoreTaskControlPlaneAttention,
   type CoreTaskControlPlaneNextAction,
   type CoreTaskControlPlaneWorkflowRecommendationView,
@@ -7,6 +11,12 @@ import {
 import type { CatsCoreState, CoreTaskRecord } from './types.js';
 import { buildCoreTaskTimelineView, type CoreTaskTimelineItem } from './taskTimeline.js';
 import type { CoreTaskRecoveryView } from './recovery.js';
+import {
+  applyCoreTaskViewLimit,
+  buildCoreTaskStatusCounts,
+  countCoreTaskViewConversations,
+  matchesCoreTaskViewCommonQuery,
+} from './taskViewQuery.js';
 
 export interface CoreOperatorInboxItem {
   taskId: string;
@@ -22,6 +32,20 @@ export interface CoreOperatorInboxItem {
   latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
   recovery: CoreTaskRecoveryView;
   latestTimelineItem: CoreTaskTimelineItem | null;
+}
+
+export type CoreOperatorInboxQuery = CoreTaskControlPlaneListOptions;
+
+export interface CoreOperatorInboxSummary {
+  totalAvailable: number;
+  matching: number;
+  returned: number;
+  conversationCount: number;
+  needsOperatorAttentionCount: number;
+  taskStatusCounts: Record<CoreTaskRecord['status'], number>;
+  attentionSeverityCounts: Record<CoreTaskControlPlaneAttention['severity'], number>;
+  reasonCounts: Record<NonNullable<CoreTaskControlPlaneAttention['reasons'][number]>, number>;
+  nextActionCounts: Record<CoreTaskControlPlaneNextAction['kind'], number>;
 }
 
 function compareInboxItems(left: CoreOperatorInboxItem, right: CoreOperatorInboxItem): number {
@@ -62,6 +86,111 @@ function hasOperatorActionableSignal(item: CoreOperatorInboxItem): boolean {
     || item.recovery.recoveryRequired;
 }
 
+function matchesOperatorInboxQuery(
+  item: CoreOperatorInboxItem,
+  query: CoreOperatorInboxQuery,
+): boolean {
+  if (!matchesCoreTaskViewCommonQuery(item, query)) {
+    return false;
+  }
+
+  if (
+    query.severities?.length
+    && !query.severities.includes(item.attention.severity)
+  ) {
+    return false;
+  }
+
+  if (
+    query.reasons?.length
+    && !item.attention.reasons.some((reason) => query.reasons?.includes(reason))
+  ) {
+    return false;
+  }
+
+  if (
+    query.needsOperatorAttention !== undefined
+    && query.needsOperatorAttention !== null
+    && item.attention.needsOperatorAttention !== query.needsOperatorAttention
+  ) {
+    return false;
+  }
+
+  if (
+    query.nextActions?.length
+    && !item.nextActions.some((action) => query.nextActions?.includes(action.kind))
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildAttentionSeverityCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreTaskControlPlaneAttention['severity'], number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_SEVERITIES.map((severity) => [severity, 0]),
+  ) as Record<CoreTaskControlPlaneAttention['severity'], number>;
+
+  for (const item of items) {
+    counts[item.attention.severity] += 1;
+  }
+
+  return counts;
+}
+
+function buildReasonCounts(
+  items: CoreOperatorInboxItem[],
+): Record<NonNullable<CoreTaskControlPlaneAttention['reasons'][number]>, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_REASONS.map((reason) => [reason, 0]),
+  ) as Record<NonNullable<CoreTaskControlPlaneAttention['reasons'][number]>, number>;
+
+  for (const item of items) {
+    for (const reason of item.attention.reasons) {
+      counts[reason] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildNextActionCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreTaskControlPlaneNextAction['kind'], number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS.map((kind) => [kind, 0]),
+  ) as Record<CoreTaskControlPlaneNextAction['kind'], number>;
+
+  for (const item of items) {
+    for (const action of item.nextActions) {
+      counts[action.kind] += 1;
+    }
+  }
+
+  return counts;
+}
+
+export function summarizeCoreOperatorInboxItems(input: {
+  totalAvailable: number;
+  matching: number;
+  items: CoreOperatorInboxItem[];
+}): CoreOperatorInboxSummary {
+  return {
+    totalAvailable: input.totalAvailable,
+    matching: input.matching,
+    returned: input.items.length,
+    conversationCount: countCoreTaskViewConversations(input.items),
+    needsOperatorAttentionCount: input.items.filter((item) => item.attention.needsOperatorAttention)
+      .length,
+    taskStatusCounts: buildCoreTaskStatusCounts(input.items),
+    attentionSeverityCounts: buildAttentionSeverityCounts(input.items),
+    reasonCounts: buildReasonCounts(input.items),
+    nextActionCounts: buildNextActionCounts(input.items),
+  };
+}
+
 export function listCoreOperatorInboxItems(
   core: CatsCoreState,
 ): CoreOperatorInboxItem[] {
@@ -96,4 +225,25 @@ export function listCoreOperatorInboxItems(
   return items
     .filter(hasOperatorActionableSignal)
     .sort(compareInboxItems);
+}
+
+export function queryCoreOperatorInboxItems(
+  core: CatsCoreState,
+  query: CoreOperatorInboxQuery = {},
+): {
+  tasks: CoreOperatorInboxItem[];
+  summary: CoreOperatorInboxSummary;
+} {
+  const tasks = listCoreOperatorInboxItems(core);
+  const matching = tasks.filter((item) => matchesOperatorInboxQuery(item, query));
+  const returned = applyCoreTaskViewLimit(matching, query.limit);
+
+  return {
+    tasks: returned,
+    summary: summarizeCoreOperatorInboxItems({
+      totalAvailable: tasks.length,
+      matching: matching.length,
+      items: returned,
+    }),
+  };
 }

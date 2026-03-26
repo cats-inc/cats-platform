@@ -1123,6 +1123,11 @@ recovery, or operator-attention signals:
 
 ```json
 {
+  "summary": {
+    "totalAvailable": 2,
+    "matching": 1,
+    "returned": 1
+  },
   "tasks": [
     {
       "taskId": "task-system-1",
@@ -1187,6 +1192,26 @@ Semantics:
 - these routes are core-owned control-plane read models for later operator,
   recovery, or orchestration consumers that should not scrape `/api/core`,
   Chat operator rails, or raw task metadata blobs
+- `GET /api/core/control-plane/tasks` now also supports additive list filters:
+  - `conversationId`
+  - `taskStatus`
+  - `severity`
+  - `reason`
+  - `needsOperatorAttention`
+  - `nextAction`
+  - `limit`
+- repeated and comma-separated values are both accepted for enum filters such
+  as `taskStatus`, `severity`, `reason`, and `nextAction`
+- list responses now include a `summary` block with:
+  - `totalAvailable`
+  - `matching`
+  - `returned`
+  - `conversationCount`
+  - `needsOperatorAttentionCount`
+  - `taskStatusCounts`
+  - `attentionSeverityCounts`
+  - `reasonCounts`
+  - `nextActionCounts`
 - `approvalActions` and `incidentActions` already point at the existing
   `/api/core/approvals` and `/api/core/operator-actions` write seams through
   additive action envelopes; this route does not invent a second mutation bus
@@ -1207,6 +1232,11 @@ Returns actionable task summaries curated for operator-facing inbox consumers:
 
 ```json
 {
+  "summary": {
+    "totalAvailable": 3,
+    "matching": 2,
+    "returned": 2
+  },
   "tasks": [
     {
       "taskId": "task-operator-inbox",
@@ -1231,6 +1261,18 @@ Semantics:
 
 - this route is a control-plane list view built on top of the existing
   task-scoped `control-plane`, `timeline`, and `recovery` read models
+- it accepts the same additive query filters as
+  `GET /api/core/control-plane/tasks`:
+  - `conversationId`
+  - `taskStatus`
+  - `severity`
+  - `reason`
+  - `needsOperatorAttention`
+  - `nextAction`
+  - `limit`
+- the response now includes the same shape of list `summary` counts so later
+  operator automation or non-UI inbox consumers can page or facet the inbox
+  without hydrating the full core snapshot client-side
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not
   have to join those surfaces client-side to answer "what needs attention and
@@ -1302,6 +1344,11 @@ currently carry product-owned orchestrator recovery state:
 
 ```json
 {
+  "summary": {
+    "totalAvailable": 2,
+    "matching": 1,
+    "returned": 1
+  },
   "recoveries": [
     {
       "taskId": "task-system-1",
@@ -1346,6 +1393,26 @@ Semantics:
 
 - these routes are inspectability-only; they do not replace the existing
   `/api/core/approvals` or `/api/core/operator-actions` write seams
+- `GET /api/core/recovery/tasks` supports additive filters for:
+  - `conversationId`
+  - `taskStatus`
+  - `canRetry`
+  - `canResumeViaApproval`
+  - `hasPendingDispatch`
+  - `hasDispatchReplay`
+  - `hasWorkflowContinuationReplay`
+  - `limit`
+- the collection response now includes a `summary` block with:
+  - `totalAvailable`
+  - `matching`
+  - `returned`
+  - `conversationCount`
+  - `taskStatusCounts`
+  - `canRetryCount`
+  - `canResumeViaApprovalCount`
+  - `withPendingDispatchCount`
+  - `withDispatchReplayCount`
+  - `withWorkflowContinuationReplayCount`
 - the payload normalizes three product-owned recovery records when present:
   - approval-blocked pending dispatch metadata
   - stored orchestrator dispatch replay metadata
