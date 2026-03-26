@@ -1,6 +1,6 @@
 /* Current chat shell overrides */
 
-.screen {
+.screen.claudeShell {
   height: 100vh;
   min-height: 0;
   overflow: hidden;
@@ -236,7 +236,7 @@
   margin-bottom: 0;
 }
 
-.canvas {
+.claudeShell > .canvas {
   width: 100%;
   min-height: 0;
   height: 100vh;
