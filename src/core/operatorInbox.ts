@@ -19,7 +19,7 @@ import type {
   CoreTaskRecord,
   CoreWorkflowSummary,
 } from './types.js';
-import { buildCoreTaskTimelineView, type CoreTaskTimelineItem } from './taskTimeline.js';
+import type { CoreTaskTimelineItem } from './taskTimeline.js';
 import type { CoreTaskRecoveryView } from './recovery.js';
 import {
   applyCoreTaskViewLimit,
@@ -299,15 +299,12 @@ export function listCoreOperatorInboxItems(
       continue;
     }
 
-    const timeline = buildCoreTaskTimelineView(core, task);
-    const latestTimelineItem = timeline.items[0] ?? null;
-
     items.push({
       taskId: task.id,
       conversationId: task.conversationId,
       taskTitle: task.title,
       taskStatus: task.status,
-      summary: latestTimelineItem?.summary ?? task.summary,
+      summary: controlPlane.latestTimelineItem?.summary ?? task.summary,
       attention: controlPlane.attention,
       nextActions: controlPlane.nextActions,
       latestRunId: controlPlane.latestRunId,
@@ -318,7 +315,7 @@ export function listCoreOperatorInboxItems(
       workflowContinuation: controlPlane.workflowContinuation,
       runtimeDeliveryIntent: controlPlane.runtimeDeliveryIntent,
       recovery: controlPlane.recovery,
-      latestTimelineItem,
+      latestTimelineItem: controlPlane.latestTimelineItem,
     });
   }
 

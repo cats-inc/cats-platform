@@ -7,6 +7,10 @@ import {
   buildCoreTaskRecoveryView,
   type CoreTaskRecoveryView,
 } from './recovery.js';
+import {
+  buildCoreTaskTimelineView,
+  type CoreTaskTimelineItem,
+} from './taskTimeline.js';
 import type {
   CatsCoreState,
   CoreApprovalQueueItem,
@@ -56,6 +60,7 @@ export interface CoreTaskInspectionView {
   latestRun: CoreRunRecord | null;
   latestOutcome: CoreOrchestrationOutcomeRecord | null;
   latestCheckpoint: CoreCheckpointRecord | null;
+  latestTimelineItem: CoreTaskTimelineItem | null;
   governanceSummary: CoreGovernanceSummary | null;
   workflowSummary: CoreWorkflowSummary | null;
   recovery: CoreTaskRecoveryView;
@@ -254,12 +259,14 @@ export function buildCoreTaskInspectionView(
     ?? null;
   const traces = core.traces.filter((candidate) => candidate.taskId === task.id);
   const activities = core.activities.filter((candidate) => candidate.taskId === task.id);
+  const latestTimelineItem = buildCoreTaskTimelineView(core, task).items[0] ?? null;
 
   return {
     approvalQueueItem,
     latestRun,
     latestOutcome,
     latestCheckpoint,
+    latestTimelineItem,
     governanceSummary: deriveCoreGovernanceSummary(task, latestRun),
     workflowSummary: deriveCoreWorkflowSummary(latestRun),
     recovery: buildCoreTaskRecoveryView(core, task),

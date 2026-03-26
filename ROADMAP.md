@@ -198,7 +198,9 @@ contracts.
       a first-class inspectable contract instead of forcing later consumers to
       re-read raw task metadata, while control-plane/inbox summaries now also
       expose delivery/workflow facet counts for queueing and operator
-      automation.
+      automation, and task inspection/control-plane payloads now also lift the
+      latest normalized timeline item so operator consumers can read current
+      context without issuing a second timeline join.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

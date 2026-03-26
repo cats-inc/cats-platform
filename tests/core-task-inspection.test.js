@@ -199,6 +199,9 @@ test('buildCoreTaskInspectionView combines governance, workflow, and recovery de
   assert.equal(inspection.latestRun?.id, 'run-inspection');
   assert.equal(inspection.latestCheckpoint?.id, 'checkpoint-inspection');
   assert.equal(inspection.latestOutcome?.id, 'outcome-inspection');
+  assert.equal(inspection.latestTimelineItem?.recordId, 'outcome-inspection');
+  assert.equal(inspection.latestTimelineItem?.category, 'execution');
+  assert.equal(inspection.latestTimelineItem?.summary, 'Blocked before retry.');
   assert.equal(inspection.governanceSummary?.approval.pending, true);
   assert.equal(inspection.workflowSummary?.shape, 'sequential');
   assert.equal(inspection.workflowSummary?.dispatchCount, 1);

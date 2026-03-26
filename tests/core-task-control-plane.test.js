@@ -199,6 +199,9 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
   ]);
   assert.equal(view.attention.severity, 'attention');
   assert.equal(view.recovery.dispatchReplay?.replayState, 'failed');
+  assert.equal(view.latestTimelineItem?.recordId, 'checkpoint-control-plane');
+  assert.equal(view.latestTimelineItem?.category, 'workflow');
+  assert.equal(view.latestTimelineItem?.summary, 'Review the reroute recommendation.');
   assert.equal(view.latestWorkflowRecommendation?.reviewRequired, true);
   assert.equal(
     view.latestWorkflowRecommendation?.candidateTargets[0]?.participantName,

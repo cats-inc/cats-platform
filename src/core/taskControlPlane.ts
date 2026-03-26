@@ -9,6 +9,7 @@ import {
   buildTaskOperatorActionEnvelope,
   type CoreTaskActionEnvelope,
 } from './taskActionEnvelopes.js';
+import type { CoreTaskTimelineItem } from './taskTimeline.js';
 import {
   applyCoreTaskViewLimit,
   buildCoreTaskStatusCounts,
@@ -182,6 +183,7 @@ export interface CoreTaskControlPlaneView {
   latestRunId: string | null;
   latestCheckpointId: string | null;
   latestOutcomeId: string | null;
+  latestTimelineItem: CoreTaskTimelineItem | null;
   governanceSummary: CoreGovernanceSummary | null;
   workflowSummary: CoreWorkflowSummary | null;
   recovery: CoreTaskRecoveryView;
@@ -993,6 +995,7 @@ export function buildCoreTaskControlPlaneView(
     latestRunId: inspection.latestRun?.id ?? null,
     latestCheckpointId: inspection.latestCheckpoint?.id ?? null,
     latestOutcomeId: inspection.latestOutcome?.id ?? null,
+    latestTimelineItem: inspection.latestTimelineItem,
     governanceSummary: inspection.governanceSummary,
     workflowSummary: inspection.workflowSummary,
     recovery: inspection.recovery,

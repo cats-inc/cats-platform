@@ -1435,6 +1435,7 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
           runId: 'run-inspection-route',
           conversationId: 'conversation-channel-inspection-route',
           message: 'Replay failed after retry.',
+          createdAt: '2026-03-26T14:12:00.000Z',
           metadata: {
             source: 'orchestrator-replay',
             replayPhase: 'replay_failed',
@@ -1452,6 +1453,9 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
     assert.equal(detailPayload.inspection.latestRun.id, 'run-inspection-route');
     assert.equal(detailPayload.inspection.latestCheckpoint.id, 'checkpoint-inspection-route');
     assert.equal(detailPayload.inspection.latestOutcome.id, 'outcome-inspection-route');
+    assert.equal(detailPayload.inspection.latestTimelineItem.recordId, 'activity-inspection-route');
+    assert.equal(detailPayload.inspection.latestTimelineItem.category, 'recovery');
+    assert.equal(detailPayload.inspection.latestTimelineItem.summary, 'Replay failed after retry.');
     assert.equal(detailPayload.inspection.governanceSummary.approval.pending, true);
     assert.equal(detailPayload.inspection.workflowSummary.dispatchCount, 1);
     assert.equal(detailPayload.inspection.recovery.dispatchReplay.sourceMessageId, 'message-inspection-route');
@@ -2060,6 +2064,7 @@ test('core control-plane routes expose grouped operator actions and workflow att
           conversationId: 'conversation-channel-control-plane-route',
           taskId: 'task-control-plane-route',
           runId: 'run-control-plane-route',
+          summary: 'Review the reroute recommendation.',
           metadata: {
             continuationSource: 'workflow_recommendation',
             unresolvedTargets: ['Reviewer'],
@@ -2089,6 +2094,8 @@ test('core control-plane routes expose grouped operator actions and workflow att
     assert.deepEqual(listPayload.tasks.map((task) => task.taskId), [
       'task-control-plane-route',
     ]);
+    assert.equal(listPayload.tasks[0].latestTimelineItem.recordId, 'checkpoint-control-plane-route');
+    assert.equal(listPayload.tasks[0].latestTimelineItem.category, 'workflow');
     assert.deepEqual(listPayload.tasks[0].attention.reasons, [
       'approval_pending',
       'run_blocked',
@@ -2109,6 +2116,12 @@ test('core control-plane routes expose grouped operator actions and workflow att
     assert.equal(detailResponse.status, 200);
     const detailPayload = await detailResponse.json();
     assert.equal(detailPayload.controlPlane.taskId, 'task-control-plane-route');
+    assert.equal(detailPayload.controlPlane.latestTimelineItem.recordId, 'checkpoint-control-plane-route');
+    assert.equal(detailPayload.controlPlane.latestTimelineItem.category, 'workflow');
+    assert.equal(
+      detailPayload.controlPlane.latestTimelineItem.summary,
+      'Review the reroute recommendation.',
+    );
     assert.equal(
       detailPayload.controlPlane.latestWorkflowRecommendation.reviewRequired,
       true,

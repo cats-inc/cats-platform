@@ -1055,6 +1055,11 @@ view:
     "latestCheckpoint": {
       "id": "checkpoint-system-1"
     },
+    "latestTimelineItem": {
+      "kind": "activity",
+      "category": "recovery",
+      "recordId": "activity-system-1"
+    },
     "governanceSummary": {
       "approval": {
         "pending": true
@@ -1112,6 +1117,9 @@ Semantics:
   same derived contracts already embedded into product-owned task/run metadata
 - `inspection.recovery` reuses the normalized replay view exposed by
   `/api/core/tasks/{taskId}/recovery`
+- `inspection.latestTimelineItem` lifts the newest normalized timeline row
+  from `/api/core/tasks/{taskId}/timeline`, so inspection consumers can answer
+  "what just happened?" without issuing a second route call
 - `inspection.family` exposes immediate parent/child topology plus stable
   child status counts, so operator/recovery consumers can inspect task-family
   convergence without hydrating the full core snapshot or rebuilding the graph
@@ -1245,6 +1253,11 @@ recovery, or operator-attention signals:
   "tasks": [
     {
       "taskId": "task-system-1",
+      "latestTimelineItem": {
+        "kind": "checkpoint",
+        "category": "workflow",
+        "recordId": "checkpoint-system-1"
+      },
       "attention": {
         "severity": "attention",
         "reasons": ["approval_pending", "retry_available"],
@@ -1270,6 +1283,11 @@ control-plane view for one task:
   "controlPlane": {
     "taskId": "task-system-1",
     "latestRunId": "run-system-1",
+    "latestTimelineItem": {
+      "kind": "checkpoint",
+      "category": "workflow",
+      "recordId": "checkpoint-system-1"
+    },
     "governanceSummary": {
       "approval": {
         "pending": true
@@ -1355,6 +1373,10 @@ Semantics:
   delivery manifest into one task-scoped view so callers do not have to join
   `governanceSummary.delivery` with `governanceSummary.runtimeDeliveryManifest`
   themselves,
+- `latestTimelineItem` lifts the newest normalized timeline row into the same
+  task-scoped control-plane payload, so attention/recovery consumers do not
+  have to separately fetch `/api/core/tasks/{taskId}/timeline` just to explain
+  the latest operator/recovery/workflow context,
   Chat operator rails, or raw task metadata blobs
 - `GET /api/core/control-plane/tasks` now also supports additive list filters:
   - `conversationId`
@@ -1438,7 +1460,8 @@ Returns actionable task summaries curated for operator-facing inbox consumers:
 Semantics:
 
 - this route is a control-plane list view built on top of the existing
-  task-scoped `control-plane`, `timeline`, and `recovery` read models
+  task-scoped `control-plane` and `recovery` read models, with the latest
+  normalized timeline item already lifted into the control-plane contract
 - it accepts the same additive query filters as
   `GET /api/core/control-plane/tasks`:
   - `conversationId`
