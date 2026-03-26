@@ -201,6 +201,7 @@ existing task lifecycle behavior.
 | 2026-03-26 | Plan created to implement `metadata.planning` conventions and the task-to-runtime execution bridge |
 | 2026-03-26 | Shared execution-request normalization/serialization now runs through one reusable bridge helper path for lifecycle metadata and runtime-client outbound payloads |
 | 2026-03-26 | Task lifecycle watchers now reconcile initial observe snapshots early so additive strategy metadata lands before stream teardown and terminal observe payloads can short-circuit redundant stream attachment |
+| 2026-03-27 | `GET /api/core/tasks/{taskId}` now projects normalized `planning` plus `runtimeBridge` derived views so later product/control-plane consumers can inspect cross-product handoff and runtime-bridge intent without reopening raw task metadata |
 
 ---
 

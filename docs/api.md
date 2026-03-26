@@ -1178,6 +1178,33 @@ view:
     "workflowSummary": {
       "dispatchCount": 1
     },
+    "planning": {
+      "strategyHint": "tree_of_thoughts",
+      "acceptanceCriteria": "Summarize the blocked rollout before retrying.",
+      "strategyContext": {
+        "phase": "review",
+        "strict": true
+      },
+      "dependsOnTaskIds": ["task-system-parent"],
+      "productHint": "code",
+      "transfer": {
+        "suggestedProduct": "code"
+      },
+      "effectiveProduct": "code",
+      "effectiveStrategy": "tree_of_thoughts"
+    },
+    "runtimeBridge": {
+      "product": "code",
+      "request": {
+        "requestedStrategy": "tree_of_thoughts",
+        "acceptanceCriteria": "Summarize the blocked rollout before retrying.",
+        "correlation": {
+          "taskId": "task-system-1",
+          "conversationId": "conversation-system-1",
+          "product": "code"
+        }
+      }
+    },
     "recovery": {
       "canRetry": true
     },
@@ -1225,6 +1252,13 @@ Semantics:
   consumers that need more than the raw task row
 - `inspection.governanceSummary` and `inspection.workflowSummary` reuse the
   same derived contracts already embedded into product-owned task/run metadata
+- `inspection.planning` lifts the normalized product-owned
+  `task.metadata.planning` block, including effective product/strategy
+  resolution, so later consumers do not need to re-parse raw metadata blobs
+- `inspection.runtimeBridge` lifts the normalized task-to-runtime execution
+  request that `cats` would send across the runtime boundary for this task, so
+  Work/Code or operator consumers can inspect bridge intent without rebuilding
+  the same resolution logic client-side
 - `inspection.recovery` reuses the normalized replay view exposed by
   `/api/core/tasks/{taskId}/recovery`
 - `inspection.latestTimelineItem` lifts the newest normalized timeline row

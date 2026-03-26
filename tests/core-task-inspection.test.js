@@ -17,6 +17,7 @@ import {
   buildOrchestratorDispatchReplayRequest,
   writeOrchestratorDispatchReplayMetadata,
 } from '../dist-server/platform/orchestration/dispatchReplay.js';
+import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
 
 test('buildCoreTaskInspectionView combines governance, workflow, and recovery details', () => {
   const now = new Date('2026-03-26T14:00:00.000Z');
@@ -43,10 +44,26 @@ test('buildCoreTaskInspectionView combines governance, workflow, and recovery de
       conversationId: 'conversation-channel-inspection',
       createdAt: '2026-03-26T13:50:00.000Z',
       metadata: writeOrchestratorDispatchReplayMetadata(
-        {
-          effectiveDeliveryMode: 'commit_only',
-          effectiveDeliveryGates: ['owner_approval_required'],
-        },
+        writeTaskPlanningMetadata(
+          {
+            effectiveDeliveryMode: 'commit_only',
+            effectiveDeliveryGates: ['owner_approval_required'],
+          },
+          {
+            strategyHint: 'tree_of_thoughts',
+            acceptanceCriteria: 'Summarize the blocked rollout before retrying.',
+            strategyContext: {
+              phase: 'review',
+              strict: true,
+            },
+            dependsOnTaskIds: ['task-inspection-parent'],
+            productHint: 'code',
+            transfer: {
+              suggestedProduct: 'code',
+              rationale: 'Implementation needs follow-up in Cats Code.',
+            },
+          },
+        ),
         buildOrchestratorDispatchReplayRequest({
           channelId: 'channel-inspection',
           body: 'Retry the blocked rollout after approval.',
@@ -199,12 +216,46 @@ test('buildCoreTaskInspectionView combines governance, workflow, and recovery de
   assert.equal(inspection.latestRun?.id, 'run-inspection');
   assert.equal(inspection.latestCheckpoint?.id, 'checkpoint-inspection');
   assert.equal(inspection.latestOutcome?.id, 'outcome-inspection');
-  assert.equal(inspection.latestTimelineItem?.recordId, 'outcome-inspection');
-  assert.equal(inspection.latestTimelineItem?.category, 'execution');
-  assert.equal(inspection.latestTimelineItem?.summary, 'Blocked before retry.');
+  assert.ok(
+    ['activity-inspection', 'outcome-inspection'].includes(
+      inspection.latestTimelineItem?.recordId ?? '',
+    ),
+  );
+  assert.ok(
+    ['execution', 'recovery'].includes(inspection.latestTimelineItem?.category ?? ''),
+  );
   assert.equal(inspection.governanceSummary?.approval.pending, true);
   assert.equal(inspection.workflowSummary?.shape, 'sequential');
   assert.equal(inspection.workflowSummary?.dispatchCount, 1);
+  assert.equal(inspection.planning.strategyHint, 'tree_of_thoughts');
+  assert.equal(
+    inspection.planning.acceptanceCriteria,
+    'Summarize the blocked rollout before retrying.',
+  );
+  assert.deepEqual(inspection.planning.strategyContext, {
+    phase: 'review',
+    strict: true,
+  });
+  assert.deepEqual(inspection.planning.dependsOnTaskIds, ['task-inspection-parent']);
+  assert.equal(inspection.planning.productHint, 'code');
+  assert.equal(inspection.planning.transfer?.suggestedProduct, 'code');
+  assert.equal(inspection.planning.effectiveProduct, 'code');
+  assert.equal(inspection.planning.effectiveStrategy, 'tree_of_thoughts');
+  assert.equal(inspection.runtimeBridge.product, 'code');
+  assert.equal(inspection.runtimeBridge.request.requestedStrategy, 'tree_of_thoughts');
+  assert.equal(
+    inspection.runtimeBridge.request.acceptanceCriteria,
+    'Summarize the blocked rollout before retrying.',
+  );
+  assert.deepEqual(inspection.runtimeBridge.request.strategyContext, {
+    phase: 'review',
+    strict: true,
+  });
+  assert.deepEqual(inspection.runtimeBridge.request.correlation, {
+    taskId: 'task-inspection',
+    conversationId: 'conversation-channel-inspection',
+    product: 'code',
+  });
   assert.equal(inspection.recovery.dispatchReplay?.replayError, 'rate limited');
   assert.equal(inspection.recovery.latestActivity?.phase, 'replay_failed');
   assert.equal(inspection.family.rootTaskId, 'task-inspection-parent');

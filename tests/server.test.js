@@ -30,6 +30,7 @@ import {
   buildWorkflowContinuationReplayRequest,
   writeWorkflowContinuationReplayMetadata,
 } from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
+import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
 import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
 
@@ -1354,10 +1355,26 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
           conversationId: 'conversation-channel-inspection-route',
           createdAt: '2026-03-26T14:05:00.000Z',
           metadata: writeOrchestratorDispatchReplayMetadata(
-            {
-              effectiveDeliveryMode: 'commit_only',
-              effectiveDeliveryGates: ['owner_approval_required'],
-            },
+            writeTaskPlanningMetadata(
+              {
+                effectiveDeliveryMode: 'commit_only',
+                effectiveDeliveryGates: ['owner_approval_required'],
+              },
+              {
+                strategyHint: 'tree_of_thoughts',
+                acceptanceCriteria: 'Summarize the blocked rollout before retrying.',
+                strategyContext: {
+                  phase: 'review',
+                  strict: true,
+                },
+                dependsOnTaskIds: ['task-inspection-route-parent'],
+                productHint: 'code',
+                transfer: {
+                  suggestedProduct: 'code',
+                  rationale: 'Implementation should continue in Cats Code.',
+                },
+              },
+            ),
             buildOrchestratorDispatchReplayRequest({
               channelId: 'channel-inspection-route',
               body: 'Retry the blocked rollout after approval.',
@@ -1548,6 +1565,35 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
     );
     assert.equal(detailPayload.inspection.governanceSummary.approval.pending, true);
     assert.equal(detailPayload.inspection.workflowSummary.dispatchCount, 1);
+    assert.equal(detailPayload.inspection.planning.strategyHint, 'tree_of_thoughts');
+    assert.equal(
+      detailPayload.inspection.planning.acceptanceCriteria,
+      'Summarize the blocked rollout before retrying.',
+    );
+    assert.deepEqual(detailPayload.inspection.planning.strategyContext, {
+      phase: 'review',
+      strict: true,
+    });
+    assert.deepEqual(detailPayload.inspection.planning.dependsOnTaskIds, ['task-inspection-route-parent']);
+    assert.equal(detailPayload.inspection.planning.productHint, 'code');
+    assert.equal(detailPayload.inspection.planning.transfer.suggestedProduct, 'code');
+    assert.equal(detailPayload.inspection.planning.effectiveProduct, 'code');
+    assert.equal(detailPayload.inspection.planning.effectiveStrategy, 'tree_of_thoughts');
+    assert.equal(detailPayload.inspection.runtimeBridge.product, 'code');
+    assert.equal(detailPayload.inspection.runtimeBridge.request.requestedStrategy, 'tree_of_thoughts');
+    assert.equal(
+      detailPayload.inspection.runtimeBridge.request.acceptanceCriteria,
+      'Summarize the blocked rollout before retrying.',
+    );
+    assert.deepEqual(detailPayload.inspection.runtimeBridge.request.strategyContext, {
+      phase: 'review',
+      strict: true,
+    });
+    assert.deepEqual(detailPayload.inspection.runtimeBridge.request.correlation, {
+      taskId: 'task-inspection-route',
+      conversationId: 'conversation-channel-inspection-route',
+      product: 'code',
+    });
     assert.equal(detailPayload.inspection.recovery.dispatchReplay.sourceMessageId, 'message-inspection-route');
     assert.equal(detailPayload.inspection.recovery.latestActivity.phase, 'replay_failed');
     assert.equal(detailPayload.inspection.family.rootTaskId, 'task-inspection-route-parent');

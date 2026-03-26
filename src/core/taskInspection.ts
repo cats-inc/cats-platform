@@ -11,6 +11,17 @@ import {
   buildCoreTaskTimelineView,
   type CoreTaskTimelineItem,
 } from './taskTimeline.js';
+import {
+  buildTaskRuntimeExecutionRequest,
+  resolveTaskExecutionProduct,
+  type TaskRuntimeExecutionRequest,
+} from '../shared/taskExecutionBridge.js';
+import {
+  readTaskPlanningMetadataFromTask,
+  resolveEffectiveTaskStrategy,
+  type TaskExecutionProduct,
+  type TaskPlanningTransfer,
+} from '../shared/taskPlanning.js';
 import type {
   CatsCoreState,
   CoreApprovalQueueItem,
@@ -55,6 +66,22 @@ export interface CoreTaskInspectionFamilyView {
   convergedAt: string | null;
 }
 
+export interface CoreTaskInspectionPlanningView {
+  strategyHint: string | null;
+  acceptanceCriteria: string | null;
+  strategyContext: Record<string, unknown> | null;
+  dependsOnTaskIds: string[];
+  productHint: TaskExecutionProduct | null;
+  transfer: TaskPlanningTransfer | null;
+  effectiveProduct: TaskExecutionProduct | null;
+  effectiveStrategy: string | null;
+}
+
+export interface CoreTaskInspectionRuntimeBridgeView {
+  product: TaskExecutionProduct | null;
+  request: TaskRuntimeExecutionRequest;
+}
+
 export interface CoreTaskInspectionView {
   approvalQueueItem: CoreApprovalQueueItem | null;
   latestRun: CoreRunRecord | null;
@@ -65,6 +92,8 @@ export interface CoreTaskInspectionView {
   workflowSummary: CoreWorkflowSummary | null;
   recovery: CoreTaskRecoveryView;
   family: CoreTaskInspectionFamilyView;
+  planning: CoreTaskInspectionPlanningView;
+  runtimeBridge: CoreTaskInspectionRuntimeBridgeView;
   counts: CoreTaskInspectionCounts;
 }
 
@@ -252,6 +281,8 @@ export function buildCoreTaskInspectionView(
   core: CatsCoreState,
   task: CoreTaskRecord,
 ): CoreTaskInspectionView {
+  const planning = readTaskPlanningMetadataFromTask(task);
+  const effectiveProduct = resolveTaskExecutionProduct({ core, task });
   const latestRun = findLatestRun(core, task.id);
   const latestOutcome = findLatestOutcome(core, task.id, latestRun);
   const latestCheckpoint = findLatestCheckpoint(core, task.id, latestRun);
@@ -271,6 +302,28 @@ export function buildCoreTaskInspectionView(
     workflowSummary: deriveCoreWorkflowSummary(latestRun),
     recovery: buildCoreTaskRecoveryView(core, task),
     family: buildCoreTaskInspectionFamilyView(core, task),
+    planning: {
+      strategyHint: planning.strategyHint,
+      acceptanceCriteria: planning.acceptanceCriteria,
+      strategyContext: planning.strategyContext
+        ? structuredClone(planning.strategyContext)
+        : null,
+      dependsOnTaskIds: [...planning.dependsOnTaskIds],
+      productHint: planning.productHint,
+      transfer: planning.transfer
+        ? structuredClone(planning.transfer)
+        : null,
+      effectiveProduct,
+      effectiveStrategy: resolveEffectiveTaskStrategy(effectiveProduct, planning),
+    },
+    runtimeBridge: {
+      product: effectiveProduct,
+      request: buildTaskRuntimeExecutionRequest({
+        core,
+        task,
+        ...(effectiveProduct ? { product: effectiveProduct } : {}),
+      }),
+    },
     counts: {
       runs: core.runs.filter((candidate) => candidate.taskId === task.id).length,
       outcomes: core.outcomes.filter((candidate) => candidate.taskId === task.id).length,
