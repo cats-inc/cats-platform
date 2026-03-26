@@ -97,13 +97,27 @@ async function appendReplayActivityAndSync(
 }
 
 function shouldAutoResumeReadyContinuationReplay(
+  core: CatsCoreState,
+  taskId: string,
   replay: ReturnType<typeof readWorkflowContinuationReplay>,
 ): replay is NonNullable<ReturnType<typeof readWorkflowContinuationReplay>> {
+  const hasStartupRecoveredReplayActivity = core.activities.some((activity) =>
+    activity.taskId === taskId
+    && activity.metadata?.source === 'workflow-continuation-replay'
+    && activity.metadata?.replayPhase === 'startup_recovered');
   return Boolean(
     replay
     && replay.replayState === 'ready'
-    && replay.blockedReason === 'no_valid_targets'
-    && replay.workflowRecommendation,
+    && (
+      (
+        replay.blockedReason === 'no_valid_targets'
+        && replay.workflowRecommendation
+      )
+      || (
+        replay.blockedReason === null
+        && hasStartupRecoveredReplayActivity
+      )
+    ),
   );
 }
 
@@ -120,7 +134,7 @@ async function autoResumeRecoveredContinuationReplaysOnStartup(
 
   for (const task of core.tasks) {
     const replay = readWorkflowContinuationReplay(task.metadata);
-    if (!shouldAutoResumeReadyContinuationReplay(replay)) {
+    if (!shouldAutoResumeReadyContinuationReplay(core, task.id, replay)) {
       continue;
     }
 
@@ -129,13 +143,17 @@ async function autoResumeRecoveredContinuationReplaysOnStartup(
       continue;
     }
 
+    const resumeReason = replay.blockedReason === 'no_valid_targets'
+      ? 'target_recovered'
+      : null;
+
     await appendReplayActivityAndSync(
       dependencies,
       task.id,
       {
         source: 'workflow-continuation-replay',
         phase: 'replay_started',
-        resumeReason: 'target_recovered',
+        resumeReason,
       },
       now,
     );
@@ -160,7 +178,7 @@ async function autoResumeRecoveredContinuationReplaysOnStartup(
           phase: result.status === 'dispatched'
             ? 'replay_dispatched'
             : 'replay_blocked',
-          resumeReason: 'target_recovered',
+          resumeReason,
           blockedReason: result.blockedReason,
           resultCount: result.results.length,
         },
@@ -178,7 +196,7 @@ async function autoResumeRecoveredContinuationReplaysOnStartup(
         {
           source: 'workflow-continuation-replay',
           phase: 'replay_failed',
-          resumeReason: 'target_recovered',
+          resumeReason,
           error: error instanceof Error ? error.message : 'Unknown startup recovery error.',
         },
         now,

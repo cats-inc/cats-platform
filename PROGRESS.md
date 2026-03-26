@@ -367,7 +367,9 @@ Known follow-ups:
   of stopping at an inspectable blocked marker, and that same startup recovery
   path now also appends an immediate `workflow-continuation-replay` /
   `startup_recovered` activity so recovery/control-plane consumers can facet
-  those reopened snapshots before any manual retry happens
+  those reopened snapshots before any manual retry happens, while active-target
+  startup-recovered continuation snapshots now also auto-resume during the same
+  boot sequence instead of always waiting on a later operator retry
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without

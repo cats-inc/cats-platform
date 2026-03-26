@@ -204,8 +204,9 @@ contracts.
       metadata so operator `retry` can reopen the same product-owned replay
       seam after restart, and now also emit immediate
       `workflow-continuation-replay` / `startup_recovered` activity for the
-      non-UI recovery surfaces; broader group replan auto-resume still
-      remains.
+      non-UI recovery surfaces, while active-target startup-recovered
+      continuation snapshots now also auto-resume during the same boot
+      sequence; broader group replan auto-resume still remains.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent

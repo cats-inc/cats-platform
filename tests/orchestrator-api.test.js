@@ -1721,7 +1721,7 @@ test('recommendation-only parallel continuation replay waits for all recovered t
   }, chatStore);
 });
 
-test('startup-recovered continuation replay resumes through the operator retry seam', async () => {
+test('startup-recovered continuation replay auto-resumes on server startup when targets remain active', async () => {
   const runtimeClient = createRuntimeStub({
     sendMessage: ({ content }) => {
       if (content.includes('You are Reviewer-Agent')) {
@@ -1945,49 +1945,22 @@ test('startup-recovered continuation replay resumes through the operator retry s
     const taskId = `task-channel-${channelId}`;
     const task = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
     assert.ok(task);
-    assert.ok(task.metadata.workflowContinuationReplay);
+    assert.equal(task.metadata.workflowContinuationReplay, undefined);
     assert.ok(
       initialCorePayload.activities.some((activity) =>
         activity.taskId === taskId
         && activity.metadata?.source === 'workflow-continuation-replay'
         && activity.metadata?.replayPhase === 'startup_recovered'),
     );
-    const latestRun = initialCorePayload.runs
-      .filter((candidate) => candidate.taskId === taskId)
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
-    assert.ok(latestRun);
-
-    const retryResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        action: 'retry',
-        actorId: 'actor-owner',
-        taskId,
-        runId: latestRun.id,
-      }),
-    });
-    assert.equal(retryResponse.status, 200);
-    const retryPayload = await retryResponse.json();
-    assert.equal(retryPayload.action, 'retry');
-    assert.equal(retryPayload.autoResume?.status, 'dispatched');
-    assert.equal(retryPayload.autoResume?.executionState, 'completed');
-    assert.equal(retryPayload.autoResume?.resultCount, 1);
     assert.equal(runtimeClient.sentMessages.length, 1);
     assert.match(runtimeClient.sentMessages[0]?.content ?? '', /You are Reviewer-Agent/u);
-
-    const finalCoreResponse = await fetch(`${baseUrl}/api/core`);
-    assert.equal(finalCoreResponse.status, 200);
-    const finalCorePayload = await finalCoreResponse.json();
-    const finalTask = finalCorePayload.tasks.find((candidate) => candidate.id === taskId);
-    assert.ok(finalTask);
-    assert.equal(finalTask.metadata.workflowContinuationReplay, undefined);
     assert.ok(
-      finalCorePayload.activities.some((activity) =>
+      initialCorePayload.activities.some((activity) =>
         activity.taskId === taskId
         && activity.metadata?.source === 'workflow-continuation-replay'
         && activity.metadata?.replayPhase === 'replay_dispatched'
-        && activity.metadata?.replayTrigger === 'retry'),
+        && activity.metadata?.resumeReason === null
+        && activity.metadata?.resultCount === 1),
     );
   }, chatStore);
 });

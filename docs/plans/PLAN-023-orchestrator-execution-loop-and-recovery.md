@@ -149,7 +149,8 @@ MCP tool plane.
   reopen the same continuation seam after boot instead of stopping at a blocked
   recovery marker, and the same startup path now also appends immediate
   `workflow-continuation-replay` / `startup_recovered` activity for the
-  recovery/control-plane read model
+  recovery/control-plane read model, while active-target startup-recovered
+  continuation snapshots now also auto-resume during that same boot sequence
 - converge-stage richer planning once group/branch policies land
 - future export of the orchestrator execution contract to other product
   surfaces once Team 3 / Team 6 consume it directly
