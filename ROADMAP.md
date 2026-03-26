@@ -171,7 +171,8 @@ contracts.
       replay snapshots when a structured handoff exists but no active
       participants currently satisfy it, while retry can now keep that replay
       `blocked` plus ready for a later retry until the target becomes active,
-      and can
+      automatic chat-side assignment recovery can now also resume that replay
+      when a matching cat becomes active again, and can
       also re-resolve stale stored continuation targets from persisted
       `workflowRecommendation` payloads when the original participant ids are
       no longer active; broader group replan auto-resume still remains.

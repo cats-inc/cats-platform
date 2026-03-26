@@ -9,6 +9,9 @@ import type {
   OrchestratorChannelRouter,
   OrchestratorPlannerSurface,
 } from '../../../platform/orchestration/contracts.js';
+import {
+  readWorkflowContinuationReplay,
+} from '../../../platform/orchestration/workflowContinuationReplay.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
@@ -34,6 +37,8 @@ import {
   setChannelChatCwd,
   setChannelStatus,
 } from '../state/model/index.js';
+import { resumeStoredWorkflowContinuationDispatch } from '../state/orchestratorAdapter.js';
+import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
 import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
 import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
@@ -306,6 +311,83 @@ function catParticipatesInChat(products: readonly string[] | null | undefined): 
   });
 }
 
+function buildChannelTaskId(channelId: string): string {
+  return `task-channel-${channelId}`;
+}
+
+function replayMatchesRecoveredCat(
+  replay: NonNullable<ReturnType<typeof readWorkflowContinuationReplay>>,
+  assignment: ChatChannelCat,
+): boolean {
+  const normalizedCatName = assignment.name.trim().toLowerCase();
+  if (replay.targets.some((target) =>
+    target.participantKind === 'cat'
+    && (
+      target.participantId === assignment.catId
+      || target.participantName.trim().toLowerCase() === normalizedCatName
+    )
+  )) {
+    return true;
+  }
+
+  const recommendation = readWorkflowRecommendation(replay.workflowRecommendation);
+  if (!recommendation) {
+    return false;
+  }
+
+  return recommendation.candidateTargets.some((candidate) =>
+    candidate.participantKind !== 'orchestrator'
+    && (
+      candidate.participantId === assignment.catId
+      || candidate.participantName?.trim().toLowerCase() === normalizedCatName
+    )
+  );
+}
+
+async function maybeAutoResumeRecoveredContinuation(
+  context: ChatApiRouteContext,
+  channelId: string,
+  catId: string,
+  now: Date,
+): Promise<void> {
+  const state = await context.dependencies.chatStore.read();
+  const channel = buildChannelView(state, channelId);
+  const assignment = channel.assignedCats.find((candidate) =>
+    candidate.catId === catId && candidate.status === 'active'
+  );
+  if (!assignment) {
+    return;
+  }
+
+  const core = await context.dependencies.chatStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === buildChannelTaskId(channelId)) ?? null;
+  const replay = readWorkflowContinuationReplay(task?.metadata);
+  if (
+    !task
+    || !replay
+    || replay.replayState !== 'ready'
+    || replay.blockedReason !== 'no_valid_targets'
+    || !replay.workflowRecommendation
+    || !replayMatchesRecoveredCat(replay, assignment)
+  ) {
+    return;
+  }
+
+  try {
+    await resumeStoredWorkflowContinuationDispatch({
+      request: replay,
+      chatStore: context.dependencies.chatStore,
+      runtimeClient: context.dependencies.runtimeClient,
+      now,
+      companionStore: context.dependencies.companionStore,
+      memoryService: context.dependencies.memoryService,
+    });
+  } catch {
+    // Auto-resume is additive. Leave the replay ready for explicit retry if
+    // the recovered target still cannot complete the continuation.
+  }
+}
+
 async function writeCoreWithUpdatedBindings(
   context: ChatApiRouteContext,
   update: (
@@ -406,6 +488,7 @@ export async function persistCatAssignmentUpdate(
     (candidate) => candidate.catId === input.catId,
   );
   const isNew = !existingAssignment;
+  const reactivatedAssignment = existingAssignment?.status === 'removed';
   const previousSessionId = existingAssignment?.execution.lease.sessionId ?? null;
   const previousProvider = existingAssignment?.execution.target.provider ?? null;
   const previousInstance = existingAssignment?.execution.target.instance ?? null;
@@ -574,8 +657,19 @@ export async function persistCatAssignmentUpdate(
     }
   }
 
+  const persisted = await context.dependencies.chatStore.write(nextState);
+
+  if (isNew || reactivatedAssignment) {
+    await maybeAutoResumeRecoveredContinuation(
+      context,
+      channelId,
+      input.catId,
+      now,
+    );
+  }
+
   return {
-    persisted: await context.dependencies.chatStore.write(nextState),
+    persisted: await context.dependencies.chatStore.read(),
     isNew,
   };
 }

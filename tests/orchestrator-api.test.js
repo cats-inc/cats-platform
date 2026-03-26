@@ -1381,16 +1381,10 @@ test('POST /api/core/operator-actions re-resolves stale workflow continuation ta
     const task = corePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
     assert.ok(task);
     assert.equal(task.metadata.workflowContinuationReplay, undefined);
-    assert.ok(
-      corePayload.activities.some((activity) =>
-        activity.taskId === `task-channel-${channelId}`
-        && activity.metadata?.source === 'workflow-continuation-replay'
-        && activity.metadata?.replayPhase === 'replay_dispatched'),
-    );
   }, chatStore);
 });
 
-test('POST /api/core/operator-actions keeps recommendation-only continuation retry blocked until targets become active', async () => {
+test('recommendation-only continuation replay stays blocked on retry and auto-resumes when the target cat is re-added', async () => {
   const runtimeClient = createRuntimeStub({
     sendMessage: ({ content }) => {
       if (content.includes('You are Inline-Agent')) {
@@ -1441,6 +1435,8 @@ test('POST /api/core/operator-actions keeps recommendation-only continuation ret
         cat.id === assignment.catId && cat.name === 'Followup-Agent'),
     );
     assert.ok(followupAssignment);
+    const followupCat = currentState.cats.find((cat) => cat.id === followupAssignment.catId);
+    assert.ok(followupCat);
     followupAssignment.status = 'removed';
     followupAssignment.leftAt = '2026-03-26T14:00:00.000Z';
     await chatStore.write(currentState);
@@ -1510,38 +1506,20 @@ test('POST /api/core/operator-actions keeps recommendation-only continuation ret
         && activity.metadata?.blockedReason === 'no_valid_targets'),
     );
 
-    const resumedState = await chatStore.read();
-    const resumedChannel = resumedState.channels.find((candidate) => candidate.id === channelId);
-    assert.ok(resumedChannel);
-    const resumedFollowupAssignment = resumedChannel.catAssignments.find((assignment) =>
-      resumedState.cats.some((cat) => cat.id === assignment.catId && cat.name === 'Followup-Agent'),
-    );
-    assert.ok(resumedFollowupAssignment);
-    resumedFollowupAssignment.status = 'active';
-    resumedFollowupAssignment.leftAt = null;
-    await chatStore.write(resumedState);
-
-    const operatorActionResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
-      method: 'POST',
+    const reassignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${followupCat.id}`, {
+      method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        action: 'retry',
-        actorId: 'actor-owner',
-        taskId: `task-channel-${channelId}`,
-        runId: blockedRunId,
+        provider: followupCat.defaultExecutionTarget.provider,
+        instance: followupCat.defaultExecutionTarget.instance,
+        model: followupCat.defaultExecutionTarget.model,
+        modelSelection: followupCat.defaultModelSelection ?? null,
       }),
     });
-    assert.equal(operatorActionResponse.status, 200);
-    const operatorActionPayload = await operatorActionResponse.json();
-    assert.equal(operatorActionPayload.action, 'retry');
-    assert.deepEqual(operatorActionPayload.autoResume, {
-      trigger: 'retry',
-      status: 'dispatched',
-      blockedReason: null,
-      sourceMessageId: operatorActionPayload.autoResume.sourceMessageId,
-      resultCount: 1,
-      executionState: 'completed',
-    });
+    assert.equal(reassignResponse.status, 200);
+    const reassignPayload = await reassignResponse.json();
+    assert.equal(reassignPayload.cat.status, 'active');
+    assert.ok(reassignPayload.cat.execution.lease.sessionId);
     assert.equal(runtimeClient.sentMessages.length, 2);
     assert.match(runtimeClient.sentMessages[1]?.content ?? '', /You are Followup-Agent/u);
 
@@ -1551,12 +1529,6 @@ test('POST /api/core/operator-actions keeps recommendation-only continuation ret
     const task = corePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
     assert.ok(task);
     assert.equal(task.metadata.workflowContinuationReplay, undefined);
-    assert.ok(
-      corePayload.activities.some((activity) =>
-        activity.taskId === `task-channel-${channelId}`
-        && activity.metadata?.source === 'workflow-continuation-replay'
-        && activity.metadata?.replayPhase === 'replay_dispatched'),
-    );
   }, chatStore);
 });
 

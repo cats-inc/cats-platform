@@ -95,8 +95,10 @@ MCP tool plane.
   retryable `no_valid_targets` replay snapshot when a structured
   `workflowRecommendation` exists but no active participant currently matches
   it, while retry can now keep that replay `blocked` plus ready until a
-  matching participant becomes active and can also re-resolve stale stored
-  targets from the persisted `workflowRecommendation` payload when the
+  matching participant becomes active, chat-side assignment recovery can now
+  also resume that replay when a matching cat becomes active again, and the
+  same seam can also re-resolve stale stored targets from the persisted
+  `workflowRecommendation` payload when the
   original target identities are no longer active, while broader group replan
   or
   converge-stage continuation still remains
