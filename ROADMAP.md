@@ -173,7 +173,9 @@ contracts.
       `blocked` plus ready for a later retry until the target becomes active,
       automatic chat-side assignment recovery can now also resume that replay
       when a matching cat becomes active again, with additive replay activity
-      marking that path as `resumeReason=target_recovered`, and can
+      marking that path as `resumeReason=target_recovered`, while core
+      recovery routes can now also project/filter/count that normalized latest
+      replay resume reason for operator automation, and can
       also re-resolve stale stored continuation targets from persisted
       `workflowRecommendation` payloads when the original participant ids are
       no longer active; broader group replan auto-resume still remains.

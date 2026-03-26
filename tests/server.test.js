@@ -1202,6 +1202,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
             source: 'workflow-continuation-replay',
             replayPhase: 'replay_failed',
             replayTrigger: 'retry',
+            resumeReason: 'target_recovered',
             error: 'guard tripped',
             resultCount: 0,
           },
@@ -1228,6 +1229,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.ok(listPayload.recoveries[0].pendingDispatch.bodyLength > 40);
     assert.match(listPayload.recoveries[0].pendingDispatch.bodyPreview, /blocked rollout/i);
     assert.equal(listPayload.recoveries[0].latestActivity.phase, 'replay_failed');
+    assert.equal(listPayload.recoveries[0].latestActivity.resumeReason, 'target_recovered');
     assert.equal(listPayload.recoveries[0].family.rootTaskId, 'task-recovery-routes-root');
     assert.equal(listPayload.recoveries[0].family.parent.taskId, 'task-recovery-routes-root');
     assert.equal(listPayload.recoveries[0].context.deliveryMode, 'commit_only');
@@ -1243,11 +1245,12 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(listPayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(listPayload.summary.workflowShapeCounts.converge, 1);
+    assert.equal(listPayload.summary.latestReplayResumeReasonCounts.target_recovered, 1);
     assert.equal(listPayload.summary.withChildrenCount, 0);
     assert.equal(listPayload.summary.withActiveChildrenCount, 0);
 
     const filteredListResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-followup&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-followup&latestReplayResumeReason=target_recovered&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(filteredListResponse.status, 200);
     const filteredListPayload = await filteredListResponse.json();
@@ -1262,6 +1265,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(filteredListPayload.summary.workflowContinuationReplayStateCounts.failed, 1);
     assert.equal(filteredListPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
     assert.equal(filteredListPayload.summary.workflowShapeCounts.converge, 1);
+    assert.equal(filteredListPayload.summary.latestReplayResumeReasonCounts.target_recovered, 1);
 
     const detailResponse = await fetch(
       `${baseUrl}/api/core/tasks/task-recovery-routes/recovery`,
@@ -1291,6 +1295,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(detailPayload.recovery.context.channelId, 'channel-recovery-routes');
     assert.equal(detailPayload.recovery.context.transport, 'web');
     assert.equal(detailPayload.recovery.context.roomMode, 'boss_chat');
+    assert.equal(detailPayload.recovery.latestActivity.resumeReason, 'target_recovered');
     assert.equal(detailPayload.recovery.family.rootTaskId, 'task-recovery-routes-root');
     assert.equal(detailPayload.recovery.family.parent.taskId, 'task-recovery-routes-root');
     assert.equal(detailPayload.recovery.approval.status, 'pending');

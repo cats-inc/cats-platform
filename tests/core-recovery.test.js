@@ -128,6 +128,7 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
         source: 'workflow-continuation-replay',
         replayPhase: 'replay_failed',
         replayTrigger: 'retry',
+        resumeReason: 'target_recovered',
         error: 'guard tripped',
         resultCount: 0,
       },
@@ -178,6 +179,7 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
   );
   assert.equal(recovery.latestActivity?.phase, 'replay_failed');
   assert.equal(recovery.latestActivity?.source, 'workflow-continuation-replay');
+  assert.equal(recovery.latestActivity?.resumeReason, 'target_recovered');
 });
 
 test('listCoreTaskRecoveryViews filters plain tasks and sorts latest recovery first', () => {
@@ -344,6 +346,24 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
     },
     now,
   ).core;
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-recovery-workflow',
+      kind: 'note',
+      taskId: 'task-recovery-workflow',
+      conversationId: 'conversation-recovery',
+      message: 'Workflow replay auto-resumed after the target recovered.',
+      createdAt: '2026-03-26T13:03:30.000Z',
+      metadata: {
+        source: 'workflow-continuation-replay',
+        replayPhase: 'replay_dispatched',
+        resumeReason: 'target_recovered',
+        resultCount: 1,
+      },
+    },
+    now,
+  ).core;
 
   const result = queryCoreTaskRecoveryViews(core, {
     conversationIds: ['conversation-recovery'],
@@ -353,6 +373,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
     workflowStageIds: ['continuation_handoff'],
     workflowShapes: ['sequential'],
     workflowContinuationBlockedReasons: ['max_dispatches'],
+    latestReplayResumeReasons: ['target_recovered'],
     rootTaskIds: ['task-recovery-root'],
     parentTaskIds: ['task-recovery-root'],
     hasChildren: false,
@@ -374,8 +395,10 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
   assert.equal(result.summary.workflowShapeCounts.sequential, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
+  assert.equal(result.summary.latestReplayResumeReasonCounts.target_recovered, 1);
   assert.equal(result.recoveries[0]?.family.rootTaskId, 'task-recovery-root');
   assert.equal(result.recoveries[0]?.family.parent?.taskId, 'task-recovery-root');
+  assert.equal(result.recoveries[0]?.latestActivity?.resumeReason, 'target_recovered');
   assert.equal(result.summary.withChildrenCount, 0);
   assert.equal(result.summary.withActiveChildrenCount, 0);
 });

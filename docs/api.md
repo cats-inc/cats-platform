@@ -1696,7 +1696,8 @@ for one task:
     },
     "latestActivity": {
       "phase": "replay_failed",
-      "source": "workflow-continuation-replay"
+      "source": "workflow-continuation-replay",
+      "resumeReason": "target_recovered"
     },
     "approvalActions": [
       {
@@ -1741,6 +1742,7 @@ Semantics:
   - `workflowShape`
   - `workflowReviewRequired`
   - `workflowConvergeTargetId`
+  - `latestReplayResumeReason`
   - `rootTaskId`
   - `parentTaskId`
   - `hasChildren`
@@ -1766,6 +1768,7 @@ Semantics:
   - `deliveryActionCounts`
   - `workflowStageCounts`
   - `workflowShapeCounts`
+  - `latestReplayResumeReasonCounts`
   - `workflowReviewRequiredCount`
   - `workflowConvergeTargetCount`
   - `withChildrenCount`
@@ -1794,6 +1797,12 @@ Semantics:
 - `workflowShape` / `workflowShapeCounts` let recovery automation distinguish
   sequential, parallel, or converge replay topology without inferring it from
   stage ids alone
+- `latestActivity.resumeReason` now exposes additive replay-resume context when
+  the latest replay lifecycle note came from a normalized recovery path such as
+  `target_recovered`
+- `latestReplayResumeReason` / `latestReplayResumeReasonCounts` let recovery
+  automation facet queues by the latest normalized replay-resume reason without
+  scraping raw activity metadata
 - `family` reuses the same immediate task-family topology summary exposed by
   `GET /api/core/tasks/{taskId}`, so recovery automation can target parent/
   child work without rebuilding the task graph outside `cats`

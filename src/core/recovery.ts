@@ -96,12 +96,17 @@ export const CORE_TASK_RECOVERY_DELIVERY_ACTIONS = [
 ] as const satisfies readonly CoreRuntimeDeliveryAction[];
 
 export type CoreTaskRecoveryWorkflowShape = 'sequential' | 'parallel' | 'converge';
+export type CoreTaskRecoveryResumeReason = 'target_recovered';
 
 export const CORE_TASK_RECOVERY_WORKFLOW_SHAPES = [
   'sequential',
   'parallel',
   'converge',
 ] as const satisfies readonly CoreTaskRecoveryWorkflowShape[];
+
+export const CORE_TASK_RECOVERY_RESUME_REASONS = [
+  'target_recovered',
+] as const satisfies readonly CoreTaskRecoveryResumeReason[];
 
 export const CORE_TASK_PENDING_DISPATCH_REPLAY_STATES = [
   'pending',
@@ -181,6 +186,7 @@ export interface CoreTaskRecoveryActivityView {
   source: string | null;
   phase: string;
   trigger: string | null;
+  resumeReason: CoreTaskRecoveryResumeReason | null;
   createdAt: string;
   message: string;
   error: string | null;
@@ -237,6 +243,7 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   workflowShapes?: CoreTaskRecoveryWorkflowShape[];
   workflowReviewRequired?: boolean | null;
   workflowConvergeTargetIds?: string[];
+  latestReplayResumeReasons?: CoreTaskRecoveryResumeReason[];
   rootTaskIds?: string[];
   parentTaskIds?: string[];
   hasChildren?: boolean | null;
@@ -263,6 +270,7 @@ export interface CoreTaskRecoveryListSummary {
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
   workflowShapeCounts: Record<CoreTaskRecoveryWorkflowShape, number>;
+  latestReplayResumeReasonCounts: Record<CoreTaskRecoveryResumeReason, number>;
   workflowReviewRequiredCount: number;
   workflowConvergeTargetCount: number;
   withChildrenCount: number;
@@ -283,6 +291,10 @@ function readString(value: unknown): string | null {
 
 function readNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function readResumeReason(value: unknown): CoreTaskRecoveryResumeReason | null {
+  return value === 'target_recovered' ? value : null;
 }
 
 function summarizeBody(body: string): {
@@ -317,6 +329,7 @@ function buildLatestRecoveryActivity(
     source: readString(metadata?.source),
     phase: readString(metadata?.replayPhase) ?? 'unknown',
     trigger: readString(metadata?.replayTrigger),
+    resumeReason: readResumeReason(metadata?.resumeReason),
     createdAt: latest.createdAt,
     message: latest.message,
     error: readString(metadata?.error),
@@ -771,6 +784,14 @@ function matchesRecoveryListOptions(
   }
 
   if (
+    options.latestReplayResumeReasons?.length
+    && (!recovery.latestActivity?.resumeReason
+      || !options.latestReplayResumeReasons.includes(recovery.latestActivity.resumeReason))
+  ) {
+    return false;
+  }
+
+  if (
     options.rootTaskIds?.length
     && !options.rootTaskIds.includes(recovery.family.rootTaskId)
   ) {
@@ -955,6 +976,24 @@ function buildRecoveryWorkflowShapeCounts(
   return counts;
 }
 
+function buildRecoveryResumeReasonCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<CoreTaskRecoveryResumeReason, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_RESUME_REASONS.map((reason) => [reason, 0]),
+  ) as Record<CoreTaskRecoveryResumeReason, number>;
+
+  for (const recovery of recoveries) {
+    const reason = recovery.latestActivity?.resumeReason;
+    if (!reason) {
+      continue;
+    }
+    counts[reason] += 1;
+  }
+
+  return counts;
+}
+
 export function summarizeCoreTaskRecoveryViews(input: {
   totalAvailable: number;
   matching: number;
@@ -984,6 +1023,7 @@ export function summarizeCoreTaskRecoveryViews(input: {
     deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),
     workflowStageCounts: buildRecoveryWorkflowStageCounts(input.recoveries),
     workflowShapeCounts: buildRecoveryWorkflowShapeCounts(input.recoveries),
+    latestReplayResumeReasonCounts: buildRecoveryResumeReasonCounts(input.recoveries),
     workflowReviewRequiredCount: input.recoveries.filter((recovery) =>
       recovery.context?.workflowReviewRequired === true).length,
     workflowConvergeTargetCount: input.recoveries.filter((recovery) =>

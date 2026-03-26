@@ -98,7 +98,9 @@ MCP tool plane.
   matching participant becomes active, chat-side assignment recovery can now
   also resume that replay when a matching cat becomes active again, the same
   recovery path now appends additive replay activity with
-  `resumeReason=target_recovered`, and the same seam can also re-resolve stale stored targets from the persisted
+  `resumeReason=target_recovered`, core recovery routes now also project/filter
+  that normalized latest replay resume reason, and the same seam can also
+  re-resolve stale stored targets from the persisted
   `workflowRecommendation` payload when the
   original target identities are no longer active, while broader group replan
   or

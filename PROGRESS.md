@@ -327,6 +327,11 @@ Known follow-ups:
 - that same target-recovery auto-resume path now also appends additive replay
   lifecycle activity with `resumeReason=target_recovered`, so operator feeds
   can distinguish automatic target recovery from manual retry
+- core recovery routes now also project that normalized
+  `latestActivity.resumeReason` field and support
+  `latestReplayResumeReason` filtering plus
+  `latestReplayResumeReasonCounts`, so recovery automation can facet the queue
+  by why the latest replay resumed without scraping raw activity metadata
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without
