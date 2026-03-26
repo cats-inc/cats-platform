@@ -13,6 +13,8 @@
 | [paperclip-control-plane-analysis](./paperclip-control-plane-analysis.md) | 2026-03-16 | Paperclip concepts and feature map | Unreviewed local analysis of Paperclip's control-plane model and rewrite takeaways for `cats` |
 | [2026-03-26-openmanus-killer-feature-gap-analysis](./2026-03-26-openmanus-killer-feature-gap-analysis.md) | 2026-03-26 | OpenManus killer-feature gaps for Chat + runtime | Identify execution-engine gaps (structured planning, stuck detection, container sandbox, A2A, multimodal tools, unified tool registry) from OpenManus submodule v0.3.0 |
 | [2026-03-26-unified-planning-language-and-cross-product-strategy](./2026-03-26-unified-planning-language-and-cross-product-strategy.md) | 2026-03-26 | Unified planning language and cross-product strategy | CoreTaskRecord as cross-strategy plan exchange format, pluggable strategy selection (Chat=ReAct, Work=PDCA, Code=Reflexion), cross-product plan handoff |
+| [2026-03-26-cats-chat-spatial-layout-guidelines](./2026-03-26-cats-chat-spatial-layout-guidelines.md) | 2026-03-26 | Cats Chat spatial layout guidelines | Define the intended spatial model for transcript, split artifact view, pane-local action bars, compose-config/operator/cwd secondary surfaces, and companion-aware workspace structure |
+| [2026-03-26-companion-core-capabilities](./2026-03-26-companion-core-capabilities.md) | 2026-03-26 | Companion core capabilities | Define the minimum companion feature set, dashboard sections, identity/profile model, presence toggles, and current gap areas for `Cats Chat` |
 
 ## Entry Template
 

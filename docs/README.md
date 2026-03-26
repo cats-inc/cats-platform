@@ -59,7 +59,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution, product-boundary positioning for `Cats Chat` / `Cats Work` / `Cats Code`, the current Chat/runtime killer-feature audits for Paperclip and OpenClaw, and the OpenClaw memory-layering benchmark |
+| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution, product-boundary positioning for `Cats Chat` / `Cats Work` / `Cats Code`, the current Chat/runtime killer-feature audits for Paperclip and OpenClaw, OpenClaw memory-layering benchmarks, unified planning strategy notes, Cats Chat spatial layout guidance, and companion capability baselines |
 
 ## Context-Driven Development
 
@@ -99,4 +99,4 @@ The main suite-foundation docs are current, but these areas still need dedicated
 
 ---
 
-*Last updated: 2026-03-25*
+*Last updated: 2026-03-26*
