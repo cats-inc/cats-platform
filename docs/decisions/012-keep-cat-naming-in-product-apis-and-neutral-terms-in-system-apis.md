@@ -64,7 +64,15 @@ again would create extra rename work without improving product clarity.
    - shared-core and orchestration APIs should not depend on `Boss Cat` unless
      they are explicitly product-facing convenience surfaces
 
-5. This is primarily an API-layering and ownership rule, not a single-global-
+5. For product-internal code and schema names, prefer neutral product-level
+   identifiers such as `primaryCatId` over UI-facing names such as `bossCatId`
+   when a new field or contract is introduced.
+   - this keeps the user-facing `Boss Cat` label intact
+   - it avoids baking UX copy into long-lived product-internal contracts
+   - `leadCatId` remains reserved for room-level or composer-level default
+     speaker semantics, not the product-level default Cat identity
+
+6. This is primarily an API-layering and ownership rule, not a single-global-
    noun rule.
    - product API: use product nouns
    - shared core: use broader domain nouns
@@ -80,6 +88,10 @@ again would create extra rename work without improving product clarity.
   chat UI.
 - The architecture gets clearer ownership boundaries instead of forcing one noun
   across every layer.
+- Future product-level internal contracts get a clearer split between:
+  - UX terminology such as `Boss Cat`
+  - internal identifiers such as `primaryCatId`
+  - room-level routing terms such as `leadCatId`
 
 ### Negative
 
@@ -134,4 +146,3 @@ core
 
 *Accepted: 2026-03-19*
 *Accepted by: user direction captured through Codex*
-
