@@ -151,6 +151,53 @@ function readParticipantRefs(values: unknown[]): RoomRoutingParticipantRef[] {
     .filter((value): value is RoomRoutingParticipantRef => value !== null);
 }
 
+function sameParticipantRef(
+  left: RoomRoutingParticipantRef | null | undefined,
+  right: RoomRoutingParticipantRef | null | undefined,
+): boolean {
+  return Boolean(
+    left
+    && right
+    && left.participantKind === right.participantKind
+    && left.participantId === right.participantId
+    && left.participantName === right.participantName,
+  );
+}
+
+function readLatestContinuationMetadata(
+  turn: RoomWorkflowTurn | null,
+  options: {
+    excludeEventId?: string | null;
+  } = {},
+): CoreRecordMetadata | null {
+  if (!turn) {
+    return null;
+  }
+
+  for (const event of [...turn.events].reverse()) {
+    if (options.excludeEventId && event.id === options.excludeEventId) {
+      continue;
+    }
+
+    const metadata = readMetadataRecord(event.metadata);
+    if (!metadata) {
+      continue;
+    }
+
+    if (
+      readMetadataString(metadata, 'continuationSource') !== null
+      || readMetadataRecord(metadata.workflowRecommendation) !== null
+      || readMetadataStringArray(metadata, 'unresolvedTargets').length > 0
+      || readMetadataStringArray(metadata, 'mentionNames').length > 0
+      || readMetadataString(metadata, 'branchStrategy') !== null
+    ) {
+      return metadata;
+    }
+  }
+
+  return null;
+}
+
 function findLatestContinuationReplayEvent(turn: RoomWorkflowTurn | null) {
   if (!turn) {
     return null;
@@ -174,11 +221,102 @@ function findLatestContinuationReplayEvent(turn: RoomWorkflowTurn | null) {
       return true;
     }
 
+    if (
+      checkpointKind === 'loop_guard'
+      && reason === 'startup_restart'
+      && readMetadataString(metadata, 'recoveryPhase') === 'startup_recovered'
+    ) {
+      return true;
+    }
+
     return checkpointKind === 'no_targets'
       && blockedReason === 'no_valid_targets'
       && readMetadataString(metadata, 'continuationSourceMessageId') !== null
       && readMetadataRecord(metadata?.workflowRecommendation) !== null;
   }) ?? null;
+}
+
+function readRecoveredStartupContinuationReplayRequest(
+  turn: RoomWorkflowTurn | null,
+  event: NonNullable<ReturnType<typeof findLatestContinuationReplayEvent>>,
+): {
+  sourceParticipant: RoomRoutingParticipantRef;
+  sourceMessageId: string;
+  targets: RoomRoutingParticipantRef[];
+  mentionNames: string[];
+  branchStrategy: 'fork_if_possible' | 'transplant_context' | 'fresh_no_parent' | null;
+  trigger: 'room_default' | 'explicit_mention' | 'continuation_mention';
+  workflowStageId: string | null;
+  reviewRequired: boolean;
+  continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
+  workflowRecommendation: Record<string, unknown> | null;
+  unresolvedTargets: string[];
+} | null {
+  if (!turn) {
+    return null;
+  }
+
+  const metadata = readMetadataRecord(event.metadata);
+  if (!metadata) {
+    return null;
+  }
+
+  const interruptedTargets = event.targets;
+  if (interruptedTargets.length === 0) {
+    return null;
+  }
+
+  const interruptedTargetStates = turn.targetStatuses.filter((target) =>
+    interruptedTargets.some((participant) => sameParticipantRef(participant, target.participant)));
+  if (interruptedTargetStates.length === 0) {
+    return null;
+  }
+
+  const sourceParticipant = interruptedTargetStates[0]?.source ?? null;
+  const sourceMessageId = interruptedTargetStates[0]?.sourceMessageId?.trim() ?? '';
+  if (!sourceParticipant || sourceMessageId.length === 0) {
+    return null;
+  }
+
+  const trigger = interruptedTargetStates[0]?.trigger ?? 'continuation_mention';
+  const branchStrategy = interruptedTargetStates[0]?.branchStrategy ?? null;
+  for (const target of interruptedTargetStates) {
+    if (
+      !target.source
+      || !sameParticipantRef(target.source, sourceParticipant)
+      || target.sourceMessageId !== sourceMessageId
+      || target.trigger !== trigger
+      || target.branchStrategy !== branchStrategy
+    ) {
+      return null;
+    }
+  }
+
+  const continuationMetadata = readLatestContinuationMetadata(turn, {
+    excludeEventId: event.id,
+  });
+  const continuationSource = readMetadataString(continuationMetadata, 'continuationSource');
+
+  return {
+    sourceParticipant,
+    sourceMessageId,
+    targets: interruptedTargetStates.map((target) => structuredClone(target.participant)),
+    mentionNames: uniqueStrings(
+      interruptedTargetStates.flatMap((target) => [...target.mentionNames]),
+    ),
+    branchStrategy,
+    trigger,
+    workflowStageId:
+      readMetadataString(metadata, 'workflowStageIdBeforeRecovery')
+      ?? readMetadataString(metadata, 'workflowStageId'),
+    reviewRequired: turn.reviewRequired,
+    continuationSource:
+      continuationSource === 'explicit_mentions' || continuationSource === 'workflow_recommendation'
+        ? continuationSource
+        : null,
+    workflowRecommendation: readMetadataRecord(continuationMetadata?.workflowRecommendation),
+    unresolvedTargets: readMetadataStringArray(continuationMetadata, 'unresolvedTargets'),
+  };
 }
 
 function readWorkflowContinuationReplayRequest(
@@ -195,14 +333,19 @@ function readWorkflowContinuationReplayRequest(
     return null;
   }
   const checkpointId = event.checkpointId ?? null;
-  const sourceMessageId = readMetadataString(metadata, 'continuationSourceMessageId')
+  const reason = readMetadataString(metadata, 'reason');
+  const startupRecoveryReplay = reason === 'startup_restart'
+    ? readRecoveredStartupContinuationReplayRequest(turn, event)
+    : null;
+  const sourceMessageId = startupRecoveryReplay?.sourceMessageId
+    ?? readMetadataString(metadata, 'continuationSourceMessageId')
     ?? event.sourceMessageId;
-  const sourceParticipant = event.actor;
-  const targets = readParticipantRefs(event.targets);
-  const workflowRecommendation = readMetadataRecord(metadata.workflowRecommendation);
+  const sourceParticipant = startupRecoveryReplay?.sourceParticipant ?? event.actor;
+  const targets = startupRecoveryReplay?.targets ?? readParticipantRefs(event.targets);
+  const workflowRecommendation = startupRecoveryReplay?.workflowRecommendation
+    ?? readMetadataRecord(metadata.workflowRecommendation);
   const workflowShape = readMetadataString(metadata, 'workflowShape');
   const blockedReason = (() => {
-    const reason = readMetadataString(metadata, 'reason');
     if (isReplayableContinuationGuardReason(reason)) {
       return reason;
     }
@@ -221,7 +364,7 @@ function readWorkflowContinuationReplayRequest(
       && workflowShape !== 'parallel'
       && workflowShape !== 'converge'
     )
-    || !blockedReason
+    || (!blockedReason && reason !== 'startup_restart')
   ) {
     return null;
   }
@@ -232,24 +375,29 @@ function readWorkflowContinuationReplayRequest(
     sourceMessageId,
     sourceParticipant,
     targets,
-    mentionNames: readMetadataStringArray(metadata, 'mentionNames'),
-    trigger: 'continuation_mention',
-    branchStrategy: readMetadataString(metadata, 'branchStrategy') as
+    mentionNames: startupRecoveryReplay?.mentionNames ?? readMetadataStringArray(metadata, 'mentionNames'),
+    trigger: startupRecoveryReplay?.trigger ?? 'continuation_mention',
+    branchStrategy: startupRecoveryReplay?.branchStrategy ?? readMetadataString(metadata, 'branchStrategy') as
       | 'fork_if_possible'
       | 'transplant_context'
       | 'fresh_no_parent'
       | null,
-    workflowStageId: readMetadataString(metadata, 'workflowStageId'),
+    workflowStageId:
+      startupRecoveryReplay?.workflowStageId
+      ?? readMetadataString(metadata, 'workflowStageId'),
     workflowShape: workflowShape as RoomWorkflowShape,
-    reviewRequired: readMetadataBoolean(metadata, 'reviewRequired'),
-    continuationSource: (() => {
+    reviewRequired: startupRecoveryReplay?.reviewRequired
+      ?? readMetadataBoolean(metadata, 'reviewRequired'),
+    continuationSource: startupRecoveryReplay?.continuationSource ?? (() => {
       const source = readMetadataString(metadata, 'continuationSource');
       return source === 'explicit_mentions' || source === 'workflow_recommendation'
         ? source
         : null;
     })(),
     workflowRecommendation,
-    unresolvedTargets: readMetadataStringArray(metadata, 'unresolvedTargets'),
+    unresolvedTargets:
+      startupRecoveryReplay?.unresolvedTargets
+      ?? readMetadataStringArray(metadata, 'unresolvedTargets'),
     blockedReason,
     recordedAt: event.createdAt,
   });

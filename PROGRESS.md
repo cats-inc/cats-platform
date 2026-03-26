@@ -360,6 +360,11 @@ Known follow-ups:
   `latestReplaySourceCounts`, so automation can distinguish startup recovery,
   general orchestrator replay, and workflow-continuation replay notes without
   scraping raw activity metadata
+- startup-recovered interrupted continuation turns now also project back into
+  retryable `workflowContinuationReplay` metadata when the recovered turn still
+  has coherent continuation source plus target context, so operator `retry` can
+  reopen the same product-owned continuation replay seam after restart instead
+  of stopping at an inspectable blocked marker
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without

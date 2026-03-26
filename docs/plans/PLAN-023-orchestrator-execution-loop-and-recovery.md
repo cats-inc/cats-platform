@@ -143,7 +143,11 @@ MCP tool plane.
 - startup recovery now also finalizes stranded room-workflow `activeTurn`
   snapshots into blocked terminal history before the app starts serving
   requests, so shared task/run/timeline read models do not keep phantom
-  in-flight execution after restart
+  in-flight execution after restart, while interrupted continuation turns that
+  still preserve coherent source plus target context now also re-project into
+  retryable `workflowContinuationReplay` metadata so operator `retry` can
+  reopen the same continuation seam after boot instead of stopping at a blocked
+  recovery marker
 - converge-stage richer planning once group/branch policies land
 - future export of the orchestrator execution contract to other product
   surfaces once Team 3 / Team 6 consume it directly

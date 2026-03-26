@@ -687,3 +687,205 @@ test('startup recovery finalizes stranded room workflow turns into blocked histo
   assert.ok(activity);
   assert.match(activity?.message ?? '', /startup interrupted the active turn/i);
 });
+
+test('startup recovery preserves retryable continuation replay metadata for interrupted continuation turns', async () => {
+  const now = new Date('2026-03-26T06:25:00.000Z');
+  let chat = createDefaultChatState();
+  chat = createChannel(
+    chat,
+    {
+      title: 'Recovered continuation turn',
+      topic: 'Preserve retryable continuation replay after startup recovery.',
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Reviewer-Agent',
+          provider: 'gemini',
+          roles: ['reviewer'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Inline-Agent',
+      body: 'Please hand this converge review to Reviewer-Agent.',
+    },
+    now,
+  ).state;
+
+  const channel = buildChannelView(chat, channelId);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+  const inlineParticipant = {
+    participantKind: 'cat',
+    participantId: channel.assignedCats[0]?.catId ?? 'cat-inline-agent',
+    participantName: channel.assignedCats[0]?.name ?? 'Inline-Agent',
+  };
+  const reviewerParticipant = {
+    participantKind: 'cat',
+    participantId: channel.assignedCats[1]?.catId ?? 'cat-reviewer-agent',
+    participantName: channel.assignedCats[1]?.name ?? 'Reviewer-Agent',
+  };
+
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const workflow = resolveRoomWorkflowState(roomRouting.workflow);
+  const activeTurn = createWorkflowTurn(
+    sourceMessage,
+    now.toISOString(),
+    'converge_review',
+    'converge',
+  );
+  activeTurn.id = 'turn-interrupted-continuation-recovery';
+  activeTurn.reviewRequired = true;
+  activeTurn.convergeTargetId = reviewerParticipant.participantId;
+  activeTurn.dispatchCount = 1;
+  activeTurn.targetStatuses.push({
+    id: 'target-state-interrupted-continuation-recovery',
+    dispatchId: 'dispatch-interrupted-continuation-recovery',
+    participant: reviewerParticipant,
+    source: inlineParticipant,
+    sourceMessageId: sourceMessage.id,
+    trigger: 'continuation_mention',
+    mentionNames: ['Reviewer-Agent'],
+    depth: 1,
+    parentCheckpointId: 'checkpoint-converge-review',
+    branchStrategy: 'transplant_context',
+    handoffReason: 'workflow_continuation',
+    wakeRequestId: null,
+    status: 'running',
+    queuedAt: now.toISOString(),
+    startedAt: now.toISOString(),
+    completedAt: null,
+    responseMessageId: null,
+    error: null,
+  });
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'target_pending',
+      'running',
+      'Reviewer-Agent is pending converge review.',
+      now.toISOString(),
+      inlineParticipant,
+      sourceMessage.id,
+      [reviewerParticipant],
+      {
+        dispatchId: 'dispatch-interrupted-continuation-recovery',
+        metadata: {
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+          reviewRequired: true,
+          continuationSource: 'workflow_recommendation',
+          branchStrategy: 'transplant_context',
+          mentionNames: ['Reviewer-Agent'],
+          unresolvedTargets: [],
+          workflowRecommendation: {
+            source: 'boss_replan',
+            workflowShape: 'converge',
+            reviewRequired: true,
+            candidateTargets: [
+              {
+                participantKind: 'cat',
+                participantId: reviewerParticipant.participantId,
+                participantName: reviewerParticipant.participantName,
+              },
+            ],
+            branchStrategy: 'transplant_context',
+            rationale: 'Converge this branch through the designated reviewer.',
+          },
+        },
+      },
+    ),
+  );
+  workflow.activeTurn = activeTurn;
+  roomRouting.workflow = workflow;
+  roomRouting.lastOutcome = {
+    turnId: activeTurn.id,
+    mode: roomRouting.mode ?? createDefaultRoomRoutingState().mode,
+    sourceMessageId: sourceMessage.id,
+    sourceSenderKind: sourceMessage.senderKind,
+    sourceSenderName: sourceMessage.senderName,
+    status: 'running',
+    resolution: {
+      routingMode: 'explicit_single',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: 'Converge review is waiting on Reviewer-Agent.',
+    },
+    resolvedTargets: [reviewerParticipant],
+    unresolvedMentions: [],
+    dispatches: [
+      {
+        id: 'dispatch-interrupted-continuation-recovery',
+        sourceMessageId: sourceMessage.id,
+        source: inlineParticipant,
+        target: reviewerParticipant,
+        trigger: 'continuation_mention',
+        status: 'running',
+        mentionNames: ['Reviewer-Agent'],
+        responseMessageId: null,
+        startedAt: now.toISOString(),
+        completedAt: null,
+        error: null,
+      },
+    ],
+    checkpoints: [],
+    continuationCount: 1,
+    totalDispatchCount: 1,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: null,
+  };
+  chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
+
+  const chatStore = new MemoryChatStore(chat);
+  const recoveredCount = await reconcileChatWorkflowRecoveryOnStartup({
+    shared: {
+      coreStore: chatStore,
+      now: () => new Date('2026-03-26T06:26:00.000Z'),
+    },
+    chat: {
+      chatStore,
+    },
+  });
+
+  assert.equal(recoveredCount, 1);
+
+  const core = await chatStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === buildChannelTaskId(channelId));
+  const replay = readWorkflowContinuationReplay(task?.metadata);
+
+  assert.ok(task);
+  assert.ok(replay);
+  assert.equal(replay?.replayState, 'ready');
+  assert.equal(replay?.blockedReason, null);
+  assert.equal(replay?.workflowStageId, 'converge_review');
+  assert.equal(replay?.workflowShape, 'converge');
+  assert.equal(replay?.reviewRequired, true);
+  assert.equal(replay?.continuationSource, 'workflow_recommendation');
+  assert.equal(replay?.sourceMessageId, sourceMessage.id);
+  assert.equal(replay?.sourceParticipant.participantId, inlineParticipant.participantId);
+  assert.deepEqual(
+    replay?.targets.map((target) => target.participantId),
+    [reviewerParticipant.participantId],
+  );
+  assert.equal(replay?.workflowRecommendation?.workflowShape, 'converge');
+  assert.equal(replay?.workflowRecommendation?.source, 'boss_replan');
+});

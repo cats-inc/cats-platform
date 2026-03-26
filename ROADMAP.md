@@ -199,7 +199,10 @@ contracts.
       stage/shape instead of collapsing to `sequential`, and can
       also re-resolve stale stored continuation targets from persisted
       `workflowRecommendation` payloads when the original participant ids are
-      no longer active; broader group replan auto-resume still remains.
+      no longer active, while startup-recovered interrupted continuation turns
+      now also project back into retryable `workflowContinuationReplay`
+      metadata so operator `retry` can reopen the same product-owned replay
+      seam after restart; broader group replan auto-resume still remains.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent
