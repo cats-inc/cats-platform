@@ -259,3 +259,69 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.reasonCounts.retry_available, 1);
   assert.equal(result.summary.nextActionCounts.retry, 1);
 });
+
+test('buildCoreTaskControlPlaneView surfaces waiting parent tasks with active child work', () => {
+  const now = new Date('2026-03-26T16:45:00.000Z');
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-control-plane-parent',
+      title: 'Parent task',
+      status: 'in_progress',
+      conversationId: 'conversation-channel-family',
+      createdAt: '2026-03-26T16:00:00.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-control-plane-child-active',
+      title: 'Active child task',
+      status: 'in_progress',
+      parentTaskId: 'task-control-plane-parent',
+      conversationId: 'conversation-channel-family',
+      createdAt: '2026-03-26T16:10:00.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-control-plane-child-done',
+      title: 'Completed child task',
+      status: 'completed',
+      parentTaskId: 'task-control-plane-parent',
+      conversationId: 'conversation-channel-family',
+      createdAt: '2026-03-26T16:11:00.000Z',
+    },
+    now,
+  ).core;
+
+  const parentTask = core.tasks.find((candidate) => candidate.id === 'task-control-plane-parent');
+  assert.ok(parentTask);
+
+  const view = buildCoreTaskControlPlaneView(core, parentTask);
+  const query = queryCoreTaskControlPlaneViews(core, {
+    reasons: ['child_tasks_in_progress'],
+    nextActions: ['wait'],
+  });
+
+  assert.equal(view.family.rootTaskId, 'task-control-plane-parent');
+  assert.equal(view.family.childCount, 2);
+  assert.equal(view.family.terminalChildCount, 1);
+  assert.equal(view.family.allChildrenTerminal, false);
+  assert.deepEqual(view.attention.reasons, ['child_tasks_in_progress']);
+  assert.equal(view.attention.severity, 'progress');
+  assert.equal(view.attention.needsOperatorAttention, false);
+  assert.deepEqual(view.nextActions.map((action) => action.kind), ['wait']);
+  assert.equal(view.nextActions[0]?.label, 'Wait for child tasks');
+  assert.deepEqual(
+    query.tasks.map((task) => task.taskId),
+    ['task-control-plane-parent'],
+  );
+  assert.equal(query.summary.reasonCounts.child_tasks_in_progress, 1);
+  assert.equal(query.summary.nextActionCounts.wait, 1);
+});

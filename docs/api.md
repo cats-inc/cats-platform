@@ -1249,6 +1249,12 @@ recovery, or operator-attention signals:
         "severity": "attention",
         "reasons": ["approval_pending", "retry_available"],
         "needsOperatorAttention": true
+      },
+      "family": {
+        "rootTaskId": "task-system-parent",
+        "childCount": 2,
+        "terminalChildCount": 1,
+        "allChildrenTerminal": false
       }
     }
   ]
@@ -1271,6 +1277,12 @@ control-plane view for one task:
     },
     "workflowSummary": {
       "stageId": "continuation_handoff"
+    },
+    "family": {
+      "rootTaskId": "task-system-parent",
+      "childCount": 2,
+      "terminalChildCount": 1,
+      "allChildrenTerminal": false
     },
     "latestWorkflowRecommendation": {
       "workflowShape": "converge",
@@ -1332,9 +1344,16 @@ Semantics:
 - `latestWorkflowRecommendation` lifts the newest structured continuation hint
   out of checkpoint/outcome/run/trace metadata into a stable task-scoped read
   model
+- `family` reuses the same task-family summary exposed by
+  `GET /api/core/tasks/{taskId}`, so control-plane consumers can see whether a
+  task is a parent, child, or root plus how many immediate child tasks are
+  still active
 - `attention` classifies whether a task is in progress, completed, muted, or
   needs operator attention because of pending approval, blocked runs, retryable
-  recovery, or workflow review requirements
+  recovery, workflow review requirements, or active child-task execution
+- `reason=child_tasks_in_progress` plus `nextAction=wait` now let callers find
+  parent tasks that are waiting for immediate child tasks to finish without
+  treating that state as an operator incident
 
 ### Inspect Core Operator Inbox
 

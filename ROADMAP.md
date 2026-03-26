@@ -183,7 +183,8 @@ contracts.
       `GET /api/core/control-plane/tasks` plus
       `GET /api/core/tasks/{taskId}/control-plane` now expose stable task-
       scoped approval actions, retry/acknowledge actions, workflow
-      recommendation summaries, and operator-attention classification, without
+      recommendation summaries, family-aware wait state for parent tasks with
+      active child work, and operator-attention classification, without
       forcing later consumers to parse opaque task metadata blobs or
       re-filter the full core snapshot client-side, and those non-UI list
       routes now also support additive query filters plus summary counts so

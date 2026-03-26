@@ -2052,6 +2052,97 @@ test('core control-plane routes expose grouped operator actions and workflow att
   });
 });
 
+test('core control-plane routes expose family-aware wait state for parent tasks with active children', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const parentResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-control-plane-family-parent',
+          title: 'Family parent task',
+          status: 'in_progress',
+          conversationId: 'conversation-channel-control-plane-family',
+          createdAt: '2026-03-26T14:30:00.000Z',
+        },
+      }),
+    });
+    assert.equal(parentResponse.status, 201);
+
+    const childActiveResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-control-plane-family-child-active',
+          title: 'Family active child',
+          status: 'in_progress',
+          parentTaskId: 'task-control-plane-family-parent',
+          conversationId: 'conversation-channel-control-plane-family',
+          createdAt: '2026-03-26T14:31:00.000Z',
+        },
+      }),
+    });
+    assert.equal(childActiveResponse.status, 201);
+
+    const childDoneResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-control-plane-family-child-done',
+          title: 'Family completed child',
+          status: 'completed',
+          parentTaskId: 'task-control-plane-family-parent',
+          conversationId: 'conversation-channel-control-plane-family',
+          createdAt: '2026-03-26T14:32:00.000Z',
+        },
+      }),
+    });
+    assert.equal(childDoneResponse.status, 201);
+
+    const listResponse = await fetch(
+      `${baseUrl}/api/core/control-plane/tasks?reason=child_tasks_in_progress&nextAction=wait`,
+    );
+    assert.equal(listResponse.status, 200);
+    const listPayload = await listResponse.json();
+    assert.deepEqual(listPayload.tasks.map((task) => task.taskId), [
+      'task-control-plane-family-parent',
+    ]);
+    assert.deepEqual(listPayload.tasks[0].attention.reasons, [
+      'child_tasks_in_progress',
+    ]);
+    assert.equal(listPayload.tasks[0].attention.severity, 'progress');
+    assert.deepEqual(listPayload.tasks[0].nextActions.map((action) => action.kind), ['wait']);
+    assert.equal(listPayload.tasks[0].nextActions[0].label, 'Wait for child tasks');
+    assert.equal(listPayload.tasks[0].family.childCount, 2);
+    assert.equal(listPayload.tasks[0].family.terminalChildCount, 1);
+    assert.equal(listPayload.tasks[0].family.allChildrenTerminal, false);
+
+    const detailResponse = await fetch(
+      `${baseUrl}/api/core/tasks/task-control-plane-family-parent/control-plane`,
+    );
+    assert.equal(detailResponse.status, 200);
+    const detailPayload = await detailResponse.json();
+    assert.equal(detailPayload.controlPlane.family.childCount, 2);
+    assert.equal(detailPayload.controlPlane.family.terminalChildCount, 1);
+    assert.equal(detailPayload.controlPlane.family.allChildrenTerminal, false);
+    assert.deepEqual(detailPayload.controlPlane.attention.reasons, [
+      'child_tasks_in_progress',
+    ]);
+    assert.deepEqual(
+      detailPayload.controlPlane.nextActions.map((action) => action.kind),
+      ['wait'],
+    );
+  });
+});
+
 test('GET /api/core/operator-inbox returns actionable task summaries with latest timeline context', async () => {
   const metadata = writeOrchestratorDispatchReplayMetadata(
     {},

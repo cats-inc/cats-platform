@@ -1,6 +1,9 @@
 import { buildApprovalQueue } from './model/index.js';
 import { buildCoreTaskRecoveryView, type CoreTaskRecoveryView } from './recovery.js';
-import { buildCoreTaskInspectionView } from './taskInspection.js';
+import {
+  buildCoreTaskInspectionView,
+  type CoreTaskInspectionFamilyView,
+} from './taskInspection.js';
 import {
   applyCoreTaskViewLimit,
   buildCoreTaskStatusCounts,
@@ -34,7 +37,8 @@ export type CoreTaskControlPlaneReason =
   | 'run_blocked'
   | 'run_failed'
   | 'retry_available'
-  | 'workflow_review_required';
+  | 'workflow_review_required'
+  | 'child_tasks_in_progress';
 
 export const CORE_TASK_CONTROL_PLANE_SEVERITIES = [
   'muted',
@@ -50,6 +54,7 @@ export const CORE_TASK_CONTROL_PLANE_REASONS = [
   'run_failed',
   'retry_available',
   'workflow_review_required',
+  'child_tasks_in_progress',
 ] as const satisfies readonly CoreTaskControlPlaneReason[];
 
 export const CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS = [
@@ -127,6 +132,7 @@ export interface CoreTaskControlPlaneView {
   governanceSummary: CoreGovernanceSummary | null;
   workflowSummary: CoreWorkflowSummary | null;
   recovery: CoreTaskRecoveryView;
+  family: CoreTaskInspectionFamilyView;
   latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
   approvalActions: CoreTaskControlPlaneApprovalAction[];
   incidentActions: CoreTaskControlPlaneIncidentAction[];
@@ -331,6 +337,7 @@ function buildNextActions(input: {
   approvalActions: CoreTaskControlPlaneApprovalAction[];
   incidentActions: CoreTaskControlPlaneIncidentAction[];
   latestRun: CoreRunRecord | null;
+  family: CoreTaskInspectionFamilyView;
 }): CoreTaskControlPlaneNextAction[] {
   const actions: CoreTaskControlPlaneNextAction[] = [
     ...input.approvalActions.map((action) => ({
@@ -349,6 +356,17 @@ function buildNextActions(input: {
 
   if (actions.length > 0) {
     return actions;
+  }
+
+  if (input.family.childCount > 0 && !input.family.allChildrenTerminal) {
+    return [
+      {
+        kind: 'wait',
+        label: 'Wait for child tasks',
+        blocking: false,
+        action: null,
+      },
+    ];
   }
 
   if (input.latestRun?.status === 'running') {
@@ -451,6 +469,7 @@ function buildAttention(input: {
   workflowSummary: CoreWorkflowSummary | null;
   recovery: CoreTaskRecoveryView;
   latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
+  family: CoreTaskInspectionFamilyView;
 }): CoreTaskControlPlaneAttention {
   const reasons: CoreTaskControlPlaneReason[] = [];
 
@@ -471,12 +490,22 @@ function buildAttention(input: {
   ) {
     reasons.push('workflow_review_required');
   }
+  if (input.family.childCount > 0 && !input.family.allChildrenTerminal) {
+    reasons.push('child_tasks_in_progress');
+  }
 
   let severity: CoreTaskControlPlaneSeverity = 'muted';
   if (reasons.includes('run_failed')) {
     severity = 'error';
-  } else if (reasons.length > 0) {
+  } else if (
+    reasons.includes('approval_pending')
+    || reasons.includes('run_blocked')
+    || reasons.includes('retry_available')
+    || reasons.includes('workflow_review_required')
+  ) {
     severity = 'attention';
+  } else if (reasons.includes('child_tasks_in_progress')) {
+    severity = 'progress';
   } else if (input.latestRun?.status === 'running') {
     severity = 'progress';
   } else if (input.task.status === 'completed') {
@@ -685,6 +714,7 @@ export function buildCoreTaskControlPlaneView(
     approvalActions,
     incidentActions,
     latestRun: inspection.latestRun,
+    family: inspection.family,
   });
   const attention = buildAttention({
     task,
@@ -692,6 +722,7 @@ export function buildCoreTaskControlPlaneView(
     workflowSummary: inspection.workflowSummary,
     recovery: inspection.recovery,
     latestWorkflowRecommendation,
+    family: inspection.family,
   });
 
   return {
@@ -709,6 +740,7 @@ export function buildCoreTaskControlPlaneView(
     governanceSummary: inspection.governanceSummary,
     workflowSummary: inspection.workflowSummary,
     recovery: inspection.recovery,
+    family: inspection.family,
     latestWorkflowRecommendation,
     approvalActions,
     incidentActions,
