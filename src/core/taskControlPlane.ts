@@ -21,10 +21,14 @@ import type {
   CoreApprovalDecisionAction,
   CoreApprovalQueueItem,
   CoreApprovalStatus,
+  CoreDeliveryGate,
+  CoreDeliveryMode,
+  CoreEffectivePolicySource,
   CoreGovernanceSummary,
   CoreOrchestrationOutcomeRecord,
   CoreRecordMetadata,
   CoreRunRecord,
+  CoreRuntimeDeliveryAction,
   CoreTaskRecord,
   CoreTraceRecord,
   CoreWorkflowSummary,
@@ -135,6 +139,24 @@ export interface CoreTaskControlPlaneWorkflowContinuationView {
   retryAvailable: boolean;
 }
 
+export interface CoreTaskControlPlaneRuntimeDeliveryIntentView {
+  mode: CoreDeliveryMode | null;
+  source: CoreEffectivePolicySource | null;
+  rationale: string | null;
+  gates: CoreDeliveryGate[];
+  requestedActions: CoreRuntimeDeliveryAction[];
+  strict: boolean;
+  requiresOwnerDecision: boolean;
+  approvalPending: boolean;
+  channelId: string | null;
+  conversationId: string | null;
+  taskId: string | null;
+  roomMode: string | null;
+  transport: string | null;
+  workflowStageId: string | null;
+  workflowShape: string | null;
+}
+
 export interface CoreTaskControlPlaneView {
   taskId: string;
   conversationId: string | null;
@@ -149,6 +171,7 @@ export interface CoreTaskControlPlaneView {
   family: CoreTaskInspectionFamilyView;
   latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
   workflowContinuation: CoreTaskControlPlaneWorkflowContinuationView | null;
+  runtimeDeliveryIntent: CoreTaskControlPlaneRuntimeDeliveryIntentView | null;
   approvalActions: CoreTaskControlPlaneApprovalAction[];
   incidentActions: CoreTaskControlPlaneIncidentAction[];
   nextActions: CoreTaskControlPlaneNextAction[];
@@ -543,6 +566,44 @@ function buildWorkflowContinuationState(input: {
   };
 }
 
+function buildRuntimeDeliveryIntent(input: {
+  governanceSummary: CoreGovernanceSummary | null;
+  workflowSummary: CoreWorkflowSummary | null;
+  workflowContinuation: CoreTaskControlPlaneWorkflowContinuationView | null;
+}): CoreTaskControlPlaneRuntimeDeliveryIntentView | null {
+  const delivery = input.governanceSummary?.delivery ?? null;
+  const manifest = input.governanceSummary?.runtimeDeliveryManifest ?? null;
+  if (!delivery && !manifest) {
+    return null;
+  }
+
+  return {
+    mode: delivery?.mode ?? null,
+    source: delivery?.source ?? null,
+    rationale: delivery?.rationale ?? null,
+    gates: [...(delivery?.gates ?? manifest?.gates ?? [])],
+    requestedActions: [...(manifest?.requestedActions ?? [])],
+    strict: manifest?.strict ?? Boolean((delivery?.gates.length ?? 0) > 0),
+    requiresOwnerDecision: input.governanceSummary?.approval.requiresOwnerDecision ?? false,
+    approvalPending: input.governanceSummary?.approval.pending ?? false,
+    channelId: manifest?.context.channelId ?? null,
+    conversationId: manifest?.context.conversationId ?? null,
+    taskId: manifest?.context.taskId ?? null,
+    roomMode: manifest?.context.roomMode ?? null,
+    transport: manifest?.context.transport ?? null,
+    workflowStageId:
+      manifest?.context.workflowStageId
+      ?? input.workflowContinuation?.stageId
+      ?? input.workflowSummary?.stageId
+      ?? null,
+    workflowShape:
+      readWorkflowShape(manifest?.context.workflowShape)
+      ?? input.workflowContinuation?.workflowShape
+      ?? readWorkflowShape(input.workflowSummary?.shape)
+      ?? null,
+  };
+}
+
 function buildAttention(input: {
   task: CoreTaskRecord;
   latestRun: CoreRunRecord | null;
@@ -788,6 +849,11 @@ export function buildCoreTaskControlPlaneView(
     recovery: inspection.recovery,
     latestWorkflowRecommendation,
   });
+  const runtimeDeliveryIntent = buildRuntimeDeliveryIntent({
+    governanceSummary: inspection.governanceSummary,
+    workflowSummary: inspection.workflowSummary,
+    workflowContinuation,
+  });
   const incidentActions = buildIncidentActions({
     task,
     latestRun: inspection.latestRun,
@@ -829,6 +895,7 @@ export function buildCoreTaskControlPlaneView(
     family: inspection.family,
     latestWorkflowRecommendation,
     workflowContinuation,
+    runtimeDeliveryIntent,
     approvalActions,
     incidentActions,
     nextActions,

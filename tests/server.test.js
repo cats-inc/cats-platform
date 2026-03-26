@@ -2114,6 +2114,30 @@ test('core control-plane routes expose grouped operator actions and workflow att
     assert.equal(detailPayload.controlPlane.workflowContinuation.replayState, 'failed');
     assert.equal(detailPayload.controlPlane.workflowContinuation.replayError, 'reviewer offline');
     assert.equal(detailPayload.controlPlane.workflowContinuation.retryAvailable, true);
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.mode, 'commit_only');
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.source, 'task_override');
+    assert.deepEqual(detailPayload.controlPlane.runtimeDeliveryIntent.gates, [
+      'owner_approval_required',
+    ]);
+    assert.deepEqual(detailPayload.controlPlane.runtimeDeliveryIntent.requestedActions, [
+      'create_commit',
+    ]);
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.strict, true);
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.requiresOwnerDecision, true);
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.approvalPending, true);
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.channelId, 'channel-control-plane-route');
+    assert.equal(
+      detailPayload.controlPlane.runtimeDeliveryIntent.conversationId,
+      'conversation-channel-control-plane-route',
+    );
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.taskId, 'task-control-plane-route');
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.roomMode, 'boss_chat');
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.transport, 'web');
+    assert.equal(
+      detailPayload.controlPlane.runtimeDeliveryIntent.workflowStageId,
+      'continuation_handoff',
+    );
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.workflowShape, 'converge');
 
     const missingResponse = await fetch(
       `${baseUrl}/api/core/tasks/task-missing/control-plane`,

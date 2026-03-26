@@ -333,11 +333,11 @@ Known follow-ups:
 - `src/core/taskControlPlane.ts` plus `GET /api/core/control-plane/tasks` and
   `GET /api/core/tasks/{taskId}/control-plane` now expose stable approval/
   incident action envelopes, workflow recommendation summaries, runtime-
-  delivery intent, normalized workflow continuation state, and operator-
-  attention classification on top of existing core write seams, so future
-  operator inbox or recovery tooling can consume a single task-level control-
-  plane view instead of reassembling recovery, inspection, and records
-  responses client-side
+  delivery intent, normalized workflow continuation state, normalized
+  runtime-delivery intent, and operator-attention classification on top of
+  existing core write seams, so future operator inbox or recovery tooling can
+  consume a single task-level control-plane view instead of reassembling
+  recovery, inspection, and records responses client-side
 - those same non-UI operator inspection routes now also support additive
   query filters plus summary counts, so automation and later product surfaces
   can page/facet inbox, control-plane, and recovery lists without hydrating

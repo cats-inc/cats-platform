@@ -216,6 +216,21 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
   assert.equal(view.workflowContinuation?.replayTrigger, 'retry');
   assert.equal(view.workflowContinuation?.replayError, 'reviewer offline');
   assert.equal(view.workflowContinuation?.retryAvailable, true);
+  assert.equal(view.runtimeDeliveryIntent?.mode, 'commit_only');
+  assert.equal(view.runtimeDeliveryIntent?.source, 'task_override');
+  assert.equal(view.runtimeDeliveryIntent?.rationale, 'Owner-gated retry.');
+  assert.deepEqual(view.runtimeDeliveryIntent?.gates, ['owner_approval_required']);
+  assert.deepEqual(view.runtimeDeliveryIntent?.requestedActions, ['create_commit']);
+  assert.equal(view.runtimeDeliveryIntent?.strict, true);
+  assert.equal(view.runtimeDeliveryIntent?.requiresOwnerDecision, true);
+  assert.equal(view.runtimeDeliveryIntent?.approvalPending, true);
+  assert.equal(view.runtimeDeliveryIntent?.channelId, 'channel-control-plane');
+  assert.equal(view.runtimeDeliveryIntent?.conversationId, 'conversation-channel-control-plane');
+  assert.equal(view.runtimeDeliveryIntent?.taskId, 'task-control-plane');
+  assert.equal(view.runtimeDeliveryIntent?.roomMode, 'boss_chat');
+  assert.equal(view.runtimeDeliveryIntent?.transport, 'web');
+  assert.equal(view.runtimeDeliveryIntent?.workflowStageId, 'continuation_handoff');
+  assert.equal(view.runtimeDeliveryIntent?.workflowShape, 'converge');
   assert.deepEqual(view.governanceSummary?.runtimeDeliveryManifest?.requestedActions, [
     'create_commit',
   ]);

@@ -1301,6 +1301,22 @@ control-plane view for one task:
       "replayTrigger": "retry",
       "retryAvailable": true
     },
+    "runtimeDeliveryIntent": {
+      "mode": "commit_only",
+      "source": "task_override",
+      "gates": ["owner_approval_required"],
+      "requestedActions": ["create_commit"],
+      "strict": true,
+      "requiresOwnerDecision": true,
+      "approvalPending": true,
+      "channelId": "channel-system-1",
+      "conversationId": "conversation-system-1",
+      "taskId": "task-system-1",
+      "roomMode": "boss_chat",
+      "transport": "web",
+      "workflowStageId": "continuation_handoff",
+      "workflowShape": "converge"
+    },
     "approvalActions": [
       {
         "kind": "approve"
@@ -1334,6 +1350,11 @@ Semantics:
   automation; it lifts the latest checkpoint recommendation, workflow summary,
   and stored workflow-continuation replay state into one task-scoped view so
   callers do not have to stitch them together themselves,
+- `runtimeDeliveryIntent` is the normalized delivery-policy contract for
+  operator automation; it lifts the effective delivery policy and runtime
+  delivery manifest into one task-scoped view so callers do not have to join
+  `governanceSummary.delivery` with `governanceSummary.runtimeDeliveryManifest`
+  themselves,
   Chat operator rails, or raw task metadata blobs
 - `GET /api/core/control-plane/tasks` now also supports additive list filters:
   - `conversationId`
