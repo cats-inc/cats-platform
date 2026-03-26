@@ -888,4 +888,10 @@ test('startup recovery preserves retryable continuation replay metadata for inte
   );
   assert.equal(replay?.workflowRecommendation?.workflowShape, 'converge');
   assert.equal(replay?.workflowRecommendation?.source, 'boss_replan');
+  assert.ok(
+    core.activities.some((activity) =>
+      activity.taskId === buildChannelTaskId(channelId)
+      && activity.metadata?.source === 'workflow-continuation-replay'
+      && activity.metadata?.replayPhase === 'startup_recovered'),
+  );
 });

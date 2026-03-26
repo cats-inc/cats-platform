@@ -147,7 +147,9 @@ MCP tool plane.
   still preserve coherent source plus target context now also re-project into
   retryable `workflowContinuationReplay` metadata so operator `retry` can
   reopen the same continuation seam after boot instead of stopping at a blocked
-  recovery marker
+  recovery marker, and the same startup path now also appends immediate
+  `workflow-continuation-replay` / `startup_recovered` activity for the
+  recovery/control-plane read model
 - converge-stage richer planning once group/branch policies land
 - future export of the orchestrator execution contract to other product
   surfaces once Team 3 / Team 6 consume it directly

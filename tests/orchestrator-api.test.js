@@ -1946,6 +1946,12 @@ test('startup-recovered continuation replay resumes through the operator retry s
     const task = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
     assert.ok(task);
     assert.ok(task.metadata.workflowContinuationReplay);
+    assert.ok(
+      initialCorePayload.activities.some((activity) =>
+        activity.taskId === taskId
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'startup_recovered'),
+    );
     const latestRun = initialCorePayload.runs
       .filter((candidate) => candidate.taskId === taskId)
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];

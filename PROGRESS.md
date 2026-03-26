@@ -364,7 +364,10 @@ Known follow-ups:
   retryable `workflowContinuationReplay` metadata when the recovered turn still
   has coherent continuation source plus target context, so operator `retry` can
   reopen the same product-owned continuation replay seam after restart instead
-  of stopping at an inspectable blocked marker
+  of stopping at an inspectable blocked marker, and that same startup recovery
+  path now also appends an immediate `workflow-continuation-replay` /
+  `startup_recovered` activity so recovery/control-plane consumers can facet
+  those reopened snapshots before any manual retry happens
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without

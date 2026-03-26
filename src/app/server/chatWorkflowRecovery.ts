@@ -11,6 +11,13 @@ import {
 import { createRoomRoutingSnapshot } from '../../products/chat/state/room-routing/wake.js';
 import { setChannelRoomRouting } from '../../products/chat/state/model/index.js';
 import { syncCoreStateWithChatState } from '../../products/chat/state/core-projection/index.js';
+import {
+  appendOrchestratorReplayActivity,
+} from '../../platform/orchestration/replayActivity.js';
+import {
+  readWorkflowContinuationReplay,
+} from '../../platform/orchestration/workflowContinuationReplay.js';
+import type { CatsCoreState } from '../../core/types.js';
 import type {
   ChatChannelState,
   ChatState,
@@ -184,6 +191,16 @@ function recoverChannelWorkflowTurn(
   );
 }
 
+async function writeSynchronizedCoreState(
+  dependencies: ResolvedServerDependencies,
+  core: CatsCoreState,
+): Promise<void> {
+  await dependencies.shared.coreStore.writeCore(core);
+  if (dependencies.shared.coreStore !== dependencies.chat.chatStore) {
+    await dependencies.chat.chatStore.writeCore(core);
+  }
+}
+
 export async function reconcileChatWorkflowRecoveryOnStartup(
   dependencies: ResolvedServerDependencies,
 ): Promise<number> {
@@ -191,6 +208,7 @@ export async function reconcileChatWorkflowRecoveryOnStartup(
   const initialChat = await dependencies.chat.chatStore.read();
   let nextChat = initialChat;
   let recoveredCount = 0;
+  const recoveredTaskIds: string[] = [];
 
   for (const channelId of initialChat.channels.map((channel) => channel.id)) {
     const channel = nextChat.channels.find((candidate) => candidate.id === channelId);
@@ -199,6 +217,7 @@ export async function reconcileChatWorkflowRecoveryOnStartup(
     }
 
     nextChat = recoverChannelWorkflowTurn(nextChat, channel, now);
+    recoveredTaskIds.push(`task-channel-${channelId}`);
     recoveredCount += 1;
   }
 
@@ -207,13 +226,33 @@ export async function reconcileChatWorkflowRecoveryOnStartup(
   }
 
   await dependencies.chat.chatStore.write(nextChat);
-  if (dependencies.shared.coreStore !== dependencies.chat.chatStore) {
-    const nextCore = syncCoreStateWithChatState(
+  let nextCore = dependencies.shared.coreStore !== dependencies.chat.chatStore
+    ? syncCoreStateWithChatState(
       nextChat,
       await dependencies.shared.coreStore.readCore(),
-    );
-    await dependencies.shared.coreStore.writeCore(nextCore);
-    await dependencies.chat.chatStore.writeCore(nextCore);
+    )
+    : await dependencies.chat.chatStore.readCore();
+
+  for (const taskId of recoveredTaskIds) {
+    const task = nextCore.tasks.find((candidate) => candidate.id === taskId);
+    const replay = readWorkflowContinuationReplay(task?.metadata);
+    if (!task || !replay || replay.blockedReason !== null) {
+      continue;
+    }
+
+    nextCore = appendOrchestratorReplayActivity(
+      nextCore,
+      {
+        task,
+        source: 'workflow-continuation-replay',
+        phase: 'startup_recovered',
+      },
+      now,
+    ).core;
+  }
+
+  if (dependencies.shared.coreStore !== dependencies.chat.chatStore || recoveredTaskIds.length > 0) {
+    await writeSynchronizedCoreState(dependencies, nextCore);
   }
 
   return recoveredCount;
