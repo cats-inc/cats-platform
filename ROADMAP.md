@@ -209,7 +209,9 @@ contracts.
       sequence, and startup-recovered concrete `parallel` continuation
       snapshots now also stay blocked until every preserved target recovers,
       then auto-resume through the same assignment-recovery seam instead of
-      partial-dispatching a degraded fan-out; broader group replan auto-resume
+      partial-dispatching a degraded fan-out, with the intermediate
+      `no_valid_targets` / unresolved-target state now also written back into
+      task metadata for operator read models; broader group replan auto-resume
       still remains.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval

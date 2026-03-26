@@ -372,7 +372,10 @@ Known follow-ups:
   boot sequence instead of always waiting on a later operator retry, while
   startup-recovered concrete `parallel` continuation snapshots now also stay
   blocked until every preserved target recovers, then auto-resume through the
-  same assignment-recovery seam instead of partial-dispatching a degraded fan-out
+  same assignment-recovery seam instead of partial-dispatching a degraded
+  fan-out, with that intermediate `no_valid_targets` / unresolved-target
+  state now also written back into task metadata for recovery/control-plane
+  reads
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without

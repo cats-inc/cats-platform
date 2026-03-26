@@ -7,9 +7,15 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
+import { upsertCoreTask } from '../../../../core/model/index.js';
 import type {
+  WorkflowContinuationReplayBlockedReason,
   WorkflowContinuationReplayResult,
   WorkflowContinuationReplaySnapshot,
+} from '../../../../platform/orchestration/workflowContinuationReplay.js';
+import {
+  readWorkflowContinuationReplay,
+  writeWorkflowContinuationReplayMetadata,
 } from '../../../../platform/orchestration/workflowContinuationReplay.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
@@ -129,8 +135,9 @@ function buildRecommendationReplayResolution(
   request: WorkflowContinuationReplaySnapshot,
 ): {
   resolution: TargetResolution | null;
-  blockedReason: WorkflowContinuationReplayResult['blockedReason'];
+  blockedReason: WorkflowContinuationReplayBlockedReason | null;
   note: string | null;
+  unresolvedTargets: string[];
 } {
   const recommendation = readWorkflowRecommendation(request.workflowRecommendation);
   if (!recommendation) {
@@ -138,15 +145,21 @@ function buildRecommendationReplayResolution(
       resolution: null,
       blockedReason: null,
       note: null,
+      unresolvedTargets: [...request.unresolvedTargets],
     };
   }
 
   const resolved = resolveWorkflowRecommendationTargets(state, request.channelId, recommendation);
+  const unresolvedTargets = uniqueStrings([
+    ...request.unresolvedTargets,
+    ...resolved.unresolved,
+  ]);
   if (requiresCompleteRecommendationResolution(recommendation, resolved.unresolved)) {
     return {
       resolution: null,
       blockedReason: 'no_valid_targets',
       note: 'Stored workflow continuation replay is still waiting for all parallel targets from its workflow recommendation.',
+      unresolvedTargets,
     };
   }
 
@@ -155,16 +168,14 @@ function buildRecommendationReplayResolution(
       resolution: null,
       blockedReason: 'no_valid_targets',
       note: 'Stored workflow continuation replay still has no active targets for its workflow recommendation.',
+      unresolvedTargets,
     };
   }
 
   return {
     resolution: {
       targets: resolved.targets,
-      unresolved: uniqueStrings([
-        ...request.unresolvedTargets,
-        ...resolved.unresolved,
-      ]),
+      unresolved: unresolvedTargets,
       mentionNames: resolved.mentionNames.length > 0
         ? resolved.mentionNames
         : [...request.mentionNames],
@@ -181,6 +192,7 @@ function buildRecommendationReplayResolution(
     },
     blockedReason: null,
     note: null,
+    unresolvedTargets,
   };
 }
 
@@ -207,8 +219,9 @@ function buildReplayResolution(
   state: ChatState,
 ): {
   resolution: TargetResolution | null;
-  blockedReason: WorkflowContinuationReplayResult['blockedReason'];
+  blockedReason: WorkflowContinuationReplayBlockedReason | null;
   note: string | null;
+  unresolvedTargets: string[];
 } {
   const replayTargets = resolveReplayTargets(state, request);
   const missingConcreteTargets = readMissingConcreteReplayTargets(request, replayTargets);
@@ -217,17 +230,22 @@ function buildReplayResolution(
       resolution: null,
       blockedReason: 'no_valid_targets',
       note: 'Stored workflow continuation replay is still waiting for all preserved parallel targets to recover.',
+      unresolvedTargets: uniqueStrings([
+        ...request.unresolvedTargets,
+        ...missingConcreteTargets,
+      ]),
     };
   }
 
+  const unresolvedTargets = uniqueStrings([
+    ...request.unresolvedTargets,
+    ...missingConcreteTargets,
+  ]);
   if (replayTargets.length > 0) {
     return {
       resolution: {
         targets: replayTargets,
-        unresolved: uniqueStrings([
-          ...request.unresolvedTargets,
-          ...missingConcreteTargets,
-        ]),
+        unresolved: unresolvedTargets,
         mentionNames: [...request.mentionNames],
         trigger: request.trigger,
         resolution: {
@@ -242,6 +260,7 @@ function buildReplayResolution(
       },
       blockedReason: null,
       note: null,
+      unresolvedTargets,
     };
   }
 
@@ -251,6 +270,7 @@ function buildReplayResolution(
       resolution: recommendationResolution.resolution,
       blockedReason: recommendationResolution.blockedReason,
       note: recommendationResolution.note,
+      unresolvedTargets: recommendationResolution.unresolvedTargets,
     };
   }
 
@@ -260,12 +280,74 @@ function buildReplayResolution(
       blockedReason: recommendationResolution.blockedReason ?? 'no_valid_targets',
       note: recommendationResolution.note
         ?? 'Stored workflow continuation replay still has no active targets for its workflow recommendation.',
+      unresolvedTargets: recommendationResolution.unresolvedTargets,
     };
   }
 
   throw new Error(
     'Stored workflow continuation replay no longer has any active targets or resolvable workflow recommendation.',
   );
+}
+
+function buildChannelTaskId(channelId: string): string {
+  return `task-channel-${channelId}`;
+}
+
+async function persistBlockedReplayMetadata(
+  chatStore: Pick<ChatStore, 'readCore' | 'writeCore'>,
+  request: WorkflowContinuationReplaySnapshot,
+  resolution: Pick<
+    ReturnType<typeof buildReplayResolution>,
+    'blockedReason' | 'unresolvedTargets'
+  >,
+  now: Date,
+): Promise<void> {
+  if (!resolution.blockedReason) {
+    return;
+  }
+
+  const core = await chatStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === buildChannelTaskId(request.channelId));
+  if (!task) {
+    return;
+  }
+
+  const existingReplay = readWorkflowContinuationReplay(task.metadata, {
+    includeInProgress: true,
+  }) ?? request;
+  const metadata = writeWorkflowContinuationReplayMetadata(
+    task.metadata,
+    {
+      ...existingReplay,
+      blockedReason: resolution.blockedReason,
+      unresolvedTargets: resolution.unresolvedTargets,
+    },
+    {
+      replayState: existingReplay.replayState,
+      replayTrigger: existingReplay.replayTrigger,
+      replayAttemptAt: existingReplay.replayAttemptAt,
+      replayError: existingReplay.replayError,
+    },
+  );
+  const write = upsertCoreTask(
+    core,
+    {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      conversationId: task.conversationId,
+      parentTaskId: task.parentTaskId ?? null,
+      ownerActorId: task.ownerActorId,
+      orchestratorActorId: task.orchestratorActorId,
+      assignedActorIds: task.assignedActorIds,
+      summary: task.summary,
+      approval: task.approval,
+      createdAt: task.createdAt,
+      metadata,
+    },
+    now,
+  );
+  await chatStore.writeCore(write.core);
 }
 
 export function canResumeWorkflowContinuationReplay(
@@ -375,6 +457,17 @@ export async function resumeWorkflowContinuationReplay(input: {
 
   const initialReplayResolution = buildReplayResolution(input.request, state);
   if (!initialReplayResolution.resolution) {
+    try {
+      await persistBlockedReplayMetadata(
+        input.chatStore,
+        input.request,
+        initialReplayResolution,
+        input.now,
+      );
+    } catch {
+      // Keep the replay attempt best-effort; callers still receive the
+      // blocked result even if the additive metadata refresh fails.
+    }
     return {
       channelId: input.request.channelId,
       sourceMessageId: sourceMessage.id,

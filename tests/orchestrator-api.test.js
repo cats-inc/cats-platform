@@ -2244,6 +2244,11 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
     assert.ok(blockedTask);
     assert.ok(blockedTask.metadata.workflowContinuationReplay);
     assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowShape, 'parallel');
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.blockedReason, 'no_valid_targets');
+    assert.deepEqual(
+      blockedTask.metadata.workflowContinuationReplay.unresolvedTargets,
+      ['Verifier-Agent'],
+    );
     assert.ok(
       blockedCorePayload.activities.some((activity) =>
         activity.taskId === taskId

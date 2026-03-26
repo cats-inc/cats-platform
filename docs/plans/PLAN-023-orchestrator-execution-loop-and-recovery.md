@@ -153,7 +153,9 @@ MCP tool plane.
   continuation snapshots now also auto-resume during that same boot sequence,
   and startup-recovered concrete `parallel` continuation snapshots now also
   stay blocked until every preserved target recovers before assignment recovery
-  auto-resumes the same replay seam
+  auto-resumes the same replay seam, with intermediate `no_valid_targets` /
+  unresolved-target metadata now persisting back onto the task instead of
+  living only in replay activities
 - converge-stage richer planning once group/branch policies land
 - future export of the orchestrator execution contract to other product
   surfaces once Team 3 / Team 6 consume it directly

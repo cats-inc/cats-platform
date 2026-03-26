@@ -419,10 +419,22 @@ function mergeWorkflowContinuationReplayMetadata(
 
   const preserveExistingState = existingReplay?.checkpointId === derivedReplay.checkpointId
     && existingReplay.sourceMessageId === derivedReplay.sourceMessageId;
+  const mergedReplay = preserveExistingState && existingReplay
+    ? {
+        ...derivedReplay,
+        continuationSource: derivedReplay.continuationSource ?? existingReplay.continuationSource,
+        workflowRecommendation: derivedReplay.workflowRecommendation ?? existingReplay.workflowRecommendation,
+        unresolvedTargets: uniqueStrings([
+          ...derivedReplay.unresolvedTargets,
+          ...existingReplay.unresolvedTargets,
+        ]),
+        blockedReason: existingReplay.blockedReason ?? derivedReplay.blockedReason,
+      }
+    : derivedReplay;
 
   return writeWorkflowContinuationReplayMetadata(
     metadata,
-    derivedReplay,
+    mergedReplay,
     preserveExistingState
       ? {
           replayState: existingReplay.replayState,
