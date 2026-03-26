@@ -1718,6 +1718,7 @@ Semantics:
   - `deliveryMode`
   - `deliveryAction`
   - `workflowStageId`
+  - `workflowShape`
   - `rootTaskId`
   - `parentTaskId`
   - `hasChildren`
@@ -1741,6 +1742,7 @@ Semantics:
   - `deliveryModeCounts`
   - `deliveryActionCounts`
   - `workflowStageCounts`
+  - `workflowShapeCounts`
   - `withChildrenCount`
   - `withActiveChildrenCount`
 - the payload normalizes three product-owned recovery records when present:
@@ -1750,6 +1752,9 @@ Semantics:
 - `context` lifts delivery policy, runtime delivery actions, and workflow-stage
   routing context into the recovery view so recovery automation can filter and
   facet by delivery/workflow intent without re-reading raw task metadata
+- `workflowShape` / `workflowShapeCounts` let recovery automation distinguish
+  sequential, parallel, or converge replay topology without inferring it from
+  stage ids alone
 - `family` reuses the same immediate task-family topology summary exposed by
   `GET /api/core/tasks/{taskId}`, so recovery automation can target parent/
   child work without rebuilding the task graph outside `cats`

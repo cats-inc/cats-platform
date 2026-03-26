@@ -93,6 +93,14 @@ export const CORE_TASK_RECOVERY_DELIVERY_ACTIONS = [
   'publish_preview',
 ] as const satisfies readonly CoreRuntimeDeliveryAction[];
 
+export type CoreTaskRecoveryWorkflowShape = 'sequential' | 'parallel' | 'converge';
+
+export const CORE_TASK_RECOVERY_WORKFLOW_SHAPES = [
+  'sequential',
+  'parallel',
+  'converge',
+] as const satisfies readonly CoreTaskRecoveryWorkflowShape[];
+
 export const CORE_TASK_PENDING_DISPATCH_REPLAY_STATES = [
   'pending',
   'in_progress',
@@ -217,6 +225,7 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   deliveryModes?: CoreDeliveryMode[];
   deliveryActions?: CoreRuntimeDeliveryAction[];
   workflowStageIds?: string[];
+  workflowShapes?: CoreTaskRecoveryWorkflowShape[];
   rootTaskIds?: string[];
   parentTaskIds?: string[];
   hasChildren?: boolean | null;
@@ -241,6 +250,7 @@ export interface CoreTaskRecoveryListSummary {
   deliveryModeCounts: Record<CoreDeliveryMode, number>;
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
+  workflowShapeCounts: Record<CoreTaskRecoveryWorkflowShape, number>;
   withChildrenCount: number;
   withActiveChildrenCount: number;
 }
@@ -394,6 +404,12 @@ function buildWorkflowContinuationReplayView(
     replayAttemptAt: snapshot.replayAttemptAt,
     replayError: snapshot.replayError,
   };
+}
+
+function readWorkflowShape(value: unknown): CoreTaskRecoveryWorkflowShape | null {
+  return value === 'sequential' || value === 'parallel' || value === 'converge'
+    ? value
+    : null;
 }
 
 function buildRecoveryContext(input: {
@@ -691,6 +707,16 @@ function matchesRecoveryListOptions(
   }
 
   if (
+    options.workflowShapes?.length
+    && (!readWorkflowShape(recovery.context?.workflowShape)
+      || !options.workflowShapes.includes(
+        readWorkflowShape(recovery.context?.workflowShape)!,
+      ))
+  ) {
+    return false;
+  }
+
+  if (
     options.rootTaskIds?.length
     && !options.rootTaskIds.includes(recovery.family.rootTaskId)
   ) {
@@ -839,6 +865,24 @@ function buildRecoveryWorkflowStageCounts(
   return counts;
 }
 
+function buildRecoveryWorkflowShapeCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<CoreTaskRecoveryWorkflowShape, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_WORKFLOW_SHAPES.map((shape) => [shape, 0]),
+  ) as Record<CoreTaskRecoveryWorkflowShape, number>;
+
+  for (const recovery of recoveries) {
+    const shape = readWorkflowShape(recovery.context?.workflowShape);
+    if (!shape) {
+      continue;
+    }
+    counts[shape] += 1;
+  }
+
+  return counts;
+}
+
 export function summarizeCoreTaskRecoveryViews(input: {
   totalAvailable: number;
   matching: number;
@@ -865,6 +909,7 @@ export function summarizeCoreTaskRecoveryViews(input: {
     deliveryModeCounts: buildRecoveryDeliveryModeCounts(input.recoveries),
     deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),
     workflowStageCounts: buildRecoveryWorkflowStageCounts(input.recoveries),
+    workflowShapeCounts: buildRecoveryWorkflowShapeCounts(input.recoveries),
     withChildrenCount: input.recoveries.filter((recovery) => recovery.family.childCount > 0).length,
     withActiveChildrenCount: input.recoveries.filter((recovery) =>
       recovery.family.childCount > 0 && !recovery.family.allChildrenTerminal).length,

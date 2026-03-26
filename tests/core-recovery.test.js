@@ -346,6 +346,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
     deliveryModes: ['commit_only'],
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
+    workflowShapes: ['sequential'],
     rootTaskIds: ['task-recovery-root'],
     parentTaskIds: ['task-recovery-root'],
     hasChildren: false,
@@ -365,6 +366,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
+  assert.equal(result.summary.workflowShapeCounts.sequential, 1);
   assert.equal(result.recoveries[0]?.family.rootTaskId, 'task-recovery-root');
   assert.equal(result.recoveries[0]?.family.parent?.taskId, 'task-recovery-root');
   assert.equal(result.summary.withChildrenCount, 0);

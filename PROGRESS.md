@@ -354,6 +354,9 @@ Known follow-ups:
   `workflowShape` filtering plus `workflowShapeCounts`, so sequential /
   parallel / converge topology becomes a first-class operator facet instead of
   something consumers must infer from stage ids or raw metadata
+- the recovery list route now also supports the same `workflowShape` filtering
+  plus `workflowShapeCounts`, so retry/resume automation can facet replay work
+  by topology without re-reading raw task metadata
 - task inspection and control-plane views now also lift `latestTimelineItem`
   into the same payload, so operator/recovery consumers can answer "what just
   happened?" without joining the separate timeline route client-side

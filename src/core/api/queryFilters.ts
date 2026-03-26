@@ -19,6 +19,7 @@ import {
   CORE_TASK_RECOVERY_DELIVERY_MODES,
   CORE_TASK_DISPATCH_REPLAY_STATES,
   CORE_TASK_PENDING_DISPATCH_REPLAY_STATES,
+  CORE_TASK_RECOVERY_WORKFLOW_SHAPES,
   CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES,
   type CoreTaskRecoveryListOptions,
 } from '../recovery.js';
@@ -201,6 +202,11 @@ export function readTaskRecoveryListOptions(
       CORE_TASK_RECOVERY_DELIVERY_ACTIONS,
     ),
     workflowStageIds: readQueryValues(searchParams, 'workflowStageId'),
+    workflowShapes: readEnumQueryValues(
+      searchParams,
+      'workflowShape',
+      CORE_TASK_RECOVERY_WORKFLOW_SHAPES,
+    ),
     rootTaskIds: readQueryValues(searchParams, 'rootTaskId'),
     parentTaskIds: readQueryValues(searchParams, 'parentTaskId'),
     hasChildren: readBooleanQuery(searchParams, 'hasChildren'),
