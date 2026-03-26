@@ -106,6 +106,8 @@ test('buildCoreMemoryMaintenanceSummary normalizes memory maintenance activity h
   assert.equal(maintenance.latestByTrigger.runtimeHook?.id, 'activity-memory-runtime');
   assert.equal(maintenance.latestByTrigger.companionSync?.id, 'activity-memory-companion');
   assert.equal(maintenance.latestByTrigger.ownerSync?.id, 'activity-memory-owner');
+  assert.equal(maintenance.latestByTrigger.projectSync, null);
+  assert.equal(maintenance.latestByTrigger.relationshipSync, null);
   assert.deepEqual(maintenance.recent.map((activity) => activity.id), [
     'activity-memory-runtime',
     'activity-memory-companion',
@@ -191,6 +193,84 @@ test('executeCoreMemoryMaintenanceAction records executed companion sync activit
   assert.match(
     maintenance.latestByTrigger.companionSync?.message ?? '',
     /Synchronized Cats-owned canonical companion memory/i,
+  );
+});
+
+test('executeCoreMemoryMaintenanceAction records executed project sync activity', async () => {
+  const coreStore = new MemoryCoreStore(createDefaultCoreState());
+  const memoryService = {
+    async listCanonicalRecords() {
+      return [];
+    },
+    async flushCompanionBox() {
+      throw new Error('not used');
+    },
+    async flushChannel() {
+      throw new Error('not used');
+    },
+    async flushOwnerProfile() {
+      throw new Error('not used');
+    },
+    async flushProject() {
+      return {
+        scope: 'project',
+        subjectId: 'project-launch',
+        reason: 'manual',
+        persistedCount: 1,
+        removedRecordIds: [],
+        payload: {
+          version: 1,
+          subject: {
+            kind: 'project',
+            id: 'project-launch',
+          },
+          sourceScopeKeys: ['project:project-launch'],
+          persistedRecords: [
+            {
+              replacementGroup: 'project:project-launch:summary',
+            },
+          ],
+        },
+      };
+    },
+    async flushRelationship() {
+      throw new Error('not used');
+    },
+    async buildRetrievalContext() {
+      throw new Error('not used');
+    },
+    async buildCompanionRetrievalContext() {
+      throw new Error('not used');
+    },
+    async buildChannelRetrievalContext() {
+      throw new Error('not used');
+    },
+  };
+
+  const result = await executeCoreMemoryMaintenanceAction({
+    action: 'sync_project',
+    projectId: 'project-launch',
+    coreStore,
+    memoryService,
+    now: new Date('2026-03-26T18:40:00.000Z'),
+  });
+
+  assert.equal(result.status, 'executed');
+  assert.equal(result.subject.kind, 'project');
+  assert.equal(result.subject.id, 'project-launch');
+  assert.equal(result.summary?.persistedCount, 1);
+
+  const core = await coreStore.readCore();
+  const maintenance = buildCoreMemoryMaintenanceSummary(core);
+  assert.equal(maintenance.totals.executed, 1);
+  assert.equal(maintenance.latestByTrigger.projectSync?.status, 'executed');
+  assert.deepEqual(
+    maintenance.latestByTrigger.projectSync?.subjectKeys,
+    ['project:project-launch'],
+  );
+  assert.match(
+    maintenance.latestByTrigger.projectSync?.message ?? '',
+    /Synchronized Cats-owned project memory/i,
   );
 });
 

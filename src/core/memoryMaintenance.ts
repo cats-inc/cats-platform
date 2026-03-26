@@ -4,7 +4,12 @@ import type {
 } from '../platform/memory/contracts.js';
 import type { CatsCoreState, CoreActivityRecord } from './types.js';
 
-export type CoreMemoryMaintenanceTrigger = 'runtime_hook' | 'companion_sync' | 'owner_sync';
+export type CoreMemoryMaintenanceTrigger =
+  | 'runtime_hook'
+  | 'companion_sync'
+  | 'owner_sync'
+  | 'project_sync'
+  | 'relationship_sync';
 export type CoreMemoryMaintenanceStatus = 'executed' | 'deferred' | 'missing_context' | 'error';
 export type CoreMemoryMaintenancePhase = 'pre_reset' | 'pre_compaction' | null;
 
@@ -22,6 +27,8 @@ export interface CoreMemoryMaintenanceActivityView {
   sessionId: string | null;
   channelId: string | null;
   catId: string | null;
+  projectId: string | null;
+  relationshipId: string | null;
   reason: string | null;
   summary: MemoryFlushSummary | null;
   error: string | null;
@@ -41,6 +48,8 @@ export interface CoreMemoryMaintenanceSummaryView {
     runtimeHook: CoreMemoryMaintenanceActivityView | null;
     companionSync: CoreMemoryMaintenanceActivityView | null;
     ownerSync: CoreMemoryMaintenanceActivityView | null;
+    projectSync: CoreMemoryMaintenanceActivityView | null;
+    relationshipSync: CoreMemoryMaintenanceActivityView | null;
   };
   recent: CoreMemoryMaintenanceActivityView[];
 }
@@ -68,7 +77,11 @@ function readStringArray(value: unknown): string[] {
 }
 
 function readTrigger(value: unknown): CoreMemoryMaintenanceTrigger | null {
-  return value === 'runtime_hook' || value === 'companion_sync' || value === 'owner_sync'
+  return value === 'runtime_hook'
+    || value === 'companion_sync'
+    || value === 'owner_sync'
+    || value === 'project_sync'
+    || value === 'relationship_sync'
     ? value
     : null;
 }
@@ -147,6 +160,12 @@ function buildSubjectKeys(activity: CoreMemoryMaintenanceActivityView): string[]
   if (activity.channelId) {
     return [`channel:${activity.channelId}`];
   }
+  if (activity.projectId) {
+    return [`project:${activity.projectId}`];
+  }
+  if (activity.relationshipId) {
+    return [`relationship:${activity.relationshipId}`];
+  }
   return ['owner:actor-owner'];
 }
 
@@ -180,6 +199,8 @@ export function listCoreMemoryMaintenanceActivities(
         sessionId: readString(metadata?.sessionId),
         channelId: readString(metadata?.channelId),
         catId: readString(metadata?.catId),
+        projectId: readString(metadata?.projectId),
+        relationshipId: readString(metadata?.relationshipId),
         reason: readString(metadata?.reason),
         summary: readMemoryFlushSummary(metadata?.summary),
         error: readString(metadata?.error),
@@ -202,6 +223,9 @@ export function buildCoreMemoryMaintenanceSummary(
     runtimeHook: recent.find((activity) => activity.trigger === 'runtime_hook') ?? null,
     companionSync: recent.find((activity) => activity.trigger === 'companion_sync') ?? null,
     ownerSync: recent.find((activity) => activity.trigger === 'owner_sync') ?? null,
+    projectSync: recent.find((activity) => activity.trigger === 'project_sync') ?? null,
+    relationshipSync:
+      recent.find((activity) => activity.trigger === 'relationship_sync') ?? null,
   };
 
   return {

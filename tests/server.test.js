@@ -763,6 +763,110 @@ test('POST /api/core/memory-maintenance reports deferred owner sync when canonic
   }, chatStore, { memoryService: failingMemoryService });
 });
 
+test('POST /api/core/memory-maintenance runs project and relationship canonical sync through the core route', async () => {
+  const fixtures = createSharedCoreFixtureBundle();
+  const relationshipId = 'relationship-owner-maintenance-agent';
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const projectResponse = await fetch(`${baseUrl}/api/core/projects`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ project: fixtures.project }),
+    });
+    assert.equal(projectResponse.status, 201);
+
+    const createProjectMemoryResponse = await fetch(
+      `${baseUrl}/api/core/projects/${fixtures.project.id}/memory`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: 'policy',
+          content: 'Project sync should remain product-owned and additive.',
+        }),
+      },
+    );
+    assert.equal(createProjectMemoryResponse.status, 201);
+
+    const createRelationshipMemoryResponse = await fetch(
+      `${baseUrl}/api/core/relationships/${relationshipId}/memory`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: 'relationship',
+          content: 'Relationship sync should preserve trusted collaborator context.',
+        }),
+      },
+    );
+    assert.equal(createRelationshipMemoryResponse.status, 201);
+
+    const projectActionResponse = await fetch(`${baseUrl}/api/core/memory-maintenance`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'sync_project',
+        projectId: fixtures.project.id,
+        reason: 'manual',
+      }),
+    });
+    assert.equal(projectActionResponse.status, 200);
+    const projectActionPayload = await projectActionResponse.json();
+
+    assert.equal(projectActionPayload.maintenanceAction.action, 'sync_project');
+    assert.equal(projectActionPayload.maintenanceAction.trigger, 'project_sync');
+    assert.equal(projectActionPayload.maintenanceAction.status, 'executed');
+    assert.equal(projectActionPayload.maintenanceAction.subject.kind, 'project');
+    assert.equal(projectActionPayload.maintenanceAction.subject.id, fixtures.project.id);
+
+    const relationshipActionResponse = await fetch(`${baseUrl}/api/core/memory-maintenance`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'sync_relationship',
+        relationshipId,
+        reason: 'manual',
+      }),
+    });
+    assert.equal(relationshipActionResponse.status, 200);
+    const relationshipActionPayload = await relationshipActionResponse.json();
+
+    assert.equal(relationshipActionPayload.maintenanceAction.action, 'sync_relationship');
+    assert.equal(relationshipActionPayload.maintenanceAction.trigger, 'relationship_sync');
+    assert.equal(relationshipActionPayload.maintenanceAction.status, 'executed');
+    assert.equal(relationshipActionPayload.maintenanceAction.subject.kind, 'relationship');
+    assert.equal(relationshipActionPayload.maintenanceAction.subject.id, relationshipId);
+
+    const listResponse = await fetch(`${baseUrl}/api/core/memory-maintenance`);
+    assert.equal(listResponse.status, 200);
+    const listPayload = await listResponse.json();
+
+    assert.equal(listPayload.maintenance.latestByTrigger.projectSync?.status, 'executed');
+    assert.equal(
+      listPayload.maintenance.latestByTrigger.relationshipSync?.status,
+      'executed',
+    );
+    assert.deepEqual(
+      listPayload.maintenance.latestByTrigger.projectSync?.subjectKeys,
+      [`project:${fixtures.project.id}`],
+    );
+    assert.deepEqual(
+      listPayload.maintenance.latestByTrigger.relationshipSync?.subjectKeys,
+      [`relationship:${relationshipId}`],
+    );
+  });
+});
+
 test('core write APIs persist shared project, work, approval, trace, artifact, and owner records', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

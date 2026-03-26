@@ -6,6 +6,12 @@ import { handleCoreError, readNullableString, readObjectBody } from './shared.js
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 import type { MemoryFlushReason } from '../../platform/memory/contracts.js';
 
+type CoreMemoryMaintenanceAction =
+  | 'sync_companion'
+  | 'sync_owner'
+  | 'sync_project'
+  | 'sync_relationship';
+
 async function handleCoreMemoryMaintenance(
   context: CoreApiRouteContext,
 ): Promise<void> {
@@ -15,12 +21,19 @@ async function handleCoreMemoryMaintenance(
   });
 }
 
-function readMemoryMaintenanceAction(value: unknown): 'sync_companion' | 'sync_owner' {
-  if (value === 'sync_companion' || value === 'sync_owner') {
+function readMemoryMaintenanceAction(value: unknown): CoreMemoryMaintenanceAction {
+  if (
+    value === 'sync_companion'
+    || value === 'sync_owner'
+    || value === 'sync_project'
+    || value === 'sync_relationship'
+  ) {
     return value;
   }
 
-  throw new CoreValidationError('action must be one of: sync_companion, sync_owner');
+  throw new CoreValidationError(
+    'action must be one of: sync_companion, sync_owner, sync_project, sync_relationship',
+  );
 }
 
 function readFlushReason(value: unknown): MemoryFlushReason | undefined {
@@ -57,9 +70,17 @@ async function handleCoreMemoryMaintenanceAction(
   const body = await readObjectBody(context);
   const action = readMemoryMaintenanceAction(body.action);
   const catId = readNullableString(body.catId, 'catId') ?? undefined;
+  const projectId = readNullableString(body.projectId, 'projectId') ?? undefined;
+  const relationshipId = readNullableString(body.relationshipId, 'relationshipId') ?? undefined;
   const reason = readFlushReason(body.reason);
   if (action === 'sync_companion' && !catId) {
     throw new CoreValidationError('catId is required for sync_companion');
+  }
+  if (action === 'sync_project' && !projectId) {
+    throw new CoreValidationError('projectId is required for sync_project');
+  }
+  if (action === 'sync_relationship' && !relationshipId) {
+    throw new CoreValidationError('relationshipId is required for sync_relationship');
   }
   if (action === 'sync_companion' && !context.dependencies.companionStore) {
     throw new CoreApiError(
@@ -75,6 +96,8 @@ async function handleCoreMemoryMaintenanceAction(
     memoryService: context.dependencies.memoryService,
     companionStore: context.dependencies.companionStore,
     catId,
+    projectId,
+    relationshipId,
     reason,
     now: context.dependencies.now?.(),
   });

@@ -132,8 +132,9 @@ contracts.
       Progress: additive flush summaries, reusable best-effort sync helpers,
       core activity logging for runtime-hook / deferred maintenance, and
       `GET` / `POST /api/core/memory-maintenance` inspection-plus-action routes
-      are now landed, including core-owned manual companion/owner canonical
-      sync replay; broader downstream consumer contracts still remain.
+      are now landed, including core-owned manual companion/owner/project/
+      relationship canonical sync replay; broader downstream consumer
+      contracts still remain.
 - [x] Surface the new orchestrator execution-loop contract in product-owned
       operator rails so Chat can consume step state, next actions, approval
       gates, and recovery hints without scraping transcript text

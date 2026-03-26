@@ -894,7 +894,9 @@ Returns a normalized summary of product-owned memory-maintenance activity:
       "companionSync": {
         "id": "activity-memory-route-companion"
       },
-      "ownerSync": null
+      "ownerSync": null,
+      "projectSync": null,
+      "relationshipSync": null
     },
     "recent": [
       {
@@ -913,15 +915,16 @@ Semantics:
 - this route is a core-owned inspectability seam over `memory_maintenance`
   activities already persisted in `Cats Core`
 - `totals` gives a lightweight rollup by normalized maintenance status
-- `latestByTrigger` exposes the most recent runtime-hook, companion-sync, and
-  owner-sync entries without requiring callers to re-scan the full activity
-  log
+- `latestByTrigger` exposes the most recent runtime-hook, companion-sync,
+  owner-sync, project-sync, and relationship-sync entries without requiring
+  callers to re-scan the full activity log
 - `recent[*].summary` reuses the additive flush-summary contract already
   emitted by Cats-owned canonical-memory maintenance, including
   `removedRecordIds`, `sourceScopeKeys`, and `replacementGroups`
 - `subjectKeys` prefers explicit flush-summary subjects and otherwise falls
-  back to stable `cat:*`, `channel:*`, or owner scope keys so downstream
-  recovery or operator tooling can group maintenance events consistently
+  back to stable `cat:*`, `channel:*`, `project:*`, `relationship:*`, or owner
+  scope keys so downstream recovery or operator tooling can group maintenance
+  events consistently
 
 `POST /api/core/memory-maintenance` triggers a core-owned manual maintenance
 action without going through a product UI route:
@@ -940,6 +943,26 @@ or
 {
   "action": "sync_owner",
   "reason": "owner_profile_sync"
+}
+```
+
+or
+
+```json
+{
+  "action": "sync_project",
+  "projectId": "project-launch",
+  "reason": "manual"
+}
+```
+
+or
+
+```json
+{
+  "action": "sync_relationship",
+  "relationshipId": "relationship-owner-inline-agent",
+  "reason": "manual"
 }
 ```
 
@@ -974,6 +997,8 @@ Semantics:
   companion flush seam behind the core route
 - `sync_owner` reuses the Cats-owned owner-profile flush seam behind the same
   core route
+- `sync_project` and `sync_relationship` reuse the same Cats-owned canonical
+  durable-memory flush substrate already used by the scoped core memory routes
 - `status` is `executed` when canonical flush succeeds and `deferred` when the
   maintenance request is captured but the canonical sync failed
 - both actions append normalized `memory_maintenance` activity into Cats Core,

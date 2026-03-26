@@ -279,11 +279,11 @@ Known follow-ups:
   `promotionRule`, `replacementGroup`, and `sourceScopeKeys` so Team 5 can
   consume pre-reset / pre-compaction memory output directly
 - memory-maintenance follow-through now adds aggregate flush summaries,
-  reusable best-effort companion/owner sync helpers, core activity logging for
-  runtime-hook or deferred maintenance, and a core-owned
-  `GET /api/core/memory-maintenance` inspection seam so recovery or operator
-  tooling can inspect the same product-owned contract outside route-local code
-  paths
+  reusable best-effort companion/owner/scoped sync helpers, core activity
+  logging for runtime-hook or deferred maintenance, and core-owned
+  `GET` / `POST /api/core/memory-maintenance` inspection/action seams so
+  recovery or operator tooling can inspect or manually replay the same
+  product-owned contract outside route-local code paths
 - the new memory substrate deliberately treats runtime sandboxes and provider
   continuity as inputs, not long-lived product truth
 - orchestrator plan/dispatch/execution-loop payloads now expose a
