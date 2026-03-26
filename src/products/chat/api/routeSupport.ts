@@ -745,8 +745,24 @@ export async function persistCatAssignmentUpdate(
   }
 
   const persisted = await context.dependencies.chatStore.write(nextState);
+  const persistedChannel = requireChannel(persisted, channelId);
+  const persistedAssignment = persistedChannel.catAssignments.find(
+    (candidate) => candidate.catId === input.catId,
+  );
+  const recoveredSessionId = persistedAssignment?.execution.lease.sessionId ?? null;
+  const shouldAttemptRecoveredContinuationAutoResume = Boolean(
+    isNew
+    || reactivatedAssignment
+    || (
+      recoveredSessionId
+      && (
+        targetChanged
+        || previousSessionId !== recoveredSessionId
+      )
+    ),
+  );
 
-  if (isNew || reactivatedAssignment) {
+  if (shouldAttemptRecoveredContinuationAutoResume) {
     await maybeAutoResumeRecoveredContinuation(
       context,
       channelId,

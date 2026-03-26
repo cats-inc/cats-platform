@@ -155,7 +155,9 @@ MCP tool plane.
   stay blocked until every preserved target recovers before assignment recovery
   auto-resumes the same replay seam, with intermediate `no_valid_targets` /
   unresolved-target metadata now persisting back onto the task instead of
-  living only in replay activities
+  living only in replay activities, while startup-recovered single-target
+  continuations can now also auto-resume when an already-assigned active
+  target regains its session lease instead of requiring a remove/re-add cycle
 - converge-stage richer planning once group/branch policies land
 - future export of the orchestrator execution contract to other product
   surfaces once Team 3 / Team 6 consume it directly

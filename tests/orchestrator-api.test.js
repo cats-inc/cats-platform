@@ -1965,6 +1965,252 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
   }, chatStore);
 });
 
+test('startup-recovered continuation replay auto-resumes when an active target regains its session', async () => {
+  const runtimeClient = createRuntimeStub({
+    sendMessage: ({ content }) => {
+      if (content.includes('You are Reviewer-Agent')) {
+        return usage('Reviewer-Agent completed the recovered continuation after session recovery.');
+      }
+      return usage('Boss Cat acknowledged the retry.');
+    },
+  });
+  const now = new Date('2026-03-26T16:40:00.000Z');
+  let chat = createDefaultChatState();
+  chat = seedChannel(
+    chat,
+    {
+      title: 'Recovered continuation after session recovery',
+      topic: 'Resume a startup-recovered continuation once the reviewer gets a fresh session.',
+      repoPath: 'C:/repo/cats',
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Reviewer-Agent',
+          provider: 'gemini',
+          roles: ['reviewer'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(seededChannel);
+  seededChannel.status = 'active';
+  const inlineAssignment = seededChannel.catAssignments[0];
+  const reviewerAssignment = seededChannel.catAssignments[1];
+  assert.ok(inlineAssignment);
+  assert.ok(reviewerAssignment);
+  chat = setChannelCatLease(
+    chat,
+    channelId,
+    inlineAssignment.catId,
+    {
+      sessionId: 'session-inline',
+      status: 'ready',
+      cwd: 'C:/repo/cats',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Inline-Agent',
+      body: 'Please hand this converge review to Reviewer-Agent once the session is back.',
+    },
+    now,
+  ).state;
+
+  const channel = buildChannelView(chat, channelId);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+  const inlineParticipant = {
+    participantKind: 'cat',
+    participantId: inlineAssignment.catId,
+    participantName: channel.assignedCats.find((candidate) => candidate.catId === inlineAssignment.catId)?.name
+      ?? 'Inline-Agent',
+  };
+  const reviewerParticipant = {
+    participantKind: 'cat',
+    participantId: reviewerAssignment.catId,
+    participantName: channel.assignedCats.find((candidate) => candidate.catId === reviewerAssignment.catId)?.name
+      ?? 'Reviewer-Agent',
+  };
+
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const workflow = resolveRoomWorkflowState(roomRouting.workflow);
+  const activeTurn = createWorkflowTurn(
+    sourceMessage,
+    now.toISOString(),
+    'converge_review',
+    'converge',
+  );
+  activeTurn.id = 'turn-startup-recovered-session-recovery';
+  activeTurn.reviewRequired = true;
+  activeTurn.convergeTargetId = reviewerParticipant.participantId;
+  activeTurn.dispatchCount = 1;
+  activeTurn.targetStatuses.push({
+    id: 'target-state-startup-recovered-session-recovery',
+    dispatchId: 'dispatch-startup-recovered-session-recovery',
+    participant: reviewerParticipant,
+    source: inlineParticipant,
+    sourceMessageId: sourceMessage.id,
+    trigger: 'continuation_mention',
+    mentionNames: ['Reviewer-Agent'],
+    depth: 1,
+    parentCheckpointId: 'checkpoint-startup-recovered-session-recovery',
+    branchStrategy: 'transplant_context',
+    handoffReason: 'workflow_continuation',
+    wakeRequestId: null,
+    status: 'running',
+    queuedAt: now.toISOString(),
+    startedAt: now.toISOString(),
+    completedAt: null,
+    responseMessageId: null,
+    error: null,
+  });
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'target_pending',
+      'running',
+      'Reviewer-Agent is pending converge review.',
+      now.toISOString(),
+      inlineParticipant,
+      sourceMessage.id,
+      [reviewerParticipant],
+      {
+        dispatchId: 'dispatch-startup-recovered-session-recovery',
+        metadata: {
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+          reviewRequired: true,
+          continuationSource: 'workflow_recommendation',
+          branchStrategy: 'transplant_context',
+          mentionNames: ['Reviewer-Agent'],
+          unresolvedTargets: [],
+          workflowRecommendation: {
+            source: 'boss_replan',
+            workflowShape: 'converge',
+            reviewRequired: true,
+            candidateTargets: [
+              {
+                participantKind: 'cat',
+                participantId: reviewerParticipant.participantId,
+                participantName: reviewerParticipant.participantName,
+              },
+            ],
+            branchStrategy: 'transplant_context',
+            rationale: 'Recover the converge review once the reviewer session is back.',
+          },
+        },
+      },
+    ),
+  );
+  workflow.activeTurn = activeTurn;
+  roomRouting.workflow = workflow;
+  roomRouting.lastOutcome = {
+    turnId: activeTurn.id,
+    mode: roomRouting.mode ?? createDefaultRoomRoutingState().mode,
+    sourceMessageId: sourceMessage.id,
+    sourceSenderKind: sourceMessage.senderKind,
+    sourceSenderName: sourceMessage.senderName,
+    status: 'running',
+    resolution: {
+      routingMode: 'explicit_single',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: 'Converge review is waiting on Reviewer-Agent.',
+    },
+    resolvedTargets: [reviewerParticipant],
+    unresolvedMentions: [],
+    dispatches: [
+      {
+        id: 'dispatch-startup-recovered-session-recovery',
+        sourceMessageId: sourceMessage.id,
+        source: inlineParticipant,
+        target: reviewerParticipant,
+        trigger: 'continuation_mention',
+        status: 'running',
+        mentionNames: ['Reviewer-Agent'],
+        responseMessageId: null,
+        startedAt: now.toISOString(),
+        completedAt: null,
+        error: null,
+      },
+    ],
+    checkpoints: [],
+    continuationCount: 1,
+    totalDispatchCount: 1,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: null,
+  };
+  chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
+
+  const chatStore = new MemoryChatStore(chat);
+  const reviewerCat = chat.cats.find((cat) => cat.id === reviewerAssignment.catId);
+  assert.ok(reviewerCat);
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const initialCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(initialCoreResponse.status, 200);
+    const initialCorePayload = await initialCoreResponse.json();
+    const taskId = `task-channel-${channelId}`;
+    const task = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
+    assert.ok(task);
+    assert.ok(task.metadata.workflowContinuationReplay);
+    assert.equal(runtimeClient.sentMessages.length, 0);
+
+    const recoverResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${reviewerCat.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        provider: reviewerCat.defaultExecutionTarget.provider,
+        instance: reviewerCat.defaultExecutionTarget.instance,
+        model: reviewerCat.defaultExecutionTarget.model,
+        modelSelection: reviewerCat.defaultModelSelection ?? null,
+      }),
+    });
+    assert.equal(recoverResponse.status, 200);
+    assert.equal(runtimeClient.sentMessages.length, 1);
+    assert.match(runtimeClient.sentMessages[0]?.content ?? '', /You are Reviewer-Agent/u);
+
+    const finalCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(finalCoreResponse.status, 200);
+    const finalCorePayload = await finalCoreResponse.json();
+    const finalTask = finalCorePayload.tasks.find((candidate) => candidate.id === taskId);
+    assert.ok(finalTask);
+    assert.equal(finalTask.metadata.workflowContinuationReplay, undefined);
+    assert.ok(
+      finalCorePayload.activities.some((activity) =>
+        activity.taskId === taskId
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_dispatched'
+        && activity.metadata?.resumeReason === 'target_recovered'
+        && activity.metadata?.resultCount === 1),
+    );
+  }, chatStore);
+});
+
 test('startup-recovered parallel continuation replay waits for every concrete target to recover before auto-resuming', async () => {
   const runtimeClient = createRuntimeStub({
     sendMessage: ({ content }) => {

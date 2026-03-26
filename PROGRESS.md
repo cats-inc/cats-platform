@@ -375,7 +375,9 @@ Known follow-ups:
   same assignment-recovery seam instead of partial-dispatching a degraded
   fan-out, with that intermediate `no_valid_targets` / unresolved-target
   state now also written back into task metadata for recovery/control-plane
-  reads
+  reads, while startup-recovered single-target continuations can now also
+  auto-resume when an already-assigned active target regains its session
+  lease instead of requiring a remove/re-add cycle
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without
