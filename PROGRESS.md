@@ -327,6 +327,10 @@ Known follow-ups:
 - that same target-recovery auto-resume path now also appends additive replay
   lifecycle activity with `resumeReason=target_recovered`, so operator feeds
   can distinguish automatic target recovery from manual retry
+- startup recovery now also re-attempts ready recommendation-based
+  `no_valid_targets` continuation replays when their targets are already
+  active again after restart, while still-unresolved replays stay quiet and
+  ready instead of re-emitting blocked replay activity on every boot
 - recommendation-driven `parallel` continuation replay now stays
   `blocked/no_valid_targets` until every candidate target in the stored
   workflow recommendation is active again, so target recovery cannot silently

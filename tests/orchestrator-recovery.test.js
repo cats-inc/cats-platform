@@ -40,6 +40,10 @@ import {
   createWorkflowTurn,
 } from '../dist-server/products/chat/state/room-routing/workflow.js';
 
+function buildChannelTaskId(channelId) {
+  return `task-channel-${channelId}`;
+}
+
 test('startup recovery turns stranded orchestrator replay metadata into retryable failed state', async () => {
   const now = new Date('2026-03-26T06:00:00.000Z');
   const taskWrite = upsertCoreTask(
@@ -190,6 +194,309 @@ test('startup recovery turns stranded workflow-continuation replay metadata into
   assert.ok(recoveryNote);
   assert.equal(recoveryNote?.kind, 'note');
   assert.equal(recoveryNote?.metadata?.replayPhase, 'startup_recovered');
+});
+
+test('startup recovery auto-resumes recovered continuation replays and syncs shared core state', async () => {
+  const now = new Date('2026-03-26T06:30:00.000Z');
+  let chat = createDefaultChatState();
+  chat = createChannel(
+    chat,
+    {
+      title: 'Recovered continuation replay',
+      topic: 'Resume the stored recommendation after restart.',
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Followup-Agent',
+          provider: 'gemini',
+          roles: ['auditor'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  const chatChannel = chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(chatChannel);
+  assert.equal(chatChannel.catAssignments.length, 2);
+  chatChannel.catAssignments[0].execution.lease.sessionId = 'session-inline';
+  chatChannel.catAssignments[1].execution.lease.sessionId = 'session-followup';
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Owner',
+      body: 'Please continue once the reviewer is available again.',
+    },
+    now,
+  ).state;
+  const channel = buildChannelView(chat, channelId);
+  const followupTarget = channel.assignedCats[1];
+  assert.ok(followupTarget);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+
+  const chatStore = new MemoryChatStore();
+  await chatStore.write(chat);
+  const taskId = buildChannelTaskId(channelId);
+  const baseCore = await chatStore.readCore();
+  const existingTask = baseCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
+  const taskWrite = upsertCoreTask(
+    baseCore,
+    {
+      id: taskId,
+      title: existingTask?.title ?? 'Recovered continuation replay',
+      status: 'blocked',
+      conversationId: existingTask?.conversationId ?? `conversation-channel-${channelId}`,
+      summary: existingTask?.summary ?? 'Resume the recovered continuation replay.',
+      createdAt: existingTask?.createdAt ?? now.toISOString(),
+      metadata: writeWorkflowContinuationReplayMetadata(
+        existingTask?.metadata,
+        buildWorkflowContinuationReplayRequest({
+          channelId,
+          checkpointId: 'checkpoint-startup-auto-resume',
+          sourceMessageId: sourceMessage.id,
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: channel.assignedCats[0]?.catId ?? 'cat-inline',
+            participantName: channel.assignedCats[0]?.name ?? 'Inline-Agent',
+          },
+          targets: [],
+          branchStrategy: 'transplant_context',
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'sequential',
+          continuationSource: 'workflow_recommendation',
+          workflowRecommendation: {
+            source: 'checkpoint',
+            workflowShape: 'sequential',
+            reviewRequired: false,
+            candidateTargets: [
+              {
+                participantKind: 'cat',
+                participantId: followupTarget.catId,
+                participantName: followupTarget.name,
+              },
+            ],
+            branchStrategy: 'transplant_context',
+            rationale: 'Resume the recovered specialist continuation.',
+          },
+          unresolvedTargets: ['Followup-Agent'],
+          blockedReason: 'no_valid_targets',
+          recordedAt: '2026-03-26T06:29:00.000Z',
+        }),
+        {
+          replayState: 'ready',
+          replayTrigger: 'retry',
+        },
+      ),
+    },
+    now,
+  );
+  await chatStore.writeCore(taskWrite.core);
+  const sharedCoreStore = new MemoryCoreStore(taskWrite.core);
+  const resumedRequests = [];
+
+  const recoveredCount = await reconcileOrchestratorRecoveryOnStartup({
+    shared: {
+      coreStore: sharedCoreStore,
+      now: () => new Date('2026-03-26T06:31:00.000Z'),
+      async resumeWorkflowContinuationDispatch(request) {
+        resumedRequests.push(request);
+        const latestCore = await chatStore.readCore();
+        const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId);
+        assert.ok(latestTask);
+        const cleared = upsertCoreTask(
+          latestCore,
+          {
+            id: latestTask.id,
+            title: latestTask.title,
+            status: latestTask.status,
+            conversationId: latestTask.conversationId,
+            parentTaskId: latestTask.parentTaskId ?? null,
+            ownerActorId: latestTask.ownerActorId,
+            orchestratorActorId: latestTask.orchestratorActorId,
+            assignedActorIds: latestTask.assignedActorIds,
+            summary: latestTask.summary,
+            approval: latestTask.approval,
+            createdAt: latestTask.createdAt,
+            metadata: writeWorkflowContinuationReplayMetadata(latestTask.metadata, null),
+          },
+          new Date('2026-03-26T06:31:00.000Z'),
+        );
+        await chatStore.writeCore(cleared.core);
+        return {
+          channelId: request.channelId,
+          sourceMessageId: request.sourceMessageId,
+          status: 'dispatched',
+          blockedReason: null,
+          results: [{ participantId: followupTarget.catId }],
+          executionState: 'completed',
+        };
+      },
+    },
+    chat: {
+      chatStore,
+    },
+  });
+
+  assert.equal(recoveredCount, 1);
+  assert.equal(resumedRequests.length, 1);
+  const sharedCore = await sharedCoreStore.readCore();
+  const sharedTask = sharedCore.tasks.find((candidate) => candidate.id === taskId);
+  assert.ok(sharedTask);
+  assert.equal(sharedTask.metadata.workflowContinuationReplay, undefined);
+  assert.ok(
+    sharedCore.activities.some((activity) =>
+      activity.taskId === taskId
+      && activity.metadata?.source === 'workflow-continuation-replay'
+      && activity.metadata?.replayPhase === 'replay_started'
+      && activity.metadata?.resumeReason === 'target_recovered'),
+  );
+  assert.ok(
+    sharedCore.activities.some((activity) =>
+      activity.taskId === taskId
+      && activity.metadata?.source === 'workflow-continuation-replay'
+      && activity.metadata?.replayPhase === 'replay_dispatched'
+      && activity.metadata?.resumeReason === 'target_recovered'
+      && activity.metadata?.resultCount === 1),
+  );
+  const chatCore = await chatStore.readCore();
+  assert.deepEqual(
+    chatCore.tasks.find((candidate) => candidate.id === taskId)?.metadata.workflowContinuationReplay,
+    undefined,
+  );
+});
+
+test('startup recovery skips ready continuation replays until targets actually recover', async () => {
+  const now = new Date('2026-03-26T06:40:00.000Z');
+  let chat = createDefaultChatState();
+  chat = createChannel(
+    chat,
+    {
+      title: 'Still blocked continuation replay',
+      topic: 'Do not replay until a target comes back.',
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  const chatChannel = chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(chatChannel);
+  chatChannel.catAssignments[0].execution.lease.sessionId = 'session-inline';
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Owner',
+      body: 'Resume this only when the follow-up specialist is available.',
+    },
+    now,
+  ).state;
+  const channel = buildChannelView(chat, channelId);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+
+  const chatStore = new MemoryChatStore();
+  await chatStore.write(chat);
+  const taskId = buildChannelTaskId(channelId);
+  const baseCore = await chatStore.readCore();
+  const taskWrite = upsertCoreTask(
+    baseCore,
+    {
+      id: taskId,
+      title: 'Still blocked continuation replay',
+      status: 'blocked',
+      conversationId: `conversation-channel-${channelId}`,
+      summary: 'Keep the replay ready until the target returns.',
+      createdAt: now.toISOString(),
+      metadata: writeWorkflowContinuationReplayMetadata(
+        {},
+        buildWorkflowContinuationReplayRequest({
+          channelId,
+          checkpointId: 'checkpoint-startup-still-blocked',
+          sourceMessageId: sourceMessage.id,
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: channel.assignedCats[0].catId,
+            participantName: channel.assignedCats[0].name,
+          },
+          targets: [],
+          branchStrategy: 'transplant_context',
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'sequential',
+          continuationSource: 'workflow_recommendation',
+          workflowRecommendation: {
+            source: 'checkpoint',
+            workflowShape: 'sequential',
+            reviewRequired: false,
+            candidateTargets: [
+              {
+                participantKind: 'cat',
+                participantName: 'Followup-Agent',
+              },
+            ],
+            branchStrategy: 'transplant_context',
+            rationale: 'Wait for the missing follow-up specialist.',
+          },
+          unresolvedTargets: ['Followup-Agent'],
+          blockedReason: 'no_valid_targets',
+          recordedAt: '2026-03-26T06:39:00.000Z',
+        }),
+        {
+          replayState: 'ready',
+          replayTrigger: 'retry',
+        },
+      ),
+    },
+    now,
+  );
+  await chatStore.writeCore(taskWrite.core);
+  const sharedCoreStore = new MemoryCoreStore(taskWrite.core);
+  let resumeCalls = 0;
+
+  const recoveredCount = await reconcileOrchestratorRecoveryOnStartup({
+    shared: {
+      coreStore: sharedCoreStore,
+      now: () => new Date('2026-03-26T06:41:00.000Z'),
+      async resumeWorkflowContinuationDispatch() {
+        resumeCalls += 1;
+        throw new Error('startup recovery should not replay unresolved targets');
+      },
+    },
+    chat: {
+      chatStore,
+    },
+  });
+
+  assert.equal(recoveredCount, 0);
+  assert.equal(resumeCalls, 0);
+  const sharedCore = await sharedCoreStore.readCore();
+  const sharedTask = sharedCore.tasks.find((candidate) => candidate.id === taskId);
+  assert.ok(sharedTask);
+  assert.equal(sharedTask.metadata.workflowContinuationReplay?.blockedReason, 'no_valid_targets');
+  assert.equal(sharedTask.metadata.workflowContinuationReplay?.replayState, 'ready');
+  assert.ok(
+    !sharedCore.activities.some((activity) =>
+      activity.taskId === taskId
+      && activity.metadata?.source === 'workflow-continuation-replay'
+      && activity.metadata?.resumeReason === 'target_recovered'),
+  );
 });
 
 test('startup recovery finalizes stranded room workflow turns into blocked history and core records', async () => {

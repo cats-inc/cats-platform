@@ -20,6 +20,9 @@ import {
 import {
   appendOrchestratorReplayActivity,
 } from '../../platform/orchestration/replayActivity.js';
+import {
+  canResumeWorkflowContinuationReplay,
+} from '../../products/chat/state/runtime-dispatch/replay.js';
 import type { ResolvedServerDependencies } from './contracts.js';
 
 const INTERRUPTED_REPLAY_ERROR = 'Cats server restarted before orchestrator replay cleanup completed.';
@@ -48,6 +51,144 @@ function overwriteTaskMetadata(
     },
     now,
   ).core;
+}
+
+async function writeSynchronizedCoreState(
+  dependencies: ResolvedServerDependencies,
+  core: CatsCoreState,
+): Promise<void> {
+  await dependencies.shared.coreStore.writeCore(core);
+  const chatStore = dependencies.chat?.chatStore;
+  if (chatStore && dependencies.shared.coreStore !== chatStore) {
+    await chatStore.writeCore(core);
+  }
+}
+
+async function appendReplayActivityAndSync(
+  dependencies: ResolvedServerDependencies,
+  taskId: string,
+  input: {
+    source: 'workflow-continuation-replay' | 'orchestrator-startup-recovery';
+    phase: 'replay_started' | 'replay_dispatched' | 'replay_blocked' | 'replay_failed' | 'startup_recovered';
+    error?: string | null;
+    resumeReason?: 'target_recovered' | null;
+    blockedReason?: string | null;
+    resultCount?: number | null;
+    pendingDispatchRecovered?: boolean;
+    dispatchReplayRecovered?: boolean;
+  },
+  now: Date,
+): Promise<void> {
+  const latestCore = await dependencies.shared.coreStore.readCore();
+  const task = latestCore.tasks.find((candidate) => candidate.id === taskId);
+  if (!task) {
+    return;
+  }
+
+  const nextCore = appendOrchestratorReplayActivity(
+    latestCore,
+    {
+      task,
+      ...input,
+    },
+    now,
+  ).core;
+  await writeSynchronizedCoreState(dependencies, nextCore);
+}
+
+function shouldAutoResumeReadyContinuationReplay(
+  replay: ReturnType<typeof readWorkflowContinuationReplay>,
+): replay is NonNullable<ReturnType<typeof readWorkflowContinuationReplay>> {
+  return Boolean(
+    replay
+    && replay.replayState === 'ready'
+    && replay.blockedReason === 'no_valid_targets'
+    && replay.workflowRecommendation,
+  );
+}
+
+async function autoResumeRecoveredContinuationReplaysOnStartup(
+  dependencies: ResolvedServerDependencies,
+  now: Date,
+): Promise<number> {
+  if (!dependencies.chat?.chatStore) {
+    return 0;
+  }
+
+  const core = await dependencies.shared.coreStore.readCore();
+  let resumedCount = 0;
+
+  for (const task of core.tasks) {
+    const replay = readWorkflowContinuationReplay(task.metadata);
+    if (!shouldAutoResumeReadyContinuationReplay(replay)) {
+      continue;
+    }
+
+    const chatState = await dependencies.chat.chatStore.read();
+    if (!canResumeWorkflowContinuationReplay(replay, chatState)) {
+      continue;
+    }
+
+    await appendReplayActivityAndSync(
+      dependencies,
+      task.id,
+      {
+        source: 'workflow-continuation-replay',
+        phase: 'replay_started',
+        resumeReason: 'target_recovered',
+      },
+      now,
+    );
+
+    try {
+      const result = await dependencies.shared.resumeWorkflowContinuationDispatch(
+        replay,
+        {
+          trigger: 'retry',
+        },
+      );
+      if (dependencies.shared.coreStore !== dependencies.chat.chatStore) {
+        await dependencies.shared.coreStore.writeCore(
+          await dependencies.chat.chatStore.readCore(),
+        );
+      }
+      await appendReplayActivityAndSync(
+        dependencies,
+        task.id,
+        {
+          source: 'workflow-continuation-replay',
+          phase: result.status === 'dispatched'
+            ? 'replay_dispatched'
+            : 'replay_blocked',
+          resumeReason: 'target_recovered',
+          blockedReason: result.blockedReason,
+          resultCount: result.results.length,
+        },
+        now,
+      );
+    } catch (error) {
+      if (dependencies.shared.coreStore !== dependencies.chat.chatStore) {
+        await dependencies.shared.coreStore.writeCore(
+          await dependencies.chat.chatStore.readCore(),
+        );
+      }
+      await appendReplayActivityAndSync(
+        dependencies,
+        task.id,
+        {
+          source: 'workflow-continuation-replay',
+          phase: 'replay_failed',
+          resumeReason: 'target_recovered',
+          error: error instanceof Error ? error.message : 'Unknown startup recovery error.',
+        },
+        now,
+      );
+    }
+
+    resumedCount += 1;
+  }
+
+  return resumedCount;
 }
 
 export async function reconcileOrchestratorRecoveryOnStartup(
@@ -134,9 +275,9 @@ export async function reconcileOrchestratorRecoveryOnStartup(
   }
 
   if (recoveredCount === 0) {
-    return 0;
+    return autoResumeRecoveredContinuationReplaysOnStartup(dependencies, now);
   }
 
-  await dependencies.shared.coreStore.writeCore(nextCore);
-  return recoveredCount;
+  await writeSynchronizedCoreState(dependencies, nextCore);
+  return recoveredCount + await autoResumeRecoveredContinuationReplaysOnStartup(dependencies, now);
 }

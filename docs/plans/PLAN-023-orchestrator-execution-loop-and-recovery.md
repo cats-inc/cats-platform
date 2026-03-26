@@ -107,7 +107,9 @@ MCP tool plane.
   matching participant becomes active, chat-side assignment recovery can now
   also resume that replay when a matching cat becomes active again, the same
   recovery path now appends additive replay activity with
-  `resumeReason=target_recovered`, core recovery routes now also project/filter
+  `resumeReason=target_recovered`, startup recovery now also re-attempts ready
+  recommendation-based `no_valid_targets` replays when their targets are
+  already active again after restart, core recovery routes now also project/filter
   that normalized latest replay resume reason, recommendation-driven
   `parallel` replay now also waits for every candidate target in the stored
   workflow recommendation before auto-resuming a blocked fan-out, blocked

@@ -172,8 +172,10 @@ contracts.
       participants currently satisfy it, while retry can now keep that replay
       `blocked` plus ready for a later retry until the target becomes active,
       automatic chat-side assignment recovery can now also resume that replay
-      when a matching cat becomes active again, with additive replay activity
-      marking that path as `resumeReason=target_recovered`, while core
+      when a matching cat becomes active again, startup recovery now also
+      re-attempts ready recommendation-based `no_valid_targets` replays when
+      their targets are already active again after restart, with additive
+      replay activity marking that path as `resumeReason=target_recovered`, while core
       recovery routes can now also project/filter/count that normalized latest
       replay resume reason for operator automation, recommendation-driven
       `parallel` replay now also waits for every candidate target to recover

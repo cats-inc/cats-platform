@@ -221,6 +221,23 @@ function buildReplayResolution(
   );
 }
 
+export function canResumeWorkflowContinuationReplay(
+  request: WorkflowContinuationReplaySnapshot,
+  state: ChatState,
+): boolean {
+  try {
+    const resolution = buildReplayResolution(request, state).resolution;
+    return Boolean(
+      resolution
+      && resolution.targets.length > 0
+      && resolution.targets.every((target) =>
+        typeof target.sessionId === 'string' && target.sessionId.trim().length > 0),
+    );
+  } catch {
+    return false;
+  }
+}
+
 function buildReplayResolutionSourceTargets(
   resolution: TargetResolution,
 ): RoomRoutingParticipantRef[] {
