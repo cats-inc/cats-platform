@@ -2708,6 +2708,8 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(inboxPayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(inboxPayload.summary.workflowShapeCounts.converge, 1);
+    assert.equal(inboxPayload.summary.workflowReviewRequiredCount, 1);
+    assert.equal(inboxPayload.summary.workflowConvergeTargetCount, 1);
     assert.equal(inboxPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
     assert.equal(inboxPayload.summary.latestTimelineCategoryCounts.execution, 1);
     assert.equal(inboxPayload.summary.latestTimelineKindCounts.run, 1);
@@ -2732,6 +2734,8 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(controlPlanePayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(controlPlanePayload.summary.workflowShapeCounts.converge, 1);
+    assert.equal(controlPlanePayload.summary.workflowReviewRequiredCount, 1);
+    assert.equal(controlPlanePayload.summary.workflowConvergeTargetCount, 1);
     assert.equal(
       controlPlanePayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches,
       1,
@@ -2761,6 +2765,8 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(recoveryPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(recoveryPayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(recoveryPayload.summary.workflowShapeCounts.converge, 1);
+    assert.equal(recoveryPayload.summary.workflowReviewRequiredCount, 1);
+    assert.equal(recoveryPayload.summary.workflowConvergeTargetCount, 1);
     assert.equal(recoveryPayload.summary.withChildrenCount, 0);
     assert.equal(recoveryPayload.summary.withActiveChildrenCount, 0);
     assert.deepEqual(

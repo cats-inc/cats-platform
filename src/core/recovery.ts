@@ -263,6 +263,8 @@ export interface CoreTaskRecoveryListSummary {
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
   workflowShapeCounts: Record<CoreTaskRecoveryWorkflowShape, number>;
+  workflowReviewRequiredCount: number;
+  workflowConvergeTargetCount: number;
   withChildrenCount: number;
   withActiveChildrenCount: number;
 }
@@ -982,6 +984,10 @@ export function summarizeCoreTaskRecoveryViews(input: {
     deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),
     workflowStageCounts: buildRecoveryWorkflowStageCounts(input.recoveries),
     workflowShapeCounts: buildRecoveryWorkflowShapeCounts(input.recoveries),
+    workflowReviewRequiredCount: input.recoveries.filter((recovery) =>
+      recovery.context?.workflowReviewRequired === true).length,
+    workflowConvergeTargetCount: input.recoveries.filter((recovery) =>
+      Boolean(recovery.context?.workflowConvergeTargetId)).length,
     withChildrenCount: input.recoveries.filter((recovery) => recovery.family.childCount > 0).length,
     withActiveChildrenCount: input.recoveries.filter((recovery) =>
       recovery.family.childCount > 0 && !recovery.family.allChildrenTerminal).length,

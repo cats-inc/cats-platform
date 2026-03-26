@@ -590,6 +590,8 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
     anti_ping_pong: 1,
     no_valid_targets: 0,
   });
+  assert.equal(workflowResult.summary.workflowReviewRequiredCount, 1);
+  assert.equal(workflowResult.summary.workflowConvergeTargetCount, 1);
   assert.equal(workflowResult.recoveries[0]?.context?.workflowReviewRequired, true);
   assert.equal(workflowResult.recoveries[0]?.context?.workflowConvergeTargetId, 'cat-followup');
 });

@@ -1447,6 +1447,8 @@ Semantics:
   - `deliveryActionCounts`
   - `workflowStageCounts`
   - `workflowShapeCounts`
+  - `workflowReviewRequiredCount`
+  - `workflowConvergeTargetCount`
   - `workflowContinuationBlockedReasonCounts`
   - `latestTimelineCategoryCounts`
   - `latestTimelineKindCounts`
@@ -1543,7 +1545,8 @@ Semantics:
   operator automation or non-UI inbox consumers can page or facet the inbox
   without hydrating the full core snapshot client-side, including
   `deliveryModeCounts`, `deliveryActionCounts`, `workflowStageCounts`,
-  `workflowShapeCounts`, `workflowContinuationBlockedReasonCounts`,
+  `workflowShapeCounts`, `workflowReviewRequiredCount`,
+  `workflowConvergeTargetCount`, `workflowContinuationBlockedReasonCounts`,
   `latestTimelineCategoryCounts`, and `latestTimelineKindCounts`, plus
   `withChildrenCount` and `withActiveChildrenCount`
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
@@ -1763,6 +1766,8 @@ Semantics:
   - `deliveryActionCounts`
   - `workflowStageCounts`
   - `workflowShapeCounts`
+  - `workflowReviewRequiredCount`
+  - `workflowConvergeTargetCount`
   - `withChildrenCount`
   - `withActiveChildrenCount`
 - the payload normalizes three product-owned recovery records when present:

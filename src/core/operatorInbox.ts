@@ -74,6 +74,8 @@ export interface CoreOperatorInboxSummary {
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
   workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
+  workflowReviewRequiredCount: number;
+  workflowConvergeTargetCount: number;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
   workflowContinuationBlockedReasonCounts: Record<
@@ -489,6 +491,10 @@ export function summarizeCoreOperatorInboxItems(input: {
     deliveryActionCounts: buildDeliveryActionCounts(input.items),
     workflowStageCounts: buildWorkflowStageCounts(input.items),
     workflowShapeCounts: buildWorkflowShapeCounts(input.items),
+    workflowReviewRequiredCount: input.items.filter((item) => readEffectiveWorkflowReviewRequired(item))
+      .length,
+    workflowConvergeTargetCount: input.items.filter((item) =>
+      Boolean(readEffectiveWorkflowConvergeTargetId(item))).length,
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),
     latestTimelineKindCounts: buildLatestTimelineKindCounts(input.items),
     workflowContinuationBlockedReasonCounts:

@@ -254,6 +254,8 @@ export interface CoreTaskControlPlaneListSummary {
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
   workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
+  workflowReviewRequiredCount: number;
+  workflowConvergeTargetCount: number;
   workflowContinuationBlockedReasonCounts: Record<WorkflowContinuationReplayBlockedReason, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
@@ -1165,6 +1167,10 @@ export function summarizeCoreTaskControlPlaneViews(input: {
     deliveryActionCounts: buildDeliveryActionCounts(input.views),
     workflowStageCounts: buildWorkflowStageCounts(input.views),
     workflowShapeCounts: buildWorkflowShapeCounts(input.views),
+    workflowReviewRequiredCount: input.views.filter((view) => readEffectiveWorkflowReviewRequired(view))
+      .length,
+    workflowConvergeTargetCount: input.views.filter((view) =>
+      Boolean(readEffectiveWorkflowConvergeTargetId(view))).length,
     workflowContinuationBlockedReasonCounts:
       buildWorkflowContinuationBlockedReasonCounts(input.views),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.views),
