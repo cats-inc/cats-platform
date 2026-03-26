@@ -2,6 +2,7 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../../api/contracts';
 import { AvatarCropDialog } from '../../../../../design/components/AvatarCropDialog';
+import { catInitials } from '../../chatUtils';
 import { updateCatProfile } from '../../api';
 import type {
   DurableMemoryItem,
@@ -118,14 +119,14 @@ export function SettingsCatsDetailPanel({
             role="button"
             tabIndex={0}
           >
-            {cat.avatarUrl ? '' : (cat.name.split(/\s+/).slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase())}
+            {cat.avatarUrl ? '' : catInitials(cat.name)}
           </div>
           <button
             type="button"
-            style={{ padding: 0, border: 0, background: 'none', color: 'var(--accent)', fontSize: '0.8rem', cursor: 'pointer' }}
+            className="primaryButton"
             onClick={() => setCropOpen(true)}
           >
-            {cat.avatarUrl ? 'Change' : 'Upload'}
+            {cat.avatarUrl ? 'Change avatar' : 'Upload avatar'}
           </button>
         </div>
       </div>

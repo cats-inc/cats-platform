@@ -83,11 +83,7 @@ export function presentChannelTitle(title: string): string {
   return title.trim() === 'Untitled chat' ? 'New chat' : title;
 }
 
-export function catInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
+export { nameInitials as catInitials } from '../../../shared/nameInitials.js';
 
 export function truncatePath(fullPath: string, maxLen = 20): string {
   const name = fullPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? fullPath;

@@ -9,6 +9,7 @@ export interface CatInspectTarget {
   id: string;
   name: string;
   avatarColor: string | null;
+  avatarUrl?: string | null;
   provider: string;
   instance: string | null;
   model: string | null;
@@ -57,9 +58,11 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
         <div className="catInspectIdentity">
           <div
             className={cat.isBoss ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
-            style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
+            style={cat.avatarUrl
+              ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+              : cat.avatarColor ? { background: cat.avatarColor } : undefined}
           >
-            {catInitials(cat.name)}
+            {cat.avatarUrl ? null : catInitials(cat.name)}
           </div>
           <div>
             <strong>{cat.name}</strong>

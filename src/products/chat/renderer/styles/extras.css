@@ -250,8 +250,8 @@
 
 .catAvatarLeadBadge {
   position: absolute;
-  bottom: -4px;
-  right: -4px;
+  top: -4px;
+  left: -4px;
   font-size: 0.55rem;
   line-height: 1;
   pointer-events: none;

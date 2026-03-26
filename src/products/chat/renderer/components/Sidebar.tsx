@@ -351,9 +351,11 @@ export function Sidebar({
                       >
                         <span
                           className={isBoss ? 'myCatAvatarWrap catAvatar catAvatarBoss' : 'myCatAvatarWrap catAvatar'}
-                          style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
+                          style={cat.avatarUrl
+                            ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                            : cat.avatarColor ? { background: cat.avatarColor } : undefined}
                         >
-                          {catInitials(cat.name)}
+                          {cat.avatarUrl ? null : catInitials(cat.name)}
                           {dotClass ? <span className={dotClass} data-tooltip={dotTitle} /> : null}
                         </span>
                         <span className="myCatName">{cat.name}</span>
@@ -426,7 +428,14 @@ export function Sidebar({
           onClick={onAccountMenuToggle}
           aria-label="Account menu"
         >
-          <div className="profileBadge">{catInitials(payload.ownerDisplayName)}</div>
+          <div
+            className="profileBadge"
+            style={payload.ownerAvatarUrl
+              ? { backgroundImage: `url(${payload.ownerAvatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+              : undefined}
+          >
+            {payload.ownerAvatarUrl ? null : catInitials(payload.ownerDisplayName)}
+          </div>
           <div className="sidebarFooterMeta">
             <strong>{payload.ownerDisplayName}</strong>
           </div>

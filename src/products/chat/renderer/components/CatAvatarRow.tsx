@@ -55,7 +55,9 @@ export function CatAvatarRow({
             role="button"
             tabIndex={0}
             className={classNames}
-            style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
+            style={cat.avatarUrl
+              ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+              : cat.avatarColor ? { background: cat.avatarColor } : undefined}
             data-tooltip={cat.name}
             onClick={() => {
               if (toggleable) {
@@ -66,7 +68,7 @@ export function CatAvatarRow({
               }
             }}
           >
-            {catInitials(cat.name)}
+            {cat.avatarUrl ? null : catInitials(cat.name)}
             {showLeadBadge && isLead ? (
               <span className="catAvatarLeadBadge">&#x1F451;</span>
             ) : null}

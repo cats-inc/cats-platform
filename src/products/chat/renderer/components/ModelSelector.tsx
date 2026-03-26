@@ -131,7 +131,7 @@ export function ModelSelectorPanel({
         highlightedId={highlightedCatId}
         leadCatId={leadCatId}
         toggleable={mode === 'draft'}
-        showLeadBadge={mode === 'draft'}
+        showLeadBadge
         onToggle={onToggleCat ?? (() => {})}
         onHighlight={onHighlightCat ?? (() => {})}
       />

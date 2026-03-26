@@ -1,7 +1,8 @@
 import { useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts';
-import { catInitials, isChatCat, truncatePath } from '../chatUtils';
+import { isChatCat, truncatePath } from '../chatUtils';
+import { ComposerCatStack } from './ComposerCatStack';
 import {
   buildModelSelectorLabel,
   ModelSelectorChip,
@@ -253,34 +254,14 @@ export function NewChatDraft({
               ) : null}
             </div>
             {effectiveLeadCat ? (
-              <div
-                className="composerCatStack"
-                style={{ marginRight: 10 }}
+              <ComposerCatStack
+                cats={[effectiveLeadCat, ...nonLeadDraftCatIds
+                  .map((id) => chatCats.find((c) => c.id === id))
+                  .filter((c): c is NonNullable<typeof c> => c != null)]}
+                bossCatId={payload.chat.bossCatId}
+                leadCatId={effectiveLeadCat.id}
                 onClick={() => setPanelOpen(!panelOpen)}
-                role="button"
-                tabIndex={0}
-              >
-                {[effectiveLeadCat.id, ...nonLeadDraftCatIds].map((id, index) => {
-                  const cat = id === effectiveLeadCat.id ? effectiveLeadCat : chatCats.find((c) => c.id === id);
-                  if (!cat) return null;
-                  const isBoss = cat.id === payload.chat.bossCatId;
-                  const isLead = index === 0;
-                  return (
-                    <div
-                      key={id}
-                      className={`catAvatar composerStackAvatar${isBoss ? ' catAvatarBoss' : ''}`}
-                      data-tooltip={cat.name}
-                      style={{
-                        ...(cat.avatarColor ? { background: cat.avatarColor } : {}),
-                        zIndex: visibleDraftCatIds.length - index,
-                      }}
-                    >
-                      {catInitials(cat.name)}
-                      {isLead ? <span className="catAvatarLeadBadge">&#x1F451;</span> : null}
-                    </div>
-                  );
-                })}
-              </div>
+              />
             ) : activePanelModel && chipLabel ? (
               <div style={{ marginRight: 8 }}>
                 <ModelSelectorChip

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts';
 import { AvatarCropDialog } from '../../../../design/components/AvatarCropDialog';
+import { nameInitials } from '../../../../shared/nameInitials';
 import { updateVerbosePreference } from '../api';
 
 export interface SettingsGeneralProps {
@@ -37,12 +38,7 @@ export function SettingsGeneral({
   }
 
   const avatarUrl = payload.ownerAvatarUrl;
-  const initials = payload.ownerDisplayName
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0] ?? '')
-    .join('')
-    .toUpperCase() || '?';
+  const initials = nameInitials(payload.ownerDisplayName);
 
   return (
     <div className="settingsShell">
@@ -58,7 +54,9 @@ export function SettingsGeneral({
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
             <div
               className="settingsOwnerAvatar"
-              style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined}
+              style={avatarUrl
+                ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                : undefined}
               onClick={() => setCropOpen(true)}
               role="button"
               tabIndex={0}
@@ -66,16 +64,14 @@ export function SettingsGeneral({
             >
               {!avatarUrl ? initials : null}
             </div>
-            <div>
-              <p style={{ margin: 0, fontWeight: 600 }}>{payload.ownerDisplayName}</p>
-              <button
-                type="button"
-                style={{ padding: 0, border: 0, background: 'none', color: 'var(--accent)', fontSize: '0.8rem', cursor: 'pointer' }}
-                onClick={() => setCropOpen(true)}
-              >
-                {avatarUrl ? 'Change avatar' : 'Upload avatar'}
-              </button>
-            </div>
+            <p style={{ margin: 0, fontWeight: 600 }}>{payload.ownerDisplayName}</p>
+            <button
+              type="button"
+              className="primaryButton"
+              onClick={() => setCropOpen(true)}
+            >
+              {avatarUrl ? 'Change avatar' : 'Upload avatar'}
+            </button>
           </div>
           <label className="fieldLabel">
             <span>Display name</span>

@@ -27,6 +27,7 @@ import {
 } from '../../shared/operator-loop/index';
 import { ActivityFeed } from './ActivityFeed';
 import { CatInspectPanel } from './CatInspectPanel';
+import { ComposerCatStack } from './ComposerCatStack';
 import {
   buildModelSelectorLabel,
   ModelSelectorChip,
@@ -437,16 +438,12 @@ export function ChatView({
               </div>
                 {isDirectLane && directLaneCat && directLaneModelValue ? (
                   <>
-                    <div
-                      className={directLaneCat.id === payload.chat.bossCatId ? 'catAvatar composerStackAvatar catAvatarBoss composerLeadAvatar' : 'catAvatar composerStackAvatar composerLeadAvatar'}
-                      data-tooltip={directLaneCat.name}
-                      style={directLaneCat.avatarColor ? { background: directLaneCat.avatarColor } : undefined}
+                    <ComposerCatStack
+                      cats={[directLaneCat]}
+                      bossCatId={payload.chat.bossCatId}
+                      leadCatId={directLaneCat.id}
                       onClick={() => setDirectLanePanelOpen(!directLanePanelOpen)}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      {catInitials(directLaneCat.name)}
-                    </div>
+                    />
                     {directLanePanelOpen ? (
                       <ModelSelectorPanel
                         mode="direct-lane"
@@ -454,6 +451,7 @@ export function ChatView({
                         bossCatId={payload.chat.bossCatId}
                         selectedCatIds={[directLaneCat.id]}
                         highlightedCatId={directLaneCat.id}
+                        leadCatId={directLaneCat.id}
                         modelValue={directLaneModelValue}
                         onModelChange={(value) => {
                           onDirectLaneModelChange?.(directLaneCat.id, value);
@@ -575,7 +573,7 @@ function ComposerLeadCatAvatar({
   isBoss,
   payload,
 }: {
-  cat: { catId: string; name: string; avatarColor: string | null; execution: { target: { provider: string; instance: string | null; model: string | null } }; skillProfile?: string | null };
+  cat: { catId: string; name: string; avatarColor: string | null; avatarUrl?: string | null; execution: { target: { provider: string; instance: string | null; model: string | null } }; skillProfile?: string | null };
   isBoss: boolean;
   payload: AppShellPayload;
 }) {
@@ -586,12 +584,14 @@ function ComposerLeadCatAvatar({
       <div
         className={isBoss ? 'catAvatar composerStackAvatar catAvatarBoss composerLeadAvatar' : 'catAvatar composerStackAvatar composerLeadAvatar'}
         data-tooltip={cat.name}
-        style={cat.avatarColor ? { background: cat.avatarColor } : undefined}
+        style={cat.avatarUrl
+          ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+          : cat.avatarColor ? { background: cat.avatarColor } : undefined}
         onClick={() => setInspectOpen(!inspectOpen)}
         role="button"
         tabIndex={0}
       >
-        {catInitials(cat.name)}
+        {cat.avatarUrl ? null : catInitials(cat.name)}
       </div>
       {inspectOpen ? (
         <CatInspectPanel
@@ -599,6 +599,7 @@ function ComposerLeadCatAvatar({
             id: cat.catId,
             name: cat.name,
             avatarColor: cat.avatarColor,
+            avatarUrl: cat.avatarUrl,
             provider: cat.execution.target.provider,
             instance: cat.execution.target.instance,
             model: cat.execution.target.model,

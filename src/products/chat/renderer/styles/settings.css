@@ -44,10 +44,8 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--muted-bg);
-  background-size: cover;
-  background-position: center;
-  color: var(--muted-text);
+  background: #4F4A43;
+  color: #fff;
   font-size: 1.1rem;
   font-weight: 700;
   display: grid;
