@@ -354,6 +354,10 @@ Known follow-ups:
   `latestTimelineCategory` / `latestTimelineKind` filtering plus
   `latestTimelineCategoryCounts`, so automation can facet queues by the newest
   normalized narrative signal without rescanning every task client-side
+- those same operator/control-plane list routes now also support family-aware
+  filters (`rootTaskId`, `parentTaskId`, `hasChildren`, `hasActiveChildren`)
+  plus `withChildrenCount` / `withActiveChildrenCount`, so queue automation can
+  target parent/child work without rebuilding the task graph outside `cats`
 - `src/core/recovery.ts` now also lifts delivery/workflow context into the
   recovery read model itself, so recovery filters and summary counts can facet
   by `deliveryMode`, `deliveryAction`, and `workflowStageId` without forcing

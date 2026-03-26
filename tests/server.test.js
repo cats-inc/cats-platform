@@ -2256,6 +2256,8 @@ test('core control-plane routes expose family-aware wait state for parent tasks 
     assert.equal(listPayload.tasks[0].family.childCount, 2);
     assert.equal(listPayload.tasks[0].family.terminalChildCount, 1);
     assert.equal(listPayload.tasks[0].family.allChildrenTerminal, false);
+    assert.equal(listPayload.summary.withChildrenCount, 1);
+    assert.equal(listPayload.summary.withActiveChildrenCount, 1);
 
     const detailResponse = await fetch(
       `${baseUrl}/api/core/tasks/task-control-plane-family-parent/control-plane`,
@@ -2418,6 +2420,8 @@ test('GET /api/core/operator-inbox returns actionable task summaries with latest
       'retry_available',
       'workflow_review_required',
     ]);
+    assert.equal(inboxPayload.tasks[0].family.rootTaskId, 'task-operator-inbox');
+    assert.equal(inboxPayload.tasks[0].family.childCount, 0);
     assert.equal(inboxPayload.tasks[0].latestTimelineItem.category, 'recovery');
     assert.equal(
       inboxPayload.tasks[0].latestTimelineItem.summary,
@@ -2432,6 +2436,22 @@ test('GET /api/core/operator-inbox returns actionable task summaries with latest
 
 test('core operator inspection routes support additive filters and summaries', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
+    const rootTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-ops-root',
+          title: 'Ops root task',
+          status: 'in_progress',
+          conversationId: 'conversation-channel-ops',
+        },
+      }),
+    });
+    assert.equal(rootTaskResponse.status, 201);
+
     const attentionTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
       method: 'POST',
       headers: {
@@ -2442,6 +2462,7 @@ test('core operator inspection routes support additive filters and summaries', a
           id: 'task-ops-attention',
           title: 'Attention task',
           status: 'pending_approval',
+          parentTaskId: 'task-ops-root',
           conversationId: 'conversation-channel-ops',
           metadata: writeOrchestratorDispatchReplayMetadata(
             {
@@ -2580,7 +2601,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(workflowRunResponse.status, 201);
 
     const inboxResponse = await fetch(
-      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=approve&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&latestTimelineCategory=execution&latestTimelineKind=run&limit=1`,
+      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=approve&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(inboxResponse.status, 200);
     const inboxPayload = await inboxResponse.json();
@@ -2593,14 +2614,18 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(inboxPayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(inboxPayload.summary.latestTimelineCategoryCounts.execution, 1);
+    assert.equal(inboxPayload.summary.withChildrenCount, 0);
+    assert.equal(inboxPayload.summary.withActiveChildrenCount, 0);
     assert.equal(inboxPayload.tasks.length, 1);
+    assert.equal(inboxPayload.tasks[0].family.rootTaskId, 'task-ops-root');
+    assert.equal(inboxPayload.tasks[0].family.parent.taskId, 'task-ops-root');
 
     const controlPlaneResponse = await fetch(
-      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=approval_pending&nextAction=approve&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&latestTimelineCategory=execution&latestTimelineKind=run&limit=1`,
+      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=approval_pending&nextAction=approve&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(controlPlaneResponse.status, 200);
     const controlPlanePayload = await controlPlaneResponse.json();
-    assert.equal(controlPlanePayload.summary.totalAvailable, 2);
+    assert.equal(controlPlanePayload.summary.totalAvailable, 3);
     assert.equal(controlPlanePayload.summary.matching, 1);
     assert.equal(controlPlanePayload.summary.returned, 1);
     assert.equal(controlPlanePayload.summary.reasonCounts.approval_pending, 1);
@@ -2609,6 +2634,8 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(controlPlanePayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(controlPlanePayload.summary.latestTimelineCategoryCounts.execution, 1);
+    assert.equal(controlPlanePayload.summary.withChildrenCount, 0);
+    assert.equal(controlPlanePayload.summary.withActiveChildrenCount, 0);
     assert.equal(controlPlanePayload.tasks.length, 1);
 
     const recoveryResponse = await fetch(

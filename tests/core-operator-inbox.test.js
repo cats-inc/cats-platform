@@ -141,6 +141,8 @@ test('listCoreOperatorInboxItems returns actionable task summaries with latest t
     'retry_available',
     'workflow_review_required',
   ]);
+  assert.equal(items[0]?.family.rootTaskId, 'task-inbox');
+  assert.equal(items[0]?.family.childCount, 0);
   assert.equal(items[0]?.latestTimelineItem?.category, 'recovery');
   assert.equal(
     items[0]?.latestTimelineItem?.summary,
@@ -159,9 +161,21 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   core = upsertCoreTask(
     core,
     {
+      id: 'task-inbox-root',
+      title: 'Inbox family root',
+      status: 'in_progress',
+      conversationId: 'conversation-channel-inbox',
+      createdAt: '2026-03-26T17:39:00.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
       id: 'task-inbox-match',
       title: 'Matching inbox task',
       status: 'pending_approval',
+      parentTaskId: 'task-inbox-root',
       conversationId: 'conversation-channel-inbox',
       metadata: writeOrchestratorDispatchReplayMetadata(
         {
@@ -279,6 +293,10 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     workflowStageIds: ['continuation_handoff'],
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
+    rootTaskIds: ['task-inbox-root'],
+    parentTaskIds: ['task-inbox-root'],
+    hasChildren: false,
+    hasActiveChildren: false,
   });
 
   assert.deepEqual(result.tasks.map((task) => task.taskId), [
@@ -294,4 +312,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
+  assert.equal(result.tasks[0]?.family.rootTaskId, 'task-inbox-root');
+  assert.equal(result.tasks[0]?.family.parent?.taskId, 'task-inbox-root');
+  assert.equal(result.summary.withChildrenCount, 0);
+  assert.equal(result.summary.withActiveChildrenCount, 0);
 });

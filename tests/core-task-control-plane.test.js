@@ -397,6 +397,9 @@ test('buildCoreTaskControlPlaneView surfaces waiting parent tasks with active ch
   const query = queryCoreTaskControlPlaneViews(core, {
     reasons: ['child_tasks_in_progress'],
     nextActions: ['wait'],
+    rootTaskIds: ['task-control-plane-parent'],
+    hasChildren: true,
+    hasActiveChildren: true,
   });
 
   assert.equal(view.family.rootTaskId, 'task-control-plane-parent');
@@ -414,4 +417,6 @@ test('buildCoreTaskControlPlaneView surfaces waiting parent tasks with active ch
   );
   assert.equal(query.summary.reasonCounts.child_tasks_in_progress, 1);
   assert.equal(query.summary.nextActionCounts.wait, 1);
+  assert.equal(query.summary.withChildrenCount, 1);
+  assert.equal(query.summary.withActiveChildrenCount, 1);
 });

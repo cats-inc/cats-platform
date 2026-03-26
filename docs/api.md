@@ -1390,6 +1390,10 @@ Semantics:
   - `workflowStageId`
   - `latestTimelineCategory`
   - `latestTimelineKind`
+  - `rootTaskId`
+  - `parentTaskId`
+  - `hasChildren`
+  - `hasActiveChildren`
   - `limit`
 - repeated and comma-separated values are both accepted for enum filters such
   as `taskStatus`, `severity`, `reason`, `nextAction`, `deliveryMode`, and
@@ -1408,6 +1412,8 @@ Semantics:
   - `deliveryActionCounts`
   - `workflowStageCounts`
   - `latestTimelineCategoryCounts`
+  - `withChildrenCount`
+  - `withActiveChildrenCount`
 - `approvalActions` and `incidentActions` already point at the existing
   `/api/core/approvals` and `/api/core/operator-actions` write seams through
   additive action envelopes; this route does not invent a second mutation bus
@@ -1450,6 +1456,10 @@ Returns actionable task summaries curated for operator-facing inbox consumers:
         "reasons": ["approval_pending", "retry_available"],
         "needsOperatorAttention": true
       },
+      "family": {
+        "rootTaskId": "task-operator-inbox",
+        "childCount": 0
+      },
       "latestTimelineItem": {
         "kind": "activity",
         "category": "recovery",
@@ -1478,16 +1488,24 @@ Semantics:
   - `workflowStageId`
   - `latestTimelineCategory`
   - `latestTimelineKind`
+  - `rootTaskId`
+  - `parentTaskId`
+  - `hasChildren`
+  - `hasActiveChildren`
   - `limit`
 - the response now includes the same shape of list `summary` counts so later
   operator automation or non-UI inbox consumers can page or facet the inbox
   without hydrating the full core snapshot client-side, including
   `deliveryModeCounts`, `deliveryActionCounts`, `workflowStageCounts`, and
-  `latestTimelineCategoryCounts`
+  `latestTimelineCategoryCounts`, plus `withChildrenCount` and
+  `withActiveChildrenCount`
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not
   have to join those surfaces client-side to answer "what needs attention and
   what just happened?"
+- `family` reuses the same immediate task-family topology summary exposed by
+  `GET /api/core/tasks/{taskId}`, so inbox consumers can facet parent/child
+  work without hydrating the full task-detail route first
 - passive or fully muted tasks are excluded; this inbox is intentionally biased
   toward actionable operator attention rather than exhaustive task listings
 

@@ -203,7 +203,10 @@ contracts.
       context without issuing a second timeline join, while control-plane and
       inbox list routes now also support `latestTimelineCategory` /
       `latestTimelineKind` filters plus `latestTimelineCategoryCounts` for
-      queue faceting by the newest normalized narrative signal.
+      queue faceting by the newest normalized narrative signal, and those same
+      list routes now also expose family-aware filters plus child-activity
+      summary counts so queue automation can target parent/child work without
+      rebuilding the task graph outside `cats`.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

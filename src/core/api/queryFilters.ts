@@ -135,6 +135,10 @@ export function readTaskAttentionListOptions(
       'latestTimelineKind',
       CORE_TASK_TIMELINE_ITEM_KINDS,
     ),
+    rootTaskIds: readQueryValues(searchParams, 'rootTaskId'),
+    parentTaskIds: readQueryValues(searchParams, 'parentTaskId'),
+    hasChildren: readBooleanQuery(searchParams, 'hasChildren'),
+    hasActiveChildren: readBooleanQuery(searchParams, 'hasActiveChildren'),
     needsOperatorAttention: readBooleanQuery(searchParams, 'needsOperatorAttention'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };

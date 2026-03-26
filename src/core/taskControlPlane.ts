@@ -213,6 +213,10 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   workflowStageIds?: string[];
   latestTimelineCategories?: CoreTaskTimelineCategory[];
   latestTimelineKinds?: CoreTaskTimelineItemKind[];
+  rootTaskIds?: string[];
+  parentTaskIds?: string[];
+  hasChildren?: boolean | null;
+  hasActiveChildren?: boolean | null;
 }
 
 export interface CoreTaskControlPlaneListSummary {
@@ -229,6 +233,8 @@ export interface CoreTaskControlPlaneListSummary {
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
+  withChildrenCount: number;
+  withActiveChildrenCount: number;
 }
 
 function asRecord(value: unknown): CoreRecordMetadata | null {
@@ -837,6 +843,36 @@ function matchesControlPlaneListOptions(
     return false;
   }
 
+  if (
+    options.rootTaskIds?.length
+    && !options.rootTaskIds.includes(view.family.rootTaskId)
+  ) {
+    return false;
+  }
+
+  if (
+    options.parentTaskIds?.length
+    && !options.parentTaskIds.includes(view.family.parent?.taskId ?? '')
+  ) {
+    return false;
+  }
+
+  if (
+    options.hasChildren !== undefined
+    && options.hasChildren !== null
+    && (view.family.childCount > 0) !== options.hasChildren
+  ) {
+    return false;
+  }
+
+  if (
+    options.hasActiveChildren !== undefined
+    && options.hasActiveChildren !== null
+    && (view.family.childCount > 0 && !view.family.allChildrenTerminal) !== options.hasActiveChildren
+  ) {
+    return false;
+  }
+
   return true;
 }
 
@@ -974,6 +1010,9 @@ export function summarizeCoreTaskControlPlaneViews(input: {
     deliveryActionCounts: buildDeliveryActionCounts(input.views),
     workflowStageCounts: buildWorkflowStageCounts(input.views),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.views),
+    withChildrenCount: input.views.filter((view) => view.family.childCount > 0).length,
+    withActiveChildrenCount: input.views.filter((view) =>
+      view.family.childCount > 0 && !view.family.allChildrenTerminal).length,
   };
 }
 

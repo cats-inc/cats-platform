@@ -12,6 +12,7 @@ import {
   type CoreTaskControlPlaneWorkflowContinuationView,
   type CoreTaskControlPlaneWorkflowRecommendationView,
 } from './taskControlPlane.js';
+import type { CoreTaskInspectionFamilyView } from './taskInspection.js';
 import type {
   CatsCoreState,
   CoreDeliveryMode,
@@ -48,6 +49,7 @@ export interface CoreOperatorInboxItem {
   workflowContinuation: CoreTaskControlPlaneWorkflowContinuationView | null;
   runtimeDeliveryIntent: CoreTaskControlPlaneRuntimeDeliveryIntentView | null;
   recovery: CoreTaskRecoveryView;
+  family: CoreTaskInspectionFamilyView;
   latestTimelineItem: CoreTaskTimelineItem | null;
 }
 
@@ -67,6 +69,8 @@ export interface CoreOperatorInboxSummary {
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
+  withChildrenCount: number;
+  withActiveChildrenCount: number;
 }
 
 function compareInboxItems(left: CoreOperatorInboxItem, right: CoreOperatorInboxItem): number {
@@ -183,6 +187,36 @@ function matchesOperatorInboxQuery(
     query.latestTimelineKinds?.length
     && (!item.latestTimelineItem?.kind
       || !query.latestTimelineKinds.includes(item.latestTimelineItem.kind))
+  ) {
+    return false;
+  }
+
+  if (
+    query.rootTaskIds?.length
+    && !query.rootTaskIds.includes(item.family.rootTaskId)
+  ) {
+    return false;
+  }
+
+  if (
+    query.parentTaskIds?.length
+    && !query.parentTaskIds.includes(item.family.parent?.taskId ?? '')
+  ) {
+    return false;
+  }
+
+  if (
+    query.hasChildren !== undefined
+    && query.hasChildren !== null
+    && (item.family.childCount > 0) !== query.hasChildren
+  ) {
+    return false;
+  }
+
+  if (
+    query.hasActiveChildren !== undefined
+    && query.hasActiveChildren !== null
+    && (item.family.childCount > 0 && !item.family.allChildrenTerminal) !== query.hasActiveChildren
   ) {
     return false;
   }
@@ -324,6 +358,9 @@ export function summarizeCoreOperatorInboxItems(input: {
     deliveryActionCounts: buildDeliveryActionCounts(input.items),
     workflowStageCounts: buildWorkflowStageCounts(input.items),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),
+    withChildrenCount: input.items.filter((item) => item.family.childCount > 0).length,
+    withActiveChildrenCount: input.items.filter((item) =>
+      item.family.childCount > 0 && !item.family.allChildrenTerminal).length,
   };
 }
 
@@ -354,6 +391,7 @@ export function listCoreOperatorInboxItems(
       workflowContinuation: controlPlane.workflowContinuation,
       runtimeDeliveryIntent: controlPlane.runtimeDeliveryIntent,
       recovery: controlPlane.recovery,
+      family: controlPlane.family,
       latestTimelineItem: controlPlane.latestTimelineItem,
     });
   }
