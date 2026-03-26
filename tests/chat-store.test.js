@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { createDefaultCoreState } from '../dist-server/core/model.js';
 import { createDefaultChatState } from '../dist-server/chat/defaults.js';
 import {
   archiveCat,
@@ -178,6 +179,42 @@ test('FileChatStore repairs legacy active snapshots that are missing setupComple
 
   assert.ok(repairedCore.setupCompleteAt, 'setupCompleteAt should be recovered');
   assert.equal(repairedSnapshot.setupCompleteAt, repairedCore.setupCompleteAt);
+});
+
+test('FileChatStore keeps the last known snapshot when the on-disk file is temporarily malformed', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const store = new FileChatStore(statePath);
+  const now = '2026-03-26T12:00:00.000Z';
+
+  let state = await store.read();
+  state = createCat(
+    state,
+    {
+      name: 'Boss Cat',
+      provider: 'claude',
+      makeBoss: true,
+    },
+    new Date(now),
+  );
+
+  const baseCore = createDefaultCoreState();
+  const core = {
+    ...baseCore,
+    setupCompleteAt: now,
+    ownerProfile: {
+      ...baseCore.ownerProfile,
+      displayName: 'Kenneth',
+      updatedAt: now,
+    },
+  };
+  await store.writeSnapshot(state, core);
+
+  await writeFile(statePath, '{\n', 'utf-8');
+
+  const recoveredCore = await store.readCore();
+  assert.equal(recoveredCore.ownerProfile.displayName, 'Kenneth');
+  assert.equal(recoveredCore.setupCompleteAt, now);
 });
 
 test('archiving a direct-lane cat preserves history but demotes the room back to a visible chat', () => {

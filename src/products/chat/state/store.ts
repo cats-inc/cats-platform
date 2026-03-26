@@ -15,6 +15,10 @@ import {
 } from './core-snapshot/index.js';
 import { resolveSetupCompletionTimestamp } from './setupCompletion.js';
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
+}
+
 export interface ChatStore extends CoreStore {
   read(): Promise<ChatState>;
   write(state: ChatState): Promise<ChatState>;
@@ -60,9 +64,42 @@ function repairPersistedSetupCompletion(
 }
 
 export class FileChatStore implements ChatStore {
+  private mutationQueue: Promise<void> = Promise.resolve();
+  private lastKnownSnapshot: PersistedChatSnapshot | null = null;
+
   constructor(private readonly filePath: string) {}
 
-  private async readPersistedSnapshot(): Promise<PersistedChatSnapshot> {
+  private async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = this.mutationQueue;
+    let release: () => void = () => {};
+    this.mutationQueue = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+    }
+  }
+
+  private cacheSnapshot(snapshot: PersistedChatSnapshot): PersistedChatSnapshot {
+    this.lastKnownSnapshot = structuredClone(snapshot);
+    return snapshot;
+  }
+
+  private async writeSnapshotUnsafe(
+    chat: ChatState,
+    core: CatsCoreState,
+  ): Promise<PersistedChatSnapshot> {
+    const nextChatState = structuredClone(chat);
+    const nextCore = syncCoreStateWithChatState(nextChatState, structuredClone(core));
+    const snapshot = buildPersistedChatSnapshot(nextChatState, nextCore);
+    await writePersistedChatSnapshot(this.filePath, snapshot);
+    return structuredClone(this.cacheSnapshot(snapshot));
+  }
+
+  private async readPersistedSnapshotUnsafe(): Promise<PersistedChatSnapshot> {
     try {
       const raw = await readFile(this.filePath, 'utf-8');
       const normalized = normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
@@ -70,14 +107,27 @@ export class FileChatStore implements ChatStore {
       if (repaired.setupCompleteAt !== normalized.setupCompleteAt) {
         await writePersistedChatSnapshot(this.filePath, repaired);
       }
-      return repaired;
-    } catch {
-      const chat = createDefaultChatState();
-      const core = syncCoreStateWithChatState(chat, createDefaultCoreState());
-      const snapshot = buildPersistedChatSnapshot(chat, core);
-      await writePersistedChatSnapshot(this.filePath, snapshot);
-      return snapshot;
+      return this.cacheSnapshot(repaired);
+    } catch (error) {
+      if (isErrnoException(error) && error.code === 'ENOENT') {
+        const chat = createDefaultChatState();
+        const core = syncCoreStateWithChatState(chat, createDefaultCoreState());
+        const snapshot = buildPersistedChatSnapshot(chat, core);
+        await writePersistedChatSnapshot(this.filePath, snapshot);
+        return this.cacheSnapshot(snapshot);
+      }
+
+      if (this.lastKnownSnapshot) {
+        return structuredClone(this.lastKnownSnapshot);
+      }
+
+      throw error;
     }
+  }
+
+  private async readPersistedSnapshot(): Promise<PersistedChatSnapshot> {
+    await this.mutationQueue;
+    return this.readPersistedSnapshotUnsafe();
   }
 
   async read(): Promise<ChatState> {
@@ -89,23 +139,24 @@ export class FileChatStore implements ChatStore {
   }
 
   async writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot> {
-    const nextChatState = structuredClone(chat);
-    const nextCore = syncCoreStateWithChatState(nextChatState, structuredClone(core));
-    const snapshot = buildPersistedChatSnapshot(nextChatState, nextCore);
-    await writePersistedChatSnapshot(this.filePath, snapshot);
-    return structuredClone(snapshot);
+    return this.runExclusive(async () => this.writeSnapshotUnsafe(chat, core));
   }
 
   async write(state: ChatState): Promise<ChatState> {
-    const nextChatState = structuredClone(state);
-    await this.writeSnapshot(nextChatState, await this.readCore());
-    return structuredClone(nextChatState);
+    return this.runExclusive(async () => {
+      const currentCore = extractCoreState(await this.readPersistedSnapshotUnsafe());
+      const nextChatState = structuredClone(state);
+      await this.writeSnapshotUnsafe(nextChatState, currentCore);
+      return structuredClone(nextChatState);
+    });
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
-    const snapshot = await this.readPersistedSnapshot();
-    const persisted = await this.writeSnapshot(snapshot.chat, state);
-    return structuredClone(extractCoreState(persisted));
+    return this.runExclusive(async () => {
+      const currentChat = (await this.readPersistedSnapshotUnsafe()).chat;
+      const persisted = await this.writeSnapshotUnsafe(currentChat, state);
+      return structuredClone(extractCoreState(persisted));
+    });
   }
 }
 
