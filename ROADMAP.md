@@ -140,7 +140,9 @@ contracts.
       `trigger`, `status`, `phase`, `subjectKey`, and `limit`, while the same
       inspection seam now also facets `sourceScopeKey`, `replacementGroup`,
       and `removedRecordId` impact plus stable facet counts for downstream
-      automation; broader downstream consumer contracts still remain.
+      automation, and executed maintenance entries now also expose stable
+      per-record impact details back through the same core-owned inspection
+      route; broader downstream consumer contracts still remain.
 - [x] Surface the new orchestrator execution-loop contract in product-owned
       operator rails so Chat can consume step state, next actions, approval
       gates, and recovery hints without scraping transcript text

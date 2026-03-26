@@ -2,7 +2,7 @@ import type {
   CanonicalMemorySubjectKind,
   MemoryFlushSummary,
 } from '../platform/memory/contracts.js';
-import type { CatsCoreState, CoreActivityRecord } from './types.js';
+import type { CatsCoreState } from './types.js';
 
 export type CoreMemoryMaintenanceTrigger =
   | 'runtime_hook'
@@ -38,6 +38,24 @@ export interface CoreMemoryMaintenanceSubjectView {
   id: string;
 }
 
+export interface CoreMemoryMaintenancePersistedRecordView {
+  recordId: string;
+  subjectKey: string;
+  category: string;
+  originKind: string;
+  promotionRule: string;
+  replacementGroup: string;
+  sourceScopeKeys: string[];
+}
+
+export interface CoreMemoryMaintenanceImpactView {
+  subjects: CoreMemoryMaintenanceSubjectView[];
+  sourceScopeKeys: string[];
+  replacementGroups: string[];
+  removedRecordIds: string[];
+  persistedRecords: CoreMemoryMaintenancePersistedRecordView[];
+}
+
 export interface CoreMemoryMaintenanceActivityView {
   id: string;
   createdAt: string;
@@ -51,6 +69,7 @@ export interface CoreMemoryMaintenanceActivityView {
   relationshipId: string | null;
   reason: string | null;
   summary: MemoryFlushSummary | null;
+  impact: CoreMemoryMaintenanceImpactView | null;
   error: string | null;
   message: string;
   subjectKeys: string[];
@@ -76,7 +95,7 @@ export interface CoreMemoryMaintenanceSummaryView {
     companionSync: CoreMemoryMaintenanceActivityView | null;
     ownerSync: CoreMemoryMaintenanceActivityView | null;
     projectSync: CoreMemoryMaintenanceActivityView | null;
-      relationshipSync: CoreMemoryMaintenanceActivityView | null;
+    relationshipSync: CoreMemoryMaintenanceActivityView | null;
   };
   facets: CoreMemoryMaintenanceFacetCountsView;
   recent: CoreMemoryMaintenanceActivityView[];
@@ -194,8 +213,84 @@ function readMemoryFlushSummary(value: unknown): MemoryFlushSummary | null {
   };
 }
 
+function readPersistedRecords(value: unknown): CoreMemoryMaintenancePersistedRecordView[] {
+  return Array.isArray(value)
+    ? value
+      .map((item) => asRecord(item))
+      .filter((item): item is Record<string, unknown> => item !== null)
+      .map((item) => ({
+        recordId: readString(item.recordId),
+        subjectKey: readString(item.subjectKey),
+        category: readString(item.category),
+        originKind: readString(item.originKind),
+        promotionRule: readString(item.promotionRule),
+        replacementGroup: readString(item.replacementGroup),
+        sourceScopeKeys: readStringArray(item.sourceScopeKeys),
+      }))
+      .filter((item): item is {
+        recordId: string;
+        subjectKey: string;
+        category: string;
+        originKind: string;
+        promotionRule: string;
+        replacementGroup: string;
+        sourceScopeKeys: string[];
+      } =>
+        item.recordId !== null
+        && item.subjectKey !== null
+        && item.category !== null
+        && item.originKind !== null
+        && item.promotionRule !== null
+        && item.replacementGroup !== null,
+      )
+    : [];
+}
+
+function readMemoryMaintenanceImpact(
+  value: unknown,
+  fallbackSummary: MemoryFlushSummary | null,
+): CoreMemoryMaintenanceImpactView | null {
+  const record = asRecord(value);
+  if (!record) {
+    return fallbackSummary
+      ? {
+          subjects: structuredClone(fallbackSummary.subjects),
+          sourceScopeKeys: structuredClone(fallbackSummary.sourceScopeKeys),
+          replacementGroups: structuredClone(fallbackSummary.replacementGroups),
+          removedRecordIds: structuredClone(fallbackSummary.removedRecordIds),
+          persistedRecords: [],
+        }
+      : null;
+  }
+
+  const subjects = readSubjects(record.subjects);
+  const sourceScopeKeys = readStringArray(record.sourceScopeKeys);
+  const replacementGroups = readStringArray(record.replacementGroups);
+  const removedRecordIds = readStringArray(record.removedRecordIds);
+
+  return {
+    subjects: subjects.length > 0
+      ? subjects
+      : structuredClone(fallbackSummary?.subjects ?? []),
+    sourceScopeKeys: sourceScopeKeys.length > 0
+      ? sourceScopeKeys
+      : structuredClone(fallbackSummary?.sourceScopeKeys ?? []),
+    replacementGroups: replacementGroups.length > 0
+      ? replacementGroups
+      : structuredClone(fallbackSummary?.replacementGroups ?? []),
+    removedRecordIds: removedRecordIds.length > 0
+      ? removedRecordIds
+      : structuredClone(fallbackSummary?.removedRecordIds ?? []),
+    persistedRecords: readPersistedRecords(record.persistedRecords),
+  };
+}
+
 function buildSubjectKeys(activity: CoreMemoryMaintenanceActivityView): string[] {
-  const summaryKeys = activity.summary?.subjects.map((subject) => `${subject.kind}:${subject.id}`) ?? [];
+  const summaryKeys = (
+    activity.summary?.subjects
+    ?? activity.impact?.subjects
+    ?? []
+  ).map((subject) => `${subject.kind}:${subject.id}`);
   if (summaryKeys.length > 0) {
     return summaryKeys;
   }
@@ -234,6 +329,7 @@ export function listCoreMemoryMaintenanceActivities(
       if (!trigger || !status) {
         return null;
       }
+      const summary = readMemoryFlushSummary(metadata?.summary);
 
       const view: CoreMemoryMaintenanceActivityView = {
         id: activity.id,
@@ -247,7 +343,8 @@ export function listCoreMemoryMaintenanceActivities(
         projectId: readString(metadata?.projectId),
         relationshipId: readString(metadata?.relationshipId),
         reason: readString(metadata?.reason),
-        summary: readMemoryFlushSummary(metadata?.summary),
+        summary,
+        impact: readMemoryMaintenanceImpact(metadata?.impact, summary),
         error: readString(metadata?.error),
         message: activity.message,
         subjectKeys: [],
@@ -339,23 +436,24 @@ function matchesMemoryMaintenanceQuery(
 
   if (
     query.sourceScopeKeys?.length
-    && !activity.summary?.sourceScopeKeys.some((value) => query.sourceScopeKeys?.includes(value))
+    && !(activity.impact?.sourceScopeKeys ?? activity.summary?.sourceScopeKeys ?? [])
+      .some((value) => query.sourceScopeKeys?.includes(value))
   ) {
     return false;
   }
 
   if (
     query.replacementGroups?.length
-    && !activity.summary?.replacementGroups.some(
-      (value) => query.replacementGroups?.includes(value),
-    )
+    && !(activity.impact?.replacementGroups ?? activity.summary?.replacementGroups ?? [])
+      .some((value) => query.replacementGroups?.includes(value))
   ) {
     return false;
   }
 
   if (
     query.removedRecordIds?.length
-    && !activity.summary?.removedRecordIds.some((value) => query.removedRecordIds?.includes(value))
+    && !(activity.impact?.removedRecordIds ?? activity.summary?.removedRecordIds ?? [])
+      .some((value) => query.removedRecordIds?.includes(value))
   ) {
     return false;
   }

@@ -138,6 +138,7 @@ service to exist first.
 | 2026-03-26 | Relationship/project durable-memory follow-through landed: generic retrieval-context assembly now accepts those scopes and the service can flush their canonical records without depending on Chat UI routes |
 | 2026-03-26 | Core-owned project/relationship memory routes landed: CRUD, canonical sync, and retrieval-context inspection now sit above the same memory substrate without leaking Chat route ownership |
 | 2026-03-27 | Memory-maintenance downstream impact faceting landed: the same core-owned inspection seam now supports additive `sourceScopeKey`, `replacementGroup`, and `removedRecordId` filters plus stable facet counts so later automation can group flush impact without reopening raw activity metadata |
+| 2026-03-27 | Entry-scoped maintenance impact projection landed: executed maintenance activity now also persists stable per-record impact details back into `Cats Core`, and `GET /api/core/memory-maintenance` exposes those persisted-record effects without requiring downstream consumers to reopen raw flush payloads |
 
 ---
 

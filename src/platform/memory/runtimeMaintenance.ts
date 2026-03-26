@@ -217,6 +217,7 @@ export async function bestEffortFlushRuntimeSessionMemory(input: {
           catId: result.targets.catId,
           reason: result.phase,
           summary: result.summary,
+          flushes: result.flushes,
           now: input.now,
         });
       } else if (result.reason === 'runtime_memory_context_missing') {

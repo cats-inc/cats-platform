@@ -1014,7 +1014,19 @@ Returns a normalized summary of product-owned memory-maintenance activity:
         "id": "activity-memory-route-runtime",
         "trigger": "runtime_hook",
         "status": "executed",
-        "subjectKeys": ["channel:channel-memory-route"]
+        "subjectKeys": ["channel:channel-memory-route"],
+        "impact": {
+          "subjects": [
+            {
+              "kind": "channel",
+              "id": "channel-memory-route"
+            }
+          ],
+          "sourceScopeKeys": ["channel:channel-memory-route"],
+          "replacementGroups": ["channel:channel-memory-route:summary"],
+          "removedRecordIds": ["cats-memory-old-1"],
+          "persistedRecords": []
+        }
       }
     ]
   },
@@ -1048,6 +1060,11 @@ Semantics:
 - `recent[*].summary` reuses the additive flush-summary contract already
   emitted by Cats-owned canonical-memory maintenance, including
   `removedRecordIds`, `sourceScopeKeys`, and `replacementGroups`
+- `recent[*].impact` lifts the same normalized subjects and aggregate impact
+  keys into a stable activity-level contract, and when the maintenance entry
+  came from a real executed flush it also exposes `persistedRecords[*]` with
+  per-record `recordId`, `subjectKey`, `category`, `originKind`,
+  `promotionRule`, `replacementGroup`, and `sourceScopeKeys`
 - `subjectKeys` prefers explicit flush-summary subjects and otherwise falls
   back to stable `cat:*`, `channel:*`, `project:*`, `relationship:*`, or owner
   scope keys so downstream recovery or operator tooling can group maintenance

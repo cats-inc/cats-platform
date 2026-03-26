@@ -38,6 +38,7 @@ export interface MemoryMaintenanceActivityInput {
   relationshipId?: string | null;
   reason?: MemoryFlushReason | null;
   summary?: MemoryFlushSummary | null;
+  flushes?: MemoryFlushResult[] | null;
   error?: string | null;
   now?: Date;
 }
@@ -77,6 +78,37 @@ export function buildMemoryFlushSummary(
       flushes.flatMap((flush) =>
         flush.payload.persistedRecords.map((record) => record.replacementGroup)),
     ),
+  };
+}
+
+function buildMemoryMaintenanceImpact(
+  flushes: MemoryFlushResult[],
+): Record<string, unknown> {
+  return {
+    subjects: flushes.map((flush) => ({
+      kind: flush.scope,
+      id: flush.subjectId,
+    })),
+    sourceScopeKeys: uniqueStrings(
+      flushes.flatMap((flush) => flush.payload.sourceScopeKeys),
+    ),
+    replacementGroups: uniqueStrings(
+      flushes.flatMap((flush) =>
+        flush.payload.persistedRecords.map((record) => record.replacementGroup)),
+    ),
+    removedRecordIds: uniqueStrings(
+      flushes.flatMap((flush) => flush.removedRecordIds),
+    ),
+    persistedRecords: flushes.flatMap((flush) =>
+      flush.payload.persistedRecords.map((record) => ({
+        recordId: record.recordId,
+        subjectKey: `${flush.scope}:${flush.subjectId}`,
+        category: record.category,
+        originKind: record.originKind,
+        promotionRule: record.promotionRule,
+        replacementGroup: record.replacementGroup,
+        sourceScopeKeys: structuredClone(record.sourceScopeKeys),
+      }))),
   };
 }
 
@@ -164,6 +196,7 @@ export async function appendMemoryMaintenanceActivity(
         relationshipId: input.relationshipId ?? null,
         reason: input.reason ?? null,
         summary: input.summary ? structuredClone(input.summary) : null,
+        impact: input.flushes?.length ? buildMemoryMaintenanceImpact(input.flushes) : null,
         error: input.error ?? null,
       },
     },

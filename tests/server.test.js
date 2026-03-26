@@ -628,6 +628,18 @@ test('GET /api/core/memory-maintenance returns normalized maintenance activity h
       listPayload.maintenance.recent[0].summary.removedRecordIds,
       ['cats-memory-old-1'],
     );
+    assert.deepEqual(listPayload.maintenance.recent[0].impact, {
+      subjects: [
+        {
+          kind: 'channel',
+          id: 'channel-memory-route',
+        },
+      ],
+      sourceScopeKeys: ['channel:channel-memory-route'],
+      replacementGroups: ['channel:channel-memory-route:summary'],
+      removedRecordIds: ['cats-memory-old-1'],
+      persistedRecords: [],
+    });
     assert.deepEqual(listPayload.maintenance.recent[1].subjectKeys, [
       'cat:cat-memory-route',
     ]);
@@ -747,12 +759,19 @@ test('POST /api/core/memory-maintenance runs companion canonical sync through th
 
     assert.equal(listPayload.maintenance.latestByTrigger.companionSync?.status, 'executed');
     assert.equal(listPayload.maintenance.latestByTrigger.companionSync?.catId, cat.id);
-    assert.deepEqual(
-      listPayload.maintenance.latestByTrigger.companionSync?.subjectKeys,
-      [`cat:${cat.id}`],
-    );
+      assert.deepEqual(
+        listPayload.maintenance.latestByTrigger.companionSync?.subjectKeys,
+        [`cat:${cat.id}`],
+      );
+      assert.ok(
+        (listPayload.maintenance.latestByTrigger.companionSync?.impact?.persistedRecords.length ?? 0) >= 1,
+      );
+      assert.equal(
+        listPayload.maintenance.latestByTrigger.companionSync?.impact?.persistedRecords[0]?.subjectKey,
+        `cat:${cat.id}`,
+      );
+    });
   });
-});
 
 test('POST /api/core/memory-maintenance reports deferred owner sync when canonical flush fails', async () => {
   const chatStore = new MemoryChatStore();

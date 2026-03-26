@@ -79,6 +79,7 @@ async function handleFlushRuntimeSessionMemory(
         catId: result.targets.catId,
         reason: result.phase,
         summary: result.summary,
+        flushes: result.flushes,
         now: context.dependencies.now?.(),
       });
     }

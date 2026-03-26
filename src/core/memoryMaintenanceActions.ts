@@ -81,6 +81,7 @@ export async function executeCoreMemoryMaintenanceAction(input: {
       catId: input.catId,
       reason: output.reason,
       summary: output.summary,
+      flushes: output.flush ? [output.flush] : null,
       error: output.error,
       now,
     });
@@ -130,6 +131,7 @@ export async function executeCoreMemoryMaintenanceAction(input: {
       relationshipId: subjectKind === 'relationship' ? subjectId : null,
       reason: output.reason,
       summary: output.summary,
+      flushes: output.flush ? [output.flush] : null,
       error: output.error,
       now,
     });
@@ -162,6 +164,7 @@ export async function executeCoreMemoryMaintenanceAction(input: {
     status: output.status,
     reason: output.reason,
     summary: output.summary,
+    flushes: output.flush ? [output.flush] : null,
     error: output.error,
     now,
   });

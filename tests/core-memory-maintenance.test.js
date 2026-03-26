@@ -120,6 +120,18 @@ test('buildCoreMemoryMaintenanceSummary normalizes memory maintenance activity h
     maintenance.recent[0]?.summary?.removedRecordIds,
     ['cats-memory-old-1'],
   );
+  assert.deepEqual(maintenance.recent[0]?.impact, {
+    subjects: [
+      {
+        kind: 'channel',
+        id: 'channel-runtime',
+      },
+    ],
+    sourceScopeKeys: ['channel:channel-runtime'],
+    replacementGroups: ['channel:channel-runtime:summary'],
+    removedRecordIds: ['cats-memory-old-1'],
+    persistedRecords: [],
+  });
   assert.deepEqual(maintenance.recent[0]?.subjectKeys, ['channel:channel-runtime']);
   assert.deepEqual(maintenance.recent[1]?.subjectKeys, ['cat:cat-companion']);
   assert.deepEqual(maintenance.recent[2]?.subjectKeys, ['owner:actor-owner']);
@@ -265,6 +277,13 @@ test('executeCoreMemoryMaintenanceAction records executed companion sync activit
           sourceScopeKeys: ['cat:cat-companion'],
           persistedRecords: [
             {
+              recordId: 'cat-memory-record-1',
+              category: 'fact',
+              originKind: 'companion_memory',
+              promotionRule: 'companion_curated_memory',
+              visibility: 'owner_private',
+              sourceRefs: [],
+              sourceScopeKeys: ['cat:cat-companion'],
               replacementGroup: 'cat:cat-companion:summary',
             },
           ],
@@ -311,6 +330,20 @@ test('executeCoreMemoryMaintenanceAction records executed companion sync activit
   const maintenance = buildCoreMemoryMaintenanceSummary(core);
   assert.equal(maintenance.totals.executed, 1);
   assert.equal(maintenance.latestByTrigger.companionSync?.status, 'executed');
+  assert.deepEqual(
+    maintenance.latestByTrigger.companionSync?.impact?.persistedRecords.map((record) => ({
+      recordId: record.recordId,
+      subjectKey: record.subjectKey,
+      replacementGroup: record.replacementGroup,
+    })),
+    [
+      {
+        recordId: 'cat-memory-record-1',
+        subjectKey: 'cat:cat-companion',
+        replacementGroup: 'cat:cat-companion:summary',
+      },
+    ],
+  );
   assert.match(
     maintenance.latestByTrigger.companionSync?.message ?? '',
     /Synchronized Cats-owned canonical companion memory/i,
@@ -348,6 +381,13 @@ test('executeCoreMemoryMaintenanceAction records executed project sync activity'
           sourceScopeKeys: ['project:project-launch'],
           persistedRecords: [
             {
+              recordId: 'project-memory-record-1',
+              category: 'policy',
+              originKind: 'durable_memory',
+              promotionRule: 'durable_memory',
+              visibility: 'owner_private',
+              sourceRefs: [],
+              sourceScopeKeys: ['project:project-launch'],
               replacementGroup: 'project:project-launch:summary',
             },
           ],
@@ -385,6 +425,20 @@ test('executeCoreMemoryMaintenanceAction records executed project sync activity'
   const maintenance = buildCoreMemoryMaintenanceSummary(core);
   assert.equal(maintenance.totals.executed, 1);
   assert.equal(maintenance.latestByTrigger.projectSync?.status, 'executed');
+  assert.deepEqual(
+    maintenance.latestByTrigger.projectSync?.impact?.persistedRecords.map((record) => ({
+      recordId: record.recordId,
+      subjectKey: record.subjectKey,
+      replacementGroup: record.replacementGroup,
+    })),
+    [
+      {
+        recordId: 'project-memory-record-1',
+        subjectKey: 'project:project-launch',
+        replacementGroup: 'project:project-launch:summary',
+      },
+    ],
+  );
   assert.deepEqual(
     maintenance.latestByTrigger.projectSync?.subjectKeys,
     ['project:project-launch'],
