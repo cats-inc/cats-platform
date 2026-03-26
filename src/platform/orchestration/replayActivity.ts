@@ -15,6 +15,15 @@ export type OrchestratorReplayActivityPhase =
   | 'replay_blocked'
   | 'replay_failed'
   | 'startup_recovered';
+export type OrchestratorReplayActivitySource =
+  | 'orchestrator-replay'
+  | 'orchestrator-startup-recovery'
+  | 'workflow-continuation-replay';
+export const ORCHESTRATOR_REPLAY_ACTIVITY_SOURCES = [
+  'orchestrator-replay',
+  'orchestrator-startup-recovery',
+  'workflow-continuation-replay',
+] as const satisfies readonly OrchestratorReplayActivitySource[];
 export const ORCHESTRATOR_REPLAY_ACTIVITY_TRIGGERS = [
   'dispatch',
   'approve',
@@ -38,10 +47,7 @@ export interface OrchestratorReplayActivityInput {
   task: Pick<CoreTaskRecord, 'id' | 'title' | 'conversationId'>;
   actorId?: string | null;
   runId?: string | null;
-  source?:
-    | 'orchestrator-replay'
-    | 'orchestrator-startup-recovery'
-    | 'workflow-continuation-replay';
+  source?: OrchestratorReplayActivitySource;
   phase: OrchestratorReplayActivityPhase;
   trigger?: OrchestratorDispatchReplayTrigger | null;
   resumeReason?: 'target_recovered' | null;

@@ -32,9 +32,11 @@ import {
 } from './taskTimeline.js';
 import {
   CORE_TASK_RECOVERY_REPLAY_PHASES,
+  CORE_TASK_RECOVERY_REPLAY_SOURCES,
   CORE_TASK_RECOVERY_REPLAY_TRIGGERS,
   CORE_TASK_RECOVERY_RESUME_REASONS,
   type CoreTaskRecoveryReplayPhase,
+  type CoreTaskRecoveryReplaySource,
   type CoreTaskRecoveryReplayTrigger,
   type CoreTaskRecoveryResumeReason,
   type CoreTaskRecoveryView,
@@ -89,6 +91,7 @@ export interface CoreOperatorInboxSummary {
     number
   >;
   withUnresolvedWorkflowTargetsCount: number;
+  latestReplaySourceCounts: Record<CoreTaskRecoveryReplaySource, number>;
   latestReplayTriggerCounts: Record<CoreTaskRecoveryReplayTrigger, number>;
   latestReplayPhaseCounts: Record<CoreTaskRecoveryReplayPhase, number>;
   latestReplayResumeReasonCounts: Record<CoreTaskRecoveryResumeReason, number>;
@@ -158,6 +161,16 @@ function readLatestReplayPhase(
   return typeof phase === 'string'
     && CORE_TASK_RECOVERY_REPLAY_PHASES.includes(phase as CoreTaskRecoveryReplayPhase)
     ? phase as CoreTaskRecoveryReplayPhase
+    : null;
+}
+
+function readLatestReplaySource(
+  item: Pick<CoreOperatorInboxItem, 'recovery'>,
+): CoreTaskRecoveryReplaySource | null {
+  const source = item.recovery.latestActivity?.source;
+  return typeof source === 'string'
+    && CORE_TASK_RECOVERY_REPLAY_SOURCES.includes(source as CoreTaskRecoveryReplaySource)
+    ? source as CoreTaskRecoveryReplaySource
     : null;
 }
 
@@ -340,6 +353,14 @@ function matchesOperatorInboxQuery(
     query.hasUnresolvedWorkflowTargets !== undefined
     && query.hasUnresolvedWorkflowTargets !== null
     && (unresolvedTargets.length > 0) !== query.hasUnresolvedWorkflowTargets
+  ) {
+    return false;
+  }
+
+  if (
+    query.latestReplaySources?.length
+    && (!readLatestReplaySource(item)
+      || !query.latestReplaySources.includes(readLatestReplaySource(item)!))
   ) {
     return false;
   }
@@ -622,6 +643,24 @@ function buildLatestReplayTriggerCounts(
   return counts;
 }
 
+function buildLatestReplaySourceCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreTaskRecoveryReplaySource, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_REPLAY_SOURCES.map((source) => [source, 0]),
+  ) as Record<CoreTaskRecoveryReplaySource, number>;
+
+  for (const item of items) {
+    const source = readLatestReplaySource(item);
+    if (!source) {
+      continue;
+    }
+    counts[source] += 1;
+  }
+
+  return counts;
+}
+
 function buildLatestReplayResumeReasonCounts(
   items: CoreOperatorInboxItem[],
 ): Record<CoreTaskRecoveryResumeReason, number> {
@@ -684,6 +723,7 @@ export function summarizeCoreOperatorInboxItems(input: {
     workflowContinuationSourceCounts: buildWorkflowContinuationSourceCounts(input.items),
     withUnresolvedWorkflowTargetsCount: input.items.filter((item) =>
       readEffectiveWorkflowUnresolvedTargets(item).length > 0).length,
+    latestReplaySourceCounts: buildLatestReplaySourceCounts(input.items),
     latestReplayTriggerCounts: buildLatestReplayTriggerCounts(input.items),
     latestReplayPhaseCounts: buildLatestReplayPhaseCounts(input.items),
     latestReplayResumeReasonCounts: buildLatestReplayResumeReasonCounts(input.items),

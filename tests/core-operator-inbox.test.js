@@ -331,6 +331,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     workflowContinuationBlockedReasons: ['max_dispatches'],
     workflowUnresolvedTargets: ['Reviewer'],
     hasUnresolvedWorkflowTargets: true,
+    latestReplaySources: ['orchestrator-startup-recovery'],
     latestReplayTriggers: ['retry'],
     latestReplayPhases: ['replay_failed'],
     latestReplayResumeReasons: ['target_recovered'],
@@ -360,6 +361,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.workflowContinuationSourceCounts.workflow_recommendation, 1);
   assert.equal(result.summary.withUnresolvedWorkflowTargetsCount, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
+  assert.equal(result.summary.latestReplaySourceCounts['orchestrator-startup-recovery'], 1);
   assert.equal(result.summary.latestReplayTriggerCounts.retry, 1);
   assert.equal(result.summary.latestReplayPhaseCounts.replay_failed, 1);
   assert.equal(result.summary.latestReplayResumeReasonCounts.target_recovered, 1);

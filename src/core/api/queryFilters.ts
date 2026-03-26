@@ -19,6 +19,7 @@ import {
   CORE_TASK_RECOVERY_DELIVERY_ACTIONS,
   CORE_TASK_RECOVERY_DELIVERY_MODES,
   CORE_TASK_RECOVERY_REPLAY_PHASES,
+  CORE_TASK_RECOVERY_REPLAY_SOURCES,
   CORE_TASK_RECOVERY_REPLAY_TRIGGERS,
   CORE_TASK_RECOVERY_RESUME_REASONS,
   CORE_TASK_DISPATCH_REPLAY_STATES,
@@ -164,6 +165,11 @@ export function readTaskAttentionListOptions(
       'workflowContinuationBlockedReason',
       CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
     ),
+    latestReplaySources: readEnumQueryValues(
+      searchParams,
+      'latestReplaySource',
+      CORE_TASK_RECOVERY_REPLAY_SOURCES,
+    ),
     latestReplayTriggers: readEnumQueryValues(
       searchParams,
       'latestReplayTrigger',
@@ -258,6 +264,11 @@ export function readTaskRecoveryListOptions(
     ),
     workflowUnresolvedTargets: readQueryValues(searchParams, 'workflowUnresolvedTarget'),
     hasUnresolvedWorkflowTargets: readBooleanQuery(searchParams, 'hasUnresolvedWorkflowTargets'),
+    latestReplaySources: readEnumQueryValues(
+      searchParams,
+      'latestReplaySource',
+      CORE_TASK_RECOVERY_REPLAY_SOURCES,
+    ),
     latestReplayTriggers: readEnumQueryValues(
       searchParams,
       'latestReplayTrigger',
