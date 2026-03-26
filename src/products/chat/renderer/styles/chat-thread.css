@@ -186,23 +186,46 @@
 
 .transcriptMessage {
   max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 .transcriptMessageUser {
   margin-left: auto;
+  background: var(--user-bubble-bg);
+  color: var(--text);
 }
 
 .transcriptMessageOrchestrator,
 .transcriptMessageAgent {
   margin-right: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.transcriptAvatar {
+  width: 28px;
+  height: 28px;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+}
+
+.transcriptMessageTop {
+  margin-bottom: 4px;
 }
 
 .transcriptMessageSystem {
   margin: 4px auto;
   max-width: 90%;
-  border-style: none;
+  background: transparent;
+  border: none;
   box-shadow: none;
-  text-align: left;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .freshChatIntro {

@@ -19,7 +19,6 @@ export interface SidebarProps {
   busy: string;
   surface: Surface;
   routeChannelId: string | null;
-  sidebarView: SidebarViewMode;
   accountMenuRef: RefObject<HTMLDivElement>;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -31,7 +30,6 @@ export interface SidebarProps {
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
-  onSidebarViewChange: (mode: SidebarViewMode) => void;
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
 }
@@ -88,16 +86,6 @@ function resolveCatForChannel(
   return null;
 }
 
-function channelRoomMode(channel: ChatChannelSummary): string {
-  return channel.roomMode ?? 'boss_chat';
-}
-
-function roomModeLabel(mode: string): string {
-  switch (mode) {
-    case 'direct_cat_chat': return 'Direct';
-    default: return 'Boss Chat';
-  }
-}
 
 function ChannelItem({
   channel,
@@ -164,7 +152,6 @@ export function Sidebar({
   busy,
   surface,
   routeChannelId,
-  sidebarView,
   accountMenuRef,
   onToggleSidebar,
   onCollapsedSidebarClick,
@@ -176,7 +163,6 @@ export function Sidebar({
   onAccountMenuToggle,
   onOverflowMenuToggle,
   onNavigateSettings,
-  onSidebarViewChange,
   activeMyCatId,
   onDirectChatCat,
 }: SidebarProps) {
@@ -212,62 +198,6 @@ export function Sidebar({
 
   function renderByLatest() {
     return renderChannelList(recentsChannels);
-  }
-
-  function renderByCat() {
-    const groups = new Map<string, { catName: string; channels: ChatChannelSummary[] }>();
-    const ungrouped: ChatChannelSummary[] = [];
-
-    for (const channel of recentsChannels) {
-      const leadId = channel.leadCatId;
-      if (leadId) {
-        const cat = payload.chat.cats.find((c) => c.id === leadId);
-        const key = leadId;
-        if (!groups.has(key)) {
-          groups.set(key, { catName: cat?.name ?? 'Unknown', channels: [] });
-        }
-        groups.get(key)!.channels.push(channel);
-      } else {
-        ungrouped.push(channel);
-      }
-    }
-
-    return (
-      <>
-        {Array.from(groups.entries()).map(([catId, group]) => (
-          <div key={catId} className="recentGroup">
-            <p className="recentGroupLabel">{group.catName}</p>
-            {renderChannelList(group.channels)}
-          </div>
-        ))}
-        {ungrouped.length > 0 ? (
-          <div className="recentGroup">
-            <p className="recentGroupLabel">Boss Chat</p>
-            {renderChannelList(ungrouped)}
-          </div>
-        ) : null}
-      </>
-    );
-  }
-
-  function renderByChatType() {
-    const groups: Record<string, ChatChannelSummary[]> = {};
-    for (const channel of recentsChannels) {
-      const mode = channelRoomMode(channel);
-      if (!groups[mode]) groups[mode] = [];
-      groups[mode].push(channel);
-    }
-
-    return (
-      <>
-        {Object.entries(groups).map(([mode, channels]) => (
-          <div key={mode} className="recentGroup">
-            <p className="recentGroupLabel">{roomModeLabel(mode)}</p>
-            {renderChannelList(channels)}
-          </div>
-        ))}
-      </>
-    );
   }
 
   return (
@@ -398,24 +328,9 @@ export function Sidebar({
         <section className="recentSection">
           <div className="recentHeader">
             <p className="sectionLabel">Recents</p>
-            <div className="viewModeToggle">
-              {(['latest', 'by_cat', 'by_chat_type'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  className={sidebarView === mode ? 'viewModeBtn viewModeBtnActive' : 'viewModeBtn'}
-                  type="button"
-                  onClick={() => onSidebarViewChange(mode)}
-                  data-tooltip={mode === 'latest' ? 'Latest' : mode === 'by_cat' ? 'By Cat' : 'By Type'}
-                >
-                  {mode === 'latest' ? 'All' : mode === 'by_cat' ? 'Cat' : 'Type'}
-                </button>
-              ))}
-            </div>
           </div>
           <div className="recentList">
-            {sidebarView === 'latest' ? renderByLatest()
-              : sidebarView === 'by_cat' ? renderByCat()
-              : renderByChatType()}
+            {renderByLatest()}
           </div>
         </section>
         </div>

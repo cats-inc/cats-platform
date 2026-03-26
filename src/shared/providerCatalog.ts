@@ -298,9 +298,7 @@ export function isKnownProvider(provider: string): provider is ProductProviderId
 }
 
 export function getProviderDisplayName(provider: string): string {
-  if (provider === 'ollama') return 'Ollama';
-  const name = provider.charAt(0).toUpperCase() + provider.slice(1);
-  return `${name}-CLI`;
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
 export function getProviderModels(provider: string): ProviderModelOption[] {

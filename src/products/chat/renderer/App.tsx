@@ -41,7 +41,6 @@ import { updateCatProfile, updateNewChatDefaultsPreference } from './api';
 import type { ModelSelectorValue } from './components/ModelSelector';
 import {
   Sidebar,
-  type SidebarViewMode,
 } from './components/Sidebar';
 import './styles.css';
 
@@ -98,7 +97,6 @@ export default function App() {
   const [feedback, setFeedback] = useState('');
   const [addCatTab, setAddCatTab] = useState<'existing' | 'new'>('existing');
   const [greeting] = useState(pickGreeting);
-  const [sidebarView, setSidebarView] = useState<SidebarViewMode>('latest');
   const [draftCwd, setDraftCwd] = useState<string | null>(null);
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
@@ -575,8 +573,6 @@ export default function App() {
         onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
         onOverflowMenuToggle={setOverflowMenuOpenId}
         onNavigateSettings={onNavigateSettings}
-        sidebarView={sidebarView}
-        onSidebarViewChange={setSidebarView}
         activeMyCatId={activeMyCatId}
         onDirectChatCat={onDirectChatCat}
       />

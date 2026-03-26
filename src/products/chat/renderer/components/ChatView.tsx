@@ -309,11 +309,26 @@ export function ChatView({
                 <div className="transcriptList">
                   {selectedChannel.messages.filter((msg) => payload.chat.showVerboseMessages || msg.metadata?.verbosity !== 'verbose').map((message) => (
                     <article key={message.id} className={messageTone(message.senderKind)}>
-                      {message.senderKind !== 'user' ? (
-                        <div className="transcriptMessageTop">
-                          <strong>{message.senderName}</strong>
-                        </div>
-                      ) : null}
+                      {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
+                        const senderCat = payload.chat.cats.find((c) => c.name === message.senderName);
+                        return senderCat ? (
+                          <div className="transcriptMessageTop">
+                            <div
+                              className={senderCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
+                              style={senderCat.avatarUrl
+                                ? { backgroundImage: `url(${senderCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                : senderCat.avatarColor ? { background: senderCat.avatarColor } : undefined}
+                            >
+                              {senderCat.avatarUrl ? null : catInitials(senderCat.name)}
+                            </div>
+                            <strong>{message.senderName}</strong>
+                          </div>
+                        ) : message.senderName !== 'Orchestrator' ? (
+                          <div className="transcriptMessageTop">
+                            <strong>{message.senderName}</strong>
+                          </div>
+                        ) : null;
+                      })() : null}
                       {message.body ? <p>{message.body}</p> : null}
                       {message.choices && message.choices.length > 0 ? (
                         <MessageChoices

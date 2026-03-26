@@ -1,8 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  getProviderDisplayName,
-  getProviderModels,
-} from '../../../../shared/providerCatalog';
+import { buildExecutionLabel } from '../../../../shared/executionLabel';
 import type {
   ProviderModelSelection,
   ProviderTargetSelection,
@@ -43,12 +40,7 @@ export function ModelSelectorChip({ label, onClick }: ModelSelectorChipProps) {
 }
 
 export function buildModelSelectorLabel(value: ModelSelectorValue, catName?: string | null): string {
-  const modelLabel = value.model
-    ? (getProviderModels(value.provider).find((m) => m.value === value.model)?.label ?? value.model)
-        .replace(/\s*\(default\)\s*/iu, '')
-    : null;
-  const providerName = getProviderDisplayName(value.provider);
-  const base = providerName + (modelLabel ? ` \u00b7 ${modelLabel}` : '');
+  const base = buildExecutionLabel(value.provider, value.instance, value.model);
   return catName ? `${catName} \u00b7 ${base}` : base;
 }
 
