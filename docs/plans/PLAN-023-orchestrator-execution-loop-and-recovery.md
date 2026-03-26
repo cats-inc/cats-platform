@@ -86,6 +86,10 @@ MCP tool plane.
   control-plane, and recovery queues without hydrating the whole core snapshot
   or reimplementing the same filtering semantics client-side
 - those same operator/recovery list routes now also support
+  `workflowContinuationSource` plus `workflowContinuationSourceCounts`, so
+  queue automation can distinguish explicit-mention continuations from
+  workflow-recommendation replays without reopening raw continuation metadata
+- those same operator/recovery list routes now also support
   `workflowUnresolvedTarget` plus `hasUnresolvedWorkflowTargets`, and summarize
   `withUnresolvedWorkflowTargetsCount`, so missing-target continuation work can
   be faceted by the specific unresolved target instead of only by the coarse

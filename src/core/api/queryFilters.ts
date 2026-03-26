@@ -33,6 +33,9 @@ import {
   CORE_TASK_TIMELINE_ITEM_KINDS,
   type CoreTaskTimelineQuery,
 } from '../taskTimeline.js';
+import {
+  WORKFLOW_CONTINUATION_REPLAY_SOURCES,
+} from '../../platform/orchestration/workflowContinuationReplay.js';
 
 function readQueryValues(
   searchParams: URLSearchParams,
@@ -147,6 +150,11 @@ export function readTaskAttentionListOptions(
     ),
     workflowReviewRequired: readBooleanQuery(searchParams, 'workflowReviewRequired'),
     workflowConvergeTargetIds: readQueryValues(searchParams, 'workflowConvergeTargetId'),
+    workflowContinuationSources: readEnumQueryValues(
+      searchParams,
+      'workflowContinuationSource',
+      WORKFLOW_CONTINUATION_REPLAY_SOURCES,
+    ),
     workflowUnresolvedTargets: readQueryValues(searchParams, 'workflowUnresolvedTarget'),
     hasUnresolvedWorkflowTargets: readBooleanQuery(searchParams, 'hasUnresolvedWorkflowTargets'),
     workflowContinuationBlockedReasons: readEnumQueryValues(
@@ -226,6 +234,11 @@ export function readTaskRecoveryListOptions(
     ),
     workflowReviewRequired: readBooleanQuery(searchParams, 'workflowReviewRequired'),
     workflowConvergeTargetIds: readQueryValues(searchParams, 'workflowConvergeTargetId'),
+    workflowContinuationSources: readEnumQueryValues(
+      searchParams,
+      'workflowContinuationSource',
+      WORKFLOW_CONTINUATION_REPLAY_SOURCES,
+    ),
     workflowUnresolvedTargets: readQueryValues(searchParams, 'workflowUnresolvedTarget'),
     hasUnresolvedWorkflowTargets: readBooleanQuery(searchParams, 'hasUnresolvedWorkflowTargets'),
     latestReplayResumeReasons: readEnumQueryValues(

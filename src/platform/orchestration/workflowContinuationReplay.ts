@@ -13,6 +13,10 @@ export type WorkflowContinuationReplayTrigger = 'retry';
 export type WorkflowContinuationReplaySource =
   | 'explicit_mentions'
   | 'workflow_recommendation';
+export const WORKFLOW_CONTINUATION_REPLAY_SOURCES = [
+  'explicit_mentions',
+  'workflow_recommendation',
+] as const satisfies readonly WorkflowContinuationReplaySource[];
 export const WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS = [
   'max_continuations',
   'max_dispatches',

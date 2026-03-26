@@ -210,6 +210,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
           channelId: 'channel-inbox',
           checkpointId: 'checkpoint-inbox-match',
           sourceMessageId: 'message-inbox-match',
+          continuationSource: 'workflow_recommendation',
           sourceParticipant: {
             participantKind: 'cat',
             participantId: 'cat-inline',
@@ -323,6 +324,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     workflowShapes: ['converge'],
     workflowReviewRequired: true,
     workflowConvergeTargetIds: ['cat-reviewer'],
+    workflowContinuationSources: ['workflow_recommendation'],
     workflowContinuationBlockedReasons: ['max_dispatches'],
     workflowUnresolvedTargets: ['Reviewer'],
     hasUnresolvedWorkflowTargets: true,
@@ -349,6 +351,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.workflowShapeCounts.converge, 1);
   assert.equal(result.summary.workflowReviewRequiredCount, 1);
   assert.equal(result.summary.workflowConvergeTargetCount, 1);
+  assert.equal(result.summary.workflowContinuationSourceCounts.workflow_recommendation, 1);
   assert.equal(result.summary.withUnresolvedWorkflowTargetsCount, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);

@@ -539,6 +539,7 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
           channelId: 'channel-workflow-state',
           checkpointId: 'checkpoint-workflow-state',
           sourceMessageId: 'message-workflow-state',
+          continuationSource: 'workflow_recommendation',
           sourceParticipant: {
             participantKind: 'cat',
             participantId: 'cat-inline',
@@ -576,6 +577,7 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
     workflowContinuationReplayStates: ['in_progress'],
     workflowReviewRequired: true,
     workflowConvergeTargetIds: ['cat-followup'],
+    workflowContinuationSources: ['workflow_recommendation'],
     workflowContinuationBlockedReasons: ['anti_ping_pong'],
     workflowUnresolvedTargets: ['Reviewer'],
     hasUnresolvedWorkflowTargets: true,
@@ -618,6 +620,7 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
   });
   assert.equal(workflowResult.summary.workflowReviewRequiredCount, 1);
   assert.equal(workflowResult.summary.workflowConvergeTargetCount, 1);
+  assert.equal(workflowResult.summary.workflowContinuationSourceCounts.workflow_recommendation, 1);
   assert.equal(workflowResult.summary.withUnresolvedWorkflowTargetsCount, 1);
   assert.equal(workflowResult.recoveries[0]?.context?.workflowReviewRequired, true);
   assert.equal(workflowResult.recoveries[0]?.context?.workflowConvergeTargetId, 'cat-followup');

@@ -24,8 +24,10 @@ import {
   type CoreTaskViewCommonQuery,
 } from './taskViewQuery.js';
 import {
+  WORKFLOW_CONTINUATION_REPLAY_SOURCES,
   WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS,
   type WorkflowContinuationReplayBlockedReason,
+  type WorkflowContinuationReplaySource,
 } from '../platform/orchestration/workflowContinuationReplay.js';
 import type {
   CatsCoreState,
@@ -231,6 +233,7 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   workflowShapes?: CoreTaskWorkflowShape[];
   workflowReviewRequired?: boolean | null;
   workflowConvergeTargetIds?: string[];
+  workflowContinuationSources?: WorkflowContinuationReplaySource[];
   workflowContinuationBlockedReasons?: WorkflowContinuationReplayBlockedReason[];
   workflowUnresolvedTargets?: string[];
   hasUnresolvedWorkflowTargets?: boolean | null;
@@ -258,6 +261,7 @@ export interface CoreTaskControlPlaneListSummary {
   workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
   workflowReviewRequiredCount: number;
   workflowConvergeTargetCount: number;
+  workflowContinuationSourceCounts: Record<WorkflowContinuationReplaySource, number>;
   workflowContinuationBlockedReasonCounts: Record<WorkflowContinuationReplayBlockedReason, number>;
   withUnresolvedWorkflowTargetsCount: number;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
@@ -933,6 +937,16 @@ function matchesControlPlaneListOptions(
   }
 
   if (
+    options.workflowContinuationSources?.length
+    && (!readContinuationSource(view.workflowContinuation?.continuationSource)
+      || !options.workflowContinuationSources.includes(
+        readContinuationSource(view.workflowContinuation?.continuationSource)!,
+      ))
+  ) {
+    return false;
+  }
+
+  if (
     options.workflowContinuationBlockedReasons?.length
     && (!view.workflowContinuation?.blockedReason
       || !options.workflowContinuationBlockedReasons.includes(
@@ -1140,6 +1154,24 @@ function buildWorkflowContinuationBlockedReasonCounts(
   return counts;
 }
 
+function buildWorkflowContinuationSourceCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<WorkflowContinuationReplaySource, number> {
+  const counts = Object.fromEntries(
+    WORKFLOW_CONTINUATION_REPLAY_SOURCES.map((source) => [source, 0]),
+  ) as Record<WorkflowContinuationReplaySource, number>;
+
+  for (const view of views) {
+    const source = readContinuationSource(view.workflowContinuation?.continuationSource);
+    if (!source) {
+      continue;
+    }
+    counts[source] += 1;
+  }
+
+  return counts;
+}
+
 function buildLatestTimelineCategoryCounts(
   views: CoreTaskControlPlaneView[],
 ): Record<CoreTaskTimelineCategory, number> {
@@ -1198,6 +1230,7 @@ export function summarizeCoreTaskControlPlaneViews(input: {
       .length,
     workflowConvergeTargetCount: input.views.filter((view) =>
       Boolean(readEffectiveWorkflowConvergeTargetId(view))).length,
+    workflowContinuationSourceCounts: buildWorkflowContinuationSourceCounts(input.views),
     workflowContinuationBlockedReasonCounts:
       buildWorkflowContinuationBlockedReasonCounts(input.views),
     withUnresolvedWorkflowTargetsCount: input.views.filter((view) =>

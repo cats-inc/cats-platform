@@ -1420,6 +1420,7 @@ Semantics:
   - `workflowShape`
   - `workflowReviewRequired`
   - `workflowConvergeTargetId`
+  - `workflowContinuationSource`
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
   - `workflowContinuationBlockedReason`
@@ -1433,8 +1434,8 @@ Semantics:
 - repeated and comma-separated values are both accepted for enum filters such
   as `taskStatus`, `severity`, `reason`, `nextAction`, `deliveryMode`, and
   `deliveryAction`, plus `workflowShape`,
-  `workflowContinuationBlockedReason`, `latestTimelineCategory`, and
-  `latestTimelineKind`
+  `workflowContinuationSource`, `workflowContinuationBlockedReason`,
+  `latestTimelineCategory`, and `latestTimelineKind`
 - list responses now include a `summary` block with:
   - `totalAvailable`
   - `matching`
@@ -1451,6 +1452,7 @@ Semantics:
   - `workflowShapeCounts`
   - `workflowReviewRequiredCount`
   - `workflowConvergeTargetCount`
+  - `workflowContinuationSourceCounts`
   - `withUnresolvedWorkflowTargetsCount`
   - `workflowContinuationBlockedReasonCounts`
   - `latestTimelineCategoryCounts`
@@ -1471,6 +1473,9 @@ Semantics:
   `withUnresolvedWorkflowTargetsCount` let control-plane consumers facet the
   queue by which continuation targets are still missing, without scraping raw
   checkpoint metadata or replay blobs
+- `workflowContinuationSource` / `workflowContinuationSourceCounts` let
+  control-plane consumers distinguish explicit-mention continuations from
+  workflow-recommendation replays without reopening raw continuation metadata
 - `family` reuses the same task-family summary exposed by
   `GET /api/core/tasks/{taskId}`, so control-plane consumers can see whether a
   task is a parent, child, or root plus how many immediate child tasks are
@@ -1540,6 +1545,7 @@ Semantics:
   - `workflowShape`
   - `workflowReviewRequired`
   - `workflowConvergeTargetId`
+  - `workflowContinuationSource`
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
   - `workflowContinuationBlockedReason`
@@ -1555,8 +1561,8 @@ Semantics:
   without hydrating the full core snapshot client-side, including
   `deliveryModeCounts`, `deliveryActionCounts`, `workflowStageCounts`,
   `workflowShapeCounts`, `workflowReviewRequiredCount`,
-  `workflowConvergeTargetCount`, `withUnresolvedWorkflowTargetsCount`,
-  `workflowContinuationBlockedReasonCounts`,
+  `workflowConvergeTargetCount`, `workflowContinuationSourceCounts`,
+  `withUnresolvedWorkflowTargetsCount`, `workflowContinuationBlockedReasonCounts`,
   `latestTimelineCategoryCounts`, and `latestTimelineKindCounts`, plus
   `withChildrenCount` and `withActiveChildrenCount`
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
@@ -1752,6 +1758,7 @@ Semantics:
   - `workflowShape`
   - `workflowReviewRequired`
   - `workflowConvergeTargetId`
+  - `workflowContinuationSource`
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
   - `latestReplayResumeReason`
@@ -1783,6 +1790,7 @@ Semantics:
   - `latestReplayResumeReasonCounts`
   - `workflowReviewRequiredCount`
   - `workflowConvergeTargetCount`
+  - `workflowContinuationSourceCounts`
   - `withUnresolvedWorkflowTargetsCount`
   - `withChildrenCount`
   - `withActiveChildrenCount`
@@ -1807,6 +1815,9 @@ Semantics:
   `workflowContinuationBlockedReasonCounts` let recovery and operator
   automation facet retryable continuation work by which guard persisted the
   replay snapshot without reopening raw checkpoint metadata
+- `workflowContinuationSource` / `workflowContinuationSourceCounts` let
+  recovery automation separate explicit-mention retries from
+  workflow-recommendation replays without scraping the raw continuation blob
 - `workflowUnresolvedTarget` / `hasUnresolvedWorkflowTargets` plus
   `withUnresolvedWorkflowTargetsCount` let recovery or operator automation
   facet queues by the specific continuation targets that are still unresolved

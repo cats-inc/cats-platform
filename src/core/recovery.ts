@@ -39,8 +39,10 @@ import {
   readPendingOrchestratorDispatchSnapshot,
 } from '../platform/orchestration/pendingDispatch.js';
 import {
+  WORKFLOW_CONTINUATION_REPLAY_SOURCES,
   WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS,
   type WorkflowContinuationReplayBlockedReason,
+  type WorkflowContinuationReplaySource,
   type WorkflowContinuationReplayState,
   readWorkflowContinuationReplay,
 } from '../platform/orchestration/workflowContinuationReplay.js';
@@ -243,6 +245,7 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   workflowShapes?: CoreTaskRecoveryWorkflowShape[];
   workflowReviewRequired?: boolean | null;
   workflowConvergeTargetIds?: string[];
+  workflowContinuationSources?: WorkflowContinuationReplaySource[];
   workflowUnresolvedTargets?: string[];
   hasUnresolvedWorkflowTargets?: boolean | null;
   latestReplayResumeReasons?: CoreTaskRecoveryResumeReason[];
@@ -275,6 +278,7 @@ export interface CoreTaskRecoveryListSummary {
   latestReplayResumeReasonCounts: Record<CoreTaskRecoveryResumeReason, number>;
   workflowReviewRequiredCount: number;
   workflowConvergeTargetCount: number;
+  workflowContinuationSourceCounts: Record<WorkflowContinuationReplaySource, number>;
   withUnresolvedWorkflowTargetsCount: number;
   withChildrenCount: number;
   withActiveChildrenCount: number;
@@ -787,6 +791,16 @@ function matchesRecoveryListOptions(
   }
 
   if (
+    options.workflowContinuationSources?.length
+    && (!recovery.workflowContinuationReplay?.continuationSource
+      || !options.workflowContinuationSources.includes(
+        recovery.workflowContinuationReplay.continuationSource as WorkflowContinuationReplaySource,
+      ))
+  ) {
+    return false;
+  }
+
+  if (
     options.workflowUnresolvedTargets?.length
     && !recovery.workflowContinuationReplay?.unresolvedTargets.some((target) =>
       options.workflowUnresolvedTargets?.includes(target))
@@ -1014,6 +1028,27 @@ function buildRecoveryResumeReasonCounts(
   return counts;
 }
 
+function buildRecoveryContinuationSourceCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<WorkflowContinuationReplaySource, number> {
+  const counts = Object.fromEntries(
+    WORKFLOW_CONTINUATION_REPLAY_SOURCES.map((source) => [source, 0]),
+  ) as Record<WorkflowContinuationReplaySource, number>;
+
+  for (const recovery of recoveries) {
+    const source = recovery.workflowContinuationReplay?.continuationSource;
+    if (
+      source !== 'explicit_mentions'
+      && source !== 'workflow_recommendation'
+    ) {
+      continue;
+    }
+    counts[source] += 1;
+  }
+
+  return counts;
+}
+
 export function summarizeCoreTaskRecoveryViews(input: {
   totalAvailable: number;
   matching: number;
@@ -1048,6 +1083,7 @@ export function summarizeCoreTaskRecoveryViews(input: {
       recovery.context?.workflowReviewRequired === true).length,
     workflowConvergeTargetCount: input.recoveries.filter((recovery) =>
       Boolean(recovery.context?.workflowConvergeTargetId)).length,
+    workflowContinuationSourceCounts: buildRecoveryContinuationSourceCounts(input.recoveries),
     withUnresolvedWorkflowTargetsCount: input.recoveries.filter((recovery) =>
       (recovery.workflowContinuationReplay?.unresolvedTargets.length ?? 0) > 0).length,
     withChildrenCount: input.recoveries.filter((recovery) => recovery.family.childCount > 0).length,

@@ -245,6 +245,10 @@ contracts.
       review stages and support `workflowReviewRequired` plus
       `workflowConvergeTargetId` filters for reviewer-targeted queue faceting,
       while recovery, control-plane, and operator-inbox list routes now also
+      support `workflowContinuationSource` plus
+      `workflowContinuationSourceCounts` so queue automation can distinguish
+      explicit-mention continuations from workflow-recommendation replays,
+      while recovery, control-plane, and operator-inbox list routes now also
       support `workflowUnresolvedTarget` plus
       `hasUnresolvedWorkflowTargets` and summarize
       `withUnresolvedWorkflowTargetsCount` for missing-target queue faceting,

@@ -76,6 +76,10 @@ export interface CoreOperatorInboxSummary {
   workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
   workflowReviewRequiredCount: number;
   workflowConvergeTargetCount: number;
+  workflowContinuationSourceCounts: Record<
+    NonNullable<CoreTaskControlPlaneWorkflowContinuationView['continuationSource']>,
+    number
+  >;
   withUnresolvedWorkflowTargetsCount: number;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
@@ -125,6 +129,15 @@ function readEffectiveWorkflowUnresolvedTargets(
   return item.workflowContinuation?.unresolvedTargets.length
     ? [...item.workflowContinuation.unresolvedTargets]
     : [];
+}
+
+function readEffectiveWorkflowContinuationSource(
+  item: Pick<CoreOperatorInboxItem, 'workflowContinuation'>,
+): NonNullable<CoreTaskControlPlaneWorkflowContinuationView['continuationSource']> | null {
+  return item.workflowContinuation?.continuationSource === 'explicit_mentions'
+    || item.workflowContinuation?.continuationSource === 'workflow_recommendation'
+    ? item.workflowContinuation.continuationSource
+    : null;
 }
 
 function compareInboxItems(left: CoreOperatorInboxItem, right: CoreOperatorInboxItem): number {
@@ -250,6 +263,16 @@ function matchesOperatorInboxQuery(
     && !query.workflowConvergeTargetIds.includes(
       readEffectiveWorkflowConvergeTargetId(item) ?? '',
     )
+  ) {
+    return false;
+  }
+
+  if (
+    query.workflowContinuationSources?.length
+    && (!readEffectiveWorkflowContinuationSource(item)
+      || !query.workflowContinuationSources.includes(
+        readEffectiveWorkflowContinuationSource(item)!,
+      ))
   ) {
     return false;
   }
@@ -479,6 +502,25 @@ function buildWorkflowContinuationBlockedReasonCounts(
   return counts;
 }
 
+function buildWorkflowContinuationSourceCounts(
+  items: CoreOperatorInboxItem[],
+): Record<NonNullable<CoreTaskControlPlaneWorkflowContinuationView['continuationSource']>, number> {
+  const counts = {
+    explicit_mentions: 0,
+    workflow_recommendation: 0,
+  };
+
+  for (const item of items) {
+    const source = readEffectiveWorkflowContinuationSource(item);
+    if (!source) {
+      continue;
+    }
+    counts[source] += 1;
+  }
+
+  return counts;
+}
+
 function buildLatestTimelineKindCounts(
   items: CoreOperatorInboxItem[],
 ): Record<CoreTaskTimelineItemKind, number> {
@@ -520,6 +562,7 @@ export function summarizeCoreOperatorInboxItems(input: {
       .length,
     workflowConvergeTargetCount: input.items.filter((item) =>
       Boolean(readEffectiveWorkflowConvergeTargetId(item))).length,
+    workflowContinuationSourceCounts: buildWorkflowContinuationSourceCounts(input.items),
     withUnresolvedWorkflowTargetsCount: input.items.filter((item) =>
       readEffectiveWorkflowUnresolvedTargets(item).length > 0).length,
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),

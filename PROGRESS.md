@@ -354,6 +354,11 @@ Known follow-ups:
   summarize `withUnresolvedWorkflowTargetsCount`, so operator automation can
   facet blocked continuation work by which targets are still missing instead of
   treating every unresolved replay as one undifferentiated bucket
+- those same recovery, control-plane, and operator-inbox list routes now also
+  support `workflowContinuationSource` plus
+  `workflowContinuationSourceCounts`, so automation can distinguish explicit
+  mention-driven continuations from workflow-recommendation replays without
+  scraping raw continuation blobs
 - server startup now downgrades stranded `pendingOrchestratorDispatch` /
   `orchestratorDispatchReplay` `in_progress` markers to failed so crash or
   cleanup-failure cases remain operator-recoverable after restart
