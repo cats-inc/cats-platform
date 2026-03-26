@@ -1885,6 +1885,9 @@ test('GET /api/core/tasks/:taskId/timeline returns a normalized task execution n
     const timelinePayload = await timelineResponse.json();
 
     assert.equal(timelinePayload.taskId, fixtures.task.id);
+    assert.equal(timelinePayload.summary.totalAvailable, 9);
+    assert.equal(timelinePayload.summary.matching, 9);
+    assert.equal(timelinePayload.summary.returned, 9);
     assert.equal(
       timelinePayload.timeline.latestTimestamp,
       timelinePayload.timeline.items[0]?.timestamp ?? null,
@@ -1942,6 +1945,21 @@ test('GET /api/core/tasks/:taskId/timeline returns a normalized task execution n
       timelinePayload.timeline.items.find((item) => item.kind === 'run')?.traceId,
       fixtures.run.traceId,
     );
+
+    const filteredTimelineResponse = await fetch(
+      `${baseUrl}/api/core/tasks/${fixtures.task.id}/timeline?category=recovery&kind=activity&limit=1`,
+    );
+    assert.equal(filteredTimelineResponse.status, 200);
+    const filteredTimelinePayload = await filteredTimelineResponse.json();
+    assert.equal(filteredTimelinePayload.summary.totalAvailable, 9);
+    assert.equal(filteredTimelinePayload.summary.matching, 1);
+    assert.equal(filteredTimelinePayload.summary.returned, 1);
+    assert.deepEqual(
+      filteredTimelinePayload.timeline.items.map((item) => item.recordId),
+      ['activity-system-recovery'],
+    );
+    assert.equal(filteredTimelinePayload.timeline.counts.recovery, 1);
+    assert.equal(filteredTimelinePayload.timeline.counts.total, 1);
   });
 });
 

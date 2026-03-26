@@ -209,7 +209,10 @@ contracts.
       rebuilding the task graph outside `cats`, while the recovery read model
       now also carries the same family topology plus family-aware filters and
       child-activity summary counts so replay/retry automation does not need a
-      separate task-detail join to scope parent/child recovery work.
+      separate task-detail join to scope parent/child recovery work, and the
+      task-timeline route now also supports server-side narrative filters plus
+      a lightweight query summary so operator tooling can slice one task's
+      chronology without hydrating the full unfiltered timeline first.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

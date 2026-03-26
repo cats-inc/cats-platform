@@ -11,7 +11,10 @@ import {
   upsertCoreRun,
   upsertCoreTask,
 } from '../dist-server/core/model/index.js';
-import { buildCoreTaskTimelineView } from '../dist-server/core/taskTimeline.js';
+import {
+  buildCoreTaskTimelineView,
+  queryCoreTaskTimelineView,
+} from '../dist-server/core/taskTimeline.js';
 
 test('buildCoreTaskTimelineView normalizes task history into a chronological narrative', () => {
   let core = createDefaultCoreState();
@@ -183,4 +186,94 @@ test('buildCoreTaskTimelineView normalizes task history into a chronological nar
   assert.equal(timeline.items[0]?.summary, 'Replay failed during startup recovery.');
   assert.equal(timeline.items[1]?.actorId, 'actor-owner');
   assert.equal(timeline.items[4]?.traceId, 'trace-timeline');
+});
+
+test('queryCoreTaskTimelineView filters task history by category, kind, actor, and run', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-timeline-filter',
+      title: 'Timeline filter task',
+      status: 'blocked',
+      conversationId: 'conversation-channel-timeline-filter',
+      createdAt: '2026-03-26T16:00:00.000Z',
+    },
+    new Date('2026-03-26T16:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-timeline-filter',
+      title: 'Timeline filter run',
+      status: 'blocked',
+      taskId: 'task-timeline-filter',
+      conversationId: 'conversation-channel-timeline-filter',
+      summary: 'Run blocked pending retry.',
+      createdAt: '2026-03-26T16:01:00.000Z',
+    },
+    new Date('2026-03-26T16:04:00.000Z'),
+  ).core;
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-timeline-filter-operator',
+      kind: 'operator_action',
+      taskId: 'task-timeline-filter',
+      runId: 'run-timeline-filter',
+      actorId: 'actor-owner',
+      message: 'Operator requested a retry.',
+      createdAt: '2026-03-26T16:05:00.000Z',
+      metadata: {
+        source: 'core-operator-actions',
+      },
+    },
+    new Date('2026-03-26T16:05:00.000Z'),
+  ).core;
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-timeline-filter-recovery',
+      kind: 'note',
+      taskId: 'task-timeline-filter',
+      runId: 'run-timeline-filter',
+      message: 'Recovery replay failed.',
+      createdAt: '2026-03-26T16:06:00.000Z',
+      metadata: {
+        source: 'orchestrator-startup-recovery',
+        replayPhase: 'dispatch_replay_result',
+      },
+    },
+    new Date('2026-03-26T16:06:00.000Z'),
+  ).core;
+
+  const task = core.tasks.find((candidate) => candidate.id === 'task-timeline-filter');
+  assert.ok(task);
+
+  const result = queryCoreTaskTimelineView(core, task, {
+    categories: ['operator', 'recovery'],
+    kinds: ['activity'],
+    actorIds: ['actor-owner', ''],
+    runIds: ['run-timeline-filter'],
+    limit: 1,
+  });
+
+  assert.equal(result.summary.totalAvailable, 4);
+  assert.equal(result.summary.matching, 2);
+  assert.equal(result.summary.returned, 1);
+  assert.equal(result.timeline.latestTimestamp, '2026-03-26T16:06:00.000Z');
+  assert.deepEqual(result.timeline.counts, {
+    total: 1,
+    taskLifecycle: 0,
+    governance: 0,
+    execution: 0,
+    workflow: 0,
+    recovery: 1,
+    operator: 0,
+  });
+  assert.deepEqual(
+    result.timeline.items.map((item) => [item.kind, item.recordId, item.category]),
+    [['activity', 'activity-timeline-filter-recovery', 'recovery']],
+  );
 });

@@ -362,6 +362,10 @@ Known follow-ups:
   family-aware filters and child-activity summary counts, so replay/retry
   automation no longer needs a separate task-detail join just to scope parent/
   child recovery work
+- the task-timeline route now also supports server-side `category` / `kind` /
+  `actorId` / `runId` filtering plus a lightweight query summary, so operator
+  tooling can slice a task narrative without hydrating and re-filtering the
+  whole timeline client-side
 - `src/core/recovery.ts` now also lifts delivery/workflow context into the
   recovery read model itself, so recovery filters and summary counts can facet
   by `deliveryMode`, `deliveryAction`, and `workflowStageId` without forcing

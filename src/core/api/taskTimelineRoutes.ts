@@ -1,6 +1,7 @@
 import { CoreNotFoundError } from '../errors.js';
-import { buildCoreTaskTimelineView } from '../taskTimeline.js';
+import { queryCoreTaskTimelineView } from '../taskTimeline.js';
 import type { CoreApiRouteContext } from './types.js';
+import { readTaskTimelineQuery } from './queryFilters.js';
 import { handleCoreError } from './shared.js';
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
@@ -13,10 +14,12 @@ async function handleCoreTaskTimeline(
   if (!task) {
     throw new CoreNotFoundError(`Task not found: ${taskId}`, 'task_not_found');
   }
+  const result = queryCoreTaskTimelineView(core, task, readTaskTimelineQuery(context.url.searchParams));
 
   sendJson(context.response, 200, {
     taskId,
-    timeline: buildCoreTaskTimelineView(core, task),
+    timeline: result.timeline,
+    summary: result.summary,
   });
 }
 

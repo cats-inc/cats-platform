@@ -17,6 +17,7 @@ import { CORE_TASK_VIEW_STATUSES } from '../taskViewQuery.js';
 import {
   CORE_TASK_TIMELINE_CATEGORIES,
   CORE_TASK_TIMELINE_ITEM_KINDS,
+  type CoreTaskTimelineQuery,
 } from '../taskTimeline.js';
 
 function readQueryValues(
@@ -174,6 +175,26 @@ export function readTaskRecoveryListOptions(
     parentTaskIds: readQueryValues(searchParams, 'parentTaskId'),
     hasChildren: readBooleanQuery(searchParams, 'hasChildren'),
     hasActiveChildren: readBooleanQuery(searchParams, 'hasActiveChildren'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readTaskTimelineQuery(
+  searchParams: URLSearchParams,
+): CoreTaskTimelineQuery {
+  return {
+    categories: readEnumQueryValues(
+      searchParams,
+      'category',
+      CORE_TASK_TIMELINE_CATEGORIES,
+    ),
+    kinds: readEnumQueryValues(
+      searchParams,
+      'kind',
+      CORE_TASK_TIMELINE_ITEM_KINDS,
+    ),
+    actorIds: readQueryValues(searchParams, 'actorId'),
+    runIds: readQueryValues(searchParams, 'runId'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

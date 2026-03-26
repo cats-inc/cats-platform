@@ -1,4 +1,5 @@
 import { buildCoreTaskRecordsView } from './taskRecords.js';
+import { applyCoreTaskViewLimit } from './taskViewQuery.js';
 import type {
   CatsCoreState,
   CoreActivityRecord,
@@ -78,6 +79,20 @@ export interface CoreTaskTimelineView {
   latestTimestamp: string | null;
   counts: CoreTaskTimelineCounts;
   items: CoreTaskTimelineItem[];
+}
+
+export interface CoreTaskTimelineQuery {
+  categories?: CoreTaskTimelineCategory[];
+  kinds?: CoreTaskTimelineItemKind[];
+  actorIds?: string[];
+  runIds?: string[];
+  limit?: number | null;
+}
+
+export interface CoreTaskTimelineQuerySummary {
+  totalAvailable: number;
+  matching: number;
+  returned: number;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -343,5 +358,56 @@ export function buildCoreTaskTimelineView(
     latestTimestamp: items[0]?.timestamp ?? null,
     counts: buildCounts(items),
     items,
+  };
+}
+
+function matchesTimelineQuery(
+  item: CoreTaskTimelineItem,
+  query: CoreTaskTimelineQuery,
+): boolean {
+  if (query.categories?.length && !query.categories.includes(item.category)) {
+    return false;
+  }
+
+  if (query.kinds?.length && !query.kinds.includes(item.kind)) {
+    return false;
+  }
+
+  if (query.actorIds?.length && !query.actorIds.includes(item.actorId ?? '')) {
+    return false;
+  }
+
+  if (query.runIds?.length && !query.runIds.includes(item.runId ?? '')) {
+    return false;
+  }
+
+  return true;
+}
+
+export function queryCoreTaskTimelineView(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+  query: CoreTaskTimelineQuery = {},
+): {
+  timeline: CoreTaskTimelineView;
+  summary: CoreTaskTimelineQuerySummary;
+} {
+  const fullTimeline = buildCoreTaskTimelineView(core, task);
+  const matching = fullTimeline.items.filter((item) => matchesTimelineQuery(item, query));
+  const returned = applyCoreTaskViewLimit(matching, query.limit);
+
+  return {
+    timeline: {
+      taskId: fullTimeline.taskId,
+      conversationId: fullTimeline.conversationId,
+      latestTimestamp: returned[0]?.timestamp ?? null,
+      counts: buildCounts(returned),
+      items: returned,
+    },
+    summary: {
+      totalAvailable: fullTimeline.items.length,
+      matching: matching.length,
+      returned: returned.length,
+    },
   };
 }

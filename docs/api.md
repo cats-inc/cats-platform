@@ -1190,6 +1190,11 @@ runs, traces, checkpoints, outcomes, and activities:
 ```json
 {
   "taskId": "task-system-1",
+  "summary": {
+    "totalAvailable": 9,
+    "matching": 9,
+    "returned": 9
+  },
   "timeline": {
     "taskId": "task-system-1",
     "conversationId": "conversation-system-1",
@@ -1222,6 +1227,16 @@ Semantics:
 
 - this route is a summary-heavy, record-normalized complement to
   `GET /api/core/tasks/{taskId}/records`
+- `GET /api/core/tasks/{taskId}/timeline` supports additive filters for:
+  - `category`
+  - `kind`
+  - `actorId`
+  - `runId`
+  - `limit`
+- the response now includes a lightweight `summary` block with:
+  - `totalAvailable`
+  - `matching`
+  - `returned`
 - timeline ordering uses the natural record timestamp for each family:
   - `createdAt` for append-only task, trace, and activity rows
   - `updatedAt` for mutable approval-binding, run, checkpoint, and outcome rows
