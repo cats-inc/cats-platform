@@ -2,10 +2,17 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import type {
   WorkDashboardProjection,
+  WorkProjectDetailProjection,
   WorkTaskDetailProjection,
+  WorkWorkItemDetailProjection,
 } from '../api/projection';
 
-import { fetchWorkDashboard, fetchWorkTaskDetail } from './api';
+import {
+  fetchWorkDashboard,
+  fetchWorkProjectDetail,
+  fetchWorkTaskDetail,
+  fetchWorkWorkItemDetail,
+} from './api';
 import './work.css';
 
 type DashboardState =
@@ -13,11 +20,19 @@ type DashboardState =
   | { status: 'ready'; payload: WorkDashboardProjection }
   | { status: 'error'; message: string };
 
+type FocusState =
+  | { kind: 'task'; id: string }
+  | { kind: 'project'; id: string }
+  | { kind: 'workItem'; id: string }
+  | null;
+
 type DetailState =
   | { status: 'idle' }
-  | { status: 'loading'; taskId: string }
-  | { status: 'ready'; taskId: string; payload: WorkTaskDetailProjection }
-  | { status: 'error'; taskId: string; message: string };
+  | { status: 'loading'; focus: FocusState }
+  | { status: 'task'; payload: WorkTaskDetailProjection }
+  | { status: 'project'; payload: WorkProjectDetailProjection }
+  | { status: 'workItem'; payload: WorkWorkItemDetailProjection }
+  | { status: 'error'; focus: FocusState; message: string };
 
 function formatLabel(value: string | null | undefined): string {
   if (!value) {
@@ -29,9 +44,9 @@ function formatLabel(value: string | null | undefined): string {
     .replace(/\b\w/gu, (character) => character.toUpperCase());
 }
 
-function formatTimelineTimestamp(value: string | null | undefined): string {
+function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
-    return 'No recent timeline';
+    return 'No recent update';
   }
 
   return new Date(value).toLocaleString(undefined, {
@@ -42,7 +57,7 @@ function formatTimelineTimestamp(value: string | null | undefined): string {
   });
 }
 
-interface TaskListButtonProps {
+interface WorkListButtonProps {
   title: string;
   summary: string | null;
   status: string;
@@ -52,7 +67,7 @@ interface TaskListButtonProps {
   onClick: () => void;
 }
 
-function TaskListButton({
+function WorkListButton({
   title,
   summary,
   status,
@@ -60,7 +75,7 @@ function TaskListButton({
   chips,
   selected,
   onClick,
-}: TaskListButtonProps) {
+}: WorkListButtonProps) {
   return (
     <button
       type="button"
@@ -112,45 +127,183 @@ function DashboardSection({
   );
 }
 
-interface WorkTaskDetailProps {
-  state: DetailState;
+function WorkProjectDetail({ payload }: { payload: WorkProjectDetailProjection }) {
+  return (
+    <section className="workDetailCard">
+      <div className="workDetailHeader">
+        <div>
+          <p className="workSectionEyebrow">Project Detail</p>
+          <h2>{payload.project.title}</h2>
+          <p className="workTaskButtonMeta">
+            Owner {payload.ownerName}
+            {' · '}
+            Updated {formatTimestamp(payload.project.updatedAt)}
+          </p>
+        </div>
+        <span className="workBadge workBadgeStrong">{formatLabel(payload.project.status)}</span>
+      </div>
+
+      <div className="workSummaryGrid workSummaryGridCompact">
+        <div className="workSummaryCard">
+          <span className="workSummaryValue">{payload.workItems.length}</span>
+          <span className="workSummaryLabel">Work Items</span>
+        </div>
+        <div className="workSummaryCard">
+          <span className="workSummaryValue">{payload.linkedTasks.length}</span>
+          <span className="workSummaryLabel">Linked Tasks</span>
+        </div>
+        <div className="workSummaryCard">
+          <span className="workSummaryValue">{payload.artifacts.totalCount}</span>
+          <span className="workSummaryLabel">Artifacts</span>
+        </div>
+        <div className="workSummaryCard">
+          <span className="workSummaryValue">{payload.activity.totalCount}</span>
+          <span className="workSummaryLabel">Activity</span>
+        </div>
+      </div>
+
+      <div className="workDetailSection">
+        <h3>Project Context</h3>
+        <div className="workDefinitionList">
+          <div>
+            <dt>Primary conversation</dt>
+            <dd>{payload.primaryConversation?.title ?? 'No linked conversation'}</dd>
+          </div>
+          <div>
+            <dt>Repo path</dt>
+            <dd>{payload.project.repoPath ?? 'No repo path recorded'}</dd>
+          </div>
+        </div>
+        <p className="workDetailCopy">{payload.project.summary ?? 'No project summary recorded yet.'}</p>
+      </div>
+
+      <div className="workDetailSection">
+        <h3>Workstream Snapshot</h3>
+        {payload.workItems.length === 0 ? (
+          <p className="workEmptyState">No work items linked to this project yet.</p>
+        ) : (
+          <ul className="workCompactList">
+            {payload.workItems.map((workItem) => (
+              <li key={workItem.id}>
+                <strong>{workItem.title}</strong>
+                <span>{formatLabel(workItem.status)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="workDetailSection">
+        <h3>Recent Activity</h3>
+        {payload.activity.latestMessages.length === 0 ? (
+          <p className="workEmptyState">No recent project activity yet.</p>
+        ) : (
+          <ul className="workTimelineList">
+            {payload.activity.latestMessages.map((message, index) => (
+              <li className="workTimelineItem" key={`${payload.project.id}:activity:${index}`}>
+                <p>{message}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
 }
 
-function WorkTaskDetail({ state }: WorkTaskDetailProps) {
-  if (state.status === 'idle') {
-    return (
-      <section className="workDetailCard">
-        <p className="workSectionEyebrow">Task Detail</p>
-        <h2>Select a task</h2>
-        <p className="workEmptyState">
-          Pick an inbox, control-plane, or recovery item to inspect the shared-core
-          timeline, governance state, and runtime delivery context.
-        </p>
-      </section>
-    );
-  }
+function WorkWorkItemDetail({ payload }: { payload: WorkWorkItemDetailProjection }) {
+  return (
+    <section className="workDetailCard">
+      <div className="workDetailHeader">
+        <div>
+          <p className="workSectionEyebrow">Work Item Detail</p>
+          <h2>{payload.workItem.title}</h2>
+          <p className="workTaskButtonMeta">
+            Owner {payload.ownerName}
+            {' · '}
+            Updated {formatTimestamp(payload.workItem.updatedAt)}
+          </p>
+        </div>
+        <span className="workBadge workBadgeStrong">{formatLabel(payload.workItem.status)}</span>
+      </div>
 
-  if (state.status === 'loading') {
-    return (
-      <section className="workDetailCard">
-        <p className="workSectionEyebrow">Task Detail</p>
-        <h2>Loading task</h2>
-        <p className="workEmptyState">Fetching control-plane detail for {state.taskId}.</p>
-      </section>
-    );
-  }
+      <div className="workSummaryGrid workSummaryGridCompact">
+        <div className="workSummaryCard">
+          <span className="workSummaryValue">{payload.assignedActors.length}</span>
+          <span className="workSummaryLabel">Assigned Actors</span>
+        </div>
+        <div className="workSummaryCard">
+          <span className="workSummaryValue">{payload.linkedTask ? 1 : 0}</span>
+          <span className="workSummaryLabel">Linked Task</span>
+        </div>
+        <div className="workSummaryCard">
+          <span className="workSummaryValue">{payload.artifacts.totalCount}</span>
+          <span className="workSummaryLabel">Artifacts</span>
+        </div>
+        <div className="workSummaryCard">
+          <span className="workSummaryValue">{payload.activity.totalCount}</span>
+          <span className="workSummaryLabel">Activity</span>
+        </div>
+      </div>
 
-  if (state.status === 'error') {
-    return (
-      <section className="workDetailCard">
-        <p className="workSectionEyebrow">Task Detail</p>
-        <h2>Could not load task</h2>
-        <p className="workEmptyState">{state.message}</p>
-      </section>
-    );
-  }
+      <div className="workDetailSection">
+        <h3>Context</h3>
+        <div className="workDefinitionList">
+          <div>
+            <dt>Project</dt>
+            <dd>{payload.project?.title ?? 'No linked project'}</dd>
+          </div>
+          <div>
+            <dt>Conversation</dt>
+            <dd>{payload.conversation?.title ?? 'No linked conversation'}</dd>
+          </div>
+          <div>
+            <dt>Assigned actors</dt>
+            <dd>
+              {payload.assignedActors.length > 0
+                ? payload.assignedActors.map((actor) => actor.displayName).join(', ')
+                : 'No assigned actors'}
+            </dd>
+          </div>
+        </div>
+        <p className="workDetailCopy">{payload.workItem.summary ?? 'No work-item summary recorded yet.'}</p>
+      </div>
 
-  const { payload } = state;
+      {payload.linkedTask ? (
+        <div className="workDetailSection">
+          <h3>Linked Task Snapshot</h3>
+          <p className="workDetailCopy">
+            {payload.linkedTask.task.title}
+            {' · '}
+            {formatLabel(payload.linkedTask.task.status)}
+          </p>
+          <div className="workChipRow">
+            {payload.linkedTask.controlPlane.nextActions.map((action) => (
+              <span className="workChip workChipAccent" key={action.kind}>{action.label}</span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="workDetailSection">
+        <h3>Recent Activity</h3>
+        {payload.activity.latestMessages.length === 0 ? (
+          <p className="workEmptyState">No recent work-item activity yet.</p>
+        ) : (
+          <ul className="workTimelineList">
+            {payload.activity.latestMessages.map((message, index) => (
+              <li className="workTimelineItem" key={`${payload.workItem.id}:activity:${index}`}>
+                <p>{message}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function WorkTaskDetail({ payload }: { payload: WorkTaskDetailProjection }) {
   const { task, inspection, controlPlane, recovery, timeline } = payload;
   const latestWorkflow = controlPlane.latestWorkflowRecommendation;
 
@@ -161,7 +314,11 @@ function WorkTaskDetail({ state }: WorkTaskDetailProps) {
           <p className="workSectionEyebrow">Task Detail</p>
           <h2>{task.title}</h2>
           <p className="workTaskButtonMeta">
-            Task {task.id} · {task.conversationId ?? 'No conversation'} · Updated {formatTimelineTimestamp(task.updatedAt)}
+            Task {task.id}
+            {' · '}
+            {task.conversationId ?? 'No conversation'}
+            {' · '}
+            Updated {formatTimestamp(task.updatedAt)}
           </p>
         </div>
         <span className="workBadge workBadgeStrong">{formatLabel(task.status)}</span>
@@ -244,7 +401,7 @@ function WorkTaskDetail({ state }: WorkTaskDetailProps) {
               <li className="workTimelineItem" key={item.timelineId}>
                 <div className="workTimelineHeader">
                   <strong>{item.title}</strong>
-                  <span>{formatTimelineTimestamp(item.timestamp)}</span>
+                  <span>{formatTimestamp(item.timestamp)}</span>
                 </div>
                 <p>{item.summary ?? `${formatLabel(item.category)} · ${formatLabel(item.kind)}`}</p>
               </li>
@@ -256,10 +413,55 @@ function WorkTaskDetail({ state }: WorkTaskDetailProps) {
   );
 }
 
+function WorkDetailPane({ state }: { state: DetailState }) {
+  if (state.status === 'idle') {
+    return (
+      <section className="workDetailCard">
+        <p className="workSectionEyebrow">Work Detail</p>
+        <h2>Select a project, work item, or task</h2>
+        <p className="workEmptyState">
+          Work now exposes shared-core planning and control-plane reads. Choose a record
+          from the left to inspect context, activity, and execution state.
+        </p>
+      </section>
+    );
+  }
+
+  if (state.status === 'loading') {
+    return (
+      <section className="workDetailCard">
+        <p className="workSectionEyebrow">Work Detail</p>
+        <h2>Loading selection</h2>
+        <p className="workEmptyState">Fetching the selected Work record.</p>
+      </section>
+    );
+  }
+
+  if (state.status === 'error') {
+    return (
+      <section className="workDetailCard">
+        <p className="workSectionEyebrow">Work Detail</p>
+        <h2>Could not load selection</h2>
+        <p className="workEmptyState">{state.message}</p>
+      </section>
+    );
+  }
+
+  if (state.status === 'project') {
+    return <WorkProjectDetail payload={state.payload} />;
+  }
+
+  if (state.status === 'workItem') {
+    return <WorkWorkItemDetail payload={state.payload} />;
+  }
+
+  return <WorkTaskDetail payload={state.payload} />;
+}
+
 export default function WorkApp() {
   const [dashboardState, setDashboardState] = useState<DashboardState>({ status: 'loading' });
   const [detailState, setDetailState] = useState<DetailState>({ status: 'idle' });
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [focus, setFocus] = useState<FocusState>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -271,7 +473,15 @@ export default function WorkApp() {
         }
 
         setDashboardState({ status: 'ready', payload });
-        setSelectedTaskId((current) => current ?? payload.selection.defaultTaskId);
+        setFocus((current) => current ?? (
+          payload.selection.defaultProjectId
+            ? { kind: 'project', id: payload.selection.defaultProjectId }
+            : payload.selection.defaultWorkItemId
+              ? { kind: 'workItem', id: payload.selection.defaultWorkItemId }
+              : payload.selection.defaultTaskId
+                ? { kind: 'task', id: payload.selection.defaultTaskId }
+                : null
+        ));
       })
       .catch((error) => {
         if (!cancelled) {
@@ -288,26 +498,36 @@ export default function WorkApp() {
   }, []);
 
   useEffect(() => {
-    if (!selectedTaskId) {
+    if (!focus) {
       setDetailState({ status: 'idle' });
       return;
     }
 
     let cancelled = false;
-    setDetailState({ status: 'loading', taskId: selectedTaskId });
+    setDetailState({ status: 'loading', focus });
 
-    void fetchWorkTaskDetail(selectedTaskId)
-      .then((payload) => {
+    const loadDetail = async () => {
+      if (focus.kind === 'project') {
+        return { status: 'project' as const, payload: await fetchWorkProjectDetail(focus.id) };
+      }
+      if (focus.kind === 'workItem') {
+        return { status: 'workItem' as const, payload: await fetchWorkWorkItemDetail(focus.id) };
+      }
+      return { status: 'task' as const, payload: await fetchWorkTaskDetail(focus.id) };
+    };
+
+    void loadDetail()
+      .then((nextState) => {
         if (!cancelled) {
-          setDetailState({ status: 'ready', taskId: selectedTaskId, payload });
+          setDetailState(nextState);
         }
       })
       .catch((error) => {
         if (!cancelled) {
           setDetailState({
             status: 'error',
-            taskId: selectedTaskId,
-            message: error instanceof Error ? error.message : 'Failed to load task detail.',
+            focus,
+            message: error instanceof Error ? error.message : 'Failed to load Work detail.',
           });
         }
       });
@@ -315,7 +535,7 @@ export default function WorkApp() {
     return () => {
       cancelled = true;
     };
-  }, [selectedTaskId]);
+  }, [focus]);
 
   if (dashboardState.status === 'loading') {
     return (
@@ -347,25 +567,25 @@ export default function WorkApp() {
       <section className="workHeroCard">
         <div className="workHeroCopy">
           <p className="workEyebrow">Cats Work</p>
-          <h1>Shared-core operator dashboard</h1>
+          <h1>Shared-core planning and operations</h1>
           <p>
-            Work now consumes the same task, approval, recovery, and timeline substrate
-            that Chat already writes. This surface is the first real Work slice above
-            Cats Core instead of a placeholder route.
+            Work now sits above Cats Core as a real planning surface: projects, work items,
+            approvals, recovery, and task detail all come from the same shared records that
+            Chat already writes.
           </p>
         </div>
         <div className="workSummaryGrid">
           <div className="workSummaryCard">
-            <span className="workSummaryValue">{payload.summary.taskCount}</span>
-            <span className="workSummaryLabel">Tasks</span>
+            <span className="workSummaryValue">{payload.summary.projectCount}</span>
+            <span className="workSummaryLabel">Projects</span>
+          </div>
+          <div className="workSummaryCard">
+            <span className="workSummaryValue">{payload.summary.workItemCount}</span>
+            <span className="workSummaryLabel">Work Items</span>
           </div>
           <div className="workSummaryCard">
             <span className="workSummaryValue">{payload.summary.operatorAttentionCount}</span>
             <span className="workSummaryLabel">Need Attention</span>
-          </div>
-          <div className="workSummaryCard">
-            <span className="workSummaryValue">{payload.summary.pendingApprovalCount}</span>
-            <span className="workSummaryLabel">Pending Approval</span>
           </div>
           <div className="workSummaryCard">
             <span className="workSummaryValue">{payload.summary.recoveryCount}</span>
@@ -377,6 +597,58 @@ export default function WorkApp() {
       <div className="workLayout">
         <div className="workSectionColumn">
           <DashboardSection
+            title="Projects"
+            subtitle={`${payload.sections.projects.summary.returned} visible records`}
+            emptyState={payload.sections.projects.emptyState}
+          >
+            {payload.sections.projects.items.length === 0 ? null : (
+              <div className="workTaskList">
+                {payload.sections.projects.items.map((item) => (
+                  <WorkListButton
+                    key={`project:${item.id}`}
+                    title={item.title}
+                    summary={item.summary}
+                    status={item.status}
+                    meta={`${item.ownerName} · ${formatTimestamp(item.updatedAt)}`}
+                    chips={[
+                      `${item.linkedWorkItemCount} work items`,
+                      `${item.linkedTaskCount} linked tasks`,
+                    ]}
+                    selected={focus?.kind === 'project' && focus.id === item.id}
+                    onClick={() => setFocus({ kind: 'project', id: item.id })}
+                  />
+                ))}
+              </div>
+            )}
+          </DashboardSection>
+
+          <DashboardSection
+            title="Work Items"
+            subtitle={`${payload.sections.workItems.summary.returned} active records`}
+            emptyState={payload.sections.workItems.emptyState}
+          >
+            {payload.sections.workItems.items.length === 0 ? null : (
+              <div className="workTaskList">
+                {payload.sections.workItems.items.map((item) => (
+                  <WorkListButton
+                    key={`work-item:${item.id}`}
+                    title={item.title}
+                    summary={item.summary}
+                    status={item.status}
+                    meta={`${item.projectTitle ?? 'No project'} · ${formatTimestamp(item.updatedAt)}`}
+                    chips={[
+                      item.taskTitle ?? 'No linked task',
+                      ...item.assignedActorNames.slice(0, 2),
+                    ]}
+                    selected={focus?.kind === 'workItem' && focus.id === item.id}
+                    onClick={() => setFocus({ kind: 'workItem', id: item.id })}
+                  />
+                ))}
+              </div>
+            )}
+          </DashboardSection>
+
+          <DashboardSection
             title="Operator Inbox"
             subtitle={`${payload.sections.operatorInbox.summary.returned} queued tasks`}
             emptyState={payload.sections.operatorInbox.emptyState}
@@ -384,18 +656,18 @@ export default function WorkApp() {
             {payload.sections.operatorInbox.items.length === 0 ? null : (
               <div className="workTaskList">
                 {payload.sections.operatorInbox.items.map((item) => (
-                  <TaskListButton
+                  <WorkListButton
                     key={`operator:${item.taskId}`}
                     title={item.taskTitle}
                     summary={item.summary}
                     status={item.taskStatus}
-                    meta={formatTimelineTimestamp(item.latestTimelineItem?.timestamp ?? null)}
+                    meta={formatTimestamp(item.latestTimelineItem?.timestamp ?? null)}
                     chips={[
                       ...item.attention.reasons.map((reason) => formatLabel(reason)),
                       ...item.nextActions.map((action) => action.label),
                     ]}
-                    selected={selectedTaskId === item.taskId}
-                    onClick={() => setSelectedTaskId(item.taskId)}
+                    selected={focus?.kind === 'task' && focus.id === item.taskId}
+                    onClick={() => setFocus({ kind: 'task', id: item.taskId })}
                   />
                 ))}
               </div>
@@ -410,18 +682,18 @@ export default function WorkApp() {
             {payload.sections.controlPlane.items.length === 0 ? null : (
               <div className="workTaskList">
                 {payload.sections.controlPlane.items.map((item) => (
-                  <TaskListButton
+                  <WorkListButton
                     key={`control:${item.taskId}`}
                     title={item.latestTimelineItem?.title ?? item.taskId}
                     summary={item.latestTimelineItem?.summary ?? null}
                     status={item.taskStatus}
-                    meta={formatTimelineTimestamp(item.lastUpdatedAt)}
+                    meta={formatTimestamp(item.lastUpdatedAt)}
                     chips={[
                       formatLabel(item.attention.severity),
                       ...item.nextActions.map((action) => action.label),
                     ]}
-                    selected={selectedTaskId === item.taskId}
-                    onClick={() => setSelectedTaskId(item.taskId)}
+                    selected={focus?.kind === 'task' && focus.id === item.taskId}
+                    onClick={() => setFocus({ kind: 'task', id: item.taskId })}
                   />
                 ))}
               </div>
@@ -436,12 +708,12 @@ export default function WorkApp() {
             {payload.sections.recovery.items.length === 0 ? null : (
               <div className="workTaskList">
                 {payload.sections.recovery.items.map((item) => (
-                  <TaskListButton
+                  <WorkListButton
                     key={`recovery:${item.taskId}`}
                     title={item.pendingDispatch?.bodyPreview ?? item.dispatchReplay?.bodyPreview ?? item.taskId}
                     summary={item.latestActivity?.message ?? 'Recovery context available.'}
                     status={item.taskStatus}
-                    meta={formatTimelineTimestamp(
+                    meta={formatTimestamp(
                       item.latestActivity?.createdAt
                         ?? item.workflowContinuationReplay?.recordedAt
                         ?? item.dispatchReplay?.recordedAt
@@ -452,8 +724,8 @@ export default function WorkApp() {
                       item.canRetry ? 'Retry available' : 'Manual follow-up',
                       item.canResumeViaApproval ? 'Approval can resume' : 'No approval resume',
                     ]}
-                    selected={selectedTaskId === item.taskId}
-                    onClick={() => setSelectedTaskId(item.taskId)}
+                    selected={focus?.kind === 'task' && focus.id === item.taskId}
+                    onClick={() => setFocus({ kind: 'task', id: item.taskId })}
                   />
                 ))}
               </div>
@@ -462,7 +734,7 @@ export default function WorkApp() {
         </div>
 
         <div className="workDetailColumn">
-          <WorkTaskDetail state={detailState} />
+          <WorkDetailPane state={detailState} />
         </div>
       </div>
     </div>

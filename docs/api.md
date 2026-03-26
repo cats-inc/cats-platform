@@ -426,6 +426,10 @@ GET /api/providers/{provider}/models
 
 ```text
 GET /api/work
+GET /api/work/projects
+GET /api/work/projects/{projectId}
+GET /api/work/work-items
+GET /api/work/work-items/{workItemId}
 GET /api/work/tasks/{taskId}
 ```
 
@@ -433,11 +437,36 @@ GET /api/work/tasks/{taskId}
   core task/operator reads. The payload includes:
   - product metadata
   - top-level task/operator/recovery summary counts
+  - a `projects` section projected from shared-core project/work-item state
+  - a `workItems` section projected from shared-core work-item/task state
   - an `operatorInbox` section projected from the core-owned operator inbox
   - a `controlPlane` section projected from the core-owned task control-plane
     read model
   - a `recovery` section projected from the core-owned recovery read model
-  - a `selection.defaultTaskId` hint for the renderer detail pane
+  - `selection.defaultProjectId`, `selection.defaultWorkItemId`, and
+    `selection.defaultTaskId` hints for the renderer detail pane
+- `GET /api/work/projects` returns the full shared-core project list projection
+  that Work consumes for project navigation, including linked work-item/task
+  counts plus owner and conversation summaries.
+- `GET /api/work/projects/{projectId}` returns a project-scoped detail
+  projection that joins:
+  - the shared `project` record
+  - linked work-item summary rows
+  - linked task summary rows
+  - artifact counts
+  - recent activity messages
+- `GET /api/work/work-items` returns the full shared-core work-item list
+  projection that Work consumes for work-item navigation, including linked
+  project/task summaries and assigned actor names.
+- `GET /api/work/work-items/{workItemId}` returns a work-item-scoped detail
+  projection that joins:
+  - the shared `workItem` record
+  - the linked project summary
+  - the linked conversation
+  - assigned actor summaries
+  - the linked task detail projection when one exists
+  - artifact counts
+  - recent activity messages
 - `GET /api/work/tasks/{taskId}` returns a task-scoped detail projection that
   joins:
   - the shared `task` record
@@ -447,8 +476,8 @@ GET /api/work/tasks/{taskId}
   - a normalized timeline preview
 
 This first slice intentionally reuses `Cats Core v1` instead of inventing a
-separate Work schema. Richer project/work-item boards still remain future Work
-surfaces.
+separate Work schema. Broader team-operating-model surfaces and later Work
+boards still remain future product slices.
 
 ### Shell Helpers
 

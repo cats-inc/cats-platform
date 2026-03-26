@@ -266,6 +266,35 @@
   background: rgba(255, 255, 255, 0.84);
 }
 
+.workCompactList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workCompactList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(89, 61, 42, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.workCompactList strong {
+  min-width: 0;
+}
+
+.workCompactList span {
+  color: #756456;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
 @media (max-width: 1120px) {
   .workHeroCard,
   .workLayout {

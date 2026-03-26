@@ -59,11 +59,14 @@ test('Work dashboard and Code placeholder projections stay core-backed without i
   assert.equal(code.summary.ownerActorId, core.ownerProfile.actorId);
   assert.equal(work.summary.actorCount, core.actors.length);
   assert.equal(work.product.status, 'active');
+  assert.equal(work.sections.projects.summary.totalAvailable, 0);
+  assert.equal(work.sections.workItems.summary.totalAvailable, 0);
   assert.equal(work.sections.operatorInbox.summary.totalAvailable, 0);
   assert.equal(work.sections.controlPlane.summary.totalAvailable, 0);
   assert.equal(work.sections.recovery.summary.totalAvailable, 0);
   assert.equal(code.summary.conversationCount, core.conversations.length);
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/projects'));
+  assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/work-items'));
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/war-room'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/projects'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/previews'));

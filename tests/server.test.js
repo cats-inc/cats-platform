@@ -3503,9 +3503,41 @@ test('core approval bindings require an existing approval task', async () => {
   }, chatStore);
 });
 
-test('GET /api/work exposes a core-backed dashboard and /api/code stays placeholder', async () => {
+test('GET /api/work exposes project, work-item, and task views above shared core records', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const fixtures = createSharedCoreFixtureBundle();
+    const projectResponse = await fetch(`${baseUrl}/api/core/projects`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        project: {
+          ...fixtures.project,
+          id: 'project-work-dashboard',
+          title: 'Work Dashboard Project',
+        },
+      }),
+    });
+    assert.equal(projectResponse.status, 201);
+
+    const workItemResponse = await fetch(`${baseUrl}/api/core/work-items`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        workItem: {
+          ...fixtures.workItem,
+          id: 'work-item-work-dashboard',
+          title: 'Work Dashboard Item',
+          projectId: 'project-work-dashboard',
+          taskId: 'task-work-dashboard',
+        },
+      }),
+    });
+    assert.equal(workItemResponse.status, 201);
+
     const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
       method: 'POST',
       headers: {
@@ -3531,10 +3563,50 @@ test('GET /api/work exposes a core-backed dashboard and /api/code stays placehol
     assert.equal(workPayload.product.routeBase, '/work');
     assert.equal(workPayload.summary.ownerActorId, 'actor-owner');
     assert.equal(workPayload.summary.taskCount, 1);
+    assert.equal(workPayload.summary.projectCount, 1);
+    assert.equal(workPayload.summary.workItemCount, 1);
+    assert.equal(workPayload.sections.projects.items[0].id, 'project-work-dashboard');
+    assert.equal(workPayload.sections.workItems.items[0].id, 'work-item-work-dashboard');
     assert.ok('operatorInbox' in workPayload.sections);
     assert.ok('controlPlane' in workPayload.sections);
     assert.ok('recovery' in workPayload.sections);
+    assert.ok('projects' in workPayload.sections);
+    assert.ok('workItems' in workPayload.sections);
     assert.ok(workPayload.extensionPoints.futureRoutes.includes('/api/work/war-room'));
+
+    const workProjectsResponse = await fetch(`${baseUrl}/api/work/projects`);
+    assert.equal(workProjectsResponse.status, 200);
+    const workProjectsPayload = await workProjectsResponse.json();
+    assert.equal(workProjectsPayload.projects.length, 1);
+    assert.equal(workProjectsPayload.projects[0].id, 'project-work-dashboard');
+    assert.equal(workProjectsPayload.summary.totalAvailable, 1);
+
+    const workProjectDetailResponse = await fetch(
+      `${baseUrl}/api/work/projects/project-work-dashboard`,
+    );
+    assert.equal(workProjectDetailResponse.status, 200);
+    const workProjectDetailPayload = await workProjectDetailResponse.json();
+    assert.equal(workProjectDetailPayload.project.id, 'project-work-dashboard');
+    assert.equal(workProjectDetailPayload.workItems.length, 1);
+    assert.equal(workProjectDetailPayload.workItems[0].id, 'work-item-work-dashboard');
+    assert.equal(workProjectDetailPayload.linkedTasks.length, 1);
+    assert.equal(workProjectDetailPayload.linkedTasks[0].id, 'task-work-dashboard');
+
+    const workItemsResponse = await fetch(`${baseUrl}/api/work/work-items`);
+    assert.equal(workItemsResponse.status, 200);
+    const workItemsPayload = await workItemsResponse.json();
+    assert.equal(workItemsPayload.workItems.length, 1);
+    assert.equal(workItemsPayload.workItems[0].id, 'work-item-work-dashboard');
+    assert.equal(workItemsPayload.summary.totalAvailable, 1);
+
+    const workItemDetailResponse = await fetch(
+      `${baseUrl}/api/work/work-items/work-item-work-dashboard`,
+    );
+    assert.equal(workItemDetailResponse.status, 200);
+    const workItemDetailPayload = await workItemDetailResponse.json();
+    assert.equal(workItemDetailPayload.workItem.id, 'work-item-work-dashboard');
+    assert.equal(workItemDetailPayload.project?.id, 'project-work-dashboard');
+    assert.equal(workItemDetailPayload.linkedTask?.task.id, 'task-work-dashboard');
 
     const workDetailResponse = await fetch(`${baseUrl}/api/work/tasks/task-work-dashboard`);
     assert.equal(workDetailResponse.status, 200);

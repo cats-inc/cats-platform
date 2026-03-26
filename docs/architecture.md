@@ -538,9 +538,9 @@ See
   `runtimeDeliveryManifest` skeletons so operator loops and future control-plane
   automation can consume approval/delivery/budget/workflow state without
   scraping transcript text.
-- `Cats Work` now ships a first shared-core dashboard and task-detail slice,
-  but broader project/work-item and team-operating-model surfaces still remain
-  future work.
+- `Cats Work` now ships a first shared-core dashboard plus
+  project/work-item/task detail surfaces above the same shared-core records,
+  while broader team-operating-model surfaces still remain future work.
 - The current execution path keeps full Chat and Work desktop surfaces on the
   same React/TypeScript renderer stack under Electron.
 - The current server now exposes a Telegram transport seam with dedicated
