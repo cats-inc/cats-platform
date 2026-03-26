@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultCoreState, upsertCoreTask } from '../dist-server/core/model/index.js';
+import {
+  appendCoreActivity,
+  createDefaultCoreState,
+  upsertCoreTask,
+} from '../dist-server/core/model/index.js';
 import { MemoryCoreStore } from '../dist-server/core/store.js';
 import { createDefaultChatState } from '../dist-server/chat/defaults.js';
 import {
@@ -491,6 +495,179 @@ test('startup recovery skips ready continuation replays until targets actually r
   assert.ok(sharedTask);
   assert.equal(sharedTask.metadata.workflowContinuationReplay?.blockedReason, 'no_valid_targets');
   assert.equal(sharedTask.metadata.workflowContinuationReplay?.replayState, 'ready');
+  assert.ok(
+    !sharedCore.activities.some((activity) =>
+      activity.taskId === taskId
+      && activity.metadata?.source === 'workflow-continuation-replay'
+      && activity.metadata?.resumeReason === 'target_recovered'),
+  );
+});
+
+test('startup recovery skips startup-recovered parallel continuation replays until every concrete target recovers', async () => {
+  const now = new Date('2026-03-26T06:45:00.000Z');
+  let chat = createDefaultChatState();
+  chat = createChannel(
+    chat,
+    {
+      title: 'Recovered parallel continuation replay',
+      topic: 'Wait for every preserved target to come back after restart.',
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Followup-Agent',
+          provider: 'gemini',
+          roles: ['auditor'],
+        },
+        {
+          name: 'Verifier-Agent',
+          provider: 'gemini',
+          roles: ['verifier'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  const chatChannel = chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(chatChannel);
+  assert.equal(chatChannel.catAssignments.length, 3);
+  chatChannel.catAssignments[1].execution.lease.sessionId = 'session-followup';
+  chatChannel.catAssignments[2].status = 'removed';
+  chatChannel.catAssignments[2].leftAt = '2026-03-26T06:44:00.000Z';
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Inline-Agent',
+      body: 'Please fan this out again once both specialists are back.',
+    },
+    now,
+  ).state;
+
+  const channel = buildChannelView(chat, channelId);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+
+  const chatStore = new MemoryChatStore(chat);
+  await chatStore.write(chat);
+  const taskId = buildChannelTaskId(channelId);
+  const baseCore = await chatStore.readCore();
+  const existingTask = baseCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
+  const taskWrite = upsertCoreTask(
+    baseCore,
+    {
+      id: taskId,
+      title: existingTask?.title ?? 'Recovered parallel continuation replay',
+      status: 'blocked',
+      conversationId: existingTask?.conversationId ?? `conversation-channel-${channelId}`,
+      summary: existingTask?.summary ?? 'Recover the preserved parallel continuation replay.',
+      createdAt: existingTask?.createdAt ?? now.toISOString(),
+      metadata: writeWorkflowContinuationReplayMetadata(
+        existingTask?.metadata,
+        buildWorkflowContinuationReplayRequest({
+          channelId,
+          checkpointId: 'checkpoint-startup-recovered-parallel',
+          sourceMessageId: sourceMessage.id,
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: channel.assignedCats[0]?.catId ?? 'cat-inline',
+            participantName: channel.assignedCats[0]?.name ?? 'Inline-Agent',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: channel.assignedCats[1]?.catId ?? 'cat-followup',
+              participantName: channel.assignedCats[1]?.name ?? 'Followup-Agent',
+            },
+            {
+              participantKind: 'cat',
+              participantId: channel.assignedCats[2]?.catId ?? 'cat-verifier',
+              participantName: channel.assignedCats[2]?.name ?? 'Verifier-Agent',
+            },
+          ],
+          branchStrategy: 'transplant_context',
+          workflowStageId: 'parallel_fan_out',
+          workflowShape: 'parallel',
+          continuationSource: 'workflow_recommendation',
+          workflowRecommendation: {
+            source: 'boss_replan',
+            workflowShape: 'parallel',
+            reviewRequired: false,
+            candidateTargets: [
+              {
+                participantKind: 'cat',
+                participantId: channel.assignedCats[1]?.catId ?? 'cat-followup',
+                participantName: channel.assignedCats[1]?.name ?? 'Followup-Agent',
+              },
+              {
+                participantKind: 'cat',
+                participantId: channel.assignedCats[2]?.catId ?? 'cat-verifier',
+                participantName: channel.assignedCats[2]?.name ?? 'Verifier-Agent',
+              },
+            ],
+            branchStrategy: 'transplant_context',
+            rationale: 'Wait until every preserved specialist target is back online.',
+          },
+          unresolvedTargets: ['Verifier-Agent'],
+          blockedReason: null,
+          recordedAt: '2026-03-26T06:44:30.000Z',
+        }),
+        {
+          replayState: 'ready',
+          replayTrigger: 'retry',
+        },
+      ),
+    },
+    now,
+  );
+  const activityWrite = appendCoreActivity(
+    taskWrite.core,
+    {
+      kind: 'note',
+      conversationId: existingTask?.conversationId ?? `conversation-channel-${channelId}`,
+      taskId,
+      message: 'Startup recovery preserved the interrupted parallel continuation replay.',
+      metadata: {
+        source: 'workflow-continuation-replay',
+        replayPhase: 'startup_recovered',
+      },
+    },
+    now,
+  );
+  const sharedCoreStore = new MemoryCoreStore(activityWrite.core);
+  let resumeCalls = 0;
+
+  const recoveredCount = await reconcileOrchestratorRecoveryOnStartup({
+    shared: {
+      coreStore: sharedCoreStore,
+      now: () => new Date('2026-03-26T06:46:00.000Z'),
+      async resumeWorkflowContinuationDispatch() {
+        resumeCalls += 1;
+        throw new Error('startup recovery should not replay partially recovered parallel targets');
+      },
+    },
+    chat: {
+      chatStore,
+    },
+  });
+
+  assert.equal(recoveredCount, 0);
+  assert.equal(resumeCalls, 0);
+  const sharedCore = await sharedCoreStore.readCore();
+  const sharedTask = sharedCore.tasks.find((candidate) => candidate.id === taskId);
+  assert.ok(sharedTask);
+  assert.equal(sharedTask.metadata.workflowContinuationReplay?.workflowShape, 'parallel');
+  assert.deepEqual(
+    sharedTask.metadata.workflowContinuationReplay?.targets.map((target) => target.participantName),
+    ['Followup-Agent', 'Verifier-Agent'],
+  );
   assert.ok(
     !sharedCore.activities.some((activity) =>
       activity.taskId === taskId

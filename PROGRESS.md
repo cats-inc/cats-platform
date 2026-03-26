@@ -369,7 +369,10 @@ Known follow-ups:
   `startup_recovered` activity so recovery/control-plane consumers can facet
   those reopened snapshots before any manual retry happens, while active-target
   startup-recovered continuation snapshots now also auto-resume during the same
-  boot sequence instead of always waiting on a later operator retry
+  boot sequence instead of always waiting on a later operator retry, while
+  startup-recovered concrete `parallel` continuation snapshots now also stay
+  blocked until every preserved target recovers, then auto-resume through the
+  same assignment-recovery seam instead of partial-dispatching a degraded fan-out
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without

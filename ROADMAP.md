@@ -206,7 +206,11 @@ contracts.
       `workflow-continuation-replay` / `startup_recovered` activity for the
       non-UI recovery surfaces, while active-target startup-recovered
       continuation snapshots now also auto-resume during the same boot
-      sequence; broader group replan auto-resume still remains.
+      sequence, and startup-recovered concrete `parallel` continuation
+      snapshots now also stay blocked until every preserved target recovers,
+      then auto-resume through the same assignment-recovery seam instead of
+      partial-dispatching a degraded fan-out; broader group replan auto-resume
+      still remains.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent

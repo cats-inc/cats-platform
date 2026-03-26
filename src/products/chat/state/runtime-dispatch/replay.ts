@@ -98,6 +98,32 @@ function resolveReplayTargets(
     .filter((target): target is NonNullable<ReturnType<typeof resolveReplayTarget>> => target !== null);
 }
 
+function sameParticipantRef(
+  left: RoomRoutingParticipantRef,
+  right: RoomRoutingParticipantRef,
+): boolean {
+  return left.participantKind === right.participantKind
+    && left.participantId === right.participantId
+    && left.participantName === right.participantName;
+}
+
+function readMissingConcreteReplayTargets(
+  request: WorkflowContinuationReplaySnapshot,
+  replayTargets: ReturnType<typeof resolveReplayTargets>,
+): string[] {
+  const resolvedParticipants = replayTargets.map((target) => ({
+    participantKind: target.participantKind,
+    participantId: target.participantId,
+    participantName: target.participantName,
+  }));
+  return uniqueStrings(
+    request.targets
+      .filter((target) =>
+        !resolvedParticipants.some((resolved) => sameParticipantRef(resolved, target)))
+      .map((target) => target.participantName),
+  );
+}
+
 function buildRecommendationReplayResolution(
   state: ChatState,
   request: WorkflowContinuationReplaySnapshot,
@@ -167,6 +193,15 @@ function requiresCompleteRecommendationResolution(
     && unresolvedTargets.length > 0;
 }
 
+function requiresCompleteConcreteReplayResolution(
+  request: WorkflowContinuationReplaySnapshot,
+  missingTargets: string[],
+): boolean {
+  return request.workflowShape === 'parallel'
+    && request.targets.length > 1
+    && missingTargets.length > 0;
+}
+
 function buildReplayResolution(
   request: WorkflowContinuationReplaySnapshot,
   state: ChatState,
@@ -176,11 +211,23 @@ function buildReplayResolution(
   note: string | null;
 } {
   const replayTargets = resolveReplayTargets(state, request);
+  const missingConcreteTargets = readMissingConcreteReplayTargets(request, replayTargets);
+  if (requiresCompleteConcreteReplayResolution(request, missingConcreteTargets)) {
+    return {
+      resolution: null,
+      blockedReason: 'no_valid_targets',
+      note: 'Stored workflow continuation replay is still waiting for all preserved parallel targets to recover.',
+    };
+  }
+
   if (replayTargets.length > 0) {
     return {
       resolution: {
         targets: replayTargets,
-        unresolved: [...request.unresolvedTargets],
+        unresolved: uniqueStrings([
+          ...request.unresolvedTargets,
+          ...missingConcreteTargets,
+        ]),
         mentionNames: [...request.mentionNames],
         trigger: request.trigger,
         resolution: {

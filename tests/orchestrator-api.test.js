@@ -1965,6 +1965,326 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
   }, chatStore);
 });
 
+test('startup-recovered parallel continuation replay waits for every concrete target to recover before auto-resuming', async () => {
+  const runtimeClient = createRuntimeStub({
+    sendMessage: ({ content }) => {
+      if (content.includes('You are Followup-Agent')) {
+        return usage('Followup-Agent completed the recovered parallel continuation.');
+      }
+      if (content.includes('You are Verifier-Agent')) {
+        return usage('Verifier-Agent completed the recovered parallel continuation.');
+      }
+      return usage('Boss Cat acknowledged the retry.');
+    },
+  });
+  const now = new Date('2026-03-26T16:45:00.000Z');
+  let chat = createDefaultChatState();
+  chat = seedChannel(
+    chat,
+    {
+      title: 'Recovered parallel continuation',
+      topic: 'Wait for every preserved parallel target to return before replay.',
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Followup-Agent',
+          provider: 'gemini',
+          roles: ['auditor'],
+        },
+        {
+          name: 'Verifier-Agent',
+          provider: 'gemini',
+          roles: ['verifier'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Inline-Agent',
+      body: 'Please fan this back out after both specialists recover.',
+    },
+    now,
+  ).state;
+  const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(seededChannel);
+  const inlineAssignment = seededChannel.catAssignments[0];
+  const followupAssignment = seededChannel.catAssignments[1];
+  const verifierAssignment = seededChannel.catAssignments[2];
+  assert.ok(inlineAssignment);
+  assert.ok(followupAssignment);
+  assert.ok(verifierAssignment);
+  followupAssignment.status = 'removed';
+  followupAssignment.leftAt = '2026-03-26T16:44:00.000Z';
+  verifierAssignment.status = 'removed';
+  verifierAssignment.leftAt = '2026-03-26T16:44:00.000Z';
+
+  const channel = buildChannelView(chat, channelId);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+  const inlineParticipant = {
+    participantKind: 'cat',
+    participantId: inlineAssignment.catId,
+    participantName: channel.assignedCats.find((candidate) => candidate.catId === inlineAssignment.catId)?.name
+      ?? 'Inline-Agent',
+  };
+  const followupParticipant = {
+    participantKind: 'cat',
+    participantId: followupAssignment.catId,
+    participantName: channel.assignedCats.find((candidate) => candidate.catId === followupAssignment.catId)?.name
+      ?? 'Followup-Agent',
+  };
+  const verifierParticipant = {
+    participantKind: 'cat',
+    participantId: verifierAssignment.catId,
+    participantName: channel.assignedCats.find((candidate) => candidate.catId === verifierAssignment.catId)?.name
+      ?? 'Verifier-Agent',
+  };
+  const followupCat = chat.cats.find((cat) => cat.id === followupAssignment.catId);
+  const verifierCat = chat.cats.find((cat) => cat.id === verifierAssignment.catId);
+  assert.ok(followupCat);
+  assert.ok(verifierCat);
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const workflow = resolveRoomWorkflowState(roomRouting.workflow);
+  const activeTurn = createWorkflowTurn(
+    sourceMessage,
+    now.toISOString(),
+    'parallel_fan_out',
+    'parallel',
+  );
+  activeTurn.id = 'turn-startup-recovered-parallel';
+  activeTurn.dispatchCount = 2;
+  activeTurn.targetStatuses.push({
+    id: 'target-state-startup-recovered-parallel-followup',
+    dispatchId: 'dispatch-startup-recovered-parallel-followup',
+    participant: followupParticipant,
+    source: inlineParticipant,
+    sourceMessageId: sourceMessage.id,
+    trigger: 'continuation_mention',
+    mentionNames: ['Followup-Agent'],
+    depth: 1,
+    parentCheckpointId: 'checkpoint-startup-recovered-parallel',
+    branchStrategy: 'transplant_context',
+    handoffReason: 'workflow_continuation',
+    wakeRequestId: null,
+    status: 'running',
+    queuedAt: now.toISOString(),
+    startedAt: now.toISOString(),
+    completedAt: null,
+    responseMessageId: null,
+    error: null,
+  });
+  activeTurn.targetStatuses.push({
+    id: 'target-state-startup-recovered-parallel-verifier',
+    dispatchId: 'dispatch-startup-recovered-parallel-verifier',
+    participant: verifierParticipant,
+    source: inlineParticipant,
+    sourceMessageId: sourceMessage.id,
+    trigger: 'continuation_mention',
+    mentionNames: ['Verifier-Agent'],
+    depth: 1,
+    parentCheckpointId: 'checkpoint-startup-recovered-parallel',
+    branchStrategy: 'transplant_context',
+    handoffReason: 'workflow_continuation',
+    wakeRequestId: null,
+    status: 'running',
+    queuedAt: now.toISOString(),
+    startedAt: now.toISOString(),
+    completedAt: null,
+    responseMessageId: null,
+    error: null,
+  });
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'target_pending',
+      'running',
+      'Parallel continuation is pending both recovered specialists.',
+      now.toISOString(),
+      inlineParticipant,
+      sourceMessage.id,
+      [followupParticipant, verifierParticipant],
+      {
+        metadata: {
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+          reviewRequired: false,
+          continuationSource: 'workflow_recommendation',
+          branchStrategy: 'transplant_context',
+          mentionNames: ['Followup-Agent', 'Verifier-Agent'],
+          unresolvedTargets: [],
+          workflowRecommendation: {
+            source: 'boss_replan',
+            workflowShape: 'parallel',
+            reviewRequired: false,
+            candidateTargets: [
+              {
+                participantKind: 'cat',
+                participantId: followupAssignment.catId,
+                participantName: followupCat.name,
+              },
+              {
+                participantKind: 'cat',
+                participantId: verifierAssignment.catId,
+                participantName: verifierCat.name,
+              },
+            ],
+            branchStrategy: 'transplant_context',
+            rationale: 'Replay only after every preserved specialist target is available again.',
+          },
+        },
+      },
+    ),
+  );
+  workflow.activeTurn = activeTurn;
+  roomRouting.workflow = workflow;
+  roomRouting.lastOutcome = {
+    turnId: activeTurn.id,
+    mode: roomRouting.mode ?? createDefaultRoomRoutingState().mode,
+    sourceMessageId: sourceMessage.id,
+    sourceSenderKind: sourceMessage.senderKind,
+    sourceSenderName: sourceMessage.senderName,
+    status: 'running',
+    resolution: {
+      routingMode: 'explicit_multi',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: 'Parallel continuation is waiting on both preserved specialists.',
+    },
+    resolvedTargets: [followupParticipant, verifierParticipant],
+    unresolvedMentions: [],
+    dispatches: [
+      {
+        id: 'dispatch-startup-recovered-parallel-followup',
+        sourceMessageId: sourceMessage.id,
+        source: inlineParticipant,
+        target: followupParticipant,
+        trigger: 'continuation_mention',
+        status: 'running',
+        mentionNames: ['Followup-Agent'],
+        responseMessageId: null,
+        startedAt: now.toISOString(),
+        completedAt: null,
+        error: null,
+      },
+      {
+        id: 'dispatch-startup-recovered-parallel-verifier',
+        sourceMessageId: sourceMessage.id,
+        source: inlineParticipant,
+        target: verifierParticipant,
+        trigger: 'continuation_mention',
+        status: 'running',
+        mentionNames: ['Verifier-Agent'],
+        responseMessageId: null,
+        startedAt: now.toISOString(),
+        completedAt: null,
+        error: null,
+      },
+    ],
+    checkpoints: [],
+    continuationCount: 1,
+    totalDispatchCount: 2,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: null,
+  };
+  chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
+  const updatedChannel = chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(updatedChannel);
+  updatedChannel.catAssignments[1].status = 'removed';
+  updatedChannel.catAssignments[1].leftAt = '2026-03-26T16:44:00.000Z';
+  updatedChannel.catAssignments[2].status = 'removed';
+  updatedChannel.catAssignments[2].leftAt = '2026-03-26T16:44:00.000Z';
+
+  const chatStore = new MemoryChatStore(chat);
+  const taskId = `task-channel-${channelId}`;
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const initialCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(initialCoreResponse.status, 200);
+    const initialCorePayload = await initialCoreResponse.json();
+    const initialTask = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
+    assert.ok(initialTask);
+    assert.ok(initialTask.metadata.workflowContinuationReplay);
+    assert.equal(runtimeClient.sentMessages.length, 0);
+
+    const firstReassignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${followupCat.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        provider: followupCat.defaultExecutionTarget.provider,
+        instance: followupCat.defaultExecutionTarget.instance,
+        model: followupCat.defaultExecutionTarget.model,
+        modelSelection: followupCat.defaultModelSelection ?? null,
+      }),
+    });
+    assert.equal(firstReassignResponse.status, 200);
+    assert.equal(runtimeClient.sentMessages.length, 0);
+
+    const blockedCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(blockedCoreResponse.status, 200);
+    const blockedCorePayload = await blockedCoreResponse.json();
+    const blockedTask = blockedCorePayload.tasks.find((candidate) => candidate.id === taskId);
+    assert.ok(blockedTask);
+    assert.ok(blockedTask.metadata.workflowContinuationReplay);
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowShape, 'parallel');
+    assert.ok(
+      blockedCorePayload.activities.some((activity) =>
+        activity.taskId === taskId
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_blocked'
+        && activity.metadata?.resumeReason === 'target_recovered'
+        && activity.metadata?.blockedReason === 'no_valid_targets'),
+    );
+
+    const secondReassignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${verifierCat.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        provider: verifierCat.defaultExecutionTarget.provider,
+        instance: verifierCat.defaultExecutionTarget.instance,
+        model: verifierCat.defaultExecutionTarget.model,
+        modelSelection: verifierCat.defaultModelSelection ?? null,
+      }),
+    });
+    assert.equal(secondReassignResponse.status, 200);
+    assert.equal(runtimeClient.sentMessages.length, 2);
+    assert.ok(runtimeClient.sentMessages.some((message) => /You are Followup-Agent/u.test(message.content)));
+    assert.ok(runtimeClient.sentMessages.some((message) => /You are Verifier-Agent/u.test(message.content)));
+
+    const finalCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(finalCoreResponse.status, 200);
+    const finalCorePayload = await finalCoreResponse.json();
+    const finalTask = finalCorePayload.tasks.find((candidate) => candidate.id === taskId);
+    assert.ok(finalTask);
+    assert.equal(finalTask.metadata.workflowContinuationReplay, undefined);
+    assert.ok(
+      finalCorePayload.activities.some((activity) =>
+        activity.taskId === taskId
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_dispatched'
+        && activity.metadata?.resumeReason === 'target_recovered'
+        && activity.metadata?.resultCount === 2),
+    );
+  }, chatStore);
+});
+
 test('GET /api/orchestrator/channels/:id/execution-loop accepts a projected room-workflow runId', async () => {
   const runtimeClient = createRuntimeStub();
   await withServer(runtimeClient, async (baseUrl) => {

@@ -347,6 +347,34 @@ function replayMatchesRecoveredCat(
   );
 }
 
+function hasStartupRecoveredContinuationActivity(
+  core: Awaited<ReturnType<ChatStore['readCore']>>,
+  taskId: string,
+): boolean {
+  return core.activities.some((activity) =>
+    activity.taskId === taskId
+    && activity.metadata?.source === 'workflow-continuation-replay'
+    && activity.metadata?.replayPhase === 'startup_recovered');
+}
+
+function isRecoveredContinuationReplayEligibleForAutoResume(
+  core: Awaited<ReturnType<ChatStore['readCore']>>,
+  taskId: string,
+  replay: NonNullable<ReturnType<typeof readWorkflowContinuationReplay>>,
+  assignment: ChatChannelCat,
+): boolean {
+  if (replay.replayState !== 'ready' || !replayMatchesRecoveredCat(replay, assignment)) {
+    return false;
+  }
+
+  if (replay.blockedReason === 'no_valid_targets' && replay.workflowRecommendation) {
+    return true;
+  }
+
+  return replay.blockedReason === null
+    && hasStartupRecoveredContinuationActivity(core, taskId);
+}
+
 async function maybeAutoResumeRecoveredContinuation(
   context: ChatApiRouteContext,
   channelId: string,
@@ -363,15 +391,13 @@ async function maybeAutoResumeRecoveredContinuation(
   }
 
   const core = await context.dependencies.chatStore.readCore();
-  const task = core.tasks.find((candidate) => candidate.id === buildChannelTaskId(channelId)) ?? null;
+  const taskId = buildChannelTaskId(channelId);
+  const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
   const replay = readWorkflowContinuationReplay(task?.metadata);
   if (
     !task
     || !replay
-    || replay.replayState !== 'ready'
-    || replay.blockedReason !== 'no_valid_targets'
-    || !replay.workflowRecommendation
-    || !replayMatchesRecoveredCat(replay, assignment)
+    || !isRecoveredContinuationReplayEligibleForAutoResume(core, taskId, replay, assignment)
   ) {
     return;
   }
