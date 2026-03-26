@@ -25,9 +25,21 @@ test('buildCoreTaskInspectionView combines governance, workflow, and recovery de
   core = upsertCoreTask(
     core,
     {
+      id: 'task-inspection-parent',
+      title: 'Inspect parent task',
+      status: 'in_progress',
+      conversationId: 'conversation-channel-inspection',
+      createdAt: '2026-03-26T13:45:00.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
       id: 'task-inspection',
       title: 'Inspect one task',
       status: 'pending_approval',
+      parentTaskId: 'task-inspection-parent',
       conversationId: 'conversation-channel-inspection',
       createdAt: '2026-03-26T13:50:00.000Z',
       metadata: writeOrchestratorDispatchReplayMetadata(
@@ -48,6 +60,42 @@ test('buildCoreTaskInspectionView combines governance, workflow, and recovery de
           sourceMessageId: 'message-inspection',
         },
       ),
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-inspection-sibling',
+      title: 'Inspect sibling task',
+      status: 'approved',
+      parentTaskId: 'task-inspection-parent',
+      conversationId: 'conversation-channel-inspection',
+      createdAt: '2026-03-26T13:51:00.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-inspection-child-complete',
+      title: 'Inspect child complete',
+      status: 'completed',
+      parentTaskId: 'task-inspection',
+      conversationId: 'conversation-channel-inspection',
+      createdAt: '2026-03-26T13:51:30.000Z',
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-inspection-child-blocked',
+      title: 'Inspect child blocked',
+      status: 'blocked',
+      parentTaskId: 'task-inspection',
+      conversationId: 'conversation-channel-inspection',
+      createdAt: '2026-03-26T13:52:00.000Z',
     },
     now,
   ).core;
@@ -156,6 +204,19 @@ test('buildCoreTaskInspectionView combines governance, workflow, and recovery de
   assert.equal(inspection.workflowSummary?.dispatchCount, 1);
   assert.equal(inspection.recovery.dispatchReplay?.replayError, 'rate limited');
   assert.equal(inspection.recovery.latestActivity?.phase, 'replay_failed');
+  assert.equal(inspection.family.rootTaskId, 'task-inspection-parent');
+  assert.equal(inspection.family.depth, 1);
+  assert.equal(inspection.family.parent?.taskId, 'task-inspection-parent');
+  assert.equal(inspection.family.siblingCount, 1);
+  assert.equal(inspection.family.childCount, 2);
+  assert.equal(inspection.family.terminalChildCount, 2);
+  assert.equal(inspection.family.allChildrenTerminal, true);
+  assert.equal(inspection.family.childStatusCounts.completed, 1);
+  assert.equal(inspection.family.childStatusCounts.blocked, 1);
+  assert.deepEqual(
+    inspection.family.children.map((child) => child.taskId),
+    ['task-inspection-child-blocked', 'task-inspection-child-complete'],
+  );
   assert.deepEqual(inspection.counts, {
     runs: 1,
     outcomes: 1,

@@ -1066,6 +1066,33 @@ view:
     "recovery": {
       "canRetry": true
     },
+    "family": {
+      "rootTaskId": "task-system-parent",
+      "depth": 1,
+      "parent": {
+        "taskId": "task-system-parent"
+      },
+      "children": [
+        {
+          "taskId": "task-system-child-2",
+          "status": "blocked"
+        },
+        {
+          "taskId": "task-system-child-1",
+          "status": "completed"
+        }
+      ],
+      "siblingCount": 1,
+      "childCount": 2,
+      "terminalChildCount": 2,
+      "allChildrenTerminal": true,
+      "childStatusCounts": {
+        "completed": 1,
+        "blocked": 1
+      },
+      "convergenceStatus": null,
+      "convergedAt": null
+    },
     "counts": {
       "runs": 1,
       "outcomes": 1,
@@ -1085,6 +1112,10 @@ Semantics:
   same derived contracts already embedded into product-owned task/run metadata
 - `inspection.recovery` reuses the normalized replay view exposed by
   `/api/core/tasks/{taskId}/recovery`
+- `inspection.family` exposes immediate parent/child topology plus stable
+  child status counts, so operator/recovery consumers can inspect task-family
+  convergence without hydrating the full core snapshot or rebuilding the graph
+  client-side
 - `inspection.counts` gives lightweight related-record cardinality without
   forcing callers to fetch the full core snapshot just to know whether a task
   has runs, outcomes, checkpoints, traces, or activity history

@@ -1191,6 +1191,23 @@ test('core recovery routes expose normalized orchestrator replay state without l
 
 test('GET /api/core/tasks/:taskId returns derived inspection detail alongside the raw task', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
+    const parentTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-inspection-route-parent',
+          title: 'Inspect task route parent',
+          status: 'in_progress',
+          conversationId: 'conversation-channel-inspection-route',
+          createdAt: '2026-03-26T14:00:00.000Z',
+        },
+      }),
+    });
+    assert.equal(parentTaskResponse.status, 201);
+
     const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
       method: 'POST',
       headers: {
@@ -1201,7 +1218,9 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
           id: 'task-inspection-route',
           title: 'Inspect task route',
           status: 'pending_approval',
+          parentTaskId: 'task-inspection-route-parent',
           conversationId: 'conversation-channel-inspection-route',
+          createdAt: '2026-03-26T14:05:00.000Z',
           metadata: writeOrchestratorDispatchReplayMetadata(
             {
               effectiveDeliveryMode: 'commit_only',
@@ -1224,6 +1243,60 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
       }),
     });
     assert.equal(taskResponse.status, 201);
+
+    const siblingTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-inspection-route-sibling',
+          title: 'Inspect task route sibling',
+          status: 'approved',
+          parentTaskId: 'task-inspection-route-parent',
+          conversationId: 'conversation-channel-inspection-route',
+          createdAt: '2026-03-26T14:05:30.000Z',
+        },
+      }),
+    });
+    assert.equal(siblingTaskResponse.status, 201);
+
+    const childCompleteResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-inspection-route-child-complete',
+          title: 'Inspect task route child complete',
+          status: 'completed',
+          parentTaskId: 'task-inspection-route',
+          conversationId: 'conversation-channel-inspection-route',
+          createdAt: '2026-03-26T14:06:00.000Z',
+        },
+      }),
+    });
+    assert.equal(childCompleteResponse.status, 201);
+
+    const childBlockedResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-inspection-route-child-blocked',
+          title: 'Inspect task route child blocked',
+          status: 'blocked',
+          parentTaskId: 'task-inspection-route',
+          conversationId: 'conversation-channel-inspection-route',
+          createdAt: '2026-03-26T14:06:30.000Z',
+        },
+      }),
+    });
+    assert.equal(childBlockedResponse.status, 201);
 
     const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
       method: 'POST',
@@ -1336,6 +1409,19 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
     assert.equal(detailPayload.inspection.workflowSummary.dispatchCount, 1);
     assert.equal(detailPayload.inspection.recovery.dispatchReplay.sourceMessageId, 'message-inspection-route');
     assert.equal(detailPayload.inspection.recovery.latestActivity.phase, 'replay_failed');
+    assert.equal(detailPayload.inspection.family.rootTaskId, 'task-inspection-route-parent');
+    assert.equal(detailPayload.inspection.family.depth, 1);
+    assert.equal(detailPayload.inspection.family.parent.taskId, 'task-inspection-route-parent');
+    assert.equal(detailPayload.inspection.family.siblingCount, 1);
+    assert.equal(detailPayload.inspection.family.childCount, 2);
+    assert.equal(detailPayload.inspection.family.terminalChildCount, 2);
+    assert.equal(detailPayload.inspection.family.allChildrenTerminal, true);
+    assert.equal(detailPayload.inspection.family.childStatusCounts.completed, 1);
+    assert.equal(detailPayload.inspection.family.childStatusCounts.blocked, 1);
+    assert.deepEqual(
+      detailPayload.inspection.family.children.map((child) => child.taskId),
+      ['task-inspection-route-child-blocked', 'task-inspection-route-child-complete'],
+    );
     assert.deepEqual(detailPayload.inspection.counts, {
       runs: 1,
       outcomes: 1,
