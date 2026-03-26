@@ -787,6 +787,143 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
   assert.equal(projectedTask.metadata.workflowContinuationReplay?.workflowShape, 'sequential');
 });
 
+test('ChatStore projects retryable workflow-continuation replay metadata for max-dispatch blocks', async () => {
+  const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
+  let state = await store.read();
+  const now = new Date('2026-03-26T10:30:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Inline-Agent',
+      provider: 'claude',
+      roles: ['reviewer'],
+    },
+    now,
+  );
+  const inlineAgentId = state.cats[0].id;
+  state = createCat(
+    state,
+    {
+      name: 'Followup-Agent',
+      provider: 'gemini',
+      roles: ['auditor'],
+    },
+    now,
+  );
+  const followupAgentId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Dispatch Guard Replay Projection',
+      topic: 'Persist blocked continuation replay metadata when dispatch limits stop a handoff.',
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  state = assignCatToChannel(
+    state,
+    channelId,
+    {
+      catId: inlineAgentId,
+      provider: 'claude',
+      roles: ['reviewer'],
+    },
+    now,
+  );
+  state = assignCatToChannel(
+    state,
+    channelId,
+    {
+      catId: followupAgentId,
+      provider: 'gemini',
+      roles: ['auditor'],
+    },
+    now,
+  );
+
+  const channel = state.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(channel);
+  channel.roomRouting.maxDispatchesPerTurn = 1;
+
+  const runtimeClient = {
+    async getHealth() {
+      return {
+        baseUrl: 'http://127.0.0.1:3110',
+        reachable: true,
+        status: 'ok',
+        service: 'cats-runtime',
+      };
+    },
+    async getProviderConfig() {
+      return {};
+    },
+    async getProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: `${provider}-default`,
+        source: 'config',
+        cache: null,
+        models: [
+          { id: `${provider}-default`, label: `${provider} default`, default: true },
+        ],
+        warnings: [],
+      };
+    },
+    sessionCount: 0,
+    async createSession(input) {
+      this.sessionCount += 1;
+      return {
+        id: `session-${this.sessionCount}`,
+        provider: input.provider,
+        model: input.model ?? null,
+        status: 'ready',
+        cwd: input.cwd ?? '/tmp/cats-chat-store',
+      };
+    },
+    async sendMessage(_sessionId, content) {
+      if (content.includes('You are Inline-Agent')) {
+        return {
+          content: '@Followup-Agent please continue with the audit.',
+          inputTokens: 11,
+          outputTokens: 7,
+          tokensUsed: 18,
+        };
+      }
+      throw new Error(`Unexpected prompt:\n${content}`);
+    },
+    async closeSession() {},
+  };
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Inline-Agent start the workflow.' },
+    runtimeClient,
+    now,
+  );
+  await store.write(dispatched.state);
+  const core = await store.readCore();
+  const projectedTask = core.tasks.find((task) => task.id === `task-channel-${channelId}`);
+
+  assert.ok(projectedTask);
+  assert.equal(projectedTask.metadata.workflowContinuationReplay?.replayState, 'ready');
+  assert.equal(
+    projectedTask.metadata.workflowContinuationReplay?.sourceParticipant?.participantName,
+    'Inline-Agent',
+  );
+  assert.equal(
+    projectedTask.metadata.workflowContinuationReplay?.targets?.[0]?.participantName,
+    'Followup-Agent',
+  );
+  assert.equal(projectedTask.metadata.workflowContinuationReplay?.workflowStageId, 'continuation_handoff');
+  assert.equal(projectedTask.metadata.workflowContinuationReplay?.workflowShape, 'sequential');
+});
+
 test('routeChannelMessage sends choice responses back to the originating cat session without mentions', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();

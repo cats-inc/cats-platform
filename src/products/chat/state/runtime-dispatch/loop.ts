@@ -24,6 +24,9 @@ import {
   resolveWorkflowHandoffReason,
 } from '../room-routing/runtime.js';
 import {
+  buildContinuationReplayMetadata,
+} from '../room-routing/continuationReplay.js';
+import {
   addWorkflowCheckpoint,
   appendWorkflowEvent,
   createPendingDispatch,
@@ -138,6 +141,12 @@ export async function processDispatchQueue(
 
     const allowedRequests: DispatchRequest[] = [];
     for (const target of frame.targets) {
+      const branchStrategy = frame.branchStrategyOverride
+        ?? resolveWorkflowBranchStrategy(
+          frame.sourceParticipant,
+          target,
+          frame.depth,
+        );
       if (outcome.totalDispatchCount >= maxDispatches) {
         guardReason = 'max_dispatches';
         activeTurn.guard = guardReason;
@@ -151,6 +160,21 @@ export async function processDispatchQueue(
           nowIso,
           frame.sourceParticipant,
           [toParticipantRef(target)],
+          {
+            reason: 'max_dispatches',
+            branchStrategy,
+            ...buildContinuationReplayMetadata({
+              sourceMessageId: frame.sourceMessage.id,
+              mentionNames: frame.mentionNames,
+              trigger: frame.trigger,
+              workflowStageId: activeTurn.stageId,
+              workflowShape: activeTurn.workflowShape,
+              reviewRequired: activeTurn.reviewRequired,
+              continuationSource: frame.continuationSource ?? null,
+              workflowRecommendation: frame.workflowRecommendation ?? null,
+              unresolvedTargets: frame.unresolved,
+            }),
+          },
         );
         break;
       }
@@ -161,12 +185,7 @@ export async function processDispatchQueue(
         dispatchId: randomUUID(),
         targetStateId: randomUUID(),
         parentCheckpointId: latestCheckpoint?.id ?? null,
-        branchStrategy: frame.branchStrategyOverride
-          ?? resolveWorkflowBranchStrategy(
-            frame.sourceParticipant,
-            target,
-            frame.depth,
-          ),
+        branchStrategy,
         handoffReason: resolveWorkflowHandoffReason(frame.trigger),
       };
       createPendingDispatch(outcome, request, nowIso);
@@ -250,6 +269,21 @@ export async function processDispatchQueue(
           nowIso,
           frame.sourceParticipant,
           [toParticipantRef(target)],
+          {
+            reason: 'max_target_visits',
+            branchStrategy: request.branchStrategy,
+            ...buildContinuationReplayMetadata({
+              sourceMessageId: frame.sourceMessage.id,
+              mentionNames: frame.mentionNames,
+              trigger: frame.trigger,
+              workflowStageId: activeTurn.stageId,
+              workflowShape: activeTurn.workflowShape,
+              reviewRequired: activeTurn.reviewRequired,
+              continuationSource: frame.continuationSource ?? null,
+              workflowRecommendation: frame.workflowRecommendation ?? null,
+              unresolvedTargets: frame.unresolved,
+            }),
+          },
         );
         if (frame.targets.length === 1 && queue.length === 0) {
           guardReason = 'max_target_visits';
@@ -322,6 +356,21 @@ export async function processDispatchQueue(
           nowIso,
           frame.sourceParticipant,
           [toParticipantRef(target)],
+          {
+            reason: 'anti_ping_pong',
+            branchStrategy: request.branchStrategy,
+            ...buildContinuationReplayMetadata({
+              sourceMessageId: frame.sourceMessage.id,
+              mentionNames: frame.mentionNames,
+              trigger: frame.trigger,
+              workflowStageId: activeTurn.stageId,
+              workflowShape: activeTurn.workflowShape,
+              reviewRequired: activeTurn.reviewRequired,
+              continuationSource: frame.continuationSource ?? null,
+              workflowRecommendation: frame.workflowRecommendation ?? null,
+              unresolvedTargets: frame.unresolved,
+            }),
+          },
         );
         if (frame.targets.length === 1 && queue.length === 0) {
           guardReason = 'anti_ping_pong';

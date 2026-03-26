@@ -87,8 +87,12 @@ MCP tool plane.
   or reimplementing the same filtering semantics client-side
 - blocked `max_continuations` workflow continuation replay is now landed
   through the existing operator `retry` seam and startup recovery path; keep
-  deeper group replan or converge-stage continuation using the same
-  product-owned replay metadata pattern instead of inventing a parallel loop
+  deeper workflow-continuation guard blocks on that same product-owned replay
+  metadata pattern instead of inventing a parallel loop; `max_dispatches`,
+  `max_target_visits`, and `anti_ping_pong` continuation-stage blocks now also
+  persist retryable replay snapshots when a concrete continuation source plus
+  targets already exist, while broader group replan or converge-stage
+  continuation still remains
 - startup recovery now also finalizes stranded room-workflow `activeTurn`
   snapshots into blocked terminal history before the app starts serving
   requests, so shared task/run/timeline read models do not keep phantom

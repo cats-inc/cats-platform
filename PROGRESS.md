@@ -300,6 +300,12 @@ Known follow-ups:
   dispatch replay, persist replay state on the owning task metadata, and keep
   failed retry attempts visible as retryable operator-read-model state instead
   of write-only markers
+- workflow-continuation replay metadata now persists not only
+  `max_continuations`, but also continuation-stage `max_dispatches`,
+  `max_target_visits`, and `anti_ping_pong` guard blocks when the blocked room
+  step already had a concrete continuation source plus target set, so the same
+  operator `retry` seam can auto-resume a broader set of deeper continuation
+  failures without inventing a second replay substrate
 - server startup now downgrades stranded `pendingOrchestratorDispatch` /
   `orchestratorDispatchReplay` `in_progress` markers to failed so crash or
   cleanup-failure cases remain operator-recoverable after restart

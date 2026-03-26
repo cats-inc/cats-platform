@@ -1166,6 +1166,108 @@ test('POST /api/core/operator-actions auto-resumes stored workflow continuation 
   }, chatStore);
 });
 
+test('POST /api/core/operator-actions auto-resumes stored workflow continuation replay on retry after max-dispatch blocks', async () => {
+  const runtimeClient = createRuntimeStub({
+    sendMessage: ({ content }) => {
+      if (content.includes('You are Inline-Agent')) {
+        return usage('@Followup-Agent please continue with the resumed audit.');
+      }
+      if (content.includes('You are Followup-Agent')) {
+        return usage('Followup-Agent finished the resumed audit.');
+      }
+      return usage('Boss Cat acknowledged the turn.');
+    },
+  });
+  const chatStore = new MemoryChatStore();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+          skillProfile: 'companion',
+          mcpProfile: 'chat-memory',
+        },
+        {
+          name: 'Followup-Agent',
+          provider: 'gemini',
+          roles: ['auditor'],
+          skillProfile: 'companion',
+          mcpProfile: 'chat-memory',
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const currentState = await chatStore.read();
+    const currentChannel = currentState.channels.find((candidate) => candidate.id === channelId);
+    assert.ok(currentChannel);
+    currentChannel.roomRouting.maxDispatchesPerTurn = 1;
+    await chatStore.write(currentState);
+
+    const dispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Ask @Inline-Agent to start the routing loop.',
+      }),
+    });
+    assert.equal(dispatchResponse.status, 200);
+    const dispatchPayload = await dispatchResponse.json();
+    const blockedRunId = dispatchPayload.operator.latestRunId;
+    assert.ok(blockedRunId);
+    assert.equal(dispatchPayload.executionLoop.execution.state, 'blocked');
+    assert.equal(dispatchPayload.dispatch.results.length, 1);
+    assert.equal(runtimeClient.sentMessages.length, 1);
+
+    const operatorActionResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'retry',
+        actorId: 'actor-owner',
+        taskId: `task-channel-${channelId}`,
+        runId: blockedRunId,
+      }),
+    });
+    assert.equal(operatorActionResponse.status, 200);
+    const operatorActionPayload = await operatorActionResponse.json();
+    assert.equal(operatorActionPayload.action, 'retry');
+    assert.deepEqual(operatorActionPayload.autoResume, {
+      trigger: 'retry',
+      status: 'dispatched',
+      blockedReason: null,
+      sourceMessageId: operatorActionPayload.autoResume.sourceMessageId,
+      resultCount: 1,
+      executionState: 'completed',
+    });
+    assert.equal(runtimeClient.sentMessages.length, 2);
+
+    const coreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(coreResponse.status, 200);
+    const corePayload = await coreResponse.json();
+    const task = corePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    assert.ok(task);
+    assert.equal(task.metadata.workflowContinuationReplay, undefined);
+    assert.ok(
+      findReplayActivity(
+        corePayload,
+        `task-channel-${channelId}`,
+        'replay_started',
+        'retry',
+      ),
+    );
+    assert.ok(
+      corePayload.activities.some((activity) =>
+        activity.taskId === `task-channel-${channelId}`
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_dispatched'),
+    );
+  }, chatStore);
+});
+
 test('GET /api/orchestrator/channels/:id/execution-loop accepts a projected room-workflow runId', async () => {
   const runtimeClient = createRuntimeStub();
   await withServer(runtimeClient, async (baseUrl) => {

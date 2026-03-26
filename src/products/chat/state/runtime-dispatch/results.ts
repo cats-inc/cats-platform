@@ -25,6 +25,9 @@ import {
   workflowShapeForTargets,
 } from '../room-routing/runtime.js';
 import {
+  buildContinuationReplayMetadata,
+} from '../room-routing/continuationReplay.js';
+import {
   extractWorkflowRecommendationFromBody,
   resolveWorkflowRecommendationTargets,
   serializeWorkflowRecommendation,
@@ -422,16 +425,18 @@ export function applyDispatchExecutions(
         continuationResolution.targets.map((target) => toParticipantRef(target)),
         {
           reason: 'max_continuations',
-          continuationSourceMessageId: responseMessage.id,
-          mentionNames: structuredClone(continuationResolution.mentionNames),
-          trigger: continuationResolution.trigger,
           branchStrategy,
-          workflowStageId: continuationStage.stageId,
-          workflowShape: continuationStage.workflowShape,
-          reviewRequired: continuationStage.reviewRequired,
-          continuationSource,
-          workflowRecommendation: serializedWorkflowRecommendation,
-          unresolvedTargets: structuredClone(continuationResolution.unresolved),
+          ...buildContinuationReplayMetadata({
+            sourceMessageId: responseMessage.id,
+            mentionNames: continuationResolution.mentionNames,
+            trigger: continuationResolution.trigger,
+            workflowStageId: continuationStage.stageId,
+            workflowShape: continuationStage.workflowShape,
+            reviewRequired: continuationStage.reviewRequired,
+            continuationSource,
+            workflowRecommendation: serializedWorkflowRecommendation,
+            unresolvedTargets: continuationResolution.unresolved,
+          }),
         },
       );
       break;

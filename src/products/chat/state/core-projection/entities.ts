@@ -40,6 +40,9 @@ import type {
   RoomWorkflowShape,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
+import {
+  isReplayableContinuationGuardReason,
+} from '../room-routing/continuationReplay.js';
 import { defaultCatProducts, hasSuiteSurface } from '../../../../shared/suiteSurfaces.js';
 
 function uniqueStrings(values: string[]): string[] {
@@ -149,15 +152,18 @@ function readParticipantRefs(values: unknown[]): RoomRoutingParticipantRef[] {
 }
 
 function findLatestContinuationReplayEvent(turn: RoomWorkflowTurn | null) {
-  if (!turn || turn.guard !== 'max_continuations') {
+  if (!turn || !isReplayableContinuationGuardReason(turn.guard)) {
     return null;
   }
 
   return [...turn.events].reverse().find((event) => {
     const metadata = readMetadataRecord(event.metadata);
     return (event.kind === 'checkpoint' || event.kind === 'guard_blocked')
-      && readMetadataString(metadata, 'checkpointKind') === 'loop_guard'
-      && readMetadataString(metadata, 'reason') === 'max_continuations';
+      && (
+        readMetadataString(metadata, 'checkpointKind') === 'loop_guard'
+        || readMetadataString(metadata, 'checkpointKind') === 'anti_ping_pong'
+      )
+      && readMetadataString(metadata, 'reason') === turn.guard;
   }) ?? null;
 }
 
@@ -172,7 +178,8 @@ function readWorkflowContinuationReplayRequest(
 
   const metadata = readMetadataRecord(event.metadata);
   const checkpointId = event.checkpointId ?? null;
-  const sourceMessageId = readMetadataString(metadata, 'continuationSourceMessageId');
+  const sourceMessageId = readMetadataString(metadata, 'continuationSourceMessageId')
+    ?? event.sourceMessageId;
   const sourceParticipant = event.actor;
   const targets = readParticipantRefs(event.targets);
   const workflowShape = readMetadataString(metadata, 'workflowShape');
