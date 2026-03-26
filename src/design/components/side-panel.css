@@ -1,0 +1,29 @@
+.sidePanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 100vh;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.06);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidePanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.sidePanelBody {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}

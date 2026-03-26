@@ -8,6 +8,8 @@ import {
 } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts';
+import type { ChatCat } from '../../api/contracts';
+import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import {
   catInitials,
   messageTone,
@@ -23,7 +25,6 @@ import {
 } from '../../shared/operator-loop/index';
 import { ActivityFeed } from './ActivityFeed';
 import { CatAvatarRow } from './CatAvatarRow';
-import { ChatSidePanel, type SidePanelSection } from './ChatSidePanel';
 import { ComposerCatStack } from './ComposerCatStack';
 import {
   buildModelSelectorLabel,
@@ -81,6 +82,8 @@ export interface ChatViewProps {
   selectedModel?: ModelSelectorValue;
   onModelChange?: (value: ModelSelectorValue) => void;
   onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  onOpenAddCat?: () => void;
+  showAddCatButton?: boolean;
 }
 
 export function ChatView({
@@ -114,6 +117,8 @@ export function ChatView({
   selectedModel,
   onModelChange,
   onDirectLaneModelChange,
+  onOpenAddCat,
+  showAddCatButton = true,
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
@@ -136,6 +141,13 @@ export function ChatView({
   const directLaneCat = isDirectLane && leadCat
     ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
     : null;
+  const assignedCatRecords = useMemo(
+    () =>
+      activeAssignedCats
+        .map((assignedCat) => payload.chat.cats.find((cat) => cat.id === assignedCat.catId) ?? null)
+        .filter((cat): cat is ChatCat => cat != null),
+    [activeAssignedCats, payload.chat.cats],
+  );
   const showRosterAvatars = isDirectLane
     ? Boolean(leadCat)
     : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedCats.length > 0);
@@ -448,11 +460,12 @@ export function ChatView({
         </div>
       </div>
       {sidePanelOpen ? (
-        <ChatSidePanel
+        <SidePanel
+          title="Workspace"
           activeSection={sidePanelSection}
           onSectionToggle={setSidePanelSection}
           onClose={() => setSidePanelOpen(false)}
-          belowBar
+          className="chatPaneSidePanel"
           sections={buildSidePanelSections()}
         />
       ) : null}
@@ -613,6 +626,44 @@ export function ChatView({
       return <p className="operatorEmptyState">No execution target configured.</p>;
     })();
     sections.push({ id: 'execution', title: 'Execution Target', children: executionChildren });
+
+    if (showAddCatButton || assignedCatRecords.length > 0) {
+      sections.push({
+        id: 'cats',
+        title: 'Cats',
+        children: (
+          <div className="sidePanelSectionStack">
+            {assignedCatRecords.length > 0 ? (
+              <CatAvatarRow
+                cats={assignedCatRecords}
+                bossCatId={payload.chat.bossCatId}
+                selectedIds={assignedCatRecords.map((cat) => cat.id)}
+                highlightedId={leadCat?.catId ?? null}
+                leadCatId={leadCat?.catId ?? null}
+                toggleable={false}
+                showLeadBadge
+                onToggle={() => {}}
+                onHighlight={() => {}}
+              />
+            ) : (
+              <p className="operatorEmptyState">No cats in this room yet.</p>
+            )}
+            {showAddCatButton ? (
+              <button
+                type="button"
+                className="operatorActionButton"
+                onClick={() => {
+                  setSidePanelOpen(false);
+                  onOpenAddCat?.();
+                }}
+              >
+                Add or manage cats
+              </button>
+            ) : null}
+          </div>
+        ),
+      });
+    }
 
     // --- Working Directory section ---
     const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;

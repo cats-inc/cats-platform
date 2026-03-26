@@ -178,8 +178,6 @@ export default function App() {
   } = useAppChrome();
   const {
     browseFolder,
-    closeFolderBrowser,
-    folderBrowserOpen,
     folderBrowseCurrentPath,
     folderBrowseEntries,
     folderBrowseError,
@@ -657,6 +655,7 @@ export default function App() {
           onBusy={setBusy}
           onResetSetup={onResetSetup}
           addCatOpen={showAddCatPanel}
+          onToggleAddCat={toggleAddCatPanel}
           addCatPanelProps={{
             panelRef: addCatPanelRef,
             selectableCats,
@@ -681,7 +680,6 @@ export default function App() {
             },
           }}
           folderBrowserProps={{
-            folderBrowserOpen,
             folderBrowsePath,
             folderBrowseCurrentPath: folderBrowseCurrentPath ?? '',
             folderBrowseParentPath: folderBrowseParentPath ?? '',

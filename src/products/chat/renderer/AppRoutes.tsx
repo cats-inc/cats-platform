@@ -50,10 +50,9 @@ export interface AppRoutesProps {
   onBusy: (key: string) => void;
   onResetSetup: () => void;
   addCatOpen: boolean;
+  onToggleAddCat: () => void;
   addCatPanelProps: Omit<AddCatPanelProps, 'busy' | 'feedback'>;
-  folderBrowserProps: FolderBrowserContentProps & {
-    folderBrowserOpen: boolean;
-  };
+  folderBrowserProps: FolderBrowserContentProps;
   onOpenDraftAddCat: () => void;
   onChangeDraftLeadCat: (catId: string | null) => void;
 }
@@ -72,12 +71,13 @@ export function AppRoutes({
   onBusy,
   onResetSetup,
   addCatOpen,
+  onToggleAddCat,
   addCatPanelProps,
   folderBrowserProps,
   onOpenDraftAddCat,
   onChangeDraftLeadCat,
 }: AppRoutesProps) {
-  const { folderBrowserOpen: _fbOpen, ...folderBrowserSurfaceProps } = folderBrowserProps;
+  const folderBrowserSurfaceProps = folderBrowserProps;
 
   return (
     <>
@@ -112,6 +112,7 @@ export function AppRoutes({
                 {...chatSurfaceProps}
                 payload={payload}
                 selectedChannel={selectedChannel}
+                onOpenAddCat={onToggleAddCat}
               />
             ) : (
               <BootShell />
@@ -137,6 +138,8 @@ export function AppRoutes({
                 {...chatSurfaceProps}
                 payload={payload}
                 selectedChannel={directLaneChannel}
+                onOpenAddCat={noop}
+                showAddCatButton={false}
               />
             ) : (
               <NewChatDraft

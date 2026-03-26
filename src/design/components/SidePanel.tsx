@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { AccordionSection } from '../../../../design/components/AccordionSection';
+
+import { AccordionSection } from './AccordionSection';
 
 export interface SidePanelSection {
   id: string;
@@ -8,39 +9,56 @@ export interface SidePanelSection {
   children: ReactNode;
 }
 
-export interface ChatSidePanelProps {
+export interface SidePanelProps {
+  title: string;
   activeSection: string | null;
   onSectionToggle: (id: string) => void;
   onClose: () => void;
   sections: SidePanelSection[];
-  belowBar?: boolean;
+  className?: string;
 }
 
-export function ChatSidePanel({
+export function SidePanel({
+  title,
   activeSection,
   onSectionToggle,
   onClose,
   sections,
-  belowBar,
-}: ChatSidePanelProps) {
+  className = '',
+}: SidePanelProps) {
   const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent): void {
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
         const target = event.target as HTMLElement;
-        if (target.closest('.sidePanelToggle')) return;
+        if (target.closest('.sidePanelToggle')) {
+          return;
+        }
         onClose();
       }
     }
+
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    }
+
     document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onKeyDown as never);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onKeyDown as never);
+    };
   }, [onClose]);
 
+  const panelClassName = ['sidePanel', className].filter(Boolean).join(' ');
+
   return (
-    <aside className={belowBar ? 'chatSidePanel chatSidePanelBelowBar' : 'chatSidePanel'} ref={panelRef}>
-      <div className="chatSidePanelHeader">
-        <strong>Inspector</strong>
+    <aside className={panelClassName} ref={panelRef}>
+      <div className="sidePanelHeader">
+        <strong>{title}</strong>
         <button
           type="button"
           className="chromeButton"
@@ -50,7 +68,7 @@ export function ChatSidePanel({
           &times;
         </button>
       </div>
-      <div className="chatSidePanelBody">
+      <div className="sidePanelBody">
         {sections.map((section) => (
           <AccordionSection
             key={section.id}

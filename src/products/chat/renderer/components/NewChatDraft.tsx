@@ -1,10 +1,10 @@
 import { useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts';
+import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import type { BrowseDirectoryEntry } from '../api';
 import { isChatCat, truncatePath } from '../chatUtils';
 import { CatAvatarRow } from './CatAvatarRow';
-import { ChatSidePanel, type SidePanelSection } from './ChatSidePanel';
 import { ComposerCatStack } from './ComposerCatStack';
 import { FolderBrowserContent } from './FolderBrowser';
 import {
@@ -137,7 +137,7 @@ export function NewChatDraft({
   }
   function switchSection(section: string): void {
     setSidePanelSection(section);
-    if (section === 'cwd' && !folderBrowseCurrentPath) {
+    if (section === 'cwd' && !folderBrowseCurrentPath && !folderBrowseLoading) {
       onPickFolder();
     }
   }
@@ -258,7 +258,6 @@ export function NewChatDraft({
                       className="composerPlusMenuItem"
                       type="button"
                       onClick={() => {
-                        onPickFolder();
                         openSidePanelTo('cwd');
                       }}
                     >
@@ -336,10 +335,12 @@ export function NewChatDraft({
         </form>
       </section>
       {sidePanelOpen ? (
-        <ChatSidePanel
+        <SidePanel
+          title="Draft Workspace"
           activeSection={sidePanelSection}
           onSectionToggle={switchSection}
           onClose={() => setSidePanelOpen(false)}
+          className="chatPaneSidePanel"
           sections={buildDraftSidePanelSections()}
         />
       ) : null}
