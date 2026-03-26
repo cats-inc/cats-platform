@@ -1757,6 +1757,11 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
   assert.ok(channelId);
   const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
   assert.ok(seededChannel);
+  seededChannel.composerMode = 'solo';
+  seededChannel.roomRouting = createDefaultRoomRoutingState({
+    mode: 'boss_chat',
+    leadParticipantId: null,
+  });
   const inlineAssignment = seededChannel.catAssignments[0];
   const reviewerAssignment = seededChannel.catAssignments[1];
   assert.ok(inlineAssignment);
@@ -2193,6 +2198,235 @@ test('startup-recovered continuation replay auto-resumes when an active target r
     assert.equal(recoverResponse.status, 200);
     assert.equal(runtimeClient.sentMessages.length, 1);
     assert.match(runtimeClient.sentMessages[0]?.content ?? '', /You are Reviewer-Agent/u);
+
+    const finalCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(finalCoreResponse.status, 200);
+    const finalCorePayload = await finalCoreResponse.json();
+    const finalTask = finalCorePayload.tasks.find((candidate) => candidate.id === taskId);
+    assert.ok(finalTask);
+    assert.equal(finalTask.metadata.workflowContinuationReplay, undefined);
+    assert.ok(
+      finalCorePayload.activities.some((activity) =>
+        activity.taskId === taskId
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_dispatched'
+        && activity.metadata?.resumeReason === 'target_recovered'
+        && activity.metadata?.resultCount === 1),
+    );
+  }, chatStore);
+});
+
+test('startup-recovered continuation replay auto-resumes when channel activation restores the orchestrator session', async () => {
+  const runtimeClient = createRuntimeStub({
+    sendMessage: ({ sessionId }) => usage(`Orchestrator recovered the stored continuation on ${sessionId}.`),
+  });
+  const now = new Date('2026-03-26T16:42:00.000Z');
+  let chat = createDefaultChatState();
+  chat = seedChannel(
+    chat,
+    {
+      title: 'Recovered orchestrator continuation',
+      topic: 'Resume a startup-recovered continuation once channel activation restores Boss Cat.',
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(seededChannel);
+  const inlineAssignment = seededChannel.catAssignments[0];
+  assert.ok(inlineAssignment);
+  chat = setChannelCatLease(
+    chat,
+    channelId,
+    inlineAssignment.catId,
+    {
+      sessionId: 'session-inline',
+      status: 'ready',
+      cwd: 'C:/repo/cats',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Inline-Agent',
+      body: 'Please bounce this back to Boss Cat once activation restores the session.',
+    },
+    now,
+  ).state;
+
+  const channel = buildChannelView(chat, channelId);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+  const inlineParticipant = {
+    participantKind: 'cat',
+    participantId: inlineAssignment.catId,
+    participantName: channel.assignedCats.find((candidate) => candidate.catId === inlineAssignment.catId)?.name
+      ?? 'Inline-Agent',
+  };
+  const orchestratorParticipant = {
+    participantKind: 'orchestrator',
+    participantId: 'orchestrator',
+    participantName: 'Orchestrator',
+  };
+
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const workflow = resolveRoomWorkflowState(roomRouting.workflow);
+  const activeTurn = createWorkflowTurn(
+    sourceMessage,
+    now.toISOString(),
+    'converge_review',
+    'converge',
+  );
+  activeTurn.id = 'turn-startup-recovered-orchestrator-session';
+  activeTurn.reviewRequired = true;
+  activeTurn.convergeTargetId = orchestratorParticipant.participantId;
+  activeTurn.dispatchCount = 1;
+  activeTurn.targetStatuses.push({
+    id: 'target-state-startup-recovered-orchestrator-session',
+    dispatchId: 'dispatch-startup-recovered-orchestrator-session',
+    participant: orchestratorParticipant,
+    source: inlineParticipant,
+    sourceMessageId: sourceMessage.id,
+    trigger: 'continuation_mention',
+    mentionNames: ['Orchestrator'],
+    depth: 1,
+    parentCheckpointId: 'checkpoint-startup-recovered-orchestrator-session',
+    branchStrategy: 'transplant_context',
+    handoffReason: 'workflow_continuation',
+    wakeRequestId: null,
+    status: 'running',
+    queuedAt: now.toISOString(),
+    startedAt: now.toISOString(),
+    completedAt: null,
+    responseMessageId: null,
+    error: null,
+  });
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'target_pending',
+      'running',
+      'Boss Cat is pending the recovered converge review.',
+      now.toISOString(),
+      inlineParticipant,
+      sourceMessage.id,
+      [orchestratorParticipant],
+      {
+        dispatchId: 'dispatch-startup-recovered-orchestrator-session',
+        metadata: {
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+          reviewRequired: true,
+          continuationSource: 'workflow_recommendation',
+          branchStrategy: 'transplant_context',
+          mentionNames: ['Orchestrator'],
+          unresolvedTargets: [],
+          workflowRecommendation: {
+            source: 'boss_replan',
+            workflowShape: 'converge',
+            reviewRequired: true,
+            candidateTargets: [
+              {
+                participantKind: 'orchestrator',
+                participantId: 'orchestrator',
+                participantName: 'Orchestrator',
+              },
+            ],
+            branchStrategy: 'transplant_context',
+            rationale: 'Replay this converge review through Boss Cat once channel activation restores the session.',
+          },
+        },
+      },
+    ),
+  );
+  workflow.activeTurn = activeTurn;
+  roomRouting.workflow = workflow;
+  roomRouting.lastOutcome = {
+    turnId: activeTurn.id,
+    mode: roomRouting.mode ?? createDefaultRoomRoutingState().mode,
+    sourceMessageId: sourceMessage.id,
+    sourceSenderKind: sourceMessage.senderKind,
+    sourceSenderName: sourceMessage.senderName,
+    status: 'running',
+    resolution: {
+      routingMode: 'explicit_single',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: 'Converge review is waiting for Boss Cat session recovery.',
+    },
+    resolvedTargets: [orchestratorParticipant],
+    unresolvedMentions: [],
+    dispatches: [
+      {
+        id: 'dispatch-startup-recovered-orchestrator-session',
+        sourceMessageId: sourceMessage.id,
+        source: inlineParticipant,
+        target: orchestratorParticipant,
+        trigger: 'continuation_mention',
+        status: 'running',
+        mentionNames: ['Orchestrator'],
+        responseMessageId: null,
+        startedAt: now.toISOString(),
+        completedAt: null,
+        error: null,
+      },
+    ],
+    checkpoints: [],
+    continuationCount: 1,
+    totalDispatchCount: 1,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: null,
+  };
+  chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
+
+  const chatStore = new MemoryChatStore(chat);
+  const taskId = `task-channel-${channelId}`;
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const initialCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(initialCoreResponse.status, 200);
+    const initialCorePayload = await initialCoreResponse.json();
+    const initialTask = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
+    assert.ok(initialTask);
+    assert.ok(initialTask.metadata.workflowContinuationReplay);
+    assert.equal(runtimeClient.sentMessages.length, 0);
+    assert.ok(
+      initialCorePayload.activities.some((activity) =>
+        activity.taskId === taskId
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'startup_recovered'),
+    );
+
+    const activationResponse = await fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
+      method: 'POST',
+    });
+    assert.equal(activationResponse.status, 200);
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.sentMessages.length, 1);
+    assert.equal(runtimeClient.sentMessages[0]?.sessionId, runtimeClient.createdSessions[0]?.id);
 
     const finalCoreResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(finalCoreResponse.status, 200);

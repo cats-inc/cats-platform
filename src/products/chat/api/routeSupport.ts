@@ -175,6 +175,12 @@ export function requireValidChatScopeId(chatScopeId: string): void {
   }
 }
 
+interface RecoveredContinuationParticipant {
+  participantKind: 'orchestrator' | 'cat';
+  participantId: string;
+  participantName: string;
+}
+
 function seedBossCatGreeting(
   state: ChatState,
   channelId: string,
@@ -318,16 +324,16 @@ function buildChannelTaskId(channelId: string): string {
   return `task-channel-${channelId}`;
 }
 
-function replayMatchesRecoveredCat(
+function replayMatchesRecoveredParticipant(
   replay: NonNullable<ReturnType<typeof readWorkflowContinuationReplay>>,
-  assignment: ChatChannelCat,
+  participant: RecoveredContinuationParticipant,
 ): boolean {
-  const normalizedCatName = assignment.name.trim().toLowerCase();
+  const normalizedParticipantName = participant.participantName.trim().toLowerCase();
   if (replay.targets.some((target) =>
-    target.participantKind === 'cat'
+    target.participantKind === participant.participantKind
     && (
-      target.participantId === assignment.catId
-      || target.participantName.trim().toLowerCase() === normalizedCatName
+      target.participantId === participant.participantId
+      || target.participantName.trim().toLowerCase() === normalizedParticipantName
     )
   )) {
     return true;
@@ -339,10 +345,13 @@ function replayMatchesRecoveredCat(
   }
 
   return recommendation.candidateTargets.some((candidate) =>
-    candidate.participantKind !== 'orchestrator'
+    (
+      candidate.participantKind === null
+      || candidate.participantKind === participant.participantKind
+    )
     && (
-      candidate.participantId === assignment.catId
-      || candidate.participantName?.trim().toLowerCase() === normalizedCatName
+      candidate.participantId === participant.participantId
+      || candidate.participantName?.trim().toLowerCase() === normalizedParticipantName
     )
   );
 }
@@ -361,9 +370,9 @@ function isRecoveredContinuationReplayEligibleForAutoResume(
   core: Awaited<ReturnType<ChatStore['readCore']>>,
   taskId: string,
   replay: NonNullable<ReturnType<typeof readWorkflowContinuationReplay>>,
-  assignment: ChatChannelCat,
+  participant: RecoveredContinuationParticipant,
 ): boolean {
-  if (replay.replayState !== 'ready' || !replayMatchesRecoveredCat(replay, assignment)) {
+  if (replay.replayState !== 'ready' || !replayMatchesRecoveredParticipant(replay, participant)) {
     return false;
   }
 
@@ -375,21 +384,12 @@ function isRecoveredContinuationReplayEligibleForAutoResume(
     && hasStartupRecoveredContinuationActivity(core, taskId);
 }
 
-async function maybeAutoResumeRecoveredContinuation(
+async function maybeAutoResumeRecoveredContinuationForParticipant(
   context: ChatApiRouteContext,
   channelId: string,
-  catId: string,
+  participant: RecoveredContinuationParticipant,
   now: Date,
 ): Promise<void> {
-  const state = await context.dependencies.chatStore.read();
-  const channel = buildChannelView(state, channelId);
-  const assignment = channel.assignedCats.find((candidate) =>
-    candidate.catId === catId && candidate.status === 'active'
-  );
-  if (!assignment) {
-    return;
-  }
-
   const core = await context.dependencies.chatStore.readCore();
   const taskId = buildChannelTaskId(channelId);
   const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
@@ -397,7 +397,7 @@ async function maybeAutoResumeRecoveredContinuation(
   if (
     !task
     || !replay
-    || !isRecoveredContinuationReplayEligibleForAutoResume(core, taskId, replay, assignment)
+    || !isRecoveredContinuationReplayEligibleForAutoResume(core, taskId, replay, participant)
   ) {
     return;
   }
@@ -473,6 +473,56 @@ async function maybeAutoResumeRecoveredContinuation(
     // Auto-resume is additive. Leave the replay ready for explicit retry if
     // the recovered target still cannot complete the continuation.
   }
+}
+
+async function maybeAutoResumeRecoveredContinuation(
+  context: ChatApiRouteContext,
+  channelId: string,
+  catId: string,
+  now: Date,
+): Promise<void> {
+  const state = await context.dependencies.chatStore.read();
+  const channel = buildChannelView(state, channelId);
+  const assignment = channel.assignedCats.find((candidate) =>
+    candidate.catId === catId && candidate.status === 'active'
+  );
+  if (!assignment) {
+    return;
+  }
+
+  await maybeAutoResumeRecoveredContinuationForParticipant(
+    context,
+    channelId,
+    {
+      participantKind: 'cat',
+      participantId: assignment.catId,
+      participantName: assignment.name,
+    },
+    now,
+  );
+}
+
+export async function maybeAutoResumeRecoveredOrchestratorContinuation(
+  context: ChatApiRouteContext,
+  channelId: string,
+  now: Date,
+): Promise<void> {
+  const state = await context.dependencies.chatStore.read();
+  const channel = buildChannelView(state, channelId);
+  if (!channel.orchestratorLease.sessionId) {
+    return;
+  }
+
+  await maybeAutoResumeRecoveredContinuationForParticipant(
+    context,
+    channelId,
+    {
+      participantKind: 'orchestrator',
+      participantId: 'orchestrator',
+      participantName: resolveOrchestratorDisplayName(state),
+    },
+    now,
+  );
 }
 
 async function writeCoreWithUpdatedBindings(

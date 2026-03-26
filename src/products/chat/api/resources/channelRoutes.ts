@@ -18,6 +18,7 @@ import type {
 import {
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
+  maybeAutoResumeRecoveredOrchestratorContinuation,
   nowFrom,
   persistCreatedChannel,
   persistDeletedChannel,
@@ -273,6 +274,10 @@ async function handleRestActivateChannel(
       },
     );
     await context.dependencies.chatStore.write(activation.state);
+    if (activation.results.some((result) =>
+      result.targetKind === 'orchestrator' && result.status === 'started')) {
+      await maybeAutoResumeRecoveredOrchestratorContinuation(context, channelId, now);
+    }
     sendJson(context.response, 200, {
       activation: {
         channelId,

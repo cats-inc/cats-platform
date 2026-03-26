@@ -157,7 +157,10 @@ MCP tool plane.
   unresolved-target metadata now persisting back onto the task instead of
   living only in replay activities, while startup-recovered single-target
   continuations can now also auto-resume when an already-assigned active
-  target regains its session lease instead of requiring a remove/re-add cycle
+  target regains its session lease instead of requiring a remove/re-add cycle,
+  and startup-recovered orchestrator-target continuations can now also
+  auto-resume when channel activation or room-entry wake restores the Boss Cat
+  session
 - converge-stage richer planning once group/branch policies land
 - future export of the orchestrator execution contract to other product
   surfaces once Team 3 / Team 6 consume it directly

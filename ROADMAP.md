@@ -214,7 +214,10 @@ contracts.
       task metadata for operator read models, while startup-recovered
       single-target continuations can now also auto-resume when an already-
       assigned active target regains its session lease instead of requiring a
-      remove/re-add cycle; broader group replan auto-resume still remains.
+      remove/re-add cycle, and startup-recovered orchestrator-target
+      continuations can now also auto-resume when channel activation or room-
+      entry wake restores the Boss Cat session; broader group replan
+      auto-resume still remains.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent

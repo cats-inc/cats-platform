@@ -10,6 +10,7 @@ import { parseProviderModelSelection } from '../../../../shared/providerSelectio
 import {
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
+  maybeAutoResumeRecoveredOrchestratorContinuation,
   nowFrom,
   requireValidChatScopeId,
   type ChatApiRouteContext,
@@ -51,16 +52,18 @@ async function handleRestUpdatePreferences(
       };
     }>(context.request);
     let nextState = await context.dependencies.chatStore.read();
+    let shouldAttemptRecoveredOrchestratorAutoResume = false;
 
     if (body.selectedChannelId !== undefined) {
+      const selectedChannelId = body.selectedChannelId;
       nextState = selectChannel(
         nextState,
-        body.selectedChannelId,
+        selectedChannelId,
         nowFrom(context.dependencies),
       );
       const wake = await wakeChannelEntryParticipant(
         nextState,
-        body.selectedChannelId,
+        selectedChannelId,
         context.dependencies.runtimeClient,
         nowFrom(context.dependencies),
         {
@@ -69,6 +72,8 @@ async function handleRestUpdatePreferences(
         },
       );
       nextState = wake.state;
+      shouldAttemptRecoveredOrchestratorAutoResume = wake.result?.targetKind === 'orchestrator'
+        && wake.result.status === 'started';
     }
 
     if (typeof body.showVerboseMessages === 'boolean') {
@@ -88,6 +93,13 @@ async function handleRestUpdatePreferences(
     }
 
     const persisted = await context.dependencies.chatStore.write(nextState);
+    if (shouldAttemptRecoveredOrchestratorAutoResume && body.selectedChannelId !== undefined) {
+      await maybeAutoResumeRecoveredOrchestratorContinuation(
+        context,
+        body.selectedChannelId,
+        nowFrom(context.dependencies),
+      );
+    }
     sendJson(context.response, 200, {
       preferences: {
         selectedChannelId: persisted.selectedChannelId,
