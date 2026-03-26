@@ -10,6 +10,9 @@ import type {
   OrchestratorPlannerSurface,
 } from '../../../platform/orchestration/contracts.js';
 import {
+  persistOrchestratorReplayActivity,
+} from '../../../platform/orchestration/replayActivity.js';
+import {
   readWorkflowContinuationReplay,
 } from '../../../platform/orchestration/workflowContinuationReplay.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
@@ -374,7 +377,23 @@ async function maybeAutoResumeRecoveredContinuation(
   }
 
   try {
-    await resumeStoredWorkflowContinuationDispatch({
+    await persistOrchestratorReplayActivity(
+      context.dependencies.chatStore,
+      core,
+      {
+        task,
+        source: 'workflow-continuation-replay',
+        phase: 'replay_started',
+        resumeReason: 'target_recovered',
+      },
+      now,
+    );
+  } catch {
+    // Inspectability is additive; do not block the auto-resume attempt.
+  }
+
+  try {
+    const result = await resumeStoredWorkflowContinuationDispatch({
       request: replay,
       chatStore: context.dependencies.chatStore,
       runtimeClient: context.dependencies.runtimeClient,
@@ -382,7 +401,49 @@ async function maybeAutoResumeRecoveredContinuation(
       companionStore: context.dependencies.companionStore,
       memoryService: context.dependencies.memoryService,
     });
+    try {
+      const latestCore = await context.dependencies.chatStore.readCore();
+      const latestTask = latestCore.tasks.find((candidate) =>
+        candidate.id === buildChannelTaskId(channelId)
+      ) ?? task;
+      await persistOrchestratorReplayActivity(
+        context.dependencies.chatStore,
+        latestCore,
+        {
+          task: latestTask,
+          source: 'workflow-continuation-replay',
+          phase: result.status === 'dispatched'
+            ? 'replay_dispatched'
+            : 'replay_blocked',
+          resumeReason: 'target_recovered',
+          blockedReason: result.blockedReason,
+          resultCount: result.results.length,
+        },
+        now,
+      );
+    } catch {
+      // The auto-resume itself already completed; do not regress the main path.
+    }
   } catch {
+    try {
+      const latestCore = await context.dependencies.chatStore.readCore();
+      const latestTask = latestCore.tasks.find((candidate) =>
+        candidate.id === buildChannelTaskId(channelId)
+      ) ?? task;
+      await persistOrchestratorReplayActivity(
+        context.dependencies.chatStore,
+        latestCore,
+        {
+          task: latestTask,
+          source: 'workflow-continuation-replay',
+          phase: 'replay_failed',
+          resumeReason: 'target_recovered',
+        },
+        now,
+      );
+    } catch {
+      // Keep the auto-resume path best-effort even if activity persistence fails.
+    }
     // Auto-resume is additive. Leave the replay ready for explicit retry if
     // the recovered target still cannot complete the continuation.
   }

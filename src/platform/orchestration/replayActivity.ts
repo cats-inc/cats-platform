@@ -30,6 +30,7 @@ export interface OrchestratorReplayActivityInput {
     | 'workflow-continuation-replay';
   phase: OrchestratorReplayActivityPhase;
   trigger?: OrchestratorDispatchReplayTrigger | null;
+  resumeReason?: 'target_recovered' | null;
   blockedReason?: string | null;
   error?: string | null;
   resultCount?: number | null;
@@ -37,7 +38,12 @@ export interface OrchestratorReplayActivityInput {
   dispatchReplayRecovered?: boolean;
 }
 
-function describeTrigger(trigger: OrchestratorDispatchReplayTrigger | null | undefined): string {
+function describeReplayResumeContext(input: OrchestratorReplayActivityInput): string {
+  if (input.resumeReason === 'target_recovered') {
+    return 'after a matching target became active again';
+  }
+
+  const trigger = input.trigger;
   switch (trigger) {
     case 'approve':
       return 'after approval';
@@ -56,21 +62,22 @@ function buildReplayActivityMessage(input: OrchestratorReplayActivityInput): str
   const replaySubject = input.source === 'workflow-continuation-replay'
     ? 'stored workflow continuation'
     : 'stored orchestrator dispatch';
+  const resumeContext = describeReplayResumeContext(input);
   switch (input.phase) {
     case 'pending_dispatch_stored':
       return `Stored the approval-blocked orchestrator dispatch for ${subject}.`;
     case 'replay_started':
-      return `Started replaying the ${replaySubject} for ${subject} ${describeTrigger(input.trigger)}.`;
+      return `Started replaying the ${replaySubject} for ${subject} ${resumeContext}.`;
     case 'replay_dispatched':
-      return `Replayed the ${replaySubject} for ${subject} ${describeTrigger(input.trigger)}.`;
+      return `Replayed the ${replaySubject} for ${subject} ${resumeContext}.`;
     case 'replay_blocked':
       return input.blockedReason
-        ? `The ${replaySubject} for ${subject} remained blocked ${describeTrigger(input.trigger)}: ${input.blockedReason}.`
-        : `The ${replaySubject} for ${subject} remained blocked ${describeTrigger(input.trigger)}.`;
+        ? `The ${replaySubject} for ${subject} remained blocked ${resumeContext}: ${input.blockedReason}.`
+        : `The ${replaySubject} for ${subject} remained blocked ${resumeContext}.`;
     case 'replay_failed':
       return input.error
-        ? `Replaying the ${replaySubject} for ${subject} failed ${describeTrigger(input.trigger)}: ${input.error}.`
-        : `Replaying the ${replaySubject} for ${subject} failed ${describeTrigger(input.trigger)}.`;
+        ? `Replaying the ${replaySubject} for ${subject} failed ${resumeContext}: ${input.error}.`
+        : `Replaying the ${replaySubject} for ${subject} failed ${resumeContext}.`;
     case 'startup_recovered':
     default:
       return input.source === 'workflow-continuation-replay'
@@ -100,6 +107,7 @@ export function appendOrchestratorReplayActivity(
         source: input.source ?? 'orchestrator-replay',
         replayPhase: input.phase,
         replayTrigger: input.trigger ?? null,
+        resumeReason: input.resumeReason ?? null,
         blockedReason: input.blockedReason ?? null,
         error: input.error ?? null,
         resultCount: input.resultCount ?? null,

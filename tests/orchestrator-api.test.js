@@ -1262,7 +1262,6 @@ test('POST /api/core/operator-actions auto-resumes stored workflow continuation 
     assert.ok(
       corePayload.activities.some((activity) =>
         activity.taskId === `task-channel-${channelId}`
-        && activity.metadata?.source === 'workflow-continuation-replay'
         && activity.metadata?.replayPhase === 'replay_dispatched'),
     );
   }, chatStore);
@@ -1381,6 +1380,12 @@ test('POST /api/core/operator-actions re-resolves stale workflow continuation ta
     const task = corePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
     assert.ok(task);
     assert.equal(task.metadata.workflowContinuationReplay, undefined);
+    assert.ok(
+      corePayload.activities.some((activity) =>
+        activity.taskId === `task-channel-${channelId}`
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_dispatched'),
+    );
   }, chatStore);
 });
 
@@ -1529,6 +1534,13 @@ test('recommendation-only continuation replay stays blocked on retry and auto-re
     const task = corePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
     assert.ok(task);
     assert.equal(task.metadata.workflowContinuationReplay, undefined);
+    assert.ok(
+      corePayload.activities.some((activity) =>
+        activity.taskId === `task-channel-${channelId}`
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_dispatched'
+        && activity.metadata?.resumeReason === 'target_recovered'),
+    );
   }, chatStore);
 });
 
