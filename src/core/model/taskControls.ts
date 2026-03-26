@@ -135,6 +135,10 @@ export function patchOwnerProfile(
       patch.avatarColor === undefined
         ? core.ownerProfile.avatarColor
         : normalizeNullableString(patch.avatarColor),
+    avatarUrl:
+      patch.avatarUrl === undefined
+        ? core.ownerProfile.avatarUrl ?? null
+        : normalizeNullableString(patch.avatarUrl),
     summary:
       patch.summary === undefined
         ? core.ownerProfile.summary

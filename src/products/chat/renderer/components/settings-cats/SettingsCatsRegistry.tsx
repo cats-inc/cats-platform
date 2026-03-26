@@ -33,6 +33,7 @@ export interface SettingsCatsRegistryProps {
   telegramDiagnostics: TelegramTransportDiagnostics | null;
   availableSurfaces?: string[];
   enabledSurfaces?: string[];
+  onPayloadUpdate?: (payload: AppShellPayload) => void;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
 
@@ -47,6 +48,7 @@ export function SettingsCatsRegistry({
   telegramDiagnostics,
   availableSurfaces,
   enabledSurfaces,
+  onPayloadUpdate,
   confirm: confirmDialog,
 }: SettingsCatsRegistryProps) {
   const [showArchived, setShowArchived] = useState(false);
@@ -167,6 +169,7 @@ export function SettingsCatsRegistry({
                     telegramDiagnostics={telegramDiagnostics}
                     availableSurfaces={availableSurfaces}
                     enabledSurfaces={enabledSurfaces}
+                    onPayloadUpdate={onPayloadUpdate}
                     confirm={confirmDialog}
                   />
                 ) : null}

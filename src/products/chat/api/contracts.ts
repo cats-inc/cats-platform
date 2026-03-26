@@ -148,6 +148,7 @@ export interface ChatCat {
   updatedAt: string;
   archivedAt: string | null;
   avatarColor: string | null;
+  avatarUrl: string | null;
   defaultExecutionTarget: ExecutionTargetSummary;
   defaultModelSelection?: ProviderModelSelection | null;
   products: string[];

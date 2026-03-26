@@ -19,6 +19,7 @@ export interface SuiteOwnerContext {
   setupCompleteAt: string | null;
   ownerDisplayName: string;
   ownerAvatarColor: string | null;
+  ownerAvatarUrl: string | null;
   lastProductSurface: SuiteSurfaceId | null;
 }
 

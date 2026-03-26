@@ -237,6 +237,7 @@ export async function buildAppShellPayload(
       setupCompleteAt: core.setupCompleteAt,
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,
+      ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
       botBindings,
       lastProductSurface: suitePrefs.lastProductSurface,
     },

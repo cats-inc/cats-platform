@@ -31,6 +31,7 @@ async function handleOwnerProfileWrite(
       {
         displayName: readOptionalString(body.displayName, 'displayName'),
         avatarColor: readNullableString(body.avatarColor, 'avatarColor'),
+        avatarUrl: readNullableString(body.avatarUrl, 'avatarUrl'),
         summary: readNullableString(body.summary, 'summary'),
         communicationPreferences: readStringArray(
           body.communicationPreferences,

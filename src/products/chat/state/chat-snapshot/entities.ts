@@ -107,6 +107,7 @@ export function normalizeChatCat(rawCat: unknown): ChatCat | null {
     updatedAt: readString(catRecord.updatedAt, new Date().toISOString()),
     archivedAt: readNullableString(catRecord.archivedAt),
     avatarColor: readNullableString(catRecord.avatarColor),
+    avatarUrl: readNullableString(catRecord.avatarUrl),
     defaultExecutionTarget,
     defaultModelSelection: parseProviderModelSelection(catRecord.defaultModelSelection),
     products: normalizeSuiteSurfaceList(readStringArray(catRecord.products), {

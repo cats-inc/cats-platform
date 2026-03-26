@@ -14,6 +14,7 @@ export function createAppShell(
     setupCompleteAt: string | null;
     ownerDisplayName: string;
     ownerAvatarColor: string | null;
+    ownerAvatarUrl?: string | null;
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: SuiteSurfaceId | null;
   },
@@ -58,6 +59,7 @@ export function createAppShell(
     setupCompleteAt: setup?.setupCompleteAt ?? null,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
     ownerAvatarColor: setup?.ownerAvatarColor ?? null,
+    ownerAvatarUrl: setup?.ownerAvatarUrl ?? null,
     lastProductSurface: setup?.lastProductSurface ?? null,
   };
 }

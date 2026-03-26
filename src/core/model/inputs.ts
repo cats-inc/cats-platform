@@ -68,6 +68,7 @@ export interface CoreTaskWriteInput {
 export interface OwnerProfilePatchInput {
   displayName?: string;
   avatarColor?: string | null;
+  avatarUrl?: string | null;
   summary?: string | null;
   communicationPreferences?: string[];
   decisionPreferences?: string[];

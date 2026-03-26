@@ -1,0 +1,81 @@
+.avatarCropOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  animation: confirmFadeIn 0.15s ease-out;
+}
+
+.avatarCropDialog {
+  width: min(420px, calc(100vw - 48px));
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow-sheet);
+  display: grid;
+  gap: 16px;
+  animation: confirmSlideIn 0.15s ease-out;
+}
+
+.avatarCropTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.avatarCropCanvasWrap {
+  position: relative;
+  width: 256px;
+  height: 256px;
+  margin: 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: grab;
+  background: var(--panel-subtle);
+  border: 2px solid var(--border);
+}
+
+.avatarCropCanvasWrap:active {
+  cursor: grabbing;
+}
+
+.avatarCropCanvas {
+  display: block;
+  width: 256px;
+  height: 256px;
+}
+
+.avatarCropHint {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted-soft);
+  margin: 0;
+}
+
+.avatarCropActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.avatarCropUploadArea {
+  width: 256px;
+  height: 256px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 2px dashed var(--border);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--muted-soft);
+  font-size: 0.85rem;
+  transition: border-color 0.15s;
+}
+
+.avatarCropUploadArea:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

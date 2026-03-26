@@ -232,6 +232,7 @@ export async function updateCatProfile(
     instance?: string | null;
     model?: string | null;
     modelSelection?: import('../../../../shared/providerSelection.js').ProviderModelSelection | null;
+    avatarUrl?: string | null;
   },
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {

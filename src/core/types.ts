@@ -520,6 +520,7 @@ export interface OwnerProfileRecord {
   actorId: string;
   displayName: string;
   avatarColor: string | null;
+  avatarUrl: string | null;
   summary: string | null;
   communicationPreferences: string[];
   decisionPreferences: string[];

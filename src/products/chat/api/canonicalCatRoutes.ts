@@ -64,6 +64,7 @@ async function handleCanonicalUpdateCat(
       instance?: string | null;
       model?: string | null;
       modelSelection?: import('../../../../shared/providerSelection.js').ProviderModelSelection | null;
+      avatarUrl?: string | null;
     }>(context.request);
     let state = await context.dependencies.chatStore.read();
     if (body.name !== undefined) {
@@ -85,6 +86,13 @@ async function handleCanonicalUpdateCat(
         model: body.model,
         modelSelection: body.modelSelection,
       });
+    }
+    if (body.avatarUrl !== undefined) {
+      const cat = state.cats.find((c) => c.id === catId);
+      if (cat) {
+        cat.avatarUrl = typeof body.avatarUrl === 'string' ? body.avatarUrl : null;
+        cat.updatedAt = new Date().toISOString();
+      }
     }
     if (body.archive) {
       state = await persistArchivedCat(context, state, catId);

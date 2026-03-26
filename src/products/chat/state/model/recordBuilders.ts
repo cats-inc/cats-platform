@@ -93,6 +93,7 @@ export function createCatRecord(input: CreateCatInput, nowIso: string): ChatCat 
     updatedAt: nowIso,
     archivedAt: null,
     avatarColor: null,
+    avatarUrl: null,
     defaultExecutionTarget: {
       provider,
       instance: normalizeOptionalText(input.instance),

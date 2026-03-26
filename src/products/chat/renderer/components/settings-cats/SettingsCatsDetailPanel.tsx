@@ -1,6 +1,8 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../../api/contracts';
+import { AvatarCropDialog } from '../../../../../design/components/AvatarCropDialog';
+import { updateCatProfile } from '../../api';
 import type {
   DurableMemoryItem,
   TelegramTransportBindingDiagnostics,
@@ -35,6 +37,7 @@ export interface SettingsCatsDetailPanelProps {
   } | null;
   availableSurfaces?: string[];
   enabledSurfaces?: string[];
+  onPayloadUpdate?: (payload: AppShellPayload) => void;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
 
@@ -48,6 +51,7 @@ export function SettingsCatsDetailPanel({
   telegramDiagnostics,
   availableSurfaces,
   enabledSurfaces,
+  onPayloadUpdate,
   confirm: confirmDialog,
 }: SettingsCatsDetailPanelProps) {
   const {
@@ -82,8 +86,55 @@ export function SettingsCatsDetailPanel({
     disabled: busy === `cat:products:${cat.id}`,
   });
 
+  const [cropOpen, setCropOpen] = useState(false);
+
+  async function handleCatAvatarSave(dataUrl: string): Promise<void> {
+    setCropOpen(false);
+    try {
+      const next = await updateCatProfile(cat.id, { avatarUrl: dataUrl });
+      onPayloadUpdate?.(next);
+    } catch {
+      // silent
+    }
+  }
+
   return (
     <div className="catDetailPanel">
+      <div className="catDetailSection">
+        <p className="sectionLabel">Avatar</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            className="catAvatar"
+            style={{
+              width: 40,
+              height: 40,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              ...(cat.avatarUrl
+                ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
+                : cat.avatarColor ? { background: cat.avatarColor } : {}),
+            }}
+            onClick={() => setCropOpen(true)}
+            role="button"
+            tabIndex={0}
+          >
+            {cat.avatarUrl ? '' : (cat.name.split(/\s+/).slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase())}
+          </div>
+          <button
+            type="button"
+            style={{ padding: 0, border: 0, background: 'none', color: 'var(--accent)', fontSize: '0.8rem', cursor: 'pointer' }}
+            onClick={() => setCropOpen(true)}
+          >
+            {cat.avatarUrl ? 'Change' : 'Upload'}
+          </button>
+        </div>
+      </div>
+      {cropOpen ? (
+        <AvatarCropDialog
+          onSave={(dataUrl) => void handleCatAvatarSave(dataUrl)}
+          onClose={() => setCropOpen(false)}
+        />
+      ) : null}
       <div className="catDetailSection">
         <p className="sectionLabel">Rename</p>
         <div style={{ display: 'flex', gap: 8 }}>

@@ -126,6 +126,7 @@ export function SettingsCats({
               telegramDiagnostics={telegramDiagnostics}
               availableSurfaces={configurableSurfaces}
               enabledSurfaces={enabledSurfaces}
+              onPayloadUpdate={onPayloadUpdate}
               confirm={confirm}
             />
           </section>

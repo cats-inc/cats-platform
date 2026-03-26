@@ -26,6 +26,7 @@ export function createDefaultOwnerProfile(
     actorId: OWNER_ACTOR_ID,
     displayName: 'Owner',
     avatarColor: null,
+    avatarUrl: null,
     summary: null,
     communicationPreferences: [],
     decisionPreferences: [],

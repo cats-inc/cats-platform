@@ -132,6 +132,7 @@ async function handleSuiteSetupComplete(
       setupCompleteAt: core.setupCompleteAt,
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,
+      ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
       lastProductSurface: body.selectedProduct,
     };
   }
