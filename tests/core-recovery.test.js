@@ -315,3 +315,79 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   assert.equal(result.summary.withPendingDispatchCount, 0);
   assert.equal(result.summary.taskStatusCounts.blocked, 1);
 });
+
+test('queryCoreTaskRecoveryViews filters by available recovery action kinds', () => {
+  const now = new Date('2026-03-26T13:20:00.000Z');
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-recovery-approval-action',
+      title: 'Approval action recovery task',
+      status: 'blocked',
+      conversationId: 'conversation-recovery-actions',
+      approval: {
+        status: 'pending',
+        requestedAt: '2026-03-26T13:10:00.000Z',
+      },
+      createdAt: '2026-03-26T13:10:00.000Z',
+      metadata: writePendingOrchestratorDispatchMetadata(
+        {},
+        buildPendingOrchestratorDispatchRequest({
+          channelId: 'channel-approval',
+          body: 'Blocked pending approval.',
+          blockedAt: '2026-03-26T13:11:00.000Z',
+        }),
+      ),
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-recovery-retry-action',
+      title: 'Retry action recovery task',
+      status: 'blocked',
+      conversationId: 'conversation-recovery-actions',
+      createdAt: '2026-03-26T13:12:00.000Z',
+      metadata: writeOrchestratorDispatchReplayMetadata(
+        {},
+        buildOrchestratorDispatchReplayRequest({
+          channelId: 'channel-retry',
+          body: 'Dispatch replay is ready for retry.',
+          recordedAt: '2026-03-26T13:13:00.000Z',
+        }),
+        {
+          replayState: 'failed',
+          replayTrigger: 'retry',
+          replayAttemptAt: '2026-03-26T13:14:00.000Z',
+          replayError: 'rate limited',
+        },
+      ),
+    },
+    now,
+  ).core;
+
+  const approvalResult = queryCoreTaskRecoveryViews(core, {
+    conversationIds: ['conversation-recovery-actions'],
+    actionKinds: ['approve'],
+  });
+  const retryResult = queryCoreTaskRecoveryViews(core, {
+    conversationIds: ['conversation-recovery-actions'],
+    actionKinds: ['retry'],
+  });
+
+  assert.deepEqual(
+    approvalResult.recoveries.map((recovery) => recovery.taskId),
+    ['task-recovery-approval-action'],
+  );
+  assert.equal(approvalResult.summary.actionKindCounts.approve, 1);
+  assert.equal(approvalResult.summary.actionKindCounts.retry, 0);
+  assert.deepEqual(
+    retryResult.recoveries.map((recovery) => recovery.taskId),
+    ['task-recovery-retry-action'],
+  );
+  assert.equal(retryResult.summary.actionKindCounts.retry, 1);
+  assert.equal(retryResult.summary.actionKindCounts.approve, 0);
+});

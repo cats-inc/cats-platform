@@ -1566,6 +1566,7 @@ Semantics:
   - `hasPendingDispatch`
   - `hasDispatchReplay`
   - `hasWorkflowContinuationReplay`
+  - `actionKind`
   - `limit`
 - the collection response now includes a `summary` block with:
   - `totalAvailable`
@@ -1578,6 +1579,7 @@ Semantics:
   - `withPendingDispatchCount`
   - `withDispatchReplayCount`
   - `withWorkflowContinuationReplayCount`
+  - `actionKindCounts`
 - the payload normalizes three product-owned recovery records when present:
   - approval-blocked pending dispatch metadata
   - stored orchestrator dispatch replay metadata
@@ -1585,6 +1587,9 @@ Semantics:
 - `approvalActions` and `incidentActions` now expose machine-readable action
   envelopes that point back to those existing write seams, so recovery-aware
   automation does not have to reconstruct POST bodies from raw booleans
+- `actionKind` matches those same recovery action envelopes (`approve`,
+  `reroute`, `reject`, `retry`), and `actionKindCounts` summarizes how many of
+  the returned recovery items expose each available action
 - message payloads are summarized as `bodyPreview` plus `bodyLength` instead of
   echoing the full stored body back into every consumer
 - `latestActivity` projects the newest replay lifecycle note (`replay_started`,

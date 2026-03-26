@@ -1174,6 +1174,20 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.ok(listPayload.recoveries[0].pendingDispatch.bodyLength > 40);
     assert.match(listPayload.recoveries[0].pendingDispatch.bodyPreview, /blocked rollout/i);
     assert.equal(listPayload.recoveries[0].latestActivity.phase, 'replay_failed');
+    assert.equal(listPayload.summary.actionKindCounts.approve, 1);
+    assert.equal(listPayload.summary.actionKindCounts.retry, 1);
+
+    const filteredListResponse = await fetch(
+      `${baseUrl}/api/core/recovery/tasks?actionKind=approve`,
+    );
+    assert.equal(filteredListResponse.status, 200);
+    const filteredListPayload = await filteredListResponse.json();
+    assert.deepEqual(
+      filteredListPayload.recoveries.map((recovery) => recovery.taskId),
+      ['task-recovery-routes'],
+    );
+    assert.equal(filteredListPayload.summary.actionKindCounts.approve, 1);
+    assert.equal(filteredListPayload.summary.actionKindCounts.retry, 1);
 
     const detailResponse = await fetch(
       `${baseUrl}/api/core/tasks/task-recovery-routes/recovery`,

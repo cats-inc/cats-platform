@@ -5,6 +5,7 @@ import {
   type CoreTaskControlPlaneListOptions,
 } from '../taskControlPlane.js';
 import {
+  CORE_TASK_RECOVERY_ACTION_KINDS,
   type CoreTaskRecoveryListOptions,
 } from '../recovery.js';
 import { CoreValidationError } from '../errors.js';
@@ -124,6 +125,7 @@ export function readTaskRecoveryListOptions(
       searchParams,
       'hasWorkflowContinuationReplay',
     ),
+    actionKinds: readEnumQueryValues(searchParams, 'actionKind', CORE_TASK_RECOVERY_ACTION_KINDS),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

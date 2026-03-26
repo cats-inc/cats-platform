@@ -49,6 +49,17 @@ export interface CoreTaskRecoveryIncidentAction {
   action: CoreTaskActionEnvelope;
 }
 
+export type CoreTaskRecoveryActionKind =
+  | CoreTaskRecoveryApprovalAction['kind']
+  | CoreTaskRecoveryIncidentAction['kind'];
+
+export const CORE_TASK_RECOVERY_ACTION_KINDS = [
+  'approve',
+  'reroute',
+  'reject',
+  'retry',
+] as const satisfies readonly CoreTaskRecoveryActionKind[];
+
 export interface CoreTaskRecoveryMessageReplayView {
   channelId: string;
   transport: 'telegram' | 'line' | 'web';
@@ -134,6 +145,7 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   hasPendingDispatch?: boolean | null;
   hasDispatchReplay?: boolean | null;
   hasWorkflowContinuationReplay?: boolean | null;
+  actionKinds?: CoreTaskRecoveryActionKind[];
 }
 
 export interface CoreTaskRecoveryListSummary {
@@ -147,6 +159,7 @@ export interface CoreTaskRecoveryListSummary {
   withPendingDispatchCount: number;
   withDispatchReplayCount: number;
   withWorkflowContinuationReplayCount: number;
+  actionKindCounts: Record<CoreTaskRecoveryActionKind, number>;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -446,7 +459,36 @@ function matchesRecoveryListOptions(
     return false;
   }
 
+  if (
+    options.actionKinds?.length
+    && ![
+      ...recovery.approvalActions.map((action) => action.kind),
+      ...recovery.incidentActions.map((action) => action.kind),
+    ].some((kind) => options.actionKinds?.includes(kind))
+  ) {
+    return false;
+  }
+
   return true;
+}
+
+function buildRecoveryActionKindCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<CoreTaskRecoveryActionKind, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_ACTION_KINDS.map((kind) => [kind, 0]),
+  ) as Record<CoreTaskRecoveryActionKind, number>;
+
+  for (const recovery of recoveries) {
+    for (const action of recovery.approvalActions) {
+      counts[action.kind] += 1;
+    }
+    for (const action of recovery.incidentActions) {
+      counts[action.kind] += 1;
+    }
+  }
+
+  return counts;
 }
 
 export function summarizeCoreTaskRecoveryViews(input: {
@@ -467,6 +509,7 @@ export function summarizeCoreTaskRecoveryViews(input: {
     withDispatchReplayCount: input.recoveries.filter((recovery) => recovery.dispatchReplay).length,
     withWorkflowContinuationReplayCount: input.recoveries.filter((recovery) =>
       recovery.workflowContinuationReplay).length,
+    actionKindCounts: buildRecoveryActionKindCounts(input.recoveries),
   };
 }
 
