@@ -303,6 +303,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
           workflowShape: 'converge',
           reviewRequired: true,
           blockedReason: 'max_dispatches',
+          unresolvedTargets: ['Reviewer'],
           recordedAt: '2026-03-26T16:09:00.000Z',
         }),
       ),
@@ -361,6 +362,8 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
     workflowReviewRequired: true,
     workflowConvergeTargetIds: ['cat-reviewer'],
     workflowContinuationBlockedReasons: ['max_dispatches'],
+    workflowUnresolvedTargets: ['Reviewer'],
+    hasUnresolvedWorkflowTargets: true,
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
   });
@@ -382,6 +385,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.workflowReviewRequiredCount, 1);
   assert.equal(result.summary.workflowConvergeTargetCount, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
+  assert.equal(result.summary.withUnresolvedWorkflowTargetsCount, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
   assert.equal(result.summary.latestTimelineKindCounts.run, 1);
   assert.equal(result.tasks[0]?.workflowContinuation?.convergeTargetId, 'cat-reviewer');

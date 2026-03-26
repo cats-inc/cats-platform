@@ -232,6 +232,8 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   workflowReviewRequired?: boolean | null;
   workflowConvergeTargetIds?: string[];
   workflowContinuationBlockedReasons?: WorkflowContinuationReplayBlockedReason[];
+  workflowUnresolvedTargets?: string[];
+  hasUnresolvedWorkflowTargets?: boolean | null;
   latestTimelineCategories?: CoreTaskTimelineCategory[];
   latestTimelineKinds?: CoreTaskTimelineItemKind[];
   rootTaskIds?: string[];
@@ -257,6 +259,7 @@ export interface CoreTaskControlPlaneListSummary {
   workflowReviewRequiredCount: number;
   workflowConvergeTargetCount: number;
   workflowContinuationBlockedReasonCounts: Record<WorkflowContinuationReplayBlockedReason, number>;
+  withUnresolvedWorkflowTargetsCount: number;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
   withChildrenCount: number;
@@ -566,6 +569,14 @@ function readEffectiveWorkflowConvergeTargetId(
   return view.workflowContinuation?.convergeTargetId
     ?? view.workflowSummary?.convergeTargetId
     ?? null;
+}
+
+function readEffectiveWorkflowUnresolvedTargets(
+  view: Pick<CoreTaskControlPlaneView, 'workflowContinuation'>,
+): string[] {
+  return view.workflowContinuation?.unresolvedTargets.length
+    ? [...view.workflowContinuation.unresolvedTargets]
+    : [];
 }
 
 function readContinuationSource(
@@ -931,6 +942,22 @@ function matchesControlPlaneListOptions(
     return false;
   }
 
+  const unresolvedTargets = readEffectiveWorkflowUnresolvedTargets(view);
+  if (
+    options.workflowUnresolvedTargets?.length
+    && !unresolvedTargets.some((target) => options.workflowUnresolvedTargets?.includes(target))
+  ) {
+    return false;
+  }
+
+  if (
+    options.hasUnresolvedWorkflowTargets !== undefined
+    && options.hasUnresolvedWorkflowTargets !== null
+    && (unresolvedTargets.length > 0) !== options.hasUnresolvedWorkflowTargets
+  ) {
+    return false;
+  }
+
   if (
     options.latestTimelineCategories?.length
     && (!view.latestTimelineItem?.category
@@ -1173,6 +1200,8 @@ export function summarizeCoreTaskControlPlaneViews(input: {
       Boolean(readEffectiveWorkflowConvergeTargetId(view))).length,
     workflowContinuationBlockedReasonCounts:
       buildWorkflowContinuationBlockedReasonCounts(input.views),
+    withUnresolvedWorkflowTargetsCount: input.views.filter((view) =>
+      readEffectiveWorkflowUnresolvedTargets(view).length > 0).length,
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.views),
     latestTimelineKindCounts: buildLatestTimelineKindCounts(input.views),
     withChildrenCount: input.views.filter((view) => view.family.childCount > 0).length,

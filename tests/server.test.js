@@ -2667,6 +2667,7 @@ test('core operator inspection routes support additive filters and summaries', a
               workflowShape: 'converge',
               reviewRequired: true,
               blockedReason: 'max_dispatches',
+              unresolvedTargets: ['Reviewer'],
               recordedAt: '2026-03-26T18:12:00.000Z',
             }),
             {
@@ -2700,7 +2701,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(workflowRunResponse.status, 201);
 
     const inboxResponse = await fetch(
-      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationBlockedReason=max_dispatches&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(inboxResponse.status, 200);
     const inboxPayload = await inboxResponse.json();
@@ -2715,6 +2716,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.summary.workflowShapeCounts.converge, 1);
     assert.equal(inboxPayload.summary.workflowReviewRequiredCount, 1);
     assert.equal(inboxPayload.summary.workflowConvergeTargetCount, 1);
+    assert.equal(inboxPayload.summary.withUnresolvedWorkflowTargetsCount, 1);
     assert.equal(inboxPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
     assert.equal(inboxPayload.summary.latestTimelineCategoryCounts.execution, 1);
     assert.equal(inboxPayload.summary.latestTimelineKindCounts.run, 1);
@@ -2726,7 +2728,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.tasks[0].workflowContinuation.convergeTargetId, 'cat-reviewer');
 
     const controlPlaneResponse = await fetch(
-      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationBlockedReason=max_dispatches&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(controlPlaneResponse.status, 200);
     const controlPlanePayload = await controlPlaneResponse.json();
@@ -2741,6 +2743,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.summary.workflowShapeCounts.converge, 1);
     assert.equal(controlPlanePayload.summary.workflowReviewRequiredCount, 1);
     assert.equal(controlPlanePayload.summary.workflowConvergeTargetCount, 1);
+    assert.equal(controlPlanePayload.summary.withUnresolvedWorkflowTargetsCount, 1);
     assert.equal(
       controlPlanePayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches,
       1,
@@ -2753,7 +2756,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.tasks[0].workflowContinuation.convergeTargetId, 'cat-reviewer');
 
     const recoveryResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(recoveryResponse.status, 200);
     const recoveryPayload = await recoveryResponse.json();
@@ -2772,6 +2775,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(recoveryPayload.summary.workflowShapeCounts.converge, 1);
     assert.equal(recoveryPayload.summary.workflowReviewRequiredCount, 1);
     assert.equal(recoveryPayload.summary.workflowConvergeTargetCount, 1);
+    assert.equal(recoveryPayload.summary.withUnresolvedWorkflowTargetsCount, 1);
     assert.equal(recoveryPayload.summary.withChildrenCount, 0);
     assert.equal(recoveryPayload.summary.withActiveChildrenCount, 0);
     assert.deepEqual(

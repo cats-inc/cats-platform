@@ -76,6 +76,7 @@ export interface CoreOperatorInboxSummary {
   workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
   workflowReviewRequiredCount: number;
   workflowConvergeTargetCount: number;
+  withUnresolvedWorkflowTargetsCount: number;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
   workflowContinuationBlockedReasonCounts: Record<
@@ -116,6 +117,14 @@ function readEffectiveWorkflowConvergeTargetId(
   return item.workflowContinuation?.convergeTargetId
     ?? item.workflowSummary?.convergeTargetId
     ?? null;
+}
+
+function readEffectiveWorkflowUnresolvedTargets(
+  item: Pick<CoreOperatorInboxItem, 'workflowContinuation'>,
+): string[] {
+  return item.workflowContinuation?.unresolvedTargets.length
+    ? [...item.workflowContinuation.unresolvedTargets]
+    : [];
 }
 
 function compareInboxItems(left: CoreOperatorInboxItem, right: CoreOperatorInboxItem): number {
@@ -251,6 +260,22 @@ function matchesOperatorInboxQuery(
       || !query.workflowContinuationBlockedReasons.includes(
         item.workflowContinuation.blockedReason,
       ))
+  ) {
+    return false;
+  }
+
+  const unresolvedTargets = readEffectiveWorkflowUnresolvedTargets(item);
+  if (
+    query.workflowUnresolvedTargets?.length
+    && !unresolvedTargets.some((target) => query.workflowUnresolvedTargets?.includes(target))
+  ) {
+    return false;
+  }
+
+  if (
+    query.hasUnresolvedWorkflowTargets !== undefined
+    && query.hasUnresolvedWorkflowTargets !== null
+    && (unresolvedTargets.length > 0) !== query.hasUnresolvedWorkflowTargets
   ) {
     return false;
   }
@@ -495,6 +520,8 @@ export function summarizeCoreOperatorInboxItems(input: {
       .length,
     workflowConvergeTargetCount: input.items.filter((item) =>
       Boolean(readEffectiveWorkflowConvergeTargetId(item))).length,
+    withUnresolvedWorkflowTargetsCount: input.items.filter((item) =>
+      readEffectiveWorkflowUnresolvedTargets(item).length > 0).length,
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),
     latestTimelineKindCounts: buildLatestTimelineKindCounts(input.items),
     workflowContinuationBlockedReasonCounts:

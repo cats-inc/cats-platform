@@ -85,6 +85,11 @@ MCP tool plane.
   filters plus summary counts, so later operator automation can facet inbox,
   control-plane, and recovery queues without hydrating the whole core snapshot
   or reimplementing the same filtering semantics client-side
+- those same operator/recovery list routes now also support
+  `workflowUnresolvedTarget` plus `hasUnresolvedWorkflowTargets`, and summarize
+  `withUnresolvedWorkflowTargetsCount`, so missing-target continuation work can
+  be faceted by the specific unresolved target instead of only by the coarse
+  `no_valid_targets` bucket
 - blocked `max_continuations` workflow continuation replay is now landed
   through the existing operator `retry` seam and startup recovery path; keep
   deeper workflow-continuation guard blocks on that same product-owned replay

@@ -147,6 +147,8 @@ export function readTaskAttentionListOptions(
     ),
     workflowReviewRequired: readBooleanQuery(searchParams, 'workflowReviewRequired'),
     workflowConvergeTargetIds: readQueryValues(searchParams, 'workflowConvergeTargetId'),
+    workflowUnresolvedTargets: readQueryValues(searchParams, 'workflowUnresolvedTarget'),
+    hasUnresolvedWorkflowTargets: readBooleanQuery(searchParams, 'hasUnresolvedWorkflowTargets'),
     workflowContinuationBlockedReasons: readEnumQueryValues(
       searchParams,
       'workflowContinuationBlockedReason',
@@ -224,6 +226,8 @@ export function readTaskRecoveryListOptions(
     ),
     workflowReviewRequired: readBooleanQuery(searchParams, 'workflowReviewRequired'),
     workflowConvergeTargetIds: readQueryValues(searchParams, 'workflowConvergeTargetId'),
+    workflowUnresolvedTargets: readQueryValues(searchParams, 'workflowUnresolvedTarget'),
+    hasUnresolvedWorkflowTargets: readBooleanQuery(searchParams, 'hasUnresolvedWorkflowTargets'),
     latestReplayResumeReasons: readEnumQueryValues(
       searchParams,
       'latestReplayResumeReason',

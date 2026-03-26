@@ -555,6 +555,7 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
           workflowShape: 'converge',
           reviewRequired: true,
           blockedReason: 'anti_ping_pong',
+          unresolvedTargets: ['Reviewer'],
         }),
         {
           replayState: 'in_progress',
@@ -576,6 +577,8 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
     workflowReviewRequired: true,
     workflowConvergeTargetIds: ['cat-followup'],
     workflowContinuationBlockedReasons: ['anti_ping_pong'],
+    workflowUnresolvedTargets: ['Reviewer'],
+    hasUnresolvedWorkflowTargets: true,
   });
 
   assert.deepEqual(
@@ -615,6 +618,7 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
   });
   assert.equal(workflowResult.summary.workflowReviewRequiredCount, 1);
   assert.equal(workflowResult.summary.workflowConvergeTargetCount, 1);
+  assert.equal(workflowResult.summary.withUnresolvedWorkflowTargetsCount, 1);
   assert.equal(workflowResult.recoveries[0]?.context?.workflowReviewRequired, true);
   assert.equal(workflowResult.recoveries[0]?.context?.workflowConvergeTargetId, 'cat-followup');
 });

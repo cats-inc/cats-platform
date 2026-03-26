@@ -349,6 +349,11 @@ Known follow-ups:
   `workflowContinuationBlockedReasonCounts`, so queue automation can facet
   retryable continuation work by the exact guard that persisted the replay
   snapshot without reopening raw checkpoint metadata
+- those same recovery, control-plane, and operator-inbox list routes now also
+  support `workflowUnresolvedTarget` plus `hasUnresolvedWorkflowTargets`, and
+  summarize `withUnresolvedWorkflowTargetsCount`, so operator automation can
+  facet blocked continuation work by which targets are still missing instead of
+  treating every unresolved replay as one undifferentiated bucket
 - server startup now downgrades stranded `pendingOrchestratorDispatch` /
   `orchestratorDispatchReplay` `in_progress` markers to failed so crash or
   cleanup-failure cases remain operator-recoverable after restart

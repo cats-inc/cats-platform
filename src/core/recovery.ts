@@ -243,6 +243,8 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   workflowShapes?: CoreTaskRecoveryWorkflowShape[];
   workflowReviewRequired?: boolean | null;
   workflowConvergeTargetIds?: string[];
+  workflowUnresolvedTargets?: string[];
+  hasUnresolvedWorkflowTargets?: boolean | null;
   latestReplayResumeReasons?: CoreTaskRecoveryResumeReason[];
   rootTaskIds?: string[];
   parentTaskIds?: string[];
@@ -273,6 +275,7 @@ export interface CoreTaskRecoveryListSummary {
   latestReplayResumeReasonCounts: Record<CoreTaskRecoveryResumeReason, number>;
   workflowReviewRequiredCount: number;
   workflowConvergeTargetCount: number;
+  withUnresolvedWorkflowTargetsCount: number;
   withChildrenCount: number;
   withActiveChildrenCount: number;
 }
@@ -784,6 +787,23 @@ function matchesRecoveryListOptions(
   }
 
   if (
+    options.workflowUnresolvedTargets?.length
+    && !recovery.workflowContinuationReplay?.unresolvedTargets.some((target) =>
+      options.workflowUnresolvedTargets?.includes(target))
+  ) {
+    return false;
+  }
+
+  if (
+    options.hasUnresolvedWorkflowTargets !== undefined
+    && options.hasUnresolvedWorkflowTargets !== null
+    && ((recovery.workflowContinuationReplay?.unresolvedTargets.length ?? 0) > 0)
+      !== options.hasUnresolvedWorkflowTargets
+  ) {
+    return false;
+  }
+
+  if (
     options.latestReplayResumeReasons?.length
     && (!recovery.latestActivity?.resumeReason
       || !options.latestReplayResumeReasons.includes(recovery.latestActivity.resumeReason))
@@ -1028,6 +1048,8 @@ export function summarizeCoreTaskRecoveryViews(input: {
       recovery.context?.workflowReviewRequired === true).length,
     workflowConvergeTargetCount: input.recoveries.filter((recovery) =>
       Boolean(recovery.context?.workflowConvergeTargetId)).length,
+    withUnresolvedWorkflowTargetsCount: input.recoveries.filter((recovery) =>
+      (recovery.workflowContinuationReplay?.unresolvedTargets.length ?? 0) > 0).length,
     withChildrenCount: input.recoveries.filter((recovery) => recovery.family.childCount > 0).length,
     withActiveChildrenCount: input.recoveries.filter((recovery) =>
       recovery.family.childCount > 0 && !recovery.family.allChildrenTerminal).length,

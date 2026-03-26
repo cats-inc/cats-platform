@@ -226,6 +226,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
           workflowShape: 'converge',
           reviewRequired: true,
           blockedReason: 'max_dispatches',
+          unresolvedTargets: ['Reviewer'],
           recordedAt: '2026-03-26T17:49:00.000Z',
         }),
       ),
@@ -323,6 +324,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     workflowReviewRequired: true,
     workflowConvergeTargetIds: ['cat-reviewer'],
     workflowContinuationBlockedReasons: ['max_dispatches'],
+    workflowUnresolvedTargets: ['Reviewer'],
+    hasUnresolvedWorkflowTargets: true,
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
     rootTaskIds: ['task-inbox-root'],
@@ -346,6 +349,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.workflowShapeCounts.converge, 1);
   assert.equal(result.summary.workflowReviewRequiredCount, 1);
   assert.equal(result.summary.workflowConvergeTargetCount, 1);
+  assert.equal(result.summary.withUnresolvedWorkflowTargetsCount, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
   assert.equal(result.summary.latestTimelineKindCounts.run, 1);

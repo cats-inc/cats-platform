@@ -244,6 +244,10 @@ contracts.
       views now also propagate a resolved `convergeTargetId` for single-target
       review stages and support `workflowReviewRequired` plus
       `workflowConvergeTargetId` filters for reviewer-targeted queue faceting,
+      while recovery, control-plane, and operator-inbox list routes now also
+      support `workflowUnresolvedTarget` plus
+      `hasUnresolvedWorkflowTargets` and summarize
+      `withUnresolvedWorkflowTargetsCount` for missing-target queue faceting,
       while the recovery context now also carries those same reviewer-targeted
       fields and accepts the same filters for retry/resume faceting,
       and the
