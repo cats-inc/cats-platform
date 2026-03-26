@@ -120,6 +120,21 @@ export interface CoreTaskControlPlaneWorkflowRecommendationView {
   unresolvedTargets: string[];
 }
 
+export interface CoreTaskControlPlaneWorkflowContinuationView {
+  checkpointId: string | null;
+  stageId: string | null;
+  workflowShape: 'sequential' | 'parallel' | 'converge' | null;
+  continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
+  reviewRequired: boolean;
+  targetCount: number;
+  targetNames: string[];
+  unresolvedTargets: string[];
+  replayState: 'ready' | 'in_progress' | 'failed' | null;
+  replayTrigger: 'retry' | null;
+  replayError: string | null;
+  retryAvailable: boolean;
+}
+
 export interface CoreTaskControlPlaneView {
   taskId: string;
   conversationId: string | null;
@@ -133,6 +148,7 @@ export interface CoreTaskControlPlaneView {
   recovery: CoreTaskRecoveryView;
   family: CoreTaskInspectionFamilyView;
   latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
+  workflowContinuation: CoreTaskControlPlaneWorkflowContinuationView | null;
   approvalActions: CoreTaskControlPlaneApprovalAction[];
   incidentActions: CoreTaskControlPlaneIncidentAction[];
   nextActions: CoreTaskControlPlaneNextAction[];
@@ -427,6 +443,106 @@ function resolveLatestWorkflowRecommendation(input: {
     ?? null;
 }
 
+function readWorkflowShape(
+  value: unknown,
+): 'sequential' | 'parallel' | 'converge' | null {
+  return value === 'sequential' || value === 'parallel' || value === 'converge'
+    ? value
+    : null;
+}
+
+function readContinuationSource(
+  value: unknown,
+): 'explicit_mentions' | 'workflow_recommendation' | null {
+  return value === 'explicit_mentions' || value === 'workflow_recommendation'
+    ? value
+    : null;
+}
+
+function readWorkflowContinuationReplayState(
+  value: unknown,
+): 'ready' | 'in_progress' | 'failed' | null {
+  return value === 'ready' || value === 'in_progress' || value === 'failed'
+    ? value
+    : null;
+}
+
+function readWorkflowContinuationReplayTrigger(
+  value: unknown,
+): 'retry' | null {
+  return value === 'retry' ? value : null;
+}
+
+function buildWorkflowContinuationState(input: {
+  latestCheckpointId: string | null;
+  workflowSummary: CoreWorkflowSummary | null;
+  recovery: CoreTaskRecoveryView;
+  latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
+}): CoreTaskControlPlaneWorkflowContinuationView | null {
+  const replay = input.recovery.workflowContinuationReplay;
+  const candidateTargetNames = input.latestWorkflowRecommendation?.candidateTargets
+    .map((target) => target.participantName)
+    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+    ?? [];
+  const replayTargetNames = replay?.targets
+    .map((target) => target.participantName)
+    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+    ?? [];
+  const targetNames = candidateTargetNames.length > 0
+    ? candidateTargetNames
+    : replayTargetNames;
+  const unresolvedTargets = input.latestWorkflowRecommendation?.unresolvedTargets.length
+    ? [...input.latestWorkflowRecommendation.unresolvedTargets]
+    : replay?.unresolvedTargets
+      ? [...replay.unresolvedTargets]
+      : [];
+  const workflowShape = input.latestWorkflowRecommendation?.workflowShape
+    ?? readWorkflowShape(replay?.workflowShape)
+    ?? readWorkflowShape(input.workflowSummary?.shape)
+    ?? null;
+  const continuationSource = input.latestWorkflowRecommendation?.continuationSource
+    ?? readContinuationSource(replay?.continuationSource)
+    ?? null;
+  const reviewRequired = input.latestWorkflowRecommendation?.reviewRequired
+    ?? replay?.reviewRequired
+    ?? input.workflowSummary?.reviewRequired
+    ?? false;
+  const checkpointId = replay?.checkpointId
+    ?? input.latestCheckpointId
+    ?? input.workflowSummary?.lastCheckpointId
+    ?? null;
+  const stageId = replay?.workflowStageId
+    ?? input.workflowSummary?.stageId
+    ?? null;
+
+  if (
+    !replay
+    && !input.latestWorkflowRecommendation
+    && !checkpointId
+    && !stageId
+    && targetNames.length === 0
+    && unresolvedTargets.length === 0
+    && !reviewRequired
+  ) {
+    return null;
+  }
+
+  return {
+    checkpointId,
+    stageId,
+    workflowShape,
+    continuationSource,
+    reviewRequired,
+    targetCount: targetNames.length,
+    targetNames: [...targetNames],
+    unresolvedTargets,
+    replayState: readWorkflowContinuationReplayState(replay?.replayState),
+    replayTrigger: readWorkflowContinuationReplayTrigger(replay?.replayTrigger),
+    replayError: replay?.replayError ?? null,
+    retryAvailable: Boolean(replay && input.recovery.canRetry),
+  };
+}
+
 function buildAttention(input: {
   task: CoreTaskRecord;
   latestRun: CoreRunRecord | null;
@@ -666,6 +782,12 @@ export function buildCoreTaskControlPlaneView(
       .filter((candidate) => candidate.taskId === task.id)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
   });
+  const workflowContinuation = buildWorkflowContinuationState({
+    latestCheckpointId: inspection.latestCheckpoint?.id ?? null,
+    workflowSummary: inspection.workflowSummary,
+    recovery: inspection.recovery,
+    latestWorkflowRecommendation,
+  });
   const incidentActions = buildIncidentActions({
     task,
     latestRun: inspection.latestRun,
@@ -706,6 +828,7 @@ export function buildCoreTaskControlPlaneView(
     recovery: inspection.recovery,
     family: inspection.family,
     latestWorkflowRecommendation,
+    workflowContinuation,
     approvalActions,
     incidentActions,
     nextActions,

@@ -1908,29 +1908,62 @@ test('core control-plane routes expose grouped operator actions and workflow att
           title: 'Inspect control-plane route',
           status: 'pending_approval',
           conversationId: 'conversation-channel-control-plane-route',
-          metadata: writeOrchestratorDispatchReplayMetadata(
-            {
-              effectiveDeliveryPolicy: {
-                mode: 'commit_only',
-                gates: ['owner_approval_required'],
-                source: 'task_override',
-                rationale: 'Owner-gated retry.',
+          metadata: writeWorkflowContinuationReplayMetadata(
+            writeOrchestratorDispatchReplayMetadata(
+              {
+                effectiveDeliveryPolicy: {
+                  mode: 'commit_only',
+                  gates: ['owner_approval_required'],
+                  source: 'task_override',
+                  rationale: 'Owner-gated retry.',
+                },
+                channelId: 'channel-control-plane-route',
+                transport: 'web',
+                roomRoutingMode: 'boss_chat',
               },
+              buildOrchestratorDispatchReplayRequest({
+                channelId: 'channel-control-plane-route',
+                body: 'Retry the blocked rollout after approval.',
+                recordedAt: '2026-03-26T14:20:00.000Z',
+              }),
+              {
+                replayState: 'failed',
+                replayTrigger: 'retry',
+                replayAttemptAt: '2026-03-26T14:21:00.000Z',
+                replayError: 'rate limited',
+                sourceMessageId: 'message-control-plane-route',
+              },
+            ),
+            buildWorkflowContinuationReplayRequest({
               channelId: 'channel-control-plane-route',
-              transport: 'web',
-              roomRoutingMode: 'boss_chat',
-            },
-            buildOrchestratorDispatchReplayRequest({
-              channelId: 'channel-control-plane-route',
-              body: 'Retry the blocked rollout after approval.',
-              recordedAt: '2026-03-26T14:20:00.000Z',
+              checkpointId: 'checkpoint-control-plane-route',
+              sourceMessageId: 'message-control-plane-route',
+              sourceParticipant: {
+                participantKind: 'orchestrator',
+                participantId: 'actor-orchestrator-global',
+                participantName: 'Orchestrator',
+              },
+              targets: [
+                {
+                  participantKind: 'cat',
+                  participantId: 'cat-reviewer',
+                  participantName: 'Reviewer',
+                },
+              ],
+              trigger: 'continuation_mention',
+              branchStrategy: 'transplant_context',
+              workflowStageId: 'continuation_handoff',
+              workflowShape: 'converge',
+              reviewRequired: true,
+              continuationSource: 'workflow_recommendation',
+              unresolvedTargets: ['Reviewer'],
+              recordedAt: '2026-03-26T14:22:00.000Z',
             }),
             {
               replayState: 'failed',
               replayTrigger: 'retry',
-              replayAttemptAt: '2026-03-26T14:21:00.000Z',
-              replayError: 'rate limited',
-              sourceMessageId: 'message-control-plane-route',
+              replayAttemptAt: '2026-03-26T14:23:00.000Z',
+              replayError: 'reviewer offline',
             },
           ),
         },
@@ -2066,6 +2099,21 @@ test('core control-plane routes expose grouped operator actions and workflow att
       ['create_commit'],
     );
     assert.equal(detailPayload.controlPlane.recovery.dispatchReplay.replayState, 'failed');
+    assert.equal(detailPayload.controlPlane.workflowContinuation.checkpointId, 'checkpoint-control-plane-route');
+    assert.equal(detailPayload.controlPlane.workflowContinuation.stageId, 'continuation_handoff');
+    assert.equal(detailPayload.controlPlane.workflowContinuation.workflowShape, 'converge');
+    assert.equal(
+      detailPayload.controlPlane.workflowContinuation.continuationSource,
+      'workflow_recommendation',
+    );
+    assert.deepEqual(detailPayload.controlPlane.workflowContinuation.targetNames, ['Reviewer']);
+    assert.deepEqual(
+      detailPayload.controlPlane.workflowContinuation.unresolvedTargets,
+      ['Reviewer'],
+    );
+    assert.equal(detailPayload.controlPlane.workflowContinuation.replayState, 'failed');
+    assert.equal(detailPayload.controlPlane.workflowContinuation.replayError, 'reviewer offline');
+    assert.equal(detailPayload.controlPlane.workflowContinuation.retryAvailable, true);
 
     const missingResponse = await fetch(
       `${baseUrl}/api/core/tasks/task-missing/control-plane`,

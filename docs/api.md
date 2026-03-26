@@ -1288,6 +1288,19 @@ control-plane view for one task:
       "workflowShape": "converge",
       "reviewRequired": true
     },
+    "workflowContinuation": {
+      "checkpointId": "checkpoint-system-1",
+      "stageId": "continuation_handoff",
+      "workflowShape": "converge",
+      "continuationSource": "workflow_recommendation",
+      "reviewRequired": true,
+      "targetCount": 1,
+      "targetNames": ["Reviewer"],
+      "unresolvedTargets": ["Reviewer"],
+      "replayState": "failed",
+      "replayTrigger": "retry",
+      "retryAvailable": true
+    },
     "approvalActions": [
       {
         "kind": "approve"
@@ -1317,6 +1330,10 @@ Semantics:
 
 - these routes are core-owned control-plane read models for later operator,
   recovery, or orchestration consumers that should not scrape `/api/core`,
+- `workflowContinuation` is the normalized continuation contract for operator
+  automation; it lifts the latest checkpoint recommendation, workflow summary,
+  and stored workflow-continuation replay state into one task-scoped view so
+  callers do not have to stitch them together themselves,
   Chat operator rails, or raw task metadata blobs
 - `GET /api/core/control-plane/tasks` now also supports additive list filters:
   - `conversationId`

@@ -17,6 +17,10 @@ import {
   buildOrchestratorDispatchReplayRequest,
   writeOrchestratorDispatchReplayMetadata,
 } from '../dist-server/platform/orchestration/dispatchReplay.js';
+import {
+  buildWorkflowContinuationReplayRequest,
+  writeWorkflowContinuationReplayMetadata,
+} from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
 
 test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow recommendation signals', () => {
   const now = new Date('2026-03-26T16:00:00.000Z');
@@ -29,29 +33,62 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
       title: 'Control-plane task',
       status: 'pending_approval',
       conversationId: 'conversation-channel-control-plane',
-      metadata: writeOrchestratorDispatchReplayMetadata(
-        {
-          effectiveDeliveryPolicy: {
-            mode: 'commit_only',
-            gates: ['owner_approval_required'],
-            source: 'task_override',
-            rationale: 'Owner-gated retry.',
+      metadata: writeWorkflowContinuationReplayMetadata(
+        writeOrchestratorDispatchReplayMetadata(
+          {
+            effectiveDeliveryPolicy: {
+              mode: 'commit_only',
+              gates: ['owner_approval_required'],
+              source: 'task_override',
+              rationale: 'Owner-gated retry.',
+            },
+            channelId: 'channel-control-plane',
+            transport: 'web',
+            roomRoutingMode: 'boss_chat',
           },
+          buildOrchestratorDispatchReplayRequest({
+            channelId: 'channel-control-plane',
+            body: 'Retry the blocked rollout after approval.',
+            recordedAt: '2026-03-26T15:50:00.000Z',
+          }),
+          {
+            replayState: 'failed',
+            replayTrigger: 'retry',
+            replayAttemptAt: '2026-03-26T15:55:00.000Z',
+            replayError: 'rate limited',
+            sourceMessageId: 'message-control-plane',
+          },
+        ),
+        buildWorkflowContinuationReplayRequest({
           channelId: 'channel-control-plane',
-          transport: 'web',
-          roomRoutingMode: 'boss_chat',
-        },
-        buildOrchestratorDispatchReplayRequest({
-          channelId: 'channel-control-plane',
-          body: 'Retry the blocked rollout after approval.',
-          recordedAt: '2026-03-26T15:50:00.000Z',
+          checkpointId: 'checkpoint-control-plane',
+          sourceMessageId: 'message-control-plane',
+          sourceParticipant: {
+            participantKind: 'orchestrator',
+            participantId: 'actor-orchestrator-global',
+            participantName: 'Orchestrator',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: 'cat-reviewer',
+              participantName: 'Reviewer',
+            },
+          ],
+          trigger: 'continuation_mention',
+          branchStrategy: 'transplant_context',
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'converge',
+          reviewRequired: true,
+          continuationSource: 'workflow_recommendation',
+          unresolvedTargets: ['Reviewer'],
+          recordedAt: '2026-03-26T15:53:00.000Z',
         }),
         {
           replayState: 'failed',
           replayTrigger: 'retry',
-          replayAttemptAt: '2026-03-26T15:55:00.000Z',
-          replayError: 'rate limited',
-          sourceMessageId: 'message-control-plane',
+          replayAttemptAt: '2026-03-26T15:56:00.000Z',
+          replayError: 'reviewer offline',
         },
       ),
       createdAt: '2026-03-26T15:45:00.000Z',
@@ -167,6 +204,18 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
     view.latestWorkflowRecommendation?.candidateTargets[0]?.participantName,
     'Reviewer',
   );
+  assert.equal(view.workflowContinuation?.checkpointId, 'checkpoint-control-plane');
+  assert.equal(view.workflowContinuation?.stageId, 'continuation_handoff');
+  assert.equal(view.workflowContinuation?.workflowShape, 'converge');
+  assert.equal(view.workflowContinuation?.continuationSource, 'workflow_recommendation');
+  assert.equal(view.workflowContinuation?.reviewRequired, true);
+  assert.equal(view.workflowContinuation?.targetCount, 1);
+  assert.deepEqual(view.workflowContinuation?.targetNames, ['Reviewer']);
+  assert.deepEqual(view.workflowContinuation?.unresolvedTargets, ['Reviewer']);
+  assert.equal(view.workflowContinuation?.replayState, 'failed');
+  assert.equal(view.workflowContinuation?.replayTrigger, 'retry');
+  assert.equal(view.workflowContinuation?.replayError, 'reviewer offline');
+  assert.equal(view.workflowContinuation?.retryAvailable, true);
   assert.deepEqual(view.governanceSummary?.runtimeDeliveryManifest?.requestedActions, [
     'create_commit',
   ]);
