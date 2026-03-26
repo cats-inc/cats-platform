@@ -330,6 +330,8 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
     deliveryModes: ['commit_only'],
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
+    latestTimelineCategories: ['execution'],
+    latestTimelineKinds: ['run'],
   });
 
   assert.deepEqual(result.tasks.map((task) => task.taskId), [
@@ -345,6 +347,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
+  assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
 });
 
 test('buildCoreTaskControlPlaneView surfaces waiting parent tasks with active child work', () => {

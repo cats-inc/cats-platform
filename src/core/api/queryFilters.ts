@@ -14,6 +14,10 @@ import {
 } from '../recovery.js';
 import { CoreValidationError } from '../errors.js';
 import { CORE_TASK_VIEW_STATUSES } from '../taskViewQuery.js';
+import {
+  CORE_TASK_TIMELINE_CATEGORIES,
+  CORE_TASK_TIMELINE_ITEM_KINDS,
+} from '../taskTimeline.js';
 
 function readQueryValues(
   searchParams: URLSearchParams,
@@ -121,6 +125,16 @@ export function readTaskAttentionListOptions(
       CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS,
     ),
     workflowStageIds: readQueryValues(searchParams, 'workflowStageId'),
+    latestTimelineCategories: readEnumQueryValues(
+      searchParams,
+      'latestTimelineCategory',
+      CORE_TASK_TIMELINE_CATEGORIES,
+    ),
+    latestTimelineKinds: readEnumQueryValues(
+      searchParams,
+      'latestTimelineKind',
+      CORE_TASK_TIMELINE_ITEM_KINDS,
+    ),
     needsOperatorAttention: readBooleanQuery(searchParams, 'needsOperatorAttention'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };

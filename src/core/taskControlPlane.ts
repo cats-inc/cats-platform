@@ -9,7 +9,13 @@ import {
   buildTaskOperatorActionEnvelope,
   type CoreTaskActionEnvelope,
 } from './taskActionEnvelopes.js';
-import type { CoreTaskTimelineItem } from './taskTimeline.js';
+import {
+  CORE_TASK_TIMELINE_CATEGORIES,
+  CORE_TASK_TIMELINE_ITEM_KINDS,
+  type CoreTaskTimelineCategory,
+  type CoreTaskTimelineItem,
+  type CoreTaskTimelineItemKind,
+} from './taskTimeline.js';
 import {
   applyCoreTaskViewLimit,
   buildCoreTaskStatusCounts,
@@ -205,6 +211,8 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   deliveryModes?: CoreDeliveryMode[];
   deliveryActions?: CoreRuntimeDeliveryAction[];
   workflowStageIds?: string[];
+  latestTimelineCategories?: CoreTaskTimelineCategory[];
+  latestTimelineKinds?: CoreTaskTimelineItemKind[];
 }
 
 export interface CoreTaskControlPlaneListSummary {
@@ -220,6 +228,7 @@ export interface CoreTaskControlPlaneListSummary {
   deliveryModeCounts: Record<CoreDeliveryMode, number>;
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
+  latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
 }
 
 function asRecord(value: unknown): CoreRecordMetadata | null {
@@ -812,6 +821,22 @@ function matchesControlPlaneListOptions(
     return false;
   }
 
+  if (
+    options.latestTimelineCategories?.length
+    && (!view.latestTimelineItem?.category
+      || !options.latestTimelineCategories.includes(view.latestTimelineItem.category))
+  ) {
+    return false;
+  }
+
+  if (
+    options.latestTimelineKinds?.length
+    && (!view.latestTimelineItem?.kind
+      || !options.latestTimelineKinds.includes(view.latestTimelineItem.kind))
+  ) {
+    return false;
+  }
+
   return true;
 }
 
@@ -912,6 +937,23 @@ function buildWorkflowStageCounts(
   return counts;
 }
 
+function buildLatestTimelineCategoryCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreTaskTimelineCategory, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_TIMELINE_CATEGORIES.map((category) => [category, 0]),
+  ) as Record<CoreTaskTimelineCategory, number>;
+
+  for (const view of views) {
+    if (!view.latestTimelineItem?.category) {
+      continue;
+    }
+    counts[view.latestTimelineItem.category] += 1;
+  }
+
+  return counts;
+}
+
 export function summarizeCoreTaskControlPlaneViews(input: {
   totalAvailable: number;
   matching: number;
@@ -931,6 +973,7 @@ export function summarizeCoreTaskControlPlaneViews(input: {
     deliveryModeCounts: buildDeliveryModeCounts(input.views),
     deliveryActionCounts: buildDeliveryActionCounts(input.views),
     workflowStageCounts: buildWorkflowStageCounts(input.views),
+    latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.views),
   };
 }
 

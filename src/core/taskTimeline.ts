@@ -27,6 +27,25 @@ export type CoreTaskTimelineCategory =
   | 'recovery'
   | 'operator';
 
+export const CORE_TASK_TIMELINE_ITEM_KINDS = [
+  'task',
+  'approval_binding',
+  'run',
+  'trace',
+  'checkpoint',
+  'outcome',
+  'activity',
+] as const satisfies readonly CoreTaskTimelineItemKind[];
+
+export const CORE_TASK_TIMELINE_CATEGORIES = [
+  'task_lifecycle',
+  'governance',
+  'execution',
+  'workflow',
+  'recovery',
+  'operator',
+] as const satisfies readonly CoreTaskTimelineCategory[];
+
 export interface CoreTaskTimelineItem {
   timelineId: string;
   kind: CoreTaskTimelineItemKind;

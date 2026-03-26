@@ -277,6 +277,8 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     deliveryModes: ['commit_only'],
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
+    latestTimelineCategories: ['execution'],
+    latestTimelineKinds: ['run'],
   });
 
   assert.deepEqual(result.tasks.map((task) => task.taskId), [
@@ -291,4 +293,5 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
+  assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
 });

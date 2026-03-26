@@ -200,7 +200,10 @@ contracts.
       expose delivery/workflow facet counts for queueing and operator
       automation, and task inspection/control-plane payloads now also lift the
       latest normalized timeline item so operator consumers can read current
-      context without issuing a second timeline join.
+      context without issuing a second timeline join, while control-plane and
+      inbox list routes now also support `latestTimelineCategory` /
+      `latestTimelineKind` filters plus `latestTimelineCategoryCounts` for
+      queue faceting by the newest normalized narrative signal.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

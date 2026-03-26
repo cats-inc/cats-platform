@@ -2580,7 +2580,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(workflowRunResponse.status, 201);
 
     const inboxResponse = await fetch(
-      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=approve&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&limit=1`,
+      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=approve&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&latestTimelineCategory=execution&latestTimelineKind=run&limit=1`,
     );
     assert.equal(inboxResponse.status, 200);
     const inboxPayload = await inboxResponse.json();
@@ -2592,10 +2592,11 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(inboxPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(inboxPayload.summary.workflowStageCounts.continuation_handoff, 1);
+    assert.equal(inboxPayload.summary.latestTimelineCategoryCounts.execution, 1);
     assert.equal(inboxPayload.tasks.length, 1);
 
     const controlPlaneResponse = await fetch(
-      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=approval_pending&nextAction=approve&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&limit=1`,
+      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=approval_pending&nextAction=approve&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&latestTimelineCategory=execution&latestTimelineKind=run&limit=1`,
     );
     assert.equal(controlPlaneResponse.status, 200);
     const controlPlanePayload = await controlPlaneResponse.json();
@@ -2607,6 +2608,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(controlPlanePayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(controlPlanePayload.summary.workflowStageCounts.continuation_handoff, 1);
+    assert.equal(controlPlanePayload.summary.latestTimelineCategoryCounts.execution, 1);
     assert.equal(controlPlanePayload.tasks.length, 1);
 
     const recoveryResponse = await fetch(

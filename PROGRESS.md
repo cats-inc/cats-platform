@@ -350,6 +350,10 @@ Known follow-ups:
 - task inspection and control-plane views now also lift `latestTimelineItem`
   into the same payload, so operator/recovery consumers can answer "what just
   happened?" without joining the separate timeline route client-side
+- control-plane and operator-inbox list routes now also support
+  `latestTimelineCategory` / `latestTimelineKind` filtering plus
+  `latestTimelineCategoryCounts`, so automation can facet queues by the newest
+  normalized narrative signal without rescanning every task client-side
 - `src/core/recovery.ts` now also lifts delivery/workflow context into the
   recovery read model itself, so recovery filters and summary counts can facet
   by `deliveryMode`, `deliveryAction`, and `workflowStageId` without forcing

@@ -1388,10 +1388,12 @@ Semantics:
   - `deliveryMode`
   - `deliveryAction`
   - `workflowStageId`
+  - `latestTimelineCategory`
+  - `latestTimelineKind`
   - `limit`
 - repeated and comma-separated values are both accepted for enum filters such
   as `taskStatus`, `severity`, `reason`, `nextAction`, `deliveryMode`, and
-  `deliveryAction`
+  `deliveryAction`, plus `latestTimelineCategory` and `latestTimelineKind`
 - list responses now include a `summary` block with:
   - `totalAvailable`
   - `matching`
@@ -1405,6 +1407,7 @@ Semantics:
   - `deliveryModeCounts`
   - `deliveryActionCounts`
   - `workflowStageCounts`
+  - `latestTimelineCategoryCounts`
 - `approvalActions` and `incidentActions` already point at the existing
   `/api/core/approvals` and `/api/core/operator-actions` write seams through
   additive action envelopes; this route does not invent a second mutation bus
@@ -1473,11 +1476,14 @@ Semantics:
   - `deliveryMode`
   - `deliveryAction`
   - `workflowStageId`
+  - `latestTimelineCategory`
+  - `latestTimelineKind`
   - `limit`
 - the response now includes the same shape of list `summary` counts so later
   operator automation or non-UI inbox consumers can page or facet the inbox
   without hydrating the full core snapshot client-side, including
-  `deliveryModeCounts`, `deliveryActionCounts`, and `workflowStageCounts`
+  `deliveryModeCounts`, `deliveryActionCounts`, `workflowStageCounts`, and
+  `latestTimelineCategoryCounts`
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not
   have to join those surfaces client-side to answer "what needs attention and

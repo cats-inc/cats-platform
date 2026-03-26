@@ -19,7 +19,11 @@ import type {
   CoreTaskRecord,
   CoreWorkflowSummary,
 } from './types.js';
-import type { CoreTaskTimelineItem } from './taskTimeline.js';
+import {
+  CORE_TASK_TIMELINE_CATEGORIES,
+  type CoreTaskTimelineCategory,
+  type CoreTaskTimelineItem,
+} from './taskTimeline.js';
 import type { CoreTaskRecoveryView } from './recovery.js';
 import {
   applyCoreTaskViewLimit,
@@ -62,6 +66,7 @@ export interface CoreOperatorInboxSummary {
   deliveryModeCounts: Record<CoreDeliveryMode, number>;
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
+  latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
 }
 
 function compareInboxItems(left: CoreOperatorInboxItem, right: CoreOperatorInboxItem): number {
@@ -166,6 +171,22 @@ function matchesOperatorInboxQuery(
     return false;
   }
 
+  if (
+    query.latestTimelineCategories?.length
+    && (!item.latestTimelineItem?.category
+      || !query.latestTimelineCategories.includes(item.latestTimelineItem.category))
+  ) {
+    return false;
+  }
+
+  if (
+    query.latestTimelineKinds?.length
+    && (!item.latestTimelineItem?.kind
+      || !query.latestTimelineKinds.includes(item.latestTimelineItem.kind))
+  ) {
+    return false;
+  }
+
   return true;
 }
 
@@ -266,6 +287,23 @@ function buildWorkflowStageCounts(
   return counts;
 }
 
+function buildLatestTimelineCategoryCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreTaskTimelineCategory, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_TIMELINE_CATEGORIES.map((category) => [category, 0]),
+  ) as Record<CoreTaskTimelineCategory, number>;
+
+  for (const item of items) {
+    if (!item.latestTimelineItem?.category) {
+      continue;
+    }
+    counts[item.latestTimelineItem.category] += 1;
+  }
+
+  return counts;
+}
+
 export function summarizeCoreOperatorInboxItems(input: {
   totalAvailable: number;
   matching: number;
@@ -285,6 +323,7 @@ export function summarizeCoreOperatorInboxItems(input: {
     deliveryModeCounts: buildDeliveryModeCounts(input.items),
     deliveryActionCounts: buildDeliveryActionCounts(input.items),
     workflowStageCounts: buildWorkflowStageCounts(input.items),
+    latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),
   };
 }
 
