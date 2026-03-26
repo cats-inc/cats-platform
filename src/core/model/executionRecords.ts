@@ -41,6 +41,7 @@ export function upsertCoreRun(
 
   const runId = normalizeNullableString(input.id) ?? `run-${randomUUID()}`;
   const existing = core.runs.find((run) => run.id === runId);
+  const createdAt = existing?.createdAt ?? input.createdAt ?? nowIso;
   const run: CoreRunRecord = {
     id: runId,
     title,
@@ -69,7 +70,7 @@ export function upsertCoreRun(
       input.summary === undefined
         ? existing?.summary ?? null
         : normalizeNullableString(input.summary),
-    createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
+    createdAt,
     startedAt:
       input.startedAt === undefined
         ? existing?.startedAt ?? null
@@ -78,7 +79,7 @@ export function upsertCoreRun(
       input.completedAt === undefined
         ? existing?.completedAt ?? null
         : normalizeNullableString(input.completedAt),
-    updatedAt: nowIso,
+    updatedAt: existing ? nowIso : createdAt,
     metadata:
       input.metadata === undefined
         ? normalizeMetadata(existing?.metadata)
@@ -178,6 +179,7 @@ export function upsertCoreCheckpoint(
 
   const checkpointId = normalizeNullableString(input.id) ?? `checkpoint-${randomUUID()}`;
   const existing = core.checkpoints.find((checkpoint) => checkpoint.id === checkpointId);
+  const createdAt = existing?.createdAt ?? input.createdAt ?? nowIso;
   const resolvedStatus = input.status ?? existing?.status ?? 'open';
   const explicitCompletedAt =
     input.completedAt === undefined
@@ -191,7 +193,7 @@ export function upsertCoreCheckpoint(
   }
   const completedAt =
     resolvedStatus === 'completed'
-      ? explicitCompletedAt ?? existing?.completedAt ?? nowIso
+      ? explicitCompletedAt ?? existing?.completedAt ?? createdAt
       : null;
   const checkpoint: CoreCheckpointRecord = {
     id: checkpointId,
@@ -217,9 +219,9 @@ export function upsertCoreCheckpoint(
       input.summary === undefined
         ? existing?.summary ?? null
         : normalizeNullableString(input.summary),
-    createdAt: existing?.createdAt ?? input.createdAt ?? nowIso,
+    createdAt,
     completedAt,
-    updatedAt: nowIso,
+    updatedAt: existing ? nowIso : createdAt,
     metadata:
       input.metadata === undefined
         ? normalizeMetadata(existing?.metadata)
@@ -255,6 +257,7 @@ export function upsertCoreOutcome(
 
   const outcomeId = normalizeNullableString(input.id) ?? `outcome-${randomUUID()}`;
   const existing = core.outcomes.find((outcome) => outcome.id === outcomeId);
+  const recordedAt = existing?.recordedAt ?? input.recordedAt ?? nowIso;
   const outcome: CoreOrchestrationOutcomeRecord = {
     id: outcomeId,
     title,
@@ -275,8 +278,8 @@ export function upsertCoreOutcome(
       input.summary === undefined
         ? existing?.summary ?? null
         : normalizeNullableString(input.summary),
-    recordedAt: existing?.recordedAt ?? input.recordedAt ?? nowIso,
-    updatedAt: nowIso,
+    recordedAt,
+    updatedAt: existing ? nowIso : recordedAt,
     metadata:
       input.metadata === undefined
         ? normalizeMetadata(existing?.metadata)

@@ -992,6 +992,7 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.equal(checkpointResponse.status, 201);
     const checkpointPayload = await checkpointResponse.json();
     assert.equal(checkpointPayload.checkpoint.id, fixtures.checkpoint.id);
+    assert.equal(checkpointPayload.checkpoint.updatedAt, fixtures.checkpoint.createdAt);
 
     const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
       method: 'POST',
@@ -1003,6 +1004,7 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.equal(runResponse.status, 201);
     const runPayload = await runResponse.json();
     assert.equal(runPayload.run.id, fixtures.run.id);
+    assert.equal(runPayload.run.updatedAt, fixtures.run.createdAt);
 
     const outcomeResponse = await fetch(`${baseUrl}/api/core/outcomes`, {
       method: 'POST',
@@ -1014,6 +1016,7 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.equal(outcomeResponse.status, 201);
     const outcomePayload = await outcomeResponse.json();
     assert.equal(outcomePayload.outcome.id, fixtures.outcome.id);
+    assert.equal(outcomePayload.outcome.updatedAt, fixtures.outcome.recordedAt);
 
     const artifactResponse = await fetch(`${baseUrl}/api/core/artifacts`, {
       method: 'POST',
