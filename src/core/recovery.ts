@@ -31,12 +31,15 @@ import {
   type CoreTaskViewCommonQuery,
 } from './taskViewQuery.js';
 import {
+  type OrchestratorDispatchReplayState,
   readOrchestratorDispatchReplay,
 } from '../platform/orchestration/dispatchReplay.js';
 import {
+  type PendingOrchestratorDispatchReplayState,
   readPendingOrchestratorDispatchSnapshot,
 } from '../platform/orchestration/pendingDispatch.js';
 import {
+  type WorkflowContinuationReplayState,
   readWorkflowContinuationReplay,
 } from '../platform/orchestration/workflowContinuationReplay.js';
 
@@ -89,6 +92,24 @@ export const CORE_TASK_RECOVERY_DELIVERY_ACTIONS = [
   'wait_for_checks',
   'publish_preview',
 ] as const satisfies readonly CoreRuntimeDeliveryAction[];
+
+export const CORE_TASK_PENDING_DISPATCH_REPLAY_STATES = [
+  'pending',
+  'in_progress',
+  'failed',
+] as const satisfies readonly PendingOrchestratorDispatchReplayState[];
+
+export const CORE_TASK_DISPATCH_REPLAY_STATES = [
+  'ready',
+  'in_progress',
+  'failed',
+] as const satisfies readonly OrchestratorDispatchReplayState[];
+
+export const CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES = [
+  'ready',
+  'in_progress',
+  'failed',
+] as const satisfies readonly WorkflowContinuationReplayState[];
 
 export interface CoreTaskRecoveryMessageReplayView {
   channelId: string;
@@ -189,6 +210,9 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   hasPendingDispatch?: boolean | null;
   hasDispatchReplay?: boolean | null;
   hasWorkflowContinuationReplay?: boolean | null;
+  pendingDispatchReplayStates?: PendingOrchestratorDispatchReplayState[];
+  dispatchReplayStates?: OrchestratorDispatchReplayState[];
+  workflowContinuationReplayStates?: WorkflowContinuationReplayState[];
   actionKinds?: CoreTaskRecoveryActionKind[];
   deliveryModes?: CoreDeliveryMode[];
   deliveryActions?: CoreRuntimeDeliveryAction[];
@@ -210,6 +234,9 @@ export interface CoreTaskRecoveryListSummary {
   withPendingDispatchCount: number;
   withDispatchReplayCount: number;
   withWorkflowContinuationReplayCount: number;
+  pendingDispatchReplayStateCounts: Record<PendingOrchestratorDispatchReplayState, number>;
+  dispatchReplayStateCounts: Record<OrchestratorDispatchReplayState, number>;
+  workflowContinuationReplayStateCounts: Record<WorkflowContinuationReplayState, number>;
   actionKindCounts: Record<CoreTaskRecoveryActionKind, number>;
   deliveryModeCounts: Record<CoreDeliveryMode, number>;
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
@@ -603,6 +630,36 @@ function matchesRecoveryListOptions(
   }
 
   if (
+    options.pendingDispatchReplayStates?.length
+    && (!recovery.pendingDispatch
+      || !options.pendingDispatchReplayStates.includes(
+        recovery.pendingDispatch.replayState as PendingOrchestratorDispatchReplayState,
+      ))
+  ) {
+    return false;
+  }
+
+  if (
+    options.dispatchReplayStates?.length
+    && (!recovery.dispatchReplay
+      || !options.dispatchReplayStates.includes(
+        recovery.dispatchReplay.replayState as OrchestratorDispatchReplayState,
+      ))
+  ) {
+    return false;
+  }
+
+  if (
+    options.workflowContinuationReplayStates?.length
+    && (!recovery.workflowContinuationReplay
+      || !options.workflowContinuationReplayStates.includes(
+        recovery.workflowContinuationReplay.replayState as WorkflowContinuationReplayState,
+      ))
+  ) {
+    return false;
+  }
+
+  if (
     options.actionKinds?.length
     && ![
       ...recovery.approvalActions.map((action) => action.kind),
@@ -665,6 +722,54 @@ function matchesRecoveryListOptions(
   }
 
   return true;
+}
+
+function buildPendingDispatchReplayStateCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<PendingOrchestratorDispatchReplayState, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_PENDING_DISPATCH_REPLAY_STATES.map((state) => [state, 0]),
+  ) as Record<PendingOrchestratorDispatchReplayState, number>;
+
+  for (const recovery of recoveries) {
+    if (recovery.pendingDispatch) {
+      counts[recovery.pendingDispatch.replayState as PendingOrchestratorDispatchReplayState] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildDispatchReplayStateCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<OrchestratorDispatchReplayState, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_DISPATCH_REPLAY_STATES.map((state) => [state, 0]),
+  ) as Record<OrchestratorDispatchReplayState, number>;
+
+  for (const recovery of recoveries) {
+    if (recovery.dispatchReplay) {
+      counts[recovery.dispatchReplay.replayState as OrchestratorDispatchReplayState] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function buildWorkflowContinuationReplayStateCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<WorkflowContinuationReplayState, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES.map((state) => [state, 0]),
+  ) as Record<WorkflowContinuationReplayState, number>;
+
+  for (const recovery of recoveries) {
+    if (recovery.workflowContinuationReplay) {
+      counts[recovery.workflowContinuationReplay.replayState as WorkflowContinuationReplayState] += 1;
+    }
+  }
+
+  return counts;
 }
 
 function buildRecoveryActionKindCounts(
@@ -752,6 +857,10 @@ export function summarizeCoreTaskRecoveryViews(input: {
     withDispatchReplayCount: input.recoveries.filter((recovery) => recovery.dispatchReplay).length,
     withWorkflowContinuationReplayCount: input.recoveries.filter((recovery) =>
       recovery.workflowContinuationReplay).length,
+    pendingDispatchReplayStateCounts: buildPendingDispatchReplayStateCounts(input.recoveries),
+    dispatchReplayStateCounts: buildDispatchReplayStateCounts(input.recoveries),
+    workflowContinuationReplayStateCounts:
+      buildWorkflowContinuationReplayStateCounts(input.recoveries),
     actionKindCounts: buildRecoveryActionKindCounts(input.recoveries),
     deliveryModeCounts: buildRecoveryDeliveryModeCounts(input.recoveries),
     deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),

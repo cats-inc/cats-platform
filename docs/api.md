@@ -1705,6 +1705,9 @@ Semantics:
   - `hasPendingDispatch`
   - `hasDispatchReplay`
   - `hasWorkflowContinuationReplay`
+  - `pendingDispatchReplayState`
+  - `dispatchReplayState`
+  - `workflowContinuationReplayState`
   - `actionKind`
   - `deliveryMode`
   - `deliveryAction`
@@ -1725,6 +1728,9 @@ Semantics:
   - `withPendingDispatchCount`
   - `withDispatchReplayCount`
   - `withWorkflowContinuationReplayCount`
+  - `pendingDispatchReplayStateCounts`
+  - `dispatchReplayStateCounts`
+  - `workflowContinuationReplayStateCounts`
   - `actionKindCounts`
   - `deliveryModeCounts`
   - `deliveryActionCounts`
@@ -1747,6 +1753,9 @@ Semantics:
 - `actionKind` matches those same recovery action envelopes (`approve`,
   `reroute`, `reject`, `retry`), and `actionKindCounts` summarizes how many of
   the returned recovery items expose each available action
+- replay-state filters let operator or recovery tooling distinguish between
+  approval-blocked `pending` dispatches versus `ready`, `in_progress`, or
+  `failed` replay records without reopening raw task metadata parsing
 - message payloads are summarized as `bodyPreview` plus `bodyLength` instead of
   echoing the full stored body back into every consumer
 - `latestActivity` projects the newest replay lifecycle note (`replay_started`,

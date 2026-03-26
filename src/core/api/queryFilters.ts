@@ -16,6 +16,9 @@ import {
   CORE_TASK_RECOVERY_ACTION_KINDS,
   CORE_TASK_RECOVERY_DELIVERY_ACTIONS,
   CORE_TASK_RECOVERY_DELIVERY_MODES,
+  CORE_TASK_DISPATCH_REPLAY_STATES,
+  CORE_TASK_PENDING_DISPATCH_REPLAY_STATES,
+  CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES,
   type CoreTaskRecoveryListOptions,
 } from '../recovery.js';
 import { CoreValidationError } from '../errors.js';
@@ -164,6 +167,21 @@ export function readTaskRecoveryListOptions(
     hasWorkflowContinuationReplay: readBooleanQuery(
       searchParams,
       'hasWorkflowContinuationReplay',
+    ),
+    pendingDispatchReplayStates: readEnumQueryValues(
+      searchParams,
+      'pendingDispatchReplayState',
+      CORE_TASK_PENDING_DISPATCH_REPLAY_STATES,
+    ),
+    dispatchReplayStates: readEnumQueryValues(
+      searchParams,
+      'dispatchReplayState',
+      CORE_TASK_DISPATCH_REPLAY_STATES,
+    ),
+    workflowContinuationReplayStates: readEnumQueryValues(
+      searchParams,
+      'workflowContinuationReplayState',
+      CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES,
     ),
     actionKinds: readEnumQueryValues(searchParams, 'actionKind', CORE_TASK_RECOVERY_ACTION_KINDS),
     deliveryModes: readEnumQueryValues(

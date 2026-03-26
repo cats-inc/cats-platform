@@ -446,3 +446,127 @@ test('queryCoreTaskRecoveryViews filters by available recovery action kinds', ()
   assert.equal(retryResult.summary.actionKindCounts.retry, 1);
   assert.equal(retryResult.summary.actionKindCounts.approve, 0);
 });
+
+test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-state counts', () => {
+  const now = new Date('2026-03-26T13:30:00.000Z');
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-recovery-pending-state',
+      title: 'Pending dispatch recovery task',
+      status: 'blocked',
+      conversationId: 'conversation-recovery-states',
+      createdAt: '2026-03-26T13:21:00.000Z',
+      metadata: writePendingOrchestratorDispatchMetadata(
+        {},
+        buildPendingOrchestratorDispatchRequest({
+          channelId: 'channel-pending-state',
+          body: 'Pending dispatch still awaits approval.',
+          blockedAt: '2026-03-26T13:22:00.000Z',
+        }),
+      ),
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-recovery-dispatch-state',
+      title: 'Dispatch replay recovery task',
+      status: 'failed',
+      conversationId: 'conversation-recovery-states',
+      createdAt: '2026-03-26T13:23:00.000Z',
+      metadata: writeOrchestratorDispatchReplayMetadata(
+        {},
+        buildOrchestratorDispatchReplayRequest({
+          channelId: 'channel-dispatch-state',
+          body: 'Dispatch replay should be retried.',
+          recordedAt: '2026-03-26T13:24:00.000Z',
+        }),
+        {
+          replayState: 'failed',
+          replayTrigger: 'retry',
+        },
+      ),
+    },
+    now,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-recovery-workflow-state',
+      title: 'Workflow replay recovery task',
+      status: 'blocked',
+      conversationId: 'conversation-recovery-states',
+      createdAt: '2026-03-26T13:25:00.000Z',
+      metadata: writeWorkflowContinuationReplayMetadata(
+        {},
+        buildWorkflowContinuationReplayRequest({
+          channelId: 'channel-workflow-state',
+          checkpointId: 'checkpoint-workflow-state',
+          sourceMessageId: 'message-workflow-state',
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: 'cat-inline',
+            participantName: 'Inline-Agent',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: 'cat-followup',
+              participantName: 'Followup-Agent',
+            },
+          ],
+          recordedAt: '2026-03-26T13:26:00.000Z',
+          workflowShape: 'parallel',
+        }),
+        {
+          replayState: 'in_progress',
+          replayTrigger: 'retry',
+        },
+      ),
+    },
+    now,
+  ).core;
+
+  const result = queryCoreTaskRecoveryViews(core, {
+    conversationIds: ['conversation-recovery-states'],
+    pendingDispatchReplayStates: ['pending'],
+    limit: 1,
+  });
+  const workflowResult = queryCoreTaskRecoveryViews(core, {
+    conversationIds: ['conversation-recovery-states'],
+    workflowContinuationReplayStates: ['in_progress'],
+  });
+
+  assert.deepEqual(
+    result.recoveries.map((recovery) => recovery.taskId),
+    ['task-recovery-pending-state'],
+  );
+  assert.deepEqual(result.summary.pendingDispatchReplayStateCounts, {
+    pending: 1,
+    in_progress: 0,
+    failed: 0,
+  });
+  assert.deepEqual(result.summary.dispatchReplayStateCounts, {
+    ready: 0,
+    in_progress: 0,
+    failed: 0,
+  });
+  assert.deepEqual(result.summary.workflowContinuationReplayStateCounts, {
+    ready: 0,
+    in_progress: 0,
+    failed: 0,
+  });
+  assert.deepEqual(
+    workflowResult.recoveries.map((recovery) => recovery.taskId),
+    ['task-recovery-workflow-state'],
+  );
+  assert.deepEqual(workflowResult.summary.workflowContinuationReplayStateCounts, {
+    ready: 0,
+    in_progress: 1,
+    failed: 0,
+  });
+});

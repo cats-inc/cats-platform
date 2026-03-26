@@ -159,7 +159,8 @@ contracts.
       replay start/result visible in product-owned operator read models, and
       core-owned recovery routes now normalize pending dispatch, stored
       dispatch replay, workflow-continuation replay, and latest replay
-      activity into one inspectable read surface, while blocked
+      activity into one inspectable read surface with replay-state filters and
+      counts, while blocked
       `max_continuations` workflow continuations now persist a
       retryable replay snapshot that `retry` can auto-resume through the same
       operator seam; broader group replan auto-resume still remains.

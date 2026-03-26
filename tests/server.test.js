@@ -1234,6 +1234,9 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.recoveries[0].context.workflowStageId, 'continuation_handoff');
     assert.equal(listPayload.summary.actionKindCounts.approve, 1);
     assert.equal(listPayload.summary.actionKindCounts.retry, 1);
+    assert.equal(listPayload.summary.pendingDispatchReplayStateCounts.failed, 1);
+    assert.equal(listPayload.summary.dispatchReplayStateCounts.ready, 1);
+    assert.equal(listPayload.summary.workflowContinuationReplayStateCounts.failed, 1);
     assert.equal(listPayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(listPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(listPayload.summary.workflowStageCounts.continuation_handoff, 1);
@@ -1241,7 +1244,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.summary.withActiveChildrenCount, 0);
 
     const filteredListResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(filteredListResponse.status, 200);
     const filteredListPayload = await filteredListResponse.json();
@@ -1251,6 +1254,9 @@ test('core recovery routes expose normalized orchestrator replay state without l
     );
     assert.equal(filteredListPayload.summary.actionKindCounts.approve, 1);
     assert.equal(filteredListPayload.summary.actionKindCounts.retry, 1);
+    assert.equal(filteredListPayload.summary.pendingDispatchReplayStateCounts.failed, 1);
+    assert.equal(filteredListPayload.summary.dispatchReplayStateCounts.ready, 1);
+    assert.equal(filteredListPayload.summary.workflowContinuationReplayStateCounts.failed, 1);
 
     const detailResponse = await fetch(
       `${baseUrl}/api/core/tasks/task-recovery-routes/recovery`,
@@ -2709,7 +2715,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.tasks.length, 1);
 
     const recoveryResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&workflowContinuationReplayState=failed&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(recoveryResponse.status, 200);
     const recoveryPayload = await recoveryResponse.json();
@@ -2718,6 +2724,9 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(recoveryPayload.summary.returned, 1);
     assert.equal(recoveryPayload.summary.withWorkflowContinuationReplayCount, 1);
     assert.equal(recoveryPayload.summary.withDispatchReplayCount, 0);
+    assert.equal(recoveryPayload.summary.pendingDispatchReplayStateCounts.pending, 0);
+    assert.equal(recoveryPayload.summary.dispatchReplayStateCounts.ready, 0);
+    assert.equal(recoveryPayload.summary.workflowContinuationReplayStateCounts.failed, 1);
     assert.equal(recoveryPayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(recoveryPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(recoveryPayload.summary.workflowStageCounts.continuation_handoff, 1);
