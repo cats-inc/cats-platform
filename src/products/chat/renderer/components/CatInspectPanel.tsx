@@ -35,7 +35,7 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, [onClose]);
 
-  const providerName = getProviderDisplayName(cat.provider).replace(/-CLI$/u, '');
+  const providerName = getProviderDisplayName(cat.provider);
   const modelLabel = cat.model
     ? (getProviderModels(cat.provider).find((m) => m.value === cat.model)?.label ?? cat.model)
         .replace(/\s*\(default\)\s*/iu, '')

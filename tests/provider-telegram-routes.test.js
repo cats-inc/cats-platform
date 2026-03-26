@@ -35,6 +35,22 @@ function createRuntimeStub() {
     },
     async getProviderConfig() {
       return {
+        openclaw: {
+          defaultInstance: 'gateway',
+          defaultBackend: 'agent',
+          instances: [
+            {
+              id: 'gateway',
+              target: 'agent/gateway',
+              backend: 'agent',
+              command: null,
+              runner: null,
+              runtime: null,
+              transport: 'openclaw_gateway',
+              model: 'openclaw-coder',
+            },
+          ],
+        },
         claude: {
           defaultInstance: 'native',
           defaultBackend: 'cli',
@@ -285,26 +301,35 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
 
     const payload = await response.json();
     assert.ok(Array.isArray(payload.providers));
+    const openclaw = payload.providers.find((provider) => provider.id === 'openclaw');
+    assert.equal(openclaw.label, 'OpenClaw');
+    assert.equal(openclaw.defaultInstance, 'gateway');
+    assert.equal(openclaw.defaultBackend, 'agent');
+    assert.equal(openclaw.instances[0].label, 'agent/gateway');
     assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
     assert.ok(payload.providers.every((provider) => typeof provider.modelsPath === 'string'));
     const claude = payload.providers.find((provider) => provider.id === 'claude');
+    assert.equal(claude.label, 'Claude');
     assert.equal(claude.defaultInstance, 'native');
     assert.equal(claude.instances[0].id, 'native');
+    assert.equal(claude.instances[0].label, 'cli/native');
     const codex = payload.providers.find((provider) => provider.id === 'codex');
+    assert.equal(codex.label, 'Codex');
     assert.equal(codex.defaultInstance, 'agent/bridge');
     assert.equal(codex.instances.length, 2);
+    assert.equal(codex.instances[0].label, 'agent/bridge');
   });
 });
 
 test('GET /api/providers/:provider/models proxies runtime-owned catalog', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/providers/claude/models`);
+    const response = await fetch(`${baseUrl}/api/providers/openclaw/models`);
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.catalog.provider, 'claude');
+    assert.equal(payload.catalog.provider, 'openclaw');
     assert.equal(payload.catalog.source, 'config');
-    assert.equal(payload.catalog.models[0].id, 'claude-default');
+    assert.equal(payload.catalog.models[0].id, 'openclaw-default');
   });
 });
 

@@ -7,7 +7,10 @@ import type {
 } from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
 import { createEmptyMemoryCheckpoint } from '../../../core/actors.js';
-import { getDefaultModel } from '../../../shared/providerCatalog.js';
+import {
+  getDefaultModel,
+  getDefaultProviderInstance,
+} from '../../../shared/providerCatalog.js';
 import { listEnabledSuiteSurfaces } from '../../../shared/suiteSurfaces.js';
 export { createEmptyMemoryCheckpoint };
 
@@ -76,7 +79,7 @@ function createCapabilities(limits?: { maxBossCats?: number; maxCats?: number; a
 export function createDefaultNewChatDefaults(): NewChatDefaults {
   return {
     provider: 'claude',
-    instance: null,
+    instance: getDefaultProviderInstance('claude'),
     model: getDefaultModel('claude') || null,
     modelSelection: null,
   };

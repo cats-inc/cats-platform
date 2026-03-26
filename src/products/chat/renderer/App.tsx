@@ -18,7 +18,10 @@ import {
   isNewChatPath,
   readNewChatLeadCatId,
 } from '../shared/channelPaths';
-import { getDefaultModel } from '../../../shared/providerCatalog';
+import {
+  getDefaultModel,
+  getDefaultProviderInstance,
+} from '../../../shared/providerCatalog';
 import { sameProviderModelSelection } from '../../../shared/providerSelection';
 import {
   BootShell,
@@ -48,7 +51,7 @@ function createDefaultModelSelectorValue(): ModelSelectorValue {
   return {
     provider: 'claude',
     model: getDefaultModel('claude') || null,
-    instance: null,
+    instance: getDefaultProviderInstance('claude'),
     modelSelection: null,
   };
 }
@@ -64,7 +67,7 @@ function toModelSelectorValue(
   return {
     provider,
     model: defaults.model ?? (getDefaultModel(provider) || null),
-    instance: defaults.instance ?? null,
+    instance: defaults.instance ?? getDefaultProviderInstance(provider),
     modelSelection: defaults.modelSelection ?? null,
   };
 }

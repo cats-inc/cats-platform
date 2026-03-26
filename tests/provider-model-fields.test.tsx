@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   catalogMatchesTarget,
+  shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
 } from '../src/design/components/ProviderModelFields.tsx';
 
@@ -52,5 +53,22 @@ test('stale catalogs from the previous instance are ignored during instance swit
       instance: 'sonnet',
     }),
     true,
+  );
+});
+
+test('instance field stays hidden when a provider only exposes one runtime instance', () => {
+  assert.equal(
+    shouldShowInstanceField({
+      resolvedInstance: 'native',
+      instanceOptions: [
+        {
+          id: 'native',
+          label: 'cli/native',
+          target: 'cli/native',
+          backend: 'cli',
+        },
+      ],
+    }),
+    false,
   );
 });

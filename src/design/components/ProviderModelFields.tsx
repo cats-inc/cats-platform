@@ -124,6 +124,13 @@ function instanceKey(value: string | null | undefined): string {
   return value?.trim() || '';
 }
 
+export function shouldShowInstanceField(input: {
+  resolvedInstance: string;
+  instanceOptions: ProductProviderInstanceDescriptor[];
+}): boolean {
+  return input.instanceOptions.length > 1;
+}
+
 export function catalogMatchesTarget(input: {
   catalogProvider: string;
   catalogInstance: string | null | undefined;
@@ -316,6 +323,10 @@ export function ProviderModelFields({
           backend: null,
         }, ...selectedProvider.instances]
       : selectedProvider.instances;
+  const showInstanceField = shouldShowInstanceField({
+    resolvedInstance,
+    instanceOptions,
+  });
   const entryOptions = effectiveAdvancedCatalog.entries.length > 0
     ? effectiveAdvancedCatalog.entries
     : effectiveCatalog.models;
@@ -376,7 +387,7 @@ export function ProviderModelFields({
           ))}
         </select>
       </label>
-      {instanceOptions.length > 1 ? (
+      {showInstanceField ? (
         <label className="fieldLabel">
           <span>Instance</span>
           <select

@@ -29,6 +29,7 @@ export function normalizeOwnerProfile(rawOwnerProfile: unknown): OwnerProfileRec
     actorId: readString(ownerProfileRecord?.actorId, fallback.actorId),
     displayName: readString(ownerProfileRecord?.displayName, fallback.displayName),
     avatarColor: readNullableString(ownerProfileRecord?.avatarColor),
+    avatarUrl: readNullableString(ownerProfileRecord?.avatarUrl),
     summary: readNullableString(ownerProfileRecord?.summary),
     communicationPreferences: readStringArray(ownerProfileRecord?.communicationPreferences),
     decisionPreferences: readStringArray(ownerProfileRecord?.decisionPreferences),

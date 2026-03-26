@@ -118,6 +118,7 @@ export const PRODUCT_PROVIDER_ORDER = [
   'junie',
   'kiro',
   'ollama',
+  'openclaw',
 ] as const;
 
 export type ProductProviderId = (typeof PRODUCT_PROVIDER_ORDER)[number];
@@ -126,6 +127,9 @@ export const PAL_PROVIDER_ORDER = PRODUCT_PROVIDER_ORDER;
 export type CatProviderId = ProductProviderId;
 
 export const PRODUCT_PROVIDER_MODELS: Record<ProductProviderId, ProviderModelOption[]> = {
+  openclaw: [
+    { value: 'openclaw-coder', label: 'openclaw-coder (default)', default: true },
+  ],
   claude: [
     { value: 'claude-opus-4-6', label: 'opus 4.6 (default)', default: true },
     { value: 'claude-sonnet-4-6', label: 'sonnet 4.6' },
@@ -184,6 +188,52 @@ export const PRODUCT_PROVIDER_MODELS: Record<ProductProviderId, ProviderModelOpt
 };
 
 export const PAL_PROVIDER_MODELS = PRODUCT_PROVIDER_MODELS;
+
+const PRODUCT_PROVIDER_INSTANCES: Record<ProductProviderId, ProductProviderInstanceDescriptor[]> = {
+  claude: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+    { id: 'sdk', label: 'agent/sdk', target: 'agent/sdk', backend: 'agent' },
+    { id: 'sonnet', label: 'api/sonnet', target: 'api/sonnet', backend: 'api' },
+  ],
+  codex: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+    { id: 'main', label: 'api/main', target: 'api/main', backend: 'api' },
+  ],
+  gemini: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+    { id: 'flash', label: 'api/flash', target: 'api/flash', backend: 'api' },
+  ],
+  cursor: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
+  copilot: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
+  opencode: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
+  goose: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
+  pi: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
+  auggie: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
+  junie: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
+  kiro: [
+    { id: 'ubuntu', label: 'cli/ubuntu', target: 'cli/ubuntu', backend: 'cli', default: true },
+  ],
+  ollama: [
+    { id: 'local', label: 'local/local', target: 'local/local', backend: 'local', default: true },
+  ],
+  openclaw: [
+    { id: 'gateway', label: 'agent/gateway', target: 'agent/gateway', backend: 'agent', default: true },
+  ],
+};
 
 export interface ProductProviderDescriptor {
   id: ProductProviderId;
@@ -298,6 +348,9 @@ export function isKnownProvider(provider: string): provider is ProductProviderId
 }
 
 export function getProviderDisplayName(provider: string): string {
+  if (provider === 'openclaw') {
+    return 'OpenClaw';
+  }
   return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
@@ -309,14 +362,30 @@ export function getDefaultModel(provider: string): string {
   return getProviderModels(provider)[0]?.value ?? '';
 }
 
+export function getProviderInstances(
+  provider: string,
+): ProductProviderInstanceDescriptor[] {
+  return PRODUCT_PROVIDER_INSTANCES[provider as ProductProviderId] ?? [];
+}
+
+export function getDefaultProviderInstance(provider: string): string | null {
+  const instances = getProviderInstances(provider);
+  return instances.find((instance) => instance.default)?.id ?? instances[0]?.id ?? null;
+}
+
+export function getDefaultProviderBackend(provider: string): string | null {
+  const instances = getProviderInstances(provider);
+  return instances.find((instance) => instance.default)?.backend ?? instances[0]?.backend ?? null;
+}
+
 export function listProductProviders(): ProductProviderDescriptor[] {
   return PRODUCT_PROVIDER_ORDER.map((provider) => ({
     id: provider,
     label: getProviderDisplayName(provider),
     defaultModel: getDefaultModel(provider) || null,
-    defaultInstance: null,
-    defaultBackend: null,
-    instances: [],
+    defaultInstance: getDefaultProviderInstance(provider),
+    defaultBackend: getDefaultProviderBackend(provider),
+    instances: getProviderInstances(provider),
     modelsPath: `/api/providers/${provider}/models`,
   }));
 }

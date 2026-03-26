@@ -1,6 +1,7 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { buildChannelView, renameCat, requireCat, setBossCat, updateCatExecutionTarget, updateCatProducts, updateCatSkillProfile } from '../state/model/index.js';
 import type { AssignChannelCatInput, CreateCatInput } from './contracts.js';
+import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import {
   buildAppShellPayload,
   handleCanonicalCatError,
@@ -63,7 +64,7 @@ async function handleCanonicalUpdateCat(
       provider?: string;
       instance?: string | null;
       model?: string | null;
-      modelSelection?: import('../../../../shared/providerSelection.js').ProviderModelSelection | null;
+      modelSelection?: ProviderModelSelection | null;
       avatarUrl?: string | null;
     }>(context.request);
     let state = await context.dependencies.chatStore.read();
