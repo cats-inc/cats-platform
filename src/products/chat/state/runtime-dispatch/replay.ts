@@ -15,6 +15,10 @@ import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import { buildChannelView, requireChannel } from '../model/index.js';
 import {
+  readWorkflowRecommendation,
+  resolveWorkflowRecommendationTargets,
+} from '../room-routing/recommendations.js';
+import {
   DEFAULT_MAX_ROUTING_CONTINUATIONS,
   DEFAULT_MAX_ROUTING_DISPATCHES,
   DEFAULT_MAX_ROUTING_TARGET_VISITS,
@@ -64,6 +68,10 @@ function toResolutionMode(targetCount: number): 'explicit_single' | 'explicit_mu
   return targetCount > 1 ? 'explicit_multi' : 'explicit_single';
 }
 
+function uniqueStrings(values: string[]): string[] {
+  return values.filter((value, index) => value.length > 0 && values.indexOf(value) === index);
+}
+
 function resolveReplayTarget(
   state: ChatState,
   channelId: string,
@@ -89,29 +97,129 @@ function resolveReplayTargets(
     .filter((target): target is NonNullable<ReturnType<typeof resolveReplayTarget>> => target !== null);
 }
 
-function buildReplayResolution(
-  request: WorkflowContinuationReplaySnapshot,
+function buildRecommendationReplayResolution(
   state: ChatState,
-): TargetResolution {
-  const targets = resolveReplayTargets(state, request);
-  if (targets.length === 0) {
-    throw new Error('Stored workflow continuation replay no longer has any active targets.');
+  request: WorkflowContinuationReplaySnapshot,
+): TargetResolution | null {
+  const recommendation = readWorkflowRecommendation(request.workflowRecommendation);
+  if (!recommendation) {
+    return null;
+  }
+
+  const resolved = resolveWorkflowRecommendationTargets(state, request.channelId, recommendation);
+  if (resolved.targets.length === 0) {
+    return null;
   }
 
   return {
-    targets,
-    unresolved: [...request.unresolvedTargets],
-    mentionNames: [...request.mentionNames],
+    targets: resolved.targets,
+    unresolved: uniqueStrings([
+      ...request.unresolvedTargets,
+      ...resolved.unresolved,
+    ]),
+    mentionNames: resolved.mentionNames.length > 0
+      ? resolved.mentionNames
+      : [...request.mentionNames],
     trigger: request.trigger,
     resolution: {
-      routingMode: toResolutionMode(targets.length),
+      routingMode: toResolutionMode(resolved.targets.length),
       selectionKind: 'explicit_mentions',
       defaultTarget: null,
       defaultTargetReason: null,
       fallbackTarget: null,
       blockedReason: null,
-      note: 'Stored workflow continuation replay resumed the next room stage.',
+      note: 'Stored workflow continuation replay re-resolved targets from its workflow recommendation.',
     },
+  };
+}
+
+function buildReplayResolution(
+  request: WorkflowContinuationReplaySnapshot,
+  state: ChatState,
+): TargetResolution {
+  const replayTargets = resolveReplayTargets(state, request);
+  if (replayTargets.length > 0) {
+    return {
+      targets: replayTargets,
+      unresolved: [...request.unresolvedTargets],
+      mentionNames: [...request.mentionNames],
+      trigger: request.trigger,
+      resolution: {
+        routingMode: toResolutionMode(replayTargets.length),
+        selectionKind: 'explicit_mentions',
+        defaultTarget: null,
+        defaultTargetReason: null,
+        fallbackTarget: null,
+        blockedReason: null,
+        note: 'Stored workflow continuation replay resumed the next room stage.',
+      },
+    };
+  }
+
+  const recommendationResolution = buildRecommendationReplayResolution(state, request);
+  if (recommendationResolution) {
+    return recommendationResolution;
+  }
+
+  throw new Error(
+    'Stored workflow continuation replay no longer has any active targets or resolvable workflow recommendation.',
+  );
+}
+
+function buildReplayResolutionSourceTargets(
+  resolution: TargetResolution,
+): RoomRoutingParticipantRef[] {
+  return resolution.targets.map((target) => ({
+    participantKind: target.participantKind,
+    participantId: target.participantId,
+    participantName: target.participantName,
+  }));
+}
+
+function cloneWorkflowRecommendation(
+  request: WorkflowContinuationReplaySnapshot,
+): Record<string, unknown> | null {
+  return request.workflowRecommendation
+    ? structuredClone(request.workflowRecommendation)
+    : null;
+}
+
+function buildReplayEventMetadata(
+  input: {
+    request: WorkflowContinuationReplaySnapshot;
+    resolution: TargetResolution;
+    workflowShape: RoomWorkflowShape;
+    workflowStageId: string;
+  },
+): Record<string, unknown> {
+  return {
+    trigger: input.resolution.trigger,
+    workflowStageId: input.workflowStageId,
+    workflowShape: input.workflowShape,
+    selectionKind: input.resolution.resolution.selectionKind,
+    replaySource: 'workflow_continuation',
+    replayCheckpointId: input.request.checkpointId,
+    continuationSource: input.request.continuationSource,
+    workflowRecommendation: cloneWorkflowRecommendation(input.request),
+  };
+}
+
+function buildReplayCheckpointMetadata(
+  input: {
+    request: WorkflowContinuationReplaySnapshot;
+    resolution: TargetResolution;
+    workflowShape: RoomWorkflowShape;
+    workflowStageId: string;
+  },
+): Record<string, unknown> {
+  return {
+    trigger: input.resolution.trigger,
+    workflowStageId: input.workflowStageId,
+    workflowShape: input.workflowShape,
+    replaySource: 'workflow_continuation',
+    replayCheckpointId: input.request.checkpointId,
+    continuationSource: input.request.continuationSource,
+    workflowRecommendation: cloneWorkflowRecommendation(input.request),
   };
 }
 
@@ -163,6 +271,13 @@ export async function resumeWorkflowContinuationReplay(input: {
   activeTurn.id = outcome.turnId;
   activeTurn.reviewRequired = input.request.reviewRequired;
   workflow.activeTurn = activeTurn;
+  const replayTargets = buildReplayResolutionSourceTargets(initialResolution);
+  const replayEventMetadata = buildReplayEventMetadata({
+    request: input.request,
+    resolution: initialResolution,
+    workflowShape: activeTurn.workflowShape,
+    workflowStageId: activeTurn.stageId,
+  });
   appendWorkflowEvent(
     workflow,
     activeTurn,
@@ -174,27 +289,18 @@ export async function resumeWorkflowContinuationReplay(input: {
       nowIso,
       input.request.sourceParticipant,
       sourceMessage.id,
-      initialResolution.targets.map((target) => ({
-        participantKind: target.participantKind,
-        participantId: target.participantId,
-        participantName: target.participantName,
-      })),
+      replayTargets,
       {
-        metadata: {
-          trigger: initialResolution.trigger,
-          workflowStageId: activeTurn.stageId,
-          workflowShape: activeTurn.workflowShape,
-          selectionKind: initialResolution.resolution.selectionKind,
-          replaySource: 'workflow_continuation',
-          replayCheckpointId: input.request.checkpointId,
-          continuationSource: input.request.continuationSource,
-          workflowRecommendation: input.request.workflowRecommendation
-            ? structuredClone(input.request.workflowRecommendation)
-            : null,
-        },
+        metadata: replayEventMetadata,
       },
     ),
   );
+  const replayCheckpointMetadata = buildReplayCheckpointMetadata({
+    request: input.request,
+    resolution: initialResolution,
+    workflowShape: activeTurn.workflowShape,
+    workflowStageId: activeTurn.stageId,
+  });
   let latestCheckpoint: RoomRoutingCheckpoint | null = addWorkflowCheckpoint(
     outcome,
     workflow,
@@ -203,22 +309,8 @@ export async function resumeWorkflowContinuationReplay(input: {
     'System resumed a stored workflow continuation.',
     nowIso,
     input.request.sourceParticipant,
-    initialResolution.targets.map((target) => ({
-      participantKind: target.participantKind,
-      participantId: target.participantId,
-      participantName: target.participantName,
-    })),
-    {
-      trigger: initialResolution.trigger,
-      workflowStageId: activeTurn.stageId,
-      workflowShape: activeTurn.workflowShape,
-      replaySource: 'workflow_continuation',
-      replayCheckpointId: input.request.checkpointId,
-      continuationSource: input.request.continuationSource,
-      workflowRecommendation: input.request.workflowRecommendation
-        ? structuredClone(input.request.workflowRecommendation)
-        : null,
-    },
+    replayTargets,
+    replayCheckpointMetadata,
   );
 
   let nextState = materializeInFlightDispatchState(

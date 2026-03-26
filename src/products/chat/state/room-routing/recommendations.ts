@@ -177,6 +177,12 @@ function normalizeWorkflowRecommendation(
   };
 }
 
+export function readWorkflowRecommendation(
+  value: unknown,
+): WorkflowRecommendation | null {
+  return normalizeWorkflowRecommendation(value);
+}
+
 function parseWorkflowRecommendationPayload(
   value: string,
 ): WorkflowRecommendation | null {

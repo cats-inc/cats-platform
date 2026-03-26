@@ -166,8 +166,10 @@ contracts.
       operator seam, and the same replay metadata path now also covers
       continuation-stage guard blocks such as `max_dispatches`,
       `max_target_visits`, and `anti_ping_pong` when the blocked step already
-      had a concrete continuation source/target context; broader group replan
-      auto-resume still remains.
+      had a concrete continuation source/target context, while retry can now
+      also re-resolve stale stored continuation targets from persisted
+      `workflowRecommendation` payloads when the original participant ids are
+      no longer active; broader group replan auto-resume still remains.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent
