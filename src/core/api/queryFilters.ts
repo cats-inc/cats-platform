@@ -10,6 +10,7 @@ import {
   CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
   CORE_TASK_CONTROL_PLANE_REASONS,
   CORE_TASK_CONTROL_PLANE_SEVERITIES,
+  CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
   CORE_TASK_WORKFLOW_SHAPES,
   type CoreTaskControlPlaneListOptions,
 } from '../taskControlPlane.js';
@@ -20,6 +21,7 @@ import {
   CORE_TASK_DISPATCH_REPLAY_STATES,
   CORE_TASK_PENDING_DISPATCH_REPLAY_STATES,
   CORE_TASK_RECOVERY_WORKFLOW_SHAPES,
+  CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS as CORE_TASK_RECOVERY_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
   CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES,
   type CoreTaskRecoveryListOptions,
 } from '../recovery.js';
@@ -142,6 +144,11 @@ export function readTaskAttentionListOptions(
       'workflowShape',
       CORE_TASK_WORKFLOW_SHAPES,
     ),
+    workflowContinuationBlockedReasons: readEnumQueryValues(
+      searchParams,
+      'workflowContinuationBlockedReason',
+      CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
+    ),
     latestTimelineCategories: readEnumQueryValues(
       searchParams,
       'latestTimelineCategory',
@@ -189,6 +196,11 @@ export function readTaskRecoveryListOptions(
       searchParams,
       'workflowContinuationReplayState',
       CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES,
+    ),
+    workflowContinuationBlockedReasons: readEnumQueryValues(
+      searchParams,
+      'workflowContinuationBlockedReason',
+      CORE_TASK_RECOVERY_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
     ),
     actionKinds: readEnumQueryValues(searchParams, 'actionKind', CORE_TASK_RECOVERY_ACTION_KINDS),
     deliveryModes: readEnumQueryValues(

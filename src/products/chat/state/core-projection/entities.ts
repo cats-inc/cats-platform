@@ -171,6 +171,11 @@ function readWorkflowContinuationReplayRequest(
   channel: ChatChannelState,
   turn: RoomWorkflowTurn | null,
 ) {
+  if (!turn || !isReplayableContinuationGuardReason(turn.guard)) {
+    return null;
+  }
+
+  const blockedReason = turn.guard;
   const event = findLatestContinuationReplayEvent(turn);
   if (!event) {
     return null;
@@ -222,7 +227,7 @@ function readWorkflowContinuationReplayRequest(
     })(),
     workflowRecommendation: readMetadataRecord(metadata.workflowRecommendation),
     unresolvedTargets: readMetadataStringArray(metadata, 'unresolvedTargets'),
-    blockedReason: readMetadataString(metadata, 'reason'),
+    blockedReason,
     recordedAt: event.createdAt,
   });
 }

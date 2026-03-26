@@ -4,6 +4,7 @@ import {
   CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
   CORE_TASK_CONTROL_PLANE_REASONS,
   CORE_TASK_CONTROL_PLANE_SEVERITIES,
+  CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
   CORE_TASK_WORKFLOW_SHAPES,
   listCoreTaskControlPlaneViews,
   type CoreTaskControlPlaneListOptions,
@@ -75,6 +76,10 @@ export interface CoreOperatorInboxSummary {
   workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
+  workflowContinuationBlockedReasonCounts: Record<
+    NonNullable<CoreTaskControlPlaneWorkflowContinuationView['blockedReason']>,
+    number
+  >;
   withChildrenCount: number;
   withActiveChildrenCount: number;
 }
@@ -201,6 +206,16 @@ function matchesOperatorInboxQuery(
     query.workflowShapes?.length
     && (!readEffectiveWorkflowShape(item)
       || !query.workflowShapes.includes(readEffectiveWorkflowShape(item)!))
+  ) {
+    return false;
+  }
+
+  if (
+    query.workflowContinuationBlockedReasons?.length
+    && (!item.workflowContinuation?.blockedReason
+      || !query.workflowContinuationBlockedReasons.includes(
+        item.workflowContinuation.blockedReason,
+      ))
   ) {
     return false;
   }
@@ -386,6 +401,24 @@ function buildLatestTimelineCategoryCounts(
   return counts;
 }
 
+function buildWorkflowContinuationBlockedReasonCounts(
+  items: CoreOperatorInboxItem[],
+): Record<NonNullable<CoreTaskControlPlaneWorkflowContinuationView['blockedReason']>, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS.map((reason) => [reason, 0]),
+  ) as Record<NonNullable<CoreTaskControlPlaneWorkflowContinuationView['blockedReason']>, number>;
+
+  for (const item of items) {
+    const blockedReason = item.workflowContinuation?.blockedReason;
+    if (!blockedReason) {
+      continue;
+    }
+    counts[blockedReason] += 1;
+  }
+
+  return counts;
+}
+
 function buildLatestTimelineKindCounts(
   items: CoreOperatorInboxItem[],
 ): Record<CoreTaskTimelineItemKind, number> {
@@ -425,6 +458,8 @@ export function summarizeCoreOperatorInboxItems(input: {
     workflowShapeCounts: buildWorkflowShapeCounts(input.items),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),
     latestTimelineKindCounts: buildLatestTimelineKindCounts(input.items),
+    workflowContinuationBlockedReasonCounts:
+      buildWorkflowContinuationBlockedReasonCounts(input.items),
     withChildrenCount: input.items.filter((item) => item.family.childCount > 0).length,
     withActiveChildrenCount: input.items.filter((item) =>
       item.family.childCount > 0 && !item.family.allChildrenTerminal).length,

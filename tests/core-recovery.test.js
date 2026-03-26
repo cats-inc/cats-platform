@@ -336,6 +336,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
           recordedAt: '2026-03-26T13:03:00.000Z',
           workflowStageId: 'continuation_handoff',
           workflowShape: 'sequential',
+          blockedReason: 'max_dispatches',
         }),
       ),
     },
@@ -349,6 +350,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
     workflowShapes: ['sequential'],
+    workflowContinuationBlockedReasons: ['max_dispatches'],
     rootTaskIds: ['task-recovery-root'],
     parentTaskIds: ['task-recovery-root'],
     hasChildren: false,
@@ -369,6 +371,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
   assert.equal(result.summary.workflowShapeCounts.sequential, 1);
+  assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
   assert.equal(result.recoveries[0]?.family.rootTaskId, 'task-recovery-root');
   assert.equal(result.recoveries[0]?.family.parent?.taskId, 'task-recovery-root');
   assert.equal(result.summary.withChildrenCount, 0);
@@ -525,6 +528,7 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
           ],
           recordedAt: '2026-03-26T13:26:00.000Z',
           workflowShape: 'parallel',
+          blockedReason: 'anti_ping_pong',
         }),
         {
           replayState: 'in_progress',
@@ -543,6 +547,7 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
   const workflowResult = queryCoreTaskRecoveryViews(core, {
     conversationIds: ['conversation-recovery-states'],
     workflowContinuationReplayStates: ['in_progress'],
+    workflowContinuationBlockedReasons: ['anti_ping_pong'],
   });
 
   assert.deepEqual(
@@ -572,5 +577,11 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
     ready: 0,
     in_progress: 1,
     failed: 0,
+  });
+  assert.deepEqual(workflowResult.summary.workflowContinuationBlockedReasonCounts, {
+    max_continuations: 0,
+    max_dispatches: 0,
+    max_target_visits: 0,
+    anti_ping_pong: 1,
   });
 });

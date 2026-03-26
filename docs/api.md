@@ -1418,6 +1418,7 @@ Semantics:
   - `deliveryAction`
   - `workflowStageId`
   - `workflowShape`
+  - `workflowContinuationBlockedReason`
   - `latestTimelineCategory`
   - `latestTimelineKind`
   - `rootTaskId`
@@ -1427,7 +1428,8 @@ Semantics:
   - `limit`
 - repeated and comma-separated values are both accepted for enum filters such
   as `taskStatus`, `severity`, `reason`, `nextAction`, `deliveryMode`, and
-  `deliveryAction`, plus `workflowShape`, `latestTimelineCategory`, and
+  `deliveryAction`, plus `workflowShape`,
+  `workflowContinuationBlockedReason`, `latestTimelineCategory`, and
   `latestTimelineKind`
 - list responses now include a `summary` block with:
   - `totalAvailable`
@@ -1443,6 +1445,7 @@ Semantics:
   - `deliveryActionCounts`
   - `workflowStageCounts`
   - `workflowShapeCounts`
+  - `workflowContinuationBlockedReasonCounts`
   - `latestTimelineCategoryCounts`
   - `latestTimelineKindCounts`
   - `withChildrenCount`
@@ -1520,6 +1523,7 @@ Semantics:
   - `deliveryAction`
   - `workflowStageId`
   - `workflowShape`
+  - `workflowContinuationBlockedReason`
   - `latestTimelineCategory`
   - `latestTimelineKind`
   - `rootTaskId`
@@ -1531,8 +1535,8 @@ Semantics:
   operator automation or non-UI inbox consumers can page or facet the inbox
   without hydrating the full core snapshot client-side, including
   `deliveryModeCounts`, `deliveryActionCounts`, `workflowStageCounts`,
-  `workflowShapeCounts`, `latestTimelineCategoryCounts`, and
-  `latestTimelineKindCounts`, plus
+  `workflowShapeCounts`, `workflowContinuationBlockedReasonCounts`,
+  `latestTimelineCategoryCounts`, and `latestTimelineKindCounts`, plus
   `withChildrenCount` and `withActiveChildrenCount`
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not
@@ -1718,6 +1722,7 @@ Semantics:
   - `pendingDispatchReplayState`
   - `dispatchReplayState`
   - `workflowContinuationReplayState`
+  - `workflowContinuationBlockedReason`
   - `actionKind`
   - `deliveryMode`
   - `deliveryAction`
@@ -1742,6 +1747,7 @@ Semantics:
   - `pendingDispatchReplayStateCounts`
   - `dispatchReplayStateCounts`
   - `workflowContinuationReplayStateCounts`
+  - `workflowContinuationBlockedReasonCounts`
   - `actionKindCounts`
   - `deliveryModeCounts`
   - `deliveryActionCounts`
@@ -1760,6 +1766,10 @@ Semantics:
   guard that persisted the retryable continuation snapshot, so recovery
   consumers can distinguish different continuation failure modes without
   scraping raw checkpoint metadata
+- `workflowContinuationBlockedReason` /
+  `workflowContinuationBlockedReasonCounts` let recovery and operator
+  automation facet retryable continuation work by which guard persisted the
+  replay snapshot without reopening raw checkpoint metadata
 - `workflowShape` / `workflowShapeCounts` let recovery automation distinguish
   sequential, parallel, or converge replay topology without inferring it from
   stage ids alone

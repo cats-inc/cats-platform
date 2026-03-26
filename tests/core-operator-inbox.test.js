@@ -17,6 +17,10 @@ import {
   buildOrchestratorDispatchReplayRequest,
   writeOrchestratorDispatchReplayMetadata,
 } from '../dist-server/platform/orchestration/dispatchReplay.js';
+import {
+  buildWorkflowContinuationReplayRequest,
+  writeWorkflowContinuationReplayMetadata,
+} from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
 
 test('listCoreOperatorInboxItems returns actionable task summaries with latest timeline context', () => {
   const now = new Date('2026-03-26T18:00:00.000Z');
@@ -177,29 +181,52 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
       status: 'pending_approval',
       parentTaskId: 'task-inbox-root',
       conversationId: 'conversation-channel-inbox',
-      metadata: writeOrchestratorDispatchReplayMetadata(
-        {
-          effectiveDeliveryPolicy: {
-            mode: 'commit_only',
-            gates: ['owner_approval_required'],
-            source: 'task_override',
-            rationale: 'Owner-approved retry.',
+      metadata: writeWorkflowContinuationReplayMetadata(
+        writeOrchestratorDispatchReplayMetadata(
+          {
+            effectiveDeliveryPolicy: {
+              mode: 'commit_only',
+              gates: ['owner_approval_required'],
+              source: 'task_override',
+              rationale: 'Owner-approved retry.',
+            },
+            channelId: 'channel-inbox',
+            transport: 'web',
+            roomRoutingMode: 'boss_chat',
           },
+          buildOrchestratorDispatchReplayRequest({
+            channelId: 'channel-inbox',
+            body: 'Retry the blocked rollout.',
+            recordedAt: '2026-03-26T17:50:00.000Z',
+          }),
+          {
+            replayState: 'failed',
+            replayTrigger: 'retry',
+            replayAttemptAt: '2026-03-26T17:55:00.000Z',
+            replayError: 'rate limited',
+          },
+        ),
+        buildWorkflowContinuationReplayRequest({
           channelId: 'channel-inbox',
-          transport: 'web',
-          roomRoutingMode: 'boss_chat',
-        },
-        buildOrchestratorDispatchReplayRequest({
-          channelId: 'channel-inbox',
-          body: 'Retry the blocked rollout.',
-          recordedAt: '2026-03-26T17:50:00.000Z',
+          checkpointId: 'checkpoint-inbox-match',
+          sourceMessageId: 'message-inbox-match',
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: 'cat-inline',
+            participantName: 'Inline-Agent',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: 'cat-reviewer',
+              participantName: 'Reviewer',
+            },
+          ],
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'sequential',
+          blockedReason: 'max_dispatches',
+          recordedAt: '2026-03-26T17:49:00.000Z',
         }),
-        {
-          replayState: 'failed',
-          replayTrigger: 'retry',
-          replayAttemptAt: '2026-03-26T17:55:00.000Z',
-          replayError: 'rate limited',
-        },
       ),
       createdAt: '2026-03-26T17:40:00.000Z',
     },
@@ -292,6 +319,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
     workflowShapes: ['sequential'],
+    workflowContinuationBlockedReasons: ['max_dispatches'],
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
     rootTaskIds: ['task-inbox-root'],
@@ -313,6 +341,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
   assert.equal(result.summary.workflowShapeCounts.sequential, 1);
+  assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
   assert.equal(result.summary.latestTimelineKindCounts.run, 1);
   assert.equal(result.tasks[0]?.family.rootTaskId, 'task-inbox-root');

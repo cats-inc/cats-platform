@@ -13,6 +13,14 @@ export type WorkflowContinuationReplayTrigger = 'retry';
 export type WorkflowContinuationReplaySource =
   | 'explicit_mentions'
   | 'workflow_recommendation';
+export const WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS = [
+  'max_continuations',
+  'max_dispatches',
+  'max_target_visits',
+  'anti_ping_pong',
+] as const;
+export type WorkflowContinuationReplayBlockedReason =
+  typeof WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS[number];
 
 export interface WorkflowContinuationReplayRequest {
   channelId: string;
@@ -29,7 +37,7 @@ export interface WorkflowContinuationReplayRequest {
   continuationSource: WorkflowContinuationReplaySource | null;
   workflowRecommendation: Record<string, unknown> | null;
   unresolvedTargets: string[];
-  blockedReason: string | null;
+  blockedReason: WorkflowContinuationReplayBlockedReason | null;
   recordedAt: string;
 }
 
@@ -124,6 +132,15 @@ function readContinuationSource(value: unknown): WorkflowContinuationReplaySourc
     : null;
 }
 
+function readBlockedReason(value: unknown): WorkflowContinuationReplayBlockedReason | null {
+  return typeof value === 'string'
+    && WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS.includes(
+      value as WorkflowContinuationReplayBlockedReason,
+    )
+    ? value as WorkflowContinuationReplayBlockedReason
+    : null;
+}
+
 function readParticipantRef(value: unknown): RoomRoutingParticipantRef | null {
   const record = asRecord(value);
   if (!record) {
@@ -175,7 +192,7 @@ export function buildWorkflowContinuationReplayRequest(input: {
   continuationSource?: WorkflowContinuationReplaySource | null;
   workflowRecommendation?: Record<string, unknown> | null;
   unresolvedTargets?: string[];
-  blockedReason?: string | null;
+  blockedReason?: WorkflowContinuationReplayBlockedReason | null;
   recordedAt: string;
 }): WorkflowContinuationReplayRequest {
   return {
@@ -254,7 +271,7 @@ export function readWorkflowContinuationReplay(
     continuationSource: readContinuationSource(record.continuationSource),
     workflowRecommendation: asRecord(record.workflowRecommendation),
     unresolvedTargets: readStringArray(record.unresolvedTargets),
-    blockedReason: readNullableString(record.blockedReason),
+    blockedReason: readBlockedReason(record.blockedReason),
     recordedAt,
     replayState,
     replayTrigger,

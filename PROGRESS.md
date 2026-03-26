@@ -310,6 +310,11 @@ Known follow-ups:
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without
   scraping raw checkpoint metadata
+- recovery, control-plane, and operator-inbox list routes now also support
+  `workflowContinuationBlockedReason` filtering plus
+  `workflowContinuationBlockedReasonCounts`, so queue automation can facet
+  retryable continuation work by the exact guard that persisted the replay
+  snapshot without reopening raw checkpoint metadata
 - server startup now downgrades stranded `pendingOrchestratorDispatch` /
   `orchestratorDispatchReplay` `in_progress` markers to failed so crash or
   cleanup-failure cases remain operator-recoverable after restart

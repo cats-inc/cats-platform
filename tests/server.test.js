@@ -1238,6 +1238,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.summary.pendingDispatchReplayStateCounts.failed, 1);
     assert.equal(listPayload.summary.dispatchReplayStateCounts.ready, 1);
     assert.equal(listPayload.summary.workflowContinuationReplayStateCounts.failed, 1);
+    assert.equal(listPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
     assert.equal(listPayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(listPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(listPayload.summary.workflowStageCounts.continuation_handoff, 1);
@@ -1246,7 +1247,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.summary.withActiveChildrenCount, 0);
 
     const filteredListResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=sequential&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=sequential&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(filteredListResponse.status, 200);
     const filteredListPayload = await filteredListResponse.json();
@@ -1259,6 +1260,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(filteredListPayload.summary.pendingDispatchReplayStateCounts.failed, 1);
     assert.equal(filteredListPayload.summary.dispatchReplayStateCounts.ready, 1);
     assert.equal(filteredListPayload.summary.workflowContinuationReplayStateCounts.failed, 1);
+    assert.equal(filteredListPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
     assert.equal(filteredListPayload.summary.workflowShapeCounts.sequential, 1);
 
     const detailResponse = await fetch(
@@ -2656,6 +2658,7 @@ test('core operator inspection routes support additive filters and summaries', a
               ],
               workflowStageId: 'continuation_handoff',
               workflowShape: 'sequential',
+              blockedReason: 'max_dispatches',
               recordedAt: '2026-03-26T18:12:00.000Z',
             }),
             {
@@ -2689,19 +2692,20 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(workflowRunResponse.status, 201);
 
     const inboxResponse = await fetch(
-      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=approve&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=sequential&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=sequential&workflowContinuationBlockedReason=max_dispatches&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(inboxResponse.status, 200);
     const inboxPayload = await inboxResponse.json();
     assert.equal(inboxPayload.summary.totalAvailable, 2);
     assert.equal(inboxPayload.summary.matching, 1);
     assert.equal(inboxPayload.summary.returned, 1);
-    assert.equal(inboxPayload.summary.nextActionCounts.approve, 1);
+    assert.equal(inboxPayload.summary.nextActionCounts.retry, 1);
     assert.equal(inboxPayload.summary.attentionSeverityCounts.attention, 1);
     assert.equal(inboxPayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(inboxPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(inboxPayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(inboxPayload.summary.workflowShapeCounts.sequential, 1);
+    assert.equal(inboxPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
     assert.equal(inboxPayload.summary.latestTimelineCategoryCounts.execution, 1);
     assert.equal(inboxPayload.summary.latestTimelineKindCounts.run, 1);
     assert.equal(inboxPayload.summary.withChildrenCount, 0);
@@ -2711,19 +2715,23 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.tasks[0].family.parent.taskId, 'task-ops-root');
 
     const controlPlaneResponse = await fetch(
-      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=approval_pending&nextAction=approve&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=sequential&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=sequential&workflowContinuationBlockedReason=max_dispatches&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(controlPlaneResponse.status, 200);
     const controlPlanePayload = await controlPlaneResponse.json();
     assert.equal(controlPlanePayload.summary.totalAvailable, 3);
     assert.equal(controlPlanePayload.summary.matching, 1);
     assert.equal(controlPlanePayload.summary.returned, 1);
-    assert.equal(controlPlanePayload.summary.reasonCounts.approval_pending, 1);
-    assert.equal(controlPlanePayload.summary.taskStatusCounts.pending_approval, 1);
+    assert.equal(controlPlanePayload.summary.reasonCounts.retry_available, 1);
+    assert.equal(controlPlanePayload.summary.taskStatusCounts.blocked, 1);
     assert.equal(controlPlanePayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(controlPlanePayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(controlPlanePayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(controlPlanePayload.summary.workflowShapeCounts.sequential, 1);
+    assert.equal(
+      controlPlanePayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches,
+      1,
+    );
     assert.equal(controlPlanePayload.summary.latestTimelineCategoryCounts.execution, 1);
     assert.equal(controlPlanePayload.summary.latestTimelineKindCounts.run, 1);
     assert.equal(controlPlanePayload.summary.withChildrenCount, 0);
@@ -2731,7 +2739,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.tasks.length, 1);
 
     const recoveryResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&workflowContinuationReplayState=failed&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=sequential&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=sequential&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(recoveryResponse.status, 200);
     const recoveryPayload = await recoveryResponse.json();
@@ -2743,6 +2751,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(recoveryPayload.summary.pendingDispatchReplayStateCounts.pending, 0);
     assert.equal(recoveryPayload.summary.dispatchReplayStateCounts.ready, 0);
     assert.equal(recoveryPayload.summary.workflowContinuationReplayStateCounts.failed, 1);
+    assert.equal(recoveryPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
     assert.equal(recoveryPayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(recoveryPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(recoveryPayload.summary.workflowStageCounts.continuation_handoff, 1);

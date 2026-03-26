@@ -257,29 +257,52 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
       title: 'Matching task',
       status: 'blocked',
       conversationId: 'conversation-channel-control-plane',
-      metadata: writeOrchestratorDispatchReplayMetadata(
-        {
-          effectiveDeliveryPolicy: {
-            mode: 'commit_only',
-            gates: ['owner_approval_required'],
-            source: 'task_override',
-            rationale: 'Retry blocked rollout with owner approval.',
+      metadata: writeWorkflowContinuationReplayMetadata(
+        writeOrchestratorDispatchReplayMetadata(
+          {
+            effectiveDeliveryPolicy: {
+              mode: 'commit_only',
+              gates: ['owner_approval_required'],
+              source: 'task_override',
+              rationale: 'Retry blocked rollout with owner approval.',
+            },
+            channelId: 'channel-control-plane',
+            transport: 'web',
+            roomRoutingMode: 'boss_chat',
           },
+          buildOrchestratorDispatchReplayRequest({
+            channelId: 'channel-control-plane',
+            body: 'Retry the blocked rollout after approval.',
+            recordedAt: '2026-03-26T16:10:00.000Z',
+          }),
+          {
+            replayState: 'failed',
+            replayTrigger: 'retry',
+            replayAttemptAt: '2026-03-26T16:11:00.000Z',
+            replayError: 'rate limited',
+          },
+        ),
+        buildWorkflowContinuationReplayRequest({
           channelId: 'channel-control-plane',
-          transport: 'web',
-          roomRoutingMode: 'boss_chat',
-        },
-        buildOrchestratorDispatchReplayRequest({
-          channelId: 'channel-control-plane',
-          body: 'Retry the blocked rollout after approval.',
-          recordedAt: '2026-03-26T16:10:00.000Z',
+          checkpointId: 'checkpoint-control-plane-match',
+          sourceMessageId: 'message-control-plane-match',
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: 'cat-inline',
+            participantName: 'Inline-Agent',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: 'cat-reviewer',
+              participantName: 'Reviewer',
+            },
+          ],
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'sequential',
+          blockedReason: 'max_dispatches',
+          recordedAt: '2026-03-26T16:09:00.000Z',
         }),
-        {
-          replayState: 'failed',
-          replayTrigger: 'retry',
-          replayAttemptAt: '2026-03-26T16:11:00.000Z',
-          replayError: 'rate limited',
-        },
       ),
       createdAt: '2026-03-26T16:00:00.000Z',
     },
@@ -333,6 +356,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
     workflowShapes: ['sequential'],
+    workflowContinuationBlockedReasons: ['max_dispatches'],
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
   });
@@ -351,6 +375,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
   assert.equal(result.summary.workflowShapeCounts.sequential, 1);
+  assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
   assert.equal(result.summary.latestTimelineKindCounts.run, 1);
 });

@@ -221,7 +221,11 @@ contracts.
       now also carries a normalized continuation `blockedReason` into recovery
       plus control-plane payloads so operator automation can distinguish which
       guard persisted a retryable replay snapshot without scraping raw
-      checkpoint metadata, and the
+      checkpoint metadata, while recovery, control-plane, and operator-inbox
+      list routes now also support `workflowContinuationBlockedReason`
+      filtering plus `workflowContinuationBlockedReasonCounts` so queue
+      automation can facet retryable continuation work by that persisted guard
+      reason, and the
       task-timeline route now also supports server-side narrative filters plus
       a lightweight query summary so operator tooling can slice one task's
       chronology without hydrating the full unfiltered timeline first.

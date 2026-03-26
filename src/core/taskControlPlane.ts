@@ -23,6 +23,10 @@ import {
   matchesCoreTaskViewCommonQuery,
   type CoreTaskViewCommonQuery,
 } from './taskViewQuery.js';
+import {
+  WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS,
+  type WorkflowContinuationReplayBlockedReason,
+} from '../platform/orchestration/workflowContinuationReplay.js';
 import type {
   CatsCoreState,
   CoreApprovalDecisionAction,
@@ -108,6 +112,9 @@ export const CORE_TASK_WORKFLOW_SHAPES = [
   'converge',
 ] as const satisfies readonly CoreTaskWorkflowShape[];
 
+export const CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS =
+  WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS;
+
 export interface CoreTaskControlPlaneApprovalAction {
   kind: CoreApprovalDecisionAction;
   label: string;
@@ -162,7 +169,7 @@ export interface CoreTaskControlPlaneWorkflowContinuationView {
   workflowShape: 'sequential' | 'parallel' | 'converge' | null;
   continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
   reviewRequired: boolean;
-  blockedReason: string | null;
+  blockedReason: WorkflowContinuationReplayBlockedReason | null;
   targetCount: number;
   targetNames: string[];
   unresolvedTargets: string[];
@@ -221,6 +228,7 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   deliveryActions?: CoreRuntimeDeliveryAction[];
   workflowStageIds?: string[];
   workflowShapes?: CoreTaskWorkflowShape[];
+  workflowContinuationBlockedReasons?: WorkflowContinuationReplayBlockedReason[];
   latestTimelineCategories?: CoreTaskTimelineCategory[];
   latestTimelineKinds?: CoreTaskTimelineItemKind[];
   rootTaskIds?: string[];
@@ -243,6 +251,7 @@ export interface CoreTaskControlPlaneListSummary {
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
   workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
+  workflowContinuationBlockedReasonCounts: Record<WorkflowContinuationReplayBlockedReason, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
   withChildrenCount: number;
@@ -861,6 +870,16 @@ function matchesControlPlaneListOptions(
   }
 
   if (
+    options.workflowContinuationBlockedReasons?.length
+    && (!view.workflowContinuation?.blockedReason
+      || !options.workflowContinuationBlockedReasons.includes(
+        view.workflowContinuation.blockedReason,
+      ))
+  ) {
+    return false;
+  }
+
+  if (
     options.latestTimelineCategories?.length
     && (!view.latestTimelineItem?.category
       || !options.latestTimelineCategories.includes(view.latestTimelineItem.category))
@@ -1024,6 +1043,24 @@ function buildWorkflowShapeCounts(
   return counts;
 }
 
+function buildWorkflowContinuationBlockedReasonCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<WorkflowContinuationReplayBlockedReason, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS.map((reason) => [reason, 0]),
+  ) as Record<WorkflowContinuationReplayBlockedReason, number>;
+
+  for (const view of views) {
+    const blockedReason = view.workflowContinuation?.blockedReason;
+    if (!blockedReason) {
+      continue;
+    }
+    counts[blockedReason] += 1;
+  }
+
+  return counts;
+}
+
 function buildLatestTimelineCategoryCounts(
   views: CoreTaskControlPlaneView[],
 ): Record<CoreTaskTimelineCategory, number> {
@@ -1078,6 +1115,8 @@ export function summarizeCoreTaskControlPlaneViews(input: {
     deliveryActionCounts: buildDeliveryActionCounts(input.views),
     workflowStageCounts: buildWorkflowStageCounts(input.views),
     workflowShapeCounts: buildWorkflowShapeCounts(input.views),
+    workflowContinuationBlockedReasonCounts:
+      buildWorkflowContinuationBlockedReasonCounts(input.views),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.views),
     latestTimelineKindCounts: buildLatestTimelineKindCounts(input.views),
     withChildrenCount: input.views.filter((view) => view.family.childCount > 0).length,

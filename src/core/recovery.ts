@@ -39,6 +39,8 @@ import {
   readPendingOrchestratorDispatchSnapshot,
 } from '../platform/orchestration/pendingDispatch.js';
 import {
+  WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS,
+  type WorkflowContinuationReplayBlockedReason,
   type WorkflowContinuationReplayState,
   readWorkflowContinuationReplay,
 } from '../platform/orchestration/workflowContinuationReplay.js';
@@ -119,6 +121,9 @@ export const CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES = [
   'failed',
 ] as const satisfies readonly WorkflowContinuationReplayState[];
 
+export const CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS =
+  WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS;
+
 export interface CoreTaskRecoveryMessageReplayView {
   channelId: string;
   transport: 'telegram' | 'line' | 'web';
@@ -164,7 +169,7 @@ export interface CoreTaskWorkflowContinuationRecoveryView {
   reviewRequired: boolean;
   continuationSource: string | null;
   unresolvedTargets: string[];
-  blockedReason: string | null;
+  blockedReason: WorkflowContinuationReplayBlockedReason | null;
   replayState: string;
   replayTrigger: string | null;
   replayAttemptAt: string | null;
@@ -222,6 +227,7 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   pendingDispatchReplayStates?: PendingOrchestratorDispatchReplayState[];
   dispatchReplayStates?: OrchestratorDispatchReplayState[];
   workflowContinuationReplayStates?: WorkflowContinuationReplayState[];
+  workflowContinuationBlockedReasons?: WorkflowContinuationReplayBlockedReason[];
   actionKinds?: CoreTaskRecoveryActionKind[];
   deliveryModes?: CoreDeliveryMode[];
   deliveryActions?: CoreRuntimeDeliveryAction[];
@@ -247,6 +253,7 @@ export interface CoreTaskRecoveryListSummary {
   pendingDispatchReplayStateCounts: Record<PendingOrchestratorDispatchReplayState, number>;
   dispatchReplayStateCounts: Record<OrchestratorDispatchReplayState, number>;
   workflowContinuationReplayStateCounts: Record<WorkflowContinuationReplayState, number>;
+  workflowContinuationBlockedReasonCounts: Record<WorkflowContinuationReplayBlockedReason, number>;
   actionKindCounts: Record<CoreTaskRecoveryActionKind, number>;
   deliveryModeCounts: Record<CoreDeliveryMode, number>;
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
@@ -678,6 +685,16 @@ function matchesRecoveryListOptions(
   }
 
   if (
+    options.workflowContinuationBlockedReasons?.length
+    && (!recovery.workflowContinuationReplay?.blockedReason
+      || !options.workflowContinuationBlockedReasons.includes(
+        recovery.workflowContinuationReplay.blockedReason as WorkflowContinuationReplayBlockedReason,
+      ))
+  ) {
+    return false;
+  }
+
+  if (
     options.actionKinds?.length
     && ![
       ...recovery.approvalActions.map((action) => action.kind),
@@ -800,6 +817,24 @@ function buildWorkflowContinuationReplayStateCounts(
   return counts;
 }
 
+function buildWorkflowContinuationBlockedReasonCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<WorkflowContinuationReplayBlockedReason, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS.map((reason) => [reason, 0]),
+  ) as Record<WorkflowContinuationReplayBlockedReason, number>;
+
+  for (const recovery of recoveries) {
+    const blockedReason = recovery.workflowContinuationReplay?.blockedReason;
+    if (!blockedReason) {
+      continue;
+    }
+    counts[blockedReason as WorkflowContinuationReplayBlockedReason] += 1;
+  }
+
+  return counts;
+}
+
 function buildRecoveryActionKindCounts(
   recoveries: CoreTaskRecoveryView[],
 ): Record<CoreTaskRecoveryActionKind, number> {
@@ -907,6 +942,8 @@ export function summarizeCoreTaskRecoveryViews(input: {
     dispatchReplayStateCounts: buildDispatchReplayStateCounts(input.recoveries),
     workflowContinuationReplayStateCounts:
       buildWorkflowContinuationReplayStateCounts(input.recoveries),
+    workflowContinuationBlockedReasonCounts:
+      buildWorkflowContinuationBlockedReasonCounts(input.recoveries),
     actionKindCounts: buildRecoveryActionKindCounts(input.recoveries),
     deliveryModeCounts: buildRecoveryDeliveryModeCounts(input.recoveries),
     deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),
