@@ -1,6 +1,7 @@
 import type { CoreApiRouteContext } from './types.js';
 import { routeCoreControlApi } from './controlRoutes.js';
 import { routeCoreMemoryMaintenanceApi } from './memoryMaintenanceRoutes.js';
+import { routeCoreOperatorInboxApi } from './operatorInboxRoutes.js';
 import { routeCoreRecordApi } from './recordRoutes.js';
 import { routeCoreTaskApi } from './taskRoutes.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
@@ -60,6 +61,10 @@ export async function routeCoreApi(
   }
 
   if (await routeCoreMemoryMaintenanceApi(context)) {
+    return true;
+  }
+
+  if (await routeCoreOperatorInboxApi(context)) {
     return true;
   }
 

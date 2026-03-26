@@ -1735,6 +1735,161 @@ test('core control-plane routes expose grouped operator actions and workflow att
   });
 });
 
+test('GET /api/core/operator-inbox returns actionable task summaries with latest timeline context', async () => {
+  const metadata = writeOrchestratorDispatchReplayMetadata(
+    {},
+    buildOrchestratorDispatchReplayRequest({
+      channelId: 'channel-operator-inbox',
+      body: 'Retry the blocked rollout.',
+      recordedAt: '2026-03-26T17:50:00.000Z',
+    }),
+    {
+      replayState: 'failed',
+      replayTrigger: 'retry',
+      replayAttemptAt: '2026-03-26T17:55:00.000Z',
+      replayError: 'rate limited',
+    },
+  );
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-operator-inbox',
+          title: 'Operator inbox task',
+          status: 'pending_approval',
+          conversationId: 'conversation-channel-operator-inbox',
+          summary: 'Needs operator attention.',
+          metadata,
+          createdAt: '2026-03-26T17:40:00.000Z',
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId: 'task-operator-inbox',
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+        notes: 'Need owner approval.',
+      }),
+    });
+    assert.equal(approvalResponse.status, 200);
+
+    const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-operator-inbox',
+          title: 'Blocked run',
+          status: 'blocked',
+          taskId: 'task-operator-inbox',
+          conversationId: 'conversation-channel-operator-inbox',
+          summary: 'Run blocked pending retry.',
+          createdAt: '2026-03-26T17:45:00.000Z',
+          metadata: {
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'sequential',
+          },
+        },
+      }),
+    });
+    assert.equal(runResponse.status, 201);
+
+    const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        checkpoint: {
+          id: 'checkpoint-operator-inbox',
+          label: 'review',
+          status: 'open',
+          taskId: 'task-operator-inbox',
+          runId: 'run-operator-inbox',
+          summary: 'Review before continuing.',
+          createdAt: '2026-03-26T17:46:00.000Z',
+          metadata: {
+            continuationSource: 'workflow_recommendation',
+            workflowRecommendation: {
+              source: 'checkpoint',
+              workflowShape: 'converge',
+              reviewRequired: true,
+              candidateTargets: [
+                {
+                  participantKind: 'cat',
+                  participantId: 'cat-reviewer',
+                  participantName: 'Reviewer',
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+    assert.equal(checkpointResponse.status, 201);
+
+    const recoveryActivityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        activity: {
+          id: 'activity-operator-inbox-recovery',
+          kind: 'note',
+          taskId: 'task-operator-inbox',
+          conversationId: 'conversation-channel-operator-inbox',
+          message: 'Dispatch replay failed during startup recovery.',
+          createdAt: '2026-03-26T17:59:00.000Z',
+          metadata: {
+            source: 'orchestrator-startup-recovery',
+            replayPhase: 'dispatch_replay_result',
+          },
+        },
+      }),
+    });
+    assert.equal(recoveryActivityResponse.status, 201);
+
+    const inboxResponse = await fetch(`${baseUrl}/api/core/operator-inbox`);
+    assert.equal(inboxResponse.status, 200);
+    const inboxPayload = await inboxResponse.json();
+
+    assert.equal(inboxPayload.tasks.length, 1);
+    assert.equal(inboxPayload.tasks[0].taskId, 'task-operator-inbox');
+    assert.equal(inboxPayload.tasks[0].taskTitle, 'Operator inbox task');
+    assert.equal(inboxPayload.tasks[0].attention.severity, 'attention');
+    assert.deepEqual(inboxPayload.tasks[0].attention.reasons, [
+      'approval_pending',
+      'run_blocked',
+      'retry_available',
+      'workflow_review_required',
+    ]);
+    assert.equal(inboxPayload.tasks[0].latestTimelineItem.category, 'recovery');
+    assert.equal(
+      inboxPayload.tasks[0].latestTimelineItem.summary,
+      'Dispatch replay failed during startup recovery.',
+    );
+    assert.deepEqual(
+      inboxPayload.tasks[0].nextActions.map((action) => action.kind),
+      ['approve', 'reroute', 'reject', 'retry', 'acknowledge'],
+    );
+  });
+});
+
 test('core project memory routes persist durable memory, sync canonical records, and expose retrieval context', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

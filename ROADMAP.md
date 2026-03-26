@@ -169,7 +169,9 @@ contracts.
       `GET /api/core/tasks/{taskId}/records` now returns grouped task-scoped
       record history, `GET /api/core/tasks/{taskId}/timeline` now returns a
       normalized chronological narrative across task, governance, execution,
-      workflow, recovery, and operator events, while
+      workflow, recovery, and operator events, `GET /api/core/operator-inbox`
+      now exposes an actionable task list with stable next actions plus latest
+      timeline context, while
       `GET /api/core/control-plane/tasks` plus
       `GET /api/core/tasks/{taskId}/control-plane` now expose stable task-
       scoped approval actions, retry/acknowledge actions, workflow

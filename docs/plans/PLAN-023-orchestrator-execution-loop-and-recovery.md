@@ -71,6 +71,10 @@ MCP tool plane.
   chronological task narrative across those same record families, so later
   operator/recovery consumers can read one task-scoped history seam without
   manually stitching raw rows into timeline order or category buckets
+- `GET /api/core/operator-inbox` now exposes an actionable task list built on
+  top of the existing task-scoped control-plane, timeline, and recovery read
+  models, so later operator consumers can discover "what needs attention" plus
+  the latest normalized task event without separately joining multiple routes
 - `GET /api/core/control-plane/tasks` plus
   `GET /api/core/tasks/{taskId}/control-plane` now expose stable task-scoped
   approval actions, retry/acknowledge actions, workflow recommendation

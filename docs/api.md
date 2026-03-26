@@ -1197,6 +1197,47 @@ Semantics:
   needs operator attention because of pending approval, blocked runs, retryable
   recovery, or workflow review requirements
 
+### Inspect Core Operator Inbox
+
+```text
+GET /api/core/operator-inbox
+```
+
+Returns actionable task summaries curated for operator-facing inbox consumers:
+
+```json
+{
+  "tasks": [
+    {
+      "taskId": "task-operator-inbox",
+      "taskTitle": "Operator inbox task",
+      "taskStatus": "pending_approval",
+      "attention": {
+        "severity": "attention",
+        "reasons": ["approval_pending", "retry_available"],
+        "needsOperatorAttention": true
+      },
+      "latestTimelineItem": {
+        "kind": "activity",
+        "category": "recovery",
+        "recordId": "activity-operator-inbox-recovery"
+      }
+    }
+  ]
+}
+```
+
+Semantics:
+
+- this route is a control-plane list view built on top of the existing
+  task-scoped `control-plane`, `timeline`, and `recovery` read models
+- each entry keeps the stable task-scoped action shortlist in `nextActions`
+  while also surfacing the latest normalized timeline item, so consumers do not
+  have to join those surfaces client-side to answer "what needs attention and
+  what just happened?"
+- passive or fully muted tasks are excluded; this inbox is intentionally biased
+  toward actionable operator attention rather than exhaustive task listings
+
 ### Create or Upsert Core Task
 
 ```text
