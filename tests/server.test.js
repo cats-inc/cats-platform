@@ -1245,12 +1245,13 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(listPayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(listPayload.summary.workflowShapeCounts.converge, 1);
+    assert.equal(listPayload.summary.latestReplayPhaseCounts.replay_failed, 1);
     assert.equal(listPayload.summary.latestReplayResumeReasonCounts.target_recovered, 1);
     assert.equal(listPayload.summary.withChildrenCount, 0);
     assert.equal(listPayload.summary.withActiveChildrenCount, 0);
 
     const filteredListResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-followup&latestReplayResumeReason=target_recovered&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-followup&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(filteredListResponse.status, 200);
     const filteredListPayload = await filteredListResponse.json();
@@ -1265,6 +1266,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(filteredListPayload.summary.workflowContinuationReplayStateCounts.failed, 1);
     assert.equal(filteredListPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
     assert.equal(filteredListPayload.summary.workflowShapeCounts.converge, 1);
+    assert.equal(filteredListPayload.summary.latestReplayPhaseCounts.replay_failed, 1);
     assert.equal(filteredListPayload.summary.latestReplayResumeReasonCounts.target_recovered, 1);
 
     const detailResponse = await fetch(

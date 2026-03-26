@@ -18,6 +18,7 @@ import {
   CORE_TASK_RECOVERY_ACTION_KINDS,
   CORE_TASK_RECOVERY_DELIVERY_ACTIONS,
   CORE_TASK_RECOVERY_DELIVERY_MODES,
+  CORE_TASK_RECOVERY_REPLAY_PHASES,
   CORE_TASK_RECOVERY_RESUME_REASONS,
   CORE_TASK_DISPATCH_REPLAY_STATES,
   CORE_TASK_PENDING_DISPATCH_REPLAY_STATES,
@@ -241,6 +242,11 @@ export function readTaskRecoveryListOptions(
     ),
     workflowUnresolvedTargets: readQueryValues(searchParams, 'workflowUnresolvedTarget'),
     hasUnresolvedWorkflowTargets: readBooleanQuery(searchParams, 'hasUnresolvedWorkflowTargets'),
+    latestReplayPhases: readEnumQueryValues(
+      searchParams,
+      'latestReplayPhase',
+      CORE_TASK_RECOVERY_REPLAY_PHASES,
+    ),
     latestReplayResumeReasons: readEnumQueryValues(
       searchParams,
       'latestReplayResumeReason',

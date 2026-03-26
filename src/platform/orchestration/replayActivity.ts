@@ -15,6 +15,14 @@ export type OrchestratorReplayActivityPhase =
   | 'replay_blocked'
   | 'replay_failed'
   | 'startup_recovered';
+export const ORCHESTRATOR_REPLAY_ACTIVITY_PHASES = [
+  'pending_dispatch_stored',
+  'replay_started',
+  'replay_dispatched',
+  'replay_blocked',
+  'replay_failed',
+  'startup_recovered',
+] as const satisfies readonly OrchestratorReplayActivityPhase[];
 
 interface ReplayActivityStore {
   writeCore(state: CatsCoreState): Promise<CatsCoreState>;

@@ -1761,6 +1761,7 @@ Semantics:
   - `workflowContinuationSource`
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
+  - `latestReplayPhase`
   - `latestReplayResumeReason`
   - `rootTaskId`
   - `parentTaskId`
@@ -1787,6 +1788,7 @@ Semantics:
   - `deliveryActionCounts`
   - `workflowStageCounts`
   - `workflowShapeCounts`
+  - `latestReplayPhaseCounts`
   - `latestReplayResumeReasonCounts`
   - `workflowReviewRequiredCount`
   - `workflowConvergeTargetCount`
@@ -1829,6 +1831,9 @@ Semantics:
 - `latestActivity.resumeReason` now exposes additive replay-resume context when
   the latest replay lifecycle note came from a normalized recovery path such as
   `target_recovered`
+- `latestReplayPhase` / `latestReplayPhaseCounts` let recovery automation facet
+  `startup_recovered`, `replay_blocked`, or `replay_failed` queues without
+  scraping raw activity metadata
 - `latestReplayResumeReason` / `latestReplayResumeReasonCounts` let recovery
   automation facet queues by the latest normalized replay-resume reason without
   scraping raw activity metadata

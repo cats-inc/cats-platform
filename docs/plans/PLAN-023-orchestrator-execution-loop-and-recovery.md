@@ -111,6 +111,10 @@ MCP tool plane.
   recommendation-based `no_valid_targets` replays when their targets are
   already active again after restart, server startup recovery now also runs
   its polling/chat-workflow/orchestrator passes in deterministic sequence,
+  core recovery routes now also support `latestReplayPhase` plus
+  `latestReplayPhaseCounts` so recovery automation can facet
+  `startup_recovered`, `replay_blocked`, or `replay_failed` queues without
+  scraping raw activity metadata,
   core recovery routes now also project/filter
   that normalized latest replay resume reason, recommendation-driven
   `parallel` replay now also waits for every candidate target in the stored

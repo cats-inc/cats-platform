@@ -179,6 +179,10 @@ contracts.
       startup recovery now also runs its polling, chat-workflow, and
       orchestrator passes in deterministic sequence so those reconciliation
       writes do not race one another during boot, while core
+      recovery routes now also support `latestReplayPhase` plus
+      `latestReplayPhaseCounts` so automation can facet
+      `startup_recovered`, `replay_blocked`, or `replay_failed` queues
+      without reopening raw activity metadata, while core
       recovery routes can now also project/filter/count that normalized latest
       replay resume reason for operator automation, recommendation-driven
       `parallel` replay now also waits for every candidate target to recover

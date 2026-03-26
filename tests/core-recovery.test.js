@@ -373,6 +373,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
     workflowStageIds: ['continuation_handoff'],
     workflowShapes: ['sequential'],
     workflowContinuationBlockedReasons: ['max_dispatches'],
+    latestReplayPhases: ['replay_dispatched'],
     latestReplayResumeReasons: ['target_recovered'],
     rootTaskIds: ['task-recovery-root'],
     parentTaskIds: ['task-recovery-root'],
@@ -395,6 +396,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
   assert.equal(result.summary.workflowShapeCounts.sequential, 1);
   assert.equal(result.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
+  assert.equal(result.summary.latestReplayPhaseCounts.replay_dispatched, 1);
   assert.equal(result.summary.latestReplayResumeReasonCounts.target_recovered, 1);
   assert.equal(result.recoveries[0]?.family.rootTaskId, 'task-recovery-root');
   assert.equal(result.recoveries[0]?.family.parent?.taskId, 'task-recovery-root');

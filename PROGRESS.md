@@ -347,6 +347,10 @@ Known follow-ups:
   `latestReplayResumeReason` filtering plus
   `latestReplayResumeReasonCounts`, so recovery automation can facet the queue
   by why the latest replay resumed without scraping raw activity metadata
+- those same core recovery routes now also support `latestReplayPhase` plus
+  `latestReplayPhaseCounts`, so automation can directly target
+  `startup_recovered`, `replay_blocked`, or `replay_failed` queues without
+  reopening raw activity metadata
 - that same workflow-continuation replay contract now also carries a normalized
   `blockedReason` into recovery and control-plane read models, so operator
   automation can tell which guard persisted the replay snapshot without

@@ -46,6 +46,10 @@ import {
   type WorkflowContinuationReplayState,
   readWorkflowContinuationReplay,
 } from '../platform/orchestration/workflowContinuationReplay.js';
+import {
+  ORCHESTRATOR_REPLAY_ACTIVITY_PHASES,
+  type OrchestratorReplayActivityPhase,
+} from '../platform/orchestration/replayActivity.js';
 
 const BODY_PREVIEW_LIMIT = 160;
 
@@ -99,6 +103,7 @@ export const CORE_TASK_RECOVERY_DELIVERY_ACTIONS = [
 
 export type CoreTaskRecoveryWorkflowShape = 'sequential' | 'parallel' | 'converge';
 export type CoreTaskRecoveryResumeReason = 'target_recovered';
+export type CoreTaskRecoveryReplayPhase = OrchestratorReplayActivityPhase;
 
 export const CORE_TASK_RECOVERY_WORKFLOW_SHAPES = [
   'sequential',
@@ -109,6 +114,8 @@ export const CORE_TASK_RECOVERY_WORKFLOW_SHAPES = [
 export const CORE_TASK_RECOVERY_RESUME_REASONS = [
   'target_recovered',
 ] as const satisfies readonly CoreTaskRecoveryResumeReason[];
+export const CORE_TASK_RECOVERY_REPLAY_PHASES =
+  ORCHESTRATOR_REPLAY_ACTIVITY_PHASES;
 
 export const CORE_TASK_PENDING_DISPATCH_REPLAY_STATES = [
   'pending',
@@ -248,6 +255,7 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   workflowContinuationSources?: WorkflowContinuationReplaySource[];
   workflowUnresolvedTargets?: string[];
   hasUnresolvedWorkflowTargets?: boolean | null;
+  latestReplayPhases?: CoreTaskRecoveryReplayPhase[];
   latestReplayResumeReasons?: CoreTaskRecoveryResumeReason[];
   rootTaskIds?: string[];
   parentTaskIds?: string[];
@@ -275,6 +283,7 @@ export interface CoreTaskRecoveryListSummary {
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
   workflowShapeCounts: Record<CoreTaskRecoveryWorkflowShape, number>;
+  latestReplayPhaseCounts: Record<CoreTaskRecoveryReplayPhase, number>;
   latestReplayResumeReasonCounts: Record<CoreTaskRecoveryResumeReason, number>;
   workflowReviewRequiredCount: number;
   workflowConvergeTargetCount: number;
@@ -302,6 +311,13 @@ function readNumber(value: unknown): number | null {
 
 function readResumeReason(value: unknown): CoreTaskRecoveryResumeReason | null {
   return value === 'target_recovered' ? value : null;
+}
+
+function readReplayPhase(value: unknown): CoreTaskRecoveryReplayPhase | null {
+  return typeof value === 'string'
+    && CORE_TASK_RECOVERY_REPLAY_PHASES.includes(value as CoreTaskRecoveryReplayPhase)
+    ? value as CoreTaskRecoveryReplayPhase
+    : null;
 }
 
 function summarizeBody(body: string): {
@@ -818,6 +834,14 @@ function matchesRecoveryListOptions(
   }
 
   if (
+    options.latestReplayPhases?.length
+    && (!readReplayPhase(recovery.latestActivity?.phase)
+      || !options.latestReplayPhases.includes(readReplayPhase(recovery.latestActivity?.phase)!))
+  ) {
+    return false;
+  }
+
+  if (
     options.latestReplayResumeReasons?.length
     && (!recovery.latestActivity?.resumeReason
       || !options.latestReplayResumeReasons.includes(recovery.latestActivity.resumeReason))
@@ -1028,6 +1052,24 @@ function buildRecoveryResumeReasonCounts(
   return counts;
 }
 
+function buildRecoveryReplayPhaseCounts(
+  recoveries: CoreTaskRecoveryView[],
+): Record<CoreTaskRecoveryReplayPhase, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_RECOVERY_REPLAY_PHASES.map((phase) => [phase, 0]),
+  ) as Record<CoreTaskRecoveryReplayPhase, number>;
+
+  for (const recovery of recoveries) {
+    const phase = readReplayPhase(recovery.latestActivity?.phase);
+    if (!phase) {
+      continue;
+    }
+    counts[phase] += 1;
+  }
+
+  return counts;
+}
+
 function buildRecoveryContinuationSourceCounts(
   recoveries: CoreTaskRecoveryView[],
 ): Record<WorkflowContinuationReplaySource, number> {
@@ -1078,6 +1120,7 @@ export function summarizeCoreTaskRecoveryViews(input: {
     deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),
     workflowStageCounts: buildRecoveryWorkflowStageCounts(input.recoveries),
     workflowShapeCounts: buildRecoveryWorkflowShapeCounts(input.recoveries),
+    latestReplayPhaseCounts: buildRecoveryReplayPhaseCounts(input.recoveries),
     latestReplayResumeReasonCounts: buildRecoveryResumeReasonCounts(input.recoveries),
     workflowReviewRequiredCount: input.recoveries.filter((recovery) =>
       recovery.context?.workflowReviewRequired === true).length,
