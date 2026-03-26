@@ -14,6 +14,10 @@ import {
   writePendingOrchestratorDispatchMetadata,
 } from '../../platform/orchestration/pendingDispatch.js';
 import {
+  readWorkflowContinuationReplay,
+  writeWorkflowContinuationReplayMetadata,
+} from '../../platform/orchestration/workflowContinuationReplay.js';
+import {
   appendOrchestratorReplayActivity,
 } from '../../platform/orchestration/replayActivity.js';
 import type { ResolvedServerDependencies } from './contracts.js';
@@ -62,9 +66,13 @@ export async function reconcileOrchestratorRecoveryOnStartup(
     const replay = readOrchestratorDispatchReplay(task.metadata, {
       includeInProgress: true,
     });
+    const continuationReplay = readWorkflowContinuationReplay(task.metadata, {
+      includeInProgress: true,
+    });
     const recoverPendingDispatch = pendingDispatch?.replayState === 'in_progress';
     const recoverReplay = replay?.replayState === 'in_progress';
-    if (!recoverPendingDispatch && !recoverReplay) {
+    const recoverContinuationReplay = continuationReplay?.replayState === 'in_progress';
+    if (!recoverPendingDispatch && !recoverReplay && !recoverContinuationReplay) {
       continue;
     }
 
@@ -94,13 +102,27 @@ export async function reconcileOrchestratorRecoveryOnStartup(
         },
       );
     }
+    if (recoverContinuationReplay && continuationReplay) {
+      metadata = writeWorkflowContinuationReplayMetadata(
+        metadata,
+        continuationReplay,
+        {
+          replayState: 'failed',
+          replayTrigger: continuationReplay.replayTrigger,
+          replayAttemptAt: continuationReplay.replayAttemptAt ?? nowIso,
+          replayError: continuationReplay.replayError ?? INTERRUPTED_REPLAY_ERROR,
+        },
+      );
+    }
 
     nextCore = overwriteTaskMetadata(nextCore, task, metadata, now);
     nextCore = appendOrchestratorReplayActivity(
       nextCore,
       {
         task,
-        source: 'orchestrator-startup-recovery',
+        source: recoverContinuationReplay
+          ? 'workflow-continuation-replay'
+          : 'orchestrator-startup-recovery',
         phase: 'startup_recovered',
         error: INTERRUPTED_REPLAY_ERROR,
         pendingDispatchRecovered: recoverPendingDispatch,

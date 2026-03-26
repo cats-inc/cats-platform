@@ -32,6 +32,7 @@ import { createChatMemorySurface } from '../../products/chat/state/memoryAdapter
 import {
   chatOrchestratorChannelRouter,
   chatOrchestratorPlannerSurface,
+  resumeStoredWorkflowContinuationDispatch,
 } from '../../products/chat/state/orchestratorAdapter.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
 import { createChatTaskExecutionLocator } from '../../products/chat/state/taskExecutionLocator.js';
@@ -147,6 +148,19 @@ export function resolveServerDependencies(
       companionStore,
       memoryService,
     }));
+  const resumeWorkflowContinuationDispatch =
+    dependencies.shared.resumeWorkflowContinuationDispatch
+    ?? (async (
+      request,
+      _options,
+    ) => resumeStoredWorkflowContinuationDispatch({
+      request,
+      chatStore: dependencies.chat.chatStore,
+      runtimeClient: dependencies.shared.runtimeClient,
+      now: dependencies.shared.now?.() ?? new Date(),
+      companionStore,
+      memoryService,
+    }));
 
   return {
     shared: {
@@ -154,6 +168,7 @@ export function resolveServerDependencies(
       coreStore: sharedCoreStore,
       startup,
       resumePendingOrchestratorDispatch,
+      resumeWorkflowContinuationDispatch,
     },
     chat: {
       ...dependencies.chat,

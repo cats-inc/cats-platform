@@ -2,6 +2,9 @@ import type {
   OrchestratorChannelRouter,
   OrchestratorPlannerSurface,
 } from '../../../platform/orchestration/contracts.js';
+import type { RuntimeClient } from '../../../platform/runtime/client.js';
+import type { CatsMemoryService } from '../../../platform/memory/index.js';
+import type { WorkflowContinuationReplaySnapshot } from '../../../platform/orchestration/workflowContinuationReplay.js';
 import { buildApprovalQueue } from '../../../core/model/index.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
 import type { ChatState } from '../api/contracts.js';
@@ -9,7 +12,10 @@ import type { ChatStore } from './store.js';
 import { buildChannelView, resolveOrchestratorDisplayName } from './model/index.js';
 import { resolveMentionRoute } from './mentionRouter.js';
 import { resolveRoomRoutingState } from './room-routing/index.js';
-import { routeChannelMessage } from './runtimeActions.js';
+import {
+  resumeWorkflowContinuationReplay,
+  routeChannelMessage,
+} from './runtimeActions.js';
 import {
   buildChatOperatorView,
   buildRunInspectorView,
@@ -55,3 +61,14 @@ export const chatOrchestratorPlannerSurface: OrchestratorPlannerSurface<ChatStat
   buildRunInspectorView,
   resolveConversationId: resolveChatConversationId,
 };
+
+export async function resumeStoredWorkflowContinuationDispatch(input: {
+  request: WorkflowContinuationReplaySnapshot;
+  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore'>;
+  runtimeClient: RuntimeClient;
+  now: Date;
+  companionStore?: CompanionBoxStore;
+  memoryService?: CatsMemoryService;
+}) {
+  return resumeWorkflowContinuationReplay(input);
+}

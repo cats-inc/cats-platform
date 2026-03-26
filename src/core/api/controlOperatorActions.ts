@@ -12,6 +12,10 @@ import {
   writeOrchestratorDispatchReplayMetadata,
 } from '../../platform/orchestration/dispatchReplay.js';
 import {
+  readWorkflowContinuationReplay,
+  writeWorkflowContinuationReplayMetadata,
+} from '../../platform/orchestration/workflowContinuationReplay.js';
+import {
   persistOrchestratorReplayActivity,
 } from '../../platform/orchestration/replayActivity.js';
 import {
@@ -82,6 +86,75 @@ function findLatestRunForTask(
     ?? null;
 }
 
+function summarizeWorkflowContinuationReplayResult(input: {
+  sourceMessageId: string;
+  blockedReason: string | null;
+  results: Array<unknown>;
+  executionState: string;
+}): CoreOrchestratorAutoResumeSummary {
+  return {
+    trigger: 'retry',
+    status: 'dispatched',
+    blockedReason: input.blockedReason,
+    sourceMessageId: input.sourceMessageId,
+    resultCount: input.results.length,
+    executionState: input.executionState,
+  };
+}
+
+function writeRetryReplayMetadata(
+  metadata: CoreRecordMetadata | null | undefined,
+  input: {
+    dispatchReplay?: NonNullable<ReturnType<typeof readOrchestratorDispatchReplay>> | null;
+    continuationReplay?: NonNullable<ReturnType<typeof readWorkflowContinuationReplay>> | null;
+  },
+  options: {
+    replayState: 'ready' | 'in_progress' | 'failed';
+    replayAttemptAt: string;
+    replayError: string | null;
+    sourceMessageId?: string | null;
+  },
+): CoreRecordMetadata {
+  let nextMetadata: CoreRecordMetadata = metadata
+    ? structuredClone(metadata)
+    : {};
+
+  if (input.dispatchReplay) {
+    nextMetadata = writeOrchestratorDispatchReplayMetadata(
+      nextMetadata,
+      {
+        channelId: input.dispatchReplay.channelId,
+        body: input.dispatchReplay.body,
+        senderName: input.dispatchReplay.senderName,
+        transport: input.dispatchReplay.transport,
+        recordedAt: input.dispatchReplay.recordedAt,
+      },
+      {
+        replayState: options.replayState,
+        replayTrigger: 'retry',
+        replayAttemptAt: options.replayAttemptAt,
+        replayError: options.replayError,
+        sourceMessageId: options.sourceMessageId ?? input.dispatchReplay.sourceMessageId,
+      },
+    );
+  }
+
+  nextMetadata = writeWorkflowContinuationReplayMetadata(
+    nextMetadata,
+    input.continuationReplay ?? null,
+    input.continuationReplay
+      ? {
+          replayState: options.replayState,
+          replayTrigger: 'retry',
+          replayAttemptAt: options.replayAttemptAt,
+          replayError: options.replayError,
+        }
+      : undefined,
+  );
+
+  return nextMetadata;
+}
+
 async function maybeAutoResumeRetryDispatch(
   context: CoreApiRouteContext,
   taskId: string,
@@ -94,8 +167,15 @@ async function maybeAutoResumeRetryDispatch(
 }> {
   const initialCore = await context.dependencies.coreStore.readCore();
   const task = initialCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
-  const replay = readOrchestratorDispatchReplay(task?.metadata);
-  if (!task || !replay || !context.dependencies.resumePendingOrchestratorDispatch) {
+  const dispatchReplay = readOrchestratorDispatchReplay(task?.metadata);
+  const continuationReplay = readWorkflowContinuationReplay(task?.metadata);
+  const canResumeContinuation = Boolean(
+    continuationReplay && context.dependencies.resumeWorkflowContinuationDispatch,
+  );
+  const canResumeDispatch = Boolean(
+    dispatchReplay && context.dependencies.resumePendingOrchestratorDispatch,
+  );
+  if (!task || (!canResumeContinuation && !canResumeDispatch)) {
     return {
       core: initialCore,
       task,
@@ -103,6 +183,9 @@ async function maybeAutoResumeRetryDispatch(
   }
 
   const replayAttemptAt = now.toISOString();
+  const replaySource = canResumeContinuation
+    ? 'workflow-continuation-replay'
+    : 'orchestrator-replay';
   let persistedBeforeReplay: {
     core: CatsCoreState;
     task: CatsCoreState['tasks'][number] | null;
@@ -116,21 +199,17 @@ async function maybeAutoResumeRetryDispatch(
       context,
       initialCore,
       taskId,
-      writeOrchestratorDispatchReplayMetadata(
+      writeRetryReplayMetadata(
         task.metadata,
         {
-          channelId: replay.channelId,
-          body: replay.body,
-          senderName: replay.senderName,
-          transport: replay.transport,
-          recordedAt: replay.recordedAt,
+          dispatchReplay,
+          continuationReplay,
         },
         {
           replayState: 'in_progress',
-          replayTrigger: 'retry',
           replayAttemptAt,
           replayError: null,
-          sourceMessageId: replay.sourceMessageId,
+          sourceMessageId: continuationReplay?.sourceMessageId ?? dispatchReplay?.sourceMessageId,
         },
       ),
       now,
@@ -143,6 +222,7 @@ async function maybeAutoResumeRetryDispatch(
           {
             task: persistedBeforeReplay.task,
             actorId,
+            source: replaySource,
             phase: 'replay_started',
             trigger: 'retry',
           },
@@ -158,38 +238,45 @@ async function maybeAutoResumeRetryDispatch(
       }
     }
 
-    const dispatch = await context.dependencies.resumePendingOrchestratorDispatch(
-      {
-        channelId: replay.channelId,
-        body: replay.body,
-        senderName: replay.senderName,
-        transport: replay.transport,
-        blockedAt: replay.recordedAt,
-        blockedReason: 'approval_pending',
-      },
-      { trigger: 'retry' },
-    );
+    const autoResume = canResumeContinuation
+      ? summarizeWorkflowContinuationReplayResult(
+          await context.dependencies.resumeWorkflowContinuationDispatch!(
+            continuationReplay!,
+            { trigger: 'retry' },
+          ),
+        )
+      : summarizeOrchestratorReplayDispatch(
+          'retry',
+          await context.dependencies.resumePendingOrchestratorDispatch!(
+            {
+              channelId: dispatchReplay!.channelId,
+              body: dispatchReplay!.body,
+              senderName: dispatchReplay!.senderName,
+              transport: dispatchReplay!.transport,
+              blockedAt: dispatchReplay!.recordedAt,
+              blockedReason: 'approval_pending',
+            },
+            { trigger: 'retry' },
+          ),
+        );
     const latestCore = await context.dependencies.coreStore.readCore();
     const latestTask = latestCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
-    const autoResume = summarizeOrchestratorReplayDispatch('retry', dispatch);
 
-    const replayMetadata = writeOrchestratorDispatchReplayMetadata(
+    const replayMetadata = writeRetryReplayMetadata(
       latestTask?.metadata,
       {
-        channelId: replay.channelId,
-        body: replay.body,
-        senderName: replay.senderName,
-        transport: replay.transport,
-        recordedAt: latestTask?.updatedAt ?? replay.recordedAt,
+        dispatchReplay: readOrchestratorDispatchReplay(latestTask?.metadata, {
+          includeInProgress: true,
+        }) ?? dispatchReplay,
+        continuationReplay: readWorkflowContinuationReplay(latestTask?.metadata, {
+          includeInProgress: true,
+        }) ?? (canResumeContinuation ? continuationReplay : null),
       },
       {
-        replayState: dispatch.dispatch.status === 'dispatched' ? 'ready' : 'failed',
-        replayTrigger: 'retry',
+        replayState: 'ready',
         replayAttemptAt,
-        replayError: dispatch.dispatch.status === 'dispatched'
-          ? null
-          : dispatch.dispatch.blockedReason,
-        sourceMessageId: dispatch.dispatch.sourceMessageId,
+        replayError: null,
+        sourceMessageId: autoResume.sourceMessageId,
       },
     );
 
@@ -209,12 +296,13 @@ async function maybeAutoResumeRetryDispatch(
             {
               task: persisted.task,
               actorId,
-              phase: dispatch.dispatch.status === 'dispatched'
+              source: replaySource,
+              phase: autoResume.status === 'dispatched'
                 ? 'replay_dispatched'
                 : 'replay_blocked',
               trigger: 'retry',
-              blockedReason: dispatch.dispatch.blockedReason,
-              resultCount: dispatch.dispatch.results.length,
+              blockedReason: autoResume.blockedReason,
+              resultCount: autoResume.resultCount,
             },
             now,
           );
@@ -252,21 +340,21 @@ async function maybeAutoResumeRetryDispatch(
         context,
         latestCore,
         taskId,
-        writeOrchestratorDispatchReplayMetadata(
+        writeRetryReplayMetadata(
           latestTask?.metadata,
           {
-            channelId: replay.channelId,
-            body: replay.body,
-            senderName: replay.senderName,
-            transport: replay.transport,
-            recordedAt: latestTask?.updatedAt ?? replay.recordedAt,
+            dispatchReplay: readOrchestratorDispatchReplay(latestTask?.metadata, {
+              includeInProgress: true,
+            }) ?? dispatchReplay,
+            continuationReplay: readWorkflowContinuationReplay(latestTask?.metadata, {
+              includeInProgress: true,
+            }) ?? continuationReplay,
           },
           {
             replayState: 'failed',
-            replayTrigger: 'retry',
             replayAttemptAt,
             replayError: autoResume.error ?? null,
-            sourceMessageId: replay.sourceMessageId,
+            sourceMessageId: continuationReplay?.sourceMessageId ?? dispatchReplay?.sourceMessageId,
           },
         ),
         now,
@@ -279,6 +367,7 @@ async function maybeAutoResumeRetryDispatch(
             {
               task: failed.task,
               actorId,
+              source: replaySource,
               phase: 'replay_failed',
               trigger: 'retry',
               error: autoResume.error ?? null,

@@ -25,12 +25,21 @@ import {
   createEmptyMemoryCheckpoint,
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
 } from '../../../../core/actors.js';
+import {
+  buildWorkflowContinuationReplayRequest,
+  readWorkflowContinuationReplay,
+  writeWorkflowContinuationReplayMetadata,
+} from '../../../../platform/orchestration/workflowContinuationReplay.js';
 import type {
   ChatChannelState,
   ChatCat,
   ChatState,
 } from '../../api/contracts.js';
-import type { RoomWorkflowTurn } from '../../../../shared/roomRouting.js';
+import type {
+  RoomRoutingParticipantRef,
+  RoomWorkflowShape,
+  RoomWorkflowTurn,
+} from '../../../../shared/roomRouting.js';
 
 function uniqueStrings(values: string[]): string[] {
   return values.filter((value, index) => value.length > 0 && values.indexOf(value) === index);
@@ -63,6 +72,181 @@ function shouldPreserveActiveChannelTaskStatus(status: CoreTaskStatus | null | u
 function latestWorkflowTurn(channel: ChatChannelState): RoomWorkflowTurn | null {
   const workflow = channel.roomRouting?.workflow;
   return workflow?.activeTurn ?? workflow?.turnHistory[0] ?? null;
+}
+
+function readMetadataRecord(value: unknown): CoreRecordMetadata | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as CoreRecordMetadata;
+}
+
+function readMetadataString(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): string | null {
+  if (!metadata) {
+    return null;
+  }
+
+  const value = metadata[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function readMetadataBoolean(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): boolean {
+  if (!metadata) {
+    return false;
+  }
+
+  return metadata[key] === true;
+}
+
+function readMetadataStringArray(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): string[] {
+  if (!metadata) {
+    return [];
+  }
+
+  const value = metadata[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+}
+
+function readParticipantRef(value: unknown): RoomRoutingParticipantRef | null {
+  const record = readMetadataRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const participantKind = record.participantKind === 'orchestrator' || record.participantKind === 'cat'
+    ? record.participantKind
+    : null;
+  const participantId = readMetadataString(record, 'participantId');
+  const participantName = readMetadataString(record, 'participantName');
+  if (!participantKind || !participantId || !participantName) {
+    return null;
+  }
+
+  return {
+    participantKind,
+    participantId,
+    participantName,
+  };
+}
+
+function readParticipantRefs(values: unknown[]): RoomRoutingParticipantRef[] {
+  return values
+    .map((value) => readParticipantRef(value))
+    .filter((value): value is RoomRoutingParticipantRef => value !== null);
+}
+
+function findLatestContinuationReplayEvent(turn: RoomWorkflowTurn | null) {
+  if (!turn || turn.guard !== 'max_continuations') {
+    return null;
+  }
+
+  return [...turn.events].reverse().find((event) => {
+    const metadata = readMetadataRecord(event.metadata);
+    return (event.kind === 'checkpoint' || event.kind === 'guard_blocked')
+      && readMetadataString(metadata, 'checkpointKind') === 'loop_guard'
+      && readMetadataString(metadata, 'reason') === 'max_continuations';
+  }) ?? null;
+}
+
+function readWorkflowContinuationReplayRequest(
+  channel: ChatChannelState,
+  turn: RoomWorkflowTurn | null,
+) {
+  const event = findLatestContinuationReplayEvent(turn);
+  if (!event) {
+    return null;
+  }
+
+  const metadata = readMetadataRecord(event.metadata);
+  const checkpointId = event.checkpointId ?? null;
+  const sourceMessageId = readMetadataString(metadata, 'continuationSourceMessageId');
+  const sourceParticipant = event.actor;
+  const targets = readParticipantRefs(event.targets);
+  const workflowShape = readMetadataString(metadata, 'workflowShape');
+  if (
+    !metadata
+    || !checkpointId
+    || !sourceMessageId
+    || !sourceParticipant
+    || targets.length === 0
+    || (
+      workflowShape !== 'sequential'
+      && workflowShape !== 'parallel'
+      && workflowShape !== 'converge'
+    )
+  ) {
+    return null;
+  }
+
+  return buildWorkflowContinuationReplayRequest({
+    channelId: channel.id,
+    checkpointId,
+    sourceMessageId,
+    sourceParticipant,
+    targets,
+    mentionNames: readMetadataStringArray(metadata, 'mentionNames'),
+    trigger: 'continuation_mention',
+    branchStrategy: readMetadataString(metadata, 'branchStrategy') as
+      | 'fork_if_possible'
+      | 'transplant_context'
+      | 'fresh_no_parent'
+      | null,
+    workflowStageId: readMetadataString(metadata, 'workflowStageId'),
+    workflowShape: workflowShape as RoomWorkflowShape,
+    reviewRequired: readMetadataBoolean(metadata, 'reviewRequired'),
+    continuationSource: (() => {
+      const source = readMetadataString(metadata, 'continuationSource');
+      return source === 'explicit_mentions' || source === 'workflow_recommendation'
+        ? source
+        : null;
+    })(),
+    workflowRecommendation: readMetadataRecord(metadata.workflowRecommendation),
+    unresolvedTargets: readMetadataStringArray(metadata, 'unresolvedTargets'),
+    recordedAt: event.createdAt,
+  });
+}
+
+function mergeWorkflowContinuationReplayMetadata(
+  metadata: CoreRecordMetadata,
+  existingTask: CoreTaskRecord | null,
+  channel: ChatChannelState,
+  turn: RoomWorkflowTurn | null,
+): CoreRecordMetadata {
+  const derivedReplay = readWorkflowContinuationReplayRequest(channel, turn);
+  const existingReplay = readWorkflowContinuationReplay(existingTask?.metadata, {
+    includeInProgress: true,
+  });
+  if (!derivedReplay) {
+    return writeWorkflowContinuationReplayMetadata(metadata, null);
+  }
+
+  const preserveExistingState = existingReplay?.checkpointId === derivedReplay.checkpointId
+    && existingReplay.sourceMessageId === derivedReplay.sourceMessageId;
+
+  return writeWorkflowContinuationReplayMetadata(
+    metadata,
+    derivedReplay,
+    preserveExistingState
+      ? {
+          replayState: existingReplay.replayState,
+          replayTrigger: existingReplay.replayTrigger,
+          replayAttemptAt: existingReplay.replayAttemptAt,
+          replayError: existingReplay.replayError,
+        }
+      : undefined,
+  );
 }
 
 function buildChannelTaskMetadata(
@@ -135,7 +319,8 @@ function buildChannelTaskMetadata(
     branchStates: latestTurn?.targetStatuses,
   });
 
-  return {
+  const nextMetadata = mergeWorkflowContinuationReplayMetadata(
+    {
     ...structuredClone(existingTask?.metadata ?? {}),
     source: 'chat-channel',
     channelId: channel.id,
@@ -166,7 +351,13 @@ function buildChannelTaskMetadata(
       runtimeDeliveryManifest,
       operatorMetadata: existingTask?.metadata ?? {},
     }),
-  };
+    },
+    existingTask,
+    channel,
+    latestTurn,
+  );
+
+  return nextMetadata;
 }
 
 export function createOwnerActor(ownerProfile: OwnerProfileRecord): CoreActorRecord {

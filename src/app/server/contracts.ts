@@ -8,6 +8,10 @@ import type {
 } from '../../platform/orchestration/contracts.js';
 import type { PendingOrchestratorDispatchRequest } from '../../platform/orchestration/pendingDispatch.js';
 import type { OrchestratorDispatchReplayTrigger } from '../../platform/orchestration/dispatchReplay.js';
+import type {
+  WorkflowContinuationReplayResult,
+  WorkflowContinuationReplaySnapshot,
+} from '../../platform/orchestration/workflowContinuationReplay.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
@@ -31,6 +35,13 @@ export type ResumePendingOrchestratorDispatch = (
   },
 ) => Promise<OrchestratorDispatchResponse>;
 
+export type ResumeWorkflowContinuationDispatch = (
+  request: WorkflowContinuationReplaySnapshot,
+  options: {
+    trigger: OrchestratorDispatchReplayTrigger;
+  },
+) => Promise<WorkflowContinuationReplayResult>;
+
 export interface SharedServerDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
@@ -38,6 +49,7 @@ export interface SharedServerDependencies {
   startup?: AppStartupState;
   now?: () => Date;
   resumePendingOrchestratorDispatch?: ResumePendingOrchestratorDispatch;
+  resumeWorkflowContinuationDispatch?: ResumeWorkflowContinuationDispatch;
 }
 
 export interface ChatServerDependencies {
@@ -68,6 +80,7 @@ export interface ResolvedSharedServerDependencies extends SharedServerDependenci
   coreStore: CoreStore;
   startup: AppStartupState;
   resumePendingOrchestratorDispatch: ResumePendingOrchestratorDispatch;
+  resumeWorkflowContinuationDispatch: ResumeWorkflowContinuationDispatch;
 }
 
 export interface ResolvedChatServerDependencies extends ChatServerDependencies {

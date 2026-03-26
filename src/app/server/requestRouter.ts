@@ -229,6 +229,7 @@ export async function routeRequest(
       runtimeClient: dependencies.shared.runtimeClient,
       now: dependencies.shared.now,
       resumePendingOrchestratorDispatch: dependencies.shared.resumePendingOrchestratorDispatch,
+      resumeWorkflowContinuationDispatch: dependencies.shared.resumeWorkflowContinuationDispatch,
     },
   };
   const chatContext = {

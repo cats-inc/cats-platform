@@ -24,7 +24,10 @@ export interface OrchestratorReplayActivityInput {
   task: Pick<CoreTaskRecord, 'id' | 'title' | 'conversationId'>;
   actorId?: string | null;
   runId?: string | null;
-  source?: 'orchestrator-replay' | 'orchestrator-startup-recovery';
+  source?:
+    | 'orchestrator-replay'
+    | 'orchestrator-startup-recovery'
+    | 'workflow-continuation-replay';
   phase: OrchestratorReplayActivityPhase;
   trigger?: OrchestratorDispatchReplayTrigger | null;
   blockedReason?: string | null;
@@ -50,24 +53,29 @@ function describeTrigger(trigger: OrchestratorDispatchReplayTrigger | null | und
 
 function buildReplayActivityMessage(input: OrchestratorReplayActivityInput): string {
   const subject = `"${input.task.title}"`;
+  const replaySubject = input.source === 'workflow-continuation-replay'
+    ? 'stored workflow continuation'
+    : 'stored orchestrator dispatch';
   switch (input.phase) {
     case 'pending_dispatch_stored':
       return `Stored the approval-blocked orchestrator dispatch for ${subject}.`;
     case 'replay_started':
-      return `Started replaying the stored orchestrator dispatch for ${subject} ${describeTrigger(input.trigger)}.`;
+      return `Started replaying the ${replaySubject} for ${subject} ${describeTrigger(input.trigger)}.`;
     case 'replay_dispatched':
-      return `Replayed the stored orchestrator dispatch for ${subject} ${describeTrigger(input.trigger)}.`;
+      return `Replayed the ${replaySubject} for ${subject} ${describeTrigger(input.trigger)}.`;
     case 'replay_blocked':
       return input.blockedReason
-        ? `The stored orchestrator dispatch for ${subject} remained blocked ${describeTrigger(input.trigger)}: ${input.blockedReason}.`
-        : `The stored orchestrator dispatch for ${subject} remained blocked ${describeTrigger(input.trigger)}.`;
+        ? `The ${replaySubject} for ${subject} remained blocked ${describeTrigger(input.trigger)}: ${input.blockedReason}.`
+        : `The ${replaySubject} for ${subject} remained blocked ${describeTrigger(input.trigger)}.`;
     case 'replay_failed':
       return input.error
-        ? `Replaying the stored orchestrator dispatch for ${subject} failed ${describeTrigger(input.trigger)}: ${input.error}.`
-        : `Replaying the stored orchestrator dispatch for ${subject} failed ${describeTrigger(input.trigger)}.`;
+        ? `Replaying the ${replaySubject} for ${subject} failed ${describeTrigger(input.trigger)}: ${input.error}.`
+        : `Replaying the ${replaySubject} for ${subject} failed ${describeTrigger(input.trigger)}.`;
     case 'startup_recovered':
     default:
-      return `Recovered interrupted orchestrator replay metadata for ${subject}.`;
+      return input.source === 'workflow-continuation-replay'
+        ? `Recovered interrupted workflow-continuation replay metadata for ${subject}.`
+        : `Recovered interrupted orchestrator replay metadata for ${subject}.`;
   }
 }
 

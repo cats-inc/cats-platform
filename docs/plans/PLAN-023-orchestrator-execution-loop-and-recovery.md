@@ -54,8 +54,10 @@ MCP tool plane.
   dispatch storage, approve/reroute/retry replay attempts, replay outcomes,
   and startup recovery; keep future control-plane work building on that shared
   inspectability path rather than inventing a second replay log
-- deeper workflow continuation beyond the landed approval and retry replay
-  loops
+- blocked `max_continuations` workflow continuation replay is now landed
+  through the existing operator `retry` seam and startup recovery path; keep
+  deeper group replan or converge-stage continuation using the same
+  product-owned replay metadata pattern instead of inventing a parallel loop
 - converge-stage richer planning once group/branch policies land
 - future export of the orchestrator execution contract to other product
   surfaces once Team 3 / Team 6 consume it directly

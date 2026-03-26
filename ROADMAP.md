@@ -138,10 +138,12 @@ contracts.
       write-only markers
       Progress: startup recovery now downgrades stranded `in_progress`
       approval/retry replay metadata to failed on boot so manual approve/retry
-      can reopen the loop after restarts, and additive replay lifecycle
+      can reopen the loop after restarts, additive replay lifecycle
       activities now make blocked dispatch storage plus approve/reroute/retry
-      replay start/result visible in product-owned operator read models;
-      deeper workflow continuation and group replan still remain.
+      replay start/result visible in product-owned operator read models, and
+      blocked `max_continuations` workflow continuations now persist a
+      retryable replay snapshot that `retry` can auto-resume through the same
+      operator seam; broader group replan auto-resume still remains.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent

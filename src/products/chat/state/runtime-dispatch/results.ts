@@ -380,6 +380,24 @@ export function applyDispatchExecutions(
       continue;
     }
 
+    const continuationStage = resolveContinuationStage(
+      extractedWorkflowRecommendation.recommendation,
+      continuationResolution.targets.length,
+    );
+    const branchStrategy = (
+      continuationSource === 'workflow_recommendation'
+        ? extractedWorkflowRecommendation.recommendation?.branchStrategy
+        : null
+    ) ?? (
+      continuationResolution.targets.length > 1
+        ? 'transplant_context'
+        : resolveWorkflowBranchStrategy(
+            toParticipantRef(execution.target),
+            continuationResolution.targets[0]!,
+            execution.depth + 1,
+          )
+    );
+
     if (execution.depth + 1 > maxContinuations) {
       guardReason = 'max_continuations';
       activeTurn.guard = guardReason;
@@ -394,8 +412,17 @@ export function applyDispatchExecutions(
         toParticipantRef(execution.target),
         continuationResolution.targets.map((target) => toParticipantRef(target)),
         {
+          reason: 'max_continuations',
+          continuationSourceMessageId: responseMessage.id,
+          mentionNames: structuredClone(continuationResolution.mentionNames),
+          trigger: continuationResolution.trigger,
+          branchStrategy,
+          workflowStageId: continuationStage.stageId,
+          workflowShape: continuationStage.workflowShape,
+          reviewRequired: continuationStage.reviewRequired,
           continuationSource,
           workflowRecommendation: serializedWorkflowRecommendation,
+          unresolvedTargets: structuredClone(continuationResolution.unresolved),
         },
       );
       break;
@@ -403,26 +430,9 @@ export function applyDispatchExecutions(
 
     outcome.continuationCount += 1;
     activeTurn.continuationCount = outcome.continuationCount;
-    const continuationStage = resolveContinuationStage(
-      extractedWorkflowRecommendation.recommendation,
-      continuationResolution.targets.length,
-    );
     activeTurn.stageId = continuationStage.stageId;
     activeTurn.workflowShape = continuationStage.workflowShape;
     activeTurn.reviewRequired = continuationStage.reviewRequired;
-    const branchStrategy = (
-      continuationSource === 'workflow_recommendation'
-        ? extractedWorkflowRecommendation.recommendation?.branchStrategy
-        : null
-    ) ?? (
-      continuationResolution.targets.length > 1
-        ? 'transplant_context'
-        : resolveWorkflowBranchStrategy(
-            toParticipantRef(execution.target),
-            continuationResolution.targets[0]!,
-            execution.depth + 1,
-          )
-    );
     latestCheckpoint = addWorkflowCheckpoint(
       outcome,
       workflow,
