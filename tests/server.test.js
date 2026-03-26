@@ -2540,7 +2540,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxResponse.status, 200);
     const inboxPayload = await inboxResponse.json();
     assert.equal(inboxPayload.summary.totalAvailable, 2);
-    assert.equal(inboxPayload.summary.matching, 2);
+    assert.equal(inboxPayload.summary.matching, 1);
     assert.equal(inboxPayload.summary.returned, 1);
     assert.equal(inboxPayload.summary.nextActionCounts.retry, 1);
     assert.equal(inboxPayload.summary.attentionSeverityCounts.attention, 1);
@@ -2552,10 +2552,10 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlaneResponse.status, 200);
     const controlPlanePayload = await controlPlaneResponse.json();
     assert.equal(controlPlanePayload.summary.totalAvailable, 2);
-    assert.equal(controlPlanePayload.summary.matching, 2);
+    assert.equal(controlPlanePayload.summary.matching, 1);
     assert.equal(controlPlanePayload.summary.returned, 1);
     assert.equal(controlPlanePayload.summary.reasonCounts.retry_available, 1);
-    assert.equal(controlPlanePayload.summary.taskStatusCounts.blocked, 1);
+    assert.equal(controlPlanePayload.summary.taskStatusCounts.pending_approval, 1);
     assert.equal(controlPlanePayload.tasks.length, 1);
 
     const recoveryResponse = await fetch(

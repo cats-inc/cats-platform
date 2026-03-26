@@ -195,9 +195,23 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     core,
     {
       id: 'task-inbox-other',
-      title: 'Other inbox task',
-      status: 'completed',
-      conversationId: 'conversation-channel-other',
+      title: 'Other actionable inbox task',
+      status: 'blocked',
+      conversationId: 'conversation-channel-inbox',
+      metadata: writeOrchestratorDispatchReplayMetadata(
+        {},
+        buildOrchestratorDispatchReplayRequest({
+          channelId: 'channel-inbox',
+          body: 'Retry the other blocked rollout.',
+          recordedAt: '2026-03-26T17:51:00.000Z',
+        }),
+        {
+          replayState: 'failed',
+          replayTrigger: 'retry',
+          replayAttemptAt: '2026-03-26T17:56:00.000Z',
+          replayError: 'needs operator check',
+        },
+      ),
       createdAt: '2026-03-26T17:41:00.000Z',
     },
     now,
@@ -232,10 +246,10 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     core,
     {
       id: 'run-inbox-other',
-      title: 'Completed run',
-      status: 'completed',
+      title: 'Other blocked run',
+      status: 'blocked',
       taskId: 'task-inbox-other',
-      conversationId: 'conversation-channel-other',
+      conversationId: 'conversation-channel-inbox',
       createdAt: '2026-03-26T17:46:00.000Z',
     },
     now,
@@ -268,7 +282,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.deepEqual(result.tasks.map((task) => task.taskId), [
     'task-inbox-match',
   ]);
-  assert.equal(result.summary.totalAvailable, 1);
+  assert.equal(result.summary.totalAvailable, 2);
   assert.equal(result.summary.matching, 1);
   assert.equal(result.summary.returned, 1);
   assert.equal(result.summary.conversationCount, 1);

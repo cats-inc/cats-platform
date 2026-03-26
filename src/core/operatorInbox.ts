@@ -6,9 +6,11 @@ import {
   type CoreTaskControlPlaneListOptions,
   type CoreTaskControlPlaneAttention,
   type CoreTaskControlPlaneNextAction,
+  type CoreTaskControlPlaneRuntimeDeliveryIntentView,
+  type CoreTaskControlPlaneWorkflowContinuationView,
   type CoreTaskControlPlaneWorkflowRecommendationView,
 } from './taskControlPlane.js';
-import type { CatsCoreState, CoreTaskRecord } from './types.js';
+import type { CatsCoreState, CoreTaskRecord, CoreWorkflowSummary } from './types.js';
 import { buildCoreTaskTimelineView, type CoreTaskTimelineItem } from './taskTimeline.js';
 import type { CoreTaskRecoveryView } from './recovery.js';
 import {
@@ -29,7 +31,10 @@ export interface CoreOperatorInboxItem {
   latestRunId: string | null;
   latestCheckpointId: string | null;
   latestOutcomeId: string | null;
+  workflowSummary: CoreWorkflowSummary | null;
   latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
+  workflowContinuation: CoreTaskControlPlaneWorkflowContinuationView | null;
+  runtimeDeliveryIntent: CoreTaskControlPlaneRuntimeDeliveryIntentView | null;
   recovery: CoreTaskRecoveryView;
   latestTimelineItem: CoreTaskTimelineItem | null;
 }
@@ -119,6 +124,33 @@ function matchesOperatorInboxQuery(
   if (
     query.nextActions?.length
     && !item.nextActions.some((action) => query.nextActions?.includes(action.kind))
+  ) {
+    return false;
+  }
+
+  if (
+    query.deliveryModes?.length
+    && (!item.runtimeDeliveryIntent?.mode || !query.deliveryModes.includes(item.runtimeDeliveryIntent.mode))
+  ) {
+    return false;
+  }
+
+  if (
+    query.deliveryActions?.length
+    && !item.runtimeDeliveryIntent?.requestedActions.some((action) =>
+      query.deliveryActions?.includes(action))
+  ) {
+    return false;
+  }
+
+  if (
+    query.workflowStageIds?.length
+    && !query.workflowStageIds.includes(
+      item.workflowContinuation?.stageId
+      ?? item.runtimeDeliveryIntent?.workflowStageId
+      ?? item.workflowSummary?.stageId
+      ?? '',
+    )
   ) {
     return false;
   }
@@ -216,7 +248,10 @@ export function listCoreOperatorInboxItems(
       latestRunId: controlPlane.latestRunId,
       latestCheckpointId: controlPlane.latestCheckpointId,
       latestOutcomeId: controlPlane.latestOutcomeId,
+      workflowSummary: controlPlane.workflowSummary,
       latestWorkflowRecommendation: controlPlane.latestWorkflowRecommendation,
+      workflowContinuation: controlPlane.workflowContinuation,
+      runtimeDeliveryIntent: controlPlane.runtimeDeliveryIntent,
       recovery: controlPlane.recovery,
       latestTimelineItem,
     });
