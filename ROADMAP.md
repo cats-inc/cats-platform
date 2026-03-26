@@ -331,6 +331,8 @@ contracts.
       view above `Cats Core v1`
 - [x] Add project and work-item navigation that reuses shared conversations,
       actors/resources, and artifact metadata
+- [x] Add a first code dashboard that reuses shared tasks plus build/preview
+      artifact output instead of a separate code schema
 - [ ] Keep work surfaces product-owned and avoid leaking provider or runtime
       internals into the UI model
 - [ ] Extend task-strategy handoff beyond the current Chat-first

@@ -1,0 +1,189 @@
+.codeSurface {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 100vh;
+  padding: 32px 32px 40px;
+  background:
+    radial-gradient(circle at top right, rgba(87, 119, 255, 0.12), transparent 22rem),
+    linear-gradient(180deg, #f6f7fb 0%, #eef2f9 100%);
+  color: #1f2430;
+}
+
+.codeHeroCard,
+.codeSectionCard {
+  border: 1px solid rgba(44, 60, 110, 0.1);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 20px 56px rgba(36, 52, 96, 0.08);
+}
+
+.codeHeroCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(16rem, 0.95fr);
+  gap: 24px;
+  padding: 28px;
+  align-items: start;
+}
+
+.codeHeroCopy h1 {
+  margin: 0 0 10px;
+  font-size: 2.1rem;
+  line-height: 1.08;
+}
+
+.codeHeroCopy p,
+.codeEmptyState,
+.codeCardCopy,
+.codeCardMeta {
+  margin: 0;
+  color: #62708e;
+  line-height: 1.55;
+}
+
+.codeEyebrow,
+.codeSectionEyebrow {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #4765c7;
+}
+
+.codeSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.codeSummaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid rgba(52, 76, 140, 0.1);
+  border-radius: 20px;
+  background: rgba(242, 246, 255, 0.92);
+}
+
+.codeSummaryValue {
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.codeSummaryLabel {
+  color: #67748f;
+  font-size: 0.9rem;
+}
+
+.codeLayout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.codeSectionCard {
+  padding: 22px;
+}
+
+.codeSectionHeader {
+  margin-bottom: 16px;
+}
+
+.codeSectionHeader h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.codeCardList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.codeCard {
+  padding: 16px;
+  border: 1px solid rgba(52, 76, 140, 0.12);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.codeCardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.codeCardHeader strong {
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.codeCardMeta {
+  margin-top: 8px;
+  font-size: 0.86rem;
+}
+
+.codeCardCopy {
+  margin-top: 10px;
+  color: #2d3442;
+}
+
+.codeChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.codeChip,
+.codeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.codeChip {
+  background: rgba(240, 244, 255, 0.95);
+  color: #4a5f9b;
+}
+
+.codeBadge {
+  background: rgba(238, 243, 255, 0.95);
+  color: #4860a3;
+}
+
+.codeBadgeAccent {
+  background: rgba(228, 248, 244, 0.95);
+  color: #2e7d69;
+}
+
+@media (max-width: 1120px) {
+  .codeHeroCard,
+  .codeLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .codeSurface {
+    padding: 20px 18px 28px;
+  }
+
+  .codeHeroCard,
+  .codeSectionCard {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .codeSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+}

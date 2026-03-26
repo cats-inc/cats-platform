@@ -76,7 +76,7 @@ Current ownership:
   behavior
 - `src/products/work/*` owns Work dashboard, inbox, task-detail, and future
   Work-specific APIs/UI
-- `src/products/code/*` owns Code placeholder surfaces and future
+- `src/products/code/*` owns Code dashboards plus later
   project/preview/build APIs/UI
 - `src/platform/*` owns runtime, orchestration contracts, persistence, and
   transport infrastructure
@@ -182,7 +182,7 @@ transport state stays in `src/platform/transports/telegram/*`.
   built static assets
 - **Technology**: Native `node:http`
 - **Responsibilities**: Serve `/health`, `/api/app-shell`, shared-core product
-  routes, Work dashboard routes, Code placeholder routes, runtime-facing
+  routes, Work dashboard routes, Code dashboard routes, runtime-facing
   routes, and built renderer files
 
 ### Electron Host and Packaging Substrate
@@ -541,6 +541,9 @@ See
 - `Cats Work` now ships a first shared-core dashboard plus
   project/work-item/task detail surfaces above the same shared-core records,
   while broader team-operating-model surfaces still remain future work.
+- `Cats Code` now ships a first shared-core dashboard above code-targeted tasks
+  plus build/preview artifact output, while richer project/build/previews
+  workspaces still remain future work.
 - The current execution path keeps full Chat and Work desktop surfaces on the
   same React/TypeScript renderer stack under Electron.
 - The current server now exposes a Telegram transport seam with dedicated

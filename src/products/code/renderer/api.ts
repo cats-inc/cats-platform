@@ -1,9 +1,9 @@
-import type { CodePlaceholderProjection } from '../api/projection';
+import type { CodeDashboardProjection } from '../api/projection';
 
-export async function fetchCodePlaceholder(): Promise<CodePlaceholderProjection> {
+export async function fetchCodeDashboard(): Promise<CodeDashboardProjection> {
   const response = await fetch('/api/code');
   if (!response.ok) {
-    throw new Error(`cats code placeholder returned ${response.status}`);
+    throw new Error(`cats code dashboard returned ${response.status}`);
   }
-  return response.json() as Promise<CodePlaceholderProjection>;
+  return response.json() as Promise<CodeDashboardProjection>;
 }

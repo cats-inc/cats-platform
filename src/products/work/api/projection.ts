@@ -1,5 +1,6 @@
 import {
-  queryCoreOperatorInboxItems,
+  listCoreOperatorInboxItems,
+  summarizeCoreOperatorInboxItems,
   type CoreOperatorInboxItem,
   type CoreOperatorInboxSummary,
 } from '../../../core/operatorInbox.js';
@@ -8,14 +9,16 @@ import {
   type CoreTaskInspectionView,
 } from '../../../core/taskInspection.js';
 import {
-  queryCoreTaskRecoveryViews,
   buildCoreTaskRecoveryView,
+  listCoreTaskRecoveryViews,
+  summarizeCoreTaskRecoveryViews,
   type CoreTaskRecoveryListSummary,
   type CoreTaskRecoveryView,
 } from '../../../core/recovery.js';
 import {
   buildCoreTaskControlPlaneView,
-  queryCoreTaskControlPlaneViews,
+  listCoreTaskControlPlaneViews,
+  summarizeCoreTaskControlPlaneViews,
   type CoreTaskControlPlaneListSummary,
   type CoreTaskControlPlaneView,
 } from '../../../core/taskControlPlane.js';
@@ -34,6 +37,7 @@ import type {
   CoreWorkItemRecord,
   CoreWorkItemStatus,
 } from '../../../core/types.js';
+import { resolveTaskExecutionProduct } from '../../../shared/taskExecutionBridge.js';
 
 const WORK_DASHBOARD_INBOX_LIMIT = 10;
 const WORK_DASHBOARD_CONTROL_PLANE_LIMIT = 12;
@@ -209,8 +213,8 @@ export interface WorkTaskDetailProjection {
   };
 }
 
-function buildTaskStatusCounts(core: CatsCoreState): Record<CoreTaskRecord['status'], number> {
-  return core.tasks.reduce<Record<CoreTaskRecord['status'], number>>((counts, task) => {
+function buildTaskStatusCounts(tasks: CoreTaskRecord[]): Record<CoreTaskRecord['status'], number> {
+  return tasks.reduce<Record<CoreTaskRecord['status'], number>>((counts, task) => {
     counts[task.status] += 1;
     return counts;
   }, {
@@ -223,6 +227,14 @@ function buildTaskStatusCounts(core: CatsCoreState): Record<CoreTaskRecord['stat
     cancelled: 0,
     archived: 0,
   });
+}
+
+function isWorkTask(core: CatsCoreState, task: CoreTaskRecord): boolean {
+  if (core.workItems.some((workItem) => workItem.taskId === task.id)) {
+    return true;
+  }
+
+  return resolveTaskExecutionProduct({ core, task }) === 'work';
 }
 
 function buildProjectStatusCounts(core: CatsCoreState): Record<CoreProjectStatus, number> {
@@ -391,18 +403,44 @@ function resolveDefaultTaskId(
 }
 
 export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboardProjection {
-  const operatorInbox = queryCoreOperatorInboxItems(core, {
-    limit: WORK_DASHBOARD_INBOX_LIMIT,
-  });
-  const controlPlane = queryCoreTaskControlPlaneViews(core, {
-    limit: WORK_DASHBOARD_CONTROL_PLANE_LIMIT,
-  });
-  const recovery = queryCoreTaskRecoveryViews(core, {
-    limit: WORK_DASHBOARD_RECOVERY_LIMIT,
-  });
+  const workTasks = core.tasks.filter((task) => isWorkTask(core, task));
+  const workTaskIds = new Set(workTasks.map((task) => task.id));
+  const operatorInboxItems = listCoreOperatorInboxItems(core)
+    .filter((item) => workTaskIds.has(item.taskId))
+    .slice(0, WORK_DASHBOARD_INBOX_LIMIT);
+  const operatorInbox = {
+    tasks: operatorInboxItems,
+    summary: summarizeCoreOperatorInboxItems({
+      totalAvailable: operatorInboxItems.length,
+      matching: operatorInboxItems.length,
+      items: operatorInboxItems,
+    }),
+  };
+  const controlPlaneItems = listCoreTaskControlPlaneViews(core)
+    .filter((view) => workTaskIds.has(view.taskId))
+    .slice(0, WORK_DASHBOARD_CONTROL_PLANE_LIMIT);
+  const controlPlane = {
+    tasks: controlPlaneItems,
+    summary: summarizeCoreTaskControlPlaneViews({
+      totalAvailable: controlPlaneItems.length,
+      matching: controlPlaneItems.length,
+      views: controlPlaneItems,
+    }),
+  };
+  const recoveryItems = listCoreTaskRecoveryViews(core)
+    .filter((view) => workTaskIds.has(view.taskId))
+    .slice(0, WORK_DASHBOARD_RECOVERY_LIMIT);
+  const recovery = {
+    recoveries: recoveryItems,
+    summary: summarizeCoreTaskRecoveryViews({
+      totalAvailable: recoveryItems.length,
+      matching: recoveryItems.length,
+      recoveries: recoveryItems,
+    }),
+  };
   const projectItems = buildProjectListItems(core);
   const workItemItems = buildWorkItemListItems(core);
-  const taskStatusCounts = buildTaskStatusCounts(core);
+  const taskStatusCounts = buildTaskStatusCounts(workTasks);
 
   return {
     product: {
@@ -418,7 +456,7 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
       conversationCount: core.conversations.length,
       projectCount: core.projects.length,
       workItemCount: core.workItems.length,
-      taskCount: core.tasks.length,
+      taskCount: workTasks.length,
       pendingApprovalCount: taskStatusCounts.pending_approval,
       inProgressCount: taskStatusCounts.in_progress,
       blockedCount: taskStatusCounts.blocked,

@@ -1,7 +1,7 @@
 import type { CoreStore } from '../../../core/store.js';
 import {
-  buildCodePlaceholderProjection,
-  type CodePlaceholderProjection,
+  buildCodeDashboardProjection,
+  type CodeDashboardProjection,
 } from './projection.js';
 import {
   sendJson,
@@ -17,10 +17,10 @@ export interface CodeApiDependencies {
 
 export type CodeApiRouteContext = RouteContext<CodeApiDependencies>;
 
-export function createCodePlaceholderPayload(
+export function createCodeDashboardPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
-): CodePlaceholderProjection {
-  return buildCodePlaceholderProjection(core);
+): CodeDashboardProjection {
+  return buildCodeDashboardProjection(core);
 }
 
 export async function routeCodeApi(
@@ -38,7 +38,7 @@ export async function routeCodeApi(
   sendJson(
     context.response,
     200,
-    createCodePlaceholderPayload(await context.dependencies.coreStore.readCore()),
+    createCodeDashboardPayload(await context.dependencies.coreStore.readCore()),
   );
   return true;
 }

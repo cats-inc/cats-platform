@@ -3503,7 +3503,7 @@ test('core approval bindings require an existing approval task', async () => {
   }, chatStore);
 });
 
-test('GET /api/work exposes project, work-item, and task views above shared core records', async () => {
+test('GET /api/work and /api/code expose shared-core product dashboards without inventing separate schemas', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const fixtures = createSharedCoreFixtureBundle();
     const projectResponse = await fetch(`${baseUrl}/api/core/projects`, {
@@ -3520,6 +3520,23 @@ test('GET /api/work exposes project, work-item, and task views above shared core
       }),
     });
     assert.equal(projectResponse.status, 201);
+
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          ...fixtures.task,
+          id: 'task-work-dashboard',
+          title: 'Work dashboard task',
+          status: 'in_progress',
+          summary: 'Prove Work consumes the shared task substrate.',
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
 
     const workItemResponse = await fetch(`${baseUrl}/api/core/work-items`, {
       method: 'POST',
@@ -3538,7 +3555,7 @@ test('GET /api/work exposes project, work-item, and task views above shared core
     });
     assert.equal(workItemResponse.status, 201);
 
-    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+    const codeTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -3546,14 +3563,39 @@ test('GET /api/work exposes project, work-item, and task views above shared core
       body: JSON.stringify({
         task: {
           ...fixtures.task,
-          id: 'task-work-dashboard',
-          title: 'Work dashboard task',
+          id: 'task-code-dashboard',
+          title: 'Code dashboard task',
+          conversationId: null,
           status: 'in_progress',
-          summary: 'Prove Work consumes the shared task substrate.',
+          summary: 'Prove Code consumes code-targeted shared-core records.',
+          metadata: {
+            planning: {
+              productHint: 'code',
+            },
+          },
         },
       }),
     });
-    assert.equal(taskResponse.status, 201);
+    assert.equal(codeTaskResponse.status, 201);
+
+    const codeArtifactResponse = await fetch(`${baseUrl}/api/core/artifacts`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        artifact: {
+          ...fixtures.artifact,
+          id: 'artifact-code-preview',
+          title: 'Code preview artifact',
+          conversationId: null,
+          kind: 'preview',
+          taskId: 'task-code-dashboard',
+          workItemId: null,
+        },
+      }),
+    });
+    assert.equal(codeArtifactResponse.status, 201);
 
     const workResponse = await fetch(`${baseUrl}/api/work`);
     assert.equal(workResponse.status, 200);
@@ -3619,9 +3661,15 @@ test('GET /api/work exposes project, work-item, and task views above shared core
     assert.equal(codeResponse.status, 200);
     const codePayload = await codeResponse.json();
     assert.equal(codePayload.product.id, 'code');
-    assert.equal(codePayload.product.status, 'placeholder');
+    assert.equal(codePayload.product.status, 'active');
     assert.equal(codePayload.product.routeBase, '/code');
     assert.equal(codePayload.summary.ownerActorId, 'actor-owner');
+    assert.equal(codePayload.summary.taskCount, 1);
+    assert.equal(codePayload.summary.previewCount, 1);
+    assert.equal(codePayload.sections.tasks.items[0].id, 'task-code-dashboard');
+    assert.equal(codePayload.sections.tasks.items[0].effectiveStrategy, 'reflexion');
+    assert.equal(codePayload.sections.artifacts.items[0].id, 'artifact-code-preview');
+    assert.equal(codePayload.sections.artifacts.items[0].kind, 'preview');
     assert.ok(codePayload.extensionPoints.futureRoutes.includes('/api/code/previews'));
   });
 });

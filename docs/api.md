@@ -479,6 +479,27 @@ This first slice intentionally reuses `Cats Core v1` instead of inventing a
 separate Work schema. Broader team-operating-model surfaces and later Work
 boards still remain future product slices.
 
+### Cats Code
+
+```text
+GET /api/code
+```
+
+- `GET /api/code` now returns the first Code dashboard projection above shared
+  core task and artifact reads. The payload includes:
+  - product metadata
+  - top-level code-task and artifact summary counts
+  - a `tasks` section built from tasks whose product resolution points at
+    `code`, including conversation context, linked work-item labels, and the
+    effective execution strategy for the task
+  - an `artifacts` section built from `build` / `preview` artifacts plus other
+    artifacts linked to those code tasks
+  - `selection.defaultTaskId` and `selection.defaultArtifactId` hints for later
+    Code-side detail panes
+- This slice intentionally keeps `Cats Code` above `Cats Core v1` rather than
+  creating a second code-specific task or artifact schema. Richer build,
+  preview, and project workspaces remain future Code slices.
+
 ### Shell Helpers
 
 ```text

@@ -11,7 +11,7 @@ import {
   buildWorkDashboardProjection,
 } from '../dist-server/products/work/api/projection.js';
 import {
-  buildCodePlaceholderProjection,
+  buildCodeDashboardProjection,
 } from '../dist-server/products/code/api/projection.js';
 
 test('resolveSuiteSurfaceForPath routes work and code prefixes to their dedicated suite surfaces', () => {
@@ -49,11 +49,11 @@ test('isSuiteNonProductPath excludes suite settings and legacy chat settings fro
   assert.equal(isSuiteNonProductPath('/work'), false);
 });
 
-test('Work dashboard and Code placeholder projections stay core-backed without inventing new schemas', () => {
+test('Work and Code dashboard projections stay core-backed without inventing new schemas', () => {
   const core = createDefaultCoreState();
 
   const work = buildWorkDashboardProjection(core);
-  const code = buildCodePlaceholderProjection(core);
+  const code = buildCodeDashboardProjection(core);
 
   assert.equal(work.summary.ownerActorId, core.ownerProfile.actorId);
   assert.equal(code.summary.ownerActorId, core.ownerProfile.actorId);
@@ -65,6 +65,9 @@ test('Work dashboard and Code placeholder projections stay core-backed without i
   assert.equal(work.sections.controlPlane.summary.totalAvailable, 0);
   assert.equal(work.sections.recovery.summary.totalAvailable, 0);
   assert.equal(code.summary.conversationCount, core.conversations.length);
+  assert.equal(code.product.status, 'active');
+  assert.equal(code.sections.tasks.summary.totalAvailable, 0);
+  assert.equal(code.sections.artifacts.summary.totalAvailable, 0);
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/projects'));
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/work-items'));
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/war-room'));

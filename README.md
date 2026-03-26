@@ -31,6 +31,8 @@ The current slices are:
 - a first `Cats Work` dashboard plus project/work-item/task detail slice above
   the shared operator inbox, control-plane, recovery, artifact, activity, and
   timeline reads
+- a first `Cats Code` dashboard above shared code-targeted tasks plus
+  build/preview artifact output without inventing a separate code schema
 - contract-first orchestrator planning, approval-gated dispatch, and
   execution-loop routes that now expose checkpoint-driven multi-step execution
   plans, recovery actions, and Team 6 MCP tool-plane metadata while staying
