@@ -15,6 +15,7 @@ import {
   metricsForRun,
   resolveCooldownLabel,
   resolveGuardReason,
+  resolveLatestWorkflowRecommendation,
 } from './metadata.js';
 import type {
   ChatOperatorSnapshot,
@@ -33,6 +34,7 @@ export type {
   ChatRunInspectorView,
   ChatRunMetrics,
   ChatWorkflowBranchView,
+  ChatWorkflowRecommendationView,
 } from './types.js';
 
 export function resolveChatConversationId(channelId: string): string {
@@ -81,6 +83,12 @@ export function buildChatOperatorView(
   const cooldownLabel = resolveCooldownLabel(latestRun, latestOutcome, latestCheckpoint, traces);
   const effectivePolicy = buildEffectivePolicyView(task);
   const workflowSummary = deriveCoreWorkflowSummary(latestRun);
+  const latestWorkflowRecommendation = resolveLatestWorkflowRecommendation({
+    latestCheckpoint,
+    latestOutcome,
+    latestRun,
+    traces,
+  });
   const governanceSummary = deriveCoreGovernanceSummary(task, latestRun);
   const approvalActions = buildApprovalActions(latestApproval);
   const activityFeed = buildActivityFeed(
@@ -111,6 +119,7 @@ export function buildChatOperatorView(
     effectivePolicy,
     governanceSummary,
     workflowSummary,
+    latestWorkflowRecommendation,
     approvalActions,
     incidentActions: buildIncidentActions(
       task,
@@ -152,6 +161,12 @@ export function buildRunInspectorView(
   const guardReason = resolveGuardReason(run, latestOutcome, latestCheckpoint, traces);
   const cooldownLabel = resolveCooldownLabel(run, latestOutcome, latestCheckpoint, traces);
   const workflowSummary = deriveCoreWorkflowSummary(run);
+  const latestWorkflowRecommendation = resolveLatestWorkflowRecommendation({
+    latestCheckpoint,
+    latestOutcome,
+    latestRun: run,
+    traces,
+  });
   const governanceSummary = deriveCoreGovernanceSummary(operatorView.task, run);
   const latestApproval = approvals[0] ?? operatorView.latestApproval;
 
@@ -172,6 +187,7 @@ export function buildRunInspectorView(
     workflowShape: workflowSummary?.shape ?? null,
     reviewRequired: workflowSummary?.reviewRequired ?? false,
     branchStates: buildBranchStates(run),
+    latestWorkflowRecommendation,
     approvalActions: buildApprovalActions(latestApproval),
     incidentActions: buildIncidentActions(
       operatorView.task,

@@ -216,6 +216,78 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   assert.equal(inspector.incidentActions[0].kind, 'retry');
 });
 
+test('buildChatOperatorView exposes latest workflow recommendation summaries', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-room-recommendation',
+      title: 'Workflow recommendation run',
+      status: 'running',
+      conversationId: 'conversation-channel-room-recommendation',
+      taskId: 'task-channel-room-recommendation',
+      traceId: 'trace-room-recommendation',
+      summary: 'Waiting on the next recommended specialist.',
+      createdAt: '2026-03-26T08:00:00.000Z',
+      metadata: {
+        workflowStageId: 'continuation_handoff',
+        workflowShape: 'sequential',
+      },
+    },
+    new Date('2026-03-26T08:00:00.000Z'),
+  ).core;
+  core = upsertCoreCheckpoint(
+    core,
+    {
+      id: 'checkpoint-room-recommendation',
+      label: 'continuation',
+      status: 'open',
+      conversationId: 'conversation-channel-room-recommendation',
+      runId: 'run-room-recommendation',
+      taskId: 'task-channel-room-recommendation',
+      sourceTraceId: 'trace-room-recommendation',
+      summary: 'Recommend Agent-2 for the next implementation step.',
+      createdAt: '2026-03-26T08:01:00.000Z',
+      metadata: {
+        continuationSource: 'workflow_recommendation',
+        unresolvedTargets: ['Ghost Cat'],
+        workflowRecommendation: {
+          source: 'checkpoint',
+          workflowShape: 'sequential',
+          branchStrategy: 'transplant_context',
+          rationale: 'Agent-2 is the current implementer.',
+          reviewRequired: false,
+          candidateTargets: [
+            {
+              participantKind: 'cat',
+              participantId: 'cat-agent-2',
+              participantName: 'Agent-2',
+            },
+          ],
+        },
+      },
+    },
+    new Date('2026-03-26T08:01:00.000Z'),
+  ).core;
+
+  const view = buildChatOperatorView(
+    {
+      core,
+      approvals: buildApprovalQueue(core),
+    },
+    'room-recommendation',
+  );
+  const inspector = buildRunInspectorView(view, 'run-room-recommendation');
+
+  assert.equal(view?.latestWorkflowRecommendation?.workflowShape, 'sequential');
+  assert.equal(view?.latestWorkflowRecommendation?.continuationSource, 'workflow_recommendation');
+  assert.equal(view?.latestWorkflowRecommendation?.branchStrategy, 'transplant_context');
+  assert.equal(view?.latestWorkflowRecommendation?.candidateTargets[0]?.participantName, 'Agent-2');
+  assert.deepEqual(view?.latestWorkflowRecommendation?.unresolvedTargets, ['Ghost Cat']);
+  assert.equal(inspector?.latestWorkflowRecommendation?.rationale, 'Agent-2 is the current implementer.');
+});
+
 test('buildChatOperatorView filters invalid effective policy metadata enum values', () => {
   let core = createDefaultCoreState();
 

@@ -145,6 +145,11 @@ contracts.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent
+      Progress: Chat operator/read-model assembly now lifts the latest
+      normalized workflow recommendation out of checkpoint metadata into a
+      first-class product view, so continuation source, candidate targets,
+      branch strategy, and rationale are inspectable without scraping raw
+      room-routing events.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

@@ -58,6 +58,23 @@ export interface ChatWorkflowBranchView {
   error: string | null;
 }
 
+export interface ChatWorkflowRecommendationTargetView {
+  participantKind: 'orchestrator' | 'cat' | null;
+  participantId: string | null;
+  participantName: string | null;
+}
+
+export interface ChatWorkflowRecommendationView {
+  source: 'checkpoint' | 'boss_replan' | 'system_inference' | null;
+  workflowShape: 'sequential' | 'parallel' | 'converge' | null;
+  continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
+  branchStrategy: string | null;
+  rationale: string | null;
+  reviewRequired: boolean;
+  candidateTargets: ChatWorkflowRecommendationTargetView[];
+  unresolvedTargets: string[];
+}
+
 export interface ChatEffectivePolicyView {
   deliveryMode: CoreDeliveryMode | null;
   deliveryGates: CoreDeliveryGate[];
@@ -107,6 +124,7 @@ export interface ChatRunInspectorView {
   workflowShape: string | null;
   reviewRequired: boolean;
   branchStates: ChatWorkflowBranchView[];
+  latestWorkflowRecommendation: ChatWorkflowRecommendationView | null;
   approvalActions: ChatApprovalActionView[];
   incidentActions: ChatOperatorActionView[];
 }
@@ -131,6 +149,7 @@ export interface ChatOperatorView {
   effectivePolicy: ChatEffectivePolicyView | null;
   governanceSummary: CoreGovernanceSummary | null;
   workflowSummary: CoreWorkflowSummary | null;
+  latestWorkflowRecommendation: ChatWorkflowRecommendationView | null;
   approvalActions: ChatApprovalActionView[];
   incidentActions: ChatOperatorActionView[];
 }

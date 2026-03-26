@@ -15,6 +15,7 @@ import type {
   ChatOperatorSeverity,
   ChatRunMetrics,
   ChatWorkflowBranchView,
+  ChatWorkflowRecommendationView,
 } from './types.js';
 
 export function compareIsoDesc(left: string, right: string): number {
@@ -27,6 +28,17 @@ export function readMetadataRecord(value: unknown): CoreRecordMetadata | null {
   }
 
   return value as CoreRecordMetadata;
+}
+
+function readNestedMetadataRecord(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): CoreRecordMetadata | null {
+  if (!metadata) {
+    return null;
+  }
+
+  return readMetadataRecord(metadata[key]);
 }
 
 export function readMetadataString(
@@ -78,6 +90,20 @@ export function readMetadataRecordArray(
         .filter((item): item is CoreRecordMetadata =>
           Boolean(item) && typeof item === 'object' && !Array.isArray(item),
         )
+    : [];
+}
+
+function readMetadataStringArray(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): string[] {
+  if (!metadata) {
+    return [];
+  }
+
+  const value = metadata[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     : [];
 }
 
@@ -329,4 +355,66 @@ export function buildBranchStates(run: CoreRunRecord | null): ChatWorkflowBranch
     responseMessageId: readMetadataString(branch, 'responseMessageId'),
     error: readMetadataString(branch, 'error'),
   }));
+}
+
+function readWorkflowRecommendationFromMetadata(
+  metadata: CoreRecordMetadata | null | undefined,
+): ChatWorkflowRecommendationView | null {
+  const recommendation = readNestedMetadataRecord(metadata, 'workflowRecommendation');
+  if (!recommendation) {
+    return null;
+  }
+
+  const workflowShape = readMetadataString(recommendation, 'workflowShape');
+  const source = readMetadataString(recommendation, 'source');
+  const continuationSource = readMetadataString(metadata, 'continuationSource');
+  const candidateTargets = readMetadataRecordArray(recommendation, 'candidateTargets').map((target) => ({
+    participantKind: (() => {
+      const participantKind = readMetadataString(target, 'participantKind');
+      if (participantKind === 'orchestrator' || participantKind === 'cat') {
+        return participantKind as 'orchestrator' | 'cat';
+      }
+      return null;
+    })(),
+    participantId: readMetadataString(target, 'participantId'),
+    participantName: readMetadataString(target, 'participantName'),
+  }));
+
+  return {
+    source:
+      source === 'checkpoint' || source === 'boss_replan' || source === 'system_inference'
+        ? source
+        : null,
+    workflowShape:
+      workflowShape === 'sequential'
+      || workflowShape === 'parallel'
+      || workflowShape === 'converge'
+        ? workflowShape
+        : null,
+    continuationSource:
+      continuationSource === 'explicit_mentions'
+      || continuationSource === 'workflow_recommendation'
+        ? continuationSource
+        : null,
+    branchStrategy: readMetadataString(recommendation, 'branchStrategy'),
+    rationale: readMetadataString(recommendation, 'rationale'),
+    reviewRequired: readMetadataBoolean(recommendation, 'reviewRequired'),
+    candidateTargets,
+    unresolvedTargets: readMetadataStringArray(metadata, 'unresolvedTargets'),
+  };
+}
+
+export function resolveLatestWorkflowRecommendation(input: {
+  latestCheckpoint: CoreCheckpointRecord | null;
+  latestOutcome: CoreOrchestrationOutcomeRecord | null;
+  latestRun: CoreRunRecord | null;
+  traces?: CoreTraceRecord[];
+}): ChatWorkflowRecommendationView | null {
+  return readWorkflowRecommendationFromMetadata(input.latestCheckpoint?.metadata)
+    ?? readWorkflowRecommendationFromMetadata(input.latestOutcome?.metadata)
+    ?? readWorkflowRecommendationFromMetadata(input.latestRun?.metadata)
+    ?? input.traces
+      ?.map((trace) => readWorkflowRecommendationFromMetadata(trace.metadata))
+      .find((recommendation): recommendation is ChatWorkflowRecommendationView => Boolean(recommendation))
+    ?? null;
 }

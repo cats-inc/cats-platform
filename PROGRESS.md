@@ -307,6 +307,10 @@ Known follow-ups:
 - execution-loop payloads now expose next-action templates for approve,
   reroute, reject, retry, acknowledge, and completion handling without
   inventing a second core schema
+- Chat operator/read-model assembly now lifts the latest normalized workflow
+  recommendation out of checkpoint metadata into a first-class inspectable
+  view, so continuation source, candidate targets, branch strategy, and
+  rationale no longer require raw metadata scraping
 - task lifecycle watchers now reconcile initial observe payloads before waiting
   on live stream teardown, so running `effectiveStrategy` / `strategyState`
   metadata lands in task/run read models earlier and terminal observe snapshots
