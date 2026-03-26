@@ -99,7 +99,9 @@ MCP tool plane.
   also resume that replay when a matching cat becomes active again, the same
   recovery path now appends additive replay activity with
   `resumeReason=target_recovered`, core recovery routes now also project/filter
-  that normalized latest replay resume reason, and the same seam can also
+  that normalized latest replay resume reason, recommendation-driven
+  `parallel` replay now also waits for every candidate target in the stored
+  workflow recommendation before auto-resuming a blocked fan-out, and the same seam can also
   re-resolve stale stored targets from the persisted
   `workflowRecommendation` payload when the
   original target identities are no longer active, while broader group replan

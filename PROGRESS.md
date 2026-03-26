@@ -327,6 +327,10 @@ Known follow-ups:
 - that same target-recovery auto-resume path now also appends additive replay
   lifecycle activity with `resumeReason=target_recovered`, so operator feeds
   can distinguish automatic target recovery from manual retry
+- recommendation-driven `parallel` continuation replay now stays
+  `blocked/no_valid_targets` until every candidate target in the stored
+  workflow recommendation is active again, so target recovery cannot silently
+  degrade a previously blocked fan-out into a partial dispatch
 - core recovery routes now also project that normalized
   `latestActivity.resumeReason` field and support
   `latestReplayResumeReason` filtering plus

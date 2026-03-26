@@ -17,6 +17,7 @@ import { buildChannelView, requireChannel } from '../model/index.js';
 import {
   readWorkflowRecommendation,
   resolveWorkflowRecommendationTargets,
+  type WorkflowRecommendation,
 } from '../room-routing/recommendations.js';
 import {
   DEFAULT_MAX_ROUTING_CONTINUATIONS,
@@ -100,37 +101,70 @@ function resolveReplayTargets(
 function buildRecommendationReplayResolution(
   state: ChatState,
   request: WorkflowContinuationReplaySnapshot,
-): TargetResolution | null {
+): {
+  resolution: TargetResolution | null;
+  blockedReason: WorkflowContinuationReplayResult['blockedReason'];
+  note: string | null;
+} {
   const recommendation = readWorkflowRecommendation(request.workflowRecommendation);
   if (!recommendation) {
-    return null;
+    return {
+      resolution: null,
+      blockedReason: null,
+      note: null,
+    };
   }
 
   const resolved = resolveWorkflowRecommendationTargets(state, request.channelId, recommendation);
+  if (requiresCompleteRecommendationResolution(recommendation, resolved.unresolved)) {
+    return {
+      resolution: null,
+      blockedReason: 'no_valid_targets',
+      note: 'Stored workflow continuation replay is still waiting for all parallel targets from its workflow recommendation.',
+    };
+  }
+
   if (resolved.targets.length === 0) {
-    return null;
+    return {
+      resolution: null,
+      blockedReason: 'no_valid_targets',
+      note: 'Stored workflow continuation replay still has no active targets for its workflow recommendation.',
+    };
   }
 
   return {
-    targets: resolved.targets,
-    unresolved: uniqueStrings([
-      ...request.unresolvedTargets,
-      ...resolved.unresolved,
-    ]),
-    mentionNames: resolved.mentionNames.length > 0
-      ? resolved.mentionNames
-      : [...request.mentionNames],
-    trigger: request.trigger,
     resolution: {
-      routingMode: toResolutionMode(resolved.targets.length),
-      selectionKind: 'explicit_mentions',
-      defaultTarget: null,
-      defaultTargetReason: null,
-      fallbackTarget: null,
-      blockedReason: null,
-      note: 'Stored workflow continuation replay re-resolved targets from its workflow recommendation.',
+      targets: resolved.targets,
+      unresolved: uniqueStrings([
+        ...request.unresolvedTargets,
+        ...resolved.unresolved,
+      ]),
+      mentionNames: resolved.mentionNames.length > 0
+        ? resolved.mentionNames
+        : [...request.mentionNames],
+      trigger: request.trigger,
+      resolution: {
+        routingMode: toResolutionMode(resolved.targets.length),
+        selectionKind: 'explicit_mentions',
+        defaultTarget: null,
+        defaultTargetReason: null,
+        fallbackTarget: null,
+        blockedReason: null,
+        note: 'Stored workflow continuation replay re-resolved targets from its workflow recommendation.',
+      },
     },
+    blockedReason: null,
+    note: null,
   };
+}
+
+function requiresCompleteRecommendationResolution(
+  recommendation: WorkflowRecommendation,
+  unresolvedTargets: string[],
+): boolean {
+  return recommendation.workflowShape === 'parallel'
+    && recommendation.candidateTargets.length > 1
+    && unresolvedTargets.length > 0;
 }
 
 function buildReplayResolution(
@@ -165,19 +199,20 @@ function buildReplayResolution(
   }
 
   const recommendationResolution = buildRecommendationReplayResolution(state, request);
-  if (recommendationResolution) {
+  if (recommendationResolution.resolution) {
     return {
-      resolution: recommendationResolution,
-      blockedReason: null,
-      note: null,
+      resolution: recommendationResolution.resolution,
+      blockedReason: recommendationResolution.blockedReason,
+      note: recommendationResolution.note,
     };
   }
 
   if (request.workflowRecommendation) {
     return {
       resolution: null,
-      blockedReason: 'no_valid_targets',
-      note: 'Stored workflow continuation replay still has no active targets for its workflow recommendation.',
+      blockedReason: recommendationResolution.blockedReason ?? 'no_valid_targets',
+      note: recommendationResolution.note
+        ?? 'Stored workflow continuation replay still has no active targets for its workflow recommendation.',
     };
   }
 
