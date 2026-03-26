@@ -70,7 +70,7 @@ export function CatAvatarRow({
           >
             {cat.avatarUrl ? null : catInitials(cat.name)}
             {showLeadBadge && isLead ? (
-              <span className="catAvatarLeadBadge">&#x1F451;</span>
+              <span className="catAvatarLeadBadge">&#x2605;</span>
             ) : null}
           </div>
         );

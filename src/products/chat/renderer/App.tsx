@@ -108,6 +108,7 @@ export default function App() {
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
   const [draftHighlightedCatId, setDraftHighlightedCatId] = useState<string | null>(null);
   const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<Map<string, ModelSelectorValue>>(new Map);
+  const wasGenericNewChatRoute = useRef(false);
   const latestNewChatDefaultsSaveId = useRef(0);
   const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
@@ -219,6 +220,7 @@ export default function App() {
   const {
     onOpenChatsOverview,
     onSelect,
+    onRenameChannel,
     onDeleteChannel,
     onArchiveCat,
     onDeleteCat,
@@ -239,6 +241,8 @@ export default function App() {
     setChannelPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
     setDraftFiles,
     setChannelFiles,
     confirm: appConfirm,
@@ -282,13 +286,15 @@ export default function App() {
     draftLeadCatId,
     draftCatIds,
     draftCwd,
-    draftFiles,
-    channelFiles,
-    setDraftCwd,
-    setDraftCatIds,
-    setDraftFiles,
-    setChannelFiles,
-    draftModel,
+      draftFiles,
+      channelFiles,
+      setDraftCwd,
+      setDraftCatIds,
+      setDraftHighlightedCatId,
+      setDraftCatModelOverrides,
+      setDraftFiles,
+      setChannelFiles,
+      draftModel,
     soloChannelModel,
     selectedChannel,
     setBusy,
@@ -328,6 +334,19 @@ export default function App() {
       ? `${routeChannelTitle.trim() === 'Untitled chat' ? 'New chat' : routeChannelTitle} - Cats Chat`
       : 'Cats Chat';
   }, [routeChannelTitle]);
+
+  useEffect(() => {
+    const isGenericNewChatRoute = showingNewChatDraft && !draftLeadCatId;
+    const justEnteredGenericNewChatRoute = isGenericNewChatRoute && !wasGenericNewChatRoute.current;
+    wasGenericNewChatRoute.current = isGenericNewChatRoute;
+    if (!justEnteredGenericNewChatRoute) {
+      return;
+    }
+
+    setDraftCatIds([]);
+    setDraftHighlightedCatId(null);
+    setDraftCatModelOverrides(new Map());
+  }, [draftLeadCatId, setDraftCatIds, showingNewChatDraft]);
 
   useEffect(() => {
     if (!readyChat) {
@@ -570,6 +589,7 @@ export default function App() {
         onStartNewChat={onStartNewChat}
         onSelect={onSelect}
         onDeleteChannel={onDeleteChannel}
+        onRenameChannel={onRenameChannel}
         onArchiveCat={onArchiveCat}
         onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
         onOverflowMenuToggle={setOverflowMenuOpenId}

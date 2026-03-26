@@ -12,6 +12,10 @@
 }
 
 .chatPaneSidePanel {
+  width: 360px;
+}
+
+.chatPaneSidePanelBelowBar {
   top: 60px;
   height: calc(100vh - 60px);
 }

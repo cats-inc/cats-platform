@@ -142,6 +142,15 @@ export function ChatView({
   const directLaneCat = isDirectLane && leadCat
     ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
     : null;
+  const bossCatRecord = payload.chat.bossCatId
+    ? payload.chat.cats.find((c) => c.id === payload.chat.bossCatId) ?? null
+    : null;
+  const leadCatRecord = leadCat
+    ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
+    : null;
+  const topBarTitle = isDirectLane
+    ? (directLaneCat?.name ?? leadCatRecord?.name ?? presentChannelTitle(selectedChannel.title))
+    : presentChannelTitle(selectedChannel.title);
   const assignedCatRecords = useMemo(
     () =>
       activeAssignedCats
@@ -149,6 +158,30 @@ export function ChatView({
         .filter((cat): cat is ChatCat => cat != null),
     [activeAssignedCats, payload.chat.cats],
   );
+  const topBarCats = useMemo(() => {
+    const ordered: Array<ChatCat | null> = [];
+    if (isDirectLane) {
+      ordered.push(leadCatRecord);
+    } else {
+      if (showBossCatAvatar && !isSoloComposer) {
+        ordered.push(bossCatRecord);
+      }
+      ordered.push(...assignedCatRecords);
+    }
+    const seen = new Set<string>();
+    return ordered.filter((cat): cat is ChatCat => {
+      if (!cat || seen.has(cat.id)) return false;
+      seen.add(cat.id);
+      return true;
+    });
+  }, [
+    assignedCatRecords,
+    bossCatRecord,
+    isDirectLane,
+    isSoloComposer,
+    leadCatRecord,
+    showBossCatAvatar,
+  ]);
   const showRosterAvatars = isDirectLane
     ? Boolean(leadCat)
     : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedCats.length > 0);
@@ -204,32 +237,31 @@ export function ChatView({
           <div className="channelTopBarStart">
             {showRosterAvatars ? (
               <div className="rosterAvatars">
-                {roomMode === 'direct_cat_chat' && leadCat ? (
-                  <div className="catAvatar" data-tooltip={leadCat.name} style={leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}>
-                    {catInitials(leadCat.name)}
-                  </div>
-                ) : (
-                  <>
-                    {showBossCatAvatar && !isSoloComposer ? (
-                      <div className="catAvatar catAvatarBoss" data-tooltip={bossCatName} style={bossCatAvatarColor ? { background: bossCatAvatarColor } : undefined}>
-                        {catInitials(bossCatName)}
-                      </div>
-                    ) : null}
-                    {activeAssignedCats.map((cat) => (
-                      <div key={cat.catId} className="catAvatar" data-tooltip={cat.name} style={cat.avatarColor ? { background: cat.avatarColor } : undefined}>
-                        {catInitials(cat.name)}
-                      </div>
-                    ))}
-                  </>
-                )}
+                {topBarCats.map((cat) => {
+                  const isBoss = cat.id === payload.chat.bossCatId;
+                  const isLead = cat.id === leadParticipantId;
+                  return (
+                    <div
+                      key={cat.id}
+                      className={isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar'}
+                      data-tooltip={cat.name}
+                      style={cat.avatarUrl
+                        ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                        : cat.avatarColor ? { background: cat.avatarColor } : undefined}
+                    >
+                      {cat.avatarUrl ? null : catInitials(cat.name)}
+                      {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                    </div>
+                  );
+                })}
               </div>
             ) : null}
-          </div>
-          <div className="channelTopBarCenter">
-            <span className="channelTopBarTitle">
-              {presentChannelTitle(selectedChannel.title)}
-            </span>
-          </div>
+            </div>
+            <div className="channelTopBarCenter">
+              <span className="channelTopBarTitle">
+                {topBarTitle}
+              </span>
+            </div>
           <div className="channelTopBarEnd">
             <button
               className="sidePanelToggle"
@@ -258,19 +290,24 @@ export function ChatView({
                     <article key={message.id} className={messageTone(message.senderKind)}>
                       {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
                         const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
-                        return speaker.kind === 'cat' && speaker.cat ? (
-                          <div className="transcriptMessageTop">
-                            <div
-                              className={speaker.cat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
-                              style={speaker.cat.avatarUrl
-                                ? { backgroundImage: `url(${speaker.cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                : speaker.cat.avatarColor ? { background: speaker.cat.avatarColor } : undefined}
-                            >
-                              {speaker.cat.avatarUrl ? null : catInitials(speaker.cat.name)}
+                        return speaker.kind === 'cat' && speaker.cat ? (() => {
+                          const isBoss = speaker.cat.id === payload.chat.bossCatId;
+                          const isLead = speaker.cat.id === leadParticipantId;
+                          return (
+                            <div className="transcriptMessageTop">
+                              <div
+                                className={isBoss ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
+                                style={speaker.cat.avatarUrl
+                                  ? { backgroundImage: `url(${speaker.cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                  : speaker.cat.avatarColor ? { background: speaker.cat.avatarColor } : undefined}
+                              >
+                                {speaker.cat.avatarUrl ? null : catInitials(speaker.cat.name)}
+                                {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                              </div>
+                              <strong>{speaker.label}</strong>
                             </div>
-                            <strong>{speaker.label}</strong>
-                          </div>
-                        ) : speaker.label ? (
+                          );
+                        })() : speaker.label ? (
                           <div className="transcriptMessageTop">
                             <strong>{speaker.label}</strong>
                           </div>
@@ -412,23 +449,16 @@ export function ChatView({
                       onClick={() => openSidePanelTo('execution')}
                     />
                   </div>
-                ) : !isSoloComposer && leadCat ? (() => {
-                  const catRecord = payload.chat.cats.find((c) => c.id === leadCat.catId);
-                  return (
-                    <div
-                      className={leadCat.catId === payload.chat.bossCatId ? 'catAvatar composerStackAvatar catAvatarBoss composerLeadAvatar' : 'catAvatar composerStackAvatar composerLeadAvatar'}
-                      data-tooltip={leadCat.name}
-                      style={catRecord?.avatarUrl
-                        ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                        : leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}
-                      onClick={() => openSidePanelTo('execution')}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      {catRecord?.avatarUrl ? null : catInitials(leadCat.name)}
-                    </div>
-                  );
-                })() : null}
+                ) : !isSoloComposer && leadCat ? (
+                  <ComposerCatStack
+                    cats={assignedCatRecords.length > 0
+                      ? assignedCatRecords
+                      : leadCatRecord ? [leadCatRecord] : []}
+                    bossCatId={payload.chat.bossCatId}
+                    leadCatId={leadCat.catId}
+                    onClick={() => openSidePanelTo('execution')}
+                  />
+                ) : null}
                 <button
                   className="composerSendButton"
                   disabled={!composerDraft.trim() || busy === 'message:send'}
@@ -466,7 +496,7 @@ export function ChatView({
           activeSection={sidePanelSection}
           onSectionToggle={setSidePanelSection}
           onClose={() => setSidePanelOpen(false)}
-          className="chatPaneSidePanel"
+          className="chatPaneSidePanel chatPaneSidePanelBelowBar"
           sections={buildSidePanelSections()}
         />
       ) : null}

@@ -1,4 +1,4 @@
-import type { RefObject, MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type RefObject, type MouseEvent as ReactMouseEvent } from 'react';
 
 import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts';
 import { catInitials, isChatCat, presentChannelTitle, type Surface } from '../chatUtils';
@@ -26,6 +26,7 @@ export interface SidebarProps {
   onStartNewChat: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
+  onRenameChannel: (channelId: string, title: string) => void;
   onArchiveCat: (catId: string) => void;
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
@@ -35,6 +36,7 @@ export interface SidebarProps {
 }
 
 type RuntimeFooterStatus = 'unknown' | 'connected' | 'degraded' | 'unavailable';
+type ChatCatRecord = AppShellPayload['chat']['cats'][number];
 
 function resolveRuntimeFooterStatus(payload: AppShellPayload): RuntimeFooterStatus {
   const rt = payload.runtime;
@@ -72,18 +74,66 @@ function isDirectCatChat(channel: ChatChannelSummary): boolean {
 function resolveCatForChannel(
   channel: ChatChannelSummary,
   payload: AppShellPayload,
-): { name: string; avatarColor: string | null } | null {
+): { name: string; avatarColor: string | null; avatarUrl: string | null; isBoss: boolean } | null {
   const leadCatId = channel.leadCatId;
-  if (leadCatId) {
-    const cat = payload.chat.cats.find((c) => c.id === leadCatId);
-    if (cat) return { name: cat.name, avatarColor: cat.avatarColor };
-  }
-  // For boss_chat, show boss cat
-  if (payload.chat.bossCatId) {
-    const boss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-    if (boss) return { name: boss.name, avatarColor: boss.avatarColor };
-  }
-  return null;
+  if (!leadCatId) return null;
+  const cat = payload.chat.cats.find((c) => c.id === leadCatId);
+  if (!cat) return null;
+  return {
+    name: cat.name,
+    avatarColor: cat.avatarColor,
+    avatarUrl: cat.avatarUrl ?? null,
+    isBoss: cat.id === payload.chat.bossCatId,
+  };
+}
+
+function useFloatingSidebarMenu(
+  anchorRef: RefObject<HTMLElement | null>,
+  menuRef: RefObject<HTMLElement | null>,
+  open: boolean,
+): CSSProperties | undefined {
+  const [style, setStyle] = useState<CSSProperties | undefined>(undefined);
+
+  useEffect(() => {
+    if (!open) {
+      setStyle(undefined);
+      return undefined;
+    }
+
+    function updatePosition() {
+      const anchor = anchorRef.current;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      const menuWidth = menuRef.current?.offsetWidth ?? 136;
+      const menuHeight = menuRef.current?.offsetHeight ?? 0;
+      let left = rect.right + 8;
+      if (left + menuWidth > window.innerWidth - 8) {
+        left = Math.max(8, rect.left - menuWidth - 8);
+      }
+      let top = rect.top - 4;
+      if (menuHeight > 0 && top + menuHeight > window.innerHeight - 8) {
+        top = Math.max(8, window.innerHeight - menuHeight - 8);
+      }
+      setStyle({
+        position: 'fixed',
+        top,
+        left,
+      });
+    }
+
+    updatePosition();
+
+    const scrollParent = anchorRef.current?.closest('.sidebarScrollable');
+    window.addEventListener('resize', updatePosition);
+    scrollParent?.addEventListener('scroll', updatePosition, { passive: true });
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      scrollParent?.removeEventListener('scroll', updatePosition);
+    };
+  }, [anchorRef, menuRef, open]);
+
+  return style;
 }
 
 
@@ -94,6 +144,7 @@ function ChannelItem({
   busy,
   overflowOpen,
   onSelect,
+  onRename,
   onDelete,
   onOverflowToggle,
 }: {
@@ -103,34 +154,107 @@ function ChannelItem({
   busy: string;
   overflowOpen: boolean;
   onSelect: () => void;
+  onRename: (title: string) => void;
   onDelete: () => void;
   onOverflowToggle: () => void;
 }) {
   const cat = resolveCatForChannel(channel, payload);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const overflowButtonRef = useRef<HTMLButtonElement>(null);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
+  const overflowMenuStyle = useFloatingSidebarMenu(overflowButtonRef, overflowMenuRef, overflowOpen);
+
+  function startRename() {
+    onOverflowToggle();
+    setRenameValue(channel.title);
+    setRenaming(true);
+    requestAnimationFrame(() => inputRef.current?.select());
+  }
+
+  function commitRename() {
+    const trimmed = renameValue.trim();
+    setRenaming(false);
+    if (trimmed && trimmed !== channel.title) {
+      onRename(trimmed);
+    }
+  }
+
+  function cancelRename() {
+    setRenaming(false);
+  }
 
   return (
-    <article className={isSelected ? 'recentItemCard recentItemSelected' : 'recentItemCard'}>
-      <button className="recentSelectButton" onClick={onSelect} type="button">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <article
+      className={[
+        'recentItemCard',
+        isSelected ? 'recentItemSelected' : '',
+        overflowOpen ? 'recentItemOverflowOpen' : '',
+      ].filter(Boolean).join(' ')}
+      onClick={() => {
+        if (!renaming) onSelect();
+      }}
+    >
+      {renaming ? (
+        <input
+          ref={inputRef}
+          className="recentRenameInput"
+          type="text"
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitRename();
+            if (e.key === 'Escape') cancelRename();
+          }}
+          onBlur={commitRename}
+        />
+      ) : (
+        <button
+          className="recentSelectButton"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+          type="button"
+        >
+          <strong>{presentChannelTitle(channel.title)}</strong>
+        </button>
+      )}
+      {!renaming ? (
+        <span className="recentItemTrailing">
           {cat ? (
             <span
-              className="recentCatDot"
-              style={{ background: cat.avatarColor ?? '#90A4AE', width: 8, height: 8, borderRadius: '50%', flexShrink: 0 }}
+              className={cat.isBoss ? 'recentCatAvatar recentCatAvatarBoss' : 'recentCatAvatar'}
               data-tooltip={cat.name}
-            />
+              style={cat.avatarUrl
+                ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                : { background: cat.avatarColor ?? '#90A4AE' }}
+            >
+              {cat.avatarUrl ? null : catInitials(cat.name)}
+            </span>
           ) : null}
-          <strong>{presentChannelTitle(channel.title)}</strong>
-        </div>
-      </button>
-      <button
-        className="recentOverflowButton"
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onOverflowToggle(); }}
-      >
-        &#x22EF;
-      </button>
+          <button
+            ref={overflowButtonRef}
+            className="recentOverflowButton"
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onOverflowToggle(); }}
+          >
+            &#x22EF;
+          </button>
+        </span>
+      ) : null}
       {overflowOpen ? (
-        <div className="recentOverflowMenu">
+        <div
+          ref={overflowMenuRef}
+          className="recentOverflowMenu"
+          style={overflowMenuStyle}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button type="button" onClick={startRename}>
+            Rename
+          </button>
+          <div className="recentOverflowMenuDivider" />
           <button
             type="button"
             disabled={busy === `channel:delete:${channel.id}`}
@@ -141,6 +265,98 @@ function ChannelItem({
         </div>
       ) : null}
     </article>
+  );
+}
+
+function MyCatRowItem({
+  cat,
+  isBoss,
+  isActive,
+  hasTelegramBinding,
+  dotClass,
+  dotTitle,
+  overflowOpen,
+  onDirectChat,
+  onArchive,
+  onOverflowToggle,
+}: {
+  cat: ChatCatRecord;
+  isBoss: boolean;
+  isActive: boolean;
+  hasTelegramBinding: boolean;
+  dotClass: string;
+  dotTitle: string;
+  overflowOpen: boolean;
+  onDirectChat: () => void;
+  onArchive: () => void;
+  onOverflowToggle: () => void;
+}) {
+  const overflowButtonRef = useRef<HTMLButtonElement>(null);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
+  const overflowMenuStyle = useFloatingSidebarMenu(overflowButtonRef, overflowMenuRef, overflowOpen);
+
+  return (
+    <div
+      className={[
+        'myCatRow',
+        isActive ? 'myCatRowActive' : '',
+        overflowOpen ? 'myCatRowOverflowOpen' : '',
+      ].filter(Boolean).join(' ')}
+      onClick={onDirectChat}
+    >
+      <button
+        className={isActive ? 'myCatItem myCatItemActive' : 'myCatItem'}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDirectChat();
+        }}
+      >
+        <span
+          className={isBoss ? 'myCatAvatarWrap catAvatar catAvatarBoss' : 'myCatAvatarWrap catAvatar'}
+          style={cat.avatarUrl
+            ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+            : cat.avatarColor ? { background: cat.avatarColor } : undefined}
+        >
+          {cat.avatarUrl ? null : catInitials(cat.name)}
+          {dotClass ? <span className={dotClass} data-tooltip={dotTitle} /> : null}
+        </span>
+        <span className="myCatName">{cat.name}</span>
+      </button>
+      <span className="myCatTrailing">
+        {hasTelegramBinding ? (
+          <span className="myCatTelegramIcon" data-tooltip="Telegram bot bound" aria-label="Telegram bot bound">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.66 3.88 2.92 10.9a.73.73 0 0 0 .04 1.38l4.45 1.4 1.72 5.52a.78.78 0 0 0 1.24.37l2.48-2.02 4.87 3.6a.78.78 0 0 0 1.2-.46L21.7 4.76c.17-.7-.52-1.27-1.04-0.88ZM10.1 14.6l-.44 3.15-1.34-4.3 9.38-6.2Z" />
+            </svg>
+          </span>
+        ) : null}
+        <button
+          ref={overflowButtonRef}
+          className="myCatOverflowButton"
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOverflowToggle(); }}
+        >
+          &#x22EF;
+        </button>
+      </span>
+      {overflowOpen ? (
+        <div
+          ref={overflowMenuRef}
+          className="myCatOverflowMenu"
+          style={overflowMenuStyle}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            disabled={false}
+            onClick={onArchive}
+          >
+            Archive
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -159,6 +375,7 @@ export function Sidebar({
   onStartNewChat,
   onSelect,
   onDeleteChannel,
+  onRenameChannel,
   onArchiveCat,
   onAccountMenuToggle,
   onOverflowMenuToggle,
@@ -188,6 +405,7 @@ export function Sidebar({
         busy={busy}
         overflowOpen={overflowMenuOpenId === channel.id}
         onSelect={() => onSelect(channel.id)}
+        onRename={(title) => { void onRenameChannel(channel.id, title); }}
         onDelete={() => { onOverflowMenuToggle(null); void onDeleteChannel(channel.id); }}
         onOverflowToggle={() => onOverflowMenuToggle(overflowMenuOpenId === channel.id ? null : channel.id)}
       />
@@ -273,52 +491,22 @@ export function Sidebar({
                   const overflowKey = `cat:${cat.id}`;
                   const catOverflowOpen = overflowMenuOpenId === overflowKey;
                   return (
-                    <div key={cat.id} className="myCatRow">
-                      <button
-                        className={isActive ? 'myCatItem myCatItemActive' : 'myCatItem'}
-                        type="button"
-                        onClick={() => onDirectChatCat(cat.id)}
-                      >
-                        <span
-                          className={isBoss ? 'myCatAvatarWrap catAvatar catAvatarBoss' : 'myCatAvatarWrap catAvatar'}
-                          style={cat.avatarUrl
-                            ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                            : cat.avatarColor ? { background: cat.avatarColor } : undefined}
-                        >
-                          {cat.avatarUrl ? null : catInitials(cat.name)}
-                          {dotClass ? <span className={dotClass} data-tooltip={dotTitle} /> : null}
-                        </span>
-                        <span className="myCatName">{cat.name}</span>
-                        {hasTelegramBinding ? (
-                          <span className="myCatTelegramIcon" data-tooltip="Telegram bot bound" aria-label="Telegram bot bound">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M20.66 3.88 2.92 10.9a.73.73 0 0 0 .04 1.38l4.45 1.4 1.72 5.52a.78.78 0 0 0 1.24.37l2.48-2.02 4.87 3.6a.78.78 0 0 0 1.2-.46L21.7 4.76c.17-.7-.52-1.27-1.04-0.88ZM10.1 14.6l-.44 3.15-1.34-4.3 9.38-6.2Z" />
-                            </svg>
-                          </span>
-                        ) : null}
-                      </button>
-                      <button
-                        className="myCatOverflowButton"
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onOverflowMenuToggle(catOverflowOpen ? null : overflowKey); }}
-                      >
-                        &#x22EF;
-                      </button>
-                      {catOverflowOpen ? (
-                        <div className="myCatOverflowMenu">
-                          <button
-                            type="button"
-                            disabled={false}
-                            onClick={() => {
-                              onOverflowMenuToggle(null);
-                              void onArchiveCat(cat.id);
-                            }}
-                          >
-                            Archive
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
+                    <MyCatRowItem
+                      key={cat.id}
+                      cat={cat}
+                      isBoss={isBoss}
+                      isActive={isActive}
+                      hasTelegramBinding={hasTelegramBinding}
+                      dotClass={dotClass}
+                      dotTitle={dotTitle}
+                      overflowOpen={catOverflowOpen}
+                      onDirectChat={() => onDirectChatCat(cat.id)}
+                      onArchive={() => {
+                        onOverflowMenuToggle(null);
+                        void onArchiveCat(cat.id);
+                      }}
+                      onOverflowToggle={() => onOverflowMenuToggle(catOverflowOpen ? null : overflowKey)}
+                    />
                   );
                 })}
             </div>

@@ -27,12 +27,12 @@ export interface AppChromeController {
   setAddCatOpen: Dispatch<SetStateAction<boolean>>;
   channelPlusMenuOpen: boolean;
   setChannelPlusMenuOpen: Dispatch<SetStateAction<boolean>>;
-  accountMenuRef: RefObject<HTMLDivElement | null>;
-  plusMenuRef: RefObject<HTMLDivElement | null>;
-  addCatPanelRef: RefObject<HTMLDivElement | null>;
-  fileInputRef: RefObject<HTMLInputElement | null>;
-  channelPlusMenuRef: RefObject<HTMLDivElement | null>;
-  channelFileInputRef: RefObject<HTMLInputElement | null>;
+  accountMenuRef: RefObject<HTMLDivElement>;
+  plusMenuRef: RefObject<HTMLDivElement>;
+  addCatPanelRef: RefObject<HTMLDivElement>;
+  fileInputRef: RefObject<HTMLInputElement>;
+  channelPlusMenuRef: RefObject<HTMLDivElement>;
+  channelFileInputRef: RefObject<HTMLInputElement>;
   autoResize: (element: HTMLTextAreaElement) => void;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;

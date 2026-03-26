@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ChatState } from '../api/contracts.js';
@@ -30,7 +30,29 @@ async function writePersistedChatSnapshot(
   snapshot: PersistedChatSnapshot,
 ): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf-8');
+  const serialized = `${JSON.stringify(snapshot, null, 2)}\n`;
+  const tempPath = `${filePath}.tmp`;
+  const backupPath = `${filePath}.bak`;
+
+  await writeFile(tempPath, serialized, 'utf-8');
+  try {
+    await copyFile(filePath, backupPath);
+  } catch (error) {
+    if (!(isErrnoException(error) && error.code === 'ENOENT')) {
+      throw error;
+    }
+  }
+  await rm(filePath, { force: true });
+  await rename(tempPath, filePath);
+}
+
+function createDefaultSnapshot(now: Date = new Date()): PersistedChatSnapshot {
+  const chat = createDefaultChatState();
+  const core = syncCoreStateWithChatState(chat, createDefaultCoreState());
+  return buildPersistedChatSnapshot(chat, {
+    ...core,
+    updatedAt: now.toISOString(),
+  });
 }
 
 function repairPersistedSetupCompletion(
@@ -99,20 +121,39 @@ export class FileChatStore implements ChatStore {
     return structuredClone(this.cacheSnapshot(snapshot));
   }
 
-  private async readPersistedSnapshotUnsafe(): Promise<PersistedChatSnapshot> {
+  private async tryReadSnapshotFile(filePath: string): Promise<PersistedChatSnapshot> {
+    const raw = await readFile(filePath, 'utf-8');
+    if (!raw.trim()) {
+      throw new SyntaxError('Persisted chat snapshot is empty');
+    }
+    const normalized = normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
+    const repaired = repairPersistedSetupCompletion(normalized);
+    if (repaired.setupCompleteAt !== normalized.setupCompleteAt) {
+      await writePersistedChatSnapshot(filePath, repaired);
+    }
+    return repaired;
+  }
+
+  private async recoverFromBackup(): Promise<PersistedChatSnapshot | null> {
+    const backupPath = `${this.filePath}.bak`;
     try {
-      const raw = await readFile(this.filePath, 'utf-8');
-      const normalized = normalizePersistedChatSnapshot(JSON.parse(raw) as unknown);
-      const repaired = repairPersistedSetupCompletion(normalized);
-      if (repaired.setupCompleteAt !== normalized.setupCompleteAt) {
-        await writePersistedChatSnapshot(this.filePath, repaired);
-      }
-      return this.cacheSnapshot(repaired);
+      const recovered = await this.tryReadSnapshotFile(backupPath);
+      await writePersistedChatSnapshot(this.filePath, recovered);
+      return this.cacheSnapshot(recovered);
     } catch (error) {
       if (isErrnoException(error) && error.code === 'ENOENT') {
-        const chat = createDefaultChatState();
-        const core = syncCoreStateWithChatState(chat, createDefaultCoreState());
-        const snapshot = buildPersistedChatSnapshot(chat, core);
+        return null;
+      }
+      return null;
+    }
+  }
+
+  private async readPersistedSnapshotUnsafe(): Promise<PersistedChatSnapshot> {
+    try {
+      return this.cacheSnapshot(await this.tryReadSnapshotFile(this.filePath));
+    } catch (error) {
+      if (isErrnoException(error) && error.code === 'ENOENT') {
+        const snapshot = createDefaultSnapshot();
         await writePersistedChatSnapshot(this.filePath, snapshot);
         return this.cacheSnapshot(snapshot);
       }
@@ -121,7 +162,14 @@ export class FileChatStore implements ChatStore {
         return structuredClone(this.lastKnownSnapshot);
       }
 
-      throw error;
+      const recoveredFromBackup = await this.recoverFromBackup();
+      if (recoveredFromBackup) {
+        return structuredClone(recoveredFromBackup);
+      }
+
+      const snapshot = createDefaultSnapshot();
+      await writePersistedChatSnapshot(this.filePath, snapshot);
+      return this.cacheSnapshot(snapshot);
     }
   }
 

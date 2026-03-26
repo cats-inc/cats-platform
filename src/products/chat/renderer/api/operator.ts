@@ -4,8 +4,8 @@ import type {
   CoreApprovalQueueItem,
   CoreApprovalStatus,
   CoreOperatorActionKind,
-} from '../../../core/types';
-import type { ChatOperatorSnapshot } from '../shared/operator-loop/index';
+} from '../../../../core/types.js';
+import type { ChatOperatorSnapshot } from '../../shared/operator-loop/index.js';
 
 import { expectJson, readErrorMessage } from './http.js';
 

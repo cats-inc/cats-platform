@@ -11,7 +11,7 @@ import { fetchOperatorLoopSnapshot } from '../api';
 import type { ChatOperatorSnapshot } from '../../shared/operator-loop/index';
 
 type OperatorLoadState =
-  | { status: 'idle'; snapshot: null; message: string }
+  | { status: 'idle'; snapshot: ChatOperatorSnapshot | null; message: string }
   | { status: 'loading'; snapshot: ChatOperatorSnapshot | null; message: string }
   | { status: 'ready'; snapshot: ChatOperatorSnapshot; message: string }
   | { status: 'error'; snapshot: ChatOperatorSnapshot | null; message: string };

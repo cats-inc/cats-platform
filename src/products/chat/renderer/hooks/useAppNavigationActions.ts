@@ -7,6 +7,7 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts.js';
+import type { ModelSelectorValue } from '../components/ModelSelector.js';
 import {
   buildChannelPath,
   buildNewChatPath,
@@ -16,6 +17,7 @@ import { resolveMyCatNavigationTarget } from '../myCatNavigation.js';
 import {
   deleteChatChannel,
   deleteGlobalCat,
+  renameChatChannel,
   resetSetup,
   updateCatProfile,
 } from '../api/index.js';
@@ -38,6 +40,8 @@ export function useAppNavigationActions(options: {
   setChannelPlusMenuOpen: Dispatch<SetStateAction<boolean>>;
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
+  setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
+  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
@@ -55,6 +59,8 @@ export function useAppNavigationActions(options: {
     setChannelPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
     setDraftFiles,
     setChannelFiles,
     confirm: confirmDialog,
@@ -65,6 +71,8 @@ export function useAppNavigationActions(options: {
     setPlusMenuOpen(false);
     setDraftCwd(null);
     setDraftCatIds([]);
+    setDraftHighlightedCatId(null);
+    setDraftCatModelOverrides(new Map());
     setDraftFiles([]);
     setChannelPlusMenuOpen(false);
     setChannelFiles([]);
@@ -73,6 +81,8 @@ export function useAppNavigationActions(options: {
     setPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
     setDraftFiles,
     setChannelPlusMenuOpen,
     setChannelFiles,
@@ -101,6 +111,21 @@ export function useAppNavigationActions(options: {
     setChannelPlusMenuOpen,
     setFeedback,
   ]);
+
+  const onRenameChannel = useCallback(async (channelId: string, title: string): Promise<void> => {
+    setBusy(`channel:rename:${channelId}`);
+    try {
+      const payload = await renameChatChannel(channelId, title);
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setFeedback('');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to rename chat.');
+    } finally {
+      setBusy('');
+    }
+  }, [setBusy, setFeedback, setState]);
 
   const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
     setBusy(`channel:delete:${channelId}`);
@@ -189,6 +214,8 @@ export function useAppNavigationActions(options: {
     setPlusMenuOpen(false);
     setDraftCwd(null);
     setDraftCatIds([]);
+    setDraftHighlightedCatId(null);
+    setDraftCatModelOverrides(new Map());
     setDraftFiles([]);
   }, [
     navigate,
@@ -198,12 +225,15 @@ export function useAppNavigationActions(options: {
     setPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
     setDraftFiles,
   ]);
 
   return {
     onOpenChatsOverview,
     onSelect,
+    onRenameChannel,
     onDeleteChannel,
     onArchiveCat,
     onDeleteCat,

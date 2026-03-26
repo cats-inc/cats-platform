@@ -217,6 +217,62 @@ test('FileChatStore keeps the last known snapshot when the on-disk file is tempo
   assert.equal(recoveredCore.setupCompleteAt, now);
 });
 
+test('FileChatStore cold-start recovers from backup when the primary snapshot is malformed', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const backupPath = `${statePath}.bak`;
+  const store = new FileChatStore(statePath);
+  const now = '2026-03-27T00:00:00.000Z';
+
+  let state = await store.read();
+  state = createCat(
+    state,
+    {
+      name: 'Boss Cat',
+      provider: 'claude',
+      makeBoss: true,
+    },
+    new Date(now),
+  );
+
+  const baseCore = createDefaultCoreState();
+  await store.writeSnapshot(state, {
+    ...baseCore,
+    setupCompleteAt: now,
+    ownerProfile: {
+      ...baseCore.ownerProfile,
+      displayName: 'Kenneth',
+      updatedAt: now,
+    },
+  });
+
+  await writeFile(backupPath, await readFile(statePath, 'utf-8'), 'utf-8');
+  await writeFile(statePath, '{\n', 'utf-8');
+
+  const recoveredStore = new FileChatStore(statePath);
+  const recoveredCore = await recoveredStore.readCore();
+  const repairedSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
+
+  assert.equal(recoveredCore.ownerProfile.displayName, 'Kenneth');
+  assert.equal(recoveredCore.setupCompleteAt, now);
+  assert.equal(repairedSnapshot.ownerProfile.displayName, 'Kenneth');
+});
+
+test('FileChatStore recreates a default snapshot when the primary file is empty and no backup exists', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+
+  await writeFile(statePath, '', 'utf-8');
+
+  const recoveredStore = new FileChatStore(statePath);
+  const recoveredState = await recoveredStore.read();
+  const repairedSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
+
+  assert.deepEqual(recoveredState.channels, []);
+  assert.equal(repairedSnapshot.chat.channels.length, 0);
+  assert.ok(repairedSnapshot.ownerProfile);
+});
+
 test('archiving a direct-lane cat preserves history but demotes the room back to a visible chat', () => {
   const now = new Date('2026-03-26T00:00:00.000Z');
   let state = createDefaultChatState();

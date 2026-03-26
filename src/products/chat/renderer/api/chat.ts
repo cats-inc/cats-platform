@@ -49,6 +49,28 @@ export async function createChatChannel(
   );
 }
 
+export async function renameChatChannel(
+  channelId: string,
+  title: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/channels/${channelId}`, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ title }),
+    signal,
+  });
+
+  return refetchAfterMutation(
+    response,
+    `cats chat rename returned ${response.status}`,
+    signal,
+  );
+}
+
 export async function deleteChatChannel(
   channelId: string,
   signal?: AbortSignal,

@@ -22,6 +22,7 @@ import {
   nowFrom,
   persistCreatedChannel,
   persistDeletedChannel,
+  persistRenamedChannel,
   requireValidChatScopeId,
   sendChannelExport,
   sendRestError,
@@ -118,6 +119,28 @@ async function handleRestGetChannel(
     const state = await context.dependencies.chatStore.read();
     sendJson(context.response, 200, {
       channel: buildChannelView(state, channelId),
+    });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleRestRenameChannel(
+  context: ChatApiRouteContext,
+  chatScopeId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidChatScopeId(chatScopeId);
+    const body = await readJsonBody<{ title: string }>(context.request);
+    const title = typeof body.title === 'string' ? body.title.trim() : '';
+    if (!title) {
+      sendJson(context.response, 400, { error: 'title_required', message: 'Title must not be empty.' });
+      return;
+    }
+    const persisted = await persistRenamedChannel(context, channelId, title);
+    sendJson(context.response, 200, {
+      channel: toChannelSummary(requireChannel(persisted, channelId)),
     });
   } catch (error) {
     handleRestError(context, error);
@@ -412,6 +435,14 @@ export async function routeChatChannelResourceApi(
       );
       return true;
     }
+    if (context.method === 'PATCH') {
+      await handleRestRenameChannel(
+        context,
+        DEFAULT_CHAT_SCOPE_ID,
+        canonicalChannelDetailMatch[0]!,
+      );
+      return true;
+    }
     if (context.method === 'DELETE') {
       await handleRestDeleteChannel(
         context,
@@ -420,7 +451,7 @@ export async function routeChatChannelResourceApi(
       );
       return true;
     }
-    sendMethodNotAllowed(context.response, ['GET', 'DELETE']);
+    sendMethodNotAllowed(context.response, ['GET', 'PATCH', 'DELETE']);
     return true;
   }
 

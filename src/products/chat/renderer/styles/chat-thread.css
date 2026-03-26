@@ -362,13 +362,42 @@
   color: var(--text);
 }
 
+.recentCatAvatar {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #8B7E74;
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.recentCatAvatarBoss {
+  box-shadow: 0 0 0 1px #e8c84a;
+}
+
+.recentItemCard:hover .recentCatAvatar,
+.recentItemOverflowOpen .recentCatAvatar {
+  opacity: 0;
+}
+
+.recentSelectButton strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .recentOverflowButton {
-  position: absolute;
-  right: 4px;
-  top: 0;
-  bottom: 0;
-  margin: auto;
-  display: none;
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
   width: 24px;
   height: 24px;
   border: 0;
@@ -377,28 +406,49 @@
   color: var(--muted);
   cursor: pointer;
   font-size: 0.85rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease;
 }
 
-.recentItemCard:hover .recentOverflowButton {
-  display: grid;
-  place-items: center;
+.recentItemCard:hover .recentOverflowButton,
+.recentItemOverflowOpen .recentOverflowButton {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .recentOverflowButton:hover {
   background: var(--panel-hover);
 }
 
+.recentRenameInput {
+  width: 100%;
+  padding: 2px 4px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 400;
+  outline: none;
+}
+
 .recentOverflowMenu {
-  position: absolute;
-  right: 4px;
-  top: 100%;
+  position: fixed;
   min-width: 120px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--panel);
   box-shadow: var(--shadow);
-  z-index: 10;
+  z-index: 30;
   padding: 4px;
+}
+
+.recentOverflowMenuDivider {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border);
 }
 
 .recentOverflowMenu button {

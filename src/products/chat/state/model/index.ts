@@ -81,6 +81,19 @@ export function selectChannel(
   return nextState;
 }
 
+export function renameChannel(
+  state: ChatState,
+  channelId: string,
+  title: string,
+  now: Date = new Date(),
+): ChatState {
+  const nextState = cloneState(state);
+  const channel = requireChannel(nextState, channelId);
+  channel.title = title.trim() || channel.title;
+  channel.updatedAt = isoAt(now);
+  return nextState;
+}
+
 export function deleteChannel(
   state: ChatState,
   channelId: string,

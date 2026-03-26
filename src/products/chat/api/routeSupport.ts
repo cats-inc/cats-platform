@@ -31,6 +31,7 @@ import {
   createCat,
   deleteChannel,
   deleteCat,
+  renameChannel,
   exportChannel,
   requireChannel,
   requireCat,
@@ -563,6 +564,16 @@ export async function persistDeletedChannel(
   await context.dependencies.chatStore.write(
     deleteChannel(currentState, channelId),
   );
+}
+
+export async function persistRenamedChannel(
+  context: ChatApiRouteContext,
+  channelId: string,
+  title: string,
+): Promise<ChatState> {
+  const currentState = await context.dependencies.chatStore.read();
+  const nextState = renameChannel(currentState, channelId, title, nowFrom(context.dependencies));
+  return context.dependencies.chatStore.write(nextState);
 }
 
 export async function persistCreatedCat(

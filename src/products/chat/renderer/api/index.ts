@@ -30,6 +30,7 @@ export {
   createChatChannel,
   createGlobalCat,
   deleteChatChannel,
+  renameChatChannel,
   deleteGlobalCat,
   removeCatFromChannelApi,
   sendChatMessage,

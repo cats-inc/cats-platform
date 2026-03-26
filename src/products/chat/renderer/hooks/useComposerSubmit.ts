@@ -64,6 +64,8 @@ export function useComposerSubmit(options: {
   channelFiles: File[];
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
+  setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
+  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   draftModel: ModelSelectorValue;
@@ -88,6 +90,8 @@ export function useComposerSubmit(options: {
     channelFiles,
     setDraftCwd,
     setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
     setDraftFiles,
     setChannelFiles,
     draftModel,
@@ -254,11 +258,15 @@ export function useComposerSubmit(options: {
       if (isCatScopedLaneRoute) {
         setDraftCwd(null);
         setDraftCatIds([]);
+        setDraftHighlightedCatId(null);
+        setDraftCatModelOverrides(new Map());
         setDraftFiles([]);
         setChannelFiles([]);
       } else if (wasDraftingNewChat) {
         setDraftCwd(null);
         setDraftCatIds([]);
+        setDraftHighlightedCatId(null);
+        setDraftCatModelOverrides(new Map());
         setDraftFiles([]);
       } else {
         setChannelFiles([]);
@@ -289,6 +297,8 @@ export function useComposerSubmit(options: {
     setChannelFiles,
     setComposerDraft,
     setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
     setDraftCwd,
     setDraftFiles,
     setFeedback,
