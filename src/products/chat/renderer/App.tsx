@@ -651,6 +651,7 @@ export default function App() {
             onHighlightDraftCat: setDraftHighlightedCatId,
             draftCatModelOverrides,
             onDraftCatModelOverride,
+            onDirectLaneModelChange: onDirectLaneModelSave,
           }}
           onToggleAddCat={toggleAddCatPanel}
           onPayloadUpdate={updatePayload}

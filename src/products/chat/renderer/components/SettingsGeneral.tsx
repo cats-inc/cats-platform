@@ -22,13 +22,13 @@ export function SettingsGeneral({
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
+        <p style={{ padding: '0 12px', marginBottom: 12, fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>Settings</p>
         <button className="settingsTab settingsTabActive" type="button" onClick={() => navigate('/settings/general')}>General</button>
         <button className="settingsTab" type="button" onClick={() => navigate('/settings/cats')}>Cats</button>
         <button className="settingsTab" type="button" onClick={() => navigate('/settings/data')}>Data</button>
       </nav>
       <div className="settingsContent">
         <h1>General</h1>
-        {feedback ? <p className="feedbackText">{feedback}</p> : null}
         <div className="contentCard">
           <label className="fieldLabel">
             <span>Display name</span>

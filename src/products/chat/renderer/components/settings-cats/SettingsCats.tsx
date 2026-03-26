@@ -82,6 +82,7 @@ export function SettingsCats({
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
+        <p style={{ padding: '0 12px', marginBottom: 12, fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>Settings</p>
         <button className="settingsTab" type="button" onClick={() => navigate('/settings/general')}>
           General
         </button>
@@ -97,12 +98,7 @@ export function SettingsCats({
         </button>
       </nav>
       <div className="settingsContent">
-        <div className="viewIntro">
-          <h1>Cats</h1>
-          <p className="heroNote">
-            Manage your cats, assign skills, bind Telegram bots, and view memory.
-          </p>
-        </div>
+        <h1>Cats</h1>
 
         <div className="catsLayout">
           <section className="contentCard">

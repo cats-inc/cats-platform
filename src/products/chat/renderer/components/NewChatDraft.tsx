@@ -42,6 +42,7 @@ export interface NewChatDraftProps {
   onHighlightDraftCat: (catId: string | null) => void;
   draftCatModelOverrides: Map<string, ModelSelectorValue>;
   onDraftCatModelOverride: (catId: string, value: ModelSelectorValue) => void;
+  onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
 }
 
 export function NewChatDraft({
@@ -77,6 +78,7 @@ export function NewChatDraft({
   onHighlightDraftCat,
   draftCatModelOverrides,
   onDraftCatModelOverride,
+  onDirectLaneModelChange,
 }: NewChatDraftProps) {
   const chatCats = payload.chat.cats.filter(isChatCat);
   const leadCat = draftLeadCatId
@@ -105,18 +107,26 @@ export function NewChatDraft({
   const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
   const [panelOpen, setPanelOpen] = useState(false);
   const hasMultipleCats = chatCats.filter((c) => c.status === 'active').length > 1;
+  const isDirectLaneContext = !allowAddCat && Boolean(draftLeadCatId) && Boolean(leadCat);
 
   const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
     ? chatCats.find((c) => c.id === draftHighlightedCatId) ?? null
     : null;
-  const activePanelModel: ModelSelectorValue | null = highlightedCat
-    ? (draftCatModelOverrides.get(highlightedCat.id) ?? {
-        provider: highlightedCat.defaultExecutionTarget.provider,
-        model: highlightedCat.defaultExecutionTarget.model,
-        instance: highlightedCat.defaultExecutionTarget.instance,
-        modelSelection: highlightedCat.defaultModelSelection ?? null,
-      })
-    : selectedModel ?? null;
+  const activePanelModel: ModelSelectorValue | null = isDirectLaneContext && leadCat
+    ? {
+        provider: leadCat.defaultExecutionTarget.provider,
+        model: leadCat.defaultExecutionTarget.model,
+        instance: leadCat.defaultExecutionTarget.instance,
+        modelSelection: leadCat.defaultModelSelection ?? null,
+      }
+    : highlightedCat
+      ? (draftCatModelOverrides.get(highlightedCat.id) ?? {
+          provider: highlightedCat.defaultExecutionTarget.provider,
+          model: highlightedCat.defaultExecutionTarget.model,
+          instance: highlightedCat.defaultExecutionTarget.instance,
+          modelSelection: highlightedCat.defaultModelSelection ?? null,
+        })
+      : selectedModel ?? null;
   const chipLabel = selectedModel
     ? buildModelSelectorLabel(selectedModel)
     : '';
@@ -280,24 +290,40 @@ export function NewChatDraft({
               </div>
             ) : null}
             {panelOpen && activePanelModel ? (
-              <ModelSelectorPanel
-                mode="draft"
-                cats={chatCats}
-                bossCatId={payload.chat.bossCatId}
-                selectedCatIds={draftCatIds}
-                highlightedCatId={draftHighlightedCatId}
-                leadCatId={effectiveLeadCat?.id ?? null}
-                onToggleCat={onToggleDraftCat}
-                onHighlightCat={(id) => onHighlightDraftCat(id)}
-                modelValue={activePanelModel}
-                onModelChange={(value) => {
-                  if (!effectiveLeadCat && onModelChange) {
-                    onModelChange(value);
-                  }
-                }}
-                fieldsDisabled={Boolean(effectiveLeadCat)}
-                onClose={() => setPanelOpen(false)}
-              />
+              isDirectLaneContext && leadCat ? (
+                <ModelSelectorPanel
+                  mode="direct-lane"
+                  cats={[leadCat]}
+                  bossCatId={payload.chat.bossCatId}
+                  selectedCatIds={[leadCat.id]}
+                  highlightedCatId={leadCat.id}
+                  leadCatId={leadCat.id}
+                  modelValue={activePanelModel}
+                  onModelChange={(value) => {
+                    onDirectLaneModelChange?.(leadCat.id, value);
+                  }}
+                  onClose={() => setPanelOpen(false)}
+                />
+              ) : (
+                <ModelSelectorPanel
+                  mode="draft"
+                  cats={chatCats}
+                  bossCatId={payload.chat.bossCatId}
+                  selectedCatIds={draftCatIds}
+                  highlightedCatId={draftHighlightedCatId}
+                  leadCatId={effectiveLeadCat?.id ?? null}
+                  onToggleCat={onToggleDraftCat}
+                  onHighlightCat={(id) => onHighlightDraftCat(id)}
+                  modelValue={activePanelModel}
+                  onModelChange={(value) => {
+                    if (!effectiveLeadCat && onModelChange) {
+                      onModelChange(value);
+                    }
+                  }}
+                  fieldsDisabled={Boolean(effectiveLeadCat) && !isDirectLaneContext}
+                  onClose={() => setPanelOpen(false)}
+                />
+              )
             ) : null}
             <button
               className="composerSendButton"
