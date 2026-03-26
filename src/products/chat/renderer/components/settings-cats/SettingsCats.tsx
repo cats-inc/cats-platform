@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../api/contracts';
 import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog';
 import { ToastContainer, useToast } from '../../../../../design/components/Toast';
 import { ALL_SUITE_SURFACES } from '../../../../../shared/suiteSurfaces';
+import { SettingsShell } from '../SettingsShell';
 import { useSettingsCatsRegistryActions } from '../../hooks/useSettingsCatsRegistryActions';
 import { useSettingsCatsMemory } from '../../hooks/useSettingsCatsMemory';
 import { useSettingsCatsTelegram } from '../../hooks/useSettingsCatsTelegram';
@@ -29,7 +29,6 @@ export function SettingsCats({
   onFeedback,
   onBusy,
 }: SettingsCatsProps) {
-  const navigate = useNavigate();
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
   const { toasts, showToast } = useToast();
   const { dialog, confirm, handleClose } = useConfirmDialog();
@@ -80,26 +79,8 @@ export function SettingsCats({
   const configurableSurfaces = [...ALL_SUITE_SURFACES];
 
   return (
-    <div className="settingsShell">
-      <nav className="settingsSidebar">
-        <p style={{ padding: '0 12px', marginBottom: 12, fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>Settings</p>
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/general')}>
-          General
-        </button>
-        <button
-          className="settingsTab settingsTabActive"
-          type="button"
-          onClick={() => navigate('/settings/cats')}
-        >
-          Cats
-        </button>
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/data')}>
-          Data
-        </button>
-      </nav>
-      <div className="settingsContent">
-        <h1>Cats</h1>
-
+    <>
+      <SettingsShell section="cats" title="Cats">
         <div className="catsLayout">
           <section className="contentCard">
             <SettingsCatsRegistry
@@ -151,9 +132,9 @@ export function SettingsCats({
             />
           </section>
         </div>
-      </div>
+      </SettingsShell>
       <ConfirmDialog dialog={dialog} onClose={handleClose} />
       <ToastContainer toasts={toasts} />
-    </div>
+    </>
   );
 }

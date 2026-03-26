@@ -243,6 +243,7 @@
   padding: 0 28px 0 16px;
   overflow-y: scroll;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 .viewShell {

@@ -1,10 +1,10 @@
 import { startTransition, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts';
 import { AvatarCropDialog } from '../../../../design/components/AvatarCropDialog';
 import { nameInitials } from '../../../../shared/nameInitials';
 import { updateVerbosePreference } from '../api';
+import { SettingsShell } from './SettingsShell';
 
 export interface SettingsGeneralProps {
   payload: AppShellPayload;
@@ -19,7 +19,6 @@ export function SettingsGeneral({
   onPayloadUpdate,
   onFeedback,
 }: SettingsGeneralProps) {
-  const navigate = useNavigate();
   const [cropOpen, setCropOpen] = useState(false);
 
   async function handleAvatarSave(dataUrl: string): Promise<void> {
@@ -41,15 +40,8 @@ export function SettingsGeneral({
   const initials = nameInitials(payload.ownerDisplayName);
 
   return (
-    <div className="settingsShell">
-      <nav className="settingsSidebar">
-        <p style={{ padding: '0 12px', marginBottom: 12, fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>Settings</p>
-        <button className="settingsTab settingsTabActive" type="button" onClick={() => navigate('/settings/general')}>General</button>
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/cats')}>Cats</button>
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/data')}>Data</button>
-      </nav>
-      <div className="settingsContent">
-        <h1>General</h1>
+    <>
+      <SettingsShell section="general" title="General">
         <div className="contentCard">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
             <div
@@ -111,13 +103,13 @@ export function SettingsGeneral({
             </button>
           </div>
         </div>
-      </div>
+      </SettingsShell>
       {cropOpen ? (
         <AvatarCropDialog
           onSave={(dataUrl) => void handleAvatarSave(dataUrl)}
           onClose={() => setCropOpen(false)}
         />
       ) : null}
-    </div>
+    </>
   );
 }

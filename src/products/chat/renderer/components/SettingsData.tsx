@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { SettingsShell } from './SettingsShell';
 
 export interface SettingsDataProps {
   feedback: string;
@@ -11,18 +11,8 @@ export function SettingsData({
   busy,
   onResetSetup,
 }: SettingsDataProps) {
-  const navigate = useNavigate();
-
   return (
-    <div className="settingsShell">
-      <nav className="settingsSidebar">
-        <p style={{ padding: '0 12px', marginBottom: 12, fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>Settings</p>
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/general')}>General</button>
-        <button className="settingsTab" type="button" onClick={() => navigate('/settings/cats')}>Cats</button>
-        <button className="settingsTab settingsTabActive" type="button" onClick={() => navigate('/settings/data')}>Data</button>
-      </nav>
-      <div className="settingsContent">
-        <h1>Data</h1>
+    <SettingsShell section="data" title="Data">
         <div className="contentCard">
           <h2>Reset all data</h2>
           <p className="heroNote">
@@ -37,7 +27,6 @@ export function SettingsData({
             {busy === 'setup:reset' ? 'Resetting...' : 'Reset all data'}
           </button>
         </div>
-      </div>
-    </div>
+    </SettingsShell>
   );
 }
