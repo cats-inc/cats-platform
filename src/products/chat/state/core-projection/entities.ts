@@ -152,18 +152,32 @@ function readParticipantRefs(values: unknown[]): RoomRoutingParticipantRef[] {
 }
 
 function findLatestContinuationReplayEvent(turn: RoomWorkflowTurn | null) {
-  if (!turn || !isReplayableContinuationGuardReason(turn.guard)) {
+  if (!turn) {
     return null;
   }
 
   return [...turn.events].reverse().find((event) => {
     const metadata = readMetadataRecord(event.metadata);
-    return (event.kind === 'checkpoint' || event.kind === 'guard_blocked')
-      && (
-        readMetadataString(metadata, 'checkpointKind') === 'loop_guard'
-        || readMetadataString(metadata, 'checkpointKind') === 'anti_ping_pong'
-      )
-      && readMetadataString(metadata, 'reason') === turn.guard;
+    const checkpointKind = readMetadataString(metadata, 'checkpointKind');
+    const reason = readMetadataString(metadata, 'reason');
+    const blockedReason = readMetadataString(metadata, 'blockedReason');
+
+    if (event.kind !== 'checkpoint' && event.kind !== 'guard_blocked') {
+      return false;
+    }
+
+    if (
+      (checkpointKind === 'loop_guard' || checkpointKind === 'anti_ping_pong')
+      && isReplayableContinuationGuardReason(reason)
+      && reason === turn.guard
+    ) {
+      return true;
+    }
+
+    return checkpointKind === 'no_targets'
+      && blockedReason === 'no_valid_targets'
+      && readMetadataString(metadata, 'continuationSourceMessageId') !== null
+      && readMetadataRecord(metadata?.workflowRecommendation) !== null;
   }) ?? null;
 }
 
@@ -171,34 +185,43 @@ function readWorkflowContinuationReplayRequest(
   channel: ChatChannelState,
   turn: RoomWorkflowTurn | null,
 ) {
-  if (!turn || !isReplayableContinuationGuardReason(turn.guard)) {
-    return null;
-  }
-
-  const blockedReason = turn.guard;
   const event = findLatestContinuationReplayEvent(turn);
   if (!event) {
     return null;
   }
 
   const metadata = readMetadataRecord(event.metadata);
+  if (!metadata) {
+    return null;
+  }
   const checkpointId = event.checkpointId ?? null;
   const sourceMessageId = readMetadataString(metadata, 'continuationSourceMessageId')
     ?? event.sourceMessageId;
   const sourceParticipant = event.actor;
   const targets = readParticipantRefs(event.targets);
+  const workflowRecommendation = readMetadataRecord(metadata.workflowRecommendation);
   const workflowShape = readMetadataString(metadata, 'workflowShape');
+  const blockedReason = (() => {
+    const reason = readMetadataString(metadata, 'reason');
+    if (isReplayableContinuationGuardReason(reason)) {
+      return reason;
+    }
+    return readMetadataString(metadata, 'blockedReason') === 'no_valid_targets'
+      ? 'no_valid_targets'
+      : null;
+  })();
   if (
     !metadata
     || !checkpointId
     || !sourceMessageId
     || !sourceParticipant
-    || targets.length === 0
+    || (!workflowRecommendation && targets.length === 0)
     || (
       workflowShape !== 'sequential'
       && workflowShape !== 'parallel'
       && workflowShape !== 'converge'
     )
+    || !blockedReason
   ) {
     return null;
   }
@@ -225,7 +248,7 @@ function readWorkflowContinuationReplayRequest(
         ? source
         : null;
     })(),
-    workflowRecommendation: readMetadataRecord(metadata.workflowRecommendation),
+    workflowRecommendation,
     unresolvedTargets: readMetadataStringArray(metadata, 'unresolvedTargets'),
     blockedReason,
     recordedAt: event.createdAt,

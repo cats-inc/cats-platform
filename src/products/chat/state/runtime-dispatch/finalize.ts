@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
+  RoomRouteBlockedReason,
   ChatState,
 } from '../../api/contracts.js';
 import type {
@@ -34,6 +35,10 @@ export function finalizeDispatchTurn(
     outcome: RoomRoutingOutcome;
     latestCheckpoint: RoomRoutingCheckpoint | null;
     guardReason: RoomRoutingGuardReason;
+    blockedResolution?: {
+      blockedReason: RoomRouteBlockedReason;
+      note: string;
+    } | null;
     userMessageId: string;
     describeGuardReason: (reason: Exclude<RoomRoutingGuardReason, null>) => string;
   },
@@ -48,14 +53,33 @@ export function finalizeDispatchTurn(
     userMessageId,
     workflow,
   } = options;
+  const blockedResolution = options.blockedResolution ?? null;
   let latestCheckpoint = options.latestCheckpoint;
+
+  if (blockedResolution) {
+    outcome.resolution.selectionKind = 'blocked';
+    outcome.resolution.defaultTarget = null;
+    outcome.resolution.defaultTargetReason = null;
+    outcome.resolution.fallbackTarget = null;
+    outcome.resolution.blockedReason = blockedResolution.blockedReason;
+    outcome.resolution.note = blockedResolution.note;
+  }
 
   outcome.guard = guardReason;
   activeTurn.guard = guardReason;
   activeTurn.continuationCount = outcome.continuationCount;
   activeTurn.dispatchCount = outcome.totalDispatchCount;
-  activeTurn.stageId = guardReason ? 'guard_blocked' : 'turn_completed';
-  const terminalStatuses = deriveTerminalTurnStatuses(outcome, guardReason);
+  activeTurn.stageId = blockedResolution
+    ? 'blocked'
+    : guardReason
+      ? 'guard_blocked'
+      : 'turn_completed';
+  const terminalStatuses = blockedResolution
+    ? {
+        outcomeStatus: 'blocked' as const,
+        workflowStatus: 'blocked' as const,
+      }
+    : deriveTerminalTurnStatuses(outcome, guardReason);
   outcome.status = terminalStatuses.outcomeStatus;
   activeTurn.status = terminalStatuses.workflowStatus;
   outcome.completedAt = nowIso;
@@ -66,9 +90,11 @@ export function finalizeDispatchTurn(
     workflow,
     activeTurn,
     'completed',
-    guardReason
-      ? `Room routing stopped because it hit ${describeGuardReason(guardReason)}.`
-      : 'Room routing completed for this turn.',
+    blockedResolution
+      ? blockedResolution.note
+      : guardReason
+        ? `Room routing stopped because it hit ${describeGuardReason(guardReason)}.`
+        : 'Room routing completed for this turn.',
     nowIso,
     null,
   );
@@ -79,11 +105,13 @@ export function finalizeDispatchTurn(
       activeTurn.id,
       'outcome',
       activeTurn.status,
-      guardReason
-        ? `Room workflow ended in a blocked state because it hit ${describeGuardReason(guardReason)}.`
-        : activeTurn.status === 'completed'
-          ? 'Room workflow completed for this turn.'
-          : 'Room workflow ended with failures for this turn.',
+      blockedResolution
+        ? blockedResolution.note
+        : guardReason
+          ? `Room workflow ended in a blocked state because it hit ${describeGuardReason(guardReason)}.`
+          : activeTurn.status === 'completed'
+            ? 'Room workflow completed for this turn.'
+            : 'Room workflow ended with failures for this turn.',
       nowIso,
       null,
       userMessageId,

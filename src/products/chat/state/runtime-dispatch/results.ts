@@ -3,6 +3,7 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type {
+  RoomRouteBlockedReason,
   RoomRoutingCheckpoint,
   RoomRoutingGuardReason,
   RoomRoutingOutcome,
@@ -50,6 +51,11 @@ import {
 } from '../runtime-session/state.js';
 
 type ContinuationSource = 'explicit_mentions' | 'workflow_recommendation';
+
+interface BlockedDispatchResolution {
+  blockedReason: RoomRouteBlockedReason;
+  note: string;
+}
 
 function buildRecommendationContinuationResolution(
   state: ChatState,
@@ -127,6 +133,7 @@ export function applyDispatchExecutions(
   state: ChatState;
   latestCheckpoint: RoomRoutingCheckpoint | null;
   guardReason: RoomRoutingGuardReason;
+  blockedResolution: BlockedDispatchResolution | null;
 } {
   const {
     nowIso,
@@ -144,6 +151,7 @@ export function applyDispatchExecutions(
   let nextState = state;
   let latestCheckpoint = initialCheckpoint;
   let guardReason: RoomRoutingGuardReason = null;
+  let blockedResolution: BlockedDispatchResolution | null = null;
 
   for (const execution of executions) {
     outcome.totalDispatchCount += 1;
@@ -368,11 +376,51 @@ export function applyDispatchExecutions(
       mergeUnresolvedMentions(outcome, continuationResolution.unresolved);
     }
 
+    const continuationStage = resolveContinuationStage(
+      extractedWorkflowRecommendation.recommendation,
+      continuationResolution.targets.length,
+    );
+    const recommendationBranchStrategy = continuationSource === 'workflow_recommendation'
+      ? extractedWorkflowRecommendation.recommendation?.branchStrategy ?? null
+      : null;
+
     if (continuationResolution.targets.length === 0) {
-      if (
-        continuationResolution.unresolved.length > 0
-        || serializedWorkflowRecommendation
-      ) {
+      if (serializedWorkflowRecommendation) {
+        const blockedNote = continuationResolution.resolution.note
+          ?? `No valid continuation targets were resolved from ${execution.target.participantName}'s handoff.`;
+        latestCheckpoint = addWorkflowCheckpoint(
+          outcome,
+          workflow,
+          activeTurn,
+          'no_targets',
+          blockedNote,
+          nowIso,
+          toParticipantRef(execution.target),
+          [],
+          {
+            blockedReason: 'no_valid_targets',
+            branchStrategy: recommendationBranchStrategy,
+            ...buildContinuationReplayMetadata({
+              sourceMessageId: responseMessage.id,
+              mentionNames: continuationResolution.mentionNames,
+              trigger: continuationResolution.trigger,
+              workflowStageId: continuationStage.stageId,
+              workflowShape: continuationStage.workflowShape,
+              reviewRequired: continuationStage.reviewRequired,
+              continuationSource,
+              workflowRecommendation: serializedWorkflowRecommendation,
+              unresolvedTargets: continuationResolution.unresolved,
+            }),
+          },
+        );
+        blockedResolution = {
+          blockedReason: 'no_valid_targets',
+          note: blockedNote,
+        };
+        break;
+      }
+
+      if (continuationResolution.unresolved.length > 0) {
         latestCheckpoint = addWorkflowCheckpoint(
           outcome,
           workflow,
@@ -392,15 +440,7 @@ export function applyDispatchExecutions(
       continue;
     }
 
-    const continuationStage = resolveContinuationStage(
-      extractedWorkflowRecommendation.recommendation,
-      continuationResolution.targets.length,
-    );
-    const branchStrategy = (
-      continuationSource === 'workflow_recommendation'
-        ? extractedWorkflowRecommendation.recommendation?.branchStrategy
-        : null
-    ) ?? (
+    const branchStrategy = recommendationBranchStrategy ?? (
       continuationResolution.targets.length > 1
         ? 'transplant_context'
         : resolveWorkflowBranchStrategy(
@@ -489,5 +529,6 @@ export function applyDispatchExecutions(
     state: nextState,
     latestCheckpoint,
     guardReason,
+    blockedResolution,
   };
 }

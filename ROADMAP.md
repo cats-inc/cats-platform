@@ -166,7 +166,10 @@ contracts.
       operator seam, and the same replay metadata path now also covers
       continuation-stage guard blocks such as `max_dispatches`,
       `max_target_visits`, and `anti_ping_pong` when the blocked step already
-      had a concrete continuation source/target context, while retry can now
+      had a concrete continuation source/target context, recommendation-only
+      continuation blocks can now also persist retryable `no_valid_targets`
+      replay snapshots when a structured handoff exists but no active
+      participants currently satisfy it, while retry can now
       also re-resolve stale stored continuation targets from persisted
       `workflowRecommendation` payloads when the original participant ids are
       no longer active; broader group replan auto-resume still remains.

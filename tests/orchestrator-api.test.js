@@ -1390,6 +1390,138 @@ test('POST /api/core/operator-actions re-resolves stale workflow continuation ta
   }, chatStore);
 });
 
+test('POST /api/core/operator-actions retries blocked recommendation-only continuations after targets become active', async () => {
+  const runtimeClient = createRuntimeStub({
+    sendMessage: ({ content }) => {
+      if (content.includes('You are Inline-Agent')) {
+        return usage(JSON.stringify({
+          workflowRecommendation: {
+            source: 'checkpoint',
+            workflowShape: 'sequential',
+            reviewRequired: false,
+            candidateTargetNames: ['Followup-Agent'],
+            branchStrategy: 'transplant_context',
+            rationale: 'Hand this off once the follow-up specialist is available.',
+          },
+        }));
+      }
+      if (content.includes('You are Followup-Agent')) {
+        return usage('Followup-Agent completed the previously blocked continuation.');
+      }
+      return usage('Boss Cat acknowledged the turn.');
+    },
+  });
+  const chatStore = new MemoryChatStore();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+          skillProfile: 'companion',
+          mcpProfile: 'chat-memory',
+        },
+        {
+          name: 'Followup-Agent',
+          provider: 'gemini',
+          roles: ['auditor'],
+          skillProfile: 'companion',
+          mcpProfile: 'chat-memory',
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const currentState = await chatStore.read();
+    const currentChannel = currentState.channels.find((candidate) => candidate.id === channelId);
+    assert.ok(currentChannel);
+    const followupAssignment = currentChannel.catAssignments.find((assignment) =>
+      assignment.status === 'active' && currentState.cats.some((cat) =>
+        cat.id === assignment.catId && cat.name === 'Followup-Agent'),
+    );
+    assert.ok(followupAssignment);
+    followupAssignment.status = 'removed';
+    followupAssignment.leftAt = '2026-03-26T14:00:00.000Z';
+    await chatStore.write(currentState);
+
+    const dispatchResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Ask @Inline-Agent to pick the next specialist.',
+      }),
+    });
+    assert.equal(dispatchResponse.status, 200);
+    const dispatchPayload = await dispatchResponse.json();
+    const blockedRunId = dispatchPayload.operator.latestRunId;
+    assert.ok(blockedRunId);
+    assert.equal(dispatchPayload.executionLoop.execution.state, 'blocked');
+    assert.equal(runtimeClient.sentMessages.length, 1);
+
+    const blockedCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(blockedCoreResponse.status, 200);
+    const blockedCorePayload = await blockedCoreResponse.json();
+    const blockedTask = blockedCorePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    assert.ok(blockedTask);
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.blockedReason, 'no_valid_targets');
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.targets.length, 0);
+    assert.equal(
+      blockedTask.metadata.workflowContinuationReplay.workflowRecommendation.candidateTargets[0].participantName,
+      'Followup-Agent',
+    );
+
+    const resumedState = await chatStore.read();
+    const resumedChannel = resumedState.channels.find((candidate) => candidate.id === channelId);
+    assert.ok(resumedChannel);
+    const resumedFollowupAssignment = resumedChannel.catAssignments.find((assignment) =>
+      resumedState.cats.some((cat) => cat.id === assignment.catId && cat.name === 'Followup-Agent'),
+    );
+    assert.ok(resumedFollowupAssignment);
+    resumedFollowupAssignment.status = 'active';
+    resumedFollowupAssignment.leftAt = null;
+    await chatStore.write(resumedState);
+
+    const operatorActionResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'retry',
+        actorId: 'actor-owner',
+        taskId: `task-channel-${channelId}`,
+        runId: blockedRunId,
+      }),
+    });
+    assert.equal(operatorActionResponse.status, 200);
+    const operatorActionPayload = await operatorActionResponse.json();
+    assert.equal(operatorActionPayload.action, 'retry');
+    assert.deepEqual(operatorActionPayload.autoResume, {
+      trigger: 'retry',
+      status: 'dispatched',
+      blockedReason: null,
+      sourceMessageId: operatorActionPayload.autoResume.sourceMessageId,
+      resultCount: 1,
+      executionState: 'completed',
+    });
+    assert.equal(runtimeClient.sentMessages.length, 2);
+    assert.match(runtimeClient.sentMessages[1]?.content ?? '', /You are Followup-Agent/u);
+
+    const coreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(coreResponse.status, 200);
+    const corePayload = await coreResponse.json();
+    const task = corePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    assert.ok(task);
+    assert.equal(task.metadata.workflowContinuationReplay, undefined);
+    assert.ok(
+      corePayload.activities.some((activity) =>
+        activity.taskId === `task-channel-${channelId}`
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_dispatched'),
+    );
+  }, chatStore);
+});
+
 test('GET /api/orchestrator/channels/:id/execution-loop accepts a projected room-workflow runId', async () => {
   const runtimeClient = createRuntimeStub();
   await withServer(runtimeClient, async (baseUrl) => {

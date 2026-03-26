@@ -351,6 +351,7 @@ export async function resumeWorkflowContinuationReplay(input: {
   nextState = loopResult.state;
   latestCheckpoint = loopResult.latestCheckpoint;
   const guardReason = loopResult.guardReason;
+  const blockedResolution = loopResult.blockedResolution;
 
   nextState = finalizeDispatchTurn(nextState, input.request.channelId, input.now, {
     nowIso,
@@ -360,6 +361,7 @@ export async function resumeWorkflowContinuationReplay(input: {
     outcome,
     latestCheckpoint,
     guardReason,
+    blockedResolution,
     userMessageId: sourceMessage.id,
     describeGuardReason,
   });

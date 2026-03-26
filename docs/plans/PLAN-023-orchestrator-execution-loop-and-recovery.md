@@ -91,9 +91,12 @@ MCP tool plane.
   metadata pattern instead of inventing a parallel loop; `max_dispatches`,
   `max_target_visits`, and `anti_ping_pong` continuation-stage blocks now also
   persist retryable replay snapshots when a concrete continuation source plus
-  targets already exist, and retry can now re-resolve stale stored targets
-  from the persisted `workflowRecommendation` payload when the original target
-  identities are no longer active, while broader group replan or
+  targets already exist, recommendation-only handoffs can now also persist a
+  retryable `no_valid_targets` replay snapshot when a structured
+  `workflowRecommendation` exists but no active participant currently matches
+  it, and retry can now re-resolve stale stored targets from the persisted
+  `workflowRecommendation` payload when the original target identities are no
+  longer active, while broader group replan or
   converge-stage continuation still remains
 - startup recovery now also finalizes stranded room-workflow `activeTurn`
   snapshots into blocked terminal history before the app starts serving

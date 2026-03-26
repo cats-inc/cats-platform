@@ -6,6 +6,7 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type {
+  RoomRouteBlockedReason,
   RoomRoutingCheckpoint,
   RoomRoutingGuardReason,
   RoomRoutingState,
@@ -84,6 +85,10 @@ export async function processDispatchQueue(
   state: ChatState;
   latestCheckpoint: RoomRoutingCheckpoint | null;
   guardReason: RoomRoutingGuardReason;
+  blockedResolution: {
+    blockedReason: RoomRouteBlockedReason;
+    note: string;
+  } | null;
 }> {
   const {
     activeTurn,
@@ -122,6 +127,10 @@ export async function processDispatchQueue(
   ];
   const targetVisitCounts = new Map<string, number>();
   let guardReason: RoomRoutingGuardReason = null;
+  let blockedResolution: {
+    blockedReason: RoomRouteBlockedReason;
+    note: string;
+  } | null = null;
 
   while (queue.length > 0) {
     const frame = queue.shift();
@@ -535,8 +544,9 @@ export async function processDispatchQueue(
     nextState = await persistInFlightDispatchState(chatStore, nextState);
     latestCheckpoint = appliedExecutions.latestCheckpoint;
     guardReason = guardReason ?? appliedExecutions.guardReason;
+    blockedResolution = blockedResolution ?? appliedExecutions.blockedResolution;
 
-    if (guardReason) {
+    if (guardReason || blockedResolution) {
       break;
     }
   }
@@ -545,5 +555,6 @@ export async function processDispatchQueue(
     state: nextState,
     latestCheckpoint,
     guardReason,
+    blockedResolution,
   };
 }

@@ -1765,7 +1765,10 @@ Semantics:
 - `workflowContinuationReplay.blockedReason` exposes the normalized workflow
   guard that persisted the retryable continuation snapshot, so recovery
   consumers can distinguish different continuation failure modes without
-  scraping raw checkpoint metadata
+  scraping raw checkpoint metadata; this now also includes
+  recommendation-only `no_valid_targets` blocks when a structured
+  `workflowRecommendation` exists but no active participant currently matches
+  it
 - `workflowContinuationBlockedReason` /
   `workflowContinuationBlockedReasonCounts` let recovery and operator
   automation facet retryable continuation work by which guard persisted the

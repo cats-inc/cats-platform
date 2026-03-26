@@ -583,5 +583,6 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
     max_dispatches: 0,
     max_target_visits: 0,
     anti_ping_pong: 1,
+    no_valid_targets: 0,
   });
 });

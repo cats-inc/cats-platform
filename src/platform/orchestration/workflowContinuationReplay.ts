@@ -18,6 +18,7 @@ export const WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS = [
   'max_dispatches',
   'max_target_visits',
   'anti_ping_pong',
+  'no_valid_targets',
 ] as const;
 export type WorkflowContinuationReplayBlockedReason =
   typeof WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS[number];
@@ -235,6 +236,7 @@ export function readWorkflowContinuationReplay(
   const targets = readParticipantRefArray(record.targets);
   const trigger = readTrigger(record.trigger);
   const workflowShape = readWorkflowShape(record.workflowShape);
+  const workflowRecommendation = asRecord(record.workflowRecommendation);
   const recordedAt = readNonEmptyString(record.recordedAt);
   const replayState = readReplayState(record.replayState);
   const replayTrigger = readReplayTrigger(record.replayTrigger);
@@ -243,7 +245,7 @@ export function readWorkflowContinuationReplay(
     || !checkpointId
     || !sourceMessageId
     || !sourceParticipant
-    || targets.length === 0
+    || (targets.length === 0 && !workflowRecommendation)
     || !trigger
     || !workflowShape
     || !recordedAt
@@ -269,7 +271,7 @@ export function readWorkflowContinuationReplay(
     workflowShape,
     reviewRequired: readBoolean(record.reviewRequired),
     continuationSource: readContinuationSource(record.continuationSource),
-    workflowRecommendation: asRecord(record.workflowRecommendation),
+    workflowRecommendation,
     unresolvedTargets: readStringArray(record.unresolvedTargets),
     blockedReason: readBlockedReason(record.blockedReason),
     recordedAt,

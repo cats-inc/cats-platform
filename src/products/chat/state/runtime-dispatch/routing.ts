@@ -224,6 +224,7 @@ export async function routeChannelMessage(
   nextState = loopResult.state;
   latestCheckpoint = loopResult.latestCheckpoint;
   const guardReason = loopResult.guardReason;
+  const blockedResolution = loopResult.blockedResolution;
 
   nextState = finalizeDispatchTurn(nextState, channelId, now, {
     nowIso,
@@ -233,6 +234,7 @@ export async function routeChannelMessage(
     outcome,
     latestCheckpoint,
     guardReason,
+    blockedResolution,
     userMessageId: userMessage.id,
     describeGuardReason,
   });
