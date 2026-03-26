@@ -193,13 +193,13 @@ contracts.
       without forcing later consumers to parse opaque task metadata blobs or
       re-filter the full core snapshot client-side, and those non-UI list
       routes now also support additive query filters plus summary counts,
-      including delivery-aware and workflow-stage-aware list filtering, so
-      later operator automation can page/facet control-plane, inbox, and
-      recovery surfaces without rebuilding the read model outside `cats`, and
-      the recovery read model itself now lifts delivery/workflow context into
-      a first-class inspectable contract instead of forcing later consumers to
-      re-read raw task metadata, while control-plane/inbox summaries now also
-      expose delivery/workflow facet counts for queueing and operator
+      including delivery-aware plus workflow-stage/workflow-shape-aware list
+      filtering, so later operator automation can page/facet control-plane,
+      inbox, and recovery surfaces without rebuilding the read model outside
+      `cats`, and the recovery read model itself now lifts delivery/workflow
+      context into a first-class inspectable contract instead of forcing later
+      consumers to re-read raw task metadata, while control-plane/inbox
+      summaries now also expose delivery/workflow facet counts for queueing and operator
       automation, and task inspection/control-plane payloads now also lift the
       latest normalized timeline item so operator consumers can read current
       context without issuing a second timeline join, while control-plane and

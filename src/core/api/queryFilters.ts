@@ -10,6 +10,7 @@ import {
   CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
   CORE_TASK_CONTROL_PLANE_REASONS,
   CORE_TASK_CONTROL_PLANE_SEVERITIES,
+  CORE_TASK_WORKFLOW_SHAPES,
   type CoreTaskControlPlaneListOptions,
 } from '../taskControlPlane.js';
 import {
@@ -135,6 +136,11 @@ export function readTaskAttentionListOptions(
       CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS,
     ),
     workflowStageIds: readQueryValues(searchParams, 'workflowStageId'),
+    workflowShapes: readEnumQueryValues(
+      searchParams,
+      'workflowShape',
+      CORE_TASK_WORKFLOW_SHAPES,
+    ),
     latestTimelineCategories: readEnumQueryValues(
       searchParams,
       'latestTimelineCategory',

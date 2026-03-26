@@ -291,6 +291,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     deliveryModes: ['commit_only'],
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
+    workflowShapes: ['sequential'],
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
     rootTaskIds: ['task-inbox-root'],
@@ -311,6 +312,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
+  assert.equal(result.summary.workflowShapeCounts.sequential, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
   assert.equal(result.tasks[0]?.family.rootTaskId, 'task-inbox-root');
   assert.equal(result.tasks[0]?.family.parent?.taskId, 'task-inbox-root');

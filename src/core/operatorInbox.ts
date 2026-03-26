@@ -4,11 +4,13 @@ import {
   CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
   CORE_TASK_CONTROL_PLANE_REASONS,
   CORE_TASK_CONTROL_PLANE_SEVERITIES,
+  CORE_TASK_WORKFLOW_SHAPES,
   listCoreTaskControlPlaneViews,
   type CoreTaskControlPlaneListOptions,
   type CoreTaskControlPlaneAttention,
   type CoreTaskControlPlaneNextAction,
   type CoreTaskControlPlaneRuntimeDeliveryIntentView,
+  type CoreTaskWorkflowShape,
   type CoreTaskControlPlaneWorkflowContinuationView,
   type CoreTaskControlPlaneWorkflowRecommendationView,
 } from './taskControlPlane.js';
@@ -68,9 +70,26 @@ export interface CoreOperatorInboxSummary {
   deliveryModeCounts: Record<CoreDeliveryMode, number>;
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
+  workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   withChildrenCount: number;
   withActiveChildrenCount: number;
+}
+
+function readWorkflowShape(value: unknown): CoreTaskWorkflowShape | null {
+  return value === 'sequential' || value === 'parallel' || value === 'converge'
+    ? value
+    : null;
+}
+
+function readEffectiveWorkflowShape(item: Pick<
+  CoreOperatorInboxItem,
+  'workflowContinuation' | 'runtimeDeliveryIntent' | 'workflowSummary'
+>): CoreTaskWorkflowShape | null {
+  return item.workflowContinuation?.workflowShape
+    ?? readWorkflowShape(item.runtimeDeliveryIntent?.workflowShape)
+    ?? readWorkflowShape(item.workflowSummary?.shape)
+    ?? null;
 }
 
 function compareInboxItems(left: CoreOperatorInboxItem, right: CoreOperatorInboxItem): number {
@@ -171,6 +190,14 @@ function matchesOperatorInboxQuery(
       ?? item.workflowSummary?.stageId
       ?? '',
     )
+  ) {
+    return false;
+  }
+
+  if (
+    query.workflowShapes?.length
+    && (!readEffectiveWorkflowShape(item)
+      || !query.workflowShapes.includes(readEffectiveWorkflowShape(item)!))
   ) {
     return false;
   }
@@ -321,6 +348,24 @@ function buildWorkflowStageCounts(
   return counts;
 }
 
+function buildWorkflowShapeCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreTaskWorkflowShape, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_WORKFLOW_SHAPES.map((shape) => [shape, 0]),
+  ) as Record<CoreTaskWorkflowShape, number>;
+
+  for (const item of items) {
+    const shape = readEffectiveWorkflowShape(item);
+    if (!shape) {
+      continue;
+    }
+    counts[shape] += 1;
+  }
+
+  return counts;
+}
+
 function buildLatestTimelineCategoryCounts(
   items: CoreOperatorInboxItem[],
 ): Record<CoreTaskTimelineCategory, number> {
@@ -357,6 +402,7 @@ export function summarizeCoreOperatorInboxItems(input: {
     deliveryModeCounts: buildDeliveryModeCounts(input.items),
     deliveryActionCounts: buildDeliveryActionCounts(input.items),
     workflowStageCounts: buildWorkflowStageCounts(input.items),
+    workflowShapeCounts: buildWorkflowShapeCounts(input.items),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),
     withChildrenCount: input.items.filter((item) => item.family.childCount > 0).length,
     withActiveChildrenCount: input.items.filter((item) =>

@@ -330,6 +330,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
     deliveryModes: ['commit_only'],
     deliveryActions: ['create_commit'],
     workflowStageIds: ['continuation_handoff'],
+    workflowShapes: ['sequential'],
     latestTimelineCategories: ['execution'],
     latestTimelineKinds: ['run'],
   });
@@ -347,6 +348,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.deliveryModeCounts.commit_only, 1);
   assert.equal(result.summary.deliveryActionCounts.create_commit, 1);
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
+  assert.equal(result.summary.workflowShapeCounts.sequential, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
 });
 

@@ -1414,6 +1414,7 @@ Semantics:
   - `deliveryMode`
   - `deliveryAction`
   - `workflowStageId`
+  - `workflowShape`
   - `latestTimelineCategory`
   - `latestTimelineKind`
   - `rootTaskId`
@@ -1423,7 +1424,8 @@ Semantics:
   - `limit`
 - repeated and comma-separated values are both accepted for enum filters such
   as `taskStatus`, `severity`, `reason`, `nextAction`, `deliveryMode`, and
-  `deliveryAction`, plus `latestTimelineCategory` and `latestTimelineKind`
+  `deliveryAction`, plus `workflowShape`, `latestTimelineCategory`, and
+  `latestTimelineKind`
 - list responses now include a `summary` block with:
   - `totalAvailable`
   - `matching`
@@ -1437,6 +1439,7 @@ Semantics:
   - `deliveryModeCounts`
   - `deliveryActionCounts`
   - `workflowStageCounts`
+  - `workflowShapeCounts`
   - `latestTimelineCategoryCounts`
   - `withChildrenCount`
   - `withActiveChildrenCount`
@@ -1512,6 +1515,7 @@ Semantics:
   - `deliveryMode`
   - `deliveryAction`
   - `workflowStageId`
+  - `workflowShape`
   - `latestTimelineCategory`
   - `latestTimelineKind`
   - `rootTaskId`
@@ -1522,9 +1526,9 @@ Semantics:
 - the response now includes the same shape of list `summary` counts so later
   operator automation or non-UI inbox consumers can page or facet the inbox
   without hydrating the full core snapshot client-side, including
-  `deliveryModeCounts`, `deliveryActionCounts`, `workflowStageCounts`, and
-  `latestTimelineCategoryCounts`, plus `withChildrenCount` and
-  `withActiveChildrenCount`
+  `deliveryModeCounts`, `deliveryActionCounts`, `workflowStageCounts`,
+  `workflowShapeCounts`, and `latestTimelineCategoryCounts`, plus
+  `withChildrenCount` and `withActiveChildrenCount`
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not
   have to join those surfaces client-side to answer "what needs attention and

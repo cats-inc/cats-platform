@@ -56,6 +56,8 @@ export type CoreTaskControlPlaneReason =
   | 'workflow_review_required'
   | 'child_tasks_in_progress';
 
+export type CoreTaskWorkflowShape = 'sequential' | 'parallel' | 'converge';
+
 export const CORE_TASK_CONTROL_PLANE_SEVERITIES = [
   'muted',
   'progress',
@@ -99,6 +101,12 @@ export const CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS = [
   'wait_for_checks',
   'publish_preview',
 ] as const satisfies readonly CoreRuntimeDeliveryAction[];
+
+export const CORE_TASK_WORKFLOW_SHAPES = [
+  'sequential',
+  'parallel',
+  'converge',
+] as const satisfies readonly CoreTaskWorkflowShape[];
 
 export interface CoreTaskControlPlaneApprovalAction {
   kind: CoreApprovalDecisionAction;
@@ -211,6 +219,7 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   deliveryModes?: CoreDeliveryMode[];
   deliveryActions?: CoreRuntimeDeliveryAction[];
   workflowStageIds?: string[];
+  workflowShapes?: CoreTaskWorkflowShape[];
   latestTimelineCategories?: CoreTaskTimelineCategory[];
   latestTimelineKinds?: CoreTaskTimelineItemKind[];
   rootTaskIds?: string[];
@@ -232,6 +241,7 @@ export interface CoreTaskControlPlaneListSummary {
   deliveryModeCounts: Record<CoreDeliveryMode, number>;
   deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
   workflowStageCounts: Record<string, number>;
+  workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
   withChildrenCount: number;
   withActiveChildrenCount: number;
@@ -508,10 +518,22 @@ function resolveLatestWorkflowRecommendation(input: {
 
 function readWorkflowShape(
   value: unknown,
-): 'sequential' | 'parallel' | 'converge' | null {
+): CoreTaskWorkflowShape | null {
   return value === 'sequential' || value === 'parallel' || value === 'converge'
     ? value
     : null;
+}
+
+function readEffectiveWorkflowShape(
+  view: Pick<
+    CoreTaskControlPlaneView,
+    'workflowContinuation' | 'runtimeDeliveryIntent' | 'workflowSummary'
+  >,
+): CoreTaskWorkflowShape | null {
+  return view.workflowContinuation?.workflowShape
+    ?? readWorkflowShape(view.runtimeDeliveryIntent?.workflowShape)
+    ?? readWorkflowShape(view.workflowSummary?.shape)
+    ?? null;
 }
 
 function readContinuationSource(
@@ -828,6 +850,14 @@ function matchesControlPlaneListOptions(
   }
 
   if (
+    options.workflowShapes?.length
+    && (!readEffectiveWorkflowShape(view)
+      || !options.workflowShapes.includes(readEffectiveWorkflowShape(view)!))
+  ) {
+    return false;
+  }
+
+  if (
     options.latestTimelineCategories?.length
     && (!view.latestTimelineItem?.category
       || !options.latestTimelineCategories.includes(view.latestTimelineItem.category))
@@ -973,6 +1003,24 @@ function buildWorkflowStageCounts(
   return counts;
 }
 
+function buildWorkflowShapeCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreTaskWorkflowShape, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_WORKFLOW_SHAPES.map((shape) => [shape, 0]),
+  ) as Record<CoreTaskWorkflowShape, number>;
+
+  for (const view of views) {
+    const shape = readEffectiveWorkflowShape(view);
+    if (!shape) {
+      continue;
+    }
+    counts[shape] += 1;
+  }
+
+  return counts;
+}
+
 function buildLatestTimelineCategoryCounts(
   views: CoreTaskControlPlaneView[],
 ): Record<CoreTaskTimelineCategory, number> {
@@ -1009,6 +1057,7 @@ export function summarizeCoreTaskControlPlaneViews(input: {
     deliveryModeCounts: buildDeliveryModeCounts(input.views),
     deliveryActionCounts: buildDeliveryActionCounts(input.views),
     workflowStageCounts: buildWorkflowStageCounts(input.views),
+    workflowShapeCounts: buildWorkflowShapeCounts(input.views),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.views),
     withChildrenCount: input.views.filter((view) => view.family.childCount > 0).length,
     withActiveChildrenCount: input.views.filter((view) =>

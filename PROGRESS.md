@@ -350,6 +350,10 @@ Known follow-ups:
 - control-plane and operator-inbox summaries now expose delivery/workflow
   facet counts alongside severity/action counts, so later operator automation
   can drive queue slices without rescanning full task lists client-side
+- those same control-plane/operator-inbox list routes now also support
+  `workflowShape` filtering plus `workflowShapeCounts`, so sequential /
+  parallel / converge topology becomes a first-class operator facet instead of
+  something consumers must infer from stage ids or raw metadata
 - task inspection and control-plane views now also lift `latestTimelineItem`
   into the same payload, so operator/recovery consumers can answer "what just
   happened?" without joining the separate timeline route client-side
