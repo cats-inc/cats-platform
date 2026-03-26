@@ -148,7 +148,10 @@ contracts.
       can reopen the loop after restarts, additive replay lifecycle
       activities now make blocked dispatch storage plus approve/reroute/retry
       replay start/result visible in product-owned operator read models, and
-      blocked `max_continuations` workflow continuations now persist a
+      core-owned recovery routes now normalize pending dispatch, stored
+      dispatch replay, workflow-continuation replay, and latest replay
+      activity into one inspectable read surface, while blocked
+      `max_continuations` workflow continuations now persist a
       retryable replay snapshot that `retry` can auto-resume through the same
       operator seam; broader group replan auto-resume still remains.
 - [ ] Promote the current machine-readable governance/workflow summaries into
@@ -158,7 +161,9 @@ contracts.
       normalized workflow recommendation out of checkpoint metadata into a
       first-class product view, so continuation source, candidate targets,
       branch strategy, and rationale are inspectable without scraping raw
-      room-routing events.
+      room-routing events, and `/api/core/recovery/tasks` plus
+      `/api/core/tasks/{taskId}/recovery` now expose normalized replay state
+      without forcing later consumers to parse opaque task metadata blobs.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary

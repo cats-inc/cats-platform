@@ -153,6 +153,8 @@ transport state stays in `src/platform/transports/telegram/*`.
   - project and work-item records
   - bot bindings for Telegram or LINE entrypoints
   - task, run, approval-binding, and escalation records
+  - core-owned recovery read models for approval-blocked dispatch,
+    orchestrator replay, and workflow-continuation replay inspection
   - owner profile and preference memory
   - artifact, activity, and archive metadata
 

@@ -18,6 +18,18 @@ import {
   createCatsMemoryService,
   MemoryCanonicalMemoryStore,
 } from '../dist-server/platform/memory/index.js';
+import {
+  buildOrchestratorDispatchReplayRequest,
+  writeOrchestratorDispatchReplayMetadata,
+} from '../dist-server/platform/orchestration/dispatchReplay.js';
+import {
+  buildPendingOrchestratorDispatchRequest,
+  writePendingOrchestratorDispatchMetadata,
+} from '../dist-server/platform/orchestration/pendingDispatch.js';
+import {
+  buildWorkflowContinuationReplayRequest,
+  writeWorkflowContinuationReplayMetadata,
+} from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
 import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
 
@@ -695,6 +707,149 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       ),
     );
   }, chatStore);
+});
+
+test('core recovery routes expose normalized orchestrator replay state without leaking raw task metadata', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const metadata = writeWorkflowContinuationReplayMetadata(
+      writeOrchestratorDispatchReplayMetadata(
+        writePendingOrchestratorDispatchMetadata(
+          {},
+          buildPendingOrchestratorDispatchRequest({
+            channelId: 'channel-recovery-routes',
+            body: 'Please resume the blocked rollout with a safer follow-up plan.',
+            senderName: 'Owner',
+            blockedAt: '2026-03-26T13:00:00.000Z',
+          }),
+          {
+            replayState: 'failed',
+            replayTrigger: 'approve',
+            replayAttemptAt: '2026-03-26T13:01:00.000Z',
+            replayError: 'owner unavailable',
+          },
+        ),
+        buildOrchestratorDispatchReplayRequest({
+          channelId: 'channel-recovery-routes',
+          body: 'Please resume the blocked rollout with a safer follow-up plan.',
+          senderName: 'Owner',
+          recordedAt: '2026-03-26T13:00:00.000Z',
+        }),
+        {
+          replayState: 'ready',
+          replayTrigger: 'retry',
+          replayAttemptAt: '2026-03-26T13:02:00.000Z',
+          sourceMessageId: 'message-recovery-routes',
+        },
+      ),
+      buildWorkflowContinuationReplayRequest({
+        channelId: 'channel-recovery-routes',
+        checkpointId: 'checkpoint-recovery-routes',
+        sourceMessageId: 'message-recovery-routes',
+        sourceParticipant: {
+          participantKind: 'cat',
+          participantId: 'cat-inline',
+          participantName: 'Inline-Agent',
+        },
+        targets: [
+          {
+            participantKind: 'cat',
+            participantId: 'cat-followup',
+            participantName: 'Followup-Agent',
+          },
+        ],
+        branchStrategy: 'transplant_context',
+        workflowStageId: 'continuation_handoff',
+        workflowShape: 'sequential',
+        reviewRequired: true,
+        continuationSource: 'workflow_recommendation',
+        unresolvedTargets: ['Ghost Cat'],
+        recordedAt: '2026-03-26T13:03:00.000Z',
+      }),
+      {
+        replayState: 'failed',
+        replayTrigger: 'retry',
+        replayAttemptAt: '2026-03-26T13:03:30.000Z',
+        replayError: 'guard tripped',
+      },
+    );
+
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-recovery-routes',
+          title: 'Inspect recovery routes',
+          status: 'blocked',
+          conversationId: 'conversation-channel-recovery-routes',
+          approval: {
+            status: 'pending',
+            requestedAt: '2026-03-26T12:59:00.000Z',
+          },
+          metadata,
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const activityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        activity: {
+          id: 'activity-recovery-routes',
+          kind: 'note',
+          taskId: 'task-recovery-routes',
+          conversationId: 'conversation-channel-recovery-routes',
+          message: 'Workflow continuation replay failed after retry.',
+          createdAt: '2026-03-26T13:04:00.000Z',
+          metadata: {
+            source: 'workflow-continuation-replay',
+            replayPhase: 'replay_failed',
+            replayTrigger: 'retry',
+            error: 'guard tripped',
+            resultCount: 0,
+          },
+        },
+      }),
+    });
+    assert.equal(activityResponse.status, 201);
+
+    const listResponse = await fetch(`${baseUrl}/api/core/recovery/tasks`);
+    assert.equal(listResponse.status, 200);
+    const listPayload = await listResponse.json();
+    assert.equal(listPayload.recoveries.length, 1);
+    assert.equal(listPayload.recoveries[0].taskId, 'task-recovery-routes');
+    assert.equal(listPayload.recoveries[0].canResumeViaApproval, true);
+    assert.equal(listPayload.recoveries[0].canRetry, true);
+    assert.ok(listPayload.recoveries[0].pendingDispatch.bodyLength > 40);
+    assert.match(listPayload.recoveries[0].pendingDispatch.bodyPreview, /blocked rollout/i);
+    assert.equal(listPayload.recoveries[0].latestActivity.phase, 'replay_failed');
+
+    const detailResponse = await fetch(
+      `${baseUrl}/api/core/tasks/task-recovery-routes/recovery`,
+    );
+    assert.equal(detailResponse.status, 200);
+    const detailPayload = await detailResponse.json();
+    assert.equal(detailPayload.recovery.dispatchReplay.sourceMessageId, 'message-recovery-routes');
+    assert.equal(detailPayload.recovery.dispatchReplay.replayState, 'ready');
+    assert.equal(detailPayload.recovery.workflowContinuationReplay.checkpointId, 'checkpoint-recovery-routes');
+    assert.deepEqual(
+      detailPayload.recovery.workflowContinuationReplay.targets.map((target) => target.participantName),
+      ['Followup-Agent'],
+    );
+    assert.equal(detailPayload.recovery.workflowContinuationReplay.reviewRequired, true);
+    assert.equal(detailPayload.recovery.approval.status, 'pending');
+
+    const missingResponse = await fetch(`${baseUrl}/api/core/tasks/task-missing/recovery`);
+    assert.equal(missingResponse.status, 404);
+    const missingPayload = await missingResponse.json();
+    assert.equal(missingPayload.error.code, 'task_not_found');
+  });
 });
 
 test('core project memory routes persist durable memory, sync canonical records, and expose retrieval context', async () => {

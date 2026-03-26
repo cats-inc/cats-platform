@@ -33,6 +33,7 @@ MCP tool plane.
   - dispatch intent
   - approval/recovery loop state
   - room-workflow execution summary
+  - normalized recovery inspection surfaces above raw replay task metadata
 - `cats-runtime` remains the runtime/tool boundary:
   - `cats` only consumes the frozen MCP tool plane through `/api/runtime/mcp`
 - pre-dispatch plans should expose a multi-step skeleton:
@@ -54,6 +55,10 @@ MCP tool plane.
   dispatch storage, approve/reroute/retry replay attempts, replay outcomes,
   and startup recovery; keep future control-plane work building on that shared
   inspectability path rather than inventing a second replay log
+- core-owned recovery read routes now normalize pending dispatch, stored
+  dispatch replay, workflow-continuation replay, and latest replay activity
+  into one inspectable surface; future operator/control-plane work should build
+  on that read model instead of re-parsing raw task metadata blobs
 - blocked `max_continuations` workflow continuation replay is now landed
   through the existing operator `retry` seam and startup recovery path; keep
   deeper group replan or converge-stage continuation using the same

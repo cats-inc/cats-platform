@@ -944,6 +944,77 @@ Semantics:
 - channel-derived `task-channel-*` records remain chat-owned projections;
   Team 2 should use distinct ids for system-owned tasks
 
+### Inspect Core Task Recovery
+
+```text
+GET /api/core/recovery/tasks
+GET /api/core/tasks/{taskId}/recovery
+```
+
+`GET /api/core/recovery/tasks` returns a filtered collection of tasks that
+currently carry product-owned orchestrator recovery state:
+
+```json
+{
+  "recoveries": [
+    {
+      "taskId": "task-system-1",
+      "taskStatus": "blocked",
+      "canResumeViaApproval": true,
+      "canRetry": true
+    }
+  ]
+}
+```
+
+`GET /api/core/tasks/{taskId}/recovery` returns the normalized recovery view
+for one task:
+
+```json
+{
+  "recovery": {
+    "taskId": "task-system-1",
+    "pendingDispatch": {
+      "channelId": "channel-123",
+      "blockedReason": "approval_pending",
+      "replayState": "failed"
+    },
+    "dispatchReplay": {
+      "sourceMessageId": "message-123",
+      "replayState": "ready"
+    },
+    "workflowContinuationReplay": {
+      "checkpointId": "checkpoint-123",
+      "workflowShape": "sequential",
+      "replayState": "failed"
+    },
+    "latestActivity": {
+      "phase": "replay_failed",
+      "source": "workflow-continuation-replay"
+    }
+  }
+}
+```
+
+Semantics:
+
+- these routes are inspectability-only; they do not replace the existing
+  `/api/core/approvals` or `/api/core/operator-actions` write seams
+- the payload normalizes three product-owned recovery records when present:
+  - approval-blocked pending dispatch metadata
+  - stored orchestrator dispatch replay metadata
+  - stored workflow-continuation replay metadata
+- message payloads are summarized as `bodyPreview` plus `bodyLength` instead of
+  echoing the full stored body back into every consumer
+- `latestActivity` projects the newest replay lifecycle note (`replay_started`,
+  `replay_dispatched`, `replay_failed`, `startup_recovered`, etc.) so callers
+  can inspect recovery progress without scraping the raw task metadata or
+  replay-activity feed
+- `canResumeViaApproval` is true when the task still has an
+  `approval_pending` dispatch waiting on an owner decision
+- `canRetry` is true when a stored dispatch replay or workflow-continuation
+  replay exists and is not currently `in_progress`
+
 ### List Core Approvals
 
 ```text
