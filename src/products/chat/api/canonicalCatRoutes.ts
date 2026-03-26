@@ -12,6 +12,7 @@ import {
   persistCatAssignmentUpdate,
   persistCreatedCat,
   persistDeletedCat,
+  persistUpdatedCat,
   type ChatApiRouteContext,
 } from './routeSupport.js';
 
@@ -67,7 +68,8 @@ async function handleCanonicalUpdateCat(
       modelSelection?: ProviderModelSelection | null;
       avatarUrl?: string | null;
     }>(context.request);
-    let state = await context.dependencies.chatStore.read();
+    const currentState = await context.dependencies.chatStore.read();
+    let state = currentState;
     if (body.name !== undefined) {
       state = renameCat(state, catId, body.name);
     }
@@ -98,7 +100,7 @@ async function handleCanonicalUpdateCat(
     if (body.archive) {
       state = await persistArchivedCat(context, state, catId);
     } else {
-      await context.dependencies.chatStore.write(state);
+      state = await persistUpdatedCat(context, currentState, state, catId);
     }
     sendJson(
       context.response,

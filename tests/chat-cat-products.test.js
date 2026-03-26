@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createDefaultChatState } from '../dist-server/chat/defaults.js';
 import {
   createCat,
+  createChannel,
   setBossCat,
   updateCatProducts,
 } from '../dist-server/chat/model.js';
@@ -53,4 +54,35 @@ test('updateCatProducts requires at least one product and boss promotion restore
   const nextState = setBossCat(legacyState, catId);
 
   assert.deepEqual(nextState.cats[0].products, ['work', 'chat']);
+});
+
+test('removing chat from cat products detaches active chat participation and clears direct-lane routing', () => {
+  const now = new Date('2026-03-26T00:00:00.000Z');
+  let state = createDefaultChatState();
+  state.capabilities.availableSurfaces = ['chat', 'work'];
+
+  state = createCat(state, {
+    name: 'Operator',
+    provider: 'claude',
+  }, now);
+  const catId = state.cats[0].id;
+
+  state = createChannel(state, {
+    title: 'Operator Direct',
+    topic: 'Dropping chat should detach the cat from active lanes.',
+    roomMode: 'direct_cat_chat',
+    participantCatIds: [catId],
+    leadParticipantId: catId,
+    skipBossCatGreeting: true,
+  }, now);
+
+  state = updateCatProducts(state, catId, ['work']);
+
+  const assignment = state.channels[0].catAssignments.find((candidate) => candidate.catId === catId);
+  assert.deepEqual(state.cats[0].products, ['work']);
+  assert.equal(assignment?.status, 'removed');
+  assert.equal(assignment?.execution.lease.status, 'removed');
+  assert.equal(state.channels[0].roomRouting?.mode, 'boss_chat');
+  assert.equal(state.channels[0].roomRouting?.leadParticipantId, null);
+  assert.equal(state.channels[0].composerMode, 'solo');
 });

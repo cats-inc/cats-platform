@@ -4,8 +4,8 @@ import type {
   ChatChannelSummary,
 } from '../api/contracts';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
-import { defaultCatProducts } from '../../../shared/suiteSurfaces.js';
-import { getProviderDisplayName } from './providerCatalog';
+import { buildExecutionLabel } from '../../../shared/executionLabel.js';
+import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
 import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
@@ -36,20 +36,17 @@ export function emptyCatForm(): CatFormState {
 }
 
 export function isChatCat(cat: ChatCat): boolean {
-  const products = Array.isArray(cat.products) ? cat.products : defaultCatProducts();
-  return products.includes('chat');
+  return hasSuiteSurface(cat.products, 'chat', {
+    fallback: defaultCatProducts(),
+  });
 }
 
 export function executionLabel(cat: ChatCat): string {
-  const name = getProviderDisplayName(cat.defaultExecutionTarget.provider);
-  const parts = [name];
-  if (cat.defaultExecutionTarget.instance) {
-    parts.push(cat.defaultExecutionTarget.instance);
-  }
-  if (cat.defaultExecutionTarget.model) {
-    parts.push(cat.defaultExecutionTarget.model);
-  }
-  return parts.join(' / ');
+  return buildExecutionLabel(
+    cat.defaultExecutionTarget.provider,
+    cat.defaultExecutionTarget.instance,
+    cat.defaultExecutionTarget.model,
+  );
 }
 
 export function createDraftChannelTitle(body: string, existingCount: number): string {

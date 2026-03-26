@@ -6,6 +6,7 @@ import {
 } from '../../../core/actors.js';
 import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
+import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import { requireCat } from '../state/model/index.js';
 import type {
@@ -79,12 +80,26 @@ function summarizeBinding(
   };
 }
 
+function requireBindableCat(
+  chat: Awaited<ReturnType<ChatApiRouteContext['dependencies']['chatStore']['read']>>,
+  catId: string,
+) {
+  const cat = requireCat(chat, catId);
+  if (cat.status !== 'active') {
+    throw new Error(`Cat is not active: ${catId}`);
+  }
+  if (!hasSuiteSurface(cat.products, 'chat', { fallback: defaultCatProducts() })) {
+    throw new Error(`Cat is not available in Cats Chat: ${catId}`);
+  }
+  return cat;
+}
+
 function createBindingRecord(
   chat: Awaited<ReturnType<ChatApiRouteContext['dependencies']['chatStore']['read']>>,
   input: CreateBotBindingInput,
   nowIso: string,
 ): BotBindingRecord {
-  const cat = requireCat(chat, input.catId);
+  const cat = requireBindableCat(chat, input.catId);
   const catActorId = createCatActorId(cat.id);
   const isBossBinding = chat.bossCatId === cat.id;
 
@@ -198,7 +213,7 @@ async function handleUpdateBotBinding(
   let roomMode = body.roomMode ?? existing.roomMode;
 
   if (body.catId !== undefined) {
-    const cat = requireCat(chat, body.catId);
+    const cat = requireBindableCat(chat, body.catId);
     catActorId = createCatActorId(cat.id);
     bossCatActorId = chat.bossCatId === cat.id ? catActorId : null;
     if (body.roomMode === undefined) {

@@ -3682,6 +3682,21 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
     const createCatPayload = await createCatResponse.json();
     const catId = createCatPayload.cat.id;
 
+    const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'companion_bot',
+        catId,
+        roomMode: 'direct_cat_chat',
+        webhookSecret: 'companion-secret',
+      }),
+    });
+    assert.equal(bindingResponse.status, 201);
+    const bindingPayload = await bindingResponse.json();
+    const bindingId = bindingPayload.botBinding.id;
+
     const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -3721,6 +3736,129 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
     assert.equal(archivePayload.chat.selectedChannel.composerMode, 'solo');
     assert.equal(archivePayload.chat.selectedChannel.assignedCats[0]?.status, 'removed');
     assert.equal(archivePayload.chat.channels[0]?.roomMode, 'boss_chat');
+    assert.equal(
+      archivePayload.chat.botBindings.find((binding) => binding.id === bindingId)?.status,
+      'disabled',
+    );
+
+    const archivedWebhookResponse = await fetch(
+      `${baseUrl}/api/transports/telegram/webhook/${bindingId}`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-telegram-bot-api-secret-token': 'companion-secret',
+        },
+        body: JSON.stringify({
+          update_id: 101,
+          message: {
+            message_id: 88,
+            text: 'hello archived cat',
+            chat: { id: 12345, type: 'private' },
+          },
+        }),
+      },
+    );
+    assert.equal(archivedWebhookResponse.status, 404);
+  });
+});
+
+test('archived cats cannot receive new Telegram bot bindings', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: false,
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const archiveResponse = await fetch(`${baseUrl}/api/cats/${catId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ archive: true }),
+    });
+    assert.equal(archiveResponse.status, 200);
+
+    const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'archived_companion',
+        catId,
+        roomMode: 'direct_cat_chat',
+      }),
+    });
+    assert.equal(bindingResponse.status, 400);
+    const bindingPayload = await bindingResponse.json();
+    assert.match(bindingPayload.error.message, /Cat is not active/u);
+  });
+});
+
+test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: false,
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'companion_bot',
+        catId,
+        roomMode: 'direct_cat_chat',
+      }),
+    });
+    assert.equal(bindingResponse.status, 201);
+
+    const deleteResponse = await fetch(`${baseUrl}/api/cats/${catId}`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteResponse.status, 200);
+
+    const listBindingsResponse = await fetch(`${baseUrl}/api/bot-bindings`);
+    assert.equal(listBindingsResponse.status, 200);
+    const listBindingsPayload = await listBindingsResponse.json();
+    assert.equal(listBindingsPayload.botBindings.length, 0);
   });
 });
 

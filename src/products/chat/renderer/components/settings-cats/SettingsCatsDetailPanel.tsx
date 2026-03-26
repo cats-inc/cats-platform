@@ -11,6 +11,7 @@ import type {
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory';
 import type { BotFormState } from '../../hooks/useSettingsCatsRegistryActions';
 import { buildProductSurfaceToggleStates } from '../../../../../design/components/productSurfaceToggles.js';
+import { defaultCatProducts, hasSuiteSurface } from '../../../../../shared/suiteSurfaces.js';
 import { MEMORY_CATEGORIES, SKILL_PROFILES, formatTransportTimestamp } from './viewSupport';
 
 interface SettingsCatsRegistryController {
@@ -86,6 +87,8 @@ export function SettingsCatsDetailPanel({
     requiredSurfaces: isBossCat ? ['chat'] : [],
     disabled: busy === `cat:products:${cat.id}`,
   });
+  const canBindTelegramBot = cat.status === 'active'
+    && hasSuiteSurface(cat.products, 'chat', { fallback: defaultCatProducts() });
 
   const [cropOpen, setCropOpen] = useState(false);
 
@@ -338,10 +341,14 @@ export function SettingsCatsDetailPanel({
           <button
             className="primaryButton"
             type="button"
-            disabled={!botForm.botName.trim() || busy === 'bot:create'}
+            disabled={!botForm.botName.trim() || busy === 'bot:create' || !canBindTelegramBot}
             onClick={() => void onCreateBinding(cat.id)}
           >
-            {busy === 'bot:create' ? 'Creating...' : 'Add Telegram Bot'}
+            {busy === 'bot:create'
+              ? 'Creating...'
+              : canBindTelegramBot
+                ? 'Add Telegram Bot'
+                : 'Unavailable for archived/non-chat cats'}
           </button>
         </div>
       </div>

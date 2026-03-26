@@ -14,6 +14,7 @@ import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readSuitePreferences } from '../../../shared/suitePreferences.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
+import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
 import {
   appendMessage,
   archiveCat,
@@ -299,6 +300,31 @@ function collectCatSessionIds(
   );
 }
 
+function catParticipatesInChat(products: readonly string[] | null | undefined): boolean {
+  return hasSuiteSurface(products, 'chat', {
+    fallback: defaultCatProducts(),
+  });
+}
+
+async function writeCoreWithUpdatedBindings(
+  context: ChatApiRouteContext,
+  update: (
+    bindings: Awaited<ReturnType<ChatStore['readCore']>>['botBindings'],
+    nowIso: string,
+  ) => Awaited<ReturnType<ChatStore['readCore']>>['botBindings'],
+): Promise<void> {
+  const nowIso = nowFrom(context.dependencies).toISOString();
+  const currentCore = await context.dependencies.chatStore.readCore();
+  await context.dependencies.chatStore.writeCore({
+    ...currentCore,
+    updatedAt: nowIso,
+    botBindings: update(
+      currentCore.botBindings.map((binding) => structuredClone(binding)),
+      nowIso,
+    ),
+  });
+}
+
 export async function persistDeletedChannel(
   context: ChatApiRouteContext,
   channelId: string,
@@ -340,7 +366,32 @@ export async function persistArchivedCat(
 ): Promise<ChatState> {
   const now = nowFrom(context.dependencies);
   await closeSessionIds(context, collectCatSessionIds(currentState, catId));
-  return context.dependencies.chatStore.write(archiveCat(currentState, catId, now));
+  const nextState = await context.dependencies.chatStore.write(archiveCat(currentState, catId, now));
+  await writeCoreWithUpdatedBindings(context, (bindings, nowIso) =>
+    bindings.map((binding) =>
+      binding.catActorId === createCatActorId(catId) || binding.bossCatActorId === createCatActorId(catId)
+        ? {
+            ...binding,
+            status: 'disabled',
+            updatedAt: nowIso,
+          }
+        : binding,
+    ));
+  return nextState;
+}
+
+export async function persistUpdatedCat(
+  context: ChatApiRouteContext,
+  currentState: ChatState,
+  nextState: ChatState,
+  catId: string,
+): Promise<ChatState> {
+  const currentCat = requireCat(currentState, catId);
+  const nextCat = requireCat(nextState, catId);
+  if (catParticipatesInChat(currentCat.products) && !catParticipatesInChat(nextCat.products)) {
+    await closeSessionIds(context, collectCatSessionIds(currentState, catId));
+  }
+  return context.dependencies.chatStore.write(nextState);
 }
 
 export async function persistCatAssignmentUpdate(
@@ -621,5 +672,9 @@ export async function persistDeletedCat(
   await closeSessionIds(context, collectCatSessionIds(currentState, catId));
   const nextState = deleteCat(currentState, catId, now);
   await context.dependencies.chatStore.write(nextState);
+  await writeCoreWithUpdatedBindings(context, (bindings) =>
+    bindings.filter((binding) =>
+      binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
+    ));
 }
 

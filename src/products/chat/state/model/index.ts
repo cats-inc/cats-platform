@@ -16,6 +16,7 @@ import type {
   ParticipantSessionStatus,
 } from '../../../../shared/roomRouting.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
+import { defaultCatProducts, hasSuiteSurface } from '../../../../shared/suiteSurfaces.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
   applyMessageToChannel,
@@ -216,6 +217,12 @@ export function assignCatToChannel(
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
   const cat = requireCat(nextState, input.catId);
+  if (cat.status !== 'active') {
+    throw new Error(`Cat is not active: ${input.catId}`);
+  }
+  if (!hasSuiteSurface(cat.products, 'chat', { fallback: defaultCatProducts() })) {
+    throw new Error(`Cat is not available in Cats Chat: ${input.catId}`);
+  }
   const existing = channel.catAssignments.find((candidate) => candidate.catId === input.catId);
 
   if (!existing) {

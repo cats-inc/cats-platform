@@ -40,6 +40,7 @@ import type {
   RoomWorkflowShape,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
+import { defaultCatProducts, hasSuiteSurface } from '../../../../shared/suiteSurfaces.js';
 
 function uniqueStrings(values: string[]): string[] {
   return values.filter((value, index) => value.length > 0 && values.indexOf(value) === index);
@@ -546,18 +547,40 @@ export function syncBotBindings(
   const bossCatActorId = chat.bossCatId
     ? createCatActorId(chat.bossCatId)
     : null;
+  const chatCatsByActorId = new Map(
+    chat.cats.map((cat) => [createCatActorId(cat.id), cat]),
+  );
+  const activeChatCatActorIds = new Set(
+    chat.cats
+      .filter((cat) =>
+        cat.status === 'active'
+        && hasSuiteSurface(cat.products, 'chat', { fallback: defaultCatProducts() }))
+      .map((cat) => createCatActorId(cat.id)),
+  );
+  const normalizedBindings = preservedBindings.map((binding) => {
+    const linkedCatActorId = binding.catActorId ?? binding.bossCatActorId;
+    if (!linkedCatActorId || activeChatCatActorIds.has(linkedCatActorId)) {
+      return binding;
+    }
+    const linkedCat = chatCatsByActorId.get(linkedCatActorId) ?? null;
+    return {
+      ...binding,
+      status: 'disabled' as const,
+      updatedAt: linkedCat?.updatedAt ?? binding.updatedAt,
+    };
+  });
 
   if (!telegramBotName || !bossCatActorId) {
-    return preservedBindings;
+    return normalizedBindings;
   }
 
-  const existingTelegram = preservedBindings.find((binding) =>
+  const existingTelegram = normalizedBindings.find((binding) =>
     binding.platform === 'telegram' && binding.botName === telegramBotName,
   );
   const updatedAt = chat.globalOrchestrator.updatedAt;
 
   if (existingTelegram) {
-    return preservedBindings.map((binding) =>
+    return normalizedBindings.map((binding) =>
       binding.id === existingTelegram.id
         ? {
             ...binding,

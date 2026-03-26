@@ -64,6 +64,14 @@ export function normalizeSuiteSurfaceList(
   return uniqueSurfaceList(fallback, allowed);
 }
 
+export function hasSuiteSurface(
+  values: readonly string[] | null | undefined | unknown,
+  surface: SuiteSurfaceId,
+  options: NormalizeSuiteSurfaceListOptions = {},
+): boolean {
+  return normalizeSuiteSurfaceList(values, options).includes(surface);
+}
+
 export function listEnabledSuiteSurfaces(): SuiteSurfaceId[] {
   return [...ENABLED_SUITE_SURFACES];
 }

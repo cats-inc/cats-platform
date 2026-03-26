@@ -5,6 +5,7 @@ import type {
 import {
   defaultCatProducts,
   ensureSuiteSurfaceIncluded,
+  hasSuiteSurface,
   normalizeSuiteSurfaceList,
 } from '../../../../shared/suiteSurfaces.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
@@ -92,6 +93,12 @@ function assertUniqueCatName(state: ChatState, name: string, excludeCatId?: stri
   if (duplicate) {
     throw new Error(`A cat named "${duplicate.name}" already exists`);
   }
+}
+
+function catHasChatSurface(products: readonly string[] | null | undefined): boolean {
+  return hasSuiteSurface(products, 'chat', {
+    fallback: defaultCatProducts(),
+  });
 }
 
 export function createCat(
@@ -226,10 +233,16 @@ export function updateCatProducts(
   if (normalizedProducts.length === 0) {
     throw new Error('Cat must be available in at least one product');
   }
+  const hadChatSurface = catHasChatSurface(cat.products);
   cat.products = nextState.bossCatId === catId
     ? ensureSuiteSurfaceIncluded(normalizedProducts, 'chat')
     : normalizedProducts;
   cat.updatedAt = new Date().toISOString();
+  if (hadChatSurface && !catHasChatSurface(cat.products)) {
+    detachCatFromChannels(nextState, catId, cat.updatedAt, {
+      preserveAssignmentHistory: true,
+    });
+  }
   return nextState;
 }
 

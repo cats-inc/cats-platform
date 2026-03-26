@@ -449,9 +449,9 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.telegram.status, 'bound');
-    assert.equal(payload.telegram.botBinding.botName, 'smelly_bot');
-    assert.equal(payload.telegram.availableBindings.length, 1);
+    assert.equal(payload.telegram.status, 'unbound');
+    assert.equal(payload.telegram.botBinding, null);
+    assert.equal(payload.telegram.availableBindings.length, 0);
     assert.equal(payload.telegram.publicIdentityMode, 'multi_cat_bindings_single_boss');
   } finally {
     server.close();
