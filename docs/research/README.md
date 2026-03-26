@@ -15,6 +15,8 @@
 | [2026-03-26-unified-planning-language-and-cross-product-strategy](./2026-03-26-unified-planning-language-and-cross-product-strategy.md) | 2026-03-26 | Unified planning language and cross-product strategy | CoreTaskRecord as cross-strategy plan exchange format, pluggable strategy selection (Chat=ReAct, Work=PDCA, Code=Reflexion), cross-product plan handoff |
 | [2026-03-26-cats-chat-spatial-layout-guidelines](./2026-03-26-cats-chat-spatial-layout-guidelines.md) | 2026-03-26 | Cats Chat spatial layout guidelines | Define the intended spatial model for transcript, split artifact view, pane-local action bars, compose-config/operator/cwd secondary surfaces, and companion-aware workspace structure |
 | [2026-03-26-companion-core-capabilities](./2026-03-26-companion-core-capabilities.md) | 2026-03-26 | Companion core capabilities | Define the minimum companion feature set, dashboard sections, identity/profile model, presence toggles, and current gap areas for `Cats Chat` |
+| [2026-03-26-cats-ai-first-app-store-vision](./2026-03-26-cats-ai-first-app-store-vision.md) | 2026-03-26 | Cats as an AI-first app store | Define the vision where users learn the platform with an AI coach, build apps with Work + Code inside the suite, and publish/install those apps back into `Cats` |
+| [2026-03-26-cats-coding-playground-vision](./2026-03-26-cats-coding-playground-vision.md) | 2026-03-26 | Cats Coding playground vision | Define `Cats Code > Playground` as a playful LAN/tablet mode where real-cat fish selections become software ideas, briefs, and generated outputs |
 
 ## Entry Template
 
