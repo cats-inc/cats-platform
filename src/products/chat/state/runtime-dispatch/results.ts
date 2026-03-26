@@ -97,6 +97,24 @@ function resolveContinuationStage(
   workflowShape: RoomWorkflowTurn['workflowShape'];
   reviewRequired: boolean;
 } {
+  if (recommendation && targetCount === 0) {
+    if (recommendation.workflowShape === 'parallel') {
+      return {
+        stageId: 'parallel_fan_out',
+        workflowShape: 'parallel',
+        reviewRequired: false,
+      };
+    }
+
+    if (recommendation.workflowShape === 'converge') {
+      return {
+        stageId: 'converge_review',
+        workflowShape: 'converge',
+        reviewRequired: true,
+      };
+    }
+  }
+
   if (recommendation?.workflowShape === 'converge' && targetCount === 1) {
     return {
       stageId: 'converge_review',
@@ -390,6 +408,10 @@ export function applyDispatchExecutions(
 
     if (continuationResolution.targets.length === 0) {
       if (serializedWorkflowRecommendation) {
+        activeTurn.stageId = continuationStage.stageId;
+        activeTurn.workflowShape = continuationStage.workflowShape;
+        activeTurn.reviewRequired = continuationStage.reviewRequired;
+        activeTurn.convergeTargetId = convergeTargetId;
         const blockedNote = continuationResolution.resolution.note
           ?? `No valid continuation targets were resolved from ${execution.target.participantName}'s handoff.`;
         latestCheckpoint = addWorkflowCheckpoint(

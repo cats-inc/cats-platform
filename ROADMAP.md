@@ -177,7 +177,9 @@ contracts.
       recovery routes can now also project/filter/count that normalized latest
       replay resume reason for operator automation, recommendation-driven
       `parallel` replay now also waits for every candidate target to recover
-      before auto-resuming a blocked fan-out, and can
+      before auto-resuming a blocked fan-out, while blocked `no_valid_targets`
+      snapshots now also preserve the recommendation-owned workflow
+      stage/shape instead of collapsing to `sequential`, and can
       also re-resolve stale stored continuation targets from persisted
       `workflowRecommendation` payloads when the original participant ids are
       no longer active; broader group replan auto-resume still remains.

@@ -101,7 +101,9 @@ MCP tool plane.
   `resumeReason=target_recovered`, core recovery routes now also project/filter
   that normalized latest replay resume reason, recommendation-driven
   `parallel` replay now also waits for every candidate target in the stored
-  workflow recommendation before auto-resuming a blocked fan-out, and the same seam can also
+  workflow recommendation before auto-resuming a blocked fan-out, blocked
+  `no_valid_targets` snapshots now also preserve the recommendation-owned
+  workflow stage/shape instead of collapsing to `sequential`, and the same seam can also
   re-resolve stale stored targets from the persisted
   `workflowRecommendation` payload when the
   original target identities are no longer active, while broader group replan

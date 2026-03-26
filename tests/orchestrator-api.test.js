@@ -1468,6 +1468,8 @@ test('recommendation-only continuation replay stays blocked on retry and auto-re
     assert.ok(blockedTask);
     assert.equal(blockedTask.metadata.workflowContinuationReplay.blockedReason, 'no_valid_targets');
     assert.equal(blockedTask.metadata.workflowContinuationReplay.targets.length, 0);
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowStageId, 'continuation_handoff');
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowShape, 'sequential');
     assert.equal(
       blockedTask.metadata.workflowContinuationReplay.workflowRecommendation.candidateTargets[0].participantName,
       'Followup-Agent',
@@ -1632,6 +1634,13 @@ test('recommendation-only parallel continuation replay waits for all recovered t
     const dispatchPayload = await dispatchResponse.json();
     assert.equal(dispatchPayload.executionLoop.execution.state, 'blocked');
     assert.equal(runtimeClient.sentMessages.length, 1);
+    const blockedCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(blockedCoreResponse.status, 200);
+    const blockedCorePayload = await blockedCoreResponse.json();
+    const blockedTask = blockedCorePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    assert.ok(blockedTask);
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowStageId, 'parallel_fan_out');
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowShape, 'parallel');
 
     const firstReassignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${followupCat.id}`, {
       method: 'PUT',
@@ -1646,15 +1655,17 @@ test('recommendation-only parallel continuation replay waits for all recovered t
     assert.equal(firstReassignResponse.status, 200);
     assert.equal(runtimeClient.sentMessages.length, 1);
 
-    const blockedCoreResponse = await fetch(`${baseUrl}/api/core`);
-    assert.equal(blockedCoreResponse.status, 200);
-    const blockedCorePayload = await blockedCoreResponse.json();
-    const blockedTask = blockedCorePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
-    assert.ok(blockedTask);
-    assert.equal(blockedTask.metadata.workflowContinuationReplay.blockedReason, 'no_valid_targets');
-    assert.equal(blockedTask.metadata.workflowContinuationReplay.replayState, 'ready');
+    const stillBlockedCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(stillBlockedCoreResponse.status, 200);
+    const stillBlockedCorePayload = await stillBlockedCoreResponse.json();
+    const stillBlockedTask = stillBlockedCorePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    assert.ok(stillBlockedTask);
+    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.blockedReason, 'no_valid_targets');
+    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.replayState, 'ready');
+    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.workflowStageId, 'parallel_fan_out');
+    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.workflowShape, 'parallel');
     assert.ok(
-      blockedCorePayload.activities.some((activity) =>
+      stillBlockedCorePayload.activities.some((activity) =>
         activity.taskId === `task-channel-${channelId}`
         && activity.metadata?.source === 'workflow-continuation-replay'
         && activity.metadata?.replayPhase === 'replay_blocked'

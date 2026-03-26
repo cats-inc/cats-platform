@@ -331,6 +331,10 @@ Known follow-ups:
   `blocked/no_valid_targets` until every candidate target in the stored
   workflow recommendation is active again, so target recovery cannot silently
   degrade a previously blocked fan-out into a partial dispatch
+- blocked `no_valid_targets` continuation snapshots now also preserve the
+  recommendation-owned workflow stage/shape in task metadata, so recovery and
+  control-plane filters no longer misclassify a blocked parallel fan-out as a
+  sequential handoff just because zero targets were active at block time
 - core recovery routes now also project that normalized
   `latestActivity.resumeReason` field and support
   `latestReplayResumeReason` filtering plus
