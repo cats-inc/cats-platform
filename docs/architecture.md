@@ -541,9 +541,10 @@ See
 - `Cats Work` now ships a first shared-core dashboard plus
   project/work-item/task detail surfaces above the same shared-core records,
   while broader team-operating-model surfaces still remain future work.
-- `Cats Code` now ships a first shared-core dashboard above code-targeted tasks
-  plus build/preview artifact output, while richer project/build/previews
-  workspaces still remain future work.
+- `Cats Code` now ships a shared-core workspace above code-targeted tasks plus
+  build/preview artifact output, including task detail, output detail, and
+  dedicated code-task / code-artifact read models, while richer project and
+  live builder-loop workspaces still remain future work.
 - The current execution path keeps full Chat and Work desktop surfaces on the
   same React/TypeScript renderer stack under Electron.
 - The current server now exposes a Telegram transport seam with dedicated

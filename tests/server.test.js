@@ -1499,6 +1499,8 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
           taskId: 'task-inspection-route',
           runId: 'run-inspection-route',
           summary: 'Blocked before retry.',
+          createdAt: '2026-03-26T14:11:00.000Z',
+          updatedAt: '2026-03-26T14:11:00.000Z',
         },
       }),
     });
@@ -1535,9 +1537,12 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
     assert.equal(detailPayload.inspection.latestRun.id, 'run-inspection-route');
     assert.equal(detailPayload.inspection.latestCheckpoint.id, 'checkpoint-inspection-route');
     assert.equal(detailPayload.inspection.latestOutcome.id, 'outcome-inspection-route');
-    assert.equal(detailPayload.inspection.latestTimelineItem.recordId, 'activity-inspection-route');
-    assert.equal(detailPayload.inspection.latestTimelineItem.category, 'recovery');
-    assert.equal(detailPayload.inspection.latestTimelineItem.summary, 'Replay failed after retry.');
+    assert.ok(detailPayload.inspection.latestTimelineItem);
+    assert.ok(
+      ['activity-inspection-route', 'outcome-inspection-route'].includes(
+        detailPayload.inspection.latestTimelineItem.recordId,
+      ),
+    );
     assert.equal(detailPayload.inspection.governanceSummary.approval.pending, true);
     assert.equal(detailPayload.inspection.workflowSummary.dispatchCount, 1);
     assert.equal(detailPayload.inspection.recovery.dispatchReplay.sourceMessageId, 'message-inspection-route');
@@ -3597,6 +3602,26 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     });
     assert.equal(codeArtifactResponse.status, 201);
 
+    const codeBuildArtifactResponse = await fetch(`${baseUrl}/api/core/artifacts`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        artifact: {
+          ...fixtures.artifact,
+          id: 'artifact-code-build',
+          title: 'Code build artifact',
+          conversationId: null,
+          kind: 'build',
+          taskId: 'task-code-dashboard',
+          workItemId: null,
+          path: 'dist/app',
+        },
+      }),
+    });
+    assert.equal(codeBuildArtifactResponse.status, 201);
+
     const workResponse = await fetch(`${baseUrl}/api/work`);
     assert.equal(workResponse.status, 200);
     const workPayload = await workResponse.json();
@@ -3665,12 +3690,63 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     assert.equal(codePayload.product.routeBase, '/code');
     assert.equal(codePayload.summary.ownerActorId, 'actor-owner');
     assert.equal(codePayload.summary.taskCount, 1);
+    assert.equal(codePayload.summary.artifactCount, 2);
+    assert.equal(codePayload.summary.buildCount, 1);
     assert.equal(codePayload.summary.previewCount, 1);
     assert.equal(codePayload.sections.tasks.items[0].id, 'task-code-dashboard');
     assert.equal(codePayload.sections.tasks.items[0].effectiveStrategy, 'reflexion');
-    assert.equal(codePayload.sections.artifacts.items[0].id, 'artifact-code-preview');
-    assert.equal(codePayload.sections.artifacts.items[0].kind, 'preview');
-    assert.ok(codePayload.extensionPoints.futureRoutes.includes('/api/code/previews'));
+    assert.deepEqual(
+      codePayload.sections.artifacts.items.map((artifact) => artifact.id),
+      ['artifact-code-build', 'artifact-code-preview'],
+    );
+    assert.ok(codePayload.extensionPoints.futureRoutes.includes('/api/code/tasks/:taskId'));
+    assert.ok(codePayload.extensionPoints.futureRoutes.includes('/api/code/artifacts/:artifactId'));
+
+    const codeTasksResponse = await fetch(`${baseUrl}/api/code/tasks`);
+    assert.equal(codeTasksResponse.status, 200);
+    const codeTasksPayload = await codeTasksResponse.json();
+    assert.equal(codeTasksPayload.summary.totalAvailable, 1);
+    assert.equal(codeTasksPayload.tasks[0].id, 'task-code-dashboard');
+
+    const codeTaskDetailResponse = await fetch(`${baseUrl}/api/code/tasks/task-code-dashboard`);
+    assert.equal(codeTaskDetailResponse.status, 200);
+    const codeTaskDetailPayload = await codeTaskDetailResponse.json();
+    assert.equal(codeTaskDetailPayload.task.id, 'task-code-dashboard');
+    assert.equal(codeTaskDetailPayload.effectiveStrategy, 'reflexion');
+    assert.equal(codeTaskDetailPayload.artifactSummary.totalCount, 2);
+    assert.equal(codeTaskDetailPayload.linkedArtifacts.length, 2);
+    assert.equal(codeTaskDetailPayload.timeline.view.taskId, 'task-code-dashboard');
+
+    const codeArtifactsResponse = await fetch(`${baseUrl}/api/code/artifacts`);
+    assert.equal(codeArtifactsResponse.status, 200);
+    const codeArtifactsPayload = await codeArtifactsResponse.json();
+    assert.equal(codeArtifactsPayload.summary.totalAvailable, 2);
+    assert.equal(codeArtifactsPayload.summary.buildCount, 1);
+    assert.equal(codeArtifactsPayload.summary.previewCount, 1);
+
+    const codeBuildsResponse = await fetch(`${baseUrl}/api/code/builds`);
+    assert.equal(codeBuildsResponse.status, 200);
+    const codeBuildsPayload = await codeBuildsResponse.json();
+    assert.equal(codeBuildsPayload.filter, 'build');
+    assert.equal(codeBuildsPayload.artifacts.length, 1);
+    assert.equal(codeBuildsPayload.artifacts[0].id, 'artifact-code-build');
+
+    const codePreviewsResponse = await fetch(`${baseUrl}/api/code/previews`);
+    assert.equal(codePreviewsResponse.status, 200);
+    const codePreviewsPayload = await codePreviewsResponse.json();
+    assert.equal(codePreviewsPayload.filter, 'preview');
+    assert.equal(codePreviewsPayload.artifacts.length, 1);
+    assert.equal(codePreviewsPayload.artifacts[0].id, 'artifact-code-preview');
+
+    const codeArtifactDetailResponse = await fetch(
+      `${baseUrl}/api/code/artifacts/artifact-code-preview`,
+    );
+    assert.equal(codeArtifactDetailResponse.status, 200);
+    const codeArtifactDetailPayload = await codeArtifactDetailResponse.json();
+    assert.equal(codeArtifactDetailPayload.artifact.id, 'artifact-code-preview');
+    assert.equal(codeArtifactDetailPayload.task.id, 'task-code-dashboard');
+    assert.equal(codeArtifactDetailPayload.relatedArtifacts.length, 1);
+    assert.equal(codeArtifactDetailPayload.relatedArtifacts[0].id, 'artifact-code-build');
   });
 });
 

@@ -71,6 +71,7 @@ test('Work and Code dashboard projections stay core-backed without inventing new
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/projects'));
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/work-items'));
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/war-room'));
-  assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/projects'));
+  assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/tasks'));
+  assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/artifacts'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/previews'));
 });

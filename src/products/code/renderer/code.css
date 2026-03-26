@@ -11,10 +11,11 @@
 }
 
 .codeHeroCard,
-.codeSectionCard {
+.codeSectionCard,
+.codeDetailCard {
   border: 1px solid rgba(44, 60, 110, 0.1);
   border-radius: 28px;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 20px 56px rgba(36, 52, 96, 0.08);
 }
 
@@ -35,7 +36,9 @@
 .codeHeroCopy p,
 .codeEmptyState,
 .codeCardCopy,
-.codeCardMeta {
+.codeCardMeta,
+.codeDetailCopy,
+.codeTimelineItem p {
   margin: 0;
   color: #62708e;
   line-height: 1.55;
@@ -57,6 +60,10 @@
   gap: 14px;
 }
 
+.codeSummaryGridCompact {
+  margin-top: 4px;
+}
+
 .codeSummaryCard {
   display: flex;
   flex-direction: column;
@@ -65,12 +72,14 @@
   border: 1px solid rgba(52, 76, 140, 0.1);
   border-radius: 20px;
   background: rgba(242, 246, 255, 0.92);
+  min-width: 0;
 }
 
 .codeSummaryValue {
-  font-size: 1.7rem;
+  font-size: 1.4rem;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.1;
+  word-break: break-word;
 }
 
 .codeSummaryLabel {
@@ -78,47 +87,101 @@
   font-size: 0.9rem;
 }
 
-.codeLayout {
+.codeWorkspace {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(24rem, 1.2fr);
   gap: 24px;
+  align-items: start;
 }
 
-.codeSectionCard {
+.codeCollectionsColumn,
+.codeDetailColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.codeSectionCard,
+.codeDetailCard {
   padding: 22px;
 }
 
-.codeSectionHeader {
+.codeDetailCard {
+  position: sticky;
+  top: 32px;
+}
+
+.codeDetailCardEmpty {
+  min-height: 18rem;
+}
+
+.codeSectionHeader,
+.codeDetailHeader {
   margin-bottom: 16px;
 }
 
-.codeSectionHeader h2 {
+.codeSectionHeader h2,
+.codeDetailHeader h2 {
   margin: 0;
   font-size: 1.35rem;
   line-height: 1.2;
 }
 
-.codeCardList {
+.codeDetailHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.codeCardList,
+.codeCompactList {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.codeCard {
-  padding: 16px;
+.codeListButton,
+.codeInlineButton {
+  width: 100%;
+  text-align: left;
   border: 1px solid rgba(52, 76, 140, 0.12);
-  border-radius: 18px;
   background: #fff;
+  color: inherit;
+  cursor: pointer;
 }
 
-.codeCardHeader {
+.codeListButton {
+  padding: 16px;
+  border-radius: 18px;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.codeListButton:hover,
+.codeListButton:focus-visible,
+.codeInlineButton:hover,
+.codeInlineButton:focus-visible,
+.codeLinkButton:hover,
+.codeLinkButton:focus-visible {
+  border-color: rgba(71, 101, 199, 0.4);
+  box-shadow: 0 10px 26px rgba(54, 76, 142, 0.12);
+}
+
+.codeListButton.isSelected {
+  border-color: rgba(71, 101, 199, 0.48);
+  background: rgba(245, 248, 255, 0.98);
+}
+
+.codeListButtonHeader,
+.codeTimelineHeader {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: start;
 }
 
-.codeCardHeader strong {
+.codeListButtonHeader strong {
   font-size: 1rem;
   line-height: 1.35;
 }
@@ -160,14 +223,100 @@
   color: #4860a3;
 }
 
-.codeBadgeAccent {
-  background: rgba(228, 248, 244, 0.95);
-  color: #2e7d69;
+.codeBadgeStrong {
+  background: rgba(225, 236, 255, 0.98);
+  color: #314f9e;
+}
+
+.codeDetailSection + .codeDetailSection {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(52, 76, 140, 0.1);
+}
+
+.codeDetailSection h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.codeDefinitionList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.codeDefinitionList dt {
+  color: #667791;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.codeDefinitionList dd {
+  margin: 0;
+  color: #283246;
+  line-height: 1.45;
+}
+
+.codeTimelineList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.codeTimelineItem {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(52, 76, 140, 0.12);
+  background: rgba(251, 252, 255, 0.92);
+}
+
+.codeTimelineHeader span {
+  color: #748099;
+  font-size: 0.82rem;
+}
+
+.codeInlineButton {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 16px;
+}
+
+.codeInlineButton span {
+  color: #667791;
+  font-size: 0.82rem;
+}
+
+.codeLinkButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #3d5dbe;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(61, 93, 190, 0.3);
+  text-underline-offset: 2px;
+  box-shadow: none;
+}
+
+@media (max-width: 1240px) {
+  .codeWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .codeDetailCard {
+    position: static;
+  }
 }
 
 @media (max-width: 1120px) {
-  .codeHeroCard,
-  .codeLayout {
+  .codeHeroCard {
     grid-template-columns: 1fr;
   }
 }
@@ -178,12 +327,22 @@
   }
 
   .codeHeroCard,
-  .codeSectionCard {
+  .codeSectionCard,
+  .codeDetailCard {
     padding: 18px;
     border-radius: 22px;
   }
 
-  .codeSummaryGrid {
+  .codeSummaryGrid,
+  .codeDefinitionList {
     grid-template-columns: 1fr;
+  }
+
+  .codeDetailHeader,
+  .codeListButtonHeader,
+  .codeTimelineHeader,
+  .codeInlineButton {
+    flex-direction: column;
+    align-items: start;
   }
 }

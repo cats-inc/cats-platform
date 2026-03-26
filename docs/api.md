@@ -483,6 +483,12 @@ boards still remain future product slices.
 
 ```text
 GET /api/code
+GET /api/code/tasks
+GET /api/code/tasks/:taskId
+GET /api/code/artifacts
+GET /api/code/artifacts/:artifactId
+GET /api/code/builds
+GET /api/code/previews
 ```
 
 - `GET /api/code` now returns the first Code dashboard projection above shared
@@ -496,9 +502,23 @@ GET /api/code
     artifacts linked to those code tasks
   - `selection.defaultTaskId` and `selection.defaultArtifactId` hints for later
     Code-side detail panes
+- `GET /api/code/tasks` returns the code-task list read model plus summary
+  counts.
+- `GET /api/code/tasks/:taskId` joins:
+  - the shared `task` record
+  - the derived `inspection` view
+  - a normalized timeline preview
+  - linked build/preview artifacts
+- `GET /api/code/artifacts` returns the code-output list read model above all
+  code-linked artifacts.
+- `GET /api/code/artifacts/:artifactId` returns the focused code-output detail
+  view, including linked task/work-item/project references plus related output
+  siblings.
+- `GET /api/code/builds` and `GET /api/code/previews` provide dedicated filtered
+  output read models for later builder-loop surfaces.
 - This slice intentionally keeps `Cats Code` above `Cats Core v1` rather than
-  creating a second code-specific task or artifact schema. Richer build,
-  preview, and project workspaces remain future Code slices.
+  creating a second code-specific task or artifact schema. Richer project and
+  live preview/build workspaces remain future Code slices.
 
 ### Shell Helpers
 
