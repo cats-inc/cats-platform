@@ -109,7 +109,9 @@ MCP tool plane.
   recovery path now appends additive replay activity with
   `resumeReason=target_recovered`, startup recovery now also re-attempts ready
   recommendation-based `no_valid_targets` replays when their targets are
-  already active again after restart, core recovery routes now also project/filter
+  already active again after restart, server startup recovery now also runs
+  its polling/chat-workflow/orchestrator passes in deterministic sequence,
+  core recovery routes now also project/filter
   that normalized latest replay resume reason, recommendation-driven
   `parallel` replay now also waits for every candidate target in the stored
   workflow recommendation before auto-resuming a blocked fan-out, blocked

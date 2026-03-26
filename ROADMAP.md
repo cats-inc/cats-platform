@@ -176,6 +176,9 @@ contracts.
       re-attempts ready recommendation-based `no_valid_targets` replays when
       their targets are already active again after restart, with additive
       replay activity marking that path as `resumeReason=target_recovered`, while core
+      startup recovery now also runs its polling, chat-workflow, and
+      orchestrator passes in deterministic sequence so those reconciliation
+      writes do not race one another during boot, while core
       recovery routes can now also project/filter/count that normalized latest
       replay resume reason for operator automation, recommendation-driven
       `parallel` replay now also waits for every candidate target to recover

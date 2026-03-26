@@ -3,11 +3,9 @@ import { createServer as createHttpServer } from 'node:http';
 import { sendJson } from '../../shared/http.js';
 
 import type { ServerDependencies } from './contracts.js';
-import { reconcileChatWorkflowRecoveryOnStartup } from './chatWorkflowRecovery.js';
 import { resolveServerDependencies } from './dependencies.js';
-import { reconcileOrchestratorRecoveryOnStartup } from './orchestratorRecovery.js';
-import { reconcilePollingOnStartup } from './polling.js';
 import { routeRequest } from './requestRouter.js';
+import { runServerStartupRecoveryPasses } from './startupRecovery.js';
 
 export type { ServerDependencies } from './contracts.js';
 
@@ -29,9 +27,7 @@ export function createServer(dependencies: ServerDependencies) {
     resolvedDependencies.chat.pollingSupervisor.stopAll();
   });
 
-  void reconcilePollingOnStartup(resolvedDependencies).catch(() => {});
-  void reconcileChatWorkflowRecoveryOnStartup(resolvedDependencies).catch(() => {});
-  void reconcileOrchestratorRecoveryOnStartup(resolvedDependencies).catch(() => {});
+  void runServerStartupRecoveryPasses(resolvedDependencies);
 
   return server;
 }

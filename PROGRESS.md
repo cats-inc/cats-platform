@@ -331,6 +331,9 @@ Known follow-ups:
   `no_valid_targets` continuation replays when their targets are already
   active again after restart, while still-unresolved replays stay quiet and
   ready instead of re-emitting blocked replay activity on every boot
+- server startup recovery now also runs its polling, chat-workflow, and
+  orchestrator recovery passes in deterministic sequence, so later passes do
+  not race earlier core/chat state reconciliation
 - recommendation-driven `parallel` continuation replay now stays
   `blocked/no_valid_targets` until every candidate target in the stored
   workflow recommendation is active again, so target recovery cannot silently
