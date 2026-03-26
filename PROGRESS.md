@@ -359,8 +359,9 @@ Known follow-ups:
   happened?" without joining the separate timeline route client-side
 - control-plane and operator-inbox list routes now also support
   `latestTimelineCategory` / `latestTimelineKind` filtering plus
-  `latestTimelineCategoryCounts`, so automation can facet queues by the newest
-  normalized narrative signal without rescanning every task client-side
+  `latestTimelineCategoryCounts` / `latestTimelineKindCounts`, so automation
+  can facet queues by the newest normalized narrative signal without
+  rescanning every task client-side
 - those same operator/control-plane list routes now also support family-aware
   filters (`rootTaskId`, `parentTaskId`, `hasChildren`, `hasActiveChildren`)
   plus `withChildrenCount` / `withActiveChildrenCount`, so queue automation can

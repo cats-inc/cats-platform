@@ -1441,6 +1441,7 @@ Semantics:
   - `workflowStageCounts`
   - `workflowShapeCounts`
   - `latestTimelineCategoryCounts`
+  - `latestTimelineKindCounts`
   - `withChildrenCount`
   - `withActiveChildrenCount`
 - `approvalActions` and `incidentActions` already point at the existing
@@ -1527,7 +1528,8 @@ Semantics:
   operator automation or non-UI inbox consumers can page or facet the inbox
   without hydrating the full core snapshot client-side, including
   `deliveryModeCounts`, `deliveryActionCounts`, `workflowStageCounts`,
-  `workflowShapeCounts`, and `latestTimelineCategoryCounts`, plus
+  `workflowShapeCounts`, `latestTimelineCategoryCounts`, and
+  `latestTimelineKindCounts`, plus
   `withChildrenCount` and `withActiveChildrenCount`
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not

@@ -314,6 +314,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
   assert.equal(result.summary.workflowShapeCounts.sequential, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
+  assert.equal(result.summary.latestTimelineKindCounts.run, 1);
   assert.equal(result.tasks[0]?.family.rootTaskId, 'task-inbox-root');
   assert.equal(result.tasks[0]?.family.parent?.taskId, 'task-inbox-root');
   assert.equal(result.summary.withChildrenCount, 0);

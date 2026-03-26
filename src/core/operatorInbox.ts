@@ -24,8 +24,10 @@ import type {
 } from './types.js';
 import {
   CORE_TASK_TIMELINE_CATEGORIES,
+  CORE_TASK_TIMELINE_ITEM_KINDS,
   type CoreTaskTimelineCategory,
   type CoreTaskTimelineItem,
+  type CoreTaskTimelineItemKind,
 } from './taskTimeline.js';
 import type { CoreTaskRecoveryView } from './recovery.js';
 import {
@@ -72,6 +74,7 @@ export interface CoreOperatorInboxSummary {
   workflowStageCounts: Record<string, number>;
   workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
+  latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
   withChildrenCount: number;
   withActiveChildrenCount: number;
 }
@@ -383,6 +386,23 @@ function buildLatestTimelineCategoryCounts(
   return counts;
 }
 
+function buildLatestTimelineKindCounts(
+  items: CoreOperatorInboxItem[],
+): Record<CoreTaskTimelineItemKind, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_TIMELINE_ITEM_KINDS.map((kind) => [kind, 0]),
+  ) as Record<CoreTaskTimelineItemKind, number>;
+
+  for (const item of items) {
+    if (!item.latestTimelineItem?.kind) {
+      continue;
+    }
+    counts[item.latestTimelineItem.kind] += 1;
+  }
+
+  return counts;
+}
+
 export function summarizeCoreOperatorInboxItems(input: {
   totalAvailable: number;
   matching: number;
@@ -404,6 +424,7 @@ export function summarizeCoreOperatorInboxItems(input: {
     workflowStageCounts: buildWorkflowStageCounts(input.items),
     workflowShapeCounts: buildWorkflowShapeCounts(input.items),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),
+    latestTimelineKindCounts: buildLatestTimelineKindCounts(input.items),
     withChildrenCount: input.items.filter((item) => item.family.childCount > 0).length,
     withActiveChildrenCount: input.items.filter((item) =>
       item.family.childCount > 0 && !item.family.allChildrenTerminal).length,

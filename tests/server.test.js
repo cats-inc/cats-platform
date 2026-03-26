@@ -2691,6 +2691,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(inboxPayload.summary.workflowShapeCounts.sequential, 1);
     assert.equal(inboxPayload.summary.latestTimelineCategoryCounts.execution, 1);
+    assert.equal(inboxPayload.summary.latestTimelineKindCounts.run, 1);
     assert.equal(inboxPayload.summary.withChildrenCount, 0);
     assert.equal(inboxPayload.summary.withActiveChildrenCount, 0);
     assert.equal(inboxPayload.tasks.length, 1);
@@ -2712,6 +2713,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.summary.workflowStageCounts.continuation_handoff, 1);
     assert.equal(controlPlanePayload.summary.workflowShapeCounts.sequential, 1);
     assert.equal(controlPlanePayload.summary.latestTimelineCategoryCounts.execution, 1);
+    assert.equal(controlPlanePayload.summary.latestTimelineKindCounts.run, 1);
     assert.equal(controlPlanePayload.summary.withChildrenCount, 0);
     assert.equal(controlPlanePayload.summary.withActiveChildrenCount, 0);
     assert.equal(controlPlanePayload.tasks.length, 1);

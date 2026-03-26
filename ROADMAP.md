@@ -204,9 +204,10 @@ contracts.
       latest normalized timeline item so operator consumers can read current
       context without issuing a second timeline join, while control-plane and
       inbox list routes now also support `latestTimelineCategory` /
-      `latestTimelineKind` filters plus `latestTimelineCategoryCounts` for
-      queue faceting by the newest normalized narrative signal, and those same
-      list routes now also expose family-aware filters plus child-activity
+      `latestTimelineKind` filters plus `latestTimelineCategoryCounts` /
+      `latestTimelineKindCounts` for queue faceting by the newest normalized
+      narrative signal, and those same list routes now also expose
+      family-aware filters plus child-activity
       summary counts so queue automation can target parent/child work without
       rebuilding the task graph outside `cats`, while the recovery read model
       now also carries the same family topology plus family-aware filters and

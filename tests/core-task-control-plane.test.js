@@ -350,6 +350,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   assert.equal(result.summary.workflowStageCounts.continuation_handoff, 1);
   assert.equal(result.summary.workflowShapeCounts.sequential, 1);
   assert.equal(result.summary.latestTimelineCategoryCounts.execution, 1);
+  assert.equal(result.summary.latestTimelineKindCounts.run, 1);
 });
 
 test('buildCoreTaskControlPlaneView surfaces waiting parent tasks with active child work', () => {

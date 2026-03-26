@@ -243,6 +243,7 @@ export interface CoreTaskControlPlaneListSummary {
   workflowStageCounts: Record<string, number>;
   workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
   latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
+  latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
   withChildrenCount: number;
   withActiveChildrenCount: number;
 }
@@ -1038,6 +1039,23 @@ function buildLatestTimelineCategoryCounts(
   return counts;
 }
 
+function buildLatestTimelineKindCounts(
+  views: CoreTaskControlPlaneView[],
+): Record<CoreTaskTimelineItemKind, number> {
+  const counts = Object.fromEntries(
+    CORE_TASK_TIMELINE_ITEM_KINDS.map((kind) => [kind, 0]),
+  ) as Record<CoreTaskTimelineItemKind, number>;
+
+  for (const view of views) {
+    if (!view.latestTimelineItem?.kind) {
+      continue;
+    }
+    counts[view.latestTimelineItem.kind] += 1;
+  }
+
+  return counts;
+}
+
 export function summarizeCoreTaskControlPlaneViews(input: {
   totalAvailable: number;
   matching: number;
@@ -1059,6 +1077,7 @@ export function summarizeCoreTaskControlPlaneViews(input: {
     workflowStageCounts: buildWorkflowStageCounts(input.views),
     workflowShapeCounts: buildWorkflowShapeCounts(input.views),
     latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.views),
+    latestTimelineKindCounts: buildLatestTimelineKindCounts(input.views),
     withChildrenCount: input.views.filter((view) => view.family.childCount > 0).length,
     withActiveChildrenCount: input.views.filter((view) =>
       view.family.childCount > 0 && !view.family.allChildrenTerminal).length,
