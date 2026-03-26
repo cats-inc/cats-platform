@@ -63,6 +63,10 @@ MCP tool plane.
   model with latest run/outcome/checkpoint pointers plus governance/workflow
   summaries, so future product surfaces can inspect task state without
   hydrating the full core snapshot
+- `GET /api/core/tasks/{taskId}/records` now exposes the grouped task-scoped
+  approval-binding, run, trace, checkpoint, outcome, and activity rows, so
+  future control-plane or recovery tooling can inspect exact task history
+  without client-side re-filtering of the whole core store
 - blocked `max_continuations` workflow continuation replay is now landed
   through the existing operator `retry` seam and startup recovery path; keep
   deeper group replan or converge-stage continuation using the same

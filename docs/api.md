@@ -883,6 +883,7 @@ tasks without depending on chat-local state shapes.
 ```text
 GET /api/core/tasks
 GET /api/core/tasks/{taskId}
+GET /api/core/tasks/{taskId}/records
 ```
 
 Returns:
@@ -948,6 +949,61 @@ Semantics:
 - `inspection.counts` gives lightweight related-record cardinality without
   forcing callers to fetch the full core snapshot just to know whether a task
   has runs, outcomes, checkpoints, traces, or activity history
+
+`GET /api/core/tasks/{taskId}/records` returns the grouped task-scoped record
+history without hydrating unrelated core entities:
+
+```json
+{
+  "taskId": "task-system-1",
+  "records": {
+    "taskId": "task-system-1",
+    "conversationId": "conversation-system-1",
+    "approvalBindings": [
+      {
+        "id": "approval-binding-system-1"
+      }
+    ],
+    "runs": [
+      {
+        "id": "run-system-1"
+      }
+    ],
+    "traces": [
+      {
+        "id": "trace-system-1"
+      }
+    ],
+    "checkpoints": [
+      {
+        "id": "checkpoint-system-1"
+      }
+    ],
+    "outcomes": [
+      {
+        "id": "outcome-system-1"
+      }
+    ],
+    "activities": [
+      {
+        "id": "activity-system-1"
+      }
+    ]
+  }
+}
+```
+
+Semantics:
+
+- this route is a grouped record-inspection seam for operator/control-plane
+  consumers that need the related task rows but do not need the full
+  `/api/core` snapshot
+- each record collection is filtered to the requested task id and sorted newest
+  first using the same record timestamps already owned by `Cats Core`
+- unlike `GET /api/core/tasks/{taskId}`, this route is intentionally record-
+  heavy and summary-light, so later replay/recovery tooling can inspect the
+  exact task-scoped rows without reassembling them client-side from global
+  collections
 
 ### Create or Upsert Core Task
 

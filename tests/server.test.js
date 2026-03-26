@@ -1012,6 +1012,236 @@ test('GET /api/core/tasks/:taskId returns derived inspection detail alongside th
   });
 });
 
+test('GET /api/core/tasks/:taskId/records returns grouped task-scoped records without the full core snapshot', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-record-route',
+          title: 'Inspect grouped task records',
+          status: 'blocked',
+          conversationId: 'conversation-channel-record-route',
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const otherTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: 'task-record-route-other',
+          title: 'Other task',
+          status: 'draft',
+        },
+      }),
+    });
+    assert.equal(otherTaskResponse.status, 201);
+
+    const approvalBindingResponse = await fetch(`${baseUrl}/api/core/approval-bindings`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        approvalBinding: {
+          id: 'binding-record-route',
+          kind: 'owner_decision',
+          approvalTaskId: 'task-record-route',
+          subjectKind: 'task',
+          subjectId: 'task-record-route',
+          requestedForActorId: 'actor-owner',
+          conversationId: 'conversation-channel-record-route',
+          createdAt: '2026-03-26T14:01:00.000Z',
+        },
+      }),
+    });
+    assert.equal(approvalBindingResponse.status, 201);
+
+    const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-record-route',
+          title: 'Grouped run',
+          status: 'blocked',
+          conversationId: 'conversation-channel-record-route',
+          taskId: 'task-record-route',
+          createdAt: '2026-03-26T14:02:00.000Z',
+        },
+      }),
+    });
+    assert.equal(runResponse.status, 201);
+
+    const runOtherResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-record-route-other',
+          title: 'Other run',
+          status: 'completed',
+          taskId: 'task-record-route-other',
+          createdAt: '2026-03-26T14:02:30.000Z',
+        },
+      }),
+    });
+    assert.equal(runOtherResponse.status, 201);
+
+    const traceResponse = await fetch(`${baseUrl}/api/core/traces`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        trace: {
+          id: 'trace-record-route',
+          traceId: 'trace-record-route',
+          kind: 'status',
+          conversationId: 'conversation-channel-record-route',
+          taskId: 'task-record-route',
+          runId: 'run-record-route',
+          message: 'Primary grouped trace',
+          createdAt: '2026-03-26T14:03:00.000Z',
+        },
+      }),
+    });
+    assert.equal(traceResponse.status, 201);
+
+    const traceOtherResponse = await fetch(`${baseUrl}/api/core/traces`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        trace: {
+          id: 'trace-record-route-other',
+          traceId: 'trace-record-route-other',
+          kind: 'status',
+          taskId: 'task-record-route-other',
+          message: 'Other grouped trace',
+          createdAt: '2026-03-26T14:03:30.000Z',
+        },
+      }),
+    });
+    assert.equal(traceOtherResponse.status, 201);
+
+    const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        checkpoint: {
+          id: 'checkpoint-record-route',
+          label: 'review',
+          status: 'open',
+          conversationId: 'conversation-channel-record-route',
+          taskId: 'task-record-route',
+          runId: 'run-record-route',
+          summary: 'Waiting for review.',
+          createdAt: '2026-03-26T14:04:00.000Z',
+        },
+      }),
+    });
+    assert.equal(checkpointResponse.status, 201);
+
+    const outcomeResponse = await fetch(`${baseUrl}/api/core/outcomes`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        outcome: {
+          id: 'outcome-record-route',
+          title: 'Blocked',
+          status: 'blocked',
+          conversationId: 'conversation-channel-record-route',
+          taskId: 'task-record-route',
+          runId: 'run-record-route',
+          summary: 'Still blocked.',
+          recordedAt: '2026-03-26T14:05:00.000Z',
+        },
+      }),
+    });
+    assert.equal(outcomeResponse.status, 201);
+
+    const activityResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        activity: {
+          id: 'activity-record-route',
+          kind: 'note',
+          conversationId: 'conversation-channel-record-route',
+          taskId: 'task-record-route',
+          runId: 'run-record-route',
+          message: 'Grouped task activity.',
+          createdAt: '2026-03-26T14:06:00.000Z',
+        },
+      }),
+    });
+    assert.equal(activityResponse.status, 201);
+
+    const recordsResponse = await fetch(`${baseUrl}/api/core/tasks/task-record-route/records`);
+    assert.equal(recordsResponse.status, 200);
+    const recordsPayload = await recordsResponse.json();
+
+    assert.equal(recordsPayload.taskId, 'task-record-route');
+    assert.equal(recordsPayload.records.taskId, 'task-record-route');
+    assert.equal(
+      recordsPayload.records.conversationId,
+      'conversation-channel-record-route',
+    );
+    assert.deepEqual(
+      recordsPayload.records.approvalBindings.map((record) => record.id),
+      ['binding-record-route'],
+    );
+    assert.deepEqual(recordsPayload.records.runs.map((record) => record.id), [
+      'run-record-route',
+    ]);
+    assert.deepEqual(recordsPayload.records.traces.map((record) => record.id), [
+      'trace-record-route',
+    ]);
+    assert.deepEqual(recordsPayload.records.checkpoints.map((record) => record.id), [
+      'checkpoint-record-route',
+    ]);
+    assert.deepEqual(recordsPayload.records.outcomes.map((record) => record.id), [
+      'outcome-record-route',
+    ]);
+    assert.deepEqual(recordsPayload.records.activities.map((record) => record.id), [
+      'activity-record-route',
+    ]);
+    assert.equal(
+      recordsPayload.records.runs.some((record) => record.id === 'run-record-route-other'),
+      false,
+    );
+    assert.equal(
+      recordsPayload.records.traces.some((record) => record.id === 'trace-record-route-other'),
+      false,
+    );
+
+    const missingResponse = await fetch(`${baseUrl}/api/core/tasks/task-missing/records`);
+    assert.equal(missingResponse.status, 404);
+    const missingPayload = await missingResponse.json();
+    assert.equal(missingPayload.error.code, 'task_not_found');
+  });
+});
+
 test('core project memory routes persist durable memory, sync canonical records, and expose retrieval context', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

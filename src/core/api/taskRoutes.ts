@@ -24,6 +24,7 @@ import {
 } from './constants.js';
 import type { CoreApiRouteContext } from './types.js';
 import { routeCoreTaskInspectionApi } from './taskInspectionRoutes.js';
+import { routeCoreTaskRecordApi } from './taskRecordRoutes.js';
 import { routeCoreTaskRecoveryApi } from './taskRecoveryRoutes.js';
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
@@ -199,6 +200,10 @@ export async function routeCoreTaskApi(
   context: CoreApiRouteContext,
 ): Promise<boolean> {
   if (await routeCoreTaskRecoveryApi(context)) {
+    return true;
+  }
+
+  if (await routeCoreTaskRecordApi(context)) {
     return true;
   }
 

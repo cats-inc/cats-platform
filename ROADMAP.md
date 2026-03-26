@@ -163,9 +163,11 @@ contracts.
       branch strategy, and rationale are inspectable without scraping raw
       room-routing events, `/api/core/recovery/tasks` plus
       `/api/core/tasks/{taskId}/recovery` now expose normalized replay state,
-      and `GET /api/core/tasks/{taskId}` now returns a derived inspection
-      view with latest execution pointers plus governance/workflow summaries
-      without forcing later consumers to parse opaque task metadata blobs.
+      `GET /api/core/tasks/{taskId}` now returns a derived inspection view
+      with latest execution pointers plus governance/workflow summaries, and
+      `GET /api/core/tasks/{taskId}/records` now returns grouped task-scoped
+      record history, without forcing later consumers to parse opaque task
+      metadata blobs or re-filter the full core snapshot client-side.
 - [ ] Consume future runtime MCP mutation tools and richer transport options as
       additive orchestrator capabilities while keeping direct product APIs as
       the primary boundary
