@@ -1132,7 +1132,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
         ],
         branchStrategy: 'transplant_context',
         workflowStageId: 'continuation_handoff',
-        workflowShape: 'sequential',
+        workflowShape: 'converge',
         reviewRequired: true,
         continuationSource: 'workflow_recommendation',
         unresolvedTargets: ['Ghost Cat'],
@@ -1242,12 +1242,12 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.summary.deliveryModeCounts.commit_only, 1);
     assert.equal(listPayload.summary.deliveryActionCounts.create_commit, 1);
     assert.equal(listPayload.summary.workflowStageCounts.continuation_handoff, 1);
-    assert.equal(listPayload.summary.workflowShapeCounts.sequential, 1);
+    assert.equal(listPayload.summary.workflowShapeCounts.converge, 1);
     assert.equal(listPayload.summary.withChildrenCount, 0);
     assert.equal(listPayload.summary.withActiveChildrenCount, 0);
 
     const filteredListResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=sequential&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-followup&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(filteredListResponse.status, 200);
     const filteredListPayload = await filteredListResponse.json();
@@ -1261,7 +1261,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(filteredListPayload.summary.dispatchReplayStateCounts.ready, 1);
     assert.equal(filteredListPayload.summary.workflowContinuationReplayStateCounts.failed, 1);
     assert.equal(filteredListPayload.summary.workflowContinuationBlockedReasonCounts.max_dispatches, 1);
-    assert.equal(filteredListPayload.summary.workflowShapeCounts.sequential, 1);
+    assert.equal(filteredListPayload.summary.workflowShapeCounts.converge, 1);
 
     const detailResponse = await fetch(
       `${baseUrl}/api/core/tasks/task-recovery-routes/recovery`,
@@ -1285,7 +1285,9 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.deepEqual(detailPayload.recovery.context.deliveryGates, ['owner_approval_required']);
     assert.deepEqual(detailPayload.recovery.context.deliveryActions, ['create_commit']);
     assert.equal(detailPayload.recovery.context.workflowStageId, 'continuation_handoff');
-    assert.equal(detailPayload.recovery.context.workflowShape, 'sequential');
+    assert.equal(detailPayload.recovery.context.workflowShape, 'converge');
+    assert.equal(detailPayload.recovery.context.workflowReviewRequired, true);
+    assert.equal(detailPayload.recovery.context.workflowConvergeTargetId, 'cat-followup');
     assert.equal(detailPayload.recovery.context.channelId, 'channel-recovery-routes');
     assert.equal(detailPayload.recovery.context.transport, 'web');
     assert.equal(detailPayload.recovery.context.roomMode, 'boss_chat');

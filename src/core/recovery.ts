@@ -195,6 +195,8 @@ export interface CoreTaskRecoveryContextView {
   deliveryActions: CoreRuntimeDeliveryAction[];
   workflowStageId: string | null;
   workflowShape: string | null;
+  workflowReviewRequired: boolean;
+  workflowConvergeTargetId: string | null;
   channelId: string | null;
   transport: 'telegram' | 'line' | 'web' | null;
   roomMode: string | null;
@@ -233,6 +235,8 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   deliveryActions?: CoreRuntimeDeliveryAction[];
   workflowStageIds?: string[];
   workflowShapes?: CoreTaskRecoveryWorkflowShape[];
+  workflowReviewRequired?: boolean | null;
+  workflowConvergeTargetIds?: string[];
   rootTaskIds?: string[];
   parentTaskIds?: string[];
   hasChildren?: boolean | null;
@@ -472,6 +476,14 @@ function buildRecoveryContext(input: {
   const workflowShape = input.workflowContinuationReplay?.workflowShape
     ?? manifest?.context.workflowShape
     ?? null;
+  const workflowReviewRequired = input.workflowContinuationReplay?.reviewRequired
+    ?? input.task.metadata?.workflowReviewRequired === true;
+  const workflowConvergeTargetId = (
+    input.workflowContinuationReplay?.workflowShape === 'converge'
+    && input.workflowContinuationReplay.targets.length === 1
+  )
+    ? input.workflowContinuationReplay.targets[0]?.participantId ?? null
+    : readString(input.task.metadata?.workflowConvergeTargetId);
   const roomMode = manifest?.context.roomMode ?? null;
 
   if (
@@ -481,6 +493,8 @@ function buildRecoveryContext(input: {
     && !transport
     && !workflowStageId
     && !workflowShape
+    && !workflowReviewRequired
+    && !workflowConvergeTargetId
     && !roomMode
   ) {
     return null;
@@ -493,6 +507,8 @@ function buildRecoveryContext(input: {
     deliveryActions: [...(manifest?.requestedActions ?? [])],
     workflowStageId,
     workflowShape,
+    workflowReviewRequired,
+    workflowConvergeTargetId,
     channelId,
     transport,
     roomMode,
@@ -731,6 +747,23 @@ function matchesRecoveryListOptions(
       || !options.workflowShapes.includes(
         readWorkflowShape(recovery.context?.workflowShape)!,
       ))
+  ) {
+    return false;
+  }
+
+  if (
+    options.workflowReviewRequired !== undefined
+    && options.workflowReviewRequired !== null
+    && (recovery.context?.workflowReviewRequired ?? false) !== options.workflowReviewRequired
+  ) {
+    return false;
+  }
+
+  if (
+    options.workflowConvergeTargetIds?.length
+    && !options.workflowConvergeTargetIds.includes(
+      recovery.context?.workflowConvergeTargetId ?? '',
+    )
   ) {
     return false;
   }

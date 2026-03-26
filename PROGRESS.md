@@ -389,9 +389,11 @@ Known follow-ups:
   control-plane/operator-inbox queries filter by `workflowReviewRequired` plus
   `workflowConvergeTargetId`, so review queues can target the active reviewer
   without scraping raw branch state
-- the recovery list route now also supports the same `workflowShape` filtering
-  plus `workflowShapeCounts`, so retry/resume automation can facet replay work
-  by topology without re-reading raw task metadata
+- the recovery list route now also supports the same reviewer-targeting seam,
+  carrying `workflowReviewRequired` plus `workflowConvergeTargetId` in its
+  normalized context view and accepting the same filters alongside
+  `workflowShape`, so retry/resume automation can facet review-stage replay
+  work without re-reading raw task metadata
 - task inspection and control-plane views now also lift `latestTimelineItem`
   into the same payload, so operator/recovery consumers can answer "what just
   happened?" without joining the separate timeline route client-side

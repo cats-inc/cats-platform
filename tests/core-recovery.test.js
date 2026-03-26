@@ -165,6 +165,8 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
   assert.deepEqual(recovery.context?.deliveryActions, ['create_commit']);
   assert.equal(recovery.context?.workflowStageId, 'continuation_handoff');
   assert.equal(recovery.context?.workflowShape, 'sequential');
+  assert.equal(recovery.context?.workflowReviewRequired, true);
+  assert.equal(recovery.context?.workflowConvergeTargetId, null);
   assert.equal(recovery.context?.channelId, 'channel-recovery');
   assert.equal(recovery.context?.transport, 'web');
   assert.equal(recovery.context?.roomMode, 'boss_chat');
@@ -527,7 +529,8 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
             },
           ],
           recordedAt: '2026-03-26T13:26:00.000Z',
-          workflowShape: 'parallel',
+          workflowShape: 'converge',
+          reviewRequired: true,
           blockedReason: 'anti_ping_pong',
         }),
         {
@@ -547,6 +550,8 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
   const workflowResult = queryCoreTaskRecoveryViews(core, {
     conversationIds: ['conversation-recovery-states'],
     workflowContinuationReplayStates: ['in_progress'],
+    workflowReviewRequired: true,
+    workflowConvergeTargetIds: ['cat-followup'],
     workflowContinuationBlockedReasons: ['anti_ping_pong'],
   });
 
@@ -585,4 +590,6 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
     anti_ping_pong: 1,
     no_valid_targets: 0,
   });
+  assert.equal(workflowResult.recoveries[0]?.context?.workflowReviewRequired, true);
+  assert.equal(workflowResult.recoveries[0]?.context?.workflowConvergeTargetId, 'cat-followup');
 });

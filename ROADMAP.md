@@ -236,6 +236,8 @@ contracts.
       views now also propagate a resolved `convergeTargetId` for single-target
       review stages and support `workflowReviewRequired` plus
       `workflowConvergeTargetId` filters for reviewer-targeted queue faceting,
+      while the recovery context now also carries those same reviewer-targeted
+      fields and accepts the same filters for retry/resume faceting,
       and the
       task-timeline route now also supports server-side narrative filters plus
       a lightweight query summary so operator tooling can slice one task's

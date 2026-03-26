@@ -221,6 +221,8 @@ export function readTaskRecoveryListOptions(
       'workflowShape',
       CORE_TASK_RECOVERY_WORKFLOW_SHAPES,
     ),
+    workflowReviewRequired: readBooleanQuery(searchParams, 'workflowReviewRequired'),
+    workflowConvergeTargetIds: readQueryValues(searchParams, 'workflowConvergeTargetId'),
     rootTaskIds: readQueryValues(searchParams, 'rootTaskId'),
     parentTaskIds: readQueryValues(searchParams, 'parentTaskId'),
     hasChildren: readBooleanQuery(searchParams, 'hasChildren'),

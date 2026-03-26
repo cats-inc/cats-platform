@@ -1736,6 +1736,8 @@ Semantics:
   - `deliveryAction`
   - `workflowStageId`
   - `workflowShape`
+  - `workflowReviewRequired`
+  - `workflowConvergeTargetId`
   - `rootTaskId`
   - `parentTaskId`
   - `hasChildren`
@@ -1769,7 +1771,10 @@ Semantics:
   - stored workflow-continuation replay metadata
 - `context` lifts delivery policy, runtime delivery actions, and workflow-stage
   routing context into the recovery view so recovery automation can filter and
-  facet by delivery/workflow intent without re-reading raw task metadata
+  facet by delivery/workflow intent without re-reading raw task metadata; this
+  now also includes `workflowReviewRequired` plus
+  `workflowConvergeTargetId` when the stored continuation is already in a
+  single-target converge review stage
 - `workflowContinuationReplay.blockedReason` exposes the normalized workflow
   guard that persisted the retryable continuation snapshot, so recovery
   consumers can distinguish different continuation failure modes without
