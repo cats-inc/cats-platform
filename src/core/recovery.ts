@@ -1,9 +1,15 @@
 import type {
   CatsCoreState,
   CoreActivityRecord,
+  CoreApprovalDecisionAction,
   CoreApprovalStatus,
   CoreTaskRecord,
 } from './types.js';
+import {
+  buildTaskApprovalActionEnvelope,
+  buildTaskOperatorActionEnvelope,
+  type CoreTaskActionEnvelope,
+} from './taskActionEnvelopes.js';
 import {
   applyCoreTaskViewLimit,
   buildCoreTaskStatusCounts,
@@ -27,6 +33,20 @@ export interface CoreTaskRecoveryApprovalView {
   status: CoreApprovalStatus;
   latestDecisionAction: 'approve' | 'reroute' | 'reject' | null;
   notes: string | null;
+}
+
+export interface CoreTaskRecoveryApprovalAction {
+  kind: CoreApprovalDecisionAction;
+  label: string;
+  description: string;
+  action: CoreTaskActionEnvelope;
+}
+
+export interface CoreTaskRecoveryIncidentAction {
+  kind: 'retry';
+  label: string;
+  description: string;
+  action: CoreTaskActionEnvelope;
 }
 
 export interface CoreTaskRecoveryMessageReplayView {
@@ -101,6 +121,8 @@ export interface CoreTaskRecoveryView {
   dispatchReplay: CoreTaskDispatchReplayView | null;
   workflowContinuationReplay: CoreTaskWorkflowContinuationRecoveryView | null;
   latestActivity: CoreTaskRecoveryActivityView | null;
+  approvalActions: CoreTaskRecoveryApprovalAction[];
+  incidentActions: CoreTaskRecoveryIncidentAction[];
   canResumeViaApproval: boolean;
   canRetry: boolean;
   recoveryRequired: boolean;
@@ -278,6 +300,60 @@ function buildWorkflowContinuationReplayView(
   };
 }
 
+function buildRecoveryApprovalActions(
+  task: CoreTaskRecord,
+  canResumeViaApproval: boolean,
+): CoreTaskRecoveryApprovalAction[] {
+  if (!canResumeViaApproval || task.approval.status !== 'pending') {
+    return [];
+  }
+
+  return [
+    {
+      kind: 'approve',
+      label: 'Approve',
+      description: 'Allow the stored approval-blocked dispatch to resume.',
+      action: buildTaskApprovalActionEnvelope(task.id, 'approve'),
+    },
+    {
+      kind: 'reroute',
+      label: 'Reroute',
+      description: 'Reject the current plan and ask the orchestrator to reroute it.',
+      action: buildTaskApprovalActionEnvelope(task.id, 'reroute'),
+    },
+    {
+      kind: 'reject',
+      label: 'Reject',
+      description: 'Reject the current approval-blocked dispatch without rerouting it.',
+      action: buildTaskApprovalActionEnvelope(task.id, 'reject'),
+    },
+  ];
+}
+
+function buildRecoveryIncidentActions(
+  task: CoreTaskRecord,
+  canRetry: boolean,
+): CoreTaskRecoveryIncidentAction[] {
+  if (!canRetry) {
+    return [];
+  }
+
+  return [
+    {
+      kind: 'retry',
+      label: 'Request Retry',
+      description: 'Replay the stored dispatch or workflow continuation through the existing operator seam.',
+      action: buildTaskOperatorActionEnvelope({
+        action: 'retry',
+        taskId: task.id,
+        runId: null,
+        checkpointId: null,
+        outcomeId: null,
+      }),
+    },
+  ];
+}
+
 export function buildCoreTaskRecoveryView(
   core: CatsCoreState,
   task: CoreTaskRecord,
@@ -293,6 +369,8 @@ export function buildCoreTaskRecoveryView(
     (dispatchReplay && dispatchReplay.replayState !== 'in_progress')
     || (workflowContinuationReplay && workflowContinuationReplay.replayState !== 'in_progress'),
   );
+  const approvalActions = buildRecoveryApprovalActions(task, canResumeViaApproval);
+  const incidentActions = buildRecoveryIncidentActions(task, canRetry);
 
   return {
     taskId: task.id,
@@ -307,6 +385,8 @@ export function buildCoreTaskRecoveryView(
     dispatchReplay,
     workflowContinuationReplay,
     latestActivity,
+    approvalActions,
+    incidentActions,
     canResumeViaApproval,
     canRetry,
     recoveryRequired: Boolean(

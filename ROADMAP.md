@@ -170,7 +170,8 @@ contracts.
       first-class product view, so continuation source, candidate targets,
       branch strategy, and rationale are inspectable without scraping raw
       room-routing events, `/api/core/recovery/tasks` plus
-      `/api/core/tasks/{taskId}/recovery` now expose normalized replay state,
+      `/api/core/tasks/{taskId}/recovery` now expose normalized replay state
+      plus action envelopes back to the existing approval and retry seams,
       `GET /api/core/tasks/{taskId}` now returns a derived inspection view
       with latest execution pointers, governance/workflow summaries, and
       immediate parent/child family topology,

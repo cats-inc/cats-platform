@@ -1163,6 +1163,14 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.recoveries[0].taskId, 'task-recovery-routes');
     assert.equal(listPayload.recoveries[0].canResumeViaApproval, true);
     assert.equal(listPayload.recoveries[0].canRetry, true);
+    assert.deepEqual(
+      listPayload.recoveries[0].approvalActions.map((action) => action.kind),
+      ['approve', 'reroute', 'reject'],
+    );
+    assert.deepEqual(
+      listPayload.recoveries[0].incidentActions.map((action) => action.kind),
+      ['retry'],
+    );
     assert.ok(listPayload.recoveries[0].pendingDispatch.bodyLength > 40);
     assert.match(listPayload.recoveries[0].pendingDispatch.bodyPreview, /blocked rollout/i);
     assert.equal(listPayload.recoveries[0].latestActivity.phase, 'replay_failed');
@@ -1181,6 +1189,8 @@ test('core recovery routes expose normalized orchestrator replay state without l
     );
     assert.equal(detailPayload.recovery.workflowContinuationReplay.reviewRequired, true);
     assert.equal(detailPayload.recovery.approval.status, 'pending');
+    assert.equal(detailPayload.recovery.approvalActions[0].action.path, '/api/core/approvals');
+    assert.equal(detailPayload.recovery.incidentActions[0].action.path, '/api/core/operator-actions');
 
     const missingResponse = await fetch(`${baseUrl}/api/core/tasks/task-missing/recovery`);
     assert.equal(missingResponse.status, 404);

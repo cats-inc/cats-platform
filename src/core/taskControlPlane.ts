@@ -5,6 +5,11 @@ import {
   type CoreTaskInspectionFamilyView,
 } from './taskInspection.js';
 import {
+  buildTaskApprovalActionEnvelope,
+  buildTaskOperatorActionEnvelope,
+  type CoreTaskActionEnvelope,
+} from './taskActionEnvelopes.js';
+import {
   applyCoreTaskViewLimit,
   buildCoreTaskStatusCounts,
   countCoreTaskViewConversations,
@@ -67,19 +72,13 @@ export const CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS = [
   'complete',
 ] as const satisfies readonly CoreTaskControlPlaneNextAction['kind'][];
 
-export interface CoreTaskControlPlaneActionEnvelope {
-  method: 'POST';
-  path: string;
-  body: Record<string, unknown>;
-}
-
 export interface CoreTaskControlPlaneApprovalAction {
   kind: CoreApprovalDecisionAction;
   label: string;
   description: string;
   disabled: boolean;
   status: CoreApprovalStatus;
-  action: CoreTaskControlPlaneActionEnvelope;
+  action: CoreTaskActionEnvelope;
 }
 
 export interface CoreTaskControlPlaneIncidentAction {
@@ -88,14 +87,14 @@ export interface CoreTaskControlPlaneIncidentAction {
   description: string;
   disabled: boolean;
   statusLabel: string | null;
-  action: CoreTaskControlPlaneActionEnvelope;
+  action: CoreTaskActionEnvelope;
 }
 
 export interface CoreTaskControlPlaneNextAction {
   kind: 'approve' | 'reroute' | 'reject' | 'retry' | 'acknowledge' | 'wait' | 'complete';
   label: string;
   blocking: boolean;
-  action: CoreTaskControlPlaneActionEnvelope | null;
+  action: CoreTaskActionEnvelope | null;
 }
 
 export interface CoreTaskControlPlaneAttention {
@@ -188,41 +187,6 @@ function readMetadataRecord(
   return asRecord(metadata?.[key]);
 }
 
-function buildApprovalActionEnvelope(
-  taskId: string,
-  action: CoreApprovalDecisionAction,
-): CoreTaskControlPlaneActionEnvelope {
-  return {
-    method: 'POST',
-    path: '/api/core/approvals',
-    body: {
-      taskId,
-      status: action === 'approve' ? 'approved' : 'rejected',
-      action,
-    },
-  };
-}
-
-function buildIncidentActionEnvelope(input: {
-  action: 'retry' | 'acknowledge';
-  taskId: string;
-  runId: string | null;
-  checkpointId: string | null;
-  outcomeId: string | null;
-}): CoreTaskControlPlaneActionEnvelope {
-  return {
-    method: 'POST',
-    path: '/api/core/operator-actions',
-    body: {
-      action: input.action,
-      taskId: input.taskId,
-      runId: input.runId,
-      checkpointId: input.checkpointId,
-      outcomeId: input.outcomeId,
-    },
-  };
-}
-
 function buildApprovalActions(
   approval: CoreApprovalQueueItem | null,
 ): CoreTaskControlPlaneApprovalAction[] {
@@ -236,7 +200,7 @@ function buildApprovalActions(
     description: option.description,
     disabled: false,
     status: approval.status,
-    action: buildApprovalActionEnvelope(approval.taskId, option.action),
+    action: buildTaskApprovalActionEnvelope(approval.taskId, option.action),
   }));
 }
 
@@ -307,7 +271,7 @@ function buildIncidentActions(input: {
         : 'Record that the operator wants this blocked or failed task retried.',
       disabled: retryDisabled,
       statusLabel: retryStatusLabel,
-      action: buildIncidentActionEnvelope({
+      action: buildTaskOperatorActionEnvelope({
         action: 'retry',
         taskId: task.id,
         runId: latestRun.id,
@@ -321,7 +285,7 @@ function buildIncidentActions(input: {
       description: 'Record that the operator has seen the current blocked or failed state.',
       disabled: acknowledgedFresh,
       statusLabel: acknowledgedFresh ? 'Acknowledged' : null,
-      action: buildIncidentActionEnvelope({
+      action: buildTaskOperatorActionEnvelope({
         action: 'acknowledge',
         taskId: task.id,
         runId: latestRun.id,

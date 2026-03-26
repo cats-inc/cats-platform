@@ -1487,7 +1487,23 @@ currently carry product-owned orchestrator recovery state:
       "taskId": "task-system-1",
       "taskStatus": "blocked",
       "canResumeViaApproval": true,
-      "canRetry": true
+      "canRetry": true,
+      "approvalActions": [
+        {
+          "kind": "approve"
+        },
+        {
+          "kind": "reroute"
+        },
+        {
+          "kind": "reject"
+        }
+      ],
+      "incidentActions": [
+        {
+          "kind": "retry"
+        }
+      ]
     }
   ]
 }
@@ -1517,15 +1533,31 @@ for one task:
     "latestActivity": {
       "phase": "replay_failed",
       "source": "workflow-continuation-replay"
-    }
+    },
+    "approvalActions": [
+      {
+        "kind": "approve",
+        "action": {
+          "path": "/api/core/approvals"
+        }
+      }
+    ],
+    "incidentActions": [
+      {
+        "kind": "retry",
+        "action": {
+          "path": "/api/core/operator-actions"
+        }
+      }
+    ]
   }
 }
 ```
 
 Semantics:
 
-- these routes are inspectability-only; they do not replace the existing
-  `/api/core/approvals` or `/api/core/operator-actions` write seams
+- these routes stay recovery-owned read models; they do not replace the
+  existing `/api/core/approvals` or `/api/core/operator-actions` write seams
 - `GET /api/core/recovery/tasks` supports additive filters for:
   - `conversationId`
   - `taskStatus`
@@ -1550,6 +1582,9 @@ Semantics:
   - approval-blocked pending dispatch metadata
   - stored orchestrator dispatch replay metadata
   - stored workflow-continuation replay metadata
+- `approvalActions` and `incidentActions` now expose machine-readable action
+  envelopes that point back to those existing write seams, so recovery-aware
+  automation does not have to reconstruct POST bodies from raw booleans
 - message payloads are summarized as `bodyPreview` plus `bodyLength` instead of
   echoing the full stored body back into every consumer
 - `latestActivity` projects the newest replay lifecycle note (`replay_started`,

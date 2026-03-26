@@ -134,6 +134,14 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
   assert.equal(recovery.recoveryRequired, true);
   assert.equal(recovery.canResumeViaApproval, true);
   assert.equal(recovery.canRetry, true);
+  assert.deepEqual(recovery.approvalActions.map((action) => action.kind), [
+    'approve',
+    'reroute',
+    'reject',
+  ]);
+  assert.deepEqual(recovery.incidentActions.map((action) => action.kind), [
+    'retry',
+  ]);
   assert.equal(recovery.approval.status, 'pending');
   assert.equal(recovery.pendingDispatch?.blockedReason, 'approval_pending');
   assert.equal(recovery.pendingDispatch?.replayState, 'failed');
