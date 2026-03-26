@@ -868,6 +868,60 @@ Semantics:
   `queryHint` parameters so callers can assemble a cross-scope retrieval view
   without scraping transcripts or companion-box state
 
+### Inspect Core Memory Maintenance
+
+```text
+GET /api/core/memory-maintenance
+```
+
+Returns a normalized summary of product-owned memory-maintenance activity:
+
+```json
+{
+  "maintenance": {
+    "totals": {
+      "recentCount": 2,
+      "executed": 1,
+      "deferred": 1,
+      "missingContext": 0,
+      "error": 0
+    },
+    "latestByTrigger": {
+      "runtimeHook": {
+        "id": "activity-memory-route-runtime"
+      },
+      "companionSync": {
+        "id": "activity-memory-route-companion"
+      },
+      "ownerSync": null
+    },
+    "recent": [
+      {
+        "id": "activity-memory-route-runtime",
+        "trigger": "runtime_hook",
+        "status": "executed",
+        "subjectKeys": ["channel:channel-memory-route"]
+      }
+    ]
+  }
+}
+```
+
+Semantics:
+
+- this route is a core-owned inspectability seam over `memory_maintenance`
+  activities already persisted in `Cats Core`
+- `totals` gives a lightweight rollup by normalized maintenance status
+- `latestByTrigger` exposes the most recent runtime-hook, companion-sync, and
+  owner-sync entries without requiring callers to re-scan the full activity
+  log
+- `recent[*].summary` reuses the additive flush-summary contract already
+  emitted by Cats-owned canonical-memory maintenance, including
+  `removedRecordIds`, `sourceScopeKeys`, and `replacementGroups`
+- `subjectKeys` prefers explicit flush-summary subjects and otherwise falls
+  back to stable `cat:*`, `channel:*`, or owner scope keys so downstream
+  recovery or operator tooling can group maintenance events consistently
+
 ### List Core Work Items
 
 ```text

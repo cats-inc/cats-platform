@@ -530,6 +530,112 @@ test('GET /api/core endpoints expose the shared Cats Core contract', async () =>
   });
 });
 
+test('GET /api/core/memory-maintenance returns normalized maintenance activity history', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const runtimeHookResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        activity: {
+          id: 'activity-memory-route-runtime',
+          kind: 'note',
+          message: 'Runtime memory flush completed.',
+          createdAt: '2026-03-26T16:59:00.000Z',
+          metadata: {
+            category: 'memory_maintenance',
+            trigger: 'runtime_hook',
+            status: 'executed',
+            phase: 'pre_reset',
+            sessionId: 'session-memory-route',
+            channelId: 'channel-memory-route',
+            reason: 'runtime_hook',
+            summary: {
+              subjects: [
+                {
+                  kind: 'channel',
+                  id: 'channel-memory-route',
+                },
+              ],
+              flushCount: 1,
+              persistedCount: 2,
+              removedCount: 1,
+              removedRecordIds: ['cats-memory-old-1'],
+              sourceScopeKeys: ['channel:channel-memory-route'],
+              replacementGroups: ['channel:channel-memory-route:summary'],
+            },
+          },
+        },
+      }),
+    });
+    assert.equal(runtimeHookResponse.status, 201);
+
+    const deferredResponse = await fetch(`${baseUrl}/api/core/activities`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        activity: {
+          id: 'activity-memory-route-companion',
+          kind: 'note',
+          message: 'Companion sync deferred.',
+          createdAt: '2026-03-26T16:58:00.000Z',
+          metadata: {
+            category: 'memory_maintenance',
+            trigger: 'companion_sync',
+            status: 'deferred',
+            catId: 'cat-memory-route',
+            reason: 'manual',
+            error: 'rate limited',
+          },
+        },
+      }),
+    });
+    assert.equal(deferredResponse.status, 201);
+
+    const listResponse = await fetch(`${baseUrl}/api/core/memory-maintenance`);
+    assert.equal(listResponse.status, 200);
+    const listPayload = await listResponse.json();
+
+    assert.deepEqual(listPayload.maintenance.totals, {
+      recentCount: 2,
+      executed: 1,
+      deferred: 1,
+      missingContext: 0,
+      error: 0,
+    });
+    assert.equal(
+      listPayload.maintenance.latestByTrigger.runtimeHook.id,
+      'activity-memory-route-runtime',
+    );
+    assert.equal(
+      listPayload.maintenance.latestByTrigger.companionSync.id,
+      'activity-memory-route-companion',
+    );
+    assert.equal(listPayload.maintenance.latestByTrigger.ownerSync, null);
+    assert.deepEqual(listPayload.maintenance.recent[0].subjectKeys, [
+      'channel:channel-memory-route',
+    ]);
+    assert.deepEqual(
+      listPayload.maintenance.recent[0].summary.removedRecordIds,
+      ['cats-memory-old-1'],
+    );
+    assert.deepEqual(listPayload.maintenance.recent[1].subjectKeys, [
+      'cat:cat-memory-route',
+    ]);
+    assert.deepEqual(
+      listPayload.maintenance.latestByTrigger.runtimeHook.subjectKeys,
+      ['channel:channel-memory-route'],
+    );
+    assert.deepEqual(
+      listPayload.maintenance.latestByTrigger.companionSync.subjectKeys,
+      ['cat:cat-memory-route'],
+    );
+  });
+});
+
 test('core write APIs persist shared project, work, approval, trace, artifact, and owner records', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();

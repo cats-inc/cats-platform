@@ -132,6 +132,7 @@ service to exist first.
 | 2026-03-23 | Canonical-memory storage, extraction/flush routes, and direct companion retrieval hydration implemented |
 | 2026-03-24 | Source update/delete convergence, promotion-rule metadata, policy-aware retrieval read model, and Team 5-ready flush payloads implemented |
 | 2026-03-26 | Maintenance follow-through landed: additive flush summaries, reusable best-effort canonical sync helpers, and core activity logging for runtime-hook or deferred memory maintenance |
+| 2026-03-26 | Core-owned memory-maintenance inspection route landed: `GET /api/core/memory-maintenance` now normalizes maintenance history into stable totals, latest-by-trigger pointers, flush summaries, and fallback subject keys |
 | 2026-03-26 | Relationship/project durable-memory follow-through landed: generic retrieval-context assembly now accepts those scopes and the service can flush their canonical records without depending on Chat UI routes |
 | 2026-03-26 | Core-owned project/relationship memory routes landed: CRUD, canonical sync, and retrieval-context inspection now sit above the same memory substrate without leaking Chat route ownership |
 
