@@ -6,6 +6,7 @@ import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
 import { ORCHESTRATOR_NAME } from '../model/index.js';
+import { parseMentions } from '../mentionParsing.js';
 
 export interface RuntimeSessionRoutingOptions {
   transport?: import('../runtimeTargeting.js').RuntimeTransportContext;
@@ -28,6 +29,10 @@ export function shouldRewriteOrchestratorReply(
   }
 
   const normalized = content.toLowerCase();
+  if (parseMentions(content).length > 0) {
+    return true;
+  }
+
   return normalized.includes(`@${orchestratorName.toLowerCase()}`)
     || normalized.includes(`@${ORCHESTRATOR_NAME.toLowerCase()}`);
 }

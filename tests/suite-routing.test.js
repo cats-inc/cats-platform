@@ -8,7 +8,7 @@ import {
   SUITE_SURFACE_ROUTES,
 } from '../dist-server/app/renderer/routeMap.js';
 import {
-  buildWorkPlaceholderProjection,
+  buildWorkDashboardProjection,
 } from '../dist-server/products/work/api/projection.js';
 import {
   buildCodePlaceholderProjection,
@@ -49,17 +49,21 @@ test('isSuiteNonProductPath excludes suite settings and legacy chat settings fro
   assert.equal(isSuiteNonProductPath('/work'), false);
 });
 
-test('Work and Code placeholder projections reserve product-specific extension points while staying core-backed', () => {
+test('Work dashboard and Code placeholder projections stay core-backed without inventing new schemas', () => {
   const core = createDefaultCoreState();
 
-  const work = buildWorkPlaceholderProjection(core);
+  const work = buildWorkDashboardProjection(core);
   const code = buildCodePlaceholderProjection(core);
 
   assert.equal(work.summary.ownerActorId, core.ownerProfile.actorId);
   assert.equal(code.summary.ownerActorId, core.ownerProfile.actorId);
   assert.equal(work.summary.actorCount, core.actors.length);
+  assert.equal(work.product.status, 'active');
+  assert.equal(work.sections.operatorInbox.summary.totalAvailable, 0);
+  assert.equal(work.sections.controlPlane.summary.totalAvailable, 0);
+  assert.equal(work.sections.recovery.summary.totalAvailable, 0);
   assert.equal(code.summary.conversationCount, core.conversations.length);
-  assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/teams'));
+  assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/projects'));
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/war-room'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/projects'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/previews'));

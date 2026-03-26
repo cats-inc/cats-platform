@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
-test('ChatView keeps operator loop surfaces transcript-adjacent', async () => {
+test('ChatView keeps operator loop surfaces inside the chat side panel workspace', async () => {
   const source = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/components/ChatView.tsx'),
     'utf8',
@@ -13,7 +13,9 @@ test('ChatView keeps operator loop surfaces transcript-adjacent', async () => {
   assert.match(source, /ProgressSummaryPanel/u);
   assert.match(source, /ActivityFeed/u);
   assert.match(source, /RunInspector/u);
-  assert.match(source, /operatorRail/u);
+  assert.match(source, /SidePanel/u);
+  assert.match(source, /title="Workspace"/u);
+  assert.match(source, /id: 'operator'/u);
   assert.match(source, /operatorSnapshot/u);
   assert.match(source, /onOperatorAction/u);
   assert.match(source, /effectivePolicy/u);

@@ -280,7 +280,7 @@ test('resolveOrchestratorDisplayName returns boss cat name when set, Orchestrato
   assert.equal(resolveOrchestratorDisplayName(stateMissing), 'Orchestrator');
 });
 
-test('after setup + activate, system messages use boss cat name and have verbosity metadata', async () => {
+test('after setup + activate, system messages stay generic and keep verbosity metadata', async () => {
   const runtimeClient = createRuntimeStub();
   await withServer(runtimeClient, async (baseUrl) => {
     // Complete setup with a named Boss Cat
@@ -329,13 +329,13 @@ test('after setup + activate, system messages use boss cat name and have verbosi
       'Fresh Boss Cat chat should start one implicit orchestrator session',
     );
 
-    // Orchestrator session_started should use boss cat name, not "Orchestrator"
+    // Solo-room orchestrator startup stays generic and hidden from the visible cat identity.
     const orchMessage = sessionStartedMessages.find(
       (m) => m.metadata.targetKind === 'orchestrator',
     );
     assert.ok(orchMessage, 'Orchestrator session_started message should exist');
-    assert.ok(orchMessage.body.includes('將將'), 'Should use boss cat name in session message');
-    assert.ok(!orchMessage.body.includes('Orchestrator'), 'Should not use "Orchestrator" in session message');
+    assert.ok(orchMessage.body.includes('Orchestrator'), 'Should use generic orchestrator label in solo rooms');
+    assert.ok(!orchMessage.body.includes('將將'), 'Should not expose boss cat name in solo session messages');
     assert.ok(
       orchMessage.body.includes('(cwd: C:/chat/runtime).'),
       'Should include runtime cwd in the session message',
@@ -423,8 +423,8 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
     const latestMessage = channelPayload.channel.messages.at(-1);
 
     assert.ok(latestMessage, 'Final transcript message should exist');
-    assert.equal(latestMessage.senderKind, 'orchestrator');
-    assert.equal(latestMessage.senderName, 'Smelly');
+    assert.equal(latestMessage.senderKind, 'agent');
+    assert.equal(latestMessage.senderName, 'Orchestrator');
     assert.ok(
       !latestMessage.body.includes('@Smelly'),
       'Self-routing draft should not reach the user transcript',

@@ -3503,16 +3503,45 @@ test('core approval bindings require an existing approval task', async () => {
   }, chatStore);
 });
 
-test('GET /api/work and /api/code expose dedicated placeholder surfaces', async () => {
+test('GET /api/work exposes a core-backed dashboard and /api/code stays placeholder', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
+    const fixtures = createSharedCoreFixtureBundle();
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          ...fixtures.task,
+          id: 'task-work-dashboard',
+          title: 'Work dashboard task',
+          status: 'in_progress',
+          summary: 'Prove Work consumes the shared task substrate.',
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
     const workResponse = await fetch(`${baseUrl}/api/work`);
     assert.equal(workResponse.status, 200);
     const workPayload = await workResponse.json();
     assert.equal(workPayload.product.id, 'work');
-    assert.equal(workPayload.product.status, 'placeholder');
+    assert.equal(workPayload.product.status, 'active');
     assert.equal(workPayload.product.routeBase, '/work');
     assert.equal(workPayload.summary.ownerActorId, 'actor-owner');
+    assert.equal(workPayload.summary.taskCount, 1);
+    assert.ok('operatorInbox' in workPayload.sections);
+    assert.ok('controlPlane' in workPayload.sections);
+    assert.ok('recovery' in workPayload.sections);
     assert.ok(workPayload.extensionPoints.futureRoutes.includes('/api/work/war-room'));
+
+    const workDetailResponse = await fetch(`${baseUrl}/api/work/tasks/task-work-dashboard`);
+    assert.equal(workDetailResponse.status, 200);
+    const workDetailPayload = await workDetailResponse.json();
+    assert.equal(workDetailPayload.task.id, 'task-work-dashboard');
+    assert.equal(workDetailPayload.controlPlane.taskId, 'task-work-dashboard');
+    assert.equal(workDetailPayload.timeline.view.taskId, 'task-work-dashboard');
 
     const codeResponse = await fetch(`${baseUrl}/api/code`);
     assert.equal(codeResponse.status, 200);

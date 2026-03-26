@@ -53,10 +53,10 @@ test('app server composes dedicated dependency and routing modules instead of ow
   );
 
   assert.match(source, /resolveServerDependencies/u);
-  assert.match(source, /reconcilePollingOnStartup/u);
+  assert.match(source, /runServerStartupRecoveryPasses/u);
   assert.match(source, /routeRequest/u);
   assert.doesNotMatch(source, /async function routeRequest/u);
-  assert.doesNotMatch(source, /async function reconcilePollingOnStartup/u);
+  assert.doesNotMatch(source, /async function runServerStartupRecoveryPasses/u);
   assert.doesNotMatch(source, /function createDefaultTelegramRelay/u);
 });
 

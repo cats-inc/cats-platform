@@ -28,6 +28,7 @@ Current route ownership:
 - `src/app/server/index.ts` is the suite-level assembler only.
 - `src/core/api.ts` owns `/api/core/*`.
 - `src/products/chat/api/*` owns Chat setup and canonical Chat routes.
+- `src/products/work/api/*` owns Work dashboard and task-detail projections.
 
 ## Migration Status
 
@@ -420,6 +421,34 @@ GET /api/providers/{provider}/models
   catalog. The server prefers `cats-runtime` as the source of truth and may
   fall back to curated static data with warnings when runtime lookup is
   unavailable.
+
+### Cats Work
+
+```text
+GET /api/work
+GET /api/work/tasks/{taskId}
+```
+
+- `GET /api/work` returns the first Work dashboard projection above shared
+  core task/operator reads. The payload includes:
+  - product metadata
+  - top-level task/operator/recovery summary counts
+  - an `operatorInbox` section projected from the core-owned operator inbox
+  - a `controlPlane` section projected from the core-owned task control-plane
+    read model
+  - a `recovery` section projected from the core-owned recovery read model
+  - a `selection.defaultTaskId` hint for the renderer detail pane
+- `GET /api/work/tasks/{taskId}` returns a task-scoped detail projection that
+  joins:
+  - the shared `task` record
+  - the derived `inspection` view
+  - the task-scoped `controlPlane` view
+  - the task-scoped `recovery` view
+  - a normalized timeline preview
+
+This first slice intentionally reuses `Cats Core v1` instead of inventing a
+separate Work schema. Richer project/work-item boards still remain future Work
+surfaces.
 
 ### Shell Helpers
 

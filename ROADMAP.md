@@ -327,8 +327,8 @@ contracts.
 
 ### Phase 5: Cats Work Launch Track
 
-- [ ] Add work dashboard, inbox, approvals, and activity views above
-      `Cats Core v1`
+- [x] Add a first work dashboard, inbox, approvals, recovery, and task-detail
+      view above `Cats Core v1`
 - [ ] Add project and work-item navigation that reuses shared conversations,
       actors/resources, and artifact metadata
 - [ ] Keep work surfaces product-owned and avoid leaking provider or runtime

@@ -28,6 +28,8 @@ The current slices are:
 - a transcript-adjacent operator loop with pending approvals, progress,
   activity, trace, run inspection, approve/reroute/retry/acknowledge action
   seams, and machine-readable delivery/budget/workflow governance summaries
+- a first `Cats Work` dashboard and task-detail slice above the shared operator
+  inbox, control-plane, recovery, and timeline reads
 - contract-first orchestrator planning, approval-gated dispatch, and
   execution-loop routes that now expose checkpoint-driven multi-step execution
   plans, recovery actions, and Team 6 MCP tool-plane metadata while staying
@@ -67,6 +69,8 @@ The current slices are:
       without auto-persisting new direct rooms
 - [x] Land transcript-adjacent operator approvals, progress, activity, and run
       inspection surfaces
+- [x] Land a first `Cats Work` dashboard and task-detail surface above shared
+      core task/operator reads
 - [x] Land machine-readable governance/workflow summaries for approval,
       delivery, budget, reroute, retry, and workflow continuation contracts
 - [x] Land product-owned companion box storage, Cat-scoped ingest/read routes,

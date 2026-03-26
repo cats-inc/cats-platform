@@ -77,7 +77,8 @@ fixtures.
 
 ### Phase 5: Cats Work Launch Slice
 
-- [ ] Add work dashboard, inbox, and work-item views above the shared contracts.
+- [x] Add a first work dashboard and inbox slice above the shared contracts.
+- [ ] Add work-item views above the shared contracts.
 - [ ] Reuse the same actor, conversation, approval, and archive metadata model.
 - [ ] Keep Work surfaces above the same `cats-runtime` boundary.
 - [ ] Reuse the same Electron-hosted React/TypeScript desktop shell decisions as
@@ -119,5 +120,4 @@ fixtures.
 ---
 
 *Last updated: 2026-03-22*
-
 

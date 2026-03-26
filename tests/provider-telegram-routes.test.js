@@ -525,7 +525,9 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
       assert.ok(messagesPayload.messages.some((message) =>
         message.senderKind === 'user' && message.body === 'hello from telegram'));
       assert.ok(messagesPayload.messages.some((message) =>
-        message.senderKind === 'orchestrator' && message.body === 'Boss Cat relay reply'));
+        message.body === 'Boss Cat relay reply'
+        && message.metadata?.targetKind === 'orchestrator'
+        && (message.senderKind === 'agent' || message.senderKind === 'orchestrator')));
 
       const duplicateResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
         method: 'POST',

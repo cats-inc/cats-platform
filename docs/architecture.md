@@ -74,8 +74,8 @@ Current ownership:
 - `src/core/*` owns shared Cats Core contracts and persistence seams
 - `src/products/chat/*` owns Chat-specific state, routing, and renderer
   behavior
-- `src/products/work/*` owns Work placeholder surfaces and future Work-specific
-  APIs/UI
+- `src/products/work/*` owns Work dashboard, inbox, task-detail, and future
+  Work-specific APIs/UI
 - `src/products/code/*` owns Code placeholder surfaces and future
   project/preview/build APIs/UI
 - `src/platform/*` owns runtime, orchestration contracts, persistence, and
@@ -182,8 +182,8 @@ transport state stays in `src/platform/transports/telegram/*`.
   built static assets
 - **Technology**: Native `node:http`
 - **Responsibilities**: Serve `/health`, `/api/app-shell`, shared-core product
-  routes, Work/Code placeholder routes, runtime-facing routes, and built
-  renderer files
+  routes, Work dashboard routes, Code placeholder routes, runtime-facing
+  routes, and built renderer files
 
 ### Electron Host and Packaging Substrate
 
@@ -390,10 +390,10 @@ Persisted `channelId` values are opaque ids rather than title-derived slugs.
 
 Reserved (not yet implemented): `/tools/*`.
 
-`/work/*` and `/code/*` now resolve to dedicated suite placeholder surfaces
-rather than inline placeholder JSX. These roots are intentionally minimal, but
-they already give future Work and Code development their own renderer entry
-points without colliding with Chat implementation files.
+`/work/*` now resolves to a first Work dashboard route above shared-core task
+reads, while `/code/*` still resolves to a dedicated placeholder surface.
+These roots keep product ownership separate from Chat implementation files even
+before the fuller Work/Code slices land.
 
 Browser back/forward and page refresh preserve the current surface. The server's
 SPA fallback (`tryServeWebAsset`) serves `index.html` for extensionless paths,
@@ -538,8 +538,9 @@ See
   `runtimeDeliveryManifest` skeletons so operator loops and future control-plane
   automation can consume approval/delivery/budget/workflow state without
   scraping transcript text.
-- `Cats Work` is a planned sibling surface, not a shipped UI in the current
-  codebase.
+- `Cats Work` now ships a first shared-core dashboard and task-detail slice,
+  but broader project/work-item and team-operating-model surfaces still remain
+  future work.
 - The current execution path keeps full Chat and Work desktop surfaces on the
   same React/TypeScript renderer stack under Electron.
 - The current server now exposes a Telegram transport seam with dedicated
@@ -564,7 +565,8 @@ intentionally deferred:
   takeover behavior above the current relay seam
 - signed installer publication, provider-install privilege orchestration, and
   richer desktop remediation polish above the current host substrate
-- `Cats Work` product surfaces above the shared core
+- richer `Cats Work` project/work-item and team-operating-model surfaces above
+  the shared core
 - any limited mobile companion scope, which is intentionally secondary to the
   desktop suite
 
@@ -612,4 +614,4 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-26*
