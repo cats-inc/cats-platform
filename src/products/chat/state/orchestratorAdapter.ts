@@ -5,6 +5,7 @@ import type {
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
 import type { WorkflowContinuationReplaySnapshot } from '../../../platform/orchestration/workflowContinuationReplay.js';
+import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecovery.js';
 import { buildApprovalQueue } from '../../../core/model/index.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
 import type { ChatState } from '../api/contracts.js';
@@ -22,27 +23,34 @@ import {
   resolveChatConversationId,
 } from '../shared/operator-loop/index.js';
 
-export const chatOrchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState> = {
-  buildChannelView,
-  async routeChannelMessage(input) {
-    return routeChannelMessage(
-      input.state,
-      input.channelId,
-      {
-        body: input.body,
-        senderName: input.senderName,
-      },
-      input.runtimeClient,
-      input.now,
-      {
-        transport: input.transport,
-        companionStore: input.companionStore,
-        memoryService: input.memoryService,
-        chatStore: input.chatStore as ChatStore,
-      },
-    );
-  },
-};
+export function createChatOrchestratorChannelRouter(
+  runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>,
+): OrchestratorChannelRouter<CompanionBoxStore, ChatState> {
+  return {
+    buildChannelView,
+    async routeChannelMessage(input) {
+      return routeChannelMessage(
+        input.state,
+        input.channelId,
+        {
+          body: input.body,
+          senderName: input.senderName,
+        },
+        input.runtimeClient,
+        input.now,
+        {
+          transport: input.transport,
+          companionStore: input.companionStore,
+          memoryService: input.memoryService,
+          chatStore: input.chatStore as ChatStore,
+          runtimeRecovery,
+        },
+      );
+    },
+  };
+}
+
+export const chatOrchestratorChannelRouter = createChatOrchestratorChannelRouter();
 
 export const chatOrchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState> = {
   buildChannelView,

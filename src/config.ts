@@ -1,10 +1,13 @@
 import path from 'node:path';
 
+import { DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT } from './shared/runtimeRecovery.js';
+
 export interface AppConfig {
   host: string;
   port: number;
   runtimeBaseUrl: string;
   runtimeApiKey: string;
+  runtimeStaleSessionRetryLimit: number;
   chatStatePath: string;
   maxBossCats: number;
   maxCats: number;
@@ -48,12 +51,23 @@ function parsePositiveInt(raw: string | undefined, fallback: number): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseNonNegativeInt(raw: string | undefined, fallback: number): number {
+  const trimmed = raw?.trim();
+  if (!trimmed) return fallback;
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
+    runtimeStaleSessionRetryLimit: parseNonNegativeInt(
+      env.CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT,
+      DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT,
+    ),
     chatStatePath:
       readFirstDefined(env, ['CATS_STATE_PATH', 'CATS_INC_STATE_PATH'])
       || path.join(process.cwd(), 'config', 'chat-state.local.json'),

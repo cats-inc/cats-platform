@@ -303,6 +303,9 @@ async function handleRestSendMessage(
         companionStore: context.dependencies.companionStore,
         memoryService: context.dependencies.memoryService,
         chatStore: context.dependencies.chatStore,
+        runtimeRecovery: {
+          staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
+        },
       },
     );
     const persisted = await context.dependencies.chatStore.write(

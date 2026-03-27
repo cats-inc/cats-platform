@@ -9,6 +9,7 @@ import type {
   RoomWorkflowState,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
+import type { RuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
@@ -34,6 +35,16 @@ import {
   ensureTargetSession,
   maybeAutoCheckoutChannelTask,
 } from '../runtime-session/index.js';
+import type { DispatchExecution } from './execution.js';
+import { executeDispatch } from './execution.js';
+import {
+  applyDispatchChannelChatCwd,
+  applyDispatchLeasePatch,
+  classifyRuntimeDispatchRecoveryError,
+  createDispatchRecoveryErrorLeasePatch,
+  extractTargetLeasePatchFromState,
+} from './recovery.js';
+import { requireChannel } from '../model/index.js';
 
 export async function prepareReadyRequests(
   state: ChatState,
@@ -207,4 +218,139 @@ export async function prepareReadyRequests(
     latestCheckpoint,
     readyRequests,
   };
+}
+
+export async function executeDispatchWithRecovery(input: {
+  state: ChatState;
+  channelId: string;
+  request: DispatchRequest;
+  runtimeClient: RuntimeClient;
+  now: Date;
+  transport?: import('../runtimeTargeting.js').RuntimeTransportContext;
+  companionStore?: CompanionBoxStore;
+  memoryService?: CatsMemoryService;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
+  runtimeRecovery: RuntimeDispatchRecoveryPolicy;
+}): Promise<DispatchExecution> {
+  let dispatchState = input.state;
+  let request = input.request;
+  let recoveredLeasePatch: DispatchExecution['leasePatch'];
+  let recoveredChannelChatCwd: string | undefined;
+  let staleRecoveryCount = 0;
+
+  while (true) {
+    const execution = await executeDispatch(
+      dispatchState,
+      input.channelId,
+      request,
+      input.runtimeClient,
+      input.now,
+      input.transport,
+      input.companionStore,
+    );
+
+    if (!execution.error) {
+      return {
+        ...execution,
+        ...(recoveredLeasePatch ? { leasePatch: recoveredLeasePatch } : {}),
+        ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+      };
+    }
+
+    const classifiedError = classifyRuntimeDispatchRecoveryError(execution.error);
+    if (!classifiedError) {
+      return {
+        ...execution,
+        ...(recoveredLeasePatch ? { leasePatch: recoveredLeasePatch } : {}),
+        ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+      };
+    }
+
+    if (
+      !classifiedError.retryable
+      || staleRecoveryCount >= input.runtimeRecovery.staleSessionRetryLimit
+    ) {
+      return {
+        ...execution,
+        leasePatch: createDispatchRecoveryErrorLeasePatch(
+          execution.error,
+          input.now,
+          { clearSession: true },
+        ),
+        ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+      };
+    }
+
+    staleRecoveryCount += 1;
+    const ensured = await ensureTargetSession(
+      dispatchState,
+      input.channelId,
+      { ...request.target, sessionId: null },
+      input.runtimeClient,
+      input.now,
+      {
+        transport: input.transport,
+        companionStore: input.companionStore,
+        memoryService: input.memoryService,
+        chatStore: input.chatStore,
+        wakeTrigger: 'route_target',
+        wakeReason: request.trigger === 'continuation_mention'
+          ? 'workflow_continuation'
+          : resolveWakeReasonFromRoutingTrigger(request.trigger),
+        sourceMessageId: request.sourceMessage.id,
+      },
+    );
+
+    if (ensured.error || !ensured.target.sessionId) {
+      const recoveryError = ensured.error ?? execution.error;
+      return {
+        ...execution,
+        error: recoveryError,
+        leasePatch: createDispatchRecoveryErrorLeasePatch(
+          recoveryError,
+          input.now,
+          { clearSession: true },
+        ),
+        ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+      };
+    }
+
+    if (input.chatStore) {
+      await maybeAutoCheckoutChannelTask(
+        input.chatStore,
+        input.runtimeClient,
+        input.channelId,
+        ensured.target,
+        input.now,
+        ensured.taskExecutionContext,
+      );
+    }
+
+    recoveredLeasePatch = extractTargetLeasePatchFromState(
+      ensured.state,
+      input.channelId,
+      ensured.target,
+    );
+    dispatchState = applyDispatchLeasePatch(
+      dispatchState,
+      input.channelId,
+      ensured.target,
+      recoveredLeasePatch,
+      input.now,
+    );
+    const recoveredChannel = requireChannel(ensured.state, input.channelId);
+    if (recoveredChannel.chatCwd) {
+      recoveredChannelChatCwd = recoveredChannel.chatCwd;
+      dispatchState = applyDispatchChannelChatCwd(
+        dispatchState,
+        input.channelId,
+        recoveredChannel.chatCwd,
+        input.now,
+      );
+    }
+    request = {
+      ...request,
+      target: ensured.target,
+    };
+  }
 }

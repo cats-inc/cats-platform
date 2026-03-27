@@ -30,6 +30,7 @@ import {
 } from '../../products/chat/state/companion-box/index.js';
 import { createChatMemorySurface } from '../../products/chat/state/memoryAdapter.js';
 import {
+  createChatOrchestratorChannelRouter,
   chatOrchestratorChannelRouter,
   chatOrchestratorPlannerSurface,
   resumeStoredWorkflowContinuationDispatch,
@@ -120,7 +121,13 @@ export function resolveServerDependencies(
     dependencies.chat.chatStore,
   );
   const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter
-    ?? chatOrchestratorChannelRouter;
+    ?? (
+      dependencies.shared.config.runtimeStaleSessionRetryLimit === undefined
+        ? chatOrchestratorChannelRouter
+        : createChatOrchestratorChannelRouter({
+          staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
+        })
+    );
   const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface
     ?? chatOrchestratorPlannerSurface;
   const taskExecutionLocator = dependencies.chat.taskExecutionLocator
@@ -129,6 +136,9 @@ export function resolveServerDependencies(
     ?? createChatTelegramRoomBridge({
       chatStore: dependencies.chat.chatStore,
       companionStore,
+      runtimeRecovery: {
+        staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
+      },
     });
   const resumePendingOrchestratorDispatch =
     dependencies.shared.resumePendingOrchestratorDispatch

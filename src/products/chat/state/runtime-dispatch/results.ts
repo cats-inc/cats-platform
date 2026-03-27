@@ -13,8 +13,6 @@ import type {
 import {
   appendMessage,
   requireChannel,
-  setChannelCatLease,
-  setChannelOrchestratorLease,
 } from '../model/index.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
@@ -49,6 +47,10 @@ import {
   setReadyAfterMessage,
   toParticipantRef,
 } from '../runtime-session/state.js';
+import {
+  applyDispatchChannelChatCwd,
+  applyDispatchLeasePatch,
+} from './recovery.js';
 
 type ContinuationSource = 'explicit_mentions' | 'workflow_recommendation';
 
@@ -177,21 +179,28 @@ export function applyDispatchExecutions(
     const targetKey = participantKey(execution.target);
     targetVisitCounts.set(targetKey, (targetVisitCounts.get(targetKey) ?? 0) + 1);
 
+    if (execution.channelChatCwd) {
+      nextState = applyDispatchChannelChatCwd(
+        nextState,
+        channelId,
+        execution.channelChatCwd,
+        now,
+      );
+    }
+
     if (execution.error) {
-      nextState = execution.target.participantKind === 'cat'
-        ? setChannelCatLease(
-            nextState,
-            channelId,
-            execution.target.participantId,
-            { status: 'error', lastError: execution.error, lastUsedAt: nowIso },
-            now,
-          )
-        : setChannelOrchestratorLease(
-            nextState,
-            channelId,
-            { status: 'error', lastError: execution.error, lastUsedAt: nowIso },
-            now,
-          );
+      nextState = applyDispatchLeasePatch(
+        nextState,
+        channelId,
+        execution.target,
+        {
+          ...(execution.leasePatch ?? {}),
+          status: 'error',
+          lastError: execution.error,
+          lastUsedAt: nowIso,
+        },
+        now,
+      );
       nextState = appendMessage(
         nextState,
         channelId,
@@ -270,6 +279,15 @@ export function applyDispatchExecutions(
       continue;
     }
 
+    if (execution.leasePatch) {
+      nextState = applyDispatchLeasePatch(
+        nextState,
+        channelId,
+        execution.target,
+        execution.leasePatch,
+        now,
+      );
+    }
     nextState = setReadyAfterMessage(
       nextState,
       channelId,

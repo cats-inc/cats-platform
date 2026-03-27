@@ -1,4 +1,5 @@
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
+import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecovery.js';
 import type { ChatState } from '../api/contracts.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
 import { appendMessage, createChannel, requireChannel } from './model/index.js';
@@ -9,6 +10,7 @@ import type { ChatStore } from './store.js';
 export function createChatTelegramRoomBridge(input: {
   chatStore: ChatStore;
   companionStore: CompanionBoxStore;
+  runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
 }): TelegramRoomBridge<ChatState> {
   return {
     readState() {
@@ -87,6 +89,7 @@ export function createChatTelegramRoomBridge(input: {
           companionStore: input.companionStore,
           memoryService,
           chatStore: input.chatStore,
+          runtimeRecovery: input.runtimeRecovery,
         },
       );
     },

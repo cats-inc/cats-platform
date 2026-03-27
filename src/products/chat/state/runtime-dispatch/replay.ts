@@ -5,6 +5,7 @@ import type {
   RoomRoutingTrigger,
   RoomWorkflowShape,
 } from '../../../../shared/roomRouting.js';
+import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
 import { upsertCoreTask } from '../../../../core/model/index.js';
@@ -448,6 +449,7 @@ export async function resumeWorkflowContinuationReplay(input: {
   memoryService?: CatsMemoryService;
   transport?: RuntimeTransportContext;
 }): Promise<WorkflowContinuationReplayResult & { results: ChannelDispatchResult[] }> {
+  const runtimeRecovery = normalizeRuntimeDispatchRecoveryPolicy();
   const state = await input.chatStore.read();
   const channel = buildChannelView(state, input.request.channelId);
   const sourceMessage = channel.messages.find((message) => message.id === input.request.sourceMessageId);
@@ -574,6 +576,7 @@ export async function resumeWorkflowContinuationReplay(input: {
     companionStore: input.companionStore,
     memoryService: input.memoryService,
     chatStore: input.chatStore,
+    runtimeRecovery,
   });
   nextState = loopResult.state;
   latestCheckpoint = loopResult.latestCheckpoint;

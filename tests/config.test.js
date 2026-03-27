@@ -13,6 +13,7 @@ test('loadConfig prefers canonical CATS_* variables over compatibility aliases',
     CATS_INC_STATE_PATH: 'C:/state/legacy.json',
     CATS_RUNTIME_BASE_URL: 'http://127.0.0.1:3110/',
     CATS_RUNTIME_API_KEY: 'token',
+    CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT: '3',
   });
 
   assert.equal(config.host, '0.0.0.0');
@@ -20,6 +21,7 @@ test('loadConfig prefers canonical CATS_* variables over compatibility aliases',
   assert.equal(config.chatStatePath, 'C:/state/cats.json');
   assert.equal(config.runtimeBaseUrl, 'http://127.0.0.1:3110');
   assert.equal(config.runtimeApiKey, 'token');
+  assert.equal(config.runtimeStaleSessionRetryLimit, 3);
 });
 
 test('loadConfig falls back to CATS_INC_* compatibility aliases', () => {
@@ -33,4 +35,5 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases', () => {
   assert.equal(config.host, '127.0.0.2');
   assert.equal(config.port, 8282);
   assert.equal(config.chatStatePath, 'C:/state/legacy.json');
+  assert.equal(config.runtimeStaleSessionRetryLimit, 1);
 });

@@ -13,6 +13,7 @@ import type {
   RoomWorkflowState,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
+import type { RuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
@@ -36,15 +37,15 @@ import {
   updateDispatch,
   updateWorkflowTarget,
 } from '../room-routing/workflow.js';
-import { resolveWakeReasonFromRoutingTrigger } from '../room-routing/wake.js';
 import type { RuntimeTransportContext } from '../runtimeTargeting.js';
 import {
-  type DispatchExecution,
-  executeDispatch,
   settleInCompletionOrder,
   shouldBlockAntiPingPong,
 } from './execution.js';
-import { prepareReadyRequests } from './wake.js';
+import {
+  executeDispatchWithRecovery,
+  prepareReadyRequests,
+} from './wake.js';
 import { applyDispatchExecutions } from './results.js';
 import {
   participantKey,
@@ -77,6 +78,7 @@ export interface ProcessDispatchQueueOptions {
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
+  runtimeRecovery: RuntimeDispatchRecoveryPolicy;
 }
 
 export async function processDispatchQueue(
@@ -107,6 +109,7 @@ export async function processDispatchQueue(
     outcome,
     results,
     runtimeClient,
+    runtimeRecovery,
     transport,
     userMessage,
     workflow,
@@ -502,15 +505,18 @@ export async function processDispatchQueue(
     const stateSnapshot = nextState;
     const executions = await settleInCompletionOrder(
       readyRequests.map((request) =>
-        executeDispatch(
-          stateSnapshot,
+        executeDispatchWithRecovery({
+          state: stateSnapshot,
           channelId,
           request,
           runtimeClient,
           now,
           transport,
           companionStore,
-        ),
+          memoryService,
+          chatStore,
+          runtimeRecovery,
+        }),
       ),
     );
 

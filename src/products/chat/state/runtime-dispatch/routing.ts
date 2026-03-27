@@ -6,6 +6,7 @@ import type {
 import type {
   RoomRoutingGuardReason,
 } from '../../../../shared/roomRouting.js';
+import type { RuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import type {
   CompanionBoxStore,
 } from '../companion-box/index.js';
@@ -26,6 +27,7 @@ import {
   createExplicitProviderModelSelection,
   sameProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
+import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
   type RuntimeTransportContext,
@@ -47,6 +49,7 @@ interface RouteChannelMessageOptions {
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
+  runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
 }
 
 function normalizePendingTargetValue(value: string | null | undefined): string | null {
@@ -78,6 +81,7 @@ export async function routeChannelMessage(
   options: RouteChannelMessageOptions = {},
 ): Promise<{ state: ChatState; results: ChannelDispatchResult[] }> {
   let nextState = state;
+  const runtimeRecovery = normalizeRuntimeDispatchRecoveryPolicy(options.runtimeRecovery);
   const channelBeforeMessage = requireChannel(nextState, channelId);
   const nextPendingProvider = payload.pendingProvider === undefined
     ? channelBeforeMessage.pendingProvider
@@ -215,12 +219,13 @@ export async function routeChannelMessage(
     maxContinuations,
     maxDispatches,
     maxTargetVisits,
-    describeGuardReason,
-    transport: options.transport,
-    companionStore: options.companionStore,
-    memoryService: options.memoryService,
-    chatStore: options.chatStore,
-  });
+      describeGuardReason,
+      transport: options.transport,
+      companionStore: options.companionStore,
+      memoryService: options.memoryService,
+      chatStore: options.chatStore,
+      runtimeRecovery,
+    });
   nextState = loopResult.state;
   latestCheckpoint = loopResult.latestCheckpoint;
   const guardReason = loopResult.guardReason;

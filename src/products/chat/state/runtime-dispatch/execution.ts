@@ -19,11 +19,14 @@ import {
 } from '../runtimeTargeting.js';
 import { participantKey } from '../runtime-session/state.js';
 import { shouldRewriteOrchestratorReply } from '../runtime-session/index.js';
+import type { DispatchLeasePatch } from './recovery.js';
 
 export interface DispatchExecution extends DispatchRequest {
   responseBody: string | null;
   usage: MessageUsageSummary | null;
   error: string | null;
+  leasePatch?: DispatchLeasePatch;
+  channelChatCwd?: string;
 }
 
 export async function executeDispatch(

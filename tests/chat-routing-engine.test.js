@@ -7,6 +7,7 @@ import {
   createChannel,
   createCat,
   removeCatFromChannel,
+  setChannelCatLease,
 } from '../dist-server/chat/model.js';
 import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
@@ -948,6 +949,165 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   assert.equal(channel.roomRouting?.wakeHistory[0]?.participant.participantId, companionId);
   assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
   assert.equal(channel.status, 'active');
+});
+
+test('direct cat chat recreates a stale lead-cat session once when runtime reports session not found', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-24T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Recover stale direct session leases.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  state = setChannelCatLease(
+    state,
+    channelId,
+    companionId,
+    {
+      sessionId: 'session-stale',
+      status: 'ready',
+      lastError: null,
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+
+  const runtimeClient = createRuntimeStub(async ({ sessionId, content }) => {
+    if (!content.includes('You are Companion')) {
+      throw new Error(`Unexpected prompt:\n${content}`);
+    }
+    if (sessionId === 'session-stale') {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    if (sessionId === 'session-1') {
+      return usage('Companion recovered the direct lane.');
+    }
+    throw new Error(`Unexpected session: ${sessionId}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Recover the lane and answer.' },
+    runtimeClient,
+    now,
+    {
+      runtimeRecovery: {
+        staleSessionRetryLimit: 1,
+      },
+    },
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(runtimeClient.sentMessages.length, 2);
+  assert.deepEqual(
+    runtimeClient.sentMessages.map((message) => message.sessionId),
+    ['session-stale', 'session-1'],
+  );
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
+  assert.equal(channel.assignedCats[0]?.execution.lease.status, 'ready');
+  assert.equal(channel.assignedCats[0]?.execution.lease.lastError, null);
+  assert.match(channel.messages.at(-1)?.body ?? '', /recovered the direct lane/i);
+});
+
+test('session-full errors stop immediately and clear the direct lane lease instead of retrying', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-24T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Stop when the runtime session is full.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  state = setChannelCatLease(
+    state,
+    channelId,
+    companionId,
+    {
+      sessionId: 'session-full',
+      status: 'ready',
+      lastError: null,
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+
+  const runtimeClient = createRuntimeStub(async ({ sessionId, content }) => {
+    if (!content.includes('You are Companion')) {
+      throw new Error(`Unexpected prompt:\n${content}`);
+    }
+    if (sessionId === 'session-full') {
+      throw new Error('Session full: hard limit reached for this conversation.');
+    }
+    throw new Error(`Unexpected session: ${sessionId}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Do not retry this forever.' },
+    runtimeClient,
+    now,
+    {
+      runtimeRecovery: {
+        staleSessionRetryLimit: 5,
+      },
+    },
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(runtimeClient.sentMessages.length, 1);
+  assert.equal(runtimeClient.createdSessions.length, 0);
+  assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, null);
+  assert.equal(channel.assignedCats[0]?.execution.lease.status, 'error');
+  assert.match(channel.assignedCats[0]?.execution.lease.lastError ?? '', /session full|hard limit/i);
+  assert.match(channel.messages.at(-1)?.body ?? '', /Failed to route the message to Companion/i);
 });
 
 test('direct cat chat blocks unmentioned turns when the lead cat is no longer assigned instead of falling back to Boss Cat', async () => {
