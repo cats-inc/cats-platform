@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-038](./SPEC-038-telegram-bot-commands-and-transport-control-surface.md) | Telegram Bot Commands and Transport Control Surface | Draft | TBD |
 | [SPEC-037](./SPEC-037-transport-driven-live-chat-updates-and-private-lane-transition.md) | Transport-Driven Live Chat Updates and Private-Lane Transition | Draft | [PLAN-026](../plans/PLAN-026-transport-live-updates-and-private-lane-transition.md) |
 | [SPEC-036](./SPEC-036-companion-workspace-presence-and-settings.md) | Companion Workspace, Presence, and Settings | Draft | [PLAN-025](../plans/PLAN-025-companion-workspace-presence-and-settings.md) |
 | [SPEC-035](./SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md) | Cross-Product Task Strategy Handoff and Runtime Bridge | Draft | TBD |
