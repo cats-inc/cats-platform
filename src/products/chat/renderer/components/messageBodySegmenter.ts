@@ -1,6 +1,44 @@
 import type { ChatCat } from '../../api/contracts';
 import { parseMentionsWithPositions } from '../../state/mentionParsing';
 
+export interface MessageBodyAttachment {
+  filename: string;
+  relativePath: string;
+  isImage: boolean;
+}
+
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']);
+
+const ATTACHMENT_BLOCK_REGEX =
+  /^\[Attached files in working directory:\]\n((?:- [^\n]+\n)+)\n?/;
+
+export function extractAttachments(body: string): {
+  attachments: MessageBodyAttachment[];
+  textBody: string;
+} {
+  const match = ATTACHMENT_BLOCK_REGEX.exec(body);
+  if (!match) {
+    return { attachments: [], textBody: body };
+  }
+
+  const block = match[1];
+  const attachments: MessageBodyAttachment[] = [];
+  for (const line of block.split('\n')) {
+    const trimmed = line.replace(/^- /, '').trim();
+    if (!trimmed) continue;
+    const ext = trimmed.slice(trimmed.lastIndexOf('.')).toLowerCase();
+    const filename = trimmed.split('/').pop() ?? trimmed;
+    attachments.push({
+      filename,
+      relativePath: trimmed,
+      isImage: IMAGE_EXTENSIONS.has(ext),
+    });
+  }
+
+  const textBody = body.slice(match[0].length);
+  return { attachments, textBody };
+}
+
 export type MessageBodySegmentKind = 'text' | 'url' | 'mention';
 
 export interface MessageBodySegment {

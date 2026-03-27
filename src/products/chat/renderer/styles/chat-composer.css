@@ -512,6 +512,43 @@
   text-overflow: ellipsis;
 }
 
+/* ── Composer mention highlight overlay ── */
+
+.composerInputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.composerHighlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: hidden;
+  min-height: 44px;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--text);
+}
+
+.composerHighlightMention {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.composerInputOverlay {
+  position: relative;
+  color: transparent;
+  caret-color: var(--text);
+}
+
+.composerInputOverlay::placeholder {
+  color: var(--muted-soft);
+}
+
 .addCatRemoveButton {
   background: transparent;
   color: var(--muted);

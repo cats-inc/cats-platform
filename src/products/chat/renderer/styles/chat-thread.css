@@ -588,3 +588,60 @@
   color: #fff;
   background: #8B7E74;
 }
+
+/* ── Message body attachments ── */
+
+.messageBodyWrapper {
+  display: contents;
+}
+
+.messageBodyImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.messageBodyImageLink {
+  display: block;
+  border-radius: 10px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.messageBodyImage {
+  max-width: 240px;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.messageBodyImage:hover {
+  opacity: 0.85;
+}
+
+.messageBodyFiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.messageBodyFileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--panel-hover);
+  color: var(--text);
+  font-size: 0.82rem;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.messageBodyFileChip:hover {
+  background: var(--border);
+}

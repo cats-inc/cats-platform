@@ -33,6 +33,7 @@ import {
   type ModelSelectorValue,
 } from './ModelSelector';
 import { ApprovalQueuePanel } from './ApprovalQueuePanel';
+import { ComposerHighlight } from './ComposerHighlight';
 import { MessageBody } from './MessageBody';
 import {
   MessageChoices,
@@ -322,7 +323,7 @@ export function ChatView({
                           </div>
                         ) : null;
                       })() : null}
-                      {message.body ? <MessageBody body={message.body} cats={payload.chat.cats} /> : null}
+                      {message.body ? <MessageBody body={message.body} cats={payload.chat.cats} channelId={selectedChannel.id} /> : null}
                       {message.choices && message.choices.length > 0 ? (
                         <MessageChoices
                           channelId={selectedChannel.id}
@@ -422,14 +423,17 @@ export function ChatView({
                   })}
                 </div>
               ) : null}
-              <textarea
-                className="composerInput"
-                rows={1}
-                placeholder="How can I help you today?"
-                value={composerDraft}
-                onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
-                onKeyDown={(event) => void onComposerKeyDown(event)}
-              />
+              <div className="composerInputWrapper">
+                <ComposerHighlight text={composerDraft} cats={payload.chat.cats} />
+                <textarea
+                  className="composerInput composerInputOverlay"
+                  rows={1}
+                  placeholder="How can I help you today?"
+                  value={composerDraft}
+                  onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
+                  onKeyDown={(event) => void onComposerKeyDown(event)}
+                />
+              </div>
               <div className="composerBottomRow">
                 <div className="composerLeftGroup">
                   <div className="composerPlusWrapper" ref={channelPlusMenuRef}>

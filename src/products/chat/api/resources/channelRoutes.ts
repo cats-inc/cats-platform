@@ -1,7 +1,7 @@
-import { access, mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
+import { matchRoute, readJsonBody, sendBinary, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import {
   activateChannelSessions,
   routeChannelMessage,
@@ -387,6 +387,53 @@ async function handleRestUploadAttachments(
   }
 }
 
+const ATTACHMENT_MIME_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.pdf': 'application/pdf',
+  '.txt': 'text/plain',
+};
+
+async function handleRestServeAttachment(
+  context: ChatApiRouteContext,
+  chatScopeId: string,
+  channelId: string,
+  filename: string,
+): Promise<void> {
+  try {
+    requireValidChatScopeId(chatScopeId);
+    const state = await context.dependencies.chatStore.read();
+    const channel = requireChannel(state, channelId);
+    const cwd = channel.repoPath ?? channel.chatCwd;
+
+    if (!cwd) {
+      sendRestError(context, 404, 'not_found', 'Channel has no working directory.');
+      return;
+    }
+
+    const safeName = sanitizeAttachmentName(filename);
+    const filePath = path.join(cwd, '.cats-attachments', safeName);
+
+    try {
+      await access(filePath);
+    } catch {
+      sendRestError(context, 404, 'not_found', 'Attachment not found.');
+      return;
+    }
+
+    const ext = path.extname(safeName).toLowerCase();
+    const contentType = ATTACHMENT_MIME_TYPES[ext] ?? 'application/octet-stream';
+    const data = await readFile(filePath);
+    sendBinary(context.response, 200, data, contentType);
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
 async function handleRestActivateChannel(
   context: ChatApiRouteContext,
   chatScopeId: string,
@@ -567,6 +614,24 @@ export async function routeChatChannelResourceApi(
       context,
       DEFAULT_CHAT_SCOPE_ID,
       canonicalChannelAttachmentsMatch[0]!,
+    );
+    return true;
+  }
+
+  const canonicalChannelAttachmentFileMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/attachments\/([^/]+)$/u,
+  );
+  if (canonicalChannelAttachmentFileMatch) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    await handleRestServeAttachment(
+      context,
+      DEFAULT_CHAT_SCOPE_ID,
+      canonicalChannelAttachmentFileMatch[0]!,
+      canonicalChannelAttachmentFileMatch[1]!,
     );
     return true;
   }
