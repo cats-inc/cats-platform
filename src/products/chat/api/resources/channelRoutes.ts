@@ -76,6 +76,90 @@ async function resolveUniqueAttachmentName(
   }
 }
 
+const CHANNEL_STREAM_SESSION_WAIT_MS = 1500;
+const CHANNEL_STREAM_SESSION_POLL_MS = 75;
+
+function resolveChannelStreamSessionId(
+  channel: ReturnType<typeof requireChannel>,
+): string | null {
+  const leadParticipantId = channel.roomRouting?.leadParticipantId ?? null;
+  if (leadParticipantId) {
+    const leadAssignment = channel.catAssignments.find((assignment) =>
+      assignment.catId === leadParticipantId);
+    const leadSessionId = leadAssignment?.execution?.lease?.sessionId?.trim();
+    if (leadSessionId) {
+      return leadSessionId;
+    }
+  }
+
+  for (const assignment of channel.catAssignments) {
+    const sessionId = assignment.execution?.lease?.sessionId?.trim();
+    if (sessionId) {
+      return sessionId;
+    }
+  }
+
+  return channel.orchestratorLease?.sessionId?.trim() || null;
+}
+
+function waitForStreamLease(
+  durationMs: number,
+  signal: AbortSignal,
+): Promise<void> {
+  if (signal.aborted) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, durationMs);
+
+    function onAbort(): void {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }
+
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+async function waitForChannelStreamSessionId(
+  context: ChatApiRouteContext,
+  channelId: string,
+  signal: AbortSignal,
+): Promise<string | null> {
+  const deadline = Date.now() + CHANNEL_STREAM_SESSION_WAIT_MS;
+
+  while (!signal.aborted) {
+    const state = await context.dependencies.chatStore.read();
+    const channel = requireChannel(state, channelId);
+    const sessionId = resolveChannelStreamSessionId(channel);
+    if (sessionId) {
+      return sessionId;
+    }
+    if (Date.now() >= deadline) {
+      return null;
+    }
+    await waitForStreamLease(CHANNEL_STREAM_SESSION_POLL_MS, signal);
+  }
+
+  return null;
+}
+
+function writeSseEvent(
+  context: ChatApiRouteContext,
+  event: string,
+  data: Record<string, unknown>,
+): void {
+  const payload = typeof data.type === 'string'
+    ? data
+    : { ...data, type: event };
+  context.response.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
+}
+
 async function handleRestListChannels(
   context: ChatApiRouteContext,
   chatScopeId: string,
@@ -341,23 +425,21 @@ async function handleRestStreamChannel(
   channelId: string,
 ): Promise<void> {
   let sseHeadersSent = false;
+  const abortController = new AbortController();
+  context.response.on('close', () => abortController.abort());
 
   try {
     requireValidChatScopeId(chatScopeId);
-    const state = await context.dependencies.chatStore.read();
-    const channel = requireChannel(state, channelId);
+    const sessionId = await waitForChannelStreamSessionId(
+      context,
+      channelId,
+      abortController.signal,
+    );
 
-    // Resolve session ID: prefer lead cat, fallback to orchestrator
-    let sessionId: string | null = null;
-    for (const assignment of channel.catAssignments) {
-      const sid = assignment.execution?.lease?.sessionId;
-      if (sid) { sessionId = sid; break; }
-    }
-    if (!sessionId) {
-      sessionId = channel.orchestratorLease?.sessionId ?? null;
+    if (abortController.signal.aborted) {
+      return;
     }
 
-    // Write SSE headers
     context.response.writeHead(200, {
       'content-type': 'text/event-stream',
       'cache-control': 'no-cache',
@@ -366,54 +448,31 @@ async function handleRestStreamChannel(
     sseHeadersSent = true;
 
     if (!sessionId) {
-      context.response.write('event: session_closed\ndata: {"type":"session_closed"}\n\n');
+      writeSseEvent(context, 'session_closed', { type: 'session_closed' });
       context.response.end();
       return;
     }
 
-    // Upstream SSE from cats-runtime
-    const abortController = new AbortController();
-    context.request.on('close', () => abortController.abort());
-
-    const { config } = context.dependencies;
-    const upstreamUrl = `${config.runtimeBaseUrl}/sessions/${sessionId}/stream`;
-    const headers: Record<string, string> = { Accept: 'text/event-stream' };
-    if (config.runtimeApiKey) {
-      headers['Authorization'] = `Bearer ${config.runtimeApiKey}`;
-    }
-
-    let upstream: Response;
     try {
-      upstream = await fetch(upstreamUrl, { headers, signal: abortController.signal });
-    } catch {
-      context.response.write('event: error\ndata: {"type":"error","text":"Runtime stream unavailable"}\n\n');
-      context.response.end();
-      return;
-    }
-
-    if (!upstream.ok || !upstream.body) {
-      context.response.write('event: error\ndata: {"type":"error","text":"Runtime stream unavailable"}\n\n');
-      context.response.end();
-      return;
-    }
-
-    // Relay SSE chunks
-    const decoder = new TextDecoder();
-    let buffer = '';
-    try {
-      for await (const chunk of upstream.body as AsyncIterable<Uint8Array>) {
-        if (abortController.signal.aborted) break;
-        buffer += decoder.decode(chunk, { stream: true });
-        const blocks = buffer.split(/\r?\n\r?\n/);
-        buffer = blocks.pop() ?? '';
-        for (const block of blocks) {
-          if (!block.trim()) continue;
-          // Pass through the raw SSE block unchanged
-          context.response.write(block + '\n\n');
+      await context.dependencies.runtimeClient.streamSession(
+        sessionId,
+        async (event) => {
+          if (abortController.signal.aborted || context.response.writableEnded) {
+            return;
+          }
+          writeSseEvent(context, event.event, event.data);
+        },
+        {
+          signal: abortController.signal,
         }
-      }
+      );
     } catch {
-      // Upstream closed or client disconnected — normal lifecycle
+      if (!abortController.signal.aborted && !context.response.writableEnded) {
+        writeSseEvent(context, 'error', {
+          type: 'error',
+          text: 'Runtime stream unavailable',
+        });
+      }
     }
 
     if (!context.response.writableEnded) {
@@ -422,7 +481,10 @@ async function handleRestStreamChannel(
   } catch (error) {
     if (sseHeadersSent) {
       try {
-        context.response.write(`event: error\ndata: {"type":"error","text":"Proxy error"}\n\n`);
+        writeSseEvent(context, 'error', {
+          type: 'error',
+          text: 'Proxy error',
+        });
       } catch { /* response may already be closed */ }
       if (!context.response.writableEnded) context.response.end();
     } else {

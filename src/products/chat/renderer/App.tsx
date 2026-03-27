@@ -13,7 +13,6 @@ import {
 
 import type { AppShellPayload } from '../api/contracts';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog';
-import { NotificationContainer, useNotifications } from '../../../design/components/Notification';
 import {
   CHAT_PREFIX,
   isNewChatPath,
@@ -103,14 +102,7 @@ export default function App() {
   const [composerDraft, setComposerDraft] = useState('');
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [busy, setBusy] = useState('');
-  const { notifications, notify, dismiss } = useNotifications();
-  const feedback = '';
-  const setFeedback = useCallback((value: string | ((prev: string) => string)) => {
-    const text = typeof value === 'function' ? value('') : value;
-    if (text) {
-      notify({ title: 'Error', message: text, level: 'error' });
-    }
-  }, [notify]);
+  const [feedback, setFeedback] = useState('');
   const [addCatTab, setAddCatTab] = useState<'existing' | 'new'>('existing');
   const [greeting] = useState(pickGreeting);
   const [draftCwd, setDraftCwd] = useState<string | null>(null);
@@ -287,10 +279,11 @@ export default function App() {
     operatorState,
     setOperatorState,
   } = useOperatorLoop(readyPayload, operatorRefreshKey);
+  const liveIndicatorChannel = selectedChannel ?? selectedDirectLane ?? null;
   const liveIndicator = useLiveIndicator({
-    channelId: selectedChannel?.id ?? null,
+    channelId: liveIndicatorChannel?.id ?? null,
     busy,
-    selectedChannel,
+    selectedChannel: liveIndicatorChannel,
   });
   const {
     onComposerKeyDown,
@@ -836,7 +829,6 @@ export default function App() {
         />
       </main>
       <ConfirmDialog dialog={appDialog} onClose={appHandleClose} />
-      <NotificationContainer notifications={notifications} onDismiss={dismiss} />
     </div>
   );
 }

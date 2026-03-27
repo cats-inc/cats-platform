@@ -69,5 +69,6 @@ export function shouldWakeRouteChannelOnEntry(input: {
     return true;
   }
 
-  return input.entryLifecycleState === 'sleeping';
+  return input.entryLifecycleState === 'sleeping'
+    || input.entryLifecycleState === 'error';
 }

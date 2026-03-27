@@ -673,7 +673,7 @@ test('bot binding routes support multiple Telegram bots across Cats', async () =
     assert.ok(listBindingsPayload.botBindings.some((binding) =>
       binding.botName === 'boss_cat_bot'
       && binding.isBossBinding === true
-      && binding.roomMode === 'boss_chat'));
+      && binding.roomMode === 'direct_cat_chat'));
     assert.ok(listBindingsPayload.botBindings.some((binding) =>
       binding.botName === 'companion_bot'
       && binding.catId === companionCatId

@@ -244,6 +244,176 @@ async function withServer(
   }
 }
 
+test('GET /api/channels/:id/stream relays runtime session events through the runtime client', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion Cat',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Live lane',
+      topic: 'Validate runtime streaming.',
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  state = setChannelCatLease(
+    state,
+    channelId,
+    catId,
+    {
+      sessionId: 'session-live-1',
+      status: 'ready',
+      cwd: 'C:/repo/cats',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-live-1', {
+    session: {
+      id: 'session-live-1',
+    },
+    observePath: '/sessions/session-live-1/observe',
+    stream: {
+      path: '/sessions/session-live-1/stream',
+      available: true,
+      events: [
+        {
+          event: 'progress',
+          data: {
+            type: 'progress',
+            text: 'Planning the next step',
+            metadata: {
+              kind: 'planning',
+            },
+          },
+        },
+        {
+          event: 'result',
+          data: {
+            type: 'result',
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'text/event-stream');
+
+    const body = await response.text();
+    assert.match(body, /event: progress/u);
+    assert.match(body, /"text":"Planning the next step"/u);
+    assert.match(body, /"kind":"planning"/u);
+    assert.match(body, /event: result/u);
+    assert.deepEqual(runtime.streamedSessions, ['session-live-1']);
+  }, chatStore);
+});
+
+test('GET /api/channels/:id/stream waits for a pending session lease before closing the stream', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion Cat',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Cold start lane',
+      topic: 'Wait for the runtime session lease.',
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-live-2', {
+    session: {
+      id: 'session-live-2',
+    },
+    observePath: '/sessions/session-live-2/observe',
+    stream: {
+      path: '/sessions/session-live-2/stream',
+      available: true,
+      events: [
+        {
+          event: 'progress',
+          data: {
+            type: 'progress',
+            text: 'Session became ready',
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const responsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    let nextState = await chatStore.read();
+    nextState = setChannelCatLease(
+      nextState,
+      channelId,
+      catId,
+      {
+        sessionId: 'session-live-2',
+        status: 'ready',
+        cwd: 'C:/repo/cats',
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: seededAt.toISOString(),
+      },
+      seededAt,
+    );
+    await chatStore.write(nextState);
+
+    const response = await responsePromise;
+    assert.equal(response.status, 200);
+
+    const body = await response.text();
+    assert.match(body, /event: progress/u);
+    assert.match(body, /"text":"Session became ready"/u);
+    assert.doesNotMatch(body, /event: session_closed/u);
+    assert.ok(runtime.streamedSessions.includes('session-live-2'));
+  }, chatStore);
+});
+
 test('GET /health reports runtime reachability', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/health`);

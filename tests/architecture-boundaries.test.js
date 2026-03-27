@@ -846,7 +846,8 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
   assert.doesNotMatch(appSource, /createOptimisticDraftPayload/u);
   assert.match(hookSource, /export function useComposerSubmit/u);
   assert.match(hookSource, /appendOptimisticUserMessage/u);
-  assert.match(hookSource, /createOptimisticDraftPayload/u);
+  assert.match(hookSource, /buildNewChatChannelInput/u);
+  assert.match(hookSource, /insertCreatedChannelIntoPayload/u);
   assert.match(hookSource, /sendChatMessage/u);
 });
 

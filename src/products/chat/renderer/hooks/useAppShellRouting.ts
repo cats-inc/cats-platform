@@ -17,6 +17,7 @@ import {
   resolveVisibleChatPath,
 } from '../../shared/channelPaths';
 import { shouldWakeRouteChannelOnEntry } from '../../shared/channelEntry';
+import type { ChatLifecycleState } from '../../shared/lifecycle';
 import type { SelectedChannelView } from '../chatUtils';
 
 type LoadStateLike =
@@ -33,7 +34,7 @@ export function useAppShellRouting(options: {
   routeChannelExists: boolean;
   selectedChannelId: string | null;
   selectedChannelViewId: string | null;
-  selectedChannelEntryLifecycle: 'sleeping' | 'waking_up' | 'awake' | null;
+  selectedChannelEntryLifecycle: ChatLifecycleState | null;
   draftLeadCatId: string | null;
   showingMyCatDirectLane: boolean;
   routeDirectLaneSummary: { id: string } | null;

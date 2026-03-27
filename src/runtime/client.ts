@@ -172,6 +172,10 @@ export interface RuntimeSessionStreamEvent {
   data: Record<string, unknown>;
 }
 
+export interface RuntimeSessionStreamOptions {
+  signal?: AbortSignal;
+}
+
 export interface RuntimeWakeupTarget {
   sessionId?: string;
 }
@@ -212,6 +216,7 @@ export interface RuntimeClient {
   streamSession(
     sessionId: string,
     onEvent: (event: RuntimeSessionStreamEvent) => void | Promise<void>,
+    options?: RuntimeSessionStreamOptions,
   ): Promise<void>;
   createWakeup(input: RuntimeWakeupCreateInput): Promise<RuntimeWakeupCreateResult>;
   callMcp(request: unknown): Promise<Record<string, unknown> | null>;
@@ -494,12 +499,14 @@ export class CatsRuntimeClient implements RuntimeClient {
   async streamSession(
     sessionId: string,
     onEvent: (event: RuntimeSessionStreamEvent) => void | Promise<void>,
+    options?: RuntimeSessionStreamOptions,
   ): Promise<void> {
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/stream`, {
       headers: {
         ...this.authHeaders(),
         Accept: 'text/event-stream',
       },
+      signal: options?.signal,
     });
 
     if (!response.ok) {

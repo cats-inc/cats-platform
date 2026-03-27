@@ -19,7 +19,7 @@ test('renderer route entry wakes when a persisted room route is not yet the hydr
   );
 });
 
-test('renderer route entry wakes a sleeping selected room but not an awake one', () => {
+test('renderer route entry wakes sleeping or errored rooms but not awake ones', () => {
   assert.equal(
     shouldWakeRouteChannelOnEntry({
       routeChannelId: 'channel-1',
@@ -50,7 +50,7 @@ test('renderer route entry wakes a sleeping selected room but not an awake one',
       selectedChannelViewId: 'channel-1',
       entryLifecycleState: 'error',
     }),
-    false,
+    true,
   );
 });
 

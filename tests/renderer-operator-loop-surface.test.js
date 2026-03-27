@@ -14,7 +14,7 @@ test('ChatView keeps operator loop surfaces inside the chat side panel workspace
   assert.match(source, /ActivityFeed/u);
   assert.match(source, /RunInspector/u);
   assert.match(source, /SidePanel/u);
-  assert.match(source, /title="Workspace"/u);
+  assert.match(source, /title="Chat Setup"/u);
   assert.match(source, /id: 'operator'/u);
   assert.match(source, /operatorSnapshot/u);
   assert.match(source, /onOperatorAction/u);

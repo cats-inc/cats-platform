@@ -52,6 +52,19 @@ function findMyCatButton(node: ReactNode, catName: string): { props: { onClick?:
     return node as { props: { onClick?: () => void } };
   }
 
+  if (
+    typeof node.type === 'function'
+    && node.props?.cat
+    && node.props.cat.name === catName
+    && typeof node.props.onDirectChat === 'function'
+  ) {
+    return {
+      props: {
+        onClick: node.props.onDirectChat as () => void,
+      },
+    };
+  }
+
   const children = node.props.children;
   if (!children) {
     throw new Error(`My Cats button for "${catName}" not found.`);
