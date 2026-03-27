@@ -17,3 +17,11 @@ export function shouldSubmitComposerOnKeyDown(input: ComposerKeyDecisionInput): 
     !input.isComposing
   );
 }
+
+export function isComposerBusy(busy: string): boolean {
+  return busy === 'message:prepare' || busy === 'message:send';
+}
+
+export function isComposerDispatchBusy(busy: string): boolean {
+  return busy === 'message:send';
+}

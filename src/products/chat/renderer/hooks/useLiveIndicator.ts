@@ -1,5 +1,7 @@
 import { startTransition, useEffect, useRef, useState } from 'react';
 
+import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import { isComposerDispatchBusy } from '../../../../shared/composer.js';
 import type { SelectedChannelView } from '../chatUtils.js';
 import { isOptimisticDraftChannelId } from '../../shared/channelPaths.js';
 
@@ -14,6 +16,7 @@ export interface LiveIndicatorState {
   phase: 'idle' | 'waiting' | 'streaming';
   catId: string | null;
   catName: string | null;
+  speakerLabel: string | null;
   progressText: string;
   progressKind: string | null;
   tools: LiveToolEntry[];
@@ -24,6 +27,7 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   phase: 'idle',
   catId: null,
   catName: null,
+  speakerLabel: null,
   progressText: '',
   progressKind: null,
   tools: [],
@@ -36,11 +40,29 @@ export function shouldConnectLiveIndicatorStream(
   channelId: string | null,
   busy: string,
 ): boolean {
-  if (busy !== 'message:send' || !channelId) {
+  if (!isComposerDispatchBusy(busy) || !channelId) {
     return false;
   }
 
   return !isOptimisticDraftChannelId(channelId);
+}
+
+export function resolveLiveIndicatorSpeakerLabel(
+  selectedChannel: SelectedChannelView | null,
+): string | null {
+  if (!selectedChannel || selectedChannel.roomRouting.leadParticipantId) {
+    return null;
+  }
+
+  if (selectedChannel.composerMode !== 'solo' || !selectedChannel.pendingProvider) {
+    return null;
+  }
+
+  return buildExecutionLabel(
+    selectedChannel.pendingProvider,
+    selectedChannel.pendingInstance,
+    null,
+  );
 }
 
 export function useLiveIndicator(options: {
@@ -61,7 +83,7 @@ export function useLiveIndicator(options: {
   }, [state]);
 
   useEffect(() => {
-    const shouldShowWaitingIndicator = busy === 'message:send' && Boolean(channelId);
+    const shouldShowWaitingIndicator = isComposerDispatchBusy(busy) && Boolean(channelId);
     let disposed = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let reconnectAttempts = 0;
@@ -220,12 +242,16 @@ export function useLiveIndicator(options: {
     }
 
     const workingCatId = leadCatId;
+    const speakerLabel = workingCatId
+      ? null
+      : resolveLiveIndicatorSpeakerLabel(selectedChannel);
 
     const waitingState: LiveIndicatorState = {
       active: true,
       phase: 'waiting',
       catId: workingCatId,
       catName: null,
+      speakerLabel,
       progressText: '',
       progressKind: null,
       tools: [],

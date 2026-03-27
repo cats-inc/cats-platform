@@ -43,6 +43,7 @@ import { ProgressSummaryPanel } from './ProgressSummaryPanel';
 import { ProviderModelFields } from './ProviderModelFields';
 import { RunInspector } from './RunInspector';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
+import { isComposerBusy } from '../../../../shared/composer';
 import {
   getProviderDisplayName,
   getProviderModels,
@@ -233,6 +234,7 @@ export function ChatView({
     () => buildRunInspectorView(operatorView, inspectedRunId),
     [operatorView, inspectedRunId],
   );
+  const composerBusy = isComposerBusy(busy);
 
   return (
     <>
@@ -340,6 +342,7 @@ export function ChatView({
                     const speakerCat = liveIndicator.catId
                       ? payload.chat.cats.find((c) => c.id === liveIndicator.catId) ?? null
                       : null;
+                    const speakerLabel = speakerCat?.name ?? liveIndicator.speakerLabel;
                     return (
                       <article className="transcriptMessage transcriptMessageAgent typingIndicator">
                         {speakerCat ? (
@@ -353,6 +356,10 @@ export function ChatView({
                               {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
                             </div>
                             <strong>{speakerCat.name}</strong>
+                          </div>
+                        ) : speakerLabel ? (
+                          <div className="transcriptMessageTop">
+                            <strong>{speakerLabel}</strong>
                           </div>
                         ) : null}
                         {liveIndicator.phase === 'waiting' ? (
@@ -397,6 +404,7 @@ export function ChatView({
                         <button
                           className="attachmentRemove"
                           type="button"
+                          disabled={composerBusy}
                           onClick={() => onChannelFilesChange(channelFiles.filter((_, i) => i !== index))}
                           aria-label={`Remove ${file.name}`}
                         >
@@ -430,6 +438,7 @@ export function ChatView({
                   rows={1}
                   placeholder="How can I help you today?"
                   value={composerDraft}
+                  disabled={composerBusy}
                   onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
                   onKeyDown={(event) => void onComposerKeyDown(event)}
                 />
@@ -441,6 +450,7 @@ export function ChatView({
                       className="composerPlusButton"
                       type="button"
                       aria-label="Attach"
+                      disabled={composerBusy}
                       onClick={onToggleChannelPlusMenu}
                     >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -453,6 +463,7 @@ export function ChatView({
                         <button
                           className="composerPlusMenuItem"
                           type="button"
+                          disabled={composerBusy}
                           onClick={onChannelFileSelect}
                         >
                           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -489,13 +500,13 @@ export function ChatView({
                     cats={[directLaneCat]}
                     bossCatId={payload.chat.bossCatId}
                     leadCatId={directLaneCat.id}
-                    onClick={() => openSidePanelTo('execution')}
+                    onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
                 ) : isSoloComposer && selectedModel && onModelChange ? (
                   <div style={{ marginRight: 8 }}>
                     <ModelSelectorChip
                       label={buildModelSelectorLabel(selectedModel)}
-                      onClick={() => openSidePanelTo('execution')}
+                      onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                     />
                   </div>
                 ) : !isSoloComposer && leadCat ? (
@@ -505,12 +516,12 @@ export function ChatView({
                       : leadCatRecord ? [leadCatRecord] : []}
                     bossCatId={payload.chat.bossCatId}
                     leadCatId={leadCat.catId}
-                    onClick={() => openSidePanelTo('execution')}
+                    onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
                 ) : null}
                 <button
                   className="composerSendButton"
-                  disabled={!composerDraft.trim() || busy === 'message:send'}
+                  disabled={!composerDraft.trim() || composerBusy}
                   type="submit"
                   aria-label="Send"
                 >
@@ -524,6 +535,7 @@ export function ChatView({
                 ref={channelFileInputRef}
                 type="file"
                 multiple
+                disabled={composerBusy}
                 style={{ display: 'none' }}
                 onChange={(event) => {
                   const input = event.currentTarget;

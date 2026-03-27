@@ -28,10 +28,12 @@ export function sendBinary(
   statusCode: number,
   body: Buffer,
   contentType: string,
+  headers: Record<string, string> = {},
 ): void {
   response.writeHead(statusCode, {
     'content-type': contentType,
     'content-length': body.byteLength.toString(),
+    ...headers,
   });
   response.end(body);
 }

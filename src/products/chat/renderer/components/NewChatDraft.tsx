@@ -13,6 +13,7 @@ import {
   type ModelSelectorValue,
 } from './ModelSelector';
 import { ProviderModelFields } from './ProviderModelFields';
+import { isComposerBusy } from '../../../../shared/composer';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
 
 export interface NewChatDraftProps {
@@ -165,7 +166,7 @@ export function NewChatDraft({
   const chipLabel = selectedModel
     ? buildModelSelectorLabel(selectedModel)
     : '';
-  const isSubmittingFirstTurn = busy === 'message:send';
+  const isSubmittingFirstTurn = isComposerBusy(busy);
 
   return (
     <div className="viewShell viewShellDraft">
@@ -193,6 +194,7 @@ export function NewChatDraft({
                     <button
                       className="attachmentRemove"
                       type="button"
+                      disabled={isSubmittingFirstTurn}
                       onClick={() => onDraftFilesChange(draftFiles.filter((_, i) => i !== index))}
                       aria-label={`Remove ${file.name}`}
                     >
@@ -314,7 +316,7 @@ export function NewChatDraft({
             ) : null}
             <button
               className="composerSendButton"
-              disabled={!composerDraft.trim() || busy === 'message:send'}
+              disabled={!composerDraft.trim() || isSubmittingFirstTurn}
               type="submit"
               aria-label="Send"
             >

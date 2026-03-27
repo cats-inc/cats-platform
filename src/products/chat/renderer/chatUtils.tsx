@@ -195,6 +195,18 @@ export function createDraftChannelTopic(body: string): string {
   return normalized.slice(0, 120);
 }
 
+export function buildAttachedFilesMessageBody(
+  body: string,
+  attachments: Array<{ relativePath: string }>,
+): string {
+  if (attachments.length === 0) {
+    return body;
+  }
+
+  const refs = attachments.map((attachment) => `- ${attachment.relativePath}`).join('\n');
+  return `[Attached files in working directory:]\n${refs}\n\n${body}`;
+}
+
 export function buildNewChatChannelInput(options: {
   body: string;
   existingCount: number;
@@ -445,6 +457,36 @@ export function appendOptimisticUserMessage(
   channelSummary.unreadCount = 0;
   next.chat.selectedChannelId = channelId;
   next.metadata.generatedAt = createdAt;
+
+  return next;
+}
+
+export function applyOptimisticPendingExecutionTarget(
+  payload: AppShellPayload,
+  channelId: string,
+  target: {
+    pendingProvider: string | null;
+    pendingModel: string | null;
+    pendingInstance: string | null;
+    pendingModelSelection: ProviderModelSelection | null;
+  },
+): AppShellPayload {
+  const next = structuredClone(payload);
+  const selectedChannel = next.chat.selectedChannel;
+  const channelSummary = next.chat.channels.find((channel) => channel.id === channelId);
+
+  if (!selectedChannel || selectedChannel.id !== channelId || !channelSummary) {
+    throw new Error('No chat is available for optimistic execution target updates.');
+  }
+
+  selectedChannel.pendingProvider = target.pendingProvider;
+  selectedChannel.pendingModel = target.pendingModel;
+  selectedChannel.pendingInstance = target.pendingInstance;
+  selectedChannel.pendingModelSelection = target.pendingModelSelection;
+
+  channelSummary.pendingProvider = target.pendingProvider;
+  channelSummary.pendingModel = target.pendingModel;
+  channelSummary.pendingModelSelection = target.pendingModelSelection;
 
   return next;
 }

@@ -387,16 +387,30 @@ async function handleRestUploadAttachments(
   }
 }
 
-const ATTACHMENT_MIME_TYPES: Record<string, string> = {
+const INLINE_ATTACHMENT_MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.gif': 'image/gif',
   '.webp': 'image/webp',
+};
+
+const ATTACHMENT_MIME_TYPES: Record<string, string> = {
+  ...INLINE_ATTACHMENT_MIME_TYPES,
   '.svg': 'image/svg+xml',
   '.pdf': 'application/pdf',
   '.txt': 'text/plain',
 };
+
+function buildAttachmentContentDisposition(
+  filename: string,
+  disposition: 'attachment' | 'inline',
+): string {
+  const safeFilename = filename
+    .replace(/["\\]/gu, '_')
+    .replace(/[^\x20-\x7E]/gu, '_');
+  return `${disposition}; filename="${safeFilename}"`;
+}
 
 async function handleRestServeAttachment(
   context: ChatApiRouteContext,
@@ -427,8 +441,15 @@ async function handleRestServeAttachment(
 
     const ext = path.extname(safeName).toLowerCase();
     const contentType = ATTACHMENT_MIME_TYPES[ext] ?? 'application/octet-stream';
+    const disposition = INLINE_ATTACHMENT_MIME_TYPES[ext] ? 'inline' : 'attachment';
     const data = await readFile(filePath);
-    sendBinary(context.response, 200, data, contentType);
+    sendBinary(context.response, 200, data, contentType, {
+      'content-disposition': buildAttachmentContentDisposition(
+        safeName,
+        disposition,
+      ),
+      'x-content-type-options': 'nosniff',
+    });
   } catch (error) {
     handleRestError(context, error);
   }

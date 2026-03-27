@@ -6,6 +6,7 @@ import {
 } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 
+import { isComposerBusy } from '../../../../shared/composer.js';
 import type { AppShellPayload } from '../../api/contracts';
 import {
   fetchAppShell,
@@ -82,7 +83,7 @@ export function useAppShellRouting(options: {
       return;
     }
 
-    if (busy === 'message:send') {
+    if (isComposerBusy(busy)) {
       return;
     }
 

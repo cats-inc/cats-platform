@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import {
+  applyOptimisticPendingExecutionTarget,
   buildNewChatChannelInput,
+  buildAttachedFilesMessageBody,
   createOptimisticDraftPayload,
   insertCreatedChannelIntoPayload,
   preserveOptimisticUserMessageAfterRefresh,
@@ -119,6 +121,22 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
   assert.equal(input.pendingInstance, 'native');
 });
 
+test('buildAttachedFilesMessageBody keeps attachment refs with the user prompt', () => {
+  assert.equal(
+    buildAttachedFilesMessageBody('Describe this screenshot', [
+      { relativePath: '.cats-attachments/capture.png' },
+      { relativePath: '.cats-attachments/notes.txt' },
+    ]),
+    [
+      '[Attached files in working directory:]',
+      '- .cats-attachments/capture.png',
+      '- .cats-attachments/notes.txt',
+      '',
+      'Describe this screenshot',
+    ].join('\n'),
+  );
+});
+
 test('createOptimisticDraftPayload does not mark selected-cat new chats as direct lanes', () => {
   const optimistic = createOptimisticDraftPayload(
     createPayload(),
@@ -171,6 +189,38 @@ test('preserveOptimisticUserMessageAfterRefresh keeps the first pending user tur
   assert.equal(preserved.chat.selectedChannel?.messages[0]?.senderKind, 'user');
   assert.equal(preserved.chat.selectedChannel?.messages[0]?.body, 'Ship it');
   assert.equal(preserved.chat.channels[0]?.lastMessageAt, preserved.chat.selectedChannel?.messages[0]?.createdAt);
+});
+
+test('applyOptimisticPendingExecutionTarget updates the local solo target before dispatch returns', () => {
+  const optimistic = createOptimisticDraftPayload(
+    createPayload(),
+    'Ship it',
+    null,
+    {
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-opus-4-6',
+      pendingInstance: 'native',
+      pendingModelSelection: null,
+    },
+  );
+
+  const next = applyOptimisticPendingExecutionTarget(
+    optimistic.payload,
+    optimistic.channelId,
+    {
+      pendingProvider: 'gemini',
+      pendingModel: 'gemini-3.1-pro',
+      pendingInstance: 'cli/native',
+      pendingModelSelection: null,
+    },
+  );
+
+  assert.equal(next.chat.selectedChannel?.pendingProvider, 'gemini');
+  assert.equal(next.chat.selectedChannel?.pendingModel, 'gemini-3.1-pro');
+  assert.equal(next.chat.selectedChannel?.pendingInstance, 'cli/native');
+  assert.equal(next.chat.channels[0]?.pendingProvider, 'gemini');
+  assert.equal(next.chat.channels[0]?.pendingModel, 'gemini-3.1-pro');
 });
 
 test('insertCreatedChannelIntoPayload promotes a real created channel without a draft route', () => {

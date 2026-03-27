@@ -5015,5 +5015,76 @@ test('attachment uploads sanitize names and avoid overwriting earlier files', as
   }
 });
 
+test('attachment serving only inlines raster images and forces download for active formats', async () => {
+  const runtimeClient = createRuntimeStub();
+  const tempWorkingDir = await mkdtemp(path.join(os.tmpdir(), 'cats-attachment-serve-'));
+
+  try {
+    await withServer(runtimeClient, async (baseUrl) => {
+      const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'Attachment Serving',
+          topic: 'Verify attachment response headers.',
+          repoPath: tempWorkingDir,
+          skipBossCatGreeting: true,
+        }),
+      });
+      assert.equal(createChannelResponse.status, 201);
+      const createChannelPayload = await createChannelResponse.json();
+      const channelId = createChannelPayload.channel.id;
+
+      const uploadResponse = await fetch(`${baseUrl}/api/channels/${channelId}/attachments`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          files: [
+            {
+              name: 'photo.png',
+              data: Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64'),
+            },
+            {
+              name: 'diagram.svg',
+              data: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>').toString('base64'),
+            },
+          ],
+        }),
+      });
+      assert.equal(uploadResponse.status, 200);
+
+      const pngResponse = await fetch(`${baseUrl}/api/channels/${channelId}/attachments/photo.png`);
+      assert.equal(pngResponse.status, 200);
+      assert.equal(pngResponse.headers.get('content-type'), 'image/png');
+      assert.match(
+        pngResponse.headers.get('content-disposition') ?? '',
+        /^inline;/,
+      );
+      assert.equal(
+        pngResponse.headers.get('x-content-type-options'),
+        'nosniff',
+      );
+
+      const svgResponse = await fetch(`${baseUrl}/api/channels/${channelId}/attachments/diagram.svg`);
+      assert.equal(svgResponse.status, 200);
+      assert.equal(svgResponse.headers.get('content-type'), 'image/svg+xml');
+      assert.match(
+        svgResponse.headers.get('content-disposition') ?? '',
+        /^attachment;/,
+      );
+      assert.equal(
+        svgResponse.headers.get('x-content-type-options'),
+        'nosniff',
+      );
+    });
+  } finally {
+    await rm(tempWorkingDir, { recursive: true, force: true });
+  }
+});
+
 
 

@@ -1,17 +1,60 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { shouldConnectLiveIndicatorStream } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
+import {
+  resolveLiveIndicatorSpeakerLabel,
+  shouldConnectLiveIndicatorStream,
+} from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 
 test('shouldConnectLiveIndicatorStream skips optimistic draft channels', () => {
   assert.equal(shouldConnectLiveIndicatorStream('draft-123', 'message:send'), false);
 });
 
 test('shouldConnectLiveIndicatorStream requires an active send on a real channel', () => {
+  assert.equal(
+    shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', 'message:prepare'),
+    false,
+  );
   assert.equal(shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', ''), false);
   assert.equal(shouldConnectLiveIndicatorStream(null, 'message:send'), false);
   assert.equal(
     shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', 'message:send'),
     true,
   );
+});
+
+test('resolveLiveIndicatorSpeakerLabel uses the solo execution target label', () => {
+  const label = resolveLiveIndicatorSpeakerLabel({
+    composerMode: 'solo',
+    pendingProvider: 'gemini',
+    pendingInstance: 'cli/native',
+    pendingModel: 'gemini-3.1-pro',
+    roomRouting: {
+      leadParticipantId: null,
+    },
+  } as never);
+
+  assert.equal(label, 'Gemini-CLI');
+});
+
+test('resolveLiveIndicatorSpeakerLabel stays silent for cat-led chats', () => {
+  assert.equal(resolveLiveIndicatorSpeakerLabel({
+    composerMode: 'cat_led',
+    pendingProvider: 'gemini',
+    pendingInstance: 'cli/native',
+    pendingModel: 'gemini-3.1-pro',
+    roomRouting: {
+      leadParticipantId: null,
+    },
+  } as never), null);
+
+  assert.equal(resolveLiveIndicatorSpeakerLabel({
+    composerMode: 'solo',
+    pendingProvider: 'gemini',
+    pendingInstance: 'cli/native',
+    pendingModel: 'gemini-3.1-pro',
+    roomRouting: {
+      leadParticipantId: 'cat-1',
+    },
+  } as never), null);
 });

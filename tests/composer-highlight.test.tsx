@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  buildComposerHighlightFragments,
+  COMPOSER_HIGHLIGHT_ROOT_CLASS_NAME,
+} from '../src/products/chat/renderer/components/ComposerHighlight.tsx';
+
+const cats = [
+  {
+    id: 'cat-1',
+    name: 'Mochi',
+    avatarColor: '#c9895b',
+  },
+] as const;
+
+test('buildComposerHighlightFragments matches valid mentions even before punctuation', () => {
+  assert.deepEqual(
+    buildComposerHighlightFragments('@Mochi, please check @Ghost.', [...cats]),
+    [
+      { kind: 'mention', value: '@Mochi' },
+      { kind: 'text', value: ', please check @Ghost.' },
+    ],
+  );
+});
+
+test('ComposerHighlight root class keeps the mirror bound to textarea metrics', () => {
+  assert.equal(
+    COMPOSER_HIGHLIGHT_ROOT_CLASS_NAME,
+    'composerInput composerHighlight',
+  );
+});

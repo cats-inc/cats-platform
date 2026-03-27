@@ -7,7 +7,13 @@ export interface MessageBodyAttachment {
   isImage: boolean;
 }
 
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']);
+const INLINE_IMAGE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+]);
 
 const ATTACHMENT_BLOCK_REGEX =
   /^\[Attached files in working directory:\]\n((?:- [^\n]+\n)+)\n?/;
@@ -31,7 +37,7 @@ export function extractAttachments(body: string): {
     attachments.push({
       filename,
       relativePath: trimmed,
-      isImage: IMAGE_EXTENSIONS.has(ext),
+      isImage: INLINE_IMAGE_EXTENSIONS.has(ext),
     });
   }
 

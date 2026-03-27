@@ -21,27 +21,31 @@ export function MessageBody({ body, cats, channelId }: MessageBodyProps) {
 
   const imageAttachments = attachments.filter((a) => a.isImage);
   const fileAttachments = attachments.filter((a) => !a.isImage);
+  const encodedChannelId = encodeURIComponent(channelId);
 
   return (
     <div className="messageBodyWrapper">
       {imageAttachments.length > 0 ? (
         <div className="messageBodyImages">
-          {imageAttachments.map((attachment) => (
-            <a
-              key={attachment.relativePath}
-              className="messageBodyImageLink"
-              href={`/api/channels/${channelId}/attachments/${encodeURIComponent(attachment.filename)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-                className="messageBodyImage"
-                src={`/api/channels/${channelId}/attachments/${encodeURIComponent(attachment.filename)}`}
-                alt={attachment.filename}
-                loading="lazy"
-              />
-            </a>
-          ))}
+          {imageAttachments.map((attachment) => {
+            const attachmentUrl = `/api/channels/${encodedChannelId}/attachments/${encodeURIComponent(attachment.filename)}`;
+            return (
+              <a
+                key={attachment.relativePath}
+                className="messageBodyImageLink"
+                href={attachmentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  className="messageBodyImage"
+                  src={attachmentUrl}
+                  alt={attachment.filename}
+                  loading="lazy"
+                />
+              </a>
+            );
+          })}
         </div>
       ) : null}
       {fileAttachments.length > 0 ? (
@@ -50,9 +54,8 @@ export function MessageBody({ body, cats, channelId }: MessageBodyProps) {
             <a
               key={attachment.relativePath}
               className="messageBodyFileChip"
-              href={`/api/channels/${channelId}/attachments/${encodeURIComponent(attachment.filename)}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`/api/channels/${encodedChannelId}/attachments/${encodeURIComponent(attachment.filename)}`}
+              download={attachment.filename}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { segmentMessageBody } from '../src/products/chat/renderer/components/messageBodySegmenter.ts';
+import {
+  extractAttachments,
+  segmentMessageBody,
+} from '../src/products/chat/renderer/components/messageBodySegmenter.ts';
 
 const cats = [
   {
@@ -77,4 +80,34 @@ test('segmentMessageBody only emits mention pills for known cats', () => {
     },
     { kind: 'text', value: ' but leave @Ghost alone' },
   ]);
+});
+
+test('extractAttachments only marks raster formats as inline images', () => {
+  const { attachments, textBody } = extractAttachments(
+    '[Attached files in working directory:]\n'
+      + '- .cats-attachments/photo.png\n'
+      + '- .cats-attachments/diagram.svg\n'
+      + '- .cats-attachments/notes.txt\n'
+      + '\n'
+      + 'See attached',
+  );
+
+  assert.deepEqual(attachments, [
+    {
+      filename: 'photo.png',
+      relativePath: '.cats-attachments/photo.png',
+      isImage: true,
+    },
+    {
+      filename: 'diagram.svg',
+      relativePath: '.cats-attachments/diagram.svg',
+      isImage: false,
+    },
+    {
+      filename: 'notes.txt',
+      relativePath: '.cats-attachments/notes.txt',
+      isImage: false,
+    },
+  ]);
+  assert.equal(textBody, 'See attached');
 });
