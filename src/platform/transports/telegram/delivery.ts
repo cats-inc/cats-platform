@@ -2,6 +2,11 @@ import type {
   TelegramDeliveryOperation,
   TelegramDeliveryRequest,
 } from './contracts.js';
+import {
+  telegramIpv4Fetch,
+  type TelegramFetch,
+  type TelegramFetchResponse,
+} from './http.js';
 
 interface TelegramBotApiEnvelope<T> {
   ok?: boolean;
@@ -33,7 +38,7 @@ export interface TelegramDeliveryClient {
 
 export interface TelegramBotApiDeliveryClientOptions {
   botToken: string;
-  fetchImpl?: typeof fetch;
+  fetchImpl?: TelegramFetch;
   apiBaseUrl?: string;
 }
 
@@ -48,7 +53,7 @@ function toChatId(value: unknown): string | null {
 }
 
 async function parseApiResponse<T>(
-  response: Response,
+  response: TelegramFetchResponse,
 ): Promise<TelegramBotApiEnvelope<T>> {
   try {
     return await response.json() as TelegramBotApiEnvelope<T>;
@@ -109,7 +114,7 @@ function buildApiPayload(
 export function createTelegramBotApiDeliveryClient(
   options: TelegramBotApiDeliveryClientOptions,
 ): TelegramDeliveryClient {
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const fetchImpl = options.fetchImpl ?? telegramIpv4Fetch;
   const apiBaseUrl = options.apiBaseUrl ?? 'https://api.telegram.org';
   const botToken = options.botToken.trim();
 

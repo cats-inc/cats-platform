@@ -1,6 +1,7 @@
 import type { BotBindingRecord } from '../../../core/types.js';
 import type { RuntimeClient } from '../../runtime/client.js';
 import type { CatsMemoryService } from '../../memory/index.js';
+import { telegramIpv4Fetch, type TelegramFetch } from './http.js';
 import {
   bridgeTelegramWebhookToRoom,
   type TelegramRoomBridge,
@@ -98,7 +99,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 
 export async function telegramDeleteWebhook(
   botToken: string,
-  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  fetchImpl: TelegramFetch = telegramIpv4Fetch,
 ): Promise<boolean> {
   try {
     const response = await fetchImpl(
@@ -120,7 +121,7 @@ export async function telegramGetUpdates(
   offset: number | null,
   timeout: number,
   signal: AbortSignal,
-  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  fetchImpl: TelegramFetch = telegramIpv4Fetch,
 ): Promise<TelegramWebhookUpdate[]> {
   const params: Record<string, string> = {
     timeout: String(timeout),
@@ -149,7 +150,7 @@ export async function telegramGetUpdates(
 
 export interface TelegramPollingSupervisorOptions {
   now?: () => Date;
-  fetchImpl?: typeof globalThis.fetch;
+  fetchImpl?: TelegramFetch;
   pollingTimeout?: number;
 }
 
@@ -158,7 +159,7 @@ export function createTelegramPollingSupervisor(
 ): TelegramPollingSupervisor {
   const consumers = new Map<string, PollingConsumer>();
   const now = options.now ?? (() => new Date());
-  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  const fetchImpl = options.fetchImpl ?? telegramIpv4Fetch;
   const pollingTimeout = options.pollingTimeout ?? 30;
 
   function toStatus(consumer: PollingConsumer): TelegramPollingStatus {
