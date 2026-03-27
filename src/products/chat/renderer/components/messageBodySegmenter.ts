@@ -19,11 +19,39 @@ interface TokenSpan {
   avatarColor?: string | null;
 }
 
-const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/gi;
-const TRAILING_PUNCT = /[.,;:!?]+$/;
+const URL_REGEX = /https?:\/\/[^\s<>"'\]]+/gi;
+const TRAILING_TRIM_CHARS = new Set(['.', ',', ';']);
 
-function stripTrailingPunct(url: string): string {
-  return url.replace(TRAILING_PUNCT, '');
+function hasUnmatchedTrailingParen(value: string): boolean {
+  let balance = 0;
+  for (const char of value) {
+    if (char === '(') {
+      balance += 1;
+    } else if (char === ')') {
+      balance -= 1;
+    }
+  }
+  return balance < 0;
+}
+
+function normalizeMatchedUrl(rawUrl: string): string {
+  let candidate = rawUrl;
+  while (candidate.length > 0) {
+    const trailing = candidate.at(-1);
+    if (!trailing) {
+      break;
+    }
+    if (TRAILING_TRIM_CHARS.has(trailing)) {
+      candidate = candidate.slice(0, -1);
+      continue;
+    }
+    if (trailing === ')' && hasUnmatchedTrailingParen(candidate)) {
+      candidate = candidate.slice(0, -1);
+      continue;
+    }
+    break;
+  }
+  return candidate;
 }
 
 function rangesOverlap(
@@ -50,7 +78,7 @@ export function segmentMessageBody(
   let urlMatch: RegExpExecArray | null;
   while ((urlMatch = urlRegex.exec(body)) !== null) {
     const raw = urlMatch[0];
-    const cleaned = stripTrailingPunct(raw);
+    const cleaned = normalizeMatchedUrl(raw);
     urlTokens.push({
       kind: 'url',
       start: urlMatch.index,
@@ -62,15 +90,18 @@ export function segmentMessageBody(
 
   // Collect mention tokens
   const mentionResult = parseMentionsWithPositions(body);
-  const mentionTokens: TokenSpan[] = mentionResult.positions.map((pos) => {
+  const mentionTokens: TokenSpan[] = mentionResult.positions.flatMap((pos) => {
     const cat = catLookup.get(pos.name.toLowerCase()) ?? null;
-    return {
+    if (!cat) {
+      return [];
+    }
+    return [{
       kind: 'mention' as const,
       start: pos.start,
       end: pos.end,
       value: body.slice(pos.start, pos.end),
-      avatarColor: cat?.avatarColor ?? null,
-    };
+      avatarColor: cat.avatarColor ?? null,
+    }];
   });
 
   // Merge and filter: URL wins over mention on overlap

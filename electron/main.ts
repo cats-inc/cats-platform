@@ -38,6 +38,31 @@ function encodeDataUrl(html: string): string {
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 
+async function openExternalDesktopUrl(rawUrl: string): Promise<void> {
+  await shell.openExternal(validateDesktopUrl(rawUrl));
+}
+
+function reportExternalUrlOpenFailure(error: unknown): void {
+  process.stderr.write(
+    `Failed to open external desktop URL: ${error instanceof Error ? error.message : String(error)}\n`,
+  );
+}
+
+function shouldAllowInAppNavigation(
+  rawUrl: string,
+  config: DesktopHostConfig,
+): boolean {
+  try {
+    const currentAppUrl = new URL(config.appBaseUrl);
+    const nextUrl = new URL(validateDesktopUrl(rawUrl, {
+      allowedHosts: [config.appHost],
+    }));
+    return nextUrl.origin === currentAppUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
 async function ensureBootstrapPageVisible(): Promise<void> {
   if (!mainWindow) {
     return;
@@ -275,6 +300,18 @@ async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindo
       nodeIntegration: false,
       sandbox: true,
     },
+  });
+
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    void openExternalDesktopUrl(url).catch(reportExternalUrlOpenFailure);
+    return { action: 'deny' };
+  });
+  window.webContents.on('will-navigate', (event, url) => {
+    if (shouldAllowInAppNavigation(url, config)) {
+      return;
+    }
+    event.preventDefault();
+    void openExternalDesktopUrl(url).catch(reportExternalUrlOpenFailure);
   });
 
   await window.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));

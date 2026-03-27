@@ -50,6 +50,9 @@ test('desktop main process keeps Electron sandboxing enabled and validates IPC a
   assert.match(source, /sandbox: true/);
   assert.match(source, /isDesktopHostActionId/);
   assert.match(source, /validateDesktopUrl/);
+  assert.match(source, /setWindowOpenHandler/);
+  assert.match(source, /will-navigate/);
+  assert.match(source, /openExternalDesktopUrl/);
 });
 
 test('preload and contracts keep the same desktop host action ids', async () => {

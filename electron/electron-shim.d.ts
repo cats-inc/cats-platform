@@ -33,6 +33,10 @@ declare module 'electron' {
   export interface WebContents {
     getURL(): string;
     send(channel: string, ...args: unknown[]): void;
+    on(event: string, listener: (...args: any[]) => void): this;
+    setWindowOpenHandler(
+      handler: (details: { url: string }) => { action: 'allow' | 'deny' },
+    ): void;
   }
 
   export class BrowserWindow {
