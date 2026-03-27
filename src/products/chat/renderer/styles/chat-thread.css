@@ -127,6 +127,7 @@
   cursor: pointer;
   flex-shrink: 0;
   align-self: center;
+  margin-right: -16px;
   position: relative;
 }
 
@@ -161,6 +162,12 @@
 
 .channelTopBarTitle {
   text-align: center;
+}
+
+.channelTopBarTitleDirectLane {
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .rosterAvatars .catAvatar {

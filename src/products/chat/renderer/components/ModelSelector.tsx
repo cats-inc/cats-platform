@@ -101,7 +101,7 @@ export function ModelSelectorPanel({
     });
   }
 
-  const headerLabel = 'Execution Target';
+  const headerLabel = 'AI Reply';
 
   return (
     <div className="modelSelectorPanel" ref={panelRef}>

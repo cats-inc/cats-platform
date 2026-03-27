@@ -453,6 +453,14 @@ export interface SendChannelMessageInput {
   choiceResponse?: ChatMessageChoiceResponse | null;
 }
 
+export interface UpdateChannelInput {
+  title?: string;
+  pendingProvider?: string | null;
+  pendingModel?: string | null;
+  pendingInstance?: string | null;
+  pendingModelSelection?: ProviderModelSelection | null;
+}
+
 export interface ChannelActivationResult {
   targetKind: 'orchestrator' | 'cat';
   targetId: string;

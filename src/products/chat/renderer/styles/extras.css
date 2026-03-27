@@ -276,13 +276,13 @@
 
 .catAvatarLeadBadge {
   position: absolute;
-  top: -5px;
-  left: -5px;
+  top: -4px;
+  left: -4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 999px;
   background: #f2c14a;
   color: #5a4510;
@@ -550,6 +550,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.channelTopBarTitleDirectLane {
+  font-size: 1.35rem;
+  line-height: 1.2;
 }
 
 .channelModeBadge {

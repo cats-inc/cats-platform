@@ -11,6 +11,7 @@ export {
   fetchAppShell,
   refetchAfterMutation,
   updateChatOrchestrator,
+  updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
   updateSelectedChannel,
   updateVerbosePreference,

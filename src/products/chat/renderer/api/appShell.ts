@@ -3,6 +3,7 @@ import type {
   NewChatDefaults,
   UpdateGlobalOrchestratorInput,
 } from '../../api/contracts';
+import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 
 import { normalizeAppShellPayload } from './normalization.js';
 import { expectJson, readErrorMessage } from './http.js';
@@ -94,6 +95,33 @@ export async function updateNewChatDefaultsPreference(
   return mutateAndRefetch(
     response,
     `cats new chat defaults update returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function updateChannelPendingExecutionTarget(
+  channelId: string,
+  input: {
+    pendingProvider?: string | null;
+    pendingModel?: string | null;
+    pendingInstance?: string | null;
+    pendingModelSelection?: ProviderModelSelection | null;
+  },
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/channels/${encodeURIComponent(channelId)}`, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return mutateAndRefetch(
+    response,
+    `cats channel update returned ${response.status}`,
     signal,
   );
 }

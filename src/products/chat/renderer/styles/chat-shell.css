@@ -265,7 +265,7 @@
   min-height: 0;
   height: 100vh;
   padding: 0 28px 0 16px;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
 }

@@ -133,7 +133,7 @@ export function ChatView({
     && roomMode !== 'direct_cat_chat';
   const isDirectLane = roomMode === 'direct_cat_chat';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [sidePanelSection, setSidePanelSection] = useState<string | null>('operator');
+  const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
   function openSidePanelTo(section: string): void {
     setSidePanelOpen(true);
     setSidePanelSection(section);
@@ -258,7 +258,10 @@ export function ChatView({
             ) : null}
             </div>
             <div className="channelTopBarCenter">
-              <span className="channelTopBarTitle">
+              <span className={isDirectLane
+                ? 'channelTopBarTitle channelTopBarTitleDirectLane'
+                : 'channelTopBarTitle'}
+              >
                 {topBarTitle}
               </span>
             </div>
@@ -492,7 +495,7 @@ export function ChatView({
       </div>
       {sidePanelOpen ? (
         <SidePanel
-          title="Workspace"
+          title="Chat Setup"
           activeSection={sidePanelSection}
           onSectionToggle={setSidePanelSection}
           onClose={() => setSidePanelOpen(false)}
@@ -506,63 +509,44 @@ export function ChatView({
   function buildSidePanelSections(): SidePanelSection[] {
     const sections: SidePanelSection[] = [];
 
-    // --- Operator section ---
-    sections.push({
-      id: 'operator',
-      title: 'Operator',
-      badge: operatorView?.approvals.length ?? 0,
-      children: (
-        <>
-          {operatorError ? (
-            <section className="operatorPanel operatorPanelError">
-              <div className="operatorPanelHeader">
-                <div>
-                  <p className="operatorEyebrow">Operator loop</p>
-                  <h2>Inspector unavailable</h2>
-                </div>
-              </div>
-              <p className="operatorEmptyState">{operatorError}</p>
-            </section>
-          ) : null}
-          {operatorLoading && !operatorView ? (
-            <section className="operatorPanel">
-              <div className="operatorPanelHeader">
-                <div>
-                  <p className="operatorEyebrow">Operator loop</p>
-                  <h2>Loading</h2>
-                </div>
-              </div>
-              <p className="operatorEmptyState">Loading approval, trace, and run state.</p>
-            </section>
-          ) : null}
-          <ApprovalQueuePanel
-            approvals={operatorView?.approvals ?? []}
-            actorNameById={operatorView?.actorNameById ?? {}}
-            busy={busy}
-            onDecision={onApprovalDecision}
-          />
-          <ProgressSummaryPanel
-            inspector={inspectedRun}
-            effectivePolicy={operatorView?.effectivePolicy ?? null}
-            incidentActions={inspectedRun?.incidentActions ?? operatorView?.incidentActions ?? []}
-            pendingApprovalCount={operatorView?.approvals.length ?? 0}
-            guardReason={inspectedRun?.guardReason ?? operatorView?.guardReason ?? null}
-            cooldownLabel={inspectedRun?.cooldownLabel ?? operatorView?.cooldownLabel ?? null}
-            onInspectRun={setInspectedRunId}
-            onOperatorAction={onOperatorAction}
-          />
-          <ActivityFeed items={operatorView?.activityFeed ?? []} />
-          <RunInspector
-            runs={operatorView?.runs ?? []}
-            actorNameById={operatorView?.actorNameById ?? {}}
-            inspector={inspectedRun}
-            onSelectRun={setInspectedRunId}
-          />
-        </>
-      ),
-    });
+    if (showAddCatButton || assignedCatRecords.length > 0) {
+      sections.push({
+        id: 'cats',
+        title: 'Cats',
+        children: (
+          <div className="sidePanelSectionStack">
+            {assignedCatRecords.length > 0 ? (
+              <CatAvatarRow
+                cats={assignedCatRecords}
+                bossCatId={payload.chat.bossCatId}
+                selectedIds={assignedCatRecords.map((cat) => cat.id)}
+                highlightedId={leadCat?.catId ?? null}
+                leadCatId={leadCat?.catId ?? null}
+                toggleable={false}
+                showLeadBadge
+                onToggle={() => {}}
+                onHighlight={() => {}}
+              />
+            ) : (
+              <p className="operatorEmptyState">No cats are in this chat yet.</p>
+            )}
+            {showAddCatButton ? (
+              <button
+                type="button"
+                className="operatorActionButton"
+                onClick={() => {
+                  setSidePanelOpen(false);
+                  onOpenAddCat?.();
+                }}
+              >
+                Choose cats
+              </button>
+            ) : null}
+          </div>
+        ),
+      });
+    }
 
-    // --- Execution Target section ---
     const executionChildren = (() => {
       if (isDirectLane && directLaneCat && directLaneModelValue) {
         return (
@@ -638,12 +622,12 @@ export function ChatView({
               </div>
             </div>
             <div className="catInspectField">
-              <span className="catInspectFieldLabel">Provider</span>
+              <span className="catInspectFieldLabel">AI Service</span>
               <span>{providerName}</span>
             </div>
             {leadCat.execution.target.instance ? (
               <div className="catInspectField">
-                <span className="catInspectFieldLabel">Instance</span>
+                <span className="catInspectFieldLabel">Connection</span>
                 <span>{leadCat.execution.target.instance}</span>
               </div>
             ) : null}
@@ -654,53 +638,14 @@ export function ChatView({
           </div>
         );
       }
-      return <p className="operatorEmptyState">No execution target configured.</p>;
+      return <p className="operatorEmptyState">No AI reply setup yet.</p>;
     })();
-    sections.push({ id: 'execution', title: 'Execution Target', children: executionChildren });
+    sections.push({ id: 'execution', title: 'AI Reply', children: executionChildren });
 
-    if (showAddCatButton || assignedCatRecords.length > 0) {
-      sections.push({
-        id: 'cats',
-        title: 'Cats',
-        children: (
-          <div className="sidePanelSectionStack">
-            {assignedCatRecords.length > 0 ? (
-              <CatAvatarRow
-                cats={assignedCatRecords}
-                bossCatId={payload.chat.bossCatId}
-                selectedIds={assignedCatRecords.map((cat) => cat.id)}
-                highlightedId={leadCat?.catId ?? null}
-                leadCatId={leadCat?.catId ?? null}
-                toggleable={false}
-                showLeadBadge
-                onToggle={() => {}}
-                onHighlight={() => {}}
-              />
-            ) : (
-              <p className="operatorEmptyState">No cats in this room yet.</p>
-            )}
-            {showAddCatButton ? (
-              <button
-                type="button"
-                className="operatorActionButton"
-                onClick={() => {
-                  setSidePanelOpen(false);
-                  onOpenAddCat?.();
-                }}
-              >
-                Add or manage cats
-              </button>
-            ) : null}
-          </div>
-        ),
-      });
-    }
-
-    // --- Working Directory section ---
     const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
     sections.push({
       id: 'cwd',
-      title: 'Working Directory',
+      title: 'Folder',
       children: cwd ? (
         <div style={{ display: 'grid', gap: 8 }}>
           <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{cwd}</p>
@@ -709,11 +654,66 @@ export function ChatView({
             className="operatorActionButton"
             onClick={() => void openFolderInExplorer(cwd)}
           >
-            Open in Explorer
+            Open folder
           </button>
         </div>
       ) : (
-        <p className="operatorEmptyState">No working directory set.</p>
+        <p className="operatorEmptyState">No folder selected yet.</p>
+      ),
+    });
+
+    sections.push({
+      id: 'operator',
+      title: 'Run Status',
+      badge: operatorView?.approvals.length ?? 0,
+      children: (
+        <>
+          {operatorError ? (
+            <section className="operatorPanel operatorPanelError">
+              <div className="operatorPanelHeader">
+                <div>
+                  <p className="operatorEyebrow">Run Status</p>
+                  <h2>Status unavailable</h2>
+                </div>
+              </div>
+              <p className="operatorEmptyState">{operatorError}</p>
+            </section>
+          ) : null}
+          {operatorLoading && !operatorView ? (
+            <section className="operatorPanel">
+              <div className="operatorPanelHeader">
+                <div>
+                  <p className="operatorEyebrow">Run Status</p>
+                  <h2>Loading</h2>
+                </div>
+              </div>
+              <p className="operatorEmptyState">Loading approvals, activity, and run details.</p>
+            </section>
+          ) : null}
+          <ApprovalQueuePanel
+            approvals={operatorView?.approvals ?? []}
+            actorNameById={operatorView?.actorNameById ?? {}}
+            busy={busy}
+            onDecision={onApprovalDecision}
+          />
+          <ProgressSummaryPanel
+            inspector={inspectedRun}
+            effectivePolicy={operatorView?.effectivePolicy ?? null}
+            incidentActions={inspectedRun?.incidentActions ?? operatorView?.incidentActions ?? []}
+            pendingApprovalCount={operatorView?.approvals.length ?? 0}
+            guardReason={inspectedRun?.guardReason ?? operatorView?.guardReason ?? null}
+            cooldownLabel={inspectedRun?.cooldownLabel ?? operatorView?.cooldownLabel ?? null}
+            onInspectRun={setInspectedRunId}
+            onOperatorAction={onOperatorAction}
+          />
+          <ActivityFeed items={operatorView?.activityFeed ?? []} />
+          <RunInspector
+            runs={operatorView?.runs ?? []}
+            actorNameById={operatorView?.actorNameById ?? {}}
+            inspector={inspectedRun}
+            onSelectRun={setInspectedRunId}
+          />
+        </>
       ),
     });
 

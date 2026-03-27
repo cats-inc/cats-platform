@@ -520,6 +520,55 @@ test('PATCH /api/preferences accepts showVerboseMessages and persists it', async
   });
 });
 
+test('PATCH /api/channels/:channelId persists solo chat AI reply settings', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Solo',
+        topic: 'Solo chat',
+        composerMode: 'solo',
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const patchResponse = await fetch(`${baseUrl}/api/channels/${channelId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        pendingProvider: 'claude',
+        pendingInstance: 'default',
+        pendingModel: 'claude-default',
+        pendingModelSelection: {
+          entryMode: 'auto',
+          presetId: 'balanced',
+          controls: {
+            'openai.reasoning_effort': 'high',
+          },
+        },
+      }),
+    });
+    assert.equal(patchResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+    assert.equal(channelPayload.channel.pendingProvider, 'claude');
+    assert.equal(channelPayload.channel.pendingInstance, 'default');
+    assert.equal(channelPayload.channel.pendingModel, 'claude-default');
+    assert.deepEqual(channelPayload.channel.pendingModelSelection, {
+      entryMode: 'auto',
+      presetId: 'balanced',
+      controls: {
+        'openai.reasoning_effort': 'high',
+      },
+    });
+  });
+});
+
 test('POST /api/channels supports direct Cat chat with existingCatIds and initializes working memory', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const createCatResponse = await fetch(`${baseUrl}/api/cats`, {

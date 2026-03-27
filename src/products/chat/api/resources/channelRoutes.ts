@@ -9,11 +9,13 @@ import {
 import {
   buildChannelView,
   requireChannel,
+  setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
 import type {
   CreateChatChannelInput,
   SendChannelMessageInput,
+  UpdateChannelInput,
 } from '../contracts.js';
 import {
   DEFAULT_CHAT_SCOPE_ID,
@@ -125,20 +127,40 @@ async function handleRestGetChannel(
   }
 }
 
-async function handleRestRenameChannel(
+async function handleRestPatchChannel(
   context: ChatApiRouteContext,
   chatScopeId: string,
   channelId: string,
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
-    const body = await readJsonBody<{ title: string }>(context.request);
-    const title = typeof body.title === 'string' ? body.title.trim() : '';
-    if (!title) {
-      sendJson(context.response, 400, { error: 'title_required', message: 'Title must not be empty.' });
-      return;
+    const body = await readJsonBody<UpdateChannelInput>(context.request);
+    let persisted = await context.dependencies.chatStore.read();
+
+    if (body.title !== undefined) {
+      const title = typeof body.title === 'string' ? body.title.trim() : '';
+      if (!title) {
+        sendJson(context.response, 400, { error: 'title_required', message: 'Title must not be empty.' });
+        return;
+      }
+      persisted = await persistRenamedChannel(context, channelId, title);
     }
-    const persisted = await persistRenamedChannel(context, channelId, title);
+
+    if (
+      body.pendingProvider !== undefined
+      || body.pendingModel !== undefined
+      || body.pendingInstance !== undefined
+      || body.pendingModelSelection !== undefined
+    ) {
+      const nextState = setChannelPendingExecutionTarget(persisted, channelId, {
+        provider: body.pendingProvider,
+        model: body.pendingModel,
+        instance: body.pendingInstance,
+        modelSelection: body.pendingModelSelection,
+      }, nowFrom(context.dependencies));
+      persisted = await context.dependencies.chatStore.write(nextState);
+    }
+
     sendJson(context.response, 200, {
       channel: toChannelSummary(requireChannel(persisted, channelId)),
     });
@@ -436,7 +458,7 @@ export async function routeChatChannelResourceApi(
       return true;
     }
     if (context.method === 'PATCH') {
-      await handleRestRenameChannel(
+      await handleRestPatchChannel(
         context,
         DEFAULT_CHAT_SCOPE_ID,
         canonicalChannelDetailMatch[0]!,

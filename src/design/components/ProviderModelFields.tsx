@@ -363,7 +363,7 @@ export function ProviderModelFields({
   return (
     <>
       <label className="fieldLabel">
-        <span>Provider</span>
+        <span>AI Service</span>
         <select
           className="textInput"
           value={provider}
@@ -389,7 +389,7 @@ export function ProviderModelFields({
       </label>
       {showInstanceField ? (
         <label className="fieldLabel">
-          <span>Instance</span>
+          <span>Connection</span>
           <select
             className="textInput"
             value={resolvedInstance}
@@ -434,7 +434,7 @@ export function ProviderModelFields({
       </label>
       {presetOptions.length > 0 ? (
         <label className="fieldLabel">
-          <span>Preset</span>
+          <span>Mode</span>
           <select
             className="textInput"
             value={selectedPresetId}
@@ -448,7 +448,7 @@ export function ProviderModelFields({
               });
             }}
           >
-            <option value="">No preset</option>
+            <option value="">Standard</option>
             {presetOptions.map((preset) => (
               <option
                 key={preset.id}
@@ -464,7 +464,7 @@ export function ProviderModelFields({
           {selectedPresetId ? (
             <span className="fieldHint">
               {presetOptions.find((preset) => preset.id === selectedPresetId)?.description
-                ?? 'Runtime preset for this model.'}
+                ?? 'Extra tuning for this model.'}
             </span>
           ) : null}
         </label>

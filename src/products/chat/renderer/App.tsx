@@ -40,7 +40,11 @@ import { useComposerSubmit } from './hooks/useComposerSubmit';
 import { useFolderBrowser } from './hooks/useFolderBrowser';
 import { useGovernanceActions } from './hooks/useGovernanceActions';
 import { useOperatorLoop } from './hooks/useOperatorLoop';
-import { updateCatProfile, updateNewChatDefaultsPreference } from './api';
+import {
+  updateCatProfile,
+  updateChannelPendingExecutionTarget,
+  updateNewChatDefaultsPreference,
+} from './api';
 import type { ModelSelectorValue } from './components/ModelSelector';
 import {
   Sidebar,
@@ -112,6 +116,9 @@ export default function App() {
   const latestNewChatDefaultsSaveId = useRef(0);
   const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
+  const latestSoloChannelModelSaveId = useRef(0);
+  const pendingSoloChannelModelSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSoloChannelModelSaveAbort = useRef<AbortController | null>(null);
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
   const onToggleDraftCat = useCallback((catId: string) => {
@@ -373,6 +380,12 @@ export default function App() {
       }
       pendingNewChatDefaultsSaveAbort.current?.abort();
       pendingNewChatDefaultsSaveAbort.current = null;
+      if (pendingSoloChannelModelSaveTimeout.current) {
+        clearTimeout(pendingSoloChannelModelSaveTimeout.current);
+        pendingSoloChannelModelSaveTimeout.current = null;
+      }
+      pendingSoloChannelModelSaveAbort.current?.abort();
+      pendingSoloChannelModelSaveAbort.current = null;
     };
   }, []);
 
@@ -399,13 +412,16 @@ export default function App() {
         ?? null,
     });
   }, [
-    readyChat,
     readySelectedChannel?.id,
     readySelectedChannel?.composerMode,
     readySelectedChannel?.pendingProvider,
     readySelectedChannel?.pendingModel,
     readySelectedChannel?.pendingInstance,
     readySelectedChannel?.pendingModelSelection,
+    readyChat?.globalOrchestrator.executionTarget.provider,
+    readyChat?.globalOrchestrator.executionTarget.model,
+    readyChat?.globalOrchestrator.executionTarget.instance,
+    readyChat?.globalOrchestrator.executionModelSelection,
   ]);
 
   useAppShellRouting({
@@ -516,6 +532,93 @@ export default function App() {
     state.status === 'ready' ? state.payload.chat.newChatDefaults.model : null,
     state.status === 'ready' ? state.payload.chat.newChatDefaults.modelSelection : null,
     state.status === 'ready' ? state.payload.chat.newChatDefaults.provider : null,
+  ]);
+
+  useEffect(() => {
+    if (state.status !== 'ready' || !readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
+      return;
+    }
+
+    const persistedSoloModel: ModelSelectorValue = {
+      provider:
+        readySelectedChannel.pendingProvider
+        ?? readyChat.globalOrchestrator.executionTarget.provider,
+      model:
+        readySelectedChannel.pendingModel
+        ?? readyChat.globalOrchestrator.executionTarget.model
+        ?? null,
+      instance:
+        readySelectedChannel.pendingInstance
+        ?? readyChat.globalOrchestrator.executionTarget.instance
+        ?? null,
+      modelSelection:
+        readySelectedChannel.pendingModelSelection
+        ?? readyChat.globalOrchestrator.executionModelSelection
+        ?? null,
+    };
+
+    if (sameModelSelectorValue(soloChannelModel, persistedSoloModel)) {
+      return;
+    }
+
+    if (pendingSoloChannelModelSaveTimeout.current) {
+      clearTimeout(pendingSoloChannelModelSaveTimeout.current);
+      pendingSoloChannelModelSaveTimeout.current = null;
+    }
+    pendingSoloChannelModelSaveAbort.current?.abort();
+
+    const channelId = readySelectedChannel.id;
+    const saveId = latestSoloChannelModelSaveId.current + 1;
+    latestSoloChannelModelSaveId.current = saveId;
+    const controller = new AbortController();
+    pendingSoloChannelModelSaveAbort.current = controller;
+    const nextSoloModel = {
+      pendingProvider: soloChannelModel.provider,
+      pendingModel: soloChannelModel.model,
+      pendingInstance: soloChannelModel.instance,
+      pendingModelSelection: soloChannelModel.modelSelection,
+    };
+
+    pendingSoloChannelModelSaveTimeout.current = setTimeout(() => {
+      pendingSoloChannelModelSaveTimeout.current = null;
+
+      void updateChannelPendingExecutionTarget(channelId, nextSoloModel, controller.signal)
+        .then((payload) => {
+          if (controller.signal.aborted || latestSoloChannelModelSaveId.current !== saveId) {
+            return;
+          }
+          pendingSoloChannelModelSaveAbort.current = null;
+          startTransition(() => setState({ status: 'ready', payload }));
+        })
+        .catch((error) => {
+          if (controller.signal.aborted || latestSoloChannelModelSaveId.current !== saveId) {
+            return;
+          }
+          pendingSoloChannelModelSaveAbort.current = null;
+          setFeedback(
+            error instanceof Error
+              ? error.message
+              : 'Failed to save this chat AI reply settings.',
+          );
+        });
+    }, 150);
+
+    return () => {
+      if (pendingSoloChannelModelSaveTimeout.current) {
+        clearTimeout(pendingSoloChannelModelSaveTimeout.current);
+        pendingSoloChannelModelSaveTimeout.current = null;
+      }
+      controller.abort();
+    };
+  }, [
+    readyChat,
+    readySelectedChannel,
+    setFeedback,
+    soloChannelModel.instance,
+    soloChannelModel.model,
+    soloChannelModel.modelSelection,
+    soloChannelModel.provider,
+    state.status,
   ]);
 
   function updatePayload(payload: AppShellPayload): void {

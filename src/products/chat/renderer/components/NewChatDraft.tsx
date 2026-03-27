@@ -130,7 +130,7 @@ export function NewChatDraft({
     : draftCatIds;
   const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [sidePanelSection, setSidePanelSection] = useState<string | null>('execution');
+  const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
   function openSidePanelTo(section: string): void {
     setSidePanelOpen(true);
     switchSection(section);
@@ -264,7 +264,7 @@ export function NewChatDraft({
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
                       </svg>
-                      Set working directory
+                      Choose folder
                     </button>
                   </div>
                 ) : null}
@@ -336,7 +336,7 @@ export function NewChatDraft({
       </section>
       {sidePanelOpen ? (
         <SidePanel
-          title="Draft Workspace"
+          title="New Chat Setup"
           activeSection={sidePanelSection}
           onSectionToggle={switchSection}
           onClose={() => setSidePanelOpen(false)}
@@ -350,7 +350,26 @@ export function NewChatDraft({
   function buildDraftSidePanelSections(): SidePanelSection[] {
     const sections: SidePanelSection[] = [];
 
-    // --- Execution Target ---
+    sections.push({
+      id: 'cats',
+      title: 'Cats',
+      children: chatCats.filter((c) => c.status === 'active').length > 0 ? (
+        <CatAvatarRow
+          cats={chatCats}
+          bossCatId={payload.chat.bossCatId}
+          selectedIds={draftCatIds}
+          highlightedId={draftHighlightedCatId}
+          leadCatId={effectiveLeadCat?.id ?? null}
+          toggleable
+          showLeadBadge
+          onToggle={onToggleDraftCat}
+          onHighlight={(id) => onHighlightDraftCat(id)}
+        />
+      ) : (
+        <p className="operatorEmptyState">No cats are available yet.</p>
+      ),
+    });
+
     const executionChildren = (() => {
       if (isDirectLaneContext && leadCat && activePanelModel) {
         return (
@@ -386,19 +405,6 @@ export function NewChatDraft({
       if (activePanelModel) {
         return (
           <>
-            {chatCats.filter((c) => c.status === 'active').length > 0 ? (
-              <CatAvatarRow
-                cats={chatCats}
-                bossCatId={payload.chat.bossCatId}
-                selectedIds={draftCatIds}
-                highlightedId={draftHighlightedCatId}
-                leadCatId={effectiveLeadCat?.id ?? null}
-                toggleable
-                showLeadBadge
-                onToggle={onToggleDraftCat}
-                onHighlight={(id) => onHighlightDraftCat(id)}
-              />
-            ) : null}
             <div style={effectiveLeadCat && !isDirectLaneContext ? { pointerEvents: 'none', opacity: 0.45 } : undefined}>
               <ProviderModelFields
                 provider={activePanelModel.provider}
@@ -420,14 +426,13 @@ export function NewChatDraft({
           </>
         );
       }
-      return null;
+      return <p className="operatorEmptyState">No AI reply setup yet.</p>;
     })();
-    sections.push({ id: 'execution', title: 'Execution Target', children: executionChildren });
+    sections.push({ id: 'execution', title: 'AI Reply', children: executionChildren });
 
-    // --- Working Directory ---
     sections.push({
       id: 'cwd',
-      title: 'Working Directory',
+      title: 'Folder',
       children: onFolderBrowsePathChange && onFolderBrowse && onFolderBrowseSelect ? (
         <FolderBrowserContent
           folderBrowsePath={folderBrowsePath}
@@ -447,7 +452,7 @@ export function NewChatDraft({
         draftCwd ? (
           <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{draftCwd}</p>
         ) : (
-          <p className="operatorEmptyState">No working directory set.</p>
+          <p className="operatorEmptyState">No folder selected yet.</p>
         )
       ),
     });
