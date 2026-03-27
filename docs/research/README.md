@@ -17,6 +17,7 @@
 | [2026-03-26-companion-core-capabilities](./2026-03-26-companion-core-capabilities.md) | 2026-03-26 | Companion core capabilities | Define the minimum companion feature set, dashboard sections, identity/profile model, presence toggles, and current gap areas for `Cats Chat` |
 | [2026-03-26-cats-ai-first-app-store-vision](./2026-03-26-cats-ai-first-app-store-vision.md) | 2026-03-26 | Cats as an AI-first app store | Define the vision where users learn the platform with an AI coach, build apps with Work + Code inside the suite, and publish/install those apps back into `Cats` |
 | [2026-03-26-cats-coding-playground-vision](./2026-03-26-cats-coding-playground-vision.md) | 2026-03-26 | Cats Coding playground vision | Define `Cats Code > Playground` as a playful LAN/tablet mode where real-cat fish selections become software ideas, briefs, and generated outputs |
+| [2026-03-27-companion-agent-toggle-baseline-and-openclaw-parity](./2026-03-27-companion-agent-toggle-baseline-and-openclaw-parity.md) | 2026-03-27 | Companion/Agent toggle baseline and OpenClaw parity path | Define current progress snapshot for `cats`/`cats-runtime`/`openclaw` submodule state, then propose baseline skills/tools and architecture changes for one-click companion↔agent persona switching with OpenClaw-level agent capability targets |
 
 ## Entry Template
 
@@ -31,4 +32,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-03-26*
+*Last updated: 2026-03-27*
