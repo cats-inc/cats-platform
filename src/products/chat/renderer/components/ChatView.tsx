@@ -75,6 +75,7 @@ export interface ChatViewProps {
   onChannelFilesChange: (files: File[]) => void;
   onApprovalDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
+  onResumeChannel?: () => void;
   onOperatorAction: (input: {
     action: 'retry' | 'acknowledge';
     taskId?: string | null;
@@ -117,6 +118,7 @@ export function ChatView({
   onChannelFilesChange,
   onApprovalDecision,
   onChoiceSubmit,
+  onResumeChannel,
   onOperatorAction,
   autoResize,
   selectedModel,
@@ -235,6 +237,8 @@ export function ChatView({
     [operatorView, inspectedRunId],
   );
   const composerBusy = isComposerBusy(busy);
+  const resumeBusy = busy === 'channel:resume';
+  const canResumeChannel = !composerBusy && !resumeBusy;
 
   return (
     <>
@@ -275,6 +279,17 @@ export function ChatView({
               </span>
             </div>
           <div className="channelTopBarEnd">
+            {onResumeChannel ? (
+              <button
+                className="channelActionButton"
+                type="button"
+                disabled={!canResumeChannel}
+                onClick={() => void onResumeChannel()}
+                aria-label="Resume chat session"
+              >
+                {resumeBusy ? 'Resuming...' : 'Resume'}
+              </button>
+            ) : null}
             <button
               className="sidePanelToggle"
               type="button"

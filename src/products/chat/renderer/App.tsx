@@ -42,6 +42,7 @@ import { useGovernanceActions } from './hooks/useGovernanceActions';
 import { useOperatorLoop } from './hooks/useOperatorLoop';
 import { useLiveIndicator } from './hooks/useLiveIndicator';
 import {
+  activateChatChannel,
   updateCatProfile,
   updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
@@ -471,6 +472,27 @@ export default function App() {
     setDraftModel(nextDraftModel);
   }, []);
 
+  const onResumeChannel = useCallback(async (channelId: string): Promise<void> => {
+    setBusy('channel:resume');
+    setFeedback('');
+    try {
+      const activation = await activateChatChannel(channelId);
+      startTransition(() => setState({ status: 'ready', payload: activation.appShell }));
+      const errors = activation.results.filter((result) => result.status === 'error');
+      if (errors.length > 0) {
+        setFeedback(
+          errors
+            .map((result) => result.error || `Failed to resume ${result.targetName}.`)
+            .join(' '),
+        );
+      }
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to resume chat session.');
+    } finally {
+      setBusy('');
+    }
+  }, []);
+
   useEffect(() => {
     if (state.status !== 'ready') {
       return;
@@ -676,6 +698,7 @@ export default function App() {
     showingNewChatDraft,
     draftCatIds,
   });
+  const visibleChatChannelId = selectedChannel?.id ?? directLaneChannel?.id ?? null;
 
   return (
     <div
@@ -742,6 +765,9 @@ export default function App() {
             onChannelFilesChange: setChannelFiles,
             onApprovalDecision,
             onChoiceSubmit,
+            onResumeChannel: visibleChatChannelId
+              ? () => onResumeChannel(visibleChatChannelId)
+              : undefined,
             onOperatorAction,
             autoResize,
             selectedModel:

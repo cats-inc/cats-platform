@@ -20,6 +20,8 @@ export type RuntimeDispatchRecoveryReason = 'stale_session' | 'session_full';
 
 const STALE_SESSION_PATTERNS = [
   /\bsession not found\b/i,
+  /\bsession is closed\b/i,
+  /\bresume it first\b/i,
 ];
 
 const SESSION_FULL_PATTERNS = [

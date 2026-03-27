@@ -13,6 +13,7 @@ export interface RuntimeSessionRoutingOptions {
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
+  forceReviveClosedSessions?: boolean;
 }
 
 export function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {

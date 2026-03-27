@@ -1034,6 +1034,89 @@ test('direct cat chat recreates a stale lead-cat session once when runtime repor
   assert.match(channel.messages.at(-1)?.body ?? '', /recovered the direct lane/i);
 });
 
+test('direct cat chat recreates a closed lead-cat session once when runtime demands resume first', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-24T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Recover closed direct session leases.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  state = setChannelCatLease(
+    state,
+    channelId,
+    companionId,
+    {
+      sessionId: 'session-closed',
+      status: 'error',
+      lastError: 'Session is closed. Resume it first.',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+
+  const runtimeClient = createRuntimeStub(async ({ sessionId, content }) => {
+    if (!content.includes('You are Companion')) {
+      throw new Error(`Unexpected prompt:\n${content}`);
+    }
+    if (sessionId === 'session-closed') {
+      throw new Error('Session is closed. Resume it first.');
+    }
+    if (sessionId === 'session-1') {
+      return usage('Companion reopened the direct lane.');
+    }
+    throw new Error(`Unexpected session: ${sessionId}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Resume the lane and answer.' },
+    runtimeClient,
+    now,
+    {
+      runtimeRecovery: {
+        staleSessionRetryLimit: 1,
+      },
+    },
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(runtimeClient.sentMessages.length, 2);
+  assert.deepEqual(
+    runtimeClient.sentMessages.map((message) => message.sessionId),
+    ['session-closed', 'session-1'],
+  );
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
+  assert.equal(channel.assignedCats[0]?.execution.lease.status, 'ready');
+  assert.equal(channel.assignedCats[0]?.execution.lease.lastError, null);
+  assert.match(channel.messages.at(-1)?.body ?? '', /reopened the direct lane/i);
+});
+
 test('session-full errors stop immediately and clear the direct lane lease instead of retrying', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();

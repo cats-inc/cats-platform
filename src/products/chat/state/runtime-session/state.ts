@@ -195,6 +195,38 @@ export function setReadyAfterMessage(
   );
 }
 
+export function clearTargetSessionLease(
+  state: ChatState,
+  channelId: string,
+  target: 'orchestrator' | { catId: string },
+  now: Date,
+): ChatState {
+  const clearedLease = {
+    sessionId: null,
+    cwd: null,
+    status: 'not_started' as const,
+    lastError: null,
+    startedAt: null,
+  };
+
+  if (typeof target !== 'string') {
+    return setChannelCatLease(
+      state,
+      channelId,
+      target.catId,
+      clearedLease,
+      now,
+    );
+  }
+
+  return setChannelOrchestratorLease(
+    state,
+    channelId,
+    clearedLease,
+    now,
+  );
+}
+
 export function applyRoomRoutingSnapshot(
   state: ChatState,
   channelId: string,

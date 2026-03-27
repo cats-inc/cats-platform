@@ -38,6 +38,10 @@ import {
 } from '../runtimeTargeting.js';
 import { createExplicitProviderModelSelection } from '../../../../shared/providerSelection.js';
 import {
+  classifyRuntimeDispatchRecoveryError,
+} from '../runtime-dispatch/recovery.js';
+import {
+  clearTargetSessionLease,
   ensureChannelMarkedActive,
   markTargetWaking,
   resolveActorIdForTarget,
@@ -47,6 +51,86 @@ import {
   toParticipantRef,
 } from './state.js';
 import type { RuntimeSessionRoutingOptions } from './shared.js';
+
+const MANUALLY_REVIVABLE_SESSION_STATES = new Set([
+  'closed',
+  'closing',
+  'terminated',
+  'terminated_with_error',
+  'error',
+]);
+
+function readObservedSessionState(
+  observed: Awaited<ReturnType<RuntimeClient['observeSession']>>,
+): string | null {
+  const session = observed.session;
+  if (!session || typeof session !== 'object') {
+    return null;
+  }
+
+  const directStatus = (session as Record<string, unknown>).status;
+  if (typeof directStatus === 'string' && directStatus.trim()) {
+    return directStatus.trim().toLowerCase();
+  }
+
+  const inspection = (session as Record<string, unknown>).inspection;
+  if (!inspection || typeof inspection !== 'object') {
+    return null;
+  }
+
+  const inspectionState = (inspection as Record<string, unknown>).state;
+  return typeof inspectionState === 'string' && inspectionState.trim()
+    ? inspectionState.trim().toLowerCase()
+    : null;
+}
+
+async function shouldReviveExistingTargetSession(
+  state: ChatState,
+  channelId: string,
+  target: RoutingTarget,
+  runtimeClient: RuntimeClient,
+  forceReviveClosedSessions: boolean,
+): Promise<boolean> {
+  if (!target.sessionId) {
+    return false;
+  }
+
+  const channel = requireChannel(state, channelId);
+  const lease = target.participantKind === 'cat'
+    ? channel.catAssignments.find((assignment) =>
+        assignment.catId === target.participantId)?.execution.lease ?? null
+    : channel.orchestratorLease;
+
+  if (!lease) {
+    return false;
+  }
+
+  if (lease.status === 'closed') {
+    return true;
+  }
+
+  if (
+    forceReviveClosedSessions
+    && lease.status === 'error'
+    && typeof lease.lastError === 'string'
+    && classifyRuntimeDispatchRecoveryError(lease.lastError)?.reason === 'stale_session'
+  ) {
+    return true;
+  }
+
+  if (!forceReviveClosedSessions) {
+    return false;
+  }
+
+  try {
+    const observed = await runtimeClient.observeSession(target.sessionId);
+    const observedState = readObservedSessionState(observed);
+    return observedState ? MANUALLY_REVIVABLE_SESSION_STATES.has(observedState) : false;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    return classifyRuntimeDispatchRecoveryError(message)?.reason === 'stale_session';
+  }
+}
 
 async function resolveChannelTaskExecutionRequest(
   chatStore: RuntimeSessionRoutingOptions['chatStore'],
@@ -173,6 +257,29 @@ export async function ensureTargetSession(
   );
 
   if (target.sessionId) {
+    if (await shouldReviveExistingTargetSession(
+      state,
+      channelId,
+      target,
+      runtimeClient,
+      options.forceReviveClosedSessions ?? false,
+    )) {
+      const resetState = clearTargetSessionLease(
+        state,
+        channelId,
+        target.participantKind === 'cat' ? { catId: target.participantId } : 'orchestrator',
+        now,
+      );
+      return ensureTargetSession(
+        resetState,
+        channelId,
+        { ...target, sessionId: null },
+        runtimeClient,
+        now,
+        options,
+      );
+    }
+
     if (target.participantKind === 'orchestrator') {
       const channelState = requireChannel(state, channelId);
       const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
@@ -462,6 +569,7 @@ export async function wakeChannelEntryParticipant(
     {
       companionStore: options.companionStore,
       memoryService: options.memoryService,
+      forceReviveClosedSessions: options.forceReviveClosedSessions,
       roomRouting,
       wakeTrigger: 'room_entry',
       wakeReason: 'room_entry',

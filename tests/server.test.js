@@ -4400,6 +4400,91 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
   });
 });
 
+test('POST /api/channels/:channelId/activations recreates closed direct-lane sessions instead of reporting already started', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const now = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Resume-Agent',
+      provider: 'claude',
+      model: 'claude-opus-4-6',
+    },
+    now,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Resume lane',
+      topic: 'Manual activation should revive closed sessions.',
+      roomMode: 'direct_cat_chat',
+      leadParticipantId: catId,
+      participantCatIds: [catId],
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  state = setChannelCatLease(
+    state,
+    channelId,
+    catId,
+    {
+      sessionId: 'session-closed',
+      status: 'error',
+      lastError: 'Session is closed. Resume it first.',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+  await chatStore.write(state);
+
+  runtimeClient.setObservedSession('session-closed', {
+    session: {
+      id: 'session-closed',
+      status: 'closed',
+    },
+    observePath: '/sessions/session-closed/observe',
+    stream: {
+      path: '/sessions/session-closed/stream',
+      available: false,
+    },
+  });
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const activateResponse = await fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
+      method: 'POST',
+    });
+    assert.equal(activateResponse.status, 200);
+    const activatePayload = await activateResponse.json();
+
+    assert.deepEqual(
+      runtimeClient.createdSessions.map((session) => session.id),
+      ['session-1', 'session-2'],
+    );
+    const catResult = activatePayload.activation.results.find((result) => result.targetKind === 'cat');
+    assert.equal(catResult?.status, 'started');
+    assert.equal(catResult?.sessionId, 'session-2');
+
+    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(appShellResponse.status, 200);
+    const appShellPayload = await appShellResponse.json();
+    assert.equal(
+      appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.sessionId,
+      'session-2',
+    );
+    assert.equal(
+      appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.status,
+      'ready',
+    );
+  }, chatStore);
+});
+
 test('PATCH /api/preferences does not overwrite the last wake request when the selected room is already awake', async () => {
   const runtimeClient = createRuntimeStub();
 

@@ -36,7 +36,10 @@ function toActivationResult(input: {
     targetKind: target.participantKind,
     targetId: target.participantId,
     targetName: target.participantName,
-    status: target.sessionId ? 'already_started' : 'started',
+    status:
+      target.sessionId && target.sessionId === ensured.target.sessionId
+        ? 'already_started'
+        : 'started',
     sessionId: ensured.target.sessionId,
   };
 }
@@ -58,7 +61,10 @@ export async function activateChannelSessions(
     orchestratorTarget,
     runtimeClient,
     now,
-    options,
+    {
+      ...options,
+      forceReviveClosedSessions: true,
+    },
   );
   nextState = orchestratorEnsured.state;
   results.push(toActivationResult({
@@ -74,7 +80,10 @@ export async function activateChannelSessions(
       catTarget,
       runtimeClient,
       now,
-      options,
+      {
+        ...options,
+        forceReviveClosedSessions: true,
+      },
     );
     nextState = ensured.state;
     results.push(toActivationResult({
