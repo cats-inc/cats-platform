@@ -560,3 +560,31 @@
   color: var(--muted-soft);
   font-size: 0.75rem;
 }
+
+/* ── Message body rich text ── */
+
+.messageBody {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.messageBodyLink {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.messageBodyLink:hover {
+  text-decoration-thickness: 2px;
+}
+
+.messageBodyMention {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #fff;
+  background: #8B7E74;
+}

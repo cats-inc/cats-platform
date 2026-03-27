@@ -33,6 +33,7 @@ import {
   type ModelSelectorValue,
 } from './ModelSelector';
 import { ApprovalQueuePanel } from './ApprovalQueuePanel';
+import { MessageBody } from './MessageBody';
 import {
   MessageChoices,
   type MessageChoicesSubmitInput,
@@ -321,7 +322,7 @@ export function ChatView({
                           </div>
                         ) : null;
                       })() : null}
-                      {message.body ? <p>{message.body}</p> : null}
+                      {message.body ? <MessageBody body={message.body} cats={payload.chat.cats} /> : null}
                       {message.choices && message.choices.length > 0 ? (
                         <MessageChoices
                           channelId={selectedChannel.id}
