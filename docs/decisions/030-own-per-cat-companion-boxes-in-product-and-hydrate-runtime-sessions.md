@@ -105,8 +105,8 @@ the persistent database for the companion box itself.
 
 Per-Cat response behavior such as:
 
-- animal-like expression
-- anthropomorphic expression
+- verbal replies (full human-language text)
+- vocalization replies (onomatopoeia and sound words only)
 - text output
 - audio clip output
 - TTS output

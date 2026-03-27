@@ -98,6 +98,9 @@ direct room with a different prompt. It needs:
    - videos
    - documents
    - plans or mixed-media outputs
+
+   `Creations` are runtime-produced artifacts indexed by the product dashboard,
+   not a data layer inside `CompanionBox`.
 7. The product shall not collapse `Resources` and `Creations` into one generic
    artifact bucket in companion mode.
 
@@ -106,9 +109,10 @@ direct room with a different prompt. It needs:
 8. Companion shall expose a visible presence state with at least:
    - `awake`
    - `sleeping`
-9. Companion shall expose a visible behavior-style toggle with at least:
-   - `human_like`
-   - `cat_like`
+9. Companion shall expose a visible reply-style toggle mapped to the
+   `replyStyle` field in `CompanionResponseProfile`:
+   - `verbal` — full human-language text
+   - `vocalization` — onomatopoeia and sound words only
 10. The first slice shall not require a separate visible `disturb` toggle.
     Waking a sleeping companion is already the disturbance.
 11. Presence and behavior settings shall remain product-owned, even if runtime
@@ -138,23 +142,33 @@ direct room with a different prompt. It needs:
 17. The product may later let one Cat identity participate across companion,
     work, and code modes, provided behavior packs remain distinct.
 
+#### Memory visibility in companion dashboard
+
+18. Companion `Overview` shall surface curated memory highlights including key
+    memories, relationship notes, and important preferences.
+19. The companion dashboard shall provide a dedicated memory management entry
+    point that allows the owner to browse, edit, and delete durable memory
+    records.
+20. The memory management entry may live as a sub-view of `Overview` or as a
+    distinct discoverable section within the dashboard.
+
 #### Rituals and proactive behavior
 
-18. Companion should support a future layer for:
+21. Companion should support a future layer for:
     - recurring requests
     - rituals
     - check-ins
     - proactive nudges
-19. The first visible workspace should reserve conceptual room for those
+22. The first visible workspace should reserve conceptual room for those
     behaviors even if they are not fully executable in the first slice.
 
 #### Layout and surface rules
 
-20. Companion dashboard shall not require permanent operator cards on the main
+23. Companion dashboard shall not require permanent operator cards on the main
     canvas.
-21. Companion-specific quick controls such as `awake/sleeping` and
-    `human_like/cat_like` should live in the transcript-side header/action area.
-22. Companion detailed settings and dashboard sections may use the same
+24. Companion-specific quick controls such as `awake/sleeping` and
+    `verbal/vocalization` should live in the transcript-side header/action area.
+25. Companion detailed settings and dashboard sections may use the same
     secondary-surface framework discussed in the `Cats Chat` spatial-layout
     guidance, as long as mode boundaries remain clear.
 
@@ -194,18 +208,19 @@ Cat identity
 - **Overview**
   - high-level status
   - recent creations
-  - key memories or relationship notes
+  - curated memory highlights and relationship notes
   - quick actions
+  - entry point to full memory management
 - **Resources**
-  - what the owner gave the companion
+  - what the owner gave the companion (maps to CompanionBox `sources`)
 - **Creations**
-  - what the companion made
+  - what the companion produced (projection of runtime-produced artifacts)
 - **Settings**
   - Telegram
   - avatar
   - background image
   - background music
-  - response profile
+  - response profile (including `replyStyle` and `outputMode`)
   - awake/sleeping
 
 ## Dependencies

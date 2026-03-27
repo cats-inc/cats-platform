@@ -65,6 +65,8 @@ Visible companion-specific UI remains intentionally deferred.
 - choosing the final image/video/audio analysis providers in this spec
 - implementing a full vector/RAG memory engine in the first slice
 - making `cats-runtime` the owner of long-lived per-Cat companion storage
+- treating companion-produced creative outputs (creations) as a CompanionBox
+  data layer; creations are runtime artifacts that the product dashboard indexes
 - finalizing the full TTS or audio-clip generation stack in the first slice
 
 ## User Stories
@@ -154,15 +156,17 @@ Visible companion-specific UI remains intentionally deferred.
 19. The response profile shall distinguish how the Cat expresses itself from
     how output is delivered.
 20. The first product-owned response-profile contract shall support at least:
-    - `expressionMode`
-      - `animalistic`
-      - `anthropomorphic`
-      - `mixed`
+    - `replyStyle`
+      - `verbal` — responds with full human-language text
+      - `vocalization` — responds with onomatopoeia and sound words only
     - `outputMode`
       - `text`
       - `audio_clip`
       - `tts`
       - `mixed`
+
+    `replyStyle` applies only in companion mode. In agent mode, Cats are
+    implicitly verbal and this toggle is not exposed.
 21. The first slice may deliver some response modes as metadata or placeholders
     before every output mode is fully executable.
 
@@ -258,10 +262,9 @@ type CompanionSourceStorageMode =
   | 'imported_copy'
   | 'linked_path';
 
-type CompanionExpressionMode =
-  | 'animalistic'
-  | 'anthropomorphic'
-  | 'mixed';
+type CompanionReplyStyle =
+  | 'verbal'
+  | 'vocalization';
 
 type CompanionOutputMode =
   | 'text'
@@ -270,7 +273,7 @@ type CompanionOutputMode =
   | 'mixed';
 
 interface CompanionResponseProfile {
-  expressionMode: CompanionExpressionMode;
+  replyStyle: CompanionReplyStyle;
   outputMode: CompanionOutputMode;
   voiceProfileId?: string | null;
   notes?: string | null;

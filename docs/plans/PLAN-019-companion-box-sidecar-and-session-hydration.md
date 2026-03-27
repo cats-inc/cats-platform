@@ -29,6 +29,9 @@ initial landing focuses on:
 - a normalized `CompanionSessionContext` seam attached to direct companion
   runtime session create/send calls
 
+The visible companion workspace and settings surfaces are covered by
+[PLAN-025](./PLAN-025-companion-workspace-presence-and-settings.md).
+
 ## Implementation Phases
 
 ### Phase 1: Contracts and Sidecar Store
