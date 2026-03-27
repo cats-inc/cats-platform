@@ -1,5 +1,6 @@
 import type {
   AppShellPayload,
+  ChatChannelView,
   ChatCat,
   ChatChannelSummary,
   ChatMessage,
@@ -444,6 +445,95 @@ export function appendOptimisticUserMessage(
   channelSummary.unreadCount = 0;
   next.chat.selectedChannelId = channelId;
   next.metadata.generatedAt = createdAt;
+
+  return next;
+}
+
+export function insertCreatedChannelIntoPayload(
+  payload: AppShellPayload,
+  createdChannel: ChatChannelView,
+): AppShellPayload {
+  const normalizedChannel = normalizeSelectedChannelView(createdChannel);
+  if (!normalizedChannel) {
+    throw new Error('Created channel payload was invalid.');
+  }
+
+  const next = structuredClone(payload);
+  const leadCatId = normalizedChannel.roomRouting.leadParticipantId ?? null;
+  const summary: ChatChannelSummary = {
+    id: normalizedChannel.id,
+    title: normalizedChannel.title,
+    topic: normalizedChannel.topic,
+    status: normalizedChannel.status,
+    unreadCount: normalizedChannel.unreadCount,
+    catCount: normalizedChannel.assignedCats.length,
+    activeCatCount: normalizedChannel.assignedCats.filter((cat) => cat.status === 'active').length,
+    repoPath: normalizedChannel.repoPath,
+    chatCwd: normalizedChannel.chatCwd,
+    lastMessageAt: normalizedChannel.lastMessageAt,
+    lastActivatedAt: normalizedChannel.lastActivatedAt,
+    composerMode: normalizedChannel.composerMode,
+    pendingProvider: normalizedChannel.pendingProvider,
+    pendingModel: normalizedChannel.pendingModel,
+    pendingModelSelection: normalizedChannel.pendingModelSelection ?? null,
+    leadCatId,
+    roomMode: normalizedChannel.roomRouting.mode,
+    routingStatus: normalizedChannel.roomRouting.workflow.currentTurn?.status ?? null,
+    lastRoutingAt: normalizedChannel.roomRouting.workflow.currentTurn?.startedAt ?? null,
+  };
+
+  next.chat.channels = [
+    summary,
+    ...next.chat.channels.filter((channel) => channel.id !== normalizedChannel.id),
+  ];
+  next.chat.selectedChannelId = normalizedChannel.id;
+  next.chat.selectedChannel = normalizedChannel;
+  next.metadata.generatedAt = normalizedChannel.updatedAt;
+
+  return next;
+}
+
+export function preserveOptimisticUserMessageAfterRefresh(
+  previousPayload: AppShellPayload,
+  refreshedPayload: AppShellPayload,
+  channelId: string,
+): AppShellPayload {
+  const previousSelectedChannel = previousPayload.chat.selectedChannel;
+  const optimisticMessage =
+    previousSelectedChannel?.id === channelId
+      ? [...previousSelectedChannel.messages].reverse().find(
+          (message) => message.senderKind === 'user' && message.metadata?.optimistic,
+        ) ?? null
+      : null;
+
+  if (!optimisticMessage) {
+    return refreshedPayload;
+  }
+
+  const next = structuredClone(refreshedPayload);
+  const selectedChannel = next.chat.selectedChannel;
+  const channelSummary = next.chat.channels.find((channel) => channel.id === channelId);
+
+  if (!selectedChannel || selectedChannel.id !== channelId || !channelSummary) {
+    return refreshedPayload;
+  }
+
+  const alreadyPresent = selectedChannel.messages.some(
+    (message) => message.id === optimisticMessage.id,
+  );
+  if (alreadyPresent) {
+    return refreshedPayload;
+  }
+
+  selectedChannel.messages.push(structuredClone(optimisticMessage));
+  selectedChannel.updatedAt = optimisticMessage.createdAt;
+  selectedChannel.lastMessageAt = optimisticMessage.createdAt;
+  selectedChannel.unreadCount = 0;
+
+  channelSummary.lastMessageAt = optimisticMessage.createdAt;
+  channelSummary.unreadCount = 0;
+  next.chat.selectedChannelId = channelId;
+  next.metadata.generatedAt = optimisticMessage.createdAt;
 
   return next;
 }

@@ -109,6 +109,10 @@
 
 .channelTopBarCenter {
   justify-content: center;
+  justify-self: center;
+  width: min(55vw, 680px);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .channelTopBarEnd {
@@ -162,6 +166,10 @@
 
 .channelTopBarTitle {
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .channelTopBarTitleDirectLane {
@@ -456,6 +464,72 @@
   height: 1px;
   margin: 4px 8px;
   background: var(--border);
+}
+
+/* ── Live typing indicator ── */
+
+.typingIndicator {
+  animation: typingFadeIn 0.2s ease;
+}
+
+@keyframes typingFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.typingDots {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  height: 1.5em;
+}
+
+.typingDots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+
+.typingDots span:nth-child(2) { animation-delay: 0.2s; }
+.typingDots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typingProgressText {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.typingToolChip {
+  display: inline-block;
+  margin-top: 4px;
+  margin-right: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--panel-hover);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ── Avatar pulse for working cat ── */
+
+.catAvatarPulsing {
+  animation: avatarPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes avatarPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 126, 116, 0.4); }
+  50% { box-shadow: 0 0 0 5px rgba(139, 126, 116, 0); }
 }
 
 .recentOverflowMenu button {

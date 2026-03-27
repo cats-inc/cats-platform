@@ -17,26 +17,13 @@ interface NotificationEntry {
 }
 
 const FADE_MS = 250;
+const AUTO_DISMISS_MS = 4000;
 
 let nextId = 1;
 
 export function useNotifications() {
   const [items, setItems] = useState<NotificationEntry[]>([]);
   const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
-
-  const notify = useCallback((options: NotificationOptions) => {
-    const id = nextId++;
-    setItems((prev) => [
-      ...prev,
-      {
-        id,
-        title: options.title,
-        message: options.message,
-        level: options.level ?? 'info',
-        fading: false,
-      },
-    ]);
-  }, []);
 
   const dismiss = useCallback((id: number) => {
     setItems((prev) =>
@@ -48,6 +35,20 @@ export function useNotifications() {
     }, FADE_MS);
     timersRef.current.set(id, removeTimer);
   }, []);
+
+  const notify = useCallback((options: NotificationOptions) => {
+    const id = nextId++;
+    const level = options.level ?? 'info';
+    setItems((prev) => [
+      ...prev,
+      { id, title: options.title, message: options.message, level, fading: false },
+    ]);
+    // Auto-dismiss non-error notifications
+    if (level !== 'error') {
+      const timer = setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
+      timersRef.current.set(id, timer);
+    }
+  }, [dismiss]);
 
   const dismissAll = useCallback(() => {
     setItems((prev) => prev.map((n) => ({ ...n, fading: true })));

@@ -5,6 +5,8 @@ import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import {
   buildNewChatChannelInput,
   createOptimisticDraftPayload,
+  insertCreatedChannelIntoPayload,
+  preserveOptimisticUserMessageAfterRefresh,
 } from '../src/products/chat/renderer/chatUtils.tsx';
 import { isOptimisticDraftChannelId } from '../src/products/chat/shared/channelPaths.ts';
 
@@ -134,4 +136,103 @@ test('isOptimisticDraftChannelId only matches optimistic draft routes', () => {
   assert.equal(isOptimisticDraftChannelId('draft-123'), true);
   assert.equal(isOptimisticDraftChannelId('7a6a9554-dc18-4a3d-8a5d-a54bdb2e31f4'), false);
   assert.equal(isOptimisticDraftChannelId(null), false);
+});
+
+test('preserveOptimisticUserMessageAfterRefresh keeps the first pending user turn after channel warmup', () => {
+  const optimistic = createOptimisticDraftPayload(
+    createPayload(),
+    'Ship it',
+    null,
+    {
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-opus-4-6',
+      pendingInstance: 'native',
+      pendingModelSelection: null,
+    },
+  );
+  const refreshed = structuredClone(optimistic.payload);
+  if (!refreshed.chat.selectedChannel) {
+    throw new Error('Expected selected channel in refreshed payload.');
+  }
+  refreshed.chat.selectedChannel.messages = [];
+  refreshed.chat.selectedChannel.lastMessageAt = null;
+  if (refreshed.chat.channels[0]) {
+    refreshed.chat.channels[0].lastMessageAt = null;
+  }
+
+  const preserved = preserveOptimisticUserMessageAfterRefresh(
+    optimistic.payload,
+    refreshed,
+    optimistic.channelId,
+  );
+
+  assert.equal(preserved.chat.selectedChannel?.messages.length, 1);
+  assert.equal(preserved.chat.selectedChannel?.messages[0]?.senderKind, 'user');
+  assert.equal(preserved.chat.selectedChannel?.messages[0]?.body, 'Ship it');
+  assert.equal(preserved.chat.channels[0]?.lastMessageAt, preserved.chat.selectedChannel?.messages[0]?.createdAt);
+});
+
+test('insertCreatedChannelIntoPayload promotes a real created channel without a draft route', () => {
+  const payload = createPayload();
+  const createdAt = '2026-03-27T10:00:00.000Z';
+  const channel = {
+    id: '3f2ad424-7a53-4e1f-9d74-9a6d6328a301',
+    title: 'Real room',
+    topic: 'Created by server',
+    status: 'planned',
+    unreadCount: 0,
+    repoPath: null,
+    chatCwd: null,
+    language: null,
+    responseLanguage: 'en',
+    formationMode: 'manual',
+    skillProfile: 'chat-default',
+    mcpProfile: 'chat-memory',
+    orchestratorRoles: [],
+    composerMode: 'solo',
+    pendingProvider: 'claude',
+    pendingModel: 'claude-opus-4-6',
+    pendingInstance: 'native',
+    pendingModelSelection: null,
+    createdAt,
+    updatedAt: createdAt,
+    lastMessageAt: null,
+    lastActivatedAt: null,
+    orchestratorLease: {
+      sessionId: null,
+      status: 'not_started',
+      cwd: null,
+      lastError: null,
+      provider: null,
+      model: null,
+      startedAt: null,
+      lastUsedAt: null,
+    },
+    catAssignments: [],
+    messages: [],
+    assignedCats: [],
+    roomRouting: {
+      mode: 'boss_chat',
+      trigger: 'user_message',
+      blockedReason: null,
+      workflow: {
+        shape: 'single_turn',
+        currentTurn: null,
+        turnHistory: [],
+        recentEvents: [],
+        openApprovals: [],
+        targets: [],
+        checkpoints: [],
+      },
+    },
+    workingMemory: undefined,
+  } as const;
+
+  const next = insertCreatedChannelIntoPayload(payload, channel);
+
+  assert.equal(next.chat.selectedChannelId, channel.id);
+  assert.equal(next.chat.selectedChannel?.id, channel.id);
+  assert.equal(next.chat.channels[0]?.id, channel.id);
+  assert.equal(next.chat.channels[0]?.roomMode, 'boss_chat');
 });

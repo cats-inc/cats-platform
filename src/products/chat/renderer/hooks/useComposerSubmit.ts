@@ -26,7 +26,8 @@ import {
   buildNewChatChannelInput,
   createDraftChannelTitle,
   createDraftChannelTopic,
-  createOptimisticDraftPayload,
+  insertCreatedChannelIntoPayload,
+  preserveOptimisticUserMessageAfterRefresh,
   type SelectedChannelView,
 } from '../chatUtils';
 import type { ModelSelectorValue } from '../components/ModelSelector';
@@ -134,7 +135,7 @@ export function useComposerSubmit(options: {
     try {
       if (isCatScopedLaneRoute) {
         if (!hydratedDirectLane) {
-          const createdPayload = await createChatChannel({
+          const createdChannel = await createChatChannel({
             title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
             topic: createDraftChannelTopic(body),
             skipBossCatGreeting: true,
@@ -145,42 +146,28 @@ export function useComposerSubmit(options: {
               ? [draftLeadCatId, ...draftCatIds.filter((id) => id !== draftLeadCatId)]
               : draftCatIds,
           });
-          channelId = createdPayload.chat.selectedChannelId;
+          channelId = createdChannel.id;
           if (!channelId) {
             throw new Error('No chat is available for sending messages.');
           }
-          rollbackPayload = createdPayload;
-          payload = appendOptimisticUserMessage(createdPayload, channelId, body);
+          payload = appendOptimisticUserMessage(
+            insertCreatedChannelIntoPayload(initialPayload, createdChannel),
+            channelId,
+            body,
+          );
+          rollbackPayload = payload;
           setState({ status: 'ready', payload });
           setComposerDraft('');
           navigate(rollbackPath, { replace: true });
         } else {
           channelId = hydratedDirectLane.id;
           payload = appendOptimisticUserMessage(payload, channelId, body);
+          rollbackPayload = payload;
           setState({ status: 'ready', payload });
           setComposerDraft('');
         }
       } else if (wasDraftingNewChat) {
-        const optimisticDraft = createOptimisticDraftPayload(
-          initialPayload,
-          body,
-          draftLeadCatId ?? draftCatIds[0] ?? null,
-          draftLeadCatId || draftCatIds.length > 0 ? {
-            composerMode: 'cat_led',
-          } : {
-            composerMode: 'solo',
-            pendingProvider: draftModel.provider,
-            pendingModel: draftModel.model,
-            pendingInstance: draftModel.instance,
-            pendingModelSelection: draftModel.modelSelection,
-          },
-        );
-        payload = optimisticDraft.payload;
-        setState({ status: 'ready', payload });
-        setComposerDraft('');
-        navigate(buildChannelPath(optimisticDraft.channelId), { replace: true });
-
-        const createdPayload = await createChatChannel(buildNewChatChannelInput({
+        const createdChannel = await createChatChannel(buildNewChatChannelInput({
           body,
           existingCount: initialPayload.chat.channels.length,
           repoPath: draftCwd,
@@ -188,20 +175,26 @@ export function useComposerSubmit(options: {
           participantCatIds: draftCatIds,
           draftModel,
         }));
-        channelId = createdPayload.chat.selectedChannelId;
+        channelId = createdChannel.id;
         if (!channelId) {
           throw new Error('No chat is available for sending messages.');
         }
-        rollbackPayload = createdPayload;
         rollbackPath = buildChannelPath(channelId);
-        payload = appendOptimisticUserMessage(createdPayload, channelId, body);
+        payload = appendOptimisticUserMessage(
+          insertCreatedChannelIntoPayload(initialPayload, createdChannel),
+          channelId,
+          body,
+        );
+        rollbackPayload = payload;
         setState({ status: 'ready', payload });
+        setComposerDraft('');
         navigate(rollbackPath, { replace: true });
       } else {
         if (!channelId) {
           throw new Error('No chat is available for sending messages.');
         }
         payload = appendOptimisticUserMessage(payload, channelId, body);
+        rollbackPayload = payload;
         setState({ status: 'ready', payload });
         setComposerDraft('');
       }
@@ -225,9 +218,9 @@ export function useComposerSubmit(options: {
             : null;
         if (!selectedForFiles?.repoPath && !selectedForFiles?.chatCwd) {
           const warmed = await updateSelectedChannel(channelId);
-          payload = warmed;
-          rollbackPayload = warmed;
-          setState({ status: 'ready', payload: warmed });
+          payload = preserveOptimisticUserMessageAfterRefresh(payload, warmed, channelId);
+          rollbackPayload = payload;
+          setState({ status: 'ready', payload });
         }
         const attachments = await uploadChannelAttachments(channelId, filesToUpload);
         const refs = attachments.map((attachment) => `- ${attachment.relativePath}`).join('\n');

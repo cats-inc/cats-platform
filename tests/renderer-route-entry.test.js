@@ -41,6 +41,17 @@ test('renderer route entry wakes a sleeping selected room but not an awake one',
     }),
     false,
   );
+
+  assert.equal(
+    shouldWakeRouteChannelOnEntry({
+      routeChannelId: 'channel-1',
+      routeChannelExists: true,
+      selectedChannelId: 'channel-1',
+      selectedChannelViewId: 'channel-1',
+      entryLifecycleState: 'error',
+    }),
+    false,
+  );
 });
 
 test('renderer route entry does not wake when the route channel is missing', () => {

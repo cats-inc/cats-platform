@@ -28,6 +28,7 @@ export function useAppShellRouting(options: {
   state: LoadStateLike;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   navigate: NavigateFunction;
+  busy: string;
   routeChannelId: string | null;
   routeChannelExists: boolean;
   selectedChannelId: string | null;
@@ -42,6 +43,7 @@ export function useAppShellRouting(options: {
     state,
     setState,
     navigate,
+    busy,
     routeChannelId,
     routeChannelExists,
     selectedChannelId,
@@ -79,6 +81,10 @@ export function useAppShellRouting(options: {
       return;
     }
 
+    if (busy === 'message:send') {
+      return;
+    }
+
     if (isOptimisticDraftChannelId(routeChannelId)) {
       return;
     }
@@ -113,6 +119,7 @@ export function useAppShellRouting(options: {
 
     return () => controller.abort();
   }, [
+    busy,
     navigate,
     routeChannelExists,
     routeChannelId,

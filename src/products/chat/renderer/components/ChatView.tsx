@@ -7,8 +7,8 @@ import {
   type RefObject,
 } from 'react';
 
-import type { AppShellPayload } from '../../api/contracts';
-import type { ChatCat } from '../../api/contracts';
+import type { AppShellPayload, ChatCat } from '../../api/contracts';
+import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import {
   catInitials,
@@ -85,6 +85,7 @@ export interface ChatViewProps {
   onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
   onOpenAddCat?: () => void;
   showAddCatButton?: boolean;
+  liveIndicator?: LiveIndicatorState;
 }
 
 export function ChatView({
@@ -120,6 +121,7 @@ export function ChatView({
   onDirectLaneModelChange,
   onOpenAddCat,
   showAddCatButton = true,
+  liveIndicator,
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
@@ -243,7 +245,10 @@ export function ChatView({
                   return (
                     <div
                       key={cat.id}
-                      className={isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar'}
+                      className={[
+                        isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar',
+                        liveIndicator?.active && liveIndicator.catId === cat.id ? 'catAvatarPulsing' : '',
+                      ].filter(Boolean).join(' ')}
                       data-tooltip={cat.name}
                       style={cat.avatarUrl
                         ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -284,7 +289,7 @@ export function ChatView({
         </header>
         <div className="channelWorkspace">
           <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
-            {feedback ? <p className="feedbackText channelFeedback">{feedback}</p> : null}
+            {/* Feedback is now shown via NotificationContainer */}
 
             {hasConversationStarted ? (
               <section className="transcriptPanel">
@@ -329,6 +334,42 @@ export function ChatView({
                       ) : null}
                     </article>
                   ))}
+                  {liveIndicator?.active ? (() => {
+                    const speakerCat = liveIndicator.catId
+                      ? payload.chat.cats.find((c) => c.id === liveIndicator.catId) ?? null
+                      : null;
+                    return (
+                      <article className="transcriptMessage transcriptMessageAgent typingIndicator">
+                        {speakerCat ? (
+                          <div className="transcriptMessageTop">
+                            <div
+                              className={speakerCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
+                              style={speakerCat.avatarUrl
+                                ? { backgroundImage: `url(${speakerCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
+                            >
+                              {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
+                            </div>
+                            <strong>{speakerCat.name}</strong>
+                          </div>
+                        ) : null}
+                        {liveIndicator.phase === 'waiting' ? (
+                          <span className="typingDots"><span /><span /><span /></span>
+                        ) : (
+                          <>
+                            {liveIndicator.progressText ? (
+                              <p className="typingProgressText">{liveIndicator.progressText}</p>
+                            ) : (
+                              <span className="typingDots"><span /><span /><span /></span>
+                            )}
+                            {liveIndicator.tools.filter((t) => !t.done).map((tool) => (
+                              <span key={tool.toolId} className="typingToolChip">{tool.toolName}</span>
+                            ))}
+                          </>
+                        )}
+                      </article>
+                    );
+                  })() : null}
                 </div>
               </section>
             ) : (

@@ -165,6 +165,7 @@ export function NewChatDraft({
   const chipLabel = selectedModel
     ? buildModelSelectorLabel(selectedModel)
     : '';
+  const isSubmittingFirstTurn = busy === 'message:send';
 
   return (
     <div className="viewShell viewShellDraft">
@@ -223,6 +224,7 @@ export function NewChatDraft({
             rows={1}
             placeholder="How can I help you today?"
             value={composerDraft}
+            disabled={isSubmittingFirstTurn}
             onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
             onKeyDown={(event) => void onComposerKeyDown(event)}
           />
@@ -233,6 +235,7 @@ export function NewChatDraft({
                   className="composerPlusButton"
                   type="button"
                   aria-label="Attach"
+                  disabled={isSubmittingFirstTurn}
                   onClick={onTogglePlusMenu}
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -245,6 +248,7 @@ export function NewChatDraft({
                     <button
                       className="composerPlusMenuItem"
                       type="button"
+                      disabled={isSubmittingFirstTurn}
                       onClick={onFileSelect}
                     >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -257,6 +261,7 @@ export function NewChatDraft({
                     <button
                       className="composerPlusMenuItem"
                       type="button"
+                      disabled={isSubmittingFirstTurn}
                       onClick={() => {
                         openSidePanelTo('cwd');
                       }}
@@ -281,6 +286,7 @@ export function NewChatDraft({
                   <button
                     className="composerChipClose"
                     type="button"
+                    disabled={isSubmittingFirstTurn}
                     onClick={onDraftCwdClear}
                     aria-label="Remove folder"
                   >
@@ -296,13 +302,13 @@ export function NewChatDraft({
                   .filter((c): c is NonNullable<typeof c> => c != null)]}
                 bossCatId={payload.chat.bossCatId}
                 leadCatId={effectiveLeadCat.id}
-                onClick={() => openSidePanelTo('execution')}
+                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
               />
             ) : activePanelModel && chipLabel ? (
               <div style={{ marginRight: 8 }}>
                 <ModelSelectorChip
                   label={chipLabel}
-                  onClick={() => openSidePanelTo('execution')}
+                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
                 />
               </div>
             ) : null}
@@ -322,6 +328,7 @@ export function NewChatDraft({
             ref={fileInputRef}
             type="file"
             multiple
+            disabled={isSubmittingFirstTurn}
             style={{ display: 'none' }}
             onChange={(event) => {
               const input = event.currentTarget;
@@ -338,8 +345,8 @@ export function NewChatDraft({
         <SidePanel
           title="New Chat Setup"
           activeSection={sidePanelSection}
-          onSectionToggle={switchSection}
-          onClose={() => setSidePanelOpen(false)}
+          onSectionToggle={isSubmittingFirstTurn ? () => {} : switchSection}
+          onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
           className="chatPaneSidePanel"
           sections={buildDraftSidePanelSections()}
         />

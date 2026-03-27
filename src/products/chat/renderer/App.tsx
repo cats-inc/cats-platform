@@ -13,6 +13,7 @@ import {
 
 import type { AppShellPayload } from '../api/contracts';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog';
+import { NotificationContainer, useNotifications } from '../../../design/components/Notification';
 import {
   CHAT_PREFIX,
   isNewChatPath,
@@ -40,6 +41,7 @@ import { useComposerSubmit } from './hooks/useComposerSubmit';
 import { useFolderBrowser } from './hooks/useFolderBrowser';
 import { useGovernanceActions } from './hooks/useGovernanceActions';
 import { useOperatorLoop } from './hooks/useOperatorLoop';
+import { useLiveIndicator } from './hooks/useLiveIndicator';
 import {
   updateCatProfile,
   updateChannelPendingExecutionTarget,
@@ -101,7 +103,14 @@ export default function App() {
   const [composerDraft, setComposerDraft] = useState('');
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [busy, setBusy] = useState('');
-  const [feedback, setFeedback] = useState('');
+  const { notifications, notify, dismiss } = useNotifications();
+  const feedback = '';
+  const setFeedback = useCallback((value: string | ((prev: string) => string)) => {
+    const text = typeof value === 'function' ? value('') : value;
+    if (text) {
+      notify({ title: 'Error', message: text, level: 'error' });
+    }
+  }, [notify]);
   const [addCatTab, setAddCatTab] = useState<'existing' | 'new'>('existing');
   const [greeting] = useState(pickGreeting);
   const [draftCwd, setDraftCwd] = useState<string | null>(null);
@@ -278,6 +287,11 @@ export default function App() {
     operatorState,
     setOperatorState,
   } = useOperatorLoop(readyPayload, operatorRefreshKey);
+  const liveIndicator = useLiveIndicator({
+    channelId: selectedChannel?.id ?? null,
+    busy,
+    selectedChannel,
+  });
   const {
     onComposerKeyDown,
     onSendMessage,
@@ -293,15 +307,15 @@ export default function App() {
     draftLeadCatId,
     draftCatIds,
     draftCwd,
-      draftFiles,
-      channelFiles,
-      setDraftCwd,
-      setDraftCatIds,
-      setDraftHighlightedCatId,
-      setDraftCatModelOverrides,
-      setDraftFiles,
-      setChannelFiles,
-      draftModel,
+    draftFiles,
+    channelFiles,
+    setDraftCwd,
+    setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
+    setDraftFiles,
+    setChannelFiles,
+    draftModel,
     soloChannelModel,
     selectedChannel,
     setBusy,
@@ -428,6 +442,7 @@ export default function App() {
     state,
     setState,
     navigate,
+    busy,
     routeChannelId,
     routeChannelExists,
     selectedChannelId,
@@ -741,6 +756,7 @@ export default function App() {
             onModelChange:
               selectedChannel?.composerMode === 'solo' ? setSoloChannelModel : undefined,
             onDirectLaneModelChange: onDirectLaneModelSave,
+            liveIndicator,
           }}
           draftSurfaceProps={{
             composerDraft,
@@ -820,6 +836,7 @@ export default function App() {
         />
       </main>
       <ConfirmDialog dialog={appDialog} onClose={appHandleClose} />
+      <NotificationContainer notifications={notifications} onDismiss={dismiss} />
     </div>
   );
 }

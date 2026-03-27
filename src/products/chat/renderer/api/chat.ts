@@ -2,6 +2,7 @@ import type {
   ActivateChannelResponse,
   AppShellPayload,
   AssignChannelCatInput,
+  ChatChannelView,
   CreateChatChannelInput,
   CreateCatInput,
   SendChannelMessageInput,
@@ -10,6 +11,7 @@ import type {
 
 import { fetchAppShell, refetchAfterMutation } from './appShell.js';
 import { expectJson } from './http.js';
+import { normalizeSelectedChannelView } from '../../shared/channelEntry.js';
 
 export async function deleteGlobalCat(
   catId: string,
@@ -31,7 +33,7 @@ export async function deleteGlobalCat(
 export async function createChatChannel(
   input: CreateChatChannelInput,
   signal?: AbortSignal,
-): Promise<AppShellPayload> {
+): Promise<ChatChannelView> {
   const response = await fetch('/api/channels', {
     method: 'POST',
     headers: {
@@ -42,11 +44,15 @@ export async function createChatChannel(
     signal,
   });
 
-  return refetchAfterMutation(
+  const { channel } = await expectJson<{ channel: ChatChannelView }>(
     response,
     `cats chat creation returned ${response.status}`,
-    signal,
   );
+  const normalized = normalizeSelectedChannelView(channel);
+  if (!normalized) {
+    throw new Error('Created channel payload was invalid.');
+  }
+  return normalized;
 }
 
 export async function renameChatChannel(

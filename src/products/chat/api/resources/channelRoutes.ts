@@ -335,6 +335,102 @@ async function handleRestActivateChannel(
   }
 }
 
+async function handleRestStreamChannel(
+  context: ChatApiRouteContext,
+  chatScopeId: string,
+  channelId: string,
+): Promise<void> {
+  let sseHeadersSent = false;
+
+  try {
+    requireValidChatScopeId(chatScopeId);
+    const state = await context.dependencies.chatStore.read();
+    const channel = requireChannel(state, channelId);
+
+    // Resolve session ID: prefer lead cat, fallback to orchestrator
+    let sessionId: string | null = null;
+    for (const assignment of channel.catAssignments) {
+      const sid = assignment.execution?.lease?.sessionId;
+      if (sid) { sessionId = sid; break; }
+    }
+    if (!sessionId) {
+      sessionId = channel.orchestratorLease?.sessionId ?? null;
+    }
+
+    // Write SSE headers
+    context.response.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-cache',
+      connection: 'keep-alive',
+    });
+    sseHeadersSent = true;
+
+    if (!sessionId) {
+      context.response.write('event: session_closed\ndata: {"type":"session_closed"}\n\n');
+      context.response.end();
+      return;
+    }
+
+    // Upstream SSE from cats-runtime
+    const abortController = new AbortController();
+    context.request.on('close', () => abortController.abort());
+
+    const { config } = context.dependencies;
+    const upstreamUrl = `${config.runtimeBaseUrl}/sessions/${sessionId}/stream`;
+    const headers: Record<string, string> = { Accept: 'text/event-stream' };
+    if (config.runtimeApiKey) {
+      headers['Authorization'] = `Bearer ${config.runtimeApiKey}`;
+    }
+
+    let upstream: Response;
+    try {
+      upstream = await fetch(upstreamUrl, { headers, signal: abortController.signal });
+    } catch {
+      context.response.write('event: error\ndata: {"type":"error","text":"Runtime stream unavailable"}\n\n');
+      context.response.end();
+      return;
+    }
+
+    if (!upstream.ok || !upstream.body) {
+      context.response.write('event: error\ndata: {"type":"error","text":"Runtime stream unavailable"}\n\n');
+      context.response.end();
+      return;
+    }
+
+    // Relay SSE chunks
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      for await (const chunk of upstream.body as AsyncIterable<Uint8Array>) {
+        if (abortController.signal.aborted) break;
+        buffer += decoder.decode(chunk, { stream: true });
+        const blocks = buffer.split(/\r?\n\r?\n/);
+        buffer = blocks.pop() ?? '';
+        for (const block of blocks) {
+          if (!block.trim()) continue;
+          // Pass through the raw SSE block unchanged
+          context.response.write(block + '\n\n');
+        }
+      }
+    } catch {
+      // Upstream closed or client disconnected — normal lifecycle
+    }
+
+    if (!context.response.writableEnded) {
+      context.response.end();
+    }
+  } catch (error) {
+    if (sseHeadersSent) {
+      try {
+        context.response.write(`event: error\ndata: {"type":"error","text":"Proxy error"}\n\n`);
+      } catch { /* response may already be closed */ }
+      if (!context.response.writableEnded) context.response.end();
+    } else {
+      handleRestError(context, error);
+    }
+  }
+}
+
 async function handleRestGetExport(
   context: ChatApiRouteContext,
   chatScopeId: string,
@@ -423,6 +519,23 @@ export async function routeChatChannelResourceApi(
       context,
       DEFAULT_CHAT_SCOPE_ID,
       canonicalChannelActivationsMatch[0]!,
+    );
+    return true;
+  }
+
+  const canonicalChannelStreamMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/stream$/u,
+  );
+  if (canonicalChannelStreamMatch) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    await handleRestStreamChannel(
+      context,
+      DEFAULT_CHAT_SCOPE_ID,
+      canonicalChannelStreamMatch[0]!,
     );
     return true;
   }
