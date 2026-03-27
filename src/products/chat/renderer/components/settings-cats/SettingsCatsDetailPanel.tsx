@@ -297,60 +297,66 @@ export function SettingsCatsDetailPanel({
             No webhook traffic has been recorded for this cat yet.
           </p>
         ) : null}
-        <div className="botBindingForm">
-          <input
-            className="textInput"
-            placeholder="Bot username (e.g. my_cat_bot)"
-            value={botForm.botName}
-            onChange={(event) => setBotForm({ ...botForm, botName: event.target.value })}
-          />
-          <input
-            className="textInput"
-            placeholder="Bot token"
-            type="password"
-            value={botForm.botToken}
-            onChange={(event) => setBotForm({ ...botForm, botToken: event.target.value })}
-          />
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <label style={{ opacity: 0.8, fontSize: 12 }}>Mode:</label>
-            <button
-              type="button"
-              className={`chromeButton${botForm.inboundMode === 'polling' ? ' chromeButtonActive' : ''}`}
-              onClick={() => setBotForm({ ...botForm, inboundMode: 'polling' })}
-              style={{ fontSize: 11 }}
-            >
-              Polling
-            </button>
-            <button
-              type="button"
-              className={`chromeButton${botForm.inboundMode === 'webhook' ? ' chromeButtonActive' : ''}`}
-              onClick={() => setBotForm({ ...botForm, inboundMode: 'webhook' })}
-              style={{ fontSize: 11 }}
-            >
-              Webhook
-            </button>
-          </div>
-          {botForm.inboundMode === 'webhook' ? (
+        {catBindings.length === 0 ? (
+          <div className="botBindingForm">
             <input
               className="textInput"
-              placeholder="Webhook secret (optional)"
-              value={botForm.webhookSecret}
-              onChange={(event) => setBotForm({ ...botForm, webhookSecret: event.target.value })}
+              placeholder="Bot username (e.g. my_cat_bot)"
+              value={botForm.botName}
+              onChange={(event) => setBotForm({ ...botForm, botName: event.target.value })}
             />
-          ) : null}
-          <button
-            className="primaryButton"
-            type="button"
-            disabled={!botForm.botName.trim() || busy === 'bot:create' || !canBindTelegramBot}
-            onClick={() => void onCreateBinding(cat.id)}
-          >
-            {busy === 'bot:create'
-              ? 'Creating...'
-              : canBindTelegramBot
-                ? 'Add Telegram Bot'
-                : 'Unavailable for archived/non-chat cats'}
-          </button>
-        </div>
+            <input
+              className="textInput"
+              placeholder="Bot token"
+              type="password"
+              value={botForm.botToken}
+              onChange={(event) => setBotForm({ ...botForm, botToken: event.target.value })}
+            />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ opacity: 0.8, fontSize: 12 }}>Mode:</label>
+              <button
+                type="button"
+                className={`chromeButton${botForm.inboundMode === 'polling' ? ' chromeButtonActive' : ''}`}
+                onClick={() => setBotForm({ ...botForm, inboundMode: 'polling' })}
+                style={{ fontSize: 11 }}
+              >
+                Polling
+              </button>
+              <button
+                type="button"
+                className={`chromeButton${botForm.inboundMode === 'webhook' ? ' chromeButtonActive' : ''}`}
+                onClick={() => setBotForm({ ...botForm, inboundMode: 'webhook' })}
+                style={{ fontSize: 11 }}
+              >
+                Webhook
+              </button>
+            </div>
+            {botForm.inboundMode === 'webhook' ? (
+              <input
+                className="textInput"
+                placeholder="Webhook secret (optional)"
+                value={botForm.webhookSecret}
+                onChange={(event) => setBotForm({ ...botForm, webhookSecret: event.target.value })}
+              />
+            ) : null}
+            <button
+              className="primaryButton"
+              type="button"
+              disabled={!botForm.botName.trim() || busy === 'bot:create' || !canBindTelegramBot}
+              onClick={() => void onCreateBinding(cat.id)}
+            >
+              {busy === 'bot:create'
+                ? 'Creating...'
+                : canBindTelegramBot
+                  ? 'Add Telegram Bot'
+                  : 'Unavailable for archived/non-chat cats'}
+            </button>
+          </div>
+        ) : (
+          <p style={{ opacity: 0.6, marginBottom: 8 }}>
+            This Cat already has a Telegram bot. Remove it first if you want to bind another one.
+          </p>
+        )}
       </div>
 
       <div className="catDetailSection">

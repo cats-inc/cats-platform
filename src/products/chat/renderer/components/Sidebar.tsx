@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type RefObject, type MouseEvent as ReactMouseEvent } from 'react';
 
 import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts';
-import { catInitials, isChatCat, presentChannelTitle, type Surface } from '../chatUtils';
+import {
+  catInitials,
+  isChatCat,
+  presentChannelTitle,
+  sortChatCatsForDisplay,
+  type Surface,
+} from '../chatUtils';
 import {
   findDirectLaneForCat,
   resolveMyCatStatusDot,
@@ -473,14 +479,10 @@ export function Sidebar({
           <section className="myCatsSection">
             <p className="sectionLabel">My Cats</p>
             <div className="myCatsList">
-              {[...chatCats]
-                .filter((cat) => cat.status === 'active')
-                .sort((a, b) => {
-                  const aIsBoss = a.id === payload.chat.bossCatId ? 0 : 1;
-                  const bIsBoss = b.id === payload.chat.bossCatId ? 0 : 1;
-                  return aIsBoss - bIsBoss;
-                })
-                .map((cat) => {
+              {sortChatCatsForDisplay(
+                chatCats.filter((cat) => cat.status === 'active'),
+                { bossCatIds: payload.chat.bossCatId },
+              ).map((cat) => {
                   const isBoss = cat.id === payload.chat.bossCatId;
                   const isActive = activeMyCatId === cat.id;
                   const hasTelegramBinding = telegramBoundCatIds.has(cat.id);

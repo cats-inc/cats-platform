@@ -17,6 +17,22 @@ export function createChatTelegramRoomBridge(input: {
     writeState(state) {
       return input.chatStore.write(state);
     },
+    findReusableRoomId(state, room) {
+      if (room.roomMode !== 'direct_cat_chat') {
+        return null;
+      }
+
+      const leadCatId = room.leadParticipantId
+        ?? (room.participantCatIds.length === 1 ? room.participantCatIds[0] : null);
+      if (!leadCatId) {
+        return null;
+      }
+
+      return state.channels.find((channel) =>
+        channel.roomRouting?.mode === 'direct_cat_chat'
+        && channel.roomRouting.leadParticipantId === leadCatId,
+      )?.id ?? null;
+    },
     createRoom(state, room, timestamp) {
       const nextState = createChannel(
         state,

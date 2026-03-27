@@ -15,6 +15,7 @@ import type { TelegramRelay } from '../../platform/transports/telegram/relay/ind
 import { defaultCatProducts, hasSuiteSurface } from '../../shared/suiteSurfaces.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
+import { normalizeEffectiveBotBinding } from '../../products/chat/state/botBindings.js';
 
 interface TelegramQueryDependencies {
   chatStore: ChatStore;
@@ -158,10 +159,12 @@ async function readTelegramContext(
   ]);
   const bossCatId = chatState.bossCatId;
   const bossCatActorId = bossCatId ? createCatActorId(bossCatId) : null;
-  const activeTelegramBindings = core.botBindings.filter((binding) =>
-    binding.platform === 'telegram'
-    && isActiveChatBinding(chatState, binding),
-  );
+  const activeTelegramBindings = core.botBindings
+    .filter((binding) =>
+      binding.platform === 'telegram'
+      && isActiveChatBinding(chatState, binding),
+    )
+    .map((binding) => normalizeEffectiveBotBinding(binding));
   const defaultBotBinding = bossCatActorId
     ? activeTelegramBindings.find((binding) =>
       binding.catActorId === bossCatActorId || binding.bossCatActorId === bossCatActorId,

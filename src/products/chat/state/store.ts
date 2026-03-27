@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -31,19 +32,26 @@ async function writePersistedChatSnapshot(
 ): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   const serialized = `${JSON.stringify(snapshot, null, 2)}\n`;
-  const tempPath = `${filePath}.tmp`;
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`,
+  );
   const backupPath = `${filePath}.bak`;
 
-  await writeFile(tempPath, serialized, 'utf-8');
   try {
-    await copyFile(filePath, backupPath);
-  } catch (error) {
-    if (!(isErrnoException(error) && error.code === 'ENOENT')) {
-      throw error;
+    await writeFile(tempPath, serialized, 'utf-8');
+    try {
+      await copyFile(filePath, backupPath);
+    } catch (error) {
+      if (!(isErrnoException(error) && error.code === 'ENOENT')) {
+        throw error;
+      }
     }
+    await rm(filePath, { force: true });
+    await rename(tempPath, filePath);
+  } finally {
+    await rm(tempPath, { force: true }).catch(() => {});
   }
-  await rm(filePath, { force: true });
-  await rename(tempPath, filePath);
 }
 
 function createDefaultSnapshot(now: Date = new Date()): PersistedChatSnapshot {

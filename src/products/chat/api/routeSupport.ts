@@ -47,6 +47,7 @@ import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
 import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import type { ChatStore } from '../state/store.js';
+import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
 import type {
   AppShellPayload,
   AssignChannelCatInput,
@@ -232,7 +233,7 @@ export async function buildAppShellPayload(
       catId: matchedCat?.id ?? null,
       catName: matchedCat?.name ?? null,
       inboundMode: binding.inboundMode ?? 'polling',
-      roomMode: binding.roomMode ?? (matchedCat?.id === resolvedState.bossCatId ? 'boss_chat' : 'direct_cat_chat'),
+      roomMode: resolveEffectiveBotBindingRoomMode(binding),
       isBossBinding: Boolean(resolvedState.bossCatId && matchedCat?.id === resolvedState.bossCatId),
       status: binding.status,
       updatedAt: binding.updatedAt,

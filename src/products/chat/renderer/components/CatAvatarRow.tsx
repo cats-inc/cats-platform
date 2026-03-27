@@ -1,5 +1,5 @@
 import type { ChatCat } from '../../api/contracts';
-import { catInitials } from '../chatUtils';
+import { catInitials, sortChatCatsForDisplay } from '../chatUtils';
 
 export interface CatAvatarRowProps {
   cats: ChatCat[];
@@ -24,11 +24,7 @@ export function CatAvatarRow({
   onToggle,
   onHighlight,
 }: CatAvatarRowProps) {
-  const sorted = [...cats].sort((a, b) => {
-    const aRank = a.id === bossCatId ? 0 : 1;
-    const bRank = b.id === bossCatId ? 0 : 1;
-    return aRank - bRank;
-  });
+  const sorted = sortChatCatsForDisplay(cats, { bossCatIds: bossCatId });
 
   if (sorted.length === 0) return null;
 

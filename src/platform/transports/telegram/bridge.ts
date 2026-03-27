@@ -41,6 +41,12 @@ export interface TelegramRoomBridgeCreateRoomInput {
   participantCatIds: string[];
 }
 
+export interface TelegramRoomBridgeReusableRoomLookupInput {
+  roomMode: RoomRoutingMode;
+  leadParticipantId?: string;
+  participantCatIds: string[];
+}
+
 export interface TelegramRoomBridgeState {
   selectedChannelId: string;
   channels: Array<{ id: string }>;
@@ -60,6 +66,10 @@ export interface TelegramRoomBridgeRecoveryInput<TState extends TelegramRoomBrid
 export interface TelegramRoomBridge<TState extends TelegramRoomBridgeState = TelegramRoomBridgeState> {
   readState(): Promise<TState>;
   writeState(state: TState): Promise<TState>;
+  findReusableRoomId(
+    state: TState,
+    input: TelegramRoomBridgeReusableRoomLookupInput,
+  ): string | null;
   createRoom(
     state: TState,
     input: TelegramRoomBridgeCreateRoomInput,
@@ -191,6 +201,15 @@ function buildRoomTopic(
   return `Telegram inbox ${viaBot} from ${sender}`;
 }
 
+function roomExists<TState extends TelegramRoomBridgeState>(
+  state: TState,
+  roomId: string | null,
+): roomId is string {
+  return typeof roomId === 'string'
+    && roomId.length > 0
+    && state.channels.some((channel) => channel.id === roomId);
+}
+
 function restoreSelection<TState extends TelegramRoomBridgeState>(
   state: TState,
   selectedChannelId: string,
@@ -318,23 +337,31 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
   let dispatchedState: TState | null = null;
   let messageCountBeforeDispatch: number | null = null;
   const inboundBody = buildInboundBody(message);
+  const roomMode = resolveInternalRoomMode(activeBinding);
+  const createRoomInput: TelegramRoomBridgeCreateRoomInput = {
+    title: roomMode === 'direct_cat_chat' ? '' : buildRoomTitle(message, boundCat.catName),
+    topic: buildRoomTopic(activeBinding, senderName, input.receipt.chatId),
+    roomMode,
+    leadParticipantId: roomMode === 'direct_cat_chat' ? boundCat.catId ?? undefined : undefined,
+    participantCatIds: roomMode === 'direct_cat_chat' && boundCat.catId ? [boundCat.catId] : [],
+  };
 
   try {
+    if (roomMode === 'direct_cat_chat') {
+      roomId = input.roomBridge.findReusableRoomId(nextState, createRoomInput);
+    }
+
     if (
-      shouldCreateNewRoom(message, roomId)
-      || (roomId && !nextState.channels.some((channel) => channel.id === roomId))
+      !roomExists(nextState, roomId)
+      || (
+        roomMode !== 'direct_cat_chat'
+        && shouldCreateNewRoom(message, roomId)
+      )
     ) {
       const previousSelection = nextState.selectedChannelId;
-      const roomMode = resolveInternalRoomMode(activeBinding);
       const nextRoomState = input.roomBridge.createRoom(
         nextState,
-        {
-          title: buildRoomTitle(message, boundCat.catName),
-          topic: buildRoomTopic(activeBinding, senderName, input.receipt.chatId),
-          roomMode,
-          leadParticipantId: roomMode === 'direct_cat_chat' ? boundCat.catId ?? undefined : undefined,
-          participantCatIds: roomMode === 'direct_cat_chat' && boundCat.catId ? [boundCat.catId] : [],
-        },
+        createRoomInput,
         timestamp,
       );
       roomId = nextRoomState.roomId;

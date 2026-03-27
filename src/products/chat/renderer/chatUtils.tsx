@@ -51,6 +51,55 @@ export function executionLabel(cat: ChatCat): string {
   );
 }
 
+function normalizePinnedCatIds(
+  bossCatIds: string | string[] | null | undefined,
+): Set<string> {
+  if (Array.isArray(bossCatIds)) {
+    return new Set(bossCatIds.filter((value): value is string => Boolean(value)));
+  }
+  return bossCatIds ? new Set([bossCatIds]) : new Set<string>();
+}
+
+export interface SortChatCatsOptions {
+  bossCatIds?: string | string[] | null;
+  archivedLast?: boolean;
+}
+
+export function compareChatCatsForDisplay(
+  left: ChatCat,
+  right: ChatCat,
+  options: SortChatCatsOptions = {},
+): number {
+  const pinnedCatIds = normalizePinnedCatIds(options.bossCatIds);
+  if (options.archivedLast) {
+    const leftArchived = left.status === 'archived' ? 1 : 0;
+    const rightArchived = right.status === 'archived' ? 1 : 0;
+    if (leftArchived !== rightArchived) {
+      return leftArchived - rightArchived;
+    }
+  }
+
+  const leftPinned = pinnedCatIds.has(left.id) ? 0 : 1;
+  const rightPinned = pinnedCatIds.has(right.id) ? 0 : 1;
+  if (leftPinned !== rightPinned) {
+    return leftPinned - rightPinned;
+  }
+
+  const createdAtOrder = left.createdAt.localeCompare(right.createdAt);
+  if (createdAtOrder !== 0) {
+    return createdAtOrder;
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
+export function sortChatCatsForDisplay(
+  cats: ChatCat[],
+  options: SortChatCatsOptions = {},
+): ChatCat[] {
+  return [...cats].sort((left, right) => compareChatCatsForDisplay(left, right, options));
+}
+
 export interface TranscriptMessageSpeaker {
   kind: 'none' | 'cat' | 'provider' | 'deleted_cat' | 'name';
   label: string | null;

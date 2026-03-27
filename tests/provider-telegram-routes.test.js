@@ -639,6 +639,9 @@ test('telegram webhook uses the injected room bridge seam', async () => {
         writeState(state) {
           return roomBridge.writeState(state);
         },
+        findReusableRoomId(state, input) {
+          return roomBridge.findReusableRoomId(state, input);
+        },
         createRoom(state, input, timestamp) {
           createRoomCalls += 1;
           return roomBridge.createRoom(state, input, timestamp);
@@ -953,6 +956,180 @@ test('telegram webhook routes can scope ingress to a specific bot binding path a
       && binding.conversationId === `telegram:${bindingId}:12345`
       && binding.linkedRoomId));
   });
+});
+
+test('telegram webhook for a cat binding reuses that cat direct lane', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await configureTelegramBossCat(baseUrl);
+
+    const createCompanionResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        skillProfile: 'companion',
+      }),
+    });
+    assert.equal(createCompanionResponse.status, 201);
+    const createCompanionPayload = await createCompanionResponse.json();
+    const catId = createCompanionPayload.cat.id;
+
+    const directLaneResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: '',
+        topic: 'Companion direct lane',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [catId],
+        leadParticipantId: catId,
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(directLaneResponse.status, 201);
+    const directLanePayload = await directLaneResponse.json();
+    const directLaneId = directLanePayload.channel.id;
+
+    const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'companion_bot',
+        catId,
+        roomMode: 'direct_cat_chat',
+        webhookSecret: 'companion-secret',
+      }),
+    });
+    assert.equal(bindingResponse.status, 201);
+    const bindingPayload = await bindingResponse.json();
+    const bindingId = bindingPayload.botBinding.id;
+
+    const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook/${bindingId}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-telegram-bot-api-secret-token': 'companion-secret',
+      },
+      body: JSON.stringify({
+        update_id: 301,
+        message: {
+          message_id: 188,
+          text: 'hello companion',
+          chat: { id: 67890, type: 'private' },
+          from: { id: 8, first_name: 'Kenny' },
+        },
+      }),
+    });
+    assert.equal(webhookResponse.status, 202);
+
+    const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+    assert.equal(diagnosticsResponse.status, 200);
+    const diagnosticsPayload = await diagnosticsResponse.json();
+    const telegramBinding = diagnosticsPayload.telegram.bindings.find((binding) =>
+      binding.bindingId === bindingId
+      && binding.conversationId === `telegram:${bindingId}:67890`,
+    );
+
+    assert.ok(telegramBinding);
+    assert.equal(telegramBinding.linkedRoomId, directLaneId);
+
+    const roomResponse = await fetch(`${baseUrl}/api/channels/${directLaneId}`);
+    assert.equal(roomResponse.status, 200);
+    const roomPayload = await roomResponse.json();
+    assert.equal(roomPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(roomPayload.channel.roomRouting.leadParticipantId, catId);
+
+    const messagesResponse = await fetch(`${baseUrl}/api/channels/${directLaneId}/messages`);
+    assert.equal(messagesResponse.status, 200);
+    const messagesPayload = await messagesResponse.json();
+    assert.ok(messagesPayload.messages.some((message) =>
+      message.senderKind === 'user' && message.body === 'hello companion'));
+    assert.ok(messagesPayload.messages.some((message) =>
+      message.senderKind === 'agent' && message.senderName === 'Companion'));
+  });
+});
+
+test('telegram webhook normalizes legacy boss room mode for cat-bound bots into direct lanes', async () => {
+  const chatStore = new MemoryChatStore();
+
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await configureTelegramBossCat(baseUrl);
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellResponse.status, 200);
+    const shellPayload = await shellResponse.json();
+    const bossCatId = shellPayload.chat.bossCatId;
+    assert.ok(bossCatId);
+
+    const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'legacy_boss_bot',
+        catId: bossCatId,
+        webhookSecret: 'legacy-secret',
+      }),
+    });
+    assert.equal(bindingResponse.status, 201);
+    const bindingPayload = await bindingResponse.json();
+    const bindingId = bindingPayload.botBinding.id;
+
+    const core = await chatStore.readCore();
+    await chatStore.writeCore({
+      ...core,
+      botBindings: core.botBindings.map((binding) =>
+        binding.id === bindingId
+          ? {
+              ...binding,
+              roomMode: 'boss_chat',
+            }
+          : binding),
+    });
+
+    const shellAfterLegacyResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellAfterLegacyResponse.status, 200);
+    const shellAfterLegacyPayload = await shellAfterLegacyResponse.json();
+    const legacyBinding = shellAfterLegacyPayload.chat.botBindings.find((binding) => binding.id === bindingId);
+    assert.equal(legacyBinding.roomMode, 'direct_cat_chat');
+
+    const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook/${bindingId}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-telegram-bot-api-secret-token': 'legacy-secret',
+      },
+      body: JSON.stringify({
+        update_id: 401,
+        message: {
+          message_id: 288,
+          text: 'hello legacy boss cat',
+          chat: { id: 77889, type: 'private' },
+          from: { id: 12, first_name: 'Kenny' },
+        },
+      }),
+    });
+    assert.equal(webhookResponse.status, 202);
+
+    const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+    assert.equal(diagnosticsResponse.status, 200);
+    const diagnosticsPayload = await diagnosticsResponse.json();
+    const telegramBinding = diagnosticsPayload.telegram.bindings.find((binding) =>
+      binding.bindingId === bindingId
+      && binding.conversationId === `telegram:${bindingId}:77889`,
+    );
+
+    assert.ok(telegramBinding);
+    assert.ok(telegramBinding.linkedRoomId);
+
+    const roomResponse = await fetch(`${baseUrl}/api/channels/${telegramBinding.linkedRoomId}`);
+    assert.equal(roomResponse.status, 200);
+    const roomPayload = await roomResponse.json();
+    assert.equal(roomPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(roomPayload.channel.roomRouting.leadParticipantId, bossCatId);
+  }, chatStore);
 });
 
 test('telegram relay state survives restart with file-backed chat storage', async () => {

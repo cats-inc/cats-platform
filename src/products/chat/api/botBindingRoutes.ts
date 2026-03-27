@@ -8,6 +8,7 @@ import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
+import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
 import { requireCat } from '../state/model/index.js';
 import type {
   CreateBotBindingInput,
@@ -70,7 +71,7 @@ function summarizeBinding(
     catId: cat?.id ?? null,
     catName: cat?.name ?? null,
     inboundMode: binding.inboundMode,
-    roomMode: binding.roomMode,
+    roomMode: resolveEffectiveBotBindingRoomMode(binding),
     isBossBinding: Boolean(context.bossCatId && cat?.id === context.bossCatId),
     status: binding.status,
     updatedAt: binding.updatedAt,
@@ -115,7 +116,7 @@ function createBindingRecord(
     botToken: trimNullableString(input.botToken),
     webhookSecret: trimNullableString(input.webhookSecret),
     inboundMode,
-    roomMode: input.roomMode ?? (isBossBinding ? 'boss_chat' : 'direct_cat_chat'),
+    roomMode: input.roomMode === 'boss_chat' ? 'direct_cat_chat' : input.roomMode ?? 'direct_cat_chat',
     status: 'active',
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -210,14 +211,16 @@ async function handleUpdateBotBinding(
 
   let catActorId = existing.catActorId ?? existing.bossCatActorId;
   let bossCatActorId = existing.bossCatActorId;
-  let roomMode = body.roomMode ?? existing.roomMode;
+  let roomMode = body.roomMode === 'boss_chat'
+    ? 'direct_cat_chat'
+    : body.roomMode ?? resolveEffectiveBotBindingRoomMode(existing);
 
   if (body.catId !== undefined) {
     const cat = requireBindableCat(chat, body.catId);
     catActorId = createCatActorId(cat.id);
     bossCatActorId = chat.bossCatId === cat.id ? catActorId : null;
     if (body.roomMode === undefined) {
-      roomMode = chat.bossCatId === cat.id ? 'boss_chat' : 'direct_cat_chat';
+      roomMode = 'direct_cat_chat';
     }
   }
 

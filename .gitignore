@@ -22,6 +22,7 @@ build/
 release/
 config/*.local.json
 config/*.local.*.json
+config/chat-state.local.json.bak
 suite-preferences.json
 
 # === Node.js ===

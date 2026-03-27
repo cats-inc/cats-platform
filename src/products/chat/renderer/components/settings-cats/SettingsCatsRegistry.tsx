@@ -2,7 +2,7 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../../api/contracts';
 import type { TelegramTransportDiagnostics } from '../../api';
-import { executionLabel } from '../../chatUtils';
+import { executionLabel, sortChatCatsForDisplay } from '../../chatUtils';
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory';
 import type { BotFormState } from '../../hooks/useSettingsCatsRegistryActions';
 import { SettingsCatsDetailPanel } from './SettingsCatsDetailPanel';
@@ -56,13 +56,9 @@ export function SettingsCatsRegistry({
   const visibleCats = showArchived
     ? payload.chat.cats
     : payload.chat.cats.filter((c) => c.status !== 'archived');
-  const sortedCats = [...visibleCats].sort((left, right) => {
-    const leftArchived = left.status === 'archived' ? 1 : 0;
-    const rightArchived = right.status === 'archived' ? 1 : 0;
-    if (leftArchived !== rightArchived) return leftArchived - rightArchived;
-    const leftRank = left.id === payload.chat.bossCatId ? 0 : 1;
-    const rightRank = right.id === payload.chat.bossCatId ? 0 : 1;
-    return leftRank - rightRank;
+  const sortedCats = sortChatCatsForDisplay(visibleCats, {
+    bossCatIds: payload.chat.bossCatId,
+    archivedLast: true,
   });
 
   return (
