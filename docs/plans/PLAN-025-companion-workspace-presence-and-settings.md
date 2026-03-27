@@ -37,24 +37,29 @@ companion mode with:
 - companion-owned settings
 - future room for rituals and proactive behavior
 
+**Prerequisite**: [PLAN-019](./PLAN-019-companion-box-sidecar-and-session-hydration.md)
+Phase 3 runtime-side hydration consumption should be resolved before or in
+parallel with this plan's Phase 2.
+
 ## Implementation Phases
 
 ### Phase 1: Companion Read Models and Contracts
 
 - [ ] Define a product-owned `CompanionWorkspaceView` / equivalent read model
 - [ ] Normalize companion dashboard sections:
-      - overview
-      - resources
-      - creations
+      - overview (including curated memory highlights and memory management entry)
+      - resources (maps to CompanionBox `sources`)
+      - creations (projection of runtime-produced artifacts)
       - settings
-- [ ] Add stable presence-state and behavior-style records/helpers
-- [ ] Define a companion settings contract that includes:
+- [ ] Add stable presence-state and reply-style records/helpers aligned with
+      SPEC-029's `replyStyle` (`verbal` / `vocalization`)
+- [ ] Define a `CompanionSettings` contract that wraps `CompanionResponseProfile`
+      and adds:
       - Telegram binding linkage
       - avatar
       - background image
       - background music
-      - awake/sleeping
-      - human-like/cat-like behavior
+      - awake/sleeping presence state
 
 **Deliverables**: stable product-owned contracts for visible companion state.
 
@@ -63,21 +68,24 @@ companion mode with:
 - [ ] Add a companion-aware workspace shell above direct Cat chat
 - [ ] Add transcript-side quick controls for:
       - awake/sleeping
-      - human-like/cat-like
+      - verbal/vocalization (reply style)
 - [ ] Keep `Disturb` implicit rather than introducing a separate toggle
 - [ ] Ensure the workspace can coexist with the broader Chat layout rules
       without reviving always-on operator clutter
 
 **Deliverables**: visible companion-mode shell and header controls.
 
-### Phase 3: Resources and Creations Surfaces
+### Phase 3: Resources, Creations, and Memory Surfaces
 
-- [ ] Build `Resources` view from companion-box sources plus curated memory
-      context where appropriate
-- [ ] Build `Creations` view from companion-produced outputs/artifacts
+- [ ] Build `Resources` view from companion-box sources
+- [ ] Build `Creations` view as a projection/index of runtime-produced
+      artifacts attributed to the companion Cat
 - [ ] Keep the distinction between owner-given and companion-produced items
       explicit in the UI/read model
 - [ ] Add focused artifact promotion/open behavior from those views
+- [ ] Build a dedicated memory management entry point (browsable, editable,
+      deletable durable memory records) accessible from Overview or as a
+      distinct dashboard sub-view
 
 **Deliverables**: companion library surfaces that make resources and creations
 legible.
@@ -138,17 +146,20 @@ registry panels.
 ## Testing Strategy
 
 - **Unit Tests**
-  - presence/behavior state normalization
+  - presence/reply-style state normalization
   - companion settings normalization
   - resource vs creation read-model assembly
+  - memory management CRUD operations
 - **Integration Tests**
   - companion routes/settings persistence
   - Telegram binding interactions for companion settings
   - direct companion room hydration with updated presence/profile settings
+  - memory browse/edit/delete flows
 - **Renderer/Behavior Tests**
-  - header quick toggles
+  - header quick toggles (awake/sleeping, verbal/vocalization)
   - dashboard section switching
   - artifact promotion from resources/creations
+  - memory highlights in overview and memory management entry
 
 ## Risks & Mitigations
 

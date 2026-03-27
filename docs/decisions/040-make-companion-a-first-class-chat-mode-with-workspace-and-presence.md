@@ -81,13 +81,13 @@ The dashboard should support at least these sections:
 Focused artifact viewing is allowed, but artifact view is not the whole
 companion product surface.
 
-### 3. Presence and behavior style remain product-owned
+### 3. Presence and reply style remain product-owned
 
 Companion state such as:
 
 - `awake`
 - `sleeping`
-- behavior style such as `human-like` vs `cat-like`
+- reply style such as `verbal` vs `vocalization`
 
 shall remain product-owned.
 
