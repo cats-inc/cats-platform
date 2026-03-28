@@ -51,6 +51,8 @@ The current slices are:
   pre-reset / pre-compaction flush payloads for companion, owner, and channel
   memory
 - provider-agnostic cat memory checkpoints plus channel-scoped execution leases
+- transcript-adjacent live runtime event tapes that retain recent progress,
+  text, and tool milestones instead of collapsing to a single indicator line
 
 ## Current Status
 
@@ -85,6 +87,8 @@ The current slices are:
       memory flush seams without adding an external RAG dependency; curated
       cat/owner notes plus companion source mutations now sync into canonical
       retrieval, carry lineage-aware flush payloads, and replace stale hits
+- [x] Land transcript-adjacent live event tapes in Chat and Code so recent
+      progress, text, and tool milestones stay visible while runs are active
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open

@@ -544,6 +544,50 @@
   font-size: 0.75rem;
 }
 
+.typingEventTape {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.typingEventRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: var(--panel-hover);
+}
+
+.typingEventRowActive {
+  border-left: 2px solid var(--accent);
+}
+
+.typingEventRowSuccess {
+  border-left: 2px solid var(--ready-text);
+}
+
+.typingEventRowError {
+  border-left: 2px solid var(--danger);
+}
+
+.typingEventLabel {
+  color: var(--muted-soft);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.typingEventText {
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
 /* ── Avatar pulse for working cat ── */
 
 .catAvatarPulsing {
