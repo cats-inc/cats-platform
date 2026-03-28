@@ -271,6 +271,7 @@ export function resolveWorkflowRecommendationTargets(
   recommendation: WorkflowRecommendation,
 ): WorkflowRecommendationResolution {
   const channel = buildChannelView(state, channelId);
+  const isDirectLane = channel.roomRouting?.mode === 'direct_cat_chat';
   const catsById = new Map(
     channel.assignedCats
       .filter((cat) => cat.status === 'active')
@@ -302,6 +303,10 @@ export function resolveWorkflowRecommendationTargets(
       || (normalizedId && orchestratorAliases.has(normalizedId.toLowerCase()))
       || (normalizedName && orchestratorAliases.has(normalizedName.toLowerCase()))
     ) {
+      if (isDirectLane) {
+        unresolved.push(normalizedName ?? normalizedId ?? 'orchestrator');
+        continue;
+      }
       target = orchestrator;
     } else if (normalizedId && catsById.has(normalizedId)) {
       const cat = catsById.get(normalizedId)!;

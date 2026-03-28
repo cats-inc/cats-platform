@@ -951,6 +951,152 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   assert.equal(channel.status, 'active');
 });
 
+test('direct cat chat blocks explicit Boss Cat mentions instead of routing out of lane', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Smelly',
+      provider: 'claude',
+      roles: ['boss'],
+    },
+    now,
+  );
+  state.bossCatId = state.cats[0].id;
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Stay on the direct lane even when Boss Cat is mentioned.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Smelly please take this over.' },
+    runtimeClient,
+    now,
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 0);
+  assert.equal(runtimeClient.sentMessages.length, 0);
+  assert.equal(channel.orchestratorLease.sessionId, null);
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'blocked');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.blockedReason, 'no_valid_targets');
+  assert.deepEqual(channel.roomRouting?.lastOutcome?.unresolvedMentions, ['Smelly']);
+  assert.match(channel.messages.at(-2)?.body ?? '', /Unresolved mentions: @Smelly/u);
+  assert.match(channel.messages.at(-1)?.body ?? '', /No valid room targets matched the explicit mentions/i);
+});
+
+test('direct cat chat ignores workflow recommendations that target Boss Cat', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Smelly',
+      provider: 'claude',
+      roles: ['boss'],
+    },
+    now,
+  );
+  state.bossCatId = state.cats[0].id;
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Structured handoffs must not escape the direct lane.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Companion')) {
+      return usage([
+        'I think Boss Cat should take a look.',
+        '```json',
+        JSON.stringify({
+          workflowRecommendation: {
+            workflowShape: 'sequential',
+            candidateTargetNames: ['Smelly'],
+            branchStrategy: 'transplant_context',
+            rationale: 'Escalate to Boss Cat.',
+          },
+        }),
+        '```',
+      ].join('\n'));
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Handle this and keep the lane direct.' },
+    runtimeClient,
+    now,
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+  const noTargetCheckpoint = channel.roomRouting?.workflow.turnHistory[0]?.events.find(
+    (event) => event.kind === 'checkpoint' && event.metadata.checkpointKind === 'no_targets',
+  );
+
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(runtimeClient.sentMessages.length, 1);
+  assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Smelly')), false);
+  assert.equal(channel.orchestratorLease.sessionId, null);
+  assert.equal(channel.roomRouting?.lastOutcome?.continuationCount, 0);
+  assert.equal(noTargetCheckpoint?.metadata.continuationSource, 'workflow_recommendation');
+  assert.deepEqual(noTargetCheckpoint?.metadata.unresolvedTargets, ['Smelly']);
+  assert.match(channel.messages.at(-1)?.body ?? '', /I think Boss Cat should take a look\./u);
+});
+
 test('direct cat chat recreates a stale lead-cat session once when runtime reports session not found', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();

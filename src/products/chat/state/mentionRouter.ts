@@ -222,6 +222,7 @@ export function resolveMentionRoute(
   const activeCats = activeAssignedCats(channel);
   const catsByName = new Map(activeCats.map((cat) => [cat.name.toLowerCase(), cat]));
   const orchestratorTarget = buildOrchestratorTarget(state, channel);
+  const isDirectLane = channel.roomRouting?.mode === 'direct_cat_chat';
   const orchestratorMentionAliases = new Set([
     ORCHESTRATOR_NAME.toLowerCase(),
     orchestratorTarget.participantName.toLowerCase(),
@@ -259,6 +260,10 @@ export function resolveMentionRoute(
   for (const mentionName of mentionNames) {
     const normalizedMention = mentionName.toLowerCase();
     if (orchestratorMentionAliases.has(normalizedMention)) {
+      if (isDirectLane) {
+        unresolved.push(mentionName);
+        continue;
+      }
       const key = `${orchestratorTarget.participantKind}:${orchestratorTarget.participantId}`;
       if (!targets.some((t) => `${t.participantKind}:${t.participantId}` === key)) {
         targets.push(orchestratorTarget);
