@@ -55,6 +55,8 @@ The current slices are:
   text, and tool milestones instead of collapsing to a single indicator line
 - runtime-backed provider capability hints in selection surfaces, sourced from
   `cats-runtime` event capability truth instead of provider-name heuristics
+- live content-block transcript rendering in chat surfaces, sourced from the
+  runtime-owned `content_block` stream contract
 
 ## Current Status
 
@@ -93,6 +95,9 @@ The current slices are:
       progress, text, and tool milestones stay visible while runs are active
 - [x] Land runtime-backed provider capability hints in selection surfaces so
       Cats can read stepwise text/tool/progress truth from `cats-runtime`
+- [x] Land runtime-backed live content blocks in Chat, Work, and Code so the
+      typing indicator can render stable block snapshots instead of only a
+      flat event list
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open

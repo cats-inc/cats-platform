@@ -10,6 +10,7 @@ import {
 import type { AppShellPayload, ChatCat } from '../../api/contracts';
 import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
+import { buildLiveIndicatorScrollKey } from '../../../../shared/liveIndicator.js';
 import {
   catInitials,
   messageTone,
@@ -227,19 +228,7 @@ export function ChatView({
     [operatorView],
   );
   const liveIndicatorScrollKey = useMemo(
-    () =>
-      liveIndicator
-        ? [
-            liveIndicator.active ? '1' : '0',
-            liveIndicator.phase,
-            liveIndicator.catId ?? '',
-            liveIndicator.speakerLabel ?? '',
-            liveIndicator.progressText ?? '',
-            liveIndicator.tools
-              .map((tool) => `${tool.toolId}:${tool.toolName}:${tool.done ? '1' : '0'}`)
-              .join('|'),
-          ].join('::')
-        : '',
+    () => buildLiveIndicatorScrollKey(liveIndicator),
     [liveIndicator],
   );
   const [inspectedRunId, setInspectedRunId] = useState<string | null>(null);
@@ -441,6 +430,56 @@ export function ChatView({
                             {liveIndicator.tools.filter((t) => !t.done).map((tool) => (
                               <span key={tool.toolId} className="typingToolChip">{tool.toolName}</span>
                             ))}
+                            {liveIndicator.contentBlocks.length > 0 ? (
+                              <div className="typingContentBlocks">
+                                {liveIndicator.contentBlocks.map((block) => (
+                                  <div
+                                    key={block.id}
+                                    className={[
+                                      'typingContentBlock',
+                                      block.kind === 'text'
+                                        ? 'typingContentBlockText'
+                                        : block.kind === 'tool'
+                                          ? 'typingContentBlockTool'
+                                          : 'typingContentBlockStatus',
+                                      block.status === 'streaming'
+                                        ? 'typingContentBlockStreaming'
+                                        : block.status === 'error'
+                                          ? 'typingContentBlockError'
+                                          : '',
+                                    ].filter(Boolean).join(' ')}
+                                  >
+                                    {block.kind !== 'text' && block.title ? (
+                                      <span className="typingContentBlockTitle">{block.title}</span>
+                                    ) : null}
+                                    {block.text ? (
+                                      <span className="typingContentBlockBody">{block.text}</span>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : liveIndicator.events.length > 0 ? (
+                              <div className="typingEventTape">
+                                {liveIndicator.events.map((event, index) => (
+                                  <div
+                                    key={`${event.eventType}:${event.toolId ?? ''}:${index}`}
+                                    className={[
+                                      'typingEventRow',
+                                      event.tone === 'active'
+                                        ? 'typingEventRowActive'
+                                        : event.tone === 'success'
+                                          ? 'typingEventRowSuccess'
+                                          : event.tone === 'error'
+                                            ? 'typingEventRowError'
+                                            : '',
+                                    ].filter(Boolean).join(' ')}
+                                  >
+                                    <span className="typingEventLabel">{event.label}</span>
+                                    <span className="typingEventText">{event.text}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
                           </>
                         )}
                       </article>

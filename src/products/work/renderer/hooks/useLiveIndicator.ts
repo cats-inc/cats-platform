@@ -1,37 +1,18 @@
 import { startTransition, useEffect, useRef, useState } from 'react';
 
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import {
+  applyLiveIndicatorEvent,
+  createWaitingLiveIndicatorState,
+  EMPTY_LIVE_INDICATOR,
+  type LiveIndicatorState,
+} from '../../../../shared/liveIndicator.js';
 import { isComposerDispatchBusy } from '../../../../shared/composer.js';
 import type { SelectedChannelView } from '../chatUtils.js';
 import { isOptimisticDraftChannelId } from '../../shared/channelPaths.js';
 
-export interface LiveToolEntry {
-  toolName: string;
-  toolId: string;
-  done: boolean;
-}
-
-export interface LiveIndicatorState {
-  active: boolean;
-  phase: 'idle' | 'waiting' | 'streaming';
-  catId: string | null;
-  catName: string | null;
-  speakerLabel: string | null;
-  progressText: string;
-  progressKind: string | null;
-  tools: LiveToolEntry[];
-}
-
-export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
-  active: false,
-  phase: 'idle',
-  catId: null,
-  catName: null,
-  speakerLabel: null,
-  progressText: '',
-  progressKind: null,
-  tools: [],
-};
+export type { LiveIndicatorContentBlock, LiveIndicatorEventEntry, LiveIndicatorState, LiveToolEntry } from '../../../../shared/liveIndicator.js';
+export { EMPTY_LIVE_INDICATOR } from '../../../../shared/liveIndicator.js';
 
 const LIVE_INDICATOR_RETRY_DELAY_MS = 150;
 const LIVE_INDICATOR_RETRY_LIMIT = 8;
@@ -150,59 +131,7 @@ export function useLiveIndicator(options: {
         if (!previous.active) {
           return previous;
         }
-
-        switch (eventType) {
-          case 'progress': {
-            const text = typeof data.text === 'string' ? data.text : '';
-            const meta = data.metadata as Record<string, unknown> | undefined;
-            const kind = typeof meta?.kind === 'string' ? meta.kind : null;
-            return { ...previous, phase: 'streaming', progressText: text, progressKind: kind };
-          }
-          case 'text': {
-            if (previous.phase === 'waiting') {
-              const text = typeof data.text === 'string' ? data.text.slice(0, 200) : '';
-              return { ...previous, phase: 'streaming', progressText: text };
-            }
-            return previous;
-          }
-          case 'tool_use': {
-            const toolName = typeof data.toolName === 'string' ? data.toolName : 'tool';
-            const toolId = typeof data.toolId === 'string' ? data.toolId : '';
-            return {
-              ...previous,
-              phase: 'streaming',
-              tools: [...previous.tools, { toolName, toolId, done: false }],
-            };
-          }
-          case 'tool_result': {
-            const toolId = typeof data.toolId === 'string' ? data.toolId : '';
-            return {
-              ...previous,
-              tools: previous.tools.map((tool) =>
-                tool.toolId === toolId ? { ...tool, done: true } : tool,
-              ),
-            };
-          }
-          case 'result':
-          case 'session_closed':
-            return {
-              ...previous,
-              phase: 'streaming',
-              progressKind: 'finalizing',
-              progressText: previous.progressText || 'Finalizing...',
-            };
-          case 'error':
-            return {
-              ...previous,
-              phase: 'streaming',
-              progressKind: 'error',
-              progressText: typeof data.text === 'string' && data.text.trim()
-                ? data.text
-                : 'Finishing...',
-            };
-          default:
-            return previous;
-        }
+        return applyLiveIndicatorEvent(previous, eventType, data);
       });
 
       if (shouldRetrySessionClose) {
@@ -223,6 +152,7 @@ export function useLiveIndicator(options: {
       source.addEventListener('text', handleEvent);
       source.addEventListener('tool_use', handleEvent);
       source.addEventListener('tool_result', handleEvent);
+      source.addEventListener('content_block', handleEvent);
       source.addEventListener('result', handleEvent);
       source.addEventListener('error', handleEvent);
       source.addEventListener('session_closed', handleEvent);
@@ -246,16 +176,10 @@ export function useLiveIndicator(options: {
       ? null
       : resolveLiveIndicatorSpeakerLabel(selectedChannel);
 
-    const waitingState: LiveIndicatorState = {
-      active: true,
-      phase: 'waiting',
+    const waitingState = createWaitingLiveIndicatorState({
       catId: workingCatId,
-      catName: null,
       speakerLabel,
-      progressText: '',
-      progressKind: null,
-      tools: [],
-    };
+    });
     stateRef.current = waitingState;
     setState(waitingState);
 

@@ -544,6 +544,58 @@
   font-size: 0.75rem;
 }
 
+.typingContentBlocks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.typingContentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.typingContentBlockText {
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent-soft) 12%);
+}
+
+.typingContentBlockTool {
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent) 8%);
+}
+
+.typingContentBlockStatus {
+  background: color-mix(in srgb, var(--panel) 94%, var(--panel-hover) 6%);
+}
+
+.typingContentBlockStreaming {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
+}
+
+.typingContentBlockError {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border) 55%);
+}
+
+.typingContentBlockTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-soft);
+}
+
+.typingContentBlockBody {
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
 .typingEventTape {
   display: flex;
   flex-direction: column;

@@ -152,6 +152,7 @@ export function useLiveIndicator(options: {
       source.addEventListener('text', handleEvent);
       source.addEventListener('tool_use', handleEvent);
       source.addEventListener('tool_result', handleEvent);
+      source.addEventListener('content_block', handleEvent);
       source.addEventListener('result', handleEvent);
       source.addEventListener('error', handleEvent);
       source.addEventListener('session_closed', handleEvent);

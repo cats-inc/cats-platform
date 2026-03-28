@@ -1,3 +1,9 @@
+import {
+  normalizeRuntimeContentBlock,
+  type LiveIndicatorContentBlock,
+} from './runtimeContentBlocks.js';
+export type { LiveIndicatorContentBlock } from './runtimeContentBlocks.js';
+
 export interface LiveToolEntry {
   toolName: string;
   toolId: string;
@@ -23,9 +29,11 @@ export interface LiveIndicatorState {
   progressText: string;
   progressKind: string | null;
   tools: LiveToolEntry[];
+  contentBlocks: LiveIndicatorContentBlock[];
   events: LiveIndicatorEventEntry[];
 }
 
+const MAX_LIVE_INDICATOR_BLOCKS = 12;
 const MAX_LIVE_INDICATOR_EVENTS = 8;
 const MAX_TEXT_PREVIEW = 200;
 const MAX_EVENT_TEXT = 220;
@@ -39,6 +47,7 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   progressText: '',
   progressKind: null,
   tools: [],
+  contentBlocks: [],
   events: [],
 };
 
@@ -55,6 +64,7 @@ export function createWaitingLiveIndicatorState(input: {
     progressText: '',
     progressKind: null,
     tools: [],
+    contentBlocks: [],
     events: [],
   };
 }
@@ -77,6 +87,8 @@ export function applyLiveIndicatorEvent(
       return applyToolUseEvent(previous, data);
     case 'tool_result':
       return applyToolResultEvent(previous, data);
+    case 'content_block':
+      return applyContentBlockEvent(previous, data);
     case 'result':
       return applyResultEvent(previous);
     case 'session_closed':
@@ -103,6 +115,17 @@ export function buildLiveIndicatorScrollKey(
     liveIndicator.progressText ?? '',
     liveIndicator.tools
       .map((tool) => `${tool.toolId}:${tool.toolName}:${tool.done ? '1' : '0'}`)
+      .join('|'),
+    liveIndicator.contentBlocks
+      .map((block) => [
+        block.id,
+        String(block.index),
+        block.kind,
+        block.status,
+        block.title ?? '',
+        block.text,
+        block.toolId ?? '',
+      ].join(':'))
       .join('|'),
     liveIndicator.events
       .map((event) => [
@@ -257,6 +280,27 @@ function applyResultEvent(previous: LiveIndicatorState): LiveIndicatorState {
       toolName: null,
       toolId: null,
     }),
+  };
+}
+
+function applyContentBlockEvent(
+  previous: LiveIndicatorState,
+  data: Record<string, unknown>,
+): LiveIndicatorState {
+  const block = normalizeRuntimeContentBlock(data);
+  if (!block) {
+    return previous;
+  }
+
+  const withoutBlock = previous.contentBlocks.filter((candidate) => candidate.id !== block.id);
+  const nextContentBlocks = [...withoutBlock, block]
+    .sort((left, right) => left.index - right.index)
+    .slice(-MAX_LIVE_INDICATOR_BLOCKS);
+
+  return {
+    ...previous,
+    phase: 'streaming',
+    contentBlocks: nextContentBlocks,
   };
 }
 

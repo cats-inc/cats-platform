@@ -430,7 +430,35 @@ export function ChatView({
                             {liveIndicator.tools.filter((t) => !t.done).map((tool) => (
                               <span key={tool.toolId} className="typingToolChip">{tool.toolName}</span>
                             ))}
-                            {liveIndicator.events.length > 0 ? (
+                            {liveIndicator.contentBlocks.length > 0 ? (
+                              <div className="typingContentBlocks">
+                                {liveIndicator.contentBlocks.map((block) => (
+                                  <div
+                                    key={block.id}
+                                    className={[
+                                      'typingContentBlock',
+                                      block.kind === 'text'
+                                        ? 'typingContentBlockText'
+                                        : block.kind === 'tool'
+                                          ? 'typingContentBlockTool'
+                                          : 'typingContentBlockStatus',
+                                      block.status === 'streaming'
+                                        ? 'typingContentBlockStreaming'
+                                        : block.status === 'error'
+                                          ? 'typingContentBlockError'
+                                          : '',
+                                    ].filter(Boolean).join(' ')}
+                                  >
+                                    {block.kind !== 'text' && block.title ? (
+                                      <span className="typingContentBlockTitle">{block.title}</span>
+                                    ) : null}
+                                    {block.text ? (
+                                      <span className="typingContentBlockBody">{block.text}</span>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : liveIndicator.events.length > 0 ? (
                               <div className="typingEventTape">
                                 {liveIndicator.events.map((event, index) => (
                                   <div

@@ -96,7 +96,7 @@ test('selected instance capability summary reflects runtime-owned event truth', 
             contentBlocks: 'native',
           },
           presentation: {
-            recommended: 'event_tape',
+            recommended: 'content_blocks',
           },
           notes: [],
         },
@@ -106,7 +106,7 @@ test('selected instance capability summary reflects runtime-owned event truth', 
 
   assert.equal(
     formatProviderEventCapabilitiesSummary(capabilities),
-    'Runtime event surface: chunk text, tool use, tool results, derived progress, transcript blocks. Recommended host view: event tape.',
+    'Runtime event surface: chunk text, tool use, tool results, derived progress, transcript blocks. Recommended host view: content blocks.',
   );
 });
 

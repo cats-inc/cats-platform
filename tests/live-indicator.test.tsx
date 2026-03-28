@@ -140,3 +140,66 @@ test('live indicator keeps only the latest bounded tape entries', () => {
     ['step-4', 'step-5', 'step-6', 'step-7', 'step-8', 'step-9', 'step-10', 'step-11'],
   );
 });
+
+test('live indicator tracks content blocks by id and updates them in place', () => {
+  let state = createWaitingLiveIndicatorState({
+    catId: 'cat-1',
+    speakerLabel: null,
+  });
+
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    block: {
+      id: 'text:0',
+      index: 0,
+      kind: 'text',
+      status: 'streaming',
+      text: 'alpha',
+    },
+  });
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    block: {
+      id: 'text:0',
+      index: 0,
+      kind: 'text',
+      status: 'complete',
+      text: 'alpha beta',
+    },
+  });
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    block: {
+      id: 'tool:1',
+      index: 1,
+      kind: 'tool',
+      status: 'complete',
+      title: 'read_file',
+      toolName: 'read_file',
+      toolId: 'tool-1',
+      text: 'done',
+    },
+  });
+
+  assert.deepEqual(state.contentBlocks, [
+    {
+      id: 'text:0',
+      index: 0,
+      kind: 'text',
+      status: 'complete',
+      title: null,
+      text: 'alpha beta',
+      toolName: null,
+      toolId: null,
+      metadata: null,
+    },
+    {
+      id: 'tool:1',
+      index: 1,
+      kind: 'tool',
+      status: 'complete',
+      title: 'read_file',
+      text: 'done',
+      toolName: 'read_file',
+      toolId: 'tool-1',
+      metadata: null,
+    },
+  ]);
+});
