@@ -3,6 +3,7 @@ import type {
   RuntimeProviderConfigRegistry,
   RuntimeProviderInstanceConfig,
 } from './client.js';
+import { normalizeProductProviderEventCapabilities } from '../shared/providerCatalog.js';
 
 export function readRuntimeErrorText(body: string, fallback: string): string {
   const trimmed = body.trim();
@@ -93,6 +94,9 @@ export function normalizeRuntimeProviderConfigRegistry(
                     typeof instance.model === 'string' && instance.model.trim().length > 0
                       ? instance.model
                       : null,
+                  eventCapabilities: normalizeProductProviderEventCapabilities(
+                    instance.eventCapabilities,
+                  ),
                 };
               })
               .filter((instance): instance is RuntimeProviderInstanceConfig => instance !== null),

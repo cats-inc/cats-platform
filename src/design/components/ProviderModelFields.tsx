@@ -7,6 +7,7 @@ import {
   getProviderDisplayName,
   listProductProviders,
   type ProductProviderDescriptor,
+  type ProductProviderEventCapabilities,
   type ProductProviderInstanceDescriptor,
   type ProviderAdvancedCatalogControl,
   type ProviderAdvancedCatalogPreset,
@@ -14,6 +15,7 @@ import {
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
+import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEventCapabilities.js';
 import {
   cloneProviderModelSelection,
   createExplicitProviderModelSelection,
@@ -129,6 +131,13 @@ export function shouldShowInstanceField(input: {
   instanceOptions: ProductProviderInstanceDescriptor[];
 }): boolean {
   return input.instanceOptions.length > 1;
+}
+
+export function resolveSelectedInstanceEventCapabilities(input: {
+  resolvedInstance: string;
+  instanceOptions: ProductProviderInstanceDescriptor[];
+}): ProductProviderEventCapabilities | null {
+  return input.instanceOptions.find((option) => option.id === input.resolvedInstance)?.eventCapabilities ?? null;
 }
 
 export function catalogMatchesTarget(input: {
@@ -327,6 +336,13 @@ export function ProviderModelFields({
     resolvedInstance,
     instanceOptions,
   });
+  const selectedInstanceCapabilities = resolveSelectedInstanceEventCapabilities({
+    resolvedInstance,
+    instanceOptions,
+  });
+  const selectedInstanceCapabilitySummary = formatProviderEventCapabilitiesSummary(
+    selectedInstanceCapabilities,
+  );
   const entryOptions = effectiveAdvancedCatalog.entries.length > 0
     ? effectiveAdvancedCatalog.entries
     : effectiveCatalog.models;
@@ -410,6 +426,11 @@ export function ProviderModelFields({
             ))}
           </select>
         </label>
+      ) : null}
+      {selectedInstanceCapabilitySummary ? (
+        <span className="fieldHint providerCatalogHint">
+          {selectedInstanceCapabilitySummary}
+        </span>
       ) : null}
       <label className="fieldLabel">
         <span>Model</span>

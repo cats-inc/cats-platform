@@ -53,6 +53,8 @@ The current slices are:
 - provider-agnostic cat memory checkpoints plus channel-scoped execution leases
 - transcript-adjacent live runtime event tapes that retain recent progress,
   text, and tool milestones instead of collapsing to a single indicator line
+- runtime-backed provider capability hints in selection surfaces, sourced from
+  `cats-runtime` event capability truth instead of provider-name heuristics
 
 ## Current Status
 
@@ -89,6 +91,8 @@ The current slices are:
       retrieval, carry lineage-aware flush payloads, and replace stale hits
 - [x] Land transcript-adjacent live event tapes in Chat and Code so recent
       progress, text, and tool milestones stay visible while runs are active
+- [x] Land runtime-backed provider capability hints in selection surfaces so
+      Cats can read stepwise text/tool/progress truth from `cats-runtime`
 - [ ] Add productization layers beyond the current Phase 2 chat core
 
 ## Still Open

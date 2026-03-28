@@ -30,6 +30,7 @@ function mergeProviderRegistry(
       target: instance.target,
       backend: instance.backend,
       default: runtimeProvider.defaultInstance === instance.id,
+      eventCapabilities: instance.eventCapabilities,
     })) ?? [];
 
     return {

@@ -19,6 +19,65 @@ export interface ProductProviderInstanceDescriptor {
   target: string | null;
   backend: string | null;
   default?: boolean;
+  eventCapabilities?: ProductProviderEventCapabilities | null;
+}
+
+export type ProductProviderEventCapabilitySupport = 'none' | 'derived' | 'native' | 'unknown';
+export type ProductProviderTextStreamingMode =
+  | 'none'
+  | 'final'
+  | 'chunk'
+  | 'line'
+  | 'token'
+  | 'unknown';
+export type ProductProviderRecommendedPresentation =
+  | 'final_message'
+  | 'event_tape'
+  | 'content_blocks'
+  | 'unknown';
+
+export interface ProductProviderEventTextCapability {
+  mode: ProductProviderTextStreamingMode;
+  stepwise: boolean;
+}
+
+export interface ProductProviderNormalizedStreamCapabilities {
+  text: ProductProviderEventTextCapability;
+  toolUse: ProductProviderEventCapabilitySupport;
+  toolResult: ProductProviderEventCapabilitySupport;
+  progress: ProductProviderEventCapabilitySupport;
+  reasoning: ProductProviderEventCapabilitySupport;
+}
+
+export interface ProductProviderTranscriptCapabilities {
+  contentBlocks: ProductProviderEventCapabilitySupport;
+}
+
+export interface ProductProviderPresentationCapabilities {
+  recommended: ProductProviderRecommendedPresentation;
+}
+
+export interface ProductProviderEventCapabilityValidation {
+  artifactId: string;
+  capturedAt: string;
+  transport: string;
+  runtimeMode?: string;
+  executionStatus: 'completed' | 'failed';
+  observed: {
+    incrementalText: boolean;
+    toolUse: boolean;
+    toolResult: boolean;
+    progress: boolean;
+    finalResult: boolean;
+  };
+}
+
+export interface ProductProviderEventCapabilities {
+  normalizedStream: ProductProviderNormalizedStreamCapabilities;
+  transcript: ProductProviderTranscriptCapabilities;
+  presentation: ProductProviderPresentationCapabilities;
+  notes: string[];
+  validation?: ProductProviderEventCapabilityValidation;
 }
 
 export interface ProviderCatalogCacheMetadata {
@@ -255,6 +314,100 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function readNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function readCapabilitySupport(
+  value: unknown,
+): ProductProviderEventCapabilitySupport {
+  return value === 'none' || value === 'derived' || value === 'native' || value === 'unknown'
+    ? value
+    : 'unknown';
+}
+
+function readTextStreamingMode(
+  value: unknown,
+): ProductProviderTextStreamingMode {
+  return value === 'none'
+    || value === 'final'
+    || value === 'chunk'
+    || value === 'line'
+    || value === 'token'
+    || value === 'unknown'
+    ? value
+    : 'unknown';
+}
+
+function readRecommendedPresentation(
+  value: unknown,
+): ProductProviderRecommendedPresentation {
+  return value === 'final_message'
+    || value === 'event_tape'
+    || value === 'content_blocks'
+    || value === 'unknown'
+    ? value
+    : 'unknown';
+}
+
+export function normalizeProductProviderEventCapabilities(
+  value: unknown,
+): ProductProviderEventCapabilities | null {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const normalizedStreamRecord = asRecord(record.normalizedStream);
+  const textRecord = asRecord(normalizedStreamRecord?.text);
+  const transcriptRecord = asRecord(record.transcript);
+  const presentationRecord = asRecord(record.presentation);
+  const validationRecord = asRecord(record.validation);
+  const observedRecord = asRecord(validationRecord?.observed);
+
+  return {
+    normalizedStream: {
+      text: {
+        mode: readTextStreamingMode(textRecord?.mode),
+        stepwise: textRecord?.stepwise === true,
+      },
+      toolUse: readCapabilitySupport(normalizedStreamRecord?.toolUse),
+      toolResult: readCapabilitySupport(normalizedStreamRecord?.toolResult),
+      progress: readCapabilitySupport(normalizedStreamRecord?.progress),
+      reasoning: readCapabilitySupport(normalizedStreamRecord?.reasoning),
+    },
+    transcript: {
+      contentBlocks: readCapabilitySupport(transcriptRecord?.contentBlocks),
+    },
+    presentation: {
+      recommended: readRecommendedPresentation(presentationRecord?.recommended),
+    },
+    notes: readStringArray(record.notes),
+    ...(validationRecord
+      ? {
+          validation: {
+            artifactId: typeof validationRecord.artifactId === 'string'
+              ? validationRecord.artifactId
+              : '',
+            capturedAt: typeof validationRecord.capturedAt === 'string'
+              ? validationRecord.capturedAt
+              : '',
+            transport: typeof validationRecord.transport === 'string'
+              ? validationRecord.transport
+              : '',
+            ...(typeof validationRecord.runtimeMode === 'string'
+              ? { runtimeMode: validationRecord.runtimeMode }
+              : {}),
+            executionStatus: validationRecord.executionStatus === 'failed' ? 'failed' : 'completed',
+            observed: {
+              incrementalText: observedRecord?.incrementalText === true,
+              toolUse: observedRecord?.toolUse === true,
+              toolResult: observedRecord?.toolResult === true,
+              progress: observedRecord?.progress === true,
+              finalResult: observedRecord?.finalResult === true,
+            },
+          },
+        }
+      : {}),
+  };
 }
 
 function isControlValue(value: unknown): value is ProviderAdvancedControlValue {

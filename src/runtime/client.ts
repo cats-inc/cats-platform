@@ -2,6 +2,7 @@ import {
   createStaticProviderAdvancedModelCatalog,
   normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
+  type ProductProviderEventCapabilities,
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../shared/providerCatalog.js';
@@ -34,6 +35,7 @@ export interface RuntimeProviderInstanceConfig {
   runtime: string | null;
   transport: string | null;
   model: string | null;
+  eventCapabilities: ProductProviderEventCapabilities | null;
 }
 
 export interface RuntimeProviderConfigEntry {

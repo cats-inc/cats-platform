@@ -4,6 +4,7 @@ import type {
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
 } from '../../../shared/providerCatalog.js';
+import { normalizeProductProviderEventCapabilities } from '../../../shared/providerCatalog.js';
 import type {
   SuiteHostEnvelope,
   SuiteSetupCompleteInput,
@@ -79,6 +80,7 @@ export async function fetchProviders(): Promise<ProductProviderDescriptor[]> {
           target: instance.target ?? null,
           backend: instance.backend ?? null,
           default: Boolean(instance.default),
+          eventCapabilities: normalizeProductProviderEventCapabilities(instance.eventCapabilities),
         }))
       : [],
     modelsPath: provider.modelsPath,

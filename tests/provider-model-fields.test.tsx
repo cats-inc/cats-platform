@@ -3,9 +3,11 @@ import test from 'node:test';
 
 import {
   catalogMatchesTarget,
+  resolveSelectedInstanceEventCapabilities,
   shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
 } from '../src/design/components/ProviderModelFields.tsx';
+import { formatProviderEventCapabilitiesSummary } from '../src/shared/providerEventCapabilities.ts';
 
 test('static fallback catalogs do not overwrite an existing model selection during panel reopen', () => {
   assert.equal(
@@ -70,5 +72,62 @@ test('instance field stays hidden when a provider only exposes one runtime insta
       ],
     }),
     false,
+  );
+});
+
+test('selected instance capability summary reflects runtime-owned event truth', () => {
+  const capabilities = resolveSelectedInstanceEventCapabilities({
+    resolvedInstance: 'native',
+    instanceOptions: [
+      {
+        id: 'native',
+        label: 'cli/native',
+        target: 'cli/native',
+        backend: 'cli',
+        eventCapabilities: {
+          normalizedStream: {
+            text: { mode: 'chunk', stepwise: true },
+            toolUse: 'native',
+            toolResult: 'native',
+            progress: 'derived',
+            reasoning: 'none',
+          },
+          transcript: {
+            contentBlocks: 'native',
+          },
+          presentation: {
+            recommended: 'event_tape',
+          },
+          notes: [],
+        },
+      },
+    ],
+  });
+
+  assert.equal(
+    formatProviderEventCapabilitiesSummary(capabilities),
+    'Runtime event surface: chunk text, tool use, tool results, derived progress, transcript blocks. Recommended host view: event tape.',
+  );
+});
+
+test('unknown capability truth stays silent in provider hints', () => {
+  assert.equal(
+    formatProviderEventCapabilitiesSummary({
+      normalizedStream: {
+        text: { mode: 'unknown', stepwise: false },
+        toolUse: 'unknown',
+        toolResult: 'unknown',
+        progress: 'unknown',
+        reasoning: 'unknown',
+      },
+      transcript: {
+        contentBlocks: 'unknown',
+      },
+      presentation: {
+        recommended: 'unknown',
+      },
+      notes: [],
+    }),
+    null,
   );
 });
