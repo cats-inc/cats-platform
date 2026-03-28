@@ -15,6 +15,8 @@ import {
   statusDotLabel,
 } from '../myCatNavigation';
 import { isDirectLaneSummary } from '../../shared/channelTopology';
+import { resolveSuiteSurfaceFromPath } from '../../../../core/suiteSurface.js';
+import { SuiteProductBrand } from '../../../../design/components/SuiteProductBrand.js';
 
 export type SidebarViewMode = 'latest' | 'by_cat' | 'by_chat_type';
 
@@ -390,6 +392,7 @@ export function Sidebar({
   activeMyCatId,
   onDirectChatCat,
 }: SidebarProps) {
+  const activeSurface = resolveSuiteSurfaceFromPath(globalThis.location?.pathname ?? '/chat');
   const chatCats = payload.chat.cats.filter(isChatCat);
   const showMyCats = chatCats.length > 0;
   const telegramBoundCatIds = new Set(
@@ -433,7 +436,7 @@ export function Sidebar({
       <div className="sidebarInner">
         <div className="brandRow">
           <div className="brandCopy">
-            <p className="brandLabel">Cats Chat</p>
+            <SuiteProductBrand surface={activeSurface} />
           </div>
           <button
             className="chromeButton"
