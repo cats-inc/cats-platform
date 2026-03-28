@@ -14,7 +14,11 @@ import type {
   CoreRecordMetadata,
   ExecutionTargetSummary,
 } from '../../../../core/types.js';
-import { createDefaultChatState, createEmptyMemoryCheckpoint } from '../defaults.js';
+import { createDefaultChatState, createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
+import {
+  normalizeChannelAssignmentsForRoomMode,
+  resolveDirectLaneLeadParticipantId,
+} from '../../shared/channelTopology.js';
 import {
   extractChatMessageChoicesFromBody,
   normalizeChatMessageChoiceResponse,
@@ -189,12 +193,23 @@ export function normalizeChannel(
     ? channelRecord.messages.map((message) => normalizeMessage(message, channelId))
     : [];
   const roomRouting = normalizeRoomRouting(channelRecord.roomRouting);
+  const normalizedCatAssignments = normalizeChannelAssignmentsForRoomMode(
+    catAssignments,
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  );
+  if (roomRouting.mode === 'direct_cat_chat') {
+    roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
+      normalizedCatAssignments,
+      roomRouting.leadParticipantId,
+    );
+  }
   const inferredComposerMode = channelRecord.composerMode === 'cat_led'
     ? 'cat_led'
     : channelRecord.composerMode === 'solo'
       ? 'solo'
       : roomRouting.mode === 'direct_cat_chat'
-          || catAssignments.some((assignment) => assignment.status === 'active')
+          || normalizedCatAssignments.some((assignment) => assignment.status === 'active')
           || Boolean(roomRouting.leadParticipantId)
         ? 'cat_led'
         : 'solo';
@@ -222,11 +237,13 @@ export function normalizeChannel(
     updatedAt: readString(channelRecord.updatedAt, new Date().toISOString()),
     lastMessageAt: readNullableString(channelRecord.lastMessageAt),
     lastActivatedAt: readNullableString(channelRecord.lastActivatedAt),
-    orchestratorLease: normalizeExecutionLease(
-      channelRecord.orchestratorLease,
-      { provider: 'claude', instance: null, model: null },
-    ),
-    catAssignments,
+    orchestratorLease: roomRouting.mode === 'direct_cat_chat'
+      ? createEmptyExecutionLease()
+      : normalizeExecutionLease(
+        channelRecord.orchestratorLease,
+        { provider: 'claude', instance: null, model: null },
+      ),
+    catAssignments: normalizedCatAssignments,
     messages,
     roomRouting,
   };

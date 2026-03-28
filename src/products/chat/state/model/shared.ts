@@ -7,6 +7,8 @@ import type {
   ParticipantExecutionLease,
 } from '../../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
+import { normalizeChannelAssignmentsForRoomMode, resolveDirectLaneLeadParticipantId } from '../../shared/channelTopology.js';
+import { createEmptyExecutionLease } from '../defaults.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 
 export function cloneState(state: ChatState): ChatState {
@@ -49,10 +51,15 @@ export function inferChannelComposerMode(input: {
 }
 
 export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void {
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  channel.catAssignments = normalizeChannelAssignmentsForRoomMode(
+    channel.catAssignments,
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  );
   const activeCatIds = channel.catAssignments
     .filter((assignment) => assignment.status === 'active')
     .map((assignment) => assignment.catId);
-  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   const currentLeadId = roomRouting.leadParticipantId;
   const hasValidLead = Boolean(currentLeadId && activeCatIds.includes(currentLeadId));
 
@@ -62,9 +69,11 @@ export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void 
   });
 
   if (roomRouting.mode === 'direct_cat_chat') {
-    roomRouting.leadParticipantId = hasValidLead
-      ? currentLeadId
-      : activeCatIds[0] ?? currentLeadId ?? null;
+    roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
+      channel.catAssignments,
+      currentLeadId,
+    );
+    channel.orchestratorLease = createEmptyExecutionLease();
   } else if (activeCatIds.length === 0) {
     roomRouting.leadParticipantId = null;
   } else if (!hasValidLead) {

@@ -355,6 +355,156 @@ test('deleting a direct-lane cat clears hidden-lane routing state so the room st
   assert.equal(channel.composerMode, 'solo');
 });
 
+test('direct lanes reject assigning a second cat beyond the lead', () => {
+  const now = new Date('2026-03-27T00:00:00.000Z');
+  let state = createDefaultChatState();
+
+  state = createCat(
+    state,
+    {
+      name: 'Lead Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const leadCatId = state.cats[0].id;
+
+  state = createCat(
+    state,
+    {
+      name: 'Extra Companion',
+      provider: 'gemini',
+      roles: ['fallback'],
+    },
+    now,
+  );
+  const extraCatId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Strict direct lane',
+      topic: 'Only the lead cat should remain assignable.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [leadCatId],
+      leadParticipantId: leadCatId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  assert.throws(
+    () => assignCatToChannel(
+      state,
+      state.selectedChannelId,
+      {
+        catId: extraCatId,
+        provider: 'gemini',
+      },
+      now,
+    ),
+    /Direct lanes can only contain their lead cat/u,
+  );
+});
+
+test('FileChatStore normalizes contaminated direct lanes back to the lead cat topology', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const store = new FileChatStore(statePath);
+  const now = new Date('2026-03-27T00:00:00.000Z');
+
+  let state = await store.read();
+  state = createCat(
+    state,
+    {
+      name: 'Lead Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const leadCatId = state.cats[0].id;
+
+  state = createCat(
+    state,
+    {
+      name: 'Legacy Extra',
+      provider: 'gemini',
+      roles: ['extra'],
+    },
+    now,
+  );
+  const extraCatId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Legacy Direct',
+      topic: 'Normalize stale topology on read.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [leadCatId],
+      leadParticipantId: leadCatId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  await store.write(state);
+
+  const rawSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
+  const channel = rawSnapshot.chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(channel);
+  channel.orchestratorLease = {
+    sessionId: 'session-orchestrator',
+    status: 'ready',
+    cwd: 'C:\\legacy\\direct-lane',
+    lastError: null,
+    provider: 'claude',
+    model: 'claude-opus-4-6',
+    startedAt: now.toISOString(),
+    lastUsedAt: now.toISOString(),
+  };
+  channel.catAssignments.push({
+    catId: extraCatId,
+    status: 'active',
+    roles: ['extra'],
+    joinedAt: now.toISOString(),
+    leftAt: null,
+    execution: {
+      target: {
+        provider: 'gemini',
+        instance: null,
+        model: 'gemini-3-flash',
+      },
+      lease: {
+        sessionId: 'session-extra',
+        status: 'ready',
+        cwd: 'C:\\legacy\\extra',
+        lastError: null,
+        provider: 'gemini',
+        model: 'gemini-3-flash',
+        startedAt: now.toISOString(),
+        lastUsedAt: now.toISOString(),
+      },
+    },
+  });
+  await writeFile(statePath, `${JSON.stringify(rawSnapshot, null, 2)}\n`, 'utf-8');
+
+  const recoveredStore = new FileChatStore(statePath);
+  const recoveredState = await recoveredStore.read();
+  const recoveredChannel = recoveredState.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(recoveredChannel);
+  assert.equal(recoveredChannel.catAssignments.length, 1);
+  assert.equal(recoveredChannel.catAssignments[0].catId, leadCatId);
+  assert.equal(recoveredChannel.roomRouting?.mode, 'direct_cat_chat');
+  assert.equal(recoveredChannel.roomRouting?.leadParticipantId, leadCatId);
+  assert.equal(recoveredChannel.orchestratorLease.sessionId, null);
+  assert.equal(recoveredChannel.orchestratorLease.status, 'not_started');
+  assert.equal(recoveredChannel.orchestratorLease.provider, null);
+  assert.equal(recoveredChannel.orchestratorLease.model, null);
+});
+
 test('FileChatStore round-trips per-message execution provenance', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();

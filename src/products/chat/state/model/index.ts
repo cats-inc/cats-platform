@@ -17,6 +17,10 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { defaultCatProducts, hasSuiteSurface } from '../../../../shared/suiteSurfaces.js';
+import {
+  normalizeChannelAssignmentsForRoomMode,
+  resolveDirectLaneLeadParticipantId,
+} from '../../shared/channelTopology.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
   applyMessageToChannel,
@@ -40,6 +44,7 @@ import {
 } from './shared.js';
 import {
   createDefaultRoomRoutingState,
+  resolveRoomRoutingState,
 } from '../room-routing/index.js';
 
 export type { ChatLifecycleState } from '../../shared/lifecycle.js';
@@ -171,17 +176,11 @@ export function createChannel(
     );
   }
 
-  const normalizedCatAssignments = input.roomMode === 'direct_cat_chat'
-    ? (() => {
-        const directLeadCatId = defaultLeadParticipantId ?? catAssignments[0]?.catId ?? null;
-        if (!directLeadCatId) {
-          return [];
-        }
-        const directLeadAssignment = catAssignments.find((assignment) =>
-          assignment.catId === directLeadCatId);
-        return directLeadAssignment ? [directLeadAssignment] : [];
-      })()
-    : catAssignments;
+  const normalizedCatAssignments = normalizeChannelAssignmentsForRoomMode(
+    catAssignments,
+    input.roomMode ?? 'boss_chat',
+    defaultLeadParticipantId,
+  );
 
   const channel: ChatChannelState = {
     id: channelId,
@@ -241,6 +240,21 @@ export function assignCatToChannel(
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  channel.catAssignments = normalizeChannelAssignmentsForRoomMode(
+    channel.catAssignments,
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  );
+  if (roomRouting.mode === 'direct_cat_chat') {
+    const directLeadCatId = resolveDirectLaneLeadParticipantId(
+      channel.catAssignments,
+      roomRouting.leadParticipantId,
+    );
+    if (directLeadCatId && directLeadCatId !== input.catId) {
+      throw new Error('Direct lanes can only contain their lead cat');
+    }
+  }
   const cat = requireCat(nextState, input.catId);
   if (cat.status !== 'active') {
     throw new Error(`Cat is not active: ${input.catId}`);

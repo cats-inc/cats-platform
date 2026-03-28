@@ -13,17 +13,27 @@ import type {
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
 import {
+  normalizeChannelAssignmentsForRoomMode,
+  resolveDirectLaneLeadParticipantId,
+} from '../../shared/channelTopology.js';
+import {
   resolveChatLifecycleState,
   type ChatLifecycleState,
 } from '../../shared/lifecycle.js';
 import { createDefaultRoomRoutingState, resolveRoomRoutingState } from '../room-routing/index.js';
+import { createEmptyExecutionLease } from '../defaults.js';
 import { requireCat, requireChannel } from './shared.js';
 
 export const ORCHESTRATOR_NAME = 'Orchestrator';
 export type { ChatLifecycleState } from '../../shared/lifecycle.js';
 
 function activeCatCount(channel: ChatChannelState): number {
-  return channel.catAssignments.filter((assignment) => assignment.status === 'active').length;
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  return normalizeChannelAssignmentsForRoomMode(
+    channel.catAssignments,
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  ).filter((assignment) => assignment.status === 'active').length;
 }
 
 function hydrateChannelCat(
@@ -48,9 +58,19 @@ function hydrateChannelCat(
 function resolveLeadParticipantLeaseStatus(
   channel: ChatChannelState,
 ): ParticipantSessionStatus | null {
-  const leadId = channel.roomRouting?.leadParticipantId;
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const leadId = roomRouting.mode === 'direct_cat_chat'
+    ? resolveDirectLaneLeadParticipantId(
+      channel.catAssignments,
+      roomRouting.leadParticipantId,
+    )
+    : roomRouting.leadParticipantId;
   if (!leadId) return null;
-  const assignment = channel.catAssignments.find(
+  const assignment = normalizeChannelAssignmentsForRoomMode(
+    channel.catAssignments,
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  ).find(
     (candidate) => candidate.catId === leadId && candidate.status === 'active',
   );
   return assignment?.execution.lease.status ?? null;
@@ -77,11 +97,25 @@ export function buildChannelView(
   const channel =
     typeof channelOrId === 'string' ? requireChannel(state, channelOrId) : channelOrId;
   const clonedChannel = structuredClone(channel);
+  const roomRouting = resolveRoomRoutingState(clonedChannel.roomRouting);
+  const normalizedAssignments = normalizeChannelAssignmentsForRoomMode(
+    clonedChannel.catAssignments,
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  );
+  clonedChannel.catAssignments = normalizedAssignments;
+  if (roomRouting.mode === 'direct_cat_chat') {
+    roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
+      normalizedAssignments,
+      roomRouting.leadParticipantId,
+    );
+    clonedChannel.orchestratorLease = createEmptyExecutionLease();
+  }
 
   return {
     ...clonedChannel,
-    roomRouting: clonedChannel.roomRouting ?? createDefaultRoomRoutingState(),
-    assignedCats: channel.catAssignments
+    roomRouting: roomRouting ?? createDefaultRoomRoutingState(),
+    assignedCats: normalizedAssignments
       .filter((assignment) => state.cats.some((candidate) => candidate.id === assignment.catId))
       .map((assignment) =>
         hydrateChannelCat(requireCat(state, assignment.catId), assignment),
@@ -125,6 +159,14 @@ export function resolveChannelEntryParticipant(
 
 export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const normalizedAssignments = normalizeChannelAssignmentsForRoomMode(
+    channel.catAssignments,
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  );
+  const leadCatId = roomRouting.mode === 'direct_cat_chat'
+    ? resolveDirectLaneLeadParticipantId(normalizedAssignments, roomRouting.leadParticipantId)
+    : roomRouting.leadParticipantId;
   const workflowStatus = roomRouting.workflow.activeTurn?.status
     ?? roomRouting.workflow.lastOutcomeEvent?.status
     ?? null;
@@ -142,7 +184,7 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     topic: channel.topic,
     status: channel.status,
     unreadCount: channel.unreadCount,
-    catCount: channel.catAssignments.length,
+    catCount: normalizedAssignments.length,
     activeCatCount: activeCatCount(channel),
     repoPath: channel.repoPath,
     chatCwd: channel.chatCwd,
@@ -152,7 +194,7 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     pendingProvider: channel.pendingProvider ?? null,
     pendingModel: channel.pendingModel ?? null,
     pendingModelSelection: structuredClone(channel.pendingModelSelection ?? null),
-    leadCatId: channel.roomRouting?.leadParticipantId ?? null,
+    leadCatId: leadCatId ?? null,
     leadParticipantLeaseStatus: resolveLeadParticipantLeaseStatus(channel),
     roomMode: roomRouting.mode,
     routingStatus: routingStatus ?? roomRouting.lastOutcome?.status ?? 'idle',

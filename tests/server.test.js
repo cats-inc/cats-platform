@@ -4626,6 +4626,83 @@ test('POST /api/channels keeps direct lanes scoped to the lead cat only', async 
   });
 });
 
+test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-lead cat to a direct lane', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const leadCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Lead Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(leadCatResponse.status, 201);
+    const leadCatPayload = await leadCatResponse.json();
+    const leadCatId = leadCatPayload.cat.id;
+
+    const extraCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Extra Companion',
+        provider: 'gemini',
+        model: 'gemini-3-flash',
+      }),
+    });
+    assert.equal(extraCatResponse.status, 201);
+    const extraCatPayload = await extraCatResponse.json();
+    const extraCatId = extraCatPayload.cat.id;
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Strict direct lane',
+        topic: 'Reject adding any non-lead cats.',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [leadCatId],
+        leadParticipantId: leadCatId,
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const assignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${extraCatId}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        provider: 'gemini',
+        model: 'gemini-3-flash',
+      }),
+    });
+    assert.equal(assignResponse.status, 400);
+    const assignPayload = await assignResponse.json();
+    assert.equal(assignPayload.error.code, 'bad_request');
+    assert.match(assignPayload.error.message, /Direct lanes can only contain their lead cat/u);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+    assert.equal(channelPayload.channel.assignedCats.length, 1);
+    assert.equal(channelPayload.channel.assignedCats[0].catId, leadCatId);
+    assert.equal(channelPayload.channel.roomRouting.leadParticipantId, leadCatId);
+  });
+});
+
 test('PATCH /api/preferences does not overwrite the last wake request when the selected room is already awake', async () => {
   const runtimeClient = createRuntimeStub();
 
