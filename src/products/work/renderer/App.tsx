@@ -1,742 +1,860 @@
-import { useEffect, useState, type ReactNode } from 'react';
-
-import type {
-  WorkDashboardProjection,
-  WorkProjectDetailProjection,
-  WorkTaskDetailProjection,
-  WorkWorkItemDetailProjection,
-} from '../api/projection';
-
 import {
-  fetchWorkDashboard,
-  fetchWorkProjectDetail,
-  fetchWorkTaskDetail,
-  fetchWorkWorkItemDetail,
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  useLocation,
+  useMatch,
+  useNavigate,
+} from 'react-router-dom';
+
+import type { AppShellPayload } from '../api/contracts';
+import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog';
+import {
+  CHAT_PREFIX,
+  isNewChatPath,
+  readNewChatLeadCatId,
+} from '../shared/channelPaths';
+import {
+  getDefaultModel,
+  getDefaultProviderInstance,
+} from '../../../shared/providerCatalog';
+import { sameProviderModelSelection } from '../../../shared/providerSelection';
+import {
+  BootShell,
+  emptyCatForm,
+  pickGreeting,
+  type CatFormState,
+} from './chatUtils';
+import { AppRoutes } from './AppRoutes';
+import { deriveAppRouteState, deriveAppViewState, type AppLoadState } from './appViewState';
+import { useAppChrome } from './hooks/useAppChrome';
+import { useAppDraftUiActions } from './hooks/useAppDraftUiActions';
+import { useAppNavigationActions } from './hooks/useAppNavigationActions';
+import { useAppShellRouting } from './hooks/useAppShellRouting';
+import { useCatAssignmentActions } from './hooks/useCatAssignmentActions';
+import { useComposerSubmit } from './hooks/useComposerSubmit';
+import { useFolderBrowser } from './hooks/useFolderBrowser';
+import { useGovernanceActions } from './hooks/useGovernanceActions';
+import { useOperatorLoop } from './hooks/useOperatorLoop';
+import { useLiveIndicator } from './hooks/useLiveIndicator';
+import {
+  activateChatChannel,
+  updateCatProfile,
+  updateChannelPendingExecutionTarget,
+  updateNewChatDefaultsPreference,
 } from './api';
-import './work.css';
+import type { ModelSelectorValue } from './components/ModelSelector';
+import {
+  Sidebar,
+} from './components/Sidebar';
+import './styles.css';
 
-type DashboardState =
-  | { status: 'loading' }
-  | { status: 'ready'; payload: WorkDashboardProjection }
-  | { status: 'error'; message: string };
-
-type FocusState =
-  | { kind: 'task'; id: string }
-  | { kind: 'project'; id: string }
-  | { kind: 'workItem'; id: string }
-  | null;
-
-type DetailState =
-  | { status: 'idle' }
-  | { status: 'loading'; focus: FocusState }
-  | { status: 'task'; payload: WorkTaskDetailProjection }
-  | { status: 'project'; payload: WorkProjectDetailProjection }
-  | { status: 'workItem'; payload: WorkWorkItemDetailProjection }
-  | { status: 'error'; focus: FocusState; message: string };
-
-function formatLabel(value: string | null | undefined): string {
-  if (!value) {
-    return 'none';
-  }
-
-  return value
-    .replace(/_/gu, ' ')
-    .replace(/\b\w/gu, (character) => character.toUpperCase());
+function createDefaultModelSelectorValue(): ModelSelectorValue {
+  return {
+    provider: 'claude',
+    model: getDefaultModel('claude') || null,
+    instance: getDefaultProviderInstance('claude'),
+    modelSelection: null,
+  };
 }
 
-function formatTimestamp(value: string | null | undefined): string {
-  if (!value) {
-    return 'No recent update';
+function toModelSelectorValue(
+  defaults: AppShellPayload['chat']['newChatDefaults'] | null | undefined,
+): ModelSelectorValue {
+  if (!defaults) {
+    return createDefaultModelSelectorValue();
   }
 
-  return new Date(value).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
+  const provider = defaults.provider?.trim() || 'claude';
+  return {
+    provider,
+    model: defaults.model ?? (getDefaultModel(provider) || null),
+    instance: defaults.instance ?? getDefaultProviderInstance(provider),
+    modelSelection: defaults.modelSelection ?? null,
+  };
+}
+
+function sameModelSelectorValue(
+  left: ModelSelectorValue,
+  right: ModelSelectorValue,
+): boolean {
+  return left.provider === right.provider
+    && (left.instance ?? null) === (right.instance ?? null)
+    && (left.model ?? null) === (right.model ?? null)
+    && sameProviderModelSelection(left.modelSelection, right.modelSelection);
+}
+
+export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const channelMatch = useMatch(`${CHAT_PREFIX}/chats/:channelId`);
+  const myCatMatch = useMatch(`${CHAT_PREFIX}/my-cats/:catId`);
+  const routeChannelId = channelMatch?.params.channelId ?? null;
+  const routeMyCatId = myCatMatch?.params.catId ?? null;
+  const showingNewChatDraft = isNewChatPath(location.pathname);
+  const draftLeadCatId = routeMyCatId ?? readNewChatLeadCatId(location.search);
+  const showingMyCatDirectLane = Boolean(routeMyCatId);
+
+  const [state, setState] = useState<AppLoadState>({ status: 'loading' });
+  const [composerDraft, setComposerDraft] = useState('');
+  const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
+  const [busy, setBusy] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [addCatTab, setAddCatTab] = useState<'existing' | 'new'>('existing');
+  const [greeting] = useState(pickGreeting);
+  const [draftCwd, setDraftCwd] = useState<string | null>(null);
+  const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
+  const [draftFiles, setDraftFiles] = useState<File[]>([]);
+  const [channelFiles, setChannelFiles] = useState<File[]>([]);
+  const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
+  const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
+  const [draftHighlightedCatId, setDraftHighlightedCatId] = useState<string | null>(null);
+  const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<Map<string, ModelSelectorValue>>(new Map);
+  const wasGenericNewChatRoute = useRef(false);
+  const latestNewChatDefaultsSaveId = useRef(0);
+  const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
+  const latestSoloChannelModelSaveId = useRef(0);
+  const pendingSoloChannelModelSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSoloChannelModelSaveAbort = useRef<AbortController | null>(null);
+  const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
+
+  const onToggleDraftCat = useCallback((catId: string) => {
+    setDraftCatIds((prev) => {
+      const isRemoving = prev.includes(catId);
+      const next = isRemoving ? prev.filter((id) => id !== catId) : [...prev, catId];
+      if (isRemoving) {
+        setDraftHighlightedCatId((current) =>
+          current === catId ? (next.length > 0 ? next[0] : null) : current);
+        setDraftCatModelOverrides((overrides) => {
+          const copy = new Map(overrides);
+          copy.delete(catId);
+          return copy;
+        });
+      } else {
+        setDraftHighlightedCatId(catId);
+      }
+      return next;
+    });
+  }, []);
+
+  const onDirectLaneModelSave = useCallback(async (catId: string, value: ModelSelectorValue) => {
+    try {
+      const result = await updateCatProfile(catId, {
+        provider: value.provider,
+        instance: value.instance,
+        model: value.model,
+        modelSelection: value.modelSelection,
+      });
+      startTransition(() => setState({ status: 'ready', payload: result }));
+    } catch {
+      // Silent fail — the panel shows current state from payload
+    }
+  }, [setState]);
+
+  const onDraftCatModelOverride = useCallback((catId: string, value: ModelSelectorValue) => {
+    setDraftCatModelOverrides((prev) => {
+      const copy = new Map(prev);
+      copy.set(catId, value);
+      return copy;
+    });
+  }, []);
+
+  const {
+    accountMenuOpen,
+    setAccountMenuOpen,
+    sidebarOpen,
+    overflowMenuOpenId,
+    setOverflowMenuOpenId,
+    plusMenuOpen,
+    setPlusMenuOpen,
+    addCatOpen,
+    setAddCatOpen,
+    channelPlusMenuOpen,
+    setChannelPlusMenuOpen,
+    accountMenuRef,
+    plusMenuRef,
+    addCatPanelRef,
+    fileInputRef,
+    channelPlusMenuRef,
+    channelFileInputRef,
+    autoResize,
+    onToggleSidebar,
+    onCollapsedSidebarClick,
+  } = useAppChrome();
+  const {
+    browseFolder,
+    folderBrowseCurrentPath,
+    folderBrowseEntries,
+    folderBrowseError,
+    folderBrowseLoading,
+    folderBrowseParentPath,
+    folderBrowsePath,
+    openFolderBrowser,
+    selectCurrentFolder,
+    setFolderBrowsePath,
+  } = useFolderBrowser({
+    onSelectPath: setDraftCwd,
   });
-}
+  const {
+    toggleAddCatPanel,
+    toggleChannelPlusMenu,
+    openChannelFilePicker,
+    toggleDraftPlusMenu,
+    openDraftFilePicker,
+    openDraftFolderPicker,
+    openDraftAddCatPanel,
+    changeDraftLeadCat,
+  } = useAppDraftUiActions({
+    addCatOpen,
+    channelPlusMenuOpen,
+    plusMenuOpen,
+    draftCwd,
+    draftLeadCatId,
+    navigate,
+    setAddCatOpen,
+    setAddCatTab,
+    setFeedback,
+    setCatForm,
+    setPlusMenuOpen,
+    setChannelPlusMenuOpen,
+    channelFileInputRef,
+    fileInputRef,
+    openFolderBrowser,
+  });
+  const {
+    onOpenChatsOverview,
+    onSelect,
+    onRenameChannel,
+    onDeleteChannel,
+    onArchiveCat,
+    onDeleteCat,
+    onNavigateSettings,
+    onDirectChatCat,
+    onResetSetup,
+    onStartNewChat,
+  } = useAppNavigationActions({
+    state,
+    setState,
+    navigate,
+    setBusy,
+    setFeedback,
+    setComposerDraft,
+    setAccountMenuOpen,
+    setAddCatOpen,
+    setPlusMenuOpen,
+    setChannelPlusMenuOpen,
+    setDraftCwd,
+    setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
+    setDraftFiles,
+    setChannelFiles,
+    confirm: appConfirm,
+  });
 
-interface WorkListButtonProps {
-  title: string;
-  summary: string | null;
-  status: string;
-  meta: string;
-  chips: string[];
-  selected: boolean;
-  onClick: () => void;
-}
-
-function WorkListButton({
-  title,
-  summary,
-  status,
-  meta,
-  chips,
-  selected,
-  onClick,
-}: WorkListButtonProps) {
-  return (
-    <button
-      type="button"
-      className={`workTaskButton${selected ? ' isSelected' : ''}`}
-      onClick={onClick}
-    >
-      <div className="workTaskButtonHeader">
-        <strong>{title}</strong>
-        <span className="workBadge">{formatLabel(status)}</span>
-      </div>
-      <p className="workTaskButtonMeta">{meta}</p>
-      <p className="workTaskButtonSummary">{summary ?? 'No summary recorded yet.'}</p>
-      {chips.length > 0 ? (
-        <div className="workChipRow">
-          {chips.map((chip, index) => (
-            <span className="workChip" key={`${title}:${chip}:${index}`}>{chip}</span>
-          ))}
-        </div>
-      ) : null}
-    </button>
-  );
-}
-
-interface DashboardSectionProps {
-  title: string;
-  subtitle: string;
-  emptyState: string;
-  children: ReactNode;
-}
-
-function DashboardSection({
-  title,
-  subtitle,
-  emptyState,
-  children,
-}: DashboardSectionProps) {
-  const isEmpty = children === null;
-
-  return (
-    <section className="workSectionCard">
-      <div className="workSectionHeader">
-        <div>
-          <p className="workSectionEyebrow">{title}</p>
-          <h2>{subtitle}</h2>
-        </div>
-      </div>
-      {isEmpty ? <p className="workEmptyState">{emptyState}</p> : children}
-    </section>
-  );
-}
-
-function WorkProjectDetail({ payload }: { payload: WorkProjectDetailProjection }) {
-  return (
-    <section className="workDetailCard">
-      <div className="workDetailHeader">
-        <div>
-          <p className="workSectionEyebrow">Project Detail</p>
-          <h2>{payload.project.title}</h2>
-          <p className="workTaskButtonMeta">
-            Owner {payload.ownerName}
-            {' · '}
-            Updated {formatTimestamp(payload.project.updatedAt)}
-          </p>
-        </div>
-        <span className="workBadge workBadgeStrong">{formatLabel(payload.project.status)}</span>
-      </div>
-
-      <div className="workSummaryGrid workSummaryGridCompact">
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{payload.workItems.length}</span>
-          <span className="workSummaryLabel">Work Items</span>
-        </div>
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{payload.linkedTasks.length}</span>
-          <span className="workSummaryLabel">Linked Tasks</span>
-        </div>
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{payload.artifacts.totalCount}</span>
-          <span className="workSummaryLabel">Artifacts</span>
-        </div>
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{payload.activity.totalCount}</span>
-          <span className="workSummaryLabel">Activity</span>
-        </div>
-      </div>
-
-      <div className="workDetailSection">
-        <h3>Project Context</h3>
-        <div className="workDefinitionList">
-          <div>
-            <dt>Primary conversation</dt>
-            <dd>{payload.primaryConversation?.title ?? 'No linked conversation'}</dd>
-          </div>
-          <div>
-            <dt>Repo path</dt>
-            <dd>{payload.project.repoPath ?? 'No repo path recorded'}</dd>
-          </div>
-        </div>
-        <p className="workDetailCopy">{payload.project.summary ?? 'No project summary recorded yet.'}</p>
-      </div>
-
-      <div className="workDetailSection">
-        <h3>Workstream Snapshot</h3>
-        {payload.workItems.length === 0 ? (
-          <p className="workEmptyState">No work items linked to this project yet.</p>
-        ) : (
-          <ul className="workCompactList">
-            {payload.workItems.map((workItem) => (
-              <li key={workItem.id}>
-                <strong>{workItem.title}</strong>
-                <span>{formatLabel(workItem.status)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="workDetailSection">
-        <h3>Recent Activity</h3>
-        {payload.activity.latestMessages.length === 0 ? (
-          <p className="workEmptyState">No recent project activity yet.</p>
-        ) : (
-          <ul className="workTimelineList">
-            {payload.activity.latestMessages.map((message, index) => (
-              <li className="workTimelineItem" key={`${payload.project.id}:activity:${index}`}>
-                <p>{message}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function WorkWorkItemDetail({ payload }: { payload: WorkWorkItemDetailProjection }) {
-  return (
-    <section className="workDetailCard">
-      <div className="workDetailHeader">
-        <div>
-          <p className="workSectionEyebrow">Work Item Detail</p>
-          <h2>{payload.workItem.title}</h2>
-          <p className="workTaskButtonMeta">
-            Owner {payload.ownerName}
-            {' · '}
-            Updated {formatTimestamp(payload.workItem.updatedAt)}
-          </p>
-        </div>
-        <span className="workBadge workBadgeStrong">{formatLabel(payload.workItem.status)}</span>
-      </div>
-
-      <div className="workSummaryGrid workSummaryGridCompact">
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{payload.assignedActors.length}</span>
-          <span className="workSummaryLabel">Assigned Actors</span>
-        </div>
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{payload.linkedTask ? 1 : 0}</span>
-          <span className="workSummaryLabel">Linked Task</span>
-        </div>
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{payload.artifacts.totalCount}</span>
-          <span className="workSummaryLabel">Artifacts</span>
-        </div>
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{payload.activity.totalCount}</span>
-          <span className="workSummaryLabel">Activity</span>
-        </div>
-      </div>
-
-      <div className="workDetailSection">
-        <h3>Context</h3>
-        <div className="workDefinitionList">
-          <div>
-            <dt>Project</dt>
-            <dd>{payload.project?.title ?? 'No linked project'}</dd>
-          </div>
-          <div>
-            <dt>Conversation</dt>
-            <dd>{payload.conversation?.title ?? 'No linked conversation'}</dd>
-          </div>
-          <div>
-            <dt>Assigned actors</dt>
-            <dd>
-              {payload.assignedActors.length > 0
-                ? payload.assignedActors.map((actor) => actor.displayName).join(', ')
-                : 'No assigned actors'}
-            </dd>
-          </div>
-        </div>
-        <p className="workDetailCopy">{payload.workItem.summary ?? 'No work-item summary recorded yet.'}</p>
-      </div>
-
-      {payload.linkedTask ? (
-        <div className="workDetailSection">
-          <h3>Linked Task Snapshot</h3>
-          <p className="workDetailCopy">
-            {payload.linkedTask.task.title}
-            {' · '}
-            {formatLabel(payload.linkedTask.task.status)}
-          </p>
-          <div className="workChipRow">
-            {payload.linkedTask.controlPlane.nextActions.map((action) => (
-              <span className="workChip workChipAccent" key={action.kind}>{action.label}</span>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="workDetailSection">
-        <h3>Recent Activity</h3>
-        {payload.activity.latestMessages.length === 0 ? (
-          <p className="workEmptyState">No recent work-item activity yet.</p>
-        ) : (
-          <ul className="workTimelineList">
-            {payload.activity.latestMessages.map((message, index) => (
-              <li className="workTimelineItem" key={`${payload.workItem.id}:activity:${index}`}>
-                <p>{message}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function WorkTaskDetail({ payload }: { payload: WorkTaskDetailProjection }) {
-  const { task, inspection, controlPlane, recovery, timeline } = payload;
-  const latestWorkflow = controlPlane.latestWorkflowRecommendation;
-
-  return (
-    <section className="workDetailCard">
-      <div className="workDetailHeader">
-        <div>
-          <p className="workSectionEyebrow">Task Detail</p>
-          <h2>{task.title}</h2>
-          <p className="workTaskButtonMeta">
-            Task {task.id}
-            {' · '}
-            {task.conversationId ?? 'No conversation'}
-            {' · '}
-            Updated {formatTimestamp(task.updatedAt)}
-          </p>
-        </div>
-        <span className="workBadge workBadgeStrong">{formatLabel(task.status)}</span>
-      </div>
-
-      <div className="workSummaryGrid workSummaryGridCompact">
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{inspection.counts.runs}</span>
-          <span className="workSummaryLabel">Runs</span>
-        </div>
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{inspection.counts.checkpoints}</span>
-          <span className="workSummaryLabel">Checkpoints</span>
-        </div>
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{inspection.counts.outcomes}</span>
-          <span className="workSummaryLabel">Outcomes</span>
-        </div>
-        <div className="workSummaryCard">
-          <span className="workSummaryValue">{timeline.summary.matching}</span>
-          <span className="workSummaryLabel">Timeline Items</span>
-        </div>
-      </div>
-
-      <div className="workDetailSection">
-        <h3>Attention and Next Actions</h3>
-        <p className="workDetailCopy">
-          Severity: <strong>{formatLabel(controlPlane.attention.severity)}</strong>
-          {' · '}
-          Needs operator attention: <strong>{controlPlane.attention.needsOperatorAttention ? 'Yes' : 'No'}</strong>
-        </p>
-        <div className="workChipRow">
-          {controlPlane.attention.reasons.length > 0
-            ? controlPlane.attention.reasons.map((reason) => (
-              <span className="workChip" key={reason}>{formatLabel(reason)}</span>
-            ))
-            : <span className="workChip">No active blockers</span>}
-          {controlPlane.nextActions.map((action) => (
-            <span className="workChip workChipAccent" key={action.kind}>
-              {action.label}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="workDetailSection">
-        <h3>Workflow and Delivery</h3>
-        <div className="workDefinitionList">
-          <div>
-            <dt>Workflow shape</dt>
-            <dd>{formatLabel(controlPlane.workflowSummary?.shape ?? controlPlane.workflowContinuation?.workflowShape ?? 'none')}</dd>
-          </div>
-          <div>
-            <dt>Delivery mode</dt>
-            <dd>{formatLabel(controlPlane.runtimeDeliveryIntent?.mode)}</dd>
-          </div>
-          <div>
-            <dt>Review required</dt>
-            <dd>{controlPlane.workflowContinuation?.reviewRequired || controlPlane.workflowSummary?.reviewRequired ? 'Yes' : 'No'}</dd>
-          </div>
-          <div>
-            <dt>Recovery required</dt>
-            <dd>{recovery.recoveryRequired ? 'Yes' : 'No'}</dd>
-          </div>
-        </div>
-        {latestWorkflow ? (
-          <p className="workDetailCopy">
-            Latest workflow recommendation: {latestWorkflow.rationale ?? 'No rationale recorded.'}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="workDetailSection">
-        <h3>Timeline Preview</h3>
-        {timeline.view.items.length === 0 ? (
-          <p className="workEmptyState">No timeline items recorded for this task yet.</p>
-        ) : (
-          <ul className="workTimelineList">
-            {timeline.view.items.map((item) => (
-              <li className="workTimelineItem" key={item.timelineId}>
-                <div className="workTimelineHeader">
-                  <strong>{item.title}</strong>
-                  <span>{formatTimestamp(item.timestamp)}</span>
-                </div>
-                <p>{item.summary ?? `${formatLabel(item.category)} · ${formatLabel(item.kind)}`}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function WorkDetailPane({ state }: { state: DetailState }) {
-  if (state.status === 'idle') {
-    return (
-      <section className="workDetailCard">
-        <p className="workSectionEyebrow">Work Detail</p>
-        <h2>Select a project, work item, or task</h2>
-        <p className="workEmptyState">
-          Work now exposes shared-core planning and control-plane reads. Choose a record
-          from the left to inspect context, activity, and execution state.
-        </p>
-      </section>
-    );
-  }
-
-  if (state.status === 'loading') {
-    return (
-      <section className="workDetailCard">
-        <p className="workSectionEyebrow">Work Detail</p>
-        <h2>Loading selection</h2>
-        <p className="workEmptyState">Fetching the selected Work record.</p>
-      </section>
-    );
-  }
-
-  if (state.status === 'error') {
-    return (
-      <section className="workDetailCard">
-        <p className="workSectionEyebrow">Work Detail</p>
-        <h2>Could not load selection</h2>
-        <p className="workEmptyState">{state.message}</p>
-      </section>
-    );
-  }
-
-  if (state.status === 'project') {
-    return <WorkProjectDetail payload={state.payload} />;
-  }
-
-  if (state.status === 'workItem') {
-    return <WorkWorkItemDetail payload={state.payload} />;
-  }
-
-  return <WorkTaskDetail payload={state.payload} />;
-}
-
-export default function WorkApp() {
-  const [dashboardState, setDashboardState] = useState<DashboardState>({ status: 'loading' });
-  const [detailState, setDetailState] = useState<DetailState>({ status: 'idle' });
-  const [focus, setFocus] = useState<FocusState>(null);
+  const {
+    readyPayload,
+    readyChat,
+    readySelectedChannel,
+    selectedChannelId,
+    selectedChannelViewId,
+    selectedChannelEntryLifecycle,
+    routeChannelExists,
+    routeChannelTitle,
+    routeDirectLaneSummary,
+    selectedChannel,
+    selectedDirectLane,
+    operatorRefreshKey,
+  } = deriveAppRouteState({
+    state,
+    routeChannelId,
+    draftLeadCatId,
+    showingMyCatDirectLane,
+  });
+  const {
+    operatorState,
+    setOperatorState,
+  } = useOperatorLoop(readyPayload, operatorRefreshKey);
+  const liveIndicatorChannel = selectedChannel ?? selectedDirectLane ?? null;
+  const liveIndicator = useLiveIndicator({
+    channelId: liveIndicatorChannel?.id ?? null,
+    busy,
+    selectedChannel: liveIndicatorChannel,
+  });
+  const {
+    onComposerKeyDown,
+    onSendMessage,
+  } = useComposerSubmit({
+    state,
+    setState,
+    navigate,
+    currentPathname: location.pathname,
+    composerDraft,
+    setComposerDraft,
+    showingNewChatDraft,
+    showingMyCatDirectLane,
+    draftLeadCatId,
+    draftCatIds,
+    draftCwd,
+    draftFiles,
+    channelFiles,
+    setDraftCwd,
+    setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
+    setDraftFiles,
+    setChannelFiles,
+    draftModel,
+    soloChannelModel,
+    selectedChannel,
+    setBusy,
+    setFeedback,
+  });
+  const {
+    onAssignExistingCat,
+    onCreateAndAssignCat,
+    onCreateAndDraftCat,
+    onRemoveAssignedCat,
+    toggleDraftCat,
+  } = useCatAssignmentActions({
+    state,
+    setState,
+    catForm,
+    setCatForm,
+    setBusy,
+    setFeedback,
+    setAddCatOpen,
+    setDraftCatIds,
+  });
+  const {
+    onApprovalDecision,
+    onChoiceSubmit,
+    onOperatorAction,
+  } = useGovernanceActions({
+    state,
+    setState,
+    operatorState,
+    setOperatorState,
+    setBusy,
+    setFeedback,
+  });
 
   useEffect(() => {
-    let cancelled = false;
+    document.title = routeChannelTitle
+      ? `${routeChannelTitle.trim() === 'Untitled chat' ? 'New chat' : routeChannelTitle} - Cats Work`
+      : 'Cats Work';
+  }, [routeChannelTitle]);
 
-    void fetchWorkDashboard()
-      .then((payload) => {
-        if (cancelled) {
-          return;
-        }
+  useEffect(() => {
+    const isGenericNewChatRoute = showingNewChatDraft && !draftLeadCatId;
+    const justEnteredGenericNewChatRoute = isGenericNewChatRoute && !wasGenericNewChatRoute.current;
+    wasGenericNewChatRoute.current = isGenericNewChatRoute;
+    if (!justEnteredGenericNewChatRoute) {
+      return;
+    }
 
-        setDashboardState({ status: 'ready', payload });
-        setFocus((current) => current ?? (
-          payload.selection.defaultProjectId
-            ? { kind: 'project', id: payload.selection.defaultProjectId }
-            : payload.selection.defaultWorkItemId
-              ? { kind: 'workItem', id: payload.selection.defaultWorkItemId }
-              : payload.selection.defaultTaskId
-                ? { kind: 'task', id: payload.selection.defaultTaskId }
-                : null
-        ));
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setDashboardState({
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Failed to load Cats Work dashboard.',
-          });
-        }
-      });
+    setDraftCatIds([]);
+    setDraftHighlightedCatId(null);
+    setDraftCatModelOverrides(new Map());
+  }, [draftLeadCatId, setDraftCatIds, showingNewChatDraft]);
 
+  useEffect(() => {
+    if (!readyChat) {
+      return;
+    }
+
+    const nextDraftModel = toModelSelectorValue(readyChat.newChatDefaults);
+    setDraftModel((currentDraftModel) =>
+      sameModelSelectorValue(currentDraftModel, nextDraftModel)
+        ? currentDraftModel
+        : nextDraftModel);
+  }, [
+    readyChat?.newChatDefaults.instance,
+    readyChat?.newChatDefaults.model,
+    readyChat?.newChatDefaults.modelSelection,
+    readyChat?.newChatDefaults.provider,
+  ]);
+
+  useEffect(() => {
     return () => {
-      cancelled = true;
+      if (pendingNewChatDefaultsSaveTimeout.current) {
+        clearTimeout(pendingNewChatDefaultsSaveTimeout.current);
+        pendingNewChatDefaultsSaveTimeout.current = null;
+      }
+      pendingNewChatDefaultsSaveAbort.current?.abort();
+      pendingNewChatDefaultsSaveAbort.current = null;
+      if (pendingSoloChannelModelSaveTimeout.current) {
+        clearTimeout(pendingSoloChannelModelSaveTimeout.current);
+        pendingSoloChannelModelSaveTimeout.current = null;
+      }
+      pendingSoloChannelModelSaveAbort.current?.abort();
+      pendingSoloChannelModelSaveAbort.current = null;
     };
   }, []);
 
   useEffect(() => {
-    if (!focus) {
-      setDetailState({ status: 'idle' });
+    if (!readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
       return;
     }
 
-    let cancelled = false;
-    setDetailState({ status: 'loading', focus });
+    setSoloChannelModel({
+      provider:
+        readySelectedChannel.pendingProvider
+        ?? readyChat.globalOrchestrator.executionTarget.provider,
+      model:
+        readySelectedChannel.pendingModel
+        ?? readyChat.globalOrchestrator.executionTarget.model
+        ?? null,
+      instance:
+        readySelectedChannel.pendingInstance
+        ?? readyChat.globalOrchestrator.executionTarget.instance
+        ?? null,
+      modelSelection:
+        readySelectedChannel.pendingModelSelection
+        ?? readyChat.globalOrchestrator.executionModelSelection
+        ?? null,
+    });
+  }, [
+    readySelectedChannel?.id,
+    readySelectedChannel?.composerMode,
+    readySelectedChannel?.pendingProvider,
+    readySelectedChannel?.pendingModel,
+    readySelectedChannel?.pendingInstance,
+    readySelectedChannel?.pendingModelSelection,
+    readyChat?.globalOrchestrator.executionTarget.provider,
+    readyChat?.globalOrchestrator.executionTarget.model,
+    readyChat?.globalOrchestrator.executionTarget.instance,
+    readyChat?.globalOrchestrator.executionModelSelection,
+  ]);
 
-    const loadDetail = async () => {
-      if (focus.kind === 'project') {
-        return { status: 'project' as const, payload: await fetchWorkProjectDetail(focus.id) };
+  useAppShellRouting({
+    state,
+    setState,
+    navigate,
+    busy,
+    routeChannelId,
+    routeChannelExists,
+    selectedChannelId,
+    selectedChannelViewId,
+    selectedChannelEntryLifecycle,
+    draftLeadCatId,
+    showingMyCatDirectLane,
+    routeDirectLaneSummary,
+    readySelectedChannel,
+  });
+
+  useEffect(() => {
+    if (!readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
+      return;
+    }
+
+    const pending = readySelectedChannel as {
+      pendingProvider?: string | null;
+      pendingModel?: string | null;
+      pendingInstance?: string | null;
+    };
+    if (pending.pendingProvider) {
+      setSoloChannelModel({
+        provider: pending.pendingProvider,
+        model: pending.pendingModel ?? null,
+        instance: pending.pendingInstance ?? null,
+        modelSelection: readySelectedChannel.pendingModelSelection ?? null,
+      });
+    }
+  }, [readySelectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onDraftModelChange = useCallback((nextDraftModel: ModelSelectorValue): void => {
+    setDraftModel(nextDraftModel);
+  }, []);
+
+  const onResumeChannel = useCallback(async (channelId: string): Promise<void> => {
+    setBusy('channel:resume');
+    setFeedback('');
+    try {
+      const activation = await activateChatChannel(channelId);
+      startTransition(() => setState({ status: 'ready', payload: activation.appShell }));
+      const errors = activation.results.filter((result) => result.status === 'error');
+      if (errors.length > 0) {
+        setFeedback(
+          errors
+            .map((result) => result.error || `Failed to resume ${result.targetName}.`)
+            .join(' '),
+        );
       }
-      if (focus.kind === 'workItem') {
-        return { status: 'workItem' as const, payload: await fetchWorkWorkItemDetail(focus.id) };
-      }
-      return { status: 'task' as const, payload: await fetchWorkTaskDetail(focus.id) };
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to resume chat session.');
+    } finally {
+      setBusy('');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (state.status !== 'ready') {
+      return;
+    }
+
+    const persistedDraftModel = toModelSelectorValue(state.payload.chat.newChatDefaults);
+    if (sameModelSelectorValue(draftModel, persistedDraftModel)) {
+      return;
+    }
+
+    if (pendingNewChatDefaultsSaveTimeout.current) {
+      clearTimeout(pendingNewChatDefaultsSaveTimeout.current);
+      pendingNewChatDefaultsSaveTimeout.current = null;
+    }
+    pendingNewChatDefaultsSaveAbort.current?.abort();
+
+    const saveId = latestNewChatDefaultsSaveId.current + 1;
+    latestNewChatDefaultsSaveId.current = saveId;
+    const controller = new AbortController();
+    pendingNewChatDefaultsSaveAbort.current = controller;
+    const nextDraftModel = {
+      provider: draftModel.provider,
+      instance: draftModel.instance,
+      model: draftModel.model,
+      modelSelection: draftModel.modelSelection,
     };
 
-    void loadDetail()
-      .then((nextState) => {
-        if (!cancelled) {
-          setDetailState(nextState);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setDetailState({
-            status: 'error',
-            focus,
-            message: error instanceof Error ? error.message : 'Failed to load Work detail.',
-          });
-        }
-      });
+    pendingNewChatDefaultsSaveTimeout.current = setTimeout(() => {
+      pendingNewChatDefaultsSaveTimeout.current = null;
+
+      void updateNewChatDefaultsPreference(nextDraftModel, controller.signal)
+        .then((payload) => {
+          if (controller.signal.aborted || latestNewChatDefaultsSaveId.current !== saveId) {
+            return;
+          }
+          pendingNewChatDefaultsSaveAbort.current = null;
+          startTransition(() => setState({ status: 'ready', payload }));
+        })
+        .catch((error) => {
+          if (controller.signal.aborted || latestNewChatDefaultsSaveId.current !== saveId) {
+            return;
+          }
+          pendingNewChatDefaultsSaveAbort.current = null;
+          setFeedback(
+            error instanceof Error
+              ? error.message
+              : 'Failed to save new chat model defaults.',
+          );
+        });
+    }, 150);
 
     return () => {
-      cancelled = true;
+      if (pendingNewChatDefaultsSaveTimeout.current) {
+        clearTimeout(pendingNewChatDefaultsSaveTimeout.current);
+        pendingNewChatDefaultsSaveTimeout.current = null;
+      }
+      controller.abort();
     };
-  }, [focus]);
+  }, [
+    draftModel.instance,
+    draftModel.model,
+    draftModel.modelSelection,
+    draftModel.provider,
+    setFeedback,
+    state.status,
+    state.status === 'ready' ? state.payload.chat.newChatDefaults.instance : null,
+    state.status === 'ready' ? state.payload.chat.newChatDefaults.model : null,
+    state.status === 'ready' ? state.payload.chat.newChatDefaults.modelSelection : null,
+    state.status === 'ready' ? state.payload.chat.newChatDefaults.provider : null,
+  ]);
 
-  if (dashboardState.status === 'loading') {
+  useEffect(() => {
+    if (state.status !== 'ready' || !readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
+      return;
+    }
+
+    const persistedSoloModel: ModelSelectorValue = {
+      provider:
+        readySelectedChannel.pendingProvider
+        ?? readyChat.globalOrchestrator.executionTarget.provider,
+      model:
+        readySelectedChannel.pendingModel
+        ?? readyChat.globalOrchestrator.executionTarget.model
+        ?? null,
+      instance:
+        readySelectedChannel.pendingInstance
+        ?? readyChat.globalOrchestrator.executionTarget.instance
+        ?? null,
+      modelSelection:
+        readySelectedChannel.pendingModelSelection
+        ?? readyChat.globalOrchestrator.executionModelSelection
+        ?? null,
+    };
+
+    if (sameModelSelectorValue(soloChannelModel, persistedSoloModel)) {
+      return;
+    }
+
+    if (pendingSoloChannelModelSaveTimeout.current) {
+      clearTimeout(pendingSoloChannelModelSaveTimeout.current);
+      pendingSoloChannelModelSaveTimeout.current = null;
+    }
+    pendingSoloChannelModelSaveAbort.current?.abort();
+
+    const channelId = readySelectedChannel.id;
+    const saveId = latestSoloChannelModelSaveId.current + 1;
+    latestSoloChannelModelSaveId.current = saveId;
+    const controller = new AbortController();
+    pendingSoloChannelModelSaveAbort.current = controller;
+    const nextSoloModel = {
+      pendingProvider: soloChannelModel.provider,
+      pendingModel: soloChannelModel.model,
+      pendingInstance: soloChannelModel.instance,
+      pendingModelSelection: soloChannelModel.modelSelection,
+    };
+
+    pendingSoloChannelModelSaveTimeout.current = setTimeout(() => {
+      pendingSoloChannelModelSaveTimeout.current = null;
+
+      void updateChannelPendingExecutionTarget(channelId, nextSoloModel, controller.signal)
+        .then((payload) => {
+          if (controller.signal.aborted || latestSoloChannelModelSaveId.current !== saveId) {
+            return;
+          }
+          pendingSoloChannelModelSaveAbort.current = null;
+          startTransition(() => setState({ status: 'ready', payload }));
+        })
+        .catch((error) => {
+          if (controller.signal.aborted || latestSoloChannelModelSaveId.current !== saveId) {
+            return;
+          }
+          pendingSoloChannelModelSaveAbort.current = null;
+          setFeedback(
+            error instanceof Error
+              ? error.message
+              : 'Failed to save this chat AI reply settings.',
+          );
+        });
+    }, 150);
+
+    return () => {
+      if (pendingSoloChannelModelSaveTimeout.current) {
+        clearTimeout(pendingSoloChannelModelSaveTimeout.current);
+        pendingSoloChannelModelSaveTimeout.current = null;
+      }
+      controller.abort();
+    };
+  }, [
+    readyChat,
+    readySelectedChannel,
+    setFeedback,
+    soloChannelModel.instance,
+    soloChannelModel.model,
+    soloChannelModel.modelSelection,
+    soloChannelModel.provider,
+    state.status,
+  ]);
+
+  function updatePayload(payload: AppShellPayload): void {
+    startTransition(() => setState({ status: 'ready', payload }));
+  }
+
+  if (state.status === 'loading') {
+    return <BootShell />;
+  }
+
+  if (state.status === 'error') {
     return (
-      <div className="workSurface">
-        <section className="workHeroCard">
-          <p className="workEyebrow">Cats Work</p>
-          <h1>Loading operator dashboard...</h1>
-        </section>
+      <div className="screen screenCentered">
+        <div className="errorPanel">
+          <p className="eyebrow">Renderer Error</p>
+          <h1>Chat unavailable</h1>
+          <p>{state.message}</p>
+        </div>
       </div>
     );
   }
 
-  if (dashboardState.status === 'error') {
-    return (
-      <div className="workSurface">
-        <section className="workHeroCard">
-          <p className="workEyebrow">Cats Work</p>
-          <h1>Could not load Work</h1>
-          <p className="workEmptyState">{dashboardState.message}</p>
-        </section>
-      </div>
-    );
-  }
-
-  const { payload } = dashboardState;
+  const { payload } = state;
+  const {
+    surface,
+    directLaneChannel,
+    activeMyCatId,
+    activeAssignedCats,
+    assignedCatIds,
+    bossCatName,
+    bossCatAvatarColor,
+    showBossCatAvatar,
+    selectableCats,
+    assignableCatCount,
+    draftCatIdSet,
+    showDirectLaneBoot,
+    showAddCatPanel,
+  } = deriveAppViewState({
+    pathname: location.pathname,
+    payload,
+    draftLeadCatId,
+    selectedChannel,
+    selectedDirectLane,
+    routeDirectLaneSummary,
+    showingMyCatDirectLane,
+    addCatOpen,
+    showingNewChatDraft,
+    draftCatIds,
+  });
+  const visibleChatChannelId = selectedChannel?.id ?? directLaneChannel?.id ?? null;
 
   return (
-    <div className="workSurface">
-      <section className="workHeroCard">
-        <div className="workHeroCopy">
-          <p className="workEyebrow">Cats Work</p>
-          <h1>Shared-core planning and operations</h1>
-          <p>
-            Work now sits above Cats Core as a real planning surface: projects, work items,
-            approvals, recovery, and task detail all come from the same shared records that
-            Chat already writes.
-          </p>
-        </div>
-        <div className="workSummaryGrid">
-          <div className="workSummaryCard">
-            <span className="workSummaryValue">{payload.summary.projectCount}</span>
-            <span className="workSummaryLabel">Projects</span>
-          </div>
-          <div className="workSummaryCard">
-            <span className="workSummaryValue">{payload.summary.workItemCount}</span>
-            <span className="workSummaryLabel">Work Items</span>
-          </div>
-          <div className="workSummaryCard">
-            <span className="workSummaryValue">{payload.summary.operatorAttentionCount}</span>
-            <span className="workSummaryLabel">Need Attention</span>
-          </div>
-          <div className="workSummaryCard">
-            <span className="workSummaryValue">{payload.summary.recoveryCount}</span>
-            <span className="workSummaryLabel">Recovery</span>
-          </div>
-        </div>
-      </section>
+    <div
+      className={
+        sidebarOpen
+          ? 'screen claudeShell'
+          : 'screen claudeShell claudeShellSidebarCollapsed'
+      }
+    >
+      <Sidebar
+        payload={payload}
+        sidebarOpen={sidebarOpen}
+        accountMenuOpen={accountMenuOpen}
+        overflowMenuOpenId={overflowMenuOpenId}
+        busy={busy}
+        surface={surface}
+        routeChannelId={routeChannelId}
+        accountMenuRef={accountMenuRef}
+        onToggleSidebar={onToggleSidebar}
+        onCollapsedSidebarClick={onCollapsedSidebarClick}
+        onOpenChatsOverview={onOpenChatsOverview}
+        onStartNewChat={onStartNewChat}
+        onSelect={onSelect}
+        onDeleteChannel={onDeleteChannel}
+        onRenameChannel={onRenameChannel}
+        onArchiveCat={onArchiveCat}
+        onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
+        onOverflowMenuToggle={setOverflowMenuOpenId}
+        onNavigateSettings={onNavigateSettings}
+        activeMyCatId={activeMyCatId}
+        onDirectChatCat={onDirectChatCat}
+      />
 
-      <div className="workLayout">
-        <div className="workSectionColumn">
-          <DashboardSection
-            title="Projects"
-            subtitle={`${payload.sections.projects.summary.returned} visible records`}
-            emptyState={payload.sections.projects.emptyState}
-          >
-            {payload.sections.projects.items.length === 0 ? null : (
-              <div className="workTaskList">
-                {payload.sections.projects.items.map((item) => (
-                  <WorkListButton
-                    key={`project:${item.id}`}
-                    title={item.title}
-                    summary={item.summary}
-                    status={item.status}
-                    meta={`${item.ownerName} · ${formatTimestamp(item.updatedAt)}`}
-                    chips={[
-                      `${item.linkedWorkItemCount} work items`,
-                      `${item.linkedTaskCount} linked tasks`,
-                    ]}
-                    selected={focus?.kind === 'project' && focus.id === item.id}
-                    onClick={() => setFocus({ kind: 'project', id: item.id })}
-                  />
-                ))}
-              </div>
-            )}
-          </DashboardSection>
-
-          <DashboardSection
-            title="Work Items"
-            subtitle={`${payload.sections.workItems.summary.returned} active records`}
-            emptyState={payload.sections.workItems.emptyState}
-          >
-            {payload.sections.workItems.items.length === 0 ? null : (
-              <div className="workTaskList">
-                {payload.sections.workItems.items.map((item) => (
-                  <WorkListButton
-                    key={`work-item:${item.id}`}
-                    title={item.title}
-                    summary={item.summary}
-                    status={item.status}
-                    meta={`${item.projectTitle ?? 'No project'} · ${formatTimestamp(item.updatedAt)}`}
-                    chips={[
-                      item.taskTitle ?? 'No linked task',
-                      ...item.assignedActorNames.slice(0, 2),
-                    ]}
-                    selected={focus?.kind === 'workItem' && focus.id === item.id}
-                    onClick={() => setFocus({ kind: 'workItem', id: item.id })}
-                  />
-                ))}
-              </div>
-            )}
-          </DashboardSection>
-
-          <DashboardSection
-            title="Operator Inbox"
-            subtitle={`${payload.sections.operatorInbox.summary.returned} queued tasks`}
-            emptyState={payload.sections.operatorInbox.emptyState}
-          >
-            {payload.sections.operatorInbox.items.length === 0 ? null : (
-              <div className="workTaskList">
-                {payload.sections.operatorInbox.items.map((item) => (
-                  <WorkListButton
-                    key={`operator:${item.taskId}`}
-                    title={item.taskTitle}
-                    summary={item.summary}
-                    status={item.taskStatus}
-                    meta={formatTimestamp(item.latestTimelineItem?.timestamp ?? null)}
-                    chips={[
-                      ...item.attention.reasons.map((reason) => formatLabel(reason)),
-                      ...item.nextActions.map((action) => action.label),
-                    ]}
-                    selected={focus?.kind === 'task' && focus.id === item.taskId}
-                    onClick={() => setFocus({ kind: 'task', id: item.taskId })}
-                  />
-                ))}
-              </div>
-            )}
-          </DashboardSection>
-
-          <DashboardSection
-            title="Control Plane"
-            subtitle={`${payload.sections.controlPlane.summary.returned} surfaced tasks`}
-            emptyState={payload.sections.controlPlane.emptyState}
-          >
-            {payload.sections.controlPlane.items.length === 0 ? null : (
-              <div className="workTaskList">
-                {payload.sections.controlPlane.items.map((item) => (
-                  <WorkListButton
-                    key={`control:${item.taskId}`}
-                    title={item.latestTimelineItem?.title ?? item.taskId}
-                    summary={item.latestTimelineItem?.summary ?? null}
-                    status={item.taskStatus}
-                    meta={formatTimestamp(item.lastUpdatedAt)}
-                    chips={[
-                      formatLabel(item.attention.severity),
-                      ...item.nextActions.map((action) => action.label),
-                    ]}
-                    selected={focus?.kind === 'task' && focus.id === item.taskId}
-                    onClick={() => setFocus({ kind: 'task', id: item.taskId })}
-                  />
-                ))}
-              </div>
-            )}
-          </DashboardSection>
-
-          <DashboardSection
-            title="Recovery"
-            subtitle={`${payload.sections.recovery.summary.returned} recovery tasks`}
-            emptyState={payload.sections.recovery.emptyState}
-          >
-            {payload.sections.recovery.items.length === 0 ? null : (
-              <div className="workTaskList">
-                {payload.sections.recovery.items.map((item) => (
-                  <WorkListButton
-                    key={`recovery:${item.taskId}`}
-                    title={item.pendingDispatch?.bodyPreview ?? item.dispatchReplay?.bodyPreview ?? item.taskId}
-                    summary={item.latestActivity?.message ?? 'Recovery context available.'}
-                    status={item.taskStatus}
-                    meta={formatTimestamp(
-                      item.latestActivity?.createdAt
-                        ?? item.workflowContinuationReplay?.recordedAt
-                        ?? item.dispatchReplay?.recordedAt
-                        ?? item.pendingDispatch?.blockedAt
-                        ?? null,
-                    )}
-                    chips={[
-                      item.canRetry ? 'Retry available' : 'Manual follow-up',
-                      item.canResumeViaApproval ? 'Approval can resume' : 'No approval resume',
-                    ]}
-                    selected={focus?.kind === 'task' && focus.id === item.taskId}
-                    onClick={() => setFocus({ kind: 'task', id: item.taskId })}
-                  />
-                ))}
-              </div>
-            )}
-          </DashboardSection>
-        </div>
-
-        <div className="workDetailColumn">
-          <WorkDetailPane state={detailState} />
-        </div>
-      </div>
+      <main className="canvas">
+        <AppRoutes
+          payload={payload}
+          selectedChannel={selectedChannel}
+          directLaneChannel={directLaneChannel}
+          showDirectLaneBoot={showDirectLaneBoot}
+          feedback={feedback}
+          busy={busy}
+          chatSurfaceProps={{
+            operatorSnapshot: operatorState.snapshot,
+            operatorLoading:
+              operatorState.status === 'loading' && operatorState.snapshot === null,
+            operatorError: operatorState.status === 'error' ? operatorState.message : '',
+            composerDraft,
+            busy,
+            feedback,
+            greeting,
+            channelFiles,
+            channelPlusMenuOpen,
+            channelPlusMenuRef,
+            channelFileInputRef,
+            activeAssignedCats,
+            bossCatName,
+            bossCatAvatarColor,
+            showBossCatAvatar,
+            onComposerChange: setComposerDraft,
+            onComposerKeyDown,
+            onSendMessage,
+            onToggleChannelPlusMenu: toggleChannelPlusMenu,
+            onChannelFileSelect: openChannelFilePicker,
+            onChannelFilesChange: setChannelFiles,
+            onApprovalDecision,
+            onChoiceSubmit,
+            onResumeChannel: visibleChatChannelId
+              ? () => onResumeChannel(visibleChatChannelId)
+              : undefined,
+            onOperatorAction,
+            autoResize,
+            selectedModel:
+              selectedChannel?.composerMode === 'solo' ? soloChannelModel : undefined,
+            onModelChange:
+              selectedChannel?.composerMode === 'solo' ? setSoloChannelModel : undefined,
+            onDirectLaneModelChange: onDirectLaneModelSave,
+            liveIndicator,
+          }}
+          draftSurfaceProps={{
+            composerDraft,
+            busy,
+            greeting,
+            draftFiles,
+            draftCwd,
+            draftCatIds,
+            plusMenuOpen,
+            plusMenuRef,
+            fileInputRef,
+            bossCatName,
+            bossCatAvatarColor,
+            onComposerChange: setComposerDraft,
+            onComposerKeyDown,
+            onSendMessage,
+            onTogglePlusMenu: toggleDraftPlusMenu,
+            onFileSelect: openDraftFilePicker,
+            onPickFolder: openDraftFolderPicker,
+            onDraftFilesChange: setDraftFiles,
+            onDraftCwdClear: () => setDraftCwd(null),
+            onToggleDraftCat: onToggleDraftCat,
+            autoResize,
+            draftLeadCatId,
+            selectedModel: draftModel,
+            onModelChange: onDraftModelChange,
+            draftHighlightedCatId,
+            onHighlightDraftCat: setDraftHighlightedCatId,
+            draftCatModelOverrides,
+            onDraftCatModelOverride,
+            onDirectLaneModelChange: onDirectLaneModelSave,
+          }}
+          onPayloadUpdate={updatePayload}
+          onFeedback={setFeedback}
+          onBusy={setBusy}
+          onResetSetup={onResetSetup}
+          addCatOpen={showAddCatPanel}
+          onToggleAddCat={toggleAddCatPanel}
+          addCatPanelProps={{
+            panelRef: addCatPanelRef,
+            selectableCats,
+            assignableCatCount,
+            addCatTab,
+            showingNewChatDraft: showingNewChatDraft && !draftLeadCatId,
+            draftCatIdSet,
+            assignedCatIds,
+            catForm,
+            onClose: () => setAddCatOpen(false),
+            onTabChange: setAddCatTab,
+            onAssignExistingCat,
+            onRemoveAssignedCat,
+            onToggleDraftCat: onToggleDraftCat,
+            onCatFormChange: setCatForm,
+            onCreateCat: (event) => {
+              if (showingNewChatDraft && !draftLeadCatId) {
+                void onCreateAndDraftCat(event);
+                return;
+              }
+              void onCreateAndAssignCat(event);
+            },
+          }}
+          folderBrowserProps={{
+            folderBrowsePath,
+            folderBrowseCurrentPath: folderBrowseCurrentPath ?? '',
+            folderBrowseParentPath: folderBrowseParentPath ?? '',
+            folderBrowseEntries,
+            folderBrowseLoading,
+            folderBrowseError,
+            onPathChange: setFolderBrowsePath,
+            onBrowse: (path) => {
+              void browseFolder(path);
+            },
+            onSelect: selectCurrentFolder,
+          }}
+          onOpenDraftAddCat={openDraftAddCatPanel}
+          onChangeDraftLeadCat={changeDraftLeadCat}
+        />
+      </main>
+      <ConfirmDialog dialog={appDialog} onClose={appHandleClose} />
     </div>
   );
 }
