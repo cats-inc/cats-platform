@@ -8,6 +8,11 @@ import {
   SUITE_SURFACE_ROUTES,
 } from '../dist-server/app/renderer/routeMap.js';
 import {
+  listSuiteSurfaceDescriptors,
+  suiteSurfaceRoutePrefix,
+  suiteSurfaceSubtitle,
+} from '../dist-server/core/suiteSurface.js';
+import {
   buildWorkDashboardProjection,
 } from '../dist-server/products/work/api/projection.js';
 import {
@@ -36,6 +41,40 @@ test('resolveSuiteSurfaceForPath routes work and code prefixes to their dedicate
       work: { routePrefix: '/work', placeholder: true, apiBase: '/api/work' },
       code: { routePrefix: '/code', placeholder: true, apiBase: '/api/code' },
     },
+  );
+});
+
+test('suite surface descriptors expose product switcher metadata and stable root routes', () => {
+  assert.deepEqual(
+    listSuiteSurfaceDescriptors().map((descriptor) => ({
+      id: descriptor.id,
+      routePrefix: descriptor.routePrefix,
+      subtitle: descriptor.subtitle,
+    })),
+    [
+      {
+        id: 'chat',
+        routePrefix: '/chat',
+        subtitle: 'Conversations with companions and personal agents',
+      },
+      {
+        id: 'work',
+        routePrefix: '/work',
+        subtitle: 'Projects, approvals, and operator workflow',
+      },
+      {
+        id: 'code',
+        routePrefix: '/code',
+        subtitle: 'Repos, runs, and coding workspace',
+      },
+    ],
+  );
+  assert.equal(suiteSurfaceRoutePrefix('chat'), '/chat');
+  assert.equal(suiteSurfaceRoutePrefix('work'), '/work');
+  assert.equal(suiteSurfaceRoutePrefix('code'), '/code');
+  assert.equal(
+    suiteSurfaceSubtitle('code'),
+    'Repos, runs, and coding workspace',
   );
 });
 

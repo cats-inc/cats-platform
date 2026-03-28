@@ -21,6 +21,8 @@
 }
 
 .brandCopy {
+  position: relative;
+  flex: 1;
   min-width: 0;
 }
 
@@ -32,6 +34,168 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.suiteSurfaceSwitcher {
+  max-width: 100%;
+}
+
+.suiteSurfaceTrigger {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  height: 32px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.suiteSurfaceTriggerRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.suiteSurfaceChevron {
+  flex: 0 0 auto;
+  color: var(--muted-soft);
+  transition: transform 140ms ease, color 140ms ease;
+}
+
+.suiteSurfaceTrigger:hover .suiteSurfaceChevron,
+.suiteSurfaceTrigger.isOpen .suiteSurfaceChevron {
+  color: var(--text);
+}
+
+.suiteSurfaceTrigger.isOpen .suiteSurfaceChevron {
+  transform: rotate(180deg);
+}
+
+.suiteSurfaceMenu {
+  z-index: 50;
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  background: rgba(251, 250, 248, 0.94);
+  box-shadow: var(--shadow-sheet);
+  backdrop-filter: blur(16px);
+}
+
+.suiteSurfaceMenuHeading {
+  margin: 0 0 10px;
+  padding: 0 4px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.suiteSurfaceMenuList {
+  display: grid;
+  gap: 4px;
+}
+
+.suiteSurfaceMenuItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.suiteSurfaceMenuItem:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.suiteSurfaceMenuItem.isCurrent {
+  background: rgba(0, 0, 0, 0.055);
+}
+
+.suiteSurfaceSwatch {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+}
+
+.suiteSurfaceSwatchChat {
+  background: #E0B323;
+}
+
+.suiteSurfaceSwatchWork {
+  background: #6E8450;
+}
+
+.suiteSurfaceSwatchCode {
+  background: #4F6C92;
+}
+
+.suiteSurfaceMenuCopy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.suiteSurfaceMenuTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.suiteSurfaceMenuTitle {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.suiteSurfaceMenuSubtitle {
+  color: var(--muted);
+  font-size: 0.77rem;
+  line-height: 1.35;
+}
+
+.suiteSurfaceMenuBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--muted-bg);
+  color: var(--muted-text);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.suiteSurfaceMenuCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .chromeButton {

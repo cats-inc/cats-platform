@@ -18,11 +18,13 @@ import {
   isNewChatPath,
   readNewChatLeadCatId,
 } from '../shared/channelPaths';
+import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
 import {
   getDefaultModel,
   getDefaultProviderInstance,
 } from '../../../shared/providerCatalog';
 import { sameProviderModelSelection } from '../../../shared/providerSelection';
+import { suiteSurfaceRoutePrefix } from '../../../core/suiteSurface.js';
 import {
   BootShell,
   emptyCatForm,
@@ -700,6 +702,10 @@ export default function App() {
   });
   const visibleChatChannelId = selectedChannel?.id ?? directLaneChannel?.id ?? null;
 
+  function onSwitchProduct(nextSurface: SuiteSurfaceId): void {
+    navigate(suiteSurfaceRoutePrefix(nextSurface));
+  }
+
   return (
     <div
       className={
@@ -728,6 +734,7 @@ export default function App() {
         onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
         onOverflowMenuToggle={setOverflowMenuOpenId}
         onNavigateSettings={onNavigateSettings}
+        onSwitchProduct={onSwitchProduct}
         activeMyCatId={activeMyCatId}
         onDirectChatCat={onDirectChatCat}
       />

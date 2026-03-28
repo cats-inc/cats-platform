@@ -15,8 +15,9 @@ import {
   statusDotLabel,
 } from '../myCatNavigation';
 import { isDirectLaneSummary } from '../../shared/channelTopology';
+import type { SuiteSurfaceId } from '../../../../shared/suite-contract.js';
 import { resolveSuiteSurfaceFromPath } from '../../../../core/suiteSurface.js';
-import { SuiteProductBrand } from '../../../../design/components/SuiteProductBrand.js';
+import { SuiteSurfaceSwitcher } from '../../../../design/components/SuiteSurfaceSwitcher.js';
 
 export type SidebarViewMode = 'latest' | 'by_cat' | 'by_chat_type';
 
@@ -40,6 +41,7 @@ export interface SidebarProps {
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
+  onSwitchProduct: (surface: SuiteSurfaceId) => void;
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
 }
@@ -389,6 +391,7 @@ export function Sidebar({
   onAccountMenuToggle,
   onOverflowMenuToggle,
   onNavigateSettings,
+  onSwitchProduct,
   activeMyCatId,
   onDirectChatCat,
 }: SidebarProps) {
@@ -436,7 +439,10 @@ export function Sidebar({
       <div className="sidebarInner">
         <div className="brandRow">
           <div className="brandCopy">
-            <SuiteProductBrand surface={activeSurface} />
+            <SuiteSurfaceSwitcher
+              activeSurface={activeSurface}
+              onSelectSurface={onSwitchProduct}
+            />
           </div>
           <button
             className="chromeButton"
