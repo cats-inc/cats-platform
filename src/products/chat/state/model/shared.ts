@@ -7,7 +7,11 @@ import type {
   ParticipantExecutionLease,
 } from '../../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
-import { normalizeChannelAssignmentsForRoomMode, resolveDirectLaneLeadParticipantId } from '../../shared/channelTopology.js';
+import {
+  normalizeChannelAssignmentsForRoomMode,
+  resolveChannelKind,
+  resolveDirectLaneLeadParticipantId,
+} from '../../shared/channelTopology.js';
 import { createEmptyExecutionLease } from '../defaults.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 
@@ -57,6 +61,11 @@ export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void 
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
+  channel.channelKind = resolveChannelKind({
+    channelKind: channel.channelKind,
+    roomMode: roomRouting.mode,
+    participants: channel.catAssignments,
+  });
   const activeCatIds = channel.catAssignments
     .filter((assignment) => assignment.status === 'active')
     .map((assignment) => assignment.catId);

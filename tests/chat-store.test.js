@@ -10,12 +10,14 @@ import {
   archiveCat,
   appendMessage,
   assignCatToChannel,
+  buildChannelView,
   createChannel,
   createCat,
   deleteCat,
   deleteChannel,
   exportChannel,
   removeCatFromChannel,
+  toChannelSummary,
   updateGlobalOrchestrator,
 } from '../dist-server/chat/model.js';
 import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
@@ -149,6 +151,64 @@ test('assigning the first cat upgrades a solo chat into cat-led mode and removin
   );
   assert.equal(state.channels[0].composerMode, 'solo');
   assert.equal(state.channels[0].roomRouting?.leadParticipantId, null);
+});
+
+test('channel topology infers direct lanes and multi-cat rooms independently from routing mode', () => {
+  const now = new Date('2026-03-28T00:00:00.000Z');
+  let state = createDefaultChatState();
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Direct lanes expose their own channel kind.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  assert.equal(state.channels[0].channelKind, 'direct_lane');
+  assert.equal(buildChannelView(state, state.selectedChannelId)?.channelKind, 'direct_lane');
+
+  state = createCat(
+    state,
+    {
+      name: 'Reviewer',
+      provider: 'gemini',
+      roles: ['reviewer'],
+    },
+    now,
+  );
+  const reviewerId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Team room',
+      topic: 'Multi-cat rooms are distinguished from boss threads.',
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const roomId = state.selectedChannelId;
+  state = assignCatToChannel(state, roomId, { catId: companionId, provider: 'claude' }, now);
+  state = assignCatToChannel(state, roomId, { catId: reviewerId, provider: 'gemini' }, now);
+
+  assert.equal(state.channels[0].channelKind, 'multi_cat_room');
+  assert.equal(toChannelSummary(state.channels[0]).channelKind, 'multi_cat_room');
 });
 
 test('FileChatStore repairs legacy active snapshots that are missing setupCompleteAt', async () => {

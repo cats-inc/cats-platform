@@ -18,6 +18,7 @@ import type {
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { defaultCatProducts, hasSuiteSurface } from '../../../../shared/suiteSurfaces.js';
 import {
+  inferChannelKind,
   normalizeChannelAssignmentsForRoomMode,
   resolveDirectLaneLeadParticipantId,
 } from '../../shared/channelTopology.js';
@@ -186,6 +187,10 @@ export function createChannel(
     id: channelId,
     title,
     topic,
+    channelKind: inferChannelKind({
+      roomMode: input.roomMode ?? 'boss_chat',
+      participants: normalizedCatAssignments,
+    }),
     status: normalizedCatAssignments.length > 0 ? 'configured' : 'planned',
     unreadCount: 0,
     repoPath: normalizeOptionalText(input.repoPath),

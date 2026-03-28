@@ -1,4 +1,5 @@
 import type { AppShellPayload } from '../../api/contracts';
+import { resolveChannelKind } from '../../shared/channelTopology.js';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -22,6 +23,40 @@ function readStringArray(value: unknown): string[] {
   }
 
   return value.filter((item): item is string => typeof item === 'string');
+}
+
+function normalizeChannelKind(
+  channel: Record<string, unknown>,
+  roomMode: 'boss_chat' | 'direct_cat_chat',
+): void {
+  const catAssignments = Array.isArray(channel.catAssignments)
+    ? channel.catAssignments
+    : [];
+  const assignedCats = Array.isArray(channel.assignedCats)
+    ? channel.assignedCats
+    : [];
+  const participants = (
+    catAssignments.length > 0
+      ? catAssignments
+      : assignedCats
+  ).map((assignmentValue) => {
+    const assignment = asRecord(assignmentValue) ?? {};
+    return {
+      catId: readString(assignment.catId),
+      status: readString(assignment.status, 'active') === 'removed' ? 'removed' : 'active',
+    };
+  });
+
+  channel.channelKind = resolveChannelKind({
+    channelKind:
+      channel.channelKind === 'boss_thread'
+      || channel.channelKind === 'direct_lane'
+      || channel.channelKind === 'multi_cat_room'
+        ? channel.channelKind
+        : null,
+    roomMode,
+    participants,
+  });
 }
 
 export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
@@ -100,6 +135,13 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   const catsById = new Map(cats.map((cat) => [readString(cat.id), cat]));
 
   if (selectedChannel) {
+    const roomRouting = asRecord(selectedChannel.roomRouting);
+    normalizeChannelKind(
+      selectedChannel,
+      readString(roomRouting?.mode, 'boss_chat') === 'direct_cat_chat'
+        ? 'direct_cat_chat'
+        : 'boss_chat',
+    );
     if (!Array.isArray(selectedChannel.catAssignments)) {
       selectedChannel.catAssignments = [];
     }
@@ -160,6 +202,12 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   if (Array.isArray(chatState.channels)) {
     chatState.channels = chatState.channels.map((channelValue) => {
       const channel = asRecord(channelValue) ?? {};
+      normalizeChannelKind(
+        channel,
+        readString(channel.roomMode, 'boss_chat') === 'direct_cat_chat'
+          ? 'direct_cat_chat'
+          : 'boss_chat',
+      );
       if (channel.catCount === undefined) {
         channel.catCount = 0;
       }

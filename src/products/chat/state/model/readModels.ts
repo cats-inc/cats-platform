@@ -14,6 +14,7 @@ import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
 import {
   normalizeChannelAssignmentsForRoomMode,
+  resolveChannelKind,
   resolveDirectLaneLeadParticipantId,
 } from '../../shared/channelTopology.js';
 import {
@@ -104,6 +105,11 @@ export function buildChannelView(
     roomRouting.leadParticipantId,
   );
   clonedChannel.catAssignments = normalizedAssignments;
+  clonedChannel.channelKind = resolveChannelKind({
+    channelKind: clonedChannel.channelKind,
+    roomMode: roomRouting.mode,
+    participants: normalizedAssignments,
+  });
   if (roomRouting.mode === 'direct_cat_chat') {
     roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
       normalizedAssignments,
@@ -182,6 +188,11 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     id: channel.id,
     title: channel.title,
     topic: channel.topic,
+    channelKind: resolveChannelKind({
+      channelKind: channel.channelKind,
+      roomMode: roomRouting.mode,
+      participants: normalizedAssignments,
+    }),
     status: channel.status,
     unreadCount: channel.unreadCount,
     catCount: normalizedAssignments.length,

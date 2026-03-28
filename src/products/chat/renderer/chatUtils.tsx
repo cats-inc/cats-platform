@@ -506,6 +506,7 @@ export function insertCreatedChannelIntoPayload(
     id: normalizedChannel.id,
     title: normalizedChannel.title,
     topic: normalizedChannel.topic,
+    channelKind: normalizedChannel.channelKind,
     status: normalizedChannel.status,
     unreadCount: normalizedChannel.unreadCount,
     catCount: normalizedChannel.assignedCats.length,

@@ -16,6 +16,7 @@ import type {
 } from '../../../../core/types.js';
 import { createDefaultChatState, createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
+  resolveChannelKind,
   normalizeChannelAssignmentsForRoomMode,
   resolveDirectLaneLeadParticipantId,
 } from '../../shared/channelTopology.js';
@@ -218,6 +219,16 @@ export function normalizeChannel(
     id: channelId,
     title: readString(channelRecord.title, 'Untitled chat'),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
+    channelKind: resolveChannelKind({
+      channelKind:
+        channelRecord.channelKind === 'boss_thread'
+        || channelRecord.channelKind === 'direct_lane'
+        || channelRecord.channelKind === 'multi_cat_room'
+          ? channelRecord.channelKind
+          : null,
+      roomMode: roomRouting.mode,
+      participants: normalizedCatAssignments,
+    }),
     status,
     unreadCount: readNumber(channelRecord.unreadCount),
     repoPath: readNullableString(channelRecord.repoPath),

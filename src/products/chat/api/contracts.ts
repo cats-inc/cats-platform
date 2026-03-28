@@ -110,6 +110,7 @@ export type ChatChannelStatus =
 
 export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
 export type ComposerMode = 'solo' | 'cat_led';
+export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
 
 export interface MessageUsageSummary {
   inputTokens: number;
@@ -228,6 +229,7 @@ export interface ChatChannelState {
   id: string;
   title: string;
   topic: string;
+  channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;
   repoPath: string | null;
@@ -262,6 +264,7 @@ export interface ChatChannelSummary {
   id: string;
   title: string;
   topic: string;
+  channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;
   catCount: number;
