@@ -120,37 +120,11 @@
   gap: 10px;
 }
 
-.channelActionButton {
+.channelActionIconButton,
+.sidePanelToggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 78px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.82rem;
-  line-height: 1;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.channelActionButton:hover:not(:disabled) {
-  background: var(--panel-hover);
-  color: var(--text);
-}
-
-.channelActionButton:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-.sidePanelToggle {
-  display: grid;
-  place-items: center;
   width: 32px;
   height: 32px;
   border: 1px solid var(--border);
@@ -161,11 +135,32 @@
   flex-shrink: 0;
   align-self: center;
   position: relative;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
+.channelActionIconButton:hover:not(:disabled),
 .sidePanelToggle:hover {
   background: var(--panel-hover);
   color: var(--text);
+}
+
+.channelActionIconButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.channelActionIconGlyph {
+  flex: 0 0 auto;
+}
+
+@keyframes channelActionIconSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.channelActionIconGlyphSpinning {
+  animation: channelActionIconSpin 0.72s linear infinite;
 }
 
 .sidePanelBadge {

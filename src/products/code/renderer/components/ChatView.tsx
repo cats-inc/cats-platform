@@ -285,13 +285,31 @@ export function ChatView({
           <div className="channelTopBarEnd">
             {onResumeChannel ? (
               <button
-                className="channelActionButton"
+                className="channelActionIconButton"
                 type="button"
                 disabled={!canResumeChannel}
                 onClick={() => void onResumeChannel()}
-                aria-label="Resume chat session"
+                aria-label={resumeBusy ? 'Resuming chat session' : 'Resume chat session'}
+                data-tooltip={resumeBusy ? 'Resuming chat session' : 'Resume chat session'}
+                aria-busy={resumeBusy}
               >
-                {resumeBusy ? 'Resuming...' : 'Resume'}
+                <svg
+                  className={resumeBusy
+                    ? 'channelActionIconGlyph channelActionIconGlyphSpinning'
+                    : 'channelActionIconGlyph'}
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M13 4v4H9" />
+                  <path d="M12.35 8A5.35 5.35 0 1 1 10.7 4.15" />
+                </svg>
               </button>
             ) : null}
             <button
