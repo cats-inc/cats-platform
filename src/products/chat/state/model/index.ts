@@ -171,11 +171,23 @@ export function createChannel(
     );
   }
 
+  const normalizedCatAssignments = input.roomMode === 'direct_cat_chat'
+    ? (() => {
+        const directLeadCatId = defaultLeadParticipantId ?? catAssignments[0]?.catId ?? null;
+        if (!directLeadCatId) {
+          return [];
+        }
+        const directLeadAssignment = catAssignments.find((assignment) =>
+          assignment.catId === directLeadCatId);
+        return directLeadAssignment ? [directLeadAssignment] : [];
+      })()
+    : catAssignments;
+
   const channel: ChatChannelState = {
     id: channelId,
     title,
     topic,
-    status: catAssignments.length > 0 ? 'configured' : 'planned',
+    status: normalizedCatAssignments.length > 0 ? 'configured' : 'planned',
     unreadCount: 0,
     repoPath: normalizeOptionalText(input.repoPath),
     chatCwd: null,
@@ -188,7 +200,7 @@ export function createChannel(
     composerMode: input.composerMode
       ?? inferChannelComposerMode({
         roomMode: input.roomMode,
-        activeCatIds: catAssignments
+        activeCatIds: normalizedCatAssignments
           .filter((assignment) => assignment.status === 'active')
           .map((assignment) => assignment.catId),
       }),
@@ -201,7 +213,7 @@ export function createChannel(
     lastMessageAt: nowIso,
     lastActivatedAt: null,
     orchestratorLease: createEmptyExecutionLease(),
-    catAssignments,
+    catAssignments: normalizedCatAssignments,
     messages: [],
     roomRouting: createDefaultRoomRoutingState({
       mode: input.roomMode,

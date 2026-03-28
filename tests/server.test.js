@@ -13,6 +13,7 @@ import {
   createCat,
   createChannel,
   setChannelCatLease,
+  setChannelOrchestratorLease,
 } from '../dist-server/chat/model.js';
 import {
   createCatsMemoryService,
@@ -411,6 +412,79 @@ test('GET /api/channels/:id/stream waits for a pending session lease before clos
     assert.match(body, /"text":"Session became ready"/u);
     assert.doesNotMatch(body, /event: session_closed/u);
     assert.ok(runtime.streamedSessions.includes('session-live-2'));
+  }, chatStore);
+});
+
+test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat session', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Lead Cat',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Strict direct lane',
+      topic: 'Do not stream from Boss Cat fallbacks.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [catId],
+      leadParticipantId: catId,
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = setChannelOrchestratorLease(
+    state,
+    channelId,
+    {
+      sessionId: 'session-orchestrator-fallback',
+      status: 'ready',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-orchestrator-fallback', {
+    session: {
+      id: 'session-orchestrator-fallback',
+    },
+    observePath: '/sessions/session-orchestrator-fallback/observe',
+    stream: {
+      path: '/sessions/session-orchestrator-fallback/stream',
+      available: true,
+      events: [
+        {
+          event: 'progress',
+          data: {
+            type: 'progress',
+            text: 'This should never be streamed for a direct lane.',
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'text/event-stream');
+
+    const body = await response.text();
+    assert.match(body, /event: session_closed/u);
+    assert.deepEqual(runtime.streamedSessions, []);
   }, chatStore);
 });
 
@@ -4465,24 +4539,91 @@ test('POST /api/channels/:channelId/activations recreates closed direct-lane ses
 
     assert.deepEqual(
       runtimeClient.createdSessions.map((session) => session.id),
-      ['session-1', 'session-2'],
+      ['session-1'],
+    );
+    assert.deepEqual(
+      activatePayload.activation.results.map((result) => result.targetKind),
+      ['cat'],
     );
     const catResult = activatePayload.activation.results.find((result) => result.targetKind === 'cat');
     assert.equal(catResult?.status, 'started');
-    assert.equal(catResult?.sessionId, 'session-2');
+    assert.equal(catResult?.sessionId, 'session-1');
 
     const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(appShellResponse.status, 200);
     const appShellPayload = await appShellResponse.json();
     assert.equal(
       appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.sessionId,
-      'session-2',
+      'session-1',
     );
     assert.equal(
       appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.status,
       'ready',
     );
   }, chatStore);
+});
+
+test('POST /api/channels keeps direct lanes scoped to the lead cat only', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const firstCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Lead Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(firstCatResponse.status, 201);
+    const firstCatPayload = await firstCatResponse.json();
+    const leadCatId = firstCatPayload.cat.id;
+
+    const secondCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Extra Cat',
+        provider: 'gemini',
+        model: 'gemini-3-flash',
+      }),
+    });
+    assert.equal(secondCatResponse.status, 201);
+    const secondCatPayload = await secondCatResponse.json();
+    const extraCatId = secondCatPayload.cat.id;
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Scoped direct lane',
+        topic: 'A direct lane should only keep its lead cat.',
+        roomMode: 'direct_cat_chat',
+        leadParticipantId: leadCatId,
+        participantCatIds: [leadCatId, extraCatId],
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+
+    assert.equal(createChannelPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(createChannelPayload.channel.assignedCats.length, 1);
+    assert.equal(createChannelPayload.channel.assignedCats[0].catId, leadCatId);
+    assert.equal(createChannelPayload.channel.roomRouting.leadParticipantId, leadCatId);
+  });
 });
 
 test('PATCH /api/preferences does not overwrite the last wake request when the selected room is already awake', async () => {

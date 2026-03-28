@@ -4,6 +4,7 @@ import type {
 } from '../../api/contracts.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import { buildChannelView, requireChannel, setChannelStatus } from '../model/index.js';
+import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { buildCatTarget, buildOrchestratorTarget } from '../runtimeTargeting.js';
 import { ensureTargetSession } from './wake.js';
 import {
@@ -53,31 +54,22 @@ export async function activateChannelSessions(
 ): Promise<{ state: ChatState; results: ChannelActivationResult[] }> {
   let nextState = state;
   const results: ChannelActivationResult[] = [];
+  const initialChannel = buildChannelView(nextState, channelId);
+  const roomRouting = resolveRoomRoutingState(initialChannel.roomRouting);
+  const activationTargets = roomRouting.mode === 'direct_cat_chat'
+    ? activeAssignedCats(initialChannel)
+        .filter((cat) => cat.catId === roomRouting.leadParticipantId)
+        .map((cat) => buildCatTarget(cat))
+    : [
+        buildOrchestratorTarget(nextState, initialChannel),
+        ...activeAssignedCats(initialChannel).map((cat) => buildCatTarget(cat)),
+      ];
 
-  const orchestratorTarget = buildOrchestratorTarget(nextState, buildChannelView(nextState, channelId));
-  const orchestratorEnsured = await ensureTargetSession(
-    nextState,
-    channelId,
-    orchestratorTarget,
-    runtimeClient,
-    now,
-    {
-      ...options,
-      forceReviveClosedSessions: true,
-    },
-  );
-  nextState = orchestratorEnsured.state;
-  results.push(toActivationResult({
-    target: orchestratorTarget,
-    ensured: orchestratorEnsured,
-  }));
-
-  for (const cat of activeAssignedCats(buildChannelView(nextState, channelId))) {
-    const catTarget = buildCatTarget(cat);
+  for (const target of activationTargets) {
     const ensured = await ensureTargetSession(
       nextState,
       channelId,
-      catTarget,
+      target,
       runtimeClient,
       now,
       {
@@ -87,7 +79,7 @@ export async function activateChannelSessions(
     );
     nextState = ensured.state;
     results.push(toActivationResult({
-      target: catTarget,
+      target,
       ensured,
     }));
   }

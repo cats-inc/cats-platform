@@ -83,6 +83,19 @@ function resolveChannelStreamSessionId(
   channel: ReturnType<typeof requireChannel>,
 ): string | null {
   const leadParticipantId = channel.roomRouting?.leadParticipantId ?? null;
+  if (channel.roomRouting?.mode === 'direct_cat_chat') {
+    if (!leadParticipantId) {
+      return null;
+    }
+    const leadAssignment = channel.catAssignments.find((assignment) =>
+      assignment.catId === leadParticipantId);
+    const leadSessionId = leadAssignment?.execution?.lease?.sessionId?.trim();
+    if (leadSessionId) {
+      return leadSessionId;
+    }
+    return null;
+  }
+
   if (leadParticipantId) {
     const leadAssignment = channel.catAssignments.find((assignment) =>
       assignment.catId === leadParticipantId);

@@ -152,9 +152,7 @@ export function useComposerSubmit(options: {
             repoPath: draftCwd ?? undefined,
             roomMode: 'direct_cat_chat' as const,
             leadParticipantId: draftLeadCatId ?? undefined,
-            participantCatIds: draftLeadCatId
-              ? [draftLeadCatId, ...draftCatIds.filter((id) => id !== draftLeadCatId)]
-              : draftCatIds,
+            participantCatIds: draftLeadCatId ? [draftLeadCatId] : draftCatIds,
           });
           channelId = createdChannel.id;
           if (!channelId) {
