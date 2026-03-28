@@ -15,9 +15,11 @@ export interface LiveIndicatorState {
   active: boolean;
   phase: 'idle' | 'waiting' | 'streaming';
   catId: string | null;
+  activeCatIds: string[];
   catName: string | null;
   speakerLabel: string | null;
   progressText: string;
+  previewText: string;
   progressKind: string | null;
   tools: LiveToolEntry[];
 }
@@ -26,9 +28,11 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   active: false,
   phase: 'idle',
   catId: null,
+  activeCatIds: [],
   catName: null,
   speakerLabel: null,
   progressText: '',
+  previewText: '',
   progressKind: null,
   tools: [],
 };
@@ -159,9 +163,15 @@ export function useLiveIndicator(options: {
             return { ...previous, phase: 'streaming', progressText: text, progressKind: kind };
           }
           case 'text': {
-            if (previous.phase === 'waiting') {
-              const text = typeof data.text === 'string' ? data.text.slice(0, 200) : '';
-              return { ...previous, phase: 'streaming', progressText: text };
+            const text = typeof data.text === 'string' ? data.text : '';
+            if (text) {
+              return {
+                ...previous,
+                phase: 'streaming',
+                previewText: previous.previewText + text,
+                progressText: '',
+                progressKind: null,
+              };
             }
             return previous;
           }
@@ -188,8 +198,8 @@ export function useLiveIndicator(options: {
             return {
               ...previous,
               phase: 'streaming',
-              progressKind: 'finalizing',
-              progressText: previous.progressText || 'Finalizing...',
+              progressKind: previous.previewText ? null : 'finalizing',
+              progressText: previous.previewText ? '' : (previous.progressText || 'Finalizing...'),
             };
           case 'error':
             return {
@@ -250,9 +260,11 @@ export function useLiveIndicator(options: {
       active: true,
       phase: 'waiting',
       catId: workingCatId,
+      activeCatIds: workingCatId ? [workingCatId] : [],
       catName: null,
       speakerLabel,
       progressText: '',
+      previewText: '',
       progressKind: null,
       tools: [],
     };

@@ -9,9 +9,24 @@ import {
 import { isScrollNearBottom } from '../../../../core/scrolling';
 
 const NEAR_BOTTOM_PX = 80;
+const COMPOSER_CLEARANCE_PX = 12;
 
 function findScrollContainer(element: HTMLDivElement | null): HTMLElement | null {
   return element?.closest('.canvas') as HTMLElement | null;
+}
+
+function readComposerOverlapInset(composerCardElement: HTMLElement): number {
+  const bottomValue = Number.parseFloat(
+    globalThis.getComputedStyle(composerCardElement).bottom || '0',
+  );
+  return Number.isFinite(bottomValue) ? Math.max(0, bottomValue) : 0;
+}
+
+function resolveNearBottomThreshold(composerCardElement: HTMLElement | null): number {
+  if (!composerCardElement) {
+    return NEAR_BOTTOM_PX;
+  }
+  return Math.ceil(NEAR_BOTTOM_PX + composerCardElement.getBoundingClientRect().height);
 }
 
 export function useTranscriptAutoScroll(options: {
@@ -19,11 +34,17 @@ export function useTranscriptAutoScroll(options: {
   scrollKey: string;
 }): {
   transcriptListRef: RefCallback<HTMLDivElement>;
+  composerCardRef: RefCallback<HTMLElement>;
+  bottomSentinelRef: RefCallback<HTMLDivElement>;
 } {
   const { channelId, scrollKey } = options;
   const [transcriptListElement, setTranscriptListElement] = useState<HTMLDivElement | null>(null);
+  const [composerCardElement, setComposerCardElement] = useState<HTMLElement | null>(null);
+  const [bottomSentinelElement, setBottomSentinelElement] = useState<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
+  const transcriptBottomInsetRef = useRef<number | null>(null);
+  const pendingScrollFrameRef = useRef<number | null>(null);
 
   const syncScrollState = useCallback(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -36,19 +57,50 @@ export function useTranscriptAutoScroll(options: {
       scrollTop: scrollContainer.scrollTop,
       clientHeight: scrollContainer.clientHeight,
       scrollHeight: scrollContainer.scrollHeight,
-      threshold: NEAR_BOTTOM_PX,
+      threshold: resolveNearBottomThreshold(composerCardElement),
     });
-  }, []);
+  }, [composerCardElement]);
 
-  const scrollToBottom = useCallback(() => {
-    const scrollContainer = scrollContainerRef.current;
-    if (!scrollContainer) {
+  const syncTranscriptBottomInset = useCallback(() => {
+    if (!transcriptListElement) {
+      transcriptBottomInsetRef.current = null;
       return;
     }
 
-    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    const nextBottomInset = composerCardElement
+      ? Math.ceil(readComposerOverlapInset(composerCardElement) + COMPOSER_CLEARANCE_PX)
+      : 0;
+
+    if (transcriptBottomInsetRef.current === nextBottomInset) {
+      return;
+    }
+
+    transcriptBottomInsetRef.current = nextBottomInset;
+    transcriptListElement.style.paddingBottom = nextBottomInset > 0
+      ? `${nextBottomInset}px`
+      : '';
+  }, [composerCardElement, transcriptListElement]);
+
+  const scrollToBottom = useCallback(() => {
+    if (!bottomSentinelElement) {
+      return;
+    }
+
+    syncTranscriptBottomInset();
+    bottomSentinelElement.scrollIntoView({ block: 'end' });
     syncScrollState();
-  }, [syncScrollState]);
+  }, [bottomSentinelElement, syncScrollState, syncTranscriptBottomInset]);
+
+  const scheduleScrollToBottom = useCallback(() => {
+    if (pendingScrollFrameRef.current !== null) {
+      cancelAnimationFrame(pendingScrollFrameRef.current);
+    }
+
+    pendingScrollFrameRef.current = requestAnimationFrame(() => {
+      pendingScrollFrameRef.current = null;
+      scrollToBottom();
+    });
+  }, [scrollToBottom]);
 
   useEffect(() => {
     const scrollContainer = findScrollContainer(transcriptListElement);
@@ -71,31 +123,37 @@ export function useTranscriptAutoScroll(options: {
   }, [syncScrollState, transcriptListElement]);
 
   useEffect(() => {
+    syncTranscriptBottomInset();
+    return () => {
+      if (pendingScrollFrameRef.current !== null) {
+        cancelAnimationFrame(pendingScrollFrameRef.current);
+        pendingScrollFrameRef.current = null;
+      }
+      if (transcriptListElement) {
+        transcriptListElement.style.paddingBottom = '';
+      }
+      transcriptBottomInsetRef.current = null;
+    };
+  }, [syncTranscriptBottomInset, transcriptListElement]);
+
+  useEffect(() => {
     if (!transcriptListElement) {
       return;
     }
 
     shouldAutoScrollRef.current = true;
-    const frameId = requestAnimationFrame(() => {
-      scrollToBottom();
-    });
-    return () => {
-      cancelAnimationFrame(frameId);
-    };
-  }, [channelId, scrollToBottom, transcriptListElement]);
+    scheduleScrollToBottom();
+    return undefined;
+  }, [channelId, scheduleScrollToBottom, transcriptListElement]);
 
   useEffect(() => {
     if (!transcriptListElement || !shouldAutoScrollRef.current) {
       return;
     }
 
-    const frameId = requestAnimationFrame(() => {
-      scrollToBottom();
-    });
-    return () => {
-      cancelAnimationFrame(frameId);
-    };
-  }, [scrollKey, scrollToBottom, transcriptListElement]);
+    scheduleScrollToBottom();
+    return undefined;
+  }, [scrollKey, scheduleScrollToBottom, transcriptListElement]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -104,19 +162,25 @@ export function useTranscriptAutoScroll(options: {
     }
 
     const observer = new ResizeObserver(() => {
+      syncTranscriptBottomInset();
       if (!shouldAutoScrollRef.current) {
         return;
       }
 
-      scrollToBottom();
+      scheduleScrollToBottom();
     });
     observer.observe(transcriptListElement);
+    if (composerCardElement) {
+      observer.observe(composerCardElement);
+    }
     return () => {
       observer.disconnect();
     };
-  }, [scrollToBottom, transcriptListElement]);
+  }, [composerCardElement, scheduleScrollToBottom, syncTranscriptBottomInset, transcriptListElement]);
 
   return {
     transcriptListRef: setTranscriptListElement,
+    composerCardRef: setComposerCardElement,
+    bottomSentinelRef: setBottomSentinelElement,
   };
 }
