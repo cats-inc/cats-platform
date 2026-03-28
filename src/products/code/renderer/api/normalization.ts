@@ -35,7 +35,7 @@ function normalizeChannelKind(
   const assignedCats = Array.isArray(channel.assignedCats)
     ? channel.assignedCats
     : [];
-  const participants = (
+  const participants: Array<{ catId: string; status: 'active' | 'removed' }> = (
     catAssignments.length > 0
       ? catAssignments
       : assignedCats

@@ -1,7 +1,7 @@
 import type { AppShellPayload } from '../api/contracts.js';
 import type { RoomRoutingState } from '../../../shared/roomRouting.js';
 import { isDirectLaneChannel } from './channelTopology.js';
-import { resolveRoomRoutingState } from '../../chat/state/room-routing/index.js';
+import { resolveRoomRoutingState } from '../../../core/roomRoutingState.js';
 import {
   resolveChatLifecycleState,
   type ChatLifecycleState,

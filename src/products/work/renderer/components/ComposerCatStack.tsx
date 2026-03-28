@@ -5,7 +5,7 @@ export interface ComposerCatStackProps {
   cats: ChatCat[];
   bossCatId: string | null;
   leadCatId: string | null;
-  onClick: () => void;
+  onClick?: () => void;
 }
 
 export function ComposerCatStack({
@@ -25,8 +25,8 @@ export function ComposerCatStack({
       className="composerCatStack"
       style={{ marginRight: 10 }}
       onClick={onClick}
-      role="button"
-      tabIndex={0}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
     >
       {ordered.map((cat, index) => {
         const isBoss = cat.id === bossCatId;

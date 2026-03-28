@@ -99,7 +99,7 @@ export type {
   CreateCompanionMemoryInput,
   CreateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
-} from '../../chat/companion/contracts.js';
+} from '../../../core/companionContracts.js';
 
 export type ChatChannelStatus =
   | 'planned'

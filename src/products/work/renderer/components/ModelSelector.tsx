@@ -20,7 +20,7 @@ export interface ModelSelectorValue {
 
 export interface ModelSelectorChipProps {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
 }
 
 export function ModelSelectorChip({ label, onClick }: ModelSelectorChipProps) {
@@ -28,6 +28,7 @@ export function ModelSelectorChip({ label, onClick }: ModelSelectorChipProps) {
     <button
       type="button"
       className="modelSelectorChip"
+      disabled={!onClick}
       onClick={onClick}
       data-tooltip="Select model"
     >

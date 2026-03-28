@@ -502,6 +502,19 @@ export function insertCreatedChannelIntoPayload(
 
   const next = structuredClone(payload);
   const leadCatId = normalizedChannel.roomRouting.leadParticipantId ?? null;
+  const workflowStatus = normalizedChannel.roomRouting.workflow.activeTurn?.status
+    ?? normalizedChannel.roomRouting.workflow.lastOutcomeEvent?.status
+    ?? null;
+  const routingStatus = workflowStatus === 'pending'
+    ? 'running'
+    : workflowStatus === 'failed'
+      ? 'error'
+      : workflowStatus;
+  const lastRoutingAt = normalizedChannel.roomRouting.workflow.activeTurn?.updatedAt
+    ?? normalizedChannel.roomRouting.workflow.lastOutcomeEvent?.createdAt
+    ?? normalizedChannel.roomRouting.lastOutcome?.completedAt
+    ?? normalizedChannel.roomRouting.lastCheckpoint?.createdAt
+    ?? null;
   const summary: ChatChannelSummary = {
     id: normalizedChannel.id,
     title: normalizedChannel.title,
@@ -521,8 +534,8 @@ export function insertCreatedChannelIntoPayload(
     pendingModelSelection: normalizedChannel.pendingModelSelection ?? null,
     leadCatId,
     roomMode: normalizedChannel.roomRouting.mode,
-    routingStatus: normalizedChannel.roomRouting.workflow.currentTurn?.status ?? null,
-    lastRoutingAt: normalizedChannel.roomRouting.workflow.currentTurn?.startedAt ?? null,
+    routingStatus: routingStatus ?? undefined,
+    lastRoutingAt,
   };
 
   next.chat.channels = [
