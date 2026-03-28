@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 
 import type { SuiteSurfaceId } from '../../shared/suite-contract.js';
@@ -7,6 +7,10 @@ import {
   listSuiteSurfaceDescriptors,
   suiteSurfaceProductName,
 } from '../../core/suiteSurface.js';
+import {
+  getPendingSuiteSurfaceMenuStyle,
+  resolveSuiteSurfaceMenuStyle,
+} from './suiteSurfaceMenuPosition.js';
 
 interface SuiteSurfaceSwitcherProps {
   activeSurface: SuiteSurfaceId;
@@ -59,7 +63,7 @@ export function SuiteSurfaceSwitcher({
     };
   }, [open]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) {
       setMenuStyle(undefined);
       return undefined;
@@ -72,41 +76,21 @@ export function SuiteSurfaceSwitcher({
       }
 
       const rect = trigger.getBoundingClientRect();
-      const viewportPadding = 12;
-      const fallbackWidth = 420;
-      const resolvedWidth = Math.min(
-        fallbackWidth,
-        window.innerWidth - viewportPadding * 2,
+      setMenuStyle(
+        resolveSuiteSurfaceMenuStyle({
+          triggerRect: rect,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          menuWidth: menuRef.current?.offsetWidth ?? 0,
+          menuHeight: menuRef.current?.offsetHeight ?? 0,
+        }),
       );
-      const menuWidth = menuRef.current?.offsetWidth ?? resolvedWidth;
-      const menuHeight = menuRef.current?.offsetHeight ?? 0;
-
-      let left = rect.left;
-      if (left + menuWidth > window.innerWidth - viewportPadding) {
-        left = Math.max(
-          viewportPadding,
-          window.innerWidth - menuWidth - viewportPadding,
-        );
-      }
-
-      let top = rect.bottom + 8;
-      if (menuHeight > 0 && top + menuHeight > window.innerHeight - viewportPadding) {
-        top = Math.max(viewportPadding, rect.top - menuHeight - 8);
-      }
-
-      setMenuStyle({
-        position: 'fixed',
-        top,
-        left,
-        width: resolvedWidth,
-      });
     }
 
-    const frame = requestAnimationFrame(updatePosition);
+    updatePosition();
     window.addEventListener('resize', updatePosition);
     document.addEventListener('scroll', updatePosition, true);
     return () => {
-      cancelAnimationFrame(frame);
       window.removeEventListener('resize', updatePosition);
       document.removeEventListener('scroll', updatePosition, true);
     };
@@ -116,7 +100,7 @@ export function SuiteSurfaceSwitcher({
     <div
       ref={menuRef}
       className="suiteSurfaceMenu"
-      style={menuStyle}
+      style={menuStyle ?? getPendingSuiteSurfaceMenuStyle()}
       role="menu"
       aria-label="Switch product"
     >
