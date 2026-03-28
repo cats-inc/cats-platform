@@ -18,7 +18,7 @@ test('buildComposerHighlightFragments matches valid mentions even before punctua
   assert.deepEqual(
     buildComposerHighlightFragments('@Mochi, please check @Ghost.', [...cats]),
     [
-      { kind: 'mention', value: '@Mochi' },
+      { kind: 'mention', value: '@Mochi', avatarColor: '#c9895b' },
       { kind: 'text', value: ', please check @Ghost.' },
     ],
   );

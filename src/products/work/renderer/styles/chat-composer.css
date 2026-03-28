@@ -531,9 +531,14 @@
 }
 
 .composerHighlightMention {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 999px;
+  background: #8B7E74;
+  box-shadow: 0 0 0 0.16em #8B7E74;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .composerInputOverlay {
