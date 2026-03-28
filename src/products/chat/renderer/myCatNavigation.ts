@@ -1,6 +1,7 @@
 import type { ChatChannelSummary } from '../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../shared/roomRouting.js';
 import { buildMyCatPath } from '../shared/channelPaths.js';
+import { isDirectLaneSummary } from '../shared/channelTopology.js';
 
 export type MyCatNavigationTarget =
   | { kind: 'direct_lane'; path: string };
@@ -12,7 +13,7 @@ export function findDirectLaneForCat(
   catId: string,
 ): ChatChannelSummary | null {
   return channels.find((channel) =>
-    channel.leadCatId === catId && channel.roomMode === 'direct_cat_chat',
+    channel.leadCatId === catId && isDirectLaneSummary(channel),
   ) ?? null;
 }
 

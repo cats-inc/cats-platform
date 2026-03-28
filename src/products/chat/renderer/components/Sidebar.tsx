@@ -14,6 +14,7 @@ import {
   statusDotClassName,
   statusDotLabel,
 } from '../myCatNavigation';
+import { isDirectLaneSummary } from '../../shared/channelTopology';
 
 export type SidebarViewMode = 'latest' | 'by_cat' | 'by_chat_type';
 
@@ -74,7 +75,7 @@ function runtimeFooterStatusClassName(status: RuntimeFooterStatus): string {
 }
 
 function isDirectCatChat(channel: ChatChannelSummary): boolean {
-  return channel.roomMode === 'direct_cat_chat';
+  return isDirectLaneSummary(channel);
 }
 
 function resolveCatForChannel(

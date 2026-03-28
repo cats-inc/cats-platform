@@ -199,7 +199,17 @@ export function normalizeChannel(
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
-  if (roomRouting.mode === 'direct_cat_chat') {
+  const channelKind = resolveChannelKind({
+    channelKind:
+      channelRecord.channelKind === 'boss_thread'
+      || channelRecord.channelKind === 'direct_lane'
+      || channelRecord.channelKind === 'multi_cat_room'
+        ? channelRecord.channelKind
+        : null,
+    roomMode: roomRouting.mode,
+    participants: normalizedCatAssignments,
+  });
+  if (channelKind === 'direct_lane') {
     roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
       normalizedCatAssignments,
       roomRouting.leadParticipantId,
@@ -209,7 +219,7 @@ export function normalizeChannel(
     ? 'cat_led'
     : channelRecord.composerMode === 'solo'
       ? 'solo'
-      : roomRouting.mode === 'direct_cat_chat'
+      : channelKind === 'direct_lane'
           || normalizedCatAssignments.some((assignment) => assignment.status === 'active')
           || Boolean(roomRouting.leadParticipantId)
         ? 'cat_led'
@@ -219,16 +229,7 @@ export function normalizeChannel(
     id: channelId,
     title: readString(channelRecord.title, 'Untitled chat'),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
-    channelKind: resolveChannelKind({
-      channelKind:
-        channelRecord.channelKind === 'boss_thread'
-        || channelRecord.channelKind === 'direct_lane'
-        || channelRecord.channelKind === 'multi_cat_room'
-          ? channelRecord.channelKind
-          : null,
-      roomMode: roomRouting.mode,
-      participants: normalizedCatAssignments,
-    }),
+    channelKind,
     status,
     unreadCount: readNumber(channelRecord.unreadCount),
     repoPath: readNullableString(channelRecord.repoPath),
@@ -248,7 +249,7 @@ export function normalizeChannel(
     updatedAt: readString(channelRecord.updatedAt, new Date().toISOString()),
     lastMessageAt: readNullableString(channelRecord.lastMessageAt),
     lastActivatedAt: readNullableString(channelRecord.lastActivatedAt),
-    orchestratorLease: roomRouting.mode === 'direct_cat_chat'
+    orchestratorLease: channelKind === 'direct_lane'
       ? createEmptyExecutionLease()
       : normalizeExecutionLease(
         channelRecord.orchestratorLease,

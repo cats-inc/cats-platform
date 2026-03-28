@@ -2,6 +2,7 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { matchRoute, readJsonBody, sendBinary, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import {
   activateChannelSessions,
   routeChannelMessage,
@@ -83,7 +84,7 @@ function resolveChannelStreamSessionId(
   channel: ReturnType<typeof requireChannel>,
 ): string | null {
   const leadParticipantId = channel.roomRouting?.leadParticipantId ?? null;
-  if (channel.roomRouting?.mode === 'direct_cat_chat') {
+  if (isDirectLaneChannel(channel)) {
     if (!leadParticipantId) {
       return null;
     }

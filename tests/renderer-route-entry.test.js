@@ -72,6 +72,7 @@ test('direct chat entry lifecycle stays null when the lead cat is missing instea
     id: 'channel-1',
     title: 'Companion Direct',
     topic: '',
+    channelKind: 'direct_lane',
     status: 'configured',
     unreadCount: 0,
     repoPath: null,
@@ -100,7 +101,7 @@ test('direct chat entry lifecycle stays null when the lead cat is missing instea
     messages: [],
     assignedCats: [],
     roomRouting: {
-      mode: 'direct_cat_chat',
+      mode: 'boss_chat',
       leadParticipantId: 'companion-cat',
       maxContinuations: 6,
       maxDispatchesPerTurn: 12,

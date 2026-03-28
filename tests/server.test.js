@@ -444,6 +444,8 @@ test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat ses
     seededAt,
   );
   const channelId = state.channels[0].id;
+  state.channels[0].channelKind = 'direct_lane';
+  state.channels[0].roomRouting.mode = 'boss_chat';
   state = setChannelOrchestratorLease(
     state,
     channelId,
@@ -4503,6 +4505,8 @@ test('POST /api/channels/:channelId/activations recreates closed direct-lane ses
     now,
   );
   const channelId = state.selectedChannelId;
+  state.channels[0].channelKind = 'direct_lane';
+  state.channels[0].roomRouting.mode = 'boss_chat';
   state = setChannelCatLease(
     state,
     channelId,

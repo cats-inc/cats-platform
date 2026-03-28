@@ -5,6 +5,16 @@ import type {
 import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 
 type ChannelParticipantTopologyRef = Pick<ChannelCatAssignment, 'catId' | 'status'>;
+type ChannelTopologyCarrier = {
+  channelKind?: ChatChannelKind | null;
+  roomRouting?: { mode?: RoomRoutingMode | null } | null;
+  catAssignments?: readonly ChannelParticipantTopologyRef[] | null;
+  assignedCats?: readonly ChannelParticipantTopologyRef[] | null;
+};
+type ChannelTopologySummaryRef = {
+  channelKind?: ChatChannelKind | null;
+  roomMode?: RoomRoutingMode | null;
+};
 
 function dedupeChannelAssignments(
   assignments: readonly ChannelCatAssignment[],
@@ -49,24 +59,52 @@ export function resolveChannelKind(input: {
     roomMode: input.roomMode,
     participants: input.participants,
   });
-  if (
-    (input.channelKind === 'boss_thread'
-    || input.channelKind === 'direct_lane'
-    || input.channelKind === 'multi_cat_room')
-    && input.channelKind === inferred
-  ) {
-    return input.channelKind;
+  if (input.channelKind === 'direct_lane') {
+    return 'direct_lane';
+  }
+  if (input.channelKind === 'multi_cat_room') {
+    return inferred === 'boss_thread' && input.participants.length === 0
+      ? 'boss_thread'
+      : 'multi_cat_room';
+  }
+  if (input.channelKind === 'boss_thread') {
+    return inferred === 'multi_cat_room' ? 'multi_cat_room' : 'boss_thread';
   }
 
   return inferred;
 }
 
-export function isDirectLaneChannel(input: {
-  channelKind?: ChatChannelKind | null;
-  roomMode: RoomRoutingMode;
-  participants: readonly ChannelParticipantTopologyRef[];
-}): boolean {
-  return resolveChannelKind(input) === 'direct_lane';
+function readChannelTopologyParticipants(
+  channel: ChannelTopologyCarrier,
+): readonly ChannelParticipantTopologyRef[] {
+  if (channel.assignedCats && channel.assignedCats.length > 0) {
+    return channel.assignedCats;
+  }
+  return channel.catAssignments ?? [];
+}
+
+export function resolveChannelKindForChannel(
+  channel: ChannelTopologyCarrier,
+): ChatChannelKind {
+  return resolveChannelKind({
+    channelKind: channel.channelKind,
+    roomMode: channel.roomRouting?.mode === 'direct_cat_chat' ? 'direct_cat_chat' : 'boss_chat',
+    participants: readChannelTopologyParticipants(channel),
+  });
+}
+
+export function isDirectLaneChannel(channel: ChannelTopologyCarrier): boolean {
+  return resolveChannelKindForChannel(channel) === 'direct_lane';
+}
+
+export function isDirectLaneSummary(
+  channel: ChannelTopologySummaryRef,
+): boolean {
+  return resolveChannelKind({
+    channelKind: channel.channelKind,
+    roomMode: channel.roomMode === 'direct_cat_chat' ? 'direct_cat_chat' : 'boss_chat',
+    participants: [],
+  }) === 'direct_lane';
 }
 
 export function resolveDirectLaneLeadParticipantId(

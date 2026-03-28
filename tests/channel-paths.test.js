@@ -43,6 +43,18 @@ test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overv
   );
 });
 
+test('resolveVisibleChatPath trusts channelKind for direct lanes even when roomMode is legacy-mismatched', () => {
+  const channels = [
+    { id: 'direct-1', channelKind: 'direct_lane', roomMode: 'boss_chat' },
+    { id: 'boss-1', channelKind: 'boss_thread', roomMode: 'boss_chat' },
+  ];
+
+  assert.equal(
+    resolveVisibleChatPath(channels, 'direct-1'),
+    '/chat/chats/boss-1',
+  );
+});
+
 test('resolveAppEntryPath routes setup and initialized chats to the correct entry page', () => {
   assert.equal(resolveAppEntryPath(null), SETUP_PATH);
   assert.equal(resolveAppEntryPath(undefined), SETUP_PATH);

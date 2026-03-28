@@ -3,6 +3,7 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { buildChannelView, requireChannel, setChannelStatus } from '../model/index.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { buildCatTarget, buildOrchestratorTarget } from '../runtimeTargeting.js';
@@ -56,7 +57,7 @@ export async function activateChannelSessions(
   const results: ChannelActivationResult[] = [];
   const initialChannel = buildChannelView(nextState, channelId);
   const roomRouting = resolveRoomRoutingState(initialChannel.roomRouting);
-  const activationTargets = roomRouting.mode === 'direct_cat_chat'
+  const activationTargets = isDirectLaneChannel(initialChannel)
     ? activeAssignedCats(initialChannel)
         .filter((cat) => cat.catId === roomRouting.leadParticipantId)
         .map((cat) => buildCatTarget(cat))

@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [042-separate-channel-topology-from-routing-mode](./042-separate-channel-topology-from-routing-mode.md) | Separate channel topology from routing mode | Accepted | 2026-03-28 |
 | [041-push-transport-and-chat-invalidations-over-sse](./041-push-transport-and-chat-invalidations-over-sse.md) | Push transport and chat invalidations over SSE | Proposed | 2026-03-27 |
 | [040-make-companion-a-first-class-chat-mode-with-workspace-and-presence](./040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md) | Make companion a first-class Chat mode with workspace and presence | Proposed | 2026-03-26 |
 | [039-use-core-task-metadata-as-cross-product-plan-exchange](./039-use-core-task-metadata-as-cross-product-plan-exchange.md) | Use Core task metadata as the cross-product plan exchange surface | Proposed | 2026-03-26 |
@@ -84,6 +85,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-03-26*
+*Last updated: 2026-03-28*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

@@ -188,6 +188,10 @@ Dispatch
   one-to-one web and transport entry.
 - It may preserve lane-scoped state, but it is not a normal persisted
   `Recents` thread.
+- The lane stays single-lead. If the product later needs a broader companion /
+  agent collaboration surface, it should break out into an explicit normal room
+  rather than silently re-introducing Boss Cat or extra worker topology inside
+  the direct lane.
 - The product may still expose explicit `/new?cat=<catId>` drafts or internal
   route state to enter that lane, but `My Cats` should not materialize a
   standard chat record as a side effect.
@@ -198,8 +202,9 @@ Dispatch
       cat card action, add button menu, or a new composer picker?
 - [ ] Should a `direct_cat_chat` room allow `Boss Cat` to be added later as a
       participant or escalation path?
-- [ ] Should direct lanes support multi-Cat participation after escalation, or
-      should they stay one-lead with explicit breakout into a normal room?
+- [x] Direct lanes stay one-lead; escalation to broader collaboration should
+      create or switch into an explicit normal room instead of mutating the
+      private lane into a hidden Boss-backed room.
 
 ## References
 
@@ -210,4 +215,4 @@ Dispatch
 
 *Created: 2026-03-19*
 *Author: Codex*
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-28*

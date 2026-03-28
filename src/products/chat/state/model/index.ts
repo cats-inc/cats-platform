@@ -20,6 +20,7 @@ import { defaultCatProducts, hasSuiteSurface } from '../../../../shared/suiteSur
 import {
   inferChannelKind,
   normalizeChannelAssignmentsForRoomMode,
+  resolveChannelKind,
   resolveDirectLaneLeadParticipantId,
 } from '../../shared/channelTopology.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
@@ -251,7 +252,12 @@ export function assignCatToChannel(
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
-  if (roomRouting.mode === 'direct_cat_chat') {
+  channel.channelKind = resolveChannelKind({
+    channelKind: channel.channelKind,
+    roomMode: roomRouting.mode,
+    participants: channel.catAssignments,
+  });
+  if (channel.channelKind === 'direct_lane') {
     const directLeadCatId = resolveDirectLaneLeadParticipantId(
       channel.catAssignments,
       roomRouting.leadParticipantId,

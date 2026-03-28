@@ -19,8 +19,8 @@ test('persisted chat view wires the solo model selector and suppresses visible b
 
   assert.match(
     viewStateSource,
-    /selectedChannel\?\.composerMode !== 'solo'/,
-    'appViewState should suppress the visible Boss avatar for solo persisted chats',
+    /isSoloThreadConversationMode|resolveConversationMode/u,
+    'appViewState should derive solo-thread semantics from the shared conversation-mode helper',
   );
   assert.match(
     appSource,
@@ -34,7 +34,7 @@ test('persisted chat view wires the solo model selector and suppresses visible b
   );
   assert.match(
     chatViewSource,
-    /selectedChannel\.composerMode === 'solo'/,
-    'ChatView should branch on composerMode when rendering solo chats',
+    /const conversationMode = resolveConversationMode\(selectedChannel\)/u,
+    'ChatView should branch on the shared conversation-mode helper when rendering chat modes',
   );
 });

@@ -48,6 +48,11 @@ import {
   getProviderDisplayName,
   getProviderModels,
 } from '../../../../shared/providerCatalog';
+import {
+  isDirectConversationMode,
+  isSoloThreadConversationMode,
+  resolveConversationMode,
+} from '../conversationMode';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -131,14 +136,13 @@ export function ChatView({
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
 
-  const roomMode = selectedChannel.roomRouting.mode;
   const leadParticipantId = selectedChannel.roomRouting.leadParticipantId;
   const leadCat = leadParticipantId
     ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
     : null;
-  const isSoloComposer = selectedChannel.composerMode === 'solo'
-    && roomMode !== 'direct_cat_chat';
-  const isDirectLane = roomMode === 'direct_cat_chat';
+  const conversationMode = resolveConversationMode(selectedChannel);
+  const isSoloComposer = isSoloThreadConversationMode(conversationMode);
+  const isDirectLane = isDirectConversationMode(conversationMode);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
   function openSidePanelTo(section: string): void {
@@ -242,7 +246,7 @@ export function ChatView({
 
   return (
     <>
-      <div className="viewShell viewShellChannel">
+      <div className="viewShell viewShellChannel" data-conversation-mode={conversationMode}>
         <header className="channelTopBar">
           <div className="channelTopBarStart">
             {showRosterAvatars ? (

@@ -51,7 +51,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `Cats` |
 | [specs/](./specs/) | Complete | Feature specifications, including suite-foundation work, chat-first information architecture with a default Boss Cat, the first-run setup wizard, Cat-private room entry, packaged setup/provider-installation direction, chat delivery-policy/governance levels, budget policy and war-room cost-control direction, provider and transport seams, the new chat sleep/wake lifecycle, Telegram inbox-to-room routing, direct-Cat routing behavior, dynamic explicit-mention plus room-workflow orchestration, skill profile/runtime skill-manifest ownership, embedded preview surfaces, contextual MCP/lazy tool activation, and explicit room-workspace ownership/bootstrap semantics |
 | [plans/](./plans/) | Complete | Implementation plans, including suite-foundation work, self-hosted npm app packaging, route-driven navigation, setup-wizard refinement, parallel-workstream seams, the chat sleep/wake lifecycle plan, and the first dynamic room-workflow orchestration plan |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, chat-first information architecture with a default Boss Cat, packaged host ownership of provider installation, product-owned chat delivery policy, product-owned budget policy and cost control, frozen parallel-delivery ownership boundaries, the accepted chat sleep/wake lifecycle direction, the Telegram inbox transport model, the direct-Cat routing model, the new explicit-mentions-vs-room-workflow split, product-vs-runtime skill ownership, normalized preview-surface rendering, MCP intent/runtime tool-delivery ownership, and the new separation between room-owned workspaces and session-owned sandboxes |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, chat-first information architecture with a default Boss Cat, packaged host ownership of provider installation, product-owned chat delivery policy, product-owned budget policy and cost control, frozen parallel-delivery ownership boundaries, the accepted chat sleep/wake lifecycle direction, the Telegram inbox transport model, the direct-Cat routing model, the new explicit-mentions-vs-room-workflow split, product-vs-runtime skill ownership, normalized preview-surface rendering, MCP intent/runtime tool-delivery ownership, the new separation between room-owned workspaces and session-owned sandboxes, and the new split between channel topology and routing mode |
 
 **Legend**: Complete | Partial | Template
 
@@ -99,4 +99,4 @@ The main suite-foundation docs are current, but these areas still need dedicated
 
 ---
 
-*Last updated: 2026-03-26*
+*Last updated: 2026-03-28*

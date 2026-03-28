@@ -15,6 +15,7 @@ import {
   buildNewChatPath,
 } from '../../shared/channelPaths';
 import { normalizeSelectedChannelView } from '../../shared/channelEntry';
+import { isDirectLaneChannel } from '../../shared/channelTopology';
 import {
   createChatChannel,
   sendChatMessage,
@@ -46,7 +47,7 @@ function isDirectLaneSelectedForCat(
     return false;
   }
 
-  return channel.roomRouting.mode === 'direct_cat_chat'
+  return isDirectLaneChannel(channel)
     && channel.roomRouting.leadParticipantId === catId;
 }
 

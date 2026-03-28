@@ -19,6 +19,7 @@ import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
 } from '../../../shared/roomRouting.js';
+import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import {
   ORCHESTRATOR_NAME,
   buildChannelView,
@@ -61,7 +62,7 @@ function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
 
 function isSoloChatChannel(channel: Pick<ChatChannelView, 'composerMode' | 'roomRouting'>): boolean {
   return channel.composerMode === 'solo'
-    && channel.roomRouting?.mode !== 'direct_cat_chat';
+    && !isDirectLaneChannel(channel);
 }
 
 function buildOrchestratorTarget(state: ChatState, channel: ChatChannelView): RoutingTarget {
@@ -112,7 +113,7 @@ export function resolveRoomDefaultRoutingTarget(
     : channelOrId;
   const routing = channel.roomRouting ?? null;
 
-  if (routing?.mode === 'direct_cat_chat' && routing.leadParticipantId) {
+  if (isDirectLaneChannel(channel) && routing?.leadParticipantId) {
     const leadCat = activeAssignedCats(channel)
       .find((cat) => cat.catId === routing.leadParticipantId);
     if (leadCat) {
@@ -222,7 +223,7 @@ export function resolveMentionRoute(
   const activeCats = activeAssignedCats(channel);
   const catsByName = new Map(activeCats.map((cat) => [cat.name.toLowerCase(), cat]));
   const orchestratorTarget = buildOrchestratorTarget(state, channel);
-  const isDirectLane = channel.roomRouting?.mode === 'direct_cat_chat';
+  const isDirectLane = isDirectLaneChannel(channel);
   const orchestratorMentionAliases = new Set([
     ORCHESTRATOR_NAME.toLowerCase(),
     orchestratorTarget.participantName.toLowerCase(),

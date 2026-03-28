@@ -15,6 +15,7 @@ import {
   isoAt,
   syncChannelLeadAndComposerMode,
 } from './shared.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 
 export const AVATAR_PALETTE = [
   '#7986CB', '#4DB6AC', '#FFB74D', '#BA68C8',
@@ -31,9 +32,10 @@ function demoteDirectLaneIfLeadingCatRemoved(
 ): void {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   if (
-    roomRouting.mode === 'direct_cat_chat'
+    isDirectLaneChannel(channel)
     && roomRouting.leadParticipantId === catId
   ) {
+    channel.channelKind = 'boss_thread';
     roomRouting.mode = 'boss_chat';
     roomRouting.leadParticipantId = null;
     channel.roomRouting = roomRouting;

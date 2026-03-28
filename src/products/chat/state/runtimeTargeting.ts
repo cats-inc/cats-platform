@@ -14,6 +14,7 @@ import type { RuntimeSkillManifest } from '../../../platform/runtime/client.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { shouldHydrateCompanionSession } from '../companion/hydration.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
+import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import {
   buildChannelView,
   requireChannel,
@@ -39,10 +40,10 @@ function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
 }
 
 export function isSoloChatChannel(
-  channel: Pick<ChatChannelState | ChatChannelView, 'composerMode' | 'roomRouting'>,
+  channel: Pick<ChatChannelState | ChatChannelView, 'channelKind' | 'composerMode' | 'roomRouting'>,
 ): boolean {
   return channel.composerMode === 'solo'
-    && channel.roomRouting?.mode !== 'direct_cat_chat';
+    && !isDirectLaneChannel(channel);
 }
 
 export function buildOrchestratorTarget(
@@ -182,9 +183,10 @@ function buildSessionContextForTarget(
   const resolvedTransport = resolveTransportContext(channel, transport);
   return {
     source: 'interactive',
-    reason: `cats:${channel.roomRouting?.mode ?? 'boss_chat'}`,
+    reason: `cats:${channel.channelKind ?? channel.roomRouting?.mode ?? 'boss_chat'}`,
     labels: [
       `channel:${channel.id}`,
+      `channel-kind:${channel.channelKind ?? 'boss_thread'}`,
       `room-mode:${channel.roomRouting?.mode ?? 'boss_chat'}`,
       `transport:${resolvedTransport}`,
       `target:${target.participantKind}:${target.participantId}`,
@@ -192,6 +194,7 @@ function buildSessionContextForTarget(
     metadata: {
       channelId: channel.id,
       channelTitle: channel.title,
+      channelKind: channel.channelKind ?? 'boss_thread',
       roomMode: channel.roomRouting?.mode ?? 'boss_chat',
       leadParticipantId: channel.roomRouting?.leadParticipantId ?? null,
       transport: resolvedTransport,
@@ -396,7 +399,7 @@ function describeRoutingReason(
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   switch (trigger) {
     case 'room_default':
-      if (roomRouting.mode === 'direct_cat_chat') {
+      if (isDirectLaneChannel(channel)) {
         return 'System routing selected you because you are the lead cat for this room.';
       }
       return 'System routing selected you as the default room target for this turn.';

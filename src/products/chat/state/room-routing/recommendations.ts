@@ -5,6 +5,7 @@ import type {
   RoomWorkflowBranchStrategy,
   RoomWorkflowShape,
 } from '../../../../shared/roomRouting.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import {
   buildChannelView,
   ORCHESTRATOR_NAME,
@@ -252,7 +253,7 @@ export function extractWorkflowRecommendationFromBody(
 
 function isSoloChatChannel(channel: ReturnType<typeof buildChannelView>): boolean {
   return channel.composerMode === 'solo'
-    && channel.roomRouting?.mode !== 'direct_cat_chat';
+    && !isDirectLaneChannel(channel);
 }
 
 function buildOrchestratorTarget(state: ChatState, channelId: string): RoutingTarget {
@@ -271,7 +272,7 @@ export function resolveWorkflowRecommendationTargets(
   recommendation: WorkflowRecommendation,
 ): WorkflowRecommendationResolution {
   const channel = buildChannelView(state, channelId);
-  const isDirectLane = channel.roomRouting?.mode === 'direct_cat_chat';
+  const isDirectLane = isDirectLaneChannel(channel);
   const catsById = new Map(
     channel.assignedCats
       .filter((cat) => cat.status === 'active')

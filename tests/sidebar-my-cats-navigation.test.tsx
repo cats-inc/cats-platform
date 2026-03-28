@@ -242,6 +242,7 @@ test('clicking a My Cats entry with an existing hidden direct lane stays on the 
     createChannel({
       id: 'direct-thread-1',
       title: 'Companion',
+      channelKind: 'direct_lane',
       leadCatId: 'companion-cat',
       roomMode: 'direct_cat_chat',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
@@ -261,14 +262,29 @@ test('clicking a My Cats entry with an existing hidden direct lane stays on the 
   ]);
 });
 
+test('My Cats lookup still finds direct lanes by channelKind when roomMode is legacy-mismatched', () => {
+  const channels = [
+    createChannel({
+      id: 'direct-thread-1',
+      title: 'Companion',
+      channelKind: 'direct_lane',
+      leadCatId: 'companion-cat',
+      roomMode: 'boss_chat',
+    } as Partial<ChatChannelSummary> & { id: string; title: string }),
+  ];
+
+  assert.equal(findDirectLaneForCat(channels, 'companion-cat')?.id, 'direct-thread-1');
+});
+
 test('direct_cat_chat channels are excluded from the Recents list', () => {
   const payload = createPayload([
     createChannel({ id: 'boss-thread', title: 'Daily standup' }),
     createChannel({
       id: 'direct-thread',
       title: 'Companion',
+      channelKind: 'direct_lane',
       leadCatId: 'companion-cat',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'boss_chat',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
 
@@ -296,7 +312,7 @@ test('Cat with no existing direct lane shows no dot', () => {
 
 test('Cat with direct lane + ready shows awake (green)', () => {
   const lane = createChannel({
-    id: 'dl-1', title: 'C', leadCatId: 'companion-cat', roomMode: 'direct_cat_chat',
+    id: 'dl-1', title: 'C', channelKind: 'direct_lane', leadCatId: 'companion-cat', roomMode: 'boss_chat',
     leadParticipantLeaseStatus: 'ready',
   } as Partial<ChatChannelSummary> & { id: string; title: string });
   assert.equal(resolveMyCatStatusDot(lane.leadParticipantLeaseStatus), 'awake');

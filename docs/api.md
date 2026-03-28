@@ -314,6 +314,17 @@ Each channel now exposes a `roomRouting` read model with:
     to `wakeHistory`
   - `lastCheckpointEvent` and `lastOutcomeEvent` for quick renderer access
 
+Channels also expose a topology-oriented `channelKind` field:
+
+- `boss_thread`
+- `direct_lane`
+- `multi_cat_room`
+
+`channelKind` answers what kind of room the product is dealing with, while
+`roomRouting.mode` remains the default-routing compatibility seam. Direct-lane
+resume, stream selection, and renderer chrome now key off `channelKind`
+instead of assuming every room still has Boss Cat topology behind it.
+
 ### Channel Messages
 
 ```text
@@ -2758,4 +2769,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-03-26*
+*Last updated: 2026-03-28*

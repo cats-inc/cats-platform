@@ -158,6 +158,13 @@ transport state stays in `src/platform/transports/telegram/*`.
   - owner profile and preference memory
   - artifact, activity, and archive metadata
 
+The chat product now also treats channel topology as a first-class concept:
+`channelKind` (`boss_thread`, `direct_lane`, `multi_cat_room`) captures room
+identity separately from `roomRouting.mode`, which remains the routing-policy
+compatibility seam. Runtime wake/stream flows and renderer direct-lane chrome
+therefore resolve from topology first rather than assuming every room has Boss
+Cat/orchestrator infrastructure.
+
 ### Runtime Client and Runtime Boundary
 
 - **Purpose**: Keep `cats-runtime` as the only execution boundary while
@@ -618,4 +625,4 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-03-26*
+*Last updated: 2026-03-28*

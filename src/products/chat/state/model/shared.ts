@@ -77,7 +77,7 @@ export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void 
     activeCatIds,
   });
 
-  if (roomRouting.mode === 'direct_cat_chat') {
+  if (channel.channelKind === 'direct_lane') {
     roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
       channel.catAssignments,
       currentLeadId,

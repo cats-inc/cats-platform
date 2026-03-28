@@ -1,5 +1,6 @@
 import type { AppShellPayload } from '../api/contracts.js';
 import type { RoomRoutingState } from '../../../shared/roomRouting.js';
+import { isDirectLaneChannel } from './channelTopology.js';
 import { resolveRoomRoutingState } from '../state/room-routing/index.js';
 import {
   resolveChatLifecycleState,
@@ -34,7 +35,7 @@ export function resolveSelectedChannelEntryLifecycle(
   }
 
   if (
-    selectedChannel.roomRouting.mode === 'direct_cat_chat'
+    isDirectLaneChannel(selectedChannel)
     && selectedChannel.roomRouting.leadParticipantId
   ) {
     const leadCat = selectedChannel.assignedCats.find(

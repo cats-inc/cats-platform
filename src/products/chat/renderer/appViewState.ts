@@ -9,6 +9,11 @@ import {
   type SelectedChannelView,
   type Surface,
 } from './chatUtils';
+import {
+  isDirectConversationMode,
+  isSoloThreadConversationMode,
+  resolveConversationMode,
+} from './conversationMode';
 import { findDirectLaneForCat } from './myCatNavigation';
 
 export type AppLoadState =
@@ -24,7 +29,7 @@ function isDirectLaneSelectedForCat(
     return false;
   }
 
-  return channel.roomRouting.mode === 'direct_cat_chat'
+  return isDirectConversationMode(resolveConversationMode(channel))
     && channel.roomRouting.leadParticipantId === catId;
 }
 
@@ -121,10 +126,16 @@ export function deriveAppViewState(input: {
       : 'chats';
   const directLaneChannel = showingMyCatDirectLane ? selectedDirectLane : null;
   const activeChannelView = selectedChannel ?? directLaneChannel;
+  const activeConversationMode = activeChannelView
+    ? resolveConversationMode(activeChannelView)
+    : null;
+  const selectedConversationMode = selectedChannel
+    ? resolveConversationMode(selectedChannel)
+    : null;
   const activeMyCatId = draftLeadCatId
     ? draftLeadCatId
-    : selectedChannel?.roomRouting.mode === 'direct_cat_chat'
-      ? selectedChannel.roomRouting.leadParticipantId ?? null
+    : isDirectConversationMode(activeConversationMode)
+      ? activeChannelView?.roomRouting.leadParticipantId ?? null
       : null;
   const activeAssignedCats =
     activeChannelView?.assignedCats.filter((cat) => cat.status === 'active') ?? [];
@@ -136,7 +147,8 @@ export function deriveAppViewState(input: {
     (cat) => cat.id === payload.chat.bossCatId,
   )?.avatarColor ?? null;
   const showBossCatAvatar = Boolean(payload.chat.bossCatId)
-    && selectedChannel?.composerMode !== 'solo'
+    && !isSoloThreadConversationMode(selectedConversationMode)
+    && !isDirectConversationMode(selectedConversationMode)
     && !activeAssignedCats.some((cat) => cat.catId === payload.chat.bossCatId);
   const selectableCats = payload.chat.cats.filter(
     (cat) => cat.status === 'active' && cat.id !== payload.chat.bossCatId && isChatCat(cat),
@@ -150,6 +162,7 @@ export function deriveAppViewState(input: {
   return {
     surface,
     directLaneChannel,
+    activeConversationMode,
     activeMyCatId,
     activeAssignedCats,
     assignedCatIds,

@@ -13,6 +13,7 @@ import type {
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
 import {
+  isDirectLaneChannel,
   normalizeChannelAssignmentsForRoomMode,
   resolveChannelKind,
   resolveDirectLaneLeadParticipantId,
@@ -60,7 +61,7 @@ function resolveLeadParticipantLeaseStatus(
   channel: ChatChannelState,
 ): ParticipantSessionStatus | null {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  const leadId = roomRouting.mode === 'direct_cat_chat'
+  const leadId = isDirectLaneChannel(channel)
     ? resolveDirectLaneLeadParticipantId(
       channel.catAssignments,
       roomRouting.leadParticipantId,
@@ -110,7 +111,7 @@ export function buildChannelView(
     roomMode: roomRouting.mode,
     participants: normalizedAssignments,
   });
-  if (roomRouting.mode === 'direct_cat_chat') {
+  if (isDirectLaneChannel(clonedChannel)) {
     roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
       normalizedAssignments,
       roomRouting.leadParticipantId,
@@ -141,10 +142,8 @@ export function resolveChannelEntryParticipant(
   const channel = buildChannelView(state, channelOrId);
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
 
-  if (roomRouting.mode === 'direct_cat_chat' && roomRouting.leadParticipantId) {
-    const leadCat = channel.assignedCats.find(
-      (cat) => cat.status === 'active' && cat.catId === roomRouting.leadParticipantId,
-    );
+  if (isDirectLaneChannel(channel) && roomRouting.leadParticipantId) {
+    const leadCat = channel.assignedCats.find((cat) => cat.catId === roomRouting.leadParticipantId);
     if (leadCat) {
       return {
         participantKind: 'cat',
@@ -170,7 +169,7 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
-  const leadCatId = roomRouting.mode === 'direct_cat_chat'
+  const leadCatId = isDirectLaneChannel(channel)
     ? resolveDirectLaneLeadParticipantId(normalizedAssignments, roomRouting.leadParticipantId)
     : roomRouting.leadParticipantId;
   const workflowStatus = roomRouting.workflow.activeTurn?.status

@@ -18,6 +18,7 @@ import {
   resolveVisibleChatPath,
 } from '../../shared/channelPaths';
 import { shouldWakeRouteChannelOnEntry } from '../../shared/channelEntry';
+import { isDirectLaneChannel } from '../../shared/channelTopology';
 import type { ChatLifecycleState } from '../../shared/lifecycle';
 import type { SelectedChannelView } from '../chatUtils';
 
@@ -157,7 +158,7 @@ export function useAppShellRouting(options: {
       || !routeDirectLaneSummary
       || (
         readySelectedChannel
-        && readySelectedChannel.roomRouting.mode === 'direct_cat_chat'
+        && isDirectLaneChannel(readySelectedChannel)
         && readySelectedChannel.roomRouting.leadParticipantId === draftLeadCatId
       )
     ) {
