@@ -14,6 +14,7 @@ export interface RuntimeSessionRoutingOptions {
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
   forceReviveClosedSessions?: boolean;
+  chatStatePath?: string;
 }
 
 export function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {

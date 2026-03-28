@@ -50,6 +50,7 @@ interface RouteChannelMessageOptions {
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
+  chatStatePath?: string;
 }
 
 function normalizePendingTargetValue(value: string | null | undefined): string | null {
@@ -224,6 +225,7 @@ export async function routeChannelMessage(
       companionStore: options.companionStore,
       memoryService: options.memoryService,
       chatStore: options.chatStore,
+      chatStatePath: options.chatStatePath,
       runtimeRecovery,
     });
   nextState = loopResult.state;

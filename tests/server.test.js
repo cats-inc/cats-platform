@@ -204,6 +204,7 @@ async function withServer(
   chatStore = new MemoryChatStore(),
   overrides = {},
 ) {
+  const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-server-state-'));
   const {
     startup,
     coreStore,
@@ -214,7 +215,10 @@ async function withServer(
   } = overrides;
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        chatStatePath: path.join(tempStateDir, 'chat-state.json'),
+      },
       runtimeClient,
       now: () => new Date('2026-03-11T00:00:00.000Z'),
       startup,
@@ -242,6 +246,7 @@ async function withServer(
   } finally {
     server.close();
     await once(server, 'close');
+    await rm(tempStateDir, { recursive: true, force: true });
   }
 }
 
@@ -4292,7 +4297,7 @@ test('assigning a cat forwards structured modelSelection to cats-runtime session
   });
 });
 
-test('assigning a cat without a channel cwd defers session creation until Boss Cat activation establishes one', async () => {
+test('assigning a cat without a repo path uses a stable channel workspace immediately', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -4339,9 +4344,9 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
     assert.equal(assignResponse.status, 201);
     const assignPayload = await assignResponse.json();
 
-    assert.equal(runtimeClient.createdSessions.length, 0);
-    assert.equal(assignPayload.cat.execution.lease.sessionId, null);
-    assert.equal(assignPayload.cat.execution.lease.cwd, null);
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(assignPayload.cat.execution.lease.sessionId, 'session-1');
+    assert.match(assignPayload.cat.execution.lease.cwd ?? '', /channel-workspaces[\\/]/u);
 
     const activateResponse = await fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
       method: 'POST',
@@ -4350,8 +4355,14 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
     const activatePayload = await activateResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 2);
-    assert.equal(runtimeClient.createdSessions[0].cwd, null);
-    assert.equal(runtimeClient.createdSessions[1].cwd, 'C:/chat/runtime');
+    assert.match(
+      runtimeClient.createdSessions[1].cwd ?? '',
+      /channel-workspaces[\\/]/u,
+    );
+    assert.equal(
+      runtimeClient.createdSessions[1].cwd,
+      runtimeClient.createdSessions[0].cwd,
+    );
     assert.equal(activatePayload.activation.results[0].targetKind, 'orchestrator');
     assert.equal(activatePayload.activation.results[1].targetKind, 'cat');
   });
@@ -4455,9 +4466,12 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     const messagePayload = await messageResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 1);
-    assert.equal(runtimeClient.createdSessions[0].workspaceKind, 'sandbox');
+    assert.equal(runtimeClient.createdSessions[0].workspaceKind, 'source');
     assert.equal(runtimeClient.createdSessions[0].workspaceAccess, 'read_write');
-    assert.equal(runtimeClient.createdSessions[0].cwd, null);
+    assert.match(
+      runtimeClient.createdSessions[0].cwd ?? '',
+      /channel-workspaces[\\/]/u,
+    );
     assert.equal(messagePayload.dispatch.results[0].status, 'sent');
     assert.equal(messagePayload.dispatch.results[0].targetKind, 'orchestrator');
 
@@ -4468,6 +4482,10 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     assert.equal(channelPayload.channel.composerMode, 'solo');
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
     assert.equal(channelPayload.channel.orchestratorLease.status, 'ready');
+    assert.equal(
+      channelPayload.channel.chatCwd,
+      runtimeClient.createdSessions[0].cwd,
+    );
     const soloReply = channelPayload.channel.messages.findLast(
       (message) => message.metadata?.targetKind === 'orchestrator',
     );
@@ -5391,6 +5409,74 @@ test('attachment serving only inlines raster images and forces download for acti
   } finally {
     await rm(tempWorkingDir, { recursive: true, force: true });
   }
+});
+
+test('attachment serving survives session cwd changes for chats without a repo path', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Attachment Persistence',
+        topic: 'Keep attachments stable across session restarts.',
+        composerMode: 'solo',
+        pendingProvider: 'claude',
+        pendingInstance: 'native',
+        pendingModel: 'claude-opus-4-6',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const uploadResponse = await fetch(`${baseUrl}/api/channels/${channelId}/attachments`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        files: [
+          {
+            name: 'photo.png',
+            data: Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64'),
+          },
+        ],
+      }),
+    });
+    assert.equal(uploadResponse.status, 200);
+    assert.equal(runtimeClient.createdSessions.length, 0);
+
+    const firstAttachmentResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/attachments/photo.png`,
+    );
+    assert.equal(firstAttachmentResponse.status, 200);
+
+    const messageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        body: 'Use the uploaded screenshot',
+        pendingProvider: 'claude',
+        pendingInstance: 'native',
+        pendingModel: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(messageResponse.status, 200);
+    assert.match(runtimeClient.createdSessions[0].cwd ?? '', /channel-workspaces[\\/]/u);
+
+    const secondAttachmentResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/attachments/photo.png`,
+    );
+    assert.equal(secondAttachmentResponse.status, 200);
+    assert.equal(await secondAttachmentResponse.arrayBuffer().then((buffer) => buffer.byteLength), 4);
+  });
 });
 
 

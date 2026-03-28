@@ -24,7 +24,10 @@ import {
 } from '../shared/operator-loop/index.js';
 
 export function createChatOrchestratorChannelRouter(
-  runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>,
+  options: {
+    runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
+    chatStatePath?: string;
+  } = {},
 ): OrchestratorChannelRouter<CompanionBoxStore, ChatState> {
   return {
     buildChannelView,
@@ -43,7 +46,8 @@ export function createChatOrchestratorChannelRouter(
           companionStore: input.companionStore,
           memoryService: input.memoryService,
           chatStore: input.chatStore as ChatStore,
-          runtimeRecovery,
+          runtimeRecovery: options.runtimeRecovery,
+          chatStatePath: options.chatStatePath,
         },
       );
     },

@@ -48,6 +48,11 @@ import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import type { ChatStore } from '../state/store.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
+import { ensureChannelWorkspace } from '../state/workspace.js';
+import {
+  buildCatTarget,
+  resolveRuntimeEnvelopeForTarget,
+} from '../state/runtimeTargeting.js';
 import type {
   AppShellPayload,
   AssignChannelCatInput,
@@ -705,10 +710,21 @@ export async function persistCatAssignmentUpdate(
   const updatedCat = refreshedChannel.catAssignments.find(
     (candidate) => candidate.catId === input.catId,
   );
+  const workspace = await ensureChannelWorkspace({
+    channelId,
+    repoPath: refreshedChannel.repoPath,
+    chatCwd: refreshedChannel.chatCwd,
+    chatStatePath: context.dependencies.config.chatStatePath,
+  });
+  if (workspace.nextChatCwd && refreshedChannel.chatCwd !== workspace.nextChatCwd) {
+    nextState = setChannelChatCwd(nextState, channelId, workspace.nextChatCwd, now);
+  }
+  const resolvedChannel = requireChannel(nextState, channelId);
   const spawnCwd = (
-    refreshedChannel.repoPath
-    ?? refreshedChannel.chatCwd
-    ?? refreshedChannel.orchestratorLease.cwd
+    workspace.workspacePath
+    ?? resolvedChannel.repoPath
+    ?? resolvedChannel.chatCwd
+    ?? resolvedChannel.orchestratorLease.cwd
     ?? null
   );
   const channelIsLive = refreshedChannel.status === 'active'
@@ -730,6 +746,21 @@ export async function persistCatAssignmentUpdate(
 
   if (needsSession) {
     try {
+      const resolvedChannelView = buildChannelView(nextState, channelId);
+      const resolvedCat = resolvedChannelView.assignedCats.find(
+        (candidate) => candidate.catId === input.catId && candidate.status === 'active',
+      );
+      if (!resolvedCat) {
+        throw new Error(`Channel cat assignment not found: ${input.catId}`);
+      }
+      const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
+        nextState,
+        resolvedChannelView,
+        buildCatTarget(resolvedCat),
+        undefined,
+        now,
+        context.dependencies.companionStore,
+      );
       const session = await context.dependencies.runtimeClient.createSession({
         provider: updatedCat.execution.target.provider,
         instance: updatedCat.execution.target.instance,
@@ -740,6 +771,8 @@ export async function persistCatAssignmentUpdate(
         cwd: spawnCwd,
         workspaceKind: spawnCwd ? 'source' : 'sandbox',
         workspaceAccess: 'read_write',
+        context: runtimeEnvelope.context,
+        skills: runtimeEnvelope.skills,
       });
       const timestamp = now.toISOString();
       nextState = setChannelCatLease(nextState, channelId, input.catId, {
@@ -752,9 +785,6 @@ export async function persistCatAssignmentUpdate(
         startedAt: timestamp,
         lastUsedAt: timestamp,
       }, now);
-      // TODO(room-workspace): stop promoting participant session cwd into
-      // channel-level workspace authority; bootstrap a room-owned workspace
-      // explicitly before spawning shared participants.
       if (!spawnCwd && session.cwd) {
         nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }

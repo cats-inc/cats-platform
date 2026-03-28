@@ -11,6 +11,7 @@ export function createChatTelegramRoomBridge(input: {
   chatStore: ChatStore;
   companionStore: CompanionBoxStore;
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
+  chatStatePath?: string;
 }): TelegramRoomBridge<ChatState> {
   return {
     readState() {
@@ -90,6 +91,7 @@ export function createChatTelegramRoomBridge(input: {
           memoryService,
           chatStore: input.chatStore,
           runtimeRecovery: input.runtimeRecovery,
+          chatStatePath: input.chatStatePath,
         },
       );
     },

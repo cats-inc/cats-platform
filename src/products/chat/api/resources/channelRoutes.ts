@@ -10,9 +10,11 @@ import {
 import {
   buildChannelView,
   requireChannel,
+  setChannelChatCwd,
   setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
+import { ensureChannelWorkspace } from '../../state/workspace.js';
 import type {
   CreateChatChannelInput,
   SendChannelMessageInput,
@@ -317,6 +319,7 @@ async function handleRestSendMessage(
         companionStore: context.dependencies.companionStore,
         memoryService: context.dependencies.memoryService,
         chatStore: context.dependencies.chatStore,
+        chatStatePath: context.dependencies.config.chatStatePath,
         runtimeRecovery: {
           staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
         },
@@ -363,7 +366,20 @@ async function handleRestUploadAttachments(
 
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
-    const cwd = channel.repoPath ?? channel.chatCwd;
+    const workspace = await ensureChannelWorkspace({
+      channelId,
+      repoPath: channel.repoPath,
+      chatCwd: channel.chatCwd,
+      chatStatePath: context.dependencies.config.chatStatePath,
+    });
+    let cwd = workspace.workspacePath;
+
+    if (workspace.nextChatCwd && channel.chatCwd !== workspace.nextChatCwd) {
+      await context.dependencies.chatStore.write(
+        setChannelChatCwd(state, channelId, workspace.nextChatCwd, nowFrom(context.dependencies)),
+      );
+      cwd = workspace.nextChatCwd;
+    }
 
     if (!cwd) {
       sendRestError(
@@ -436,7 +452,20 @@ async function handleRestServeAttachment(
     requireValidChatScopeId(chatScopeId);
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
-    const cwd = channel.repoPath ?? channel.chatCwd;
+    const workspace = await ensureChannelWorkspace({
+      channelId,
+      repoPath: channel.repoPath,
+      chatCwd: channel.chatCwd,
+      chatStatePath: context.dependencies.config.chatStatePath,
+    });
+    let cwd = workspace.workspacePath;
+
+    if (workspace.nextChatCwd && channel.chatCwd !== workspace.nextChatCwd) {
+      await context.dependencies.chatStore.write(
+        setChannelChatCwd(state, channelId, workspace.nextChatCwd, nowFrom(context.dependencies)),
+      );
+      cwd = workspace.nextChatCwd;
+    }
 
     if (!cwd) {
       sendRestError(context, 404, 'not_found', 'Channel has no working directory.');
@@ -485,6 +514,7 @@ async function handleRestActivateChannel(
       {
         companionStore: context.dependencies.companionStore,
         memoryService: context.dependencies.memoryService,
+        chatStatePath: context.dependencies.config.chatStatePath,
       },
     );
     await context.dependencies.chatStore.write(activation.state);

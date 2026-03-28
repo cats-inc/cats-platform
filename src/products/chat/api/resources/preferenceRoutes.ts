@@ -69,6 +69,7 @@ async function handleRestUpdatePreferences(
         {
           companionStore: context.dependencies.companionStore,
           memoryService: context.dependencies.memoryService,
+          chatStatePath: context.dependencies.config.chatStatePath,
         },
       );
       nextState = wake.state;

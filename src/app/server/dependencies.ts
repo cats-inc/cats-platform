@@ -125,7 +125,10 @@ export function resolveServerDependencies(
       dependencies.shared.config.runtimeStaleSessionRetryLimit === undefined
         ? chatOrchestratorChannelRouter
         : createChatOrchestratorChannelRouter({
-          staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
+          runtimeRecovery: {
+            staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
+          },
+          chatStatePath: dependencies.shared.config.chatStatePath,
         })
     );
   const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface
@@ -136,6 +139,7 @@ export function resolveServerDependencies(
     ?? createChatTelegramRoomBridge({
       chatStore: dependencies.chat.chatStore,
       companionStore,
+      chatStatePath: dependencies.shared.config.chatStatePath,
       runtimeRecovery: {
         staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
       },

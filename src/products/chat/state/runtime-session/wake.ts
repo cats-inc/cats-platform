@@ -40,6 +40,7 @@ import { createExplicitProviderModelSelection } from '../../../../shared/provide
 import {
   classifyRuntimeDispatchRecoveryError,
 } from '../runtime-dispatch/recovery.js';
+import { ensureChannelWorkspace } from '../workspace.js';
 import {
   clearTargetSessionLease,
   ensureChannelMarkedActive,
@@ -335,10 +336,23 @@ export async function ensureTargetSession(
     };
   }
 
-  const channel = buildChannelView(state, channelId);
-  const spawnCwd = spawnCwdFor(requireChannel(state, channelId));
-  const workspaceKind = spawnCwd ? 'source' : 'sandbox';
   let nextState = state;
+  const workspace = await ensureChannelWorkspace({
+    channelId,
+    repoPath: requireChannel(nextState, channelId).repoPath,
+    chatCwd: requireChannel(nextState, channelId).chatCwd,
+    chatStatePath: options.chatStatePath,
+  });
+  if (
+    workspace.nextChatCwd
+    && requireChannel(nextState, channelId).chatCwd !== workspace.nextChatCwd
+  ) {
+    nextState = setChannelChatCwd(nextState, channelId, workspace.nextChatCwd, now);
+  }
+
+  const channel = buildChannelView(nextState, channelId);
+  const spawnCwd = workspace.workspacePath ?? spawnCwdFor(requireChannel(nextState, channelId));
+  const workspaceKind = spawnCwd ? 'source' : 'sandbox';
 
   try {
     nextState = markTargetWaking(nextState, channelId, target, now);
@@ -370,9 +384,6 @@ export async function ensureTargetSession(
         ...(taskExecutionContext?.executionRequest ?? {}),
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
-      // TODO(room-workspace): stop promoting participant session cwd into
-      // channel-level workspace authority; bootstrap a room-owned workspace
-      // explicitly before spawning shared participants.
       if (!spawnCwd && session.cwd) {
         nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
@@ -437,9 +448,6 @@ export async function ensureTargetSession(
       session,
       now,
     );
-    // TODO(room-workspace): stop promoting participant session cwd into
-    // channel-level workspace authority; bootstrap a room-owned workspace
-    // explicitly before spawning shared participants.
     if (!spawnCwd && session.cwd) {
       nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
     }

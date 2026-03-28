@@ -78,6 +78,7 @@ export interface ProcessDispatchQueueOptions {
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
+  chatStatePath?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;
 }
 
@@ -483,6 +484,7 @@ export async function processDispatchQueue(
         companionStore,
         memoryService,
         chatStore,
+        chatStatePath: options.chatStatePath,
       },
     );
     nextState = materializeInFlightDispatchState(
@@ -515,6 +517,7 @@ export async function processDispatchQueue(
           companionStore,
           memoryService,
           chatStore,
+          chatStatePath: options.chatStatePath,
           runtimeRecovery,
         }),
       ),

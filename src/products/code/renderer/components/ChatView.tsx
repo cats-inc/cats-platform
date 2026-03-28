@@ -53,6 +53,8 @@ import {
   isSoloThreadConversationMode,
   resolveConversationMode,
 } from '../conversationMode';
+import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
+import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -224,6 +226,22 @@ export function ChatView({
     () => operatorView?.runs.map((run) => run.id).join('|') ?? '',
     [operatorView],
   );
+  const liveIndicatorScrollKey = useMemo(
+    () =>
+      liveIndicator
+        ? [
+            liveIndicator.active ? '1' : '0',
+            liveIndicator.phase,
+            liveIndicator.catId ?? '',
+            liveIndicator.speakerLabel ?? '',
+            liveIndicator.progressText ?? '',
+            liveIndicator.tools
+              .map((tool) => `${tool.toolId}:${tool.toolName}:${tool.done ? '1' : '0'}`)
+              .join('|'),
+          ].join('::')
+        : '',
+    [liveIndicator],
+  );
   const [inspectedRunId, setInspectedRunId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -243,6 +261,18 @@ export function ChatView({
   const composerBusy = isComposerBusy(busy);
   const resumeBusy = busy === 'channel:resume';
   const canResumeChannel = !composerBusy && !resumeBusy;
+  const composerWorkspacePath = resolveComposerWorkspacePath(
+    selectedChannel.repoPath,
+    selectedChannel.chatCwd,
+  );
+  const { transcriptListRef } = useTranscriptAutoScroll({
+    channelId: selectedChannel.id,
+    scrollKey: [
+      selectedChannel.updatedAt ?? '',
+      selectedChannel.messages.length,
+      liveIndicatorScrollKey,
+    ].join('::'),
+  });
 
   return (
     <>
@@ -334,7 +364,7 @@ export function ChatView({
 
             {hasConversationStarted ? (
               <section className="transcriptPanel">
-                <div className="transcriptList">
+                <div ref={transcriptListRef} className="transcriptList">
                   {selectedChannel.messages.filter((msg) => payload.chat.showVerboseMessages || msg.metadata?.verbosity !== 'verbose').map((message) => (
                     <article key={message.id} className={messageTone(message.senderKind)}>
                       {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
@@ -514,12 +544,11 @@ export function ChatView({
                     ) : null}
                   </div>
                 {(() => {
-                  const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
-                  if (!cwd) return null;
+                  if (!composerWorkspacePath) return null;
                   return (
                     <span
                       className="composerCwdChip composerCwdClickable"
-                      data-tooltip={cwd}
+                      data-tooltip={composerWorkspacePath}
                       role="button"
                       tabIndex={0}
                       onClick={() => openSidePanelTo('cwd')}
@@ -527,7 +556,7 @@ export function ChatView({
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
                       </svg>
-                      <span>{truncatePath(cwd)}</span>
+                      <span>{truncatePath(composerWorkspacePath)}</span>
                     </span>
                   );
                 })()}
