@@ -16,6 +16,7 @@ import {
   ChatView,
   type ChatViewProps,
 } from './components/ChatView.js';
+import { ArtifactDetailView } from './components/ArtifactDetailView.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
 import {
   NewChatDraft,
@@ -108,6 +109,10 @@ export function AppRoutes({
         <Route
           path="build"
           element={<CodeBuilderView payload={payload} />}
+        />
+        <Route
+          path="artifacts/:artifactId"
+          element={<ArtifactDetailView />}
         />
         <Route
           path="chats/:channelId"

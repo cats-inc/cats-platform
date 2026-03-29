@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import {
+  createPreviewSurfaceFallbackCandidates,
+  resolvePreviewSurfaceTarget,
+  type ProductPreviewSurfaceCandidate,
+  type ProductPreviewSurfaceTarget,
+} from '../../../../core/previewSurfaces.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import { useCodeTaskExecution } from '../hooks/useCodeTaskExecution.js';
 import { PlanPanel, type PlanState } from './PlanPanel.js';
@@ -34,7 +40,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
   const [model, setModel] = useState('');
   const [feedback, setFeedback] = useState('');
   const [artifacts, setArtifacts] = useState<ArtifactItem[]>([]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<ProductPreviewSurfaceTarget | null>(null);
 
   useEffect(() => {
     return () => stopPolling();
@@ -53,6 +59,8 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
         return;
       }
 
+      let linkedArtifacts: ArtifactItem[] = [];
+
       // Fetch task detail for artifacts
       try {
         const detail = (await fetchCodeTaskDetail(state.taskId)) as Record<string, unknown>;
@@ -62,13 +70,10 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
 
         const linked = detail.linkedArtifacts;
         if (Array.isArray(linked) && linked.length > 0) {
-          setArtifacts(linked as ArtifactItem[]);
-
-          // Find the latest ready preview artifact's URL if any
-          const readyPreview = (linked as ArtifactItem[]).find(
-            (a) => a.kind === 'preview' && a.status === 'ready' && a.path,
-          );
-          setPreviewUrl(readyPreview?.path ?? null);
+          linkedArtifacts = linked as ArtifactItem[];
+          setArtifacts(linkedArtifacts);
+        } else {
+          setArtifacts([]);
         }
       } catch {
         // Non-fatal
@@ -81,14 +86,17 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
           if (cancelled) {
             return;
           }
+          setPreviewTarget(resolveLatestPreviewTarget(observation, linkedArtifacts));
           const session = observation.session as Record<string, unknown> | undefined;
           if (session?.status === 'closed') {
             setStep('done');
             refreshRepoStatus(workspacePath);
           }
         } catch {
-          // Non-fatal
+          setPreviewTarget(resolveLatestPreviewTarget(null, linkedArtifacts));
         }
+      } else {
+        setPreviewTarget(resolveLatestPreviewTarget(null, linkedArtifacts));
       }
     }
 
@@ -177,7 +185,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
     setWorkspacePath('');
     setFeedback('');
     setArtifacts([]);
-    setPreviewUrl(null);
+    setPreviewTarget(null);
   }, [reset]);
 
   return (
@@ -187,7 +195,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
         {step !== 'workspace' ? (
           <button
             type="button"
-            className="operatorAction"
+            className="operatorActionButton"
             onClick={handleReset}
           >
             New task
@@ -225,7 +233,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
             </label>
             <button
               type="button"
-              className="operatorAction operatorActionPrimary"
+              className="operatorActionButton operatorActionButtonPrimary"
               onClick={handleWorkspaceSubmit}
             >
               Continue
@@ -287,14 +295,14 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
             <div className="codeBuilderFormRow">
               <button
                 type="button"
-                className="operatorAction"
+                className="operatorActionButton"
                 onClick={() => setStep('workspace')}
               >
                 Back
               </button>
               <button
                 type="button"
-                className="operatorAction operatorActionPrimary"
+                className="operatorActionButton operatorActionButtonPrimary"
                 onClick={handleCreateAndExecute}
                 disabled={state.phase === 'creating' || state.phase === 'executing'}
               >
@@ -317,7 +325,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
           <div className="codeBuilderPanelSide">
             <BuildPreviewPanel
               artifacts={artifacts}
-              previewUrl={previewUrl}
+              previewTarget={previewTarget}
               onOpenArtifact={(id) => {
                 navigate(`/code/artifacts/${id}`);
               }}
@@ -344,4 +352,43 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
       ) : null}
     </div>
   );
+}
+
+function resolveLatestPreviewTarget(
+  observation: Record<string, unknown> | null,
+  artifacts: ArtifactItem[],
+): ProductPreviewSurfaceTarget | null {
+  const runtimeCandidates = observation ? readRuntimePreviewCandidates(observation) : [];
+  const artifactCandidates = createPreviewSurfaceFallbackCandidates(artifacts);
+  return resolvePreviewSurfaceTarget([...runtimeCandidates, ...artifactCandidates]);
+}
+
+function readRuntimePreviewCandidates(
+  observation: Record<string, unknown>,
+): ProductPreviewSurfaceCandidate[] {
+  const session = isRecord(observation.session) ? observation.session : null;
+  const inspection = session && isRecord(session.inspection) ? session.inspection : null;
+  const directCandidates = Array.isArray(session?.previewSurfaces) ? session.previewSurfaces : [];
+  const nestedCandidates = Array.isArray(inspection?.previewSurfaces)
+    ? inspection.previewSurfaces
+    : [];
+
+  return [...directCandidates, ...nestedCandidates]
+    .filter(isRecord)
+    .map((candidate) => ({
+      id: readOptionalString(candidate.id),
+      label: readOptionalString(candidate.label),
+      renderHint: readOptionalString(candidate.renderHint),
+      url: readOptionalString(candidate.url),
+      path: readOptionalString(candidate.path),
+      artifactId: readOptionalString(candidate.artifactId),
+    }));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object';
+}
+
+function readOptionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }

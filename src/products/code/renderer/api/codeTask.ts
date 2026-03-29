@@ -115,6 +115,10 @@ export async function fetchCodeTaskDetail(taskId: string): Promise<unknown> {
   return fetchJson(`/api/code/tasks/${encodeURIComponent(taskId)}`);
 }
 
+export async function fetchCodeArtifactDetail(artifactId: string): Promise<unknown> {
+  return fetchJson(`/api/code/artifacts/${encodeURIComponent(artifactId)}`);
+}
+
 export async function observeRuntimeSession(sessionId: string): Promise<unknown> {
   return fetchJson(
     `/api/code/runtime/sessions/${encodeURIComponent(sessionId)}/observe`,
