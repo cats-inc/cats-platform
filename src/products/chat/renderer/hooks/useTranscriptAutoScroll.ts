@@ -44,6 +44,9 @@ export function useTranscriptAutoScroll(options: {
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const transcriptBottomInsetRef = useRef<number | null>(null);
+  const composerBaselineHeightRef = useRef<number | null>(null);
+  const composerFlowOffsetRef = useRef<number>(0);
+  const bottomSentinelHeightRef = useRef<number | null>(null);
   const pendingScrollFrameRef = useRef<number | null>(null);
 
   const syncScrollState = useCallback(() => {
@@ -81,15 +84,56 @@ export function useTranscriptAutoScroll(options: {
       : '';
   }, [composerCardElement, transcriptListElement]);
 
+  const syncComposerDocking = useCallback(() => {
+    if (!composerCardElement) {
+      composerBaselineHeightRef.current = null;
+      composerFlowOffsetRef.current = 0;
+      return;
+    }
+
+    const composerHeight = Math.ceil(composerCardElement.getBoundingClientRect().height);
+    if (composerHeight <= 0) {
+      return;
+    }
+
+    const currentBaseline = composerBaselineHeightRef.current;
+    const nextBaseline = currentBaseline == null
+      ? composerHeight
+      : Math.min(currentBaseline, composerHeight);
+    composerBaselineHeightRef.current = nextBaseline;
+
+    const nextComposerFlowOffset = Math.max(0, composerHeight - nextBaseline);
+    if (composerFlowOffsetRef.current !== nextComposerFlowOffset) {
+      composerFlowOffsetRef.current = nextComposerFlowOffset;
+      composerCardElement.style.marginTop = nextComposerFlowOffset > 0
+        ? `${-nextComposerFlowOffset}px`
+        : '';
+    }
+
+    if (!bottomSentinelElement) {
+      bottomSentinelHeightRef.current = Math.max(1, nextComposerFlowOffset + 1);
+      return;
+    }
+
+    const nextBottomSentinelHeight = Math.max(1, nextComposerFlowOffset + 1);
+    if (bottomSentinelHeightRef.current === nextBottomSentinelHeight) {
+      return;
+    }
+
+    bottomSentinelHeightRef.current = nextBottomSentinelHeight;
+    bottomSentinelElement.style.height = `${nextBottomSentinelHeight}px`;
+  }, [bottomSentinelElement, composerCardElement]);
+
   const scrollToBottom = useCallback(() => {
     if (!bottomSentinelElement) {
       return;
     }
 
+    syncComposerDocking();
     syncTranscriptBottomInset();
     bottomSentinelElement.scrollIntoView({ block: 'end' });
     syncScrollState();
-  }, [bottomSentinelElement, syncScrollState, syncTranscriptBottomInset]);
+  }, [bottomSentinelElement, syncComposerDocking, syncScrollState, syncTranscriptBottomInset]);
 
   const scheduleScrollToBottom = useCallback(() => {
     if (pendingScrollFrameRef.current !== null) {
@@ -123,6 +167,7 @@ export function useTranscriptAutoScroll(options: {
   }, [syncScrollState, transcriptListElement]);
 
   useEffect(() => {
+    syncComposerDocking();
     syncTranscriptBottomInset();
     return () => {
       if (pendingScrollFrameRef.current !== null) {
@@ -132,9 +177,18 @@ export function useTranscriptAutoScroll(options: {
       if (transcriptListElement) {
         transcriptListElement.style.paddingBottom = '';
       }
+      if (composerCardElement) {
+        composerCardElement.style.marginTop = '';
+      }
+      if (bottomSentinelElement) {
+        bottomSentinelElement.style.height = '';
+      }
       transcriptBottomInsetRef.current = null;
+      composerBaselineHeightRef.current = null;
+      composerFlowOffsetRef.current = 0;
+      bottomSentinelHeightRef.current = null;
     };
-  }, [syncTranscriptBottomInset, transcriptListElement]);
+  }, [bottomSentinelElement, composerCardElement, syncComposerDocking, syncTranscriptBottomInset, transcriptListElement]);
 
   useEffect(() => {
     if (!transcriptListElement) {
@@ -162,6 +216,7 @@ export function useTranscriptAutoScroll(options: {
     }
 
     const observer = new ResizeObserver(() => {
+      syncComposerDocking();
       syncTranscriptBottomInset();
       if (!shouldAutoScrollRef.current) {
         return;
@@ -170,13 +225,32 @@ export function useTranscriptAutoScroll(options: {
       scheduleScrollToBottom();
     });
     observer.observe(transcriptListElement);
-    if (composerCardElement) {
-      observer.observe(composerCardElement);
-    }
     return () => {
       observer.disconnect();
     };
-  }, [composerCardElement, scheduleScrollToBottom, syncTranscriptBottomInset, transcriptListElement]);
+  }, [scheduleScrollToBottom, syncComposerDocking, syncTranscriptBottomInset, transcriptListElement]);
+
+  useEffect(() => {
+    if (!composerCardElement || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    syncComposerDocking();
+    const observer = new ResizeObserver(() => {
+      syncComposerDocking();
+    });
+    observer.observe(composerCardElement);
+    return () => {
+      observer.disconnect();
+    };
+  }, [composerCardElement, syncComposerDocking]);
+
+  useEffect(() => {
+    composerBaselineHeightRef.current = null;
+    composerFlowOffsetRef.current = 0;
+    bottomSentinelHeightRef.current = null;
+    syncComposerDocking();
+  }, [channelId, syncComposerDocking]);
 
   return {
     transcriptListRef: setTranscriptListElement,
