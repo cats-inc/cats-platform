@@ -6,17 +6,23 @@ export interface MessageBodyProps {
   body: string;
   cats: ChatCat[];
   channelId: string;
+  disabledMentionNames?: string[];
 }
 
-export function MessageBody({ body, cats, channelId }: MessageBodyProps) {
+export function MessageBody({
+  body,
+  cats,
+  channelId,
+  disabledMentionNames = [],
+}: MessageBodyProps) {
   const { attachments, textBody } = useMemo(
     () => extractAttachments(body),
     [body],
   );
 
   const segments = useMemo(
-    () => segmentMessageBody(textBody, cats),
-    [textBody, cats],
+    () => segmentMessageBody(textBody, cats, disabledMentionNames),
+    [disabledMentionNames, textBody, cats],
   );
 
   const imageAttachments = attachments.filter((a) => a.isImage);

@@ -82,6 +82,18 @@ test('segmentMessageBody only emits mention pills for known cats', () => {
   ]);
 });
 
+test('segmentMessageBody can leave excluded direct-lane mentions as plain text', () => {
+  const segments = segmentMessageBody(
+    'Ask @Mochi but leave @Ghost alone',
+    [...cats],
+    ['Mochi'],
+  );
+
+  assert.deepEqual(segments, [
+    { kind: 'text', value: 'Ask @Mochi but leave @Ghost alone' },
+  ]);
+});
+
 test('extractAttachments only marks raster formats as inline images', () => {
   const { attachments, textBody } = extractAttachments(
     '[Attached files in working directory:]\n'

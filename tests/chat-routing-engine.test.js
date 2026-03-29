@@ -951,6 +951,74 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   assert.equal(channel.status, 'active');
 });
 
+test('direct cat chat treats lead-cat mentions as plain text and stays on the lane', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Smelly',
+      provider: 'claude',
+      roles: ['boss'],
+    },
+    now,
+  );
+  state.bossCatId = state.cats[0].id;
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Treat lead-cat mentions as plain text inside the lane.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      leadParticipantId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Companion')) {
+      return usage('Companion stayed on the direct lane.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Companion 我想你' },
+    runtimeClient,
+    now,
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(runtimeClient.sentMessages.length, 1);
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'default_target');
+  assert.deepEqual(channel.roomRouting?.lastOutcome?.unresolvedMentions, []);
+  assert.equal(
+    channel.messages.some((message) => /Unresolved mentions:|No valid room targets matched/i.test(message.body)),
+    false,
+  );
+  assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
+});
+
 test('direct cat chat blocks explicit Boss Cat mentions instead of routing out of lane', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();

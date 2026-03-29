@@ -218,8 +218,14 @@ export function resolveMentionRoute(
   },
 ): MentionRouteResult {
   const channel = buildChannelView(state, channelId);
-  const mentionNames = parseMentions(body);
   const defaultTarget = resolveRoomDefaultRoutingTarget(state, channel);
+  const ignoredMentionNames = isDirectLaneChannel(channel)
+    && defaultTarget.participant?.participantKind === 'cat'
+    ? [defaultTarget.participant.participantName]
+    : [];
+  const mentionNames = parseMentions(body, {
+    excludedNames: ignoredMentionNames,
+  });
   const activeCats = activeAssignedCats(channel);
   const catsByName = new Map(activeCats.map((cat) => [cat.name.toLowerCase(), cat]));
   const orchestratorTarget = buildOrchestratorTarget(state, channel);

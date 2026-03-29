@@ -110,6 +110,7 @@ function rangesOverlap(
 export function segmentMessageBody(
   body: string,
   cats: ChatCat[],
+  disabledMentionNames: string[] = [],
 ): MessageBodySegment[] {
   const catLookup = new Map<string, ChatCat>();
   for (const cat of cats) {
@@ -133,7 +134,9 @@ export function segmentMessageBody(
   }
 
   // Collect mention tokens
-  const mentionResult = parseMentionsWithPositions(body);
+  const mentionResult = parseMentionsWithPositions(body, {
+    excludedNames: disabledMentionNames,
+  });
   const mentionTokens: TokenSpan[] = mentionResult.positions.flatMap((pos) => {
     const cat = catLookup.get(pos.name.toLowerCase()) ?? null;
     if (!cat) {

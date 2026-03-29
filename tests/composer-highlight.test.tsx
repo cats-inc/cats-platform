@@ -24,6 +24,15 @@ test('buildComposerHighlightFragments matches valid mentions even before punctua
   );
 });
 
+test('buildComposerHighlightFragments can leave excluded direct-lane mentions as plain text', () => {
+  assert.deepEqual(
+    buildComposerHighlightFragments('@Mochi, stay in this lane.', [...cats], ['Mochi']),
+    [
+      { kind: 'text', value: '@Mochi, stay in this lane.' },
+    ],
+  );
+});
+
 test('ComposerHighlight root class keeps the mirror bound to textarea metrics', () => {
   assert.equal(
     COMPOSER_HIGHLIGHT_ROOT_CLASS_NAME,

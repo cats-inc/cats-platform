@@ -5,6 +5,7 @@ import { parseMentionsWithPositions } from '../../state/mentionParsing';
 export interface ComposerHighlightProps {
   text: string;
   cats: ChatCat[];
+  excludedMentionNames?: string[];
 }
 
 export const COMPOSER_HIGHLIGHT_ROOT_CLASS_NAME =
@@ -19,11 +20,14 @@ export interface ComposerHighlightFragment {
 export function buildComposerHighlightFragments(
   text: string,
   cats: ChatCat[],
+  excludedMentionNames: string[] = [],
 ): ComposerHighlightFragment[] {
   const catLookup = new Map(
     cats.map((cat) => [cat.name.toLowerCase(), cat] as const),
   );
-  const result = parseMentionsWithPositions(text);
+  const result = parseMentionsWithPositions(text, {
+    excludedNames: excludedMentionNames,
+  });
   const confirmed = result.positions.flatMap((pos) => {
     const cat = catLookup.get(pos.name.toLowerCase());
     if (!cat) {
@@ -70,10 +74,14 @@ function buildComposerMentionStyle(
   };
 }
 
-export function ComposerHighlight({ text, cats }: ComposerHighlightProps) {
+export function ComposerHighlight({
+  text,
+  cats,
+  excludedMentionNames = [],
+}: ComposerHighlightProps) {
   const fragments = useMemo(
-    () => buildComposerHighlightFragments(text, cats),
-    [text, cats],
+    () => buildComposerHighlightFragments(text, cats, excludedMentionNames),
+    [excludedMentionNames, text, cats],
   );
 
   return (

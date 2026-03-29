@@ -207,6 +207,10 @@ export function ChatView({
         modelSelection: directLaneCat.defaultModelSelection ?? null,
       }
     : null;
+  const directLaneExcludedMentionNames = useMemo(
+    () => (isDirectLane && directLaneCat?.name ? [directLaneCat.name] : []),
+    [directLaneCat?.name, isDirectLane],
+  );
   const operatorView = useMemo(
     () => buildChatOperatorView(operatorSnapshot, selectedChannel.id),
     [operatorSnapshot, selectedChannel.id],
@@ -395,7 +399,14 @@ export function ChatView({
                           </div>
                         ) : null;
                       })() : null}
-                      {message.body ? <MessageBody body={message.body} cats={payload.chat.cats} channelId={selectedChannel.id} /> : null}
+                      {message.body ? (
+                        <MessageBody
+                          body={message.body}
+                          cats={payload.chat.cats}
+                          channelId={selectedChannel.id}
+                          disabledMentionNames={directLaneExcludedMentionNames}
+                        />
+                      ) : null}
                       {message.choices && message.choices.length > 0 ? (
                         <MessageChoices
                           channelId={selectedChannel.id}
@@ -445,6 +456,7 @@ export function ChatView({
                                 body={liveIndicator.previewText}
                                 cats={payload.chat.cats}
                                 channelId={selectedChannel.id}
+                                disabledMentionNames={directLaneExcludedMentionNames}
                               />
                             ) : liveIndicator.progressText ? (
                               <p className="typingStatusText">{liveIndicator.progressText}</p>
@@ -563,7 +575,11 @@ export function ChatView({
                 </div>
               ) : null}
               <div className="composerInputWrapper">
-                <ComposerHighlight text={composerDraft} cats={payload.chat.cats} />
+                <ComposerHighlight
+                  text={composerDraft}
+                  cats={payload.chat.cats}
+                  excludedMentionNames={directLaneExcludedMentionNames}
+                />
                 <textarea
                   className="composerInput composerInputOverlay"
                   rows={1}
