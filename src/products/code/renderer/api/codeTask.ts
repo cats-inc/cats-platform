@@ -111,6 +111,10 @@ export async function exportArtifacts(input: {
   return postJson('/api/code/delivery/artifacts/export', input);
 }
 
+export async function fetchCodeTaskDetail(taskId: string): Promise<unknown> {
+  return fetchJson(`/api/code/tasks/${encodeURIComponent(taskId)}`);
+}
+
 export async function observeRuntimeSession(sessionId: string): Promise<unknown> {
   return fetchJson(
     `/api/code/runtime/sessions/${encodeURIComponent(sessionId)}/observe`,

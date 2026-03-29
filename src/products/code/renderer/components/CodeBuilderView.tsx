@@ -13,6 +13,7 @@ import {
   applyPush as apiApplyPush,
   exportArtifacts as apiExportArtifacts,
   observeRuntimeSession,
+  fetchCodeTaskDetail,
 } from '../api/codeTask.js';
 
 type BuilderStep = 'workspace' | 'task' | 'running' | 'done';
@@ -33,28 +34,71 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
   const [model, setModel] = useState('');
   const [feedback, setFeedback] = useState('');
   const [artifacts, setArtifacts] = useState<ArtifactItem[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
 
+  // Poll task detail to get artifacts + plan, and observe session status
   useEffect(() => {
-    if (state.phase === 'running' && state.sessionId) {
-      const interval = setInterval(async () => {
+    if ((step !== 'running' && step !== 'done') || !state.taskId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function poll() {
+      if (cancelled || !state.taskId) {
+        return;
+      }
+
+      // Fetch task detail for artifacts
+      try {
+        const detail = (await fetchCodeTaskDetail(state.taskId)) as Record<string, unknown>;
+        if (cancelled) {
+          return;
+        }
+
+        const linked = detail.linkedArtifacts;
+        if (Array.isArray(linked) && linked.length > 0) {
+          setArtifacts(linked as ArtifactItem[]);
+
+          // Find the latest ready preview artifact's URL if any
+          const readyPreview = (linked as ArtifactItem[]).find(
+            (a) => a.kind === 'preview' && a.status === 'ready' && a.path,
+          );
+          setPreviewUrl(readyPreview?.path ?? null);
+        }
+      } catch {
+        // Non-fatal
+      }
+
+      // Observe runtime session to detect completion
+      if (state.sessionId && step === 'running') {
         try {
-          const observation = (await observeRuntimeSession(state.sessionId!)) as Record<string, unknown>;
+          const observation = (await observeRuntimeSession(state.sessionId)) as Record<string, unknown>;
+          if (cancelled) {
+            return;
+          }
           const session = observation.session as Record<string, unknown> | undefined;
           if (session?.status === 'closed') {
-            clearInterval(interval);
             setStep('done');
+            refreshRepoStatus(workspacePath);
           }
         } catch {
           // Non-fatal
         }
-      }, 8_000);
-      return () => clearInterval(interval);
+      }
     }
-  }, [state.phase, state.sessionId]);
+
+    void poll();
+    const interval = setInterval(poll, 6_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [step, state.taskId, state.sessionId, workspacePath, refreshRepoStatus]);
 
   const handleWorkspaceSubmit = useCallback(() => {
     if (!workspacePath.trim()) {
@@ -133,6 +177,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
     setWorkspacePath('');
     setFeedback('');
     setArtifacts([]);
+    setPreviewUrl(null);
   }, [reset]);
 
   return (
@@ -272,6 +317,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
           <div className="codeBuilderPanelSide">
             <BuildPreviewPanel
               artifacts={artifacts}
+              previewUrl={previewUrl}
               onOpenArtifact={(id) => {
                 navigate(`/code/artifacts/${id}`);
               }}
