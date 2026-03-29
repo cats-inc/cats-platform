@@ -10,6 +10,7 @@
 @import './components/sidebar-chrome.css';
 @import './components/menu.css';
 @import './components/choices.css';
+@import './components/operator-chrome.css';
 @import './components/product-placeholder.css';
 @import './components/suite-setup.css';
 @import './components/toast.css';
