@@ -18,6 +18,7 @@ import {
 import { useCodeTaskExecution } from '../hooks/useCodeTaskExecution.js';
 import { PlanPanel, type PlanState } from './PlanPanel.js';
 import { BuildPreviewPanel, type ArtifactItem } from './BuildPreviewPanel.js';
+import { CodeExecutionSummaryPanel } from './CodeExecutionSummaryPanel.js';
 import { CodeWorkspaceSummaryPanel } from './CodeWorkspaceSummaryPanel.js';
 import { DeliveryPanel, type RepoStatus } from './DeliveryPanel.js';
 import {
@@ -48,7 +49,9 @@ interface CodeTaskDetailPayload {
   task?: {
     title?: unknown;
     summary?: unknown;
+    status?: unknown;
   } | null;
+  effectiveStrategy?: string | null;
   linkedArtifacts?: unknown;
   workspace?: CodeWorkspaceSummary | null;
 }
@@ -66,6 +69,9 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
   const [model, setModel] = useState('');
   const [feedback, setFeedback] = useState('');
   const [workspaceSummary, setWorkspaceSummary] = useState<CodeWorkspaceSummary | null>(null);
+  const [taskStatus, setTaskStatus] = useState<string | null>(null);
+  const [effectiveStrategy, setEffectiveStrategy] = useState<string | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<string | null>(null);
   const [artifacts, setArtifacts] = useState<ArtifactItem[]>([]);
   const [previewTarget, setPreviewTarget] = useState<ProductPreviewSurfaceTarget | null>(null);
 
@@ -149,6 +155,14 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
           setArtifacts([]);
         }
         setWorkspaceSummary(detail.workspace ?? null);
+        setEffectiveStrategy(
+          typeof detail.effectiveStrategy === 'string' && detail.effectiveStrategy.trim()
+            ? detail.effectiveStrategy
+            : null,
+        );
+        if (isRecord(detail.task) && typeof detail.task.status === 'string' && detail.task.status.trim()) {
+          setTaskStatus(detail.task.status);
+        }
       } catch {
         // Non-fatal
       }
@@ -162,14 +176,21 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
           }
           setPreviewTarget(resolveLatestPreviewTarget(observation, linkedArtifacts));
           const session = observation.session as Record<string, unknown> | undefined;
+          setSessionStatus(
+            typeof session?.status === 'string' && session.status.trim()
+              ? session.status
+              : null,
+          );
           if (session?.status === 'closed') {
             setStep('done');
             refreshRepoStatus(workspacePath);
           }
         } catch {
+          setSessionStatus(null);
           setPreviewTarget(resolveLatestPreviewTarget(null, linkedArtifacts));
         }
       } else {
+        setSessionStatus(null);
         setPreviewTarget(resolveLatestPreviewTarget(null, linkedArtifacts));
       }
     }
@@ -226,6 +247,8 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
     });
 
     if (sessionId) {
+      setTaskStatus('in_progress');
+      setSessionStatus('running');
       setStep('running');
       refreshRepoStatus(resolvedWorkspace.workspacePath);
     } else {
@@ -281,6 +304,14 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       if (typeof task?.summary === 'string') {
         setTaskDescription(task.summary);
       }
+      if (typeof task?.status === 'string' && task.status.trim()) {
+        setTaskStatus(task.status);
+      }
+      setEffectiveStrategy(
+        typeof detail.effectiveStrategy === 'string' && detail.effectiveStrategy.trim()
+          ? detail.effectiveStrategy
+          : null,
+      );
     } catch {
       // Non-fatal: keep the resumed task id and let the owner continue from the task step.
     }
@@ -327,6 +358,9 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
     setResumeTaskId('');
     setFeedback('');
     setWorkspaceSummary(null);
+    setTaskStatus(null);
+    setEffectiveStrategy(null);
+    setSessionStatus(null);
     setArtifacts([]);
     setPreviewTarget(null);
   }, [reset]);
@@ -354,6 +388,18 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
         <CodeWorkspaceSummaryPanel
           summary={workspaceSummary}
           selectedChannelTitle={selectedChannelContext?.title ?? null}
+        />
+      ) : null}
+
+      {step !== 'workspace' ? (
+        <CodeExecutionSummaryPanel
+          taskId={activeTaskId}
+          taskStatus={taskStatus}
+          effectiveStrategy={effectiveStrategy}
+          sessionId={state.sessionId}
+          sessionStatus={sessionStatus}
+          provider={provider}
+          model={model}
         />
       ) : null}
 

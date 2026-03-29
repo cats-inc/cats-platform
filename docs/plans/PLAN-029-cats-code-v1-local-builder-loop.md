@@ -212,6 +212,7 @@ later review automation.
 | 2026-03-29 | Remaining P1 items deferred: stuck/re-plan cues, structured summaries, review request flow. Artifact list is currently refreshed by task-detail polling; live SSE preview/artifact mapping remains deferred. |
 | 2026-03-29 | Codex: Added a first builder-surface resume entry so `/code/build` can reopen draft/blocked/failed tasks instead of only minting new ones. Continued execution now reuses the resolved task id rather than silently creating duplicate tasks after a failed start. Session-level aligned resume remains deferred. |
 | 2026-03-30 | Codex: Bound `/code/build` to the shared workspace-resolution contract instead of treating workspace as a raw string. Builder now resolves explicit folders or selected-chat repo / managed-room fallbacks, writes the resulting workspace summary into task metadata, and surfaces ownership state in Code task detail and builder UI. |
+| 2026-03-30 | Codex: Added a dedicated execution summary panel in `/code/build` so the focused task id, task status, runtime session state, provider/model target, and effective strategy stay visible beside the plan/output loop. |
 
 ---
 
