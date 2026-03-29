@@ -323,7 +323,7 @@ export async function persistCreatedChannel(
   return context.dependencies.chatStore.write(nextState);
 }
 
-async function closeSessionIds(
+export async function closeSessionIds(
   context: ChatApiRouteContext,
   sessionIds: Array<string | null | undefined>,
 ): Promise<void> {

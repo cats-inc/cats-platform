@@ -25,6 +25,7 @@ import type {
   UpdateChannelInput,
 } from '../contracts.js';
 import {
+  closeSessionIds,
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
   maybeAutoResumeRecoveredOrchestratorContinuation,
@@ -525,9 +526,29 @@ async function handleRestDeactivateChannel(
     const now = nowFrom(context.dependencies);
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
-    let nextState = state;
 
-    // Close all cat session leases on this channel
+    // Collect all active session IDs for runtime close
+    const sessionIds: Array<string | null> = [];
+    for (const assignment of channel.catAssignments) {
+      if (
+        assignment.execution.lease.status === 'ready'
+        || assignment.execution.lease.status === 'initializing'
+      ) {
+        sessionIds.push(assignment.execution.lease.sessionId);
+      }
+    }
+    if (
+      channel.orchestratorLease.status === 'ready'
+      || channel.orchestratorLease.status === 'initializing'
+    ) {
+      sessionIds.push(channel.orchestratorLease.sessionId);
+    }
+
+    // Flush memory and close runtime sessions (same path as routeSupport closeSessionIds)
+    await closeSessionIds(context, sessionIds);
+
+    // Update chat state leases to closed
+    let nextState = state;
     for (const assignment of channel.catAssignments) {
       if (
         assignment.execution.lease.status === 'ready'
@@ -537,13 +558,11 @@ async function handleRestDeactivateChannel(
           nextState,
           channelId,
           assignment.catId,
-          { status: 'closed' },
+          { status: 'closed', sessionId: null },
           now,
         );
       }
     }
-
-    // Close orchestrator lease if active
     if (
       channel.orchestratorLease.status === 'ready'
       || channel.orchestratorLease.status === 'initializing'
@@ -551,7 +570,7 @@ async function handleRestDeactivateChannel(
       nextState = setChannelOrchestratorLease(
         nextState,
         channelId,
-        { status: 'closed' },
+        { status: 'closed', sessionId: null },
         now,
       );
     }
@@ -561,6 +580,7 @@ async function handleRestDeactivateChannel(
       deactivation: {
         channelId,
         closedAt: now.toISOString(),
+        closedSessionCount: sessionIds.filter(Boolean).length,
       },
     });
   } catch (error) {
