@@ -106,21 +106,21 @@ exist before deeper implementation slices begin.
 
 ### Phase 2: Define the Product-Owned Setup Asset Contract
 
-- [ ] Define how packaged-host install/check assets should be organized inside
+- [x] Define how packaged-host install/check assets should be organized inside
       `cats`:
       - bundled scripts
       - product-owned code modules
       - machine-readable config/manifests
-- [ ] Freeze the GUI-safe execution contract for those assets:
+- [x] Freeze the GUI-safe execution contract for those assets:
       - `check-only`
       - non-interactive invocation
       - JSON result schema
       - stable outcome classes such as `ready`, `not_installed`,
         `auth_required`, `restart_required`, and `failed`
-- [ ] Map `cats-runtime` provider metadata onto the packaged-host contract so
+- [x] Map `cats-runtime` provider metadata onto the packaged-host contract so
       the host can reuse runtime topology while still owning actual setup
       execution
-- [ ] Keep the contract truthful about what remains runtime-owned versus
+- [x] Keep the contract truthful about what remains runtime-owned versus
       product-owned
 
 **Deliverables**: packaged setup has a stable product-owned asset contract
@@ -227,6 +227,7 @@ removes local submodule convenience.
 | 2026-03-29 | Plan created to give `SPEC-023` a dedicated knowledge-porting and packaged-setup execution track before `cats` / `cats-runtime` split into separate repos |
 | 2026-03-29 | Scope frozen so `environment-bootstrap` knowledge extraction is the primary setup/install source track, while the sibling `project-bootstrap` A2A pilot remains referenced through `cats-runtime` PLAN-023 instead of being re-opened here |
 | 2026-03-29 | Phase 1 landed: recorded the pre-split extraction inventory under `docs/research/2026-03-29-packaged-setup-knowledge-extraction-inventory.md`, separating already-extracted A2A/runtime metadata from still-missing packaged-host execution helpers trapped in `environment-bootstrap` |
+| 2026-03-29 | Phase 2 landed: `electron/contracts.ts` and `electron/packaging.ts` now expose a machine-readable `installer.providerSetup` contract covering setup modes, capability packs, source-knowledge boundaries, and the prioritized Windows-first port queue, with desktop packaging tests locking that shape into the staged installer manifest |
 
 ---
 

@@ -35,6 +35,21 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(plan.targets.some((target) => target.platform === 'macos'), true);
   assert.equal(plan.targets.some((target) => target.platform === 'linux'), true);
   assert.equal(plan.installer.requiresBundledRuntimeSidecar, true);
+  assert.equal(plan.installer.providerSetup.baselineMode, 'api_baseline');
+  assert.equal(plan.installer.providerSetup.executionDefaults.hostOwned, true);
+  assert.equal(plan.installer.providerSetup.executionDefaults.rendererShellAccess, false);
+  assert.equal(
+    plan.installer.providerSetup.knowledgeSources.some(
+      (source) => source.id === 'environment-bootstrap' && source.productDependency === false,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-node-cli-pack' && asset.status === 'planned',
+    ),
+    true,
+  );
 });
 
 test('package.json wires Windows installers through electron-builder NSIS', async () => {
@@ -117,6 +132,13 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(targetManifest.target.platform, 'windows');
   assert.equal(targetManifest.updates.channel, config.update.channel);
   assert.equal(targetManifest.target.artifactBaseName, 'cats-windows-x64');
+  assert.equal(targetManifest.installer.providerSetup.capabilityPacks[0].id, 'api_baseline');
+  assert.equal(
+    targetManifest.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-wsl-prerequisites',
+    ),
+    true,
+  );
 });
 
 test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is missing', async () => {

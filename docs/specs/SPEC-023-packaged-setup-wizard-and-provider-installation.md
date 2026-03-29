@@ -367,6 +367,10 @@ teaching the renderer or the user about the underlying script topology.
   `environment-bootstrap`, packaged-host install/check asset contracts, and
   pre-split setup/install validation is now tracked under
   [PLAN-030](../plans/PLAN-030-packaged-setup-wizard-and-provider-installation.md).
+- The staged desktop packaging plan now also carries a machine-readable
+  `installer.providerSetup` contract so packaged-host capability packs,
+  knowledge-source boundaries, and prioritized Windows-first port targets are
+  frozen in code instead of remaining only in prose.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)

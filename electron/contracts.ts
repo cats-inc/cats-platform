@@ -92,6 +92,36 @@ export const DESKTOP_REMEDIATION_KINDS = [
   'manual_update',
   'restart_host',
 ] as const;
+export const DESKTOP_PROVIDER_SETUP_MODES = [
+  'api_baseline',
+  'api_plus_local_cli',
+  'local_cli_only',
+] as const;
+export const DESKTOP_PROVIDER_SETUP_PACKS = [
+  'api_baseline',
+  'native_cli_pack',
+  'local_model_pack',
+  'wsl_power_user_pack',
+] as const;
+export const DESKTOP_PROVIDER_SETUP_ASSET_STATUSES = [
+  'ported',
+  'planned',
+  'deferred',
+] as const;
+export const DESKTOP_PROVIDER_SETUP_ASSET_KINDS = [
+  'provider_metadata',
+  'prerequisite_helper',
+  'cli_pack_installer',
+  'provider_installer',
+  'readiness_helper',
+] as const;
+export const DESKTOP_PROVIDER_SETUP_PLATFORMS = [
+  'cross_platform',
+  'windows',
+  'macos',
+  'linux',
+  'windows_wsl',
+] as const;
 
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
 export type DesktopHostActionId = typeof DESKTOP_HOST_ACTION_IDS[number];
@@ -107,6 +137,11 @@ export type DesktopPackagingPlatform = typeof DESKTOP_PACKAGING_PLATFORMS[number
 export type DesktopPackagingArchitecture = typeof DESKTOP_PACKAGING_ARCHITECTURES[number];
 export type DesktopInstallerFormat = typeof DESKTOP_INSTALLER_FORMATS[number];
 export type DesktopRemediationKind = typeof DESKTOP_REMEDIATION_KINDS[number];
+export type DesktopProviderSetupMode = typeof DESKTOP_PROVIDER_SETUP_MODES[number];
+export type DesktopProviderSetupPackId = typeof DESKTOP_PROVIDER_SETUP_PACKS[number];
+export type DesktopProviderSetupAssetStatus = typeof DESKTOP_PROVIDER_SETUP_ASSET_STATUSES[number];
+export type DesktopProviderSetupAssetKind = typeof DESKTOP_PROVIDER_SETUP_ASSET_KINDS[number];
+export type DesktopProviderSetupPlatform = typeof DESKTOP_PROVIDER_SETUP_PLATFORMS[number];
 
 export interface ManagedServiceSnapshot {
   name: ManagedServiceName;
@@ -225,6 +260,45 @@ export interface DesktopInstallerContract {
     hostOwned: boolean;
     resumable: boolean;
   }>;
+  providerSetup: {
+    baselineMode: DesktopProviderSetupMode;
+    modes: Array<{
+      id: DesktopProviderSetupMode;
+      label: string;
+      description: string;
+      requiresLocalInstall: boolean;
+    }>;
+    capabilityPacks: Array<{
+      id: DesktopProviderSetupPackId;
+      label: string;
+      recommended: boolean;
+      requiresLocalInstall: boolean;
+      notes: string[];
+    }>;
+    knowledgeSources: Array<{
+      id: 'cats-runtime' | 'environment-bootstrap' | 'project-bootstrap';
+      role: 'provider_metadata' | 'install_execution' | 'a2a_pilot';
+      productDependency: boolean;
+      notes: string[];
+    }>;
+    executionDefaults: {
+      hostOwned: true;
+      rendererShellAccess: false;
+      nonInteractiveDefault: true;
+      structuredResultsRequired: true;
+    };
+    prioritizedAssets: Array<{
+      id: string;
+      label: string;
+      kind: DesktopProviderSetupAssetKind;
+      status: DesktopProviderSetupAssetStatus;
+      pack: DesktopProviderSetupPackId | null;
+      platform: DesktopProviderSetupPlatform;
+      currentHome: string;
+      targetHome: string;
+      notes: string[];
+    }>;
+  };
   remediationActions: DesktopRemediationAction[];
   requiresBundledRuntimeSidecar: boolean;
 }

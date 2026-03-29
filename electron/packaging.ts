@@ -80,6 +80,210 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
         resumable: true,
       },
     ],
+    providerSetup: {
+      baselineMode: 'api_baseline',
+      modes: [
+        {
+          id: 'api_baseline',
+          label: 'API Baseline (Recommended)',
+          description: 'Fastest packaged path with no local CLI install required before first chat.',
+          requiresLocalInstall: false,
+        },
+        {
+          id: 'api_plus_local_cli',
+          label: 'API + Local CLI',
+          description: 'Start from the API baseline, then add local CLI capability packs.',
+          requiresLocalInstall: true,
+        },
+        {
+          id: 'local_cli_only',
+          label: 'Local CLI Only',
+          description: 'Use only local CLI providers once prerequisite and auth flows succeed.',
+          requiresLocalInstall: true,
+        },
+      ],
+      capabilityPacks: [
+        {
+          id: 'api_baseline',
+          label: 'API Baseline (Recommended)',
+          recommended: true,
+          requiresLocalInstall: false,
+          notes: [
+            'No local provider install required for first use.',
+            'Keeps packaged setup usable even when no CLI tool is installed yet.',
+          ],
+        },
+        {
+          id: 'native_cli_pack',
+          label: 'Native CLI Pack',
+          recommended: false,
+          requiresLocalInstall: true,
+          notes: [
+            'Windows-first knowledge-porting target from environment-bootstrap.',
+            'Combines npm-global node CLI tools with WSL-backed installers where required.',
+          ],
+        },
+        {
+          id: 'local_model_pack',
+          label: 'Local Model Pack',
+          recommended: false,
+          requiresLocalInstall: true,
+          notes: [
+            'Deferred follow-through for Docker, Ollama, and heavier local runtime paths.',
+          ],
+        },
+        {
+          id: 'wsl_power_user_pack',
+          label: 'WSL / Power User Pack',
+          recommended: false,
+          requiresLocalInstall: true,
+          notes: [
+            'Deferred follow-through for heavier WSL-first providers beyond the initial native CLI pack.',
+          ],
+        },
+      ],
+      knowledgeSources: [
+        {
+          id: 'cats-runtime',
+          role: 'provider_metadata',
+          productDependency: true,
+          notes: [
+            'Keeps provider family topology and install/check metadata runtime-owned.',
+            'Packaged host should consume this metadata instead of duplicating it.',
+          ],
+        },
+        {
+          id: 'environment-bootstrap',
+          role: 'install_execution',
+          productDependency: false,
+          notes: [
+            'Source knowledge repo for install/check execution helpers and platform edge cases.',
+            'Must be ported into product-owned assets before repo split; do not ship as a direct dependency.',
+          ],
+        },
+        {
+          id: 'project-bootstrap',
+          role: 'a2a_pilot',
+          productDependency: false,
+          notes: [
+            'Sourced the sibling A2A/bootstrap pilot already mirrored into cats docs and skills.',
+            'Referenced for collaboration consistency, not as a packaged setup dependency.',
+          ],
+        },
+      ],
+      executionDefaults: {
+        hostOwned: true,
+        rendererShellAccess: false,
+        nonInteractiveDefault: true,
+        structuredResultsRequired: true,
+      },
+      prioritizedAssets: [
+        {
+          id: 'runtime-provider-metadata',
+          label: 'Runtime provider metadata consumption',
+          kind: 'provider_metadata',
+          status: 'ported',
+          pack: null,
+          platform: 'cross_platform',
+          currentHome: 'cats-runtime/src/core/provider-install',
+          targetHome: 'cats packaged host runtime bridge',
+          notes: [
+            'Consume runtime-owned provider install/check metadata rather than duplicating it in cats.',
+          ],
+        },
+        {
+          id: 'windows-npm-prefix-helper',
+          label: 'Windows npm prefix and PATH prerequisite helper',
+          kind: 'prerequisite_helper',
+          status: 'planned',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          currentHome: 'environment-bootstrap/platform/windows/Setup-NodeJS.ps1',
+          targetHome: 'cats packaged-host setup assets',
+          notes: [
+            'Required before npm-global CLI installs are reliable for the packaged host.',
+          ],
+        },
+        {
+          id: 'windows-node-cli-pack',
+          label: 'Windows npm-global AI CLI pack installer',
+          kind: 'cli_pack_installer',
+          status: 'planned',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          currentHome: 'environment-bootstrap/platform/windows/Install-NodeCLITools.ps1',
+          targetHome: 'cats packaged-host setup assets',
+          notes: [
+            'Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi in one Windows-first slice.',
+          ],
+        },
+        {
+          id: 'windows-wsl-prerequisites',
+          label: 'Windows WSL prerequisite chain',
+          kind: 'prerequisite_helper',
+          status: 'planned',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          currentHome: 'environment-bootstrap/platform/windows/Install-WSL2-Admin.ps1 + Install-WSLUbuntu.ps1',
+          targetHome: 'cats packaged-host prerequisite assets',
+          notes: [
+            'Needed before WSL-backed provider installers can participate in packaged setup.',
+          ],
+        },
+        {
+          id: 'windows-cursor-wsl-installer',
+          label: 'Windows WSL Cursor Agent installer',
+          kind: 'provider_installer',
+          status: 'planned',
+          pack: 'native_cli_pack',
+          platform: 'windows_wsl',
+          currentHome: 'environment-bootstrap/platform/windows/Install-WSLCursorAgent.ps1',
+          targetHome: 'cats packaged-host provider assets',
+          notes: [
+            'Encodes WSL distro checks, PATH repair, and auth guidance for Cursor Agent.',
+          ],
+        },
+        {
+          id: 'windows-kiro-wsl-installer',
+          label: 'Windows WSL Kiro installer',
+          kind: 'provider_installer',
+          status: 'planned',
+          pack: 'native_cli_pack',
+          platform: 'windows_wsl',
+          currentHome: 'environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1',
+          targetHome: 'cats packaged-host provider assets',
+          notes: [
+            'Encodes WSL dependency checks, PATH cleanup, and aliasing behavior for Kiro.',
+          ],
+        },
+        {
+          id: 'windows-install-readiness-audit',
+          label: 'Windows host prerequisite and auth-state audit helper',
+          kind: 'readiness_helper',
+          status: 'planned',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          currentHome: 'environment-bootstrap/platform/windows/Check-Installation.ps1',
+          targetHome: 'cats packaged-host diagnostics helpers',
+          notes: [
+            'Should complement runtime diagnostics for host-only prerequisite and warm-state checks.',
+          ],
+        },
+        {
+          id: 'windows-docker-local-model-helper',
+          label: 'Windows Docker/local-model prerequisite helper',
+          kind: 'prerequisite_helper',
+          status: 'deferred',
+          pack: 'local_model_pack',
+          platform: 'windows',
+          currentHome: 'environment-bootstrap/platform/windows/Install-Docker-Admin.ps1',
+          targetHome: 'later cats packaged-host capability pack assets',
+          notes: [
+            'Useful source knowledge, but not part of the lowest-friction first packaged path.',
+          ],
+        },
+      ],
+    },
     remediationActions: [
       {
         kind: 'retry',
