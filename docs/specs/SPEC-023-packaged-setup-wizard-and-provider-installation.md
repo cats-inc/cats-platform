@@ -358,6 +358,21 @@ Preferred contract direction:
 The goal is to let the host surface progress and recovery guidance without
 teaching the renderer or the user about the underlying script topology.
 
+## Implementation Tracking
+
+- The first packaged-host slice is already landed in repo, including local
+  service supervision, readiness-gated bootstrap, persisted bootstrap snapshot
+  state, a sandboxed bootstrap bridge, and staged desktop packaging outputs.
+- Dedicated follow-through for knowledge extraction from
+  `environment-bootstrap`, packaged-host install/check asset contracts, and
+  pre-split setup/install validation is now tracked under
+  [PLAN-030](../plans/PLAN-030-packaged-setup-wizard-and-provider-installation.md).
+- Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
+  remains tracked separately through
+  [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)
+  and the mirrored pilot artifacts already present in `cats/docs/a2a/` and
+  `cats/skills/`.
+
 ## Resume and Interruption Handling
 
 The setup system should treat these as normal, resumable events rather than as
@@ -397,4 +412,6 @@ terminal failures:
 
 *Created: 2026-03-20*
 *Author: Codex*
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-29*
+
+*Related Plan: [PLAN-030](../plans/PLAN-030-packaged-setup-wizard-and-provider-installation.md)*
