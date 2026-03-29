@@ -402,6 +402,12 @@ teaching the renderer or the user about the underlying script topology.
   Agent installer flow into a packaged-host asset, aligning the packaged setup
   baseline with the current Windows-native Cursor install path instead of
   routing Cursor through WSL-first guidance.
+- The sixth repo-owned packaged setup helper slice is now landed:
+  `scripts/windows/Install-WslUbuntuEnvironment.ps1` rewrites the Windows WSL
+  substrate enablement plus Ubuntu registration flow into a packaged-host
+  asset, so the repo no longer depends on `environment-bootstrap` for the
+  first WSL mutation chain even though in-distro Ubuntu package upgrades remain
+  a later manual follow-through.
 - The staged desktop packaging plan now also carries a machine-readable
   `installer.providerSetup.helperCatalog` so future host bridge work can bind
   setup actions to packaged assets, supported operations, and elevation
@@ -410,10 +416,9 @@ teaching the renderer or the user about the underlying script topology.
   `shared/setup-assets/manifest.json` alongside the bundled scripts so future
   host bridge or smoke tooling can discover packaged setup helpers without
   parsing the full desktop packaging plan.
-- The next follow-on under `PLAN-030` is no longer generic WSL discovery; it
-  is the repo-owned rewrite of the actual WSL prerequisite mutation chain and
-  the next packaged-host helper slices so the split does not leave required
-  setup logic trapped in bootstrap repos.
+- The next follow-on under `PLAN-030` is no longer the WSL substrate itself;
+  it is the first WSL-backed provider installer plus host bridge/resume work so
+  the split does not leave required setup logic trapped in bootstrap repos.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)

@@ -265,16 +265,18 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           ],
         },
         {
-          id: 'windows-wsl-prerequisites',
-          label: 'Windows WSL prerequisite chain',
+          id: 'windows-wsl-environment-installer',
+          label: 'Windows WSL substrate and Ubuntu installer',
           kind: 'prerequisite_helper',
-          status: 'planned',
+          status: 'ported',
           pack: 'native_cli_pack',
           platform: 'windows',
-          currentHome: 'environment-bootstrap/platform/windows/Install-WSL2-Admin.ps1 + Install-WSLUbuntu.ps1',
+          currentHome: 'cats/scripts/windows/Install-WslUbuntuEnvironment.ps1',
           targetHome: 'cats packaged-host prerequisite assets',
           notes: [
-            'Needed before WSL-backed provider installers can participate in packaged setup.',
+            'Repo-owned rewrite of the WSL substrate enablement and Ubuntu distro registration flow.',
+            'Returns restart-required after substrate mutation so the packaged host can resume distro install cleanly after reboot.',
+            'Keeps in-distro Ubuntu package upgrades as a later manual follow-through rather than pretending that part is production-automated already.',
           ],
         },
         {

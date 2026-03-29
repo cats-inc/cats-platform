@@ -71,6 +71,7 @@ and then launches the Electron host that supervises local `cats-runtime` and
 - `scripts/windows/Install-NodeCliPack.ps1`
 - `scripts/windows/Install-CursorAgent.ps1`
 - `scripts/windows/Check-WslPrerequisites.ps1`
+- `scripts/windows/Install-WslUbuntuEnvironment.ps1`
 - `scripts/windows/Check-WindowsSetupReadiness.ps1`
 
 These helpers rewrite the stable Windows npm-prefix/PATH preparation and
@@ -102,6 +103,21 @@ of treating Cursor as a WSL-first provider.
 preflight contract so the host can tell whether Windows build, WSL presence,
 and the target distro are ready before it attempts feature enablement or distro
 installation.
+
+`Install-WslUbuntuEnvironment.ps1` adds the first repo-owned WSL mutation
+contract for packaged setup:
+
+- `-CheckOnly`
+- `-Apply`
+- `-Upgrade`
+- `-Force`
+- `-Json`
+
+It enables the WSL substrate, sets WSL2 as the default version, and registers
+the requested Ubuntu distro without treating `environment-bootstrap` as a
+shipped dependency. When substrate changes are applied it intentionally returns
+`restart_required` so the packaged host can resume distro install cleanly after
+reboot.
 
 `Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
 helpers into one host-readable audit for native CLI pack readiness and WSL
