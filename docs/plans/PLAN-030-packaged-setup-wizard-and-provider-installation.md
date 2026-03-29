@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
 | **Assigned To** | Codex |
 | **Reviewer** | User / packaging workstream |
@@ -83,19 +83,19 @@ A2A/bootstrap pilot work, not a replacement for it.
 
 ### Phase 1: Freeze Source Inputs Before Repo Split
 
-- [ ] Audit `environment-bootstrap` for setup/install knowledge that still has
+- [x] Audit `environment-bootstrap` for setup/install knowledge that still has
       no product-owned home:
       - provider install/check flows
       - platform prerequisite handling
       - auth/PATH/shell/npm-prefix guidance
       - WSL, Docker, encoding, and elevation edge cases
-- [ ] Audit which parts of that knowledge are already ported into
+- [x] Audit which parts of that knowledge are already ported into
       `cats-runtime` and which parts still remain only in the submodule
-- [ ] Record the sibling `project-bootstrap` pilot boundary explicitly:
+- [x] Record the sibling `project-bootstrap` pilot boundary explicitly:
       - A2A collaboration knowledge stays under the existing pilot track
       - this plan only consumes its outcomes where packaged setup needs to stay
         consistent with repo collaboration artifacts
-- [ ] Produce one extraction inventory that is truthful about:
+- [x] Produce one extraction inventory that is truthful about:
       - `source of truth today`
       - `target home after split`
       - `port now`
@@ -226,6 +226,7 @@ removes local submodule convenience.
 |------|--------|
 | 2026-03-29 | Plan created to give `SPEC-023` a dedicated knowledge-porting and packaged-setup execution track before `cats` / `cats-runtime` split into separate repos |
 | 2026-03-29 | Scope frozen so `environment-bootstrap` knowledge extraction is the primary setup/install source track, while the sibling `project-bootstrap` A2A pilot remains referenced through `cats-runtime` PLAN-023 instead of being re-opened here |
+| 2026-03-29 | Phase 1 landed: recorded the pre-split extraction inventory under `docs/research/2026-03-29-packaged-setup-knowledge-extraction-inventory.md`, separating already-extracted A2A/runtime metadata from still-missing packaged-host execution helpers trapped in `environment-bootstrap` |
 
 ---
 

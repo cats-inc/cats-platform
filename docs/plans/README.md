@@ -46,7 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
-| [PLAN-030](./PLAN-030-packaged-setup-wizard-and-provider-installation.md) | Packaged Setup Wizard and Provider Installation | Draft | [SPEC-023](../specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md), [ADR-021](../decisions/021-keep-packaged-setup-and-provider-installation-in-the-host.md) |
+| [PLAN-030](./PLAN-030-packaged-setup-wizard-and-provider-installation.md) | Packaged Setup Wizard and Provider Installation | In Progress | [SPEC-023](../specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md), [ADR-021](../decisions/021-keep-packaged-setup-and-provider-installation-in-the-host.md) |
 | [PLAN-029](./PLAN-029-cats-code-v1-local-builder-loop.md) | Cats Code v1 Local Builder Loop | Draft | [SPEC-041](../specs/SPEC-041-cats-code-v1-local-builder-loop.md) |
 | [PLAN-028](./PLAN-028-cats-work-team-templates-and-work-intake.md) | Cats Work Team Templates and Work Intake | Draft | [SPEC-040](../specs/SPEC-040-cats-work-team-templates-and-work-intake.md) |
 | [PLAN-027](./PLAN-027-cats-chat-v1-priority-items.md) | Cats Chat v1 Priority Items | Draft | [SPEC-039](../specs/SPEC-039-cats-chat-v1-priority-items.md) |
