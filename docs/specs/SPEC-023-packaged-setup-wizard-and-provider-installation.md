@@ -426,6 +426,11 @@ teaching the renderer or the user about the underlying script topology.
   dependency checks, `.bashrc` PATH cleanup, `kc` alias repair, and the
   required post-install sign-in guidance without shelling out to
   `environment-bootstrap`.
+- The eighth repo-owned packaged setup helper slice is now landed:
+  `scripts/windows/Install-ClaudeCode.ps1` rewrites the native Windows Claude
+  Code installer into a packaged-host asset, removes legacy npm Claude shims
+  that would shadow the native binary, and keeps the browser/API-key sign-in
+  follow-through inside the packaged setup contract.
 - The staged desktop packaging plan now also carries a machine-readable
   `installer.providerSetup.helperCatalog`, and the packaged host now consumes
   that contract through `electron/setupBridge.ts` so setup actions can bind to

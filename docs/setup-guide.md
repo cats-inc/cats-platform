@@ -235,6 +235,7 @@ The current substrate writes:
 - `build/desktop-packaging/shared/*`
 - `build/desktop-packaging/shared/setup-assets/windows/Setup-NodeGlobalPrefix.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-NodeCliPack.ps1`
+- `build/desktop-packaging/shared/setup-assets/windows/Install-ClaudeCode.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-CursorAgent.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-WslUbuntuEnvironment.ps1`
@@ -294,6 +295,7 @@ What the smoke-check confirms:
 - bundled `cats` and `cats-runtime` sidecar assets exist under `resources/`
 - the bundled Windows npm prefix helper exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows native CLI pack helper exists under `resources/desktop-host/setup-assets/`
+- the bundled Windows native Claude Code installer exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows native Cursor installer exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows WSL prerequisite preflight helper exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows setup readiness audit helper exists under `resources/desktop-host/setup-assets/`

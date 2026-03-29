@@ -125,6 +125,7 @@ ports a product-owned host asset layer.
 | A2A collaboration artifacts | `project-bootstrap/docs/a2a/*` | `cats-runtime` pilot + mirrored `cats/docs/a2a/*` | `cats` and `cats-runtime` repo-owned pilot artifacts | Already extracted | Do not re-open under packaged setup work |
 | Provider topology + install/check metadata | `environment-bootstrap` learnings plus runtime ADRs | `cats-runtime/src/core/provider-install/*` | `cats-runtime` | Already extracted | `cats` should consume, not duplicate |
 | Windows npm-global AI CLI pack install | `environment-bootstrap/platform/windows/Install-NodeCLITools.ps1` | `cats/scripts/windows/Install-NodeCliPack.ps1` | packaged-host assets in `cats` | Ported | Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi, and now consumes the repo-owned npm prefix helper instead of a bootstrap dependency |
+| Windows native Claude Code installer | `environment-bootstrap/platform/windows/Install-ClaudeCode.ps1` | `cats/scripts/windows/Install-ClaudeCode.ps1` | packaged-host provider assets in `cats` | Ported | Repo-owned native installer helper now removes legacy npm Claude shims, preserves the official Windows-native install path, and keeps post-install sign-in guidance inside the packaged setup contract |
 | Windows native Cursor Agent installer | `environment-bootstrap/platform/windows/Install-CursorAgent.ps1` | `cats/scripts/windows/Install-CursorAgent.ps1` | packaged-host provider assets in `cats` | Ported | Aligns packaged setup with the current Windows-native Cursor install baseline instead of routing Cursor through WSL-first guidance |
 | Windows npm prefix + PATH setup | `environment-bootstrap/platform/windows/Setup-NodeJS.ps1` | `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Staged into `build/desktop-packaging/shared/setup-assets/windows/` and bundled into desktop installs under `desktop-host/setup-assets/windows/` |
 | Windows WSL prerequisite preflight | `Install-WSL2-Admin.ps1` + `Install-WSLUbuntu.ps1` knowledge | `cats/scripts/windows/Check-WslPrerequisites.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Structured preflight only; stays as the read-only readiness surface before mutation |
@@ -138,11 +139,13 @@ ports a product-owned host asset layer.
 
 ## Recommended Port Order
 
-1. Port the next WSL-backed provider follow-through next.
+1. Extend the Windows-first native provider installer baseline next.
    - The prerequisite npm prefix + PATH helper is now repo-owned in
      `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1`.
    - The Windows npm-global CLI pack installer is now repo-owned in
      `cats/scripts/windows/Install-NodeCliPack.ps1`.
+   - The Windows native Claude Code installer is now repo-owned in
+     `cats/scripts/windows/Install-ClaudeCode.ps1`.
    - The Windows native Cursor Agent installer is now repo-owned in
      `cats/scripts/windows/Install-CursorAgent.ps1`.
    - The WSL prerequisite preflight is now repo-owned in
@@ -153,15 +156,16 @@ ports a product-owned host asset layer.
      `cats/scripts/windows/Check-WindowsSetupReadiness.ps1`.
    - The first repo-owned WSL-backed provider installer is now landed as
      `cats/scripts/windows/Install-KiroWslCli.ps1`.
-   - The next missing Windows-first slice is the host bridge/resume contract
-     that can sequence the WSL substrate helper and the bundled provider
-     installers without ad hoc shell logic.
+   - The next missing Windows-first slice is selective auth/readiness follow-through
+     plus later native installers such as Goose or Junie where they remain part
+     of the desired packaged path.
 
-2. Expand host bridge and resume semantics after the first provider installer.
-   - Kiro now gives the packaged setup flow one concrete WSL-backed provider
-     target.
-   - The remaining gap is orchestration and persisted resume truth, not raw
-     upstream installer knowledge for the first WSL-backed path.
+2. Expand host bridge and resume semantics after the first native + WSL-backed
+   provider installer set.
+   - Claude, Cursor, and Kiro now give the packaged setup flow concrete
+     native-plus-WSL provider targets.
+   - The remaining gap is finishing selective auth/readiness truth and adding
+     later providers, not rebuilding the baseline bridge from scratch.
 
 3. Defer Docker and tunnel flows until after the first packaged setup contract
    is stable.
@@ -184,11 +188,12 @@ ports a product-owned host asset layer.
 
 Port the next packaged-host setup asset slice around:
 
-- Windows WSL prerequisite enablement and distro bootstrap
-- reuse of the repo-owned Windows npm prefix helper, native CLI pack helper,
-  and native Cursor installer that now ship inside the staged desktop package
-- extend the new WSL prerequisite preflight helper into the actual feature and
-  distro mutation flow
+- selective Windows auth/readiness follow-through still trapped in the old
+  bootstrap audit
+- later native installers such as Goose or Junie if they remain in the desired
+  first packaged path
+- incremental bridge/recovery refinement instead of another broad bootstrap-doc
+  copy pass
 
-That is the next smallest slice that converts the remaining Windows-first
-bootstrap knowledge into owned product behavior.
+That is the next smallest slice that converts the remaining high-value
+Windows-first bootstrap knowledge into owned product behavior.

@@ -40,6 +40,15 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(plan.installer.providerSetup.executionDefaults.rendererShellAccess, false);
   assert.equal(
     plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-claude-native-installer'
+        && helper.assetId === 'windows-claude-native-installer-script'
+        && helper.supportsCheckOnly === true
+        && helper.supportsUpgrade === true,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-cursor-native-installer'
         && helper.assetId === 'windows-cursor-native-installer-script'
         && helper.supportsCheckOnly === true
@@ -95,6 +104,12 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-claude-native-installer' && asset.status === 'ported',
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-cursor-native-installer' && asset.status === 'ported',
     ),
     true,
@@ -133,6 +148,12 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(
     windowsTarget?.artifacts.some(
       (artifact) => artifact.id === 'windows-node-cli-pack-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-claude-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -193,6 +214,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /cats-runtime\\dist\\index\.js/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-NodeCliPack\.ps1/);
+  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-ClaudeCode\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-CursorAgent\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Check-WslPrerequisites\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-WslUbuntuEnvironment\.ps1/);
@@ -230,6 +252,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
@@ -259,6 +282,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'dist-electron', 'preload.cjs'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-NodeCliPack.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-ClaudeCode.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-CursorAgent.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WslPrerequisites.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-WslUbuntuEnvironment.ps1'));
@@ -275,6 +299,14 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(targetManifest.updates.channel, config.update.channel);
   assert.equal(targetManifest.target.artifactBaseName, 'cats-windows-x64');
   assert.equal(targetManifest.installer.providerSetup.capabilityPacks[0].id, 'api_baseline');
+  assert.equal(
+    targetManifest.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-claude-native-installer'
+        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-ClaudeCode.ps1'
+        && helper.supportsForce === true,
+    ),
+    true,
+  );
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-cursor-native-installer'
@@ -322,6 +354,12 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.artifacts.some(
       (artifact) => artifact.id === 'windows-node-cli-pack-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'windows-claude-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -375,6 +413,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
   await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');

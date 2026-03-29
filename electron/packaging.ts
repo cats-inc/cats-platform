@@ -238,6 +238,20 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           ],
         },
         {
+          id: 'windows-claude-native-installer',
+          label: 'Windows native Claude Code installer',
+          kind: 'provider_installer',
+          status: 'ported',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          currentHome: 'cats/scripts/windows/Install-ClaudeCode.ps1',
+          targetHome: 'cats packaged-host provider assets',
+          notes: [
+            'Repo-owned rewrite of the native Windows Claude Code installer flow.',
+            'Removes legacy npm-installed Claude shims so the native installer remains the packaged setup baseline.',
+          ],
+        },
+        {
           id: 'windows-cursor-native-installer',
           label: 'Windows native Cursor Agent installer',
           kind: 'provider_installer',

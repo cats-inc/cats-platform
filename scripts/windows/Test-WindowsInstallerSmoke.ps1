@@ -131,6 +131,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\dist\index.js'); Label = 'bundled cats-runtime entry' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Setup-NodeGlobalPrefix.ps1'); Label = 'bundled Windows npm prefix helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-NodeCliPack.ps1'); Label = 'bundled Windows native CLI pack helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-ClaudeCode.ps1'); Label = 'bundled Windows native Claude Code installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-CursorAgent.ps1'); Label = 'bundled Windows native Cursor installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Check-WslPrerequisites.ps1'); Label = 'bundled Windows WSL prerequisite preflight helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-WslUbuntuEnvironment.ps1'); Label = 'bundled Windows WSL substrate installer helper' },
