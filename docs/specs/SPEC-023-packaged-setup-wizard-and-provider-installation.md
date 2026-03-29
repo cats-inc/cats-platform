@@ -48,6 +48,10 @@ The first host-owned slice is already in-repo:
 - the desktop bootstrap page now surfaces bundled helper readiness plus the
   last packaged setup action summary without moving shell/install ownership
   into the renderer
+- the packaged setup bridge now also derives a structured resume recommendation
+  from the last resumable helper run and exposes a dedicated host-owned
+  `resume-setup` path so restart/manual follow-through states do not collapse
+  into ad hoc retry guidance
 - the host now carries a tray/background lifecycle and a manual-check
   update-channel skeleton
 - packaging scripts now stage Windows/macOS/Linux build outputs plus installer
@@ -429,8 +433,10 @@ teaching the renderer or the user about the underlying script topology.
   bridge or smoke tooling can discover packaged setup helpers without
   parsing the full desktop packaging plan.
 - The next follow-on under `PLAN-030` is no longer the baseline host bridge;
-  it is deeper interruption handling plus later provider follow-through so the
-  split does not leave required setup logic trapped in bootstrap repos.
+  it is the remaining interruption edges beyond the new `resumeAction`
+  contract, especially UAC/elevation round-trips, first-boot WSL follow-through,
+  and later provider coverage so the split does not leave required setup logic
+  trapped in bootstrap repos.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)

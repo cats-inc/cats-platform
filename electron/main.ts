@@ -352,6 +352,18 @@ async function runSetupAction(
   return await getSetupSnapshot();
 }
 
+async function resumeSetupAction(): Promise<DesktopSetupSnapshot> {
+  const snapshot = await getSetupSnapshot();
+  if (!snapshot.resumeAction) {
+    throw new Error('No resumable packaged setup action is currently available.');
+  }
+
+  return await runSetupAction({
+    helperId: snapshot.resumeAction.helperId,
+    mode: snapshot.resumeAction.mode,
+  });
+}
+
 async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindow> {
   const window = new BrowserWindow({
     width: 1280,
@@ -501,6 +513,9 @@ async function main(): Promise<void> {
       helperId: (payload as { helperId: string }).helperId,
       mode: (payload as { mode: DesktopSetupHelperMode }).mode,
     });
+  });
+  ipcMain.handle('cats-host:resume-setup', async () => {
+    return await resumeSetupAction();
   });
 
   app.on('before-quit', (event) => {

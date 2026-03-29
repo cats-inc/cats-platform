@@ -38,6 +38,12 @@ interface DesktopSetupSnapshot {
     available: boolean;
     supported: boolean;
   }>;
+  resumeAction: null | {
+    helperId: string;
+    mode: DesktopSetupHelperMode;
+    reason: string;
+    summary: string;
+  };
   state: {
     updatedAt: string | null;
     lastAction: null | {
@@ -84,6 +90,9 @@ const bridge = {
       helperId,
       mode: assertDesktopSetupHelperMode(mode),
     });
+  },
+  resumeSetup(): Promise<DesktopSetupSnapshot> {
+    return ipcRenderer.invoke('cats-host:resume-setup');
   },
   onSnapshot(listener: (snapshot: DesktopBootstrapSnapshot) => void): () => void {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: DesktopBootstrapSnapshot) => {

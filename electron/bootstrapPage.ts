@@ -181,6 +181,7 @@ export function buildDesktopBootstrapPage(): string {
       const runtimeSummary = document.getElementById('runtime-summary');
       const providerSummary = document.getElementById('provider-summary');
       const setupSummary = document.getElementById('setup-summary');
+      let latestSnapshot = null;
       function escapeHtml(value) {
         return String(value)
           .replace(/&/g, '&amp;')
@@ -261,6 +262,21 @@ export function buildDesktopBootstrapPage(): string {
           );
         }
 
+        if (setupSnapshot && setupSnapshot.resumeAction) {
+          cards.push(
+            '<article class="issue-row">'
+              + '<div class="row-title"><strong>Recommended resume step</strong><span class="status-degraded">'
+              + escapeHtml(setupSnapshot.resumeAction.reason.replace(/_/g, ' ')) + '</span></div>'
+              + '<div class="meta">' + escapeHtml(setupSnapshot.resumeAction.summary) + '</div>'
+              + '<div class="meta"><code>' + escapeHtml(setupSnapshot.resumeAction.mode) + '</code></div>'
+              + (Array.isArray(setupSnapshot.resumeAction.manualSteps) && setupSnapshot.resumeAction.manualSteps.length
+                ? '<div class="meta">' + escapeHtml(setupSnapshot.resumeAction.manualSteps[0]) + '</div>'
+                : '')
+              + '<div><button type="button" data-resume-setup="true">Resume packaged setup</button></div>'
+              + '</article>',
+          );
+        }
+
         if (lastAction) {
           const statusClass = lastAction.runState === 'failed'
             ? 'status-unavailable'
@@ -285,8 +301,21 @@ export function buildDesktopBootstrapPage(): string {
         }
 
         setupSummary.innerHTML = cards.join('');
+        const resumeButton = setupSummary.querySelector('[data-resume-setup="true"]');
+        if (resumeButton && bridge && setupSnapshot && setupSnapshot.resumeAction) {
+          resumeButton.addEventListener('click', async () => {
+            resumeButton.disabled = true;
+            try {
+              const nextSetupSnapshot = await bridge.resumeSetup();
+              renderSetup(latestSnapshot || snapshot, nextSetupSnapshot);
+            } finally {
+              resumeButton.disabled = false;
+            }
+          });
+        }
       }
       function applySnapshot(snapshot) {
+        latestSnapshot = snapshot;
         phaseBadge.className = 'badge status-' + snapshot.status;
         phaseBadge.textContent = snapshot.phase.replace(/_/g, ' ');
         summary.textContent = snapshot.summary;

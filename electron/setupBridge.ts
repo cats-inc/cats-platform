@@ -10,6 +10,7 @@ import type {
   DesktopSetupActionRecord,
   DesktopSetupHelperMode,
   DesktopSetupHelperSummary,
+  DesktopSetupResumeAction,
   DesktopSetupSnapshot,
   DesktopSetupState,
 } from './contracts.js';
@@ -101,6 +102,82 @@ function supportsMode(helper: DesktopSetupHelperSummary, mode: DesktopSetupHelpe
     case 'force':
       return helper.supportsForce;
   }
+}
+
+function deriveResumeAction(
+  helpers: DesktopSetupHelperSummary[],
+  state: DesktopSetupState,
+): DesktopSetupResumeAction | null {
+  const lastAction = state.lastAction;
+  if (!lastAction || !lastAction.resumable) {
+    return null;
+  }
+
+  const helper = helpers.find((candidate) => candidate.id === lastAction.helperId);
+  if (!helper || !helper.supported || !helper.available) {
+    return null;
+  }
+
+  let reason: DesktopSetupResumeAction['reason'] | null = null;
+  let mode: DesktopSetupHelperMode | null = null;
+  let summary: string | null = null;
+
+  if (lastAction.restartRequired || lastAction.status === 'restart_required') {
+    reason = 'restart_required';
+    mode = helper.supportsCheckOnly ? 'check' : supportsMode(helper, lastAction.mode) ? lastAction.mode : null;
+    summary = `Restart the host or Windows session, then rerun ${helper.label} in ${mode ?? 'check'} mode.`;
+  } else if (lastAction.status === 'auth_required') {
+    reason = 'auth_required';
+    mode = helper.supportsCheckOnly ? 'check' : supportsMode(helper, lastAction.mode) ? lastAction.mode : null;
+    summary = `Complete the required sign-in flow, then rerun ${helper.label} in ${mode ?? 'check'} mode.`;
+  } else if (lastAction.runState === 'failed') {
+    reason = 'retry_failed';
+    mode = supportsMode(helper, lastAction.mode)
+      ? lastAction.mode
+      : helper.supportsCheckOnly
+        ? 'check'
+        : helper.supportsApply
+          ? 'apply'
+          : null;
+    summary = `Retry ${helper.label} after addressing the last failure.`;
+  } else if (lastAction.status === 'not_installed') {
+    reason = 'not_installed';
+    mode = helper.supportsApply ? 'apply' : helper.supportsCheckOnly ? 'check' : null;
+    summary = `Run ${helper.label} to install the missing packaged setup requirement.`;
+  } else if (lastAction.status === 'changes_required') {
+    reason = 'changes_required';
+    mode = helper.supportsApply
+      ? 'apply'
+      : helper.supportsUpgrade
+        ? 'upgrade'
+        : helper.supportsCheckOnly
+          ? 'check'
+          : null;
+    summary = `Run ${helper.label} again to apply the remaining packaged setup changes.`;
+  } else if (lastAction.manualSteps.length > 0) {
+    reason = 'manual_follow_up';
+    mode = helper.supportsCheckOnly ? 'check' : supportsMode(helper, lastAction.mode) ? lastAction.mode : null;
+    summary = `Finish the manual follow-through for ${helper.label}, then rerun a verification step.`;
+  } else if (lastAction.status === 'ready') {
+    reason = 'verification_recommended';
+    mode = helper.supportsCheckOnly ? 'check' : null;
+    summary = `Rerun ${helper.label} in check mode if you want to verify the packaged setup state again.`;
+  }
+
+  if (!reason || !mode || !summary) {
+    return null;
+  }
+
+  return {
+    helperId: helper.id,
+    label: helper.label,
+    mode,
+    reason,
+    summary,
+    manualSteps: lastAction.manualSteps,
+    requiresElevation: helper.requiresElevation,
+    restartRequired: lastAction.restartRequired,
+  };
 }
 
 function buildSummary(
@@ -226,6 +303,7 @@ export async function buildDesktopSetupSnapshot(
 ): Promise<DesktopSetupSnapshot> {
   const platform = dependencies.platform ?? process.platform;
   const pathExists = dependencies.pathExists ?? defaultPathExists;
+  const state = input.state ?? createDefaultSetupState();
   const helpers = await Promise.all(
     input.packaging.installer.providerSetup.helperCatalog.map(async (helper) => {
       const scriptPath = await resolveHelperScriptPath(input.config, helper.id, pathExists);
@@ -245,7 +323,8 @@ export async function buildDesktopSetupSnapshot(
 
   return {
     helpers,
-    state: input.state ?? createDefaultSetupState(),
+    state,
+    resumeAction: deriveResumeAction(helpers, state),
   };
 }
 

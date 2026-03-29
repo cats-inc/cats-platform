@@ -9,6 +9,8 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /Setup Recovery/);
   assert.match(html, /setup-summary/);
   assert.match(html, /getSetupSnapshot/);
+  assert.match(html, /resumeSetup/);
   assert.match(html, /snapshot\.setup/);
+  assert.match(html, /Recommended resume step/);
   assert.match(html, /repo-owned packaged assets/);
 });

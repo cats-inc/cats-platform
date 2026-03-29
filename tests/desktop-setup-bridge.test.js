@@ -55,6 +55,55 @@ test('buildDesktopSetupSnapshot reports repo-owned helper availability', async (
   assert.equal(prefixHelper?.available, true);
   assert.equal(prefixHelper?.supported, true);
   assert.equal(snapshot.state.lastAction, null);
+  assert.equal(snapshot.resumeAction, null);
+});
+
+test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', async () => {
+  const config = await createDesktopConfig();
+  await mkdir(join(config.packageRoot, 'scripts', 'windows'), { recursive: true });
+  await writeFile(
+    join(config.packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'),
+    '# helper',
+  );
+
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-03-30T11:02:00.000Z'),
+  });
+  const snapshot = await buildDesktopSetupSnapshot({
+    config,
+    packaging,
+    state: {
+      updatedAt: '2026-03-30T11:03:00.000Z',
+      lastAction: {
+        helperId: 'windows-wsl-environment-installer',
+        assetId: 'windows-wsl-environment-installer-script',
+        label: 'Windows WSL substrate and Ubuntu installer',
+        mode: 'apply',
+        runState: 'completed',
+        status: 'restart_required',
+        summary: 'Restart Windows before rerunning the WSL helper.',
+        packagedRelativePath: 'desktop-host/setup-assets/windows/Install-WslUbuntuEnvironment.ps1',
+        scriptPath: null,
+        requiresElevation: true,
+        resumable: true,
+        restartRequired: true,
+        startedAt: '2026-03-30T11:01:00.000Z',
+        completedAt: '2026-03-30T11:02:00.000Z',
+        warnings: [],
+        plannedActions: ['install_distro:Ubuntu'],
+        appliedChanges: ['enable_wsl_features'],
+        manualSteps: ['Restart Windows, then rerun this helper to register the Ubuntu distro.'],
+        error: null,
+      },
+    },
+  }, {
+    platform: 'win32',
+  });
+
+  assert.equal(snapshot.resumeAction?.helperId, 'windows-wsl-environment-installer');
+  assert.equal(snapshot.resumeAction?.mode, 'check');
+  assert.equal(snapshot.resumeAction?.reason, 'restart_required');
+  assert.match(snapshot.resumeAction?.summary ?? '', /Restart the host or Windows session/i);
 });
 
 test('runDesktopSetupHelper normalizes successful helper execution', async () => {

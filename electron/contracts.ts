@@ -132,6 +132,15 @@ export const DESKTOP_SETUP_ACTION_RUN_STATES = [
   'completed',
   'failed',
 ] as const;
+export const DESKTOP_SETUP_RESUME_REASONS = [
+  'restart_required',
+  'changes_required',
+  'not_installed',
+  'retry_failed',
+  'auth_required',
+  'manual_follow_up',
+  'verification_recommended',
+] as const;
 
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
 export type DesktopHostActionId = typeof DESKTOP_HOST_ACTION_IDS[number];
@@ -154,6 +163,7 @@ export type DesktopProviderSetupAssetKind = typeof DESKTOP_PROVIDER_SETUP_ASSET_
 export type DesktopProviderSetupPlatform = typeof DESKTOP_PROVIDER_SETUP_PLATFORMS[number];
 export type DesktopSetupHelperMode = typeof DESKTOP_SETUP_HELPER_MODES[number];
 export type DesktopSetupActionRunState = typeof DESKTOP_SETUP_ACTION_RUN_STATES[number];
+export type DesktopSetupResumeReason = typeof DESKTOP_SETUP_RESUME_REASONS[number];
 
 export interface ManagedServiceSnapshot {
   name: ManagedServiceName;
@@ -390,6 +400,17 @@ export interface DesktopSetupActionRecord {
   error: string | null;
 }
 
+export interface DesktopSetupResumeAction {
+  helperId: string;
+  label: string;
+  mode: DesktopSetupHelperMode;
+  reason: DesktopSetupResumeReason;
+  summary: string;
+  manualSteps: string[];
+  requiresElevation: boolean;
+  restartRequired: boolean;
+}
+
 export interface DesktopSetupState {
   lastAction: DesktopSetupActionRecord | null;
   updatedAt: string | null;
@@ -398,6 +419,7 @@ export interface DesktopSetupState {
 export interface DesktopSetupSnapshot {
   helpers: DesktopSetupHelperSummary[];
   state: DesktopSetupState;
+  resumeAction: DesktopSetupResumeAction | null;
 }
 
 export interface DesktopBootstrapSnapshot {
