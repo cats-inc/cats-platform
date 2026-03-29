@@ -263,6 +263,45 @@ export function appendCompanionBoxMemory(
   return record;
 }
 
+export function deleteCompanionBoxMemory(
+  snapshot: CompanionSnapshot,
+  box: CompanionBox,
+  memoryId: string,
+  nowIso: string,
+): { deleted: boolean } {
+  const index = snapshot.memory.findIndex(
+    (record) => record.boxId === box.id && record.id === memoryId,
+  );
+  if (index === -1) {
+    return { deleted: false };
+  }
+  snapshot.memory.splice(index, 1);
+  box.memoryIds = box.memoryIds.filter((id) => id !== memoryId);
+  box.updatedAt = nowIso;
+  snapshot.updatedAt = nowIso;
+  return { deleted: true };
+}
+
+export function updateCompanionBoxMemoryStatus(
+  snapshot: CompanionSnapshot,
+  box: CompanionBox,
+  memoryId: string,
+  status: 'active' | 'archived',
+  nowIso: string,
+): CompanionMemoryRecord {
+  const record = snapshot.memory.find(
+    (candidate) => candidate.boxId === box.id && candidate.id === memoryId,
+  );
+  if (!record) {
+    throw new Error(`Companion memory not found: ${memoryId}`);
+  }
+  record.status = status;
+  record.updatedAt = nowIso;
+  box.updatedAt = nowIso;
+  snapshot.updatedAt = nowIso;
+  return record;
+}
+
 export function updateCompanionBoxResponseProfile(
   snapshot: CompanionSnapshot,
   box: CompanionBox,

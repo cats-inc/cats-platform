@@ -98,6 +98,7 @@ export interface ChatViewProps {
   onOpenAddCat?: () => void;
   showAddCatButton?: boolean;
   liveIndicator?: LiveIndicatorState;
+  onToggleCompanionMode?: () => void;
 }
 
 export function ChatView({
@@ -135,6 +136,7 @@ export function ChatView({
   onOpenAddCat,
   showAddCatButton = true,
   liveIndicator,
+  onToggleCompanionMode,
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
@@ -320,6 +322,16 @@ export function ChatView({
               </span>
             </div>
           <div className="channelTopBarEnd">
+            {isDirectLane && onToggleCompanionMode ? (
+              <button
+                className="companionToggleButton"
+                type="button"
+                onClick={onToggleCompanionMode}
+                title="Open companion workspace"
+              >
+                Companion
+              </button>
+            ) : null}
             {onResumeChannel ? (
               <button
                 className="channelActionIconButton"

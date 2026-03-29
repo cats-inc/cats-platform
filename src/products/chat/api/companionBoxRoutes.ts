@@ -325,6 +325,43 @@ async function handleCreateCompanionMemory(
   }
 }
 
+async function handleDeleteCompanionMemory(
+  context: ChatApiRouteContext,
+  catId: string,
+  memoryId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const result = await context.dependencies.companionStore.deleteMemory(catId, memoryId);
+    if (!result.deleted) {
+      sendRestError(context, 404, 'companion_memory_not_found', `Companion memory not found: ${memoryId}`);
+      return;
+    }
+    sendJson(context.response, 200, { deleted: true, memoryId });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
+async function handleUpdateCompanionMemoryStatus(
+  context: ChatApiRouteContext,
+  catId: string,
+  memoryId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const body = await readJsonBody<{ status?: string }>(context.request);
+    if (body.status !== 'active' && body.status !== 'archived') {
+      sendRestError(context, 400, 'invalid_companion_memory_status', 'Status must be "active" or "archived".');
+      return;
+    }
+    const memory = await context.dependencies.companionStore.updateMemoryStatus(catId, memoryId, body.status);
+    sendJson(context.response, 200, { memory });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
 async function handleGetCompanionResponseProfile(
   context: ChatApiRouteContext,
   catId: string,
@@ -448,6 +485,23 @@ export async function routeCompanionBoxApi(
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'PATCH']);
+    return true;
+  }
+
+  const memoryItemMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/companion-box\/memory\/([^/]+)$/u,
+  );
+  if (memoryItemMatch) {
+    if (context.method === 'DELETE') {
+      await handleDeleteCompanionMemory(context, memoryItemMatch[0]!, memoryItemMatch[1]!);
+      return true;
+    }
+    if (context.method === 'PATCH') {
+      await handleUpdateCompanionMemoryStatus(context, memoryItemMatch[0]!, memoryItemMatch[1]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['DELETE', 'PATCH']);
     return true;
   }
 

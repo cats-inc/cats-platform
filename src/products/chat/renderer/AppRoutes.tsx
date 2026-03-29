@@ -20,6 +20,9 @@ import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
+import {
+  CompanionWorkspace,
+} from './components/companion/CompanionWorkspace.js';
 import { SettingsCats } from './components/settings-cats/SettingsCats.js';
 import { SettingsData } from './components/SettingsData.js';
 import { SettingsGeneral } from './components/SettingsGeneral.js';
@@ -55,6 +58,11 @@ export interface AppRoutesProps {
   folderBrowserProps: FolderBrowserContentProps;
   onOpenDraftAddCat: () => void;
   onChangeDraftLeadCat: (catId: string | null) => void;
+  companionMode: boolean;
+  companionCat: AppShellPayload['chat']['cats'][number] | null;
+  onToggleCompanionMode: () => void;
+  onCompanionWake: (catId: string) => void;
+  onCompanionSleep: (catId: string) => void;
 }
 
 export function AppRoutes({
@@ -76,6 +84,11 @@ export function AppRoutes({
   folderBrowserProps,
   onOpenDraftAddCat,
   onChangeDraftLeadCat,
+  companionMode,
+  companionCat,
+  onToggleCompanionMode,
+  onCompanionWake,
+  onCompanionSleep,
 }: AppRoutesProps) {
   const folderBrowserSurfaceProps = folderBrowserProps;
 
@@ -131,7 +144,15 @@ export function AppRoutes({
         <Route
           path="my-cats/:catId"
           element={
-            showDirectLaneBoot ? (
+            companionMode && companionCat ? (
+              <CompanionWorkspace
+                payload={payload}
+                cat={companionCat}
+                onBackToChat={onToggleCompanionMode}
+                onWake={onCompanionWake}
+                onSleep={onCompanionSleep}
+              />
+            ) : showDirectLaneBoot ? (
               <BootShell />
             ) : directLaneChannel ? (
               <ChatView
@@ -140,6 +161,7 @@ export function AppRoutes({
                 selectedChannel={directLaneChannel}
                 onOpenAddCat={noop}
                 showAddCatButton={false}
+                onToggleCompanionMode={onToggleCompanionMode}
               />
             ) : (
               <NewChatDraft

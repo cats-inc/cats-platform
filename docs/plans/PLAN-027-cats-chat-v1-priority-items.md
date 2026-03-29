@@ -215,6 +215,7 @@ behavior.
 | Date | Update |
 |------|--------|
 | 2026-03-29 | Plan created to sequence the `Cats Chat v1` priority stack above existing companion, transport, and runtime-discipline substrate |
+| 2026-03-29 | Implementation started on branch `claude/spec-039-chat-v1`. Phase A (Companion Mode) in progress. Shared files to modify: `api/companionBoxRoutes.ts` (memory delete/update routes), `api/routeSupport.ts` (eventHub dependency). |
 
 ---
 

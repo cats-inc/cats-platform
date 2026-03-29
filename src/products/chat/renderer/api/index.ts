@@ -72,3 +72,17 @@ export {
   type DurableMemoryItem,
   listCatMemory,
 } from './memory.js';
+
+export {
+  createCompanionMemory,
+  createCompanionSource,
+  deleteCompanionMemory,
+  deleteCompanionSource,
+  getCompanionBoxSummary,
+  getCompanionResponseProfile,
+  listCompanionDerived,
+  listCompanionMemory,
+  listCompanionSources,
+  updateCompanionResponseProfile,
+  updateCompanionSource,
+} from './companion.js';

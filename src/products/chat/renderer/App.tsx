@@ -123,6 +123,36 @@ export default function App() {
   const latestSoloChannelModelSaveId = useRef(0);
   const pendingSoloChannelModelSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSoloChannelModelSaveAbort = useRef<AbortController | null>(null);
+  const [companionMode, setCompanionMode] = useState(false);
+  const previousMyCatIdRef = useRef(routeMyCatId);
+  useEffect(() => {
+    if (previousMyCatIdRef.current !== routeMyCatId) {
+      previousMyCatIdRef.current = routeMyCatId;
+      setCompanionMode(false);
+    }
+  }, [routeMyCatId]);
+  const companionCat = companionMode && routeMyCatId && state.status === 'ready'
+    ? state.payload.chat.cats.find((cat) => cat.id === routeMyCatId) ?? null
+    : null;
+  const onToggleCompanionMode = useCallback(() => {
+    setCompanionMode((prev) => !prev);
+  }, []);
+  const onCompanionWake = useCallback((catId: string) => {
+    const channel = state.status === 'ready'
+      ? state.payload.chat.channels.find(
+          (ch) =>
+            ch.channelKind === 'direct_lane'
+            && ch.leadCatId === catId,
+        )
+      : null;
+    if (channel) {
+      void activateChatChannel(channel.id);
+    }
+  }, [state]);
+  const onCompanionSleep = useCallback((_catId: string) => {
+    // Sleep is a placeholder for future session-discipline operations.
+    // For now, no-op; Phase C will add the real implementation.
+  }, []);
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
   const onToggleDraftCat = useCallback((catId: string) => {
@@ -859,6 +889,11 @@ export default function App() {
           }}
           onOpenDraftAddCat={openDraftAddCatPanel}
           onChangeDraftLeadCat={changeDraftLeadCat}
+          companionMode={companionMode}
+          companionCat={companionCat}
+          onToggleCompanionMode={onToggleCompanionMode}
+          onCompanionWake={onCompanionWake}
+          onCompanionSleep={onCompanionSleep}
         />
       </main>
       <ConfirmDialog dialog={appDialog} onClose={appHandleClose} />
