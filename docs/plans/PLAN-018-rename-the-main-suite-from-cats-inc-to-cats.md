@@ -1,6 +1,10 @@
 # PLAN-018: Rename the Main Suite from cats-inc to cats
 
-Status: Draft (Pending Review)
+Status: Superseded by [PLAN-031](./PLAN-031-rename-the-main-suite-host-from-cats-to-cats-platform.md)
+
+This plan is kept for historical context on the earlier `cats-inc` -> `cats`
+rename slice. The active naming target is now `cats-platform` under
+[ADR-045](../decisions/045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md).
 
 ## Scope
 

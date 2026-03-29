@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-031](./PLAN-031-rename-the-main-suite-host-from-cats-to-cats-platform.md) | Rename the Main Suite Host from cats to cats-platform | Draft | N/A |
 | [PLAN-030](./PLAN-030-packaged-setup-wizard-and-provider-installation.md) | Packaged Setup Wizard and Provider Installation | In Progress | [SPEC-023](../specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md), [ADR-021](../decisions/021-keep-packaged-setup-and-provider-installation-in-the-host.md) |
 | [PLAN-029](./PLAN-029-cats-code-v1-local-builder-loop.md) | Cats Code v1 Local Builder Loop | Draft | [SPEC-041](../specs/SPEC-041-cats-code-v1-local-builder-loop.md) |
 | [PLAN-028](./PLAN-028-cats-work-team-templates-and-work-intake.md) | Cats Work Team Templates and Work Intake | Draft | [SPEC-040](../specs/SPEC-040-cats-work-team-templates-and-work-intake.md) |
@@ -56,7 +57,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 | [PLAN-023](./PLAN-023-orchestrator-execution-loop-and-recovery.md) | Orchestrator Execution Loop and Recovery Contract | In Progress (First Slice Landed) | [SPEC-011](../specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md), [SPEC-015](../specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md), [SPEC-021](../specs/SPEC-021-contextual-mcp-profiles-and-lazy-tool-activation.md), [SPEC-026](../specs/SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) |
 | [PLAN-020](./PLAN-020-cats-memory-retrieval-and-flush-substrate.md) | Cats Memory Retrieval and Flush Substrate | In Progress (First Slice Landed) | [SPEC-022](../specs/SPEC-022-cats-memory-layering-and-ownership.md), [SPEC-029](../specs/SPEC-029-companion-boxes-ingestion-and-response-profiles.md) |
 | [PLAN-019](./PLAN-019-companion-box-sidecar-and-session-hydration.md) | Companion Box Sidecar and Session Hydration | In Progress (First Slice Landed) | [SPEC-029](../specs/SPEC-029-companion-boxes-ingestion-and-response-profiles.md) |
-| [PLAN-018](./PLAN-018-rename-the-main-suite-from-cats-inc-to-cats.md) | Rename the Main Suite from cats-inc to cats | Draft (Pending Review) | [ADR-026](../decisions/026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md) |
+| [PLAN-018](./PLAN-018-rename-the-main-suite-from-cats-inc-to-cats.md) | Rename the Main Suite from cats-inc to cats | Superseded by PLAN-031 | [ADR-026](../decisions/026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md) |
 | [PLAN-017](./PLAN-017-suite-host-refactor-for-chat-work-code-and-core.md) | Suite Host Refactor for Chat, Work, Code, and Core | Draft (Pending Review) | [ADR-025](../decisions/025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) |
 | [PLAN-016](./PLAN-016-dynamic-room-workflow-orchestration.md) | Dynamic Room Workflow Orchestration | Draft (Pending Review) | [SPEC-026](../specs/SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) |
 | [PLAN-015](./PLAN-015-chat-session-sleep-wake-lifecycle.md) | Chat Session Sleep/Wake Lifecycle | Approved | [SPEC-016](../specs/SPEC-016-chat-session-sleep-wake-lifecycle.md) |

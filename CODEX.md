@@ -100,8 +100,11 @@ To sync skills after changes:
 These notes capture the current user direction for `cats`. They are
 working memory for Codex, not yet a ratified product spec or ADR.
 
-- The suite now uses `cats` as the flagship product/repo name under the
-  `Cats Inc` umbrella brand, with a later public repo target of `cats-inc/cats`.
+- The flagship product brand remains `Cats`, but the main suite
+  host/repo/package target is now `cats-platform` under the `Cats Inc`
+  umbrella brand, with a later public repo target of
+  `cats-inc/cats-platform`. `cats-one` is reserved for the one-shot installer
+  entrypoint.
 - The first real product line is a chat product, not a narrow "one-man digital
   company" shell. It should feel like a general chat app that also supports
   agent orchestration.

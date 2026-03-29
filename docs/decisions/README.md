@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [045-use-cats-platform-as-the-main-suite-host-under-cats-brand](./045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md) | Use cats-platform as the main suite host under Cats brand | Accepted | 2026-03-30 |
 | [044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy](./044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy.md) | Adopt Windows x64 Electron plus self-hosted npm as the initial distribution strategy | Accepted | 2026-03-30 |
 | [043-keep-suite-renderer-entry-bounded-with-route-level-lazy-loading](./043-keep-suite-renderer-entry-bounded-with-route-level-lazy-loading.md) | Keep suite renderer entry bounded with route-level lazy loading | Proposed | 2026-03-30 |
 | [042-separate-channel-topology-from-routing-mode](./042-separate-channel-topology-from-routing-mode.md) | Separate channel topology from routing mode | Accepted | 2026-03-28 |
@@ -51,7 +52,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [029-automate-tunnel-and-telegram-webhook-registration](./029-automate-tunnel-and-telegram-webhook-registration.md) | Adopt polling-first Telegram setup with optional public ingress helpers | Accepted | 2026-03-23 |
 | [028-allow-multiple-public-bot-bindings-with-one-boss-cat](./028-allow-multiple-public-bot-bindings-with-one-boss-cat.md) | Allow multiple public bot bindings with one Boss Cat | Accepted | 2026-03-22 |
 | [027-adopt-chat-first-information-architecture-with-default-boss-cat](./027-adopt-chat-first-information-architecture-with-default-boss-cat.md) | Adopt chat-first information architecture with a default Boss Cat | Accepted | 2026-03-22 |
-| [026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand](./026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md) | Use cats as the flagship suite name under cats-inc brand | Accepted | 2026-03-21 |
+| [026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand](./026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md) | Use cats as the flagship suite name under cats-inc brand | Superseded by ADR-045 | 2026-03-21 |
 | [025-make-cats-inc-a-suite-host-with-core-owned-product-projections](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) | Make cats a suite host with core-owned product projections | Accepted | 2026-03-21 |
 | [024-separate-explicit-mentions-from-dynamic-room-workflow](./024-separate-explicit-mentions-from-dynamic-room-workflow.md) | Separate explicit mentions from dynamic room workflow | Accepted | 2026-03-20 |
 | [023-own-budget-policy-and-cost-control-in-product](./023-own-budget-policy-and-cost-control-in-product.md) | Own budget policy and cost control in product | Accepted | 2026-03-20 |

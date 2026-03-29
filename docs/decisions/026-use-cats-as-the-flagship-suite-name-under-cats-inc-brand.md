@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-045](./045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md)
 
 ## Date
 
