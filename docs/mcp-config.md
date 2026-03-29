@@ -38,8 +38,9 @@ adapters or CLI details.
 - `cats-runtime` remains the main runtime boundary for all product code.
 - `cats` product services should continue to call `cats-runtime` through
   direct HTTP or SDK-style APIs.
-- `cats-runtime` now exposes an additive MCP facade at `POST /mcp` and through
-  the `cats-runtime-mcp` stdio binary.
+- `cats-runtime` now exposes an additive MCP facade with authoritative
+  execution at `POST /mcp`, plus the `cats-runtime-mcp` stdio proxy for
+  stdio-only hosts.
 - `cats` should not require MCP just to render Chat or Work surfaces.
 - `cats` now also exposes contract-first orchestration routes for direct
   product consumers:
@@ -238,6 +239,11 @@ Notes:
 
 - direct product APIs remain the primary app integration boundary
 - MCP is additive and aimed at orchestrator/tool hosts
+- prefer direct `POST /mcp` when the host can use HTTP JSON-RPC
+- `cats-runtime-mcp` now proxies to an already-running primary `cats-runtime`
+  and does not create a second independent runtime core
+- set `CATS_RUNTIME_MCP_PROXY_URL` explicitly when the stdio host should target
+  a non-default runtime address
 
 ## Security Considerations
 
@@ -254,4 +260,4 @@ Notes:
 
 ---
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-29*
