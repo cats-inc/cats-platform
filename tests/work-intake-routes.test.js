@@ -168,7 +168,7 @@ test('GET /api/work/intake/:projectId/plan returns plan projection', async (t) =
   assert.ok(payload.tasks.length > 0);
 });
 
-test('POST /api/work/intake/:projectId/approve transitions tasks to approved', async (t) => {
+test('POST /api/work/intake/:projectId/approve transitions tasks to approved with owner assigned', async (t) => {
   const store = createMemoryStore();
   const server = createTestServer(store);
 
@@ -183,6 +183,19 @@ test('POST /api/work/intake/:projectId/approve transitions tasks to approved', a
     templateId: 'software_delivery',
   });
   const projectId = create.payload.project.id;
+
+  // Verify tasks have assignedActorIds before approval
+  const core = store.current;
+  const preTasks = core.tasks.filter(
+    (t) => t.metadata?.workIntake?.projectId === projectId,
+  );
+  for (const task of preTasks) {
+    assert.ok(
+      task.assignedActorIds.length > 0,
+      `Pre-approval task "${task.title}" should have assigned actors`,
+    );
+    assert.ok(task.conversationId, `Pre-approval task "${task.title}" should have conversationId`);
+  }
 
   // Approve the plan
   const { status, payload } = await request(
@@ -203,7 +216,7 @@ test('POST /api/work/intake/:projectId/approve transitions tasks to approved', a
   assert.equal(payload.project.status, 'active');
 });
 
-test('POST /api/work/intake/:projectId/reject transitions tasks to rejected', async (t) => {
+test('POST /api/work/intake/:projectId/reject transitions tasks to cancelled and project to paused', async (t) => {
   const store = createMemoryStore();
   const server = createTestServer(store);
 
@@ -229,6 +242,47 @@ test('POST /api/work/intake/:projectId/reject transitions tasks to rejected', as
 
   assert.equal(status, 200);
   assert.equal(payload.planStatus, 'rejected');
+  assert.equal(payload.project.status, 'paused', 'project should be paused after reject');
+
+  // Verify tasks are cancelled, not stuck in pending_approval
+  const core = store.current;
+  const tasks = core.tasks.filter(
+    (t) => t.metadata?.workIntake?.projectId === projectId,
+  );
+  for (const task of tasks) {
+    assert.equal(task.status, 'cancelled', `Task "${task.title}" should be cancelled`);
+    assert.equal(task.approval.status, 'rejected', `Task "${task.title}" approval should be rejected`);
+  }
+});
+
+test('rejected plans do not appear in pendingPlans dashboard section', async (t) => {
+  const store = createMemoryStore();
+  const server = createTestServer(store);
+
+  await new Promise((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  // Create and reject an intake
+  const create = await request(server, 'POST', '/api/work/intake', {
+    title: 'Rejected plan',
+    brief: 'Brief',
+    desiredOutcome: 'Outcome',
+    templateId: 'software_delivery',
+  });
+  await request(
+    server,
+    'POST',
+    `/api/work/intake/${create.payload.project.id}/reject`,
+    { notes: 'No good' },
+  );
+
+  // Dashboard should not show it in pendingPlans
+  const { payload } = await request(server, 'GET', '/api/work');
+  assert.equal(
+    payload.sections.pendingPlans.items.length,
+    0,
+    'pendingPlans should be empty after rejection',
+  );
 });
 
 test('GET /api/work dashboard includes intake and pendingPlans sections', async (t) => {

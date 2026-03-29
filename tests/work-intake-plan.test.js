@@ -70,6 +70,44 @@ test('generateWorkIntakePlan creates work item linked to project', () => {
   assert.equal(result.plan.workItem.status, 'draft');
 });
 
+test('generateWorkIntakePlan creates work_thread conversation and assigns owner', () => {
+  const { now, core, template } = createIntakeFixture();
+
+  const result = generateWorkIntakePlan(
+    core,
+    {
+      title: 'Conversation test',
+      brief: 'Brief',
+      desiredOutcome: 'Outcome',
+      templateId: 'software_delivery',
+    },
+    template,
+    now,
+  );
+
+  // Should have created a conversation
+  const conversations = result.core.conversations.filter(
+    (c) => c.kind === 'work_thread',
+  );
+  assert.ok(conversations.length > 0, 'should have a work_thread conversation');
+  const conv = conversations[0];
+  assert.equal(conv.status, 'planned');
+  assert.ok(conv.participantActorIds.includes(result.core.ownerProfile.actorId));
+
+  // Project should be linked to conversation
+  assert.equal(result.plan.project.primaryConversationId, conv.id);
+
+  // All tasks should have conversationId and owner assigned
+  for (const task of result.plan.tasks) {
+    assert.equal(task.conversationId, conv.id, `Task "${task.title}" should have conversationId`);
+    assert.ok(
+      task.assignedActorIds.includes(result.core.ownerProfile.actorId),
+      `Task "${task.title}" should have owner in assignedActorIds`,
+    );
+    assert.equal(task.ownerActorId, result.core.ownerProfile.actorId);
+  }
+});
+
 test('generateWorkIntakePlan creates tasks matching template blueprints', () => {
   const { now, core, template } = createIntakeFixture();
 

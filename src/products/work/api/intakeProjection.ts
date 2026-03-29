@@ -73,7 +73,9 @@ function resolvePlanStatus(
     return 'draft';
   }
 
-  const hasRejected = tasks.some((task) => task.approval.status === 'rejected');
+  const hasRejected = tasks.some(
+    (task) => task.approval.status === 'rejected' || task.status === 'cancelled',
+  );
   if (hasRejected) {
     return 'rejected';
   }

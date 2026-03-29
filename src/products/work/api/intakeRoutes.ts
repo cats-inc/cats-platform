@@ -312,6 +312,7 @@ export async function routeWorkIntakeApi(
           status: 'rejected',
           action: 'reject',
           decidedByActorId: core.ownerProfile.actorId,
+          taskStatus: 'cancelled',
           notes,
         }, now);
         core = rejectResult.core;
@@ -326,9 +327,17 @@ export async function routeWorkIntakeApi(
       core = activityResult.core;
     }
 
+    // Update project status to paused so it leaves the pending dashboard
+    const projectUpdateResult = upsertCoreProject(core, {
+      id: projectId,
+      title: project.title,
+      status: 'paused',
+    }, now);
+    core = projectUpdateResult.core;
+
     await context.dependencies.coreStore.writeCore(core);
 
-    const projection = buildWorkIntakePlanProjection(core, project);
+    const projection = buildWorkIntakePlanProjection(core, projectUpdateResult.project);
     sendJson(context.response, 200, projection);
     return true;
   }

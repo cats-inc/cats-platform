@@ -1,7 +1,7 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   upsertCoreProject,
-} from '../../../core/model/planningRecords.js';
-import {
   upsertCoreWorkItem,
 } from '../../../core/model/planningRecords.js';
 import {
@@ -11,9 +11,13 @@ import {
   appendCoreActivity,
 } from '../../../core/model/executionRecords.js';
 import {
+  replaceById,
+  touchCoreState,
+} from '../../../core/model/shared.js';
+import {
   writeTaskPlanningMetadata,
 } from '../../../shared/taskPlanning.js';
-import type { CatsCoreState } from '../../../core/types.js';
+import type { CatsCoreState, CoreConversationRecord } from '../../../core/types.js';
 import type { WorkTemplate } from '../templates/types.js';
 import type {
   GenerateWorkIntakePlanResult,
@@ -63,16 +67,48 @@ export function generateWorkIntakePlan(
   nextCore = workItemResult.core;
   const workItem = workItemResult.workItem;
 
-  // 3. Create activity for project creation
+  // 3. Create a work_thread conversation for this project
+  const ownerActorId = nextCore.ownerProfile.actorId;
+  const conversationId = `conv-work-${randomUUID()}`;
+  const conversation: CoreConversationRecord = {
+    id: conversationId,
+    title: input.title,
+    kind: 'work_thread',
+    status: 'planned',
+    participantActorIds: [ownerActorId],
+    sourceChannelId: null,
+    repoPath: input.repoPath ?? null,
+    responseLanguage: 'en',
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    lastMessageAt: null,
+  };
+  const conversationResult = replaceById(nextCore.conversations, conversation);
+  nextCore = touchCoreState({
+    ...nextCore,
+    conversations: conversationResult.records,
+  }, now.toISOString());
+
+  // Link project to the conversation
+  const projectLinkResult = upsertCoreProject(nextCore, {
+    id: project.id,
+    title: project.title,
+    primaryConversationId: conversationId,
+  }, now);
+  nextCore = projectLinkResult.core;
+  const linkedProject = projectLinkResult.project;
+
+  // 4. Create activity for project creation
   const projectActivityResult = appendCoreActivity(nextCore, {
     kind: 'note',
     projectId: project.id,
     workItemId: workItem.id,
+    conversationId,
     message: `Work intake created: "${input.title}" using template "${template.label}".`,
   }, now);
   nextCore = projectActivityResult.core;
 
-  // 4. First pass: create all tasks (without dependsOnTaskIds)
+  // 5. First pass: create all tasks with owner auto-assigned (without dependsOnTaskIds)
   const blueprintKeyToTaskId = new Map<string, string>();
   const createdTasks = [];
 
@@ -87,6 +123,9 @@ export function generateWorkIntakePlan(
     const taskResult = upsertCoreTask(nextCore, {
       title: blueprint.title,
       status: 'draft',
+      conversationId,
+      ownerActorId,
+      assignedActorIds: [ownerActorId],
       summary: blueprint.summary,
       metadata: {
         ...planningMetadata,
@@ -131,6 +170,9 @@ export function generateWorkIntakePlan(
       id: task.id,
       title: task.title,
       status: task.status,
+      conversationId: task.conversationId,
+      ownerActorId: task.ownerActorId,
+      assignedActorIds: task.assignedActorIds,
       summary: task.summary,
       metadata: {
         ...patchedMetadata,
@@ -174,7 +216,7 @@ export function generateWorkIntakePlan(
   return {
     core: nextCore,
     plan: {
-      project,
+      project: linkedProject,
       workItem,
       tasks: finalTasks,
       activities,
