@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
@@ -43,12 +45,13 @@ function createRuntimeStub() {
       };
     },
     async createSession(input) {
+      const sessionId = 'session-created';
       return {
-        id: 'session-created',
+        id: sessionId,
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? 'C:/chat/runtime',
+        cwd: input.cwd ?? path.join(tmpdir(), '.cats-runtime', 'sessions', sessionId),
       };
     },
     async sendMessage() {

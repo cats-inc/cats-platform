@@ -10,11 +10,13 @@ import {
 import {
   buildChannelView,
   requireChannel,
-  setChannelChatCwd,
   setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
-import { ensureChannelWorkspace } from '../../state/workspace.js';
+import {
+  ensureChannelAttachmentWorkspace,
+  syncChannelAttachmentsToWorkspace,
+} from '../../state/workspace.js';
 import type {
   CreateChatChannelInput,
   SendChannelMessageInput,
@@ -320,6 +322,7 @@ async function handleRestSendMessage(
         memoryService: context.dependencies.memoryService,
         chatStore: context.dependencies.chatStore,
         chatStatePath: context.dependencies.config.chatStatePath,
+        runtimeDataDir: context.dependencies.config.runtimeDataDir,
         runtimeRecovery: {
           staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
         },
@@ -366,22 +369,14 @@ async function handleRestUploadAttachments(
 
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
-    const workspace = await ensureChannelWorkspace({
+    const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
       channelId,
       repoPath: channel.repoPath,
       chatCwd: channel.chatCwd,
-      chatStatePath: context.dependencies.config.chatStatePath,
+      runtimeDataDir: context.dependencies.config.runtimeDataDir,
     });
-    let cwd = workspace.workspacePath;
 
-    if (workspace.nextChatCwd && channel.chatCwd !== workspace.nextChatCwd) {
-      await context.dependencies.chatStore.write(
-        setChannelChatCwd(state, channelId, workspace.nextChatCwd, nowFrom(context.dependencies)),
-      );
-      cwd = workspace.nextChatCwd;
-    }
-
-    if (!cwd) {
+    if (!attachmentWorkspacePath) {
       sendRestError(
         context,
         409,
@@ -391,7 +386,7 @@ async function handleRestUploadAttachments(
       return;
     }
 
-    const attachDir = path.join(cwd, '.cats-attachments');
+    const attachDir = path.join(attachmentWorkspacePath, '.cats-attachments');
     await mkdir(attachDir, { recursive: true });
 
     const attachments: Array<{ name: string; relativePath: string }> = [];
@@ -408,6 +403,13 @@ async function handleRestUploadAttachments(
       attachments.push({
         name: safeName,
         relativePath: `.cats-attachments/${safeName}`,
+      });
+    }
+
+    for (const targetWorkspacePath of collectChannelAttachmentSyncTargets(channel)) {
+      await syncChannelAttachmentsToWorkspace({
+        attachmentWorkspacePath,
+        targetWorkspacePath,
       });
     }
 
@@ -442,6 +444,27 @@ function buildAttachmentContentDisposition(
   return `${disposition}; filename="${safeFilename}"`;
 }
 
+function collectChannelAttachmentSyncTargets(
+  channel: ReturnType<typeof requireChannel>,
+): string[] {
+  const targets = new Set<string>();
+  const pushIfPresent = (value: string | null | undefined) => {
+    const normalized = value?.trim();
+    if (normalized) {
+      targets.add(normalized);
+    }
+  };
+
+  pushIfPresent(channel.orchestratorLease.cwd);
+  for (const assignment of channel.catAssignments) {
+    if (assignment.status === 'active') {
+      pushIfPresent(assignment.execution.lease.cwd);
+    }
+  }
+
+  return [...targets];
+}
+
 async function handleRestServeAttachment(
   context: ChatApiRouteContext,
   chatScopeId: string,
@@ -452,28 +475,20 @@ async function handleRestServeAttachment(
     requireValidChatScopeId(chatScopeId);
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
-    const workspace = await ensureChannelWorkspace({
+    const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
       channelId,
       repoPath: channel.repoPath,
       chatCwd: channel.chatCwd,
-      chatStatePath: context.dependencies.config.chatStatePath,
+      runtimeDataDir: context.dependencies.config.runtimeDataDir,
     });
-    let cwd = workspace.workspacePath;
 
-    if (workspace.nextChatCwd && channel.chatCwd !== workspace.nextChatCwd) {
-      await context.dependencies.chatStore.write(
-        setChannelChatCwd(state, channelId, workspace.nextChatCwd, nowFrom(context.dependencies)),
-      );
-      cwd = workspace.nextChatCwd;
-    }
-
-    if (!cwd) {
+    if (!attachmentWorkspacePath) {
       sendRestError(context, 404, 'not_found', 'Channel has no working directory.');
       return;
     }
 
     const safeName = sanitizeAttachmentName(filename);
-    const filePath = path.join(cwd, '.cats-attachments', safeName);
+    const filePath = path.join(attachmentWorkspacePath, '.cats-attachments', safeName);
 
     try {
       await access(filePath);
@@ -515,6 +530,7 @@ async function handleRestActivateChannel(
         companionStore: context.dependencies.companionStore,
         memoryService: context.dependencies.memoryService,
         chatStatePath: context.dependencies.config.chatStatePath,
+        runtimeDataDir: context.dependencies.config.runtimeDataDir,
       },
     );
     await context.dependencies.chatStore.write(activation.state);

@@ -79,6 +79,7 @@ export interface ProcessDispatchQueueOptions {
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
   chatStatePath?: string;
+  runtimeDataDir?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;
 }
 
@@ -485,6 +486,7 @@ export async function processDispatchQueue(
         memoryService,
         chatStore,
         chatStatePath: options.chatStatePath,
+        runtimeDataDir: options.runtimeDataDir,
       },
     );
     nextState = materializeInFlightDispatchState(
@@ -518,6 +520,7 @@ export async function processDispatchQueue(
           memoryService,
           chatStore,
           chatStatePath: options.chatStatePath,
+          runtimeDataDir: options.runtimeDataDir,
           runtimeRecovery,
         }),
       ),

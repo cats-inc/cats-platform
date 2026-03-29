@@ -27,6 +27,7 @@ export function createChatOrchestratorChannelRouter(
   options: {
     runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
     chatStatePath?: string;
+    runtimeDataDir?: string;
   } = {},
 ): OrchestratorChannelRouter<CompanionBoxStore, ChatState> {
   return {
@@ -48,6 +49,7 @@ export function createChatOrchestratorChannelRouter(
           chatStore: input.chatStore as ChatStore,
           runtimeRecovery: options.runtimeRecovery,
           chatStatePath: options.chatStatePath,
+          runtimeDataDir: options.runtimeDataDir,
         },
       );
     },

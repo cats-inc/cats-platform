@@ -25,6 +25,7 @@ import type { RoutingTarget } from '../mentionRouter.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createRoomRoutingSnapshot } from '../room-routing/wake.js';
 import type { RuntimeSessionInfo } from '../../../../platform/runtime/client.js';
+import { resolveChannelSpawnCwd } from '../workspace.js';
 
 export function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionStatus {
   switch (status) {
@@ -40,7 +41,7 @@ export function normalizeRuntimeStatus(status: string | undefined): ParticipantS
 }
 
 export function spawnCwdFor(channel: ChatChannelState): string | null {
-  return channel.repoPath ?? channel.chatCwd ?? null;
+  return resolveChannelSpawnCwd(channel.repoPath, channel.chatCwd);
 }
 
 export function participantKey(participant: RoomRoutingParticipantRef | RoutingTarget): string {

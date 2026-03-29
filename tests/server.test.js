@@ -132,12 +132,13 @@ function createRuntimeStub() {
       };
     },
     async createSession(input) {
+      const sessionId = `session-${nextSession++}`;
       const session = {
-        id: `session-${nextSession++}`,
+        id: sessionId,
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? 'C:/chat/runtime',
+        cwd: input.cwd ?? path.join(os.tmpdir(), '.cats-runtime', 'sessions', sessionId),
       };
       this.createdSessions.push({ ...input, id: session.id });
       return session;
@@ -205,6 +206,7 @@ async function withServer(
   overrides = {},
 ) {
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-server-state-'));
+  const runtimeDataDir = path.join(tempStateDir, 'runtime-data');
   const {
     startup,
     coreStore,
@@ -218,6 +220,7 @@ async function withServer(
       config: {
         ...baseConfig,
         chatStatePath: path.join(tempStateDir, 'chat-state.json'),
+        runtimeDataDir,
       },
       runtimeClient,
       now: () => new Date('2026-03-11T00:00:00.000Z'),
@@ -242,7 +245,7 @@ async function withServer(
   }
 
   try {
-    await callback(`http://127.0.0.1:${address.port}`);
+    await callback(`http://127.0.0.1:${address.port}`, { tempStateDir, runtimeDataDir });
   } finally {
     server.close();
     await once(server, 'close');
@@ -4330,7 +4333,7 @@ test('assigning a cat forwards structured modelSelection to cats-runtime session
   });
 });
 
-test('assigning a cat without a repo path uses a stable channel workspace immediately', async () => {
+test('assigning a cat without a channel cwd defers session creation until Boss Cat activation establishes one', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -4377,9 +4380,9 @@ test('assigning a cat without a repo path uses a stable channel workspace immedi
     assert.equal(assignResponse.status, 201);
     const assignPayload = await assignResponse.json();
 
-    assert.equal(runtimeClient.createdSessions.length, 1);
-    assert.equal(assignPayload.cat.execution.lease.sessionId, 'session-1');
-    assert.match(assignPayload.cat.execution.lease.cwd ?? '', /channel-workspaces[\\/]/u);
+    assert.equal(runtimeClient.createdSessions.length, 0);
+    assert.equal(assignPayload.cat.execution.lease.sessionId, null);
+    assert.equal(assignPayload.cat.execution.lease.cwd, null);
 
     const activateResponse = await fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
       method: 'POST',
@@ -4388,13 +4391,10 @@ test('assigning a cat without a repo path uses a stable channel workspace immedi
     const activatePayload = await activateResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 2);
+    assert.equal(runtimeClient.createdSessions[0].cwd, null);
     assert.match(
       runtimeClient.createdSessions[1].cwd ?? '',
-      /channel-workspaces[\\/]/u,
-    );
-    assert.equal(
-      runtimeClient.createdSessions[1].cwd,
-      runtimeClient.createdSessions[0].cwd,
+      /\.cats-runtime[\\/]sessions[\\/]session-1$/u,
     );
     assert.equal(activatePayload.activation.results[0].targetKind, 'orchestrator');
     assert.equal(activatePayload.activation.results[1].targetKind, 'cat');
@@ -4499,12 +4499,9 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     const messagePayload = await messageResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 1);
-    assert.equal(runtimeClient.createdSessions[0].workspaceKind, 'source');
+    assert.equal(runtimeClient.createdSessions[0].workspaceKind, 'sandbox');
     assert.equal(runtimeClient.createdSessions[0].workspaceAccess, 'read_write');
-    assert.match(
-      runtimeClient.createdSessions[0].cwd ?? '',
-      /channel-workspaces[\\/]/u,
-    );
+    assert.equal(runtimeClient.createdSessions[0].cwd, null);
     assert.equal(messagePayload.dispatch.results[0].status, 'sent');
     assert.equal(messagePayload.dispatch.results[0].targetKind, 'orchestrator');
 
@@ -4515,9 +4512,9 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     assert.equal(channelPayload.channel.composerMode, 'solo');
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
     assert.equal(channelPayload.channel.orchestratorLease.status, 'ready');
-    assert.equal(
-      channelPayload.channel.chatCwd,
-      runtimeClient.createdSessions[0].cwd,
+    assert.match(
+      channelPayload.channel.chatCwd ?? '',
+      /\.cats-runtime[\\/]sessions[\\/]session-1$/u,
     );
     const soloReply = channelPayload.channel.messages.findLast(
       (message) => message.metadata?.targetKind === 'orchestrator',
@@ -5595,10 +5592,10 @@ test('attachment serving only inlines raster images and forces download for acti
   }
 });
 
-test('attachment serving survives session cwd changes for chats without a repo path', async () => {
+test('attachment serving keeps no-repo chat files out of the state tree', async () => {
   const runtimeClient = createRuntimeStub();
 
-  await withServer(runtimeClient, async (baseUrl) => {
+  await withServer(runtimeClient, async (baseUrl, paths) => {
     const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: {
@@ -5653,7 +5650,18 @@ test('attachment serving survives session cwd changes for chats without a repo p
       }),
     });
     assert.equal(messageResponse.status, 200);
-    assert.match(runtimeClient.createdSessions[0].cwd ?? '', /channel-workspaces[\\/]/u);
+    assert.equal(runtimeClient.createdSessions[0].cwd, null);
+
+    const attachmentRoot = path.join(paths.runtimeDataDir, 'channels', channelId, '.cats-attachments');
+    const storedAttachment = await readFile(path.join(attachmentRoot, 'photo.png'));
+    assert.equal(storedAttachment.byteLength, 4);
+
+    try {
+      await access(path.join(paths.tempStateDir, 'channel-workspaces', channelId));
+      assert.fail('no-repo chats should not recreate channel-workspaces under the state tree');
+    } catch {
+      // Expected: the legacy source-tree workspace should stay absent.
+    }
 
     const secondAttachmentResponse = await fetch(
       `${baseUrl}/api/channels/${channelId}/attachments/photo.png`,
@@ -5662,4 +5670,3 @@ test('attachment serving survives session cwd changes for chats without a repo p
     assert.equal(await secondAttachmentResponse.arrayBuffer().then((buffer) => buffer.byteLength), 4);
   });
 });
-

@@ -65,6 +65,7 @@ export async function prepareReadyRequests(
     memoryService?: CatsMemoryService;
     chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
     chatStatePath?: string;
+    runtimeDataDir?: string;
   },
 ): Promise<{
   state: ChatState;
@@ -96,6 +97,7 @@ export async function prepareReadyRequests(
         memoryService: options.memoryService,
         chatStore: options.chatStore,
         chatStatePath: options.chatStatePath,
+        runtimeDataDir: options.runtimeDataDir,
         roomRouting: baseRoomRouting,
         wakeTrigger: 'route_target',
         wakeReason: request.trigger === 'continuation_mention'
@@ -233,6 +235,7 @@ export async function executeDispatchWithRecovery(input: {
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
   chatStatePath?: string;
+  runtimeDataDir?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;
 }): Promise<DispatchExecution> {
   let dispatchState = input.state;
@@ -297,6 +300,7 @@ export async function executeDispatchWithRecovery(input: {
         memoryService: input.memoryService,
         chatStore: input.chatStore,
         chatStatePath: input.chatStatePath,
+        runtimeDataDir: input.runtimeDataDir,
         wakeTrigger: 'route_target',
         wakeReason: request.trigger === 'continuation_mention'
           ? 'workflow_continuation'
