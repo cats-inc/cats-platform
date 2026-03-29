@@ -68,14 +68,21 @@ and then launches the Electron host that supervises local `cats-runtime` and
 `cats` now also ships its first repo-owned packaged setup helper:
 
 - `scripts/windows/Setup-NodeGlobalPrefix.ps1`
+- `scripts/windows/Install-NodeCliPack.ps1`
 
-That helper rewrites the stable user-scoped npm prefix and PATH preparation
-logic that previously lived only in `environment-bootstrap`. It is intended for
-packaged-host setup flows and supports:
+These helpers rewrite the stable Windows npm-prefix/PATH preparation and
+npm-global AI CLI pack installation knowledge that previously lived only in
+`environment-bootstrap`. They are intended for packaged-host setup flows and
+support:
 
 - `-CheckOnly`
 - `-Apply`
 - `-Json`
 
-so the host can treat it as a structured setup asset instead of a raw bootstrap
-dependency.
+`Install-NodeCliPack.ps1` also supports:
+
+- `-Upgrade`
+- `-Force`
+
+so the host can treat them as structured setup assets instead of raw bootstrap
+dependencies.

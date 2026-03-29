@@ -124,7 +124,7 @@ ports a product-owned host asset layer.
 |-----------------|-------------|--------------|-------------------------|--------|-------|
 | A2A collaboration artifacts | `project-bootstrap/docs/a2a/*` | `cats-runtime` pilot + mirrored `cats/docs/a2a/*` | `cats` and `cats-runtime` repo-owned pilot artifacts | Already extracted | Do not re-open under packaged setup work |
 | Provider topology + install/check metadata | `environment-bootstrap` learnings plus runtime ADRs | `cats-runtime/src/core/provider-install/*` | `cats-runtime` | Already extracted | `cats` should consume, not duplicate |
-| Windows npm-global AI CLI pack install | `Install-NodeCLITools.ps1` | `environment-bootstrap` only | packaged-host assets in `cats` | Port first | Covers Codex, Gemini, Copilot, OpenCode, Auggie, Pi |
+| Windows npm-global AI CLI pack install | `environment-bootstrap/platform/windows/Install-NodeCLITools.ps1` | `cats/scripts/windows/Install-NodeCliPack.ps1` | packaged-host assets in `cats` | Ported | Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi, and now consumes the repo-owned npm prefix helper instead of a bootstrap dependency |
 | Windows npm prefix + PATH setup | `environment-bootstrap/platform/windows/Setup-NodeJS.ps1` | `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Staged into `build/desktop-packaging/shared/setup-assets/windows/` and bundled into desktop installs under `desktop-host/setup-assets/windows/` |
 | Windows WSL feature enablement | `Install-WSL2-Admin.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Needed for WSL-heavy provider packs |
 | Windows Ubuntu distro install/resume | `Install-WSLUbuntu.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Important for resumable WSL setup |
@@ -136,27 +136,23 @@ ports a product-owned host asset layer.
 
 ## Recommended Port Order
 
-1. Port the Windows npm-global CLI pack installer next.
+1. Port the Windows WSL prerequisite chain next.
    - The prerequisite npm prefix + PATH helper is now repo-owned in
      `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1`.
-   - The next missing slice is the actual npm-global CLI pack installer that
-     uses that prerequisite helper.
-   - It directly covers several high-value CLI providers already supported by
-     `cats-runtime`.
-
-2. Port the Windows WSL prerequisite chain after the CLI pack installer.
+   - The Windows npm-global CLI pack installer is now repo-owned in
+     `cats/scripts/windows/Install-NodeCliPack.ps1`.
+   - The next missing Windows-first slice is the WSL prerequisite chain that
+     unlocks Cursor, Kiro, and the heavier native CLI paths.
    - `Install-WSL2-Admin.ps1`
    - `Install-WSLUbuntu.ps1`
    - later `Install-WSLDependencies.ps1`
-   This is required before `Cursor Agent` / `Kiro` / other WSL-heavy providers
-   can participate in packaged setup.
 
-3. Port concrete WSL provider installers third.
+2. Port concrete WSL provider installers after the prerequisite chain.
    - Start with Cursor and Kiro because those scripts already encode the most
      relevant WSL install/auth/path repair behavior for the first packaged
      native-CLI direction.
 
-4. Defer Docker and tunnel flows until after the first packaged setup contract
+3. Defer Docker and tunnel flows until after the first packaged setup contract
    is stable.
    - They are still useful knowledge sources.
    - They are not the lowest-friction first packaged path described by
@@ -177,9 +173,9 @@ ports a product-owned host asset layer.
 
 Port the next packaged-host setup asset slice around:
 
-- npm-global CLI install/check for the runtime-supported node-based providers
-- reuse of the repo-owned Windows npm prefix prerequisite helper that now ships
-  inside the staged desktop package
+- Windows WSL prerequisite enablement and distro bootstrap
+- reuse of the repo-owned Windows npm prefix helper and native CLI pack helper
+  that now ship inside the staged desktop package
 
-That is the next smallest slice that converts this inventory from documentation
-into owned product behavior.
+That is the next smallest slice that converts the remaining Windows-first
+bootstrap knowledge into owned product behavior.

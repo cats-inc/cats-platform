@@ -17,6 +17,13 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     packagedRelativePath: 'desktop-host/setup-assets/windows/Setup-NodeGlobalPrefix.ps1',
     targetPlatforms: ['windows'],
   },
+  {
+    id: 'windows-node-cli-pack-script',
+    sourceRelativePath: 'scripts/windows/Install-NodeCliPack.ps1',
+    stageRelativePath: 'shared/setup-assets/windows/Install-NodeCliPack.ps1',
+    packagedRelativePath: 'desktop-host/setup-assets/windows/Install-NodeCliPack.ps1',
+    targetPlatforms: ['windows'],
+  },
 ];
 
 export async function stageDesktopSetupAssets(
