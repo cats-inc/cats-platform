@@ -1,4 +1,6 @@
 import type { CoreStore } from '../../../core/store.js';
+import type { RuntimeClient } from '../../../platform/runtime/client.js';
+import type { TaskExecutionLocator } from '../../../core/taskExecutionLocator.js';
 import {
   buildWorkDashboardProjection,
   buildWorkProjectDetailProjection,
@@ -11,6 +13,7 @@ import {
   type WorkTaskDetailProjection,
   type WorkWorkItemDetailProjection,
 } from './projection.js';
+import { routeWorkIntakeApi } from './intakeRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -22,6 +25,9 @@ export const WORK_API_SLICE = 'work';
 
 export interface WorkApiDependencies {
   coreStore: CoreStore;
+  runtimeClient?: RuntimeClient;
+  taskExecutionLocator?: TaskExecutionLocator;
+  now?: () => Date;
 }
 
 export type WorkApiRouteContext = RouteContext<WorkApiDependencies>;
@@ -71,6 +77,11 @@ export function createWorkWorkItemDetailPayload(
 export async function routeWorkApi(
   context: WorkApiRouteContext,
 ): Promise<boolean> {
+  // Intake routes (templates, intake submit, plan review, approve/reject)
+  if (await routeWorkIntakeApi(context)) {
+    return true;
+  }
+
   const projectDetailMatch = matchRoute(context.url.pathname, /^\/api\/work\/projects\/([^/]+)$/u);
   if (projectDetailMatch) {
     if (context.method !== 'GET') {

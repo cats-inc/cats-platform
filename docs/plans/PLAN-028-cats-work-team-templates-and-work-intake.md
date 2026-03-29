@@ -9,9 +9,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
-| **Assigned To** | Codex |
+| **Assigned To** | Claude |
 | **Reviewer** | User |
 
 ## Related Spec / Dependencies
@@ -206,6 +206,7 @@ template packs.
 | Date | Update |
 |------|--------|
 | 2026-03-29 | Plan created to add the first Work-native intake, team-template, review, approval, and cross-product dispatch loop |
+| 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan gen, API routes, dispatch, dashboard, renderer done. 27 new tests pass, no regressions. Shared file touch: `app/server/dependencies.ts` (additive wiring only). |
 
 ---
 

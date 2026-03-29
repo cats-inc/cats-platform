@@ -1,0 +1,436 @@
+/* Work Intake - Form */
+
+.work-intake-form,
+.work-intake-success,
+.work-plan-review {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.work-intake-heading,
+.work-plan-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.work-intake-field {
+  margin-bottom: 12px;
+}
+
+.work-intake-field--half {
+  flex: 2;
+}
+
+.work-intake-field--quarter {
+  flex: 1;
+}
+
+.work-intake-row {
+  display: flex;
+  gap: 12px;
+}
+
+.work-intake-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #888);
+  margin-bottom: 4px;
+}
+
+.work-intake-input,
+.work-intake-textarea,
+.work-intake-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-primary, #333);
+  border-radius: 6px;
+  background: var(--bg-secondary, #1a1a1a);
+  color: var(--text-primary, #e0e0e0);
+  font-size: 13px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.work-intake-textarea {
+  resize: vertical;
+}
+
+.work-intake-input:focus,
+.work-intake-textarea:focus,
+.work-intake-select:focus {
+  outline: none;
+  border-color: var(--accent-primary, #6366f1);
+}
+
+.work-intake-error {
+  color: var(--text-error, #f87171);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.work-intake-actions,
+.work-intake-success-actions,
+.work-plan-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.work-intake-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.work-intake-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.work-intake-btn--primary {
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+}
+
+.work-intake-btn--secondary {
+  background: var(--bg-tertiary, #2a2a2a);
+  color: var(--text-primary, #e0e0e0);
+}
+
+.work-intake-btn--danger {
+  background: var(--text-error, #f87171);
+  color: #fff;
+}
+
+.work-intake-btn--small {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+}
+
+/* Work Intake - Templates */
+
+.work-intake-templates {
+  margin-bottom: 12px;
+}
+
+.work-intake-template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.work-intake-template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-primary, #333);
+  border-radius: 8px;
+  background: var(--bg-secondary, #1a1a1a);
+  color: var(--text-primary, #e0e0e0);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.work-intake-template-card--selected {
+  border-color: var(--accent-primary, #6366f1);
+  background: var(--bg-accent, #1e1b4b);
+}
+
+.work-intake-template-card-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.work-intake-template-card-desc {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+
+.work-intake-template-card-meta {
+  font-size: 11px;
+  color: var(--text-tertiary, #666);
+}
+
+/* Work Intake - Success */
+
+.work-intake-success-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.work-intake-success-desc {
+  color: var(--text-secondary, #888);
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+/* Plan Review */
+
+.work-plan-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.work-plan-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.work-plan-status--draft {
+  background: var(--bg-tertiary, #2a2a2a);
+  color: var(--text-secondary, #888);
+}
+
+.work-plan-status--approved {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+.work-plan-status--rejected {
+  background: #450a0a;
+  color: #fca5a5;
+}
+
+.work-plan-summary {
+  color: var(--text-secondary, #888);
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.work-plan-template-info {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  margin-bottom: 16px;
+}
+
+.work-plan-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.work-plan-task-list {
+  margin-bottom: 16px;
+}
+
+.work-plan-task {
+  padding: 10px 12px;
+  border: 1px solid var(--border-primary, #333);
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.work-plan-task-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.work-plan-task-index {
+  font-weight: 600;
+  color: var(--text-secondary, #888);
+  min-width: 20px;
+}
+
+.work-plan-task-title {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.work-plan-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.work-plan-badge--work {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.work-plan-badge--chat {
+  background: #3b1f5e;
+  color: #c4b5fd;
+}
+
+.work-plan-badge--code {
+  background: #1a3a1a;
+  color: #86efac;
+}
+
+.work-plan-badge--strategy {
+  background: var(--bg-tertiary, #2a2a2a);
+  color: var(--text-secondary, #888);
+}
+
+.work-plan-task-summary,
+.work-plan-task-criteria {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  margin: 4px 0 0;
+}
+
+.work-plan-task-deps {
+  font-size: 11px;
+  color: var(--text-tertiary, #666);
+  margin: 2px 0 0;
+}
+
+.work-plan-task-approval {
+  display: inline-block;
+  font-size: 10px;
+  margin-top: 4px;
+  color: var(--text-tertiary, #666);
+}
+
+.work-plan-task-approval--approved {
+  color: #6ee7b7;
+}
+
+.work-plan-task-approval--rejected {
+  color: #fca5a5;
+}
+
+.work-plan-task-approval--pending {
+  color: #fcd34d;
+}
+
+.work-plan-reject-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.work-plan-approved-notice,
+.work-plan-rejected-notice {
+  font-size: 13px;
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 16px;
+}
+
+.work-plan-approved-notice {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+.work-plan-rejected-notice {
+  background: #450a0a;
+  color: #fca5a5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.work-plan-activity {
+  margin-top: 16px;
+}
+
+.work-plan-activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.work-plan-activity-item {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  padding: 2px 0;
+}
+
+/* Intake Status Card (Dashboard) */
+
+.work-intake-status-card {
+  border: 1px solid var(--border-primary, #333);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.work-intake-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.work-intake-status-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.work-intake-status-subtitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #888);
+  margin: 8px 0 4px;
+}
+
+.work-intake-status-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.work-intake-status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.work-intake-status-link {
+  background: none;
+  border: none;
+  color: var(--accent-primary, #6366f1);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}
+
+.work-intake-status-link:hover {
+  text-decoration: underline;
+}
+
+.work-intake-status-meta {
+  font-size: 11px;
+  color: var(--text-tertiary, #666);
+}
+
+.work-intake-status-empty {
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+}
+
+.work-plan-loading,
+.work-plan-empty,
+.work-intake-templates-loading,
+.work-intake-templates-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary, #888);
+  font-size: 13px;
+}

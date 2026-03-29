@@ -16,10 +16,12 @@ import {
   ChatView,
   type ChatViewProps,
 } from './components/ChatView.js';
+import { IntakeForm } from './components/IntakeForm.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
+import { PlanReviewPanel } from './components/PlanReviewPanel.js';
 import { SettingsCats } from './components/settings-cats/SettingsCats.js';
 import { SettingsData } from './components/SettingsData.js';
 import { SettingsGeneral } from './components/SettingsGeneral.js';
@@ -160,6 +162,14 @@ export function AppRoutes({
               />
             )
           }
+        />
+        <Route
+          path="intake"
+          element={<IntakeForm />}
+        />
+        <Route
+          path="intake/:projectId"
+          element={<PlanReviewPanel />}
         />
         <Route
           path="new"

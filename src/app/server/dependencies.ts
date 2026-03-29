@@ -198,6 +198,9 @@ export function resolveServerDependencies(
     },
     work: {
       coreStore: dependencies.work?.coreStore ?? sharedCoreStore,
+      runtimeClient: dependencies.shared.runtimeClient,
+      taskExecutionLocator,
+      now: dependencies.shared.now,
     },
     code: {
       coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
