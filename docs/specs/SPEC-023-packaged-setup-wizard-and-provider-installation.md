@@ -408,6 +408,12 @@ teaching the renderer or the user about the underlying script topology.
   asset, so the repo no longer depends on `environment-bootstrap` for the
   first WSL mutation chain even though in-distro Ubuntu package upgrades remain
   a later manual follow-through.
+- The seventh repo-owned packaged setup helper slice is now landed:
+  `scripts/windows/Install-KiroWslCli.ps1` rewrites the first WSL-backed
+  provider installer into a packaged-host asset, carrying forward the Kiro
+  dependency checks, `.bashrc` PATH cleanup, `kc` alias repair, and the
+  required post-install sign-in guidance without shelling out to
+  `environment-bootstrap`.
 - The staged desktop packaging plan now also carries a machine-readable
   `installer.providerSetup.helperCatalog` so future host bridge work can bind
   setup actions to packaged assets, supported operations, and elevation
@@ -417,7 +423,7 @@ teaching the renderer or the user about the underlying script topology.
   host bridge or smoke tooling can discover packaged setup helpers without
   parsing the full desktop packaging plan.
 - The next follow-on under `PLAN-030` is no longer the WSL substrate itself;
-  it is the first WSL-backed provider installer plus host bridge/resume work so
+  it is the host bridge/resume contract plus later provider follow-through so
   the split does not leave required setup logic trapped in bootstrap repos.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through

@@ -72,6 +72,7 @@ and then launches the Electron host that supervises local `cats-runtime` and
 - `scripts/windows/Install-CursorAgent.ps1`
 - `scripts/windows/Check-WslPrerequisites.ps1`
 - `scripts/windows/Install-WslUbuntuEnvironment.ps1`
+- `scripts/windows/Install-KiroWslCli.ps1`
 - `scripts/windows/Check-WindowsSetupReadiness.ps1`
 
 These helpers rewrite the stable Windows npm-prefix/PATH preparation and
@@ -118,6 +119,19 @@ the requested Ubuntu distro without treating `environment-bootstrap` as a
 shipped dependency. When substrate changes are applied it intentionally returns
 `restart_required` so the packaged host can resume distro install cleanly after
 reboot.
+
+`Install-KiroWslCli.ps1` adds the first repo-owned WSL-backed provider
+installer contract:
+
+- `-CheckOnly`
+- `-Apply`
+- `-Upgrade`
+- `-Force`
+- `-Json`
+
+It keeps the Kiro-specific WSL knowledge inside `cats`, including dependency
+checks, `.bashrc` PATH cleanup, `kc` alias repair, and the post-install
+sign-in follow-through.
 
 `Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
 helpers into one host-readable audit for native CLI pack readiness and WSL

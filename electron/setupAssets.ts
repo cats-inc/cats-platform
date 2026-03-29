@@ -7,7 +7,7 @@ export interface DesktopSetupAsset {
   label: string;
   kind: 'prerequisite_helper' | 'cli_pack_installer' | 'provider_installer' | 'readiness_helper';
   pack: 'native_cli_pack' | null;
-  platform: 'windows';
+  platform: 'windows' | 'windows_wsl';
   sourceRelativePath: string;
   stageRelativePath: string;
   packagedRelativePath: string;
@@ -125,6 +125,27 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     resumable: true,
     notes: [
       'Enables the WSL substrate, sets WSL2 as default, and registers Ubuntu without treating environment-bootstrap as a shipped dependency.',
+    ],
+  },
+  {
+    id: 'windows-kiro-wsl-installer-script',
+    helperId: 'windows-kiro-wsl-installer',
+    label: 'Windows WSL Kiro installer',
+    kind: 'provider_installer',
+    pack: 'native_cli_pack',
+    platform: 'windows_wsl',
+    sourceRelativePath: 'scripts/windows/Install-KiroWslCli.ps1',
+    stageRelativePath: 'shared/setup-assets/windows/Install-KiroWslCli.ps1',
+    packagedRelativePath: 'desktop-host/setup-assets/windows/Install-KiroWslCli.ps1',
+    targetPlatforms: ['windows'],
+    supportsCheckOnly: true,
+    supportsApply: true,
+    supportsUpgrade: true,
+    supportsForce: true,
+    requiresElevation: false,
+    resumable: true,
+    notes: [
+      'Installs Kiro CLI inside the repo-owned WSL substrate, repairs ~/.bashrc, and preserves the post-install sign-in follow-through.',
     ],
   },
   {

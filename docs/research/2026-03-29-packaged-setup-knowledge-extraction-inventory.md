@@ -130,7 +130,7 @@ ports a product-owned host asset layer.
 | Windows WSL prerequisite preflight | `Install-WSL2-Admin.ps1` + `Install-WSLUbuntu.ps1` knowledge | `cats/scripts/windows/Check-WslPrerequisites.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Structured preflight only; stays as the read-only readiness surface before mutation |
 | Windows setup readiness audit | `environment-bootstrap/platform/windows/Check-Installation.ps1` | `cats/scripts/windows/Check-WindowsSetupReadiness.ps1` | host-side readiness/recovery helpers in `cats` | Ported | Structured audit only; composes the repo-owned prefix, native CLI pack, and WSL preflight helpers instead of copying the old bootstrap-wide report verbatim |
 | Windows WSL substrate + Ubuntu installer | `environment-bootstrap/platform/windows/Install-WSL2-Admin.ps1` + `environment-bootstrap/platform/windows/Install-WSLUbuntu.ps1` | `cats/scripts/windows/Install-WslUbuntuEnvironment.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Repo-owned mutation helper for WSL substrate enablement, WSL2 default-version setup, and Ubuntu registration; keeps in-distro Ubuntu package upgrades as later manual follow-through |
-| Windows WSL provider installers | `Install-WSLKiroCLI.ps1`, related WSL scripts | `environment-bootstrap` only | packaged-host provider assets in `cats` | Port next | Kiro is now the concrete first candidate because Cursor follows the Windows-native install baseline |
+| Windows WSL Kiro installer | `environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1` | `cats/scripts/windows/Install-KiroWslCli.ps1` | packaged-host provider assets in `cats` | Ported | Repo-owned WSL Kiro installer now carries dependency checks, PATH cleanup, `kc` alias repair, and post-install sign-in guidance |
 | Windows readiness/auth inspection follow-through | remaining `Check-Installation.ps1` coverage | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; expand the repo-owned audit incrementally instead of copying the old bootstrap-wide report verbatim |
 | Docker Desktop install + warm-state knowledge | `Install-Docker-Admin.ps1` | `environment-bootstrap` only | later packaged-host capability pack | Defer | Relevant for heavier local-model / container paths, not first baseline |
 | Ngrok / tunnel setup | `Install-Ngrok-Admin.ps1`, `Setup-Ngrok.ps1` | `environment-bootstrap` only | later transport helper layer in `cats` | Defer | Not part of the first packaged setup baseline |
@@ -138,7 +138,7 @@ ports a product-owned host asset layer.
 
 ## Recommended Port Order
 
-1. Port the first WSL-backed provider installer next.
+1. Port the next WSL-backed provider follow-through next.
    - The prerequisite npm prefix + PATH helper is now repo-owned in
      `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1`.
    - The Windows npm-global CLI pack installer is now repo-owned in
@@ -151,13 +151,17 @@ ports a product-owned host asset layer.
      `cats/scripts/windows/Install-WslUbuntuEnvironment.ps1`.
    - The host-side readiness audit is now repo-owned in
      `cats/scripts/windows/Check-WindowsSetupReadiness.ps1`.
-   - The next missing Windows-first slice is the first repo-owned WSL-backed
-     provider installer, starting with Kiro.
+   - The first repo-owned WSL-backed provider installer is now landed as
+     `cats/scripts/windows/Install-KiroWslCli.ps1`.
+   - The next missing Windows-first slice is the host bridge/resume contract
+     that can sequence the WSL substrate helper and the bundled provider
+     installers without ad hoc shell logic.
 
-2. Port concrete WSL provider installers after the substrate chain.
-   - Start with Kiro because it still encodes the most relevant WSL
-     install/auth/path repair behavior for the first packaged WSL-backed
-     direction.
+2. Expand host bridge and resume semantics after the first provider installer.
+   - Kiro now gives the packaged setup flow one concrete WSL-backed provider
+     target.
+   - The remaining gap is orchestration and persisted resume truth, not raw
+     upstream installer knowledge for the first WSL-backed path.
 
 3. Defer Docker and tunnel flows until after the first packaged setup contract
    is stable.

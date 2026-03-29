@@ -209,6 +209,7 @@ The current substrate writes:
 - `build/desktop-packaging/shared/setup-assets/windows/Install-CursorAgent.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-WslUbuntuEnvironment.ps1`
+- `build/desktop-packaging/shared/setup-assets/windows/Install-KiroWslCli.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Check-WindowsSetupReadiness.ps1`
 - `build/desktop-packaging/shared/setup-assets/manifest.json`
 - `build/desktop-packaging/targets/<target>/installer-manifest.json`

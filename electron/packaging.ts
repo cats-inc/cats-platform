@@ -283,13 +283,13 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           id: 'windows-kiro-wsl-installer',
           label: 'Windows WSL Kiro installer',
           kind: 'provider_installer',
-          status: 'planned',
+          status: 'ported',
           pack: 'native_cli_pack',
           platform: 'windows_wsl',
-          currentHome: 'environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1',
+          currentHome: 'cats/scripts/windows/Install-KiroWslCli.ps1',
           targetHome: 'cats packaged-host provider assets',
           notes: [
-            'Encodes WSL dependency checks, PATH cleanup, aliasing behavior, and sign-in follow-through for Kiro.',
+            'Repo-owned rewrite of the Kiro WSL installer flow, including PATH cleanup, kc alias repair, and post-install sign-in guidance.',
           ],
         },
         {
