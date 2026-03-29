@@ -89,6 +89,14 @@ export function useSettingsCatsRegistryActions(options: {
   }
 
   async function onArchiveCat(catId: string, catName: string): Promise<void> {
+    const confirmed = confirmDialog
+      ? await confirmDialog({
+          title: 'Archive cat',
+          message: `Archive "${catName}"? Telegram bot bindings will be removed, but you can still recover the cat later from Settings.`,
+          confirmLabel: 'Archive',
+        })
+      : true;
+    if (!confirmed) return;
     onBusy(`cat:archive:${catId}`);
     onFeedback('');
     try {
@@ -100,6 +108,28 @@ export function useSettingsCatsRegistryActions(options: {
       }
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : 'Failed to archive cat');
+    } finally {
+      onBusy('');
+    }
+  }
+
+  async function onUnarchiveCat(catId: string, catName: string): Promise<void> {
+    const confirmed = confirmDialog
+      ? await confirmDialog({
+          title: 'Recover cat',
+          message: `Recover "${catName}" from archive? Avatar and cat settings will return, but Telegram bindings stay removed.`,
+          confirmLabel: 'Recover',
+        })
+      : true;
+    if (!confirmed) return;
+    onBusy(`cat:unarchive:${catId}`);
+    onFeedback('');
+    try {
+      const next = await updateCatProfile(catId, { unarchive: true });
+      onPayloadUpdate(next);
+      onFeedback(`${catName} recovered.`);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'Failed to recover cat');
     } finally {
       onBusy('');
     }
@@ -220,6 +250,7 @@ export function useSettingsCatsRegistryActions(options: {
     onMakeBossCat,
     onRenameCat,
     onSkillChange,
+    onUnarchiveCat,
     onUpdateProducts,
   };
 }

@@ -230,6 +230,7 @@ export function normalizeChannel(
     title: readString(channelRecord.title, 'Untitled chat'),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
     channelKind,
+    recoverableDirectLaneCatId: readNullableString(channelRecord.recoverableDirectLaneCatId),
     status,
     unreadCount: readNumber(channelRecord.unreadCount),
     repoPath: readNullableString(channelRecord.repoPath),

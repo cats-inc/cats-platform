@@ -15,6 +15,7 @@ interface SettingsCatsRegistryController {
   onCreateBinding: (catId: string) => Promise<void>;
   onDeleteBinding: (bindingId: string) => Promise<void>;
   onArchiveCat: (catId: string, catName: string) => Promise<void>;
+  onUnarchiveCat: (catId: string, catName: string) => Promise<void>;
   onDeleteCat: (catId: string, catName: string) => Promise<void>;
   onMakeBossCat: (catId: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
@@ -124,25 +125,50 @@ export function SettingsCatsRegistry({
                     >
                       {cat.status}
                     </span>
-                    <button
-                      className="chromeButton"
-                      type="button"
-                      disabled={
-                        busy === `cat:archive:${cat.id}`
-                        || busy === `cat:delete:${cat.id}`
-                      }
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (cat.status === 'archived') {
-                          void registryController.onDeleteCat(cat.id, cat.name);
-                        } else {
+                    {cat.status === 'archived' ? (
+                      <>
+                        <button
+                          className="chromeButton"
+                          type="button"
+                          disabled={
+                            busy === `cat:unarchive:${cat.id}`
+                            || busy === `cat:delete:${cat.id}`
+                          }
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void registryController.onUnarchiveCat(cat.id, cat.name);
+                          }}
+                          data-tooltip={`Recover ${cat.name}`}
+                        >
+                          Recover
+                        </button>
+                        <button
+                          className="chromeButton"
+                          type="button"
+                          disabled={busy === `cat:delete:${cat.id}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void registryController.onDeleteCat(cat.id, cat.name);
+                          }}
+                          data-tooltip={`Delete ${cat.name}`}
+                        >
+                          &#x2715;
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className="chromeButton"
+                        type="button"
+                        disabled={busy === `cat:archive:${cat.id}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
                           void registryController.onArchiveCat(cat.id, cat.name);
-                        }
-                      }}
-                      data-tooltip={cat.status === 'archived' ? `Delete ${cat.name}` : `Archive ${cat.name}`}
-                    >
-                      &#x2715;
-                    </button>
+                        }}
+                        data-tooltip={`Archive ${cat.name}`}
+                      >
+                        &#x2715;
+                      </button>
+                    )}
                   </div>
                 </div>
 

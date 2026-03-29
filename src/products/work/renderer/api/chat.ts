@@ -256,6 +256,7 @@ export async function updateCatProfile(
     makeBoss?: boolean;
     products?: string[];
     archive?: boolean;
+    unarchive?: boolean;
     provider?: string;
     instance?: string | null;
     model?: string | null;

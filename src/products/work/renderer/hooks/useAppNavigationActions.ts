@@ -145,6 +145,17 @@ export function useAppNavigationActions(options: {
   }, [navigate, setAddCatOpen, setBusy, setFeedback, setState]);
 
   const onArchiveCat = useCallback(async (catId: string): Promise<void> => {
+    const catName = state.status === 'ready'
+      ? (state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? 'this cat')
+      : 'this cat';
+    const confirmed = confirmDialog
+      ? await confirmDialog({
+          title: 'Archive cat',
+          message: `Archive "${catName}"? Telegram bot bindings will be removed, but you can still recover the cat later from Settings.`,
+          confirmLabel: 'Archive',
+        })
+      : true;
+    if (!confirmed) return;
     setBusy(`cat:archive:${catId}`);
     try {
       const payload = await updateCatProfile(catId, { archive: true });
@@ -154,7 +165,7 @@ export function useAppNavigationActions(options: {
     } finally {
       setBusy('');
     }
-  }, [setBusy, setFeedback, setState]);
+  }, [confirmDialog, setBusy, setFeedback, setState, state]);
 
   const onDeleteCat = useCallback(async (catId: string): Promise<void> => {
     const confirmed = confirmDialog

@@ -12,6 +12,7 @@ import {
   persistCatAssignmentUpdate,
   persistCreatedCat,
   persistDeletedCat,
+  persistUnarchivedCat,
   persistUpdatedCat,
   type ChatApiRouteContext,
 } from './routeSupport.js';
@@ -62,6 +63,7 @@ async function handleCanonicalUpdateCat(
       makeBoss?: boolean;
       products?: string[];
       archive?: boolean;
+      unarchive?: boolean;
       provider?: string;
       instance?: string | null;
       model?: string | null;
@@ -97,8 +99,13 @@ async function handleCanonicalUpdateCat(
         cat.updatedAt = new Date().toISOString();
       }
     }
+    if (body.archive && body.unarchive) {
+      throw new Error('Cat cannot be archived and recovered at the same time');
+    }
     if (body.archive) {
       state = await persistArchivedCat(context, state, catId);
+    } else if (body.unarchive) {
+      state = await persistUnarchivedCat(context, state, catId);
     } else {
       state = await persistUpdatedCat(context, currentState, state, catId);
     }

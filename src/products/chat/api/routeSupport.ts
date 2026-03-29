@@ -21,6 +21,7 @@ import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readSuitePreferences } from '../../../shared/suitePreferences.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
+import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import {
   appendMessage,
   archiveCat,
@@ -37,6 +38,7 @@ import {
   requireCat,
   removeCatFromChannel,
   resolveOrchestratorDisplayName,
+  unarchiveCat,
   setChannelCatLease,
   setChannelChatCwd,
   setChannelStatus,
@@ -83,6 +85,36 @@ export const DEFAULT_CHAT_SCOPE_ID = 'default';
 
 export function nowFrom(dependencies: ChatApiDependencies): Date {
   return dependencies.now?.() ?? new Date();
+}
+
+async function reconcilePollingAfterBindingMutation(
+  context: ChatApiRouteContext,
+): Promise<void> {
+  const {
+    pollingSupervisor,
+    telegramRelay,
+    telegramRoomBridge,
+    chatStore,
+    memoryService,
+    runtimeClient,
+  } = context.dependencies;
+  if (!pollingSupervisor || !telegramRelay) {
+    return;
+  }
+  try {
+    const pollingCtx = await readTelegramPollingContext(chatStore);
+    await pollingSupervisor.reconcilePolling({
+      bindings: pollingCtx.bindings,
+      context: pollingCtx.context,
+      refreshContext: async () => (await readTelegramPollingContext(chatStore)).context,
+      roomBridge: telegramRoomBridge,
+      memoryService,
+      runtimeClient,
+      telegramRelay,
+    });
+  } catch {
+    // Binding cleanup already succeeded. Polling reconciliation stays best-effort.
+  }
 }
 
 export function errorStatusCode(error: unknown): number {
@@ -603,16 +635,27 @@ export async function persistArchivedCat(
   const now = nowFrom(context.dependencies);
   await closeSessionIds(context, collectCatSessionIds(currentState, catId));
   const nextState = await context.dependencies.chatStore.write(archiveCat(currentState, catId, now));
-  await writeCoreWithUpdatedBindings(context, (bindings, nowIso) =>
-    bindings.map((binding) =>
-      binding.catActorId === createCatActorId(catId) || binding.bossCatActorId === createCatActorId(catId)
-        ? {
-            ...binding,
-            status: 'disabled',
-            updatedAt: nowIso,
-          }
-        : binding,
+  await writeCoreWithUpdatedBindings(context, (bindings) =>
+    bindings.filter((binding) =>
+      binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
     ));
+  void reconcilePollingAfterBindingMutation(context);
+  return nextState;
+}
+
+export async function persistUnarchivedCat(
+  context: ChatApiRouteContext,
+  currentState: ChatState,
+  catId: string,
+): Promise<ChatState> {
+  const nextState = await context.dependencies.chatStore.write(
+    unarchiveCat(currentState, catId, nowFrom(context.dependencies)),
+  );
+  await writeCoreWithUpdatedBindings(context, (bindings) =>
+    bindings.filter((binding) =>
+      binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
+    ));
+  void reconcilePollingAfterBindingMutation(context);
   return nextState;
 }
 
@@ -965,5 +1008,6 @@ export async function persistDeletedCat(
     bindings.filter((binding) =>
       binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
     ));
+  void reconcilePollingAfterBindingMutation(context);
 }
 

@@ -230,6 +230,7 @@ export interface ChatChannelState {
   title: string;
   topic: string;
   channelKind?: ChatChannelKind;
+  recoverableDirectLaneCatId?: string | null;
   status: ChatChannelStatus;
   unreadCount: number;
   repoPath: string | null;

@@ -18,6 +18,7 @@ import {
   exportChannel,
   removeCatFromChannel,
   toChannelSummary,
+  unarchiveCat,
   updateGlobalOrchestrator,
 } from '../dist-server/chat/model.js';
 import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
@@ -375,6 +376,57 @@ test('archiving a direct-lane cat preserves history but demotes the room back to
   assert.equal(channel.roomRouting?.mode, 'boss_chat');
   assert.equal(channel.roomRouting?.leadParticipantId, null);
   assert.equal(channel.composerMode, 'solo');
+});
+
+test('unarchiving a cat restores its direct lane while keeping avatar metadata and sleeping lease state', () => {
+  const now = new Date('2026-03-26T00:00:00.000Z');
+  let state = createDefaultChatState();
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const catId = state.cats[0].id;
+  state.cats[0].avatarUrl = 'data:image/png;base64,archived-avatar';
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion Direct',
+      topic: 'Recover should not silently rebuild the lane.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [catId],
+      leadParticipantId: catId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  state = archiveCat(state, catId, now);
+  state = unarchiveCat(state, catId, new Date('2026-03-26T01:00:00.000Z'));
+
+  const recoveredCat = state.cats.find((cat) => cat.id === catId);
+  const channel = state.channels[0];
+  const assignment = channel.catAssignments.find((candidate) => candidate.catId === catId);
+
+  assert.equal(recoveredCat?.status, 'active');
+  assert.equal(recoveredCat?.archivedAt, null);
+  assert.equal(recoveredCat?.avatarUrl, 'data:image/png;base64,archived-avatar');
+  assert.ok(assignment);
+  assert.equal(assignment.status, 'active');
+  assert.equal(assignment.leftAt, null);
+  assert.equal(assignment.execution.lease.sessionId, null);
+  assert.equal(assignment.execution.lease.status, 'not_started');
+  assert.equal(channel.channelKind, 'direct_lane');
+  assert.equal(channel.roomRouting?.mode, 'direct_cat_chat');
+  assert.equal(channel.roomRouting?.leadParticipantId, catId);
+  assert.equal(channel.composerMode, 'cat_led');
+  assert.equal(channel.recoverableDirectLaneCatId ?? null, null);
 });
 
 test('deleting a direct-lane cat clears hidden-lane routing state so the room stays reachable', () => {

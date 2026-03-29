@@ -29,24 +29,70 @@ const DEFAULT_AVATAR_COLOR = '#90A4AE';
 function demoteDirectLaneIfLeadingCatRemoved(
   channel: ChatState['channels'][number],
   catId: string,
+  options: { preserveRecoverableDirectLane: boolean },
 ): void {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   if (
     isDirectLaneChannel(channel)
     && roomRouting.leadParticipantId === catId
   ) {
+    channel.recoverableDirectLaneCatId = options.preserveRecoverableDirectLane ? catId : null;
     channel.channelKind = 'boss_thread';
     roomRouting.mode = 'boss_chat';
     roomRouting.leadParticipantId = null;
     channel.roomRouting = roomRouting;
+  } else if (!options.preserveRecoverableDirectLane && channel.recoverableDirectLaneCatId === catId) {
+    channel.recoverableDirectLaneCatId = null;
   }
+}
+
+function restoreRecoverableDirectLane(
+  channel: ChatState['channels'][number],
+  catId: string,
+  restoredAt: string,
+): void {
+  if (channel.recoverableDirectLaneCatId !== catId) {
+    return;
+  }
+
+  const assignment = channel.catAssignments.find((candidate) => candidate.catId === catId);
+  if (!assignment) {
+    channel.recoverableDirectLaneCatId = null;
+    return;
+  }
+
+  assignment.status = 'active';
+  assignment.leftAt = null;
+  assignment.execution.lease = {
+    ...assignment.execution.lease,
+    sessionId: null,
+    status: 'not_started',
+    cwd: null,
+    lastError: null,
+    provider: assignment.execution.target.provider,
+    model: assignment.execution.target.model,
+    startedAt: null,
+    lastUsedAt: null,
+  };
+
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  roomRouting.mode = 'direct_cat_chat';
+  roomRouting.leadParticipantId = catId;
+  channel.roomRouting = roomRouting;
+  channel.channelKind = 'direct_lane';
+  channel.recoverableDirectLaneCatId = null;
+  channel.updatedAt = restoredAt;
+  if (channel.status === 'planned') {
+    channel.status = 'configured';
+  }
+  syncChannelLeadAndComposerMode(channel);
 }
 
 function detachCatFromChannels(
   state: ChatState,
   catId: string,
   detachedAt: string,
-  options: { preserveAssignmentHistory: boolean },
+  options: { preserveAssignmentHistory: boolean; preserveRecoverableDirectLane: boolean },
 ): void {
   for (const channel of state.channels) {
     if (options.preserveAssignmentHistory) {
@@ -74,7 +120,9 @@ function detachCatFromChannels(
       );
     }
 
-    demoteDirectLaneIfLeadingCatRemoved(channel, catId);
+    demoteDirectLaneIfLeadingCatRemoved(channel, catId, {
+      preserveRecoverableDirectLane: options.preserveRecoverableDirectLane,
+    });
     syncChannelLeadAndComposerMode(channel);
   }
 }
@@ -160,7 +208,37 @@ export function archiveCat(
   cat.updatedAt = cat.archivedAt;
   detachCatFromChannels(nextState, catId, cat.archivedAt, {
     preserveAssignmentHistory: true,
+    preserveRecoverableDirectLane: true,
   });
+  return nextState;
+}
+
+export function unarchiveCat(
+  state: ChatState,
+  catId: string,
+  now: Date = new Date(),
+): ChatState {
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((candidate) => candidate.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  if (cat.status === 'active') {
+    throw new Error('Cat is already active');
+  }
+
+  const maxCats = nextState.capabilities.maxCats ?? Infinity;
+  const activeCats = nextState.cats.filter((candidate) => candidate.status === 'active');
+  if (activeCats.length >= maxCats) {
+    throw new Error(`Cat limit reached (max ${maxCats})`);
+  }
+
+  cat.status = 'active';
+  cat.archivedAt = null;
+  cat.updatedAt = isoAt(now);
+  for (const channel of nextState.channels) {
+    restoreRecoverableDirectLane(channel, catId, cat.updatedAt);
+  }
   return nextState;
 }
 
@@ -180,6 +258,7 @@ export function deleteCat(
   nextState.cats.splice(catIndex, 1);
   detachCatFromChannels(nextState, catId, isoAt(now), {
     preserveAssignmentHistory: false,
+    preserveRecoverableDirectLane: false,
   });
   return nextState;
 }
@@ -243,6 +322,7 @@ export function updateCatProducts(
   if (hadChatSurface && !catHasChatSurface(cat.products)) {
     detachCatFromChannels(nextState, catId, cat.updatedAt, {
       preserveAssignmentHistory: true,
+      preserveRecoverableDirectLane: false,
     });
   }
   return nextState;

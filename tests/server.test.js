@@ -4938,9 +4938,14 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
     assert.equal(archivePayload.chat.selectedChannel.assignedCats[0]?.status, 'removed');
     assert.equal(archivePayload.chat.channels[0]?.roomMode, 'boss_chat');
     assert.equal(
-      archivePayload.chat.botBindings.find((binding) => binding.id === bindingId)?.status,
-      'disabled',
+      archivePayload.chat.botBindings.find((binding) => binding.id === bindingId),
+      undefined,
     );
+
+    const listBindingsResponse = await fetch(`${baseUrl}/api/bot-bindings`);
+    assert.equal(listBindingsResponse.status, 200);
+    const listBindingsPayload = await listBindingsResponse.json();
+    assert.equal(listBindingsPayload.botBindings.length, 0);
 
     const archivedWebhookResponse = await fetch(
       `${baseUrl}/api/transports/telegram/webhook/${bindingId}`,
@@ -5010,6 +5015,107 @@ test('archived cats cannot receive new Telegram bot bindings', async () => {
     assert.equal(bindingResponse.status, 400);
     const bindingPayload = await bindingResponse.json();
     assert.match(bindingPayload.error.message, /Cat is not active/u);
+  });
+});
+
+test('unarchiving a cat restores it without reviving Telegram bindings', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: false,
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Companion Direct',
+        topic: 'Recover should rebuild the direct lane without waking it.',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [catId],
+        leadParticipantId: catId,
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const avatarResponse = await fetch(`${baseUrl}/api/cats/${catId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ avatarUrl: 'data:image/png;base64,recoverable-avatar' }),
+    });
+    assert.equal(avatarResponse.status, 200);
+
+    const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'companion_bot',
+        catId,
+        roomMode: 'direct_cat_chat',
+      }),
+    });
+    assert.equal(bindingResponse.status, 201);
+
+    const archiveResponse = await fetch(`${baseUrl}/api/cats/${catId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ archive: true }),
+    });
+    assert.equal(archiveResponse.status, 200);
+
+    const unarchiveResponse = await fetch(`${baseUrl}/api/cats/${catId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ unarchive: true }),
+    });
+    assert.equal(unarchiveResponse.status, 200);
+    const unarchivePayload = await unarchiveResponse.json();
+
+    const recoveredCat = unarchivePayload.chat.cats.find((cat) => cat.id === catId);
+    const recoveredChannel = unarchivePayload.chat.channels.find((channel) => channel.id === channelId);
+    assert.equal(recoveredCat?.status, 'active');
+    assert.equal(recoveredCat?.archivedAt, null);
+    assert.equal(recoveredCat?.avatarUrl, 'data:image/png;base64,recoverable-avatar');
+    assert.equal(recoveredChannel?.channelKind, 'direct_lane');
+    assert.equal(recoveredChannel?.roomMode, 'direct_cat_chat');
+    assert.equal(recoveredChannel?.leadCatId, catId);
+    assert.equal(recoveredChannel?.leadParticipantLeaseStatus, 'not_started');
+    assert.equal(unarchivePayload.chat.botBindings.length, 0);
+
+    const reboundResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'telegram',
+        botName: 'companion_bot_rebound',
+        catId,
+        roomMode: 'direct_cat_chat',
+      }),
+    });
+    assert.equal(reboundResponse.status, 201);
   });
 });
 

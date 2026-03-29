@@ -51,6 +51,7 @@ export function SettingsCats({
     onDeleteCat,
     onMakeBossCat,
     onArchiveCat,
+    onUnarchiveCat,
     onRenameCat,
     onSkillChange,
     onUpdateProducts,
@@ -101,6 +102,7 @@ export function SettingsCats({
                 onMakeBossCat,
                 onRenameCat,
                 onSkillChange,
+                onUnarchiveCat,
                 onUpdateProducts,
               }}
               setExpandedCatId={setExpandedCatId}
