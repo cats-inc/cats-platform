@@ -2,9 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
-  createPreviewSurfaceFallbackCandidates,
-  resolvePreviewSurfaceTarget,
-  type ProductPreviewSurfaceCandidate,
+  resolveObservedPreviewSurfaceTarget,
   type ProductPreviewSurfaceTarget,
 } from '../../../../core/previewSurfaces.js';
 import {
@@ -174,7 +172,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
           if (cancelled) {
             return;
           }
-          setPreviewTarget(resolveLatestPreviewTarget(observation, linkedArtifacts));
+          setPreviewTarget(resolveObservedPreviewSurfaceTarget(observation, linkedArtifacts));
           const session = observation.session as Record<string, unknown> | undefined;
           setSessionStatus(
             typeof session?.status === 'string' && session.status.trim()
@@ -187,11 +185,11 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
           }
         } catch {
           setSessionStatus(null);
-          setPreviewTarget(resolveLatestPreviewTarget(null, linkedArtifacts));
+          setPreviewTarget(resolveObservedPreviewSurfaceTarget(null, linkedArtifacts));
         }
       } else {
         setSessionStatus(null);
-        setPreviewTarget(resolveLatestPreviewTarget(null, linkedArtifacts));
+        setPreviewTarget(resolveObservedPreviewSurfaceTarget(null, linkedArtifacts));
       }
     }
 
@@ -312,9 +310,9 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
           ? detail.effectiveStrategy
           : null,
       );
-    } catch {
-      // Non-fatal: keep the resumed task id and let the owner continue from the task step.
-    }
+      } catch {
+        // Non-fatal: keep the resumed task id and let the owner continue from the task step.
+      }
 
     setStep('task');
     setFeedback(nextFeedback);
@@ -604,41 +602,6 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
   );
 }
 
-function resolveLatestPreviewTarget(
-  observation: Record<string, unknown> | null,
-  artifacts: ArtifactItem[],
-): ProductPreviewSurfaceTarget | null {
-  const runtimeCandidates = observation ? readRuntimePreviewCandidates(observation) : [];
-  const artifactCandidates = createPreviewSurfaceFallbackCandidates(artifacts);
-  return resolvePreviewSurfaceTarget([...runtimeCandidates, ...artifactCandidates]);
-}
-
-function readRuntimePreviewCandidates(
-  observation: Record<string, unknown>,
-): ProductPreviewSurfaceCandidate[] {
-  const session = isRecord(observation.session) ? observation.session : null;
-  const inspection = session && isRecord(session.inspection) ? session.inspection : null;
-  const directCandidates = Array.isArray(session?.previewSurfaces) ? session.previewSurfaces : [];
-  const nestedCandidates = Array.isArray(inspection?.previewSurfaces)
-    ? inspection.previewSurfaces
-    : [];
-
-  return [...directCandidates, ...nestedCandidates]
-    .filter(isRecord)
-    .map((candidate) => ({
-      id: readOptionalString(candidate.id),
-      label: readOptionalString(candidate.label),
-      renderHint: readOptionalString(candidate.renderHint),
-      url: readOptionalString(candidate.url),
-      path: readOptionalString(candidate.path),
-      artifactId: readOptionalString(candidate.artifactId),
-    }));
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object';
-}
-
-function readOptionalString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }

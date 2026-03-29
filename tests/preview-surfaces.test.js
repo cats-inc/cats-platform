@@ -4,7 +4,10 @@ import test from 'node:test';
 import {
   createPreviewSurfaceFallbackCandidates,
   normalizePreviewSurfaceUrl,
+  readRuntimePreviewSurfaceCandidates,
+  resolveObservedPreviewSurfaceTarget,
   resolvePreviewSurfaceTarget,
+  resolvePreviewSurfaceTargetFromArtifacts,
 } from '../dist-server/core/previewSurfaces.js';
 
 test('normalizePreviewSurfaceUrl accepts web-safe preview URLs and rejects filesystem paths', () => {
@@ -62,6 +65,99 @@ test('createPreviewSurfaceFallbackCandidates still enables safe app-served artif
   ]);
 
   assert.deepEqual(resolvePreviewSurfaceTarget(candidates), {
+    inlineUrl: '/runtime/artifacts/published-preview/index.html',
+    actionUrl: '/runtime/artifacts/published-preview/index.html',
+    renderHint: 'iframe',
+    artifactId: 'artifact-served-preview',
+    label: 'Published Preview',
+  });
+});
+
+test('readRuntimePreviewSurfaceCandidates merges session and inspection preview surfaces', () => {
+  const candidates = readRuntimePreviewSurfaceCandidates({
+    session: {
+      previewSurfaces: [
+        {
+          id: 'session-preview',
+          renderHint: 'iframe',
+          url: 'http://127.0.0.1:4173',
+        },
+      ],
+      inspection: {
+        previewSurfaces: [
+          {
+            id: 'inspection-preview',
+            renderHint: 'download',
+            path: '/runtime/artifacts/export.zip',
+          },
+        ],
+      },
+    },
+  });
+
+  assert.deepEqual(candidates, [
+    {
+      id: 'session-preview',
+      label: null,
+      renderHint: 'iframe',
+      url: 'http://127.0.0.1:4173',
+      path: null,
+      artifactId: null,
+    },
+    {
+      id: 'inspection-preview',
+      label: null,
+      renderHint: 'download',
+      url: null,
+      path: '/runtime/artifacts/export.zip',
+      artifactId: null,
+    },
+  ]);
+});
+
+test('resolveObservedPreviewSurfaceTarget prefers runtime candidates before artifact fallback', () => {
+  const target = resolveObservedPreviewSurfaceTarget(
+    {
+      session: {
+        previewSurfaces: [
+          {
+            id: 'runtime-preview',
+            renderHint: 'iframe',
+            url: 'http://127.0.0.1:4173',
+          },
+        ],
+      },
+    },
+    [
+      {
+        id: 'artifact-preview',
+        kind: 'preview',
+        title: 'Published Preview',
+        path: '/runtime/artifacts/published-preview/index.html',
+      },
+    ],
+  );
+
+  assert.deepEqual(target, {
+    inlineUrl: 'http://127.0.0.1:4173',
+    actionUrl: 'http://127.0.0.1:4173',
+    renderHint: 'iframe',
+    artifactId: 'runtime-preview',
+    label: null,
+  });
+});
+
+test('resolvePreviewSurfaceTargetFromArtifacts keeps artifact-only preview rules in core', () => {
+  const target = resolvePreviewSurfaceTargetFromArtifacts([
+    {
+      id: 'artifact-served-preview',
+      kind: 'preview',
+      title: 'Published Preview',
+      path: '/runtime/artifacts/published-preview/index.html',
+    },
+  ]);
+
+  assert.deepEqual(target, {
     inlineUrl: '/runtime/artifacts/published-preview/index.html',
     actionUrl: '/runtime/artifacts/published-preview/index.html',
     renderHint: 'iframe',
