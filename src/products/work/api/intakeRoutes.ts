@@ -210,8 +210,8 @@ export async function routeWorkIntakeApi(
     }
 
     // Transition approved tasks to in_progress so downstream products can
-    // pick them up.  Work does not own runtime sessions; Chat and Code
-    // create sessions when they consume tasks via their own adapters.
+    // pick them up. Work does not own runtime sessions; Chat and Code
+    // create sessions when they consume tasks via their own product loops.
     for (const task of tasks) {
       const current = core.tasks.find((t) => t.id === task.id);
       if (!current || current.status !== 'approved') {

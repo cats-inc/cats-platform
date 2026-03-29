@@ -14,14 +14,14 @@
 detail reads, but it is still mostly a read-model viewer above `Cats Core v1`.
 The next priority slice should turn Work into a product-owned operating surface:
 the owner can start a piece of work from `/work`, choose a team template,
-generate a first plan, review it, and dispatch follow-up tasks into Work, Chat,
-or Code without exposing raw runtime internals.
+generate a first plan, review it, and mark follow-up tasks handoff-ready for
+Work, Chat, or Code without exposing raw runtime internals.
 
 The first Work priority should therefore be:
 
 - product-owned work intake
 - software-company team templates
-- plan review and approval before dispatch
+- plan review and approval before handoff
 - cross-product task handoff through the existing Core planning metadata
 - operator-first visibility over progress, blockers, recovery, and outputs
 
@@ -32,9 +32,10 @@ The first Work priority should therefore be:
   of raw skills or ad hoc chat rooms
 - let Work create `project`, `work item`, and `task` records on top of
   existing `Cats Core v1` contracts
-- require human review before the first dispatch of a generated work plan
+- require human review before the first downstream handoff of a generated work
+  plan
 - route downstream tasks into Work, Chat, or Code through shared planning
-  metadata and product-owned adapters
+  metadata, target-product activity, and downstream product pickup
 - keep the default Work UI focused on operating model, progress, and outcomes,
   not provider/session mechanics
 
@@ -106,17 +107,18 @@ The first Work priority should therefore be:
    - `transfer.suggestedProduct`
    - `strategyHint`
    - `acceptanceCriteria`
-10. Before first dispatch, Work shall present a human review step for the plan.
-11. The first slice shall require explicit human approval before cross-product
-    dispatch begins.
+10. Before first handoff, Work shall present a human review step for the plan.
+11. The first slice shall require explicit human approval before downstream
+    tasks become handoff-ready.
 12. Approval decisions for that plan shall be recorded through Core-owned
     approval/activity records rather than route-local ephemeral state.
-13. Work shall dispatch downstream tasks through product-owned adapters:
-    - Work-targeted tasks remain in Work surfaces
-    - Chat-targeted tasks hand off to Chat adapters
-    - Code-targeted tasks hand off to Code adapters
-14. Work shall not pass `CoreTaskRecord` directly into `cats-runtime`.
-    It shall reuse the existing product-to-runtime bridge contract.
+13. Work shall record downstream target intent through shared planning metadata
+    and activity records:
+    - Work-targeted tasks remain visible in Work surfaces
+    - Chat-targeted tasks are picked up by Chat through its own product loop
+    - Code-targeted tasks are picked up by Code through its own product loop
+14. Work shall not pass `CoreTaskRecord` directly into `cats-runtime`, nor own
+    runtime session creation in this slice.
 15. Work dashboard and detail views shall reuse the existing shared-core read
     models already landed for:
     - operator inbox
@@ -163,10 +165,10 @@ Cats Work
     -> Create project + work item + draft tasks in Cats Core
     -> Review generated plan
     -> Human approval gate
-    -> Product-owned dispatch
-         -> Work tasks stay in Work
-         -> Chat tasks hand off to Chat
-         -> Code tasks hand off to Code
+    -> Downstream handoff readiness
+         -> Work tasks stay visible in Work
+         -> Chat tasks become ready for Chat pickup
+         -> Code tasks become ready for Code pickup
     -> Monitor through Work dashboard
          -> operator inbox
          -> control plane
@@ -202,7 +204,7 @@ replace it. The new pieces should be:
 - `Start Work` entry point
 - template selection
 - plan review panel
-- transfer or product-target indicators
+- handoff or product-target indicators
 - output and handoff status summaries
 
 This slice should not require a separate company-admin shell before Work feels

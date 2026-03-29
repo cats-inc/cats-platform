@@ -2,8 +2,8 @@
 
 > Turn `Cats Work` from a shared-core read surface into a product-owned
 > operating flow that starts work, selects a team template, generates a plan,
-> gates it through approval, and dispatches downstream tasks into Work, Chat,
-> or Code.
+> gates it through approval, and marks downstream tasks handoff-ready for
+> Work, Chat, or Code.
 
 ## Metadata
 
@@ -38,9 +38,9 @@ This plan adds that first loop:
 1. start work from `/work`
 2. choose a built-in team template
 3. generate a first plan on shared Core records
-4. review and approve before dispatch
+4. review and approve before handoff
 5. hand off downstream work to Work, Chat, or Code through existing shared
-   planning metadata and product-owned adapters
+   planning metadata and downstream product pickup
 
 The first slice should keep Work opinionated and narrow. The `software_delivery`
 template is the reference pack. Raw runtime ids, skill manifests, and provider
@@ -103,21 +103,21 @@ shared Core contracts.
 
 **Deliverables**: one product-native intake and plan-review surface inside Work.
 
-### Phase 4: Approval Gate and Product-Owned Dispatch
+### Phase 4: Approval Gate and Downstream Handoff Readiness
 
 - [ ] Record explicit approve/reject decisions through Core approval/activity
       records
-- [ ] Add product-owned dispatch adapters so:
-      - Work-targeted tasks stay in Work
-      - Chat-targeted tasks hand off through Chat adapters
-      - Code-targeted tasks hand off through Code adapters
-- [ ] Reuse the existing product-to-runtime bridge instead of sending
+- [ ] Mark approved tasks `in_progress` while preserving product target intent,
+      strategy hints, and acceptance criteria
+- [ ] Keep Work-targeted tasks visible in Work while Chat/Code-targeted tasks
+      become handoff-ready for downstream pickup
+- [ ] Keep Work above the existing product-to-runtime bridge instead of sending
       `CoreTaskRecord` directly to `cats-runtime`
 - [ ] Surface transfer status, next action, and blocker reasons in Work detail
 - [ ] Keep externally consequential actions out of scope for this slice
 
-**Deliverables**: approved Work plans can dispatch cleanly without exposing raw
-runtime internals.
+**Deliverables**: approved Work plans become downstream-handoff-ready without
+exposing raw runtime internals.
 
 ### Phase 5: Dashboard, Outputs, and Recovery Integration
 
@@ -139,7 +139,7 @@ just a viewer.
 
 ### Phase 6: Hardening and Template Extensibility
 
-- [ ] Add regression coverage for intake, review, approval, dispatch, and
+- [ ] Add regression coverage for intake, review, approval, handoff-readiness, and
       linked-output flows
 - [ ] Define the extension seam for later templates beyond
       `software_delivery`
@@ -155,14 +155,14 @@ template packs.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/products/work/api/**` | Modify/Create | Work intake, plan review, approval, dispatch, and output summary routes |
+| `src/products/work/api/**` | Modify/Create | Work intake, plan review, approval, handoff-readiness, and output summary routes |
 | `src/products/work/renderer/components/**` | Modify/Create | Intake entry, template selection, plan review, dashboard, and detail components |
-| `src/products/work/renderer/hooks/**` | Modify/Create | Intake actions, plan review state, approval actions, and dispatch behaviors |
+| `src/products/work/renderer/hooks/**` | Modify/Create | Intake actions, plan review state, approval actions, and downstream handoff behaviors |
 | `src/products/work/renderer/api/**` | Modify | Renderer-side Work API clients and normalization helpers |
 | `src/products/work/shared/**` | Modify/Create | Product-owned template, workflow, and routing helper contracts |
 | `src/core/model/**` | Modify | Shared planning/approval/activity record helpers used by Work intake |
 | `src/core/api/**` | Modify | Shared write/read routes consumed by Work where additive fields are needed |
-| `tests/**` | Modify/Create | Work intake, template, approval, dispatch, and linked-output regression coverage |
+| `tests/**` | Modify/Create | Work intake, template, approval, handoff-readiness, and linked-output regression coverage |
 | `docs/specs/**` | Modify (follow-on) | Update linked Work specs if template or approval scope changes during implementation |
 
 ## Technical Decisions
@@ -171,9 +171,9 @@ template packs.
   manifests.
 - Reuse shared Core records and planning metadata instead of inventing a
   Work-only persistence family.
-- Require explicit human review before first dispatch in the first slice.
-- Use product-owned adapters for Work -> Chat/Code handoff rather than direct
-  runtime dispatch from Work UI state.
+- Require explicit human review before first downstream handoff in the first slice.
+- Keep Work focused on planning, approval, and target-product signaling rather
+  than direct runtime dispatch from Work UI state.
 - Start with one built-in `software_delivery` template and keep extensibility
   additive.
 
@@ -183,30 +183,31 @@ template packs.
   template normalization, intake-to-plan generation, routing-default
   resolution, approval state transitions
 - **Integration Tests**:
-  intake -> Core record creation, plan approval/rejection, downstream dispatch
-  payload formation, linked-output projection assembly
+  intake -> Core record creation, plan approval/rejection, downstream handoff
+  metadata formation, linked-output projection assembly
 - **Renderer/Behavior Tests**:
   `Start Work` entry, template selection, plan review editing, approval flows,
   dashboard transfer/output summaries
 - **Manual Testing**:
-  start a software-delivery initiative, approve it, dispatch to Chat/Code, and
-  inspect linked outcomes from Work without touching runtime internals directly
+  start a software-delivery initiative, approve it, confirm target-product
+  handoff readiness, and inspect linked outcomes from Work without touching
+  runtime internals directly
 
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Work intake becomes an overdesigned org/admin suite | High | Keep the first slice narrow: one owner, one `software_delivery` template, one approval-before-dispatch flow |
+| Work intake becomes an overdesigned org/admin suite | High | Keep the first slice narrow: one owner, one `software_delivery` template, one approval-before-handoff flow |
 | Team template schema leaks runtime/provider concerns | High | Keep templates product-owned and express only roles, workflow defaults, routing, strategy, and approval expectations |
-| Cross-product dispatch loses acceptance criteria or intent | High | Reuse normalized `task.metadata.planning` helpers and test dispatch payload formation directly |
+| Cross-product handoff loses acceptance criteria or intent | High | Reuse normalized `task.metadata.planning` helpers and test handoff metadata formation directly |
 | Dashboard becomes a raw trace viewer again | Medium | Lead with initiative, plan, blockers, outputs, and recovery summaries before any low-level detail |
 
 ## Progress Log
 
 | Date | Update |
 |------|--------|
-| 2026-03-29 | Plan created to add the first Work-native intake, team-template, review, approval, and cross-product dispatch loop |
-| 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan gen, API routes, dispatch, dashboard, renderer done. 27 new tests pass, no regressions. Shared file touch: `app/server/dependencies.ts` (additive wiring only). |
+| 2026-03-29 | Plan created to add the first Work-native intake, team-template, review, approval, and cross-product handoff loop |
+| 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan generation, API routes, handoff-readiness transitions, dashboard, and renderer surfaces landed. 29 tests pass. Work no longer owns runtime dispatch or shared server dependency wiring. |
 
 ---
 

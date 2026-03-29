@@ -168,7 +168,7 @@ test('GET /api/work/intake/:projectId/plan returns plan projection', async (t) =
   assert.ok(payload.tasks.length > 0);
 });
 
-test('POST /api/work/intake/:projectId/approve transitions tasks to in_progress with product dispatch metadata', async (t) => {
+test('POST /api/work/intake/:projectId/approve transitions tasks to in_progress with downstream handoff metadata', async (t) => {
   const store = createMemoryStore();
   const server = createTestServer(store);
 
@@ -223,18 +223,18 @@ test('POST /api/work/intake/:projectId/approve transitions tasks to in_progress 
   assert.ok(productHints.includes('work'), 'should have work-targeted tasks');
   assert.ok(productHints.includes('code'), 'should have code-targeted tasks');
 
-  // Verify activities record the dispatch targets
+  // Verify activities record the handoff targets
   const postActivities = postCore.activities.filter(
     (a) => a.projectId === projectId && a.kind === 'approval_decided',
   );
   assert.ok(postActivities.length > 0, 'should have approval activities');
   assert.ok(
     postActivities.some((a) => a.message.includes('→ work')),
-    'should have activity mentioning work dispatch',
+    'should have activity mentioning work handoff',
   );
   assert.ok(
     postActivities.some((a) => a.message.includes('→ code')),
-    'should have activity mentioning code dispatch',
+    'should have activity mentioning code handoff',
   );
 });
 

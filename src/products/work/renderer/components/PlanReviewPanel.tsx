@@ -244,7 +244,8 @@ export function PlanReviewPanel() {
 
       {isApproved ? (
         <div className="work-plan-approved-notice">
-          Plan approved. Tasks are being dispatched to their target products.
+          Plan approved. Tasks are now in progress and ready for their target products to
+          pick up.
         </div>
       ) : null}
 
