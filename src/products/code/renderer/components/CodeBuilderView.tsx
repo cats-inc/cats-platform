@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { AppShellPayload } from '../../api/contracts.js';
+import {
+  createPreviewSurfaceFallbackCandidates,
+  resolvePreviewSurfaceTarget,
+  type ProductPreviewSurfaceCandidate,
+  type ProductPreviewSurfaceTarget,
+} from '../../../../core/previewSurfaces.js';
+import {
+  normalizeCodeBuilderTaskId,
+  resolveCodeBuilderExecutionTaskId,
+} from '../../shared/builderExecution.js';
 import { useCodeTaskExecution } from '../hooks/useCodeTaskExecution.js';
 import { PlanPanel, type PlanState } from './PlanPanel.js';
 import { BuildPreviewPanel, type ArtifactItem } from './BuildPreviewPanel.js';
@@ -18,23 +27,20 @@ import {
 
 type BuilderStep = 'workspace' | 'task' | 'running' | 'done';
 
-export interface CodeBuilderViewProps {
-  payload: AppShellPayload;
-}
-
-export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
+export function CodeBuilderView() {
   const navigate = useNavigate();
   const { state, create, execute, resume, refreshRepoStatus, reset, stopPolling } = useCodeTaskExecution();
 
   const [step, setStep] = useState<BuilderStep>('workspace');
   const [workspacePath, setWorkspacePath] = useState('');
+  const [resumeTaskId, setResumeTaskId] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [provider, setProvider] = useState('claude');
   const [model, setModel] = useState('');
   const [feedback, setFeedback] = useState('');
   const [artifacts, setArtifacts] = useState<ArtifactItem[]>([]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<ProductPreviewSurfaceTarget | null>(null);
 
   useEffect(() => {
     return () => stopPolling();
@@ -53,6 +59,8 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
         return;
       }
 
+      let linkedArtifacts: ArtifactItem[] = [];
+
       // Fetch task detail for artifacts
       try {
         const detail = (await fetchCodeTaskDetail(state.taskId)) as Record<string, unknown>;
@@ -62,13 +70,10 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
 
         const linked = detail.linkedArtifacts;
         if (Array.isArray(linked) && linked.length > 0) {
-          setArtifacts(linked as ArtifactItem[]);
-
-          // Find the latest ready preview artifact's URL if any
-          const readyPreview = (linked as ArtifactItem[]).find(
-            (a) => a.kind === 'preview' && a.status === 'ready' && a.path,
-          );
-          setPreviewUrl(readyPreview?.path ?? null);
+          linkedArtifacts = linked as ArtifactItem[];
+          setArtifacts(linkedArtifacts);
+        } else {
+          setArtifacts([]);
         }
       } catch {
         // Non-fatal
@@ -81,14 +86,17 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
           if (cancelled) {
             return;
           }
+          setPreviewTarget(resolveLatestPreviewTarget(observation, linkedArtifacts));
           const session = observation.session as Record<string, unknown> | undefined;
           if (session?.status === 'closed') {
             setStep('done');
             refreshRepoStatus(workspacePath);
           }
         } catch {
-          // Non-fatal
+          setPreviewTarget(resolveLatestPreviewTarget(null, linkedArtifacts));
         }
+      } else {
+        setPreviewTarget(resolveLatestPreviewTarget(null, linkedArtifacts));
       }
     }
 
@@ -114,14 +122,21 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
       setFeedback('Please enter a task title.');
       return;
     }
+    if (!workspacePath.trim()) {
+      setFeedback('Please enter a workspace path.');
+      return;
+    }
     setFeedback('');
 
-    const taskId = await create({
-      title: taskTitle.trim(),
-      summary: taskDescription.trim() || null,
-      workspacePath: workspacePath.trim(),
-      acceptanceCriteria: taskDescription.trim() || null,
-    });
+    let taskId = resolveCodeBuilderExecutionTaskId(state.taskId, resumeTaskId);
+    if (!taskId) {
+      taskId = await create({
+        title: taskTitle.trim(),
+        summary: taskDescription.trim() || null,
+        workspacePath: workspacePath.trim(),
+        acceptanceCriteria: taskDescription.trim() || null,
+      });
+    }
 
     if (!taskId) {
       setFeedback(state.error || 'Failed to create task.');
@@ -140,10 +155,59 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
     } else {
       setFeedback(state.error || 'Failed to start execution.');
     }
-  }, [taskTitle, taskDescription, workspacePath, provider, model, create, execute, state.error, refreshRepoStatus]);
+  }, [
+    taskTitle,
+    taskDescription,
+    workspacePath,
+    provider,
+    model,
+    create,
+    execute,
+    resumeTaskId,
+    state.error,
+    state.taskId,
+    refreshRepoStatus,
+  ]);
+
+  const handleResumeTask = useCallback(async () => {
+    const normalizedTaskId = normalizeCodeBuilderTaskId(resumeTaskId);
+    if (!workspacePath.trim()) {
+      setFeedback('Please enter a workspace path before resuming a task.');
+      return;
+    }
+    if (!normalizedTaskId) {
+      setFeedback('Please enter a task ID to resume.');
+      return;
+    }
+
+    setFeedback('');
+    const resumedTaskId = await resume(normalizedTaskId);
+    if (!resumedTaskId) {
+      setFeedback(state.error || 'Failed to resume task.');
+      return;
+    }
+
+    try {
+      const detail = (await fetchCodeTaskDetail(resumedTaskId)) as Record<string, unknown>;
+      const task = isRecord(detail.task) ? detail.task : null;
+      if (typeof task?.title === 'string' && task.title.trim()) {
+        setTaskTitle(task.title);
+      }
+      if (typeof task?.summary === 'string') {
+        setTaskDescription(task.summary);
+      }
+    } catch {
+      // Non-fatal: keep the resumed task id and let the owner continue from the task step.
+    }
+
+    setStep('task');
+    setFeedback(`Task ${resumedTaskId} is ready to continue in this workspace.`);
+  }, [resumeTaskId, resume, state.error, workspacePath]);
 
   const plan = state.plan as PlanState | null;
   const repoStatus = state.repoStatus as RepoStatus | null;
+  const activeTaskId = resolveCodeBuilderExecutionTaskId(state.taskId, resumeTaskId);
+  const usingExistingTask = activeTaskId !== null;
 
   const handlePreviewCommit = useCallback(async (message: string) => {
     return apiPreviewCommit({ workspacePath, message });
@@ -175,9 +239,10 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
     setTaskTitle('');
     setTaskDescription('');
     setWorkspacePath('');
+    setResumeTaskId('');
     setFeedback('');
     setArtifacts([]);
-    setPreviewUrl(null);
+    setPreviewTarget(null);
   }, [reset]);
 
   return (
@@ -187,7 +252,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
         {step !== 'workspace' ? (
           <button
             type="button"
-            className="operatorAction"
+            className="operatorActionButton"
             onClick={handleReset}
           >
             New task
@@ -223,13 +288,37 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
                 }}
               />
             </label>
-            <button
-              type="button"
-              className="operatorAction operatorActionPrimary"
-              onClick={handleWorkspaceSubmit}
-            >
-              Continue
-            </button>
+            <label className="codeBuilderLabel">
+              Existing task ID (optional)
+              <input
+                type="text"
+                className="codeBuilderInput"
+                placeholder="task-..."
+                value={resumeTaskId}
+                onChange={(e) => setResumeTaskId(e.target.value)}
+              />
+            </label>
+            <p className="codeBuilderHelperText">
+              Resume is for a draft, blocked, or failed Code task you want to continue in this
+              workspace.
+            </p>
+            <div className="codeBuilderFormRow">
+              <button
+                type="button"
+                className="operatorActionButton operatorActionButtonPrimary"
+                onClick={handleWorkspaceSubmit}
+              >
+                Continue
+              </button>
+              <button
+                type="button"
+                className="operatorActionButton"
+                onClick={() => void handleResumeTask()}
+                disabled={!normalizeCodeBuilderTaskId(resumeTaskId)}
+              >
+                Resume task
+              </button>
+            </div>
           </div>
         </section>
       ) : null}
@@ -243,6 +332,12 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
             </div>
           </div>
           <div className="codeBuilderForm">
+            {usingExistingTask ? (
+              <div className="codeBuilderTaskNotice">
+                <span className="operatorStatusBadge isMuted">Existing task</span>
+                <span>{activeTaskId}</span>
+              </div>
+            ) : null}
             <label className="codeBuilderLabel">
               What do you want to build?
               <input
@@ -251,6 +346,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
                 placeholder="e.g. Add user authentication"
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
+                disabled={usingExistingTask}
               />
             </label>
             <label className="codeBuilderLabel">
@@ -261,6 +357,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
                 rows={3}
+                disabled={usingExistingTask}
               />
             </label>
             <div className="codeBuilderFormRow">
@@ -287,22 +384,26 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
             <div className="codeBuilderFormRow">
               <button
                 type="button"
-                className="operatorAction"
+                className="operatorActionButton"
                 onClick={() => setStep('workspace')}
               >
                 Back
               </button>
               <button
                 type="button"
-                className="operatorAction operatorActionPrimary"
+                className="operatorActionButton operatorActionButtonPrimary"
                 onClick={handleCreateAndExecute}
                 disabled={state.phase === 'creating' || state.phase === 'executing'}
               >
-                {state.phase === 'creating'
-                  ? 'Creating...'
-                  : state.phase === 'executing'
-                    ? 'Starting...'
-                    : 'Build'}
+                {usingExistingTask
+                  ? state.phase === 'executing'
+                    ? 'Continuing...'
+                    : 'Continue Build'
+                  : state.phase === 'creating'
+                    ? 'Creating...'
+                    : state.phase === 'executing'
+                      ? 'Starting...'
+                      : 'Build'}
               </button>
             </div>
           </div>
@@ -317,7 +418,7 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
           <div className="codeBuilderPanelSide">
             <BuildPreviewPanel
               artifacts={artifacts}
-              previewUrl={previewUrl}
+              previewTarget={previewTarget}
               onOpenArtifact={(id) => {
                 navigate(`/code/artifacts/${id}`);
               }}
@@ -344,4 +445,43 @@ export function CodeBuilderView({ payload }: CodeBuilderViewProps) {
       ) : null}
     </div>
   );
+}
+
+function resolveLatestPreviewTarget(
+  observation: Record<string, unknown> | null,
+  artifacts: ArtifactItem[],
+): ProductPreviewSurfaceTarget | null {
+  const runtimeCandidates = observation ? readRuntimePreviewCandidates(observation) : [];
+  const artifactCandidates = createPreviewSurfaceFallbackCandidates(artifacts);
+  return resolvePreviewSurfaceTarget([...runtimeCandidates, ...artifactCandidates]);
+}
+
+function readRuntimePreviewCandidates(
+  observation: Record<string, unknown>,
+): ProductPreviewSurfaceCandidate[] {
+  const session = isRecord(observation.session) ? observation.session : null;
+  const inspection = session && isRecord(session.inspection) ? session.inspection : null;
+  const directCandidates = Array.isArray(session?.previewSurfaces) ? session.previewSurfaces : [];
+  const nestedCandidates = Array.isArray(inspection?.previewSurfaces)
+    ? inspection.previewSurfaces
+    : [];
+
+  return [...directCandidates, ...nestedCandidates]
+    .filter(isRecord)
+    .map((candidate) => ({
+      id: readOptionalString(candidate.id),
+      label: readOptionalString(candidate.label),
+      renderHint: readOptionalString(candidate.renderHint),
+      url: readOptionalString(candidate.url),
+      path: readOptionalString(candidate.path),
+      artifactId: readOptionalString(candidate.artifactId),
+    }));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object';
+}
+
+function readOptionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }

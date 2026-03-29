@@ -62,7 +62,7 @@ export function PlanPanel({ plan, onReplan }: PlanPanelProps) {
           <p className="operatorEyebrow">Plan</p>
           <h2>Code Plan</h2>
         </div>
-        <span className="operatorBadge">
+        <span className="operatorCountBadge">
           {completedCount}/{totalCount}
           {plan.replanCount > 0 ? ` (re-planned ${plan.replanCount}x)` : ''}
         </span>
@@ -82,10 +82,10 @@ export function PlanPanel({ plan, onReplan }: PlanPanelProps) {
         </ol>
       </div>
       {onReplan ? (
-        <div className="operatorPanelFooter">
+        <div className="operatorActionRow codeBuilderActionRowEnd">
           <button
             type="button"
-            className="operatorAction"
+            className="operatorActionButton"
             onClick={onReplan}
           >
             Re-plan

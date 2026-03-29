@@ -48,10 +48,10 @@ function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: st
         <strong>{label} Preview</strong>
         <span className={
           preview.state === 'ready'
-            ? 'operatorBadgePositive'
+            ? 'operatorStatusBadge isSuccess'
             : preview.state === 'blocked'
-              ? 'operatorBadge'
-              : 'operatorBadgeMuted'
+              ? 'operatorStatusBadge isError'
+              : 'operatorStatusBadge isMuted'
         }>
           {preview.state ?? 'unknown'}
         </span>
@@ -82,7 +82,7 @@ function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: st
       {repo ? (
         <div className="codeDeliveryPreviewSection">
           <p className="codeDeliveryPreviewLabel">Repo</p>
-          <div className="operatorCardMeta">
+          <div className="operatorMetaRow">
             {typeof repo.branch === 'string' ? <span>Branch: {repo.branch}</span> : null}
             {typeof repo.ahead === 'number' ? <span>Ahead: {String(repo.ahead)}</span> : null}
             {typeof repo.behind === 'number' ? <span>Behind: {String(repo.behind)}</span> : null}
@@ -99,7 +99,7 @@ function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: st
       {preview.contract ? (
         <div className="codeDeliveryPreviewSection">
           <p className="codeDeliveryPreviewLabel">Contract</p>
-          <div className="operatorCardMeta">
+          <div className="operatorMetaRow">
             <span>Mode: {preview.contract.mode ?? '—'}</span>
             <span>Decision: {preview.contract.applyDecision ?? '—'}</span>
           </div>
@@ -202,7 +202,7 @@ export function DeliveryPanel({
         </div>
         <button
           type="button"
-          className="operatorAction"
+          className="operatorActionButton"
           onClick={onRefreshRepoStatus}
           disabled={busy}
         >
@@ -214,11 +214,11 @@ export function DeliveryPanel({
         <article className="operatorCard">
           <div className="operatorCardHeader">
             <strong>Repo Status</strong>
-            <span className={repo.clean ? 'operatorBadgePositive' : 'operatorBadge'}>
+            <span className={repo.clean ? 'operatorStatusBadge isSuccess' : 'operatorStatusBadge isAttention'}>
               {repo.clean ? 'Clean' : 'Dirty'}
             </span>
           </div>
-          <div className="operatorCardMeta">
+          <div className="operatorMetaRow">
             {repo.branch ? <span>Branch: {String(repo.branch)}</span> : null}
             {typeof repo.staged === 'number' ? <span>Staged: {repo.staged}</span> : null}
             {typeof repo.unstaged === 'number' ? <span>Unstaged: {repo.unstaged}</span> : null}
@@ -245,7 +245,7 @@ export function DeliveryPanel({
             <div className="codeDeliveryActions">
               <button
                 type="button"
-                className="operatorAction"
+                className="operatorActionButton"
                 onClick={handlePreviewCommit}
                 disabled={busy || !commitMessage.trim()}
               >
@@ -254,7 +254,7 @@ export function DeliveryPanel({
               {commitPreview && commitPreview.state !== 'blocked' ? (
                 <button
                   type="button"
-                  className="operatorAction operatorActionPrimary"
+                  className="operatorActionButton operatorActionButtonPrimary"
                   onClick={handleApplyCommit}
                   disabled={busy}
                 >
@@ -275,7 +275,7 @@ export function DeliveryPanel({
           <div className="codeDeliveryActions">
             <button
               type="button"
-              className="operatorAction"
+              className="operatorActionButton"
               onClick={handlePreviewPush}
               disabled={busy}
             >
@@ -289,7 +289,7 @@ export function DeliveryPanel({
                 <div className="codeDeliveryActions">
                   <button
                     type="button"
-                    className="operatorAction operatorActionDanger"
+                    className="operatorActionButton codeBuilderActionButtonDanger"
                     onClick={() => setConfirmPush(true)}
                   >
                     Push...
@@ -301,7 +301,7 @@ export function DeliveryPanel({
                   <span>Push to remote? This is externally visible.</span>
                   <button
                     type="button"
-                    className="operatorAction operatorActionDanger"
+                    className="operatorActionButton codeBuilderActionButtonDanger"
                     onClick={handleApplyPush}
                     disabled={busy}
                   >
@@ -309,7 +309,7 @@ export function DeliveryPanel({
                   </button>
                   <button
                     type="button"
-                    className="operatorAction"
+                    className="operatorActionButton"
                     onClick={() => setConfirmPush(false)}
                   >
                     Cancel
@@ -326,7 +326,7 @@ export function DeliveryPanel({
           </div>
           <button
             type="button"
-            className="operatorAction"
+            className="operatorActionButton"
             onClick={() => { onExportArtifacts(); }}
             disabled={busy}
           >

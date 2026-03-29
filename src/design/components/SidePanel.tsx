@@ -16,6 +16,7 @@ export interface SidePanelProps {
   onClose: () => void;
   sections: SidePanelSection[];
   className?: string;
+  position?: 'side' | 'bottom';
 }
 
 export function SidePanel({
@@ -25,6 +26,7 @@ export function SidePanel({
   onClose,
   sections,
   className = '',
+  position = 'side',
 }: SidePanelProps) {
   const panelRef = useRef<HTMLElement>(null);
 
@@ -53,7 +55,11 @@ export function SidePanel({
     };
   }, [onClose]);
 
-  const panelClassName = ['sidePanel', className].filter(Boolean).join(' ');
+  const panelClassName = [
+    'sidePanel',
+    position === 'bottom' ? 'sidePanelBottom' : '',
+    className,
+  ].filter(Boolean).join(' ');
 
   return (
     <aside className={panelClassName} ref={panelRef}>

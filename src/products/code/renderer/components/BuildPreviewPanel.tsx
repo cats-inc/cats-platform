@@ -1,3 +1,5 @@
+import type { ProductPreviewSurfaceTarget } from '../../../../core/previewSurfaces.js';
+
 export interface ArtifactItem {
   id: string;
   title: string;
@@ -10,28 +12,32 @@ export interface ArtifactItem {
 
 export interface BuildPreviewPanelProps {
   artifacts: ArtifactItem[];
-  previewUrl?: string | null;
+  previewTarget?: ProductPreviewSurfaceTarget | null;
   onOpenArtifact?: (artifactId: string) => void;
 }
 
 function artifactStatusBadge(status: string): string {
   switch (status) {
     case 'ready':
-      return 'operatorBadgePositive';
+      return 'operatorStatusBadge isSuccess';
     case 'published':
-      return 'operatorBadgeInfo';
+      return 'operatorStatusBadge codeBuilderStatusBadgePublished';
     case 'draft':
-      return 'operatorBadgeMuted';
+      return 'operatorStatusBadge isMuted';
     default:
-      return 'operatorBadge';
+      return 'operatorStatusBadge isAttention';
   }
 }
 
 export function BuildPreviewPanel({
   artifacts,
-  previewUrl,
+  previewTarget,
   onOpenArtifact,
 }: BuildPreviewPanelProps) {
+  const previewActionLabel = previewTarget?.renderHint === 'download'
+    ? 'Open latest artifact'
+    : 'Open latest preview';
+
   return (
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
@@ -39,17 +45,33 @@ export function BuildPreviewPanel({
           <p className="operatorEyebrow">Output</p>
           <h2>Build &amp; Preview</h2>
         </div>
-        <span className="operatorBadge">{artifacts.length} artifact{artifacts.length !== 1 ? 's' : ''}</span>
+        <span className="operatorCountBadge">
+          {artifacts.length} artifact{artifacts.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      {previewUrl ? (
+      {previewTarget?.inlineUrl ? (
         <div className="codeBuildPreviewFrame">
           <iframe
-            src={previewUrl}
+            src={previewTarget.inlineUrl}
             title="Live preview"
             sandbox="allow-scripts allow-same-origin"
             className="codeBuildPreviewIframe"
           />
+        </div>
+      ) : previewTarget?.actionUrl ? (
+        <div className="codeBuildPreviewFallback">
+          <p className="operatorEmptyState">
+            Latest preview is available, but this output is safer to open outside the inline frame.
+          </p>
+          <a
+            className="operatorActionButton"
+            href={previewTarget.actionUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {previewActionLabel}
+          </a>
         </div>
       ) : null}
 
@@ -73,17 +95,17 @@ export function BuildPreviewPanel({
                   {artifact.status}
                 </span>
               </div>
-              <div className="operatorCardMeta">
+              <div className="operatorMetaRow">
                 <span>{artifact.kind}</span>
                 {artifact.path ? <span>{artifact.path}</span> : null}
               </div>
               {onOpenArtifact ? (
                 <button
                   type="button"
-                  className="operatorAction"
+                  className="operatorActionButton"
                   onClick={() => onOpenArtifact(artifact.id)}
                 >
-                  Open
+                  Details
                 </button>
               ) : null}
             </article>

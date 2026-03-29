@@ -110,7 +110,7 @@
 .channelTopBarCenter {
   justify-content: center;
   justify-self: center;
-  width: min(55vw, 680px);
+  width: min(55vw, var(--chat-transcript-max-width, 680px));
   max-width: 100%;
   overflow: hidden;
 }
@@ -276,7 +276,7 @@
 
 .transcriptPanel {
   width: 100%;
-  max-width: 680px;
+  max-width: var(--chat-transcript-max-width, 680px);
   flex: 1;
   padding-right: 8px;
   padding-bottom: 0;
@@ -374,14 +374,14 @@
 .composerCardDocked {
   position: sticky;
   bottom: 16px;
-  max-width: 680px;
+  max-width: var(--chat-transcript-max-width, 680px);
   margin: 0 auto;
   width: 100%;
   z-index: 5;
 }
 
 .composerCardFresh {
-  max-width: 680px;
+  max-width: var(--chat-transcript-max-width, 680px);
   margin: 0 auto;
 }
 

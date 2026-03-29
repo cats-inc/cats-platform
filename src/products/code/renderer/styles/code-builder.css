@@ -35,6 +35,12 @@
   gap: 14px;
 }
 
+.codeBuilderHelperText {
+  margin: -4px 0 0;
+  font-size: 0.76rem;
+  color: var(--muted-soft);
+}
+
 .codeBuilderFormRow {
   display: flex;
   flex-wrap: wrap;
@@ -51,6 +57,13 @@
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--muted);
+}
+
+.codeBuilderTaskNotice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .codeBuilderInput,
@@ -183,12 +196,21 @@
   border: none;
 }
 
-.codeBuildArtifactCard .operatorCardMeta {
+.codeBuildArtifactCard .operatorMetaRow {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   color: var(--muted-soft);
   font-size: 0.75rem;
+}
+
+.codeBuildPreviewFallback {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.76);
 }
 
 /* Delivery */
@@ -285,83 +307,26 @@
   color: rgb(180, 140, 40);
 }
 
-/* Button overrides for builder panels */
-
-.operatorAction {
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--text);
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
+.codeBuilderActionRowEnd {
+  justify-content: flex-end;
 }
 
-.operatorAction:hover:not(:disabled) {
-  background: var(--panel-hover);
-}
-
-.operatorAction:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.operatorActionPrimary {
-  border-color: var(--text);
-  background: var(--text);
-  color: #fff;
-}
-
-.operatorActionPrimary:hover:not(:disabled) {
-  background: #333;
-}
-
-.operatorActionDanger {
-  border-color: rgba(196, 101, 58, 0.4);
+.codeBuilderActionButtonDanger {
+  border-color: rgba(196, 101, 58, 0.38);
   color: rgb(196, 101, 58);
 }
 
-.operatorActionDanger:hover:not(:disabled) {
+.codeBuilderActionButtonDanger:hover:not(:disabled) {
   background: rgba(196, 101, 58, 0.06);
 }
 
-.operatorBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.operatorBadgePositive {
-  background: rgba(60, 130, 80, 0.1);
-  color: rgb(60, 130, 80);
-}
-
-.operatorBadgeInfo {
+.codeBuilderStatusBadgePublished {
   background: rgba(0, 100, 200, 0.08);
   color: rgb(0, 100, 200);
+  border-color: rgba(0, 100, 200, 0.18);
 }
 
-.operatorBadgeMuted {
-  background: rgba(0, 0, 0, 0.04);
-  color: var(--muted-soft);
-}
-
-.operatorPanelFooter {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.operatorCardMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  color: var(--muted-soft);
-  font-size: 0.75rem;
+.codeArtifactDetailView {
+  display: grid;
+  gap: 16px;
 }

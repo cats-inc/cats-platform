@@ -343,9 +343,9 @@ transport, and session discipline.
 
 - [ ] Should the first transport queue slice support only `collect`, or ship
       `collect + followup` together?
-- [ ] Should reply chunking live entirely in product transport code, or should
-      `cats-runtime` expose a reusable formatting helper contract for later
-      non-Telegram transports?
+- [ ] For later non-Telegram transports, should the current platform-layer
+      reply chunking helper be generalized into a shared transport formatter
+      seam?
 - [ ] Should companion dashboard open as a dedicated split workspace first, or
       as a transcript-adjacent secondary surface that can later expand?
 - [ ] Which lightweight specialist-cat controls belong in Chat v1 itself, and
