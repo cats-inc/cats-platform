@@ -1,4 +1,4 @@
-# SPEC-039: Cats Work Team Templates and Work Intake
+# SPEC-040: Cats Work Team Templates and Work Intake
 
 ## Metadata
 
