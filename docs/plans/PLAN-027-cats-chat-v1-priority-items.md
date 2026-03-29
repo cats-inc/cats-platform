@@ -215,7 +215,10 @@ behavior.
 | Date | Update |
 |------|--------|
 | 2026-03-29 | Plan created to sequence the `Cats Chat v1` priority stack above existing companion, transport, and runtime-discipline substrate |
-| 2026-03-29 | Implementation started on branch `claude/spec-039-chat-v1`. Phase A (Companion Mode) in progress. Shared files to modify: `api/companionBoxRoutes.ts` (memory delete/update routes), `api/routeSupport.ts` (eventHub dependency). |
+| 2026-03-29 | Implementation started on branch `claude/spec-039-chat-v1`. Shared files modified: `api/companionBoxRoutes.ts` (memory delete/update routes), `api/routeSupport.ts` (eventHub dependency), `api/resources/index.ts` (event route registration). |
+| 2026-03-29 | **Phase 2 complete**: Visible companion workspace with 8 new components, 2 hooks, renderer API client, companion store memory CRUD, styles, and app route integration (14 new files, 8 modified). |
+| 2026-03-29 | **Phases 3-5 complete**: SSE invalidation hub + event route, Telegram command router (5 commands), reply chunking, session continuity rules + operations, session health summaries, cat status resolution + CatStatusRow, layout normalization (16 new files, 2 modified). |
+| 2026-03-29 | **Phase 6 complete**: 36 new tests across 5 test files (session-continuity-rules, telegram-chunking, chat-event-hub, cat-status-resolution, session-health-summary). 578/579 pass (1 pre-existing failure in chat-store.test.js). |
 
 ---
 
