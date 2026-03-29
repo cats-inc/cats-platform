@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy](./044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy.md) | Adopt Windows x64 Electron plus self-hosted npm as the initial distribution strategy | Accepted | 2026-03-30 |
 | [043-keep-suite-renderer-entry-bounded-with-route-level-lazy-loading](./043-keep-suite-renderer-entry-bounded-with-route-level-lazy-loading.md) | Keep suite renderer entry bounded with route-level lazy loading | Proposed | 2026-03-30 |
 | [042-separate-channel-topology-from-routing-mode](./042-separate-channel-topology-from-routing-mode.md) | Separate channel topology from routing mode | Accepted | 2026-03-28 |
 | [041-push-transport-and-chat-invalidations-over-sse](./041-push-transport-and-chat-invalidations-over-sse.md) | Push transport and chat invalidations over SSE | Proposed | 2026-03-27 |
