@@ -201,6 +201,8 @@ export function resolveServerDependencies(
     },
     code: {
       coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
+      runtimeClient: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
+      config: dependencies.code?.config ?? dependencies.shared.config,
     },
   };
 }

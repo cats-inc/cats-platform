@@ -24,6 +24,10 @@ import {
   readTaskPlanningMetadataFromTask,
   resolveEffectiveTaskStrategy,
 } from '../../../shared/taskPlanning.js';
+import {
+  readCodePlanFromTask,
+  type CodePlanState,
+} from '../state/planSteps.js';
 
 const CODE_DASHBOARD_TASK_LIMIT = 16;
 const CODE_DASHBOARD_ARTIFACT_LIMIT = 18;
@@ -115,6 +119,7 @@ export interface CodeTaskDetailProjection {
     summary: CoreTaskTimelineQuerySummary;
     view: CoreTaskTimelineView;
   };
+  plan: CodePlanState | null;
   linkedArtifacts: CodeArtifactListItem[];
   artifactSummary: {
     totalCount: number;
@@ -426,6 +431,7 @@ export function buildCodeTaskDetailProjection(
     conversation,
     workItem: buildWorkItemReference(core, workItem),
     effectiveStrategy: resolveEffectiveTaskStrategy('code', readTaskPlanningMetadataFromTask(task)),
+    plan: readCodePlanFromTask(task),
     inspection: buildCoreTaskInspectionView(core, task),
     timeline: {
       summary: timeline.summary,
