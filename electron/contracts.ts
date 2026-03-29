@@ -122,6 +122,16 @@ export const DESKTOP_PROVIDER_SETUP_PLATFORMS = [
   'linux',
   'windows_wsl',
 ] as const;
+export const DESKTOP_SETUP_HELPER_MODES = [
+  'check',
+  'apply',
+  'upgrade',
+  'force',
+] as const;
+export const DESKTOP_SETUP_ACTION_RUN_STATES = [
+  'completed',
+  'failed',
+] as const;
 
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
 export type DesktopHostActionId = typeof DESKTOP_HOST_ACTION_IDS[number];
@@ -142,6 +152,8 @@ export type DesktopProviderSetupPackId = typeof DESKTOP_PROVIDER_SETUP_PACKS[num
 export type DesktopProviderSetupAssetStatus = typeof DESKTOP_PROVIDER_SETUP_ASSET_STATUSES[number];
 export type DesktopProviderSetupAssetKind = typeof DESKTOP_PROVIDER_SETUP_ASSET_KINDS[number];
 export type DesktopProviderSetupPlatform = typeof DESKTOP_PROVIDER_SETUP_PLATFORMS[number];
+export type DesktopSetupHelperMode = typeof DESKTOP_SETUP_HELPER_MODES[number];
+export type DesktopSetupActionRunState = typeof DESKTOP_SETUP_ACTION_RUN_STATES[number];
 
 export interface ManagedServiceSnapshot {
   name: ManagedServiceName;
@@ -336,6 +348,58 @@ export interface DesktopPackagingPlan {
   updates: DesktopUpdateContract;
 }
 
+export interface DesktopSetupHelperSummary {
+  id: string;
+  assetId: string;
+  label: string;
+  kind: DesktopProviderSetupAssetKind;
+  pack: DesktopProviderSetupPackId | null;
+  platform: DesktopProviderSetupPlatform;
+  packagedRelativePath: string;
+  supportsCheckOnly: boolean;
+  supportsApply: boolean;
+  supportsUpgrade: boolean;
+  supportsForce: boolean;
+  requiresElevation: boolean;
+  resumable: boolean;
+  notes: string[];
+  available: boolean;
+  supported: boolean;
+  unsupportedReason: string | null;
+}
+
+export interface DesktopSetupActionRecord {
+  helperId: string;
+  assetId: string;
+  label: string;
+  mode: DesktopSetupHelperMode;
+  runState: DesktopSetupActionRunState;
+  status: string | null;
+  summary: string;
+  packagedRelativePath: string;
+  scriptPath: string | null;
+  requiresElevation: boolean;
+  resumable: boolean;
+  restartRequired: boolean;
+  startedAt: string;
+  completedAt: string | null;
+  warnings: string[];
+  plannedActions: string[];
+  appliedChanges: string[];
+  manualSteps: string[];
+  error: string | null;
+}
+
+export interface DesktopSetupState {
+  lastAction: DesktopSetupActionRecord | null;
+  updatedAt: string | null;
+}
+
+export interface DesktopSetupSnapshot {
+  helpers: DesktopSetupHelperSummary[];
+  state: DesktopSetupState;
+}
+
 export interface DesktopBootstrapSnapshot {
   service: typeof DESKTOP_HOST_NAME;
   version: string;
@@ -366,6 +430,7 @@ export interface DesktopBootstrapSnapshot {
   background: DesktopBackgroundState;
   updates: DesktopUpdateState;
   packaging: DesktopPackagingPlan;
+  setup: DesktopSetupState;
   hostStatePath: string | null;
 }
 
@@ -374,5 +439,6 @@ export interface DesktopHostPersistedState {
   background: DesktopBackgroundState;
   updates: DesktopUpdateState;
   packaging: DesktopPackagingPlan;
+  setup: DesktopSetupState;
   savedAt: string;
 }

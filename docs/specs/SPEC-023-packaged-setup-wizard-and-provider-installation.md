@@ -43,6 +43,8 @@ The first host-owned slice is already in-repo:
 - first-run setup can already distinguish setup entry versus ready entry
 - the host now persists a machine-readable bootstrap/remediation snapshot for
   background helpers or later installer flows
+- the host now also persists the last packaged setup helper action and exposes
+  a bounded host-owned setup bridge for structured helper discovery/execution
 - the host now carries a tray/background lifecycle and a manual-check
   update-channel skeleton
 - packaging scripts now stage Windows/macOS/Linux build outputs plus installer
@@ -415,16 +417,17 @@ teaching the renderer or the user about the underlying script topology.
   required post-install sign-in guidance without shelling out to
   `environment-bootstrap`.
 - The staged desktop packaging plan now also carries a machine-readable
-  `installer.providerSetup.helperCatalog` so future host bridge work can bind
-  setup actions to packaged assets, supported operations, and elevation
-  expectations without reverse-engineering filenames.
+  `installer.providerSetup.helperCatalog`, and the packaged host now consumes
+  that contract through `electron/setupBridge.ts` so setup actions can bind to
+  packaged assets, supported operations, and elevation expectations without
+  reverse-engineering filenames.
 - Staged setup assets now also emit a dedicated
-  `shared/setup-assets/manifest.json` alongside the bundled scripts so future
-  host bridge or smoke tooling can discover packaged setup helpers without
+  `shared/setup-assets/manifest.json` alongside the bundled scripts so host
+  bridge or smoke tooling can discover packaged setup helpers without
   parsing the full desktop packaging plan.
-- The next follow-on under `PLAN-030` is no longer the WSL substrate itself;
-  it is the host bridge/resume contract plus later provider follow-through so
-  the split does not leave required setup logic trapped in bootstrap repos.
+- The next follow-on under `PLAN-030` is no longer the baseline host bridge;
+  it is deeper interruption handling plus later provider follow-through so the
+  split does not leave required setup logic trapped in bootstrap repos.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)

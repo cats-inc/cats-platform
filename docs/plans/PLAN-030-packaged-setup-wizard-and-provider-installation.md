@@ -166,8 +166,8 @@ split-safe.
 
 - [x] Define the packaged-host helper catalog for install/check/verify action
       metadata
-- [ ] Define the packaged-host bridge for install/check/verify/resume actions
-- [ ] Define what setup state is persisted by the host versus re-derived from
+- [x] Define the packaged-host bridge for install/check/verify/resume actions
+- [x] Define what setup state is persisted by the host versus re-derived from
       `cats-runtime` on demand
 - [ ] Keep interruption handling explicit:
       - relaunch
@@ -232,6 +232,9 @@ removes local submodule convenience.
   still available in the monorepo
 - **Contract validation**: add focused tests only when the packaged-host asset
   contract or host bridge becomes executable code
+- **Current bridge validation**:
+  - `npm run build:host`
+  - `node --test --test-isolation=none tests/desktop-host-state.test.js tests/desktop-readiness.test.js tests/desktop-setup-bridge.test.js`
 - **Pre-split validation**: verify new packaged-host helpers execute without
   shelling out to bootstrap submodule scripts once the first slices land
 - **Documentation verification**:
@@ -266,6 +269,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 3 slice 7 landed: `scripts/windows/Install-KiroWslCli.ps1` is now a repo-owned packaged setup helper for the first WSL-backed provider installer, and the packaging contract/manifest/smoke coverage now bundle Kiro's WSL dependency checks, PATH cleanup, alias repair, and sign-in follow-through as first-party setup knowledge |
 | 2026-03-30 | Phase 4 slice 1 landed: `installer.providerSetup.helperCatalog` now surfaces machine-readable helper capabilities, packaged paths, elevation expectations, and supported operations for the bundled Windows setup assets so the future host bridge can bind to a stable contract instead of guessing from filenames |
 | 2026-03-30 | Phase 4 slice 2 landed: staged desktop packaging outputs now also emit `shared/setup-assets/manifest.json`, and Windows installer smoke coverage expects that manifest to ship beside the bundled setup helpers as a lighter-weight discovery surface for future host bridge work |
+| 2026-03-30 | Phase 4 slice 3 landed: `electron/setupBridge.ts`, `electron/main.ts`, and `electron/preload.cts` now expose a bounded packaged setup bridge that lists bundled helpers, executes structured install/check actions through the Electron host, persists the last packaged setup action in the desktop-host state file, and re-derives helper availability from the packaged asset contract rather than guessing from renderer-owned logic |
 
 ---
 

@@ -110,6 +110,7 @@ test('desktop bootstrap stays in ready_for_setup until setup is completed', () =
   assert.equal(snapshot.progress.currentStepId, 'enter-chat');
   assert.equal(snapshot.background.trayEnabled, true);
   assert.equal(snapshot.updates.status, 'idle');
+  assert.equal(snapshot.setup.lastAction, null);
   assert.equal(snapshot.hostStatePath, 'cats/.desktop/host/state.json');
 });
 

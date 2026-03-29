@@ -164,7 +164,7 @@ It is the desktop-owned seam for:
 
 - local service supervision
 - prerequisite and provider remediation messaging
-- later packaged install/resume flows
+- structured packaged setup helper discovery and execution
 
 The desktop host now also keeps a host-readable state file at
 `CATS_DESKTOP_HOST_STATE_PATH` (default:
@@ -176,6 +176,7 @@ The desktop host now also keeps a host-readable state file at
 - tray/background lifecycle state
 - update-channel status
 - packaging-plan metadata
+- the last packaged setup helper action/result for resume-oriented host flows
 
 The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
 and only exposes the narrow desktop action/snapshot IPC surface through a
@@ -240,7 +241,7 @@ The current substrate writes:
 The staged `desktop-package-plan.json` now also carries
 `installer.providerSetup.helperCatalog`, which is the machine-readable catalog
 of bundled setup helpers, supported operations, packaged relative paths, and
-elevation expectations for future host bridge work.
+elevation expectations consumed by the desktop host bridge.
 
 This is intentionally a staging layer, not the final signed-installer
 publication step.
@@ -305,7 +306,8 @@ Current limitations of the first real installer slice:
 - update install/apply remains manual
 - update manifests must be HTTPS, and any `downloadUrl` must stay on the
   manifest host or a host listed in `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS`
-- provider-install elevation/resume is not yet integrated into the installer
+- full elevation/relaunch resume across installer interruptions is still a
+  follow-on beyond the current bounded host bridge
 
 ## Common Issues
 

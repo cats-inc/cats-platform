@@ -6,6 +6,8 @@ import type {
   DesktopBootstrapSnapshot,
   DesktopHostPersistedState,
   DesktopPackagingPlan,
+  DesktopSetupActionRecord,
+  DesktopSetupState,
   DesktopUpdateState,
 } from './contracts.js';
 import type { DesktopHostConfig } from './config.js';
@@ -59,6 +61,65 @@ function normalizeBackgroundState(
   };
 }
 
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function normalizeSetupActionRecord(value: unknown): DesktopSetupActionRecord | null {
+  if (!isObjectRecord(value)) {
+    return null;
+  }
+
+  const mode = value.mode;
+  if (mode !== 'check' && mode !== 'apply' && mode !== 'upgrade' && mode !== 'force') {
+    return null;
+  }
+
+  const runState = value.runState;
+  if (runState !== 'completed' && runState !== 'failed') {
+    return null;
+  }
+
+  return {
+    helperId: readString(value.helperId) ?? 'unknown-helper',
+    assetId: readString(value.assetId) ?? 'unknown-asset',
+    label: readString(value.label) ?? 'Unknown setup helper',
+    mode,
+    runState,
+    status: readString(value.status),
+    summary: readString(value.summary) ?? 'No setup action summary recorded.',
+    packagedRelativePath: readString(value.packagedRelativePath) ?? '',
+    scriptPath: readString(value.scriptPath),
+    requiresElevation: value.requiresElevation === true,
+    resumable: value.resumable === true,
+    restartRequired: value.restartRequired === true,
+    startedAt: readString(value.startedAt) ?? new Date(0).toISOString(),
+    completedAt: readString(value.completedAt),
+    warnings: readStringArray(value.warnings),
+    plannedActions: readStringArray(value.plannedActions),
+    appliedChanges: readStringArray(value.appliedChanges),
+    manualSteps: readStringArray(value.manualSteps),
+    error: readString(value.error),
+  };
+}
+
+function normalizeSetupState(
+  value: unknown,
+  fallback: DesktopSetupState,
+): DesktopSetupState {
+  if (!isObjectRecord(value)) {
+    return fallback;
+  }
+
+  return {
+    lastAction: normalizeSetupActionRecord(value.lastAction),
+    updatedAt: readString(value.updatedAt),
+  };
+}
+
 export class DesktopHostStateStore {
   private writeQueue = Promise.resolve();
 
@@ -77,6 +138,7 @@ export class DesktopHostStateStore {
       background: DesktopBackgroundState;
       updates: DesktopUpdateState;
       packaging: DesktopPackagingPlan;
+      setup: DesktopSetupState;
     },
   ): Promise<DesktopHostPersistedState | null> {
     try {
@@ -97,6 +159,7 @@ export class DesktopHostStateStore {
           packaging: isObjectRecord(snapshot.packaging)
             ? snapshot.packaging as unknown as DesktopPackagingPlan
             : defaults.packaging,
+          setup: normalizeSetupState(snapshot.setup, defaults.setup),
           hostStatePath: this.statePath,
         },
         background: normalizeBackgroundState(parsed.background, defaults.background),
@@ -106,6 +169,7 @@ export class DesktopHostStateStore {
         packaging: isObjectRecord(parsed.packaging)
           ? parsed.packaging as unknown as DesktopPackagingPlan
           : defaults.packaging,
+        setup: normalizeSetupState(parsed.setup, defaults.setup),
         savedAt: readString(parsed.savedAt) ?? this.now().toISOString(),
       };
     } catch {
@@ -118,6 +182,7 @@ export class DesktopHostStateStore {
     background: DesktopBackgroundState;
     updates: DesktopUpdateState;
     packaging: DesktopPackagingPlan;
+    setup: DesktopSetupState;
   }): Promise<void> {
     const writeOperation = this.writeQueue.catch(() => undefined).then(async () => {
       await mkdir(dirname(this.statePath), { recursive: true });
@@ -126,6 +191,7 @@ export class DesktopHostStateStore {
         background: input.background,
         updates: input.updates,
         packaging: input.packaging,
+        setup: input.setup,
         savedAt: this.now().toISOString(),
       };
       await writeFile(this.statePath, JSON.stringify(payload, null, 2));

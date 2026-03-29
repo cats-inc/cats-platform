@@ -3,10 +3,12 @@ import type {
   DesktopBootstrapSnapshot,
   DesktopBootstrapProgress,
   DesktopHostAction,
+  DesktopPackagingPlan,
   DesktopHostActionId,
   DesktopPrerequisiteIssue,
   DesktopProviderIssue,
   DesktopProviderSummary,
+  DesktopSetupState,
   DesktopUpdateState,
   ManagedServiceSnapshot,
 } from './contracts.js';
@@ -74,6 +76,8 @@ interface BuildDesktopBootstrapSnapshotInput {
   now?: () => Date;
   background?: DesktopBackgroundState;
   updates?: DesktopUpdateState;
+  packaging?: DesktopPackagingPlan;
+  setup?: DesktopSetupState;
   hostStatePath?: string | null;
 }
 
@@ -475,10 +479,14 @@ export function buildDesktopBootstrapSnapshot(
 
   const background = input.background ?? createDesktopBackgroundState(input.config);
   const updates = input.updates ?? createDefaultDesktopUpdateState(input.config.update);
-  const packaging = createDesktopPackagingPlan(input.config, {
+  const packaging = input.packaging ?? createDesktopPackagingPlan(input.config, {
     generatedAt: now,
     outputRoot: input.config.paths.packagingOutputRoot,
   });
+  const setup = input.setup ?? {
+    lastAction: null,
+    updatedAt: null,
+  };
   const progress = buildBootstrapProgress(input.services, phase, issues, input.lastError);
 
   return {
@@ -515,6 +523,7 @@ export function buildDesktopBootstrapSnapshot(
     background,
     updates,
     packaging,
+    setup,
     hostStatePath: input.hostStatePath ?? input.config.paths.hostStatePath,
   };
 }

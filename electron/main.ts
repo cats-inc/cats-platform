@@ -6,9 +6,14 @@ import type {
   DesktopBackgroundState,
   DesktopBootstrapSnapshot,
   DesktopHostActionId,
+  DesktopPackagingPlan,
+  DesktopSetupHelperMode,
+  DesktopSetupSnapshot,
+  DesktopSetupState,
   DesktopUpdateState,
 } from './contracts.js';
 import { createDesktopBackgroundState, DesktopHostStateStore } from './hostState.js';
+import { createDesktopPackagingPlan } from './packaging.js';
 import { ManagedServiceSupervisor } from './processSupervisor.js';
 import {
   buildDesktopBootstrapSnapshot,
@@ -19,6 +24,11 @@ import {
   type RuntimeProviderDiagnosticsPayload,
 } from './readiness.js';
 import { isDesktopHostActionId, validateDesktopUrl } from './security.js';
+import {
+  buildDesktopSetupSnapshot,
+  createEmptyDesktopSetupState,
+  runDesktopSetupHelper,
+} from './setupBridge.js';
 import { createDesktopTrayController, type DesktopTrayController } from './tray.js';
 import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
 
@@ -32,6 +42,8 @@ let trayController: DesktopTrayController | null = null;
 let stateStore: DesktopHostStateStore | null = null;
 let backgroundState: DesktopBackgroundState | null = null;
 let updateState: DesktopUpdateState | null = null;
+let packagingState: DesktopPackagingPlan | null = null;
+let setupState: DesktopSetupState | null = null;
 let bootstrapPageVisible = false;
 
 function encodeDataUrl(html: string): string {
@@ -82,6 +94,7 @@ function writePersistedHostState(snapshot: DesktopBootstrapSnapshot): void {
     background: snapshot.background,
     updates: snapshot.updates,
     packaging: snapshot.packaging,
+    setup: snapshot.setup,
   }).catch((error) => {
     process.stderr.write(`Failed to persist desktop host state: ${error instanceof Error ? error.message : String(error)}\n`);
   });
@@ -92,6 +105,8 @@ function publishSnapshot(snapshot: DesktopBootstrapSnapshot): DesktopBootstrapSn
     ...snapshot,
     background: backgroundState ?? snapshot.background,
     updates: updateState ?? snapshot.updates,
+    packaging: packagingState ?? snapshot.packaging,
+    setup: setupState ?? snapshot.setup,
     hostStatePath: hostConfig?.paths.hostStatePath ?? snapshot.hostStatePath,
   };
   latestSnapshot = enriched;
@@ -149,6 +164,29 @@ function hideMainWindowToTray(): void {
   }
 }
 
+function isDesktopSetupHelperMode(value: unknown): value is DesktopSetupHelperMode {
+  return value === 'check' || value === 'apply' || value === 'upgrade' || value === 'force';
+}
+
+function resolveCurrentPackagingPlan(config: DesktopHostConfig): DesktopPackagingPlan {
+  return packagingState ?? createDesktopPackagingPlan(config, {
+    generatedAt: new Date(),
+    outputRoot: config.paths.packagingOutputRoot,
+  });
+}
+
+async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
+  if (!hostConfig) {
+    throw new Error('Desktop host is not initialized.');
+  }
+
+  return await buildDesktopSetupSnapshot({
+    config: hostConfig,
+    packaging: resolveCurrentPackagingPlan(hostConfig),
+    state: setupState ?? createEmptyDesktopSetupState(),
+  });
+}
+
 function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
   if (!hostConfig || !supervisor) {
     throw new Error('Desktop host is not initialized.');
@@ -159,6 +197,8 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
     lastError,
     background: backgroundState ?? undefined,
     updates: updateState ?? undefined,
+    packaging: packagingState ?? undefined,
+    setup: setupState ?? undefined,
     hostStatePath: hostConfig.paths.hostStatePath,
   });
 }
@@ -184,6 +224,8 @@ async function refreshBootstrapSnapshot(): Promise<DesktopBootstrapSnapshot> {
     providerDiagnostics: providerDiagnostics.status === 'fulfilled' ? providerDiagnostics.value : null,
     background: backgroundState ?? undefined,
     updates: updateState ?? undefined,
+    packaging: packagingState ?? undefined,
+    setup: setupState ?? undefined,
     hostStatePath: hostConfig.paths.hostStatePath,
   });
 }
@@ -285,6 +327,31 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
   throw new Error(`Unknown desktop host action: ${actionId}`);
 }
 
+async function runSetupAction(
+  action: {
+    helperId: string;
+    mode: DesktopSetupHelperMode;
+  },
+): Promise<DesktopSetupSnapshot> {
+  if (!hostConfig) {
+    throw new Error('Desktop host is not initialized.');
+  }
+
+  const packaging = resolveCurrentPackagingPlan(hostConfig);
+  const result = await runDesktopSetupHelper({
+    config: hostConfig,
+    packaging,
+    action,
+  });
+  packagingState = packaging;
+  setupState = {
+    lastAction: result,
+    updatedAt: result.completedAt ?? result.startedAt,
+  };
+  publishSnapshot(await refreshBootstrapSnapshot());
+  return await getSetupSnapshot();
+}
+
 async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindow> {
   const window = new BrowserWindow({
     width: 1280,
@@ -350,9 +417,26 @@ async function main(): Promise<void> {
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
   });
-  backgroundState = createDesktopBackgroundState(hostConfig);
-  updateState = createDefaultDesktopUpdateState(hostConfig.update);
   stateStore = new DesktopHostStateStore(hostConfig.paths.hostStatePath);
+  {
+    const defaultBackground = createDesktopBackgroundState(hostConfig);
+    const defaultUpdates = createDefaultDesktopUpdateState(hostConfig.update);
+    const defaultPackaging = createDesktopPackagingPlan(hostConfig, {
+      generatedAt: new Date(),
+      outputRoot: hostConfig.paths.packagingOutputRoot,
+    });
+    const defaultSetup = createEmptyDesktopSetupState();
+    const restoredState = await stateStore.load(hostConfig, {
+      background: defaultBackground,
+      updates: defaultUpdates,
+      packaging: defaultPackaging,
+      setup: defaultSetup,
+    });
+    backgroundState = restoredState?.background ?? defaultBackground;
+    updateState = restoredState?.updates ?? defaultUpdates;
+    packagingState = restoredState?.packaging ?? defaultPackaging;
+    setupState = restoredState?.setup ?? defaultSetup;
+  }
   supervisor = new ManagedServiceSupervisor(hostConfig, {
     onStateChange: () => {
       if (hostConfig && supervisor) {
@@ -361,6 +445,8 @@ async function main(): Promise<void> {
           services: supervisor.getSnapshots(),
           background: backgroundState ?? undefined,
           updates: updateState ?? undefined,
+          packaging: packagingState ?? undefined,
+          setup: setupState ?? undefined,
           hostStatePath: hostConfig.paths.hostStatePath,
         }));
       }
@@ -393,11 +479,28 @@ async function main(): Promise<void> {
   ipcMain.handle('cats-host:get-snapshot', async () => {
     return latestSnapshot ?? buildSnapshot(null);
   });
+  ipcMain.handle('cats-host:get-setup-snapshot', async () => {
+    return await getSetupSnapshot();
+  });
   ipcMain.handle('cats-host:run-action', async (_event, actionId: unknown) => {
     if (!isDesktopHostActionId(actionId)) {
       throw new Error(`Invalid desktop host action: ${String(actionId)}`);
     }
     return await runHostAction(actionId);
+  });
+  ipcMain.handle('cats-host:run-setup-helper', async (_event, payload: unknown) => {
+    if (
+      typeof payload !== 'object'
+      || payload === null
+      || typeof (payload as { helperId?: unknown }).helperId !== 'string'
+      || !isDesktopSetupHelperMode((payload as { mode?: unknown }).mode)
+    ) {
+      throw new Error('Invalid packaged setup helper action payload.');
+    }
+    return await runSetupAction({
+      helperId: (payload as { helperId: string }).helperId,
+      mode: (payload as { mode: DesktopSetupHelperMode }).mode,
+    });
   });
 
   app.on('before-quit', (event) => {
