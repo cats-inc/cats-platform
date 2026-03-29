@@ -239,7 +239,7 @@ export interface DesktopUpdateState {
 export interface DesktopPackagingArtifact {
   id: string;
   relativePath: string;
-  role: 'electron_host' | 'app_server' | 'app_renderer' | 'runtime_sidecar' | 'manifest';
+  role: 'electron_host' | 'app_server' | 'app_renderer' | 'runtime_sidecar' | 'manifest' | 'setup_asset';
   required: boolean;
 }
 

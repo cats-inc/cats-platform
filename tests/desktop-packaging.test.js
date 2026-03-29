@@ -46,7 +46,14 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'windows-node-cli-pack' && asset.status === 'planned',
+      (asset) => asset.id === 'windows-npm-prefix-helper' && asset.status === 'ported',
+    ),
+    true,
+  );
+  const windowsTarget = plan.targets.find((target) => target.id === 'windows-x64');
+  assert.equal(
+    windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-npm-prefix-helper-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -61,6 +68,9 @@ test('package.json wires Windows installers through electron-builder NSIS', asyn
   assert.equal(packageJson.scripts['start:server'], 'node dist-server/index.js');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
   assert.equal(packageJson.build.nsis.oneClick, false);
+  assert.equal(packageJson.build.extraResources.some(
+    (entry) => entry.to === 'desktop-host/setup-assets',
+  ), true);
 });
 
 test('Windows installer smoke-check script validates bundled sidecars and host state', async () => {
@@ -72,6 +82,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /app-sidecar\\dist-server\\index\.js/);
   assert.match(script, /app-sidecar\\dist\\index\.html/);
   assert.match(script, /cats-runtime\\dist\\index\.js/);
+  assert.match(script, /desktop-host\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
   assert.match(script, /desktop-host\\state\.json/);
   assert.match(script, /electron-sidecar-bundle/);
   assert.match(script, /ready_for_setup/);
@@ -101,6 +112,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await seedFile(join(packageRoot, 'dist', 'index.html'), '<!doctype html>');
   await seedFile(join(packageRoot, 'dist-electron', 'main.js'), 'export {};');
   await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(runtimeRoot, 'dist', 'index.js'), 'export {};');
 
   const config = resolveDesktopHostConfig({
@@ -123,6 +135,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'dist', 'index.html'));
   await access(join(plan.outputRoot, 'shared', 'dist-electron', 'main.js'));
   await access(join(plan.outputRoot, 'shared', 'dist-electron', 'preload.cjs'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
   await access(join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'));
 
   const targetManifest = JSON.parse(await readFile(
@@ -139,6 +152,12 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     ),
     true,
   );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'windows-npm-prefix-helper-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
 });
 
 test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is missing', async () => {
@@ -151,6 +170,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
   await seedFile(join(packageRoot, 'dist', 'index.html'), '<!doctype html>');
   await seedFile(join(packageRoot, 'dist-electron', 'main.js'), 'export {};');
   await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await mkdir(runtimeRoot, { recursive: true });
 
   const config = resolveDesktopHostConfig({

@@ -64,3 +64,18 @@ These wrappers call `npm run desktop:start`, which builds:
 
 and then launches the Electron host that supervises local `cats-runtime` and
 `cats` child processes.
+
+`cats` now also ships its first repo-owned packaged setup helper:
+
+- `scripts/windows/Setup-NodeGlobalPrefix.ps1`
+
+That helper rewrites the stable user-scoped npm prefix and PATH preparation
+logic that previously lived only in `environment-bootstrap`. It is intended for
+packaged-host setup flows and supports:
+
+- `-CheckOnly`
+- `-Apply`
+- `-Json`
+
+so the host can treat it as a structured setup asset instead of a raw bootstrap
+dependency.

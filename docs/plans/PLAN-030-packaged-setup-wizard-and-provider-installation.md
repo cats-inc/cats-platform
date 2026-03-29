@@ -135,9 +135,11 @@ instead of an implicit dependency on bootstrap scripts.
 
 ### Phase 3: Port the First High-Value Knowledge Slices
 
-- [ ] Port the highest-value stable install/check knowledge into `cats`-owned
-      assets or code, prioritizing Windows npm-prefix/PATH prep, CLI-pack
-      installation, WSL prerequisite flows, and readiness checks for the first
+- [x] Port the first Windows npm-prefix/PATH prerequisite helper into a
+      `cats`-owned packaged setup asset
+- [ ] Port the remaining highest-value stable install/check knowledge into
+      `cats`-owned assets or code, prioritizing the npm-global CLI-pack
+      installer, WSL prerequisite flows, and readiness checks for the first
       packaged setup flow
 - [ ] Rewrite those slices as product-owned helpers or bundled assets rather
       than keeping raw source-repo scripts as dependencies
@@ -246,6 +248,7 @@ removes local submodule convenience.
 | 2026-03-29 | Phase 1 landed: recorded the pre-split extraction inventory under `docs/research/2026-03-29-packaged-setup-knowledge-extraction-inventory.md`, separating already-extracted A2A/runtime metadata from still-missing packaged-host execution helpers trapped in `environment-bootstrap` |
 | 2026-03-29 | Phase 2 landed: `electron/contracts.ts` and `electron/packaging.ts` now expose a machine-readable `installer.providerSetup` contract covering setup modes, capability packs, source-knowledge boundaries, and the prioritized Windows-first port queue, with desktop packaging tests locking that shape into the staged installer manifest |
 | 2026-03-29 | Scope expanded so PLAN-030 now explicitly requires repo-owned rewrites of the first packaged-host helper slices before repo split, rather than stopping at inventory and contract freezing |
+| 2026-03-29 | Phase 3 slice 1 landed: `scripts/windows/Setup-NodeGlobalPrefix.ps1` is now a repo-owned packaged setup helper, staged into `build/desktop-packaging/shared/setup-assets/windows/`, bundled into the installer under `desktop-host/setup-assets/windows/`, and covered by packaging plus helper-contract tests |
 
 ---
 

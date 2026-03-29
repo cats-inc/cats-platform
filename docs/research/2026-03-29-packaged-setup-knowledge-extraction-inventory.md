@@ -125,7 +125,7 @@ ports a product-owned host asset layer.
 | A2A collaboration artifacts | `project-bootstrap/docs/a2a/*` | `cats-runtime` pilot + mirrored `cats/docs/a2a/*` | `cats` and `cats-runtime` repo-owned pilot artifacts | Already extracted | Do not re-open under packaged setup work |
 | Provider topology + install/check metadata | `environment-bootstrap` learnings plus runtime ADRs | `cats-runtime/src/core/provider-install/*` | `cats-runtime` | Already extracted | `cats` should consume, not duplicate |
 | Windows npm-global AI CLI pack install | `Install-NodeCLITools.ps1` | `environment-bootstrap` only | packaged-host assets in `cats` | Port first | Covers Codex, Gemini, Copilot, OpenCode, Auggie, Pi |
-| Windows npm prefix + PATH setup | `Setup-NodeJS.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Needed before npm-global CLI installs are reliable |
+| Windows npm prefix + PATH setup | `environment-bootstrap/platform/windows/Setup-NodeJS.ps1` | `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Staged into `build/desktop-packaging/shared/setup-assets/windows/` and bundled into desktop installs under `desktop-host/setup-assets/windows/` |
 | Windows WSL feature enablement | `Install-WSL2-Admin.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Needed for WSL-heavy provider packs |
 | Windows Ubuntu distro install/resume | `Install-WSLUbuntu.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Important for resumable WSL setup |
 | Windows WSL provider installers | `Install-WSLCursorAgent.ps1`, `Install-WSLKiroCLI.ps1`, related WSL scripts | `environment-bootstrap` only | packaged-host provider assets in `cats` | Port next | Cursor/Kiro are concrete first candidates |
@@ -136,13 +136,15 @@ ports a product-owned host asset layer.
 
 ## Recommended Port Order
 
-1. Port the Windows npm-global CLI pack substrate first.
-   - It is the smallest executable slice.
+1. Port the Windows npm-global CLI pack installer next.
+   - The prerequisite npm prefix + PATH helper is now repo-owned in
+     `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1`.
+   - The next missing slice is the actual npm-global CLI pack installer that
+     uses that prerequisite helper.
    - It directly covers several high-value CLI providers already supported by
      `cats-runtime`.
-   - It pairs naturally with runtime-owned provider metadata.
 
-2. Port the Windows WSL prerequisite chain second.
+2. Port the Windows WSL prerequisite chain after the CLI pack installer.
    - `Install-WSL2-Admin.ps1`
    - `Install-WSLUbuntu.ps1`
    - later `Install-WSLDependencies.ps1`
@@ -173,10 +175,11 @@ ports a product-owned host asset layer.
 
 ## Recommended Next Slice
 
-Port the first packaged-host prerequisite + asset contract around:
+Port the next packaged-host setup asset slice around:
 
-- user-scoped npm prefix / PATH setup
 - npm-global CLI install/check for the runtime-supported node-based providers
+- reuse of the repo-owned Windows npm prefix prerequisite helper that now ships
+  inside the staged desktop package
 
-That is the smallest slice that converts this inventory from documentation into
-owned product behavior.
+That is the next smallest slice that converts this inventory from documentation
+into owned product behavior.

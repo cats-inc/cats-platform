@@ -3,12 +3,14 @@ import { join, relative, resolve } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
 import type {
+  DesktopPackagingArtifact,
   DesktopInstallerContract,
   DesktopPackagingPlan,
   DesktopPackagingPlatform,
   DesktopPackagingTarget,
   DesktopUpdateChannel,
 } from './contracts.js';
+import { DESKTOP_SETUP_ASSETS, stageDesktopSetupAssets } from './setupAssets.js';
 
 interface DesktopPackagingPlanOptions {
   generatedAt?: Date;
@@ -195,12 +197,13 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           id: 'windows-npm-prefix-helper',
           label: 'Windows npm prefix and PATH prerequisite helper',
           kind: 'prerequisite_helper',
-          status: 'planned',
+          status: 'ported',
           pack: 'native_cli_pack',
           platform: 'windows',
-          currentHome: 'environment-bootstrap/platform/windows/Setup-NodeJS.ps1',
+          currentHome: 'cats/scripts/windows/Setup-NodeGlobalPrefix.ps1',
           targetHome: 'cats packaged-host setup assets',
           notes: [
+            'Repo-owned rewrite of the user-scoped npm prefix and PATH prerequisite helper.',
             'Required before npm-global CLI installs are reliable for the packaged host.',
           ],
         },
@@ -324,7 +327,7 @@ function buildPackagingTarget(
   target: (typeof PACKAGING_TARGETS)[number],
 ): DesktopPackagingTarget {
   const stageDirectory = join(outputRoot, 'targets', target.id);
-  const sharedAssets = [
+  const sharedAssets: Array<Omit<DesktopPackagingArtifact, 'required'>> = [
     { id: 'electron-main', relativePath: 'shared/dist-electron/main.js', role: 'electron_host' as const },
     { id: 'electron-preload', relativePath: 'shared/dist-electron/preload.cjs', role: 'electron_host' as const },
     { id: 'app-server', relativePath: 'shared/dist-server/index.js', role: 'app_server' as const },
@@ -332,6 +335,15 @@ function buildPackagingTarget(
     { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/dist/index.js', role: 'runtime_sidecar' as const },
     { id: 'installer-manifest', relativePath: `targets/${target.id}/installer-manifest.json`, role: 'manifest' as const },
   ];
+  if (target.platform === 'windows') {
+    for (const asset of DESKTOP_SETUP_ASSETS) {
+      sharedAssets.push({
+        id: asset.id,
+        relativePath: asset.stageRelativePath,
+        role: 'setup_asset' as const,
+      });
+    }
+  }
 
   return {
     id: target.id,
@@ -434,6 +446,7 @@ export async function stageDesktopPackagingOutputs(
   await copyDirectory(join(config.packageRoot, 'dist-server'), join(outputRoot, 'shared', 'dist-server'));
   await copyDirectory(join(config.packageRoot, 'dist'), join(outputRoot, 'shared', 'dist'));
   await copyDirectory(join(config.packageRoot, 'dist-electron'), join(outputRoot, 'shared', 'dist-electron'));
+  const setupAssets = await stageDesktopSetupAssets(config.packageRoot, outputRoot);
 
   const runtimeDistRoot = join(config.runtimePackageRoot, 'dist');
   try {
@@ -475,6 +488,10 @@ export async function stageDesktopPackagingOutputs(
         source: relative(outputRoot, join(runtimeDistRoot, 'index.js')),
         target: 'shared/cats-runtime/dist/index.js',
       },
+      ...setupAssets.map((asset) => ({
+        source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
+        target: asset.stageRelativePath,
+      })),
     ],
   }, null, 2));
 

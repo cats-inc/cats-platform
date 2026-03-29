@@ -65,6 +65,7 @@ npm run desktop:stage
 - current packaging substrate output root:
   - `build/desktop-packaging/desktop-package-plan.json`
   - `build/desktop-packaging/shared/*`
+  - `build/desktop-packaging/shared/setup-assets/windows/Setup-NodeGlobalPrefix.ps1`
   - `build/desktop-packaging/targets/<target>/installer-manifest.json`
 - current platform wrappers:
 
@@ -103,6 +104,7 @@ npm run desktop:package:windows
 - smoke-check contract:
   - verify installed `Cats.exe`
   - verify bundled `cats` and `cats-runtime` sidecar assets
+  - verify bundled packaged-setup assets, starting with the Windows npm prefix helper
   - verify packaged `desktop-package-plan.json` keeps the Windows NSIS target
   - launch the installed app and wait for the desktop-host state file to reach
     `ready_for_setup`, `ready_for_chat`, or `needs_prerequisites`
@@ -261,4 +263,4 @@ per-user path.
 
 ---
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-03-29*

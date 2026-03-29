@@ -376,9 +376,16 @@ teaching the renderer or the user about the underlying script topology.
   `installer.providerSetup` contract so packaged-host capability packs,
   knowledge-source boundaries, and prioritized Windows-first port targets are
   frozen in code instead of remaining only in prose.
-- The next follow-on under `PLAN-030` is not just more inventory work; it is
-  the repo-owned rewrite of the first packaged-host helper slices so the split
-  does not leave required setup logic trapped in bootstrap repos.
+- The first repo-owned packaged setup helper slice is now landed:
+  `scripts/windows/Setup-NodeGlobalPrefix.ps1` rewrites the stable
+  user-scoped npm prefix and PATH prerequisite logic that previously lived only
+  in `environment-bootstrap`, and the staged/bundled desktop package now
+  includes that helper under `shared/setup-assets/windows/` and
+  `desktop-host/setup-assets/windows/`.
+- The next follow-on under `PLAN-030` is no longer the npm prefix helper; it is
+  the repo-owned rewrite of the npm-global CLI pack installer and the next
+  packaged-host helper slices so the split does not leave required setup logic
+  trapped in bootstrap repos.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)
