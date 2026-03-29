@@ -397,6 +397,11 @@ teaching the renderer or the user about the underlying script topology.
   prefix, native CLI pack, and WSL prerequisite helpers into one structured
   host-side readiness audit instead of relying on the old bootstrap-wide
   `Check-Installation.ps1` report.
+- The fifth repo-owned packaged setup helper slice is now landed:
+  `scripts/windows/Install-CursorAgent.ps1` rewrites the native Windows Cursor
+  Agent installer flow into a packaged-host asset, aligning the packaged setup
+  baseline with the current Windows-native Cursor install path instead of
+  routing Cursor through WSL-first guidance.
 - The staged desktop packaging plan now also carries a machine-readable
   `installer.providerSetup.helperCatalog` so future host bridge work can bind
   setup actions to packaged assets, supported operations, and elevation

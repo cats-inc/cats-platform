@@ -5,7 +5,7 @@ export interface DesktopSetupAsset {
   id: string;
   helperId: string;
   label: string;
-  kind: 'prerequisite_helper' | 'cli_pack_installer' | 'readiness_helper';
+  kind: 'prerequisite_helper' | 'cli_pack_installer' | 'provider_installer' | 'readiness_helper';
   pack: 'native_cli_pack' | null;
   platform: 'windows';
   sourceRelativePath: string;
@@ -62,6 +62,27 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     resumable: true,
     notes: [
       'Installs or upgrades the native Node-based CLI provider pack after npm prefix preparation.',
+    ],
+  },
+  {
+    id: 'windows-cursor-native-installer-script',
+    helperId: 'windows-cursor-native-installer',
+    label: 'Windows native Cursor Agent installer',
+    kind: 'provider_installer',
+    pack: 'native_cli_pack',
+    platform: 'windows',
+    sourceRelativePath: 'scripts/windows/Install-CursorAgent.ps1',
+    stageRelativePath: 'shared/setup-assets/windows/Install-CursorAgent.ps1',
+    packagedRelativePath: 'desktop-host/setup-assets/windows/Install-CursorAgent.ps1',
+    targetPlatforms: ['windows'],
+    supportsCheckOnly: true,
+    supportsApply: true,
+    supportsUpgrade: true,
+    supportsForce: true,
+    requiresElevation: false,
+    resumable: true,
+    notes: [
+      'Installs or upgrades the native Windows Cursor Agent CLI after the packaged host confirms prerequisite readiness.',
     ],
   },
   {

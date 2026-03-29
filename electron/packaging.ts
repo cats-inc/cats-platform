@@ -122,7 +122,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           requiresLocalInstall: true,
           notes: [
             'Windows-first knowledge-porting target from environment-bootstrap.',
-            'Combines npm-global node CLI tools with WSL-backed installers where required.',
+            'Combines npm-global node CLI tools, native Windows installers, and WSL-backed installers where required.',
           ],
         },
         {
@@ -238,6 +238,20 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           ],
         },
         {
+          id: 'windows-cursor-native-installer',
+          label: 'Windows native Cursor Agent installer',
+          kind: 'provider_installer',
+          status: 'ported',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          currentHome: 'cats/scripts/windows/Install-CursorAgent.ps1',
+          targetHome: 'cats packaged-host provider assets',
+          notes: [
+            'Repo-owned rewrite of the native Windows Cursor Agent installer flow.',
+            'Keeps Cursor on the Windows-native install path instead of routing first through WSL.',
+          ],
+        },
+        {
           id: 'windows-wsl-prerequisite-preflight',
           label: 'Windows WSL prerequisite preflight',
           kind: 'prerequisite_helper',
@@ -264,19 +278,6 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           ],
         },
         {
-          id: 'windows-cursor-wsl-installer',
-          label: 'Windows WSL Cursor Agent installer',
-          kind: 'provider_installer',
-          status: 'planned',
-          pack: 'native_cli_pack',
-          platform: 'windows_wsl',
-          currentHome: 'environment-bootstrap/platform/windows/Install-WSLCursorAgent.ps1',
-          targetHome: 'cats packaged-host provider assets',
-          notes: [
-            'Encodes WSL distro checks, PATH repair, and auth guidance for Cursor Agent.',
-          ],
-        },
-        {
           id: 'windows-kiro-wsl-installer',
           label: 'Windows WSL Kiro installer',
           kind: 'provider_installer',
@@ -286,7 +287,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           currentHome: 'environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1',
           targetHome: 'cats packaged-host provider assets',
           notes: [
-            'Encodes WSL dependency checks, PATH cleanup, and aliasing behavior for Kiro.',
+            'Encodes WSL dependency checks, PATH cleanup, aliasing behavior, and sign-in follow-through for Kiro.',
           ],
         },
         {

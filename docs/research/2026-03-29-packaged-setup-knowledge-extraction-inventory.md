@@ -31,11 +31,11 @@ runtime-owned provider metadata from `cats-runtime`.
 
 - [`environment-bootstrap/README.md`](../../../environment-bootstrap/README.md)
 - [`environment-bootstrap/platform/windows/Install-NodeCLITools.ps1`](../../../environment-bootstrap/platform/windows/Install-NodeCLITools.ps1)
+- [`environment-bootstrap/platform/windows/Install-CursorAgent.ps1`](../../../environment-bootstrap/platform/windows/Install-CursorAgent.ps1)
 - [`environment-bootstrap/platform/windows/Setup-NodeJS.ps1`](../../../environment-bootstrap/platform/windows/Setup-NodeJS.ps1)
 - [`environment-bootstrap/platform/windows/Check-Installation.ps1`](../../../environment-bootstrap/platform/windows/Check-Installation.ps1)
 - [`environment-bootstrap/platform/windows/Install-WSL2-Admin.ps1`](../../../environment-bootstrap/platform/windows/Install-WSL2-Admin.ps1)
 - [`environment-bootstrap/platform/windows/Install-WSLUbuntu.ps1`](../../../environment-bootstrap/platform/windows/Install-WSLUbuntu.ps1)
-- [`environment-bootstrap/platform/windows/Install-WSLCursorAgent.ps1`](../../../environment-bootstrap/platform/windows/Install-WSLCursorAgent.ps1)
 - [`environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1`](../../../environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1)
 - [`environment-bootstrap/platform/windows/Install-Docker-Admin.ps1`](../../../environment-bootstrap/platform/windows/Install-Docker-Admin.ps1)
 
@@ -93,6 +93,8 @@ reimplement:
 
 - npm-global CLI pack installation via
   [`Install-NodeCLITools.ps1`](../../../environment-bootstrap/platform/windows/Install-NodeCLITools.ps1)
+- native Windows Cursor Agent installation via
+  [`Install-CursorAgent.ps1`](../../../environment-bootstrap/platform/windows/Install-CursorAgent.ps1)
 - user-scoped npm prefix + PATH preparation via
   [`Setup-NodeJS.ps1`](../../../environment-bootstrap/platform/windows/Setup-NodeJS.ps1)
 - WSL prerequisite enablement and distro install via
@@ -100,8 +102,6 @@ reimplement:
   and
   [`Install-WSLUbuntu.ps1`](../../../environment-bootstrap/platform/windows/Install-WSLUbuntu.ps1)
 - WSL provider installers such as
-  [`Install-WSLCursorAgent.ps1`](../../../environment-bootstrap/platform/windows/Install-WSLCursorAgent.ps1)
-  and
   [`Install-WSLKiroCLI.ps1`](../../../environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1)
 - bundled readiness and auth-state inspection via
   [`Check-Installation.ps1`](../../../environment-bootstrap/platform/windows/Check-Installation.ps1)
@@ -125,12 +125,13 @@ ports a product-owned host asset layer.
 | A2A collaboration artifacts | `project-bootstrap/docs/a2a/*` | `cats-runtime` pilot + mirrored `cats/docs/a2a/*` | `cats` and `cats-runtime` repo-owned pilot artifacts | Already extracted | Do not re-open under packaged setup work |
 | Provider topology + install/check metadata | `environment-bootstrap` learnings plus runtime ADRs | `cats-runtime/src/core/provider-install/*` | `cats-runtime` | Already extracted | `cats` should consume, not duplicate |
 | Windows npm-global AI CLI pack install | `environment-bootstrap/platform/windows/Install-NodeCLITools.ps1` | `cats/scripts/windows/Install-NodeCliPack.ps1` | packaged-host assets in `cats` | Ported | Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi, and now consumes the repo-owned npm prefix helper instead of a bootstrap dependency |
+| Windows native Cursor Agent installer | `environment-bootstrap/platform/windows/Install-CursorAgent.ps1` | `cats/scripts/windows/Install-CursorAgent.ps1` | packaged-host provider assets in `cats` | Ported | Aligns packaged setup with the current Windows-native Cursor install baseline instead of routing Cursor through WSL-first guidance |
 | Windows npm prefix + PATH setup | `environment-bootstrap/platform/windows/Setup-NodeJS.ps1` | `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Staged into `build/desktop-packaging/shared/setup-assets/windows/` and bundled into desktop installs under `desktop-host/setup-assets/windows/` |
 | Windows WSL prerequisite preflight | `Install-WSL2-Admin.ps1` + `Install-WSLUbuntu.ps1` knowledge | `cats/scripts/windows/Check-WslPrerequisites.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Structured preflight only; does not yet enable Windows features or install the distro |
 | Windows setup readiness audit | `environment-bootstrap/platform/windows/Check-Installation.ps1` | `cats/scripts/windows/Check-WindowsSetupReadiness.ps1` | host-side readiness/recovery helpers in `cats` | Ported | Structured audit only; composes the repo-owned prefix, native CLI pack, and WSL preflight helpers instead of copying the old bootstrap-wide report verbatim |
 | Windows WSL feature enablement | `Install-WSL2-Admin.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Needed for WSL-heavy provider packs |
 | Windows Ubuntu distro install/resume | `Install-WSLUbuntu.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Important for resumable WSL setup |
-| Windows WSL provider installers | `Install-WSLCursorAgent.ps1`, `Install-WSLKiroCLI.ps1`, related WSL scripts | `environment-bootstrap` only | packaged-host provider assets in `cats` | Port next | Cursor/Kiro are concrete first candidates |
+| Windows WSL provider installers | `Install-WSLKiroCLI.ps1`, related WSL scripts | `environment-bootstrap` only | packaged-host provider assets in `cats` | Port next | Kiro is now the concrete first candidate because Cursor follows the Windows-native install baseline |
 | Windows readiness/auth inspection follow-through | remaining `Check-Installation.ps1` coverage | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; expand the repo-owned audit incrementally instead of copying the old bootstrap-wide report verbatim |
 | Docker Desktop install + warm-state knowledge | `Install-Docker-Admin.ps1` | `environment-bootstrap` only | later packaged-host capability pack | Defer | Relevant for heavier local-model / container paths, not first baseline |
 | Ngrok / tunnel setup | `Install-Ngrok-Admin.ps1`, `Setup-Ngrok.ps1` | `environment-bootstrap` only | later transport helper layer in `cats` | Defer | Not part of the first packaged setup baseline |
@@ -143,21 +144,23 @@ ports a product-owned host asset layer.
      `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1`.
    - The Windows npm-global CLI pack installer is now repo-owned in
      `cats/scripts/windows/Install-NodeCliPack.ps1`.
+   - The Windows native Cursor Agent installer is now repo-owned in
+     `cats/scripts/windows/Install-CursorAgent.ps1`.
    - The WSL prerequisite preflight is now repo-owned in
      `cats/scripts/windows/Check-WslPrerequisites.ps1`.
    - The host-side readiness audit is now repo-owned in
      `cats/scripts/windows/Check-WindowsSetupReadiness.ps1`.
    - The next missing Windows-first slice is the actual WSL feature-enable and
-     distro-install chain that unlocks Cursor, Kiro, and the heavier native
-     CLI paths.
+     distro-install chain that unlocks Kiro and the heavier WSL-backed CLI
+     paths.
    - `Install-WSL2-Admin.ps1`
    - `Install-WSLUbuntu.ps1`
    - later `Install-WSLDependencies.ps1`
 
 2. Port concrete WSL provider installers after the prerequisite chain.
-   - Start with Cursor and Kiro because those scripts already encode the most
-     relevant WSL install/auth/path repair behavior for the first packaged
-     native-CLI direction.
+   - Start with Kiro because it still encodes the most relevant WSL
+     install/auth/path repair behavior for the first packaged WSL-backed
+     direction.
 
 3. Defer Docker and tunnel flows until after the first packaged setup contract
    is stable.
@@ -181,8 +184,8 @@ ports a product-owned host asset layer.
 Port the next packaged-host setup asset slice around:
 
 - Windows WSL prerequisite enablement and distro bootstrap
-- reuse of the repo-owned Windows npm prefix helper and native CLI pack helper
-  that now ship inside the staged desktop package
+- reuse of the repo-owned Windows npm prefix helper, native CLI pack helper,
+  and native Cursor installer that now ship inside the staged desktop package
 - extend the new WSL prerequisite preflight helper into the actual feature and
   distro mutation flow
 

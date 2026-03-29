@@ -69,6 +69,7 @@ and then launches the Electron host that supervises local `cats-runtime` and
 
 - `scripts/windows/Setup-NodeGlobalPrefix.ps1`
 - `scripts/windows/Install-NodeCliPack.ps1`
+- `scripts/windows/Install-CursorAgent.ps1`
 - `scripts/windows/Check-WslPrerequisites.ps1`
 - `scripts/windows/Check-WindowsSetupReadiness.ps1`
 
@@ -85,6 +86,17 @@ support:
 
 - `-Upgrade`
 - `-Force`
+
+`Install-CursorAgent.ps1` supports the same structured packaged-host contract:
+
+- `-CheckOnly`
+- `-Apply`
+- `-Upgrade`
+- `-Force`
+- `-Json`
+
+It keeps Cursor on the Windows-native install path for packaged setup instead
+of treating Cursor as a WSL-first provider.
 
 `Check-WslPrerequisites.ps1` adds the first repo-owned WSL prerequisite
 preflight contract so the host can tell whether Windows build, WSL presence,
