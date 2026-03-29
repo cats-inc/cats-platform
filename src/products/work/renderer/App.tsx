@@ -727,6 +727,7 @@ export default function App() {
         onCollapsedSidebarClick={onCollapsedSidebarClick}
         onOpenChatsOverview={onOpenChatsOverview}
         onStartNewChat={onStartNewChat}
+        onStartWorkIntake={() => navigate('/work/intake')}
         onSelect={onSelect}
         onDeleteChannel={onDeleteChannel}
         onRenameChannel={onRenameChannel}
