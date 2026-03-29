@@ -172,6 +172,88 @@ test('desktop bootstrap opens chat when setup and provider readiness are complet
   assert.equal(snapshot.packaging.targets.length >= 3, true);
 });
 
+test('desktop bootstrap surfaces packaged setup restart recovery as an install issue', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: null,
+    },
+    runtimeHealth: {
+      status: 'degraded',
+      runtime: {
+        status: 'ok',
+        summary: 'Runtime is ready.',
+      },
+      providers: {
+        summary: {
+          status: 'degraded',
+          summary: 'No default provider targets are configured yet.',
+          configuredProviders: 0,
+          targets: 0,
+          defaultTargets: 0,
+          ok: 0,
+          degraded: 0,
+          unavailable: 0,
+        },
+      },
+    },
+    providerDiagnostics: {
+      summary: {
+        status: 'degraded',
+        summary: 'No provider targets are configured yet.',
+        configuredProviders: 0,
+        targets: 0,
+        defaultTargets: 0,
+        ok: 0,
+        degraded: 0,
+        unavailable: 0,
+      },
+      providers: [],
+    },
+    setup: {
+      updatedAt: '2026-03-30T12:15:00.000Z',
+      lastAction: {
+        helperId: 'windows-wsl-environment-installer',
+        assetId: 'windows-wsl-environment-installer-script',
+        label: 'Windows WSL substrate and Ubuntu installer',
+        mode: 'apply',
+        runState: 'completed',
+        status: 'restart_required',
+        summary: 'Restart Windows, then rerun the WSL helper.',
+        packagedRelativePath: 'desktop-host/setup-assets/windows/Install-WslUbuntuEnvironment.ps1',
+        scriptPath: null,
+        requiresElevation: true,
+        resumable: true,
+        restartRequired: true,
+        startedAt: '2026-03-30T12:10:00.000Z',
+        completedAt: '2026-03-30T12:15:00.000Z',
+        warnings: [],
+        plannedActions: ['install_distro:Ubuntu'],
+        appliedChanges: ['enable_wsl_features'],
+        manualSteps: ['Restart Windows, then rerun this helper to register the Ubuntu distro.'],
+        error: null,
+      },
+    },
+  });
+
+  const installIssue = snapshot.issues.find((issue) => issue.id === 'setup-restart-required');
+  assert.ok(installIssue);
+  assert.equal(installIssue?.category, 'install');
+  assert.equal(installIssue?.remediation?.kind, 'open_setup');
+  assert.equal(installIssue?.remediation?.requiresRestart, true);
+  assert.match(installIssue?.detail ?? '', /Restart Windows/i);
+});
+
 test('desktop bootstrap surfaces provider remediation after setup if no provider is ready', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,

@@ -136,10 +136,12 @@ function buildIssues(
   runtimeHealth: RuntimeDiagnosticsHealthPayload | null | undefined,
   providerSummary: DesktopProviderSummary | null,
   providerIssues: DesktopProviderIssue[],
+  setup: DesktopSetupState | null | undefined,
   lastError: string | null | undefined,
 ): DesktopPrerequisiteIssue[] {
   const issues: DesktopPrerequisiteIssue[] = [];
   const setupComplete = Boolean(appShell?.setupCompleteAt);
+  const lastSetupAction = setup?.lastAction ?? null;
 
   if (lastError) {
     issues.push({
@@ -229,6 +231,59 @@ function buildIssues(
         kind: 'open_setup',
         label: 'Open setup',
         resumable: true,
+        requiresRestart: false,
+        docsPath: 'cats/docs/setup-guide.md',
+      },
+    });
+  }
+
+  if (lastSetupAction?.restartRequired) {
+    issues.push({
+      id: 'setup-restart-required',
+      severity: setupComplete ? 'error' : 'warning',
+      title: 'Packaged setup needs a restart before it can continue',
+      detail: lastSetupAction.summary,
+      target: lastSetupAction.helperId,
+      category: 'install',
+      resumeKey: `setup_${lastSetupAction.helperId}_restart`,
+      remediation: {
+        kind: 'open_setup',
+        label: 'Open setup recovery',
+        resumable: lastSetupAction.resumable,
+        requiresRestart: true,
+        docsPath: 'cats/docs/setup-guide.md',
+      },
+    });
+  } else if (lastSetupAction?.runState === 'failed') {
+    issues.push({
+      id: 'setup-recovery-required',
+      severity: setupComplete ? 'error' : 'warning',
+      title: 'Packaged setup helper needs recovery',
+      detail: lastSetupAction.error ?? lastSetupAction.summary,
+      target: lastSetupAction.helperId,
+      category: 'install',
+      resumeKey: `setup_${lastSetupAction.helperId}_retry`,
+      remediation: {
+        kind: 'open_setup',
+        label: 'Open setup recovery',
+        resumable: lastSetupAction.resumable,
+        requiresRestart: false,
+        docsPath: 'cats/docs/setup-guide.md',
+      },
+    });
+  } else if (lastSetupAction?.manualSteps.length) {
+    issues.push({
+      id: 'setup-manual-follow-through',
+      severity: 'info',
+      title: 'Packaged setup still has manual follow-through',
+      detail: lastSetupAction.manualSteps[0] ?? lastSetupAction.summary,
+      target: lastSetupAction.helperId,
+      category: 'install',
+      resumeKey: `setup_${lastSetupAction.helperId}_manual`,
+      remediation: {
+        kind: 'open_setup',
+        label: 'Open setup recovery',
+        resumable: lastSetupAction.resumable,
         requiresRestart: false,
         docsPath: 'cats/docs/setup-guide.md',
       },
@@ -441,6 +496,7 @@ export function buildDesktopBootstrapSnapshot(
     input.runtimeHealth,
     providerSummary,
     providerIssues,
+    input.setup,
     input.lastError,
   );
   const setupCompleteAt = input.appShell?.setupCompleteAt ?? null;

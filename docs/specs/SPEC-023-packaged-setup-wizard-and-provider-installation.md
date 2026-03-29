@@ -52,6 +52,9 @@ The first host-owned slice is already in-repo:
   from the last resumable helper run and exposes a dedicated host-owned
   `resume-setup` path so restart/manual follow-through states do not collapse
   into ad hoc retry guidance
+- bootstrap readiness now also surfaces packaged setup restart/recovery states
+  as install-category issues instead of leaving them implicit behind provider
+  remediation only
 - the host now carries a tray/background lifecycle and a manual-check
   update-channel skeleton
 - packaging scripts now stage Windows/macOS/Linux build outputs plus installer

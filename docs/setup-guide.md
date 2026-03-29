@@ -182,7 +182,10 @@ The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
 and only exposes the narrow desktop action/snapshot IPC surface through a
 preload bridge. The bootstrap page also shows a setup recovery panel with the
 bundled helper count, the last packaged setup action summary, and the current
-recommended resume step when a helper reports a resumable interruption.
+recommended resume step when a helper reports a resumable interruption. When a
+packaged setup step blocks on a restart or other recovery action, the bootstrap
+issue panel also reports that state as an install-category issue instead of
+showing only provider remediation.
 
 ### Self-Hosted npm Package Smoke
 
