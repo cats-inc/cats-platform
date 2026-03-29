@@ -6,10 +6,11 @@ import {
   type RouteContext,
 } from '../../../shared/http.js';
 import { upsertCoreProject } from '../../../core/model/planningRecords.js';
-import { writeApprovalDecision } from '../../../core/model/taskControls.js';
+import {
+  upsertCoreTask,
+  writeApprovalDecision,
+} from '../../../core/model/taskControls.js';
 import { appendCoreActivity } from '../../../core/model/executionRecords.js';
-import { applyTaskAssignmentLifecycle } from '../../../core/taskLifecycle.js';
-import { buildTaskRuntimeExecutionRequest } from '../../../shared/taskExecutionBridge.js';
 import { readTaskPlanningMetadata } from '../../../shared/taskPlanning.js';
 import { generateWorkIntakePlan } from '../intake/index.js';
 import { getWorkTemplate, listWorkTemplates } from '../templates/index.js';
@@ -197,44 +198,32 @@ export async function routeWorkIntakeApi(
       }
 
       // Activity record
+      const planning = readTaskPlanningMetadata(task.metadata);
+      const targetProduct = planning.productHint ?? 'work';
       const activityResult = appendCoreActivity(core, {
         kind: 'approval_decided',
         projectId,
         taskId: task.id,
-        message: `Plan task approved: "${task.title}".`,
+        message: `Plan task approved: "${task.title}" → ${targetProduct}.`,
       }, now);
       core = activityResult.core;
     }
 
-    // Dispatch approved tasks with assigned actors to runtime
-    const { runtimeClient, taskExecutionLocator } = context.dependencies;
-    if (runtimeClient && taskExecutionLocator) {
-      const approvedTasks = core.tasks.filter((t) =>
-        tasks.some((orig) => orig.id === t.id)
-        && (t.status === 'approved' || t.status === 'in_progress')
-        && t.assignedActorIds.length > 0,
-      );
-
-      for (const approvedTask of approvedTasks) {
-        const previousTask = tasks.find((t) => t.id === approvedTask.id) ?? null;
-        const planning = readTaskPlanningMetadata(approvedTask.metadata);
-        const executionRequest = buildTaskRuntimeExecutionRequest({
-          core,
-          task: approvedTask,
-          product: planning.productHint,
-        });
-
-        const lifecycleResult = await applyTaskAssignmentLifecycle({
-          core,
-          previousTask,
-          task: approvedTask,
-          executionRequest,
-          executionLocator: taskExecutionLocator,
-          runtimeClient,
-          now,
-        });
-        core = lifecycleResult.core;
+    // Transition approved tasks to in_progress so downstream products can
+    // pick them up.  Work does not own runtime sessions; Chat and Code
+    // create sessions when they consume tasks via their own adapters.
+    for (const task of tasks) {
+      const current = core.tasks.find((t) => t.id === task.id);
+      if (!current || current.status !== 'approved') {
+        continue;
       }
+
+      const transitionResult = upsertCoreTask(core, {
+        id: current.id,
+        title: current.title,
+        status: 'in_progress',
+      }, now);
+      core = transitionResult.core;
     }
 
     // Update project status to active

@@ -168,7 +168,7 @@ test('GET /api/work/intake/:projectId/plan returns plan projection', async (t) =
   assert.ok(payload.tasks.length > 0);
 });
 
-test('POST /api/work/intake/:projectId/approve transitions tasks to approved with owner assigned', async (t) => {
+test('POST /api/work/intake/:projectId/approve transitions tasks to in_progress with product dispatch metadata', async (t) => {
   const store = createMemoryStore();
   const server = createTestServer(store);
 
@@ -184,9 +184,9 @@ test('POST /api/work/intake/:projectId/approve transitions tasks to approved wit
   });
   const projectId = create.payload.project.id;
 
-  // Verify tasks have assignedActorIds before approval
-  const core = store.current;
-  const preTasks = core.tasks.filter(
+  // Verify tasks have assignedActorIds and conversationId before approval
+  const preCore = store.current;
+  const preTasks = preCore.tasks.filter(
     (t) => t.metadata?.workIntake?.projectId === projectId,
   );
   for (const task of preTasks) {
@@ -206,14 +206,36 @@ test('POST /api/work/intake/:projectId/approve transitions tasks to approved wit
 
   assert.equal(status, 200);
   assert.equal(payload.planStatus, 'approved');
+  assert.equal(payload.project.status, 'active');
 
-  // All tasks should be approved
-  for (const task of payload.tasks) {
-    assert.equal(task.approval.status, 'approved', `Task "${task.title}" should be approved`);
+  // All tasks should be approved and transitioned to in_progress
+  const postCore = store.current;
+  const postTasks = postCore.tasks.filter(
+    (t) => t.metadata?.workIntake?.projectId === projectId,
+  );
+  for (const task of postTasks) {
+    assert.equal(task.approval.status, 'approved', `Task "${task.title}" approval should be approved`);
+    assert.equal(task.status, 'in_progress', `Task "${task.title}" should be in_progress`);
   }
 
-  // Project should be active
-  assert.equal(payload.project.status, 'active');
+  // Verify tasks carry correct productHint for downstream products
+  const productHints = payload.tasks.map((t) => t.productHint);
+  assert.ok(productHints.includes('work'), 'should have work-targeted tasks');
+  assert.ok(productHints.includes('code'), 'should have code-targeted tasks');
+
+  // Verify activities record the dispatch targets
+  const postActivities = postCore.activities.filter(
+    (a) => a.projectId === projectId && a.kind === 'approval_decided',
+  );
+  assert.ok(postActivities.length > 0, 'should have approval activities');
+  assert.ok(
+    postActivities.some((a) => a.message.includes('→ work')),
+    'should have activity mentioning work dispatch',
+  );
+  assert.ok(
+    postActivities.some((a) => a.message.includes('→ code')),
+    'should have activity mentioning code dispatch',
+  );
 });
 
 test('POST /api/work/intake/:projectId/reject transitions tasks to cancelled and project to paused', async (t) => {

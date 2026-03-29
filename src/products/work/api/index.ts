@@ -1,6 +1,4 @@
 import type { CoreStore } from '../../../core/store.js';
-import type { RuntimeClient } from '../../../platform/runtime/client.js';
-import type { TaskExecutionLocator } from '../../../core/taskExecutionLocator.js';
 import {
   buildWorkDashboardProjection,
   buildWorkProjectDetailProjection,
@@ -25,8 +23,6 @@ export const WORK_API_SLICE = 'work';
 
 export interface WorkApiDependencies {
   coreStore: CoreStore;
-  runtimeClient?: RuntimeClient;
-  taskExecutionLocator?: TaskExecutionLocator;
   now?: () => Date;
 }
 
