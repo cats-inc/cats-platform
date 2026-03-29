@@ -46,9 +46,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current suite-foundation context |
-| [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Boss Cat`, `Boss Chat`, direct private rooms, transport bindings, skill profiles, runtime skill manifests, MCP profiles, preview surfaces, sleep/wake lifecycle, `Cats Core v1`, bot bindings, approvals, and owner profile |
-| [a2a/](./a2a/) | Template | A2A agent card and task templates, not yet customized for `Cats` |
+| [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current suite-foundation context plus the same-environment CLI collaboration contract |
+| [terminology.md](./terminology.md) | Complete | Product and protocol terms, including `Boss Cat`, `Boss Chat`, direct private rooms, transport bindings, project memory, repo collaboration skills, runtime skill manifests, MCP profiles, preview surfaces, sleep/wake lifecycle, `Cats Core v1`, bot bindings, approvals, and owner profile |
+| [a2a/](./a2a/) | Complete | Pilot-owned A2A v1.0 example set for future suite-host/orchestrator adapter work; standards-aligned docs, not a claim of a live A2A endpoint today |
 | [specs/](./specs/) | Complete | Feature specifications, including suite-foundation work, chat-first information architecture with a default Boss Cat, the first-run setup wizard, Cat-private room entry, packaged setup/provider-installation direction, chat delivery-policy/governance levels, budget policy and war-room cost-control direction, provider and transport seams, the new chat sleep/wake lifecycle, Telegram inbox-to-room routing, direct-Cat routing behavior, dynamic explicit-mention plus room-workflow orchestration, skill profile/runtime skill-manifest ownership, embedded preview surfaces, contextual MCP/lazy tool activation, and explicit room-workspace ownership/bootstrap semantics |
 | [plans/](./plans/) | Complete | Implementation plans, including suite-foundation work, self-hosted npm app packaging, route-driven navigation, setup-wizard refinement, parallel-workstream seams, the chat sleep/wake lifecycle plan, and the first dynamic room-workflow orchestration plan |
 | [decisions/](./decisions/) | Complete | Architecture Decision Records, including runtime-boundary refinements, the visible primary-orchestrator model, chat-first information architecture with a default Boss Cat, packaged host ownership of provider installation, product-owned chat delivery policy, product-owned budget policy and cost control, frozen parallel-delivery ownership boundaries, the accepted chat sleep/wake lifecycle direction, the Telegram inbox transport model, the direct-Cat routing model, the new explicit-mentions-vs-room-workflow split, product-vs-runtime skill ownership, normalized preview-surface rendering, MCP intent/runtime tool-delivery ownership, the new separation between room-owned workspaces and session-owned sandboxes, and the new split between channel topology and routing mode |
@@ -59,7 +59,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution, product-boundary positioning for `Cats Chat` / `Cats Work` / `Cats Code`, the current Chat/runtime killer-feature audits for Paperclip and OpenClaw, OpenClaw memory-layering benchmarks, unified planning strategy notes, Cats Chat spatial layout guidance, companion capability baselines, the long-range AI-first app-store platform vision, and the `Cats Coding` playground concept |
+| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution, product-boundary positioning for `Cats Chat` / `Cats Work` / `Cats Code`, the current Chat/runtime killer-feature audits for Paperclip and OpenClaw, OpenClaw memory-layering benchmarks, unified planning strategy notes, Cats Chat spatial layout guidance, companion capability baselines, the long-range AI-first app-store platform vision, the `Cats Coding` playground concept, and the sibling A2A pilot alignment with `cats-runtime` |
 
 ## Context-Driven Development
 
@@ -88,7 +88,8 @@ The main suite-foundation docs are current, but these areas still need dedicated
 - app-level API ownership cleanup after Chat route handlers move into `products/chat/api/*`
 - removal of temporary compatibility shims once suite-host ownership boundaries stabilize
 - project-specific security notes beyond the inherited template
-- A2A and automation references once cross-agent workflows stabilize
+- a live A2A server/Agent Card surface; the current A2A files are still
+  pilot-owned examples rather than active endpoints
 
 ## Document Standards
 
@@ -99,4 +100,4 @@ The main suite-foundation docs are current, but these areas still need dedicated
 
 ---
 
-*Last updated: 2026-03-28*
+*Last updated: 2026-03-29*

@@ -1,0 +1,127 @@
+{
+  "name": "cats",
+  "description": "Pilot authenticated extended Agent Card example for a future Cats suite-host A2A adapter. It expands the public discovery card with product and governance workflows that should only be exposed after authentication and policy checks.",
+  "supportedInterfaces": [
+    {
+      "url": "https://cats.example.com/a2a/jsonrpc",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "https://cats.example.com/a2a/http",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "provider": {
+    "organization": "Cats maintainers",
+    "url": "https://example.com/cats"
+  },
+  "version": "0.1.0-pilot",
+  "documentationUrl": "https://example.com/cats/docs/a2a/internal",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "extendedAgentCard": true,
+    "extensions": [
+      {
+        "uri": "https://example.com/extensions/project-memory-references/v1",
+        "description": "Adds durable project-memory references to long-running product tasks, handoffs, and operator artifacts.",
+        "required": false,
+        "params": {
+          "referenceScopes": [
+            "research",
+            "decision",
+            "spec",
+            "plan"
+          ]
+        }
+      }
+    ]
+  },
+  "securitySchemes": {
+    "suiteBearer": {
+      "httpAuthSecurityScheme": {
+        "description": "Bearer token used when a future A2A adapter shares the Cats suite-host's protected operator boundary.",
+        "scheme": "Bearer",
+        "bearerFormat": "API key or JWT"
+      }
+    }
+  },
+  "defaultInputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "skills": [
+    {
+      "id": "suite-reads",
+      "name": "Suite Reads",
+      "description": "Read suite-host health, operator inbox state, recovery summaries, and product projections.",
+      "tags": [
+        "product",
+        "operators",
+        "read-only"
+      ],
+      "examples": [
+        "Summarize the current operator inbox and identify the strongest pending recovery item.",
+        "Explain the current chat/work/code task posture and where operator attention is needed."
+      ],
+      "inputModes": [
+        "text/plain",
+        "application/json"
+      ],
+      "outputModes": [
+        "text/plain",
+        "application/json"
+      ]
+    },
+    {
+      "id": "orchestrator-supervision",
+      "name": "Orchestrator Supervision",
+      "description": "Model future product-side orchestrator planning, dispatch, execution-loop recovery, and operator replay handling.",
+      "tags": [
+        "orchestration",
+        "recovery",
+        "product"
+      ],
+      "examples": [
+        "Inspect the current execution-loop checkpoint and explain the next operator-facing decision.",
+        "Review a blocked workflow, explain the replay state, and summarize the safest recovery action."
+      ],
+      "inputModes": [
+        "text/plain",
+        "application/json"
+      ],
+      "outputModes": [
+        "text/plain",
+        "application/json"
+      ]
+    },
+    {
+      "id": "project-memory-governance",
+      "name": "Project Memory Governance",
+      "description": "Produce reviewable updates to research, ADR, spec, and plan artifacts without collapsing durable product state into transient protocol messages.",
+      "tags": [
+        "documentation",
+        "handoff",
+        "governance"
+      ],
+      "examples": [
+        "Record the product-facing protocol finding in docs/research and note the resulting planning impact.",
+        "Update the active plan and progress log after a validated pilot slice lands."
+      ],
+      "inputModes": [
+        "text/plain",
+        "application/json"
+      ],
+      "outputModes": [
+        "text/plain",
+        "application/json"
+      ]
+    }
+  ]
+}

@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-03-29-cats-a2a-pilot-alignment](./2026-03-29-cats-a2a-pilot-alignment.md) | 2026-03-29 | Cats A2A pilot alignment | Mirror the validated `cats-runtime` A2A layering pilot into `cats` so both repos share the same first-wave collaboration posture |
 | [2026-03-20-codex-cats-chat-work-code-product-boundaries](./2026-03-20-codex-cats-chat-work-code-product-boundaries.md) | 2026-03-20 | Codex view of Chat / Work / Code product boundaries | Capture a separate Codex-authored view of how `Cats Chat`, `Cats Work`, and `Cats Code` should split their product promises, shared foundation, and first-slice focus |
 | [2026-03-19-openclaw-memory-layering-benchmark](./2026-03-19-openclaw-memory-layering-benchmark.md) | 2026-03-19 | OpenClaw memory layering benchmark | Compare OpenClaw's transcript, compaction, durable memory, and retrieval split to the Cats suite's product/runtime memory needs |
 | [2026-03-20-openclaw-chat-runtime-gap-analysis](./2026-03-20-openclaw-chat-runtime-gap-analysis.md) | 2026-03-20 | OpenClaw gaps for Cats Chat + runtime | Re-audit the latest local OpenClaw submodule and identify the main remaining channel-native agent runtime gaps for `Boss Cat` transport flows, specialist-Cat orchestration, and chat/runtime maturity |
@@ -32,4 +33,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-03-27*
+*Last updated: 2026-03-29*

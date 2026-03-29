@@ -1,0 +1,60 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "task": {
+      "id": "pilot-task-001",
+      "contextId": "pilot-context-001",
+      "status": {
+        "state": "TASK_STATE_COMPLETED",
+        "message": {
+          "messageId": "pilot-agent-message-001",
+          "contextId": "pilot-context-001",
+          "taskId": "pilot-task-001",
+          "role": "ROLE_AGENT",
+          "parts": [
+            {
+              "text": "The operator inbox shows one blocked workflow awaiting a reroute decision and one recovery item that can be retried safely. Review the latest execution-loop checkpoint before changing room routing.",
+              "mediaType": "text/plain"
+            }
+          ]
+        },
+        "timestamp": "2026-03-29T12:00:00Z"
+      },
+      "artifacts": [
+        {
+          "artifactId": "suite-summary",
+          "name": "suite-summary",
+          "description": "Structured suite-host triage summary.",
+          "parts": [
+            {
+              "data": {
+                "operatorInbox": "attention_needed",
+                "recoveryState": "retryable",
+                "nextAction": "Inspect the latest execution-loop checkpoint, then decide whether to retry or reroute the blocked workflow."
+              },
+              "mediaType": "application/json"
+            }
+          ]
+        },
+        {
+          "artifactId": "project-memory-references",
+          "name": "project-memory-references",
+          "description": "Durable references relevant to the recommended product follow-through.",
+          "parts": [
+            {
+              "data": {
+                "references": [
+                  "docs/plans/PLAN-023-orchestrator-execution-loop-and-recovery.md",
+                  "docs/specs/SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md",
+                  "PROGRESS.md"
+                ]
+              },
+              "mediaType": "application/json"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

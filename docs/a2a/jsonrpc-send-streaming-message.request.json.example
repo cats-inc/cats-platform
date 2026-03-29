@@ -1,0 +1,25 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "SendStreamingMessage",
+  "params": {
+    "message": {
+      "messageId": "pilot-message-002",
+      "role": "ROLE_USER",
+      "parts": [
+        {
+          "text": "Inspect the latest blocked workflow, summarize the current replay posture, and stream intermediate status updates while preparing the next operator-facing recommendation.",
+          "mediaType": "text/plain"
+        }
+      ]
+    },
+    "configuration": {
+      "acceptedOutputModes": [
+        "text/plain",
+        "application/json"
+      ],
+      "historyLength": 10,
+      "returnImmediately": false
+    }
+  }
+}

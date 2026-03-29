@@ -1,10 +1,14 @@
 # Agent Skills
 
-> Structured, reusable agent instructions following the [Agent Skills](https://agentskills.io) open standard.
+> Repo-owned collaboration skills following the [Agent Skills](https://agentskills.io) open standard.
 
 ## Overview
 
 Agent Skills provide progressive disclosure of complex instructions. Instead of embedding long procedures inline in `AGENTS.md` or agent-specific files, each skill is a standalone `SKILL.md` with YAML frontmatter that agents discover automatically.
+
+In `cats`, these skills are for same-environment repo collaboration. They are
+not the same thing as product skill profiles or runtime-hosted execution skill
+packages.
 
 ## How It Works
 
@@ -64,7 +68,8 @@ Note: `allowed-tools` is experimental and may be ignored by some agents.
 
 | Skill | Description |
 |-------|-------------|
-| - | No skills defined yet. Add skills to the `skills/` directory. |
+| `a2a-handoff` | bounded handoff preparation across protocol, project-memory, and skill layers |
+| `project-memory-sync` | durable markdown-state synchronization during collaboration |
 
 ## Adding a New Skill
 
