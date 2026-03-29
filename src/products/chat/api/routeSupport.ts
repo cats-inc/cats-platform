@@ -5,6 +5,7 @@ import type { TelegramRelay } from '../../../platform/transports/telegram/relay/
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
+import type { ChatEventHub } from './chatEventHub.js';
 import type {
   OrchestratorChannelRouter,
   OrchestratorPlannerSurface,
@@ -75,6 +76,7 @@ export interface ChatApiDependencies {
   pollingSupervisor?: TelegramPollingSupervisor;
   companionStore: CompanionBoxStore;
   memoryService: CatsMemoryService;
+  eventHub?: ChatEventHub;
   now?: () => Date;
 }
 
