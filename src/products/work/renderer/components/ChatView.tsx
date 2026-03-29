@@ -231,6 +231,20 @@ export function ChatView({
     () => buildLiveIndicatorScrollKey(liveIndicator),
     [liveIndicator],
   );
+  const activeTopBarCatIds = useMemo(() => {
+    const ids = liveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];
+    if (ids.length > 0) {
+      return [...new Set(ids)];
+    }
+    if (liveIndicator?.active && liveIndicator.catId) {
+      return [liveIndicator.catId];
+    }
+    return [];
+  }, [liveIndicator]);
+  const activeTopBarCatIdSet = useMemo(
+    () => new Set(activeTopBarCatIds),
+    [activeTopBarCatIds],
+  );
   const [inspectedRunId, setInspectedRunId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -254,7 +268,7 @@ export function ChatView({
     selectedChannel.repoPath,
     selectedChannel.chatCwd,
   );
-  const { transcriptListRef } = useTranscriptAutoScroll({
+  const { transcriptListRef, composerCardRef, bottomSentinelRef } = useTranscriptAutoScroll({
     channelId: selectedChannel.id,
     scrollKey: [
       selectedChannel.updatedAt ?? '',
@@ -269,7 +283,7 @@ export function ChatView({
         <header className="channelTopBar">
           <div className="channelTopBarStart">
             {showRosterAvatars ? (
-              <div className="rosterAvatars">
+              <div className="rosterAvatars rosterAvatarsExpanded">
                 {topBarCats.map((cat) => {
                   const isBoss = cat.id === payload.chat.bossCatId;
                   const isLead = cat.id === leadParticipantId;
@@ -278,7 +292,7 @@ export function ChatView({
                       key={cat.id}
                       className={[
                         isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar',
-                        liveIndicator?.active && liveIndicator.catId === cat.id ? 'catAvatarPulsing' : '',
+                        activeTopBarCatIdSet.has(cat.id) ? 'catAvatarPulsing' : '',
                       ].filter(Boolean).join(' ')}
                       data-tooltip={cat.name}
                       style={cat.avatarUrl
@@ -399,6 +413,10 @@ export function ChatView({
                       ? payload.chat.cats.find((c) => c.id === liveIndicator.catId) ?? null
                       : null;
                     const speakerLabel = speakerCat?.name ?? liveIndicator.speakerLabel;
+                    const livePreviewText = liveIndicator.previewText ?? '';
+                    const hasContentBlocks = liveIndicator.contentBlocks.length > 0;
+                    const showPreviewText = !hasContentBlocks && livePreviewText.trim().length > 0;
+                    const activeTools = liveIndicator.tools.filter((t) => !t.done);
                     return (
                       <article className="transcriptMessage transcriptMessageAgent typingIndicator">
                         {speakerCat ? (
@@ -422,15 +440,21 @@ export function ChatView({
                           <span className="typingDots"><span /><span /><span /></span>
                         ) : (
                           <>
-                            {liveIndicator.progressText ? (
-                              <p className="typingProgressText">{liveIndicator.progressText}</p>
+                            {showPreviewText ? (
+                              <MessageBody
+                                body={liveIndicator.previewText}
+                                cats={payload.chat.cats}
+                                channelId={selectedChannel.id}
+                              />
+                            ) : liveIndicator.progressText ? (
+                              <p className="typingStatusText">{liveIndicator.progressText}</p>
                             ) : (
                               <span className="typingDots"><span /><span /><span /></span>
                             )}
-                            {liveIndicator.tools.filter((t) => !t.done).map((tool) => (
+                            {!showPreviewText && !hasContentBlocks && activeTools.map((tool) => (
                               <span key={tool.toolId} className="typingToolChip">{tool.toolName}</span>
                             ))}
-                            {liveIndicator.contentBlocks.length > 0 ? (
+                            {hasContentBlocks ? (
                               <div className="typingContentBlocks">
                                 {liveIndicator.contentBlocks.map((block) => (
                                   <div
@@ -494,6 +518,7 @@ export function ChatView({
             )}
 
             <form
+              ref={composerCardRef}
               className={
                 hasConversationStarted
                   ? 'composerCard composerCardDocked'
@@ -652,6 +677,7 @@ export function ChatView({
                 }}
               />
             </form>
+            <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
           </section>
 
         </div>

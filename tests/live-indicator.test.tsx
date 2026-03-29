@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  EMPTY_LIVE_INDICATOR,
   resolveLiveIndicatorSpeakerLabel,
   shouldConnectLiveIndicatorStream,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
@@ -9,6 +10,11 @@ import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
 } from '../src/shared/liveIndicator.ts';
+
+test('EMPTY_LIVE_INDICATOR starts with no active cat ids', () => {
+  assert.deepEqual(EMPTY_LIVE_INDICATOR.activeCatIds, []);
+  assert.equal(EMPTY_LIVE_INDICATOR.previewText, '');
+});
 
 test('shouldConnectLiveIndicatorStream skips optimistic draft channels', () => {
   assert.equal(shouldConnectLiveIndicatorStream('draft-123', 'message:send'), false);
@@ -63,6 +69,29 @@ test('resolveLiveIndicatorSpeakerLabel stays silent for cat-led chats', () => {
   } as never), null);
 });
 
+test('live indicator accumulates streamed preview text and keeps active cat ids', () => {
+  let state = createWaitingLiveIndicatorState({
+    catId: 'cat-1',
+    speakerLabel: null,
+  });
+
+  assert.deepEqual(state.activeCatIds, ['cat-1']);
+
+  state = applyLiveIndicatorEvent(state, 'text', {
+    text: 'Hello',
+  });
+  state = applyLiveIndicatorEvent(state, 'text', {
+    text: ' world',
+  });
+
+  assert.equal(state.previewText, 'Hello world');
+  assert.equal(state.progressText, '');
+  assert.equal(state.progressKind, null);
+  assert.equal(state.events.length, 1);
+  assert.equal(state.events[0]?.eventType, 'text');
+  assert.equal(state.events[0]?.text, 'Hello world');
+});
+
 test('live indicator accumulates a bounded event tape and pending tools', () => {
   let state = createWaitingLiveIndicatorState({
     catId: 'cat-1',
@@ -112,10 +141,11 @@ test('live indicator merges consecutive text chunks into one tape entry', () => 
     text: 'First chunk',
   });
   state = applyLiveIndicatorEvent(state, 'text', {
-    text: 'Second chunk',
+    text: ' Second chunk',
   });
 
-  assert.equal(state.progressKind, 'text');
+  assert.equal(state.previewText, 'First chunk Second chunk');
+  assert.equal(state.progressKind, null);
   assert.equal(state.events.length, 1);
   assert.equal(state.events[0]?.eventType, 'text');
   assert.equal(state.events[0]?.text, 'First chunk Second chunk');

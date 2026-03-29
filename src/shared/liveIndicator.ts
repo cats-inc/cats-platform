@@ -24,9 +24,11 @@ export interface LiveIndicatorState {
   active: boolean;
   phase: 'idle' | 'waiting' | 'streaming';
   catId: string | null;
+  activeCatIds: string[];
   catName: string | null;
   speakerLabel: string | null;
   progressText: string;
+  previewText: string;
   progressKind: string | null;
   tools: LiveToolEntry[];
   contentBlocks: LiveIndicatorContentBlock[];
@@ -35,16 +37,17 @@ export interface LiveIndicatorState {
 
 const MAX_LIVE_INDICATOR_BLOCKS = 12;
 const MAX_LIVE_INDICATOR_EVENTS = 8;
-const MAX_TEXT_PREVIEW = 200;
 const MAX_EVENT_TEXT = 220;
 
 export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   active: false,
   phase: 'idle',
   catId: null,
+  activeCatIds: [],
   catName: null,
   speakerLabel: null,
   progressText: '',
+  previewText: '',
   progressKind: null,
   tools: [],
   contentBlocks: [],
@@ -59,9 +62,11 @@ export function createWaitingLiveIndicatorState(input: {
     active: true,
     phase: 'waiting',
     catId: input.catId,
+    activeCatIds: input.catId ? [input.catId] : [],
     catName: null,
     speakerLabel: input.speakerLabel,
     progressText: '',
+    previewText: '',
     progressKind: null,
     tools: [],
     contentBlocks: [],
@@ -110,9 +115,11 @@ export function buildLiveIndicatorScrollKey(
   return [
     liveIndicator.active ? '1' : '0',
     liveIndicator.phase,
+    liveIndicator.activeCatIds.join('|'),
     liveIndicator.catId ?? '',
     liveIndicator.speakerLabel ?? '',
     liveIndicator.progressText ?? '',
+    liveIndicator.previewText ?? '',
     liveIndicator.tools
       .map((tool) => `${tool.toolId}:${tool.toolName}:${tool.done ? '1' : '0'}`)
       .join('|'),
@@ -176,35 +183,32 @@ function applyTextEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
 ): LiveIndicatorState {
-  const rawText = summarizeEventText(data.text);
-  if (!rawText) {
+  const previewText = typeof data.text === 'string' ? data.text : '';
+  const summarizedText = summarizeEventText(data.text);
+  if (!previewText && !summarizedText) {
     return {
       ...previous,
       phase: 'streaming',
     };
   }
 
-  const nextProgressText = previous.phase === 'waiting' || !previous.progressText
-    ? rawText.slice(0, MAX_TEXT_PREVIEW)
-    : previous.progressText;
-  const nextProgressKind = previous.phase === 'waiting' || !previous.progressKind
-    ? 'text'
-    : previous.progressKind;
-
   return {
     ...previous,
     phase: 'streaming',
-    progressText: nextProgressText,
-    progressKind: nextProgressKind,
-    events: appendLiveIndicatorEvent(previous.events, {
-      eventType: 'text',
-      label: 'Text',
-      text: rawText,
-      tone: 'default',
-      kind: 'text',
-      toolName: null,
-      toolId: null,
-    }),
+    previewText: previewText ? `${previous.previewText}${previewText}` : previous.previewText,
+    progressText: '',
+    progressKind: null,
+    events: summarizedText
+      ? appendLiveIndicatorEvent(previous.events, {
+        eventType: 'text',
+        label: 'Text',
+        text: summarizedText,
+        tone: 'default',
+        kind: 'text',
+        toolName: null,
+        toolId: null,
+      })
+      : previous.events,
   };
 }
 
@@ -265,11 +269,11 @@ function applyToolResultEvent(
 }
 
 function applyResultEvent(previous: LiveIndicatorState): LiveIndicatorState {
-  const text = previous.progressText || 'Finalizing...';
+  const text = previous.previewText ? '' : (previous.progressText || 'Finalizing...');
   return {
     ...previous,
     phase: 'streaming',
-    progressKind: 'finalizing',
+    progressKind: previous.previewText ? null : 'finalizing',
     progressText: text,
     events: appendLiveIndicatorEvent(previous.events, {
       eventType: 'result',

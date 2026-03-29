@@ -71,7 +71,10 @@ for (const product of PRODUCT_SURFACES) {
     assert.match(source, /useTranscriptAutoScroll/u);
     assert.match(source, /resolveComposerWorkspacePath/u);
     assert.match(source, /ref=\{transcriptListRef\}/u);
+    assert.match(source, /ref=\{composerCardRef\}/u);
+    assert.match(source, /ref=\{bottomSentinelRef\}/u);
     assert.match(source, /if \(!composerWorkspacePath\) return null;/u);
+    assert.match(source, /liveIndicator\.previewText \?\? ''/u);
     assert.doesNotMatch(source, /const cwd = selectedChannel\.repoPath \?\? selectedChannel\.chatCwd;\s*if \(!cwd\) return null;/u);
   });
 
@@ -91,8 +94,15 @@ for (const product of PRODUCT_SURFACES) {
 
     assert.match(source, /addEventListener\('scroll'/u);
     assert.match(source, /ResizeObserver/u);
+    assert.match(source, /composerCardRef: RefCallback<HTMLElement>/u);
+    assert.match(source, /bottomSentinelRef: RefCallback<HTMLDivElement>/u);
+    assert.match(source, /getComputedStyle\(composerCardElement\)\.bottom/u);
+    assert.match(source, /NEAR_BOTTOM_PX \+ composerCardElement\.getBoundingClientRect\(\)\.height/u);
+    assert.match(source, /style\.paddingBottom = nextBottomInset > 0/u);
+    assert.match(source, /observer\.observe\(composerCardElement\)/u);
     assert.match(source, /shouldAutoScrollRef/u);
     assert.match(source, /isScrollNearBottom/u);
-    assert.match(source, /scrollContainer\.scrollTop = scrollContainer\.scrollHeight;/u);
+    assert.match(source, /scrollIntoView\(\{ block: 'end' \}\)/u);
+    assert.match(source, /pendingScrollFrameRef/u);
   });
 }

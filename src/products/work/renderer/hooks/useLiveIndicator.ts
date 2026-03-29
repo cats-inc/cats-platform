@@ -11,7 +11,12 @@ import { isComposerDispatchBusy } from '../../../../shared/composer.js';
 import type { SelectedChannelView } from '../chatUtils.js';
 import { isOptimisticDraftChannelId } from '../../shared/channelPaths.js';
 
-export type { LiveIndicatorContentBlock, LiveIndicatorEventEntry, LiveIndicatorState, LiveToolEntry } from '../../../../shared/liveIndicator.js';
+export type {
+  LiveIndicatorContentBlock,
+  LiveIndicatorEventEntry,
+  LiveIndicatorState,
+  LiveToolEntry,
+} from '../../../../shared/liveIndicator.js';
 export { EMPTY_LIVE_INDICATOR } from '../../../../shared/liveIndicator.js';
 
 const LIVE_INDICATOR_RETRY_DELAY_MS = 150;
