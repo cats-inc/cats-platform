@@ -136,8 +136,8 @@ Chunking changes must preserve the current suite architecture:
 - [ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
 - [ADR-035](./035-invert-platform-dependency-and-extract-shared-design-layer.md)
 - [SPEC-042](../specs/SPEC-042-suite-renderer-route-level-chunking-and-lazy-entry.md)
-- [vite.config.ts](/home/sammykenny2/Source/SK2/one-man-digital-company/cats/vite.config.ts)
-- [src/app/renderer/App.tsx](/home/sammykenny2/Source/SK2/one-man-digital-company/cats/src/app/renderer/App.tsx)
+- [vite.config.ts](../../vite.config.ts)
+- [src/app/renderer/App.tsx](../../src/app/renderer/App.tsx)
 
 ---
 
