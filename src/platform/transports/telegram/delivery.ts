@@ -25,6 +25,29 @@ interface TelegramBotApiDeleteResult {
   ok?: boolean;
 }
 
+export interface TelegramBotApiCommand {
+  command: string;
+  description: string;
+}
+
+export interface TelegramBotApiCommandScopeDefault {
+  type: 'default';
+}
+
+export type TelegramBotApiCommandScope = TelegramBotApiCommandScopeDefault;
+
+export interface TelegramBotApiMenuButtonCommands {
+  type: 'commands';
+}
+
+export interface TelegramBotApiMenuButtonDefault {
+  type: 'default';
+}
+
+export type TelegramBotApiMenuButton =
+  | TelegramBotApiMenuButtonCommands
+  | TelegramBotApiMenuButtonDefault;
+
 export interface TelegramDeliveryClientResult {
   ok: boolean;
   chatId: string | null;
@@ -32,8 +55,26 @@ export interface TelegramDeliveryClientResult {
   description?: string | null;
 }
 
+export interface TelegramBotApiMutationResult {
+  ok: boolean;
+  description?: string | null;
+}
+
 export interface TelegramDeliveryClient {
   deliver(request: TelegramDeliveryRequest & { chatId: string }): Promise<TelegramDeliveryClientResult>;
+  setMyCommands(request: {
+    commands: TelegramBotApiCommand[];
+    scope?: TelegramBotApiCommandScope | null;
+    languageCode?: string | null;
+  }): Promise<TelegramBotApiMutationResult>;
+  deleteMyCommands(request?: {
+    scope?: TelegramBotApiCommandScope | null;
+    languageCode?: string | null;
+  }): Promise<TelegramBotApiMutationResult>;
+  setChatMenuButton(request: {
+    chatId?: string | null;
+    menuButton: TelegramBotApiMenuButton;
+  }): Promise<TelegramBotApiMutationResult>;
 }
 
 export interface TelegramBotApiDeliveryClientOptions {
@@ -111,6 +152,33 @@ function buildApiPayload(
   };
 }
 
+async function postBotApi<T>(
+  fetchImpl: TelegramFetch,
+  apiBaseUrl: string,
+  botToken: string,
+  method: string,
+  body: Record<string, unknown>,
+): Promise<{
+  response: TelegramFetchResponse;
+  payload: TelegramBotApiEnvelope<T>;
+}> {
+  const response = await fetchImpl(
+    `${apiBaseUrl}/bot${botToken}/${method}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(body),
+    },
+  );
+
+  return {
+    response,
+    payload: await parseApiResponse<T>(response),
+  };
+}
+
 export function createTelegramBotApiDeliveryClient(
   options: TelegramBotApiDeliveryClientOptions,
 ): TelegramDeliveryClient {
@@ -123,19 +191,18 @@ export function createTelegramBotApiDeliveryClient(
       request: TelegramDeliveryRequest & { chatId: string },
     ): Promise<TelegramDeliveryClientResult> {
       const method = resolveApiMethod(request.operation);
-      const response = await fetchImpl(
-        `${apiBaseUrl}/bot${botToken}/${method}`,
-        {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json; charset=utf-8',
-          },
-          body: JSON.stringify(buildApiPayload(request)),
-        },
+      const {
+        response,
+        payload,
+      } = await postBotApi<TelegramBotApiDeleteResult | TelegramBotApiMessageResult>(
+        fetchImpl,
+        apiBaseUrl,
+        botToken,
+        method,
+        buildApiPayload(request),
       );
 
       if (request.operation === 'delete') {
-        const payload = await parseApiResponse<TelegramBotApiDeleteResult>(response);
         const ok = response.ok && payload.ok === true;
         return {
           ok,
@@ -145,16 +212,78 @@ export function createTelegramBotApiDeliveryClient(
         };
       }
 
-      const payload = await parseApiResponse<TelegramBotApiMessageResult>(response);
-      const ok = response.ok && payload.ok === true;
-      const messageId = typeof payload.result?.message_id === 'number'
-        ? String(payload.result.message_id)
+      const messagePayload = payload as TelegramBotApiEnvelope<TelegramBotApiMessageResult>;
+      const ok = response.ok && messagePayload.ok === true;
+      const messageId = typeof messagePayload.result?.message_id === 'number'
+        ? String(messagePayload.result.message_id)
         : request.messageId ?? null;
 
       return {
         ok,
-        chatId: toChatId(payload.result?.chat?.id) ?? request.chatId,
+        chatId: toChatId(messagePayload.result?.chat?.id) ?? request.chatId,
         messageId,
+        description: ok ? null : messagePayload.description ?? `Telegram API ${response.status}`,
+      };
+    },
+
+    async setMyCommands({
+      commands,
+      scope,
+      languageCode,
+    }): Promise<TelegramBotApiMutationResult> {
+      const { response, payload } = await postBotApi<boolean>(
+        fetchImpl,
+        apiBaseUrl,
+        botToken,
+        'setMyCommands',
+        {
+          commands,
+          scope: scope ?? undefined,
+          language_code: languageCode ?? undefined,
+        },
+      );
+      const ok = response.ok && payload.ok === true;
+      return {
+        ok,
+        description: ok ? null : payload.description ?? `Telegram API ${response.status}`,
+      };
+    },
+
+    async deleteMyCommands(request = {}): Promise<TelegramBotApiMutationResult> {
+      const { response, payload } = await postBotApi<boolean>(
+        fetchImpl,
+        apiBaseUrl,
+        botToken,
+        'deleteMyCommands',
+        {
+          scope: request.scope ?? undefined,
+          language_code: request.languageCode ?? undefined,
+        },
+      );
+      const ok = response.ok && payload.ok === true;
+      return {
+        ok,
+        description: ok ? null : payload.description ?? `Telegram API ${response.status}`,
+      };
+    },
+
+    async setChatMenuButton({
+      chatId,
+      menuButton,
+    }): Promise<TelegramBotApiMutationResult> {
+      const { response, payload } = await postBotApi<boolean>(
+        fetchImpl,
+        apiBaseUrl,
+        botToken,
+        'setChatMenuButton',
+        {
+          chat_id: chatId ?? undefined,
+          menu_button: menuButton,
+        },
+      );
+      const ok = response.ok && payload.ok === true;
+      return {
+        ok,
         description: ok ? null : payload.description ?? `Telegram API ${response.status}`,
       };
     },

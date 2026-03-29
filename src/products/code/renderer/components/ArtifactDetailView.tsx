@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import {
-  createPreviewSurfaceFallbackCandidates,
-  resolvePreviewSurfaceTarget,
+  resolvePreviewSurfaceTargetFromArtifacts,
 } from '../../../../core/previewSurfaces.js';
 import { fetchCodeArtifactDetail } from '../api/codeTask.js';
 import type { ArtifactItem } from './BuildPreviewPanel.js';
@@ -110,14 +109,14 @@ export function ArtifactDetailView() {
       return null;
     }
 
-    return resolvePreviewSurfaceTarget(createPreviewSurfaceFallbackCandidates([
+    return resolvePreviewSurfaceTargetFromArtifacts([
       {
         id: payload.artifact.id,
         title: payload.artifact.title,
         kind: payload.artifact.kind,
         path: payload.artifact.path,
       },
-    ]));
+    ]);
   }, [payload]);
 
   if (loading) {

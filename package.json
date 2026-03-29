@@ -3,13 +3,25 @@
   "version": "0.1.0",
   "description": "Flagship Cats suite app backed by cats-runtime.",
   "type": "module",
+  "bin": {
+    "cats": "./dist-server/index.js"
+  },
   "main": "dist-electron/main.js",
+  "files": [
+    "dist",
+    "dist-server",
+    "dist-electron",
+    ".env.example",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "npm run build:server && npm run build:web && npm run build:host",
+    "build": "npm run clean:dist && npm run build:server && npm run build:web && npm run build:host",
     "build:host": "tsc -p tsconfig.electron.json",
     "build:server": "tsc -p tsconfig.server.json",
     "build:web": "vite build",
     "build:test-ui": "esbuild tests/*.test.tsx --bundle --platform=node --format=esm --outdir=dist-test",
+    "clean:dist": "node scripts/clean-dist.mjs",
     "desktop:host": "electron dist-electron/main.js",
     "desktop:package": "node scripts/build-desktop-installer.mjs --target current",
     "desktop:package:windows": "node scripts/build-desktop-installer.mjs --target windows",
@@ -22,6 +34,7 @@
     "dev:server": "tsx watch src/index.ts",
     "dev:web": "vite",
     "preview:web": "vite preview",
+    "prepack": "npm run build",
     "start": "npm run start:server",
     "start:server": "node dist-server/index.js",
     "test": "npm run build:server && npm run build:host && npm run build:test-ui && node --test --test-isolation=none tests/**/*.test.js dist-test/*.test.js",

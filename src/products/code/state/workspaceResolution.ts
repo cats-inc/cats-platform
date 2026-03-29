@@ -1,11 +1,10 @@
 import { stat } from 'node:fs/promises';
 
-export type CodeWorkspaceKind = 'user_selected' | 'managed_room' | 'conversation_repo';
-
-export interface CodeWorkspaceResolution {
-  workspacePath: string;
-  workspaceKind: CodeWorkspaceKind;
-}
+import {
+  createCodeWorkspaceSummary,
+  type CodeWorkspaceKind,
+  type CodeWorkspaceSummary,
+} from '../shared/workspaceSummary.js';
 
 export interface ResolveCodeWorkspaceInput {
   explicitPath?: string | null;
@@ -15,7 +14,7 @@ export interface ResolveCodeWorkspaceInput {
 
 export interface CodeWorkspaceResolutionResult {
   resolved: boolean;
-  workspace: CodeWorkspaceResolution | null;
+  workspace: CodeWorkspaceSummary | null;
   error: string | null;
 }
 
@@ -36,7 +35,10 @@ export async function resolveCodeWorkspace(
     if (await isDirectory(explicit)) {
       return {
         resolved: true,
-        workspace: { workspacePath: explicit, workspaceKind: 'user_selected' },
+        workspace: createCodeWorkspaceSummary({
+          workspacePath: explicit,
+          workspaceKind: 'user_selected',
+        }),
         error: null,
       };
     }
@@ -52,7 +54,10 @@ export async function resolveCodeWorkspace(
     if (await isDirectory(conversationRepo)) {
       return {
         resolved: true,
-        workspace: { workspacePath: conversationRepo, workspaceKind: 'conversation_repo' },
+        workspace: createCodeWorkspaceSummary({
+          workspacePath: conversationRepo,
+          workspaceKind: 'conversation_repo',
+        }),
         error: null,
       };
     }
@@ -63,7 +68,10 @@ export async function resolveCodeWorkspace(
     if (await isDirectory(roomWorkspace)) {
       return {
         resolved: true,
-        workspace: { workspacePath: roomWorkspace, workspaceKind: 'managed_room' },
+        workspace: createCodeWorkspaceSummary({
+          workspacePath: roomWorkspace,
+          workspaceKind: 'managed_room',
+        }),
         error: null,
       };
     }

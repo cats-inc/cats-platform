@@ -79,6 +79,11 @@ export interface ChatApiDependencies {
   telegramRelay?: TelegramRelay;
   telegramRoomBridge: TelegramRoomBridge<ChatState>;
   pollingSupervisor?: TelegramPollingSupervisor;
+  telegramCommandSurfaceSync?: {
+    reconcile(options?: {
+      staleBotTokens?: Array<string | null | undefined>;
+    }): Promise<void>;
+  };
   companionStore: CompanionBoxStore;
   memoryService: CatsMemoryService;
   eventHub?: ChatEventHub;
@@ -94,10 +99,14 @@ export function nowFrom(dependencies: ChatApiDependencies): Date {
   return dependencies.now?.() ?? new Date();
 }
 
-async function reconcilePollingAfterBindingMutation(
+export async function reconcileTelegramTransportAfterBindingMutation(
   context: ChatApiRouteContext,
+  options: {
+    staleBotTokens?: Array<string | null | undefined>;
+  } = {},
 ): Promise<void> {
   const {
+    telegramCommandSurfaceSync,
     pollingSupervisor,
     telegramRelay,
     telegramRoomBridge,
@@ -105,6 +114,13 @@ async function reconcilePollingAfterBindingMutation(
     memoryService,
     runtimeClient,
   } = context.dependencies;
+  if (telegramCommandSurfaceSync) {
+    try {
+      await telegramCommandSurfaceSync.reconcile(options);
+    } catch {
+      // Binding mutation already succeeded. Command/menu sync stays best-effort.
+    }
+  }
   if (!pollingSupervisor || !telegramRelay) {
     return;
   }
@@ -646,7 +662,7 @@ export async function persistArchivedCat(
     bindings.filter((binding) =>
       binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
     ));
-  void reconcilePollingAfterBindingMutation(context);
+  void reconcileTelegramTransportAfterBindingMutation(context);
   return nextState;
 }
 
@@ -662,7 +678,7 @@ export async function persistUnarchivedCat(
     bindings.filter((binding) =>
       binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
     ));
-  void reconcilePollingAfterBindingMutation(context);
+  void reconcileTelegramTransportAfterBindingMutation(context);
   return nextState;
 }
 
@@ -1018,5 +1034,5 @@ export async function persistDeletedCat(
     bindings.filter((binding) =>
       binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
     ));
-  void reconcilePollingAfterBindingMutation(context);
+  void reconcileTelegramTransportAfterBindingMutation(context);
 }

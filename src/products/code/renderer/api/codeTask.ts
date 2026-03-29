@@ -1,13 +1,17 @@
+import type { CodeWorkspaceKind } from '../../shared/workspaceSummary.js';
+
 export interface CreateCodeTaskInput {
   title: string;
   summary?: string | null;
   workspacePath?: string | null;
+  workspaceKind?: CodeWorkspaceKind | null;
   parentTaskId?: string | null;
   acceptanceCriteria?: string | null;
 }
 
 export interface ExecuteCodeTaskInput {
   workspacePath: string;
+  workspaceKind?: CodeWorkspaceKind | null;
   provider: string;
   model?: string | null;
   instance?: string | null;

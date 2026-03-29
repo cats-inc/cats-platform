@@ -101,6 +101,9 @@ test('POST /api/work/intake creates plan from template', async (t) => {
   const firstTask = payload.tasks[0];
   assert.ok(firstTask.productHint);
   assert.ok(firstTask.strategyHint);
+  assert.equal(firstTask.handoff.state, 'pending_review');
+  assert.equal(firstTask.handoff.targetProduct, firstTask.productHint ?? 'work');
+  assert.match(firstTask.handoff.nextAction, /Review and approve/u);
 });
 
 test('POST /api/work/intake validates required fields', async (t) => {
@@ -222,6 +225,14 @@ test('POST /api/work/intake/:projectId/approve transitions tasks to in_progress 
   const productHints = payload.tasks.map((t) => t.productHint);
   assert.ok(productHints.includes('work'), 'should have work-targeted tasks');
   assert.ok(productHints.includes('code'), 'should have code-targeted tasks');
+  assert.ok(
+    payload.tasks.some((task) => task.handoff.state === 'active_here' && task.handoff.targetProduct === 'work'),
+    'should expose work-targeted tasks as active_here',
+  );
+  assert.ok(
+    payload.tasks.some((task) => task.handoff.state === 'ready_for_pickup' && task.handoff.targetProduct === 'code'),
+    'should expose code-targeted tasks as ready_for_pickup',
+  );
 
   // Verify activities record the handoff targets
   const postActivities = postCore.activities.filter(
@@ -274,6 +285,9 @@ test('POST /api/work/intake/:projectId/reject transitions tasks to cancelled and
   for (const task of tasks) {
     assert.equal(task.status, 'cancelled', `Task "${task.title}" should be cancelled`);
     assert.equal(task.approval.status, 'rejected', `Task "${task.title}" approval should be rejected`);
+  }
+  for (const task of payload.tasks) {
+    assert.equal(task.handoff.state, 'stopped', `Task "${task.title}" handoff should be stopped`);
   }
 });
 

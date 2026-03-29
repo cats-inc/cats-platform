@@ -108,7 +108,17 @@ export function AppRoutes({
         />
         <Route
           path="build"
-          element={<CodeBuilderView />}
+          element={
+            <CodeBuilderView
+              selectedChannelContext={payload.chat.selectedChannel
+                ? {
+                    title: payload.chat.selectedChannel.title,
+                    repoPath: payload.chat.selectedChannel.repoPath,
+                    chatCwd: payload.chat.selectedChannel.chatCwd,
+                  }
+                : null}
+            />
+          }
         />
         <Route
           path="artifacts/:artifactId"

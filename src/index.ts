@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-import { pathToFileURL } from 'node:url';
-
 import { loadConfig } from './config.js';
 import { createServer } from './app/server/index.js';
 import {
@@ -20,6 +18,7 @@ import {
 } from './app/server/startup.js';
 import { CatsRuntimeClient } from './platform/runtime/client.js';
 import { FileChatStore } from './products/chat/state/store.js';
+import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
 
 let startup = createAppStartupState();
 
@@ -124,7 +123,7 @@ async function main(): Promise<void> {
   );
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
   main().catch((error) => {
     process.stderr.write(formatAppStartupError(startup, error));
     process.exitCode = 1;

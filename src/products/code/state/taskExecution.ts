@@ -9,11 +9,16 @@ import {
 import {
   buildTaskRuntimeExecutionRequest,
 } from '../../../shared/taskExecutionBridge.js';
+import {
+  writeCodeWorkspaceSummary,
+  type CodeWorkspaceKind,
+} from '../shared/workspaceSummary.js';
 
 export interface CreateCodeTaskInput {
   title: string;
   summary?: string | null;
   workspacePath?: string | null;
+  workspaceKind?: CodeWorkspaceKind | null;
   parentTaskId?: string | null;
   conversationId?: string | null;
   assignedActorIds?: string[];
@@ -37,6 +42,7 @@ export interface ResumeCodeTaskResult {
 export interface BridgeCodeTaskInput {
   taskId: string;
   workspacePath: string;
+  workspaceKind?: CodeWorkspaceKind | null;
   provider: string;
   model?: string | null;
   instance?: string | null;
@@ -60,7 +66,16 @@ export function createCodeTask(
     acceptanceCriteria: input.acceptanceCriteria?.trim() || null,
   };
 
-  const metadata = writeTaskPlanningMetadata(undefined, planningInput);
+  let metadata = writeTaskPlanningMetadata(undefined, planningInput);
+  metadata = writeCodeWorkspaceSummary(
+    metadata,
+    input.workspacePath?.trim()
+      ? {
+          workspacePath: input.workspacePath.trim(),
+          workspaceKind: input.workspaceKind ?? 'user_selected',
+        }
+      : null,
+  );
 
   const result = upsertCoreTask(core, {
     title: input.title,
@@ -130,10 +145,19 @@ export async function bridgeCodeTaskToRuntime(
     ...executionRequest,
   });
 
+  const nextMetadata = writeCodeWorkspaceSummary(
+    task.metadata,
+    {
+      workspacePath: input.workspacePath,
+      workspaceKind: input.workspaceKind ?? 'user_selected',
+    },
+  );
+
   const runResult = upsertCoreTask(core, {
     id: task.id,
     title: task.title,
     status: 'in_progress',
+    metadata: nextMetadata,
   }, now);
   core = runResult.core;
 

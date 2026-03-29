@@ -1131,6 +1131,10 @@ test('renderer styles compose a shared design layer and product-owned chat parti
     new URL('../src/design/components/choices.css', import.meta.url),
     'utf8',
   );
+  const operatorChromeStylesSource = await readFile(
+    new URL('../src/design/components/operator-chrome.css', import.meta.url),
+    'utf8',
+  );
   const placeholderStylesSource = await readFile(
     new URL('../src/design/components/product-placeholder.css', import.meta.url),
     'utf8',
@@ -1184,6 +1188,7 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(designIndexSource, /@import '\.\/tokens\.css';/u);
   assert.match(designIndexSource, /@import '\.\/layout\.css';/u);
   assert.match(designIndexSource, /@import '\.\/components\/choices\.css';/u);
+  assert.match(designIndexSource, /@import '\.\/components\/operator-chrome\.css';/u);
   assert.match(designIndexSource, /@import '\.\/components\/product-placeholder\.css';/u);
   assert.match(designIndexSource, /@import '\.\/components\/suite-setup\.css';/u);
   assert.match(badgeStylesSource, /\.planPill/u);
@@ -1197,6 +1202,9 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(menuStylesSource, /\.accountMenu/u);
   assert.match(choiceStylesSource, /\.messageChoices/u);
   assert.match(choiceStylesSource, /\.messageChoiceActionButtonPrimary/u);
+  assert.match(operatorChromeStylesSource, /\.operatorPanel/u);
+  assert.match(operatorChromeStylesSource, /\.operatorActionButton/u);
+  assert.match(operatorChromeStylesSource, /\.operatorStatusBadge/u);
   assert.match(placeholderStylesSource, /\.productPlaceholderSurface/u);
   assert.match(stylesIndexSource, /@import '\.\/styles\/settings\.css';/u);
   assert.match(stylesIndexSource, /@import '\.\/styles\/chat\.css';/u);
@@ -1220,6 +1228,8 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(settingsStylesSource, /\.catsLayout/u);
   assert.match(chatShellStylesSource, /\.sidebarCollapsed \.brandCopy/u);
   assert.match(chatOperatorStylesSource, /\.channelWorkspace/u);
+  assert.doesNotMatch(chatOperatorStylesSource, /\.operatorPanel/u);
+  assert.doesNotMatch(chatOperatorStylesSource, /\.operatorActionButton/u);
   assert.match(chatThreadStylesSource, /\.recentOverflowMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusButton/u);

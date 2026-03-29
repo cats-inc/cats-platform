@@ -181,6 +181,29 @@ The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
 and only exposes the narrow desktop action/snapshot IPC surface through a
 preload bridge.
 
+### Self-Hosted npm Package Smoke
+
+To build a local npm tarball and optionally install it globally:
+
+```powershell
+.\scripts\windows\Pack-Install.ps1
+```
+
+```bash
+./scripts/linux/pack-install.sh
+./scripts/macos/pack-install.sh
+```
+
+This is the self-hosted npm app path, not the Electron installer path.
+After install, verify the executable contract with:
+
+```bash
+cats --help
+```
+
+Running `cats` still expects a reachable `cats-runtime`, using
+`CATS_RUNTIME_BASE_URL` or the default `http://127.0.0.1:3110`.
+
 ### Desktop Packaging Stage
 
 To generate staged packaging outputs without changing the visible renderer UI:

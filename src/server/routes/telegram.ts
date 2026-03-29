@@ -17,11 +17,15 @@ import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import { normalizeEffectiveBotBinding } from '../../products/chat/state/botBindings.js';
 import type { ChatEventHub } from '../../products/chat/api/chatEventHub.js';
+import { updateCatSkillProfile } from '../../products/chat/state/model/index.js';
 import {
   publishRoomMutation,
   publishTransportIngress,
 } from '../../products/chat/api/transportEventPublisher.js';
-import { createTelegramCommandRouter } from '../../platform/transports/telegram/commandRouter.js';
+import {
+  createTelegramCommandRouter,
+  type TelegramInteractionMode,
+} from '../../platform/transports/telegram/commandRouter.js';
 import { createDefaultCommands } from '../../platform/transports/telegram/commands/index.js';
 
 const commandRouter = createTelegramCommandRouter();
@@ -141,6 +145,34 @@ function findBindingChatCat(chatState: ChatState, binding: BotBindingRecord) {
   ) ?? null;
 }
 
+function resolveTelegramInteractionMode(
+  skillProfile: string | null | undefined,
+): TelegramInteractionMode {
+  return skillProfile === 'companion' ? 'companion' : 'agent';
+}
+
+function resolveSkillProfileForInteractionMode(
+  mode: TelegramInteractionMode,
+): string {
+  return mode === 'companion' ? 'companion' : 'chat-default';
+}
+
+async function setTelegramInteractionMode(
+  chatStore: ChatStore,
+  catId: string,
+  mode: TelegramInteractionMode,
+): Promise<TelegramInteractionMode> {
+  const state = await chatStore.read();
+  const nextState = updateCatSkillProfile(
+    state,
+    catId,
+    resolveSkillProfileForInteractionMode(mode),
+  );
+  const persisted = await chatStore.write(nextState);
+  const cat = persisted.cats.find((candidate) => candidate.id === catId);
+  return resolveTelegramInteractionMode(cat?.skillProfile ?? null);
+}
+
 function isActiveChatBinding(chatState: ChatState, binding: BotBindingRecord): boolean {
   if (binding.status !== 'active') {
     return false;
@@ -193,6 +225,12 @@ async function readTelegramContext(
     defaultBotBinding,
     selectedBotBinding,
   };
+}
+
+export async function readTelegramActiveBindings(
+  chatStore: ChatStore,
+): Promise<BotBindingRecord[]> {
+  return (await readTelegramContext(chatStore)).botBindings;
 }
 
 function validateTelegramWebhookSecret(
@@ -262,15 +300,23 @@ export async function handleTelegramWebhook(
       const messageText = update.message?.text?.trim() ?? '';
       if (commandRouter.isCommand(messageText)) {
         const binding = context.selectedBotBinding ?? context.defaultBotBinding;
-        const cat = binding ? findBindingChatCat(
-          (await dependencies.chatStore.read()),
-          binding,
-        ) : null;
+        const chatState = await dependencies.chatStore.read();
+        const cat = binding ? findBindingChatCat(chatState, binding) : null;
         const commandResult = await commandRouter.dispatch(messageText, {
           chatId: String(update.message?.chat?.id ?? ''),
           senderName: update.message?.from?.first_name ?? 'User',
           botName: binding?.botName ?? 'CatsBot',
           catName: cat?.name ?? null,
+          catId: cat?.id ?? null,
+          currentMode: cat ? resolveTelegramInteractionMode(cat.skillProfile) : null,
+          inboundMode: binding?.inboundMode ?? null,
+          setMode: cat?.id
+            ? async (mode) => setTelegramInteractionMode(
+              dependencies.chatStore,
+              cat.id,
+              mode,
+            )
+            : undefined,
         });
         if (commandResult?.handled) {
           await dependencies.telegramRelay.deliver({
@@ -405,17 +451,9 @@ export async function readTelegramPollingContext(
   bindings: Array<{ bindingId: string; botToken: string; inboundMode: 'polling' | 'webhook' }>;
   context: TelegramRelayContext;
 }> {
-  const [context, core, chatState] = await Promise.all([
-    readTelegramContext(chatStore),
-    chatStore.readCore(),
-    chatStore.read(),
-  ]);
-  const bindings = core.botBindings
-    .filter((binding) =>
-      binding.platform === 'telegram'
-      && binding.botToken
-      && isActiveChatBinding(chatState, binding),
-    )
+  const context = await readTelegramContext(chatStore);
+  const bindings = context.botBindings
+    .filter((binding) => binding.botToken)
     .map((binding) => ({
       bindingId: binding.id,
       botToken: binding.botToken!,

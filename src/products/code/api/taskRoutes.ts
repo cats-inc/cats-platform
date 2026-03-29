@@ -11,6 +11,7 @@ import {
   type CreateCodeTaskInput,
   type BridgeCodeTaskInput,
 } from '../state/taskExecution.js';
+import type { CodeWorkspaceKind } from '../shared/workspaceSummary.js';
 import { buildCodeTaskDetailProjection } from './projection.js';
 import type { CodeApiRouteContext } from './index.js';
 
@@ -18,6 +19,7 @@ interface CreateTaskBody {
   title: string;
   summary?: string | null;
   workspacePath?: string | null;
+  workspaceKind?: CodeWorkspaceKind | null;
   parentTaskId?: string | null;
   conversationId?: string | null;
   assignedActorIds?: string[];
@@ -26,6 +28,7 @@ interface CreateTaskBody {
 
 interface ExecuteTaskBody {
   workspacePath: string;
+  workspaceKind?: CodeWorkspaceKind | null;
   provider: string;
   model?: string | null;
   instance?: string | null;
@@ -76,6 +79,7 @@ export async function routeCodeTaskMutationApi(
     const input: BridgeCodeTaskInput = {
       taskId,
       workspacePath: body.workspacePath.trim(),
+      workspaceKind: body.workspaceKind ?? null,
       provider: body.provider.trim(),
       model: body.model,
       instance: body.instance,
@@ -164,6 +168,7 @@ export async function routeCodeTaskMutationApi(
       title: body.title.trim(),
       summary: body.summary,
       workspacePath: body.workspacePath,
+      workspaceKind: body.workspaceKind ?? null,
       parentTaskId: body.parentTaskId,
       conversationId: body.conversationId,
       assignedActorIds: body.assignedActorIds,

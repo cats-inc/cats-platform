@@ -79,6 +79,7 @@ This spec defines the first command surface for Telegram-bound Cats.
    - `/commands`
    - `/status`
    - `/open`
+   - `/mode`
 6. `/commands` shall behave as an alias of `/help`.
 7. `/start` shall:
    - confirm which Cat this bot is bound to
@@ -91,52 +92,64 @@ This spec defines the first command surface for Telegram-bound Cats.
    - whether the binding appears healthy or degraded
 10. `/open` shall return a stable web link or route hint into the bound Cat's
     private lane when the host knows how to construct one.
+11. `/mode` shall:
+   - show the current behavior mode for the bound Cat when called without args
+   - support at least `companion` and `agent` as first-slice modes
+   - update product-owned Cat behavior state without delegating the mode switch
+     itself to runtime
 
 #### Unknown commands
 
-11. Unknown slash commands shall not silently fall through to ordinary chat by
+12. Unknown slash commands shall not silently fall through to ordinary chat by
     default.
-12. For unknown slash commands, the bot shall respond with a short “unknown
+13. For unknown slash commands, the bot shall respond with a short “unknown
     command” message and point the user to `/help`.
-13. Unknown slash commands shall be treated as transport control mistakes, not
+14. Unknown slash commands shall be treated as transport control mistakes, not
     as ordinary Cat-chat input.
 
 #### Transcript policy
 
-14. Recognized slash commands shall not be appended to the normal private-lane
+15. Recognized slash commands shall not be appended to the normal private-lane
     transcript as owner chat turns by default.
-15. Transport command responses shall not be mirrored into the normal
+16. Transport command responses shall not be mirrored into the normal
     private-lane transcript as ordinary Cat replies by default.
-16. The product may retain command handling in transport diagnostics or command
+17. The product may retain command handling in transport diagnostics or command
     logs, but this slice shall keep the visible room transcript focused on real
     chat.
 
 #### Private-lane relationship
 
-17. Telegram slash commands shall still resolve against the bound Cat's private
+18. Telegram slash commands shall still resolve against the bound Cat's private
     lane identity and ownership context.
-18. If the user has never opened that private lane in the web UI, `/start` and
+19. If the user has never opened that private lane in the web UI, `/start` and
     `/open` may cause the product to create or rehydrate the lane so it can be
     opened later in the web product.
-19. Command handling shall not create a duplicate transport-only room separate
+20. Command handling shall not create a duplicate transport-only room separate
     from the bound Cat's private lane.
 
 #### Command menu synchronization
 
-20. `cats` shall own a canonical command registry for the Telegram command set.
-21. When feasible, `cats` shall sync that registry to Telegram using the Bot API
+21. `cats` shall own a canonical command registry for the Telegram command set.
+22. When feasible, `cats` shall sync that registry to Telegram using the Bot API
     command menu mechanism rather than requiring manual BotFather setup for each
-    command change.
-22. If command-menu sync fails, slash-command handling shall still work when the
+    command change, including `setMyCommands`.
+23. `cats` shall also configure the Telegram private-chat menu button to open
+    the command list when the Bot API supports it, using `setChatMenuButton`.
+24. Command/menu sync should run as a best-effort reconcile on server startup
+    and after Telegram bot binding mutations.
+25. If a Telegram bot token becomes stale because a binding was removed,
+    disabled, or switched to a different token, `cats` shall best-effort clear
+    that token's command list with `deleteMyCommands`.
+26. If command-menu sync fails, slash-command handling shall still work when the
     user types commands manually.
 
 #### Per-binding behavior
 
-23. Each Telegram bot binding shall expose the same baseline command surface in
+27. Each Telegram bot binding shall expose the same baseline command surface in
     the first slice.
-24. Command responses may include the bound Cat's display name and private-lane
+28. Command responses may include the bound Cat's display name and private-lane
     context so users understand which Cat/bot they are talking to.
-25. This slice shall not require different command sets per Cat, though that
+29. This slice shall not require different command sets per Cat, though that
     may be added later.
 
 ### Non-Functional Requirements

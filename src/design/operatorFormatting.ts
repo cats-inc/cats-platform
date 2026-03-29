@@ -3,8 +3,9 @@ import type {
   CoreOrchestrationOutcomeRecord,
   CoreRunRecord,
   CoreTraceRecord,
-} from '../../../../core/types';
-import type { ChatOperatorSeverity } from '../../shared/operator-loop/index';
+} from '../core/types.js';
+
+export type OperatorSeverity = 'muted' | 'progress' | 'attention' | 'error' | 'success';
 
 export function formatOperatorTimestamp(timestamp: string | null): string {
   if (!timestamp) {
@@ -24,7 +25,7 @@ export function formatOperatorTimestamp(timestamp: string | null): string {
   });
 }
 
-export function operatorSeverityClassName(severity: ChatOperatorSeverity): string {
+export function operatorSeverityClassName(severity: OperatorSeverity): string {
   switch (severity) {
     case 'progress':
       return 'isProgress';
@@ -56,7 +57,7 @@ export function runStatusLabel(status: CoreRunRecord['status']): string {
   }
 }
 
-export function runStatusSeverity(status: CoreRunRecord['status']): ChatOperatorSeverity {
+export function runStatusSeverity(status: CoreRunRecord['status']): OperatorSeverity {
   switch (status) {
     case 'running':
       return 'progress';
@@ -84,7 +85,7 @@ export function checkpointStatusLabel(status: CoreCheckpointRecord['status']): s
 
 export function checkpointStatusSeverity(
   status: CoreCheckpointRecord['status'],
-): ChatOperatorSeverity {
+): OperatorSeverity {
   switch (status) {
     case 'completed':
       return 'success';
@@ -112,7 +113,7 @@ export function outcomeStatusLabel(
 
 export function outcomeStatusSeverity(
   status: CoreOrchestrationOutcomeRecord['status'],
-): ChatOperatorSeverity {
+): OperatorSeverity {
   switch (status) {
     case 'succeeded':
       return 'success';

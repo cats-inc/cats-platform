@@ -1,18 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkIntakePlanProjection } from '../../api/intakeProjection.js';
 import {
   approveIntakePlan,
   fetchIntakePlan,
   rejectIntakePlan,
 } from '../api/intake.js';
-
-const PRODUCT_LABELS: Record<string, string> = {
-  work: 'Work',
-  chat: 'Chat',
-  code: 'Code',
-};
 
 function ProductBadge({ product }: { product: string | null }) {
   if (!product) {
@@ -21,7 +16,9 @@ function ProductBadge({ product }: { product: string | null }) {
 
   return (
     <span className={`work-plan-badge work-plan-badge--${product}`}>
-      {PRODUCT_LABELS[product] ?? product}
+      {product === 'chat' || product === 'work' || product === 'code'
+        ? taskExecutionProductLabel(product)
+        : product}
     </span>
   );
 }
@@ -33,6 +30,20 @@ function StrategyBadge({ strategy }: { strategy: string | null }) {
 
   return (
     <span className="work-plan-badge work-plan-badge--strategy">{strategy}</span>
+  );
+}
+
+function HandoffBadge({
+  state,
+  label,
+}: {
+  state: 'pending_review' | 'active_here' | 'ready_for_pickup' | 'completed' | 'stopped';
+  label: string;
+}) {
+  return (
+    <span className={`work-plan-badge work-plan-badge--handoff work-plan-badge--handoff-${state}`}>
+      {label}
+    </span>
   );
 }
 
@@ -127,6 +138,30 @@ export function PlanReviewPanel() {
   const isDraft = plan.planStatus === 'draft';
   const isApproved = plan.planStatus === 'approved';
   const isRejected = plan.planStatus === 'rejected';
+  const handoffSummary = [
+    (() => {
+      const activeHereCount = plan.tasks.filter((task) => task.handoff.state === 'active_here').length;
+      return activeHereCount > 0
+        ? `${activeHereCount} continue in Work`
+        : null;
+    })(),
+    (() => {
+      const readyCodeCount = plan.tasks.filter(
+        (task) => task.handoff.state === 'ready_for_pickup' && task.handoff.targetProduct === 'code',
+      ).length;
+      return readyCodeCount > 0
+        ? `${readyCodeCount} ready for Code pickup`
+        : null;
+    })(),
+    (() => {
+      const readyChatCount = plan.tasks.filter(
+        (task) => task.handoff.state === 'ready_for_pickup' && task.handoff.targetProduct === 'chat',
+      ).length;
+      return readyChatCount > 0
+        ? `${readyChatCount} ready for Chat pickup`
+        : null;
+    })(),
+  ].filter((value): value is string => Boolean(value));
 
   return (
     <div className="work-plan-review">
@@ -156,6 +191,7 @@ export function PlanReviewPanel() {
               <span className="work-plan-task-title">{task.title}</span>
               <ProductBadge product={task.productHint} />
               <StrategyBadge strategy={task.strategyHint} />
+              <HandoffBadge state={task.handoff.state} label={task.handoff.label} />
             </div>
             {task.summary ? (
               <p className="work-plan-task-summary">{task.summary}</p>
@@ -170,6 +206,9 @@ export function PlanReviewPanel() {
                 Depends on: {task.dependsOnTaskIds.length} task(s)
               </p>
             ) : null}
+            <p className="work-plan-task-next-action">
+              <strong>Next:</strong> {task.handoff.nextAction}
+            </p>
             <span className={`work-plan-task-approval work-plan-task-approval--${task.approval.status}`}>
               {task.approval.status.replace(/_/gu, ' ')}
             </span>
@@ -244,8 +283,9 @@ export function PlanReviewPanel() {
 
       {isApproved ? (
         <div className="work-plan-approved-notice">
-          Plan approved. Tasks are now in progress and ready for their target products to
-          pick up.
+          Plan approved. {handoffSummary.length > 0
+            ? `${handoffSummary.join('. ')}.`
+            : 'Tasks are now ready for their downstream product flow.'}
         </div>
       ) : null}
 

@@ -65,6 +65,29 @@ These wrappers call `npm run desktop:start`, which builds:
 and then launches the Electron host that supervises local `cats-runtime` and
 `cats` child processes.
 
+## Self-Hosted npm Package Helpers
+
+`cats` now also ships repo-owned npm pack/install smoke helpers on each desktop
+platform:
+
+- `scripts/windows/Pack-Install.ps1`
+- `scripts/linux/pack-install.sh`
+- `scripts/macos/pack-install.sh`
+
+These helpers build the app package, create a local `.tgz`, and optionally
+install that tarball globally for the self-hosted npm app path.
+
+Shared behavior:
+
+- interactive mode prompts for global install with a default of yes; if install proceeds, tarball deletion also defaults to yes
+- `--pack-only` creates the tarball and prints the later `npm install -g` command
+- `--install` skips prompts, installs the tarball globally, and deletes it afterward
+- `--clean` explicitly forces tarball deletion after a successful install
+- `--skip-build` assumes `npm run build` has already been run
+
+After a successful install, verify the executable contract with `cats --help`.
+This path is separate from the Electron desktop packaging and installer flows.
+
 `cats` now also ships its first repo-owned packaged setup helper:
 
 - `scripts/windows/Setup-NodeGlobalPrefix.ps1`

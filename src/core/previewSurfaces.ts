@@ -27,6 +27,14 @@ export interface ProductPreviewArtifactFallbackCandidate {
   path: string | null;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object';
+}
+
+function readOptionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 export function normalizePreviewSurfaceUrl(url: string | null | undefined): string | null {
   if (typeof url !== 'string') {
     return null;
@@ -54,6 +62,44 @@ export function createPreviewSurfaceFallbackCandidates(
     renderHint: artifact.kind === 'preview' ? 'iframe' : 'download',
     path: artifact.path,
   }));
+}
+
+export function resolvePreviewSurfaceTargetFromArtifacts(
+  artifacts: readonly ProductPreviewArtifactFallbackCandidate[],
+): ProductPreviewSurfaceTarget | null {
+  return resolvePreviewSurfaceTarget(createPreviewSurfaceFallbackCandidates(artifacts));
+}
+
+export function readRuntimePreviewSurfaceCandidates(
+  observation: Record<string, unknown>,
+): ProductPreviewSurfaceCandidate[] {
+  const session = isRecord(observation.session) ? observation.session : null;
+  const inspection = session && isRecord(session.inspection) ? session.inspection : null;
+  const directCandidates = Array.isArray(session?.previewSurfaces) ? session.previewSurfaces : [];
+  const nestedCandidates = Array.isArray(inspection?.previewSurfaces)
+    ? inspection.previewSurfaces
+    : [];
+
+  return [...directCandidates, ...nestedCandidates]
+    .filter(isRecord)
+    .map((candidate) => ({
+      id: readOptionalString(candidate.id),
+      label: readOptionalString(candidate.label),
+      renderHint: readOptionalString(candidate.renderHint),
+      url: readOptionalString(candidate.url),
+      path: readOptionalString(candidate.path),
+      artifactId: readOptionalString(candidate.artifactId),
+    }));
+}
+
+export function resolveObservedPreviewSurfaceTarget(
+  observation: Record<string, unknown> | null | undefined,
+  artifacts: readonly ProductPreviewArtifactFallbackCandidate[] = [],
+): ProductPreviewSurfaceTarget | null {
+  return resolvePreviewSurfaceTarget([
+    ...(observation ? readRuntimePreviewSurfaceCandidates(observation) : []),
+    ...createPreviewSurfaceFallbackCandidates(artifacts),
+  ]);
 }
 
 export function resolvePreviewSurfaceTarget(

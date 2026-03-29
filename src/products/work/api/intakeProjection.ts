@@ -7,9 +7,15 @@ import type {
   CoreWorkItemRecord,
 } from '../../../core/types.js';
 import {
+  resolveCoreTaskHandoffState,
+  taskExecutionProductLabel,
+  type CoreTaskHandoffState,
+} from '../../../core/taskHandoff.js';
+import {
   readTaskPlanningMetadata,
   type TaskExecutionProduct,
 } from '../../../shared/taskPlanning.js';
+import { resolveTaskExecutionProduct } from '../../../shared/taskExecutionBridge.js';
 import { getWorkTemplate } from '../templates/index.js';
 
 export interface WorkIntakePlanTaskView {
@@ -24,6 +30,12 @@ export interface WorkIntakePlanTaskView {
   blueprintKey: string | null;
   roleKey: string | null;
   approval: CoreApprovalRecord;
+  handoff: {
+    state: CoreTaskHandoffState;
+    label: string;
+    nextAction: string;
+    targetProduct: TaskExecutionProduct;
+  };
 }
 
 export interface WorkIntakePlanProjection {
@@ -93,6 +105,57 @@ function resolvePlanStatus(
   return 'draft';
 }
 
+function buildTaskHandoffView(
+  task: CoreTaskRecord,
+  targetProduct: TaskExecutionProduct,
+): WorkIntakePlanTaskView['handoff'] {
+  const state = resolveCoreTaskHandoffState({
+    task,
+    targetProduct,
+    currentProduct: 'work',
+  });
+  const targetLabel = taskExecutionProductLabel(targetProduct);
+
+  switch (state) {
+    case 'stopped':
+      return {
+        state,
+        label: 'Stopped',
+        nextAction: 'Revise the intake or start a new plan.',
+        targetProduct,
+      };
+    case 'completed':
+      return {
+        state,
+        label: 'Completed',
+        nextAction: `Review the completed ${targetLabel} output.`,
+        targetProduct,
+      };
+    case 'pending_review':
+      return {
+        state,
+        label: 'Pending review',
+        nextAction: 'Review and approve this plan in Work.',
+        targetProduct,
+      };
+    case 'active_here':
+      return {
+        state,
+        label: 'Active in Work',
+        nextAction: 'Continue coordinating this task from Cats Work.',
+        targetProduct,
+      };
+    case 'ready_for_pickup':
+    default:
+      return {
+        state,
+        label: `Ready for ${targetLabel} pickup`,
+        nextAction: `Open Cats ${targetLabel} to continue this task.`,
+        targetProduct,
+      };
+  }
+}
+
 export function findIntakeProjectTasks(
   core: CatsCoreState,
   projectId: string,
@@ -121,6 +184,7 @@ export function buildWorkIntakePlanProjection(
   const taskViews: WorkIntakePlanTaskView[] = tasks.map((task) => {
     const planning = readTaskPlanningMetadata(task.metadata);
     const workIntake = resolveWorkIntakeMetadata(task);
+    const targetProduct = planning.productHint ?? resolveTaskExecutionProduct({ core, task }) ?? 'work';
 
     return {
       id: task.id,
@@ -134,6 +198,7 @@ export function buildWorkIntakePlanProjection(
       blueprintKey: workIntake.blueprintKey,
       roleKey: workIntake.roleKey,
       approval: task.approval,
+      handoff: buildTaskHandoffView(task, targetProduct),
     };
   });
 

@@ -4,12 +4,18 @@ export interface TelegramCommandContext {
   senderName: string;
   botName: string;
   catName: string | null;
+  catId: string | null;
+  currentMode: TelegramInteractionMode | null;
+  inboundMode: 'polling' | 'webhook' | null;
+  setMode?: (mode: TelegramInteractionMode) => Promise<TelegramInteractionMode>;
 }
 
 export interface TelegramCommandResult {
   replyText: string;
   handled: boolean;
 }
+
+export type TelegramInteractionMode = 'companion' | 'agent';
 
 export interface TelegramCommand {
   name: string;

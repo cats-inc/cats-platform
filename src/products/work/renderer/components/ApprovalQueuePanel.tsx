@@ -1,5 +1,5 @@
 import type { CoreApprovalQueueItem } from '../../../../core/types';
-import { formatOperatorTimestamp } from './operatorFormatting';
+import { formatOperatorTimestamp } from '../../../../design/operatorFormatting';
 
 export interface ApprovalQueuePanelProps {
   approvals: CoreApprovalQueueItem[];

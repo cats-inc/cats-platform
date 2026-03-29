@@ -247,6 +247,19 @@ async function withServerConfig(
   }
 }
 
+async function waitFor(
+  predicate,
+  timeoutMs = 1000,
+) {
+  const startedAt = Date.now();
+  while (!predicate()) {
+    if (Date.now() - startedAt > timeoutMs) {
+      throw new Error('Timed out waiting for async side effect');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
 async function configureTelegramBossCat(baseUrl) {
   const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
     method: 'POST',
@@ -581,6 +594,259 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
           },
         },
       }),
+    },
+  );
+});
+
+test('telegram slash commands stay transport-owned and can switch the bound cat mode', async () => {
+  const deliveryCalls = [];
+
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      await configureTelegramBossCat(baseUrl);
+
+      const createCompanionResponse = await fetch(`${baseUrl}/api/cats`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Companion',
+          provider: 'claude',
+          skillProfile: 'companion',
+        }),
+      });
+      assert.equal(createCompanionResponse.status, 201);
+      const createCompanionPayload = await createCompanionResponse.json();
+      const catId = createCompanionPayload.cat.id;
+
+      const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          platform: 'telegram',
+          botName: 'companion_bot',
+          catId,
+          roomMode: 'direct_cat_chat',
+          webhookSecret: 'companion-secret',
+        }),
+      });
+      assert.equal(bindingResponse.status, 201);
+      const bindingPayload = await bindingResponse.json();
+      const bindingId = bindingPayload.botBinding.id;
+
+      const commandsResponse = await fetch(
+        `${baseUrl}/api/transports/telegram/webhook/${bindingId}`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-telegram-bot-api-secret-token': 'companion-secret',
+          },
+          body: JSON.stringify({
+            update_id: 501,
+            message: {
+              message_id: 801,
+              text: '/commands',
+              chat: { id: 67890, type: 'private' },
+              from: { id: 8, first_name: 'Kenny' },
+            },
+          }),
+        },
+      );
+      assert.equal(commandsResponse.status, 202);
+
+      const commandsPayload = await commandsResponse.json();
+      assert.equal(commandsPayload.receipt.status, 'accepted');
+      assert.equal(commandsPayload.receipt.commandHandled, true);
+      assert.equal(commandsPayload.receipt.bindingId, bindingId);
+      assert.equal(
+        commandsPayload.receipt.mappedConversationId,
+        `telegram:${bindingId}:67890`,
+      );
+
+      const modeAgentResponse = await fetch(
+        `${baseUrl}/api/transports/telegram/webhook/${bindingId}`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-telegram-bot-api-secret-token': 'companion-secret',
+          },
+          body: JSON.stringify({
+            update_id: 502,
+            message: {
+              message_id: 802,
+              text: '/mode agent',
+              chat: { id: 67890, type: 'private' },
+              from: { id: 8, first_name: 'Kenny' },
+            },
+          }),
+        },
+      );
+      assert.equal(modeAgentResponse.status, 202);
+      const modeAgentPayload = await modeAgentResponse.json();
+      assert.equal(modeAgentPayload.receipt.commandHandled, true);
+
+      const catAfterAgentResponse = await fetch(`${baseUrl}/api/cats/${catId}`);
+      assert.equal(catAfterAgentResponse.status, 200);
+      const catAfterAgentPayload = await catAfterAgentResponse.json();
+      assert.equal(catAfterAgentPayload.cat.skillProfile, 'chat-default');
+
+      const statusResponse = await fetch(
+        `${baseUrl}/api/transports/telegram/webhook/${bindingId}`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-telegram-bot-api-secret-token': 'companion-secret',
+          },
+          body: JSON.stringify({
+            update_id: 503,
+            message: {
+              message_id: 803,
+              text: '/status',
+              chat: { id: 67890, type: 'private' },
+              from: { id: 8, first_name: 'Kenny' },
+            },
+          }),
+        },
+      );
+      assert.equal(statusResponse.status, 202);
+      const statusPayload = await statusResponse.json();
+      assert.equal(statusPayload.receipt.commandHandled, true);
+
+      const modeCompanionResponse = await fetch(
+        `${baseUrl}/api/transports/telegram/webhook/${bindingId}`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-telegram-bot-api-secret-token': 'companion-secret',
+          },
+          body: JSON.stringify({
+            update_id: 504,
+            message: {
+              message_id: 804,
+              text: '/mode companion',
+              chat: { id: 67890, type: 'private' },
+              from: { id: 8, first_name: 'Kenny' },
+            },
+          }),
+        },
+      );
+      assert.equal(modeCompanionResponse.status, 202);
+      const modeCompanionPayload = await modeCompanionResponse.json();
+      assert.equal(modeCompanionPayload.receipt.commandHandled, true);
+
+      const catAfterCompanionResponse = await fetch(`${baseUrl}/api/cats/${catId}`);
+      assert.equal(catAfterCompanionResponse.status, 200);
+      const catAfterCompanionPayload = await catAfterCompanionResponse.json();
+      assert.equal(catAfterCompanionPayload.cat.skillProfile, 'companion');
+
+      const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+      assert.equal(diagnosticsResponse.status, 200);
+      const diagnosticsPayload = await diagnosticsResponse.json();
+      const telegramBinding = diagnosticsPayload.telegram.bindings.find((binding) =>
+        binding.bindingId === bindingId
+        && binding.conversationId === `telegram:${bindingId}:67890`);
+      assert.ok(telegramBinding);
+      assert.equal(telegramBinding.linkedRoomId, null);
+      assert.equal(telegramBinding.roomRoutingStatus, 'placeholder');
+
+      assert.equal(deliveryCalls.length, 4);
+      assert.match(deliveryCalls[0].text, /\/mode companion/);
+      assert.match(deliveryCalls[0].text, /\/mode agent/);
+      assert.match(deliveryCalls[1].text, /Switched Companion to Agent mode/);
+      assert.match(deliveryCalls[2].text, /Mode: Agent/);
+      assert.match(deliveryCalls[3].text, /Switched Companion to Companion mode/);
+    },
+    undefined,
+    {
+      telegramRelay: createTelegramRelay({
+        now: () => new Date('2026-03-19T00:00:00.000Z'),
+        deliveryClient: {
+          async deliver(request) {
+            deliveryCalls.push(request);
+            return {
+              ok: true,
+              chatId: request.chatId,
+              messageId: String(6000 + deliveryCalls.length),
+            };
+          },
+        },
+      }),
+    },
+  );
+});
+
+test('telegram bot binding mutations trigger command surface sync and carry stale tokens', async () => {
+  const syncCalls = [];
+
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      await configureTelegramBossCat(baseUrl);
+      await waitFor(() => syncCalls.length === 1);
+      syncCalls.length = 0;
+
+      const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+      assert.equal(appShellResponse.status, 200);
+      const appShellPayload = await appShellResponse.json();
+
+      const bindingResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          platform: 'telegram',
+          botName: 'boss_control_bot',
+          catId: appShellPayload.chat.bossCatId,
+          roomMode: 'direct_cat_chat',
+          botToken: 'token-create-sync',
+        }),
+      });
+      assert.equal(bindingResponse.status, 201);
+      const bindingPayload = await bindingResponse.json();
+
+      await waitFor(() => syncCalls.length === 1);
+      assert.deepEqual(syncCalls, [{ staleBotTokens: [] }]);
+      syncCalls.length = 0;
+
+      const updateResponse = await fetch(
+        `${baseUrl}/api/bot-bindings/${bindingPayload.botBinding.id}`,
+        {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            botToken: 'token-updated-sync',
+          }),
+        },
+      );
+      assert.equal(updateResponse.status, 200);
+
+      await waitFor(() => syncCalls.length === 1);
+      assert.deepEqual(syncCalls, [{ staleBotTokens: ['token-create-sync'] }]);
+      syncCalls.length = 0;
+
+      const deleteResponse = await fetch(
+        `${baseUrl}/api/bot-bindings/${bindingPayload.botBinding.id}`,
+        {
+          method: 'DELETE',
+        },
+      );
+      assert.equal(deleteResponse.status, 200);
+
+      await waitFor(() => syncCalls.length === 1);
+      assert.deepEqual(syncCalls, [{ staleBotTokens: ['token-updated-sync'] }]);
+    },
+    undefined,
+    {
+      telegramCommandSurfaceSync: {
+        async reconcile(options = {}) {
+          syncCalls.push({
+            staleBotTokens: [...(options.staleBotTokens ?? [])],
+          });
+        },
+      },
     },
   );
 });

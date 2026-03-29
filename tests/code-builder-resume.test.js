@@ -25,7 +25,7 @@ test('resolveCodeBuilderExecutionTaskId prefers an existing task over resume inp
   assert.equal(resolveCodeBuilderExecutionTaskId(null, '   '), null);
 });
 
-test('CodeBuilderView exposes a resume entry and reuses the resolved task id', () => {
+test('CodeBuilderView exposes resume, workspace binding, and execution summary seams', () => {
   const source = readFileSync(
     new URL('../src/products/code/renderer/components/CodeBuilderView.tsx', import.meta.url),
     'utf8',
@@ -33,8 +33,10 @@ test('CodeBuilderView exposes a resume entry and reuses the resolved task id', (
 
   assert.match(source, /Resume task/u);
   assert.match(source, /resolveCodeBuilderExecutionTaskId\(state\.taskId, resumeTaskId\)/u);
-  assert.equal(
-    source.includes('Task ${resumedTaskId} is ready to continue in this workspace.'),
-    true,
-  );
+  assert.match(source, /resolveWorkspaceBinding/u);
+  assert.match(source, /conversationRepoPath: fallbackConversationRepoPath/u);
+  assert.match(source, /roomWorkspacePath: fallbackRoomWorkspacePath/u);
+  assert.match(source, /Task \$\{resumedTaskId\} is ready to continue\./u);
+  assert.match(source, /CodeExecutionSummaryPanel/u);
+  assert.match(source, /setSessionStatus\('running'\)/u);
 });
