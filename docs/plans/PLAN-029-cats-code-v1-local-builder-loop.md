@@ -205,7 +205,10 @@ later review automation.
 |------|--------|
 | 2026-03-29 | Plan created to deliver the first local-first `Cats Code` builder loop above shared Core tasks and runtime workspace/preview primitives |
 | 2026-03-29 | Claude assigned. Branch `claude/spec-041-code-builder-loop` created. Starting implementation Phase 1→7. Shared file changes: `src/app/server/dependencies.ts` (wire runtimeClient), `src/products/code/api/index.ts` (expand deps + routes). |
-| 2026-03-29 | Phase 1–7 complete. Server + web build clean. 570/571 tests pass (1 pre-existing `chat-store.test.js` failure). 27 new Code tests added. 12 new API routes. 3 renderer panels (PlanPanel, BuildPreviewPanel, DeliveryPanel). |
+| 2026-03-29 | Phase 1–5 (backend): complete. 12 new API routes, 4 state modules, 27 tests. |
+| 2026-03-29 | Phase 6 (renderer): `CodeBuilderView` wired at `/code/build` route with sidebar "Build" entry. PlanPanel, BuildPreviewPanel, DeliveryPanel mounted inside builder. Full workspace → task → execute → plan/delivery loop reachable from UI. CSS added in `styles/code-builder.css`. |
+| 2026-03-29 | Phase 7 (tests): 570/571 pass (1 pre-existing `chat-store.test.js` failure unrelated to Code). Server + web build clean. |
+| 2026-03-29 | Remaining P1 items deferred: stuck/re-plan cues, structured summaries, review request flow. Artifact list in builder not yet populated from live session stream (needs SSE event mapping). |
 
 ---
 

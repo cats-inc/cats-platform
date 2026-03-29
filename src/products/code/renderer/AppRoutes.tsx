@@ -16,6 +16,7 @@ import {
   ChatView,
   type ChatViewProps,
 } from './components/ChatView.js';
+import { CodeBuilderView } from './components/CodeBuilderView.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
@@ -103,6 +104,10 @@ export function AppRoutes({
         <Route
           path="data"
           element={<SettingsData feedback={feedback} busy={busy} onResetSetup={onResetSetup} />}
+        />
+        <Route
+          path="build"
+          element={<CodeBuilderView payload={payload} />}
         />
         <Route
           path="chats/:channelId"
