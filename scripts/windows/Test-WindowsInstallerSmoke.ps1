@@ -133,6 +133,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-NodeCliPack.ps1'); Label = 'bundled Windows native CLI pack helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Check-WslPrerequisites.ps1'); Label = 'bundled Windows WSL prerequisite preflight helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Check-WindowsSetupReadiness.ps1'); Label = 'bundled Windows setup readiness audit helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\manifest.json'); Label = 'bundled setup-assets manifest' },
   @{ Path = $packagingPlanPath; Label = 'bundled desktop packaging plan' }
 )
 

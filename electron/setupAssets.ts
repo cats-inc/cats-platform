@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir } from 'node:fs/promises';
+import { access, copyFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 export interface DesktopSetupAsset {
@@ -111,6 +111,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
 export async function stageDesktopSetupAssets(
   packageRoot: string,
   outputRoot: string,
+  generatedAt: Date,
 ): Promise<DesktopSetupAsset[]> {
   for (const asset of DESKTOP_SETUP_ASSETS) {
     const sourcePath = join(packageRoot, asset.sourceRelativePath);
@@ -119,6 +120,14 @@ export async function stageDesktopSetupAssets(
     await mkdir(dirname(targetPath), { recursive: true });
     await copyFile(sourcePath, targetPath);
   }
+
+  await writeFile(
+    join(outputRoot, 'shared', 'setup-assets', 'manifest.json'),
+    JSON.stringify({
+      generatedAt: generatedAt.toISOString(),
+      assets: DESKTOP_SETUP_ASSETS,
+    }, null, 2),
+  );
 
   return DESKTOP_SETUP_ASSETS;
 }

@@ -260,6 +260,7 @@ removes local submodule convenience.
 | 2026-03-29 | Phase 3 slice 3 landed: `scripts/windows/Check-WslPrerequisites.ps1` is now a repo-owned WSL prerequisite preflight helper, staged/bundled with the desktop package, so the host can detect build/WSL/distro readiness before the full WSL feature-enable and distro-install chain is ported |
 | 2026-03-30 | Phase 3 slice 4 landed: `scripts/windows/Check-WindowsSetupReadiness.ps1` now composes the repo-owned npm-prefix, native CLI pack, and WSL prerequisite helpers into one structured host-side readiness audit, and the packaged desktop outputs bundle that audit helper as a first diagnostics asset |
 | 2026-03-30 | Phase 4 slice 1 landed: `installer.providerSetup.helperCatalog` now surfaces machine-readable helper capabilities, packaged paths, elevation expectations, and supported operations for the bundled Windows setup assets so the future host bridge can bind to a stable contract instead of guessing from filenames |
+| 2026-03-30 | Phase 4 slice 2 landed: staged desktop packaging outputs now also emit `shared/setup-assets/manifest.json`, and Windows installer smoke coverage expects that manifest to ship beside the bundled setup helpers as a lighter-weight discovery surface for future host bridge work |
 
 ---
 

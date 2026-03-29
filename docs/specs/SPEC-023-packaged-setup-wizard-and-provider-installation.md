@@ -401,6 +401,10 @@ teaching the renderer or the user about the underlying script topology.
   `installer.providerSetup.helperCatalog` so future host bridge work can bind
   setup actions to packaged assets, supported operations, and elevation
   expectations without reverse-engineering filenames.
+- Staged setup assets now also emit a dedicated
+  `shared/setup-assets/manifest.json` alongside the bundled scripts so future
+  host bridge or smoke tooling can discover packaged setup helpers without
+  parsing the full desktop packaging plan.
 - The next follow-on under `PLAN-030` is no longer generic WSL discovery; it
   is the repo-owned rewrite of the actual WSL prerequisite mutation chain and
   the next packaged-host helper slices so the split does not leave required

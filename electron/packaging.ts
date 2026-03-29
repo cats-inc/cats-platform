@@ -367,6 +367,11 @@ function buildPackagingTarget(
     { id: 'installer-manifest', relativePath: `targets/${target.id}/installer-manifest.json`, role: 'manifest' as const },
   ];
   if (target.platform === 'windows') {
+    sharedAssets.push({
+      id: 'windows-setup-assets-manifest',
+      relativePath: 'shared/setup-assets/manifest.json',
+      role: 'setup_asset' as const,
+    });
     for (const asset of DESKTOP_SETUP_ASSETS) {
       sharedAssets.push({
         id: asset.id,
@@ -477,7 +482,7 @@ export async function stageDesktopPackagingOutputs(
   await copyDirectory(join(config.packageRoot, 'dist-server'), join(outputRoot, 'shared', 'dist-server'));
   await copyDirectory(join(config.packageRoot, 'dist'), join(outputRoot, 'shared', 'dist'));
   await copyDirectory(join(config.packageRoot, 'dist-electron'), join(outputRoot, 'shared', 'dist-electron'));
-  const setupAssets = await stageDesktopSetupAssets(config.packageRoot, outputRoot);
+  const setupAssets = await stageDesktopSetupAssets(config.packageRoot, outputRoot, generatedAt);
 
   const runtimeDistRoot = join(config.runtimePackageRoot, 'dist');
   try {
@@ -523,6 +528,10 @@ export async function stageDesktopPackagingOutputs(
         source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
         target: asset.stageRelativePath,
       })),
+      {
+        source: relative(outputRoot, join(outputRoot, 'shared', 'setup-assets', 'manifest.json')),
+        target: 'shared/setup-assets/manifest.json',
+      },
     ],
   }, null, 2));
 
