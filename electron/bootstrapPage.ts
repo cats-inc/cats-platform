@@ -85,6 +85,10 @@ export function buildDesktopBootstrapPage(): string {
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.85);
       }
+      .setup-summary {
+        display: grid;
+        gap: 10px;
+      }
       .row-title {
         display: flex;
         justify-content: space-between;
@@ -157,6 +161,10 @@ export function buildDesktopBootstrapPage(): string {
             <div id="provider-summary" class="meta"></div>
           </section>
           <section class="panel">
+            <h2>Setup Recovery</h2>
+            <div id="setup-summary" class="setup-summary"></div>
+          </section>
+          <section class="panel">
             <h2>Actions</h2>
             <div id="actions" class="actions"></div>
           </section>
@@ -172,6 +180,7 @@ export function buildDesktopBootstrapPage(): string {
       const actions = document.getElementById('actions');
       const runtimeSummary = document.getElementById('runtime-summary');
       const providerSummary = document.getElementById('provider-summary');
+      const setupSummary = document.getElementById('setup-summary');
       function escapeHtml(value) {
         return String(value)
           .replace(/&/g, '&amp;')
@@ -222,6 +231,61 @@ export function buildDesktopBootstrapPage(): string {
           actions.appendChild(button);
         }
       }
+      function renderSetup(snapshot, setupSnapshot) {
+        const helperSummary = setupSnapshot
+          ? {
+              total: setupSnapshot.helpers.length,
+              available: setupSnapshot.helpers.filter((helper) => helper.available && helper.supported).length,
+              blocked: setupSnapshot.helpers.filter((helper) => !helper.available || !helper.supported).length,
+            }
+          : null;
+        const lastAction = (setupSnapshot && setupSnapshot.state && setupSnapshot.state.lastAction)
+          || snapshot.setup && snapshot.setup.lastAction;
+
+        if (!helperSummary && !lastAction) {
+          setupSummary.innerHTML = '<article class="issue-row"><div class="meta">Setup helper status is still loading.</div></article>';
+          return;
+        }
+
+        const cards = [];
+        if (helperSummary) {
+          cards.push(
+            '<article class="issue-row">'
+              + '<div class="row-title"><strong>Bundled helper catalog</strong><span class="status-ok">'
+              + helperSummary.available + '/' + helperSummary.total + '</span></div>'
+              + '<div class="meta">' + helperSummary.available + ' helper(s) are ready from repo-owned packaged assets.</div>'
+              + (helperSummary.blocked > 0
+                ? '<div class="meta status-degraded">' + helperSummary.blocked + ' helper(s) are unavailable on this host or build.</div>'
+                : '')
+              + '</article>',
+          );
+        }
+
+        if (lastAction) {
+          const statusClass = lastAction.runState === 'failed'
+            ? 'status-unavailable'
+            : lastAction.status === 'ready'
+              ? 'status-ok'
+              : lastAction.restartRequired
+                ? 'status-degraded'
+                : 'status-degraded';
+          cards.push(
+            '<article class="issue-row">'
+              + '<div class="row-title"><strong>' + escapeHtml(lastAction.label || lastAction.helperId) + '</strong><span class="' + statusClass + '">'
+              + escapeHtml(lastAction.status || lastAction.runState) + '</span></div>'
+              + '<div class="meta">' + escapeHtml(lastAction.summary || 'No setup action summary recorded.') + '</div>'
+              + '<div class="meta"><code>' + escapeHtml(lastAction.mode) + '</code></div>'
+              + (lastAction.restartRequired ? '<div class="meta status-degraded">Restart is required before the next packaged setup step.</div>' : '')
+              + (Array.isArray(lastAction.manualSteps) && lastAction.manualSteps.length
+                ? '<div class="meta">' + escapeHtml(lastAction.manualSteps[0]) + '</div>'
+                : '')
+              + (lastAction.error ? '<div class="meta status-unavailable">' + escapeHtml(lastAction.error) + '</div>' : '')
+              + '</article>',
+          );
+        }
+
+        setupSummary.innerHTML = cards.join('');
+      }
       function applySnapshot(snapshot) {
         phaseBadge.className = 'badge status-' + snapshot.status;
         phaseBadge.textContent = snapshot.phase.replace(/_/g, ' ');
@@ -239,14 +303,19 @@ export function buildDesktopBootstrapPage(): string {
         renderServices(snapshot);
         renderIssues(snapshot);
         renderActions(snapshot);
+        renderSetup(snapshot, null);
       }
       async function main() {
         if (!bridge) {
           summary.textContent = 'Desktop bridge is unavailable.';
           return;
         }
-        const snapshot = await bridge.getSnapshot();
+        const [snapshot, setupSnapshot] = await Promise.all([
+          bridge.getSnapshot(),
+          bridge.getSetupSnapshot().catch(() => null),
+        ]);
         applySnapshot(snapshot);
+        renderSetup(snapshot, setupSnapshot);
         bridge.onSnapshot(applySnapshot);
       }
       void main();

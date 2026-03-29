@@ -45,6 +45,9 @@ The first host-owned slice is already in-repo:
   background helpers or later installer flows
 - the host now also persists the last packaged setup helper action and exposes
   a bounded host-owned setup bridge for structured helper discovery/execution
+- the desktop bootstrap page now surfaces bundled helper readiness plus the
+  last packaged setup action summary without moving shell/install ownership
+  into the renderer
 - the host now carries a tray/background lifecycle and a manual-check
   update-channel skeleton
 - packaging scripts now stage Windows/macOS/Linux build outputs plus installer

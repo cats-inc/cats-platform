@@ -180,7 +180,8 @@ The desktop host now also keeps a host-readable state file at
 
 The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
 and only exposes the narrow desktop action/snapshot IPC surface through a
-preload bridge.
+preload bridge. The bootstrap page also shows a setup recovery panel with the
+bundled helper count and the last packaged setup action summary.
 
 ### Self-Hosted npm Package Smoke
 

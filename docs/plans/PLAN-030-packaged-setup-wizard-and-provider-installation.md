@@ -176,7 +176,7 @@ split-safe.
       - first WSL boot
       - Docker warm-up
       - auth-required after install
-- [ ] Keep the renderer UI-only while still surfacing structured progress and
+- [x] Keep the renderer UI-only while still surfacing structured progress and
       recovery guidance
 
 **Deliverables**: `cats` has a bounded host-bridge contract for packaged setup
@@ -270,6 +270,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 4 slice 1 landed: `installer.providerSetup.helperCatalog` now surfaces machine-readable helper capabilities, packaged paths, elevation expectations, and supported operations for the bundled Windows setup assets so the future host bridge can bind to a stable contract instead of guessing from filenames |
 | 2026-03-30 | Phase 4 slice 2 landed: staged desktop packaging outputs now also emit `shared/setup-assets/manifest.json`, and Windows installer smoke coverage expects that manifest to ship beside the bundled setup helpers as a lighter-weight discovery surface for future host bridge work |
 | 2026-03-30 | Phase 4 slice 3 landed: `electron/setupBridge.ts`, `electron/main.ts`, and `electron/preload.cts` now expose a bounded packaged setup bridge that lists bundled helpers, executes structured install/check actions through the Electron host, persists the last packaged setup action in the desktop-host state file, and re-derives helper availability from the packaged asset contract rather than guessing from renderer-owned logic |
+| 2026-03-30 | Phase 4 slice 4 landed: the desktop bootstrap page now surfaces setup recovery state from the host bridge, including bundled helper availability and the last packaged setup action summary, while keeping the renderer on the UI-only side of the install/check boundary |
 | 2026-03-30 | Phase 5 validation slice 1 landed: `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now records that the first packaged setup helper baseline, staged asset contract, and host bridge all run from repo-owned `cats` assets, while also naming the deferred slices that still remain source-knowledge-only after split |
 
 ---
