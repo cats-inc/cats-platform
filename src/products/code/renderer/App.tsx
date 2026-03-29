@@ -737,6 +737,7 @@ export default function App() {
         onSwitchProduct={onSwitchProduct}
         activeMyCatId={activeMyCatId}
         onDirectChatCat={onDirectChatCat}
+        onOpenBuild={() => navigate('/code/build')}
       />
 
       <main className="canvas">

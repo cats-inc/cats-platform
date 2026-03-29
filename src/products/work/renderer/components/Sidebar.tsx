@@ -34,6 +34,7 @@ export interface SidebarProps {
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
+  onStartWorkIntake?: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
@@ -384,6 +385,7 @@ export function Sidebar({
   onCollapsedSidebarClick,
   onOpenChatsOverview,
   onStartNewChat,
+  onStartWorkIntake,
   onSelect,
   onDeleteChannel,
   onRenameChannel,
@@ -471,6 +473,22 @@ export function Sidebar({
             </span>
             <span className="navLabel">New chat</span>
           </button>
+          {onStartWorkIntake ? (
+            <button
+              className="navItem"
+              onClick={() => void onStartWorkIntake()}
+              type="button"
+            >
+              <span className="navGlyph" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="10" height="10" rx="1.5" />
+                  <path d="M6 7h4" />
+                  <path d="M6 9.5h2.5" />
+                </svg>
+              </span>
+              <span className="navLabel">Start work</span>
+            </button>
+          ) : null}
         </nav>
 
         <div className="sidebarScrollable">

@@ -202,9 +202,12 @@ export function resolveServerDependencies(
     },
     work: {
       coreStore: dependencies.work?.coreStore ?? sharedCoreStore,
+      now: dependencies.shared.now,
     },
     code: {
       coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
+      runtimeClient: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
+      config: dependencies.code?.config ?? dependencies.shared.config,
     },
   };
 }

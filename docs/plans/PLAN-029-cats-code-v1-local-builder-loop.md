@@ -9,9 +9,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
-| **Assigned To** | Codex |
+| **Assigned To** | Claude |
 | **Reviewer** | User |
 
 ## Related Spec / Dependencies
@@ -51,15 +51,15 @@ planning or sandbox model.
 
 ### Phase 1: Workspace Entry and Binding Contracts
 
-- [ ] Define the first product-owned Code workspace entry contract:
+- [x] Define the first product-owned Code workspace entry contract:
       - operator-selected local folder/repo
       - managed room workspace when no folder was chosen up front
-- [ ] Add read/write helpers so room-owned workspace authority stays distinct
+- [x] Add read/write helpers so room-owned workspace authority stays distinct
       from any session-local cwd
 - [ ] Expose workspace summary and ownership state in Code task/detail views
 - [ ] Reuse existing room/workspace ownership semantics rather than inventing a
       Code-only workspace schema
-- [ ] Define empty/unbound workspace behavior so the first task can guide the
+- [x] Define empty/unbound workspace behavior so the first task can guide the
       user into a valid local-first starting point
 
 **Deliverables**: explicit, product-owned workspace binding for the first Code
@@ -67,15 +67,15 @@ builder loop.
 
 ### Phase 2: Code Task Creation, Resume, and Runtime Bridge
 
-- [ ] Add Code-surface actions that create or target shared Core tasks with
+- [x] Add Code-surface actions that create or target shared Core tasks with
       `productHint = 'code'`
-- [ ] Resolve default execution strategy to `reflexion` unless task planning
+- [x] Resolve default execution strategy to `reflexion` unless task planning
       overrides it
-- [ ] Bridge task planning, workspace context, and correlation metadata into
+- [x] Bridge task planning, workspace context, and correlation metadata into
       `cats-runtime` through the existing runtime-neutral execution bridge
 - [ ] Prefer resuming aligned task-bound sessions instead of always starting a
       fresh runtime session
-- [ ] Expose the focused task's runtime session state, provider target, and
+- [x] Expose the focused task's runtime session state, provider target, and
       workspace summary in Code task detail
 
 **Deliverables**: task-to-runtime execution from the Code surface with correct
@@ -83,15 +83,15 @@ workspace authority.
 
 ### Phase 3: Product-Owned Plan and Live Progress View
 
-- [ ] Define the first Code plan-step model with ordered statuses:
+- [x] Define the first Code plan-step model with ordered statuses:
       - `not_started`
       - `in_progress`
       - `completed`
       - `blocked`
-- [ ] Source plan state from task metadata, child tasks, or structured outputs
+- [x] Source plan state from task metadata, child tasks, or structured outputs
       without creating a runtime-owned second task system
-- [ ] Add a dedicated plan/progress panel beside the existing live event tape
-- [ ] Add a bounded re-plan flow that updates the visible plan or creates child
+- [x] Add a dedicated plan/progress panel beside the existing live event tape
+- [x] Add a bounded re-plan flow that updates the visible plan or creates child
       tasks without discarding the parent task
 - [ ] Preserve live event tape as a first-class companion surface rather than
       hiding it behind the plan panel
@@ -101,10 +101,10 @@ legible.
 
 ### Phase 4: Preview, Build, and Artifact Loop
 
-- [ ] Surface linked build and preview artifacts for the focused Code task
-- [ ] Render the latest ready preview/build result in a dedicated preview area
+- [x] Surface linked build and preview artifacts for the focused Code task
+- [x] Render the latest ready preview/build result in a dedicated preview area
       when normalized preview surfaces are available
-- [ ] Fall back cleanly to artifact detail, open-link, or download flows when
+- [x] Fall back cleanly to artifact detail, open-link, or download flows when
       inline rendering is unavailable
 - [ ] Prioritize the latest ready output as the default visual focus when
       multiple results exist
@@ -116,18 +116,18 @@ inside Code.
 
 ### Phase 5: Repo Follow-Through and Approval Gates
 
-- [ ] Surface runtime-owned repo status and change inspection for the selected
+- [x] Surface runtime-owned repo status and change inspection for the selected
       workspace
-- [ ] Add preview-first follow-through actions for:
+- [x] Add preview-first follow-through actions for:
       - inspect repo status
       - preview commit payload
       - preview push payload
       - export/publish local artifacts
-- [ ] Require explicit human approval for actions with external consequences,
+- [x] Require explicit human approval for actions with external consequences,
       including remote push, external publish, or deployment
-- [ ] Keep local build, test, dependency installation, and dev-server actions
+- [x] Keep local build, test, dependency installation, and dev-server actions
       outside separate approval gates
-- [ ] Preserve a no-auto-commit, no-auto-push default in the first slice
+- [x] Preserve a no-auto-commit, no-auto-push default in the first slice
 
 **Deliverables**: bounded owner follow-through above runtime delivery
 primitives.
@@ -140,7 +140,7 @@ primitives.
       Code-only review model
 - [ ] Preserve structured coder summaries/checkpoints as visible task-adjacent
       outputs
-- [ ] Add regression coverage for workspace binding, re-plan flows,
+- [x] Add regression coverage for workspace binding, re-plan flows,
       preview/build rendering, and approval-gated follow-through
 - [ ] Document deferred follow-ons such as automatic peer fan-out and broad
       template catalogs
@@ -204,6 +204,11 @@ later review automation.
 | Date | Update |
 |------|--------|
 | 2026-03-29 | Plan created to deliver the first local-first `Cats Code` builder loop above shared Core tasks and runtime workspace/preview primitives |
+| 2026-03-29 | Claude assigned. Branch `claude/spec-041-code-builder-loop` created. Starting implementation Phase 1→7. Shared file changes: `src/app/server/dependencies.ts` (wire runtimeClient), `src/products/code/api/index.ts` (expand deps + routes). |
+| 2026-03-29 | Phase 1–5 (backend): complete. 12 new API routes, 4 state modules, 27 tests. |
+| 2026-03-29 | Phase 6 (renderer): `CodeBuilderView` wired at `/code/build` route with sidebar "Build" entry. PlanPanel, BuildPreviewPanel, DeliveryPanel mounted inside builder. Full workspace → task → execute → plan/delivery loop reachable from UI. CSS added in `styles/code-builder.css`. |
+| 2026-03-29 | Phase 7 (tests): 570/571 pass (1 pre-existing `chat-store.test.js` failure unrelated to Code). Server + web build clean. |
+| 2026-03-29 | Remaining P1 items deferred: stuck/re-plan cues, structured summaries, review request flow. Artifact list in builder not yet populated from live session stream (needs SSE event mapping). |
 
 ---
 

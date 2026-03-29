@@ -11,6 +11,7 @@ import {
   type WorkTaskDetailProjection,
   type WorkWorkItemDetailProjection,
 } from './projection.js';
+import { routeWorkIntakeApi } from './intakeRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -22,6 +23,7 @@ export const WORK_API_SLICE = 'work';
 
 export interface WorkApiDependencies {
   coreStore: CoreStore;
+  now?: () => Date;
 }
 
 export type WorkApiRouteContext = RouteContext<WorkApiDependencies>;
@@ -71,6 +73,11 @@ export function createWorkWorkItemDetailPayload(
 export async function routeWorkApi(
   context: WorkApiRouteContext,
 ): Promise<boolean> {
+  // Intake routes (templates, intake submit, plan review, approve/reject)
+  if (await routeWorkIntakeApi(context)) {
+    return true;
+  }
+
   const projectDetailMatch = matchRoute(context.url.pathname, /^\/api\/work\/projects\/([^/]+)$/u);
   if (projectDetailMatch) {
     if (context.method !== 'GET') {
