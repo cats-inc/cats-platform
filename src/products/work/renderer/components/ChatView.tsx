@@ -2,6 +2,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
   type RefObject,
@@ -10,6 +11,10 @@ import {
 import type { AppShellPayload, ChatCat } from '../../api/contracts';
 import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
+import {
+  resolveLayoutMetrics,
+  type ChatLayoutMode,
+} from '../../../../design/chatLayout';
 import { buildLiveIndicatorScrollKey } from '../../../../shared/liveIndicator.js';
 import {
   catInitials,
@@ -146,8 +151,16 @@ export function ChatView({
   const conversationMode = resolveConversationMode(selectedChannel);
   const isSoloComposer = isSoloThreadConversationMode(conversationMode);
   const isDirectLane = isDirectConversationMode(conversationMode);
+  const layoutMode: ChatLayoutMode = isDirectLane
+    ? 'direct_lane'
+    : activeAssignedCats.length > 1
+      ? 'multi_cat'
+      : 'solo';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1280 : window.innerWidth,
+  );
   function openSidePanelTo(section: string): void {
     setSidePanelOpen(true);
     setSidePanelSection(section);
@@ -249,6 +262,16 @@ export function ChatView({
     () => new Set(activeTopBarCatIds),
     [activeTopBarCatIds],
   );
+  const layoutMetrics = useMemo(
+    () => resolveLayoutMetrics(layoutMode, viewportWidth),
+    [layoutMode, viewportWidth],
+  );
+  const layoutStyle = useMemo<CSSProperties>(
+    () => ({
+      '--chat-transcript-max-width': layoutMetrics.transcriptMaxWidth,
+    } as CSSProperties),
+    [layoutMetrics.transcriptMaxWidth],
+  );
   const [inspectedRunId, setInspectedRunId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -260,6 +283,19 @@ export function ChatView({
       return operatorView?.latestRun?.id ?? null;
     });
   }, [operatorView?.latestRun?.id, runIdsKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    function handleResize(): void {
+      setViewportWidth(window.innerWidth);
+    }
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const inspectedRun = useMemo(
     () => buildRunInspectorView(operatorView, inspectedRunId),
@@ -283,7 +319,14 @@ export function ChatView({
 
   return (
     <>
-      <div className="viewShell viewShellChannel" data-conversation-mode={conversationMode}>
+      <div
+        className="viewShell viewShellChannel"
+        data-conversation-mode={conversationMode}
+        data-layout-mode={layoutMode}
+        data-composer-variant={layoutMetrics.composerVariant}
+        data-secondary-surface-position={layoutMetrics.secondarySurfacePosition}
+        style={layoutStyle}
+      >
         <header className="channelTopBar">
           <div className="channelTopBarStart">
             {showRosterAvatars ? (
@@ -704,6 +747,7 @@ export function ChatView({
           activeSection={sidePanelSection}
           onSectionToggle={setSidePanelSection}
           onClose={() => setSidePanelOpen(false)}
+          position={layoutMetrics.secondarySurfacePosition === 'bottom' ? 'bottom' : 'side'}
           className="chatPaneSidePanel chatPaneSidePanelBelowBar"
           sections={buildSidePanelSections()}
         />

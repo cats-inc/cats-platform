@@ -15,6 +15,10 @@ import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
 import { buildLiveIndicatorScrollKey } from '../../../../shared/liveIndicator.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import {
+  resolveLayoutMetrics,
+  type ChatLayoutMode,
+} from '../../../../design/chatLayout';
+import {
   catInitials,
   messageTone,
   presentChannelTitle,
@@ -58,10 +62,6 @@ import {
   resolveConversationMode,
 } from '../conversationMode';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
-import {
-  resolveLayoutMetrics,
-  type ChatLayoutMode,
-} from '../layoutNormalization';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
 
 export interface ChatViewProps {

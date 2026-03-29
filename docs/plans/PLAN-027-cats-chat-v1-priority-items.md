@@ -223,6 +223,7 @@ behavior.
 | 2026-03-29 | **Phase 6 complete**: 36 new tests across 5 test files covering session-continuity-rules, telegram-chunking, chat-event-hub, cat-status-resolution, session-health-summary. Current suite is green after later regressions were fixed separately. |
 | 2026-03-29 | Codex: Consumed `layoutNormalization.ts` in `ChatView`, moved bottom-vs-side secondary-surface positioning into the shared `SidePanel` design component, and aligned transcript/composer widths with mode-specific layout metrics. |
 | 2026-03-30 | Codex: Extracted duplicated operator-panel chrome (`operatorPanel`, `operatorCard`, `operatorActionButton`, `operatorStatusBadge`, related timeline/meta primitives) from per-product `chat-operator.css` copies into shared `src/design/components/operator-chrome.css`, leaving product styles to own only local workspace/layout rules. |
+| 2026-03-30 | Codex: Promoted chat layout normalization into shared `src/design/chatLayout.ts` and aligned `work` / `code` ChatView clones with the same transcript-width and bottom-vs-side secondary-surface rules instead of leaving the layout seam Chat-local. |
 
 ---
 
