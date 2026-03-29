@@ -1,8 +1,8 @@
 # PLAN-030: Packaged Setup Wizard and Provider Installation
 
-> Extract and freeze the setup/install knowledge that `cats` still needs from
-> `environment-bootstrap` and the sibling A2A/bootstrap pilot before the repo
-> split removes easy access to those monorepo inputs.
+> Extract, rewrite, and freeze the setup/install knowledge that `cats` still
+> needs from `environment-bootstrap` and the sibling A2A/bootstrap pilot
+> before the repo split removes easy access to those monorepo inputs.
 
 ## Metadata
 
@@ -27,8 +27,8 @@
 `cats` and `cats-runtime` are preparing to split into separate repos. While
 this monorepo still includes the latest `environment-bootstrap/` and
 `project-bootstrap/` submodule sources, `cats` needs one explicit place to
-freeze what setup/install knowledge must be extracted before that easy local
-reference path disappears.
+freeze, extract, and rewrite the setup/install knowledge that must become
+repo-owned before that easy local reference path disappears.
 
 Two sibling knowledge tracks already exist:
 
@@ -48,6 +48,8 @@ and provider-installation side:
 - what `cats` should port into packaged-host assets or product-owned code
 - how that knowledge should connect to `cats-runtime` provider metadata without
   making either submodule a shipped product dependency
+- how the first executable helper slices get rewritten as `cats`-owned assets
+  rather than remaining source-repo references
 - how to validate the port while the monorepo still gives direct access to the
   source repos
 
@@ -58,14 +60,17 @@ A2A/bootstrap pilot work, not a replacement for it.
 
 1. Freeze the exact setup/install knowledge that `cats` still needs to extract
    from `environment-bootstrap` before the repo split.
-2. Record the `project-bootstrap` / A2A pilot relationship explicitly so setup
+2. Rewrite the required packaged-host helper slices into `cats`-owned code or
+   bundled assets before the split, rather than leaving them as source-repo
+   dependencies.
+3. Record the `project-bootstrap` / A2A pilot relationship explicitly so setup
    knowledge porting does not accidentally re-open the collaboration-layer
    decisions already tracked elsewhere.
-3. Define the product-owned install/check asset contract that the packaged host
+4. Define the product-owned install/check asset contract that the packaged host
    will eventually execute.
-4. Keep `cats-runtime` as the runtime/provider-topology authority while making
+5. Keep `cats-runtime` as the runtime/provider-topology authority while making
    `cats` the owner of packaged host setup/install orchestration.
-5. Validate the ported knowledge while both submodules are still locally
+6. Validate the ported knowledge while both submodules are still locally
    available in the monorepo.
 
 ## Non-Goals
@@ -75,6 +80,8 @@ A2A/bootstrap pilot work, not a replacement for it.
 - Turning the renderer into a shell/process installer
 - Making `environment-bootstrap` or `project-bootstrap` a shipped runtime or
   product dependency
+- Leaving required packaged setup helper logic trapped in source-only bootstrap
+  repos after the split
 - Re-doing the A2A pilot already tracked under sibling runtime planning
 - Shipping the full release-grade desktop distribution pipeline in the same
   slice
@@ -129,16 +136,22 @@ instead of an implicit dependency on bootstrap scripts.
 ### Phase 3: Port the First High-Value Knowledge Slices
 
 - [ ] Port the highest-value stable install/check knowledge into `cats`-owned
-      assets or code, prioritizing the providers and prerequisites most likely
-      to matter for the first packaged setup flow
+      assets or code, prioritizing Windows npm-prefix/PATH prep, CLI-pack
+      installation, WSL prerequisite flows, and readiness checks for the first
+      packaged setup flow
+- [ ] Rewrite those slices as product-owned helpers or bundled assets rather
+      than keeping raw source-repo scripts as dependencies
 - [ ] Prefer reusable product-owned helpers over one-off script copies
 - [ ] Keep ported logic traceable back to the original internal sources without
       claiming those sources remain runtime/product dependencies
+- [ ] Remove any expectation that packaged setup may shell out to
+      `environment-bootstrap` or `project-bootstrap` after the split
 - [ ] Update setup, deployment, and architecture docs as soon as the first
       concrete asset slices land
 
 **Deliverables**: `cats` starts owning concrete packaged setup knowledge rather
-than only describing it in specs.
+than only describing it in specs, and the first executable helper slices are
+split-safe.
 
 ### Phase 4: Host Bridge and Resume Contract
 
@@ -161,7 +174,8 @@ instead of ad hoc future integration notes.
 ### Phase 5: Pilot Validation Before Split
 
 - [ ] Validate that the extraction inventory is sufficient without directly
-      shelling out to `environment-bootstrap` as the product flow
+      shelling out to `environment-bootstrap` or `project-bootstrap` as the
+      product flow
 - [ ] Verify the sibling A2A/bootstrap pilot artifacts remain coherent with the
       packaged setup direction
 - [ ] Record what still depends on monorepo-local source access and what is now
@@ -187,9 +201,9 @@ removes local submodule convenience.
 
 ## Technical Decisions
 
-- Decision 1: Treat `environment-bootstrap` as a source knowledge repo, not a
-  shipped dependency, because packaged `cats` must keep running after the repo
-  split.
+- Decision 1: Treat `environment-bootstrap` as a one-time source knowledge repo
+  and retire it as a required dependency before the repo split, because
+  packaged `cats` must keep running after the split.
 - Decision 2: Keep A2A/bootstrap collaboration knowledge on the existing pilot
   track instead of mixing it into packaged setup work, because the repo already
   has a sibling plan for that concern.
@@ -207,6 +221,8 @@ removes local submodule convenience.
   still available in the monorepo
 - **Contract validation**: add focused tests only when the packaged-host asset
   contract or host bridge becomes executable code
+- **Pre-split validation**: verify new packaged-host helpers execute without
+  shelling out to bootstrap submodule scripts once the first slices land
 - **Documentation verification**:
   - `git diff --check`
   - targeted doc/index consistency review
@@ -219,6 +235,7 @@ removes local submodule convenience.
 | Setup work accidentally duplicates the A2A pilot track | Medium | Keep the sibling `project-bootstrap` pilot explicitly referenced but out of scope for packaged setup implementation |
 | `cats` and `cats-runtime` ownership blur again during setup work | High | Keep runtime topology/readiness in `cats-runtime` and install/check execution in the packaged host |
 | Product code ends up copying raw bootstrap scripts without a stable contract | High | Freeze the product-owned asset contract before porting executable slices |
+| Source-repo helper logic remains unported when the split happens | High | Make repo-owned rewrite of the first packaged-host helper slices part of the main plan rather than a later optional follow-on |
 
 ## Progress Log
 
@@ -228,6 +245,7 @@ removes local submodule convenience.
 | 2026-03-29 | Scope frozen so `environment-bootstrap` knowledge extraction is the primary setup/install source track, while the sibling `project-bootstrap` A2A pilot remains referenced through `cats-runtime` PLAN-023 instead of being re-opened here |
 | 2026-03-29 | Phase 1 landed: recorded the pre-split extraction inventory under `docs/research/2026-03-29-packaged-setup-knowledge-extraction-inventory.md`, separating already-extracted A2A/runtime metadata from still-missing packaged-host execution helpers trapped in `environment-bootstrap` |
 | 2026-03-29 | Phase 2 landed: `electron/contracts.ts` and `electron/packaging.ts` now expose a machine-readable `installer.providerSetup` contract covering setup modes, capability packs, source-knowledge boundaries, and the prioritized Windows-first port queue, with desktop packaging tests locking that shape into the staged installer manifest |
+| 2026-03-29 | Scope expanded so PLAN-030 now explicitly requires repo-owned rewrites of the first packaged-host helper slices before repo split, rather than stopping at inventory and contract freezing |
 
 ---
 

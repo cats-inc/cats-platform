@@ -161,9 +161,10 @@ host-operations depth around that first slice:
 
 1. `cats-runtime` shall remain the authority for provider family topology and
    provider-install metadata consumed by product hosts.
-2. `environment-bootstrap` may remain an internal knowledge source, but the
-   packaged Cats app shall ship product-owned install/check implementations or
-   bundled assets rather than depend on the bootstrap repo directly.
+2. `environment-bootstrap` may be used as a pre-split source knowledge input,
+   but the packaged Cats app shall ship product-owned install/check
+   implementations or bundled assets rather than depend on the bootstrap repo
+   directly.
 3. The packaged host shall map runtime-owned provider install metadata onto the
    bundled execution assets it uses for actual installation and verification.
 4. `cats-runtime` shall not execute provider-install scripts itself as part of
@@ -172,6 +173,10 @@ host-operations depth around that first slice:
    shall be invocable in a GUI-safe, non-interactive mode.
 6. The packaged setup flow shall rely on structured install/check outcomes
    rather than parsing human-oriented terminal output.
+7. Before `cats` and `cats-runtime` split into separate repos, any packaged
+   setup helper logic still required for first-run install/check/resume flows
+   shall have a `cats`-owned implementation or bundled asset baseline rather
+   than a remaining dependency on monorepo-local bootstrap repos.
 
 ### Non-Functional Requirements
 
@@ -318,8 +323,8 @@ The packaged setup flow should follow this ownership split:
   - exposes provider metadata, lightweight setup/diagnostics APIs, and runtime
     readiness
 - `environment-bootstrap`
-  - remains an internal knowledge source and experiment repo, not a shipped
-    product dependency
+  - remains a pre-split source knowledge and experiment repo, not a shipped or
+    required post-split dependency
 
 ## Knowledge Porting Direction from `environment-bootstrap`
 
@@ -371,6 +376,9 @@ teaching the renderer or the user about the underlying script topology.
   `installer.providerSetup` contract so packaged-host capability packs,
   knowledge-source boundaries, and prioritized Windows-first port targets are
   frozen in code instead of remaining only in prose.
+- The next follow-on under `PLAN-030` is not just more inventory work; it is
+  the repo-owned rewrite of the first packaged-host helper slices so the split
+  does not leave required setup logic trapped in bootstrap repos.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)
