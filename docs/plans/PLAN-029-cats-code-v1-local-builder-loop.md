@@ -56,8 +56,8 @@ planning or sandbox model.
       - managed room workspace when no folder was chosen up front
 - [x] Add read/write helpers so room-owned workspace authority stays distinct
       from any session-local cwd
-- [ ] Expose workspace summary and ownership state in Code task/detail views
-- [ ] Reuse existing room/workspace ownership semantics rather than inventing a
+- [x] Expose workspace summary and ownership state in Code task/detail views
+- [x] Reuse existing room/workspace ownership semantics rather than inventing a
       Code-only workspace schema
 - [x] Define empty/unbound workspace behavior so the first task can guide the
       user into a valid local-first starting point
@@ -211,6 +211,7 @@ later review automation.
 | 2026-03-29 | Follow-up hardening slice: preview rendering now resolves through shared Core preview-surface policy instead of treating artifact paths as raw iframe URLs. `/code/artifacts/:artifactId` now exists as the clean fallback surface, and builder-local CSS now extends existing operator chrome instead of redefining pseudo-shared operator classes. |
 | 2026-03-29 | Remaining P1 items deferred: stuck/re-plan cues, structured summaries, review request flow. Artifact list is currently refreshed by task-detail polling; live SSE preview/artifact mapping remains deferred. |
 | 2026-03-29 | Codex: Added a first builder-surface resume entry so `/code/build` can reopen draft/blocked/failed tasks instead of only minting new ones. Continued execution now reuses the resolved task id rather than silently creating duplicate tasks after a failed start. Session-level aligned resume remains deferred. |
+| 2026-03-30 | Codex: Bound `/code/build` to the shared workspace-resolution contract instead of treating workspace as a raw string. Builder now resolves explicit folders or selected-chat repo / managed-room fallbacks, writes the resulting workspace summary into task metadata, and surfaces ownership state in Code task detail and builder UI. |
 
 ---
 

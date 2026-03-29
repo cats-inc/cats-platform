@@ -10,6 +10,9 @@ import {
   createCodeTask,
   resumeCodeTask,
 } from '../dist-server/products/code/state/taskExecution.js';
+import {
+  readCodeWorkspaceSummaryFromTask,
+} from '../dist-server/products/code/shared/workspaceSummary.js';
 
 test('createCodeTask creates a task with productHint code and reflexion strategy', () => {
   const core = createDefaultCoreState();
@@ -55,6 +58,23 @@ test('createCodeTask supports parentTaskId', () => {
   }, now);
 
   assert.equal(child.task.parentTaskId, parent.task.id);
+});
+
+test('createCodeTask records workspace ownership summary when a workspace is provided', () => {
+  const core = createDefaultCoreState();
+  const now = new Date('2026-03-29T10:00:00.000Z');
+
+  const result = createCodeTask(core, {
+    title: 'Task with workspace',
+    workspacePath: 'C:/repo/cats',
+    workspaceKind: 'conversation_repo',
+  }, now);
+
+  assert.deepEqual(readCodeWorkspaceSummaryFromTask(result.task), {
+    workspacePath: 'C:/repo/cats',
+    workspaceKind: 'conversation_repo',
+    ownershipState: 'conversation_bound',
+  });
 });
 
 test('resumeCodeTask transitions a draft task to approved', () => {
@@ -139,4 +159,28 @@ test('resumeCodeTask throws for an in_progress task', () => {
     () => resumeCodeTask(taskResult.core, { taskId: 'task-running' }, now),
     /not resumable/u,
   );
+});
+
+test('resumeCodeTask preserves recorded workspace ownership summary', () => {
+  const core = createDefaultCoreState();
+  const now = new Date('2026-03-29T10:00:00.000Z');
+
+  const created = createCodeTask(core, {
+    title: 'Workspace task',
+    workspacePath: 'C:/room/workspace',
+    workspaceKind: 'managed_room',
+  }, now);
+  const draft = upsertCoreTask(created.core, {
+    id: created.task.id,
+    title: created.task.title,
+    status: 'draft',
+    metadata: created.task.metadata,
+  }, now);
+
+  const resumed = resumeCodeTask(draft.core, { taskId: created.task.id }, now);
+  assert.deepEqual(readCodeWorkspaceSummaryFromTask(resumed.task), {
+    workspacePath: 'C:/room/workspace',
+    workspaceKind: 'managed_room',
+    ownershipState: 'room_owned',
+  });
 });

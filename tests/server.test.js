@@ -3984,6 +3984,11 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
             planning: {
               productHint: 'code',
             },
+            codeWorkspace: {
+              workspacePath: 'C:/repo/cats',
+              workspaceKind: 'conversation_repo',
+              ownershipState: 'conversation_bound',
+            },
           },
         },
       }),
@@ -4120,6 +4125,11 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     const codeTaskDetailPayload = await codeTaskDetailResponse.json();
     assert.equal(codeTaskDetailPayload.task.id, 'task-code-dashboard');
     assert.equal(codeTaskDetailPayload.effectiveStrategy, 'reflexion');
+    assert.deepEqual(codeTaskDetailPayload.workspace, {
+      workspacePath: 'C:/repo/cats',
+      workspaceKind: 'conversation_repo',
+      ownershipState: 'conversation_bound',
+    });
     assert.equal(codeTaskDetailPayload.artifactSummary.totalCount, 2);
     assert.equal(codeTaskDetailPayload.linkedArtifacts.length, 2);
     assert.equal(codeTaskDetailPayload.timeline.view.taskId, 'task-code-dashboard');
