@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
@@ -45,12 +47,13 @@ function createRuntimeStub(responder) {
       };
     },
     async createSession(input) {
+      const sessionId = `session-${nextSession++}`;
       const session = {
-        id: `session-${nextSession++}`,
+        id: sessionId,
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? 'C:/chat/runtime',
+        cwd: input.cwd ?? path.join(tmpdir(), '.cats-runtime', 'sessions', sessionId),
       };
       this.createdSessions.push({ ...input, id: session.id });
       return session;

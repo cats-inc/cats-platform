@@ -40,7 +40,10 @@ import { createExplicitProviderModelSelection } from '../../../../shared/provide
 import {
   classifyRuntimeDispatchRecoveryError,
 } from '../runtime-dispatch/recovery.js';
-import { ensureChannelWorkspace } from '../workspace.js';
+import {
+  ensureChannelAttachmentWorkspace,
+  syncChannelAttachmentsToWorkspace,
+} from '../workspace.js';
 import {
   clearTargetSessionLease,
   ensureChannelMarkedActive,
@@ -337,21 +340,8 @@ export async function ensureTargetSession(
   }
 
   let nextState = state;
-  const workspace = await ensureChannelWorkspace({
-    channelId,
-    repoPath: requireChannel(nextState, channelId).repoPath,
-    chatCwd: requireChannel(nextState, channelId).chatCwd,
-    chatStatePath: options.chatStatePath,
-  });
-  if (
-    workspace.nextChatCwd
-    && requireChannel(nextState, channelId).chatCwd !== workspace.nextChatCwd
-  ) {
-    nextState = setChannelChatCwd(nextState, channelId, workspace.nextChatCwd, now);
-  }
-
   const channel = buildChannelView(nextState, channelId);
-  const spawnCwd = workspace.workspacePath ?? spawnCwdFor(requireChannel(nextState, channelId));
+  const spawnCwd = spawnCwdFor(requireChannel(nextState, channelId));
   const workspaceKind = spawnCwd ? 'source' : 'sandbox';
 
   try {
@@ -382,6 +372,16 @@ export async function ensureTargetSession(
         context: runtimeEnvelope.context,
         skills: runtimeEnvelope.skills,
         ...(taskExecutionContext?.executionRequest ?? {}),
+      });
+      const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
+        channelId,
+        repoPath: requireChannel(nextState, channelId).repoPath,
+        chatCwd: requireChannel(nextState, channelId).chatCwd,
+        runtimeDataDir: options.runtimeDataDir,
+      });
+      await syncChannelAttachmentsToWorkspace({
+        attachmentWorkspacePath,
+        targetWorkspacePath: session.cwd,
       });
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
@@ -440,6 +440,16 @@ export async function ensureTargetSession(
       context: runtimeEnvelope.context,
       skills: runtimeEnvelope.skills,
       ...(taskExecutionContext?.executionRequest ?? {}),
+    });
+    const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
+      channelId,
+      repoPath: requireChannel(nextState, channelId).repoPath,
+      chatCwd: requireChannel(nextState, channelId).chatCwd,
+      runtimeDataDir: options.runtimeDataDir,
+    });
+    await syncChannelAttachmentsToWorkspace({
+      attachmentWorkspacePath,
+      targetWorkspacePath: session.cwd,
     });
     nextState = setStartedSession(
       nextState,

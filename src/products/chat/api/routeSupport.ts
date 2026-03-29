@@ -51,11 +51,16 @@ import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import type { ChatStore } from '../state/store.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
-import { ensureChannelWorkspace } from '../state/workspace.js';
+import { isRuntimeSessionWorkspacePath } from '../../../core/workspacePaths.js';
 import {
   buildCatTarget,
   resolveRuntimeEnvelopeForTarget,
 } from '../state/runtimeTargeting.js';
+import {
+  ensureChannelAttachmentWorkspace,
+  resolveChannelSpawnCwd,
+  syncChannelAttachmentsToWorkspace,
+} from '../state/workspace.js';
 import type {
   AppShellPayload,
   AssignChannelCatInput,
@@ -755,21 +760,14 @@ export async function persistCatAssignmentUpdate(
   const updatedCat = refreshedChannel.catAssignments.find(
     (candidate) => candidate.catId === input.catId,
   );
-  const workspace = await ensureChannelWorkspace({
-    channelId,
-    repoPath: refreshedChannel.repoPath,
-    chatCwd: refreshedChannel.chatCwd,
-    chatStatePath: context.dependencies.config.chatStatePath,
-  });
-  if (workspace.nextChatCwd && refreshedChannel.chatCwd !== workspace.nextChatCwd) {
-    nextState = setChannelChatCwd(nextState, channelId, workspace.nextChatCwd, now);
-  }
   const resolvedChannel = requireChannel(nextState, channelId);
   const spawnCwd = (
-    workspace.workspacePath
-    ?? resolvedChannel.repoPath
-    ?? resolvedChannel.chatCwd
-    ?? resolvedChannel.orchestratorLease.cwd
+    resolveChannelSpawnCwd(resolvedChannel.repoPath, resolvedChannel.chatCwd)
+    ?? (
+      isRuntimeSessionWorkspacePath(resolvedChannel.orchestratorLease.cwd)
+        ? resolvedChannel.orchestratorLease.cwd
+        : null
+    )
     ?? null
   );
   const channelIsLive = refreshedChannel.status === 'active'
@@ -818,6 +816,16 @@ export async function persistCatAssignmentUpdate(
         workspaceAccess: 'read_write',
         context: runtimeEnvelope.context,
         skills: runtimeEnvelope.skills,
+      });
+      const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
+        channelId,
+        repoPath: resolvedChannel.repoPath,
+        chatCwd: resolvedChannel.chatCwd,
+        runtimeDataDir: context.dependencies.config.runtimeDataDir,
+      });
+      await syncChannelAttachmentsToWorkspace({
+        attachmentWorkspacePath,
+        targetWorkspacePath: session.cwd,
       });
       const timestamp = now.toISOString();
       nextState = setChannelCatLease(nextState, channelId, input.catId, {
@@ -1012,4 +1020,3 @@ export async function persistDeletedCat(
     ));
   void reconcilePollingAfterBindingMutation(context);
 }
-

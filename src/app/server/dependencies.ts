@@ -130,6 +130,7 @@ export function resolveServerDependencies(
             staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
           },
           chatStatePath: dependencies.shared.config.chatStatePath,
+          runtimeDataDir: dependencies.shared.config.runtimeDataDir,
         })
     );
   const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface
@@ -141,6 +142,7 @@ export function resolveServerDependencies(
       chatStore: dependencies.chat.chatStore,
       companionStore,
       chatStatePath: dependencies.shared.config.chatStatePath,
+      runtimeDataDir: dependencies.shared.config.runtimeDataDir,
       runtimeRecovery: {
         staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
       },
