@@ -8,7 +8,7 @@ import {
   operatorSeverityClassName,
   runStatusLabel,
   runStatusSeverity,
-} from './operatorFormatting';
+} from '../../../../design/operatorFormatting';
 
 export interface ProgressSummaryPanelProps {
   inspector: ChatRunInspectorView | null;
