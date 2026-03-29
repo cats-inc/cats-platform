@@ -65,6 +65,21 @@ These wrappers call `npm run desktop:start`, which builds:
 and then launches the Electron host that supervises local `cats-runtime` and
 `cats` child processes.
 
+## Collaboration Helpers
+
+`cats` also keeps repo-owned cross-platform skill sync helpers so local agent
+discovery paths do not depend on bootstrap submodules:
+
+- `scripts/windows/Sync-AgentSkills.ps1`
+- `scripts/linux/sync-agent-skills.sh`
+- `scripts/macos/sync-agent-skills.sh`
+
+These scripts sync `skills/` into `.claude/skills`, `.agents/skills`, and
+`.gemini/skills`, and support:
+
+- `--clean` / `-Clean`
+- `--agent <claude|codex|gemini>` / `-Agent <...>`
+
 ## Self-Hosted npm Package Helpers
 
 `cats` now also ships repo-owned npm pack/install smoke helpers on each desktop
