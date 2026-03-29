@@ -1,4 +1,6 @@
+import type { AppConfig } from '../../../config.js';
 import type { CoreStore } from '../../../core/store.js';
+import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import {
   buildCodeArtifactDetailProjection,
   buildCodeArtifactListProjection,
@@ -11,6 +13,11 @@ import {
   type CodeTaskDetailProjection,
   type CodeTaskListProjection,
 } from './projection.js';
+import { routeCodeWorkspaceApi } from './workspaceRoutes.js';
+import { routeCodeTaskMutationApi } from './taskRoutes.js';
+import { routeCodePlanApi } from './planRoutes.js';
+import { routeCodeDeliveryApi } from './deliveryRoutes.js';
+import { routeCodeRuntimeBridgeApi } from './runtimeBridgeRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -22,6 +29,8 @@ export const CODE_API_SLICE = 'code';
 
 export interface CodeApiDependencies {
   coreStore: CoreStore;
+  runtimeClient: RuntimeClient;
+  config: AppConfig;
 }
 
 export type CodeApiRouteContext = RouteContext<CodeApiDependencies>;
@@ -64,6 +73,22 @@ export function createCodeArtifactDetailPayload(
 export async function routeCodeApi(
   context: CodeApiRouteContext,
 ): Promise<boolean> {
+  if (await routeCodeRuntimeBridgeApi(context)) {
+    return true;
+  }
+  if (await routeCodeDeliveryApi(context)) {
+    return true;
+  }
+  if (await routeCodePlanApi(context)) {
+    return true;
+  }
+  if (await routeCodeTaskMutationApi(context)) {
+    return true;
+  }
+  if (await routeCodeWorkspaceApi(context)) {
+    return true;
+  }
+
   const artifactDetailMatch = matchRoute(context.url.pathname, /^\/api\/code\/artifacts\/([^/]+)$/u);
   if (artifactDetailMatch) {
     if (context.method !== 'GET') {

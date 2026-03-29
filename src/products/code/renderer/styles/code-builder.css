@@ -1,0 +1,367 @@
+/* Code Builder — product-local styles for the Cats Code builder loop */
+
+.codeBuilderView {
+  display: grid;
+  gap: 20px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.codeBuilderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.codeBuilderTitle {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.codeBuilderFeedback {
+  padding: 10px 14px;
+  border: 1px solid rgba(196, 101, 58, 0.28);
+  border-radius: 10px;
+  background: rgba(196, 101, 58, 0.06);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.codeBuilderForm {
+  display: grid;
+  gap: 14px;
+}
+
+.codeBuilderFormRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.codeBuilderFormRow > .codeBuilderLabel {
+  flex: 1 1 180px;
+}
+
+.codeBuilderLabel {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.codeBuilderInput,
+.codeBuilderTextarea {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-family: inherit;
+}
+
+.codeBuilderInput:focus,
+.codeBuilderTextarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+}
+
+.codeBuilderTextarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.codeBuilderPanels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .codeBuilderPanels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.codeBuilderPanelMain,
+.codeBuilderPanelSide {
+  display: grid;
+  gap: 16px;
+}
+
+.codeBuilderDoneBanner {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(60, 130, 80, 0.06);
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+/* Plan panel */
+
+.codePlanStepList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.codePlanStep {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.codePlanStepPending {
+  color: var(--muted);
+}
+
+.codePlanStepRunning {
+  background: rgba(0, 100, 200, 0.05);
+  color: var(--text);
+}
+
+.codePlanStepDone {
+  color: var(--muted-soft);
+  text-decoration: line-through;
+  text-decoration-color: var(--border);
+}
+
+.codePlanStepBlocked {
+  background: rgba(196, 101, 58, 0.05);
+  color: var(--text);
+}
+
+.codePlanStepOrdinal {
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--muted-soft);
+}
+
+.codePlanStepTitle {
+  font-weight: 500;
+}
+
+.codePlanStepStatus {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-soft);
+}
+
+.codePlanStepDetail {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Build / preview */
+
+.codeBuildPreviewFrame {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.codeBuildPreviewIframe {
+  width: 100%;
+  height: 320px;
+  border: none;
+}
+
+.codeBuildArtifactCard .operatorCardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted-soft);
+  font-size: 0.75rem;
+}
+
+/* Delivery */
+
+.codeDeliveryCommitForm {
+  display: grid;
+  gap: 10px;
+}
+
+.codeDeliveryInput {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-family: inherit;
+}
+
+.codeDeliveryInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.codeDeliveryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.codeDeliveryConfirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* Delivery preview result */
+
+.codeDeliveryPreview {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fbfaf8;
+  font-size: 0.84rem;
+}
+
+.codeDeliveryPreviewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.codeDeliveryPreviewHeader strong {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.codeDeliveryPreviewSection {
+  display: grid;
+  gap: 4px;
+}
+
+.codeDeliveryPreviewLabel {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-soft);
+}
+
+.codeDeliveryPreviewList {
+  margin: 0;
+  padding: 0 0 0 18px;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.codeDeliveryPreviewList li {
+  margin-bottom: 2px;
+}
+
+.codeDeliveryBlocked {
+  color: rgb(196, 101, 58);
+}
+
+.codeDeliveryWarnings {
+  color: rgb(180, 140, 40);
+}
+
+/* Button overrides for builder panels */
+
+.operatorAction {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.operatorAction:hover:not(:disabled) {
+  background: var(--panel-hover);
+}
+
+.operatorAction:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.operatorActionPrimary {
+  border-color: var(--text);
+  background: var(--text);
+  color: #fff;
+}
+
+.operatorActionPrimary:hover:not(:disabled) {
+  background: #333;
+}
+
+.operatorActionDanger {
+  border-color: rgba(196, 101, 58, 0.4);
+  color: rgb(196, 101, 58);
+}
+
+.operatorActionDanger:hover:not(:disabled) {
+  background: rgba(196, 101, 58, 0.06);
+}
+
+.operatorBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.operatorBadgePositive {
+  background: rgba(60, 130, 80, 0.1);
+  color: rgb(60, 130, 80);
+}
+
+.operatorBadgeInfo {
+  background: rgba(0, 100, 200, 0.08);
+  color: rgb(0, 100, 200);
+}
+
+.operatorBadgeMuted {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--muted-soft);
+}
+
+.operatorPanelFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.operatorCardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted-soft);
+  font-size: 0.75rem;
+}

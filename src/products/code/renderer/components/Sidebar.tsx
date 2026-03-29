@@ -44,6 +44,7 @@ export interface SidebarProps {
   onSwitchProduct: (surface: SuiteSurfaceId) => void;
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
+  onOpenBuild?: () => void;
 }
 
 type RuntimeFooterStatus = 'unknown' | 'connected' | 'degraded' | 'unavailable';
@@ -394,8 +395,10 @@ export function Sidebar({
   onSwitchProduct,
   activeMyCatId,
   onDirectChatCat,
+  onOpenBuild,
 }: SidebarProps) {
-  const activeSurface = resolveSuiteSurfaceFromPath(globalThis.location?.pathname ?? '/chat');
+  const currentPath = globalThis.location?.pathname ?? '/code';
+  const activeSurface = resolveSuiteSurfaceFromPath(currentPath);
   const chatCats = payload.chat.cats.filter(isChatCat);
   const showMyCats = chatCats.length > 0;
   const telegramBoundCatIds = new Set(
@@ -484,6 +487,25 @@ export function Sidebar({
             <span className="navLabel">Chats</span>
           </button>
         </nav>
+
+        {onOpenBuild ? (
+          <nav className="navGroup" aria-label="Build">
+            <button
+              className={currentPath.startsWith('/code/build') ? 'navItem navItemActive' : 'navItem'}
+              onClick={onOpenBuild}
+              type="button"
+            >
+              <span className="navGlyph" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 4l6-2 6 2v6l-6 2-6-2z" />
+                  <path d="M2 4l6 2 6-2" />
+                  <path d="M8 6v8" />
+                </svg>
+              </span>
+              <span className="navLabel">Build</span>
+            </button>
+          </nav>
+        ) : null}
 
         {showMyCats ? (
           <section className="myCatsSection">
