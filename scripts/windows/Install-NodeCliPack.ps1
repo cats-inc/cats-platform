@@ -88,11 +88,25 @@ function Parse-JsonArray {
     return @()
   }
 
-  $parsed = $Value | ConvertFrom-Json
-  if ($parsed -is [System.Array]) {
+  try {
+    $parsed = $Value | ConvertFrom-Json
+    if ($parsed -is [System.Array]) {
+      return @($parsed)
+    }
     return @($parsed)
+  } catch {
+    $trimmed = $Value.Trim()
+    if ($trimmed.StartsWith('[') -and $trimmed.EndsWith(']')) {
+      $trimmed = $trimmed.Substring(1, $trimmed.Length - 2)
+    }
+    if ([string]::IsNullOrWhiteSpace($trimmed)) {
+      return @()
+    }
+
+    $segments = $trimmed.Split(',', [System.StringSplitOptions]::RemoveEmptyEntries)
+    $normalizedSegments = $segments | ForEach-Object { $_.Trim().Trim('"') }
+    return @($normalizedSegments | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
   }
-  return @($parsed)
 }
 
 function Get-InstalledPackages {

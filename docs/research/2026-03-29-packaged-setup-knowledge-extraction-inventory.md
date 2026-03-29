@@ -127,10 +127,11 @@ ports a product-owned host asset layer.
 | Windows npm-global AI CLI pack install | `environment-bootstrap/platform/windows/Install-NodeCLITools.ps1` | `cats/scripts/windows/Install-NodeCliPack.ps1` | packaged-host assets in `cats` | Ported | Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi, and now consumes the repo-owned npm prefix helper instead of a bootstrap dependency |
 | Windows npm prefix + PATH setup | `environment-bootstrap/platform/windows/Setup-NodeJS.ps1` | `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Staged into `build/desktop-packaging/shared/setup-assets/windows/` and bundled into desktop installs under `desktop-host/setup-assets/windows/` |
 | Windows WSL prerequisite preflight | `Install-WSL2-Admin.ps1` + `Install-WSLUbuntu.ps1` knowledge | `cats/scripts/windows/Check-WslPrerequisites.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Structured preflight only; does not yet enable Windows features or install the distro |
+| Windows setup readiness audit | `environment-bootstrap/platform/windows/Check-Installation.ps1` | `cats/scripts/windows/Check-WindowsSetupReadiness.ps1` | host-side readiness/recovery helpers in `cats` | Ported | Structured audit only; composes the repo-owned prefix, native CLI pack, and WSL preflight helpers instead of copying the old bootstrap-wide report verbatim |
 | Windows WSL feature enablement | `Install-WSL2-Admin.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Needed for WSL-heavy provider packs |
 | Windows Ubuntu distro install/resume | `Install-WSLUbuntu.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Important for resumable WSL setup |
 | Windows WSL provider installers | `Install-WSLCursorAgent.ps1`, `Install-WSLKiroCLI.ps1`, related WSL scripts | `environment-bootstrap` only | packaged-host provider assets in `cats` | Port next | Cursor/Kiro are concrete first candidates |
-| Windows readiness/auth inspection | `Check-Installation.ps1` | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; use for host-only prerequisite checks |
+| Windows readiness/auth inspection follow-through | remaining `Check-Installation.ps1` coverage | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; expand the repo-owned audit incrementally instead of copying the old bootstrap-wide report verbatim |
 | Docker Desktop install + warm-state knowledge | `Install-Docker-Admin.ps1` | `environment-bootstrap` only | later packaged-host capability pack | Defer | Relevant for heavier local-model / container paths, not first baseline |
 | Ngrok / tunnel setup | `Install-Ngrok-Admin.ps1`, `Setup-Ngrok.ps1` | `environment-bootstrap` only | later transport helper layer in `cats` | Defer | Not part of the first packaged setup baseline |
 | Guacamole / Tailscale / workstation extras | extra-mode scripts | `environment-bootstrap` only | none for current packaged setup | Exclude | Not part of `cats` packaged setup scope |
@@ -144,6 +145,8 @@ ports a product-owned host asset layer.
      `cats/scripts/windows/Install-NodeCliPack.ps1`.
    - The WSL prerequisite preflight is now repo-owned in
      `cats/scripts/windows/Check-WslPrerequisites.ps1`.
+   - The host-side readiness audit is now repo-owned in
+     `cats/scripts/windows/Check-WindowsSetupReadiness.ps1`.
    - The next missing Windows-first slice is the actual WSL feature-enable and
      distro-install chain that unlocks Cursor, Kiro, and the heavier native
      CLI paths.

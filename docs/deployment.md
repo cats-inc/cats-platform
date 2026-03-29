@@ -68,6 +68,7 @@ npm run desktop:stage
   - `build/desktop-packaging/shared/setup-assets/windows/Setup-NodeGlobalPrefix.ps1`
   - `build/desktop-packaging/shared/setup-assets/windows/Install-NodeCliPack.ps1`
   - `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
+  - `build/desktop-packaging/shared/setup-assets/windows/Check-WindowsSetupReadiness.ps1`
   - `build/desktop-packaging/targets/<target>/installer-manifest.json`
 - current platform wrappers:
 
@@ -109,6 +110,7 @@ npm run desktop:package:windows
   - verify bundled packaged-setup assets, starting with the Windows npm prefix helper
   - verify the bundled Windows native CLI pack installer asset
   - verify the bundled Windows WSL prerequisite preflight asset
+  - verify the bundled Windows setup readiness audit asset
   - verify packaged `desktop-package-plan.json` keeps the Windows NSIS target
   - launch the installed app and wait for the desktop-host state file to reach
     `ready_for_setup`, `ready_for_chat`, or `needs_prerequisites`

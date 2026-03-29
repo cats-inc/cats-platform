@@ -207,6 +207,7 @@ The current substrate writes:
 - `build/desktop-packaging/shared/setup-assets/windows/Setup-NodeGlobalPrefix.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-NodeCliPack.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
+- `build/desktop-packaging/shared/setup-assets/windows/Check-WindowsSetupReadiness.ps1`
 - `build/desktop-packaging/targets/<target>/installer-manifest.json`
 
 This is intentionally a staging layer, not the final signed-installer
@@ -256,6 +257,7 @@ What the smoke-check confirms:
 - the bundled Windows npm prefix helper exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows native CLI pack helper exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows WSL prerequisite preflight helper exists under `resources/desktop-host/setup-assets/`
+- the bundled Windows setup readiness audit helper exists under `resources/desktop-host/setup-assets/`
 - the packaged `desktop-package-plan.json` still advertises the Windows NSIS
   target
 - launching the installed app refreshes the persisted desktop-host state file

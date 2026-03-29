@@ -70,6 +70,7 @@ and then launches the Electron host that supervises local `cats-runtime` and
 - `scripts/windows/Setup-NodeGlobalPrefix.ps1`
 - `scripts/windows/Install-NodeCliPack.ps1`
 - `scripts/windows/Check-WslPrerequisites.ps1`
+- `scripts/windows/Check-WindowsSetupReadiness.ps1`
 
 These helpers rewrite the stable Windows npm-prefix/PATH preparation and
 npm-global AI CLI pack installation knowledge that previously lived only in
@@ -89,6 +90,10 @@ support:
 preflight contract so the host can tell whether Windows build, WSL presence,
 and the target distro are ready before it attempts feature enablement or distro
 installation.
+
+`Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
+helpers into one host-readable audit for native CLI pack readiness and WSL
+prerequisite readiness.
 
 Together these let the host treat packaged setup helpers as structured assets
 instead of raw bootstrap dependencies.

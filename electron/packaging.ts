@@ -277,13 +277,14 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           id: 'windows-install-readiness-audit',
           label: 'Windows host prerequisite and auth-state audit helper',
           kind: 'readiness_helper',
-          status: 'planned',
+          status: 'ported',
           pack: 'native_cli_pack',
           platform: 'windows',
-          currentHome: 'environment-bootstrap/platform/windows/Check-Installation.ps1',
+          currentHome: 'cats/scripts/windows/Check-WindowsSetupReadiness.ps1',
           targetHome: 'cats packaged-host diagnostics helpers',
           notes: [
-            'Should complement runtime diagnostics for host-only prerequisite and warm-state checks.',
+            'Repo-owned structured audit that composes the Windows prefix, native CLI pack, and WSL preflight helpers.',
+            'Complements runtime diagnostics for host-only prerequisite and warm-state checks.',
           ],
         },
         {

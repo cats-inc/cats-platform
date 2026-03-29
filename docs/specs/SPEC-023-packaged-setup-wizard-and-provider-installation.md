@@ -392,6 +392,11 @@ teaching the renderer or the user about the underlying script topology.
   prerequisite preflight contract so the host can detect Windows build, WSL,
   and distro readiness before the full WSL feature-enable and distro-install
   flow is ported.
+- The fourth repo-owned packaged setup helper slice is now landed:
+  `scripts/windows/Check-WindowsSetupReadiness.ps1` composes the repo-owned npm
+  prefix, native CLI pack, and WSL prerequisite helpers into one structured
+  host-side readiness audit instead of relying on the old bootstrap-wide
+  `Check-Installation.ps1` report.
 - The next follow-on under `PLAN-030` is no longer generic WSL discovery; it
   is the repo-owned rewrite of the actual WSL prerequisite mutation chain and
   the next packaged-host helper slices so the split does not leave required
