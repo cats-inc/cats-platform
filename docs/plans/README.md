@@ -46,6 +46,9 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-029](./PLAN-029-cats-code-v1-local-builder-loop.md) | Cats Code v1 Local Builder Loop | Draft | [SPEC-041](../specs/SPEC-041-cats-code-v1-local-builder-loop.md) |
+| [PLAN-028](./PLAN-028-cats-work-team-templates-and-work-intake.md) | Cats Work Team Templates and Work Intake | Draft | [SPEC-040](../specs/SPEC-040-cats-work-team-templates-and-work-intake.md) |
+| [PLAN-027](./PLAN-027-cats-chat-v1-priority-items.md) | Cats Chat v1 Priority Items | Draft | [SPEC-039](../specs/SPEC-039-cats-chat-v1-priority-items.md) |
 | [PLAN-026](./PLAN-026-transport-live-updates-and-private-lane-transition.md) | Transport Live Updates and Private-Lane Transition | Draft | [SPEC-037](../specs/SPEC-037-transport-driven-live-chat-updates-and-private-lane-transition.md), [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md) |
 | [PLAN-025](./PLAN-025-companion-workspace-presence-and-settings.md) | Companion Workspace, Presence, and Settings | Draft | [SPEC-036](../specs/SPEC-036-companion-workspace-presence-and-settings.md), [ADR-040](../decisions/040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md) |
 | [PLAN-021](./PLAN-021-cross-product-task-strategy-handoff-and-runtime-bridge.md) | Cross-Product Task Strategy Handoff and Runtime Bridge | Draft | [SPEC-035](../specs/SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md), [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md) |

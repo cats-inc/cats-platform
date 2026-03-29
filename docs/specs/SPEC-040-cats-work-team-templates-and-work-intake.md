@@ -247,4 +247,4 @@ useful.
 
 *Created: 2026-03-29*
 *Author: Codex*
-*Related Plan: TBD*
+*Related Plan: [PLAN-028](../plans/PLAN-028-cats-work-team-templates-and-work-intake.md)*

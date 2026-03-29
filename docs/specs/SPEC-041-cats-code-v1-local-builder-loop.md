@@ -311,4 +311,4 @@ first serious builder slice:
 
 *Created: 2026-03-29*
 *Author: Codex*
-*Related Plan: TBD*
+*Related Plan: [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md)*

@@ -364,4 +364,4 @@ transport, and session discipline.
 
 *Created: 2026-03-29*
 *Author: Codex*
-*Related Plan: TBD (build on PLAN-025, PLAN-026, and follow-on Chat-specific transport/session work)*
+*Related Plan: [PLAN-027](../plans/PLAN-027-cats-chat-v1-priority-items.md)*
