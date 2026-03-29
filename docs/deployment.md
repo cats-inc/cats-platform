@@ -124,6 +124,8 @@ npm run desktop:package:windows
   - verify bundled app assets
   - verify bundled `cats-runtime` sidecar slot
   - run host-owned first-run provider scan
+  - expose a machine-readable `installer.providerSetup.helperCatalog` for the
+    bundled Windows setup assets
   - map failures onto structured host state plus resumable remediation actions
 - update-channel contract in this slice:
   - manual-check skeleton only

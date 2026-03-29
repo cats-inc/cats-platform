@@ -39,6 +39,15 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(plan.installer.providerSetup.executionDefaults.hostOwned, true);
   assert.equal(plan.installer.providerSetup.executionDefaults.rendererShellAccess, false);
   assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-install-readiness-audit'
+        && helper.assetId === 'windows-setup-readiness-audit-script'
+        && helper.supportsCheckOnly === true
+        && helper.supportsApply === false,
+    ),
+    true,
+  );
+  assert.equal(
     plan.installer.providerSetup.knowledgeSources.some(
       (source) => source.id === 'environment-bootstrap' && source.productDependency === false,
     ),
@@ -191,6 +200,14 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(targetManifest.updates.channel, config.update.channel);
   assert.equal(targetManifest.target.artifactBaseName, 'cats-windows-x64');
   assert.equal(targetManifest.installer.providerSetup.capabilityPacks[0].id, 'api_baseline');
+  assert.equal(
+    targetManifest.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-node-cli-pack'
+        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-NodeCliPack.ps1'
+        && helper.supportsUpgrade === true,
+    ),
+    true,
+  );
   assert.equal(
     targetManifest.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-wsl-prerequisites',

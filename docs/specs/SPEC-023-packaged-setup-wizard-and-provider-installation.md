@@ -397,6 +397,10 @@ teaching the renderer or the user about the underlying script topology.
   prefix, native CLI pack, and WSL prerequisite helpers into one structured
   host-side readiness audit instead of relying on the old bootstrap-wide
   `Check-Installation.ps1` report.
+- The staged desktop packaging plan now also carries a machine-readable
+  `installer.providerSetup.helperCatalog` so future host bridge work can bind
+  setup actions to packaged assets, supported operations, and elevation
+  expectations without reverse-engineering filenames.
 - The next follow-on under `PLAN-030` is no longer generic WSL discovery; it
   is the repo-owned rewrite of the actual WSL prerequisite mutation chain and
   the next packaged-host helper slices so the split does not leave required

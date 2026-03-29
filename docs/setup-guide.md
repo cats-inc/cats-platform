@@ -210,6 +210,11 @@ The current substrate writes:
 - `build/desktop-packaging/shared/setup-assets/windows/Check-WindowsSetupReadiness.ps1`
 - `build/desktop-packaging/targets/<target>/installer-manifest.json`
 
+The staged `desktop-package-plan.json` now also carries
+`installer.providerSetup.helperCatalog`, which is the machine-readable catalog
+of bundled setup helpers, supported operations, packaged relative paths, and
+elevation expectations for future host bridge work.
+
 This is intentionally a staging layer, not the final signed-installer
 publication step.
 

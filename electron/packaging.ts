@@ -179,6 +179,22 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
         nonInteractiveDefault: true,
         structuredResultsRequired: true,
       },
+      helperCatalog: DESKTOP_SETUP_ASSETS.map((asset) => ({
+        id: asset.helperId,
+        assetId: asset.id,
+        label: asset.label,
+        kind: asset.kind,
+        pack: asset.pack,
+        platform: asset.platform,
+        packagedRelativePath: asset.packagedRelativePath,
+        supportsCheckOnly: asset.supportsCheckOnly,
+        supportsApply: asset.supportsApply,
+        supportsUpgrade: asset.supportsUpgrade,
+        supportsForce: asset.supportsForce,
+        requiresElevation: asset.requiresElevation,
+        resumable: asset.resumable,
+        notes: asset.notes,
+      })),
       prioritizedAssets: [
         {
           id: 'runtime-provider-metadata',

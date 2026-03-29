@@ -287,6 +287,22 @@ export interface DesktopInstallerContract {
       nonInteractiveDefault: true;
       structuredResultsRequired: true;
     };
+    helperCatalog: Array<{
+      id: string;
+      assetId: string;
+      label: string;
+      kind: DesktopProviderSetupAssetKind;
+      pack: DesktopProviderSetupPackId | null;
+      platform: DesktopProviderSetupPlatform;
+      packagedRelativePath: string;
+      supportsCheckOnly: boolean;
+      supportsApply: boolean;
+      supportsUpgrade: boolean;
+      supportsForce: boolean;
+      requiresElevation: boolean;
+      resumable: boolean;
+      notes: string[];
+    }>;
     prioritizedAssets: Array<{
       id: string;
       label: string;
