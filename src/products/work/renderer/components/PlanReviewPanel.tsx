@@ -1,18 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkIntakePlanProjection } from '../../api/intakeProjection.js';
 import {
   approveIntakePlan,
   fetchIntakePlan,
   rejectIntakePlan,
 } from '../api/intake.js';
-
-const PRODUCT_LABELS: Record<string, string> = {
-  work: 'Work',
-  chat: 'Chat',
-  code: 'Code',
-};
 
 function ProductBadge({ product }: { product: string | null }) {
   if (!product) {
@@ -21,7 +16,9 @@ function ProductBadge({ product }: { product: string | null }) {
 
   return (
     <span className={`work-plan-badge work-plan-badge--${product}`}>
-      {PRODUCT_LABELS[product] ?? product}
+      {product === 'chat' || product === 'work' || product === 'code'
+        ? taskExecutionProductLabel(product)
+        : product}
     </span>
   );
 }
