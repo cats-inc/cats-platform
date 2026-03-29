@@ -94,6 +94,25 @@ export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanion
     return result;
   }
 
+  async deleteMemory(catId: string, memoryId: string, now?: Date) {
+    const result = await this.delegate.deleteMemory(catId, memoryId, now);
+    if (result.deleted) {
+      await this.syncCanonicalCompanionMemory(catId, now);
+    }
+    return result;
+  }
+
+  async updateMemoryStatus(
+    catId: string,
+    memoryId: string,
+    status: 'active' | 'archived',
+    now?: Date,
+  ) {
+    const result = await this.delegate.updateMemoryStatus(catId, memoryId, status, now);
+    await this.syncCanonicalCompanionMemory(catId, now);
+    return result;
+  }
+
   async getResponseProfile(catId: string, now?: Date) {
     return this.delegate.getResponseProfile(catId, now);
   }

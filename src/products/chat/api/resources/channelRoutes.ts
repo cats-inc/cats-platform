@@ -10,6 +10,8 @@ import {
 import {
   buildChannelView,
   requireChannel,
+  setChannelCatLease,
+  setChannelOrchestratorLease,
   setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
@@ -23,6 +25,7 @@ import type {
   UpdateChannelInput,
 } from '../contracts.js';
 import {
+  closeSessionIds,
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
   maybeAutoResumeRecoveredOrchestratorContinuation,
@@ -513,6 +516,78 @@ async function handleRestServeAttachment(
   }
 }
 
+async function handleRestDeactivateChannel(
+  context: ChatApiRouteContext,
+  chatScopeId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidChatScopeId(chatScopeId);
+    const now = nowFrom(context.dependencies);
+    const state = await context.dependencies.chatStore.read();
+    const channel = requireChannel(state, channelId);
+
+    // Collect all active session IDs for runtime close
+    const sessionIds: Array<string | null> = [];
+    for (const assignment of channel.catAssignments) {
+      if (
+        assignment.execution.lease.status === 'ready'
+        || assignment.execution.lease.status === 'initializing'
+      ) {
+        sessionIds.push(assignment.execution.lease.sessionId);
+      }
+    }
+    if (
+      channel.orchestratorLease.status === 'ready'
+      || channel.orchestratorLease.status === 'initializing'
+    ) {
+      sessionIds.push(channel.orchestratorLease.sessionId);
+    }
+
+    // Flush memory and close runtime sessions (same path as routeSupport closeSessionIds)
+    await closeSessionIds(context, sessionIds);
+
+    // Update chat state leases to closed
+    let nextState = state;
+    for (const assignment of channel.catAssignments) {
+      if (
+        assignment.execution.lease.status === 'ready'
+        || assignment.execution.lease.status === 'initializing'
+      ) {
+        nextState = setChannelCatLease(
+          nextState,
+          channelId,
+          assignment.catId,
+          { status: 'closed', sessionId: null },
+          now,
+        );
+      }
+    }
+    if (
+      channel.orchestratorLease.status === 'ready'
+      || channel.orchestratorLease.status === 'initializing'
+    ) {
+      nextState = setChannelOrchestratorLease(
+        nextState,
+        channelId,
+        { status: 'closed', sessionId: null },
+        now,
+      );
+    }
+
+    await context.dependencies.chatStore.write(nextState);
+    sendJson(context.response, 200, {
+      deactivation: {
+        channelId,
+        closedAt: now.toISOString(),
+        closedSessionCount: sessionIds.filter(Boolean).length,
+      },
+    });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
 async function handleRestActivateChannel(
   context: ChatApiRouteContext,
   chatScopeId: string,
@@ -713,6 +788,23 @@ export async function routeChatChannelResourceApi(
       DEFAULT_CHAT_SCOPE_ID,
       canonicalChannelAttachmentFileMatch[0]!,
       canonicalChannelAttachmentFileMatch[1]!,
+    );
+    return true;
+  }
+
+  const canonicalChannelDeactivateMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/deactivate$/u,
+  );
+  if (canonicalChannelDeactivateMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleRestDeactivateChannel(
+      context,
+      DEFAULT_CHAT_SCOPE_ID,
+      canonicalChannelDeactivateMatch[0]!,
     );
     return true;
   }

@@ -246,6 +246,7 @@ export async function routeRequest(
       pollingSupervisor: dependencies.chat.pollingSupervisor,
       companionStore: dependencies.chat.companionStore,
       memoryService: dependencies.chat.memoryService,
+      eventHub: dependencies.chat.eventHub,
       now: dependencies.shared.now,
     },
   };
@@ -388,6 +389,7 @@ export async function routeRequest(
         memoryService: dependencies.chat.memoryService,
         telegramRelay: dependencies.chat.telegramRelay,
         runtimeClient: dependencies.shared.runtimeClient,
+        eventHub: dependencies.chat.eventHub,
         now: dependencies.shared.now,
       },
       telegramWebhookMatch[0],

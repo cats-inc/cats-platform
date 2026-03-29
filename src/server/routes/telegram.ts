@@ -16,6 +16,16 @@ import { defaultCatProducts, hasSuiteSurface } from '../../shared/suiteSurfaces.
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import { normalizeEffectiveBotBinding } from '../../products/chat/state/botBindings.js';
+import type { ChatEventHub } from '../../products/chat/api/chatEventHub.js';
+import {
+  publishRoomMutation,
+  publishTransportIngress,
+} from '../../products/chat/api/transportEventPublisher.js';
+import { createTelegramCommandRouter } from '../../platform/transports/telegram/commandRouter.js';
+import { createDefaultCommands } from '../../platform/transports/telegram/commands/index.js';
+
+const commandRouter = createTelegramCommandRouter();
+commandRouter.registerAll(createDefaultCommands());
 
 interface TelegramQueryDependencies {
   chatStore: ChatStore;
@@ -26,6 +36,7 @@ interface TelegramWebhookDependencies extends TelegramQueryDependencies {
   telegramRoomBridge: TelegramRoomBridge<ChatState>;
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
+  eventHub?: ChatEventHub;
   now?: () => Date;
 }
 
@@ -247,7 +258,39 @@ export async function handleTelegramWebhook(
     );
     let receipt = dependencies.telegramRelay.receiveUpdate({ update, context });
     if (receipt.status === 'accepted') {
-      receipt = (await bridgeTelegramWebhookToRoom({
+      // Check for slash commands before bridging to room
+      const messageText = update.message?.text?.trim() ?? '';
+      if (commandRouter.isCommand(messageText)) {
+        const binding = context.selectedBotBinding ?? context.defaultBotBinding;
+        const cat = binding ? findBindingChatCat(
+          (await dependencies.chatStore.read()),
+          binding,
+        ) : null;
+        const commandResult = await commandRouter.dispatch(messageText, {
+          chatId: String(update.message?.chat?.id ?? ''),
+          senderName: update.message?.from?.first_name ?? 'User',
+          botName: binding?.botName ?? 'CatsBot',
+          catName: cat?.name ?? null,
+        });
+        if (commandResult?.handled) {
+          await dependencies.telegramRelay.deliver({
+            request: {
+              operation: update.message?.message_id ? 'reply' : 'send',
+              conversationId: receipt.mappedConversationId,
+              chatId: receipt.chatId,
+              replyToMessageId: update.message?.message_id
+                ? String(update.message.message_id)
+                : undefined,
+              text: commandResult.replyText,
+              disableLinkPreview: true,
+            },
+            context,
+          });
+          sendJson(response, 202, { receipt: { ...receipt, commandHandled: true } });
+          return;
+        }
+      }
+      const bridgeResult = await bridgeTelegramWebhookToRoom({
         update,
         receipt,
         context,
@@ -256,7 +299,13 @@ export async function handleTelegramWebhook(
         runtimeClient: dependencies.runtimeClient,
         telegramRelay: dependencies.telegramRelay,
         now: dependencies.now,
-      })).receipt;
+      });
+      receipt = bridgeResult.receipt;
+      const roomId = receipt.mappedConversationId ?? null;
+      if (roomId) {
+        publishTransportIngress(dependencies.eventHub, roomId);
+        publishRoomMutation(dependencies.eventHub, roomId, 'message_added');
+      }
     }
     sendJson(response, 202, { receipt });
   } catch (error) {

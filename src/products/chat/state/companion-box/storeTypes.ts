@@ -65,5 +65,16 @@ export interface CompanionBoxStore {
     update: UpdateCompanionResponseProfileInput,
     now?: Date,
   ): Promise<CompanionResponseProfile>;
+  deleteMemory(
+    catId: string,
+    memoryId: string,
+    now?: Date,
+  ): Promise<{ deleted: boolean }>;
+  updateMemoryStatus(
+    catId: string,
+    memoryId: string,
+    status: 'active' | 'archived',
+    now?: Date,
+  ): Promise<CompanionMemoryRecord>;
   buildSessionContext(input: CompanionSessionContextInput): Promise<CompanionSessionContext>;
 }

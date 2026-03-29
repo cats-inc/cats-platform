@@ -7,7 +7,9 @@ import {
   type RefObject,
 } from 'react';
 
-import type { AppShellPayload, ChatCat } from '../../api/contracts';
+import type { AppShellPayload, ChatCat, ChatChannelView } from '../../api/contracts';
+import { resolveCatStatusIndicator } from '../../shared/catStatusResolution';
+import { CatStatusRow } from './CatStatusRow';
 import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
 import { buildLiveIndicatorScrollKey } from '../../../../shared/liveIndicator.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
@@ -98,6 +100,7 @@ export interface ChatViewProps {
   onOpenAddCat?: () => void;
   showAddCatButton?: boolean;
   liveIndicator?: LiveIndicatorState;
+  onToggleCompanionMode?: () => void;
 }
 
 export function ChatView({
@@ -135,6 +138,7 @@ export function ChatView({
   onOpenAddCat,
   showAddCatButton = true,
   liveIndicator,
+  onToggleCompanionMode,
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
@@ -320,6 +324,16 @@ export function ChatView({
               </span>
             </div>
           <div className="channelTopBarEnd">
+            {isDirectLane && onToggleCompanionMode ? (
+              <button
+                className="companionToggleButton"
+                type="button"
+                onClick={onToggleCompanionMode}
+                title="Open companion workspace"
+              >
+                Companion
+              </button>
+            ) : null}
             {onResumeChannel ? (
               <button
                 className="channelActionIconButton"
@@ -365,6 +379,25 @@ export function ChatView({
             </button>
           </div>
         </header>
+        {activeAssignedCats.length > 1 ? (() => {
+          const catStatusIndicators = activeAssignedCats
+            .map((assignment) => {
+              const cat = payload.chat.cats.find((c) => c.id === assignment.catId);
+              if (!cat) return null;
+              return resolveCatStatusIndicator(
+                cat,
+                selectedChannel as unknown as ChatChannelView,
+                operatorView,
+              );
+            })
+            .filter((indicator): indicator is NonNullable<typeof indicator> => indicator !== null);
+          return catStatusIndicators.length > 0 ? (
+            <CatStatusRow
+              indicators={catStatusIndicators}
+              onInspect={(catId) => openSidePanelTo(`cat:${catId}`)}
+            />
+          ) : null;
+        })() : null}
         <div className="channelWorkspace">
           <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
             {/* Feedback is now shown via NotificationContainer */}

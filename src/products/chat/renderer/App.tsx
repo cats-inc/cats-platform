@@ -43,8 +43,10 @@ import { useFolderBrowser } from './hooks/useFolderBrowser';
 import { useGovernanceActions } from './hooks/useGovernanceActions';
 import { useOperatorLoop } from './hooks/useOperatorLoop';
 import { useLiveIndicator } from './hooks/useLiveIndicator';
+import { useChatEvents } from './hooks/useChatEvents';
 import {
   activateChatChannel,
+  fetchAppShell,
   updateCatProfile,
   updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
@@ -123,6 +125,74 @@ export default function App() {
   const latestSoloChannelModelSaveId = useRef(0);
   const pendingSoloChannelModelSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSoloChannelModelSaveAbort = useRef<AbortController | null>(null);
+  const [companionMode, setCompanionMode] = useState(false);
+  const previousMyCatIdRef = useRef(routeMyCatId);
+  useEffect(() => {
+    if (previousMyCatIdRef.current !== routeMyCatId) {
+      previousMyCatIdRef.current = routeMyCatId;
+      setCompanionMode(false);
+    }
+  }, [routeMyCatId]);
+  const companionCat = companionMode && routeMyCatId && state.status === 'ready'
+    ? state.payload.chat.cats.find((cat) => cat.id === routeMyCatId) ?? null
+    : null;
+  const onToggleCompanionMode = useCallback(() => {
+    setCompanionMode((prev) => !prev);
+  }, []);
+  const onCompanionWake = useCallback((catId: string) => {
+    const channel = state.status === 'ready'
+      ? state.payload.chat.channels.find(
+          (ch) =>
+            ch.channelKind === 'direct_lane'
+            && ch.leadCatId === catId,
+        )
+      : null;
+    if (channel) {
+      void activateChatChannel(channel.id).then(() => {
+        void fetchAppShell().then((payload) => {
+          if (payload) updatePayload(payload);
+        });
+      });
+    }
+  }, [state]);
+  const onCompanionSleep = useCallback((catId: string) => {
+    // Request deactivation by re-fetching after a brief pause to let the
+    // session settle. Full session-discipline (reset/compact) will be exposed
+    // through dedicated session-continuity API routes in a follow-up.
+    const channel = state.status === 'ready'
+      ? state.payload.chat.channels.find(
+          (ch) =>
+            ch.channelKind === 'direct_lane'
+            && ch.leadCatId === catId,
+        )
+      : null;
+    if (channel) {
+      void fetch(`/api/channels/${encodeURIComponent(channel.id)}/deactivate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      }).catch(() => {
+        // Best-effort; session may already be inactive.
+      }).then(() => {
+        void fetchAppShell().then((payload) => {
+          if (payload) updatePayload(payload);
+        });
+      });
+    }
+  }, [state]);
+
+  // SSE live updates — refresh UI on transport and room events
+  const refreshAppShell = useCallback(() => {
+    void fetchAppShell().then((payload) => {
+      if (payload) updatePayload(payload);
+    });
+  }, []);
+  useChatEvents({
+    onRoomUpdated: refreshAppShell,
+    onRecentsChanged: refreshAppShell,
+    onUnreadChanged: refreshAppShell,
+    onTransportIngress: refreshAppShell,
+  }, state.status === 'ready');
+
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
   const onToggleDraftCat = useCallback((catId: string) => {
@@ -859,6 +929,11 @@ export default function App() {
           }}
           onOpenDraftAddCat={openDraftAddCatPanel}
           onChangeDraftLeadCat={changeDraftLeadCat}
+          companionMode={companionMode}
+          companionCat={companionCat}
+          onToggleCompanionMode={onToggleCompanionMode}
+          onCompanionWake={onCompanionWake}
+          onCompanionSleep={onCompanionSleep}
         />
       </main>
       <ConfirmDialog dialog={appDialog} onClose={appHandleClose} />

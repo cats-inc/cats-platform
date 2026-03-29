@@ -15,6 +15,7 @@ import type {
 import {
   appendCompanionBoxMemory,
   buildCompanionBoxSessionContext,
+  deleteCompanionBoxMemory,
   deleteCompanionSource,
   ensureCompanionBox,
   ingestCompanionSource,
@@ -22,6 +23,7 @@ import {
   listCompanionBoxMemory,
   listCompanionBoxSources,
   summarizeCompanionBox,
+  updateCompanionBoxMemoryStatus,
   updateCompanionBoxResponseProfile,
   updateCompanionSource,
 } from './operations.js';
@@ -130,6 +132,29 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
     const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
     const record = appendCompanionBoxMemory(this.snapshot, box, input, nowIso);
     return structuredClone(record);
+  }
+
+  async deleteMemory(
+    catId: string,
+    memoryId: string,
+    now: Date = new Date(),
+  ): Promise<{ deleted: boolean }> {
+    const nowIso = isoAt(now);
+    const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
+    return deleteCompanionBoxMemory(this.snapshot, box, memoryId, nowIso);
+  }
+
+  async updateMemoryStatus(
+    catId: string,
+    memoryId: string,
+    status: 'active' | 'archived',
+    now: Date = new Date(),
+  ): Promise<CompanionMemoryRecord> {
+    const nowIso = isoAt(now);
+    const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
+    return structuredClone(
+      updateCompanionBoxMemoryStatus(this.snapshot, box, memoryId, status, nowIso),
+    );
   }
 
   async getResponseProfile(catId: string, now: Date = new Date()): Promise<CompanionResponseProfile> {

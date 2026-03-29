@@ -18,6 +18,7 @@ import {
   readTelegramString,
   resolveActiveTelegramBinding,
 } from './utils.js';
+import { chunkTelegramReply } from './chunking.js';
 
 const TELEGRAM_REPLY_LIMIT = 4000;
 
@@ -410,17 +411,21 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
       roomCreated,
       messageCountBeforeDispatch,
     });
-    const deliveryReceipt = await input.telegramRelay.deliver({
-      request: {
-        operation: input.receipt.messageId ? 'reply' : 'send',
-        conversationId: input.receipt.mappedConversationId,
-        chatId: input.receipt.chatId,
-        replyToMessageId: input.receipt.messageId,
-        text: replyText,
-        disableLinkPreview: true,
-      },
-      context: input.context,
-    });
+    const chunks = chunkTelegramReply(replyText, TELEGRAM_REPLY_LIMIT);
+    let deliveryReceipt: TelegramDeliveryReceipt | null = null;
+    for (const chunk of chunks) {
+      deliveryReceipt = await input.telegramRelay.deliver({
+        request: {
+          operation: input.receipt.messageId && !deliveryReceipt ? 'reply' : 'send',
+          conversationId: input.receipt.mappedConversationId,
+          chatId: input.receipt.chatId,
+          replyToMessageId: !deliveryReceipt ? input.receipt.messageId : undefined,
+          text: chunk,
+          disableLinkPreview: true,
+        },
+        context: input.context,
+      });
+    }
 
     return {
       receipt: {

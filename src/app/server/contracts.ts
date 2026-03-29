@@ -23,6 +23,7 @@ import type {
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { CompanionBoxStore } from '../../products/chat/state/companion-box/index.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
+import type { ChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import type { WorkApiDependencies } from '../../products/work/api/index.js';
 import type { CodeApiDependencies } from '../../products/code/api/index.js';
 
@@ -93,6 +94,7 @@ export interface ResolvedChatServerDependencies extends ChatServerDependencies {
   telegramRelay: TelegramRelay;
   telegramRoomBridge: TelegramRoomBridge<ChatState>;
   pollingSupervisor: TelegramPollingSupervisor;
+  eventHub: ChatEventHub;
 }
 
 export interface ResolvedServerDependencies {
