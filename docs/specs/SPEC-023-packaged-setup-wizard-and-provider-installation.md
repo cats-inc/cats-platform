@@ -387,8 +387,13 @@ teaching the renderer or the user about the underlying script topology.
   CLI pack installer for Codex, Gemini CLI, Copilot, OpenCode, Auggie, and Pi,
   and it is staged/bundled alongside the npm prefix helper as a host-owned
   setup asset.
-- The next follow-on under `PLAN-030` is no longer the npm-global CLI pack
-  installer; it is the repo-owned rewrite of the WSL prerequisite chain and
+- The third repo-owned packaged setup helper slice is now landed:
+  `scripts/windows/Check-WslPrerequisites.ps1` establishes a structured WSL
+  prerequisite preflight contract so the host can detect Windows build, WSL,
+  and distro readiness before the full WSL feature-enable and distro-install
+  flow is ported.
+- The next follow-on under `PLAN-030` is no longer generic WSL discovery; it
+  is the repo-owned rewrite of the actual WSL prerequisite mutation chain and
   the next packaged-host helper slices so the split does not leave required
   setup logic trapped in bootstrap repos.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`

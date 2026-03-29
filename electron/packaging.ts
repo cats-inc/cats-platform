@@ -222,6 +222,19 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           ],
         },
         {
+          id: 'windows-wsl-prerequisite-preflight',
+          label: 'Windows WSL prerequisite preflight',
+          kind: 'prerequisite_helper',
+          status: 'ported',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          currentHome: 'cats/scripts/windows/Check-WslPrerequisites.ps1',
+          targetHome: 'cats packaged-host prerequisite assets',
+          notes: [
+            'Repo-owned structured preflight slice for WSL readiness before feature enablement and distro installation.',
+          ],
+        },
+        {
           id: 'windows-wsl-prerequisites',
           label: 'Windows WSL prerequisite chain',
           kind: 'prerequisite_helper',

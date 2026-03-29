@@ -139,6 +139,8 @@ instead of an implicit dependency on bootstrap scripts.
       `cats`-owned packaged setup asset
 - [x] Port the Windows npm-global CLI-pack installer into a `cats`-owned
       packaged setup asset
+- [x] Port the first Windows WSL prerequisite preflight helper into a
+      `cats`-owned packaged setup asset
 - [ ] Port the remaining highest-value stable install/check knowledge into
       `cats`-owned assets or code, prioritizing WSL prerequisite flows and
       readiness checks for the first packaged setup flow
@@ -251,6 +253,7 @@ removes local submodule convenience.
 | 2026-03-29 | Scope expanded so PLAN-030 now explicitly requires repo-owned rewrites of the first packaged-host helper slices before repo split, rather than stopping at inventory and contract freezing |
 | 2026-03-29 | Phase 3 slice 1 landed: `scripts/windows/Setup-NodeGlobalPrefix.ps1` is now a repo-owned packaged setup helper, staged into `build/desktop-packaging/shared/setup-assets/windows/`, bundled into the installer under `desktop-host/setup-assets/windows/`, and covered by packaging plus helper-contract tests |
 | 2026-03-29 | Phase 3 slice 2 landed: `scripts/windows/Install-NodeCliPack.ps1` is now a repo-owned packaged setup helper for the Windows native CLI pack, wired to the sibling npm-prefix helper, staged/bundled with the desktop package, and covered by packaging plus helper-contract tests |
+| 2026-03-29 | Phase 3 slice 3 landed: `scripts/windows/Check-WslPrerequisites.ps1` is now a repo-owned WSL prerequisite preflight helper, staged/bundled with the desktop package, so the host can detect build/WSL/distro readiness before the full WSL feature-enable and distro-install chain is ported |
 
 ---
 

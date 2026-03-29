@@ -126,6 +126,7 @@ ports a product-owned host asset layer.
 | Provider topology + install/check metadata | `environment-bootstrap` learnings plus runtime ADRs | `cats-runtime/src/core/provider-install/*` | `cats-runtime` | Already extracted | `cats` should consume, not duplicate |
 | Windows npm-global AI CLI pack install | `environment-bootstrap/platform/windows/Install-NodeCLITools.ps1` | `cats/scripts/windows/Install-NodeCliPack.ps1` | packaged-host assets in `cats` | Ported | Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi, and now consumes the repo-owned npm prefix helper instead of a bootstrap dependency |
 | Windows npm prefix + PATH setup | `environment-bootstrap/platform/windows/Setup-NodeJS.ps1` | `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Staged into `build/desktop-packaging/shared/setup-assets/windows/` and bundled into desktop installs under `desktop-host/setup-assets/windows/` |
+| Windows WSL prerequisite preflight | `Install-WSL2-Admin.ps1` + `Install-WSLUbuntu.ps1` knowledge | `cats/scripts/windows/Check-WslPrerequisites.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Structured preflight only; does not yet enable Windows features or install the distro |
 | Windows WSL feature enablement | `Install-WSL2-Admin.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Needed for WSL-heavy provider packs |
 | Windows Ubuntu distro install/resume | `Install-WSLUbuntu.ps1` | `environment-bootstrap` only | packaged-host prerequisite helpers in `cats` | Port first | Important for resumable WSL setup |
 | Windows WSL provider installers | `Install-WSLCursorAgent.ps1`, `Install-WSLKiroCLI.ps1`, related WSL scripts | `environment-bootstrap` only | packaged-host provider assets in `cats` | Port next | Cursor/Kiro are concrete first candidates |
@@ -141,8 +142,11 @@ ports a product-owned host asset layer.
      `cats/scripts/windows/Setup-NodeGlobalPrefix.ps1`.
    - The Windows npm-global CLI pack installer is now repo-owned in
      `cats/scripts/windows/Install-NodeCliPack.ps1`.
-   - The next missing Windows-first slice is the WSL prerequisite chain that
-     unlocks Cursor, Kiro, and the heavier native CLI paths.
+   - The WSL prerequisite preflight is now repo-owned in
+     `cats/scripts/windows/Check-WslPrerequisites.ps1`.
+   - The next missing Windows-first slice is the actual WSL feature-enable and
+     distro-install chain that unlocks Cursor, Kiro, and the heavier native
+     CLI paths.
    - `Install-WSL2-Admin.ps1`
    - `Install-WSLUbuntu.ps1`
    - later `Install-WSLDependencies.ps1`
@@ -176,6 +180,8 @@ Port the next packaged-host setup asset slice around:
 - Windows WSL prerequisite enablement and distro bootstrap
 - reuse of the repo-owned Windows npm prefix helper and native CLI pack helper
   that now ship inside the staged desktop package
+- extend the new WSL prerequisite preflight helper into the actual feature and
+  distro mutation flow
 
 That is the next smallest slice that converts the remaining Windows-first
 bootstrap knowledge into owned product behavior.

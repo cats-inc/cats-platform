@@ -131,6 +131,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\dist\index.js'); Label = 'bundled cats-runtime entry' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Setup-NodeGlobalPrefix.ps1'); Label = 'bundled Windows npm prefix helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-NodeCliPack.ps1'); Label = 'bundled Windows native CLI pack helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Check-WslPrerequisites.ps1'); Label = 'bundled Windows WSL prerequisite preflight helper' },
   @{ Path = $packagingPlanPath; Label = 'bundled desktop packaging plan' }
 )
 
@@ -147,6 +148,7 @@ Assert-True ($null -ne $windowsTarget) 'installer packaging plan includes a Wind
 Assert-True (($windowsTarget.installerFormats -contains 'nsis')) 'Windows target includes the NSIS installer format'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-npm-prefix-helper-script' }).Count -ge 1) 'Windows target includes the bundled npm prefix setup asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-node-cli-pack-script' }).Count -ge 1) 'Windows target includes the bundled native CLI pack setup asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-wsl-prerequisite-preflight-script' }).Count -ge 1) 'Windows target includes the bundled WSL prerequisite preflight asset'
 
 if ($SkipLaunch) {
   Write-Step 'Skipping installed-app launch as requested.'

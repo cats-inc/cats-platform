@@ -56,6 +56,12 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
     ),
     true,
   );
+  assert.equal(
+    plan.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-wsl-prerequisite-preflight' && asset.status === 'ported',
+    ),
+    true,
+  );
   const windowsTarget = plan.targets.find((target) => target.id === 'windows-x64');
   assert.equal(
     windowsTarget?.artifacts.some(
@@ -66,6 +72,12 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(
     windowsTarget?.artifacts.some(
       (artifact) => artifact.id === 'windows-node-cli-pack-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-wsl-prerequisite-preflight-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -96,6 +108,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /cats-runtime\\dist\\index\.js/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-NodeCliPack\.ps1/);
+  assert.match(script, /desktop-host\\setup-assets\\windows\\Check-WslPrerequisites\.ps1/);
   assert.match(script, /desktop-host\\state\.json/);
   assert.match(script, /electron-sidecar-bundle/);
   assert.match(script, /ready_for_setup/);
@@ -127,6 +140,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
   await seedFile(join(runtimeRoot, 'dist', 'index.js'), 'export {};');
 
   const config = resolveDesktopHostConfig({
@@ -151,6 +165,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'dist-electron', 'preload.cjs'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-NodeCliPack.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WslPrerequisites.ps1'));
   await access(join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'));
 
   const targetManifest = JSON.parse(await readFile(
@@ -179,6 +194,12 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     ),
     true,
   );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'windows-wsl-prerequisite-preflight-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
 });
 
 test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is missing', async () => {
@@ -193,6 +214,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
   await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
   await mkdir(runtimeRoot, { recursive: true });
 
   const config = resolveDesktopHostConfig({
