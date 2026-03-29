@@ -337,7 +337,7 @@ test('after setup + activate, system messages stay generic and keep verbosity me
     assert.ok(orchMessage.body.includes('Orchestrator'), 'Should use generic orchestrator label in solo rooms');
     assert.ok(!orchMessage.body.includes('將將'), 'Should not expose boss cat name in solo session messages');
     assert.ok(
-      /\(cwd: .*channel-workspaces[\\/].+\)\./u.test(orchMessage.body),
+      /\n\(cwd: .*channel-workspaces[\\/].+\)/u.test(orchMessage.body),
       'Should include runtime cwd in the session message',
     );
 

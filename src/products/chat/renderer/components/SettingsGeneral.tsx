@@ -21,19 +21,30 @@ export function SettingsGeneral({
 }: SettingsGeneralProps) {
   const [cropOpen, setCropOpen] = useState(false);
 
-  async function handleAvatarSave(dataUrl: string): Promise<void> {
-    setCropOpen(false);
+  async function updateOwnerAvatar(
+    nextAvatarUrl: string | null,
+    errorMessage: string,
+  ): Promise<void> {
     try {
       const response = await fetch('/api/core/owner-profile', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ avatarUrl: dataUrl }),
+        body: JSON.stringify({ avatarUrl: nextAvatarUrl }),
       });
-      if (!response.ok) throw new Error('Failed to save avatar');
-      onPayloadUpdate({ ...payload, ownerAvatarUrl: dataUrl });
+      if (!response.ok) throw new Error(errorMessage);
+      onPayloadUpdate({ ...payload, ownerAvatarUrl: nextAvatarUrl });
     } catch (err) {
-      onFeedback(err instanceof Error ? err.message : 'Failed to save avatar');
+      onFeedback(err instanceof Error ? err.message : errorMessage);
     }
+  }
+
+  async function handleAvatarSave(dataUrl: string): Promise<void> {
+    setCropOpen(false);
+    await updateOwnerAvatar(dataUrl, 'Failed to save avatar');
+  }
+
+  async function handleAvatarRemove(): Promise<void> {
+    await updateOwnerAvatar(null, 'Failed to remove avatar');
   }
 
   const avatarUrl = payload.ownerAvatarUrl;
@@ -57,13 +68,24 @@ export function SettingsGeneral({
               {!avatarUrl ? initials : null}
             </div>
             <p style={{ margin: 0, fontWeight: 600 }}>{payload.ownerDisplayName}</p>
-            <button
-              type="button"
-              className="primaryButton"
-              onClick={() => setCropOpen(true)}
-            >
-              {avatarUrl ? 'Change avatar' : 'Upload avatar'}
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="primaryButton"
+                onClick={() => setCropOpen(true)}
+              >
+                {avatarUrl ? 'Change avatar' : 'Upload avatar'}
+              </button>
+              {avatarUrl ? (
+                <button
+                  type="button"
+                  className="secondaryButton"
+                  onClick={() => void handleAvatarRemove()}
+                >
+                  Remove avatar
+                </button>
+              ) : null}
+            </div>
           </div>
           <label className="fieldLabel">
             <span>Display name</span>

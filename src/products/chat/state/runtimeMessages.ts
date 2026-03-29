@@ -5,5 +5,5 @@ export function formatSessionStartedMessage(
   const cwd = typeof session.cwd === 'string' && session.cwd.trim().length > 0
     ? session.cwd
     : 'unavailable';
-  return `${displayName} connected to cats-runtime session ${session.id} (cwd: ${cwd}).`;
+  return `${displayName} connected to cats-runtime session ${session.id}.\n(cwd: ${cwd})`;
 }

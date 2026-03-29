@@ -654,6 +654,39 @@ test('owner-profile writes stay successful when canonical sync fails', async () 
   }, chatStore, { memoryService: failingMemoryService });
 });
 
+test('PATCH /api/core/owner-profile clears the owner avatar when avatarUrl is null', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const saveResponse = await fetch(`${baseUrl}/api/core/owner-profile`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        avatarUrl: 'data:image/png;base64,owner-avatar',
+      }),
+    });
+    assert.equal(saveResponse.status, 200);
+
+    const clearResponse = await fetch(`${baseUrl}/api/core/owner-profile`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        avatarUrl: null,
+      }),
+    });
+    assert.equal(clearResponse.status, 200);
+    const clearPayload = await clearResponse.json();
+    assert.equal(clearPayload.ownerProfile.avatarUrl, null);
+
+    const readResponse = await fetch(`${baseUrl}/api/core/owner-profile`);
+    assert.equal(readResponse.status, 200);
+    const readPayload = await readResponse.json();
+    assert.equal(readPayload.ownerProfile.avatarUrl, null);
+  });
+});
+
 test('owner durable-memory writes stay successful when canonical sync fails', async () => {
   const chatStore = new MemoryChatStore();
   const baseMemoryService = createCatsMemoryService(
@@ -4220,7 +4253,7 @@ test('assigning a cat to a channel immediately creates a runtime session in the 
     assert.ok(sessionStartedMessage);
     assert.equal(
       sessionStartedMessage.body,
-      'Agent-Spawn connected to cats-runtime session session-1 (cwd: C:/repo/cats).',
+      'Agent-Spawn connected to cats-runtime session session-1.\n(cwd: C:/repo/cats)',
     );
   });
 });
@@ -5119,6 +5152,51 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
   });
 });
 
+test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: false,
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Companion',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const saveResponse = await fetch(`${baseUrl}/api/cats/${catId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ avatarUrl: 'data:image/png;base64,cat-avatar' }),
+    });
+    assert.equal(saveResponse.status, 200);
+
+    const clearResponse = await fetch(`${baseUrl}/api/cats/${catId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ avatarUrl: null }),
+    });
+    assert.equal(clearResponse.status, 200);
+    const clearPayload = await clearResponse.json();
+    const clearedCat = clearPayload.chat.cats.find((cat) => cat.id === catId);
+    assert.equal(clearedCat?.avatarUrl, null);
+  });
+});
+
 test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
@@ -5584,6 +5662,4 @@ test('attachment serving survives session cwd changes for chats without a repo p
     assert.equal(await secondAttachmentResponse.arrayBuffer().then((buffer) => buffer.byteLength), 4);
   });
 });
-
-
 

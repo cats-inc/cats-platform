@@ -102,6 +102,15 @@ export function SettingsCatsDetailPanel({
     }
   }
 
+  async function handleCatAvatarRemove(): Promise<void> {
+    try {
+      const next = await updateCatProfile(cat.id, { avatarUrl: null });
+      onPayloadUpdate?.(next);
+    } catch {
+      // silent
+    }
+  }
+
   return (
     <div className="catDetailPanel">
       <div className="catDetailSection">
@@ -124,13 +133,24 @@ export function SettingsCatsDetailPanel({
           >
             {cat.avatarUrl ? '' : catInitials(cat.name)}
           </div>
-          <button
-            type="button"
-            className="primaryButton"
-            onClick={() => setCropOpen(true)}
-          >
-            {cat.avatarUrl ? 'Change avatar' : 'Upload avatar'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="primaryButton"
+              onClick={() => setCropOpen(true)}
+            >
+              {cat.avatarUrl ? 'Change avatar' : 'Upload avatar'}
+            </button>
+            {cat.avatarUrl ? (
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={() => void handleCatAvatarRemove()}
+              >
+                Remove avatar
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
       {cropOpen ? (

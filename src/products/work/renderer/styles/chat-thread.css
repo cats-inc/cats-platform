@@ -338,6 +338,7 @@
   text-align: center;
   color: var(--muted);
   font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .freshChatIntro {

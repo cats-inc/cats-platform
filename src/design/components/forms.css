@@ -86,6 +86,14 @@
   color: var(--text);
 }
 
+.secondaryButton {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+}
+
 .sendButton {
   width: 36px;
   height: 36px;
@@ -100,11 +108,13 @@
 }
 
 .primaryButton:hover:not(:disabled),
+.secondaryButton:hover:not(:disabled),
 .sendButton:hover:not(:disabled) {
   background: var(--panel-hover);
 }
 
 .primaryButton:disabled,
+.secondaryButton:disabled,
 .sendButton:disabled,
 .dangerButton:disabled {
   opacity: 0.3;
