@@ -1,0 +1,208 @@
+import assert from 'node:assert/strict';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const testsDir = dirname(fileURLToPath(import.meta.url));
+const projectRoot = resolve(testsDir, '..');
+const packageJsonPath = join(projectRoot, 'package.json');
+
+let buildReady = false;
+
+function readPackageManifest() {
+  return JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+}
+
+function runNpmCommand(args, options = {}) {
+  const npmExecPath = process.env.npm_execpath;
+  const command = npmExecPath ? process.execPath : (process.platform === 'win32' ? 'npm.cmd' : 'npm');
+  const commandArgs = npmExecPath ? [npmExecPath, ...args] : args;
+  const result = spawnSync(command, commandArgs, {
+    cwd: options.cwd ?? projectRoot,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...options.env,
+      npm_config_loglevel: 'silent',
+    },
+    windowsHide: true,
+  });
+
+  if (result.status !== 0) {
+    throw new Error(
+      result.stderr
+      || result.stdout
+      || result.error?.message
+      || `npm ${args.join(' ')} failed`,
+    );
+  }
+
+  return result.stdout;
+}
+
+function runNodeCommand(args, options = {}) {
+  return spawnSync(process.execPath, args, {
+    cwd: options.cwd ?? projectRoot,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...options.env,
+    },
+    windowsHide: true,
+  });
+}
+
+function runBuild() {
+  runNpmCommand(['run', 'build']);
+  buildReady = true;
+}
+
+function ensureBuild() {
+  if (!buildReady) {
+    runBuild();
+  }
+}
+
+function runPackDryRun() {
+  const stdout = runNpmCommand(['pack', '--json', '--dry-run', '--ignore-scripts']);
+  const payload = JSON.parse(stdout.trim());
+
+  if (!Array.isArray(payload) || payload.length !== 1) {
+    throw new Error(`Unexpected npm pack payload: ${stdout}`);
+  }
+
+  return payload[0];
+}
+
+function runPack() {
+  const stdout = runNpmCommand(['pack', '--json', '--ignore-scripts']);
+  const payload = JSON.parse(stdout.trim());
+
+  if (!Array.isArray(payload) || payload.length !== 1 || !payload[0]?.filename) {
+    throw new Error(`Unexpected npm pack payload: ${stdout}`);
+  }
+
+  return {
+    packed: payload[0],
+    tarballPath: join(projectRoot, payload[0].filename),
+  };
+}
+
+test('package.json keeps the self-hosted npm executable contract aligned with packed contents', () => {
+  ensureBuild();
+
+  const manifest = readPackageManifest();
+  const packed = runPackDryRun();
+  const packedPaths = new Set(packed.files.map((entry) => entry.path));
+
+  assert.deepEqual(manifest.bin, {
+    cats: './dist-server/index.js',
+  });
+  assert.deepEqual(manifest.files, [
+    'dist',
+    'dist-server',
+    'dist-electron',
+    '.env.example',
+    'README.md',
+    'LICENSE',
+  ]);
+  assert.equal(manifest.scripts.prepack, 'npm run build');
+
+  assert.equal(packed.name, 'cats');
+  assert.ok(packed.version);
+  assert.equal(packedPaths.has('.env.example'), true);
+  assert.equal(packedPaths.has('LICENSE'), true);
+  assert.equal(packedPaths.has('README.md'), true);
+  assert.equal(packedPaths.has('dist/index.html'), true);
+  assert.equal(packedPaths.has('dist-server/index.js'), true);
+  assert.equal(packedPaths.has('dist-electron/main.js'), true);
+  assert.equal(packedPaths.has('dist-electron/preload.cjs'), true);
+  assert.equal(packedPaths.has('package.json'), true);
+
+  assert.equal([...packedPaths].some((path) => path.startsWith('src/')), false);
+  assert.equal([...packedPaths].some((path) => path.startsWith('tests/')), false);
+  assert.equal([...packedPaths].some((path) => path.startsWith('docs/')), false);
+  assert.equal([...packedPaths].some((path) => path.startsWith('mobile/')), false);
+  assert.equal([...packedPaths].some((path) => path.startsWith('node_modules/')), false);
+  assert.equal(packedPaths.has('tsconfig.json'), false);
+  assert.equal(packedPaths.has('vite.config.ts'), false);
+});
+
+test('build removes stale packaged output before npm pack snapshots it', () => {
+  const stalePaths = [
+    join(projectRoot, 'dist', 'stale', 'old-artifact.txt'),
+    join(projectRoot, 'dist-server', 'stale', 'old-artifact.txt'),
+    join(projectRoot, 'dist-electron', 'stale', 'old-artifact.txt'),
+  ];
+
+  for (const stalePath of stalePaths) {
+    mkdirSync(dirname(stalePath), { recursive: true });
+    writeFileSync(stalePath, 'stale\n', 'utf8');
+    assert.equal(existsSync(stalePath), true);
+  }
+
+  runBuild();
+
+  for (const stalePath of stalePaths) {
+    assert.equal(existsSync(stalePath), false);
+  }
+
+  const packed = runPackDryRun();
+  const packedPaths = new Set(packed.files.map((entry) => entry.path));
+  assert.equal(packedPaths.has('dist/stale/old-artifact.txt'), false);
+  assert.equal(packedPaths.has('dist-server/stale/old-artifact.txt'), false);
+  assert.equal(packedPaths.has('dist-electron/stale/old-artifact.txt'), false);
+});
+
+test('local tarball install exposes the cats executable entrypoint', () => {
+  ensureBuild();
+
+  const installRoot = mkdtempSync(join(tmpdir(), 'cats-pack-install-'));
+  const npmCache = join(installRoot, '.npm-cache');
+  const consumerDir = join(installRoot, 'consumer');
+
+  mkdirSync(consumerDir, { recursive: true });
+  writeFileSync(join(consumerDir, 'package.json'), JSON.stringify({
+    name: 'cats-pack-smoke',
+    private: true,
+  }, null, 2), 'utf8');
+
+  let tarballPath = '';
+
+  try {
+    const packed = runPack();
+    tarballPath = packed.tarballPath;
+
+    runNpmCommand(['install', '--no-package-lock', '--ignore-scripts', tarballPath], {
+      cwd: consumerDir,
+      env: {
+        npm_config_cache: npmCache,
+      },
+    });
+
+    const installedRoot = join(consumerDir, 'node_modules', 'cats');
+    const linkedBinPath = join(
+      consumerDir,
+      'node_modules',
+      '.bin',
+      process.platform === 'win32' ? 'cats.cmd' : 'cats',
+    );
+
+    assert.equal(existsSync(linkedBinPath), true);
+
+    const helpResult = runNodeCommand([join(installedRoot, 'dist-server', 'index.js'), '--help'], {
+      cwd: consumerDir,
+    });
+
+    assert.equal(helpResult.status, 0);
+    assert.match(helpResult.stdout, /Usage: cats \[options\]/u);
+  } finally {
+    if (tarballPath) {
+      rmSync(tarballPath, { force: true });
+    }
+    rmSync(installRoot, { recursive: true, force: true });
+  }
+});

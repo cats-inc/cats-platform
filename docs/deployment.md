@@ -56,6 +56,21 @@ The first desktop-host slice is now in-tree:
 npm run desktop:start
 ```
 
+- self-hosted npm package smoke helpers:
+
+```powershell
+.\scripts\windows\Pack-Install.ps1
+```
+
+```bash
+./scripts/linux/pack-install.sh
+./scripts/macos/pack-install.sh
+```
+
+- use `cats --help` after install to confirm the npm executable contract
+- this path validates the self-hosted tarball flow; it does not replace the
+  Electron packaging flow below
+
 - staged packaging command:
 
 ```bash
