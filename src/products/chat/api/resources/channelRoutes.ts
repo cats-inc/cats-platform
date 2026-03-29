@@ -10,6 +10,8 @@ import {
 import {
   buildChannelView,
   requireChannel,
+  setChannelCatLease,
+  setChannelOrchestratorLease,
   setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
@@ -513,6 +515,59 @@ async function handleRestServeAttachment(
   }
 }
 
+async function handleRestDeactivateChannel(
+  context: ChatApiRouteContext,
+  chatScopeId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidChatScopeId(chatScopeId);
+    const now = nowFrom(context.dependencies);
+    const state = await context.dependencies.chatStore.read();
+    const channel = requireChannel(state, channelId);
+    let nextState = state;
+
+    // Close all cat session leases on this channel
+    for (const assignment of channel.catAssignments) {
+      if (
+        assignment.execution.lease.status === 'ready'
+        || assignment.execution.lease.status === 'initializing'
+      ) {
+        nextState = setChannelCatLease(
+          nextState,
+          channelId,
+          assignment.catId,
+          { status: 'closed' },
+          now,
+        );
+      }
+    }
+
+    // Close orchestrator lease if active
+    if (
+      channel.orchestratorLease.status === 'ready'
+      || channel.orchestratorLease.status === 'initializing'
+    ) {
+      nextState = setChannelOrchestratorLease(
+        nextState,
+        channelId,
+        { status: 'closed' },
+        now,
+      );
+    }
+
+    await context.dependencies.chatStore.write(nextState);
+    sendJson(context.response, 200, {
+      deactivation: {
+        channelId,
+        closedAt: now.toISOString(),
+      },
+    });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
 async function handleRestActivateChannel(
   context: ChatApiRouteContext,
   chatScopeId: string,
@@ -713,6 +768,23 @@ export async function routeChatChannelResourceApi(
       DEFAULT_CHAT_SCOPE_ID,
       canonicalChannelAttachmentFileMatch[0]!,
       canonicalChannelAttachmentFileMatch[1]!,
+    );
+    return true;
+  }
+
+  const canonicalChannelDeactivateMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/deactivate$/u,
+  );
+  if (canonicalChannelDeactivateMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleRestDeactivateChannel(
+      context,
+      DEFAULT_CHAT_SCOPE_ID,
+      canonicalChannelDeactivateMatch[0]!,
     );
     return true;
   }
