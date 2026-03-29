@@ -55,6 +55,29 @@ function runNodeCommand(args, options = {}) {
   });
 }
 
+function runLinkedBinCommand(commandPath, args, options = {}) {
+  if (process.platform === 'win32') {
+    return spawnSync('cmd.exe', ['/d', '/s', '/c', `"${commandPath}" ${args.join(' ')}`], {
+      cwd: options.cwd ?? projectRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        ...options.env,
+      },
+      windowsHide: true,
+    });
+  }
+
+  return spawnSync(commandPath, args, {
+    cwd: options.cwd ?? projectRoot,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...options.env,
+    },
+  });
+}
+
 function runBuild() {
   runNpmCommand(['run', 'build']);
   buildReady = true;
@@ -193,7 +216,7 @@ test('local tarball install exposes the cats executable entrypoint', () => {
 
     assert.equal(existsSync(linkedBinPath), true);
 
-    const helpResult = runNodeCommand([join(installedRoot, 'dist-server', 'index.js'), '--help'], {
+    const helpResult = runLinkedBinCommand(linkedBinPath, ['--help'], {
       cwd: consumerDir,
     });
 
