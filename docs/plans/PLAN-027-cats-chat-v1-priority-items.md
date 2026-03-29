@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
 | **Assigned To** | Codex |
 | **Reviewer** | User |
@@ -219,8 +219,9 @@ behavior.
 | 2026-03-29 | **Phase 2 complete**: Visible companion workspace with 8 new components, 2 hooks, renderer API client, companion store memory CRUD, styles, and app route integration. |
 | 2026-03-29 | **Phase 3 complete**: SSE invalidation hub created and wired into server bootstrap + requestRouter. Event route registered. Transport event publishing wired into Telegram webhook handler. Renderer `useChatEvents` hook connected in App.tsx — refreshes room, recents, and unread on SSE events. Telegram command router wired into inbound webhook path (commands intercepted before room bridging). Reply chunking wired into outbound bridge delivery. |
 | 2026-03-29 | **Phase 4 partial**: Session continuity rules and operations landed (rules, reset/sleep/resume/compact). Companion wake triggers `activateChatChannel` + app-shell refresh. Companion sleep sends deactivation request + refresh. Full session-continuity API routes (dedicated REST endpoints for reset/compact) deferred to follow-up. |
-| 2026-03-29 | **Phase 5 partial**: CatStatusRow component rendered in ChatView for multi-Cat rooms. Cat status resolution wired with operator view. Layout normalization module landed but not yet consumed by ChatView class names (CSS-only integration deferred). |
-| 2026-03-29 | **Phase 6 complete**: 36 new tests across 5 test files covering session-continuity-rules, telegram-chunking, chat-event-hub, cat-status-resolution, session-health-summary. 578/579 pass (1 pre-existing failure). |
+| 2026-03-29 | **Phase 5 partial**: CatStatusRow component rendered in ChatView for multi-Cat rooms. Cat status resolution wired with operator view. Spatial polish still needs additional transcript/operator refinements beyond the first layout normalization pass. |
+| 2026-03-29 | **Phase 6 complete**: 36 new tests across 5 test files covering session-continuity-rules, telegram-chunking, chat-event-hub, cat-status-resolution, session-health-summary. Current suite is green after later regressions were fixed separately. |
+| 2026-03-29 | Codex: Consumed `layoutNormalization.ts` in `ChatView`, moved bottom-vs-side secondary-surface positioning into the shared `SidePanel` design component, and aligned transcript/composer widths with mode-specific layout metrics. |
 
 ---
 
