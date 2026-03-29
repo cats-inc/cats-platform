@@ -99,12 +99,20 @@ export function useCodeTaskExecution() {
     setState((prev) => ({ ...prev, phase: 'executing', error: null }));
     try {
       await resumeCodeTask(taskId);
-      setState((prev) => ({ ...prev, phase: 'idle', taskId }));
+      try {
+        const plan = await fetchCodePlan(taskId);
+        setState((prev) => ({ ...prev, phase: 'idle', taskId, plan }));
+      } catch {
+        setState((prev) => ({ ...prev, phase: 'idle', taskId }));
+      }
+      startPlanPolling(taskId);
+      return taskId;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Resume failed.';
       setState((prev) => ({ ...prev, phase: 'failed', error: message }));
+      return null;
     }
-  }, []);
+  }, [startPlanPolling]);
 
   const refreshRepoStatus = useCallback(async (workspacePath: string) => {
     try {

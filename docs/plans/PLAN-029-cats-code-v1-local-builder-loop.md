@@ -210,6 +210,7 @@ later review automation.
 | 2026-03-29 | Phase 7 (tests): 570/571 pass (1 pre-existing `chat-store.test.js` failure unrelated to Code). Server + web build clean. |
 | 2026-03-29 | Follow-up hardening slice: preview rendering now resolves through shared Core preview-surface policy instead of treating artifact paths as raw iframe URLs. `/code/artifacts/:artifactId` now exists as the clean fallback surface, and builder-local CSS now extends existing operator chrome instead of redefining pseudo-shared operator classes. |
 | 2026-03-29 | Remaining P1 items deferred: stuck/re-plan cues, structured summaries, review request flow. Artifact list is currently refreshed by task-detail polling; live SSE preview/artifact mapping remains deferred. |
+| 2026-03-29 | Codex: Added a first builder-surface resume entry so `/code/build` can reopen draft/blocked/failed tasks instead of only minting new ones. Continued execution now reuses the resolved task id rather than silently creating duplicate tasks after a failed start. Session-level aligned resume remains deferred. |
 
 ---
 

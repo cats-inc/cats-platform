@@ -108,7 +108,7 @@ export function AppRoutes({
         />
         <Route
           path="build"
-          element={<CodeBuilderView payload={payload} />}
+          element={<CodeBuilderView />}
         />
         <Route
           path="artifacts/:artifactId"
