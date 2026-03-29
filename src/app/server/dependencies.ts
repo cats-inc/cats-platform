@@ -1,3 +1,4 @@
+import { createChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { createAppStartupState } from './startup.js';
 import type {
   ChatServerDependencies,
@@ -195,6 +196,7 @@ export function resolveServerDependencies(
       telegramRelay,
       telegramRoomBridge,
       pollingSupervisor,
+      eventHub: createChatEventHub(),
     },
     work: {
       coreStore: dependencies.work?.coreStore ?? sharedCoreStore,
