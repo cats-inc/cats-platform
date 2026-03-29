@@ -1,7 +1,8 @@
 # Deployment Guide
 
 > Deployment procedures and infrastructure documentation for the current
-> The current `Cats` suite app and the planned packaged Cats suite topology.
+> `Cats` product, its `cats-platform` host target, and the planned packaged
+> suite topology.
 
 ## Environments
 
@@ -67,9 +68,10 @@ npm run desktop:start
 ./scripts/macos/pack-install.sh
 ```
 
-- use `cats --help` after install to confirm the npm executable contract
-- this path validates the self-hosted tarball flow; it does not replace the
-  Electron packaging flow below
+- use `cats --help` after install to confirm the host executable contract
+- this path validates the self-hosted tarball flow for the future
+  `@cats-inc/cats-platform` package; it does not replace the Electron
+  packaging flow below or the separate `cats-one` bootstrap publication target
 
 - staged packaging command:
 

@@ -10,9 +10,11 @@ Accepted
 
 ## Context
 
-`cats` now has two viable distribution directions in the repo:
+The local `cats/` workspace now has two viable distribution directions in the
+repo:
 
-- a self-hosted npm app path for `cats` and `cats-runtime`
+- a self-hosted npm host-package path for `@cats-inc/cats-platform` and
+  `cats-runtime`
 - an Electron-hosted packaged desktop path
 
 Those two directions serve different audiences well:
@@ -43,7 +45,7 @@ and release work stop treating every platform/architecture as equally urgent.
 
 ## Decision
 
-The initial distribution strategy for `cats` is:
+The initial distribution strategy for the Cats host is:
 
 1. Ship a real Windows x64 Electron installer first for the desktop-product
    path.
@@ -58,8 +60,9 @@ The initial distribution strategy for `cats` is:
 More specifically:
 
 - **Consumer desktop priority**: Windows x64 Electron package first
-- **Technical/self-hosted priority**: `npx cats`, `npm install -g cats`, and
-  corresponding `cats-runtime` install/run flows
+- **Technical/self-hosted priority**: `npx cats-one`,
+  `npm install -g @cats-inc/cats-platform` then `cats`, and corresponding
+  `cats-runtime` install/run flows
 - **Deferred desktop matrix work**:
   - Windows arm64 Electron installer
   - macOS Electron installer(s)

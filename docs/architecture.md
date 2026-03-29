@@ -4,8 +4,9 @@
 
 ## Overview
 
-`Cats` is now both the current product-facing application layer and the
-planning home for the shared Cats suite contracts. The current implementation
+`Cats` remains the product-facing brand, while this repo targets the technical
+host identity `cats-platform` and still uses the local monorepo folder
+`cats/` until a coordinated workspace rename lands. The current implementation
 is still a split architecture: a Node server owns product and runtime-facing
 APIs, and a React/Vite renderer owns the operator-facing shell. The accepted
 next step is to add `Cats Core v1` so `Cats Chat` and `Cats Work` can launch on
@@ -22,7 +23,7 @@ the same shared domain model.
                └──────────────┬─────────────────┘
                               ▼
 ┌────────────────────────────────────────────────────────────┐
-│                     cats product server                    │
+│                cats-platform product server                │
 │  product APIs + suite orchestration + shared app services  │
 └──────────────┬───────────────────────────────┬─────────────┘
                │                               │
@@ -84,6 +85,14 @@ Current ownership:
 The product is still in a transitional state: top-level compatibility shims
 remain at `src/server.ts`, `src/renderer/*`, and `src/chat/*` so existing
 tests and imports do not have to move all at once.
+
+Packaging and repo naming now follow this split:
+
+- `Cats`: flagship product brand
+- `cats-platform`: host repo/package target
+- `cats-runtime`: runtime boundary
+- `cats-one`: one-shot bootstrap installer target
+- `cats`: persistent installed executable name for the host package
 
 ### Configuration Layer
 

@@ -1,7 +1,7 @@
 {
-  "name": "cats",
+  "name": "@cats-inc/cats-platform",
   "version": "0.1.0",
-  "description": "Flagship Cats suite app backed by cats-runtime.",
+  "description": "Technical host package for the Cats suite, backed by cats-runtime.",
   "type": "module",
   "bin": {
     "cats": "./dist-server/index.js"
@@ -42,9 +42,9 @@
   },
   "keywords": [
     "cats",
-    "chat",
+    "platform",
     "runtime",
-    "product"
+    "suite"
   ],
   "license": "MIT",
   "dependencies": {

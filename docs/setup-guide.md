@@ -1,6 +1,7 @@
 # Setup Guide
 
-> Environment setup and installation instructions for `Cats`.
+> Environment setup and installation instructions for `Cats` and the local
+> host workspace that targets public packaging as `cats-platform`.
 
 ## Prerequisites
 
@@ -16,6 +17,9 @@
 cd cats
 cp .env.example .env
 ```
+
+The local monorepo folder is still `cats/`. The intended public host
+repo/package target is `cats-platform`.
 
 ### 2. Install dependencies
 
@@ -200,7 +204,11 @@ To build a local npm tarball and optionally install it globally:
 ./scripts/macos/pack-install.sh
 ```
 
-This is the self-hosted npm app path, not the Electron installer path.
+This is the self-hosted host-package smoke path, not the Electron installer
+path. It validates the future `@cats-inc/cats-platform` package contract while
+keeping the installed executable name as `cats`. The separate one-shot
+bootstrap package target is `cats-one`.
+
 After install, verify the executable contract with:
 
 ```bash

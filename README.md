@@ -4,12 +4,17 @@
 
 ## Overview
 
-`Cats` is the long-term Node.js/TypeScript flagship suite application for the
-Cats suite. It talks to `cats-runtime` as its execution boundary and keeps the
-product model in this repo rather than inheriting it from earlier prototypes.
+`Cats` is the flagship product brand for the suite. This repo currently hosts
+the technical suite host targeted for public packaging as
+`@cats-inc/cats-platform`, while the local monorepo folder remains `cats/`
+until the coordinated workspace rename lands. It talks to `cats-runtime` as
+its execution boundary and keeps the product model in this repo rather than
+inheriting it from earlier prototypes.
 
-`Cats Inc` remains the umbrella brand. `Cats` is the suite product name, and
-`cats-runtime` remains the runtime boundary.
+`Cats Inc` remains the umbrella brand. `Cats` remains the public product name,
+`cats-platform` is the host repo/package target, `cats-runtime` remains the
+runtime boundary, and `cats-one` is reserved for the one-shot bootstrap
+installer path. The persistent host executable remains `cats`.
 
 The current slices are:
 
@@ -161,6 +166,11 @@ npm run desktop:start
 
 That command builds `dist-server/`, `dist/`, and `dist-electron/`, then starts
 the Electron host that supervises local `cats-runtime` and `cats` sidecars.
+
+For host-package smoke validation, the local tarball path now mirrors the
+future `@cats-inc/cats-platform` host package while keeping the installed
+command as `cats`. The separate one-shot bootstrap publication target is
+reserved as `cats-one`.
 
 For staged packaging outputs:
 

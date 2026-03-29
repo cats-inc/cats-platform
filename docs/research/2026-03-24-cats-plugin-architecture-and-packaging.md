@@ -46,7 +46,7 @@ plugin 開發者製造版本對齊的麻煩，沒有任何消費端好處。
 ### 最終 npm package 結構
 
 ```
-@cats-inc/cats          ← host（core + platform + design + shell 合一包）
+@cats-inc/cats-platform          ← host（core + platform + design + shell 合一包）
 @cats-inc/chat          ← Chat plugin（預設內建，隨 host 安裝）
 @cats-inc/work          ← Work plugin（官方，可選安裝）
 @cats-inc/code          ← Code plugin（官方，可選安裝）
@@ -58,7 +58,7 @@ plugin 開發者製造版本對齊的麻煩，沒有任何消費端好處。
 ### host package 內部仍保持目錄分層
 
 ```
-@cats-inc/cats/
+@cats-inc/cats-platform/
   src/
     core/              ← domain model, types, store
     platform/          ← orchestration, memory, transports
@@ -75,9 +75,9 @@ host package 透過 subpath exports 暴露分層 API，plugin 不需要 import
 整包 host，只 import 需要的部分：
 
 ```jsonc
-// @cats-inc/cats/package.json
+// @cats-inc/cats-platform/package.json
 {
-  "name": "@cats-inc/cats",
+  "name": "@cats-inc/cats-platform",
   "exports": {
     ".":           "./dist/index.js",
     "./plugin":    "./dist/app/plugin.js",
@@ -92,9 +92,9 @@ host package 透過 subpath exports 暴露分層 API，plugin 不需要 import
 Plugin 的 import 風格：
 
 ```typescript
-import type { CatsPlugin, PluginDependencies } from '@cats-inc/cats/plugin';
-import type { CoreActorRecord, CoreTaskRecord } from '@cats-inc/cats/core';
-import type { ApiError, NotFoundError } from '@cats-inc/cats/shared';
+import type { CatsPlugin, PluginDependencies } from '@cats-inc/cats-platform/plugin';
+import type { CoreActorRecord, CoreTaskRecord } from '@cats-inc/cats-platform/core';
+import type { ApiError, NotFoundError } from '@cats-inc/cats-platform/shared';
 ```
 
 ### plugin package 的 peer dependency
@@ -106,7 +106,7 @@ import type { ApiError, NotFoundError } from '@cats-inc/cats/shared';
 {
   "name": "@cats-inc/chat",
   "peerDependencies": {
-    "@cats-inc/cats": "^1.0.0"
+    "@cats-inc/cats-platform": "^1.0.0"
   }
 }
 ```
@@ -120,7 +120,7 @@ import type { ApiError, NotFoundError } from '@cats-inc/cats/shared';
 這是 plugin 向 host 註冊自己的 contract：
 
 ```typescript
-// @cats-inc/cats/plugin
+// @cats-inc/cats-platform/plugin
 
 export interface CatsPlugin {
   /** Unique plugin ID — used as route prefix and config key */
@@ -205,7 +205,7 @@ export interface PluginRenderProps {
 
 ```typescript
 // cats.config.ts
-import type { CatsConfig } from '@cats-inc/cats';
+import type { CatsConfig } from '@cats-inc/cats-platform';
 
 export default {
   plugins: [
@@ -299,12 +299,12 @@ packages/plugin-work/
       hooks/
         useProjects.ts        ← reads from coreStore
     styles/
-      work.css                ← Work-specific styles（imports @cats-inc/cats/design tokens）
+      work.css                ← Work-specific styles（imports @cats-inc/cats-platform/design tokens）
 ```
 
 ```typescript
 // packages/plugin-work/src/index.ts
-import type { CatsPlugin } from '@cats-inc/cats/plugin';
+import type { CatsPlugin } from '@cats-inc/cats-platform/plugin';
 import { WorkSidebar } from './renderer/WorkSidebar';
 import { WorkCanvas } from './renderer/WorkCanvas';
 import { createWorkRoutes } from './api/index';
@@ -323,8 +323,8 @@ export default plugin;
 
 ```typescript
 // packages/plugin-work/src/api/boardRoutes.ts
-import type { PluginDependencies } from '@cats-inc/cats/plugin';
-import type { CoreProjectRecord } from '@cats-inc/cats/core';
+import type { PluginDependencies } from '@cats-inc/cats-platform/plugin';
+import type { CoreProjectRecord } from '@cats-inc/cats-platform/core';
 
 export function createBoardRoutes(deps: PluginDependencies) {
   return async (req, res, url) => {
@@ -355,9 +355,9 @@ packages:
 ```
 
 ```
-cats/                          ← monorepo root
+cats-platform/                 ← monorepo root（public target）
   packages/
-    cats/                      ← @cats-inc/cats（host）
+    cats-platform/             ← @cats-inc/cats-platform（host）
       package.json
       src/
         core/
@@ -393,7 +393,7 @@ Plugin 在 Electron build 時是 **bundled**，不是 runtime discovered：
 ```
 electron-dist/
   node_modules/
-    @cats-inc/cats/          ← host
+    @cats-inc/cats-platform/          ← host
     @cats-inc/chat/          ← 預裝 plugin
     @cats-inc/work/          ← 預裝 plugin
   runtime-pages/             ← cats-runtime dashboard/playground（ADR-037）
@@ -425,7 +425,7 @@ Plugin 架構需要以下 PLAN-024 的 deliverables：
 - **PLAN-024 完成後**：評估。如果只有 Chat 一個 product，plugin 架構是 over-engineering。
 - **第二個 product（Work）開始開發時**：正式啟動。Work 作為第一個非內建 plugin 的
   試驗場，驗證 Plugin Contract 是否足夠。
-- **第三個 product 上線後**：穩定 contract，發布 `@cats-inc/cats` v1.0.0。
+- **第三個 product 上線後**：穩定 contract，發布 `@cats-inc/cats-platform` v1.0.0。
 
 ### 投入估計
 
@@ -451,7 +451,8 @@ product 邊界、統一的 API contract、共享的 design system）。剩下 20
 
 關鍵決策：
 
-- Host 合一包（`@cats-inc/cats`），不拆成 4 個 package
+- Host 合一包（`@cats-inc/cats-platform`），不拆成 4 個 package
 - 目錄邊界服務內部開發，package 邊界服務外部消費
-- Plugin 只需要一個 peer dependency：`@cats-inc/cats`
+- Plugin 只需要一個 peer dependency：`@cats-inc/cats-platform`
 - 時機：等 PLAN-024 完成 + Work 開始開發時再啟動
+

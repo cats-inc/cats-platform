@@ -65,6 +65,7 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 | Flagship product brand | `Cats` |
 | Main suite host repo target | `cats-platform` |
 | Main suite host package target | `@cats-inc/cats-platform` |
+| Persistent host executable | `cats` |
 | Runtime repo/package | `cats-runtime` |
 | Zero-to-running installer package | `cats-one` |
 | One-shot install entrypoint | `npx cats-one` |

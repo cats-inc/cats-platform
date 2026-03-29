@@ -10,12 +10,16 @@
 | `cats` HTTP app | 8181 | TCP | Product-facing app shell and health endpoints | `npm start` |
 | `cats` Vite dev server | 5173 | TCP | Renderer development server with `/api` proxy | `npm run dev:web` |
 
+The host repo/package target is now `cats-platform`, but the running local app
+service names remain `cats` for product-facing and operational continuity.
+
 ## Planned Shared Service Boundaries
 
 - `Cats Core v1` is a required shared contract for `Cats Chat` and
   `Cats Work`, but it does not have a dedicated network port yet. The current
-  planning assumption is that it starts co-hosted inside `cats` until a
-  stronger boundary is needed.
+  planning assumption is that it starts co-hosted inside the current local
+  `cats/` workspace and future `cats-platform` host until a stronger boundary
+  is needed.
 - `cats-runtime` remains the upstream runtime dependency for this project. Its
   direct API remains the primary app-facing boundary, while a future MCP facade
   is intended for orchestrator-style tool use rather than for general app
@@ -53,4 +57,3 @@ This project was created from **project-bootstrap**, which maintains a central p
 ---
 
 *Last updated: 2026-03-16*
-

@@ -7,9 +7,11 @@ Status: Draft (Pending Review)
 Implement the app-distribution direction defined in
 [ADR-013](../decisions/013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md).
 
-This plan covers the first technical self-hosted delivery path for `cats`:
+This plan covers the first technical self-hosted delivery path for the Cats
+host:
 
-- `npx cats` or equivalent install-and-run flows
+- `npx cats-one` bootstrap flows
+- `npm install -g @cats-inc/cats-platform` then `cats`
 - publishable app-package curation
 - first-run bootstrap for technical evaluators
 - local `cats-runtime` supervision or attachment
@@ -20,11 +22,12 @@ root-package SDK extraction plan.
 
 ## Hard Constraints
 
-- Do not turn the root `cats` package into a general-purpose library.
+- Do not turn the root `@cats-inc/cats-platform` package into a
+  general-purpose library.
 - Do not make `cats` source-import `cats-runtime` internals for production
   startup.
-- Keep the current product boundary: renderer talks to `cats`,
-  `cats` talks to `cats-runtime`.
+- Keep the current product boundary: renderer talks to the Cats host,
+  and the Cats host talks to `cats-runtime`.
 - Keep Electron as a later wrapper around the same local services, not a
   blocker for npm-based self-hosting.
 - Favor a technical-evaluator experience first; do not expand scope into a
@@ -35,8 +38,8 @@ root-package SDK extraction plan.
 ### Phase 1: Packaging Contract Freeze
 
 - [ ] Freeze the first supported invocation modes:
-      - `npx cats`
-      - `npm install -g cats` then `cats`
+      - `npx cats-one`
+      - `npm install -g @cats-inc/cats-platform` then `cats`
       - local dev/build flows remain supported
 - [ ] Freeze the minimum CLI command surface for the first release:
       - default start command
@@ -130,7 +133,9 @@ npm delivery path.
 
 ## Validation
 
-- `npx cats` starts the product or gives actionable first-run guidance.
+- `npx cats-one` starts bootstrap or gives actionable first-run guidance.
+- `npm install -g @cats-inc/cats-platform` then `cats` starts the persistent
+  host install or gives actionable first-run guidance.
 - A published-style package contains the built renderer and server assets
   required for local execution.
 - `cats` can either attach to an existing `cats-runtime` or start one it
@@ -164,5 +169,4 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-19*
-
 

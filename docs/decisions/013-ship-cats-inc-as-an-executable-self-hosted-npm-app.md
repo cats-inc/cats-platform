@@ -1,8 +1,9 @@
-# ADR-013: Ship `cats` as an Executable Self-Hosted npm App
+# ADR-013: Ship `cats-platform` as a Self-Hosted npm Host and Reserve `cats-one` for Bootstrap
 
-> Prioritize `npx cats` style distribution for technical self-hosted trials
-> and open-source collaboration, while keeping Electron as a later wrapper
-> around the same local services.
+> Prioritize a one-shot `npx cats-one` bootstrap path plus a persistent
+> `@cats-inc/cats-platform` host install for technical self-hosted trials and
+> open-source collaboration, while keeping Electron as a later wrapper around
+> the same local services.
 
 ## Status
 
@@ -10,8 +11,11 @@ Proposed
 
 ## Context
 
-`cats` is the current flagship suite app for the cats suite. Its root
-package already behaves more like an application than a reusable library:
+`Cats` is the flagship suite brand, and the current local host workspace still
+lives in `cats/`. Under ADR-045, the public host package target is now
+`@cats-inc/cats-platform`, while the one-shot bootstrap/install entrypoint is
+reserved as `cats-one`. The host package already behaves more like an
+application than a reusable library:
 
 - the package entrypoint boots config, runtime client, chat store, and the
   HTTP server
@@ -22,7 +26,9 @@ At the same time, recent product direction clarified a near-term distribution
 goal:
 
 - technical users should be able to try the product quickly with a
-  self-hosted command such as `npx cats`
+  self-hosted bootstrap command such as `npx cats-one`
+- technical users who want a persistent install should be able to use a host
+  package such as `npm install -g @cats-inc/cats-platform` and then run `cats`
 - the codebase should be easy to share for open-source collaboration before a
   polished desktop wrapper exists
 
@@ -31,27 +37,30 @@ the packaged desktop experience is built. That decision remains valid, but it
 does not solve the shorter-term need for a lightweight, reviewable, technical
 distribution path.
 
-Treating the root `cats` package as a general-purpose npm library would
+Treating the root host package as a general-purpose npm library would
 conflict with its current shape and its product role:
 
 - the root package is not a stable SDK surface
 - the renderer and server are shipped together as one product shell
 - product trial and contribution workflows care more about fast local startup
-  than about importing `cats` into another application
+  than about importing the host into another application
 
 The project needs a written distribution stance so review can happen before
 implementation starts.
 
 ## Decision
 
-`cats` will be positioned first as an executable self-hosted npm app
-package, not as a general-purpose library package.
+`@cats-inc/cats-platform` will be positioned first as an executable
+self-hosted npm app package, not as a general-purpose library package, and
+`cats-one` will be reserved for the zero-to-running bootstrap entrypoint.
 
 This decision includes:
 
-1. The primary public technical distribution target is `npx cats` (and
-   equivalent install + run flows such as `npm install -g cats`).
-2. The root `cats` package is application-first. It may expose small
+1. The primary public technical distribution targets are:
+   - `npx cats-one` for one-shot bootstrap/install flows
+   - `npm install -g @cats-inc/cats-platform` followed by `cats` for
+     persistent host installs
+2. The root `@cats-inc/cats-platform` package is application-first. It may expose small
    programmatic helpers for tests or internal composition, but that is
    secondary to the executable app experience.
 3. The published app package should include the built server and built renderer
@@ -67,7 +76,7 @@ This decision includes:
    service topology rather than block the first npm-based self-hosted release.
 7. If reusable library surfaces are needed later, they should be extracted into
    separate packages such as shared-core or runtime-client packages instead of
-   forcing the root `cats` package to serve two masters.
+   forcing the root host package to serve two masters.
 
 ## Consequences
 
@@ -83,7 +92,8 @@ This decision includes:
 
 ### Negative
 
-- `cats` now needs explicit packaging work such as executable entrypoints,
+- the host packages now need explicit packaging work such as executable
+  entrypoints,
   published asset curation, and first-run bootstrap behavior.
 - One-command startup increases pressure to define how local `cats-runtime`
   readiness, shutdown, and version compatibility are handled.
@@ -100,7 +110,7 @@ This decision includes:
 
 ## Alternatives Considered
 
-### Alternative 1: Treat `cats` Primarily as a Reusable npm Library
+### Alternative 1: Treat `cats-platform` Primarily as a Reusable npm Library
 
 - **Pros**: Cleaner story for `import`-based reuse.
 - **Cons**: Conflicts with the current app-first package shape and does not
@@ -116,7 +126,7 @@ This decision includes:
 - **Why rejected**: `npx`-style distribution is a smaller and faster path for
   technical users, and it remains compatible with later Electron work.
 
-### Alternative 3: Keep `cats` as a Repo-Only Dev App
+### Alternative 3: Keep the Host as a Repo-Only Dev App
 
 - **Pros**: Lowest short-term packaging effort.
 - **Cons**: Keeps trial and contribution friction high because users must clone
@@ -135,4 +145,3 @@ This decision includes:
 
 *Proposed: 2026-03-19*
 *Proposed by: Codex from user direction*
-

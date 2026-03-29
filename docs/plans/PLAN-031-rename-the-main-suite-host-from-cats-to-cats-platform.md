@@ -65,6 +65,7 @@ This plan does not cover:
 | Flagship product brand | `Cats` |
 | Main suite host repo target | `cats-platform` |
 | Main suite host package target | `@cats-inc/cats-platform` |
+| Persistent host executable | `cats` |
 | Runtime repo/package | `cats-runtime` |
 | Installer package | `cats-one` |
 | One-shot install entrypoint | `npx cats-one` |
