@@ -26,6 +26,7 @@ import type { ChatStore } from '../../products/chat/state/store.js';
 import type { ChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import type { WorkApiDependencies } from '../../products/work/api/index.js';
 import type { CodeApiDependencies } from '../../products/code/api/index.js';
+import type { TelegramCommandSurfaceSync } from './telegramCommandSurfaceSync.js';
 
 import type { AppStartupState } from './startup.js';
 
@@ -64,6 +65,7 @@ export interface ChatServerDependencies {
   telegramRelay?: TelegramRelay;
   telegramRoomBridge?: TelegramRoomBridge<ChatState>;
   pollingSupervisor?: TelegramPollingSupervisor;
+  telegramCommandSurfaceSync?: TelegramCommandSurfaceSync;
 }
 
 export interface WorkServerDependencies extends Partial<WorkApiDependencies> {}
@@ -94,6 +96,7 @@ export interface ResolvedChatServerDependencies extends ChatServerDependencies {
   telegramRelay: TelegramRelay;
   telegramRoomBridge: TelegramRoomBridge<ChatState>;
   pollingSupervisor: TelegramPollingSupervisor;
+  telegramCommandSurfaceSync: TelegramCommandSurfaceSync;
   eventHub: ChatEventHub;
 }
 

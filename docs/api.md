@@ -588,6 +588,25 @@ POST /api/transports/telegram/webhook/:bindingId
   - persists dedupe and inbox-to-conversation mapping state outside chat core
   - ignores unsupported, bot-authored, or non-private updates with explicit
     transport reasons
+  - intercepts transport-owned slash commands before room bridging, including:
+    - `/start`
+    - `/help`
+    - `/commands`
+    - `/status`
+    - `/open`
+    - `/mode`
+  - handles `/mode companion` and `/mode agent` as product-owned Cat behavior
+    toggles for the bound Telegram bot
+  - keeps recognized slash commands and their replies out of the normal private-
+    lane transcript by default
+  - best-effort syncs the canonical command registry to Telegram via
+    `setMyCommands`
+  - best-effort sets the Telegram private-chat menu button to open the bot's
+    command list via `setChatMenuButton`
+  - re-runs that command/menu sync on server startup and after Telegram bot
+    binding mutations
+  - clears stale Telegram command lists with `deleteMyCommands` when a bot
+    token is replaced, disabled, or no longer actively bound inside `cats`
   - creates or reuses a canonical `Cats Chat` room for accepted Telegram inbox
     traffic and stores the active `linkedRoomId` in the transport relay state
   - routes the accepted Telegram message through the existing internal chat

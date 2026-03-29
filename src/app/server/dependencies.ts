@@ -1,5 +1,6 @@
 import { createChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { createAppStartupState } from './startup.js';
+import { createTelegramCommandSurfaceSync } from './telegramCommandSurfaceSync.js';
 import type {
   ChatServerDependencies,
   ResolvedChatServerDependencies,
@@ -62,14 +63,16 @@ function createDefaultTelegramRelay(
   shared: SharedServerDependencies,
   chat: ChatServerDependencies,
   pollingSupervisor: ResolvedChatServerDependencies['pollingSupervisor'],
+  options: {
+    defaultBotToken: string | null;
+    resolveBotApiClient: (botToken: string) => ReturnType<typeof createTelegramBotApiDeliveryClient>;
+  },
 ): ResolvedChatServerDependencies['telegramRelay'] {
   const webhookSecretToken = process.env.CATS_TELEGRAM_WEBHOOK_SECRET?.trim() || null;
-  const botToken = process.env.CATS_TELEGRAM_BOT_TOKEN?.trim() || null;
   const parsedMaxBodyBytes = Number.parseInt(
     process.env.CATS_TELEGRAM_WEBHOOK_MAX_BYTES ?? '',
     10,
   );
-  const deliveryClientCache = new Map<string, ReturnType<typeof createTelegramBotApiDeliveryClient>>();
 
   return createTelegramRelay({
     now: shared.now,
@@ -80,19 +83,11 @@ function createDefaultTelegramRelay(
     maxBodyBytes: Number.isFinite(parsedMaxBodyBytes) ? parsedMaxBodyBytes : undefined,
     getPollingStatuses: () => pollingSupervisor.getAllPollingStatuses(),
     resolveDeliveryClient(binding) {
-      const resolvedToken = binding?.botToken?.trim() || botToken;
+      const resolvedToken = binding?.botToken?.trim() || options.defaultBotToken;
       if (!resolvedToken) {
         return null;
       }
-      const existing = deliveryClientCache.get(resolvedToken);
-      if (existing) {
-        return existing;
-      }
-      const client = createTelegramBotApiDeliveryClient({
-        botToken: resolvedToken,
-      });
-      deliveryClientCache.set(resolvedToken, client);
-      return client;
+      return options.resolveBotApiClient(resolvedToken);
     },
   });
 }
@@ -112,8 +107,35 @@ export function resolveServerDependencies(
     ?? createCatsMemoryService(createChatMemorySurface(dependencies.chat.chatStore), memoryStore);
   const pollingSupervisor = dependencies.chat.pollingSupervisor
     ?? createTelegramPollingSupervisor({ now: dependencies.shared.now });
+  const defaultTelegramBotToken = process.env.CATS_TELEGRAM_BOT_TOKEN?.trim() || null;
+  const deliveryClientCache = new Map<string, ReturnType<typeof createTelegramBotApiDeliveryClient>>();
+  const resolveTelegramBotApiClient = (botToken: string) => {
+    const existing = deliveryClientCache.get(botToken);
+    if (existing) {
+      return existing;
+    }
+    const client = createTelegramBotApiDeliveryClient({
+      botToken,
+    });
+    deliveryClientCache.set(botToken, client);
+    return client;
+  };
   const telegramRelay = dependencies.chat.telegramRelay
-    ?? createDefaultTelegramRelay(dependencies.shared, dependencies.chat, pollingSupervisor);
+    ?? createDefaultTelegramRelay(
+      dependencies.shared,
+      dependencies.chat,
+      pollingSupervisor,
+      {
+        defaultBotToken: defaultTelegramBotToken,
+        resolveBotApiClient: resolveTelegramBotApiClient,
+      },
+    );
+  const telegramCommandSurfaceSync = dependencies.chat.telegramCommandSurfaceSync
+    ?? createTelegramCommandSurfaceSync({
+      chatStore: dependencies.chat.chatStore,
+      defaultBotToken: defaultTelegramBotToken,
+      resolveClient: resolveTelegramBotApiClient,
+    });
   const baseCompanionStore = dependencies.chat.companionStore
     ?? createDefaultCompanionStore(dependencies.shared, dependencies.chat);
   const companionStore = createMemoryAwareCompanionBoxStore(
@@ -198,6 +220,7 @@ export function resolveServerDependencies(
       telegramRelay,
       telegramRoomBridge,
       pollingSupervisor,
+      telegramCommandSurfaceSync,
       eventHub: createChatEventHub(),
     },
     work: {

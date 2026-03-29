@@ -7,7 +7,6 @@ import {
 import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
-import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
 import { requireCat } from '../state/model/index.js';
 import type {
@@ -17,36 +16,9 @@ import type {
 import {
   handleRestError,
   nowFrom,
+  reconcileTelegramTransportAfterBindingMutation,
   type ChatApiRouteContext,
 } from './routeSupport.js';
-
-async function reconcilePollingAfterMutation(context: ChatApiRouteContext): Promise<void> {
-  const {
-    pollingSupervisor,
-    telegramRelay,
-    telegramRoomBridge,
-    chatStore,
-    memoryService,
-    runtimeClient,
-  } = context.dependencies;
-  if (!pollingSupervisor || !telegramRelay) {
-    return;
-  }
-  try {
-    const pollingCtx = await readTelegramPollingContext(chatStore);
-    await pollingSupervisor.reconcilePolling({
-      bindings: pollingCtx.bindings,
-      context: pollingCtx.context,
-      refreshContext: async () => (await readTelegramPollingContext(chatStore)).context,
-      roomBridge: telegramRoomBridge,
-      memoryService,
-      runtimeClient,
-      telegramRelay,
-    });
-  } catch {
-    // Best-effort; binding mutation already succeeded
-  }
-}
 
 function trimNullableString(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
@@ -187,7 +159,7 @@ async function handleCreateBotBinding(context: ChatApiRouteContext): Promise<voi
       chat,
     ),
   });
-  void reconcilePollingAfterMutation(context);
+  void reconcileTelegramTransportAfterBindingMutation(context);
 }
 
 async function handleUpdateBotBinding(
@@ -255,7 +227,9 @@ async function handleUpdateBotBinding(
   sendJson(context.response, 200, {
     botBinding: summarizeBinding(updated ?? existing, chat),
   });
-  void reconcilePollingAfterMutation(context);
+  void reconcileTelegramTransportAfterBindingMutation(context, {
+    staleBotTokens: [existing.botToken],
+  });
 }
 
 async function handleDeleteBotBinding(
@@ -264,7 +238,8 @@ async function handleDeleteBotBinding(
 ): Promise<void> {
   const nowIso = nowFrom(context.dependencies).toISOString();
   const core = await context.dependencies.chatStore.readCore();
-  if (!core.botBindings.some((binding) => binding.id === bindingId)) {
+  const existing = core.botBindings.find((binding) => binding.id === bindingId);
+  if (!existing) {
     throw new Error(`Bot binding not found: ${bindingId}`);
   }
 
@@ -275,7 +250,9 @@ async function handleDeleteBotBinding(
   );
   await context.dependencies.chatStore.writeCore(nextCore);
   sendJson(context.response, 200, { deleted: true, bindingId });
-  void reconcilePollingAfterMutation(context);
+  void reconcileTelegramTransportAfterBindingMutation(context, {
+    staleBotTokens: [existing.botToken],
+  });
 }
 
 export async function routeBotBindingApi(

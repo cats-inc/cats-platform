@@ -244,6 +244,7 @@ export async function routeRequest(
       telegramRelay: dependencies.chat.telegramRelay,
       telegramRoomBridge: dependencies.chat.telegramRoomBridge,
       pollingSupervisor: dependencies.chat.pollingSupervisor,
+      telegramCommandSurfaceSync: dependencies.chat.telegramCommandSurfaceSync,
       companionStore: dependencies.chat.companionStore,
       memoryService: dependencies.chat.memoryService,
       eventHub: dependencies.chat.eventHub,

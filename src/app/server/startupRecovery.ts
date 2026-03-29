@@ -20,6 +20,7 @@ export async function runServerStartupRecoveryPasses(
 ): Promise<void> {
   await runStartupRecoveryPasses([
     () => reconcilePollingOnStartup(dependencies),
+    () => dependencies.chat.telegramCommandSurfaceSync.reconcile(),
     () => reconcileChatWorkflowRecoveryOnStartup(dependencies),
     () => reconcileOrchestratorRecoveryOnStartup(dependencies),
   ]);

@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   runStartupRecoveryPasses,
+  runServerStartupRecoveryPasses,
 } from '../dist-server/app/server/startupRecovery.js';
 
 test('runStartupRecoveryPasses executes startup recovery in order', async () => {
@@ -57,4 +58,69 @@ test('runStartupRecoveryPasses continues after a failed startup recovery pass', 
     'chat',
     'orchestrator',
   ]);
+});
+
+test('runServerStartupRecoveryPasses reconciles telegram command surfaces on startup', async () => {
+  const calls = [];
+  const chatStore = {
+    async read() {
+      return {
+        bossCatId: null,
+        cats: [],
+        channels: [],
+      };
+    },
+    async readCore() {
+      return {
+        tasks: [],
+        activities: [],
+        botBindings: [],
+      };
+    },
+    async write(state) {
+      return state;
+    },
+    async writeCore(core) {
+      return core;
+    },
+  };
+
+  await runServerStartupRecoveryPasses({
+    shared: {
+      now: () => new Date('2026-03-30T00:00:00.000Z'),
+      coreStore: chatStore,
+      runtimeClient: {},
+      startup: {},
+      resumePendingOrchestratorDispatch: async () => {
+        throw new Error('not used');
+      },
+      resumeWorkflowContinuationDispatch: async () => {
+        throw new Error('not used');
+      },
+    },
+    chat: {
+      chatStore,
+      companionStore: {},
+      orchestratorChannelRouter: {},
+      orchestratorPlannerSurface: {},
+      taskExecutionLocator: {},
+      memoryStore: {},
+      memoryService: {},
+      telegramRelay: {},
+      telegramRoomBridge: {},
+      pollingSupervisor: {
+        async reconcilePolling() {},
+      },
+      telegramCommandSurfaceSync: {
+        async reconcile() {
+          calls.push('telegram-command-surface');
+        },
+      },
+      eventHub: {},
+    },
+    work: {},
+    code: {},
+  });
+
+  assert.deepEqual(calls, ['telegram-command-surface']);
 });
