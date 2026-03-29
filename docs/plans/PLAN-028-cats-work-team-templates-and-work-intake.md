@@ -208,6 +208,7 @@ template packs.
 |------|--------|
 | 2026-03-29 | Plan created to add the first Work-native intake, team-template, review, approval, and cross-product handoff loop |
 | 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan generation, API routes, handoff-readiness transitions, dashboard, and renderer surfaces landed. 29 tests pass. Work no longer owns runtime dispatch or shared server dependency wiring. |
+| 2026-03-30 | Codex: Refined Work intake projection and review UI so each generated task now exposes a product-facing handoff state (`pending_review`, `active_here`, `ready_for_pickup`, `stopped`, `completed`) plus the next expected owner action. Approved-plan messaging now distinguishes Work-owned follow-through from Chat/Code pickup instead of implying direct dispatch. |
 
 ---
 

@@ -283,6 +283,35 @@
   color: var(--text-secondary, #888);
 }
 
+.work-plan-badge--handoff {
+  text-transform: none;
+}
+
+.work-plan-badge--handoff-pending_review {
+  background: rgba(214, 158, 46, 0.16);
+  color: #f6e05e;
+}
+
+.work-plan-badge--handoff-active_here {
+  background: rgba(45, 125, 82, 0.14);
+  color: #9ae6b4;
+}
+
+.work-plan-badge--handoff-ready_for_pickup {
+  background: rgba(49, 130, 206, 0.14);
+  color: #90cdf4;
+}
+
+.work-plan-badge--handoff-completed {
+  background: rgba(76, 81, 191, 0.14);
+  color: #c3dafe;
+}
+
+.work-plan-badge--handoff-stopped {
+  background: rgba(197, 48, 48, 0.14);
+  color: #feb2b2;
+}
+
 .work-plan-task-summary,
 .work-plan-task-criteria {
   font-size: 12px;
@@ -294,6 +323,12 @@
   font-size: 11px;
   color: var(--text-tertiary, #666);
   margin: 2px 0 0;
+}
+
+.work-plan-task-next-action {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  margin: 4px 0 0;
 }
 
 .work-plan-task-approval {
