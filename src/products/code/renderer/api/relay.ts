@@ -1,4 +1,5 @@
 import { expectJson } from './http.js';
+import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 
 export interface CodeRelayRosterEntryPayload {
   id: string;
@@ -6,6 +7,7 @@ export interface CodeRelayRosterEntryPayload {
   label: string;
   instance: string | null;
   model: string | null;
+  modelSelection: ProviderModelSelection | null;
   transport: string;
   availability: 'unknown' | 'available' | 'unavailable';
   availabilitySummary: string | null;
@@ -114,6 +116,10 @@ export async function updateCodeRelayRosterEntry(
   agentId: string,
   patch: {
     enabled?: boolean;
+    provider?: string;
+    instance?: string | null;
+    model?: string | null;
+    modelSelection?: ProviderModelSelection | null;
     quotaNote?: string | null;
     recentRole?: string | null;
   },

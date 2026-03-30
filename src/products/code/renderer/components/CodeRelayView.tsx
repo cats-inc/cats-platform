@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { sameProviderModelSelection } from '../../../../shared/providerSelection.js';
 
 import {
   createCodeRelayThread,
@@ -9,6 +10,7 @@ import {
   type CodeRelayThreadPayload,
   type CodeRelayThreadsPayload,
 } from '../api/relay.js';
+import { ProviderModelFields } from './ProviderModelFields.js';
 
 interface CodeRelaySelectedChannelContext {
   title: string;
@@ -182,6 +184,10 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     agentId: string,
     patch: {
       enabled?: boolean;
+      provider?: string;
+      instance?: string | null;
+      model?: string | null;
+      modelSelection?: CodeRelayRosterEntryPayload['modelSelection'];
       quotaNote?: string | null;
     },
   ): Promise<void> {
@@ -201,6 +207,35 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     } finally {
       setBusy('');
     }
+  }
+
+  async function handleRosterTargetChange(
+    entry: CodeRelayRosterEntryPayload,
+    target: {
+      provider: string;
+      instance: string;
+      model: string;
+      modelSelection?: CodeRelayRosterEntryPayload['modelSelection'];
+    },
+  ): Promise<void> {
+    const normalizedInstance = target.instance.trim() || null;
+    const normalizedModel = target.model.trim() || null;
+    const normalizedSelection = target.modelSelection ?? null;
+    if (
+      entry.provider === target.provider
+      && (entry.instance ?? null) === normalizedInstance
+      && (entry.model ?? null) === normalizedModel
+      && sameProviderModelSelection(entry.modelSelection ?? null, normalizedSelection)
+    ) {
+      return;
+    }
+
+    await handleRosterPatch(entry.id, {
+      provider: target.provider,
+      instance: normalizedInstance,
+      model: normalizedModel,
+      modelSelection: normalizedSelection,
+    });
   }
 
   async function handleFanOut(): Promise<void> {
@@ -265,9 +300,9 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
         </div>
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>Supported providers</strong>
+            <strong>Runtime provider surface</strong>
             <span className="operatorStatusBadge isMuted">
-              {payload?.contract.transport ?? 'local_cli_subprocess'}
+              {payload?.contract.transport ?? 'runtime_session_bridge'}
             </span>
           </div>
           <p>{payload?.contract.supportedProviders.join(', ') || 'Loading connector contract...'}</p>
@@ -401,6 +436,20 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                       <div className="codeRelayMetaRow">
                         <span>Model: {entry.model ?? 'default'}</span>
                         <span>Role: {entry.recentRole}</span>
+                      </div>
+                      <div
+                        className="codeRelayProviderFields"
+                        style={busy === `roster:${entry.id}` ? { pointerEvents: 'none', opacity: 0.6 } : undefined}
+                      >
+                        <ProviderModelFields
+                          provider={entry.provider}
+                          instance={entry.instance ?? ''}
+                          model={entry.model ?? ''}
+                          modelSelection={entry.modelSelection ?? null}
+                          onTargetChange={(target) => {
+                            void handleRosterTargetChange(entry, target);
+                          }}
+                        />
                       </div>
                       <label className="codeRelayToggle">
                         <input

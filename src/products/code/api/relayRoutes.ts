@@ -4,6 +4,9 @@ import {
   sendJson,
   sendMethodNotAllowed,
 } from '../../../shared/http.js';
+import { listProductProviders } from '../../../shared/providerCatalog.js';
+import { parseProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { RuntimeProviderConfigRegistry } from '../../../runtime/client.js';
 import type { CodeApiRouteContext } from './index.js';
 import {
   applyCodeRelayRosterProbe,
@@ -19,6 +22,7 @@ import {
 import type {
   CodeRelayMode,
   CodeRelayRecentRole,
+  CodeRelayRosterEntry,
   CodeRelayThreadRecord,
 } from '../state/relayContracts.js';
 
@@ -62,6 +66,87 @@ function readAgentIds(value: unknown): string[] {
     : [];
 }
 
+async function readRelayRuntimeProviderConfig(
+  context: CodeApiRouteContext,
+): Promise<RuntimeProviderConfigRegistry | null> {
+  try {
+    return await context.dependencies.runtimeClient.getProviderConfig();
+  } catch {
+    return null;
+  }
+}
+
+function createRelayContract(
+  runtimeConfig: RuntimeProviderConfigRegistry | null,
+): CodeRelayThreadRecord['contract'] {
+  const supportedProviders = runtimeConfig
+    ? Object.keys(runtimeConfig)
+    : listProductProviders().map((provider) => provider.id);
+  return {
+    version: 'phase0-runtime-bridge-v1',
+    transport: 'runtime_session_bridge',
+    supportedProviders,
+    notes: runtimeConfig
+      ? [
+          'Relay fan-out uses cats-runtime session APIs.',
+          'Provider availability is derived from runtime provider config.',
+        ]
+      : [
+          'Relay fan-out uses cats-runtime session APIs.',
+          'Runtime provider config was unavailable, so the provider list fell back to the product catalog.',
+        ],
+  };
+}
+
+function probeRelayRosterEntries(
+  entries: CodeRelayRosterEntry[],
+  runtimeConfig: RuntimeProviderConfigRegistry | null,
+): CodeRelayRosterEntry[] {
+  if (!runtimeConfig) {
+    return entries.map((entry) => ({
+      ...entry,
+      availability: 'unknown',
+      availabilitySummary: 'Runtime provider config unavailable.',
+    }));
+  }
+
+  return entries.map((entry) => {
+    const providerConfig = runtimeConfig[entry.provider];
+    if (!providerConfig) {
+      return {
+        ...entry,
+        availability: 'unavailable',
+        availabilitySummary: `Runtime does not report a configured ${entry.label} provider path.`,
+      };
+    }
+
+    const resolvedInstance = entry.instance?.trim() || providerConfig.defaultInstance || null;
+    if (resolvedInstance) {
+      const instanceConfig = providerConfig.instances.find((candidate) => candidate.id === resolvedInstance) ?? null;
+      if (!instanceConfig) {
+        return {
+          ...entry,
+          availability: 'unavailable',
+          availabilitySummary: `${entry.label} instance "${resolvedInstance}" is not available in cats-runtime.`,
+        };
+      }
+
+      return {
+        ...entry,
+        instance: resolvedInstance,
+        availability: 'available',
+        availabilitySummary: `Runtime ready via ${instanceConfig.target ?? instanceConfig.id}.`,
+      };
+    }
+
+    return {
+      ...entry,
+      availability: 'available',
+      availabilitySummary: `Runtime provider path ready for ${entry.label}.`,
+    };
+  });
+}
+
 function buildThreadProjection(
   project: Awaited<ReturnType<typeof listCodeRelayProjects>>[number],
   thread: CodeRelayThreadRecord,
@@ -90,21 +175,20 @@ async function buildRelayThreadsPayload(
   } = {},
 ) {
   const core = await context.dependencies.coreStore.readCore();
+  const runtimeConfig = await readRelayRuntimeProviderConfig(context);
   const projects = listCodeRelayProjects(core);
-  const defaultRoster = await context.dependencies.relayRuntime.probeRosterEntries(
-    createDefaultCodeRelayRoster(),
-  );
-  const threads = await Promise.all(projects.map(async (project) => {
+  const defaultRoster = probeRelayRosterEntries(createDefaultCodeRelayRoster(), runtimeConfig);
+  const threads = projects.map((project) => {
     const relay = readCodeRelayThread(project);
     if (!relay) {
       return null;
     }
-    const probedRoster = await context.dependencies.relayRuntime.probeRosterEntries(relay.roster);
+    const probedRoster = probeRelayRosterEntries(relay.roster, runtimeConfig);
     return buildThreadProjection(project, {
       ...relay,
       roster: probedRoster,
     });
-  }));
+  });
   const selectedThreadId = options.selectedThreadId
     ?? threads.find((thread) => thread !== null)?.thread.id
     ?? null;
@@ -114,7 +198,7 @@ async function buildRelayThreadsPayload(
       id: 'code',
       name: 'Cats Code',
     },
-    contract: context.dependencies.relayRuntime.describeContract(),
+    contract: createRelayContract(runtimeConfig),
     defaults: {
       roster: defaultRoster,
     },
@@ -136,17 +220,55 @@ async function completeFanOutInBackground(
   },
 ): Promise<void> {
   const dispatchResults = await Promise.all(input.targetEntries.map(async (entry) => {
+    let sessionId: string | null = null;
     try {
-      return await context.dependencies.relayRuntime.dispatch({
-        entry,
-        prompt: input.prompt,
-        repoPath: input.repoPath,
+      const session = await context.dependencies.runtimeClient.createSession({
+        provider: entry.provider,
+        instance: entry.instance,
+        model: entry.model,
+        modelSelection: entry.modelSelection ?? undefined,
+        cwd: input.repoPath,
+        workspaceKind: input.repoPath ? 'source' : undefined,
+        workspaceAccess: 'read_only',
+        context: {
+          source: 'interactive',
+          reason: 'code_relay_fan_out',
+          ...(input.repoPath ? { workspace: { cwd: input.repoPath } } : {}),
+          metadata: {
+            product: 'cats-code',
+            surface: 'relay',
+            relayAgentId: entry.id,
+            relayMode: 'fan_out',
+          },
+        },
       });
+      sessionId = session.id;
+      const result = await context.dependencies.runtimeClient.sendMessage(session.id, input.prompt, {
+        context: {
+          source: 'interactive',
+          reason: 'code_relay_fan_out',
+          ...(input.repoPath ? { workspace: { cwd: input.repoPath } } : {}),
+        },
+      });
+      return {
+        entryId: entry.id,
+        content: result.content.trim(),
+        stdoutExcerpt: null,
+        stderrExcerpt: null,
+      };
     } catch (error) {
       return {
         entryId: entry.id,
         error: error instanceof Error ? error.message : 'Relay dispatch failed.',
       };
+    } finally {
+      if (sessionId) {
+        try {
+          await context.dependencies.runtimeClient.closeSession(sessionId);
+        } catch {
+          // Best-effort cleanup; the relay round result already records completion/failure.
+        }
+      }
     }
   }));
 
@@ -196,7 +318,8 @@ export async function routeCodeRelayApi(
       repoPath: readNullableString(body.repoPath),
     }, now);
     core = created.core;
-    const probedRoster = await context.dependencies.relayRuntime.probeRosterEntries(created.thread.roster);
+    const runtimeConfig = await readRelayRuntimeProviderConfig(context);
+    const probedRoster = probeRelayRosterEntries(created.thread.roster, runtimeConfig);
     const probed = applyCodeRelayRosterProbe(core, created.project.id, probedRoster, now);
     if (probed) {
       core = probed.core;
@@ -228,6 +351,31 @@ export async function routeCodeRelayApi(
 
     const body = await readJsonBody<Record<string, unknown>>(context.request);
     const recentRole = readRecentRole(body.recentRole);
+    const provider = body.provider === undefined ? undefined : readNonEmptyString(body.provider);
+    if (body.provider !== undefined && !provider) {
+      sendJson(context.response, 400, {
+        error: { code: 'relay_provider_required', message: 'provider must be a non-empty string.' },
+      });
+      return true;
+    }
+
+    const modelSelection = body.modelSelection === undefined
+      ? undefined
+      : parseProviderModelSelection(body.modelSelection);
+    if (
+      body.modelSelection !== undefined
+      && body.modelSelection !== null
+      && modelSelection === null
+    ) {
+      sendJson(context.response, 400, {
+        error: {
+          code: 'relay_model_selection_invalid',
+          message: 'modelSelection must be null or a valid provider model selection.',
+        },
+      });
+      return true;
+    }
+
     const now = context.dependencies.now?.() ?? new Date();
     const updated = updateCodeRelayRosterEntry(
       await context.dependencies.coreStore.readCore(),
@@ -235,6 +383,10 @@ export async function routeCodeRelayApi(
       agentId,
       {
         ...(typeof body.enabled === 'boolean' ? { enabled: body.enabled } : {}),
+        ...(provider ? { provider } : {}),
+        ...(body.instance !== undefined ? { instance: readNullableString(body.instance) } : {}),
+        ...(body.model !== undefined ? { model: readNullableString(body.model) } : {}),
+        ...(body.modelSelection !== undefined ? { modelSelection } : {}),
         ...(body.quotaNote !== undefined ? { quotaNote: readNullableString(body.quotaNote) } : {}),
         ...(recentRole ? { recentRole } : {}),
       },
@@ -248,7 +400,10 @@ export async function routeCodeRelayApi(
       return true;
     }
 
-    await context.dependencies.coreStore.writeCore(updated.core);
+    const runtimeConfig = await readRelayRuntimeProviderConfig(context);
+    const probedRoster = probeRelayRosterEntries(updated.thread.roster, runtimeConfig);
+    const probed = applyCodeRelayRosterProbe(updated.core, threadId, probedRoster, now);
+    await context.dependencies.coreStore.writeCore(probed?.core ?? updated.core);
     sendJson(context.response, 200, await buildRelayThreadsPayload(context, {
       selectedThreadId: threadId,
     }));

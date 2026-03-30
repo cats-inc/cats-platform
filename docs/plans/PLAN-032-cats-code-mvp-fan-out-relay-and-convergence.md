@@ -44,11 +44,11 @@ one pass. It narrows the first execution slice to:
 This slice should be useful on its own even before `shape`, `fit`,
 implementation, or human-verification loops are deeply integrated.
 
-The make-or-break risk for this slice is the coding-agent connector contract.
-If the product cannot automatically send a prompt and receive a machine-usable
-response from at least one real coding-agent interface, the slice collapses
-back into a prettier version of manual relay. The plan therefore starts with a
-connector spike before broader fan-out work.
+The make-or-break risk for this slice is the runtime-backed relay contract. If
+the product cannot automatically send a prompt through `cats-runtime` and
+receive a machine-usable response from at least one real provider target, the
+slice collapses back into a prettier version of manual relay. The plan
+therefore starts with a runtime-bridge spike before broader fan-out work.
 
 ## Slice Boundary
 
@@ -57,7 +57,7 @@ connector spike before broader fan-out work.
 - persistent Code project thread container
 - round records for the relay/convergence workflow
 - visible agent roster with provider/interface/quota context
-- parallel discussion fan-out to configured coding-agent connectors
+- parallel discussion fan-out to configured runtime-backed provider targets
 - one-click relay for critique and rebuttal
 - convergence summary artifact generation
 - promotion of convergence output into a draft research or decision artifact
@@ -75,13 +75,12 @@ connector spike before broader fan-out work.
 
 ## Implementation Phases
 
-### Phase 0: Connector Spike and Round-Trip Proof
+### Phase 0: Runtime Bridge Spike and Round-Trip Proof
 
-- [ ] Pick the first MVP connector transport shape for coding-agent relay
-      automation
-- [ ] Prove one end-to-end automated round trip against one real external
-      coding-agent interface before generalizing the abstraction
-- [ ] Freeze the minimum connector contract for the first slice, including at
+- [ ] Pick the first MVP runtime transport shape for relay automation
+- [ ] Prove one end-to-end automated round trip against one real
+      `cats-runtime` provider target before generalizing the abstraction
+- [ ] Freeze the minimum runtime relay contract for the first slice, including at
       least:
       - agent identity
       - request payload shape
@@ -91,11 +90,11 @@ connector spike before broader fan-out work.
       - optional quota note
 - [ ] Explicitly reject manual pasteback as sufficient completion for this
       phase
-- [ ] Document what the first connector does **not** normalize yet so later
-      fan-out work does not over-assume parity across Codex / Claude / Gemini
+- [ ] Document what the first runtime-backed slice does **not** normalize yet
+      so later fan-out work does not over-assume parity across providers
 
-**Deliverables**: one proven automated connector round trip and a frozen
-minimum connector contract for the relay slice.
+**Deliverables**: one proven automated runtime relay round trip and a frozen
+minimum runtime-backed contract for the relay slice.
 
 ### Phase 1: Project Thread and Agent Roster Foundation
 
@@ -133,10 +132,10 @@ contract for relay work, plus a minimal visible thread shell.
 
 ### Phase 2: Parallel Fan-Out Dispatch and Relay Execution
 
-- [ ] Lift the validated Phase-0 connector contract into the first
-      product-owned coding-agent abstraction for discussion rounds
-- [ ] Start with configured external coding-agent interfaces rather than trying
-      to move discussion management into `cats-runtime`
+- [ ] Lift the validated Phase-0 runtime contract into the first relay
+      abstraction for discussion rounds
+- [ ] Keep discussion/workflow state product-owned while delegating provider
+      execution to `cats-runtime`
 - [ ] Add a fan-out action that sends one discussion prompt to multiple roster
       entries in parallel
 - [ ] Persist per-agent dispatch state:
@@ -235,13 +234,14 @@ follow-on seams.
 
 ## Technical Decisions
 
-- The first slice must prove a real automated connector round trip before
+- The first slice must prove a real automated runtime-backed round trip before
   broader fan-out work begins; manual copy/paste is not considered sufficient
   completion for the connector phase.
-- Keep the first relay slice product-owned and connector-backed; do not wait
-  for a new `cats-runtime` discussion-session manager.
-- The first connector should stay narrow and local-process-friendly. General
-  cross-provider normalization can wait until one real connector path works.
+- Keep the first relay slice product-owned at the workflow layer but
+  runtime-backed at the provider-execution layer; do not add product-owned
+  provider adapters.
+- The first runtime bridge should stay narrow. General cross-provider
+  normalization can wait until one real runtime-backed path works.
 - Treat quota context as advisory routing metadata in the first slice. It may
   start as manually supplied or connector-derived metadata rather than a fully
   trusted live meter.

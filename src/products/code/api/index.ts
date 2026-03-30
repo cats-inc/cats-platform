@@ -1,7 +1,6 @@
 import type { AppConfig } from '../../../config.js';
 import type { CoreStore } from '../../../core/store.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
-import type { CodeRelayRuntime } from '../state/relayContracts.js';
 import {
   buildCodeArtifactDetailProjection,
   buildCodeArtifactListProjection,
@@ -33,7 +32,6 @@ export interface CodeApiDependencies {
   coreStore: CoreStore;
   runtimeClient: RuntimeClient;
   config: AppConfig;
-  relayRuntime: CodeRelayRuntime;
   now?: () => Date;
 }
 

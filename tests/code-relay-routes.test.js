@@ -14,6 +14,24 @@ const baseConfig = {
 };
 
 function createRuntimeStub() {
+  const providerConfig = {
+    claude: {
+      defaultInstance: 'native',
+      defaultBackend: 'cli',
+      instances: [{ id: 'native', target: 'cli/native', backend: 'cli' }],
+    },
+    codex: {
+      defaultInstance: 'native',
+      defaultBackend: 'cli',
+      instances: [{ id: 'native', target: 'cli/native', backend: 'cli' }],
+    },
+    gemini: {
+      defaultInstance: 'native',
+      defaultBackend: 'cli',
+      instances: [{ id: 'native', target: 'cli/native', backend: 'cli' }],
+    },
+  };
+
   return {
     async getHealth() {
       return {
@@ -24,7 +42,7 @@ function createRuntimeStub() {
       };
     },
     async getProviderConfig() {
-      return {};
+      return providerConfig;
     },
     async getProviderModels(provider) {
       return {
@@ -38,35 +56,26 @@ function createRuntimeStub() {
         warnings: [],
       };
     },
-  };
-}
-
-function createRelayRuntimeStub() {
-  return {
-    describeContract() {
+    async createSession(input) {
       return {
-        version: 'phase0-local-cli-v1',
-        transport: 'local_cli_subprocess',
-        supportedProviders: ['codex', 'claude', 'gemini'],
-        notes: ['stubbed for tests'],
+        id: `session-${input.provider}-${input.instance ?? 'default'}`,
+        provider: input.provider,
+        model: input.model ?? `${input.provider}-default`,
+        status: 'ready',
+        cwd: input.cwd ?? null,
       };
     },
-    async probeRosterEntries(entries) {
-      return entries.map((entry) => ({
-        ...entry,
-        availability: 'available',
-        availabilitySummary: `${entry.label} ready`,
-      }));
-    },
-    async dispatch(request) {
+    async sendMessage(sessionId, prompt) {
+      const provider = sessionId.replace(/^session-([^-.]+).*/u, '$1');
       await new Promise((resolve) => setTimeout(resolve, 30));
       return {
-        entryId: request.entry.id,
-        content: `[${request.entry.provider}] ${request.prompt}`,
-        stdoutExcerpt: `stdout:${request.entry.provider}`,
-        stderrExcerpt: null,
+        content: `[${provider}] ${prompt}`,
+        inputTokens: 1,
+        outputTokens: 1,
+        tokensUsed: 2,
       };
     },
+    async closeSession() {},
   };
 }
 
@@ -79,9 +88,6 @@ async function withServer(callback) {
     },
     chat: {
       chatStore: new MemoryChatStore(),
-    },
-    code: {
-      relayRuntime: createRelayRuntimeStub(),
     },
   });
 
@@ -139,6 +145,31 @@ test('Code relay routes create threads, update roster, and fan out prompts', asy
     const patchedThread = patchPayload.threads[0];
     assert.equal(patchedThread.roster[0].quotaNote, 'Still has room today');
 
+    const providerPatchResponse = await fetch(
+      `${baseUrl}/api/code/relay/threads/${thread.thread.id}/roster/${thread.roster[0].id}`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'cursor',
+          instance: 'native',
+          model: 'gpt-5.4',
+          modelSelection: {
+            entryId: 'gpt-5.4',
+            entryMode: 'explicit',
+          },
+        }),
+      },
+    );
+    assert.equal(providerPatchResponse.status, 200);
+    const providerPatchPayload = await providerPatchResponse.json();
+    assert.equal(providerPatchPayload.threads[0].roster[0].provider, 'cursor');
+    assert.equal(providerPatchPayload.threads[0].roster[0].availability, 'unavailable');
+    assert.match(
+      providerPatchPayload.threads[0].roster[0].availabilitySummary,
+      /Runtime does not report/u,
+    );
+
     const fanOutResponse = await fetch(
       `${baseUrl}/api/code/relay/threads/${thread.thread.id}/fan-out`,
       {
@@ -148,7 +179,7 @@ test('Code relay routes create threads, update roster, and fan out prompts', asy
           mode: 'discover',
           objective: 'Challenge the first implementation direction',
           prompt: 'Which path is lower risk for an MVP?',
-          agentIds: patchedThread.roster.slice(0, 2).map((entry) => entry.id),
+          agentIds: providerPatchPayload.threads[0].roster.slice(1, 3).map((entry) => entry.id),
         }),
       },
     );
@@ -175,6 +206,6 @@ test('Code relay routes create threads, update roster, and fan out prompts', asy
     assert.equal(settledPayload.threads[0].thread.status, 'waiting_for_user');
     assert.equal(settledRound.dispatches[0].status, 'completed');
     assert.equal(settledRound.messages[0].kind, 'prompt');
-    assert.match(settledRound.messages[1].content, /\[(codex|claude)\]/u);
+    assert.match(settledRound.messages[1].content, /\[(codex|gemini)\]/u);
   });
 });

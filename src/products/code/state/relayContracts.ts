@@ -1,3 +1,5 @@
+import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+
 export type CodeRelayMode =
   | 'discover'
   | 'shape'
@@ -41,8 +43,8 @@ export type CodeRelayMessageAuthorKind = 'user' | 'agent' | 'system';
 export type CodeRelayMessageKind = 'prompt' | 'response' | 'relay_instruction' | 'system_note';
 
 export interface CodeRelayConnectorContract {
-  version: 'phase0-local-cli-v1';
-  transport: 'local_cli_subprocess';
+  version: 'phase0-runtime-bridge-v1';
+  transport: 'runtime_session_bridge';
   supportedProviders: string[];
   notes: string[];
 }
@@ -53,7 +55,8 @@ export interface CodeRelayRosterEntry {
   label: string;
   instance: string | null;
   model: string | null;
-  transport: 'local_cli_subprocess';
+  modelSelection: ProviderModelSelection | null;
+  transport: 'runtime_session_bridge';
   availability: CodeRelayAvailabilityState;
   availabilitySummary: string | null;
   quotaNote: string | null;
@@ -112,21 +115,9 @@ export interface CodeRelayThreadRecord {
   provenProviderIds: string[];
 }
 
-export interface CodeRelayDispatchRequest {
-  entry: CodeRelayRosterEntry;
-  prompt: string;
-  repoPath: string | null;
-}
-
 export interface CodeRelayDispatchResult {
   entryId: string;
   content: string;
   stdoutExcerpt: string | null;
   stderrExcerpt: string | null;
-}
-
-export interface CodeRelayRuntime {
-  describeContract(): CodeRelayConnectorContract;
-  probeRosterEntries(entries: CodeRelayRosterEntry[]): Promise<CodeRelayRosterEntry[]>;
-  dispatch(request: CodeRelayDispatchRequest): Promise<CodeRelayDispatchResult>;
 }

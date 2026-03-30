@@ -160,12 +160,13 @@ Examples:
 ### Agent surface
 
 For the MVP, the multi-agent discussion, drafting, and review surface should
-target product-owned connectors for external coding-agent interfaces such as
-CLI-backed Codex, Claude, and Gemini workflows.
+remain product-owned at the thread/workflow level while delegating provider
+execution to `cats-runtime` through runtime-backed session APIs.
 
-`cats-runtime` remains the build/run substrate for local app execution,
-preview, and delivery follow-through. It is not required to be the first-slice
-discussion-session manager for the multi-agent relay loop.
+`cats-runtime` remains the execution boundary for provider selection,
+provider readiness, session lifecycle, and local app execution. `Cats Code`
+should not add product-owned provider adapters for Codex, Claude, Gemini, or
+other provider families.
 
 ### Agent roster
 

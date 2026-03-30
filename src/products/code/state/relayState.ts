@@ -6,7 +6,13 @@ import {
   getDefaultModel,
   getDefaultProviderInstance,
   getProviderDisplayName,
+  listProductProviders,
 } from '../../../shared/providerCatalog.js';
+import {
+  cloneProviderModelSelection,
+  parseProviderModelSelection,
+  type ProviderModelSelection,
+} from '../../../shared/providerSelection.js';
 import type {
   CodeRelayConnectorContract,
   CodeRelayDispatchRecord,
@@ -18,6 +24,7 @@ import type {
 } from './relayContracts.js';
 
 const CODE_RELAY_METADATA_KEY = 'codeRelay';
+const DEFAULT_RELAY_PROVIDER = listProductProviders()[0]?.id ?? 'claude';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -40,7 +47,7 @@ function readStringArray(value: unknown): string[] {
 function readTransport(
   value: unknown,
 ): CodeRelayConnectorContract['transport'] {
-  return value === 'local_cli_subprocess' ? value : 'local_cli_subprocess';
+  return value === 'runtime_session_bridge' ? value : 'runtime_session_bridge';
 }
 
 function readAvailability(value: unknown): CodeRelayRosterEntry['availability'] {
@@ -102,39 +109,55 @@ function readThreadStatus(value: unknown): CodeRelayThreadRecord['status'] {
 
 function createDefaultContract(): CodeRelayConnectorContract {
   return {
-    version: 'phase0-local-cli-v1',
-    transport: 'local_cli_subprocess',
-    supportedProviders: ['codex', 'claude', 'gemini'],
+    version: 'phase0-runtime-bridge-v1',
+    transport: 'runtime_session_bridge',
+    supportedProviders: listProductProviders().map((provider) => provider.id),
     notes: [
-      'Phase 0 freezes final response payloads from local CLI subprocess connectors.',
-      'Streaming normalization and live quota metering remain deferred.',
+      'Relay fan-out runs through cats-runtime session APIs rather than product-owned provider adapters.',
+      'Provider readiness and execution behavior remain runtime-owned.',
     ],
   };
 }
 
-function createDefaultRosterEntry(provider: 'codex' | 'claude' | 'gemini'): CodeRelayRosterEntry {
+function resolveRelayProvider(provider: string | null | undefined): string {
+  return provider?.trim() || DEFAULT_RELAY_PROVIDER;
+}
+
+function createCodeRelayRosterEntry(input: {
+  provider: string;
+  instance?: string | null;
+  model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
+  enabled?: boolean;
+  quotaNote?: string | null;
+  recentRole?: CodeRelayRosterEntry['recentRole'];
+}): CodeRelayRosterEntry {
+  const provider = resolveRelayProvider(input.provider);
   const instance = getDefaultProviderInstance(provider);
   return {
-    id: `${provider}:${instance ?? 'default'}`,
+    id: `agent-${randomUUID()}`,
     provider,
     label: getProviderDisplayName(provider),
-    instance,
-    model: getDefaultModel(provider) || null,
-    transport: 'local_cli_subprocess',
+    instance: input.instance === undefined ? instance : input.instance,
+    model: input.model === undefined ? (getDefaultModel(provider) || null) : input.model,
+    modelSelection: cloneProviderModelSelection(input.modelSelection) ?? null,
+    transport: 'runtime_session_bridge',
     availability: 'unknown',
     availabilitySummary: null,
-    quotaNote: null,
-    recentRole: 'idle',
-    enabled: true,
+    quotaNote: input.quotaNote ?? null,
+    recentRole: input.recentRole ?? 'idle',
+    enabled: input.enabled !== false,
   };
 }
 
 export function createDefaultCodeRelayRoster(): CodeRelayRosterEntry[] {
-  return [
-    createDefaultRosterEntry('codex'),
-    createDefaultRosterEntry('claude'),
-    createDefaultRosterEntry('gemini'),
-  ];
+  return listProductProviders()
+    .slice(0, 3)
+    .map((provider) => createCodeRelayRosterEntry({
+      provider: provider.id,
+      instance: provider.defaultInstance,
+      model: provider.defaultModel,
+    }));
 }
 
 function fallbackRecordId(
@@ -159,9 +182,9 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
   return {
     version: relayRecord.version === 1 ? 1 : 1,
     contract: {
-      version: contractRecord?.version === 'phase0-local-cli-v1'
+      version: contractRecord?.version === 'phase0-runtime-bridge-v1'
         ? contractRecord.version
-        : 'phase0-local-cli-v1',
+        : 'phase0-runtime-bridge-v1',
       transport: readTransport(contractRecord?.transport),
       supportedProviders: readStringArray(contractRecord?.supportedProviders),
       notes: readStringArray(contractRecord?.notes),
@@ -176,6 +199,7 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
         label: readString(entry.label) ?? readString(entry.provider) ?? 'Unknown',
         instance: readString(entry.instance),
         model: readString(entry.model),
+        modelSelection: parseProviderModelSelection(entry.modelSelection),
         transport: readTransport(entry.transport),
         availability: readAvailability(entry.availability),
         availabilitySummary: readString(entry.availabilitySummary),
@@ -211,9 +235,9 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
             requestedAt: readString(dispatch.requestedAt) ?? new Date().toISOString(),
             completedAt: readString(dispatch.completedAt),
             error: readString(dispatch.error),
-            connectorVersion: dispatch.connectorVersion === 'phase0-local-cli-v1'
+            connectorVersion: dispatch.connectorVersion === 'phase0-runtime-bridge-v1'
               ? dispatch.connectorVersion
-              : 'phase0-local-cli-v1',
+              : 'phase0-runtime-bridge-v1',
             connectorTransport: readTransport(dispatch.connectorTransport),
             stdoutExcerpt: readString(dispatch.stdoutExcerpt),
             stderrExcerpt: readString(dispatch.stderrExcerpt),
@@ -322,7 +346,10 @@ export function updateCodeRelayRosterEntry(
   core: CatsCoreState,
   threadId: string,
   agentId: string,
-  patch: Partial<Pick<CodeRelayRosterEntry, 'enabled' | 'quotaNote' | 'recentRole'>>,
+  patch: Partial<Pick<
+    CodeRelayRosterEntry,
+    'enabled' | 'provider' | 'instance' | 'model' | 'modelSelection' | 'quotaNote' | 'recentRole'
+  >>,
   now: Date = new Date(),
 ): { core: CatsCoreState; project: CoreProjectRecord; thread: CodeRelayThreadRecord } | null {
   const found = findCodeRelayProject(core, threadId);
@@ -336,8 +363,27 @@ export function updateCodeRelayRosterEntry(
       return entry;
     }
 
+    const nextProvider = patch.provider === undefined
+      ? entry.provider
+      : resolveRelayProvider(patch.provider);
+    const providerChanged = nextProvider !== entry.provider;
+    const targetChanged = providerChanged || patch.instance !== undefined || patch.model !== undefined;
+
     return {
       ...entry,
+      provider: nextProvider,
+      label: getProviderDisplayName(nextProvider),
+      instance: patch.instance === undefined
+        ? (providerChanged ? getDefaultProviderInstance(nextProvider) : entry.instance)
+        : patch.instance,
+      model: patch.model === undefined
+        ? (providerChanged ? (getDefaultModel(nextProvider) || null) : entry.model)
+        : patch.model,
+      modelSelection: patch.modelSelection !== undefined
+        ? (cloneProviderModelSelection(patch.modelSelection) ?? null)
+        : (targetChanged ? null : (cloneProviderModelSelection(entry.modelSelection) ?? null)),
+      availability: targetChanged ? 'unknown' : entry.availability,
+      availabilitySummary: targetChanged ? null : entry.availabilitySummary,
       ...(patch.enabled === undefined ? {} : { enabled: patch.enabled }),
       ...(patch.quotaNote === undefined ? {} : { quotaNote: patch.quotaNote }),
       ...(patch.recentRole === undefined ? {} : { recentRole: patch.recentRole }),
@@ -602,7 +648,9 @@ export function finishCodeRelayFanOut(
     ...nextThread.provenProviderIds,
     ...results
       .filter((candidate): candidate is CodeRelayDispatchResult => !('error' in candidate))
-      .map((candidate) => candidate.entryId.split(':')[0] ?? candidate.entryId),
+      .map((candidate) =>
+        nextThread.roster.find((entry) => entry.id === candidate.entryId)?.provider
+        ?? candidate.entryId),
   ]));
 
   const result = upsertCoreProject(core, {

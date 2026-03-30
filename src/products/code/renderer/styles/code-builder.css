@@ -300,6 +300,13 @@
   gap: 10px;
 }
 
+.codeRelayProviderFields {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(24, 32, 64, 0.08);
+}
+
 .codeRelayToggle {
   display: inline-flex;
   align-items: center;
