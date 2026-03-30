@@ -46,6 +46,9 @@ The current slices are:
   outputs, persists host-readable bootstrap state, keeps the bootstrap bridge
   sandboxed, supports tray/background lifecycle, and owns the packaged
   bootstrap/remediation seam plus a manual-check update skeleton
+- a repo-owned packaged setup helper baseline for Windows native CLI, WSL,
+  Docker Desktop, and Ollama flows, with resumable setup recovery surfaced
+  through the desktop host
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
   direct companion-session hydration metadata, and Cats-owned retrieval context
@@ -117,8 +120,8 @@ several Phase 3 items remain:
   state, and deeper converge/group planning beyond the current execution-loop
   and action seams
 - richer first-run remediation polish, branded/signed release assets, and
-  host-managed provider install/resume flows beyond the current Windows
-  NSIS-first packaging substrate
+  broader expert-only capability packs beyond the current Windows NSIS-first
+  packaged setup baseline
 - offline transcript normalization and ingestion handoff hooks
 - richer semantic indexing and archive export beyond the current local
   canonical-memory and retrieval substrate
