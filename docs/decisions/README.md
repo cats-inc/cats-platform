@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [046-drive-packaged-setup-through-runtime-bootstrap-apis](./046-drive-packaged-setup-through-runtime-bootstrap-apis.md) | Drive packaged setup through runtime bootstrap APIs | Accepted | 2026-03-30 |
 | [045-use-cats-platform-as-the-main-suite-host-under-cats-brand](./045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md) | Use cats-platform as the main suite host under Cats brand | Accepted | 2026-03-30 |
 | [044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy](./044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy.md) | Adopt Windows x64 Electron plus self-hosted npm as the initial distribution strategy | Accepted | 2026-03-30 |
 | [043-keep-suite-renderer-entry-bounded-with-route-level-lazy-loading](./043-keep-suite-renderer-entry-bounded-with-route-level-lazy-loading.md) | Keep suite renderer entry bounded with route-level lazy loading | Proposed | 2026-03-30 |
