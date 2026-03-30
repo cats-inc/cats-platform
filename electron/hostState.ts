@@ -3,8 +3,15 @@ import { dirname } from 'node:path';
 
 import type {
   DesktopBackgroundState,
+  DesktopBootstrapEvent,
+  DesktopBootstrapEventError,
+  DesktopBootstrapEventReference,
+  DesktopBootstrapEventStatus,
   DesktopBootstrapSnapshot,
+  DesktopHostDiagnosticsState,
   DesktopHostPersistedState,
+  DesktopManagedServiceLog,
+  DesktopProductBootstrapDiagnostics,
   DesktopPackagingPlan,
   DesktopSetupActionRecord,
   DesktopSetupInterruption,
@@ -12,6 +19,7 @@ import type {
   DesktopUpdateState,
 } from './contracts.js';
 import type { DesktopHostConfig } from './config.js';
+import { createEmptyDesktopDiagnosticsState } from './bootstrapDiagnostics.js';
 
 interface DesktopHostStateStoreDependencies {
   now?: () => Date;
@@ -165,6 +173,225 @@ function normalizeSetupState(
   };
 }
 
+function normalizeBootstrapEventStatus(value: unknown): DesktopBootstrapEventStatus {
+  return value === 'ok'
+    || value === 'degraded'
+    || value === 'unavailable'
+    || value === 'info'
+    ? value
+    : 'info';
+}
+
+function normalizeBootstrapReference(
+  value: unknown,
+): DesktopBootstrapEventReference | null {
+  if (!isObjectRecord(value)) {
+    return null;
+  }
+
+  const artifactId = readString(value.artifactId);
+  const artifactPath = readString(value.artifactPath);
+  const recordId = readString(value.recordId);
+  const route = readString(value.route);
+  if (!artifactId && !artifactPath && !recordId && !route) {
+    return null;
+  }
+  return {
+    artifactId: artifactId ?? undefined,
+    artifactPath: artifactPath ?? undefined,
+    recordId: recordId ?? undefined,
+    route: route ?? undefined,
+  };
+}
+
+function normalizeBootstrapError(
+  value: unknown,
+): DesktopBootstrapEventError | null {
+  if (!isObjectRecord(value)) {
+    return null;
+  }
+
+  const message = readString(value.message);
+  if (!message) {
+    return null;
+  }
+  return {
+    message,
+    code: readString(value.code) ?? undefined,
+    cause: readString(value.cause) ?? undefined,
+    stack: readString(value.stack) ?? undefined,
+  };
+}
+
+function normalizeBootstrapEvent(value: unknown): DesktopBootstrapEvent | null {
+  if (!isObjectRecord(value)) {
+    return null;
+  }
+  const layer = value.layer;
+  if (layer !== 'runtime' && layer !== 'product' && layer !== 'host') {
+    return null;
+  }
+  const kind = readString(value.kind);
+  const timestamp = readString(value.timestamp);
+  const summary = readString(value.summary);
+  if (!kind || !timestamp || !summary) {
+    return null;
+  }
+  return {
+    layer,
+    kind,
+    timestamp,
+    attemptId: readString(value.attemptId),
+    summary,
+    status: normalizeBootstrapEventStatus(value.status),
+    context: isObjectRecord(value.context) ? value.context : null,
+    error: normalizeBootstrapError(value.error),
+    reference: normalizeBootstrapReference(value.reference),
+  };
+}
+
+function normalizeManagedServiceLog(
+  value: unknown,
+  fallbackService: DesktopManagedServiceLog['service'],
+): DesktopManagedServiceLog {
+  if (!isObjectRecord(value)) {
+    return {
+      service: fallbackService,
+      logPath: null,
+      lastOutput: null,
+      lastOutputAt: null,
+    };
+  }
+
+  const service = value.service === 'cats-runtime' || value.service === 'cats'
+    ? value.service
+    : fallbackService;
+  return {
+    service,
+    logPath: readString(value.logPath),
+    lastOutput: readString(value.lastOutput),
+    lastOutputAt: readString(value.lastOutputAt),
+  };
+}
+
+function normalizeProductDiagnostics(
+  value: unknown,
+): DesktopProductBootstrapDiagnostics | null {
+  if (!isObjectRecord(value)) {
+    return null;
+  }
+
+  const generatedAt = readString(value.generatedAt);
+  const summary = readString(value.summary);
+  if (!generatedAt || !summary) {
+    return null;
+  }
+
+  return {
+    generatedAt,
+    attemptId: readString(value.attemptId),
+    status: normalizeBootstrapEventStatus(value.status),
+    summary,
+    historyPath: readString(value.historyPath),
+    latestReference: normalizeBootstrapReference(value.latestReference),
+    events: Array.isArray(value.events)
+      ? value.events
+        .map((entry) => normalizeBootstrapEvent(entry))
+        .filter((entry): entry is DesktopBootstrapEvent => Boolean(entry))
+      : [],
+  };
+}
+
+function normalizeDiagnosticsState(
+  value: unknown,
+  fallback: DesktopHostDiagnosticsState,
+): DesktopHostDiagnosticsState {
+  if (!isObjectRecord(value)) {
+    return fallback;
+  }
+
+  const defaultLogs = new Map(
+    fallback.serviceLogs.map((entry) => [entry.service, entry] as const),
+  );
+  const logs = Array.isArray(value.serviceLogs)
+    ? value.serviceLogs.map((entry) => {
+      const service = isObjectRecord(entry)
+        && (entry.service === 'cats-runtime' || entry.service === 'cats')
+        ? entry.service
+        : 'cats-runtime';
+      return normalizeManagedServiceLog(entry, service);
+    })
+    : fallback.serviceLogs;
+
+  const mergedLogs: DesktopManagedServiceLog[] = [];
+  for (const service of ['cats-runtime', 'cats'] as const) {
+    const normalized = logs.find((entry) => entry.service === service);
+    mergedLogs.push(normalized ?? defaultLogs.get(service) ?? {
+      service,
+      logPath: null,
+      lastOutput: null,
+      lastOutputAt: null,
+    });
+  }
+
+  const aggregation = isObjectRecord(value.aggregation) ? value.aggregation : null;
+  const aggregationLayers = isObjectRecord(aggregation?.layers) ? aggregation.layers : null;
+  const runtimeLayer = isObjectRecord(aggregationLayers?.runtime) ? aggregationLayers.runtime : null;
+  const productLayer = isObjectRecord(aggregationLayers?.product) ? aggregationLayers.product : null;
+  const hostLayer = isObjectRecord(aggregationLayers?.host) ? aggregationLayers.host : null;
+
+  return {
+    activeAttemptId: readString(value.activeAttemptId),
+    hostEvents: Array.isArray(value.hostEvents)
+      ? value.hostEvents
+        .map((entry) => normalizeBootstrapEvent(entry))
+        .filter((entry): entry is DesktopBootstrapEvent => Boolean(entry))
+      : fallback.hostEvents,
+    runtimeEvents: Array.isArray(value.runtimeEvents)
+      ? value.runtimeEvents
+        .map((entry) => normalizeBootstrapEvent(entry))
+        .filter((entry): entry is DesktopBootstrapEvent => Boolean(entry))
+      : fallback.runtimeEvents,
+    product: normalizeProductDiagnostics(value.product),
+    aggregation: aggregation
+      ? {
+        generatedAt: readString(aggregation.generatedAt) ?? new Date(0).toISOString(),
+        attemptId: readString(aggregation.attemptId),
+        layers: {
+          runtime: {
+            status: normalizeBootstrapEventStatus(runtimeLayer?.status),
+            summary: readString(runtimeLayer?.summary)
+              ?? 'Runtime diagnostics are not available yet.',
+            latestTimestamp: readString(runtimeLayer?.latestTimestamp),
+            latestReference: normalizeBootstrapReference(runtimeLayer?.latestReference),
+          },
+          product: {
+            status: normalizeBootstrapEventStatus(productLayer?.status),
+            summary: readString(productLayer?.summary)
+              ?? 'Product diagnostics are not available yet.',
+            latestTimestamp: readString(productLayer?.latestTimestamp),
+            latestReference: normalizeBootstrapReference(productLayer?.latestReference),
+          },
+          host: {
+            status: normalizeBootstrapEventStatus(hostLayer?.status),
+            summary: readString(hostLayer?.summary)
+              ?? 'Host diagnostics are not available yet.',
+            latestTimestamp: readString(hostLayer?.latestTimestamp),
+            latestReference: normalizeBootstrapReference(hostLayer?.latestReference),
+          },
+        },
+        chronology: Array.isArray(aggregation.chronology)
+          ? aggregation.chronology
+            .map((entry) => normalizeBootstrapEvent(entry))
+            .filter((entry): entry is DesktopBootstrapEvent => Boolean(entry))
+          : [],
+      }
+      : fallback.aggregation,
+    serviceLogs: mergedLogs,
+    updatedAt: readString(value.updatedAt),
+  };
+}
+
 export class DesktopHostStateStore {
   private writeQueue = Promise.resolve();
 
@@ -194,6 +421,7 @@ export class DesktopHostStateStore {
       }
 
       const snapshot = parsed.snapshot as unknown as DesktopBootstrapSnapshot;
+      const diagnosticsFallback = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats']);
       return {
         snapshot: {
           ...snapshot,
@@ -205,6 +433,7 @@ export class DesktopHostStateStore {
             ? snapshot.packaging as unknown as DesktopPackagingPlan
             : defaults.packaging,
           setup: normalizeSetupState(snapshot.setup, defaults.setup),
+          diagnostics: normalizeDiagnosticsState(snapshot.diagnostics, diagnosticsFallback),
           hostStatePath: this.statePath,
         },
         background: normalizeBackgroundState(parsed.background, defaults.background),
@@ -215,6 +444,7 @@ export class DesktopHostStateStore {
           ? parsed.packaging as unknown as DesktopPackagingPlan
           : defaults.packaging,
         setup: normalizeSetupState(parsed.setup, defaults.setup),
+        diagnostics: normalizeDiagnosticsState(parsed.diagnostics, diagnosticsFallback),
         savedAt: readString(parsed.savedAt) ?? this.now().toISOString(),
       };
     } catch {
@@ -228,6 +458,7 @@ export class DesktopHostStateStore {
     updates: DesktopUpdateState;
     packaging: DesktopPackagingPlan;
     setup: DesktopSetupState;
+    diagnostics: DesktopHostDiagnosticsState | null;
   }): Promise<void> {
     const writeOperation = this.writeQueue.catch(() => undefined).then(async () => {
       await mkdir(dirname(this.statePath), { recursive: true });
@@ -237,6 +468,7 @@ export class DesktopHostStateStore {
         updates: input.updates,
         packaging: input.packaging,
         setup: input.setup,
+        diagnostics: input.diagnostics,
         savedAt: this.now().toISOString(),
       };
       await writeFile(this.statePath, JSON.stringify(payload, null, 2));

@@ -17,6 +17,7 @@ export interface DesktopHostPaths {
   runtimeSessionBaseDir: string;
   runtimeConfigPath: string;
   hostStatePath: string;
+  hostLogsDir: string;
   packagingOutputRoot: string;
 }
 
@@ -247,6 +248,10 @@ export function resolveDesktopHostConfig(
       hostStatePath: resolveDesktopPath(
         env.CATS_DESKTOP_HOST_STATE_PATH?.trim()
           || joinDesktopPath(userDataDir, 'desktop-host', 'state.json'),
+      ),
+      hostLogsDir: resolveDesktopPath(
+        env.CATS_DESKTOP_HOST_LOGS_DIR?.trim()
+          || joinDesktopPath(userDataDir, 'desktop-host', 'logs'),
       ),
       packagingOutputRoot: resolveDesktopPath(
         env.CATS_DESKTOP_PACKAGING_OUTPUT_ROOT?.trim()

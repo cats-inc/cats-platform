@@ -4,6 +4,11 @@ import type {
   SuiteRuntimeSetupApplyInput,
   SuiteRuntimeSetupScanInput,
 } from '../../shared/runtimeSetup.js';
+import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
+import {
+  appendSuiteOnboardingEvent,
+  readSuiteOnboardingHistory,
+} from '../../shared/suiteOnboardingHistory.js';
 import { defaultCatProducts, normalizeSuiteSurfaceList } from '../../shared/suiteSurfaces.js';
 import { readSuitePreferences, writeSuitePreferences } from '../../shared/suitePreferences.js';
 import { createCat } from '../../products/chat/state/model/index.js';
@@ -35,6 +40,21 @@ function normalizeProviderList(value: unknown): string[] {
     .filter((entry): entry is string => typeof entry === 'string')
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
+}
+
+function normalizeAttemptId(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+async function recordProductEvent(
+  context: SuiteSetupContext,
+  input: Parameters<typeof appendSuiteOnboardingEvent>[1],
+): Promise<void> {
+  try {
+    await appendSuiteOnboardingEvent(context.dependencies.config.chatStatePath, input);
+  } catch (error) {
+    reportSyncFailure(`bootstrap_diagnostics:${input.kind}`, error);
+  }
 }
 
 function sendRuntimeSetupError(
@@ -100,6 +120,17 @@ async function handleSuiteSetupComplete(
 
   const runtimeSetup = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
   if (!isRuntimeSetupReady(runtimeSetup)) {
+    await recordProductEvent(context, {
+      now,
+      attemptId: body.attemptId ?? null,
+      kind: 'runtime_setup_blocked',
+      status: 'degraded',
+      summary: 'Packaged setup completion is blocked until Cats Runtime is ready.',
+      context: {
+        runtimeStatus: runtimeSetup.status,
+        bootstrapRequired: runtimeSetup.bootstrapRequired,
+      },
+    });
     sendRuntimeSetupRequired(context, runtimeSetup);
     return;
   }
@@ -189,6 +220,7 @@ async function handleSuiteSetupComplete(
       runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
       runtimeSetup,
       metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },
+      bootstrapAttemptId: body.attemptId ?? null,
       setupCompleteAt: core.setupCompleteAt,
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,
@@ -196,6 +228,19 @@ async function handleSuiteSetupComplete(
       lastProductSurface: body.selectedProduct,
     };
   }
+
+  await recordProductEvent(context, {
+    now,
+    attemptId: body.attemptId ?? null,
+    kind: 'setup_completed',
+    status: 'ok',
+    summary: `Packaged setup completed for ${body.selectedProduct}.`,
+    context: {
+      selectedProduct: body.selectedProduct,
+      createBossCat: body.createBossCat,
+      setupCompleteAt: core.setupCompleteAt,
+    },
+  });
 
   sendJson(context.response, 200, payload);
 }
@@ -259,10 +304,48 @@ async function handleRuntimeSetupApply(
     return;
   }
 
+  await recordProductEvent(context, {
+    now: context.dependencies.now?.() ?? new Date(),
+    attemptId: normalizeAttemptId(body.attemptId),
+    kind: 'runtime_apply_requested',
+    status: 'info',
+    summary: `Requested runtime apply for ${providers.join(', ')}.`,
+    context: {
+      providers,
+      providerCount: providers.length,
+    },
+  });
+
   try {
     const readModel = await context.dependencies.runtimeClient.applySetup(providers);
-    sendJson(context.response, 200, summarizeRuntimeSetupReadModel(readModel));
+    const summary = summarizeRuntimeSetupReadModel(readModel);
+    await recordProductEvent(context, {
+      now: context.dependencies.now?.() ?? new Date(),
+      attemptId: normalizeAttemptId(body.attemptId),
+      kind: 'runtime_apply_confirmed',
+      status: 'ok',
+      summary: `Runtime apply completed for ${providers.join(', ')}.`,
+      context: {
+        providers,
+        providerCount: providers.length,
+        runtimeStatus: summary.status,
+        bootstrapRequired: summary.bootstrapRequired,
+      },
+    });
+    sendJson(context.response, 200, summary);
   } catch (error) {
+    await recordProductEvent(context, {
+      now: context.dependencies.now?.() ?? new Date(),
+      attemptId: normalizeAttemptId(body.attemptId),
+      kind: 'runtime_apply_failed',
+      status: 'unavailable',
+      summary: `Runtime apply failed for ${providers.join(', ')}.`,
+      context: {
+        providers,
+        providerCount: providers.length,
+      },
+      error: toBootstrapEventError(error),
+    });
     sendRuntimeSetupError(
       context,
       error,
@@ -298,9 +381,61 @@ async function handleSuitePreferencesUpdate(
   }
 }
 
+async function handleBootstrapDiagnosticsState(
+  context: SuiteSetupContext,
+): Promise<void> {
+  const payload = await readSuiteOnboardingHistory(context.dependencies.config.chatStatePath);
+  sendJson(context.response, 200, payload);
+}
+
+async function handleBootstrapDiagnosticsOpened(
+  context: SuiteSetupContext,
+): Promise<void> {
+  let attemptId: string | null = null;
+  try {
+    const body = await readJsonBody<{ attemptId?: string | null }>(context.request);
+    attemptId = normalizeAttemptId(body.attemptId);
+  } catch {
+    attemptId = null;
+  }
+
+  const payload = await appendSuiteOnboardingEvent(
+    context.dependencies.config.chatStatePath,
+    {
+      now: context.dependencies.now?.() ?? new Date(),
+      attemptId,
+      kind: 'setup_opened',
+      status: 'info',
+      summary: 'Packaged suite setup was opened.',
+      context: {
+        route: '/setup',
+      },
+    },
+  );
+  sendJson(context.response, 200, payload);
+}
+
 export async function routeSuiteSetupApi(
   context: SuiteSetupContext,
 ): Promise<boolean> {
+  if (context.url.pathname === '/api/suite/bootstrap-diagnostics') {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    await handleBootstrapDiagnosticsState(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/suite/bootstrap-diagnostics/opened') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleBootstrapDiagnosticsOpened(context);
+    return true;
+  }
+
   if (context.url.pathname === '/api/suite/runtime-setup') {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);

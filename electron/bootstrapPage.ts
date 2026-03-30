@@ -116,6 +116,25 @@ export function buildDesktopBootstrapPage(): string {
       }
       .issues, .services, .actions { display: grid; gap: 12px; }
       .actions { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+      .diagnostics-list, .chronology-list {
+        display: grid;
+        gap: 10px;
+      }
+      .chronology-item {
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.8);
+        display: grid;
+        gap: 4px;
+      }
+      .timeline-meta {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        color: var(--muted);
+        font-size: 12px;
+      }
       button {
         border: 0;
         border-radius: 16px;
@@ -185,6 +204,10 @@ export function buildDesktopBootstrapPage(): string {
             <h2>Actions</h2>
             <div id="actions" class="actions"></div>
           </section>
+          <section class="panel">
+            <h2>Diagnostics</h2>
+            <div id="diagnostics" class="diagnostics-list"></div>
+          </section>
         </div>
       </section>
     </main>
@@ -198,6 +221,7 @@ export function buildDesktopBootstrapPage(): string {
       const runtimeSummary = document.getElementById('runtime-summary');
       const providerSummary = document.getElementById('provider-summary');
       const setupSummary = document.getElementById('setup-summary');
+      const diagnosticsSummary = document.getElementById('diagnostics');
       let latestSnapshot = null;
       function escapeHtml(value) {
         return String(value)
@@ -214,6 +238,7 @@ export function buildDesktopBootstrapPage(): string {
             + '<div class="row-title"><strong>' + escapeHtml(service.name) + '</strong><span class="' + statusClass + '">' + escapeHtml(service.status) + '</span></div>'
             + '<div class="meta"><code>' + escapeHtml(service.healthUrl) + '</code></div>'
             + (service.error ? '<div class="meta status-unavailable">' + escapeHtml(service.error) + '</div>' : '')
+            + (service.lastOutput ? '<div class="meta"><code>' + escapeHtml(service.lastOutput) + '</code></div>' : '')
             + '</article>';
         }).join('');
       }
@@ -423,6 +448,60 @@ export function buildDesktopBootstrapPage(): string {
           });
         }
       }
+      function renderDiagnostics(snapshot) {
+        const diagnostics = snapshot.diagnostics;
+        if (!diagnostics || !diagnostics.aggregation) {
+          diagnosticsSummary.innerHTML = '<article class="issue-row"><div class="meta">Diagnostics bundle is still loading.</div></article>';
+          return;
+        }
+
+        const chronology = Array.isArray(diagnostics.aggregation.chronology)
+          ? diagnostics.aggregation.chronology.slice(0, 8)
+          : [];
+        const logRows = Array.isArray(diagnostics.serviceLogs)
+          ? diagnostics.serviceLogs
+            .filter((entry) => entry && entry.logPath)
+            .map((entry) => (
+              '<div class="meta"><strong>' + escapeHtml(entry.service) + ':</strong> <code>'
+              + escapeHtml(entry.logPath) + '</code></div>'
+            )).join('')
+          : '';
+        const historyPath = diagnostics.product && diagnostics.product.historyPath
+          ? '<div class="meta"><strong>product:</strong> <code>' + escapeHtml(diagnostics.product.historyPath) + '</code></div>'
+          : '';
+        diagnosticsSummary.innerHTML = ''
+          + '<article class="issue-row">'
+          + '<div class="row-title"><strong>Artifacts</strong><span class="status-ok">'
+          + escapeHtml(diagnostics.activeAttemptId || 'no-attempt') + '</span></div>'
+          + '<div class="meta"><strong>host:</strong> <code>' + escapeHtml(snapshot.hostStatePath || 'unknown') + '</code></div>'
+          + historyPath
+          + logRows
+          + '</article>'
+          + '<article class="issue-row">'
+          + '<div class="row-title"><strong>Layer summary</strong><span class="status-ok">'
+          + escapeHtml(diagnostics.aggregation.attemptId || 'current') + '</span></div>'
+          + '<div class="meta"><strong>runtime:</strong> ' + escapeHtml(diagnostics.aggregation.layers.runtime.summary) + '</div>'
+          + '<div class="meta"><strong>product:</strong> ' + escapeHtml(diagnostics.aggregation.layers.product.summary) + '</div>'
+          + '<div class="meta"><strong>host:</strong> ' + escapeHtml(diagnostics.aggregation.layers.host.summary) + '</div>'
+          + '</article>'
+          + '<article class="issue-row">'
+          + '<div class="row-title"><strong>Recent chronology</strong><span class="status-degraded">'
+          + escapeHtml(String(chronology.length)) + ' entries</span></div>'
+          + (chronology.length
+            ? '<div class="chronology-list">'
+              + chronology.map((event) => (
+                '<div class="chronology-item">'
+                  + '<strong>' + escapeHtml(event.summary) + '</strong>'
+                  + '<div class="timeline-meta"><span>' + escapeHtml(event.layer) + '</span><span>' + escapeHtml(event.kind) + '</span><span>' + escapeHtml(event.status) + '</span><span>' + escapeHtml(event.timestamp) + '</span></div>'
+                  + (event.error && event.error.message
+                    ? '<div class="meta status-unavailable">' + escapeHtml(event.error.message) + '</div>'
+                    : '')
+                + '</div>'
+              )).join('')
+              + '</div>'
+            : '<div class="meta">No chronology entries have been captured yet.</div>')
+          + '</article>';
+      }
       function applySnapshot(snapshot) {
         latestSnapshot = snapshot;
         phaseBadge.className = 'badge status-' + snapshot.status;
@@ -442,6 +521,7 @@ export function buildDesktopBootstrapPage(): string {
         renderIssues(snapshot);
         renderActions(snapshot);
         renderSetup(snapshot, null);
+        renderDiagnostics(snapshot);
       }
       async function main() {
         if (!bridge) {

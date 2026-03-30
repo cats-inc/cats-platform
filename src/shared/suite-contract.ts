@@ -17,6 +17,7 @@ export interface SuiteResponseMetadata {
 }
 
 export interface SuiteOwnerContext {
+  bootstrapAttemptId: string | null;
   setupCompleteAt: string | null;
   ownerDisplayName: string;
   ownerAvatarColor: string | null;
@@ -32,6 +33,7 @@ export interface SuiteHostEnvelope extends SuiteOwnerContext {
 }
 
 export interface SuiteSetupCompleteInput {
+  attemptId?: string | null;
   ownerDisplayName: string;
   selectedProduct: SuiteSurfaceId;
   createBossCat: boolean;

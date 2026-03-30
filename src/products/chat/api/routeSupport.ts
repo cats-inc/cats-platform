@@ -19,6 +19,7 @@ import {
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
+import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
 import { readSuitePreferences } from '../../../shared/suitePreferences.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
@@ -306,6 +307,9 @@ export async function buildAppShellPayload(
   });
 
   const suitePrefs = await readSuitePreferences(dependencies.config.chatStatePath);
+  const bootstrapAttemptId = await readDesktopHostBootstrapAttemptId(
+    dependencies.config.desktopHostStatePath,
+  );
 
   return createAppShell(
     dependencies.config,
@@ -313,6 +317,7 @@ export async function buildAppShellPayload(
     resolvedState,
     nowFrom(dependencies),
     {
+      bootstrapAttemptId,
       setupCompleteAt: core.setupCompleteAt,
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,

@@ -12,6 +12,7 @@ function resolveSetupCompleteAt(
   chat: ChatState,
   now: Date,
   setup?: {
+    bootstrapAttemptId?: string | null;
     setupCompleteAt: string | null;
     ownerDisplayName: string;
     ownerAvatarColor: string | null;
@@ -35,6 +36,7 @@ export function createAppShell(
   chat: ChatState,
   now: Date = new Date(),
   setup?: {
+    bootstrapAttemptId?: string | null;
     setupCompleteAt: string | null;
     ownerDisplayName: string;
     ownerAvatarColor: string | null;
@@ -85,6 +87,7 @@ export function createAppShell(
       host: config.host,
       port: config.port,
     },
+    bootstrapAttemptId: setup?.bootstrapAttemptId ?? null,
     setupCompleteAt: resolvedSetupCompleteAt,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
     ownerAvatarColor: setup?.ownerAvatarColor ?? null,

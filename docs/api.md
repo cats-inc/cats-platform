@@ -830,6 +830,9 @@ includes:
 
 - `phase`, `status`, `summary`, `lastError`
 - `services[]` with process/readiness state for `cats-runtime` and `cats`
+  - `logPath`
+  - `lastOutput`
+  - `lastOutputAt`
 - `issues[]` with machine-readable remediation metadata:
   - `category`
   - `resumeKey`
@@ -856,6 +859,23 @@ includes:
   - `downloadUrl`
     - HTTPS only
     - must stay on the manifest host or an explicit allow-list
+- `diagnostics`:
+  - `activeAttemptId`
+  - bounded `hostEvents[]`
+  - bounded `runtimeEvents[]`
+  - latest product diagnostics summary when `cats` is reachable
+  - `aggregation.layers.runtime`
+  - `aggregation.layers.product`
+  - `aggregation.layers.host`
+  - bounded `aggregation.chronology[]`
+  - `serviceLogs[]` mirroring the current on-disk log files
+
+Related on-disk diagnostics artifacts for packaged failures:
+
+- `<userData>/desktop-host/state.json`
+- `<userData>/desktop-host/logs/cats-runtime.log`
+- `<userData>/desktop-host/logs/cats.log`
+- `<userData>/config/suite-onboarding-history.json`
 - `packaging`:
   - packaging `strategy`
   - staged target matrix for Windows/macOS/Linux

@@ -39,9 +39,11 @@ export interface RuntimeSetupSummary {
 }
 
 export interface SuiteRuntimeSetupScanInput {
+  attemptId?: string | null;
   manual?: boolean;
 }
 
 export interface SuiteRuntimeSetupApplyInput {
+  attemptId?: string | null;
   providers?: string[];
 }

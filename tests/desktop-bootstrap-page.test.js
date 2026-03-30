@@ -7,6 +7,10 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   const html = buildDesktopBootstrapPage();
 
   assert.match(html, /Setup Recovery/);
+  assert.match(html, /Diagnostics/);
+  assert.match(html, /snapshot\.diagnostics/);
+  assert.match(html, /Recent chronology/);
+  assert.match(html, /renderDiagnostics/);
   assert.match(html, /setup-summary/);
   assert.match(html, /getSetupSnapshot/);
   assert.match(html, /resumeSetup/);

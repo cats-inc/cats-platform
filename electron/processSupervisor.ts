@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { access, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { access, appendFile, mkdir } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
 import type { ManagedServiceName, ManagedServiceSnapshot } from './contracts.js';
@@ -17,6 +17,7 @@ export interface ManagedServiceSpec {
   cwd: string;
   env: NodeJS.ProcessEnv;
   healthUrl: string;
+  logPath: string;
 }
 
 interface ManagedServiceHandle {
@@ -51,7 +52,11 @@ function writeTaggedOutput(
   stream.write(`[${serviceName}] ${normalized}\n`);
 }
 
-function createInitialSnapshot(name: ManagedServiceName, healthUrl: string): ManagedServiceSnapshot {
+function createInitialSnapshot(
+  name: ManagedServiceName,
+  healthUrl: string,
+  logPath: string,
+): ManagedServiceSnapshot {
   return {
     name,
     status: 'stopped',
@@ -61,6 +66,9 @@ function createInitialSnapshot(name: ManagedServiceName, healthUrl: string): Man
     healthUrl,
     error: null,
     exitCode: null,
+    logPath,
+    lastOutput: null,
+    lastOutputAt: null,
   };
 }
 
@@ -72,6 +80,7 @@ async function ensureLaunchAssets(config: DesktopHostConfig): Promise<void> {
   await mkdir(config.paths.runtimeDataDir, { recursive: true });
   await mkdir(config.paths.runtimeSessionBaseDir, { recursive: true });
   await mkdir(dirname(config.paths.runtimeConfigPath), { recursive: true });
+  await mkdir(config.paths.hostLogsDir, { recursive: true });
 }
 
 export function buildManagedServiceSpecs(
@@ -99,6 +108,7 @@ export function buildManagedServiceSpecs(
         CATS_RUNTIME_CONFIG_PATH: config.paths.runtimeConfigPath,
       },
       healthUrl: `${config.runtimeBaseUrl}/health`,
+      logPath: join(config.paths.hostLogsDir, 'cats-runtime.log'),
     },
     {
       name: 'cats',
@@ -116,9 +126,11 @@ export function buildManagedServiceSpecs(
         CATS_HOST: config.appHost,
         CATS_PORT: String(config.appPort),
         CATS_STATE_PATH: config.paths.appStatePath,
+        CATS_DESKTOP_HOST_STATE_PATH: config.paths.hostStatePath,
         CATS_RUNTIME_BASE_URL: config.runtimeBaseUrl,
       },
       healthUrl: `${config.appBaseUrl}/health`,
+      logPath: join(config.paths.hostLogsDir, 'cats.log'),
     },
   ];
 }
@@ -136,6 +148,8 @@ export class ManagedServiceSupervisor {
 
   private readonly onStateChange?: (snapshot: ManagedServiceSnapshot) => void;
 
+  private readonly logQueues = new Map<ManagedServiceName, Promise<void>>();
+
   constructor(
     private readonly config: DesktopHostConfig,
     private readonly dependencies: ProcessSupervisorDependencies = {},
@@ -150,9 +164,10 @@ export class ManagedServiceSupervisor {
     for (const spec of specs) {
       this.handles.set(spec.name, {
         child: null,
-        snapshot: createInitialSnapshot(spec.name, spec.healthUrl),
+        snapshot: createInitialSnapshot(spec.name, spec.healthUrl, spec.logPath),
         expectedExit: false,
       });
+      this.logQueues.set(spec.name, Promise.resolve());
     }
   }
 
@@ -186,6 +201,49 @@ export class ManagedServiceSupervisor {
     this.onStateChange?.({ ...handle.snapshot });
   }
 
+  private queueLogWrite(
+    serviceName: ManagedServiceName,
+    logPath: string,
+    line: string,
+  ): void {
+    const previous = this.logQueues.get(serviceName) ?? Promise.resolve();
+    const next = previous
+      .catch(() => undefined)
+      .then(async () => {
+        await appendFile(logPath, line, 'utf8');
+      });
+    this.logQueues.set(serviceName, next.catch(() => undefined));
+  }
+
+  private recordServiceOutput(
+    serviceName: ManagedServiceName,
+    logPath: string,
+    text: string,
+    stream: 'stdout' | 'stderr',
+  ): void {
+    const lines = text
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    if (lines.length === 0) {
+      return;
+    }
+
+    const timestamp = this.now().toISOString();
+    for (const line of lines) {
+      this.queueLogWrite(
+        serviceName,
+        logPath,
+        `[${timestamp}] [${stream}] ${line}\n`,
+      );
+    }
+
+    this.updateSnapshot(serviceName, {
+      lastOutput: lines[lines.length - 1] ?? null,
+      lastOutputAt: timestamp,
+    });
+  }
+
   private async startService(spec: ManagedServiceSpec): Promise<void> {
     const handle = this.handles.get(spec.name);
     if (!handle) {
@@ -203,7 +261,15 @@ export class ManagedServiceSupervisor {
       startedAt: this.now().toISOString(),
       error: null,
       exitCode: null,
+      logPath: spec.logPath,
+      lastOutput: null,
+      lastOutputAt: null,
     });
+    this.queueLogWrite(
+      spec.name,
+      spec.logPath,
+      `\n[${this.now().toISOString()}] [host] starting ${spec.name} (${spec.command} ${spec.args.join(' ')})\n`,
+    );
 
     const child = this.spawnImpl(spec.command, spec.args, {
       cwd: spec.cwd,
@@ -218,17 +284,27 @@ export class ManagedServiceSupervisor {
 
     child.stdout.on('data', (chunk) => {
       writeTaggedOutput(process.stdout, spec.name, chunk as Buffer);
+      this.recordServiceOutput(spec.name, spec.logPath, (chunk as Buffer).toString('utf8'), 'stdout');
     });
     child.stderr.on('data', (chunk) => {
       writeTaggedOutput(process.stderr, spec.name, chunk as Buffer);
+      this.recordServiceOutput(spec.name, spec.logPath, (chunk as Buffer).toString('utf8'), 'stderr');
     });
-    child.on('exit', (code) => {
+    child.on('exit', (code, signal) => {
+      const exitMessage = handle.expectedExit
+        ? `${spec.name} exited after host shutdown.`
+        : `${spec.name} exited before readiness (code: ${code ?? 'null'}, signal: ${signal ?? 'null'})`;
+      this.queueLogWrite(
+        spec.name,
+        spec.logPath,
+        `[${this.now().toISOString()}] [host] ${exitMessage}\n`,
+      );
       this.updateSnapshot(spec.name, {
         status: handle.expectedExit ? 'stopped' : 'failed',
         ready: false,
         pid: null,
         exitCode: typeof code === 'number' ? code : null,
-        error: handle.expectedExit ? null : `${spec.name} exited before the host stopped it.`,
+        error: handle.expectedExit ? null : exitMessage,
       });
       handle.child = null;
     });

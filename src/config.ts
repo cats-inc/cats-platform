@@ -8,6 +8,7 @@ export interface AppConfig {
   runtimeBaseUrl: string;
   runtimeApiKey: string;
   runtimeDataDir?: string;
+  desktopHostStatePath?: string;
   runtimeStaleSessionRetryLimit: number;
   chatStatePath: string;
   maxBossCats: number;
@@ -66,6 +67,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
     runtimeDataDir: readFirstDefined(env, ['CATS_RUNTIME_DATA_DIR']) || undefined,
+    desktopHostStatePath: readFirstDefined(env, ['CATS_DESKTOP_HOST_STATE_PATH']) || undefined,
     runtimeStaleSessionRetryLimit: parseNonNegativeInt(
       env.CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT,
       DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT,

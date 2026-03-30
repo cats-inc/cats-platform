@@ -182,6 +182,21 @@ The desktop host now also keeps a host-readable state file at
 - update-channel status
 - packaging-plan metadata
 - the last packaged setup helper action/result for resume-oriented host flows
+- cross-layer bootstrap diagnostics metadata:
+  - active `bootstrapAttemptId`
+  - bounded host-owned event history
+  - bounded runtime-observation event history
+  - one aggregated chronology plus per-layer summaries
+  - per-service log pointers and the latest stdout/stderr line for `cats-runtime`
+    and `cats`
+
+For packaged bootstrap or onboarding failures, collect these files first:
+
+- `%APPDATA%\\Cats\\desktop-host\\state.json`
+- `%APPDATA%\\Cats\\desktop-host\\logs\\cats-runtime.log`
+- `%APPDATA%\\Cats\\desktop-host\\logs\\cats.log`
+- `%APPDATA%\\Cats\\config\\suite-onboarding-history.json`
+  - this file may be absent if `cats` never reached the product-owned setup flow
 
 The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
 and only exposes the narrow desktop action/snapshot IPC surface through a
@@ -357,6 +372,13 @@ What the smoke-check confirms:
   target
 - launching the installed app refreshes the persisted desktop-host state file
   and reaches a stable bootstrap phase
+
+If startup still fails after install, capture these artifacts before retrying:
+
+- `%APPDATA%\\Cats\\desktop-host\\state.json`
+- `%APPDATA%\\Cats\\desktop-host\\logs\\cats-runtime.log`
+- `%APPDATA%\\Cats\\desktop-host\\logs\\cats.log`
+- `%APPDATA%\\Cats\\config\\suite-onboarding-history.json`
 
 Use `-SkipLaunch` if you only want file/layout verification.
 

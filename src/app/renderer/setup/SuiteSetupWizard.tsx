@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { SuiteHostEnvelope } from '../../../shared/suite-contract';
 import type { SuiteSurfaceId } from '../../../shared/suite-contract';
@@ -7,6 +7,7 @@ import {
   applyRuntimeSetup,
   completeSuiteSetup,
   fetchRuntimeSetup,
+  markSuiteSetupOpened,
   scanRuntimeSetup,
 } from './api';
 import { getSuiteSetupPlugins } from './plugins';
@@ -97,6 +98,7 @@ export function SuiteSetupWizard({
   const [runtimeSetup, setRuntimeSetup] = useState<RuntimeSetupSummary>(() =>
     createInitialRuntimeSetup(envelope),
   );
+  const setupOpenedRecorded = useRef(false);
 
   const busy = busyAction !== null;
   const plugins = getSuiteSetupPlugins();
@@ -116,6 +118,7 @@ export function SuiteSetupWizard({
   const runtimeStatusChip = resolveRuntimeStatusChip(runtimeSetup);
   const scannedAt = formatRuntimeTimestamp(runtimeSetup.scannedAt);
   const appliedAt = formatRuntimeTimestamp(runtimeSetup.appliedAt);
+  const attemptId = envelope.bootstrapAttemptId ?? null;
 
   const refreshRuntimeSetup = useCallback(async (options: {
     manual?: boolean;
@@ -128,7 +131,7 @@ export function SuiteSetupWizard({
 
     try {
       const nextSummary = options.manual
-        ? await scanRuntimeSetup({ manual: true })
+        ? await scanRuntimeSetup({ manual: true, attemptId })
         : await fetchRuntimeSetup();
       setRuntimeSetup(nextSummary);
     } catch (error) {
@@ -147,6 +150,7 @@ export function SuiteSetupWizard({
     setFeedback('');
     try {
       const nextSummary = await applyRuntimeSetup({
+        attemptId,
         providers: runtimeSetup.suggestedProviders,
       });
       setRuntimeSetup(nextSummary);
@@ -162,6 +166,7 @@ export function SuiteSetupWizard({
     setFeedback('');
     try {
       const result = await completeSuiteSetup({
+        attemptId,
         ownerDisplayName: ownerName.trim(),
         selectedProduct,
         createBossCat: createFirstCat,
@@ -187,7 +192,16 @@ export function SuiteSetupWizard({
     ownerName,
     provider,
     selectedProduct,
+    attemptId,
   ]);
+
+  useEffect(() => {
+    if (setupOpenedRecorded.current) {
+      return;
+    }
+    setupOpenedRecorded.current = true;
+    void markSuiteSetupOpened(attemptId).catch(() => undefined);
+  }, [attemptId]);
 
   useEffect(() => {
     if (step !== 3) {

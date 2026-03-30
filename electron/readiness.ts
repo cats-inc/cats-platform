@@ -36,6 +36,7 @@ export interface AppHealthPayload extends ReadinessPayload {
 }
 
 export interface AppShellPayload {
+  bootstrapAttemptId?: string | null;
   setupCompleteAt?: string | null;
 }
 
@@ -683,6 +684,7 @@ export function buildDesktopBootstrapSnapshot(
     updates,
     packaging,
     setup,
+    diagnostics: null,
     hostStatePath: input.hostStatePath ?? input.config.paths.hostStatePath,
   };
 }

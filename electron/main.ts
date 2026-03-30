@@ -4,14 +4,29 @@ import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import { resolveDesktopHostConfig, type DesktopHostConfig } from './config.js';
 import type {
   DesktopBackgroundState,
+  DesktopBootstrapEventStatus,
   DesktopBootstrapSnapshot,
+  DesktopHostDiagnosticsState,
   DesktopHostActionId,
+  DesktopManagedServiceLog,
+  DesktopProductBootstrapDiagnostics,
   DesktopPackagingPlan,
   DesktopSetupHelperMode,
   DesktopSetupSnapshot,
   DesktopSetupState,
   DesktopUpdateState,
 } from './contracts.js';
+import {
+  appendHostEvent,
+  appendRuntimeEvent,
+  buildDesktopAggregationBundle,
+  createBootstrapAttemptId,
+  createDesktopBootstrapEvent,
+  createEmptyDesktopDiagnosticsState,
+  toDesktopBootstrapError,
+  toDesktopBootstrapStatus,
+  updateServiceLogs,
+} from './bootstrapDiagnostics.js';
 import { createDesktopBackgroundState, DesktopHostStateStore } from './hostState.js';
 import { createDesktopPackagingPlan } from './packaging.js';
 import { ManagedServiceSupervisor } from './processSupervisor.js';
@@ -45,7 +60,43 @@ let backgroundState: DesktopBackgroundState | null = null;
 let updateState: DesktopUpdateState | null = null;
 let packagingState: DesktopPackagingPlan | null = null;
 let setupState: DesktopSetupState | null = null;
+let diagnosticsState: DesktopHostDiagnosticsState | null = null;
 let bootstrapPageVisible = false;
+
+interface ProductBootstrapDiagnosticsPayload {
+  generatedAt?: string;
+  attemptId?: string | null;
+  status?: string;
+  summary?: string;
+  historyPath?: string | null;
+  latestReference?: {
+    artifactId?: string;
+    artifactPath?: string;
+    recordId?: string;
+    route?: string;
+  } | null;
+  events?: Array<{
+    layer?: string;
+    kind?: string;
+    timestamp?: string;
+    attemptId?: string | null;
+    summary?: string;
+    status?: string;
+    context?: Record<string, unknown>;
+    error?: {
+      message?: string;
+      code?: string;
+      cause?: string;
+      stack?: string;
+    } | null;
+    reference?: {
+      artifactId?: string;
+      artifactPath?: string;
+      recordId?: string;
+      route?: string;
+    } | null;
+  }>;
+}
 
 function encodeDataUrl(html: string): string {
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
@@ -86,6 +137,316 @@ async function ensureBootstrapPageVisible(): Promise<void> {
   }
 }
 
+function deriveSetupEventStatus(setup: DesktopSetupState): DesktopBootstrapEventStatus {
+  const lastAction = setup.lastAction;
+  if (!lastAction) {
+    return 'info';
+  }
+  if (lastAction.runState === 'failed') {
+    return 'unavailable';
+  }
+  if (lastAction.status === 'ready') {
+    return 'ok';
+  }
+  if (lastAction.restartRequired || lastAction.interruptions.length > 0) {
+    return 'degraded';
+  }
+  return 'info';
+}
+
+function buildServiceLogs(snapshot: DesktopBootstrapSnapshot): DesktopManagedServiceLog[] {
+  return snapshot.services.map((service) => ({
+    service: service.name,
+    logPath: service.logPath,
+    lastOutput: service.lastOutput,
+    lastOutputAt: service.lastOutputAt,
+  }));
+}
+
+function buildServiceLogReference(
+  service: DesktopBootstrapSnapshot['services'][number] | undefined,
+) {
+  if (!service) {
+    return null;
+  }
+  return {
+    artifactId: `${service.name}-log`,
+    artifactPath: service.logPath ?? undefined,
+    route: service.healthUrl,
+  };
+}
+
+function normalizeProductDiagnosticsPayload(
+  payload: ProductBootstrapDiagnosticsPayload,
+): DesktopProductBootstrapDiagnostics | null {
+  if (
+    typeof payload.generatedAt !== 'string'
+    || typeof payload.summary !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    generatedAt: payload.generatedAt,
+    attemptId: typeof payload.attemptId === 'string' && payload.attemptId.trim()
+      ? payload.attemptId.trim()
+      : null,
+    status: toDesktopBootstrapStatus(
+      payload.status === 'ok'
+        || payload.status === 'degraded'
+        || payload.status === 'unavailable'
+        || payload.status === 'info'
+        ? payload.status
+        : 'info',
+      'info',
+    ),
+    summary: payload.summary,
+    historyPath: typeof payload.historyPath === 'string' && payload.historyPath.trim()
+      ? payload.historyPath
+      : null,
+    latestReference: payload.latestReference
+      ? {
+        artifactId: payload.latestReference.artifactId,
+        artifactPath: payload.latestReference.artifactPath,
+        recordId: payload.latestReference.recordId,
+        route: payload.latestReference.route,
+      }
+      : null,
+    events: Array.isArray(payload.events)
+      ? payload.events.flatMap((event) => {
+        if (
+          (event.layer !== 'runtime' && event.layer !== 'product' && event.layer !== 'host')
+          || typeof event.kind !== 'string'
+          || typeof event.timestamp !== 'string'
+          || typeof event.summary !== 'string'
+        ) {
+          return [];
+        }
+
+        return [createDesktopBootstrapEvent({
+          layer: event.layer,
+          kind: event.kind,
+          timestamp: event.timestamp,
+          attemptId: typeof event.attemptId === 'string' && event.attemptId.trim()
+            ? event.attemptId.trim()
+            : null,
+          summary: event.summary,
+          status: toDesktopBootstrapStatus(
+            event.status === 'ok'
+              || event.status === 'degraded'
+              || event.status === 'unavailable'
+              || event.status === 'info'
+              ? event.status
+              : 'info',
+            'info',
+          ),
+          context: event.context ?? null,
+          error: event.error?.message
+            ? {
+              message: event.error.message,
+              code: event.error.code,
+              cause: event.error.cause,
+              stack: event.error.stack,
+            }
+            : null,
+          reference: event.reference
+            ? {
+              artifactId: event.reference.artifactId,
+              artifactPath: event.reference.artifactPath,
+              recordId: event.reference.recordId,
+              route: event.reference.route,
+            }
+            : null,
+        })];
+      })
+      : [],
+  };
+}
+
+function recordSnapshotTransitions(snapshot: DesktopBootstrapSnapshot): void {
+  if (!diagnosticsState) {
+    return;
+  }
+
+  const attemptId = diagnosticsState.activeAttemptId;
+  const previousSnapshot = latestSnapshot;
+  if (!previousSnapshot || previousSnapshot.phase !== snapshot.phase) {
+    diagnosticsState = appendHostEvent(diagnosticsState, createDesktopBootstrapEvent({
+      layer: 'host',
+      kind: 'host_phase_changed',
+      timestamp: snapshot.timestamp,
+      attemptId,
+      summary: `Desktop host phase is ${snapshot.phase}. ${snapshot.summary}`,
+      status: snapshot.status,
+      context: {
+        previousPhase: previousSnapshot?.phase ?? null,
+        phase: snapshot.phase,
+        hostStatus: snapshot.status,
+      },
+      reference: {
+        artifactPath: hostConfig?.paths.hostStatePath,
+      },
+    }));
+  }
+
+  for (const service of snapshot.services) {
+    const previousService = previousSnapshot?.services.find((entry) => entry.name === service.name);
+    if (
+      service.status === 'failed'
+      && previousService?.status !== 'failed'
+      && service.error?.includes('before readiness')
+    ) {
+      diagnosticsState = appendHostEvent(diagnosticsState, createDesktopBootstrapEvent({
+        layer: 'host',
+        kind: 'service_exited_before_ready',
+        timestamp: snapshot.timestamp,
+        attemptId,
+        summary: service.error,
+        status: 'unavailable',
+        context: {
+          service: service.name,
+          exitCode: service.exitCode,
+          healthUrl: service.healthUrl,
+          lastOutput: service.lastOutput,
+        },
+        reference: buildServiceLogReference(service),
+      }));
+    }
+  }
+
+  const setupKey = snapshot.setup.lastAction
+    ? [
+      snapshot.setup.updatedAt ?? '',
+      snapshot.setup.lastAction.helperId,
+      snapshot.setup.lastAction.runState,
+      snapshot.setup.lastAction.status ?? '',
+    ].join('|')
+    : null;
+  const previousSetupKey = previousSnapshot?.setup.lastAction
+    ? [
+      previousSnapshot.setup.updatedAt ?? '',
+      previousSnapshot.setup.lastAction.helperId,
+      previousSnapshot.setup.lastAction.runState,
+      previousSnapshot.setup.lastAction.status ?? '',
+    ].join('|')
+    : null;
+  if (setupKey && setupKey !== previousSetupKey && snapshot.setup.lastAction) {
+    diagnosticsState = appendHostEvent(diagnosticsState, createDesktopBootstrapEvent({
+      layer: 'host',
+      kind: 'resume_action_changed',
+      timestamp: snapshot.setup.updatedAt ?? snapshot.timestamp,
+      attemptId,
+      summary: snapshot.setup.lastAction.summary,
+      status: deriveSetupEventStatus(snapshot.setup),
+      context: {
+        helperId: snapshot.setup.lastAction.helperId,
+        status: snapshot.setup.lastAction.status,
+        runState: snapshot.setup.lastAction.runState,
+        restartRequired: snapshot.setup.lastAction.restartRequired,
+      },
+      error: toDesktopBootstrapError(snapshot.setup.lastAction.error),
+      reference: {
+        artifactPath: hostConfig?.paths.hostStatePath,
+      },
+    }));
+  }
+
+  const runtimeService = snapshot.services.find((service) => service.name === 'cats-runtime');
+  const runtimeObservationKey = [
+    runtimeService?.status ?? 'missing',
+    runtimeService?.error ?? '',
+    snapshot.runtime.status ?? 'unknown',
+    snapshot.runtime.summary ?? '',
+    snapshot.runtime.providerSummary?.status ?? 'unknown',
+    snapshot.runtime.providerSummary?.summary ?? '',
+  ].join('|');
+  const previousRuntimeService = previousSnapshot?.services.find((service) => service.name === 'cats-runtime');
+  const previousRuntimeObservationKey = previousSnapshot
+    ? [
+      previousRuntimeService?.status ?? 'missing',
+      previousRuntimeService?.error ?? '',
+      previousSnapshot.runtime.status ?? 'unknown',
+      previousSnapshot.runtime.summary ?? '',
+      previousSnapshot.runtime.providerSummary?.status ?? 'unknown',
+      previousSnapshot.runtime.providerSummary?.summary ?? '',
+    ].join('|')
+    : null;
+  if (runtimeObservationKey !== previousRuntimeObservationKey) {
+    diagnosticsState = appendRuntimeEvent(diagnosticsState, createDesktopBootstrapEvent({
+      layer: 'runtime',
+      kind: runtimeService?.status === 'failed'
+        ? 'runtime_service_unavailable_observed'
+        : 'runtime_status_observed',
+      timestamp: snapshot.timestamp,
+      attemptId,
+      summary: runtimeService?.error
+        ?? snapshot.runtime.providerSummary?.summary
+        ?? snapshot.runtime.summary
+        ?? 'Observed a runtime status change.',
+      status: runtimeService?.status === 'failed'
+        ? 'unavailable'
+        : toDesktopBootstrapStatus(snapshot.runtime.status, 'info'),
+      context: {
+        serviceStatus: runtimeService?.status ?? null,
+        healthStatus: snapshot.runtime.status,
+        providerStatus: snapshot.runtime.providerSummary?.status ?? null,
+        exitCode: runtimeService?.exitCode ?? null,
+        lastOutput: runtimeService?.lastOutput ?? null,
+      },
+      reference: runtimeService
+        ? {
+          artifactPath: runtimeService.logPath ?? undefined,
+          route: snapshot.runtime.diagnosticsUrl,
+        }
+        : null,
+    }));
+  }
+}
+
+function buildDiagnosticsState(snapshot: DesktopBootstrapSnapshot): DesktopHostDiagnosticsState | null {
+  if (!diagnosticsState) {
+    return null;
+  }
+
+  let nextState = updateServiceLogs(
+    diagnosticsState,
+    buildServiceLogs(snapshot),
+    snapshot.timestamp,
+  );
+
+  const runtimeFallback = {
+    status: snapshot.runtime.status
+      ? toDesktopBootstrapStatus(snapshot.runtime.status, 'info')
+      : snapshot.services.some((service) => service.name === 'cats-runtime' && service.status === 'failed')
+        ? 'unavailable'
+        : 'info',
+    summary: snapshot.runtime.providerSummary?.summary
+      ?? snapshot.runtime.summary
+      ?? 'Runtime diagnostics are still loading.',
+  } as const;
+  const hostFallback = {
+    status: snapshot.status,
+    summary: snapshot.summary,
+  } as const;
+
+  nextState = {
+    ...nextState,
+    aggregation: buildDesktopAggregationBundle({
+      generatedAt: snapshot.timestamp,
+      attemptId: nextState.activeAttemptId,
+      runtimeEvents: nextState.runtimeEvents,
+      product: nextState.product,
+      hostEvents: nextState.hostEvents,
+      runtimeFallback,
+      hostFallback,
+    }),
+    updatedAt: snapshot.timestamp,
+  };
+
+  diagnosticsState = nextState;
+  return nextState;
+}
+
 function writePersistedHostState(snapshot: DesktopBootstrapSnapshot): void {
   if (!stateStore) {
     return;
@@ -96,18 +457,22 @@ function writePersistedHostState(snapshot: DesktopBootstrapSnapshot): void {
     updates: snapshot.updates,
     packaging: snapshot.packaging,
     setup: snapshot.setup,
+    diagnostics: snapshot.diagnostics,
   }).catch((error) => {
     process.stderr.write(`Failed to persist desktop host state: ${error instanceof Error ? error.message : String(error)}\n`);
   });
 }
 
 function publishSnapshot(snapshot: DesktopBootstrapSnapshot): DesktopBootstrapSnapshot {
+  recordSnapshotTransitions(snapshot);
+  const diagnostics = buildDiagnosticsState(snapshot);
   const enriched: DesktopBootstrapSnapshot = {
     ...snapshot,
     background: backgroundState ?? snapshot.background,
     updates: updateState ?? snapshot.updates,
     packaging: packagingState ?? snapshot.packaging,
     setup: setupState ?? snapshot.setup,
+    diagnostics,
     hostStatePath: hostConfig?.paths.hostStatePath ?? snapshot.hostStatePath,
   };
   latestSnapshot = enriched;
@@ -209,12 +574,27 @@ async function refreshBootstrapSnapshot(): Promise<DesktopBootstrapSnapshot> {
     throw new Error('Desktop host is not initialized.');
   }
 
-  const [appHealth, appShell, runtimeHealth, providerDiagnostics] = await Promise.allSettled([
+  const [
+    appHealth,
+    appShell,
+    runtimeHealth,
+    providerDiagnostics,
+    productDiagnostics,
+  ] = await Promise.allSettled([
     fetchJson<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`),
     fetchJson<AppShellPayload>(`${hostConfig.appBaseUrl}/api/app-shell`),
     fetchJson<RuntimeDiagnosticsHealthPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/health`),
     fetchJson<RuntimeProviderDiagnosticsPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/providers`),
+    fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/suite/bootstrap-diagnostics`),
   ]);
+
+  if (diagnosticsState && productDiagnostics.status === 'fulfilled') {
+    diagnosticsState = {
+      ...diagnosticsState,
+      product: normalizeProductDiagnosticsPayload(productDiagnostics.value),
+      updatedAt: new Date().toISOString(),
+    };
+  }
 
   return buildDesktopBootstrapSnapshot({
     config: hostConfig,
@@ -273,6 +653,13 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
     if (restartServices) {
       await supervisor.stopAll();
     }
+
+    const attemptTimestamp = new Date();
+    diagnosticsState = {
+      ...(diagnosticsState ?? createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats'])),
+      activeAttemptId: createBootstrapAttemptId(attemptTimestamp),
+      updatedAt: attemptTimestamp.toISOString(),
+    };
 
     publishSnapshot(buildSnapshot(null));
     await supervisor.startAll();
@@ -355,6 +742,33 @@ async function runSetupAction(
     lastAction: result,
     updatedAt: result.completedAt ?? result.startedAt,
   };
+  if (diagnosticsState) {
+    diagnosticsState = appendHostEvent(diagnosticsState, createDesktopBootstrapEvent({
+      layer: 'host',
+      kind: 'helper_run_completed',
+      timestamp: result.completedAt ?? result.startedAt,
+      attemptId: diagnosticsState.activeAttemptId,
+      summary: result.summary,
+      status: result.runState === 'failed'
+        ? 'unavailable'
+        : result.status === 'ready'
+          ? 'ok'
+          : result.restartRequired || result.interruptions.length > 0
+            ? 'degraded'
+            : 'info',
+      context: {
+        helperId: result.helperId,
+        mode: result.mode,
+        runState: result.runState,
+        status: result.status,
+        restartRequired: result.restartRequired,
+      },
+      error: toDesktopBootstrapError(result.error),
+      reference: {
+        artifactPath: hostConfig.paths.hostStatePath,
+      },
+    }));
+  }
   publishSnapshot(await refreshBootstrapSnapshot());
   return await getSetupSnapshot();
 }
@@ -470,6 +884,10 @@ async function main(): Promise<void> {
     updateState = restoredState?.updates ?? defaultUpdates;
     packagingState = restoredState?.packaging ?? defaultPackaging;
     setupState = restoredState?.setup ?? defaultSetup;
+    diagnosticsState = restoredState?.diagnostics ?? createEmptyDesktopDiagnosticsState([
+      'cats-runtime',
+      'cats',
+    ]);
   }
   supervisor = new ManagedServiceSupervisor(hostConfig, {
     onStateChange: () => {

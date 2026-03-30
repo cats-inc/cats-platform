@@ -171,6 +171,7 @@ export const DESKTOP_SETUP_INTERRUPTION_KINDS = [
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
 export type DesktopHostActionId = typeof DESKTOP_HOST_ACTION_IDS[number];
 export type DesktopHealthStatus = 'ok' | 'degraded' | 'unavailable';
+export type DesktopBootstrapEventStatus = DesktopHealthStatus | 'info';
 export type ManagedServiceName = 'cats-runtime' | 'cats';
 export type ManagedServiceStatus = 'stopped' | 'starting' | 'ready' | 'failed';
 export type DesktopBackgroundMode = typeof DESKTOP_BACKGROUND_MODES[number];
@@ -196,6 +197,77 @@ export type DesktopSetupActionRunState = typeof DESKTOP_SETUP_ACTION_RUN_STATES[
 export type DesktopSetupResumeReason = typeof DESKTOP_SETUP_RESUME_REASONS[number];
 export type DesktopSetupInterruptionKind = typeof DESKTOP_SETUP_INTERRUPTION_KINDS[number];
 
+export interface DesktopBootstrapEventReference {
+  artifactId?: string;
+  artifactPath?: string;
+  recordId?: string;
+  route?: string;
+}
+
+export interface DesktopBootstrapEventError {
+  message: string;
+  code?: string;
+  cause?: string;
+  stack?: string;
+}
+
+export interface DesktopBootstrapEvent {
+  layer: 'runtime' | 'product' | 'host';
+  kind: string;
+  timestamp: string;
+  attemptId: string | null;
+  summary: string;
+  status: DesktopBootstrapEventStatus;
+  context: Record<string, unknown> | null;
+  error: DesktopBootstrapEventError | null;
+  reference: DesktopBootstrapEventReference | null;
+}
+
+export interface DesktopBootstrapLayerSummary {
+  status: DesktopBootstrapEventStatus;
+  summary: string;
+  latestTimestamp: string | null;
+  latestReference: DesktopBootstrapEventReference | null;
+}
+
+export interface DesktopBootstrapAggregationBundle {
+  generatedAt: string;
+  attemptId: string | null;
+  layers: {
+    runtime: DesktopBootstrapLayerSummary;
+    product: DesktopBootstrapLayerSummary;
+    host: DesktopBootstrapLayerSummary;
+  };
+  chronology: DesktopBootstrapEvent[];
+}
+
+export interface DesktopManagedServiceLog {
+  service: ManagedServiceName;
+  logPath: string | null;
+  lastOutput: string | null;
+  lastOutputAt: string | null;
+}
+
+export interface DesktopProductBootstrapDiagnostics {
+  generatedAt: string;
+  attemptId: string | null;
+  status: DesktopBootstrapEventStatus;
+  summary: string;
+  historyPath: string | null;
+  latestReference: DesktopBootstrapEventReference | null;
+  events: DesktopBootstrapEvent[];
+}
+
+export interface DesktopHostDiagnosticsState {
+  activeAttemptId: string | null;
+  hostEvents: DesktopBootstrapEvent[];
+  runtimeEvents: DesktopBootstrapEvent[];
+  product: DesktopProductBootstrapDiagnostics | null;
+  aggregation: DesktopBootstrapAggregationBundle | null;
+  serviceLogs: DesktopManagedServiceLog[];
+  updatedAt: string | null;
+}
+
 export interface ManagedServiceSnapshot {
   name: ManagedServiceName;
   status: ManagedServiceStatus;
@@ -205,6 +277,9 @@ export interface ManagedServiceSnapshot {
   healthUrl: string;
   error: string | null;
   exitCode: number | null;
+  logPath: string | null;
+  lastOutput: string | null;
+  lastOutputAt: string | null;
 }
 
 export interface DesktopProviderSummary {
@@ -508,6 +583,7 @@ export interface DesktopBootstrapSnapshot {
   updates: DesktopUpdateState;
   packaging: DesktopPackagingPlan;
   setup: DesktopSetupState;
+  diagnostics: DesktopHostDiagnosticsState | null;
   hostStatePath: string | null;
 }
 
@@ -517,5 +593,6 @@ export interface DesktopHostPersistedState {
   updates: DesktopUpdateState;
   packaging: DesktopPackagingPlan;
   setup: DesktopSetupState;
+  diagnostics: DesktopHostDiagnosticsState | null;
   savedAt: string;
 }

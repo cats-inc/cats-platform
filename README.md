@@ -46,6 +46,9 @@ The current slices are:
   outputs, persists host-readable bootstrap state, keeps the bootstrap bridge
   sandboxed, supports tray/background lifecycle, and owns the packaged
   bootstrap/remediation seam plus a manual-check update skeleton
+- cross-layer packaged bootstrap diagnostics with host-owned service logs,
+  product-owned onboarding history, host-issued bootstrap attempt ids, and one
+  aggregated recovery chronology across runtime, product, and host state
 - a repo-owned packaged setup helper baseline for Windows native CLI, WSL,
   Docker Desktop, and Ollama flows, with the repo-owned first-run provider
   scan plus resumable setup recovery surfaced through the desktop host
@@ -94,6 +97,8 @@ The current slices are:
       changes
 - [x] Land the first Electron desktop-host slice with app-managed readiness,
       local sidecar supervision, and bootstrap prerequisite checks
+- [x] Land cross-layer packaged bootstrap diagnostics with product onboarding
+      history, host/service logs, and an aggregated recovery chronology
 - [x] Land Cats-owned canonical memory records, retrieval context assembly, and
       memory flush seams without adding an external RAG dependency; curated
       cat/owner notes plus companion source mutations now sync into canonical

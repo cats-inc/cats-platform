@@ -6,6 +6,9 @@ import type {
 } from '../../../shared/providerCatalog.js';
 import { normalizeProductProviderEventCapabilities } from '../../../shared/providerCatalog.js';
 import type {
+  ProductBootstrapDiagnosticsReadModel,
+} from '../../../shared/bootstrapDiagnostics.js';
+import type {
   SuiteHostEnvelope,
   SuiteSetupCompleteInput,
 } from '../../../shared/suite-contract.js';
@@ -116,6 +119,27 @@ export async function fetchSuiteEnvelope(
   }
 
   return (await response.json()) as SuiteHostEnvelope;
+}
+
+export async function markSuiteSetupOpened(
+  attemptId?: string | null,
+  signal?: AbortSignal,
+): Promise<ProductBootstrapDiagnosticsReadModel> {
+  const response = await fetch('/api/suite/bootstrap-diagnostics/opened', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ attemptId: attemptId ?? null }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, `Failed to record setup open (${response.status})`));
+  }
+
+  return (await response.json()) as ProductBootstrapDiagnosticsReadModel;
 }
 
 export async function fetchProviders(): Promise<ProductProviderDescriptor[]> {

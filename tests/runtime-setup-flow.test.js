@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -9,7 +9,6 @@ import { createServer } from '../dist-server/server.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
 
 let tempDir;
-let tempFileCounter = 0;
 
 test.before(async () => {
   tempDir = await mkdtemp(path.join(tmpdir(), 'cats-runtime-setup-flow-'));
@@ -21,14 +20,15 @@ test.after(async () => {
   }
 });
 
-function createConfig() {
-  tempFileCounter += 1;
+async function createConfig() {
+  const stateDir = await mkdtemp(path.join(tempDir, 'case-'));
   return {
     host: '127.0.0.1',
     port: 8181,
     runtimeBaseUrl: 'http://127.0.0.1:3110',
     runtimeApiKey: '',
-    chatStatePath: path.join(tempDir, `chat-state-${tempFileCounter}.json`),
+    desktopHostStatePath: path.join(stateDir, 'desktop-host-state.json'),
+    chatStatePath: path.join(stateDir, 'chat-state.json'),
   };
 }
 
@@ -140,9 +140,10 @@ function createRuntimeSetupStub({
 }
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+  const config = await createConfig();
   const server = createServer({
     shared: {
-      config: createConfig(),
+      config,
       runtimeClient,
       now: () => new Date('2026-03-30T11:15:00.000Z'),
     },
@@ -160,24 +161,48 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   }
 
   try {
-    await callback(`http://127.0.0.1:${address.port}`);
+    await callback(`http://127.0.0.1:${address.port}`, config);
   } finally {
     server.close();
     await once(server, 'close');
   }
 }
 
-test('GET /api/app-shell includes runtime setup summary for packaged setup', async () => {
-  await withServer(createRuntimeSetupStub(), async (baseUrl) => {
+test('GET /api/app-shell includes runtime setup summary and bootstrap attempt id for packaged setup', async () => {
+  await withServer(createRuntimeSetupStub(), async (baseUrl, config) => {
+    await mkdir(path.dirname(config.desktopHostStatePath), { recursive: true });
+    await writeFile(config.desktopHostStatePath, JSON.stringify({
+      diagnostics: {
+        activeAttemptId: 'attempt-123',
+      },
+    }));
+
     const response = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(response.status, 200);
 
     const payload = await response.json();
+    assert.equal(payload.bootstrapAttemptId, 'attempt-123');
     assert.equal(payload.setupCompleteAt, null);
     assert.equal(payload.runtimeSetup.status, 'attention_required');
     assert.equal(payload.runtimeSetup.bootstrapRequired, true);
     assert.equal(payload.runtimeSetup.availableCount, 1);
     assert.deepEqual(payload.runtimeSetup.suggestedProviders, ['claude']);
+  });
+});
+
+test('POST /api/suite/bootstrap-diagnostics/opened records a product-owned setup_opened event', async () => {
+  await withServer(createRuntimeSetupStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/suite/bootstrap-diagnostics/opened`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ attemptId: 'attempt-opened' }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.attemptId, 'attempt-opened');
+    assert.equal(payload.events[0].kind, 'setup_opened');
+    assert.equal(payload.events[0].attemptId, 'attempt-opened');
   });
 });
 
@@ -216,6 +241,29 @@ test('POST /api/suite/runtime-setup/apply uses ready providers and exits bootstr
   });
 });
 
+test('runtime setup apply records product diagnostics events for the active bootstrap attempt', async () => {
+  const runtimeStub = createRuntimeSetupStub();
+
+  await withServer(runtimeStub, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/suite/runtime-setup/apply`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ attemptId: 'attempt-apply' }),
+    });
+
+    assert.equal(response.status, 200);
+
+    const diagnosticsResponse = await fetch(`${baseUrl}/api/suite/bootstrap-diagnostics`);
+    assert.equal(diagnosticsResponse.status, 200);
+    const diagnostics = await diagnosticsResponse.json();
+    assert.equal(diagnostics.attemptId, 'attempt-apply');
+    assert.deepEqual(
+      diagnostics.events.map((event) => event.kind),
+      ['runtime_apply_confirmed', 'runtime_apply_requested'],
+    );
+  });
+});
+
 test('POST /api/suite/setup/complete rejects setup until runtime bootstrap is applied', async () => {
   await withServer(createRuntimeSetupStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
@@ -242,7 +290,7 @@ test('suite setup succeeds after runtime setup apply completes', async () => {
     const applyResponse = await fetch(`${baseUrl}/api/suite/runtime-setup/apply`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ attemptId: 'attempt-complete' }),
     });
     assert.equal(applyResponse.status, 200);
 
@@ -250,6 +298,7 @@ test('suite setup succeeds after runtime setup apply completes', async () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        attemptId: 'attempt-complete',
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
         createBossCat: false,
@@ -261,6 +310,12 @@ test('suite setup succeeds after runtime setup apply completes', async () => {
     assert.ok(payload.setupCompleteAt);
     assert.equal(payload.runtimeSetup.status, 'ready');
     assert.equal(payload.ownerDisplayName, 'Kenny');
+
+    const diagnosticsResponse = await fetch(`${baseUrl}/api/suite/bootstrap-diagnostics`);
+    assert.equal(diagnosticsResponse.status, 200);
+    const diagnostics = await diagnosticsResponse.json();
+    assert.equal(diagnostics.attemptId, 'attempt-complete');
+    assert.equal(diagnostics.events[0].kind, 'setup_completed');
   });
 });
 

@@ -5,6 +5,12 @@ import { tmpdir } from 'node:os';
 import test from 'node:test';
 
 import { resolveDesktopHostConfig } from '../dist-electron/config.js';
+import {
+  appendHostEvent,
+  buildDesktopAggregationBundle,
+  createDesktopBootstrapEvent,
+  createEmptyDesktopDiagnosticsState,
+} from '../dist-electron/bootstrapDiagnostics.js';
 import { createDesktopBackgroundState, DesktopHostStateStore } from '../dist-electron/hostState.js';
 import { buildDesktopBootstrapSnapshot } from '../dist-electron/readiness.js';
 import { createDesktopPackagingPlan } from '../dist-electron/packaging.js';
@@ -21,6 +27,9 @@ function readyService(name, healthUrl) {
     healthUrl,
     error: null,
     exitCode: null,
+    logPath: `C:/Users/test/AppData/Roaming/Cats/desktop-host/logs/${name}.log`,
+    lastOutput: `${name} ready`,
+    lastOutputAt: '2026-03-24T10:00:00.000Z',
   };
 }
 
@@ -132,13 +141,70 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
   const store = new DesktopHostStateStore(config.paths.hostStatePath, {
     now: () => new Date('2026-03-24T10:04:00.000Z'),
   });
+  let diagnostics = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats']);
+  diagnostics = appendHostEvent(diagnostics, createDesktopBootstrapEvent({
+    layer: 'host',
+    kind: 'host_phase_changed',
+    timestamp: '2026-03-24T10:03:00.000Z',
+    attemptId: 'attempt-001',
+    summary: 'Desktop host phase is ready_for_chat.',
+    status: 'ok',
+    context: {
+      phase: 'ready_for_chat',
+    },
+    reference: {
+      artifactPath: config.paths.hostStatePath,
+    },
+  }));
+  diagnostics = {
+    ...diagnostics,
+    activeAttemptId: 'attempt-001',
+    serviceLogs: [
+      {
+        service: 'cats-runtime',
+        logPath: `${config.paths.hostLogsDir}\\cats-runtime.log`,
+        lastOutput: 'runtime ready',
+        lastOutputAt: '2026-03-24T10:03:00.000Z',
+      },
+      {
+        service: 'cats',
+        logPath: `${config.paths.hostLogsDir}\\cats.log`,
+        lastOutput: 'app ready',
+        lastOutputAt: '2026-03-24T10:03:00.000Z',
+      },
+    ],
+  };
+  diagnostics = {
+    ...diagnostics,
+    aggregation: buildDesktopAggregationBundle({
+      generatedAt: '2026-03-24T10:03:00.000Z',
+      attemptId: diagnostics.activeAttemptId,
+      runtimeEvents: [],
+      product: null,
+      hostEvents: diagnostics.hostEvents,
+      runtimeFallback: {
+        status: 'ok',
+        summary: 'Runtime is ready.',
+      },
+      hostFallback: {
+        status: 'ok',
+        summary: 'Desktop services and at least one provider path are ready.',
+      },
+    }),
+    updatedAt: '2026-03-24T10:03:00.000Z',
+  };
+  const persistedSnapshot = {
+    ...snapshot,
+    diagnostics,
+  };
 
   await store.save({
-    snapshot,
+    snapshot: persistedSnapshot,
     background,
     updates,
     packaging,
     setup,
+    diagnostics,
   });
 
   const persisted = JSON.parse(await readFile(config.paths.hostStatePath, 'utf8'));
@@ -149,6 +215,8 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
   assert.equal(persisted.setup.lastAction.pack, 'native_cli_pack');
   assert.equal(persisted.setup.lastAction.optionalFollowThroughPack, null);
   assert.equal(persisted.snapshot.setup.lastAction.status, 'changes_required');
+  assert.equal(persisted.diagnostics.activeAttemptId, 'attempt-001');
+  assert.equal(persisted.snapshot.diagnostics.aggregation.layers.host.summary, 'Desktop host phase is ready_for_chat.');
 });
 
 test('DesktopHostStateStore loads legacy setup state without optional follow-through fields', async () => {
@@ -246,4 +314,5 @@ test('DesktopHostStateStore loads legacy setup state without optional follow-thr
   assert.equal(loaded?.setup.lastAction?.pack, null);
   assert.equal(loaded?.setup.lastAction?.optionalFollowThroughPack, null);
   assert.deepEqual(loaded?.setup.lastAction?.plannedActions, ['local_model:install_ollama_local_model']);
+  assert.equal(loaded?.diagnostics.activeAttemptId, null);
 });
