@@ -65,8 +65,12 @@ The first slice is now implementation-ready with these decisions frozen:
      recovery run
    - the host persists the active attempt id in host state
    - host-owned events always carry that attempt id
-   - product-owned onboarding events receive that attempt id from the host/app
-     request path
+   - the host exposes the active attempt id through the packaged app-shell
+     read model used by the setup renderer
+   - the setup renderer sends that attempt id back in JSON request bodies for
+     suite setup and runtime setup mutations in the first slice
+   - product-owned onboarding events receive that attempt id from those
+     request bodies
    - runtime native artifacts are correlated by host observation time plus
      native references; the first slice does not require runtime to natively
      emit the same attempt id
@@ -89,7 +93,13 @@ The first slice is now implementation-ready with these decisions frozen:
    - first-slice target:
      - product onboarding history: last 100 events
      - host-owned event history: last 100 events
-     - aggregated chronology: last 100 merged entries
+     - aggregated chronology: last 150 merged entries
+   - trim product and host event histories at write time
+   - rebuild and trim aggregated chronology each time the host updates the
+     persisted bundle, then normalize once more on load if needed
+   - when merged chronology is truncated, preserve up to the most recent
+     20 entries per available layer before filling remaining slots by global
+     recency
 
 ## Implementation Phases
 
@@ -125,6 +135,8 @@ runtime-reference strategy for the first slice.
       under `src/shared/`
 - [ ] Implement a dedicated product-owned persistence helper for
       `suite-onboarding-history.json`
+- [ ] Extend the packaged app-shell read model to expose the active
+      `bootstrapAttemptId` to the setup renderer
 - [ ] Keep the first slice to the minimum product event set:
       - `setup_opened`
       - `runtime_apply_requested`
@@ -137,10 +149,13 @@ runtime-reference strategy for the first slice.
       - `layer`
       - `kind`
       - `summary`
+      - `status`
       - `context`
       - `error`
       - `attemptId`
       - `reference`
+- [ ] Add `attemptId` to first-slice suite setup/runtime setup mutation inputs
+      and send it through JSON request bodies from the setup renderer APIs
 - [ ] Wire the first-slice product events at these points:
       - renderer/setup load enters the packaged setup flow -> `setup_opened`
       - runtime apply request is submitted -> `runtime_apply_requested`
@@ -198,6 +213,8 @@ only `setupCompleteAt`.
         references
       - merging them with host-owned events into one bounded chronology sorted
         by timestamp
+      - preserving representation from each available layer before filling the
+        remaining merged slots by global recency
       - preserving native references instead of copying raw runtime/product
         blobs
 - [ ] Add targeted tests for host aggregation persistence and reload
@@ -249,8 +266,10 @@ documented, and operable after the first slice lands.
 | `electron/hostState.ts` | Later | Persist active attempt id, bounded host events, and aggregation bundle beside the existing snapshot |
 | `electron/main.ts` | Later | Publish/update host aggregation during startup and recovery |
 | `electron/bootstrapPage.ts` | Later | Read aggregated recovery summary |
+| `src/shared/suite-contract.ts` | Later | Extend packaged app-shell and setup contracts with first-slice diagnostics fields such as `bootstrapAttemptId` |
+| `src/shared/runtimeSetup.ts` | Later | Extend runtime setup mutation inputs with first-slice diagnostics fields such as `attemptId` |
 | `src/app/server/suiteSetupRoutes.ts` | Later | Emit product-owned onboarding events during setup flow and expose a host-consumable diagnostics read model |
-| `src/app/renderer/setup/api.ts` | Later | Send host-generated attempt id with setup/runtime bootstrap requests where needed |
+| `src/app/renderer/setup/api.ts` | Later | Send host-generated attempt id with setup/runtime bootstrap requests in first-slice JSON bodies |
 | `src/app/renderer/setup/SuiteSetupWizard.tsx` | Later | Trigger first-slice product event writes at setup-open/apply/complete milestones |
 | `tests/desktop-host-state.test.js` | Later | Lock host aggregation persistence/reload behavior |
 | `tests/runtime-setup-flow.test.js` | Later | Lock product onboarding event recording around runtime setup |
@@ -277,6 +296,12 @@ documented, and operable after the first slice lands.
 - Decision 8: a first-slice event is not considered diagnostically sufficient
   unless it carries `summary`, bounded `context`, and `error.message` when the
   event represents a failure or degraded condition.
+- Decision 9: surface the active `bootstrapAttemptId` through the packaged
+  app-shell read model and pass it back through first-slice JSON mutation
+  bodies instead of inventing a dedicated IPC or custom-header path.
+- Decision 10: trim product and host histories at write time, and keep merged
+  chronology fair by preserving recent representation from each available layer
+  before filling remaining slots by global recency.
 
 ## Testing Strategy
 
@@ -310,6 +335,7 @@ documented, and operable after the first slice lands.
 | Correlation across layers stays ambiguous | Medium | Resolve attempt-id strategy early in Phase 1 or keep host-ordered references explicit |
 | Host-derived runtime chronology proves too lossy | Medium | Keep the first slice minimal, retain report references, and add a runtime event/history route only if later evidence shows it is needed |
 | Product event payloads become too weak to diagnose real failures | Medium | Enforce `summary`, bounded `context`, and structured `error.message` as first-slice contract requirements |
+| One noisy layer crowds the others out of merged chronology | Medium | Raise merged chronology capacity and preserve a per-layer minimum before filling remaining slots by recency |
 
 ## Progress Log
 
@@ -317,6 +343,7 @@ documented, and operable after the first slice lands.
 |------|--------|
 | 2026-03-30 | Plan created to add product-owned onboarding history and a host-owned cross-layer aggregation bundle above existing runtime reports and host snapshots |
 | 2026-03-31 | First-slice implementation plan tightened: host-generated `bootstrapAttemptId`, product sidecar storage beside `chat-state.json`, bounded retention targets, and diagnostic event payload requirements were frozen so implementation can begin without open blockers |
+| 2026-03-31 | Minor follow-up clarifications landed: attempt-id transport now uses app-shell plus JSON mutation bodies, event `status` is treated as required, write-time trim is the first-slice retention rule, and merged chronology fairness now preserves recent representation from each layer |
 
 ---
 

@@ -112,6 +112,17 @@ duplicating every raw log.
     - one structured error payload when the event represents a failure or
       degraded condition; if present, the error payload shall include a
       human-readable message rather than only a code
+17. Each persisted or aggregated bootstrap/onboarding event shall carry an
+    explicit status classification:
+    - `ok`
+    - `degraded`
+    - `unavailable`
+    - `info`
+    - if no stronger status applies, the first slice shall persist `info`
+      rather than omitting the field
+18. When the host trims merged chronology to a bounded size, it shall preserve
+    recent representation from each available layer so one noisy layer does not
+    crowd out the others entirely.
 
 ### Non-Functional Requirements
 
@@ -187,7 +198,7 @@ interface BootstrapEvent {
   timestamp: string;
   attemptId?: string;
   summary: string;
-  status?: 'ok' | 'degraded' | 'unavailable' | 'info';
+  status: 'ok' | 'degraded' | 'unavailable' | 'info';
   context?: Record<string, unknown>;
   error?: BootstrapEventError;
   reference?: BootstrapEventReference;
@@ -212,6 +223,7 @@ should keep this granularity:
 - one stable event kind
 - one human-readable summary
 - one timestamp
+- one explicit status classification
 - optional correlation metadata
 - one bounded context payload carrying the event's key parameters
 - one structured error payload when a failure or degraded condition occurred
@@ -289,19 +301,20 @@ But it still lacks:
 - [cats-runtime ADR-014](../../../cats-runtime/docs/decisions/014-keep-lightweight-provider-setup-and-diagnostics-in-cats-runtime.md)
 - [cats-runtime SPEC-015](../../../cats-runtime/docs/specs/SPEC-015-runtime-setup-diagnostic-report.md)
 
-## Open Questions
+## Resolved First-Slice Questions
 
-- [ ] Should the first slice introduce an explicit host-issued
-      `bootstrapAttemptId` propagated into product/runtime events, or is
-      timestamp ordering plus host references sufficient at first?
-      - this is a Phase 2 blocker tracked by
-        [PLAN-034](../plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md)
-- [ ] Should the product-owned onboarding history live in shared chat/core
-      state, or behind a separate file/read model owned by the suite host?
-      - this is a Phase 2 blocker tracked by
-        [PLAN-034](../plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md)
-- [ ] How much of the aggregated chronology should be kept in `state.json`
-      versus a sibling bounded history file?
+- The first slice uses a host-issued `bootstrapAttemptId` for host-owned and
+  product-owned events.
+  - runtime native artifacts remain correlated by host observation time plus
+    native references in the first slice rather than a runtime-native attempt
+    id
+- Product-owned onboarding history lives in a dedicated
+  `suite-onboarding-history.json` sidecar beside `chat-state.json`.
+- The first slice keeps bounded host aggregation in the existing
+  `desktop-host/state.json` artifact rather than adding a sibling host-history
+  file immediately.
+  - revisit a sibling host-history artifact only if compatibility or file-size
+    evidence later shows the existing state artifact is insufficient
 
 ## References
 
