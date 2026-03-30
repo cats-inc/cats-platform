@@ -61,16 +61,16 @@ Safe after split for the first packaged setup baseline:
 - runtime-owned provider metadata consumed from `cats-runtime`
 - repo-owned Windows packaged setup helpers listed above
 - repo-owned packaged setup host bridge and persisted setup action state
-- repo-owned cross-platform skill sync scripts in `cats`
+- repo-owned cross-platform skill sync scripts in `cats-platform`
 
 Still intentionally deferred or incomplete:
 
-- Docker Desktop install and warm-state helpers still only exist as deferred
-  source knowledge (`environment-bootstrap/platform/windows/Install-Docker-Admin.ps1`)
-- richer readiness/auth follow-through beyond the current structured readiness
-  audit
-- deeper interruption handling across relaunch, elevation/UAC, first WSL boot,
-  and later auth-required recovery
+- Docker Desktop install still only exists as source knowledge
+  (`environment-bootstrap/platform/windows/Install-Docker-Admin.ps1`)
+- richer desktop remediation polish above the current explicit interruption
+  contract
+- any future expert-only capability packs beyond the now-ported native CLI
+  baseline
 
 ### Sibling A2A / Bootstrap Pilot Remains Coherent
 
@@ -102,8 +102,8 @@ The first packaged setup baseline now passes the narrow split-safety check:
 - `environment-bootstrap` and `project-bootstrap` remain source inputs, not
   product runtime dependencies
 - the remaining split risk has moved to later capability packs, deeper
-  interruption semantics, and later governance/adoption decisions, not the
-  already ported first-wave helpers
+  remediation polish, and later governance/adoption decisions, not the already
+  ported first-wave helpers
 
 ## Relevance
 
@@ -112,15 +112,15 @@ This validation narrows `PLAN-030` truth:
 - the repo-owned packaged setup baseline is evidence-backed
 - sibling A2A/bootstrap pilot work remains coherent without being reopened
   under packaged setup
-- later work should focus on deferred capability packs, deeper resume flows,
-  and explicit adoption gates rather than re-porting the already internalized
-  first-wave helper set
+- later work should focus on Docker/local-model capability packs, deeper
+  remediation polish, and explicit adoption gates rather than re-porting the
+  already internalized first-wave helper set
 
 ## Action Items
 
-- Keep Docker and other deferred capability packs out of the first split-safe
+- Keep Docker and other heavier capability packs out of the first split-safe
   baseline until a separate product slice justifies them.
-- Continue deepening interruption handling in the host bridge instead of
-  re-opening already ported helper knowledge.
+- Continue polishing host remediation and recovery UX instead of re-opening
+  already ported helper knowledge.
 - Keep merge-back into `project-bootstrap` and any production-default
   collaboration rollout as separate evidence-led decisions.

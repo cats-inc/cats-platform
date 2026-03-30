@@ -277,7 +277,7 @@ export function buildDesktopBootstrapPage(): string {
         const providerRollout = localProviders.length > 0
           ? {
               bundled: localProviders.filter((provider) => provider.bundledInCurrentInstaller),
-              deferred: localProviders.filter((provider) => !provider.bundledInCurrentInstaller),
+              additional: localProviders.filter((provider) => !provider.bundledInCurrentInstaller),
             }
           : null;
         const lastAction = (setupSnapshot && setupSnapshot.state && setupSnapshot.state.lastAction)
@@ -314,9 +314,9 @@ export function buildDesktopBootstrapPage(): string {
                   : 'none',
               )
               + '.</div>'
-              + (providerRollout.deferred.length
-                ? '<div class="meta status-degraded">Deferred later-path providers: '
-                  + escapeHtml(providerRollout.deferred.map((provider) => provider.label).join(', '))
+              + (providerRollout.additional.length
+                ? '<div class="meta status-degraded">Not bundled in this desktop build: '
+                  + escapeHtml(providerRollout.additional.map((provider) => provider.label).join(', '))
                   + '.</div>'
                 : '')
               + '</article>',

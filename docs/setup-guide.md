@@ -186,7 +186,7 @@ The desktop host now also keeps a host-readable state file at
 The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
 and only exposes the narrow desktop action/snapshot IPC surface through a
 preload bridge. The bootstrap page also shows a setup recovery panel with the
-bundled helper count, the bundled-vs-deferred local provider rollout, the last
+bundled helper count, the current local provider rollout, the last
 packaged setup action summary, and the current
 recommended resume step when a helper reports a resumable interruption. When a
 packaged setup step blocks on a restart or other recovery action, the bootstrap
@@ -259,6 +259,8 @@ The current substrate writes:
 - `build/desktop-packaging/shared/setup-assets/windows/Install-NodeCliPack.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-ClaudeCode.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-CursorAgent.ps1`
+- `build/desktop-packaging/shared/setup-assets/windows/Install-Goose.ps1`
+- `build/desktop-packaging/shared/setup-assets/windows/Install-Junie.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-WslUbuntuEnvironment.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-KiroWslCli.ps1`
@@ -275,8 +277,8 @@ The same staged contract now also carries
 `installer.providerSetup.localProviders`, which freezes the current packaged
 local-provider rollout:
 
-- first packaged path: Claude Code, Cursor Agent, and the WSL-backed Kiro helper
-- deferred later-path providers: Goose and Junie
+- current packaged path: Claude Code, Cursor Agent, Goose, Junie, and the
+  WSL-backed Kiro helper
 
 This is intentionally a staging layer, not the final signed-installer
 publication step.
@@ -326,6 +328,8 @@ What the smoke-check confirms:
 - the bundled Windows native CLI pack helper exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows native Claude Code installer exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows native Cursor installer exists under `resources/desktop-host/setup-assets/`
+- the bundled Windows native Goose installer exists under `resources/desktop-host/setup-assets/`
+- the bundled Windows native Junie installer exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows WSL prerequisite preflight helper exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows setup readiness audit helper exists under `resources/desktop-host/setup-assets/`
 - the packaged `desktop-package-plan.json` still advertises the Windows NSIS

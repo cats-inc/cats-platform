@@ -134,8 +134,8 @@ ports a product-owned host asset layer.
 | Windows WSL Kiro installer | `environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1` | `cats-platform/scripts/windows/Install-KiroWslCli.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned WSL Kiro installer now carries dependency checks, PATH cleanup, `kc` alias repair, and post-install sign-in guidance |
 | Windows readiness/auth inspection follow-through | remaining `Check-Installation.ps1` coverage | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats-platform` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; expand the repo-owned audit incrementally instead of copying the old bootstrap-wide report verbatim |
 | Docker Desktop install + warm-state knowledge | `Install-Docker-Admin.ps1` | `environment-bootstrap` for install, repo-owned readiness audit for warm-state | later packaged-host capability pack plus current `Check-WindowsSetupReadiness.ps1` | Partial port | Docker install remains deferred, but Docker warm-up truth is now selectively ported into the repo-owned readiness audit as `docker_warm_up_required` |
-| Goose installer rollout decision | `environment-bootstrap/platform/windows/Install-Goose.ps1` + `environment-bootstrap/platform/windows/Install-WSLGoose.ps1` | `environment-bootstrap` only | later packaged-host provider assets in `cats-platform` | Deferred | Source knowledge exists for both native Windows and WSL variants, but the current packaged contract now explicitly keeps Goose out of the first packaged slice |
-| Junie installer rollout decision | `environment-bootstrap/platform/windows/Install-Junie.ps1` | `environment-bootstrap` only | later packaged-host provider assets in `cats-platform` | Deferred | Source knowledge remains Windows-native only, but the current packaged contract keeps Junie out of the first packaged slice until a later provider wave is chosen |
+| Windows native Goose installer | `environment-bootstrap/platform/windows/Install-Goose.ps1` + `environment-bootstrap/platform/windows/Install-WSLGoose.ps1` knowledge | `cats-platform/scripts/windows/Install-Goose.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned native installer helper now keeps Goose on the packaged setup baseline and treats post-install auth as an explicit host-owned interruption |
+| Windows native Junie installer | `environment-bootstrap/platform/windows/Install-Junie.ps1` | `cats-platform/scripts/windows/Install-Junie.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned native installer helper now keeps Junie on the packaged setup baseline and treats JetBrains sign-in follow-through as an explicit host-owned interruption |
 | Ngrok / tunnel setup | `Install-Ngrok-Admin.ps1`, `Setup-Ngrok.ps1` | `environment-bootstrap` only | later transport helper layer in `cats-platform` | Defer | Not part of the first packaged setup baseline |
 | Guacamole / Tailscale / workstation extras | extra-mode scripts | `environment-bootstrap` only | none for current packaged setup | Exclude | Not part of `cats-platform` packaged setup scope |
 
@@ -160,8 +160,8 @@ ports a product-owned host asset layer.
      `cats-platform/scripts/windows/Install-KiroWslCli.ps1`.
    - Selective auth/readiness follow-through is now landed.
    - The first packaged path is now explicitly frozen around Claude, Cursor,
-     and Kiro; Goose and Junie remain deferred later-path providers rather than
-     implied missing work.
+     Goose, Junie, and Kiro rather than leaving Goose/Junie as implied future
+     work.
 
 2. Expand host bridge and resume semantics after the first native + WSL-backed
    provider installer set.
@@ -172,8 +172,8 @@ ports a product-owned host asset layer.
      relaunch, restart, elevation, first WSL boot, and auth-required states.
    - Docker warm-up is now explicit.
    - The remaining gap is no longer deciding whether Goose/Junie belong in the
-     first packaged path; that defer decision is now explicit in the packaged
-     installer contract.
+     first packaged path; the main open follow-through has moved to Docker and
+     other heavier capability packs.
 
 3. Defer Docker and tunnel flows until after the first packaged setup contract
    is stable.
@@ -200,7 +200,7 @@ Keep the next packaged-host slice focused on either:
 
 - additional host/runtime recovery coherence that is still missing from the
   packaged setup bridge, or
-- a deliberate graduation decision if a deferred provider such as Goose or
-  Junie is ever promoted into the repo-owned packaged path
+- Docker/local-model follow-through that still remains outside the current
+  repo-owned packaged helper baseline
 
-The contract no longer treats Goose/Junie as silently missing baseline work.
+The contract no longer treats Goose/Junie as missing or deferred baseline work.

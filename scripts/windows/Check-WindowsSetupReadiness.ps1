@@ -47,7 +47,8 @@
     Override whether the target WSL distro has completed first-user bootstrap.
 
 .PARAMETER IncludeNativeProviders
-    Include native Claude/Cursor readiness and auth checks. Enabled by default.
+    Include native Claude/Cursor/Goose/Junie readiness and auth checks.
+    Enabled by default.
 
 .PARAMETER IncludeDocker
     Include Docker Desktop warm-state checks. Disabled by default because the
@@ -67,6 +68,18 @@
 
 .PARAMETER CursorAuthState
     Override Cursor Agent authentication detection for deterministic tests.
+
+.PARAMETER GooseInstallState
+    Override Goose installation detection for deterministic tests.
+
+.PARAMETER GooseAuthState
+    Override Goose authentication detection for deterministic tests.
+
+.PARAMETER JunieInstallState
+    Override Junie installation detection for deterministic tests.
+
+.PARAMETER JunieAuthState
+    Override Junie authentication detection for deterministic tests.
 #>
 param(
   [switch]$Json,
@@ -93,6 +106,14 @@ param(
   [string]$CursorInstallState = 'auto',
   [ValidateSet('auto', 'authenticated', 'auth_required')]
   [string]$CursorAuthState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$GooseInstallState = 'auto',
+  [ValidateSet('auto', 'authenticated', 'auth_required')]
+  [string]$GooseAuthState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$JunieInstallState = 'auto',
+  [ValidateSet('auto', 'authenticated', 'auth_required')]
+  [string]$JunieAuthState = 'auto',
   [ValidateSet('auto', 'missing', 'installed_engine_stopped', 'ready')]
   [string]$DockerState = 'auto'
 )
@@ -212,6 +233,8 @@ $nativeCliPackPath = Join-Path $PSScriptRoot 'Install-NodeCliPack.ps1'
 $wslPreflightPath = Join-Path $PSScriptRoot 'Check-WslPrerequisites.ps1'
 $claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
 $cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
+$gooseHelperPath = Join-Path $PSScriptRoot 'Install-Goose.ps1'
+$junieHelperPath = Join-Path $PSScriptRoot 'Install-Junie.ps1'
 
 $nativeCliArguments = @('-CheckOnly', '-Json', '-SkipPrefixHelper')
 if ($SkipNodeCheck) {
@@ -260,6 +283,8 @@ if ($IncludeWsl) {
 
 $claudeResult = $null
 $cursorResult = $null
+$gooseResult = $null
+$junieResult = $null
 $dockerResult = $null
 if ($IncludeNativeProviders) {
   $claudeArguments = @('-CheckOnly', '-Json')
@@ -279,6 +304,24 @@ if ($IncludeNativeProviders) {
     $cursorArguments += @('-AuthState', $CursorAuthState)
   }
   $cursorResult = Invoke-HelperJson -ScriptPath $cursorHelperPath -Arguments $cursorArguments
+
+  $gooseArguments = @('-CheckOnly', '-Json')
+  if ($GooseInstallState -ne 'auto') {
+    $gooseArguments += @('-InstallState', $GooseInstallState)
+  }
+  if ($GooseAuthState -ne 'auto') {
+    $gooseArguments += @('-AuthState', $GooseAuthState)
+  }
+  $gooseResult = Invoke-HelperJson -ScriptPath $gooseHelperPath -Arguments $gooseArguments
+
+  $junieArguments = @('-CheckOnly', '-Json')
+  if ($JunieInstallState -ne 'auto') {
+    $junieArguments += @('-InstallState', $JunieInstallState)
+  }
+  if ($JunieAuthState -ne 'auto') {
+    $junieArguments += @('-AuthState', $JunieAuthState)
+  }
+  $junieResult = Invoke-HelperJson -ScriptPath $junieHelperPath -Arguments $junieArguments
 }
 if ($IncludeDocker) {
   $dockerResult = Get-DockerWarmState
@@ -296,6 +339,12 @@ if ($null -ne $claudeResult) {
 }
 if ($null -ne $cursorResult) {
   $statuses += $cursorResult.status
+}
+if ($null -ne $gooseResult) {
+  $statuses += $gooseResult.status
+}
+if ($null -ne $junieResult) {
+  $statuses += $junieResult.status
 }
 if ($null -ne $dockerResult) {
   $statuses += $dockerResult.status
@@ -328,6 +377,20 @@ if ($null -ne $cursorResult) {
     $plannedActions.Add('provider:authenticate_cursor_agent')
   }
 }
+if ($null -ne $gooseResult) {
+  if ($gooseResult.status -eq 'not_installed') {
+    $plannedActions.Add('provider:install_goose_native')
+  } elseif ($gooseResult.status -eq 'auth_required') {
+    $plannedActions.Add('provider:authenticate_goose')
+  }
+}
+if ($null -ne $junieResult) {
+  if ($junieResult.status -eq 'not_installed') {
+    $plannedActions.Add('provider:install_junie_native')
+  } elseif ($junieResult.status -eq 'auth_required') {
+    $plannedActions.Add('provider:authenticate_junie')
+  }
+}
 if ($null -ne $dockerResult) {
   foreach ($action in $dockerResult.plannedActions) {
     $plannedActions.Add("docker:$action")
@@ -355,6 +418,16 @@ if ($null -ne $cursorResult) {
     $warnings.Add([string]$warning)
   }
 }
+if ($null -ne $gooseResult) {
+  foreach ($warning in $gooseResult.warnings) {
+    $warnings.Add([string]$warning)
+  }
+}
+if ($null -ne $junieResult) {
+  foreach ($warning in $junieResult.warnings) {
+    $warnings.Add([string]$warning)
+  }
+}
 if ($null -ne $dockerResult) {
   foreach ($warning in $dockerResult.warnings) {
     $warnings.Add([string]$warning)
@@ -368,6 +441,12 @@ foreach ($interruption in @($claudeResult.interruptions)) {
   $interruptions.Add($interruption)
 }
 foreach ($interruption in @($cursorResult.interruptions)) {
+  $interruptions.Add($interruption)
+}
+foreach ($interruption in @($gooseResult.interruptions)) {
+  $interruptions.Add($interruption)
+}
+foreach ($interruption in @($junieResult.interruptions)) {
   $interruptions.Add($interruption)
 }
 foreach ($interruption in @($dockerResult.interruptions)) {
@@ -416,6 +495,8 @@ $result = [pscustomobject]@{
   nativeProviders = [pscustomobject]@{
     claude = $claudeResult
     cursor = $cursorResult
+    goose = $gooseResult
+    junie = $junieResult
   }
   docker = $dockerResult
 }

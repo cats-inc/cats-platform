@@ -61,20 +61,20 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(
     plan.installer.providerSetup.localProviders.some(
       (provider) => provider.id === 'goose'
-        && provider.pack === 'wsl_power_user_pack'
-        && provider.deliveryPhase === 'later_packaged_path'
-        && provider.bundledInCurrentInstaller === false
-        && provider.helperIds.length === 0,
+        && provider.pack === 'native_cli_pack'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-goose-native-installer'),
     ),
     true,
   );
   assert.equal(
     plan.installer.providerSetup.localProviders.some(
       (provider) => provider.id === 'junie'
-        && provider.pack === 'wsl_power_user_pack'
-        && provider.deliveryPhase === 'later_packaged_path'
-        && provider.bundledInCurrentInstaller === false
-        && provider.helperIds.length === 0,
+        && provider.pack === 'native_cli_pack'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-junie-native-installer'),
     ),
     true,
   );
@@ -93,6 +93,24 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
         && helper.assetId === 'windows-cursor-native-installer-script'
         && helper.supportsCheckOnly === true
         && helper.supportsApply === true,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-goose-native-installer'
+        && helper.assetId === 'windows-goose-native-installer-script'
+        && helper.supportsCheckOnly === true
+        && helper.supportsUpgrade === true,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-junie-native-installer'
+        && helper.assetId === 'windows-junie-native-installer-script'
+        && helper.supportsCheckOnly === true
+        && helper.supportsForce === true,
     ),
     true,
   );
@@ -156,6 +174,18 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-goose-native-installer' && asset.status === 'ported',
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-junie-native-installer' && asset.status === 'ported',
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-wsl-prerequisite-preflight' && asset.status === 'ported',
     ),
     true,
@@ -200,6 +230,18 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(
     windowsTarget?.artifacts.some(
       (artifact) => artifact.id === 'windows-cursor-native-installer-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-goose-native-installer-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-junie-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -256,6 +298,8 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-NodeCliPack\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-ClaudeCode\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-CursorAgent\.ps1/);
+  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-Goose\.ps1/);
+  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-Junie\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Check-WslPrerequisites\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-WslUbuntuEnvironment\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-KiroWslCli\.ps1/);
@@ -294,6 +338,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Goose.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Junie.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroWslCli.ps1'), '# helper');
@@ -324,6 +370,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-NodeCliPack.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-ClaudeCode.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-CursorAgent.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Goose.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Junie.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WslPrerequisites.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-WslUbuntuEnvironment.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-KiroWslCli.ps1'));
@@ -350,16 +398,18 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.localProviders.some(
       (provider) => provider.id === 'goose'
-        && provider.deliveryPhase === 'later_packaged_path'
-        && provider.bundledInCurrentInstaller === false,
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-goose-native-installer'),
     ),
     true,
   );
   assert.equal(
     targetManifest.installer.providerSetup.localProviders.some(
       (provider) => provider.id === 'junie'
-        && provider.deliveryPhase === 'later_packaged_path'
-        && provider.currentHome === 'environment-bootstrap/platform/windows/Install-Junie.ps1',
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.currentHome === 'cats-platform/scripts/windows/Install-Junie.ps1',
     ),
     true,
   );
@@ -375,6 +425,22 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-cursor-native-installer'
         && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-CursorAgent.ps1'
+        && helper.supportsUpgrade === true,
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-goose-native-installer'
+        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-Goose.ps1'
+        && helper.supportsForce === true,
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-junie-native-installer'
+        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-Junie.ps1'
         && helper.supportsUpgrade === true,
     ),
     true,
@@ -410,6 +476,18 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     true,
   );
   assert.equal(
+    targetManifest.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-goose-native-installer',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-junie-native-installer',
+    ),
+    true,
+  );
+  assert.equal(
     targetManifest.artifacts.some(
       (artifact) => artifact.id === 'windows-npm-prefix-helper-script' && artifact.role === 'setup_asset',
     ),
@@ -430,6 +508,18 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.artifacts.some(
       (artifact) => artifact.id === 'windows-cursor-native-installer-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'windows-goose-native-installer-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'windows-junie-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -479,6 +569,8 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Goose.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Junie.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroWslCli.ps1'), '# helper');

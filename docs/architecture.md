@@ -105,10 +105,10 @@ The packaged setup path now has an explicit host-owned boundary:
   `installer.providerSetup.helperCatalog` and
   `installer.providerSetup.localProviders`
 - the current first packaged local-provider rollout is bounded to Claude Code,
-  Cursor Agent, and the WSL-backed Kiro helper
-- Goose, Junie, Docker/local-model helpers, and other later packs remain
-  explicitly deferred instead of being treated as silently missing baseline
-  work
+  Cursor Agent, Goose, Junie, and the WSL-backed Kiro helper
+- Docker/local-model helpers and future expert-only capability packs remain
+  outside the current packaged baseline instead of being treated as silently
+  missing baseline work
 - `environment-bootstrap` and `project-bootstrap` remain source knowledge only,
   not shipped runtime dependencies for packaged setup
 

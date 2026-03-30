@@ -133,6 +133,8 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-NodeCliPack.ps1'); Label = 'bundled Windows native CLI pack helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-ClaudeCode.ps1'); Label = 'bundled Windows native Claude Code installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-CursorAgent.ps1'); Label = 'bundled Windows native Cursor installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-Goose.ps1'); Label = 'bundled Windows native Goose installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-Junie.ps1'); Label = 'bundled Windows native Junie installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Check-WslPrerequisites.ps1'); Label = 'bundled Windows WSL prerequisite preflight helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-WslUbuntuEnvironment.ps1'); Label = 'bundled Windows WSL substrate installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-KiroWslCli.ps1'); Label = 'bundled Windows WSL Kiro installer helper' },
@@ -154,7 +156,10 @@ Assert-True ($null -ne $windowsTarget) 'installer packaging plan includes a Wind
 Assert-True (($windowsTarget.installerFormats -contains 'nsis')) 'Windows target includes the NSIS installer format'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-npm-prefix-helper-script' }).Count -ge 1) 'Windows target includes the bundled npm prefix setup asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-node-cli-pack-script' }).Count -ge 1) 'Windows target includes the bundled native CLI pack setup asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-claude-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Claude installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-cursor-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Cursor installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-goose-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Goose installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-junie-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Junie installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-wsl-prerequisite-preflight-script' }).Count -ge 1) 'Windows target includes the bundled WSL prerequisite preflight asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-wsl-environment-installer-script' }).Count -ge 1) 'Windows target includes the bundled WSL substrate installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-kiro-wsl-installer-script' }).Count -ge 1) 'Windows target includes the bundled WSL Kiro installer asset'

@@ -60,6 +60,14 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
     'installed',
     '-CursorAuthState',
     'authenticated',
+    '-GooseInstallState',
+    'installed',
+    '-GooseAuthState',
+    'authenticated',
+    '-JunieInstallState',
+    'installed',
+    '-JunieAuthState',
+    'authenticated',
   ]);
 
   const result = JSON.parse(stdout);
@@ -69,6 +77,8 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
   assert.equal(result.wsl.status, 'ready');
   assert.equal(result.nativeProviders.claude.status, 'ready');
   assert.equal(result.nativeProviders.cursor.status, 'ready');
+  assert.equal(result.nativeProviders.goose.status, 'ready');
+  assert.equal(result.nativeProviders.junie.status, 'ready');
   assert.deepEqual(result.plannedActions, []);
 });
 
@@ -136,17 +146,25 @@ test('Check-WindowsSetupReadiness reports auth-required when native providers ar
     '-ClaudeInstallState',
     'installed',
     '-ClaudeAuthState',
-    'auth_required',
+    'authenticated',
     '-CursorInstallState',
     'installed',
     '-CursorAuthState',
+    'authenticated',
+    '-GooseInstallState',
+    'installed',
+    '-GooseAuthState',
+    'auth_required',
+    '-JunieInstallState',
+    'installed',
+    '-JunieAuthState',
     'authenticated',
   ]);
 
   const result = JSON.parse(stdout);
   assert.equal(result.status, 'auth_required');
-  assert.equal(result.nativeProviders.claude.status, 'auth_required');
-  assert.equal(result.plannedActions.includes('provider:authenticate_claude_code'), true);
+  assert.equal(result.nativeProviders.goose.status, 'auth_required');
+  assert.equal(result.plannedActions.includes('provider:authenticate_goose'), true);
   assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
 });
 
@@ -184,6 +202,14 @@ test('Check-WindowsSetupReadiness reports docker warm-up when Docker Desktop is 
     '-CursorInstallState',
     'installed',
     '-CursorAuthState',
+    'authenticated',
+    '-GooseInstallState',
+    'installed',
+    '-GooseAuthState',
+    'authenticated',
+    '-JunieInstallState',
+    'installed',
+    '-JunieAuthState',
     'authenticated',
     '-IncludeDocker:$true',
     '-DockerState',

@@ -84,7 +84,10 @@ npm run desktop:stage
   - `build/desktop-packaging/shared/*`
   - `build/desktop-packaging/shared/setup-assets/windows/Setup-NodeGlobalPrefix.ps1`
   - `build/desktop-packaging/shared/setup-assets/windows/Install-NodeCliPack.ps1`
+  - `build/desktop-packaging/shared/setup-assets/windows/Install-ClaudeCode.ps1`
   - `build/desktop-packaging/shared/setup-assets/windows/Install-CursorAgent.ps1`
+  - `build/desktop-packaging/shared/setup-assets/windows/Install-Goose.ps1`
+  - `build/desktop-packaging/shared/setup-assets/windows/Install-Junie.ps1`
   - `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
   - `build/desktop-packaging/shared/setup-assets/windows/Install-WslUbuntuEnvironment.ps1`
   - `build/desktop-packaging/shared/setup-assets/windows/Install-KiroWslCli.ps1`
@@ -130,7 +133,10 @@ npm run desktop:package:windows
   - verify bundled `cats` and `cats-runtime` sidecar assets
   - verify bundled packaged-setup assets, starting with the Windows npm prefix helper
   - verify the bundled Windows native CLI pack installer asset
+  - verify the bundled Windows native Claude installer asset
   - verify the bundled Windows native Cursor installer asset
+  - verify the bundled Windows native Goose installer asset
+  - verify the bundled Windows native Junie installer asset
   - verify the bundled Windows WSL prerequisite preflight asset
   - verify the bundled Windows WSL substrate and Ubuntu installer asset
   - verify the bundled Windows WSL Kiro installer asset
@@ -151,12 +157,13 @@ npm run desktop:package:windows
   - expose a machine-readable `installer.providerSetup.helperCatalog` for the
     bundled Windows setup assets
   - expose a machine-readable `installer.providerSetup.localProviders` rollout
-    so the host can distinguish bundled local-provider paths from deferred ones
+    so the host can distinguish bundled local-provider paths from future
+    add-on capability packs
   - map failures onto structured host state plus resumable remediation actions
   - keep the current first packaged local-provider path bounded to Claude Code,
-    Cursor Agent, and the WSL-backed Kiro helper
-  - keep Goose, Junie, Docker/local-model helpers, and other later packs
-    explicitly deferred rather than silently missing
+    Cursor Agent, Goose, Junie, and the WSL-backed Kiro helper
+  - keep Docker/local-model helpers and future expert-only capability packs
+    outside the current packaged baseline rather than silently missing
   - avoid any runtime shell-out to `environment-bootstrap` or
     `project-bootstrap`; both remain source knowledge only
 - update-channel contract in this slice:

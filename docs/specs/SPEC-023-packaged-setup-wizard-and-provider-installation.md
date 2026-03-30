@@ -132,9 +132,9 @@ host-operations depth around that first slice:
 7. The first packaged slice shall support these capability-pack directions:
    - `API Baseline (Recommended)` for API-key-backed Claude, OpenAI, and Gemini
    - `Native CLI Pack` for the current repo-owned Windows path: Claude Code,
-     Cursor Agent, and the first WSL-backed Kiro helper
-   - additional packs such as local-model or deferred power-user providers
-     may remain later-path only
+     Cursor Agent, Goose, Junie, and the first WSL-backed Kiro helper
+   - additional packs such as local-model or future expert-only host
+     prerequisites may remain later-path only
 8. The setup flow shall perform a local provider scan before offering installs
    so already-installed tools can be reused.
 9. The provider scan shall report at least these states per provider:
@@ -264,7 +264,7 @@ Advanced view may expand to explicit capability packs or individual providers.
 - show already-detected providers first
 - show installable providers grouped by capability pack
 - run host-managed install and verification actions
-- allow deferred setup for providers that are not required for the first use
+- allow later optional setup for providers that are not required for the first use
 
 ### Step 5: Default Boss Cat Bootstrap
 
@@ -301,7 +301,7 @@ Settings or an equivalent product-owned management surface so users can:
 - add providers they skipped during first run
 - repair or re-verify existing providers
 - upgrade provider tooling through the same host-managed execution path
-- revisit deferred capability packs without rerunning the entire wizard
+- revisit additional capability packs without rerunning the entire wizard
 
 ## Capability Pack Direction
 
@@ -313,17 +313,17 @@ Settings or an equivalent product-owned management surface so users can:
   - Gemini API
 - `Native CLI Pack`
   - Claude Code
-  - Cursor Agent when already installed or available on the current platform
+  - Cursor Agent
+  - Goose
+  - Junie
   - Kiro CLI through the current Windows WSL-backed packaged helper path
 
 ### Later Packs
 
 - `Local Model Pack`
   - Ollama and local-model helpers
-- `Power User / Deferred CLI Pack`
-  - Goose
-  - Junie
-  - other tooling with heavier local prerequisites or still-unvalidated packaged installer flows
+- `WSL / Power User Pack`
+  - future WSL-first or expert-only packaged setup flows if the product adds them later
 
 ## Installer and Runtime Boundary
 
@@ -456,20 +456,18 @@ teaching the renderer or the user about the underlying script topology.
   parsing the full desktop packaging plan.
 - The staged desktop packaging contract now also carries
   `installer.providerSetup.localProviders`, making the current first packaged
-  path explicit: Claude Code, Cursor Agent, and Kiro are bundled today,
-  while Goose and Junie remain later-path providers sourced only from
-  `environment-bootstrap` knowledge until the product decides to port them.
+  path explicit: Claude Code, Cursor Agent, Goose, Junie, and Kiro are now
+  all bundled into the packaged setup contract.
 - The desktop bootstrap recovery UI now also surfaces that `localProviders`
   rollout directly, so the host can tell users which local providers are
-  bundled today versus explicitly deferred without leaving the setup panel.
+  bundled today without leaving the setup panel.
 - `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now
   also records that this packaged setup baseline stays coherent with the
   sibling `cats-runtime` A2A/bootstrap pilot and does not imply automatic
   merge-back into `project-bootstrap`.
 - The next follow-on under `PLAN-030` is no longer the baseline host bridge or
-  interruption contract; it is validating the remaining split-era governance
-  and deciding if any later provider should graduate from deferred status into
-  the repo-owned packaged path.
+  provider graduation question; it is the remaining Docker/local-model and
+  richer remediation follow-through above the now-ported native CLI baseline.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)
