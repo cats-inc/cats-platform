@@ -61,6 +61,7 @@ const DEFAULT_GRACEFUL_SHUTDOWN_MS = 3000;
 const DEFAULT_DESKTOP_TRAY_ENABLED = true;
 const DEFAULT_KEEP_SERVICES_RUNNING = true;
 const DEFAULT_CLOSE_BEHAVIOR = 'minimize_to_tray';
+export const DESKTOP_USER_DATA_DIR_NAME = 'Cats';
 
 function isWindowsAbsolutePath(value: string | undefined): boolean {
   if (!value) {
@@ -86,6 +87,10 @@ function dirnameDesktopPath(value: string): string {
   return isWindowsAbsolutePath(value)
     ? win32.dirname(win32.normalize(value))
     : dirname(resolve(value));
+}
+
+export function resolveDesktopUserDataDir(appDataDir: string): string {
+  return resolveDesktopPath(joinDesktopPath(appDataDir, DESKTOP_USER_DATA_DIR_NAME));
 }
 
 function readCurrentPackageRoot(): string {

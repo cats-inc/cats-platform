@@ -5,7 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { resolveDesktopHostConfig } from '../dist-electron/config.js';
+import {
+  DESKTOP_USER_DATA_DIR_NAME,
+  resolveDesktopHostConfig,
+  resolveDesktopUserDataDir,
+} from '../dist-electron/config.js';
 import {
   buildManagedServiceSpecs,
   ManagedServiceSupervisor,
@@ -89,6 +93,14 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(
     config.paths.hostStatePath,
     'C:\\Users\\test\\AppData\\Roaming\\Cats\\desktop-host\\state.json',
+  );
+});
+
+test('desktop host resolves the packaged userData directory to Cats', () => {
+  assert.equal(DESKTOP_USER_DATA_DIR_NAME, 'Cats');
+  assert.equal(
+    resolveDesktopUserDataDir('C:/Users/test/AppData/Roaming'),
+    'C:\\Users\\test\\AppData\\Roaming\\Cats',
   );
 });
 

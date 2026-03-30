@@ -1,7 +1,11 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
-import { resolveDesktopHostConfig, type DesktopHostConfig } from './config.js';
+import {
+  resolveDesktopHostConfig,
+  resolveDesktopUserDataDir,
+  type DesktopHostConfig,
+} from './config.js';
 import type {
   DesktopBackgroundState,
   DesktopBootstrapEventStatus,
@@ -857,6 +861,7 @@ async function main(): Promise<void> {
     return;
   }
 
+  app.setPath('userData', resolveDesktopUserDataDir(app.getPath('appData')));
   await app.whenReady();
   const nodeProcess = process as NodeJS.Process & { resourcesPath?: string };
 
