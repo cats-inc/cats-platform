@@ -93,6 +93,38 @@ function createRuntimeStub() {
             },
           ],
         },
+        opencode: {
+          defaultInstance: 'native',
+          defaultBackend: 'cli',
+          instances: [
+            {
+              id: 'native',
+              target: 'cli/native',
+              backend: 'cli',
+              command: 'opencode',
+              runner: null,
+              runtime: null,
+              transport: null,
+              model: 'opencode-go/glm-5',
+            },
+          ],
+        },
+        kilo: {
+          defaultInstance: 'native',
+          defaultBackend: 'cli',
+          instances: [
+            {
+              id: 'native',
+              target: 'cli/native',
+              backend: 'cli',
+              command: 'kilo',
+              runner: null,
+              runtime: null,
+              transport: null,
+              model: 'kilo/openai/gpt-5.4',
+            },
+          ],
+        },
       };
     },
     async getProviderModels(provider) {
@@ -331,6 +363,15 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
     assert.equal(codex.defaultInstance, 'agent/bridge');
     assert.equal(codex.instances.length, 2);
     assert.equal(codex.instances[0].label, 'agent/bridge');
+    const opencodeIndex = payload.providers.findIndex((provider) => provider.id === 'opencode');
+    const kiloIndex = payload.providers.findIndex((provider) => provider.id === 'kilo');
+    assert.ok(opencodeIndex >= 0);
+    assert.equal(kiloIndex, opencodeIndex + 1);
+    const kilo = payload.providers[kiloIndex];
+    assert.equal(kilo.label, 'Kilo');
+    assert.equal(kilo.defaultInstance, 'native');
+    assert.equal(kilo.defaultBackend, 'cli');
+    assert.equal(kilo.instances[0].label, 'cli/native');
   });
 });
 
@@ -389,6 +430,25 @@ test('GET /api/providers/:provider/models falls back to static data', async () =
     const payload = await response.json();
     assert.equal(payload.catalog.provider, 'claude');
     assert.equal(payload.catalog.source, 'static');
+    assert.ok(payload.catalog.warnings[0].includes('runtime unavailable'));
+  });
+});
+
+test('GET /api/providers/:provider/models falls back to static kilo catalog data', async () => {
+  const runtimeClient = createRuntimeStub();
+  runtimeClient.getProviderModels = async () => {
+    throw new Error('runtime unavailable');
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/kilo/models`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.catalog.provider, 'kilo');
+    assert.equal(payload.catalog.source, 'static');
+    assert.equal(payload.catalog.defaultModel, 'kilo/openai/gpt-5.4');
+    assert.equal(payload.catalog.models[0].id, 'kilo/openai/gpt-5.4');
     assert.ok(payload.catalog.warnings[0].includes('runtime unavailable'));
   });
 });

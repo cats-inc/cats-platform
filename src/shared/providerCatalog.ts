@@ -171,6 +171,7 @@ export const PRODUCT_PROVIDER_ORDER = [
   'cursor',
   'copilot',
   'opencode',
+  'kilo',
   'goose',
   'pi',
   'auggie',
@@ -213,6 +214,14 @@ export const PRODUCT_PROVIDER_MODELS: Record<ProductProviderId, ProviderModelOpt
     { value: 'opencode-go/glm-5', label: 'glm-5 (default)', default: true },
     { value: 'opencode-go/kimi-k2.5', label: 'kimi k2.5' },
     { value: 'opencode-go/minimax-m2.5', label: 'minimax m2.5' },
+  ],
+  kilo: [
+    { value: 'kilo/openai/gpt-5.4', label: 'gpt-5.4 (default)', default: true },
+    { value: 'kilo/openai/gpt-5.4-mini', label: 'gpt-5.4-mini' },
+    { value: 'kilo/anthropic/claude-opus-4.6', label: 'claude-opus-4.6' },
+    { value: 'kilo/anthropic/claude-sonnet-4.6', label: 'claude-sonnet-4.6' },
+    { value: 'kilo/google/gemini-3.1-pro-preview', label: 'gemini-3.1-pro-preview' },
+    { value: 'kilo/z-ai/glm-5', label: 'glm-5' },
   ],
   auggie: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },
@@ -269,6 +278,9 @@ const PRODUCT_PROVIDER_INSTANCES: Record<ProductProviderId, ProductProviderInsta
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],
   opencode: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
+  kilo: [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],
   goose: [
