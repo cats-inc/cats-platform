@@ -8,6 +8,7 @@
 |----------|------|-------|---------|
 | [2026-03-29-packaged-setup-knowledge-extraction-inventory](./2026-03-29-packaged-setup-knowledge-extraction-inventory.md) | 2026-03-29 | Packaged setup knowledge extraction inventory | Freeze which setup/install knowledge is already extracted, still trapped in `environment-bootstrap`, or safe to defer before the `cats` / `cats-runtime` repo split |
 | [2026-03-30-packaged-setup-split-safety-validation](./2026-03-30-packaged-setup-split-safety-validation.md) | 2026-03-30 | Packaged setup split-safety validation | Evidence that the first packaged setup helper baseline, host bridge, and staged asset contract now work from repo-owned `cats` assets without direct bootstrap shell-outs |
+| [2026-03-30-companion-external-knowledge-ingestion-strategy](./2026-03-30-companion-external-knowledge-ingestion-strategy.md) | 2026-03-30 | Companion external knowledge ingestion strategy | Evaluate Google Drive read-only connectors, Google Photos limits, and FB/IG plus LINE import paths for companion resources and memory promotion |
 | [2026-03-29-cats-a2a-pilot-alignment](./2026-03-29-cats-a2a-pilot-alignment.md) | 2026-03-29 | Cats A2A pilot alignment | Mirror the validated `cats-runtime` A2A layering pilot into `cats` so both repos share the same first-wave collaboration posture |
 | [2026-03-20-codex-cats-chat-work-code-product-boundaries](./2026-03-20-codex-cats-chat-work-code-product-boundaries.md) | 2026-03-20 | Codex view of Chat / Work / Code product boundaries | Capture a separate Codex-authored view of how `Cats Chat`, `Cats Work`, and `Cats Code` should split their product promises, shared foundation, and first-slice focus |
 | [2026-03-19-openclaw-memory-layering-benchmark](./2026-03-19-openclaw-memory-layering-benchmark.md) | 2026-03-19 | OpenClaw memory layering benchmark | Compare OpenClaw's transcript, compaction, durable memory, and retrieval split to the Cats suite's product/runtime memory needs |
@@ -35,4 +36,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-03-30*
