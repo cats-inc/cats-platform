@@ -490,7 +490,7 @@ async function main(): Promise<void> {
 
   mainWindow = await createMainWindow(hostConfig);
   if (hostConfig.background.trayEnabled) {
-    trayController = createDesktopTrayController({
+    trayController = await createDesktopTrayController({
       getWindow: () => mainWindow,
       onShowSetup: async () => {
         if (hostConfig) {

@@ -1,13 +1,6 @@
-import { Menu, Tray, nativeImage } from 'electron';
+import { app, Menu, Tray, nativeImage } from 'electron';
 
 import type { BrowserWindow } from 'electron';
-
-const TRAY_ICON_DATA_URL = `data:image/png;base64,${[
-  'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAdUlEQVR4AWP4DwUMDAwM',
-  'jI2N/8+fP/9Pnjz5j4GBgZGBgQHh4eH/Z8+e/SMjI5M2NjYGAoKCiJmZmRkYGBgY/v//',
-  '/58/f/5nYGBgYGBg8P///x8jIyMDA8P/P3/+fGhoaGBgYOD///8D4qCgoOB/4eHh////',
-  '/w8AF/QVFzppM6IAAAAASUVORK5CYII=',
-].join('')}`;
 
 export interface DesktopTrayController {
   showWindow(): void;
@@ -22,8 +15,16 @@ interface CreateDesktopTrayControllerOptions {
   onQuit: () => void;
 }
 
-function createTrayIcon() {
-  return nativeImage.createFromDataURL(TRAY_ICON_DATA_URL);
+async function createTrayIcon(): Promise<Electron.NativeImage> {
+  try {
+    const icon = await app.getFileIcon(app.getPath('exe'), { size: 'normal' });
+    if (!icon.isEmpty()) {
+      return icon;
+    }
+  } catch {
+    // Fall through to empty image — Electron will use its default.
+  }
+  return nativeImage.createEmpty();
 }
 
 function runTrayAction(action: () => Promise<void>): void {
@@ -34,10 +35,11 @@ function runTrayAction(action: () => Promise<void>): void {
   });
 }
 
-export function createDesktopTrayController(
+export async function createDesktopTrayController(
   options: CreateDesktopTrayControllerOptions,
-): DesktopTrayController {
-  const tray = new Tray(createTrayIcon());
+): Promise<DesktopTrayController> {
+  const icon = await createTrayIcon();
+  const tray = new Tray(icon);
   tray.setToolTip('Cats');
 
   const showWindow = () => {
