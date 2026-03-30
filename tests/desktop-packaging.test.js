@@ -359,6 +359,9 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-DockerDesktop\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-Ollama\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Check-WindowsSetupReadiness\.ps1/);
+  assert.match(script, /providerSetup\.localProviders/);
+  assert.match(script, /windows-ollama-local-model-installer/);
+  assert.match(script, /windows-docker-desktop-installer/);
   assert.match(script, /desktop-host\\setup-assets\\manifest\.json/);
   assert.match(script, /desktop-host\\state\.json/);
   assert.match(script, /electron-sidecar-bundle/);

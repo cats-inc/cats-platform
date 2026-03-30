@@ -168,6 +168,9 @@ Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-kiro-
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-docker-desktop-installer-script' }).Count -ge 1) 'Windows target includes the bundled Docker Desktop installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-ollama-local-model-installer-script' }).Count -ge 1) 'Windows target includes the bundled Ollama installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-setup-readiness-audit-script' }).Count -ge 1) 'Windows target includes the bundled setup readiness audit asset'
+Assert-True (($packagingPlan.installer.providerSetup.localProviders | Where-Object { $_.id -eq 'ollama' -and $_.bundledInCurrentInstaller -eq $true }).Count -ge 1) 'installer contract keeps Ollama in the bundled local-provider rollout'
+Assert-True (($packagingPlan.installer.providerSetup.helperCatalog | Where-Object { $_.id -eq 'windows-docker-desktop-installer' }).Count -ge 1) 'installer contract includes the bundled Docker Desktop helper metadata'
+Assert-True (($packagingPlan.installer.providerSetup.helperCatalog | Where-Object { $_.id -eq 'windows-ollama-local-model-installer' }).Count -ge 1) 'installer contract includes the bundled Ollama helper metadata'
 
 if ($SkipLaunch) {
   Write-Step 'Skipping installed-app launch as requested.'
