@@ -360,6 +360,16 @@ test('package.json wires Windows installers through electron-builder NSIS', asyn
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.to === 'desktop-host/setup-assets',
   ), true);
+  assert.equal(packageJson.build.extraResources.some(
+    (entry) => entry.from === 'build/desktop-packaging/shared/cats-runtime'
+      && entry.to === 'cats-runtime'
+      && Array.isArray(entry.filter)
+      && entry.filter.includes('!node_modules{,/**/*}'),
+  ), true);
+  assert.equal(packageJson.build.extraResources.some(
+    (entry) => entry.from === 'build/desktop-packaging/shared/cats-runtime/node_modules'
+      && entry.to === 'cats-runtime/node_modules',
+  ), true);
 });
 
 test('Windows installer smoke-check script validates bundled sidecars and host state', async () => {
