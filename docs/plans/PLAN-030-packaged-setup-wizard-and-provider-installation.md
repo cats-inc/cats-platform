@@ -187,11 +187,11 @@ instead of ad hoc future integration notes.
 - [x] Validate that the extraction inventory is sufficient without directly
       shelling out to `environment-bootstrap` or `project-bootstrap` as the
       product flow
-- [ ] Verify the sibling A2A/bootstrap pilot artifacts remain coherent with the
+- [x] Verify the sibling A2A/bootstrap pilot artifacts remain coherent with the
       packaged setup direction
 - [x] Record what still depends on monorepo-local source access and what is now
       safe after the split
-- [ ] Leave merge-back / long-term bootstrap convergence as a later evidence-led
+- [x] Leave merge-back / long-term bootstrap convergence as a later evidence-led
       decision rather than assuming immediate upstream sync
 
 **Deliverables**: knowledge extraction is evidence-backed before the repo split
@@ -279,6 +279,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 4 slice 8 landed: `scripts/windows/Check-WindowsSetupReadiness.ps1` now also carries an optional Docker Desktop warm-state audit that emits `docker_warm_up_required`, and the host interruption contract/tests now treat Docker warm-up as a first-class resumable packaged setup state rather than a purely deferred note |
 | 2026-03-30 | Phase 2 slice 3 landed: `electron/contracts.ts`, `electron/packaging.ts`, and desktop packaging tests now also carry a machine-readable `installer.providerSetup.localProviders` rollout map, making the current first packaged path explicit for Claude Code, Cursor Agent, and Kiro while keeping Goose and Junie intentionally deferred instead of silently omitted |
 | 2026-03-30 | Phase 4 slice 9 landed: `electron/bootstrapPage.ts` now surfaces the packaged local-provider rollout in the setup recovery panel, so the desktop host can show which local providers are bundled today versus explicitly deferred instead of only reporting helper counts |
+| 2026-03-30 | Phase 5 validation slice 2 landed: `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now explicitly cross-checks the sibling `cats-runtime` A2A/bootstrap pilot against the packaged setup baseline and records that merge-back into `project-bootstrap` remains a separate evidence-led decision rather than an automatic follow-through from the repo-owned rewrites |
 
 ---
 

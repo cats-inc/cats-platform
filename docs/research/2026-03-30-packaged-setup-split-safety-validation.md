@@ -2,7 +2,7 @@
 
 Date: 2026-03-30
 Topic: Validate which packaged setup slices are now repo-owned and safe after
-the `cats` / `cats-runtime` repo split
+the `cats-platform` / `cats-runtime` repo split
 Source:
 - `electron/setupAssets.ts`
 - `electron/packaging.ts`
@@ -72,6 +72,27 @@ Still intentionally deferred or incomplete:
 - deeper interruption handling across relaunch, elevation/UAC, first WSL boot,
   and later auth-required recovery
 
+### Sibling A2A / Bootstrap Pilot Remains Coherent
+
+- `project-bootstrap` remains a read-only source input for collaboration
+  knowledge, but the packaged setup flow does not shell out to it and does not
+  treat its artifacts as a runtime dependency.
+- The sibling collaboration pilot stays governed by
+  [`cats-runtime` PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md),
+  while `cats-platform` only mirrors the already-extracted A2A file set and
+  repo-owned skill-sync posture needed for split-safe sibling alignment.
+- The packaged setup contract additions made under `PLAN-030`, including
+  explicit interruption handling plus the staged `localProviders` rollout, do
+  not reopen the A2A extraction track. They stay on the packaged-host setup
+  boundary and leave collaboration artifact ownership with the sibling pilot.
+
+### Merge-Back Remains Deferred
+
+- Nothing in the packaged setup baseline or the sibling A2A pilot is being
+  treated as an automatic merge-back into `project-bootstrap`.
+- Long-term convergence remains evidence-led after additional pilot loops,
+  rather than being implied by the existence of repo-owned rewrites.
+
 ## Summary
 
 The first packaged setup baseline now passes the narrow split-safety check:
@@ -80,16 +101,20 @@ The first packaged setup baseline now passes the narrow split-safety check:
   packaged setup helpers from repo-owned assets
 - `environment-bootstrap` and `project-bootstrap` remain source inputs, not
   product runtime dependencies
-- the remaining split risk has moved to later capability packs and deeper
-  interruption semantics, not the already ported first-wave helpers
+- the remaining split risk has moved to later capability packs, deeper
+  interruption semantics, and later governance/adoption decisions, not the
+  already ported first-wave helpers
 
 ## Relevance
 
 This validation narrows `PLAN-030` truth:
 
 - the repo-owned packaged setup baseline is evidence-backed
-- later work should focus on deferred capability packs and deeper resume flows,
-  not re-porting the already internalized first-wave helper set
+- sibling A2A/bootstrap pilot work remains coherent without being reopened
+  under packaged setup
+- later work should focus on deferred capability packs, deeper resume flows,
+  and explicit adoption gates rather than re-porting the already internalized
+  first-wave helper set
 
 ## Action Items
 
@@ -97,3 +122,5 @@ This validation narrows `PLAN-030` truth:
   baseline until a separate product slice justifies them.
 - Continue deepening interruption handling in the host bridge instead of
   re-opening already ported helper knowledge.
+- Keep merge-back into `project-bootstrap` and any production-default
+  collaboration rollout as separate evidence-led decisions.
