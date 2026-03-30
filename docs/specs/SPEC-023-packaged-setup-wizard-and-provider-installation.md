@@ -494,6 +494,8 @@ terminal failures:
 - app relaunch after a packaged installer finishes
 - system restart or required relaunch
 - first-time WSL distro initialization
+- post-install manual follow-through should resume with a verification-first
+  recommendation instead of defaulting straight back to reinstall/apply
 - Docker daemon warm-up
 - privilege elevation round-trips
 - auth-required states after install succeeds

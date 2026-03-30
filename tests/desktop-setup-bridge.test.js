@@ -113,6 +113,55 @@ test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', a
   assert.match(snapshot.resumeAction?.summary ?? '', /Restart Windows/i);
 });
 
+test('buildDesktopSetupSnapshot prefers verification after manual Ollama follow-through', async () => {
+  const config = await createDesktopConfig();
+  await mkdir(join(config.packageRoot, 'scripts', 'windows'), { recursive: true });
+  await writeFile(
+    join(config.packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'),
+    '# helper',
+  );
+
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-03-30T11:04:00.000Z'),
+  });
+  const snapshot = await buildDesktopSetupSnapshot({
+    config,
+    packaging,
+    state: {
+      updatedAt: '2026-03-30T11:05:00.000Z',
+      lastAction: {
+        helperId: 'windows-ollama-local-model-installer',
+        assetId: 'windows-ollama-local-model-installer-script',
+        label: 'Windows Ollama local-model installer',
+        mode: 'apply',
+        runState: 'completed',
+        status: 'changes_required',
+        summary: 'Start Ollama and rerun the packaged setup check.',
+        packagedRelativePath: 'desktop-host/setup-assets/windows/Install-Ollama.ps1',
+        scriptPath: null,
+        requiresElevation: false,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-03-30T11:04:30.000Z',
+        completedAt: '2026-03-30T11:05:00.000Z',
+        warnings: [],
+        plannedActions: ['local_model:start_ollama_local_model'],
+        appliedChanges: ['install_ollama_local_model'],
+        manualSteps: ['Launch Ollama from the Start menu, then wait for http://127.0.0.1:11434 to respond.'],
+        interruptions: [],
+        error: null,
+      },
+    },
+  }, {
+    platform: 'win32',
+  });
+
+  assert.equal(snapshot.resumeAction?.helperId, 'windows-ollama-local-model-installer');
+  assert.equal(snapshot.resumeAction?.mode, 'check');
+  assert.equal(snapshot.resumeAction?.reason, 'manual_follow_up');
+  assert.match(snapshot.resumeAction?.summary ?? '', /verification step/i);
+});
+
 test('runDesktopSetupHelper normalizes successful helper execution', async () => {
   const config = await createDesktopConfig();
   const packaging = createDesktopPackagingPlan(config, {

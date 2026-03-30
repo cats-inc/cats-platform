@@ -193,6 +193,9 @@ recommended resume step when a helper reports a resumable interruption. When a
 packaged setup step blocks on a restart or other recovery action, the bootstrap
 issue panel also reports that state as an install-category issue instead of
 showing only provider remediation.
+When a helper reports only manual follow-through, the host now prefers a
+verification-first resume step instead of recommending another install/apply
+mutation by default.
 
 Current interruption truth in the packaged host:
 

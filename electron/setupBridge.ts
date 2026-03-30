@@ -197,6 +197,16 @@ function deriveResumeAction(
     reason = 'not_installed';
     mode = helper.supportsApply ? 'apply' : helper.supportsCheckOnly ? 'check' : null;
     summary = `Run ${helper.label} to install the missing packaged setup requirement.`;
+  } else if (lastAction.status === 'changes_required' && lastAction.manualSteps.length > 0) {
+    reason = 'manual_follow_up';
+    mode = helper.supportsCheckOnly
+      ? 'check'
+      : supportsMode(helper, lastAction.mode)
+        ? lastAction.mode
+        : helper.supportsApply
+          ? 'apply'
+          : null;
+    summary = `Finish the manual follow-through for ${helper.label}, then rerun a verification step.`;
   } else if (lastAction.status === 'changes_required') {
     reason = 'changes_required';
     mode = helper.supportsApply
