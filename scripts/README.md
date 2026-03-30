@@ -100,7 +100,7 @@ Shared behavior:
 - `--clean` explicitly forces tarball deletion after a successful install
 - `--skip-build` assumes `npm run build` has already been run
 
-After a successful install, verify the executable contract with `cats-platform --help`.
+After a successful install, verify the executable contract with `cats --help`.
 This path is separate from the Electron desktop packaging and installer flows.
 
 `cats` now also ships its first repo-owned packaged setup helper:

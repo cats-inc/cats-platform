@@ -16,7 +16,7 @@ test('windows pack/install helper delimits the tarball variable in the delete pr
   assert.doesNotMatch(windowsScript, /Read-Host\s+"`nDelete\s+\$tgzName\?\s+\(Y\/n\)"/u);
 });
 
-test('pack/install helpers point users to cats-platform as the CLI command', async () => {
+test('pack/install helpers point users to cats as the CLI command', async () => {
   const windowsScript = await readFile(
     join(process.cwd(), 'scripts', 'windows', 'Pack-Install.ps1'),
     'utf8',
@@ -31,7 +31,7 @@ test('pack/install helpers point users to cats-platform as the CLI command', asy
   );
 
   for (const script of [windowsScript, linuxScript, macosScript]) {
-    assert.match(script, /cats-platform --help/u);
-    assert.doesNotMatch(script, /cats --help/u);
+    assert.match(script, /cats --help/u);
+    assert.doesNotMatch(script, /cats-platform --help/u);
   }
 });
