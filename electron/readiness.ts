@@ -480,6 +480,12 @@ function buildActions(
     actions.push({ id, label, primary });
   };
   const lastSetupAction = options.setup?.lastAction ?? null;
+  const optionalSetupPackLabel = lastSetupAction && isOptionalCapabilityPackSetupAction(lastSetupAction)
+    ? describeSetupPack(lastSetupAction.optionalFollowThroughPack)
+    : null;
+  const optionalSetupPackActionLabel = optionalSetupPackLabel
+    ? `Open Setup for ${optionalSetupPackLabel.replace(/\b\w/g, (value) => value.toUpperCase())}`
+    : 'Open Setup';
   const canResumeSetup = Boolean(
     lastSetupAction
     && !isOptionalCapabilityPackSetupAction(lastSetupAction)
@@ -511,6 +517,9 @@ function buildActions(
 
   if (phase === 'ready_for_chat') {
     push('open_chat', 'Open Cats', true);
+    if (optionalSetupPackLabel) {
+      push('open_setup', optionalSetupPackActionLabel);
+    }
     if (options.runtimeReady) {
       push('open_runtime_diagnostics', 'Open Runtime Diagnostics');
     }

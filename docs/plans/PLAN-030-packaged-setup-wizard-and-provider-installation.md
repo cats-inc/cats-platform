@@ -292,6 +292,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 4 slice 16 landed: `electron/readiness.ts` now labels optional capability-pack follow-through explicitly in the prerequisite panel instead of treating local-model audit results as generic setup noise, while still keeping them non-blocking |
 | 2026-03-30 | Phase 4 slice 17 landed: `electron/contracts.ts` and `electron/setupBridge.ts` now persist optional local-model follow-through as an explicit `DesktopSetupActionRecord.optionalFollowThroughPack` contract instead of forcing readiness/bootstrap consumers to infer that state from `plannedActions` heuristics |
 | 2026-03-30 | Phase 4 slice 18 landed: the bootstrap issue panel, setup recovery panel, and setup-bridge helpers now render optional packaged follow-through with explicit pack labels such as `local model pack` instead of a generic capability-pack message |
+| 2026-03-30 | Phase 4 slice 19 landed: `electron/readiness.ts` now keeps an explicit `Open Setup for Local Model Pack` action available in `ready_for_chat` when the API baseline is ready but an optional local-model follow-through pack is still discoverable |
 
 ---
 

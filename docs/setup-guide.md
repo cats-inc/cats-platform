@@ -202,6 +202,9 @@ non-blocking for the API baseline and first chat. That state is now persisted
 explicitly in the host setup record instead of being inferred only from helper
 planned-action strings, and the bootstrap UI now names the pack directly when
 it surfaces that follow-through.
+If the API baseline is already ready and chat can open, the bootstrap action
+bar still keeps a non-blocking setup shortcut for that optional local-model
+pack instead of hiding it behind chat-only actions.
 When a helper reports only manual follow-through, the host now prefers a
 verification-first resume step instead of recommending another install/apply
 mutation by default.

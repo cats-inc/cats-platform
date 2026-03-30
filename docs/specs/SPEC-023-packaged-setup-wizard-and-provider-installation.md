@@ -517,6 +517,9 @@ Current implementation truth:
 - the bootstrap issue panel and setup recovery panel now name the optional
   packaged follow-through pack explicitly from that host-owned field instead of
   falling back to a generic capability-pack label
+- when chat is already ready through the API baseline, the bootstrap action bar
+  still keeps a non-blocking setup entry for the optional local-model pack
+  instead of hiding that packaged path completely
 
 ## Dependencies
 
