@@ -140,6 +140,7 @@ npm run desktop:package:windows
   - verify the bundled Windows WSL prerequisite preflight asset
   - verify the bundled Windows WSL substrate and Ubuntu installer asset
   - verify the bundled Windows WSL Kiro installer asset
+  - verify the bundled Windows Docker Desktop installer asset
   - verify the bundled Windows setup readiness audit asset
   - verify packaged `desktop-package-plan.json` keeps the Windows NSIS target
   - launch the installed app and wait for the desktop-host state file to reach
@@ -162,8 +163,10 @@ npm run desktop:package:windows
   - map failures onto structured host state plus resumable remediation actions
   - keep the current first packaged local-provider path bounded to Claude Code,
     Cursor Agent, Goose, Junie, and the WSL-backed Kiro helper
-  - keep Docker/local-model helpers and future expert-only capability packs
-    outside the current packaged baseline rather than silently missing
+  - keep the current packaged local-model prerequisite path bounded to the
+    Docker Desktop installer and engine warm-state helper
+  - keep broader Ollama/local-model helpers and future expert-only capability
+    packs outside the current packaged baseline rather than silently missing
   - avoid any runtime shell-out to `environment-bootstrap` or
     `project-bootstrap`; both remain source knowledge only
 - update-channel contract in this slice:

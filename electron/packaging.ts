@@ -131,7 +131,8 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           recommended: false,
           requiresLocalInstall: true,
           notes: [
-            'Deferred follow-through for Docker, Ollama, and heavier local runtime paths.',
+            'Current packaged helper coverage includes Docker Desktop installation plus engine warm-state recovery.',
+            'Broader Ollama and heavier local runtime follow-through still remains a later slice.',
           ],
         },
         {
@@ -426,13 +427,14 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           id: 'windows-docker-local-model-helper',
           label: 'Windows Docker/local-model prerequisite helper',
           kind: 'prerequisite_helper',
-          status: 'deferred',
+          status: 'ported',
           pack: 'local_model_pack',
           platform: 'windows',
-          currentHome: 'environment-bootstrap/platform/windows/Install-Docker-Admin.ps1',
-          targetHome: 'later cats-platform packaged-host capability pack assets',
+          currentHome: 'cats-platform/scripts/windows/Install-DockerDesktop.ps1',
+          targetHome: 'cats-platform packaged-host capability pack assets',
           notes: [
-            'Useful source knowledge, but not part of the lowest-friction first packaged path.',
+            'Repo-owned rewrite of the Windows Docker Desktop install and warm-state helper.',
+            'Keeps Docker install mutation and engine warm-up on a structured host-owned contract instead of leaving them in source knowledge only.',
           ],
         },
       ],

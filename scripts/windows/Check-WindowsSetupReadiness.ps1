@@ -154,80 +154,6 @@ function Invoke-HelperJson {
   return $raw | ConvertFrom-Json
 }
 
-function Get-DockerWarmState {
-  $plannedActions = [System.Collections.Generic.List[string]]::new()
-  $warnings = [System.Collections.Generic.List[string]]::new()
-  $interruptions = [System.Collections.Generic.List[object]]::new()
-
-  $dockerInstalled = $false
-  $engineReady = $false
-  $version = $null
-
-  switch ($DockerState) {
-    'missing' {
-      $dockerInstalled = $false
-    }
-    'installed_engine_stopped' {
-      $dockerInstalled = $true
-      $engineReady = $false
-      $version = 'Docker Desktop'
-    }
-    'ready' {
-      $dockerInstalled = $true
-      $engineReady = $true
-      $version = 'Docker Desktop'
-    }
-    default {
-      try {
-        $dockerVersion = docker --version 2>$null
-        if ($dockerVersion) {
-          $dockerInstalled = $true
-          $version = [string]$dockerVersion
-        }
-      } catch {
-        $dockerInstalled = $false
-      }
-
-      if ($dockerInstalled) {
-        try {
-          $dockerInfo = docker info 2>$null
-          $engineReady = ($LASTEXITCODE -eq 0 -and $dockerInfo)
-        } catch {
-          $engineReady = $false
-        }
-      }
-    }
-  }
-
-  $status = if (-not $dockerInstalled) {
-    $plannedActions.Add('install_docker_desktop')
-    'not_installed'
-  } elseif (-not $engineReady) {
-    $plannedActions.Add('start_docker_desktop')
-    $interruptions.Add([pscustomobject]@{
-        kind = 'docker_warm_up_required'
-        summary = 'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.'
-        resumable = $true
-        requiresRestart = $false
-        requiresElevation = $false
-      })
-    'docker_warm_up_required'
-  } else {
-    'ready'
-  }
-
-  return [pscustomobject]@{
-    helper = 'windows-docker-warm-state'
-    status = $status
-    installed = $dockerInstalled
-    engineReady = $engineReady
-    version = $version
-    plannedActions = $plannedActions.ToArray()
-    warnings = $warnings.ToArray()
-    interruptions = $interruptions.ToArray()
-  }
-}
-
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
 $nativeCliPackPath = Join-Path $PSScriptRoot 'Install-NodeCliPack.ps1'
 $wslPreflightPath = Join-Path $PSScriptRoot 'Check-WslPrerequisites.ps1'
@@ -235,6 +161,7 @@ $claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
 $cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
 $gooseHelperPath = Join-Path $PSScriptRoot 'Install-Goose.ps1'
 $junieHelperPath = Join-Path $PSScriptRoot 'Install-Junie.ps1'
+$dockerHelperPath = Join-Path $PSScriptRoot 'Install-DockerDesktop.ps1'
 
 $nativeCliArguments = @('-CheckOnly', '-Json', '-SkipPrefixHelper')
 if ($SkipNodeCheck) {
@@ -324,7 +251,11 @@ if ($IncludeNativeProviders) {
   $junieResult = Invoke-HelperJson -ScriptPath $junieHelperPath -Arguments $junieArguments
 }
 if ($IncludeDocker) {
-  $dockerResult = Get-DockerWarmState
+  $dockerArguments = @('-CheckOnly', '-Json')
+  if ($DockerState -ne 'auto') {
+    $dockerArguments += @('-DockerState', $DockerState)
+  }
+  $dockerResult = Invoke-HelperJson -ScriptPath $dockerHelperPath -Arguments $dockerArguments
 }
 
 $warnings = [System.Collections.Generic.List[string]]::new()

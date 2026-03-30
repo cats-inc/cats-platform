@@ -264,6 +264,7 @@ The current substrate writes:
 - `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-WslUbuntuEnvironment.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-KiroWslCli.ps1`
+- `build/desktop-packaging/shared/setup-assets/windows/Install-DockerDesktop.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Check-WindowsSetupReadiness.ps1`
 - `build/desktop-packaging/shared/setup-assets/manifest.json`
 - `build/desktop-packaging/targets/<target>/installer-manifest.json`
@@ -331,6 +332,7 @@ What the smoke-check confirms:
 - the bundled Windows native Goose installer exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows native Junie installer exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows WSL prerequisite preflight helper exists under `resources/desktop-host/setup-assets/`
+- the bundled Windows Docker Desktop installer exists under `resources/desktop-host/setup-assets/`
 - the bundled Windows setup readiness audit helper exists under `resources/desktop-host/setup-assets/`
 - the packaged `desktop-package-plan.json` still advertises the Windows NSIS
   target

@@ -65,12 +65,10 @@ Safe after split for the first packaged setup baseline:
 
 Still intentionally deferred or incomplete:
 
-- Docker Desktop install still only exists as source knowledge
-  (`environment-bootstrap/platform/windows/Install-Docker-Admin.ps1`)
 - richer desktop remediation polish above the current explicit interruption
   contract
-- any future expert-only capability packs beyond the now-ported native CLI
-  baseline
+- any broader Ollama/local-model or future expert-only capability packs beyond
+  the now-ported native CLI plus Docker baseline
 
 ### Sibling A2A / Bootstrap Pilot Remains Coherent
 

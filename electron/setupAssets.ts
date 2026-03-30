@@ -6,7 +6,7 @@ export interface DesktopSetupAsset {
   helperId: string;
   label: string;
   kind: 'prerequisite_helper' | 'cli_pack_installer' | 'provider_installer' | 'readiness_helper';
-  pack: 'native_cli_pack' | null;
+  pack: 'native_cli_pack' | 'local_model_pack' | 'wsl_power_user_pack' | null;
   platform: 'windows' | 'windows_wsl';
   sourceRelativePath: string;
   stageRelativePath: string;
@@ -209,6 +209,27 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     resumable: true,
     notes: [
       'Installs Kiro CLI inside the repo-owned WSL substrate, repairs ~/.bashrc, and preserves the post-install sign-in follow-through.',
+    ],
+  },
+  {
+    id: 'windows-docker-desktop-installer-script',
+    helperId: 'windows-docker-desktop-installer',
+    label: 'Windows Docker Desktop installer',
+    kind: 'prerequisite_helper',
+    pack: 'local_model_pack',
+    platform: 'windows',
+    sourceRelativePath: 'scripts/windows/Install-DockerDesktop.ps1',
+    stageRelativePath: 'shared/setup-assets/windows/Install-DockerDesktop.ps1',
+    packagedRelativePath: 'desktop-host/setup-assets/windows/Install-DockerDesktop.ps1',
+    targetPlatforms: ['windows'],
+    supportsCheckOnly: true,
+    supportsApply: true,
+    supportsUpgrade: true,
+    supportsForce: true,
+    requiresElevation: true,
+    resumable: true,
+    notes: [
+      'Installs or upgrades Docker Desktop and keeps engine warm-up as an explicit packaged setup recovery step.',
     ],
   },
   {

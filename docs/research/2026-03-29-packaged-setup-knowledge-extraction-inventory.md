@@ -133,7 +133,7 @@ ports a product-owned host asset layer.
 | Windows WSL substrate + Ubuntu installer | `environment-bootstrap/platform/windows/Install-WSL2-Admin.ps1` + `environment-bootstrap/platform/windows/Install-WSLUbuntu.ps1` | `cats-platform/scripts/windows/Install-WslUbuntuEnvironment.ps1` | packaged-host prerequisite helpers in `cats-platform` | Ported | Repo-owned mutation helper for WSL substrate enablement, WSL2 default-version setup, and Ubuntu registration; keeps in-distro Ubuntu package upgrades as later manual follow-through |
 | Windows WSL Kiro installer | `environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1` | `cats-platform/scripts/windows/Install-KiroWslCli.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned WSL Kiro installer now carries dependency checks, PATH cleanup, `kc` alias repair, and post-install sign-in guidance |
 | Windows readiness/auth inspection follow-through | remaining `Check-Installation.ps1` coverage | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats-platform` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; expand the repo-owned audit incrementally instead of copying the old bootstrap-wide report verbatim |
-| Docker Desktop install + warm-state knowledge | `Install-Docker-Admin.ps1` | `environment-bootstrap` for install, repo-owned readiness audit for warm-state | later packaged-host capability pack plus current `Check-WindowsSetupReadiness.ps1` | Partial port | Docker install remains deferred, but Docker warm-up truth is now selectively ported into the repo-owned readiness audit as `docker_warm_up_required` |
+| Docker Desktop install + warm-state knowledge | `Install-Docker-Admin.ps1` | `cats-platform/scripts/windows/Install-DockerDesktop.ps1` | packaged-host capability-pack assets in `cats-platform` plus current `Check-WindowsSetupReadiness.ps1` | Ported | Repo-owned helper now owns Docker Desktop install, upgrade, elevation-required recovery, and engine warm-state follow-through while the readiness audit consumes its structured check output |
 | Windows native Goose installer | `environment-bootstrap/platform/windows/Install-Goose.ps1` + `environment-bootstrap/platform/windows/Install-WSLGoose.ps1` knowledge | `cats-platform/scripts/windows/Install-Goose.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned native installer helper now keeps Goose on the packaged setup baseline and treats post-install auth as an explicit host-owned interruption |
 | Windows native Junie installer | `environment-bootstrap/platform/windows/Install-Junie.ps1` | `cats-platform/scripts/windows/Install-Junie.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned native installer helper now keeps Junie on the packaged setup baseline and treats JetBrains sign-in follow-through as an explicit host-owned interruption |
 | Ngrok / tunnel setup | `Install-Ngrok-Admin.ps1`, `Setup-Ngrok.ps1` | `environment-bootstrap` only | later transport helper layer in `cats-platform` | Defer | Not part of the first packaged setup baseline |
@@ -170,12 +170,13 @@ ports a product-owned host asset layer.
    - Selective auth/readiness follow-through is now also landed through the
      repo-owned readiness audit plus explicit host interruption kinds for
      relaunch, restart, elevation, first WSL boot, and auth-required states.
-   - Docker warm-up is now explicit.
+   - Docker install and warm-up are now explicit.
    - The remaining gap is no longer deciding whether Goose/Junie belong in the
-     first packaged path; the main open follow-through has moved to Docker and
+     first packaged path; the main open follow-through has moved to Ollama and
      other heavier capability packs.
 
-3. Defer Docker and tunnel flows until after the first packaged setup contract
+3. Defer tunnel flows and broader local-model follow-through until after the
+   first packaged setup contract
    is stable.
    - They are still useful knowledge sources.
    - They are not the lowest-friction first packaged path described by
@@ -200,7 +201,7 @@ Keep the next packaged-host slice focused on either:
 
 - additional host/runtime recovery coherence that is still missing from the
   packaged setup bridge, or
-- Docker/local-model follow-through that still remains outside the current
-  repo-owned packaged helper baseline
+- broader Ollama/local-model follow-through that still remains outside the
+  current repo-owned packaged helper baseline
 
 The contract no longer treats Goose/Junie as missing or deferred baseline work.

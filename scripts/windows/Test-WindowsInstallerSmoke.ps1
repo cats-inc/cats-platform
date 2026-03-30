@@ -138,6 +138,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Check-WslPrerequisites.ps1'); Label = 'bundled Windows WSL prerequisite preflight helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-WslUbuntuEnvironment.ps1'); Label = 'bundled Windows WSL substrate installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-KiroWslCli.ps1'); Label = 'bundled Windows WSL Kiro installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-DockerDesktop.ps1'); Label = 'bundled Windows Docker Desktop installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Check-WindowsSetupReadiness.ps1'); Label = 'bundled Windows setup readiness audit helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\manifest.json'); Label = 'bundled setup-assets manifest' },
   @{ Path = $packagingPlanPath; Label = 'bundled desktop packaging plan' }
@@ -163,6 +164,7 @@ Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-junie
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-wsl-prerequisite-preflight-script' }).Count -ge 1) 'Windows target includes the bundled WSL prerequisite preflight asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-wsl-environment-installer-script' }).Count -ge 1) 'Windows target includes the bundled WSL substrate installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-kiro-wsl-installer-script' }).Count -ge 1) 'Windows target includes the bundled WSL Kiro installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-docker-desktop-installer-script' }).Count -ge 1) 'Windows target includes the bundled Docker Desktop installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-setup-readiness-audit-script' }).Count -ge 1) 'Windows target includes the bundled setup readiness audit asset'
 
 if ($SkipLaunch) {

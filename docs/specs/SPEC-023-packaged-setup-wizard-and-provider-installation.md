@@ -461,13 +461,19 @@ teaching the renderer or the user about the underlying script topology.
 - The desktop bootstrap recovery UI now also surfaces that `localProviders`
   rollout directly, so the host can tell users which local providers are
   bundled today without leaving the setup panel.
+- The first repo-owned `local_model_pack` prerequisite slice is now also
+  landed: `scripts/windows/Install-DockerDesktop.ps1` keeps Docker Desktop
+  install, upgrade, elevation-required recovery, and engine warm-state
+  follow-through on the packaged helper contract instead of leaving Docker
+  install as source knowledge only.
 - `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now
   also records that this packaged setup baseline stays coherent with the
   sibling `cats-runtime` A2A/bootstrap pilot and does not imply automatic
   merge-back into `project-bootstrap`.
 - The next follow-on under `PLAN-030` is no longer the baseline host bridge or
-  provider graduation question; it is the remaining Docker/local-model and
-  richer remediation follow-through above the now-ported native CLI baseline.
+  provider graduation question; it is the remaining Ollama/local-model and
+  richer remediation follow-through above the now-ported native CLI and Docker
+  baseline.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)
