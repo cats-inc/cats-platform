@@ -380,6 +380,7 @@ test('package.json wires Windows installers through electron-builder NSIS', asyn
   assert.equal(Object.hasOwn(packageJson, 'types'), false);
   assert.equal(packageJson.scripts['desktop:package:windows'], 'node scripts/build-desktop-installer.mjs --target windows');
   assert.equal(packageJson.scripts['start:server'], 'node dist-server/index.js');
+  assert.equal(packageJson.build.extraMetadata?.name, 'cats');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
   assert.equal(packageJson.build.nsis.oneClick, false);
   assert.equal(packageJson.build.extraResources.some(

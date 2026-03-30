@@ -70,6 +70,9 @@
   "build": {
     "appId": "io.catsinc.cats",
     "productName": "Cats",
+    "extraMetadata": {
+      "name": "cats"
+    },
     "asar": true,
     "npmRebuild": false,
     "directories": {
