@@ -122,7 +122,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           requiresLocalInstall: true,
           notes: [
             'Windows-first knowledge-porting target from environment-bootstrap.',
-            'Combines npm-global node CLI tools, native Windows installers, and WSL-backed installers where required.',
+            'Combines npm-global node CLI tools, native Windows installers, and the current first WSL-backed Kiro path.',
           ],
         },
         {
@@ -136,11 +136,85 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
         },
         {
           id: 'wsl_power_user_pack',
-          label: 'WSL / Power User Pack',
+          label: 'Power User / Deferred CLI Pack',
           recommended: false,
           requiresLocalInstall: true,
           notes: [
-            'Deferred follow-through for heavier WSL-first providers beyond the initial native CLI pack.',
+            'Deferred follow-through for heavier WSL-first and later native provider installers beyond the initial packaged path.',
+          ],
+        },
+      ],
+      localProviders: [
+        {
+          id: 'claude_code',
+          label: 'Claude Code',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          deliveryPhase: 'initial_packaged_path',
+          bundledInCurrentInstaller: true,
+          helperIds: ['windows-claude-native-installer'],
+          currentHome: 'cats-platform/scripts/windows/Install-ClaudeCode.ps1',
+          targetHome: 'cats-platform packaged-host provider assets',
+          notes: [
+            'Repo-owned native Windows installer helper is already bundled into the current desktop packaging flow.',
+          ],
+        },
+        {
+          id: 'cursor_agent',
+          label: 'Cursor Agent',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          deliveryPhase: 'initial_packaged_path',
+          bundledInCurrentInstaller: true,
+          helperIds: ['windows-cursor-native-installer'],
+          currentHome: 'cats-platform/scripts/windows/Install-CursorAgent.ps1',
+          targetHome: 'cats-platform packaged-host provider assets',
+          notes: [
+            'Repo-owned native Windows installer helper keeps Cursor on the first packaged path.',
+          ],
+        },
+        {
+          id: 'kiro',
+          label: 'Kiro CLI',
+          pack: 'native_cli_pack',
+          platform: 'windows_wsl',
+          deliveryPhase: 'initial_packaged_path',
+          bundledInCurrentInstaller: true,
+          helperIds: ['windows-kiro-wsl-installer'],
+          currentHome: 'cats-platform/scripts/windows/Install-KiroWslCli.ps1',
+          targetHome: 'cats-platform packaged-host provider assets',
+          notes: [
+            'The current packaged path includes one repo-owned WSL-backed provider installer, and that installer is Kiro.',
+          ],
+        },
+        {
+          id: 'goose',
+          label: 'Goose CLI',
+          pack: 'wsl_power_user_pack',
+          platform: 'windows',
+          deliveryPhase: 'later_packaged_path',
+          bundledInCurrentInstaller: false,
+          helperIds: [],
+          currentHome: 'environment-bootstrap/platform/windows/Install-Goose.ps1 + environment-bootstrap/platform/windows/Install-WSLGoose.ps1',
+          targetHome: 'later cats-platform packaged-host provider assets',
+          notes: [
+            'Deferred out of the initial packaged path until the product chooses and validates a stable native-vs-WSL Goose delivery path.',
+            'Source knowledge exists today, but no repo-owned Goose helper is bundled into the current installer contract.',
+          ],
+        },
+        {
+          id: 'junie',
+          label: 'Junie CLI',
+          pack: 'wsl_power_user_pack',
+          platform: 'windows',
+          deliveryPhase: 'later_packaged_path',
+          bundledInCurrentInstaller: false,
+          helperIds: [],
+          currentHome: 'environment-bootstrap/platform/windows/Install-Junie.ps1',
+          targetHome: 'later cats-platform packaged-host provider assets',
+          notes: [
+            'Deferred out of the initial packaged path even though the current source knowledge is Windows-native.',
+            'Keep the first packaged setup baseline focused on the already-ported native pack plus the single Kiro WSL path.',
           ],
         },
       ],
@@ -204,9 +278,9 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: null,
           platform: 'cross_platform',
           currentHome: 'cats-runtime/src/core/provider-install',
-          targetHome: 'cats packaged host runtime bridge',
+          targetHome: 'cats-platform packaged host runtime bridge',
           notes: [
-            'Consume runtime-owned provider install/check metadata rather than duplicating it in cats.',
+            'Consume runtime-owned provider install/check metadata rather than duplicating it in cats-platform.',
           ],
         },
         {
@@ -217,7 +291,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: 'native_cli_pack',
           platform: 'windows',
           currentHome: 'cats-platform/scripts/windows/Setup-NodeGlobalPrefix.ps1',
-          targetHome: 'cats packaged-host setup assets',
+          targetHome: 'cats-platform packaged-host setup assets',
           notes: [
             'Repo-owned rewrite of the user-scoped npm prefix and PATH prerequisite helper.',
             'Required before npm-global CLI installs are reliable for the packaged host.',
@@ -231,7 +305,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: 'native_cli_pack',
           platform: 'windows',
           currentHome: 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
-          targetHome: 'cats packaged-host setup assets',
+          targetHome: 'cats-platform packaged-host setup assets',
           notes: [
             'Repo-owned rewrite of the Windows npm-global AI CLI pack installer.',
             'Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi in one Windows-first slice.',
@@ -245,7 +319,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: 'native_cli_pack',
           platform: 'windows',
           currentHome: 'cats-platform/scripts/windows/Install-ClaudeCode.ps1',
-          targetHome: 'cats packaged-host provider assets',
+          targetHome: 'cats-platform packaged-host provider assets',
           notes: [
             'Repo-owned rewrite of the native Windows Claude Code installer flow.',
             'Removes legacy npm-installed Claude shims so the native installer remains the packaged setup baseline.',
@@ -259,7 +333,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: 'native_cli_pack',
           platform: 'windows',
           currentHome: 'cats-platform/scripts/windows/Install-CursorAgent.ps1',
-          targetHome: 'cats packaged-host provider assets',
+          targetHome: 'cats-platform packaged-host provider assets',
           notes: [
             'Repo-owned rewrite of the native Windows Cursor Agent installer flow.',
             'Keeps Cursor on the Windows-native install path instead of routing first through WSL.',
@@ -273,7 +347,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: 'native_cli_pack',
           platform: 'windows',
           currentHome: 'cats-platform/scripts/windows/Check-WslPrerequisites.ps1',
-          targetHome: 'cats packaged-host prerequisite assets',
+          targetHome: 'cats-platform packaged-host prerequisite assets',
           notes: [
             'Repo-owned structured preflight slice for WSL readiness before feature enablement and distro installation.',
           ],
@@ -286,7 +360,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: 'native_cli_pack',
           platform: 'windows',
           currentHome: 'cats-platform/scripts/windows/Install-WslUbuntuEnvironment.ps1',
-          targetHome: 'cats packaged-host prerequisite assets',
+          targetHome: 'cats-platform packaged-host prerequisite assets',
           notes: [
             'Repo-owned rewrite of the WSL substrate enablement and Ubuntu distro registration flow.',
             'Returns restart-required after substrate mutation so the packaged host can resume distro install cleanly after reboot.',
@@ -301,7 +375,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: 'native_cli_pack',
           platform: 'windows_wsl',
           currentHome: 'cats-platform/scripts/windows/Install-KiroWslCli.ps1',
-          targetHome: 'cats packaged-host provider assets',
+          targetHome: 'cats-platform packaged-host provider assets',
           notes: [
             'Repo-owned rewrite of the Kiro WSL installer flow, including PATH cleanup, kc alias repair, and post-install sign-in guidance.',
           ],
@@ -314,7 +388,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: 'native_cli_pack',
           platform: 'windows',
           currentHome: 'cats-platform/scripts/windows/Check-WindowsSetupReadiness.ps1',
-          targetHome: 'cats packaged-host diagnostics helpers',
+          targetHome: 'cats-platform packaged-host diagnostics helpers',
           notes: [
             'Repo-owned structured audit that composes the Windows prefix, native CLI pack, and WSL preflight helpers.',
             'Complements runtime diagnostics for host-only prerequisite and warm-state checks.',
@@ -328,7 +402,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           pack: 'local_model_pack',
           platform: 'windows',
           currentHome: 'environment-bootstrap/platform/windows/Install-Docker-Admin.ps1',
-          targetHome: 'later cats packaged-host capability pack assets',
+          targetHome: 'later cats-platform packaged-host capability pack assets',
           notes: [
             'Useful source knowledge, but not part of the lowest-friction first packaged path.',
           ],

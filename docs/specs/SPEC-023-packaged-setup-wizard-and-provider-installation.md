@@ -131,8 +131,10 @@ host-operations depth around that first slice:
    packs, with advanced per-provider control available when needed.
 7. The first packaged slice shall support these capability-pack directions:
    - `API Baseline (Recommended)` for API-key-backed Claude, OpenAI, and Gemini
-   - `Native CLI Pack` for the most stable cross-platform native CLI providers
-   - additional packs such as local-model or WSL-heavy flows may be deferred
+   - `Native CLI Pack` for the current repo-owned Windows path: Claude Code,
+     Cursor Agent, and the first WSL-backed Kiro helper
+   - additional packs such as local-model or deferred power-user providers
+     may remain later-path only
 8. The setup flow shall perform a local provider scan before offering installs
    so already-installed tools can be reused.
 9. The provider scan shall report at least these states per provider:
@@ -312,13 +314,16 @@ Settings or an equivalent product-owned management surface so users can:
 - `Native CLI Pack`
   - Claude Code
   - Cursor Agent when already installed or available on the current platform
+  - Kiro CLI through the current Windows WSL-backed packaged helper path
 
 ### Later Packs
 
 - `Local Model Pack`
   - Ollama and local-model helpers
-- `WSL / Power User Pack`
-  - Kiro, Goose, Junie, and other tooling with heavier local prerequisites
+- `Power User / Deferred CLI Pack`
+  - Goose
+  - Junie
+  - other tooling with heavier local prerequisites or still-unvalidated packaged installer flows
 
 ## Installer and Runtime Boundary
 
@@ -449,10 +454,15 @@ teaching the renderer or the user about the underlying script topology.
   `shared/setup-assets/manifest.json` alongside the bundled scripts so host
   bridge or smoke tooling can discover packaged setup helpers without
   parsing the full desktop packaging plan.
-- The next follow-on under `PLAN-030` is no longer the baseline host bridge;
-  it is the remaining interruption edge beyond the explicit-interruption
-  contract, especially Docker warm-up plus later provider coverage so the
-  split does not leave required setup logic trapped in bootstrap repos.
+- The staged desktop packaging contract now also carries
+  `installer.providerSetup.localProviders`, making the current first packaged
+  path explicit: Claude Code, Cursor Agent, and Kiro are bundled today,
+  while Goose and Junie remain later-path providers sourced only from
+  `environment-bootstrap` knowledge until the product decides to port them.
+- The next follow-on under `PLAN-030` is no longer the baseline host bridge or
+  interruption contract; it is validating the remaining split-era governance
+  and deciding if any later provider should graduate from deferred status into
+  the repo-owned packaged path.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)

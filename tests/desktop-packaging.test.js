@@ -39,6 +39,46 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(plan.installer.providerSetup.executionDefaults.hostOwned, true);
   assert.equal(plan.installer.providerSetup.executionDefaults.rendererShellAccess, false);
   assert.equal(
+    plan.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'claude_code'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-claude-native-installer'),
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'kiro'
+        && provider.pack === 'native_cli_pack'
+        && provider.platform === 'windows_wsl'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-kiro-wsl-installer'),
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'goose'
+        && provider.pack === 'wsl_power_user_pack'
+        && provider.deliveryPhase === 'later_packaged_path'
+        && provider.bundledInCurrentInstaller === false
+        && provider.helperIds.length === 0,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'junie'
+        && provider.pack === 'wsl_power_user_pack'
+        && provider.deliveryPhase === 'later_packaged_path'
+        && provider.bundledInCurrentInstaller === false
+        && provider.helperIds.length === 0,
+    ),
+    true,
+  );
+  assert.equal(
     plan.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-claude-native-installer'
         && helper.assetId === 'windows-claude-native-installer-script'
@@ -299,6 +339,30 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(targetManifest.updates.channel, config.update.channel);
   assert.equal(targetManifest.target.artifactBaseName, 'cats-windows-x64');
   assert.equal(targetManifest.installer.providerSetup.capabilityPacks[0].id, 'api_baseline');
+  assert.equal(
+    targetManifest.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'kiro'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true,
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'goose'
+        && provider.deliveryPhase === 'later_packaged_path'
+        && provider.bundledInCurrentInstaller === false,
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'junie'
+        && provider.deliveryPhase === 'later_packaged_path'
+        && provider.currentHome === 'environment-bootstrap/platform/windows/Install-Junie.ps1',
+    ),
+    true,
+  );
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-claude-native-installer'

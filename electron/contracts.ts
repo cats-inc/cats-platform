@@ -105,6 +105,17 @@ export const DESKTOP_PROVIDER_SETUP_PACKS = [
   'local_model_pack',
   'wsl_power_user_pack',
 ] as const;
+export const DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS = [
+  'claude_code',
+  'cursor_agent',
+  'kiro',
+  'goose',
+  'junie',
+] as const;
+export const DESKTOP_PROVIDER_SETUP_DELIVERY_PHASES = [
+  'initial_packaged_path',
+  'later_packaged_path',
+] as const;
 export const DESKTOP_PROVIDER_SETUP_ASSET_STATUSES = [
   'ported',
   'planned',
@@ -172,6 +183,10 @@ export type DesktopInstallerFormat = typeof DESKTOP_INSTALLER_FORMATS[number];
 export type DesktopRemediationKind = typeof DESKTOP_REMEDIATION_KINDS[number];
 export type DesktopProviderSetupMode = typeof DESKTOP_PROVIDER_SETUP_MODES[number];
 export type DesktopProviderSetupPackId = typeof DESKTOP_PROVIDER_SETUP_PACKS[number];
+export type DesktopProviderSetupLocalProviderId =
+  typeof DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS[number];
+export type DesktopProviderSetupDeliveryPhase =
+  typeof DESKTOP_PROVIDER_SETUP_DELIVERY_PHASES[number];
 export type DesktopProviderSetupAssetStatus = typeof DESKTOP_PROVIDER_SETUP_ASSET_STATUSES[number];
 export type DesktopProviderSetupAssetKind = typeof DESKTOP_PROVIDER_SETUP_ASSET_KINDS[number];
 export type DesktopProviderSetupPlatform = typeof DESKTOP_PROVIDER_SETUP_PLATFORMS[number];
@@ -310,6 +325,18 @@ export interface DesktopInstallerContract {
       label: string;
       recommended: boolean;
       requiresLocalInstall: boolean;
+      notes: string[];
+    }>;
+    localProviders: Array<{
+      id: DesktopProviderSetupLocalProviderId;
+      label: string;
+      pack: DesktopProviderSetupPackId;
+      platform: DesktopProviderSetupPlatform;
+      deliveryPhase: DesktopProviderSetupDeliveryPhase;
+      bundledInCurrentInstaller: boolean;
+      helperIds: string[];
+      currentHome: string;
+      targetHome: string;
       notes: string[];
     }>;
     knowledgeSources: Array<{

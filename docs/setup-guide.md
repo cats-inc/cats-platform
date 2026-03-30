@@ -270,6 +270,13 @@ The staged `desktop-package-plan.json` now also carries
 of bundled setup helpers, supported operations, packaged relative paths, and
 elevation expectations consumed by the desktop host bridge.
 
+The same staged contract now also carries
+`installer.providerSetup.localProviders`, which freezes the current packaged
+local-provider rollout:
+
+- first packaged path: Claude Code, Cursor Agent, and the WSL-backed Kiro helper
+- deferred later-path providers: Goose and Junie
+
 This is intentionally a staging layer, not the final signed-installer
 publication step.
 

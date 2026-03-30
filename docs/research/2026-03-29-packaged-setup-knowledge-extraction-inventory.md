@@ -82,7 +82,7 @@ knowledge.
 - ADR-013 explicitly locked the direction that install/check metadata belongs
   with provider manifests rather than staying only in `environment-bootstrap`
 
-That means `cats` should consume runtime-owned metadata and diagnostics, not
+That means `cats-platform` should consume runtime-owned metadata and diagnostics, not
 fork a second metadata truth source.
 
 ### 3. The missing layer is packaged-host execution knowledge
@@ -115,27 +115,29 @@ These scripts already embody useful operational knowledge:
 - auth/login hints for provider CLIs
 - Docker/WSL warm-state checks
 
-That is the knowledge most at risk if the repo split happens before `cats`
+That is the knowledge most at risk if the repo split happens before `cats-platform`
 ports a product-owned host asset layer.
 
 ## Extraction Inventory
 
 | Knowledge Slice | Source Today | Current Home | Target Home After Split | Status | Notes |
 |-----------------|-------------|--------------|-------------------------|--------|-------|
-| A2A collaboration artifacts | `project-bootstrap/docs/a2a/*` | `cats-runtime` pilot + mirrored `cats-platform/docs/a2a/*` | `cats` and `cats-runtime` repo-owned pilot artifacts | Already extracted | Do not re-open under packaged setup work |
-| Provider topology + install/check metadata | `environment-bootstrap` learnings plus runtime ADRs | `cats-runtime/src/core/provider-install/*` | `cats-runtime` | Already extracted | `cats` should consume, not duplicate |
-| Windows npm-global AI CLI pack install | `environment-bootstrap/platform/windows/Install-NodeCLITools.ps1` | `cats-platform/scripts/windows/Install-NodeCliPack.ps1` | packaged-host assets in `cats` | Ported | Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi, and now consumes the repo-owned npm prefix helper instead of a bootstrap dependency |
-| Windows native Claude Code installer | `environment-bootstrap/platform/windows/Install-ClaudeCode.ps1` | `cats-platform/scripts/windows/Install-ClaudeCode.ps1` | packaged-host provider assets in `cats` | Ported | Repo-owned native installer helper now removes legacy npm Claude shims, preserves the official Windows-native install path, and keeps post-install sign-in guidance inside the packaged setup contract |
-| Windows native Cursor Agent installer | `environment-bootstrap/platform/windows/Install-CursorAgent.ps1` | `cats-platform/scripts/windows/Install-CursorAgent.ps1` | packaged-host provider assets in `cats` | Ported | Aligns packaged setup with the current Windows-native Cursor install baseline instead of routing Cursor through WSL-first guidance |
-| Windows npm prefix + PATH setup | `environment-bootstrap/platform/windows/Setup-NodeJS.ps1` | `cats-platform/scripts/windows/Setup-NodeGlobalPrefix.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Staged into `build/desktop-packaging/shared/setup-assets/windows/` and bundled into desktop installs under `desktop-host/setup-assets/windows/` |
-| Windows WSL prerequisite preflight | `Install-WSL2-Admin.ps1` + `Install-WSLUbuntu.ps1` knowledge | `cats-platform/scripts/windows/Check-WslPrerequisites.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Structured preflight only; stays as the read-only readiness surface before mutation |
-| Windows setup readiness audit | `environment-bootstrap/platform/windows/Check-Installation.ps1` | `cats-platform/scripts/windows/Check-WindowsSetupReadiness.ps1` | host-side readiness/recovery helpers in `cats` | Ported | Structured audit only; composes the repo-owned prefix, native CLI pack, and WSL preflight helpers instead of copying the old bootstrap-wide report verbatim |
-| Windows WSL substrate + Ubuntu installer | `environment-bootstrap/platform/windows/Install-WSL2-Admin.ps1` + `environment-bootstrap/platform/windows/Install-WSLUbuntu.ps1` | `cats-platform/scripts/windows/Install-WslUbuntuEnvironment.ps1` | packaged-host prerequisite helpers in `cats` | Ported | Repo-owned mutation helper for WSL substrate enablement, WSL2 default-version setup, and Ubuntu registration; keeps in-distro Ubuntu package upgrades as later manual follow-through |
-| Windows WSL Kiro installer | `environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1` | `cats-platform/scripts/windows/Install-KiroWslCli.ps1` | packaged-host provider assets in `cats` | Ported | Repo-owned WSL Kiro installer now carries dependency checks, PATH cleanup, `kc` alias repair, and post-install sign-in guidance |
-| Windows readiness/auth inspection follow-through | remaining `Check-Installation.ps1` coverage | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; expand the repo-owned audit incrementally instead of copying the old bootstrap-wide report verbatim |
+| A2A collaboration artifacts | `project-bootstrap/docs/a2a/*` | `cats-runtime` pilot + mirrored `cats-platform/docs/a2a/*` | `cats-platform` and `cats-runtime` repo-owned pilot artifacts | Already extracted | Do not re-open under packaged setup work |
+| Provider topology + install/check metadata | `environment-bootstrap` learnings plus runtime ADRs | `cats-runtime/src/core/provider-install/*` | `cats-runtime` | Already extracted | `cats-platform` should consume, not duplicate |
+| Windows npm-global AI CLI pack install | `environment-bootstrap/platform/windows/Install-NodeCLITools.ps1` | `cats-platform/scripts/windows/Install-NodeCliPack.ps1` | packaged-host assets in `cats-platform` | Ported | Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi, and now consumes the repo-owned npm prefix helper instead of a bootstrap dependency |
+| Windows native Claude Code installer | `environment-bootstrap/platform/windows/Install-ClaudeCode.ps1` | `cats-platform/scripts/windows/Install-ClaudeCode.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned native installer helper now removes legacy npm Claude shims, preserves the official Windows-native install path, and keeps post-install sign-in guidance inside the packaged setup contract |
+| Windows native Cursor Agent installer | `environment-bootstrap/platform/windows/Install-CursorAgent.ps1` | `cats-platform/scripts/windows/Install-CursorAgent.ps1` | packaged-host provider assets in `cats-platform` | Ported | Aligns packaged setup with the current Windows-native Cursor install baseline instead of routing Cursor through WSL-first guidance |
+| Windows npm prefix + PATH setup | `environment-bootstrap/platform/windows/Setup-NodeJS.ps1` | `cats-platform/scripts/windows/Setup-NodeGlobalPrefix.ps1` | packaged-host prerequisite helpers in `cats-platform` | Ported | Staged into `build/desktop-packaging/shared/setup-assets/windows/` and bundled into desktop installs under `desktop-host/setup-assets/windows/` |
+| Windows WSL prerequisite preflight | `Install-WSL2-Admin.ps1` + `Install-WSLUbuntu.ps1` knowledge | `cats-platform/scripts/windows/Check-WslPrerequisites.ps1` | packaged-host prerequisite helpers in `cats-platform` | Ported | Structured preflight only; stays as the read-only readiness surface before mutation |
+| Windows setup readiness audit | `environment-bootstrap/platform/windows/Check-Installation.ps1` | `cats-platform/scripts/windows/Check-WindowsSetupReadiness.ps1` | host-side readiness/recovery helpers in `cats-platform` | Ported | Structured audit only; composes the repo-owned prefix, native CLI pack, and WSL preflight helpers instead of copying the old bootstrap-wide report verbatim |
+| Windows WSL substrate + Ubuntu installer | `environment-bootstrap/platform/windows/Install-WSL2-Admin.ps1` + `environment-bootstrap/platform/windows/Install-WSLUbuntu.ps1` | `cats-platform/scripts/windows/Install-WslUbuntuEnvironment.ps1` | packaged-host prerequisite helpers in `cats-platform` | Ported | Repo-owned mutation helper for WSL substrate enablement, WSL2 default-version setup, and Ubuntu registration; keeps in-distro Ubuntu package upgrades as later manual follow-through |
+| Windows WSL Kiro installer | `environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1` | `cats-platform/scripts/windows/Install-KiroWslCli.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned WSL Kiro installer now carries dependency checks, PATH cleanup, `kc` alias repair, and post-install sign-in guidance |
+| Windows readiness/auth inspection follow-through | remaining `Check-Installation.ps1` coverage | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats-platform` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; expand the repo-owned audit incrementally instead of copying the old bootstrap-wide report verbatim |
 | Docker Desktop install + warm-state knowledge | `Install-Docker-Admin.ps1` | `environment-bootstrap` for install, repo-owned readiness audit for warm-state | later packaged-host capability pack plus current `Check-WindowsSetupReadiness.ps1` | Partial port | Docker install remains deferred, but Docker warm-up truth is now selectively ported into the repo-owned readiness audit as `docker_warm_up_required` |
-| Ngrok / tunnel setup | `Install-Ngrok-Admin.ps1`, `Setup-Ngrok.ps1` | `environment-bootstrap` only | later transport helper layer in `cats` | Defer | Not part of the first packaged setup baseline |
-| Guacamole / Tailscale / workstation extras | extra-mode scripts | `environment-bootstrap` only | none for current packaged setup | Exclude | Not part of `cats` packaged setup scope |
+| Goose installer rollout decision | `environment-bootstrap/platform/windows/Install-Goose.ps1` + `environment-bootstrap/platform/windows/Install-WSLGoose.ps1` | `environment-bootstrap` only | later packaged-host provider assets in `cats-platform` | Deferred | Source knowledge exists for both native Windows and WSL variants, but the current packaged contract now explicitly keeps Goose out of the first packaged slice |
+| Junie installer rollout decision | `environment-bootstrap/platform/windows/Install-Junie.ps1` | `environment-bootstrap` only | later packaged-host provider assets in `cats-platform` | Deferred | Source knowledge remains Windows-native only, but the current packaged contract keeps Junie out of the first packaged slice until a later provider wave is chosen |
+| Ngrok / tunnel setup | `Install-Ngrok-Admin.ps1`, `Setup-Ngrok.ps1` | `environment-bootstrap` only | later transport helper layer in `cats-platform` | Defer | Not part of the first packaged setup baseline |
+| Guacamole / Tailscale / workstation extras | extra-mode scripts | `environment-bootstrap` only | none for current packaged setup | Exclude | Not part of `cats-platform` packaged setup scope |
 
 ## Recommended Port Order
 
@@ -156,9 +158,10 @@ ports a product-owned host asset layer.
      `cats-platform/scripts/windows/Check-WindowsSetupReadiness.ps1`.
    - The first repo-owned WSL-backed provider installer is now landed as
      `cats-platform/scripts/windows/Install-KiroWslCli.ps1`.
-   - The next missing Windows-first slice is selective auth/readiness follow-through
-     plus later native installers such as Goose or Junie where they remain part
-     of the desired packaged path.
+   - Selective auth/readiness follow-through is now landed.
+   - The first packaged path is now explicitly frozen around Claude, Cursor,
+     and Kiro; Goose and Junie remain deferred later-path providers rather than
+     implied missing work.
 
 2. Expand host bridge and resume semantics after the first native + WSL-backed
    provider installer set.
@@ -167,8 +170,10 @@ ports a product-owned host asset layer.
    - Selective auth/readiness follow-through is now also landed through the
      repo-owned readiness audit plus explicit host interruption kinds for
      relaunch, restart, elevation, first WSL boot, and auth-required states.
-   - The remaining gap is Docker warm-up plus later providers, not rebuilding
-     the baseline bridge from scratch.
+   - Docker warm-up is now explicit.
+   - The remaining gap is no longer deciding whether Goose/Junie belong in the
+     first packaged path; that defer decision is now explicit in the packaged
+     installer contract.
 
 3. Defer Docker and tunnel flows until after the first packaged setup contract
    is stable.
@@ -182,21 +187,20 @@ ports a product-owned host asset layer.
   extraction baseline.
 - The first implementation slice after planning should be Windows-first and
   executable, not another broad documentation pass.
-- `cats` should prefer product-owned asset contracts over lifting raw bootstrap
+- `cats-platform` should prefer product-owned asset contracts over lifting raw
+  bootstrap
   scripts verbatim.
-- `cats-runtime` remains the runtime/provider authority; `cats` still needs to
+- `cats-runtime` remains the runtime/provider authority; `cats-platform` still
+  needs to
   own packaged-host execution and resume behavior.
 
 ## Recommended Next Slice
 
-Port the next packaged-host setup asset slice around:
+Keep the next packaged-host slice focused on either:
 
-- selective Windows auth/readiness follow-through still trapped in the old
-  bootstrap audit
-- later native installers such as Goose or Junie if they remain in the desired
-  first packaged path
-- incremental bridge/recovery refinement instead of another broad bootstrap-doc
-  copy pass
+- additional host/runtime recovery coherence that is still missing from the
+  packaged setup bridge, or
+- a deliberate graduation decision if a deferred provider such as Goose or
+  Junie is ever promoted into the repo-owned packaged path
 
-That is the next smallest slice that converts the remaining high-value
-Windows-first bootstrap knowledge into owned product behavior.
+The contract no longer treats Goose/Junie as silently missing baseline work.
