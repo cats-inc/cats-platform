@@ -18,8 +18,7 @@ service names remain `cats` for product-facing and operational continuity.
 - `Cats Core v1` is a required shared contract for `Cats Chat` and
   `Cats Work`, but it does not have a dedicated network port yet. The current
   planning assumption is that it starts co-hosted inside the current local
-  `cats/` workspace and future `cats-platform` host until a stronger boundary
-  is needed.
+  `cats-platform/` workspace until a stronger boundary is needed.
 - `cats-runtime` remains the upstream runtime dependency for this project. Its
   direct API remains the primary app-facing boundary, while a future MCP facade
   is intended for orchestrator-style tool use rather than for general app

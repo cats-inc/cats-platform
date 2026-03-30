@@ -18,7 +18,7 @@ async function seedFile(path, contents = '') {
 test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defining platform outputs', () => {
   const config = resolveDesktopHostConfig({
     env: {
-      CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats/dist-server/index.js',
+      CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/dist-server/index.js',
       CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/dist/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
     },

@@ -4,7 +4,7 @@ import test from 'node:test';
 import { buildDesktopBootstrapSnapshot } from '../dist-electron/readiness.js';
 
 const desktopConfig = {
-  packageRoot: 'cats',
+  packageRoot: 'cats-platform',
   runtimePackageRoot: 'cats-runtime',
   userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
   appHost: '127.0.0.1',
@@ -29,15 +29,15 @@ const desktopConfig = {
     autoDownload: false,
   },
   paths: {
-    appEntryScript: 'cats/dist-server/index.js',
+    appEntryScript: 'cats-platform/dist-server/index.js',
     runtimeEntryScript: 'cats-runtime/dist/index.js',
-    preloadScript: 'cats/dist-electron/preload.cjs',
-    appStatePath: 'cats/config/chat-state.local.json',
-    runtimeDataDir: 'cats/.desktop/runtime/data',
-    runtimeSessionBaseDir: 'cats/.desktop/runtime/sessions',
-    runtimeConfigPath: 'cats/.desktop/runtime/providers.yaml',
-    hostStatePath: 'cats/.desktop/host/state.json',
-    packagingOutputRoot: 'cats/build/desktop-packaging',
+    preloadScript: 'cats-platform/dist-electron/preload.cjs',
+    appStatePath: 'cats-platform/config/chat-state.local.json',
+    runtimeDataDir: 'cats-platform/.desktop/runtime/data',
+    runtimeSessionBaseDir: 'cats-platform/.desktop/runtime/sessions',
+    runtimeConfigPath: 'cats-platform/.desktop/runtime/providers.yaml',
+    hostStatePath: 'cats-platform/.desktop/host/state.json',
+    packagingOutputRoot: 'cats-platform/build/desktop-packaging',
   },
 };
 
@@ -111,7 +111,7 @@ test('desktop bootstrap stays in ready_for_setup until setup is completed', () =
   assert.equal(snapshot.background.trayEnabled, true);
   assert.equal(snapshot.updates.status, 'idle');
   assert.equal(snapshot.setup.lastAction, null);
-  assert.equal(snapshot.hostStatePath, 'cats/.desktop/host/state.json');
+  assert.equal(snapshot.hostStatePath, 'cats-platform/.desktop/host/state.json');
 });
 
 test('desktop bootstrap opens chat when setup and provider readiness are complete', () => {

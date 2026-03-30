@@ -53,7 +53,7 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
     status: 'changes_required',
     summary: 'Windows setup readiness audit check finished with changes_required.',
     packagedRelativePath: 'desktop-host/setup-assets/windows/Check-WindowsSetupReadiness.ps1',
-    scriptPath: 'C:/repo/cats/scripts/windows/Check-WindowsSetupReadiness.ps1',
+    scriptPath: 'C:/repo/cats-platform/scripts/windows/Check-WindowsSetupReadiness.ps1',
     requiresElevation: false,
     resumable: true,
     restartRequired: true,

@@ -38,14 +38,14 @@ Latest Paperclip sources re-checked in this session:
 
 Current Cats references re-checked in this session:
 
-- `cats/docs/research/paperclip-control-plane-analysis.md`
+- `cats-platform/docs/research/paperclip-control-plane-analysis.md`
 - `cats-runtime/docs/research/2026-03-19-paperclip-gap-assessment.md`
 - `cats-runtime/docs/specs/SPEC-005-runtime-managed-skills-v0.md`
-- `cats/docs/specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md`
-- `cats/docs/specs/SPEC-016-chat-session-sleep-wake-lifecycle.md`
-- `cats/docs/specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md`
-- `cats/docs/specs/SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md`
-- `cats/docs/specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md`
+- `cats-platform/docs/specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md`
+- `cats-platform/docs/specs/SPEC-016-chat-session-sleep-wake-lifecycle.md`
+- `cats-platform/docs/specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md`
+- `cats-platform/docs/specs/SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md`
+- `cats-platform/docs/specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md`
 - `cats-runtime/docs/specs/SPEC-007-provider-compatibility-and-evidence-engine.md`
 - `cats-runtime/docs/specs/SPEC-010-usage-metering-rate-limit-detection-and-execution-guardrails.md`
 

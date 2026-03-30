@@ -19,7 +19,7 @@ Source:
 Commands run:
 
 ```powershell
-cd cats
+cd cats-platform
 npm run build:host
 node --test --test-isolation=none tests/desktop-packaging.test.js tests/desktop-setup-assets.test.js tests/desktop-setup-readiness.test.js tests/desktop-setup-bridge.test.js tests/skill-sync-scripts.test.js
 ```
@@ -29,7 +29,7 @@ node --test --test-isolation=none tests/desktop-packaging.test.js tests/desktop-
 ### Packaged Setup Execution Is Now Repo-Owned for the First Windows Baseline
 
 - `electron/setupAssets.ts` stages the packaged setup helper catalog from local
-  `cats/scripts/windows/*` assets, not from submodule paths.
+  `cats-platform/scripts/windows/*` assets, not from submodule paths.
 - `electron/setupBridge.ts` resolves helper execution from those repo-owned
   staged or source-local paths and does not shell out to
   `environment-bootstrap` or `project-bootstrap`.
@@ -50,7 +50,7 @@ node --test --test-isolation=none tests/desktop-packaging.test.js tests/desktop-
   - `scripts/windows/Install-KiroWslCli.ps1`
   - `scripts/windows/Check-WindowsSetupReadiness.ps1`
 - `electron/packaging.ts` now points every ported first-wave asset's
-  `currentHome` at `cats/scripts/windows/*`, while still keeping
+  `currentHome` at `cats-platform/scripts/windows/*`, while still keeping
   `environment-bootstrap` and `project-bootstrap` marked as source knowledge
   only (`productDependency: false`).
 

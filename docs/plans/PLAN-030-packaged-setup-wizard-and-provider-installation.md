@@ -34,8 +34,8 @@ Two sibling knowledge tracks already exist:
 
 - `project-bootstrap` A2A collaboration knowledge is already being validated by
   the pilot track under `cats-runtime` [PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md),
-  with matching pilot artifacts already mirrored into `cats/docs/a2a/` and
-  `cats/skills/`.
+  with matching pilot artifacts already mirrored into `cats-platform/docs/a2a/` and
+  `cats-platform/skills/`.
 - `cats-runtime` has already ported part of the provider install/check
   substrate into runtime-owned metadata and checks under
   `cats-runtime/src/core/provider-install/`.

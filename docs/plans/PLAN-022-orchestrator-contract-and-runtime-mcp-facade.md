@@ -58,7 +58,7 @@ The follow-on execution-loop and recovery slice now continues in
 
 ## Validation
 
-- `cd cats && npm test`
+- `cd cats-platform && npm test`
 - `cd cats-runtime && npm test`
 
 ## Follow-up Watchpoints

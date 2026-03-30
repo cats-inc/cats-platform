@@ -8,10 +8,10 @@
 - **Scope**: Cats Code 產品面的 peer review 工作流
 - **UI Layout**: 未定 — 本文件不涉及具體 UI 排版設計
 - **Related**:
-  - `cats/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md`
-  - `cats/docs/research/2026-03-24-structured-choices-design-reference.md`
-  - `cats/docs/specs/SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md`
-  - `cats/docs/plans/PLAN-016-dynamic-room-workflow-orchestration.md`
+  - `cats-platform/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md`
+  - `cats-platform/docs/research/2026-03-24-structured-choices-design-reference.md`
+  - `cats-platform/docs/specs/SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md`
+  - `cats-platform/docs/plans/PLAN-016-dynamic-room-workflow-orchestration.md`
   - `cats-runtime/docs/specs/SPEC-003-agent-backend.md`
 
 ---

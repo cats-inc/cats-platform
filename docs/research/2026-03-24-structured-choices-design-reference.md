@@ -11,7 +11,7 @@
   - `prompt-forge/src/components/ClarifyQuestions.tsx` — UI 元件參考
   - `prompt-forge/supabase/functions/enhance-prompt/providers/fleet.ts` — runtime 整合參考
   - `prompt-forge/supabase/functions/enhance-prompt/providers/types.ts` — 資料結構參考
-  - `cats/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md` — 相關提議
+  - `cats-platform/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md` — 相關提議
 
 ---
 

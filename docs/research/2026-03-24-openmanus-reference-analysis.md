@@ -8,10 +8,10 @@
 - **Scope**: 從 OpenManus（FoundationAgents）中提取對 Cats 有參考價值的設計與實作
 - **Source**: `OpenManus/` submodule（MIT 授權，MetaGPT 團隊，Python，~6,449 行）
 - **Related**:
-  - `cats/docs/research/2026-03-24-cats-code-peer-review-workflow.md`
-  - `cats/docs/research/2026-03-24-cats-work-aggregator-and-mesh-vision.md`
-  - `cats/docs/research/2026-03-24-structured-choices-design-reference.md`
-  - `cats/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md`
+  - `cats-platform/docs/research/2026-03-24-cats-code-peer-review-workflow.md`
+  - `cats-platform/docs/research/2026-03-24-cats-work-aggregator-and-mesh-vision.md`
+  - `cats-platform/docs/research/2026-03-24-structured-choices-design-reference.md`
+  - `cats-platform/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md`
 
 ---
 

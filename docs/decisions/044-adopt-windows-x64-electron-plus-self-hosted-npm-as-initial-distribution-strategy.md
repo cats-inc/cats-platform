@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-The local `cats/` workspace now has two viable distribution directions in the
+The local `cats-platform/` workspace now has two viable distribution directions in the
 repo:
 
 - a self-hosted npm host-package path for `@cats-inc/cats-platform` and
@@ -131,8 +131,8 @@ Priority
 - [ADR-021](./021-keep-packaged-setup-and-provider-installation-in-the-host.md)
 - [Deployment Guide](../deployment.md)
 - [Setup Guide](../setup-guide.md)
-- [cats/package.json](/home/sammykenny2/Source/SK2/one-man-digital-company/cats/package.json)
-- [cats/electron/packaging.ts](/home/sammykenny2/Source/SK2/one-man-digital-company/cats/electron/packaging.ts)
+- [cats-platform/package.json](/home/sammykenny2/Source/SK2/one-man-digital-company/cats-platform/package.json)
+- [cats-platform/electron/packaging.ts](/home/sammykenny2/Source/SK2/one-man-digital-company/cats-platform/electron/packaging.ts)
 
 ---
 

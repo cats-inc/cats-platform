@@ -37,7 +37,7 @@ shape among `cats`, `cats-runtime`, and `environment-bootstrap`.
 
 The first host-owned slice is already in-repo:
 
-- `cats/electron/*` now supervises local `cats-runtime` + `cats`
+- `cats-platform/electron/*` now supervises local `cats-runtime` + `cats`
 - readiness-gated bootstrap exists before the renderer fully enters the normal
   chat flow
 - first-run setup can already distinguish setup entry versus ready entry
@@ -448,8 +448,8 @@ teaching the renderer or the user about the underlying script topology.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)
-  and the mirrored pilot artifacts already present in `cats/docs/a2a/` and
-  `cats/skills/`.
+  and the mirrored pilot artifacts already present in `cats-platform/docs/a2a/` and
+  `cats-platform/skills/`.
 
 ## Resume and Interruption Handling
 

@@ -1776,7 +1776,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
     {
       sessionId: 'session-inline',
       status: 'ready',
-      cwd: 'C:/repo/cats',
+      cwd: 'C:/repo/cats-platform',
       lastError: null,
       provider: 'claude',
       model: 'claude-sonnet-4',
@@ -1792,7 +1792,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
     {
       sessionId: 'session-reviewer',
       status: 'ready',
-      cwd: 'C:/repo/cats',
+      cwd: 'C:/repo/cats-platform',
       lastError: null,
       provider: 'gemini',
       model: 'gemini-2.5-pro',
@@ -1989,7 +1989,7 @@ test('startup-recovered continuation replay auto-resumes when an active target r
     {
       title: 'Recovered continuation after session recovery',
       topic: 'Resume a startup-recovered continuation once the reviewer gets a fresh session.',
-      repoPath: 'C:/repo/cats',
+      repoPath: 'C:/repo/cats-platform',
       cats: [
         {
           name: 'Inline-Agent',
@@ -2022,7 +2022,7 @@ test('startup-recovered continuation replay auto-resumes when an active target r
     {
       sessionId: 'session-inline',
       status: 'ready',
-      cwd: 'C:/repo/cats',
+      cwd: 'C:/repo/cats-platform',
       lastError: null,
       provider: 'claude',
       model: 'claude-sonnet-4',
@@ -2254,7 +2254,7 @@ test('startup-recovered continuation replay auto-resumes when channel activation
     {
       sessionId: 'session-inline',
       status: 'ready',
-      cwd: 'C:/repo/cats',
+      cwd: 'C:/repo/cats-platform',
       lastError: null,
       provider: 'claude',
       model: 'claude-sonnet-4',

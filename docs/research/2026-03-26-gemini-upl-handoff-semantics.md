@@ -36,6 +36,6 @@ Instead of product-specific JSON structures, we treat the `CoreTaskRecord` as th
 
 ## Implementation Path
 
-1. **UPL Schema**: Enhance `cats/src/shared/tasks.ts` to include `strategy_metadata` and `affinity` fields.
+1. **UPL Schema**: Enhance `cats-platform/src/shared/tasks.ts` to include `strategy_metadata` and `affinity` fields.
 2. **Handoff UI**: Build "Product Transfer" indicators in the Suite-level task dashboard.
 3. **Runtime Event Bus**: Ensure `cats-runtime` emits standardized `task_status_changed` events that any active strategy can consume.

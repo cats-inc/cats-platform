@@ -286,7 +286,7 @@ test('GET /api/channels/:id/stream relays runtime session events through the run
     {
       sessionId: 'session-live-1',
       status: 'ready',
-      cwd: 'C:/repo/cats',
+      cwd: 'C:/repo/cats-platform',
       lastError: null,
       provider: 'claude',
       model: 'claude-sonnet-4',
@@ -401,7 +401,7 @@ test('GET /api/channels/:id/stream waits for a pending session lease before clos
       {
         sessionId: 'session-live-2',
         status: 'ready',
-        cwd: 'C:/repo/cats',
+        cwd: 'C:/repo/cats-platform',
         lastError: null,
         provider: 'claude',
         model: 'claude-sonnet-4',
@@ -3440,7 +3440,7 @@ test('approved task assignment queues runtime wakeups for active assigned cat se
     {
       sessionId: 'session-coder',
       status: 'ready',
-      cwd: 'C:/repo/cats',
+      cwd: 'C:/repo/cats-platform',
       lastError: null,
       provider: 'claude',
       model: 'claude-sonnet-4',
@@ -3985,7 +3985,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
               productHint: 'code',
             },
             codeWorkspace: {
-              workspacePath: 'C:/repo/cats',
+              workspacePath: 'C:/repo/cats-platform',
               workspaceKind: 'conversation_repo',
               ownershipState: 'conversation_bound',
             },
@@ -4126,7 +4126,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     assert.equal(codeTaskDetailPayload.task.id, 'task-code-dashboard');
     assert.equal(codeTaskDetailPayload.effectiveStrategy, 'reflexion');
     assert.deepEqual(codeTaskDetailPayload.workspace, {
-      workspacePath: 'C:/repo/cats',
+      workspacePath: 'C:/repo/cats-platform',
       workspaceKind: 'conversation_repo',
       ownershipState: 'conversation_bound',
     });
@@ -4216,7 +4216,7 @@ test('assigning a cat to a channel immediately creates a runtime session in the 
       body: JSON.stringify({
         title: 'Session Spawn',
         topic: 'Verify assignment spawns a session.',
-        repoPath: 'C:/repo/cats',
+        repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,
       }),
     });
@@ -4253,9 +4253,9 @@ test('assigning a cat to a channel immediately creates a runtime session in the 
     const assignPayload = await assignResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 1);
-    assert.equal(runtimeClient.createdSessions[0].cwd, 'C:/repo/cats');
+    assert.equal(runtimeClient.createdSessions[0].cwd, 'C:/repo/cats-platform');
     assert.equal(assignPayload.cat.execution.lease.sessionId, 'session-1');
-    assert.equal(assignPayload.cat.execution.lease.cwd, 'C:/repo/cats');
+    assert.equal(assignPayload.cat.execution.lease.cwd, 'C:/repo/cats-platform');
 
     const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
     assert.equal(channelResponse.status, 200);
@@ -4266,7 +4266,7 @@ test('assigning a cat to a channel immediately creates a runtime session in the 
     assert.ok(sessionStartedMessage);
     assert.equal(
       sessionStartedMessage.body,
-      'Agent-Spawn connected to cats-runtime session session-1.\n(cwd: C:/repo/cats)',
+      'Agent-Spawn connected to cats-runtime session session-1.\n(cwd: C:/repo/cats-platform)',
     );
   });
 });
@@ -4283,7 +4283,7 @@ test('assigning a cat forwards structured modelSelection to cats-runtime session
       body: JSON.stringify({
         title: 'Advanced Session Spawn',
         topic: 'Verify model selection reaches cats-runtime.',
-        repoPath: 'C:/repo/cats',
+        repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,
       }),
     });
@@ -5404,7 +5404,7 @@ test('re-adding a removed cat to an active chat wakes it again instead of leavin
       body: JSON.stringify({
         title: 'Rejoin Wake',
         topic: 'Wake cats when they rejoin a live room.',
-        repoPath: 'C:/repo/cats',
+        repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,
       }),
     });
@@ -5466,7 +5466,7 @@ test('re-adding a removed cat to an active chat wakes it again instead of leavin
 
     assert.equal(runtimeClient.createdSessions.length, 3);
     assert.equal(reassignPayload.cat.execution.lease.sessionId, 'session-3');
-    assert.equal(reassignPayload.cat.execution.lease.cwd, 'C:/repo/cats');
+    assert.equal(reassignPayload.cat.execution.lease.cwd, 'C:/repo/cats-platform');
     assert.ok(runtimeClient.closedSessions.includes('session-2'));
   });
 });

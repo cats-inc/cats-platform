@@ -6,10 +6,9 @@
 
 `Cats` is the flagship product brand for the suite. This repo currently hosts
 the technical suite host targeted for public packaging as
-`@cats-inc/cats-platform`, while the local monorepo folder remains `cats/`
-until the coordinated workspace rename lands. It talks to `cats-runtime` as
-its execution boundary and keeps the product model in this repo rather than
-inheriting it from earlier prototypes.
+`@cats-inc/cats-platform` inside the local monorepo folder `cats-platform/`.
+It talks to `cats-runtime` as its execution boundary and keeps the product
+model in this repo rather than inheriting it from earlier prototypes.
 
 `Cats Inc` remains the umbrella brand. `Cats` remains the public product name,
 `cats-platform` is the host repo/package target, `cats-runtime` remains the
@@ -65,7 +64,7 @@ The current slices are:
 
 ## Current Status
 
-- [x] Bootstrap `cats/` from `project-bootstrap`
+- [x] Bootstrap `cats-platform/` from `project-bootstrap`
 - [x] Establish `cats-runtime` as the only runtime boundary
 - [x] Add a minimal Node/TypeScript HTTP entrypoint and smoke tests
 - [x] Choose `React/Vite` as the initial renderer approach
@@ -129,7 +128,7 @@ several Phase 3 items remain:
 ## Quick Start
 
 ```bash
-cd cats
+cd cats-platform
 cp .env.example .env
 npm install
 npm run dev:server
@@ -210,7 +209,7 @@ See [docs/](./docs/) for project details:
 ## Project Structure
 
 ```text
-cats/
+cats-platform/
 ├── electron/      # Electron desktop host bootstrap and supervision
 ├── src/app/       # Suite-level server and renderer assembly
 ├── src/products/  # Product slices such as Cats Chat

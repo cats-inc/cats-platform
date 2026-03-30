@@ -147,12 +147,12 @@ threads.
 
 ## References
 
-- `cats/docs/specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md`
-- `cats/docs/specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md`
-- `cats/docs/specs/SPEC-027-chat-first-information-architecture-and-default-boss-cat.md`
-- `cats/docs/specs/SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md`
-- `cats/docs/decisions/011-model-primary-orchestrator-as-visible-cat.md`
-- `cats/docs/decisions/017-allow-direct-cat-chat-and-move-routing-into-system-layer.md`
+- `cats-platform/docs/specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md`
+- `cats-platform/docs/specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md`
+- `cats-platform/docs/specs/SPEC-027-chat-first-information-architecture-and-default-boss-cat.md`
+- `cats-platform/docs/specs/SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md`
+- `cats-platform/docs/decisions/011-model-primary-orchestrator-as-visible-cat.md`
+- `cats-platform/docs/decisions/017-allow-direct-cat-chat-and-move-routing-into-system-layer.md`
 
 ---
 

@@ -10,7 +10,7 @@
   - [ADR-013](../decisions/013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md) — npm 分發策略
   - [ADR-036](../decisions/036-unify-api-contract-and-namespace-endpoints-by-product.md) — API contract
   - [ADR-037](../decisions/037-serve-runtime-dashboard-and-playground-from-suite-host.md) — runtime hosting
-  - `cats/docs/deployment.md` — 現有 desktop/Electron 部署
+  - `cats-platform/docs/deployment.md` — 現有 desktop/Electron 部署
   - [Plugin Research](./2026-03-24-cats-plugin-architecture-and-packaging.md) — package 拆分策略
 
 ---

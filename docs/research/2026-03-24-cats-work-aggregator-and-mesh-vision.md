@@ -8,9 +8,9 @@
 - **Scope**: Cats Work 產品定位、freelance 自動接案 pipeline、分散式 agent mesh
 - **Related**:
   - `freelance-job-aggregator/` — 現有 scraping + matching + pipeline 基礎設施
-  - `cats/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md`
-  - `cats/docs/research/2026-03-24-cats-code-peer-review-workflow.md`
-  - `cats/docs/research/2026-03-24-structured-choices-design-reference.md`
+  - `cats-platform/docs/research/2026-03-24-task-substrate-as-heartbeat-foundation.md`
+  - `cats-platform/docs/research/2026-03-24-cats-code-peer-review-workflow.md`
+  - `cats-platform/docs/research/2026-03-24-structured-choices-design-reference.md`
   - `cats-runtime/docs/decisions/009-keep-cats-runtime-separately-packageable-with-app-managed-local-startup.md`
   - `ws-gateway/` — 現有 event bus（pub/sub + webhook）
 

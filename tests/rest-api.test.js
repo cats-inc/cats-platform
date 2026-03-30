@@ -254,7 +254,7 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
       body: JSON.stringify({
         title: 'Ops Radar',
         topic: 'Track regressions.',
-        repoPath: 'C:/repo/cats',
+        repoPath: 'C:/repo/cats-platform',
         language: 'TypeScript',
         cats: [
           { name: 'Inline-Agent', provider: 'gemini', roles: ['reviewer'] },

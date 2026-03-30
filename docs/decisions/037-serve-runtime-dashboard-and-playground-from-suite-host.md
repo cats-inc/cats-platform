@@ -39,7 +39,7 @@ separate port is an implementation detail that should not leak to the user.
 
 ```
 electron-dist/
-  cats/dist/              ← cats Vite build output (React SPA)
+  cats-platform/dist/              ← cats Vite build output (React SPA)
   runtime-pages/          ← copied from cats-runtime/public/
     dashboard.html
     playground.html

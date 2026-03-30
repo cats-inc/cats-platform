@@ -120,9 +120,9 @@ that UI about wake/stream internals.
 
 ## References
 
-- `cats/docs/specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md`
-- `cats/docs/decisions/017-allow-direct-cat-chat-and-move-routing-into-system-layer.md`
-- `cats/docs/decisions/031-separate-composer-lead-control-from-boss-orchestration-authority.md`
+- `cats-platform/docs/specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md`
+- `cats-platform/docs/decisions/017-allow-direct-cat-chat-and-move-routing-into-system-layer.md`
+- `cats-platform/docs/decisions/031-separate-composer-lead-control-from-boss-orchestration-authority.md`
 
 ---
 

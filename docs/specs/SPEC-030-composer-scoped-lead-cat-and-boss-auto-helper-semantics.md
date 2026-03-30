@@ -410,13 +410,13 @@ Make Boss Cat lead
 
 ## Dependencies
 
-- `cats/docs/specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md`
-- `cats/docs/specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md`
-- `cats/docs/specs/SPEC-027-chat-first-information-architecture-and-default-boss-cat.md`
-- `cats/docs/specs/SPEC-029-companion-boxes-ingestion-and-response-profiles.md`
-- `cats/docs/decisions/011-model-primary-orchestrator-as-visible-cat.md`
-- `cats/docs/decisions/017-allow-direct-cat-chat-and-move-routing-into-system-layer.md`
-- `cats/docs/decisions/030-own-per-cat-companion-boxes-in-product-and-hydrate-runtime-sessions.md`
+- `cats-platform/docs/specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md`
+- `cats-platform/docs/specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md`
+- `cats-platform/docs/specs/SPEC-027-chat-first-information-architecture-and-default-boss-cat.md`
+- `cats-platform/docs/specs/SPEC-029-companion-boxes-ingestion-and-response-profiles.md`
+- `cats-platform/docs/decisions/011-model-primary-orchestrator-as-visible-cat.md`
+- `cats-platform/docs/decisions/017-allow-direct-cat-chat-and-move-routing-into-system-layer.md`
+- `cats-platform/docs/decisions/030-own-per-cat-companion-boxes-in-product-and-hydrate-runtime-sessions.md`
 
 ## Open Questions
 
@@ -433,9 +433,9 @@ Make Boss Cat lead
 
 ## References
 
-- `cats/docs/requirements.md`
-- `cats/docs/terminology.md`
-- `cats/docs/architecture.md`
+- `cats-platform/docs/requirements.md`
+- `cats-platform/docs/terminology.md`
+- `cats-platform/docs/architecture.md`
 
 ---
 

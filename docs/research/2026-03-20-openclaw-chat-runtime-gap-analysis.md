@@ -41,17 +41,17 @@ Latest OpenClaw sources re-checked in this session:
 
 Current Cats references re-checked in this session:
 
-- `cats/docs/specs/SPEC-014-telegram-boss-cat-relay-mvp.md`
-- `cats/docs/specs/SPEC-017-telegram-inbox-and-room-routing.md`
-- `cats/docs/specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md`
-- `cats/docs/specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md`
-- `cats/docs/specs/SPEC-022-cats-memory-layering-and-ownership.md`
+- `cats-platform/docs/specs/SPEC-014-telegram-boss-cat-relay-mvp.md`
+- `cats-platform/docs/specs/SPEC-017-telegram-inbox-and-room-routing.md`
+- `cats-platform/docs/specs/SPEC-018-direct-cat-chat-and-conversation-routing-layer.md`
+- `cats-platform/docs/specs/SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md`
+- `cats-platform/docs/specs/SPEC-022-cats-memory-layering-and-ownership.md`
 - `cats-runtime/docs/specs/SPEC-005-runtime-managed-skills-v0.md`
 - `cats-runtime/docs/specs/SPEC-008-workspace-substrate-init-audit-and-update.md`
 - `cats-runtime/docs/specs/SPEC-010-usage-metering-rate-limit-detection-and-execution-guardrails.md`
 - `cats-runtime/docs/decisions/006-agent-backend-and-shared-runtime-contracts.md`
 - `cats-runtime/docs/plans/PLAN-004-agent-backend.md`
-- `cats/docs/research/2026-03-19-openclaw-memory-layering-benchmark.md`
+- `cats-platform/docs/research/2026-03-19-openclaw-memory-layering-benchmark.md`
 
 ## Core Position
 

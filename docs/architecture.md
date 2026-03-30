@@ -5,12 +5,11 @@
 ## Overview
 
 `Cats` remains the product-facing brand, while this repo targets the technical
-host identity `cats-platform` and still uses the local monorepo folder
-`cats/` until a coordinated workspace rename lands. The current implementation
-is still a split architecture: a Node server owns product and runtime-facing
-APIs, and a React/Vite renderer owns the operator-facing shell. The accepted
-next step is to add `Cats Core v1` so `Cats Chat` and `Cats Work` can launch on
-the same shared domain model.
+host identity `cats-platform` and now uses the matching local monorepo folder
+`cats-platform/`. The current implementation is still a split architecture: a
+Node server owns product and runtime-facing APIs, and a React/Vite renderer
+owns the operator-facing shell. The accepted next step is to add `Cats Core
+v1` so `Cats Chat` and `Cats Work` can launch on the same shared domain model.
 
 ## Architecture Diagram
 

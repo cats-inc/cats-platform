@@ -104,8 +104,8 @@ This follows the established separation pattern:
 - [ADR-022](./022-own-chat-delivery-policy-in-product.md)
 - [ADR-023](./023-own-budget-policy-and-cost-control-in-product.md)
 - [SPEC-032](../specs/SPEC-032-core-task-lifecycle-and-wakeup-integration.md) (implementation spec)
-- `cats/src/core/types.ts` — `CoreTaskRecord`, `CoreWorkItemRecord`
-- `cats/src/core/model.ts` — `upsertCoreTask()`, `upsertCoreWorkItem()`
+- `cats-platform/src/core/types.ts` — `CoreTaskRecord`, `CoreWorkItemRecord`
+- `cats-platform/src/core/model.ts` — `upsertCoreTask()`, `upsertCoreWorkItem()`
 - `cats-runtime/src/core/wakeup/RuntimeWakeupService.ts`
 
 ---

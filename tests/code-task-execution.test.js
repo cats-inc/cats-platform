@@ -66,12 +66,12 @@ test('createCodeTask records workspace ownership summary when a workspace is pro
 
   const result = createCodeTask(core, {
     title: 'Task with workspace',
-    workspacePath: 'C:/repo/cats',
+    workspacePath: 'C:/repo/cats-platform',
     workspaceKind: 'conversation_repo',
   }, now);
 
   assert.deepEqual(readCodeWorkspaceSummaryFromTask(result.task), {
-    workspacePath: 'C:/repo/cats',
+    workspacePath: 'C:/repo/cats-platform',
     workspaceKind: 'conversation_repo',
     ownershipState: 'conversation_bound',
   });

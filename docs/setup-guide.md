@@ -14,12 +14,12 @@
 ### 1. Prepare the project
 
 ```bash
-cd cats
+cd cats-platform
 cp .env.example .env
 ```
 
-The local monorepo folder is still `cats/`. The intended public host
-repo/package target is `cats-platform`.
+The local monorepo folder is now `cats-platform/`, matching the intended
+public host repo/package target.
 
 ### 2. Install dependencies
 

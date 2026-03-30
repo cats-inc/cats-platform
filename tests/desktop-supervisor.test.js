@@ -44,7 +44,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
       CATS_DESKTOP_RUNTIME_DATA_DIR: 'C:/Cats/runtime/data',
       CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR: 'C:/Cats/runtime/sessions',
       CATS_DESKTOP_RUNTIME_CONFIG_PATH: 'C:/Cats/runtime/providers.yaml',
-      CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats/dist-server/index.js',
+      CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/dist-server/index.js',
       CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/dist/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
       CATS_DESKTOP_TRAY_ENABLED: 'true',

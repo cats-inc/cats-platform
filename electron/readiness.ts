@@ -156,7 +156,7 @@ function buildIssues(
         label: 'Retry desktop host startup',
         resumable: true,
         requiresRestart: false,
-        docsPath: 'cats/docs/deployment.md',
+        docsPath: 'cats-platform/docs/deployment.md',
       },
     });
   }
@@ -175,7 +175,7 @@ function buildIssues(
         label: 'Open runtime diagnostics',
         resumable: true,
         requiresRestart: false,
-        docsPath: 'cats/docs/deployment.md',
+        docsPath: 'cats-platform/docs/deployment.md',
       },
     });
   }
@@ -196,7 +196,7 @@ function buildIssues(
         label: 'Open setup',
         resumable: true,
         requiresRestart: false,
-        docsPath: 'cats/docs/setup-guide.md',
+        docsPath: 'cats-platform/docs/setup-guide.md',
       },
     });
   } else if (!hasReadyProviderPath(providerSummary)) {
@@ -213,7 +213,7 @@ function buildIssues(
         label: 'Open setup',
         resumable: true,
         requiresRestart: false,
-        docsPath: 'cats/docs/setup-guide.md',
+        docsPath: 'cats-platform/docs/setup-guide.md',
       },
     });
   }
@@ -232,7 +232,7 @@ function buildIssues(
         label: 'Open setup',
         resumable: true,
         requiresRestart: false,
-        docsPath: 'cats/docs/setup-guide.md',
+        docsPath: 'cats-platform/docs/setup-guide.md',
       },
     });
   }
@@ -251,7 +251,7 @@ function buildIssues(
         label: 'Open setup recovery',
         resumable: lastSetupAction.resumable,
         requiresRestart: true,
-        docsPath: 'cats/docs/setup-guide.md',
+        docsPath: 'cats-platform/docs/setup-guide.md',
       },
     });
   } else if (lastSetupAction?.runState === 'failed') {
@@ -268,7 +268,7 @@ function buildIssues(
         label: 'Open setup recovery',
         resumable: lastSetupAction.resumable,
         requiresRestart: false,
-        docsPath: 'cats/docs/setup-guide.md',
+        docsPath: 'cats-platform/docs/setup-guide.md',
       },
     });
   } else if (lastSetupAction?.manualSteps.length) {
@@ -285,7 +285,7 @@ function buildIssues(
         label: 'Open setup recovery',
         resumable: lastSetupAction.resumable,
         requiresRestart: false,
-        docsPath: 'cats/docs/setup-guide.md',
+        docsPath: 'cats-platform/docs/setup-guide.md',
       },
     });
   }

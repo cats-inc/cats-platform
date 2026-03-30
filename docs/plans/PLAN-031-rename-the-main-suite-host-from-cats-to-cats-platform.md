@@ -140,12 +140,10 @@ different concepts accidentally.
 
 - [ ] Rename the future public GitHub repo target from `cats` to
       `cats-platform`.
-- [ ] Update clone/setup docs, badges, and repository references.
-- [ ] Plan the monorepo subproject folder rename from `cats/` to
-      `cats-platform/` as a coordinated slice once references and scripts are
-      ready.
-- [x] Document transitional local-folder expectations while the monorepo still
-      uses `cats/`.
+- [x] Update clone/setup docs, workspace examples, and host metadata paths that
+      previously assumed the old folder name.
+- [x] Rename the monorepo subproject folder from `cats/` to
+      `cats-platform/` and repair the immediate path-bearing references.
 
 **Deliverables**: repo identity and workspace guidance align with the new host
 name.
@@ -190,8 +188,8 @@ These items are expected to remain during or after the first rename slice:
 - `cats-one` as the install/bootstrap package name
 - historical rename records such as ADR-026 and PLAN-018
 - existing ADR/PLAN filenames that encode older naming stages
-- temporary monorepo folder references to `cats/` until the coordinated folder
-  rename lands
+- intentional historical prose that still mentions the earlier `cats/` folder
+  when describing pre-rename slices
 
 ## Validation
 
@@ -230,7 +228,8 @@ Use this when delegating implementation:
 | 2026-03-30 | Plan created to supersede PLAN-018 and apply ADR-045 naming targets |
 | 2026-03-30 | Phase 1-3 migration slice landed across README, packaging docs, research notes, package metadata, and the new `cats-one` bootstrap package scaffold while keeping the persistent executable as `cats` |
 | 2026-03-30 | Validation slice updated `tests/package-contract.test.js` for `@cats-inc/cats-platform` and replaced direct `npm.cmd` spawning with npm CLI script resolution so Windows package-contract checks can run in this environment |
-| 2026-03-30 | Local tarball smoke confirmed `cats-one` installs a `cats-one` shim and successfully hands off to the packaged `@cats-inc/cats-platform` CLI while keeping `cats-runtime` as a separate dependency |
+| 2026-03-30 | Local tarball smoke confirmed cats-one installs a cats-one shim and successfully hands off to the packaged @cats-inc/cats-platform CLI while keeping cats-runtime as a separate dependency |
+| 2026-03-30 | Phase 4 workspace slice landed: git mv cats cats-platform completed, root monorepo guidance now points at cats-platform/, and host-side Electron metadata plus desktop test fixtures now use the renamed workspace paths |
 
 ---
 

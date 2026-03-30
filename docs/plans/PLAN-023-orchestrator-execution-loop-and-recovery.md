@@ -47,7 +47,7 @@ MCP tool plane.
 
 ## Validation
 
-- `cd cats && npm test`
+- `cd cats-platform && npm test`
 
 ## Follow-up Watchpoints
 

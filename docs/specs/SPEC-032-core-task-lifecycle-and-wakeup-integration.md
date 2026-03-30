@@ -145,9 +145,9 @@ from the same data source.
 
 - [ADR-032](../decisions/032-own-task-substrate-in-core-not-runtime.md) —
   architectural decision that task lifecycle belongs in Core
-- `cats/src/core/types.ts` — `CoreTaskRecord`, `CoreWorkItemRecord`,
+- `cats-platform/src/core/types.ts` — `CoreTaskRecord`, `CoreWorkItemRecord`,
   `CoreRunRecord` (existing types)
-- `cats/src/core/model.ts` — `upsertCoreTask()`, `upsertCoreWorkItem()`
+- `cats-platform/src/core/model.ts` — `upsertCoreTask()`, `upsertCoreWorkItem()`
   (existing functions)
 - `cats-runtime` wakeup API — `POST /wakeups`, `GET /wakeups` (existing,
   no changes needed)

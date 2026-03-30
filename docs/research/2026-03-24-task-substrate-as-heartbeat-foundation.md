@@ -7,8 +7,8 @@
 - **Status**: Draft — pending review
 - **Scope**: `cats` Core 層 task substrate + `cats-runtime` wakeup 整合
 - **Related**:
-  - `cats/src/core/types.ts` — `CoreTaskRecord`, `CoreWorkItemRecord`
-  - `cats/src/core/model.ts` — `upsertCoreTask`, `upsertCoreWorkItem`
+  - `cats-platform/src/core/types.ts` — `CoreTaskRecord`, `CoreWorkItemRecord`
+  - `cats-platform/src/core/model.ts` — `upsertCoreTask`, `upsertCoreWorkItem`
   - `cats-runtime/src/core/wakeup/RuntimeWakeupService.ts`
   - `cats-runtime/docs/specs/SPEC-012-scheduled-wakeup-substrate.md`
   - `paperclip/server/src/services/heartbeat.ts`（3,466 行參考實作）
@@ -63,7 +63,7 @@ Runtime 唯一需要知道的是：「某個 session 要被叫醒」——這已
 
 ### 已經存在的（cats Core types + model）
 
-`cats/src/core/types.ts` 已定義：
+`cats-platform/src/core/types.ts` 已定義：
 
 - **`CoreTaskRecord`**
   - id, title, status, conversationId, ownerActorId, orchestratorActorId,
@@ -82,7 +82,7 @@ Runtime 唯一需要知道的是：「某個 session 要被叫醒」——這已
 
 - **`CoreApprovalQueueItem`** — 用於 UI 呈現待批列表
 
-`cats/src/core/model.ts` 已實作：
+`cats-platform/src/core/model.ts` 已實作：
 
 - `upsertCoreTask()` — task 的 create/update（含 approval 欄位合併）
 - `upsertCoreWorkItem()` — work item 的 create/update
