@@ -45,6 +45,7 @@ export interface SidebarProps {
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
   onOpenBuild?: () => void;
+  onOpenRelay?: () => void;
 }
 
 type RuntimeFooterStatus = 'unknown' | 'connected' | 'degraded' | 'unavailable';
@@ -396,6 +397,7 @@ export function Sidebar({
   activeMyCatId,
   onDirectChatCat,
   onOpenBuild,
+  onOpenRelay,
 }: SidebarProps) {
   const currentPath = globalThis.location?.pathname ?? '/code';
   const activeSurface = resolveSuiteSurfaceFromPath(currentPath);
@@ -487,6 +489,29 @@ export function Sidebar({
             <span className="navLabel">Chats</span>
           </button>
         </nav>
+
+        {onOpenRelay ? (
+          <nav className="navGroup" aria-label="Relay">
+            <button
+              className={currentPath.startsWith('/code/relay') ? 'navItem navItemActive' : 'navItem'}
+              onClick={onOpenRelay}
+              type="button"
+            >
+              <span className="navGlyph" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 4h4" />
+                  <path d="M9 4h4" />
+                  <path d="M5 4v8" />
+                  <path d="M11 4v8" />
+                  <path d="M5 8h6" />
+                  <path d="M3 12h4" />
+                  <path d="M9 12h4" />
+                </svg>
+              </span>
+              <span className="navLabel">Relay</span>
+            </button>
+          </nav>
+        ) : null}
 
         {onOpenBuild ? (
           <nav className="navGroup" aria-label="Build">

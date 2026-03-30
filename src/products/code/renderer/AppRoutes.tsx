@@ -18,6 +18,7 @@ import {
 } from './components/ChatView.js';
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
+import { CodeRelayView } from './components/CodeRelayView.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
@@ -105,6 +106,20 @@ export function AppRoutes({
         <Route
           path="data"
           element={<SettingsData feedback={feedback} busy={busy} onResetSetup={onResetSetup} />}
+        />
+        <Route
+          path="relay"
+          element={
+            <CodeRelayView
+              selectedChannelContext={payload.chat.selectedChannel
+                ? {
+                    title: payload.chat.selectedChannel.title,
+                    repoPath: payload.chat.selectedChannel.repoPath,
+                    chatCwd: payload.chat.selectedChannel.chatCwd,
+                  }
+                : null}
+            />
+          }
         />
         <Route
           path="build"

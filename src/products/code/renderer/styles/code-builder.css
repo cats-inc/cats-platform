@@ -259,6 +259,134 @@
   color: var(--muted);
 }
 
+/* Relay */
+
+.codeRelayView {
+  display: grid;
+  gap: 20px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.codeRelayHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.codeRelayHint {
+  align-self: center;
+  color: var(--muted-soft);
+  font-size: 0.8rem;
+}
+
+.codeRelayMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted-soft);
+  font-size: 0.76rem;
+}
+
+.codeRelayRosterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.codeRelayRosterCard {
+  display: grid;
+  gap: 10px;
+}
+
+.codeRelayToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.codeRelayAgentChecklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.codeRelayAgentChoice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.codeRelayRounds {
+  display: grid;
+  gap: 14px;
+}
+
+.codeRelayRoundCard {
+  display: grid;
+  gap: 12px;
+}
+
+.codeRelayDispatchList {
+  display: grid;
+  gap: 10px;
+}
+
+.codeRelayDispatchCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.codeRelayDispatchHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.codeRelayDispatchError {
+  margin: 0;
+  color: #8b1e1e;
+  font-size: 0.82rem;
+}
+
+.codeRelayMessageBlock {
+  display: grid;
+  gap: 6px;
+}
+
+.codeRelayMessageMeta {
+  margin: 0;
+  color: var(--muted-soft);
+  font-size: 0.74rem;
+}
+
+.codeRelayMessageBody {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f6f4ee;
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Iosevka Fixed', 'SFMono-Regular', Consolas, monospace;
+}
+
 /* Delivery preview result */
 
 .codeDeliveryPreview {

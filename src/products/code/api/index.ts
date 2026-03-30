@@ -1,6 +1,7 @@
 import type { AppConfig } from '../../../config.js';
 import type { CoreStore } from '../../../core/store.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
+import type { CodeRelayRuntime } from '../state/relayContracts.js';
 import {
   buildCodeArtifactDetailProjection,
   buildCodeArtifactListProjection,
@@ -18,6 +19,7 @@ import { routeCodeTaskMutationApi } from './taskRoutes.js';
 import { routeCodePlanApi } from './planRoutes.js';
 import { routeCodeDeliveryApi } from './deliveryRoutes.js';
 import { routeCodeRuntimeBridgeApi } from './runtimeBridgeRoutes.js';
+import { routeCodeRelayApi } from './relayRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -31,6 +33,8 @@ export interface CodeApiDependencies {
   coreStore: CoreStore;
   runtimeClient: RuntimeClient;
   config: AppConfig;
+  relayRuntime: CodeRelayRuntime;
+  now?: () => Date;
 }
 
 export type CodeApiRouteContext = RouteContext<CodeApiDependencies>;
@@ -86,6 +90,9 @@ export async function routeCodeApi(
     return true;
   }
   if (await routeCodeWorkspaceApi(context)) {
+    return true;
+  }
+  if (await routeCodeRelayApi(context)) {
     return true;
   }
 

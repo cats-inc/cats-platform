@@ -60,8 +60,12 @@ function createProps(): AppRoutesProps {
   };
 }
 
-test('Code AppRoutes keeps builder and artifact detail surfaces reachable', () => {
+test('Code AppRoutes keeps relay, builder, and artifact detail surfaces reachable', () => {
   const routes = collectRoutes(AppRoutes(createProps()));
+
+  const relayRoute = routes.find((entry) => entry.path === 'relay');
+  assert.ok(relayRoute, 'expected /code/relay route');
+  assert.ok(isValidElement(relayRoute?.element));
 
   const buildRoute = routes.find((entry) => entry.path === 'build');
   assert.ok(buildRoute, 'expected /code/build route');

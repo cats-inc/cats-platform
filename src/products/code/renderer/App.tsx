@@ -737,6 +737,7 @@ export default function App() {
         onSwitchProduct={onSwitchProduct}
         activeMyCatId={activeMyCatId}
         onDirectChatCat={onDirectChatCat}
+        onOpenRelay={() => navigate('/code/relay')}
         onOpenBuild={() => navigate('/code/build')}
       />
 

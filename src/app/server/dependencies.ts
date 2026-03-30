@@ -40,6 +40,7 @@ import {
 import { MemoryChatStore } from '../../products/chat/state/store.js';
 import { createChatTaskExecutionLocator } from '../../products/chat/state/taskExecutionLocator.js';
 import { createChatTelegramRoomBridge } from '../../products/chat/state/telegramBridgeAdapter.js';
+import { createLocalCliCodeRelayRuntime } from '../../products/code/state/relayRuntime.js';
 
 function createDefaultCompanionStore(
   shared: SharedServerDependencies,
@@ -231,6 +232,8 @@ export function resolveServerDependencies(
       coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
       runtimeClient: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
       config: dependencies.code?.config ?? dependencies.shared.config,
+      relayRuntime: dependencies.code?.relayRuntime ?? createLocalCliCodeRelayRuntime(),
+      now: dependencies.code?.now ?? dependencies.shared.now,
     },
   };
 }
