@@ -27,6 +27,8 @@ test('Install-ClaudeCode reports ready in check mode when Claude Code is already
     'installed',
     '-NpmShimState',
     'missing',
+    '-AuthState',
+    'authenticated',
     '-DetectedVersion',
     'claude 1.2.3',
   ]);
@@ -38,6 +40,30 @@ test('Install-ClaudeCode reports ready in check mode when Claude Code is already
   assert.equal(result.installed, true);
   assert.equal(result.detectedVersion, 'claude 1.2.3');
   assert.deepEqual(result.plannedActions, []);
+});
+
+test('Install-ClaudeCode reports auth-required in check mode when Claude Code is installed but not authenticated yet', skipUnlessWindows(), async () => {
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-CheckOnly',
+    '-Json',
+    '-InstallState',
+    'installed',
+    '-NpmShimState',
+    'missing',
+    '-AuthState',
+    'auth_required',
+    '-DetectedVersion',
+    'claude 1.2.3',
+  ]);
+
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'auth_required');
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
 });
 
 test('Install-ClaudeCode reports shim cleanup and install recovery when the native installer baseline is not yet clean', skipUnlessWindows(), async () => {
@@ -74,14 +100,18 @@ test('Install-ClaudeCode records restart-required recovery after reinstall work'
     'installed',
     '-NpmShimState',
     'missing',
+    '-AuthState',
+    'auth_required',
     '-SkipInstaller',
     '-DetectedVersion',
     'claude 1.2.3',
   ]);
 
   const result = JSON.parse(stdout);
-  assert.equal(result.status, 'restart_required');
-  assert.equal(result.restartRequired, true);
+  assert.equal(result.status, 'relaunch_required');
+  assert.equal(result.restartRequired, false);
   assert.equal(result.appliedChanges.includes('reinstall_claude_code_native'), true);
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'relaunch_required'), true);
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
   assert.equal(result.manualSteps.some((step) => step.includes('ANTHROPIC_API_KEY')), true);
 });

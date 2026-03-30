@@ -164,8 +164,11 @@ ports a product-owned host asset layer.
    provider installer set.
    - Claude, Cursor, and Kiro now give the packaged setup flow concrete
      native-plus-WSL provider targets.
-   - The remaining gap is finishing selective auth/readiness truth and adding
-     later providers, not rebuilding the baseline bridge from scratch.
+   - Selective auth/readiness follow-through is now also landed through the
+     repo-owned readiness audit plus explicit host interruption kinds for
+     relaunch, restart, elevation, first WSL boot, and auth-required states.
+   - The remaining gap is Docker warm-up plus later providers, not rebuilding
+     the baseline bridge from scratch.
 
 3. Defer Docker and tunnel flows until after the first packaged setup contract
    is stable.

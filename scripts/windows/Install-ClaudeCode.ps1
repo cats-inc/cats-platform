@@ -36,6 +36,9 @@
 .PARAMETER DetectedVersion
     Override the detected version for deterministic tests.
 
+.PARAMETER AuthState
+    Override post-install authentication detection for deterministic tests.
+
 .PARAMETER SkipInstaller
     Skip the actual installer invocation. Intended for deterministic tests.
 
@@ -55,6 +58,8 @@ param(
   [ValidateSet('auto', 'present', 'missing')]
   [string]$NpmShimState = 'auto',
   [string]$DetectedVersion = '',
+  [ValidateSet('auto', 'authenticated', 'auth_required')]
+  [string]$AuthState = 'auto',
   [switch]$SkipInstaller,
   [switch]$SkipNpmCleanup
 )
@@ -214,6 +219,19 @@ function Detect-ClaudeInstall {
   }
 }
 
+function Test-ClaudeAuthSatisfied {
+  switch ($AuthState) {
+    'authenticated' {
+      return $true
+    }
+    'auth_required' {
+      return $false
+    }
+  }
+
+  return -not [string]::IsNullOrWhiteSpace($env:ANTHROPIC_API_KEY)
+}
+
 function Invoke-ClaudeInstaller {
   if ($SkipInstaller) {
     return [pscustomobject]@{
@@ -286,6 +304,7 @@ if ($isAdmin -and -not $AllowAdmin) {
     )
     appliedChanges = @()
     manualSteps = @()
+    interruptions = @()
     cleanedNpmShim = $false
     usedWingetFallback = $false
   }
@@ -299,6 +318,7 @@ $appliedChanges = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()
 $manualSteps = [System.Collections.Generic.List[string]]::new()
 $usedWingetFallback = $false
+$authSatisfied = [bool]$detected.installed -and (Test-ClaudeAuthSatisfied)
 
 if ($npmShimPresent) {
   $plannedActions.Add('remove_legacy_npm_claude_shim')
@@ -309,7 +329,7 @@ if (-not $detected.installed) {
 
 if ($CheckOnly) {
   $status = if ($detected.installed -and -not $npmShimPresent) {
-    'ready'
+    if ($authSatisfied) { 'ready' } else { 'auth_required' }
   } elseif ($detected.installed) {
     'changes_required'
   } else {
@@ -327,7 +347,22 @@ if ($CheckOnly) {
     plannedActions = $plannedActions.ToArray()
     warnings = @()
     appliedChanges = @()
-    manualSteps = @()
+    manualSteps = if ($status -eq 'auth_required') {
+      @('Run claude to complete the browser sign-in flow, or configure ANTHROPIC_API_KEY before first use.')
+    } else {
+      @()
+    }
+    interruptions = if ($status -eq 'auth_required') {
+      @([pscustomobject]@{
+          kind = 'auth_required'
+          summary = 'Complete the Claude Code sign-in flow or configure ANTHROPIC_API_KEY, then rerun the packaged setup check.'
+          resumable = $true
+          requiresRestart = $false
+          requiresElevation = $false
+        })
+    } else {
+      @()
+    }
     cleanedNpmShim = $false
     usedWingetFallback = $false
   }
@@ -371,12 +406,32 @@ if ($shouldInstall) {
 }
 
 $manualSteps.Add('Run `claude` to complete the browser sign-in flow, or configure ANTHROPIC_API_KEY before first use.')
-$restartRequired = [bool]($shouldInstall -or $cleanedNpmShim)
+$authSatisfied = [bool]$detected.installed -and (Test-ClaudeAuthSatisfied)
+$interruptions = [System.Collections.Generic.List[object]]::new()
+if ($shouldInstall -or $cleanedNpmShim) {
+  $interruptions.Add([pscustomobject]@{
+      kind = 'relaunch_required'
+      summary = 'Relaunch Cats Desktop Host after the Claude Code install step, then rerun the packaged setup check.'
+      resumable = $true
+      requiresRestart = $false
+      requiresElevation = $false
+    })
+}
+if (-not $authSatisfied) {
+  $interruptions.Add([pscustomobject]@{
+      kind = 'auth_required'
+      summary = 'Complete the Claude Code sign-in flow or configure ANTHROPIC_API_KEY, then rerun the packaged setup check.'
+      resumable = $true
+      requiresRestart = $false
+      requiresElevation = $false
+    })
+}
+$restartRequired = $false
 
 $result = [pscustomobject]@{
   helper = 'windows-claude-native-installer'
   mode = $executionMode
-  status = if ($restartRequired) { 'restart_required' } else { 'ready' }
+  status = if ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
   installed = [bool]$detected.installed
   detectedVersion = if ($detected.detectedVersion) { $detected.detectedVersion } else { $null }
   commandPath = $detected.commandPath
@@ -385,6 +440,7 @@ $result = [pscustomobject]@{
   warnings = $warnings.ToArray()
   appliedChanges = $appliedChanges.ToArray()
   manualSteps = $manualSteps.ToArray()
+  interruptions = $interruptions.ToArray()
   cleanedNpmShim = $cleanedNpmShim
   usedWingetFallback = $usedWingetFallback
 }

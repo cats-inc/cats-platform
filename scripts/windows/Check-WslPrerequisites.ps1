@@ -23,6 +23,9 @@
 
 .PARAMETER InstalledDistrosJson
     Override the installed distro list as a JSON array for deterministic tests.
+
+.PARAMETER WslUserBootstrapState
+    Override whether the target distro has completed its first-user bootstrap.
 #>
 param(
   [switch]$Json,
@@ -30,7 +33,9 @@ param(
   [int]$WindowsBuild = 0,
   [ValidateSet('auto', 'missing', 'installed_no_distro', 'ready')]
   [string]$WslState = 'auto',
-  [string]$InstalledDistrosJson = ''
+  [string]$InstalledDistrosJson = '',
+  [ValidateSet('auto', 'pending', 'completed')]
+  [string]$WslUserBootstrapState = 'auto'
 )
 
 Set-StrictMode -Version Latest
@@ -70,6 +75,28 @@ function Parse-JsonArray {
   return @($parsed)
 }
 
+function Test-WslUserBootstrapComplete {
+  param(
+    [string]$TargetDistro
+  )
+
+  switch ($WslUserBootstrapState) {
+    'pending' {
+      return $false
+    }
+    'completed' {
+      return $true
+    }
+  }
+
+  try {
+    & wsl.exe -d $TargetDistro -u root -- sh -lc 'getent passwd 1000 >/dev/null 2>&1' | Out-Null
+    return ($LASTEXITCODE -eq 0)
+  } catch {
+    return $false
+  }
+}
+
 $minimumBuild = 19041
 $resolvedBuild = if ($WindowsBuild -gt 0) {
   $WindowsBuild
@@ -81,6 +108,8 @@ $plannedActions = [System.Collections.Generic.List[string]]::new()
 $installedDistros = @()
 $wslInstalled = $false
 $distroInstalled = $false
+$firstBootCompleted = $false
+$interruptions = [System.Collections.Generic.List[object]]::new()
 
 if (-not [string]::IsNullOrWhiteSpace($InstalledDistrosJson)) {
   $installedDistros = Parse-JsonArray -Value $InstalledDistrosJson
@@ -137,8 +166,36 @@ if ($wslInstalled -and -not $distroInstalled) {
   $plannedActions.Add("install_distro:$Distro")
 }
 
-$status = if ($plannedActions.Count -gt 0) {
+if ($wslInstalled -and $distroInstalled) {
+  $firstBootCompleted = Test-WslUserBootstrapComplete -TargetDistro $Distro
+  if (-not $firstBootCompleted) {
+    $plannedActions.Add("complete_first_boot:$Distro")
+    $interruptions.Add([pscustomobject]@{
+        kind = 'first_wsl_boot_required'
+        summary = "Launch wsl -d $Distro once to complete first-user setup before installing WSL-backed providers."
+        resumable = $true
+        requiresRestart = $false
+        requiresElevation = $false
+      })
+  }
+}
+
+if (-not $wslInstalled) {
+  $interruptions.Add([pscustomobject]@{
+      kind = 'elevation_required'
+      summary = 'Enable the WSL substrate from an elevated host step, then rerun the packaged setup check.'
+      resumable = $true
+      requiresRestart = $false
+      requiresElevation = $true
+    })
+}
+
+$status = if ($resolvedBuild -lt $minimumBuild) {
+  'failed'
+} elseif (-not $wslInstalled -or -not $distroInstalled) {
   'changes_required'
+} elseif (-not $firstBootCompleted) {
+  'first_wsl_boot_required'
 } else {
   'ready'
 }
@@ -151,10 +208,12 @@ $result = [pscustomobject]@{
   wslInstalled = $wslInstalled
   distro = $Distro
   distroInstalled = $distroInstalled
+  firstBootCompleted = $firstBootCompleted
   installedDistros = $installedDistros
   requiresElevation = $true
   plannedActions = $plannedActions.ToArray()
   warnings = $warnings.ToArray()
+  interruptions = $interruptions.ToArray()
 }
 
 Write-StructuredResult -Result $result

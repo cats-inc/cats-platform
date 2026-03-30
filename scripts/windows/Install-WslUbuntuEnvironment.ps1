@@ -42,6 +42,9 @@
 .PARAMETER InstalledDistrosJson
     Override the detected distro list as a JSON array for deterministic tests.
 
+.PARAMETER WslUserBootstrapState
+    Override whether the target distro has completed its first-user bootstrap.
+
 .PARAMETER SkipFeatureMutation
     Skip actual WSL substrate mutation. Intended for deterministic tests.
 
@@ -59,6 +62,8 @@ param(
   [ValidateSet('auto', 'missing', 'installed_no_distro', 'ready')]
   [string]$WslState = 'auto',
   [string]$InstalledDistrosJson = '',
+  [ValidateSet('auto', 'pending', 'completed')]
+  [string]$WslUserBootstrapState = 'auto',
   [switch]$SkipFeatureMutation,
   [switch]$SkipDistroInstall
 )
@@ -92,6 +97,9 @@ function Write-StructuredResult {
     foreach ($step in $Result.manualSteps) {
       Write-Host "Manual step: $step"
     }
+    foreach ($interruption in $Result.interruptions) {
+      Write-Host "Interruption: $($interruption.kind)"
+    }
   }
 
   exit $ExitCode
@@ -118,6 +126,9 @@ function Invoke-PreflightHelper {
   }
   if (-not [string]::IsNullOrWhiteSpace($InstalledDistrosJson)) {
     $arguments += @('-InstalledDistrosJson', $InstalledDistrosJson)
+  }
+  if ($WslUserBootstrapState -ne 'auto') {
+    $arguments += @('-WslUserBootstrapState', $WslUserBootstrapState)
   }
 
   $raw = (& powershell.exe @arguments) | Out-String
@@ -148,7 +159,8 @@ function New-Result {
     [string[]]$ManualSteps,
     [bool]$WslInstalled,
     [bool]$DistroInstalled,
-    [string[]]$InstalledDistros
+    [string[]]$InstalledDistros,
+    [object[]]$Interruptions
   )
 
   return [pscustomobject]@{
@@ -167,6 +179,7 @@ function New-Result {
     appliedChanges = $AppliedChanges
     warnings = $Warnings
     manualSteps = $ManualSteps
+    interruptions = $Interruptions
   }
 }
 
@@ -208,7 +221,8 @@ if ($CheckOnly) {
     -ManualSteps @() `
     -WslInstalled ([bool]$preflight.wslInstalled) `
     -DistroInstalled ([bool]$preflight.distroInstalled) `
-    -InstalledDistros @($preflight.installedDistros)
+    -InstalledDistros @($preflight.installedDistros) `
+    -Interruptions @($preflight.interruptions)
   Write-StructuredResult -Result $result -ExitCode 0
 }
 
@@ -226,6 +240,7 @@ $distroInstalled = [bool]$preflight.distroInstalled
 $restartRequired = $false
 $needsFeatureMutation = -not $wslInstalled
 $needsDistroInstall = $Force -or -not $distroInstalled
+$firstBootRequired = [string]$preflight.status -eq 'first_wsl_boot_required'
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).
   IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
@@ -244,7 +259,8 @@ try {
       -ManualSteps @() `
       -WslInstalled $wslInstalled `
       -DistroInstalled $distroInstalled `
-      -InstalledDistros $installedDistros.ToArray()
+      -InstalledDistros $installedDistros.ToArray() `
+      -Interruptions @()
     Write-StructuredResult -Result $result -ExitCode 1
   }
 
@@ -262,7 +278,16 @@ try {
       -ManualSteps @() `
       -WslInstalled $wslInstalled `
       -DistroInstalled $distroInstalled `
-      -InstalledDistros $installedDistros.ToArray()
+      -InstalledDistros $installedDistros.ToArray() `
+      -Interruptions @(
+        [pscustomobject]@{
+          kind = 'elevation_required'
+          summary = 'Enable the WSL substrate from an elevated host step, then rerun the helper.'
+          resumable = $true
+          requiresRestart = $false
+          requiresElevation = $true
+        }
+      )
     Write-StructuredResult -Result $result -ExitCode 1
   }
 
@@ -310,13 +335,39 @@ try {
     }
     $appliedChanges.Add($(if ($Force) { "reinstall_distro:$Distro" } else { "install_distro:$Distro" }))
     $distroInstalled = $true
+    $firstBootRequired = $true
     if (-not $installedDistros.Contains($Distro)) {
       $installedDistros.Add($Distro)
     }
     $manualSteps.Add("Launch `wsl -d $Distro` once to complete first-user setup before installing WSL-backed providers.")
   }
 
-  $status = if ($restartRequired) { 'restart_required' } else { 'ready' }
+  $interruptions = [System.Collections.Generic.List[object]]::new()
+  if ($restartRequired) {
+    $interruptions.Add([pscustomobject]@{
+        kind = 'restart_required'
+        summary = 'Restart Windows, then rerun this helper to continue the WSL environment setup.'
+        resumable = $true
+        requiresRestart = $true
+        requiresElevation = $false
+      })
+  } elseif ($firstBootRequired) {
+    $interruptions.Add([pscustomobject]@{
+        kind = 'first_wsl_boot_required'
+        summary = "Launch wsl -d $Distro once to complete first-user setup before installing WSL-backed providers."
+        resumable = $true
+        requiresRestart = $false
+        requiresElevation = $false
+      })
+  }
+
+  $status = if ($restartRequired) {
+    'restart_required'
+  } elseif ($firstBootRequired) {
+    'first_wsl_boot_required'
+  } else {
+    'ready'
+  }
   $result = New-Result `
     -Mode $executionMode `
     -Status $status `
@@ -329,7 +380,8 @@ try {
     -ManualSteps $manualSteps.ToArray() `
     -WslInstalled $wslInstalled `
     -DistroInstalled $distroInstalled `
-    -InstalledDistros $installedDistros.ToArray()
+    -InstalledDistros $installedDistros.ToArray() `
+    -Interruptions $interruptions.ToArray()
   Write-StructuredResult -Result $result -ExitCode 0
 } catch {
   $warnings.Add($_.Exception.Message)
@@ -345,6 +397,7 @@ try {
     -ManualSteps $manualSteps.ToArray() `
     -WslInstalled $wslInstalled `
     -DistroInstalled $distroInstalled `
-    -InstalledDistros $installedDistros.ToArray()
+    -InstalledDistros $installedDistros.ToArray() `
+    -Interruptions @()
   Write-StructuredResult -Result $result -ExitCode 1
 }

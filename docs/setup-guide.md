@@ -137,7 +137,8 @@ default or mock chats.
 
 ### Desktop Host Run
 
-The first Electron host slice now wraps the same local `cats` + `cats-runtime`
+The first Electron host slice now wraps the same local `cats-platform` +
+`cats-runtime`
 process topology:
 
 ```bash
@@ -157,9 +158,9 @@ Platform wrappers:
 
 What this does:
 
-- builds `cats` server, web bundle, and Electron host assets
+- builds `cats-platform` server, web bundle, and Electron host assets
 - starts `cats-runtime` in `app-managed` mode
-- starts `cats` in `app-managed` mode
+- starts `cats-platform` in `app-managed` mode
 - waits for both `/health` readiness contracts
 - runs a lightweight prerequisite scan before opening chat or setup
 
@@ -190,6 +191,17 @@ recommended resume step when a helper reports a resumable interruption. When a
 packaged setup step blocks on a restart or other recovery action, the bootstrap
 issue panel also reports that state as an install-category issue instead of
 showing only provider remediation.
+
+Current interruption truth in the packaged host:
+
+- relaunch, restart, elevation/UAC, first WSL boot, and auth-required
+  follow-through are now explicit host-owned setup states
+- the setup recovery panel and bootstrap action bar can surface
+  `Resume Packaged Setup` when the last helper run is resumable
+- `scripts/windows/Check-WindowsSetupReadiness.ps1` now also audits native
+  Claude/Cursor auth-required follow-through plus WSL first-boot readiness
+- Docker warm-up is still a later packaged-setup follow-through, not a shipped
+  helper state in this slice
 
 ### Self-Hosted npm Package Smoke
 

@@ -241,6 +241,13 @@ test('desktop bootstrap surfaces packaged setup restart recovery as an install i
         plannedActions: ['install_distro:Ubuntu'],
         appliedChanges: ['enable_wsl_features'],
         manualSteps: ['Restart Windows, then rerun this helper to register the Ubuntu distro.'],
+        interruptions: [{
+          kind: 'restart_required',
+          summary: 'Restart Windows, then rerun this helper to continue the WSL environment setup.',
+          resumable: true,
+          requiresRestart: true,
+          requiresElevation: false,
+        }],
         error: null,
       },
     },
@@ -249,9 +256,98 @@ test('desktop bootstrap surfaces packaged setup restart recovery as an install i
   const installIssue = snapshot.issues.find((issue) => issue.id === 'setup-restart-required');
   assert.ok(installIssue);
   assert.equal(installIssue?.category, 'install');
-  assert.equal(installIssue?.remediation?.kind, 'open_setup');
+  assert.equal(installIssue?.remediation?.kind, 'resume_setup');
   assert.equal(installIssue?.remediation?.requiresRestart, true);
   assert.match(installIssue?.detail ?? '', /Restart Windows/i);
+  assert.ok(snapshot.actions.some((action) => action.id === 'resume_setup'));
+});
+
+test('desktop bootstrap surfaces packaged setup auth recovery as an install issue', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: null,
+    },
+    runtimeHealth: {
+      status: 'degraded',
+      runtime: {
+        status: 'ok',
+        summary: 'Runtime is ready.',
+      },
+      providers: {
+        summary: {
+          status: 'degraded',
+          summary: 'No default provider targets are configured yet.',
+          configuredProviders: 0,
+          targets: 0,
+          defaultTargets: 0,
+          ok: 0,
+          degraded: 0,
+          unavailable: 0,
+        },
+      },
+    },
+    providerDiagnostics: {
+      summary: {
+        status: 'degraded',
+        summary: 'No provider targets are configured yet.',
+        configuredProviders: 0,
+        targets: 0,
+        defaultTargets: 0,
+        ok: 0,
+        degraded: 0,
+        unavailable: 0,
+      },
+      providers: [],
+    },
+    setup: {
+      updatedAt: '2026-03-30T12:20:00.000Z',
+      lastAction: {
+        helperId: 'windows-claude-native-installer',
+        assetId: 'windows-claude-native-installer-script',
+        label: 'Windows native Claude Code installer',
+        mode: 'apply',
+        runState: 'completed',
+        status: 'auth_required',
+        summary: 'Windows native Claude Code installer apply finished with auth_required.',
+        packagedRelativePath: 'desktop-host/setup-assets/windows/Install-ClaudeCode.ps1',
+        scriptPath: null,
+        requiresElevation: false,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-03-30T12:10:00.000Z',
+        completedAt: '2026-03-30T12:20:00.000Z',
+        warnings: [],
+        plannedActions: ['provider:authenticate_claude_code'],
+        appliedChanges: ['install_claude_code_native'],
+        manualSteps: ['Complete the Claude Code sign-in flow, then rerun the packaged setup check.'],
+        interruptions: [{
+          kind: 'auth_required',
+          summary: 'Complete the Claude Code sign-in flow or configure ANTHROPIC_API_KEY, then rerun the packaged setup check.',
+          resumable: true,
+          requiresRestart: false,
+          requiresElevation: false,
+        }],
+        error: null,
+      },
+    },
+  });
+
+  const installIssue = snapshot.issues.find((issue) => issue.id === 'setup-auth-required');
+  assert.ok(installIssue);
+  assert.equal(installIssue?.category, 'install');
+  assert.equal(installIssue?.remediation?.kind, 'resume_setup');
+  assert.match(installIssue?.detail ?? '', /sign-in flow/i);
 });
 
 test('desktop bootstrap surfaces provider remediation after setup if no provider is ready', () => {

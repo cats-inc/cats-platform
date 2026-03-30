@@ -27,6 +27,8 @@ test('Install-WslUbuntuEnvironment reports ready in check mode when WSL and Ubun
     '22621',
     '-WslState',
     'ready',
+    '-WslUserBootstrapState',
+    'completed',
   ]);
 
   const result = JSON.parse(stdout);
@@ -60,6 +62,7 @@ test('Install-WslUbuntuEnvironment reports restart-required after simulating WSL
   assert.equal(result.appliedChanges.includes('install_wsl_kernel'), true);
   assert.equal(result.appliedChanges.includes('set_default_wsl_version_2'), true);
   assert.equal(result.plannedActions.includes('install_distro:Ubuntu'), true);
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'restart_required'), true);
 });
 
 test('Install-WslUbuntuEnvironment installs the distro after WSL is already present', skipUnlessWindows(), async () => {
@@ -79,10 +82,11 @@ test('Install-WslUbuntuEnvironment installs the distro after WSL is already pres
   ]);
 
   const result = JSON.parse(stdout);
-  assert.equal(result.status, 'ready');
+  assert.equal(result.status, 'first_wsl_boot_required');
   assert.equal(result.restartRequired, false);
   assert.equal(result.distroInstalled, true);
   assert.equal(result.appliedChanges.includes('install_distro:Ubuntu'), true);
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'first_wsl_boot_required'), true);
   assert.equal(
     result.manualSteps.some((step) => step.includes('complete first-user setup')),
     true,

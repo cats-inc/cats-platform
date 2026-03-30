@@ -97,6 +97,21 @@ export function buildDesktopBootstrapPage(): string {
       }
       .row-title strong { font-size: 15px; }
       .meta { font-size: 13px; color: var(--muted); }
+      .interruption-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .interruption-chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: rgba(157, 79, 46, 0.08);
+        border: 1px solid var(--line);
+        color: var(--accent);
+        font-size: 12px;
+      }
       .issues, .services, .actions { display: grid; gap: 12px; }
       .actions { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
       button {
@@ -225,12 +240,26 @@ export function buildDesktopBootstrapPage(): string {
             button.disabled = true;
             try {
               await bridge.runAction(action.id);
+              if (action.id === 'resume_setup') {
+                const nextSetupSnapshot = await bridge.getSetupSnapshot().catch(() => null);
+                renderSetup(latestSnapshot || snapshot, nextSetupSnapshot);
+              }
             } finally {
               button.disabled = Boolean(action.disabled);
             }
           });
           actions.appendChild(button);
         }
+      }
+      function renderInterruptions(interruptions) {
+        if (!Array.isArray(interruptions) || interruptions.length === 0) {
+          return '';
+        }
+        return '<div class="interruption-list">'
+          + interruptions.map((entry) => (
+            '<span class="interruption-chip">' + escapeHtml(String(entry.kind || '').replace(/_/g, ' ')) + '</span>'
+          )).join('')
+          + '</div>';
       }
       function renderSetup(snapshot, setupSnapshot) {
         const helperSummary = setupSnapshot
@@ -268,6 +297,7 @@ export function buildDesktopBootstrapPage(): string {
               + '<div class="row-title"><strong>Recommended resume step</strong><span class="status-degraded">'
               + escapeHtml(setupSnapshot.resumeAction.reason.replace(/_/g, ' ')) + '</span></div>'
               + '<div class="meta">' + escapeHtml(setupSnapshot.resumeAction.summary) + '</div>'
+              + renderInterruptions(setupSnapshot.resumeAction.interruptions)
               + '<div class="meta"><code>' + escapeHtml(setupSnapshot.resumeAction.mode) + '</code></div>'
               + (Array.isArray(setupSnapshot.resumeAction.manualSteps) && setupSnapshot.resumeAction.manualSteps.length
                 ? '<div class="meta">' + escapeHtml(setupSnapshot.resumeAction.manualSteps[0]) + '</div>'
@@ -290,6 +320,7 @@ export function buildDesktopBootstrapPage(): string {
               + '<div class="row-title"><strong>' + escapeHtml(lastAction.label || lastAction.helperId) + '</strong><span class="' + statusClass + '">'
               + escapeHtml(lastAction.status || lastAction.runState) + '</span></div>'
               + '<div class="meta">' + escapeHtml(lastAction.summary || 'No setup action summary recorded.') + '</div>'
+              + renderInterruptions(lastAction.interruptions)
               + '<div class="meta"><code>' + escapeHtml(lastAction.mode) + '</code></div>'
               + (lastAction.restartRequired ? '<div class="meta status-degraded">Restart is required before the next packaged setup step.</div>' : '')
               + (Array.isArray(lastAction.manualSteps) && lastAction.manualSteps.length

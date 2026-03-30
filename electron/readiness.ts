@@ -237,24 +237,63 @@ function buildIssues(
     });
   }
 
-  if (lastSetupAction?.restartRequired) {
-    issues.push({
-      id: 'setup-restart-required',
-      severity: setupComplete ? 'error' : 'warning',
-      title: 'Packaged setup needs a restart before it can continue',
-      detail: lastSetupAction.summary,
-      target: lastSetupAction.helperId,
-      category: 'install',
-      resumeKey: `setup_${lastSetupAction.helperId}_restart`,
-      remediation: {
-        kind: 'open_setup',
-        label: 'Open setup recovery',
-        resumable: lastSetupAction.resumable,
-        requiresRestart: true,
-        docsPath: 'cats-platform/docs/setup-guide.md',
-      },
-    });
-  } else if (lastSetupAction?.runState === 'failed') {
+  if (lastSetupAction) {
+    const interruptions = Array.isArray(lastSetupAction.interruptions)
+      ? lastSetupAction.interruptions
+      : [];
+    for (const interruption of interruptions) {
+      let title = 'Packaged setup still needs follow-through';
+      let severity: DesktopPrerequisiteIssue['severity'] = setupComplete ? 'error' : 'warning';
+      let issueId = `setup-${interruption.kind}`;
+
+      switch (interruption.kind) {
+        case 'restart_required':
+          title = 'Packaged setup needs a Windows restart before it can continue';
+          issueId = 'setup-restart-required';
+          break;
+        case 'relaunch_required':
+          title = 'Packaged setup needs the desktop host to relaunch';
+          issueId = 'setup-relaunch-required';
+          break;
+        case 'elevation_required':
+          title = 'Packaged setup needs elevation before it can continue';
+          issueId = 'setup-elevation-required';
+          break;
+        case 'auth_required':
+          title = 'Installed provider still needs authentication';
+          issueId = 'setup-auth-required';
+          severity = setupComplete ? 'error' : 'warning';
+          break;
+        case 'first_wsl_boot_required':
+          title = 'WSL distro needs its first boot before setup can continue';
+          issueId = 'setup-first-wsl-boot-required';
+          break;
+        case 'docker_warm_up_required':
+          title = 'Docker still needs to finish starting before setup can continue';
+          issueId = 'setup-docker-warm-up-required';
+          break;
+      }
+
+      issues.push({
+        id: issueId,
+        severity,
+        title,
+        detail: interruption.summary,
+        target: lastSetupAction.helperId,
+        category: 'install',
+        resumeKey: `setup_${lastSetupAction.helperId}_${interruption.kind}`,
+        remediation: {
+          kind: 'resume_setup',
+          label: 'Resume packaged setup',
+          resumable: lastSetupAction.resumable && interruption.resumable,
+          requiresRestart: interruption.requiresRestart,
+          docsPath: 'cats-platform/docs/setup-guide.md',
+        },
+      });
+    }
+  }
+
+  if (lastSetupAction?.runState === 'failed' && (lastSetupAction.interruptions?.length ?? 0) === 0) {
     issues.push({
       id: 'setup-recovery-required',
       severity: setupComplete ? 'error' : 'warning',
@@ -264,14 +303,18 @@ function buildIssues(
       category: 'install',
       resumeKey: `setup_${lastSetupAction.helperId}_retry`,
       remediation: {
-        kind: 'open_setup',
-        label: 'Open setup recovery',
+        kind: 'resume_setup',
+        label: 'Resume packaged setup',
         resumable: lastSetupAction.resumable,
         requiresRestart: false,
         docsPath: 'cats-platform/docs/setup-guide.md',
       },
     });
-  } else if (lastSetupAction?.manualSteps.length) {
+  } else if (
+    lastSetupAction
+    && lastSetupAction.manualSteps.length > 0
+    && lastSetupAction.interruptions.length === 0
+  ) {
     issues.push({
       id: 'setup-manual-follow-through',
       severity: 'info',
@@ -281,8 +324,8 @@ function buildIssues(
       category: 'install',
       resumeKey: `setup_${lastSetupAction.helperId}_manual`,
       remediation: {
-        kind: 'open_setup',
-        label: 'Open setup recovery',
+        kind: 'resume_setup',
+        label: 'Resume packaged setup',
         resumable: lastSetupAction.resumable,
         requiresRestart: false,
         docsPath: 'cats-platform/docs/setup-guide.md',
@@ -405,15 +448,35 @@ function buildActions(
   options: {
     appReady: boolean;
     runtimeReady: boolean;
+    setup: DesktopSetupState | null | undefined;
   },
 ): DesktopHostAction[] {
   const actions: DesktopHostAction[] = [];
   const push = (id: DesktopHostActionId, label: string, primary = false) => {
     actions.push({ id, label, primary });
   };
+  const lastSetupAction = options.setup?.lastAction ?? null;
+  const canResumeSetup = Boolean(
+    lastSetupAction
+    && lastSetupAction.resumable
+    && (
+      lastSetupAction.interruptions.length > 0
+      || lastSetupAction.runState === 'failed'
+      || lastSetupAction.manualSteps.length > 0
+      || lastSetupAction.restartRequired
+      || lastSetupAction.status === 'changes_required'
+      || lastSetupAction.status === 'not_installed'
+      || lastSetupAction.status === 'auth_required'
+    ),
+  );
 
   if (phase === 'ready_for_setup') {
-    push('open_setup', 'Continue to Setup', true);
+    if (canResumeSetup) {
+      push('resume_setup', 'Resume Packaged Setup', true);
+      push('open_setup', 'Open Setup');
+    } else {
+      push('open_setup', 'Continue to Setup', true);
+    }
     if (options.runtimeReady) {
       push('open_runtime_diagnostics', 'Open Runtime Diagnostics');
     }
@@ -431,7 +494,12 @@ function buildActions(
   }
 
   if (phase === 'needs_prerequisites' || phase === 'failed') {
-    push('retry', phase === 'failed' ? 'Retry Startup' : 'Retry Scan', true);
+    if (canResumeSetup) {
+      push('resume_setup', 'Resume Packaged Setup', true);
+      push('retry', phase === 'failed' ? 'Retry Startup' : 'Retry Scan');
+    } else {
+      push('retry', phase === 'failed' ? 'Retry Startup' : 'Retry Scan', true);
+    }
     if (options.runtimeReady) {
       push('open_runtime_diagnostics', 'Open Runtime Diagnostics');
     }
@@ -573,6 +641,7 @@ export function buildDesktopBootstrapSnapshot(
     actions: buildActions(phase, {
       appReady: Boolean(appService?.ready),
       runtimeReady: Boolean(runtimeService?.ready),
+      setup,
     }),
     lastError: input.lastError ?? null,
     progress,

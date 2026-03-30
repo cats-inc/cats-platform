@@ -12,5 +12,7 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /resumeSetup/);
   assert.match(html, /snapshot\.setup/);
   assert.match(html, /Recommended resume step/);
+  assert.match(html, /interruption-chip/);
+  assert.match(html, /renderInterruptions/);
   assert.match(html, /repo-owned packaged assets/);
 });

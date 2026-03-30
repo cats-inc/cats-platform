@@ -110,6 +110,9 @@ function Write-StructuredResult {
     foreach ($step in $Result.manualSteps) {
       Write-Host "Manual step: $step"
     }
+    foreach ($interruption in $Result.interruptions) {
+      Write-Host "Interruption: $($interruption.kind)"
+    }
   }
 
   exit $ExitCode
@@ -295,7 +298,8 @@ function New-Result {
     [string[]]$PlannedActions,
     [string[]]$AppliedChanges,
     [string[]]$Warnings,
-    [string[]]$ManualSteps
+    [string[]]$ManualSteps,
+    [object[]]$Interruptions
   )
 
   return [pscustomobject]@{
@@ -316,6 +320,7 @@ function New-Result {
     appliedChanges = $AppliedChanges
     warnings = $Warnings
     manualSteps = $ManualSteps
+    interruptions = $Interruptions
   }
 }
 
@@ -398,7 +403,11 @@ if ([string]$wslEnvironment.status -eq 'ready' -and [bool]$installStatus.install
 
 if ($CheckOnly) {
   $status = if ([string]$wslEnvironment.status -ne 'ready') {
-    'changes_required'
+    if ([string]$wslEnvironment.status -eq 'first_wsl_boot_required') {
+      'first_wsl_boot_required'
+    } else {
+      'changes_required'
+    }
   } elseif (-not [bool]$dependencies.curlInstalled -or -not [bool]$dependencies.unzipInstalled) {
     'changes_required'
   } elseif (-not [bool]$installStatus.installed) {
@@ -421,7 +430,8 @@ if ($CheckOnly) {
     -PlannedActions $plannedActions.ToArray() `
     -AppliedChanges @() `
     -Warnings @() `
-    -ManualSteps @()
+    -ManualSteps @() `
+    -Interruptions @($wslEnvironment.interruptions)
   Write-StructuredResult -Result $result -ExitCode 0
 }
 
@@ -430,7 +440,11 @@ try {
     $warnings.Add('Run the repo-owned WSL substrate helper before installing Kiro CLI.')
     $result = New-Result `
       -Mode $executionMode `
-      -Status 'failed' `
+      -Status $(if ([string]$wslEnvironment.status -eq 'first_wsl_boot_required') {
+          'first_wsl_boot_required'
+        } else {
+          'failed'
+        }) `
       -WslEnvironment $wslEnvironment `
       -Dependencies $dependencies `
       -Installed ([bool]$installStatus.installed) `
@@ -440,7 +454,8 @@ try {
       -PlannedActions $plannedActions.ToArray() `
       -AppliedChanges @() `
       -Warnings $warnings.ToArray() `
-      -ManualSteps @()
+      -ManualSteps @() `
+      -Interruptions @($wslEnvironment.interruptions)
     Write-StructuredResult -Result $result -ExitCode 1
   }
 
@@ -464,7 +479,8 @@ try {
       -PlannedActions $plannedActions.ToArray() `
       -AppliedChanges @() `
       -Warnings $warnings.ToArray() `
-      -ManualSteps $manualSteps.ToArray()
+      -ManualSteps $manualSteps.ToArray() `
+      -Interruptions @()
     Write-StructuredResult -Result $result -ExitCode 1
   }
 
@@ -518,7 +534,8 @@ try {
     -PlannedActions @() `
     -AppliedChanges $appliedChanges.ToArray() `
     -Warnings $warnings.ToArray() `
-    -ManualSteps $manualSteps.ToArray()
+    -ManualSteps $manualSteps.ToArray() `
+    -Interruptions @()
   Write-StructuredResult -Result $result -ExitCode 0
 } catch {
   $warnings.Add($_.Exception.Message)
@@ -534,6 +551,7 @@ try {
     -PlannedActions $plannedActions.ToArray() `
     -AppliedChanges $appliedChanges.ToArray() `
     -Warnings $warnings.ToArray() `
-    -ManualSteps $manualSteps.ToArray()
+    -ManualSteps $manualSteps.ToArray() `
+    -Interruptions @()
   Write-StructuredResult -Result $result -ExitCode 1
 }

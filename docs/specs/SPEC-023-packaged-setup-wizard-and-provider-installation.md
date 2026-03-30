@@ -10,7 +10,7 @@
 
 ## Summary
 
-`cats` needs a first-run experience that feels closer to a normal desktop
+`cats-platform` needs a first-run experience that feels closer to a normal desktop
 product than to a developer bootstrap checklist.
 
 The target experience is:
@@ -31,13 +31,13 @@ The key architectural constraint is that **app installation** and
   detect, install, verify, or defer
 
 This spec defines the user-facing setup flow and the cross-project integration
-shape among `cats`, `cats-runtime`, and `environment-bootstrap`.
+shape among `cats-platform`, `cats-runtime`, and `environment-bootstrap`.
 
 ## Implementation Snapshot
 
 The first host-owned slice is already in-repo:
 
-- `cats-platform/electron/*` now supervises local `cats-runtime` + `cats`
+- `cats-platform/electron/*` now supervises local `cats-runtime` + `cats-platform`
 - readiness-gated bootstrap exists before the renderer fully enters the normal
   chat flow
 - first-run setup can already distinguish setup entry versus ready entry
@@ -52,9 +52,10 @@ The first host-owned slice is already in-repo:
   from the last resumable helper run and exposes a dedicated host-owned
   `resume-setup` path so restart/manual follow-through states do not collapse
   into ad hoc retry guidance
-- bootstrap readiness now also surfaces packaged setup restart/recovery states
-  as install-category issues instead of leaving them implicit behind provider
-  remediation only
+- bootstrap readiness now also surfaces packaged setup interruption states as
+  install-category issues, with explicit relaunch, restart, elevation,
+  first-WSL-boot, and auth-required follow-through instead of leaving them
+  implicit behind provider remediation only
 - the host now carries a tray/background lifecycle and a manual-check
   update-channel skeleton
 - packaging scripts now stage Windows/macOS/Linux build outputs plus installer
@@ -76,7 +77,7 @@ host-operations depth around that first slice:
 
 ## Goals
 
-- let packaged Cats builds open successfully without requiring a preinstalled
+- let packaged `cats-platform` builds open successfully without requiring a preinstalled
   local dev stack
 - keep the first usable path as short as possible for non-technical or lightly
   technical users
@@ -86,7 +87,7 @@ host-operations depth around that first slice:
   only when needed
 - keep long-running setup steps resumable across restarts, reboots, or first
   launches of WSL/Docker-backed tooling
-- port relevant install and compatibility knowledge into shipped Cats code and
+- port relevant install and compatibility knowledge into shipped `cats-platform` code and
   assets without making `environment-bootstrap` a product dependency
 
 ## Non-Goals
@@ -174,9 +175,9 @@ host-operations depth around that first slice:
 1. `cats-runtime` shall remain the authority for provider family topology and
    provider-install metadata consumed by product hosts.
 2. `environment-bootstrap` may be used as a pre-split source knowledge input,
-   but the packaged Cats app shall ship product-owned install/check
-   implementations or bundled assets rather than depend on the bootstrap repo
-   directly.
+  but the packaged Cats app shall ship product-owned install/check
+  implementations or bundled assets rather than depend on the bootstrap repo
+  directly.
 3. The packaged host shall map runtime-owned provider install metadata onto the
    bundled execution assets it uses for actual installation and verification.
 4. `cats-runtime` shall not execute provider-install scripts itself as part of
@@ -185,9 +186,9 @@ host-operations depth around that first slice:
    shall be invocable in a GUI-safe, non-interactive mode.
 6. The packaged setup flow shall rely on structured install/check outcomes
    rather than parsing human-oriented terminal output.
-7. Before `cats` and `cats-runtime` split into separate repos, any packaged
+7. Before `cats-platform` and `cats-runtime` split into separate repos, any packaged
    setup helper logic still required for first-run install/check/resume flows
-   shall have a `cats`-owned implementation or bundled asset baseline rather
+   shall have a `cats-platform`-owned implementation or bundled asset baseline rather
    than a remaining dependency on monorepo-local bootstrap repos.
 
 ### Non-Functional Requirements
@@ -323,7 +324,7 @@ Settings or an equivalent product-owned management surface so users can:
 
 The packaged setup flow should follow this ownership split:
 
-- `cats` renderer
+- `cats-platform` renderer
   - displays the wizard
   - renders provider choices, progress, and errors
 - packaged host (future Electron main)
@@ -340,7 +341,7 @@ The packaged setup flow should follow this ownership split:
 
 ## Knowledge Porting Direction from `environment-bootstrap`
 
-The packaged Cats product should port or reimplement:
+The packaged `cats-platform` product should port or reimplement:
 
 - provider-level install logic that has proven stable
 - provider-level verification logic that has proven stable
@@ -349,7 +350,7 @@ The packaged Cats product should port or reimplement:
 - shared knowledge about auth, PATH, shell, WSL, Docker, and encoding edge
   cases
 
-The packaged Cats product should not depend directly on:
+The packaged `cats-platform` product should not depend directly on:
 
 - `Full-Install.ps1`
 - `full-install.sh`
@@ -360,7 +361,7 @@ The packaged Cats product should not depend directly on:
 
 The bundled provider install/check assets used by the packaged host should
 support a machine-readable execution contract. Those assets may be handwritten
-for Cats or derived from internal bootstrap knowledge, but they should ship as
+for `cats-platform` or derived from internal bootstrap knowledge, but they should ship as
 product-owned code or bundled scripts.
 
 Preferred contract direction:
@@ -431,6 +432,14 @@ teaching the renderer or the user about the underlying script topology.
   Code installer into a packaged-host asset, removes legacy npm Claude shims
   that would shadow the native binary, and keeps the browser/API-key sign-in
   follow-through inside the packaged setup contract.
+- The latest interruption-handling slice is now landed:
+  `electron/contracts.ts`, `electron/setupBridge.ts`, `electron/readiness.ts`,
+  `electron/main.ts`, `electron/bootstrapPage.ts`, and
+  `scripts/windows/Check-WindowsSetupReadiness.ps1` now keep relaunch,
+  restart, elevation, first-WSL-boot, and auth-required states explicit in the
+  host-owned contract, persisted setup state, bootstrap issue panel, and setup
+  recovery panel instead of collapsing them into generic restart/manual
+  messaging.
 - The staged desktop packaging plan now also carries a machine-readable
   `installer.providerSetup.helperCatalog`, and the packaged host now consumes
   that contract through `electron/setupBridge.ts` so setup actions can bind to
@@ -441,10 +450,9 @@ teaching the renderer or the user about the underlying script topology.
   bridge or smoke tooling can discover packaged setup helpers without
   parsing the full desktop packaging plan.
 - The next follow-on under `PLAN-030` is no longer the baseline host bridge;
-  it is the remaining interruption edges beyond the new `resumeAction`
-  contract, especially UAC/elevation round-trips, first-boot WSL follow-through,
-  and later provider coverage so the split does not leave required setup logic
-  trapped in bootstrap repos.
+  it is the remaining interruption edge beyond the explicit-interruption
+  contract, especially Docker warm-up plus later provider coverage so the
+  split does not leave required setup logic trapped in bootstrap repos.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)
@@ -462,6 +470,13 @@ terminal failures:
 - Docker daemon warm-up
 - privilege elevation round-trips
 - auth-required states after install succeeds
+
+Current implementation truth:
+
+- relaunch, restart, elevation, first-WSL-boot, and auth-required states are
+  now explicit in the packaged host contract and bootstrap recovery UI
+- Docker warm-up remains a planned follow-on rather than a shipped packaged
+  helper state in this slice
 
 ## Dependencies
 
@@ -490,6 +505,6 @@ terminal failures:
 
 *Created: 2026-03-20*
 *Author: Codex*
-*Last updated: 2026-03-29*
+*Last updated: 2026-03-30*
 
 *Related Plan: [PLAN-030](../plans/PLAN-030-packaged-setup-wizard-and-provider-installation.md)*

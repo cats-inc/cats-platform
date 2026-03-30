@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 type DesktopHostActionId =
   | 'retry'
+  | 'resume_setup'
   | 'open_runtime_diagnostics'
   | 'open_setup'
   | 'open_chat'
@@ -14,6 +15,7 @@ type DesktopSetupHelperMode =
 
 const DESKTOP_HOST_ACTION_IDS = new Set<DesktopHostActionId>([
   'retry',
+  'resume_setup',
   'open_runtime_diagnostics',
   'open_setup',
   'open_chat',
@@ -43,6 +45,9 @@ interface DesktopSetupSnapshot {
     mode: DesktopSetupHelperMode;
     reason: string;
     summary: string;
+    interruptions?: Array<{
+      kind: string;
+    }>;
   };
   state: {
     updatedAt: string | null;

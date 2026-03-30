@@ -31,6 +31,7 @@ export const DESKTOP_BOOTSTRAP_PHASES = [
 ] as const;
 export const DESKTOP_HOST_ACTION_IDS = [
   'retry',
+  'resume_setup',
   'open_runtime_diagnostics',
   'open_setup',
   'open_chat',
@@ -86,6 +87,7 @@ export const DESKTOP_INSTALLER_FORMATS = [
 ] as const;
 export const DESKTOP_REMEDIATION_KINDS = [
   'retry',
+  'resume_setup',
   'open_runtime_diagnostics',
   'open_setup',
   'reinstall_host',
@@ -134,12 +136,24 @@ export const DESKTOP_SETUP_ACTION_RUN_STATES = [
 ] as const;
 export const DESKTOP_SETUP_RESUME_REASONS = [
   'restart_required',
+  'relaunch_required',
+  'elevation_required',
   'changes_required',
   'not_installed',
   'retry_failed',
   'auth_required',
+  'first_wsl_boot_required',
+  'docker_warm_up_required',
   'manual_follow_up',
   'verification_recommended',
+] as const;
+export const DESKTOP_SETUP_INTERRUPTION_KINDS = [
+  'restart_required',
+  'relaunch_required',
+  'elevation_required',
+  'auth_required',
+  'first_wsl_boot_required',
+  'docker_warm_up_required',
 ] as const;
 
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
@@ -164,6 +178,7 @@ export type DesktopProviderSetupPlatform = typeof DESKTOP_PROVIDER_SETUP_PLATFOR
 export type DesktopSetupHelperMode = typeof DESKTOP_SETUP_HELPER_MODES[number];
 export type DesktopSetupActionRunState = typeof DESKTOP_SETUP_ACTION_RUN_STATES[number];
 export type DesktopSetupResumeReason = typeof DESKTOP_SETUP_RESUME_REASONS[number];
+export type DesktopSetupInterruptionKind = typeof DESKTOP_SETUP_INTERRUPTION_KINDS[number];
 
 export interface ManagedServiceSnapshot {
   name: ManagedServiceName;
@@ -397,7 +412,16 @@ export interface DesktopSetupActionRecord {
   plannedActions: string[];
   appliedChanges: string[];
   manualSteps: string[];
+  interruptions: DesktopSetupInterruption[];
   error: string | null;
+}
+
+export interface DesktopSetupInterruption {
+  kind: DesktopSetupInterruptionKind;
+  summary: string;
+  resumable: boolean;
+  requiresRestart: boolean;
+  requiresElevation: boolean;
 }
 
 export interface DesktopSetupResumeAction {
@@ -407,6 +431,7 @@ export interface DesktopSetupResumeAction {
   reason: DesktopSetupResumeReason;
   summary: string;
   manualSteps: string[];
+  interruptions: DesktopSetupInterruption[];
   requiresElevation: boolean;
   restartRequired: boolean;
 }

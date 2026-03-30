@@ -93,6 +93,13 @@ test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', a
         plannedActions: ['install_distro:Ubuntu'],
         appliedChanges: ['enable_wsl_features'],
         manualSteps: ['Restart Windows, then rerun this helper to register the Ubuntu distro.'],
+        interruptions: [{
+          kind: 'restart_required',
+          summary: 'Restart Windows, then rerun this helper to continue the WSL environment setup.',
+          resumable: true,
+          requiresRestart: true,
+          requiresElevation: false,
+        }],
         error: null,
       },
     },
@@ -103,7 +110,7 @@ test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', a
   assert.equal(snapshot.resumeAction?.helperId, 'windows-wsl-environment-installer');
   assert.equal(snapshot.resumeAction?.mode, 'check');
   assert.equal(snapshot.resumeAction?.reason, 'restart_required');
-  assert.match(snapshot.resumeAction?.summary ?? '', /Restart the host or Windows session/i);
+  assert.match(snapshot.resumeAction?.summary ?? '', /Restart Windows/i);
 });
 
 test('runDesktopSetupHelper normalizes successful helper execution', async () => {
@@ -135,12 +142,18 @@ test('runDesktopSetupHelper normalizes successful helper execution', async () =>
       return {
         stdout: JSON.stringify({
           helper: 'windows-setup-readiness-audit',
-          status: 'changes_required',
-          restartRequired: true,
-          warnings: ['Restart Windows Terminal after applying changes.'],
-          plannedActions: ['repair_native_cli_pack'],
+          status: 'auth_required',
+          warnings: ['Claude Code still needs sign-in.'],
+          plannedActions: ['provider:authenticate_claude_code'],
           appliedChanges: [],
-          manualSteps: ['Sign in to providers after install.'],
+          manualSteps: ['Complete the Claude Code sign-in flow, then rerun the packaged setup check.'],
+          interruptions: [{
+            kind: 'auth_required',
+            summary: 'Complete the Claude Code sign-in flow or configure ANTHROPIC_API_KEY, then rerun the packaged setup check.',
+            resumable: true,
+            requiresRestart: false,
+            requiresElevation: false,
+          }],
         }),
         stderr: '',
       };
@@ -150,10 +163,11 @@ test('runDesktopSetupHelper normalizes successful helper execution', async () =>
   assert.equal(record.helperId, 'windows-install-readiness-audit');
   assert.equal(record.mode, 'check');
   assert.equal(record.runState, 'completed');
-  assert.equal(record.status, 'changes_required');
-  assert.equal(record.restartRequired, true);
-  assert.deepEqual(record.plannedActions, ['repair_native_cli_pack']);
-  assert.deepEqual(record.manualSteps, ['Sign in to providers after install.']);
+  assert.equal(record.status, 'auth_required');
+  assert.equal(record.restartRequired, false);
+  assert.deepEqual(record.plannedActions, ['provider:authenticate_claude_code']);
+  assert.deepEqual(record.manualSteps, ['Complete the Claude Code sign-in flow, then rerun the packaged setup check.']);
+  assert.deepEqual(record.interruptions.map((entry) => entry.kind), ['auth_required']);
   assert.equal(record.error, null);
 });
 

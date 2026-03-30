@@ -32,6 +32,9 @@
 .PARAMETER DetectedVersion
     Override the detected version for deterministic tests.
 
+.PARAMETER AuthState
+    Override post-install authentication detection for deterministic tests.
+
 .PARAMETER SkipInstaller
     Skip the actual installer invocation. Intended for deterministic tests.
 #>
@@ -45,6 +48,8 @@ param(
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$InstallState = 'auto',
   [string]$DetectedVersion = '',
+  [ValidateSet('auto', 'authenticated', 'auth_required')]
+  [string]$AuthState = 'auto',
   [switch]$SkipInstaller
 )
 
@@ -130,6 +135,19 @@ function Detect-CursorInstall {
   }
 }
 
+function Test-CursorAuthSatisfied {
+  switch ($AuthState) {
+    'authenticated' {
+      return $true
+    }
+    'auth_required' {
+      return $false
+    }
+  }
+
+  return -not [string]::IsNullOrWhiteSpace($env:CURSOR_API_KEY)
+}
+
 function Invoke-CursorInstaller {
   if ($SkipInstaller) {
     return [pscustomobject]@{
@@ -202,6 +220,7 @@ if ($isAdmin -and -not $AllowAdmin) {
       'Refusing to run under an elevated shell without -AllowAdmin because Cursor Agent is intended for user-scoped installation.'
     )
     appliedChanges = @()
+    interruptions = @()
     usedPowerShell51Fallback = $false
   }
   Write-StructuredResult -Result $result -ExitCode 1
@@ -212,6 +231,7 @@ $plannedActions = [System.Collections.Generic.List[string]]::new()
 $appliedChanges = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()
 $usedPowerShell51Fallback = $false
+$authSatisfied = [bool]$detected.installed -and (Test-CursorAuthSatisfied)
 
 if ($CheckOnly) {
   if (-not $detected.installed) {
@@ -221,7 +241,11 @@ if ($CheckOnly) {
   $result = [pscustomobject]@{
     helper = 'windows-cursor-native-installer'
     mode = 'check'
-    status = if ($detected.installed) { 'ready' } else { 'not_installed' }
+    status = if ($detected.installed) {
+      if ($authSatisfied) { 'ready' } else { 'auth_required' }
+    } else {
+      'not_installed'
+    }
     installed = [bool]$detected.installed
     detectedVersion = if ($detected.detectedVersion) { $detected.detectedVersion } else { $null }
     commandPath = $detected.commandPath
@@ -229,6 +253,17 @@ if ($CheckOnly) {
     plannedActions = $plannedActions.ToArray()
     warnings = @()
     appliedChanges = @()
+    interruptions = if ($detected.installed -and -not $authSatisfied) {
+      @([pscustomobject]@{
+          kind = 'auth_required'
+          summary = 'Complete the Cursor sign-in flow or configure CURSOR_API_KEY, then rerun the packaged setup check.'
+          resumable = $true
+          requiresRestart = $false
+          requiresElevation = $false
+        })
+    } else {
+      @()
+    }
     usedPowerShell51Fallback = $false
   }
   Write-StructuredResult -Result $result -ExitCode 0
@@ -260,17 +295,39 @@ if ($shouldInstall) {
   }
 }
 
+$authSatisfied = [bool]$detected.installed -and (Test-CursorAuthSatisfied)
+$interruptions = [System.Collections.Generic.List[object]]::new()
+if ($shouldInstall) {
+  $interruptions.Add([pscustomobject]@{
+      kind = 'relaunch_required'
+      summary = 'Relaunch Cats Desktop Host after the Cursor Agent install step, then rerun the packaged setup check.'
+      resumable = $true
+      requiresRestart = $false
+      requiresElevation = $false
+    })
+}
+if (-not $authSatisfied) {
+  $interruptions.Add([pscustomobject]@{
+      kind = 'auth_required'
+      summary = 'Complete the Cursor sign-in flow or configure CURSOR_API_KEY, then rerun the packaged setup check.'
+      resumable = $true
+      requiresRestart = $false
+      requiresElevation = $false
+    })
+}
+
 $result = [pscustomobject]@{
   helper = 'windows-cursor-native-installer'
   mode = $executionMode
-  status = if ($shouldInstall) { 'restart_required' } else { 'ready' }
+  status = if ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
   installed = [bool]$detected.installed
   detectedVersion = if ($detected.detectedVersion) { $detected.detectedVersion } else { $null }
   commandPath = $detected.commandPath
-  restartRequired = [bool]$shouldInstall
+  restartRequired = $false
   plannedActions = @()
   warnings = $warnings.ToArray()
   appliedChanges = $appliedChanges.ToArray()
+  interruptions = $interruptions.ToArray()
   usedPowerShell51Fallback = $usedPowerShell51Fallback
 }
 Write-StructuredResult -Result $result -ExitCode 0

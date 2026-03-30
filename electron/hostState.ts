@@ -7,6 +7,7 @@ import type {
   DesktopHostPersistedState,
   DesktopPackagingPlan,
   DesktopSetupActionRecord,
+  DesktopSetupInterruption,
   DesktopSetupState,
   DesktopUpdateState,
 } from './contracts.js';
@@ -68,6 +69,38 @@ function readStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
 }
 
+function normalizeSetupInterruptions(value: unknown): DesktopSetupInterruption[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    if (!isObjectRecord(entry)) {
+      return [];
+    }
+
+    const kind = entry.kind;
+    if (
+      kind !== 'restart_required'
+      && kind !== 'relaunch_required'
+      && kind !== 'elevation_required'
+      && kind !== 'auth_required'
+      && kind !== 'first_wsl_boot_required'
+      && kind !== 'docker_warm_up_required'
+    ) {
+      return [];
+    }
+
+    return [{
+      kind,
+      summary: readString(entry.summary) ?? 'Packaged setup follow-through is still required.',
+      resumable: entry.resumable === true,
+      requiresRestart: entry.requiresRestart === true,
+      requiresElevation: entry.requiresElevation === true,
+    }];
+  });
+}
+
 function normalizeSetupActionRecord(value: unknown): DesktopSetupActionRecord | null {
   if (!isObjectRecord(value)) {
     return null;
@@ -102,6 +135,7 @@ function normalizeSetupActionRecord(value: unknown): DesktopSetupActionRecord | 
     plannedActions: readStringArray(value.plannedActions),
     appliedChanges: readStringArray(value.appliedChanges),
     manualSteps: readStringArray(value.manualSteps),
+    interruptions: normalizeSetupInterruptions(value.interruptions),
     error: readString(value.error),
   };
 }

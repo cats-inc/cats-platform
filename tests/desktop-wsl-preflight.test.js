@@ -26,6 +26,8 @@ test('Check-WslPrerequisites reports ready when Windows build, WSL, and distro a
     '22621',
     '-WslState',
     'ready',
+    '-WslUserBootstrapState',
+    'completed',
     '-Distro',
     'Ubuntu',
   ]);
@@ -35,6 +37,7 @@ test('Check-WslPrerequisites reports ready when Windows build, WSL, and distro a
   assert.equal(result.status, 'ready');
   assert.equal(result.wslInstalled, true);
   assert.equal(result.distroInstalled, true);
+  assert.equal(result.firstBootCompleted, true);
   assert.deepEqual(result.plannedActions, []);
 });
 
@@ -59,4 +62,29 @@ test('Check-WslPrerequisites reports missing prerequisite actions when WSL is un
   assert.equal(result.plannedActions.includes('enable_wsl_features'), true);
   assert.equal(result.plannedActions.includes('install_wsl_kernel'), true);
   assert.equal(result.requiresElevation, true);
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'elevation_required'), true);
+});
+
+test('Check-WslPrerequisites reports first boot follow-through when Ubuntu still needs initial user setup', skipUnlessWindows(), async () => {
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-Json',
+    '-WindowsBuild',
+    '22621',
+    '-WslState',
+    'ready',
+    '-WslUserBootstrapState',
+    'pending',
+    '-Distro',
+    'Ubuntu',
+  ]);
+
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'first_wsl_boot_required');
+  assert.equal(result.plannedActions.includes('complete_first_boot:Ubuntu'), true);
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'first_wsl_boot_required'), true);
 });

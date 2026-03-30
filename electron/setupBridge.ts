@@ -10,6 +10,8 @@ import type {
   DesktopSetupActionRecord,
   DesktopSetupHelperMode,
   DesktopSetupHelperSummary,
+  DesktopSetupInterruption,
+  DesktopSetupInterruptionKind,
   DesktopSetupResumeAction,
   DesktopSetupSnapshot,
   DesktopSetupState,
@@ -45,6 +47,14 @@ interface ExecFileLikeError {
 }
 
 const execFile = promisify(execFileCallback);
+const INTERRUPTION_PRIORITY: DesktopSetupInterruptionKind[] = [
+  'restart_required',
+  'relaunch_required',
+  'elevation_required',
+  'first_wsl_boot_required',
+  'docker_warm_up_required',
+  'auth_required',
+];
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
@@ -56,6 +66,28 @@ function readStringArray(value: unknown): string[] {
   }
 
   return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function isDesktopSetupInterruptionKind(value: unknown): value is DesktopSetupInterruptionKind {
+  return value === 'restart_required'
+    || value === 'relaunch_required'
+    || value === 'elevation_required'
+    || value === 'auth_required'
+    || value === 'first_wsl_boot_required'
+    || value === 'docker_warm_up_required';
+}
+
+function choosePrimaryInterruption(
+  interruptions: DesktopSetupInterruption[],
+): DesktopSetupInterruption | null {
+  if (interruptions.length === 0) {
+    return null;
+  }
+
+  const ordered = [...interruptions].sort((left, right) => {
+    return INTERRUPTION_PRIORITY.indexOf(left.kind) - INTERRUPTION_PRIORITY.indexOf(right.kind);
+  });
+  return ordered[0] ?? null;
 }
 
 function createDefaultSetupState(): DesktopSetupState {
@@ -121,8 +153,29 @@ function deriveResumeAction(
   let reason: DesktopSetupResumeAction['reason'] | null = null;
   let mode: DesktopSetupHelperMode | null = null;
   let summary: string | null = null;
+  const primaryInterruption = choosePrimaryInterruption(lastAction.interruptions);
 
-  if (lastAction.restartRequired || lastAction.status === 'restart_required') {
+  if (primaryInterruption) {
+    reason = primaryInterruption.kind;
+    summary = primaryInterruption.summary;
+    if (primaryInterruption.kind === 'elevation_required') {
+      mode = supportsMode(helper, lastAction.mode)
+        ? lastAction.mode
+        : helper.supportsApply
+          ? 'apply'
+          : helper.supportsCheckOnly
+            ? 'check'
+            : null;
+    } else {
+      mode = helper.supportsCheckOnly
+        ? 'check'
+        : supportsMode(helper, lastAction.mode)
+          ? lastAction.mode
+          : helper.supportsApply
+            ? 'apply'
+            : null;
+    }
+  } else if (lastAction.restartRequired || lastAction.status === 'restart_required') {
     reason = 'restart_required';
     mode = helper.supportsCheckOnly ? 'check' : supportsMode(helper, lastAction.mode) ? lastAction.mode : null;
     summary = `Restart the host or Windows session, then rerun ${helper.label} in ${mode ?? 'check'} mode.`;
@@ -175,8 +228,11 @@ function deriveResumeAction(
     reason,
     summary,
     manualSteps: lastAction.manualSteps,
-    requiresElevation: helper.requiresElevation,
-    restartRequired: lastAction.restartRequired,
+    interruptions: lastAction.interruptions,
+    requiresElevation: lastAction.interruptions.some((entry) => entry.requiresElevation)
+      || helper.requiresElevation,
+    restartRequired: lastAction.restartRequired
+      || lastAction.interruptions.some((entry) => entry.requiresRestart),
   };
 }
 
@@ -285,8 +341,103 @@ function buildFailedActionRecord(input: {
     plannedActions: [],
     appliedChanges: [],
     manualSteps: [],
+    interruptions: [],
     error: input.error,
   };
+}
+
+function buildInterruptionSummary(
+  helper: DesktopSetupHelperSummary,
+  kind: DesktopSetupInterruptionKind,
+  manualSteps: string[],
+): string {
+  const manualDetail = manualSteps[0];
+  if (manualDetail) {
+    return manualDetail;
+  }
+
+  switch (kind) {
+    case 'restart_required':
+      return `Restart Windows or the current session, then rerun ${helper.label}.`;
+    case 'relaunch_required':
+      return `Relaunch Cats Desktop Host, then rerun ${helper.label} to verify the updated packaged setup state.`;
+    case 'elevation_required':
+      return `${helper.label} requires an elevated host step before it can continue.`;
+    case 'auth_required':
+      return `Complete the required sign-in flow, then rerun ${helper.label} in check mode.`;
+    case 'first_wsl_boot_required':
+      return 'Launch the target WSL distro once to finish first-user setup, then rerun the packaged setup check.';
+    case 'docker_warm_up_required':
+      return 'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.';
+  }
+}
+
+function deriveLegacyInterruptions(
+  helper: DesktopSetupHelperSummary,
+  parsed: Record<string, unknown> | null,
+  manualSteps: string[],
+): DesktopSetupInterruption[] {
+  const candidates: DesktopSetupInterruptionKind[] = [];
+  const status = readString(parsed?.status);
+
+  if (isDesktopSetupInterruptionKind(status)) {
+    candidates.push(status);
+  }
+  if (parsed?.restartRequired === true) {
+    candidates.push(
+      helper.id === 'windows-wsl-environment-installer'
+        ? 'restart_required'
+        : 'relaunch_required',
+    );
+  }
+
+  const seen = new Set<string>();
+  return candidates.flatMap((kind) => {
+    if (seen.has(kind)) {
+      return [];
+    }
+    seen.add(kind);
+    return [{
+      kind,
+      summary: buildInterruptionSummary(helper, kind, manualSteps),
+      resumable: helper.resumable,
+      requiresRestart: kind === 'restart_required',
+      requiresElevation: kind === 'elevation_required' || helper.requiresElevation,
+    }];
+  });
+}
+
+function readInterruptions(
+  helper: DesktopSetupHelperSummary,
+  parsed: Record<string, unknown> | null,
+  manualSteps: string[],
+): DesktopSetupInterruption[] {
+  const rawInterruptions = Array.isArray(parsed?.interruptions) ? parsed.interruptions : [];
+  const parsedInterruptions = rawInterruptions.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) {
+      return [];
+    }
+
+    const kind = (entry as { kind?: unknown }).kind;
+    if (!isDesktopSetupInterruptionKind(kind)) {
+      return [];
+    }
+
+    return [{
+      kind,
+      summary: readString((entry as { summary?: unknown }).summary)
+        ?? buildInterruptionSummary(helper, kind, manualSteps),
+      resumable: (entry as { resumable?: unknown }).resumable !== false && helper.resumable,
+      requiresRestart: (entry as { requiresRestart?: unknown }).requiresRestart === true
+        || kind === 'restart_required',
+      requiresElevation: (entry as { requiresElevation?: unknown }).requiresElevation === true
+        || kind === 'elevation_required',
+    }];
+  });
+
+  return parsedInterruptions.length > 0
+    ? parsedInterruptions
+    : deriveLegacyInterruptions(helper, parsed, manualSteps);
 }
 
 export function createEmptyDesktopSetupState(): DesktopSetupState {
@@ -433,6 +584,7 @@ export async function runDesktopSetupHelper(
   const plannedActions = readStringArray(parsed?.plannedActions);
   const appliedChanges = readStringArray(parsed?.appliedChanges);
   const manualSteps = readStringArray(parsed?.manualSteps);
+  const interruptions = readInterruptions(helper, parsed, manualSteps);
   const stderrMessage = readString(output.stderr);
   const completedAt = now().toISOString();
 
@@ -466,6 +618,7 @@ export async function runDesktopSetupHelper(
     plannedActions,
     appliedChanges,
     manualSteps,
+    interruptions,
     error: errorMessage ?? stderrMessage,
   };
 }

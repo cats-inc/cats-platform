@@ -1,6 +1,6 @@
 # PLAN-030: Packaged Setup Wizard and Provider Installation
 
-> Extract, rewrite, and freeze the setup/install knowledge that `cats` still
+> Extract, rewrite, and freeze the setup/install knowledge that `cats-platform` still
 > needs from `environment-bootstrap` and the sibling A2A/bootstrap pilot
 > before the repo split removes easy access to those monorepo inputs.
 
@@ -24,9 +24,9 @@
 
 ## Overview
 
-`cats` and `cats-runtime` are preparing to split into separate repos. While
+`cats-platform` and `cats-runtime` are preparing to split into separate repos. While
 this monorepo still includes the latest `environment-bootstrap/` and
-`project-bootstrap/` submodule sources, `cats` needs one explicit place to
+`project-bootstrap/` submodule sources, `cats-platform` needs one explicit place to
 freeze, extract, and rewrite the setup/install knowledge that must become
 repo-owned before that easy local reference path disappears.
 
@@ -40,27 +40,27 @@ Two sibling knowledge tracks already exist:
   substrate into runtime-owned metadata and checks under
   `cats-runtime/src/core/provider-install/`.
 
-What remains missing is the `cats`-owned execution plan for the packaged setup
+What remains missing is the `cats-platform`-owned execution plan for the packaged setup
 and provider-installation side:
 
 - what stable install/check knowledge still lives only in
   `environment-bootstrap`
-- what `cats` should port into packaged-host assets or product-owned code
+- what `cats-platform` should port into packaged-host assets or product-owned code
 - how that knowledge should connect to `cats-runtime` provider metadata without
   making either submodule a shipped product dependency
-- how the first executable helper slices get rewritten as `cats`-owned assets
+- how the first executable helper slices get rewritten as `cats-platform`-owned assets
   rather than remaining source-repo references
 - how to validate the port while the monorepo still gives direct access to the
   source repos
 
-This plan fills that gap. It is the `cats`-side companion to the already-landed
+This plan fills that gap. It is the `cats-platform`-side companion to the already-landed
 A2A/bootstrap pilot work, not a replacement for it.
 
 ## Goals
 
-1. Freeze the exact setup/install knowledge that `cats` still needs to extract
+1. Freeze the exact setup/install knowledge that `cats-platform` still needs to extract
    from `environment-bootstrap` before the repo split.
-2. Rewrite the required packaged-host helper slices into `cats`-owned code or
+2. Rewrite the required packaged-host helper slices into `cats-platform`-owned code or
    bundled assets before the split, rather than leaving them as source-repo
    dependencies.
 3. Record the `project-bootstrap` / A2A pilot relationship explicitly so setup
@@ -69,7 +69,7 @@ A2A/bootstrap pilot work, not a replacement for it.
 4. Define the product-owned install/check asset contract that the packaged host
    will eventually execute.
 5. Keep `cats-runtime` as the runtime/provider-topology authority while making
-   `cats` the owner of packaged host setup/install orchestration.
+   `cats-platform` the owner of packaged host setup/install orchestration.
 6. Validate the ported knowledge while both submodules are still locally
    available in the monorepo.
 
@@ -114,7 +114,7 @@ exist before deeper implementation slices begin.
 ### Phase 2: Define the Product-Owned Setup Asset Contract
 
 - [x] Define how packaged-host install/check assets should be organized inside
-      `cats`:
+      `cats-platform`:
       - bundled scripts
       - product-owned code modules
       - machine-readable config/manifests
@@ -136,17 +136,17 @@ instead of an implicit dependency on bootstrap scripts.
 ### Phase 3: Port the First High-Value Knowledge Slices
 
 - [x] Port the first Windows npm-prefix/PATH prerequisite helper into a
-      `cats`-owned packaged setup asset
-- [x] Port the Windows npm-global CLI-pack installer into a `cats`-owned
+      `cats-platform`-owned packaged setup asset
+- [x] Port the Windows npm-global CLI-pack installer into a `cats-platform`-owned
       packaged setup asset
-- [x] Port the first Windows native Cursor installer helper into a `cats`-owned
+- [x] Port the first Windows native Cursor installer helper into a `cats-platform`-owned
       packaged setup asset
 - [x] Port the first Windows WSL prerequisite preflight helper into a
-      `cats`-owned packaged setup asset
-- [x] Port the first Windows setup-readiness audit helper into a `cats`-owned
+      `cats-platform`-owned packaged setup asset
+- [x] Port the first Windows setup-readiness audit helper into a `cats-platform`-owned
       packaged setup asset
 - [ ] Port the remaining highest-value stable install/check knowledge into
-      `cats`-owned assets or code, prioritizing WSL prerequisite flows and
+      `cats-platform`-owned assets or code, prioritizing WSL prerequisite flows and
       readiness checks for the first packaged setup flow
 - [ ] Rewrite those slices as product-owned helpers or bundled assets rather
       than keeping raw source-repo scripts as dependencies
@@ -158,7 +158,7 @@ instead of an implicit dependency on bootstrap scripts.
 - [ ] Update setup, deployment, and architecture docs as soon as the first
       concrete asset slices land
 
-**Deliverables**: `cats` starts owning concrete packaged setup knowledge rather
+**Deliverables**: `cats-platform` starts owning concrete packaged setup knowledge rather
 than only describing it in specs, and the first executable helper slices are
 split-safe.
 
@@ -170,16 +170,16 @@ split-safe.
 - [x] Define what setup state is persisted by the host versus re-derived from
       `cats-runtime` on demand
 - [ ] Keep interruption handling explicit:
-      - relaunch
-      - restart required
-      - elevation/UAC
-      - first WSL boot
-      - Docker warm-up
-      - auth-required after install
+      - [x] relaunch
+      - [x] restart required
+      - [x] elevation/UAC
+      - [x] first WSL boot
+      - [ ] Docker warm-up
+      - [x] auth-required after install
 - [x] Keep the renderer UI-only while still surfacing structured progress and
       recovery guidance
 
-**Deliverables**: `cats` has a bounded host-bridge contract for packaged setup
+**Deliverables**: `cats-platform` has a bounded host-bridge contract for packaged setup
 instead of ad hoc future integration notes.
 
 ### Phase 5: Pilot Validation Before Split
@@ -201,7 +201,7 @@ removes local submodule convenience.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `docs/plans/PLAN-030-packaged-setup-wizard-and-provider-installation.md` | Create | Canonical `cats` implementation plan for `SPEC-023` |
+| `docs/plans/PLAN-030-packaged-setup-wizard-and-provider-installation.md` | Create | Canonical `cats-platform` implementation plan for `SPEC-023` |
 | `docs/plans/README.md` | Modify | Index the new plan |
 | `docs/specs/README.md` | Modify | Point `SPEC-023` at `PLAN-030` |
 | `docs/specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md` | Modify | Add explicit implementation tracking and related-plan truth |
@@ -214,7 +214,7 @@ removes local submodule convenience.
 
 - Decision 1: Treat `environment-bootstrap` as a one-time source knowledge repo
   and retire it as a required dependency before the repo split, because
-  packaged `cats` must keep running after the split.
+  packaged `cats-platform` must keep running after the split.
 - Decision 2: Keep A2A/bootstrap collaboration knowledge on the existing pilot
   track instead of mixing it into packaged setup work, because the repo already
   has a sibling plan for that concern.
@@ -247,7 +247,7 @@ removes local submodule convenience.
 |------|--------|------------|
 | Repo split happens before the missing setup knowledge is frozen | High | Start with extraction inventory and source-boundary mapping rather than jumping straight to UI work |
 | Setup work accidentally duplicates the A2A pilot track | Medium | Keep the sibling `project-bootstrap` pilot explicitly referenced but out of scope for packaged setup implementation |
-| `cats` and `cats-runtime` ownership blur again during setup work | High | Keep runtime topology/readiness in `cats-runtime` and install/check execution in the packaged host |
+| `cats-platform` and `cats-runtime` ownership blur again during setup work | High | Keep runtime topology/readiness in `cats-runtime` and install/check execution in the packaged host |
 | Product code ends up copying raw bootstrap scripts without a stable contract | High | Freeze the product-owned asset contract before porting executable slices |
 | Source-repo helper logic remains unported when the split happens | High | Make repo-owned rewrite of the first packaged-host helper slices part of the main plan rather than a later optional follow-on |
 
@@ -255,7 +255,7 @@ removes local submodule convenience.
 
 | Date | Update |
 |------|--------|
-| 2026-03-29 | Plan created to give `SPEC-023` a dedicated knowledge-porting and packaged-setup execution track before `cats` / `cats-runtime` split into separate repos |
+| 2026-03-29 | Plan created to give `SPEC-023` a dedicated knowledge-porting and packaged-setup execution track before `cats-platform` / `cats-runtime` split into separate repos |
 | 2026-03-29 | Scope frozen so `environment-bootstrap` knowledge extraction is the primary setup/install source track, while the sibling `project-bootstrap` A2A pilot remains referenced through `cats-runtime` PLAN-023 instead of being re-opened here |
 | 2026-03-29 | Phase 1 landed: recorded the pre-split extraction inventory under `docs/research/2026-03-29-packaged-setup-knowledge-extraction-inventory.md`, separating already-extracted A2A/runtime metadata from still-missing packaged-host execution helpers trapped in `environment-bootstrap` |
 | 2026-03-29 | Phase 2 landed: `electron/contracts.ts` and `electron/packaging.ts` now expose a machine-readable `installer.providerSetup` contract covering setup modes, capability packs, source-knowledge boundaries, and the prioritized Windows-first port queue, with desktop packaging tests locking that shape into the staged installer manifest |
@@ -274,7 +274,8 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 4 slice 4 landed: the desktop bootstrap page now surfaces setup recovery state from the host bridge, including bundled helper availability and the last packaged setup action summary, while keeping the renderer on the UI-only side of the install/check boundary |
 | 2026-03-30 | Phase 4 slice 5 landed: the packaged setup bridge now derives a repo-owned `resumeAction` from the last resumable helper run, exposes a dedicated `resume-setup` IPC path, and lets the bootstrap page surface one recommended packaged setup next step instead of treating restart/manual follow-through states as dead ends |
 | 2026-03-30 | Phase 4 slice 6 landed: bootstrap readiness now turns restart-required packaged setup state into a first-class install issue with setup recovery remediation, so the host issue panel and progress model no longer hide packaged setup interruptions behind provider-only warnings |
-| 2026-03-30 | Phase 5 validation slice 1 landed: `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now records that the first packaged setup helper baseline, staged asset contract, and host bridge all run from repo-owned `cats` assets, while also naming the deferred slices that still remain source-knowledge-only after split |
+| 2026-03-30 | Phase 5 validation slice 1 landed: `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now records that the first packaged setup helper baseline, staged asset contract, and host bridge all run from repo-owned `cats-platform` assets, while also naming the deferred slices that still remain source-knowledge-only after split |
+| 2026-03-30 | Phase 4 slice 7 landed: `electron/contracts.ts`, `electron/setupBridge.ts`, `electron/readiness.ts`, `electron/main.ts`, `electron/bootstrapPage.ts`, and the Windows readiness/install helpers now carry explicit interruption kinds for relaunch, restart, elevation, first WSL boot, and auth-required follow-through, while `Check-WindowsSetupReadiness.ps1` now selectively audits native provider auth readiness instead of stopping at prerequisite-only truth |
 
 ---
 

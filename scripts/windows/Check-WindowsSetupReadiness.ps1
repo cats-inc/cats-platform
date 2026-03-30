@@ -42,10 +42,29 @@
 
 .PARAMETER InstalledDistrosJson
     Override the detected distro list as a JSON array for deterministic tests.
+
+.PARAMETER WslUserBootstrapState
+    Override whether the target WSL distro has completed first-user bootstrap.
+
+.PARAMETER IncludeNativeProviders
+    Include native Claude/Cursor readiness and auth checks. Enabled by default.
+
+.PARAMETER ClaudeInstallState
+    Override Claude Code installation detection for deterministic tests.
+
+.PARAMETER ClaudeAuthState
+    Override Claude Code authentication detection for deterministic tests.
+
+.PARAMETER CursorInstallState
+    Override Cursor Agent installation detection for deterministic tests.
+
+.PARAMETER CursorAuthState
+    Override Cursor Agent authentication detection for deterministic tests.
 #>
 param(
   [switch]$Json,
   [bool]$IncludeWsl = $true,
+  [bool]$IncludeNativeProviders = $true,
   [switch]$SkipNodeCheck,
   [string]$InstalledPackagesJson = '',
   [string]$OutdatedPackagesJson = '',
@@ -55,7 +74,17 @@ param(
   [int]$WindowsBuild = 0,
   [ValidateSet('auto', 'missing', 'installed_no_distro', 'ready')]
   [string]$WslState = 'auto',
-  [string]$InstalledDistrosJson = ''
+  [string]$InstalledDistrosJson = '',
+  [ValidateSet('auto', 'pending', 'completed')]
+  [string]$WslUserBootstrapState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$ClaudeInstallState = 'auto',
+  [ValidateSet('auto', 'authenticated', 'auth_required')]
+  [string]$ClaudeAuthState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$CursorInstallState = 'auto',
+  [ValidateSet('auto', 'authenticated', 'auth_required')]
+  [string]$CursorAuthState = 'auto'
 )
 
 Set-StrictMode -Version Latest
@@ -97,6 +126,8 @@ function Invoke-HelperJson {
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
 $nativeCliPackPath = Join-Path $PSScriptRoot 'Install-NodeCliPack.ps1'
 $wslPreflightPath = Join-Path $PSScriptRoot 'Check-WslPrerequisites.ps1'
+$claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
+$cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
 
 $nativeCliArguments = @('-CheckOnly', '-Json', '-SkipPrefixHelper')
 if ($SkipNodeCheck) {
@@ -137,14 +168,46 @@ if ($IncludeWsl) {
   if (-not [string]::IsNullOrWhiteSpace($InstalledDistrosJson)) {
     $wslArguments += @('-InstalledDistrosJson', $InstalledDistrosJson)
   }
+  if ($WslUserBootstrapState -ne 'auto') {
+    $wslArguments += @('-WslUserBootstrapState', $WslUserBootstrapState)
+  }
   $wslResult = Invoke-HelperJson -ScriptPath $wslPreflightPath -Arguments $wslArguments
+}
+
+$claudeResult = $null
+$cursorResult = $null
+if ($IncludeNativeProviders) {
+  $claudeArguments = @('-CheckOnly', '-Json')
+  if ($ClaudeInstallState -ne 'auto') {
+    $claudeArguments += @('-InstallState', $ClaudeInstallState)
+  }
+  if ($ClaudeAuthState -ne 'auto') {
+    $claudeArguments += @('-AuthState', $ClaudeAuthState)
+  }
+  $claudeResult = Invoke-HelperJson -ScriptPath $claudeHelperPath -Arguments $claudeArguments
+
+  $cursorArguments = @('-CheckOnly', '-Json')
+  if ($CursorInstallState -ne 'auto') {
+    $cursorArguments += @('-InstallState', $CursorInstallState)
+  }
+  if ($CursorAuthState -ne 'auto') {
+    $cursorArguments += @('-AuthState', $CursorAuthState)
+  }
+  $cursorResult = Invoke-HelperJson -ScriptPath $cursorHelperPath -Arguments $cursorArguments
 }
 
 $warnings = [System.Collections.Generic.List[string]]::new()
 $plannedActions = [System.Collections.Generic.List[string]]::new()
+$interruptions = [System.Collections.Generic.List[object]]::new()
 $statuses = @($prefixHelper.status, $nativeCliPack.status)
 if ($null -ne $wslResult) {
   $statuses += $wslResult.status
+}
+if ($null -ne $claudeResult) {
+  $statuses += $claudeResult.status
+}
+if ($null -ne $cursorResult) {
+  $statuses += $cursorResult.status
 }
 
 if ($prefixHelper.status -ne 'ready') {
@@ -160,6 +223,20 @@ if ($null -ne $wslResult -and $wslResult.status -ne 'ready') {
     $plannedActions.Add("wsl:$action")
   }
 }
+if ($null -ne $claudeResult) {
+  if ($claudeResult.status -eq 'not_installed') {
+    $plannedActions.Add('provider:install_claude_code_native')
+  } elseif ($claudeResult.status -eq 'auth_required') {
+    $plannedActions.Add('provider:authenticate_claude_code')
+  }
+}
+if ($null -ne $cursorResult) {
+  if ($cursorResult.status -eq 'not_installed') {
+    $plannedActions.Add('provider:install_cursor_agent_native')
+  } elseif ($cursorResult.status -eq 'auth_required') {
+    $plannedActions.Add('provider:authenticate_cursor_agent')
+  }
+}
 
 foreach ($warning in $prefixHelper.warnings) {
   $warnings.Add([string]$warning)
@@ -172,15 +249,53 @@ if ($null -ne $wslResult) {
     $warnings.Add([string]$warning)
   }
 }
+if ($null -ne $claudeResult) {
+  foreach ($warning in $claudeResult.warnings) {
+    $warnings.Add([string]$warning)
+  }
+}
+if ($null -ne $cursorResult) {
+  foreach ($warning in $cursorResult.warnings) {
+    $warnings.Add([string]$warning)
+  }
+}
+
+foreach ($interruption in @($wslResult.interruptions)) {
+  $interruptions.Add($interruption)
+}
+foreach ($interruption in @($claudeResult.interruptions)) {
+  $interruptions.Add($interruption)
+}
+foreach ($interruption in @($cursorResult.interruptions)) {
+  $interruptions.Add($interruption)
+}
+
+function Test-InterruptionPresent {
+  param(
+    [string]$Kind
+  )
+
+  return @($interruptions) | Where-Object { $_.kind -eq $Kind } | Select-Object -First 1
+}
 
 $overallStatus = if ($statuses -contains 'failed') {
   'failed'
+} elseif (Test-InterruptionPresent -Kind 'restart_required') {
+  'restart_required'
+} elseif (Test-InterruptionPresent -Kind 'relaunch_required') {
+  'relaunch_required'
+} elseif (Test-InterruptionPresent -Kind 'elevation_required') {
+  'elevation_required'
+} elseif (Test-InterruptionPresent -Kind 'first_wsl_boot_required') {
+  'first_wsl_boot_required'
+} elseif (Test-InterruptionPresent -Kind 'docker_warm_up_required') {
+  'docker_warm_up_required'
+} elseif (Test-InterruptionPresent -Kind 'auth_required') {
+  'auth_required'
 } elseif ($statuses -contains 'not_installed') {
   'not_installed'
 } elseif ($statuses -contains 'changes_required') {
   'changes_required'
-} elseif ($statuses -contains 'restart_required') {
-  'restart_required'
 } else {
   'ready'
 }
@@ -190,9 +305,14 @@ $result = [pscustomobject]@{
   status = $overallStatus
   plannedActions = $plannedActions.ToArray()
   warnings = $warnings.ToArray()
+  interruptions = $interruptions.ToArray()
   prefixHelper = $prefixHelper
   nativeCliPack = $nativeCliPack
   wsl = $wslResult
+  nativeProviders = [pscustomobject]@{
+    claude = $claudeResult
+    cursor = $cursorResult
+  }
 }
 
 Write-StructuredResult -Result $result

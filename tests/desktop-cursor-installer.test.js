@@ -25,6 +25,8 @@ test('Install-CursorAgent reports ready in check mode when Cursor Agent is alrea
     '-Json',
     '-InstallState',
     'installed',
+    '-AuthState',
+    'authenticated',
     '-DetectedVersion',
     'cursor-agent 1.2.3',
   ]);
@@ -36,6 +38,28 @@ test('Install-CursorAgent reports ready in check mode when Cursor Agent is alrea
   assert.equal(result.installed, true);
   assert.equal(result.detectedVersion, 'cursor-agent 1.2.3');
   assert.deepEqual(result.plannedActions, []);
+});
+
+test('Install-CursorAgent reports auth-required in check mode when Cursor Agent is installed but not authenticated yet', skipUnlessWindows(), async () => {
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-CheckOnly',
+    '-Json',
+    '-InstallState',
+    'installed',
+    '-AuthState',
+    'auth_required',
+    '-DetectedVersion',
+    'cursor-agent 1.2.3',
+  ]);
+
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'auth_required');
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
 });
 
 test('Install-CursorAgent reports install action in check mode when Cursor Agent is missing', skipUnlessWindows(), async () => {

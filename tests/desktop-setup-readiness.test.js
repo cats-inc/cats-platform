@@ -50,6 +50,16 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
     '22621',
     '-WslState',
     'ready',
+    '-WslUserBootstrapState',
+    'completed',
+    '-ClaudeInstallState',
+    'installed',
+    '-ClaudeAuthState',
+    'authenticated',
+    '-CursorInstallState',
+    'installed',
+    '-CursorAuthState',
+    'authenticated',
   ]);
 
   const result = JSON.parse(stdout);
@@ -57,6 +67,8 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
   assert.equal(result.status, 'ready');
   assert.equal(result.nativeCliPack.status, 'ready');
   assert.equal(result.wsl.status, 'ready');
+  assert.equal(result.nativeProviders.claude.status, 'ready');
+  assert.equal(result.nativeProviders.cursor.status, 'ready');
   assert.deepEqual(result.plannedActions, []);
 });
 
@@ -84,6 +96,7 @@ test('Check-WindowsSetupReadiness reports combined repair actions when native CL
     '22621',
     '-WslState',
     'missing',
+    '-IncludeNativeProviders:$false',
   ]);
 
   const result = JSON.parse(stdout);
@@ -91,4 +104,48 @@ test('Check-WindowsSetupReadiness reports combined repair actions when native CL
   assert.equal(result.plannedActions.includes('repair_native_cli_pack'), true);
   assert.equal(result.plannedActions.includes('wsl:enable_wsl_features'), true);
   assert.equal(result.plannedActions.includes('wsl:install_wsl_kernel'), true);
+});
+
+test('Check-WindowsSetupReadiness reports auth-required when native providers are installed but not yet signed in', skipUnlessWindows(), async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-auth-'));
+  const desiredPrefix = join(workingDir, '.npm-global');
+  await mkdir(desiredPrefix, { recursive: true });
+
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-Json',
+    '-SkipNodeCheck',
+    '-DesiredPrefix',
+    desiredPrefix,
+    '-CurrentPrefix',
+    desiredPrefix,
+    '-CurrentUserPath',
+    `${desiredPrefix};C:\\Windows\\System32`,
+    '-InstalledPackagesJson',
+    nativeCliPackages,
+    '-WindowsBuild',
+    '22621',
+    '-WslState',
+    'ready',
+    '-WslUserBootstrapState',
+    'completed',
+    '-ClaudeInstallState',
+    'installed',
+    '-ClaudeAuthState',
+    'auth_required',
+    '-CursorInstallState',
+    'installed',
+    '-CursorAuthState',
+    'authenticated',
+  ]);
+
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'auth_required');
+  assert.equal(result.nativeProviders.claude.status, 'auth_required');
+  assert.equal(result.plannedActions.includes('provider:authenticate_claude_code'), true);
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
 });

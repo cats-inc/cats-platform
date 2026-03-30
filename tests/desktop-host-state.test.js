@@ -63,6 +63,13 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
     plannedActions: ['repair_native_cli_pack'],
     appliedChanges: [],
     manualSteps: [],
+    interruptions: [{
+      kind: 'restart_required',
+      summary: 'Restart Windows, then rerun this helper to continue the WSL environment setup.',
+      resumable: true,
+      requiresRestart: true,
+      requiresElevation: false,
+    }],
     error: null,
   };
   setup.updatedAt = '2026-03-24T10:01:45.000Z';

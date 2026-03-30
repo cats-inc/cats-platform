@@ -301,6 +301,10 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
   if (actionId === 'retry') {
     return await bootstrapDesktopHost(true);
   }
+  if (actionId === 'resume_setup') {
+    await resumeSetupAction();
+    return latestSnapshot ?? await refreshBootstrapSnapshot();
+  }
   if (actionId === 'open_runtime_diagnostics') {
     await shell.openExternal(validateDesktopUrl(
       `${hostConfig.runtimeBaseUrl}/diagnostics/health`,
