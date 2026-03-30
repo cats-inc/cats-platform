@@ -134,6 +134,7 @@ ports a product-owned host asset layer.
 | Windows WSL Kiro installer | `environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1` | `cats-platform/scripts/windows/Install-KiroWslCli.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned WSL Kiro installer now carries dependency checks, PATH cleanup, `kc` alias repair, and post-install sign-in guidance |
 | Windows readiness/auth inspection follow-through | remaining `Check-Installation.ps1` coverage | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats-platform` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; expand the repo-owned audit incrementally instead of copying the old bootstrap-wide report verbatim |
 | Docker Desktop install + warm-state knowledge | `Install-Docker-Admin.ps1` | `cats-platform/scripts/windows/Install-DockerDesktop.ps1` | packaged-host capability-pack assets in `cats-platform` plus current `Check-WindowsSetupReadiness.ps1` | Ported | Repo-owned helper now owns Docker Desktop install, upgrade, elevation-required recovery, and engine warm-state follow-through while the readiness audit consumes its structured check output |
+| Ollama local-model runtime follow-through | official Ollama Windows install guidance plus repo-local packaged setup knowledge | `cats-platform/scripts/windows/Install-Ollama.ps1` | packaged-host capability-pack assets in `cats-platform` plus current `Check-WindowsSetupReadiness.ps1` | Ported | Repo-owned helper now owns user-scoped Ollama install, upgrade, and local API warm-state follow-through while the readiness audit can consume its structured check output |
 | Windows native Goose installer | `environment-bootstrap/platform/windows/Install-Goose.ps1` + `environment-bootstrap/platform/windows/Install-WSLGoose.ps1` knowledge | `cats-platform/scripts/windows/Install-Goose.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned native installer helper now keeps Goose on the packaged setup baseline and treats post-install auth as an explicit host-owned interruption |
 | Windows native Junie installer | `environment-bootstrap/platform/windows/Install-Junie.ps1` | `cats-platform/scripts/windows/Install-Junie.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned native installer helper now keeps Junie on the packaged setup baseline and treats JetBrains sign-in follow-through as an explicit host-owned interruption |
 | Ngrok / tunnel setup | `Install-Ngrok-Admin.ps1`, `Setup-Ngrok.ps1` | `environment-bootstrap` only | later transport helper layer in `cats-platform` | Defer | Not part of the first packaged setup baseline |
@@ -170,10 +171,11 @@ ports a product-owned host asset layer.
    - Selective auth/readiness follow-through is now also landed through the
      repo-owned readiness audit plus explicit host interruption kinds for
      relaunch, restart, elevation, first WSL boot, and auth-required states.
-   - Docker install and warm-up are now explicit.
-   - The remaining gap is no longer deciding whether Goose/Junie belong in the
-     first packaged path; the main open follow-through has moved to Ollama and
-     other heavier capability packs.
+   - Docker install, warm-up, and Ollama local-model runtime follow-through are
+     now explicit.
+   - The remaining gap is no longer deciding whether Goose/Junie or Ollama
+     belong in the first packaged path; the main open follow-through has moved
+     to heavier expert-only capability packs.
 
 3. Defer tunnel flows and broader local-model follow-through until after the
    first packaged setup contract
@@ -201,7 +203,7 @@ Keep the next packaged-host slice focused on either:
 
 - additional host/runtime recovery coherence that is still missing from the
   packaged setup bridge, or
-- broader Ollama/local-model follow-through that still remains outside the
-  current repo-owned packaged helper baseline
+- heavier expert-only capability-pack follow-through that still remains
+  outside the current repo-owned packaged helper baseline
 
 The contract no longer treats Goose/Junie as missing or deferred baseline work.

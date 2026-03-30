@@ -54,8 +54,19 @@
     Include Docker Desktop warm-state checks. Disabled by default because the
     first packaged baseline does not require Docker.
 
+.PARAMETER IncludeLocalModels
+    Include local-model runtime checks such as the repo-owned Ollama helper.
+    Disabled by default because the first packaged baseline remains the API
+    path, not a required local-model install.
+
 .PARAMETER DockerState
     Override Docker Desktop detection for deterministic tests.
+
+.PARAMETER OllamaInstallState
+    Override Ollama installation detection for deterministic tests.
+
+.PARAMETER OllamaApiState
+    Override Ollama local API readiness for deterministic tests.
 
 .PARAMETER ClaudeInstallState
     Override Claude Code installation detection for deterministic tests.
@@ -86,6 +97,7 @@ param(
   [bool]$IncludeWsl = $true,
   [bool]$IncludeNativeProviders = $true,
   [bool]$IncludeDocker = $false,
+  [bool]$IncludeLocalModels = $false,
   [switch]$SkipNodeCheck,
   [string]$InstalledPackagesJson = '',
   [string]$OutdatedPackagesJson = '',
@@ -115,7 +127,11 @@ param(
   [ValidateSet('auto', 'authenticated', 'auth_required')]
   [string]$JunieAuthState = 'auto',
   [ValidateSet('auto', 'missing', 'installed_engine_stopped', 'ready')]
-  [string]$DockerState = 'auto'
+  [string]$DockerState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$OllamaInstallState = 'auto',
+  [ValidateSet('auto', 'reachable', 'unreachable')]
+  [string]$OllamaApiState = 'auto'
 )
 
 Set-StrictMode -Version Latest
@@ -162,6 +178,7 @@ $cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
 $gooseHelperPath = Join-Path $PSScriptRoot 'Install-Goose.ps1'
 $junieHelperPath = Join-Path $PSScriptRoot 'Install-Junie.ps1'
 $dockerHelperPath = Join-Path $PSScriptRoot 'Install-DockerDesktop.ps1'
+$ollamaHelperPath = Join-Path $PSScriptRoot 'Install-Ollama.ps1'
 
 $nativeCliArguments = @('-CheckOnly', '-Json', '-SkipPrefixHelper')
 if ($SkipNodeCheck) {
@@ -213,6 +230,7 @@ $cursorResult = $null
 $gooseResult = $null
 $junieResult = $null
 $dockerResult = $null
+$ollamaResult = $null
 if ($IncludeNativeProviders) {
   $claudeArguments = @('-CheckOnly', '-Json')
   if ($ClaudeInstallState -ne 'auto') {
@@ -257,6 +275,16 @@ if ($IncludeDocker) {
   }
   $dockerResult = Invoke-HelperJson -ScriptPath $dockerHelperPath -Arguments $dockerArguments
 }
+if ($IncludeLocalModels) {
+  $ollamaArguments = @('-CheckOnly', '-Json')
+  if ($OllamaInstallState -ne 'auto') {
+    $ollamaArguments += @('-InstallState', $OllamaInstallState)
+  }
+  if ($OllamaApiState -ne 'auto') {
+    $ollamaArguments += @('-ApiState', $OllamaApiState)
+  }
+  $ollamaResult = Invoke-HelperJson -ScriptPath $ollamaHelperPath -Arguments $ollamaArguments
+}
 
 $warnings = [System.Collections.Generic.List[string]]::new()
 $plannedActions = [System.Collections.Generic.List[string]]::new()
@@ -279,6 +307,9 @@ if ($null -ne $junieResult) {
 }
 if ($null -ne $dockerResult) {
   $statuses += $dockerResult.status
+}
+if ($null -ne $ollamaResult) {
+  $statuses += $ollamaResult.status
 }
 
 if ($prefixHelper.status -ne 'ready') {
@@ -327,6 +358,11 @@ if ($null -ne $dockerResult) {
     $plannedActions.Add("docker:$action")
   }
 }
+if ($null -ne $ollamaResult) {
+  foreach ($action in $ollamaResult.plannedActions) {
+    $plannedActions.Add("local_model:$action")
+  }
+}
 
 foreach ($warning in $prefixHelper.warnings) {
   $warnings.Add([string]$warning)
@@ -364,6 +400,11 @@ if ($null -ne $dockerResult) {
     $warnings.Add([string]$warning)
   }
 }
+if ($null -ne $ollamaResult) {
+  foreach ($warning in $ollamaResult.warnings) {
+    $warnings.Add([string]$warning)
+  }
+}
 
 foreach ($interruption in @($wslResult.interruptions)) {
   $interruptions.Add($interruption)
@@ -381,6 +422,9 @@ foreach ($interruption in @($junieResult.interruptions)) {
   $interruptions.Add($interruption)
 }
 foreach ($interruption in @($dockerResult.interruptions)) {
+  $interruptions.Add($interruption)
+}
+foreach ($interruption in @($ollamaResult.interruptions)) {
   $interruptions.Add($interruption)
 }
 
@@ -430,6 +474,9 @@ $result = [pscustomobject]@{
     junie = $junieResult
   }
   docker = $dockerResult
+  localModels = [pscustomobject]@{
+    ollama = $ollamaResult
+  }
 }
 
 Write-StructuredResult -Result $result

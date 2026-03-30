@@ -317,13 +317,16 @@ Settings or an equivalent product-owned management surface so users can:
   - Goose
   - Junie
   - Kiro CLI through the current Windows WSL-backed packaged helper path
+- `Local Model Pack`
+  - Docker Desktop prerequisite + engine warm-state helper
+  - Ollama runtime installer + local API follow-through
 
 ### Later Packs
 
-- `Local Model Pack`
-  - Ollama and local-model helpers
 - `WSL / Power User Pack`
   - future WSL-first or expert-only packaged setup flows if the product adds them later
+- broader expert-only local-model packs beyond the current Docker + Ollama
+  baseline
 
 ## Installer and Runtime Boundary
 
@@ -456,8 +459,8 @@ teaching the renderer or the user about the underlying script topology.
   parsing the full desktop packaging plan.
 - The staged desktop packaging contract now also carries
   `installer.providerSetup.localProviders`, making the current first packaged
-  path explicit: Claude Code, Cursor Agent, Goose, Junie, and Kiro are now
-  all bundled into the packaged setup contract.
+  path explicit: Claude Code, Cursor Agent, Goose, Junie, Kiro, and Ollama are
+  now all bundled into the packaged setup contract.
 - The desktop bootstrap recovery UI now also surfaces that `localProviders`
   rollout directly, so the host can tell users which local providers are
   bundled today without leaving the setup panel.
@@ -466,14 +469,17 @@ teaching the renderer or the user about the underlying script topology.
   install, upgrade, elevation-required recovery, and engine warm-state
   follow-through on the packaged helper contract instead of leaving Docker
   install as source knowledge only.
+- `scripts/windows/Install-Ollama.ps1` now also keeps the first local-model
+  runtime on a repo-owned packaged helper contract, including install, upgrade,
+  and API warm-state follow-through for Ollama.
 - `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now
   also records that this packaged setup baseline stays coherent with the
   sibling `cats-runtime` A2A/bootstrap pilot and does not imply automatic
   merge-back into `project-bootstrap`.
-- The next follow-on under `PLAN-030` is no longer the baseline host bridge or
-  provider graduation question; it is the remaining Ollama/local-model and
-  richer remediation follow-through above the now-ported native CLI and Docker
-  baseline.
+- The next follow-on under `PLAN-030` is no longer baseline provider
+  graduation; it is richer remediation polish and any heavier expert-only
+  local-model follow-through above the now-ported native CLI, Docker, and
+  Ollama baseline.
 - Sibling collaboration/bootstrap pilot work sourced from `project-bootstrap`
   remains tracked separately through
   [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)

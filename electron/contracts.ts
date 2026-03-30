@@ -111,6 +111,7 @@ export const DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS = [
   'kiro',
   'goose',
   'junie',
+  'ollama',
 ] as const;
 export const DESKTOP_PROVIDER_SETUP_DELIVERY_PHASES = [
   'initial_packaged_path',

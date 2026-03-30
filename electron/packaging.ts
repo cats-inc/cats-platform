@@ -131,8 +131,8 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           recommended: false,
           requiresLocalInstall: true,
           notes: [
-            'Current packaged helper coverage includes Docker Desktop installation plus engine warm-state recovery.',
-            'Broader Ollama and heavier local runtime follow-through still remains a later slice.',
+            'Current packaged helper coverage includes Docker Desktop installation, engine warm-state recovery, and a repo-owned Ollama runtime helper.',
+            'Heavier expert-only local runtime follow-through still remains a later slice.',
           ],
         },
         {
@@ -216,6 +216,21 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           notes: [
             'Repo-owned native Windows installer helper now keeps Junie on the current packaged setup path.',
             'Preserves the post-install JetBrains sign-in follow-through as an explicit packaged setup interruption.',
+          ],
+        },
+        {
+          id: 'ollama',
+          label: 'Ollama',
+          pack: 'local_model_pack',
+          platform: 'windows',
+          deliveryPhase: 'initial_packaged_path',
+          bundledInCurrentInstaller: true,
+          helperIds: ['windows-ollama-local-model-installer'],
+          currentHome: 'cats-platform/scripts/windows/Install-Ollama.ps1',
+          targetHome: 'cats-platform packaged-host provider assets',
+          notes: [
+            'Repo-owned Windows Ollama helper now keeps the first local-model runtime on the current packaged path.',
+            'Uses the official user-scoped installer and keeps local API warm-state follow-through host-owned.',
           ],
         },
       ],
@@ -435,6 +450,20 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           notes: [
             'Repo-owned rewrite of the Windows Docker Desktop install and warm-state helper.',
             'Keeps Docker install mutation and engine warm-up on a structured host-owned contract instead of leaving them in source knowledge only.',
+          ],
+        },
+        {
+          id: 'windows-ollama-local-model-installer',
+          label: 'Windows Ollama local-model installer',
+          kind: 'provider_installer',
+          status: 'ported',
+          pack: 'local_model_pack',
+          platform: 'windows',
+          currentHome: 'cats-platform/scripts/windows/Install-Ollama.ps1',
+          targetHome: 'cats-platform packaged-host capability pack assets',
+          notes: [
+            'Repo-owned Windows Ollama helper makes the first local-model runtime part of the packaged baseline.',
+            'Keeps install, upgrade, and post-install API warm-state follow-through on a structured host-owned contract.',
           ],
         },
       ],

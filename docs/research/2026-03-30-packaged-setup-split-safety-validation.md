@@ -67,8 +67,8 @@ Still intentionally deferred or incomplete:
 
 - richer desktop remediation polish above the current explicit interruption
   contract
-- any broader Ollama/local-model or future expert-only capability packs beyond
-  the now-ported native CLI plus Docker baseline
+- any broader expert-only local-model or future capability packs beyond the
+  now-ported native CLI plus Docker/Ollama baseline
 
 ### Sibling A2A / Bootstrap Pilot Remains Coherent
 

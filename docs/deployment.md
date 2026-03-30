@@ -68,7 +68,7 @@ npm run desktop:start
 ./scripts/macos/pack-install.sh
 ```
 
-- use `cats-platform --help` after install to confirm the host executable contract
+- use `cats --help` after install to confirm the host executable contract
 - this path validates the self-hosted tarball flow for the future
   `@cats-inc/cats-platform` package; it does not replace the Electron
   packaging flow below or the separate `cats-can` bootstrap publication target
@@ -162,10 +162,11 @@ npm run desktop:package:windows
     add-on capability packs
   - map failures onto structured host state plus resumable remediation actions
   - keep the current first packaged local-provider path bounded to Claude Code,
-    Cursor Agent, Goose, Junie, and the WSL-backed Kiro helper
+    Cursor Agent, Goose, Junie, the WSL-backed Kiro helper, and Ollama
   - keep the current packaged local-model prerequisite path bounded to the
-    Docker Desktop installer and engine warm-state helper
-  - keep broader Ollama/local-model helpers and future expert-only capability
+    Docker Desktop installer, engine warm-state helper, and the repo-owned
+    Ollama installer plus local API follow-through
+  - keep broader expert-only local-model helpers and future capability
     packs outside the current packaged baseline rather than silently missing
   - avoid any runtime shell-out to `environment-bootstrap` or
     `project-bootstrap`; both remain source knowledge only

@@ -205,6 +205,8 @@ Current interruption truth in the packaged host:
 - the same readiness audit can now optionally surface
   `docker_warm_up_required` for Docker-requiring packaged paths when Docker
   Desktop is installed but its engine is not ready yet
+- the same readiness audit can now also optionally surface Ollama local-model
+  follow-through when the runtime is installed but its local API is not ready
 
 ### Self-Hosted npm Package Smoke
 
@@ -227,7 +229,7 @@ bootstrap package target is `cats-can`.
 After install, verify the executable contract with:
 
 ```bash
-cats-platform --help
+cats --help
 ```
 
 Running `cats` still expects a reachable `cats-runtime`, using
@@ -266,6 +268,7 @@ The current substrate writes:
 - `build/desktop-packaging/shared/setup-assets/windows/Install-WslUbuntuEnvironment.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-KiroWslCli.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Install-DockerDesktop.ps1`
+- `build/desktop-packaging/shared/setup-assets/windows/Install-Ollama.ps1`
 - `build/desktop-packaging/shared/setup-assets/windows/Check-WindowsSetupReadiness.ps1`
 - `build/desktop-packaging/shared/setup-assets/manifest.json`
 - `build/desktop-packaging/targets/<target>/installer-manifest.json`
@@ -280,7 +283,7 @@ The same staged contract now also carries
 local-provider rollout:
 
 - current packaged path: Claude Code, Cursor Agent, Goose, Junie, and the
-  WSL-backed Kiro helper
+  WSL-backed Kiro helper, plus the bundled Ollama local-model runtime helper
 
 This is intentionally a staging layer, not the final signed-installer
 publication step.

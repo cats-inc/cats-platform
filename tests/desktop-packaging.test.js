@@ -79,6 +79,16 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
     true,
   );
   assert.equal(
+    plan.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'ollama'
+        && provider.pack === 'local_model_pack'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-ollama-local-model-installer'),
+    ),
+    true,
+  );
+  assert.equal(
     plan.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-claude-native-installer'
         && helper.assetId === 'windows-claude-native-installer-script'
@@ -148,6 +158,16 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
         && helper.assetId === 'windows-docker-desktop-installer-script'
         && helper.pack === 'local_model_pack'
         && helper.requiresElevation === true,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-ollama-local-model-installer'
+        && helper.assetId === 'windows-ollama-local-model-installer-script'
+        && helper.pack === 'local_model_pack'
+        && helper.supportsUpgrade === true
+        && helper.requiresElevation === false,
     ),
     true,
   );
@@ -223,6 +243,12 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
     ),
     true,
   );
+  assert.equal(
+    plan.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-ollama-local-model-installer' && asset.status === 'ported',
+    ),
+    true,
+  );
   const windowsTarget = plan.targets.find((target) => target.id === 'windows-x64');
   assert.equal(
     windowsTarget?.artifacts.some(
@@ -286,6 +312,12 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-ollama-local-model-installer-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    windowsTarget?.artifacts.some(
       (artifact) => artifact.id === 'windows-setup-readiness-audit-script' && artifact.role === 'setup_asset',
     ),
     true,
@@ -325,6 +357,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-WslUbuntuEnvironment\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-KiroWslCli\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-DockerDesktop\.ps1/);
+  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-Ollama\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Check-WindowsSetupReadiness\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\manifest\.json/);
   assert.match(script, /desktop-host\\state\.json/);
@@ -366,6 +399,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroWslCli.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-DockerDesktop.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
   await seedFile(join(runtimeRoot, 'dist', 'index.js'), 'export {};');
 
@@ -399,6 +433,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-WslUbuntuEnvironment.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-KiroWslCli.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-DockerDesktop.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Ollama.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WindowsSetupReadiness.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'manifest.json'));
   await access(join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'));
@@ -434,6 +469,16 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
         && provider.currentHome === 'cats-platform/scripts/windows/Install-Junie.ps1',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'ollama'
+        && provider.pack === 'local_model_pack'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.currentHome === 'cats-platform/scripts/windows/Install-Ollama.ps1',
     ),
     true,
   );
@@ -502,6 +547,14 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     true,
   );
   assert.equal(
+    targetManifest.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-ollama-local-model-installer'
+        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-Ollama.ps1'
+        && helper.supportsForce === true,
+    ),
+    true,
+  );
+  assert.equal(
     targetManifest.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-wsl-environment-installer',
     ),
@@ -522,6 +575,12 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-docker-local-model-helper',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'windows-ollama-local-model-installer',
     ),
     true,
   );
@@ -587,6 +646,12 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'windows-ollama-local-model-installer-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
       (artifact) => artifact.id === 'windows-setup-assets-manifest' && artifact.role === 'setup_asset',
     ),
     true,
@@ -619,6 +684,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroWslCli.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-DockerDesktop.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
   await mkdir(runtimeRoot, { recursive: true });
 

@@ -105,12 +105,13 @@ The packaged setup path now has an explicit host-owned boundary:
   `installer.providerSetup.helperCatalog` and
   `installer.providerSetup.localProviders`
 - the current first packaged local-provider rollout is bounded to Claude Code,
-  Cursor Agent, Goose, Junie, and the WSL-backed Kiro helper
+  Cursor Agent, Goose, Junie, the WSL-backed Kiro helper, and Ollama
 - the current packaged local-model prerequisite slice now includes a repo-owned
-  Docker Desktop installer plus engine warm-state recovery
-- broader Ollama/local-model helpers and future expert-only capability packs
-  remain outside the current packaged baseline instead of being treated as
-  silently missing baseline work
+  Docker Desktop installer, engine warm-state recovery, and a repo-owned
+  Ollama runtime helper
+- broader expert-only local-model helpers and future capability packs remain
+  outside the current packaged baseline instead of being treated as silently
+  missing baseline work
 - `environment-bootstrap` and `project-bootstrap` remain source knowledge only,
   not shipped runtime dependencies for packaged setup
 

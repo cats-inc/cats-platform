@@ -222,3 +222,59 @@ test('Check-WindowsSetupReadiness reports docker warm-up when Docker Desktop is 
   assert.equal(result.plannedActions.includes('docker:start_docker_desktop'), true);
   assert.equal(result.interruptions.some((entry) => entry.kind === 'docker_warm_up_required'), true);
 });
+
+test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model helpers are included', skipUnlessWindows(), async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-ollama-'));
+  const desiredPrefix = join(workingDir, '.npm-global');
+  await mkdir(desiredPrefix, { recursive: true });
+
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-Json',
+    '-SkipNodeCheck',
+    '-DesiredPrefix',
+    desiredPrefix,
+    '-CurrentPrefix',
+    desiredPrefix,
+    '-CurrentUserPath',
+    `${desiredPrefix};C:\\Windows\\System32`,
+    '-InstalledPackagesJson',
+    nativeCliPackages,
+    '-WindowsBuild',
+    '22621',
+    '-WslState',
+    'ready',
+    '-WslUserBootstrapState',
+    'completed',
+    '-ClaudeInstallState',
+    'installed',
+    '-ClaudeAuthState',
+    'authenticated',
+    '-CursorInstallState',
+    'installed',
+    '-CursorAuthState',
+    'authenticated',
+    '-GooseInstallState',
+    'installed',
+    '-GooseAuthState',
+    'authenticated',
+    '-JunieInstallState',
+    'installed',
+    '-JunieAuthState',
+    'authenticated',
+    '-IncludeLocalModels:$true',
+    '-OllamaInstallState',
+    'installed',
+    '-OllamaApiState',
+    'unreachable',
+  ]);
+
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'changes_required');
+  assert.equal(result.localModels.ollama.status, 'changes_required');
+  assert.equal(result.plannedActions.includes('local_model:start_ollama_local_model'), true);
+});
