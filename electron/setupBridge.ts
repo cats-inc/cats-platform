@@ -138,6 +138,23 @@ export function isOptionalCapabilityPackSetupAction(
   return plannedActions.every((entry) => entry.startsWith('local_model:'));
 }
 
+export function describeSetupPack(
+  pack: DesktopProviderSetupPackId | null | undefined,
+): string | null {
+  switch (pack) {
+    case 'api_baseline':
+      return 'API baseline';
+    case 'native_cli_pack':
+      return 'native CLI pack';
+    case 'local_model_pack':
+      return 'local model pack';
+    case 'wsl_power_user_pack':
+      return 'WSL power-user pack';
+    default:
+      return null;
+  }
+}
+
 function supportsPlatform(
   platform: NodeJS.Platform,
   helperPlatform: DesktopProviderSetupPlatform,

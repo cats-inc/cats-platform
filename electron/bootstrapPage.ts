@@ -1,4 +1,4 @@
-import { isOptionalCapabilityPackSetupAction } from './setupBridge.js';
+import { describeSetupPack, isOptionalCapabilityPackSetupAction } from './setupBridge.js';
 
 export function buildDesktopBootstrapPage(): string {
   return `<!doctype html>
@@ -380,6 +380,8 @@ export function buildDesktopBootstrapPage(): string {
 
         if (lastAction) {
           const optionalCapabilityFollowThrough = isOptionalCapabilityPackSetupAction(lastAction);
+          const optionalPackLabel = describeSetupPack(lastAction.optionalFollowThroughPack)
+            ?? 'capability-pack';
           const statusClass = lastAction.runState === 'failed'
             ? 'status-unavailable'
             : lastAction.status === 'ready'
@@ -395,7 +397,8 @@ export function buildDesktopBootstrapPage(): string {
               + renderInterruptions(lastAction.interruptions)
               + '<div class="meta"><code>' + escapeHtml(lastAction.mode) + '</code></div>'
               + (optionalCapabilityFollowThrough
-                ? '<div class="meta status-ok">Optional capability-pack follow-through. This does not block the API baseline or first chat.</div>'
+                ? '<div class="meta status-ok">Optional ' + escapeHtml(optionalPackLabel)
+                  + ' follow-through. This does not block the API baseline or first chat.</div>'
                 : '')
               + (lastAction.restartRequired ? '<div class="meta status-degraded">Restart is required before the next packaged setup step.</div>' : '')
               + (Array.isArray(lastAction.manualSteps) && lastAction.manualSteps.length

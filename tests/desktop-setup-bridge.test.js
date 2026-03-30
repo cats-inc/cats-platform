@@ -9,6 +9,7 @@ import { createDesktopPackagingPlan } from '../dist-electron/packaging.js';
 import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
+  describeSetupPack,
   isOptionalCapabilityPackSetupAction,
   runDesktopSetupHelper,
   shouldAutoRunSetupAudit,
@@ -159,6 +160,12 @@ test('isOptionalCapabilityPackSetupAction detects optional local-model audit fol
     helperId: 'windows-ollama-local-model-installer',
     plannedActions: ['local_model:install_ollama_local_model'],
   }), false);
+});
+
+test('describeSetupPack formats packaged setup pack labels', () => {
+  assert.equal(describeSetupPack('local_model_pack'), 'local model pack');
+  assert.equal(describeSetupPack('native_cli_pack'), 'native CLI pack');
+  assert.equal(describeSetupPack(null), null);
 });
 
 test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', async () => {

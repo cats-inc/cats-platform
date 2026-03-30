@@ -681,5 +681,5 @@ test('desktop bootstrap keeps optional local-model audit follow-through non-bloc
   assert.equal(snapshot.actions.some((action) => action.id === 'resume_setup'), false);
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup' && action.primary), true);
   assert.equal(snapshot.issues.some((issue) => issue.id === 'setup-optional-capability-pack'), true);
-  assert.equal(snapshot.issues.some((issue) => issue.title === 'Optional capability pack is available for follow-through'), true);
+  assert.equal(snapshot.issues.some((issue) => issue.title === 'Optional local model pack is available for follow-through'), true);
 });

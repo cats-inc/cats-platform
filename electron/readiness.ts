@@ -17,7 +17,7 @@ import type { DesktopHealthStatus } from './contracts.js';
 import type { DesktopHostConfig } from './config.js';
 import { createDesktopBackgroundState } from './hostState.js';
 import { createDesktopPackagingPlan } from './packaging.js';
-import { isOptionalCapabilityPackSetupAction } from './setupBridge.js';
+import { describeSetupPack, isOptionalCapabilityPackSetupAction } from './setupBridge.js';
 import { createDefaultDesktopUpdateState } from './update.js';
 
 export interface ReadinessPayload {
@@ -241,10 +241,12 @@ function buildIssues(
   if (lastSetupAction) {
     const optionalCapabilityPackFollowThrough = isOptionalCapabilityPackSetupAction(lastSetupAction);
     if (optionalCapabilityPackFollowThrough) {
+      const optionalPackLabel = describeSetupPack(lastSetupAction.optionalFollowThroughPack)
+        ?? 'optional capability pack';
       issues.push({
         id: 'setup-optional-capability-pack',
         severity: 'info',
-        title: 'Optional capability pack is available for follow-through',
+        title: `Optional ${optionalPackLabel} is available for follow-through`,
         detail: lastSetupAction.manualSteps[0] ?? lastSetupAction.summary,
         target: lastSetupAction.helperId,
         category: 'install',

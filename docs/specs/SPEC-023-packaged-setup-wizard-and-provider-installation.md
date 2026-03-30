@@ -514,6 +514,9 @@ Current implementation truth:
   readiness audit is now persisted as explicit host state on
   `DesktopSetupActionRecord.optionalFollowThroughPack` instead of being inferred
   only from `plannedActions`
+- the bootstrap issue panel and setup recovery panel now name the optional
+  packaged follow-through pack explicitly from that host-owned field instead of
+  falling back to a generic capability-pack label
 
 ## Dependencies
 
