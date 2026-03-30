@@ -171,6 +171,47 @@ test('runDesktopSetupHelper normalizes successful helper execution', async () =>
   assert.equal(record.error, null);
 });
 
+test('runDesktopSetupHelper preserves docker warm-up interruptions from helper output', async () => {
+  const config = await createDesktopConfig();
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-03-30T11:08:00.000Z'),
+  });
+
+  const record = await runDesktopSetupHelper({
+    config,
+    packaging,
+    action: {
+      helperId: 'windows-install-readiness-audit',
+      mode: 'check',
+    },
+  }, {
+    platform: 'win32',
+    pathExists: async () => true,
+    execFile: async () => ({
+      stdout: JSON.stringify({
+        helper: 'windows-setup-readiness-audit',
+        status: 'docker_warm_up_required',
+        plannedActions: ['docker:start_docker_desktop'],
+        warnings: [],
+        appliedChanges: [],
+        manualSteps: ['Start Docker Desktop and wait for the engine to become ready.'],
+        interruptions: [{
+          kind: 'docker_warm_up_required',
+          summary: 'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.',
+          resumable: true,
+          requiresRestart: false,
+          requiresElevation: false,
+        }],
+      }),
+      stderr: '',
+    }),
+  });
+
+  assert.equal(record.status, 'docker_warm_up_required');
+  assert.deepEqual(record.interruptions.map((entry) => entry.kind), ['docker_warm_up_required']);
+  assert.deepEqual(record.plannedActions, ['docker:start_docker_desktop']);
+});
+
 test('runDesktopSetupHelper fails when the requested mode is unsupported', async () => {
   const config = await createDesktopConfig();
   const packaging = createDesktopPackagingPlan(config, {

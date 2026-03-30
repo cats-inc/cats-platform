@@ -149,3 +149,50 @@ test('Check-WindowsSetupReadiness reports auth-required when native providers ar
   assert.equal(result.plannedActions.includes('provider:authenticate_claude_code'), true);
   assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
 });
+
+test('Check-WindowsSetupReadiness reports docker warm-up when Docker Desktop is installed but the engine is not ready', skipUnlessWindows(), async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-docker-'));
+  const desiredPrefix = join(workingDir, '.npm-global');
+  await mkdir(desiredPrefix, { recursive: true });
+
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-Json',
+    '-SkipNodeCheck',
+    '-DesiredPrefix',
+    desiredPrefix,
+    '-CurrentPrefix',
+    desiredPrefix,
+    '-CurrentUserPath',
+    `${desiredPrefix};C:\\Windows\\System32`,
+    '-InstalledPackagesJson',
+    nativeCliPackages,
+    '-WindowsBuild',
+    '22621',
+    '-WslState',
+    'ready',
+    '-WslUserBootstrapState',
+    'completed',
+    '-ClaudeInstallState',
+    'installed',
+    '-ClaudeAuthState',
+    'authenticated',
+    '-CursorInstallState',
+    'installed',
+    '-CursorAuthState',
+    'authenticated',
+    '-IncludeDocker:$true',
+    '-DockerState',
+    'installed_engine_stopped',
+  ]);
+
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'docker_warm_up_required');
+  assert.equal(result.docker.status, 'docker_warm_up_required');
+  assert.equal(result.plannedActions.includes('docker:start_docker_desktop'), true);
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'docker_warm_up_required'), true);
+});

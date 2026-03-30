@@ -350,6 +350,93 @@ test('desktop bootstrap surfaces packaged setup auth recovery as an install issu
   assert.match(installIssue?.detail ?? '', /sign-in flow/i);
 });
 
+test('desktop bootstrap surfaces packaged setup docker warm-up as an install issue', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: null,
+    },
+    runtimeHealth: {
+      status: 'degraded',
+      runtime: {
+        status: 'ok',
+        summary: 'Runtime is ready.',
+      },
+      providers: {
+        summary: {
+          status: 'degraded',
+          summary: 'No default provider targets are configured yet.',
+          configuredProviders: 0,
+          targets: 0,
+          defaultTargets: 0,
+          ok: 0,
+          degraded: 0,
+          unavailable: 0,
+        },
+      },
+    },
+    providerDiagnostics: {
+      summary: {
+        status: 'degraded',
+        summary: 'No provider targets are configured yet.',
+        configuredProviders: 0,
+        targets: 0,
+        defaultTargets: 0,
+        ok: 0,
+        degraded: 0,
+        unavailable: 0,
+      },
+      providers: [],
+    },
+    setup: {
+      updatedAt: '2026-03-30T12:25:00.000Z',
+      lastAction: {
+        helperId: 'windows-install-readiness-audit',
+        assetId: 'windows-setup-readiness-audit-script',
+        label: 'Windows setup readiness audit',
+        mode: 'check',
+        runState: 'completed',
+        status: 'docker_warm_up_required',
+        summary: 'Windows setup readiness audit check finished with docker_warm_up_required.',
+        packagedRelativePath: 'desktop-host/setup-assets/windows/Check-WindowsSetupReadiness.ps1',
+        scriptPath: null,
+        requiresElevation: false,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-03-30T12:23:00.000Z',
+        completedAt: '2026-03-30T12:25:00.000Z',
+        warnings: [],
+        plannedActions: ['docker:start_docker_desktop'],
+        appliedChanges: [],
+        manualSteps: ['Start Docker Desktop and wait for the engine to become ready.'],
+        interruptions: [{
+          kind: 'docker_warm_up_required',
+          summary: 'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.',
+          resumable: true,
+          requiresRestart: false,
+          requiresElevation: false,
+        }],
+        error: null,
+      },
+    },
+  });
+
+  const installIssue = snapshot.issues.find((issue) => issue.id === 'setup-docker-warm-up-required');
+  assert.ok(installIssue);
+  assert.equal(installIssue?.remediation?.kind, 'resume_setup');
+  assert.match(installIssue?.detail ?? '', /Docker Desktop/i);
+});
+
 test('desktop bootstrap surfaces provider remediation after setup if no provider is ready', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,

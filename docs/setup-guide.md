@@ -200,8 +200,9 @@ Current interruption truth in the packaged host:
   `Resume Packaged Setup` when the last helper run is resumable
 - `scripts/windows/Check-WindowsSetupReadiness.ps1` now also audits native
   Claude/Cursor auth-required follow-through plus WSL first-boot readiness
-- Docker warm-up is still a later packaged-setup follow-through, not a shipped
-  helper state in this slice
+- the same readiness audit can now optionally surface
+  `docker_warm_up_required` for Docker-requiring packaged paths when Docker
+  Desktop is installed but its engine is not ready yet
 
 ### Self-Hosted npm Package Smoke
 

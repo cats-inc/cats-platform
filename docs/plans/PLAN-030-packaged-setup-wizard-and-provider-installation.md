@@ -174,7 +174,7 @@ split-safe.
       - [x] restart required
       - [x] elevation/UAC
       - [x] first WSL boot
-      - [ ] Docker warm-up
+      - [x] Docker warm-up
       - [x] auth-required after install
 - [x] Keep the renderer UI-only while still surfacing structured progress and
       recovery guidance
@@ -276,6 +276,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 4 slice 6 landed: bootstrap readiness now turns restart-required packaged setup state into a first-class install issue with setup recovery remediation, so the host issue panel and progress model no longer hide packaged setup interruptions behind provider-only warnings |
 | 2026-03-30 | Phase 5 validation slice 1 landed: `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now records that the first packaged setup helper baseline, staged asset contract, and host bridge all run from repo-owned `cats-platform` assets, while also naming the deferred slices that still remain source-knowledge-only after split |
 | 2026-03-30 | Phase 4 slice 7 landed: `electron/contracts.ts`, `electron/setupBridge.ts`, `electron/readiness.ts`, `electron/main.ts`, `electron/bootstrapPage.ts`, and the Windows readiness/install helpers now carry explicit interruption kinds for relaunch, restart, elevation, first WSL boot, and auth-required follow-through, while `Check-WindowsSetupReadiness.ps1` now selectively audits native provider auth readiness instead of stopping at prerequisite-only truth |
+| 2026-03-30 | Phase 4 slice 8 landed: `scripts/windows/Check-WindowsSetupReadiness.ps1` now also carries an optional Docker Desktop warm-state audit that emits `docker_warm_up_required`, and the host interruption contract/tests now treat Docker warm-up as a first-class resumable packaged setup state rather than a purely deferred note |
 
 ---
 

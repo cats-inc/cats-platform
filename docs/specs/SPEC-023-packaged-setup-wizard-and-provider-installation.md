@@ -475,8 +475,9 @@ Current implementation truth:
 
 - relaunch, restart, elevation, first-WSL-boot, and auth-required states are
   now explicit in the packaged host contract and bootstrap recovery UI
-- Docker warm-up remains a planned follow-on rather than a shipped packaged
-  helper state in this slice
+- Docker warm-up is now also an explicit packaged host interruption state when
+  a Docker-requiring packaged path runs the readiness audit with Docker checks
+  enabled
 
 ## Dependencies
 

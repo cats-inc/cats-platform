@@ -49,6 +49,13 @@
 .PARAMETER IncludeNativeProviders
     Include native Claude/Cursor readiness and auth checks. Enabled by default.
 
+.PARAMETER IncludeDocker
+    Include Docker Desktop warm-state checks. Disabled by default because the
+    first packaged baseline does not require Docker.
+
+.PARAMETER DockerState
+    Override Docker Desktop detection for deterministic tests.
+
 .PARAMETER ClaudeInstallState
     Override Claude Code installation detection for deterministic tests.
 
@@ -65,6 +72,7 @@ param(
   [switch]$Json,
   [bool]$IncludeWsl = $true,
   [bool]$IncludeNativeProviders = $true,
+  [bool]$IncludeDocker = $false,
   [switch]$SkipNodeCheck,
   [string]$InstalledPackagesJson = '',
   [string]$OutdatedPackagesJson = '',
@@ -84,7 +92,9 @@ param(
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$CursorInstallState = 'auto',
   [ValidateSet('auto', 'authenticated', 'auth_required')]
-  [string]$CursorAuthState = 'auto'
+  [string]$CursorAuthState = 'auto',
+  [ValidateSet('auto', 'missing', 'installed_engine_stopped', 'ready')]
+  [string]$DockerState = 'auto'
 )
 
 Set-StrictMode -Version Latest
@@ -121,6 +131,80 @@ function Invoke-HelperJson {
 
   $raw = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Arguments) | Out-String
   return $raw | ConvertFrom-Json
+}
+
+function Get-DockerWarmState {
+  $plannedActions = [System.Collections.Generic.List[string]]::new()
+  $warnings = [System.Collections.Generic.List[string]]::new()
+  $interruptions = [System.Collections.Generic.List[object]]::new()
+
+  $dockerInstalled = $false
+  $engineReady = $false
+  $version = $null
+
+  switch ($DockerState) {
+    'missing' {
+      $dockerInstalled = $false
+    }
+    'installed_engine_stopped' {
+      $dockerInstalled = $true
+      $engineReady = $false
+      $version = 'Docker Desktop'
+    }
+    'ready' {
+      $dockerInstalled = $true
+      $engineReady = $true
+      $version = 'Docker Desktop'
+    }
+    default {
+      try {
+        $dockerVersion = docker --version 2>$null
+        if ($dockerVersion) {
+          $dockerInstalled = $true
+          $version = [string]$dockerVersion
+        }
+      } catch {
+        $dockerInstalled = $false
+      }
+
+      if ($dockerInstalled) {
+        try {
+          $dockerInfo = docker info 2>$null
+          $engineReady = ($LASTEXITCODE -eq 0 -and $dockerInfo)
+        } catch {
+          $engineReady = $false
+        }
+      }
+    }
+  }
+
+  $status = if (-not $dockerInstalled) {
+    $plannedActions.Add('install_docker_desktop')
+    'not_installed'
+  } elseif (-not $engineReady) {
+    $plannedActions.Add('start_docker_desktop')
+    $interruptions.Add([pscustomobject]@{
+        kind = 'docker_warm_up_required'
+        summary = 'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.'
+        resumable = $true
+        requiresRestart = $false
+        requiresElevation = $false
+      })
+    'docker_warm_up_required'
+  } else {
+    'ready'
+  }
+
+  return [pscustomobject]@{
+    helper = 'windows-docker-warm-state'
+    status = $status
+    installed = $dockerInstalled
+    engineReady = $engineReady
+    version = $version
+    plannedActions = $plannedActions.ToArray()
+    warnings = $warnings.ToArray()
+    interruptions = $interruptions.ToArray()
+  }
 }
 
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
@@ -176,6 +260,7 @@ if ($IncludeWsl) {
 
 $claudeResult = $null
 $cursorResult = $null
+$dockerResult = $null
 if ($IncludeNativeProviders) {
   $claudeArguments = @('-CheckOnly', '-Json')
   if ($ClaudeInstallState -ne 'auto') {
@@ -195,6 +280,9 @@ if ($IncludeNativeProviders) {
   }
   $cursorResult = Invoke-HelperJson -ScriptPath $cursorHelperPath -Arguments $cursorArguments
 }
+if ($IncludeDocker) {
+  $dockerResult = Get-DockerWarmState
+}
 
 $warnings = [System.Collections.Generic.List[string]]::new()
 $plannedActions = [System.Collections.Generic.List[string]]::new()
@@ -208,6 +296,9 @@ if ($null -ne $claudeResult) {
 }
 if ($null -ne $cursorResult) {
   $statuses += $cursorResult.status
+}
+if ($null -ne $dockerResult) {
+  $statuses += $dockerResult.status
 }
 
 if ($prefixHelper.status -ne 'ready') {
@@ -237,6 +328,11 @@ if ($null -ne $cursorResult) {
     $plannedActions.Add('provider:authenticate_cursor_agent')
   }
 }
+if ($null -ne $dockerResult) {
+  foreach ($action in $dockerResult.plannedActions) {
+    $plannedActions.Add("docker:$action")
+  }
+}
 
 foreach ($warning in $prefixHelper.warnings) {
   $warnings.Add([string]$warning)
@@ -259,6 +355,11 @@ if ($null -ne $cursorResult) {
     $warnings.Add([string]$warning)
   }
 }
+if ($null -ne $dockerResult) {
+  foreach ($warning in $dockerResult.warnings) {
+    $warnings.Add([string]$warning)
+  }
+}
 
 foreach ($interruption in @($wslResult.interruptions)) {
   $interruptions.Add($interruption)
@@ -267,6 +368,9 @@ foreach ($interruption in @($claudeResult.interruptions)) {
   $interruptions.Add($interruption)
 }
 foreach ($interruption in @($cursorResult.interruptions)) {
+  $interruptions.Add($interruption)
+}
+foreach ($interruption in @($dockerResult.interruptions)) {
   $interruptions.Add($interruption)
 }
 
@@ -313,6 +417,7 @@ $result = [pscustomobject]@{
     claude = $claudeResult
     cursor = $cursorResult
   }
+  docker = $dockerResult
 }
 
 Write-StructuredResult -Result $result
