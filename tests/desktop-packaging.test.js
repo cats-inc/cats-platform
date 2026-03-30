@@ -15,6 +15,30 @@ async function seedFile(path, contents = '') {
   await writeFile(path, contents);
 }
 
+async function seedRuntimeSidecar(runtimeRoot) {
+  await seedFile(join(runtimeRoot, 'dist', 'index.js'), 'export {};');
+  await seedFile(join(runtimeRoot, 'package.json'), JSON.stringify({
+    name: 'cats-runtime',
+    version: '0.1.0',
+    type: 'module',
+    dependencies: {
+      '@hono/node-server': '^1.14.0',
+      hono: '^4.7.0',
+      'playwright-core': '^1.58.2',
+      yaml: '^2.8.2',
+    },
+  }, null, 2));
+  await seedFile(join(runtimeRoot, 'public', 'index.html'), '<!doctype html>');
+  await seedFile(join(runtimeRoot, 'public', 'playground.html'), '<!doctype html>');
+  await seedFile(join(runtimeRoot, 'public', 'provider-setup.html'), '<!doctype html>');
+  await seedFile(join(runtimeRoot, 'skills', 'README.md'), '# skills');
+  await seedFile(join(runtimeRoot, 'config', 'providers.yaml.example'), 'version: 1\n');
+  await seedFile(join(runtimeRoot, 'node_modules', '@hono', 'node-server', 'package.json'), '{"name":"@hono/node-server"}');
+  await seedFile(join(runtimeRoot, 'node_modules', 'hono', 'package.json'), '{"name":"hono"}');
+  await seedFile(join(runtimeRoot, 'node_modules', 'playwright-core', 'package.json'), '{"name":"playwright-core"}');
+  await seedFile(join(runtimeRoot, 'node_modules', 'yaml', 'package.json'), '{"name":"yaml"}');
+}
+
 test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defining platform outputs', () => {
   const config = resolveDesktopHostConfig({
     env: {
@@ -347,6 +371,11 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /app-sidecar\\dist-server\\index\.js/);
   assert.match(script, /app-sidecar\\dist\\index\.html/);
   assert.match(script, /cats-runtime\\dist\\index\.js/);
+  assert.match(script, /cats-runtime\\package\.json/);
+  assert.match(script, /cats-runtime\\public\\provider-setup\.html/);
+  assert.match(script, /cats-runtime\\skills\\README\.md/);
+  assert.match(script, /cats-runtime\\config\\providers\.yaml\.example/);
+  assert.match(script, /cats-runtime\\node_modules\\yaml\\package\.json/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-NodeCliPack\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-ClaudeCode\.ps1/);
@@ -404,7 +433,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-DockerDesktop.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
-  await seedFile(join(runtimeRoot, 'dist', 'index.js'), 'export {};');
+  await seedRuntimeSidecar(runtimeRoot);
 
   const config = resolveDesktopHostConfig({
     env: {
@@ -426,6 +455,12 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'dist', 'index.html'));
   await access(join(plan.outputRoot, 'shared', 'dist-electron', 'main.js'));
   await access(join(plan.outputRoot, 'shared', 'dist-electron', 'preload.cjs'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'dist', 'index.js'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'package.json'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'public', 'provider-setup.html'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'skills', 'README.md'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'providers.yaml.example'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-NodeCliPack.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-ClaudeCode.ps1'));
@@ -589,6 +624,30 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'runtime-package-manifest' && artifact.role === 'runtime_sidecar',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'runtime-setup-ui' && artifact.role === 'runtime_sidecar',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'runtime-skills' && artifact.role === 'runtime_sidecar',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'runtime-dependencies' && artifact.role === 'runtime_sidecar',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
       (artifact) => artifact.id === 'windows-npm-prefix-helper-script' && artifact.role === 'setup_asset',
     ),
     true,
@@ -706,6 +765,6 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
       generatedAt: new Date('2026-03-24T12:05:00.000Z'),
       platforms: ['windows'],
     }),
-    /requires a bundled cats-runtime sidecar/,
+    /requires the full bundled cats-runtime sidecar/,
   );
 });

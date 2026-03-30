@@ -129,6 +129,11 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\dist-server\index.js'); Label = 'bundled cats server entry' },
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\dist\index.html'); Label = 'bundled cats renderer build' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\dist\index.js'); Label = 'bundled cats-runtime entry' },
+  @{ Path = (Join-Path $resourcesRoot 'cats-runtime\package.json'); Label = 'bundled cats-runtime package manifest' },
+  @{ Path = (Join-Path $resourcesRoot 'cats-runtime\public\provider-setup.html'); Label = 'bundled cats-runtime setup UI' },
+  @{ Path = (Join-Path $resourcesRoot 'cats-runtime\skills\README.md'); Label = 'bundled cats-runtime skills catalog root' },
+  @{ Path = (Join-Path $resourcesRoot 'cats-runtime\config\providers.yaml.example'); Label = 'bundled cats-runtime provider config example' },
+  @{ Path = (Join-Path $resourcesRoot 'cats-runtime\node_modules\yaml\package.json'); Label = 'bundled cats-runtime runtime dependency marker' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Setup-NodeGlobalPrefix.ps1'); Label = 'bundled Windows npm prefix helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-NodeCliPack.ps1'); Label = 'bundled Windows native CLI pack helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop-host\setup-assets\windows\Install-ClaudeCode.ps1'); Label = 'bundled Windows native Claude Code installer helper' },
@@ -156,6 +161,10 @@ Assert-True ($packagingPlan.selfHostedNpmCompatible -eq $true) 'installer keeps 
 $windowsTarget = $packagingPlan.targets | Where-Object { $_.platform -eq 'windows' } | Select-Object -First 1
 Assert-True ($null -ne $windowsTarget) 'installer packaging plan includes a Windows target'
 Assert-True (($windowsTarget.installerFormats -contains 'nsis')) 'Windows target includes the NSIS installer format'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-package-manifest' }).Count -ge 1) 'Windows target includes the bundled cats-runtime package manifest artifact'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-setup-ui' }).Count -ge 1) 'Windows target includes the bundled cats-runtime setup UI artifact'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-skills' }).Count -ge 1) 'Windows target includes the bundled cats-runtime skills artifact'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-dependencies' }).Count -ge 1) 'Windows target includes the bundled cats-runtime dependency artifact'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-npm-prefix-helper-script' }).Count -ge 1) 'Windows target includes the bundled npm prefix setup asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-node-cli-pack-script' }).Count -ge 1) 'Windows target includes the bundled native CLI pack setup asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-claude-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Claude installer asset'

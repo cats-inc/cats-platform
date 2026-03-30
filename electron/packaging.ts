@@ -1,5 +1,5 @@
-import { access, cp, mkdir, rm, writeFile } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
+import { access, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, resolve } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
 import type {
@@ -16,6 +16,16 @@ interface DesktopPackagingPlanOptions {
   generatedAt?: Date;
   outputRoot?: string;
   platforms?: DesktopPackagingPlatform[] | null;
+}
+
+interface RuntimePackageManifest {
+  dependencies?: Record<string, string>;
+}
+
+interface RuntimeSidecarAsset {
+  sourceRelativePath: string;
+  targetRelativePath: string;
+  directory: boolean;
 }
 
 const PACKAGING_TARGETS: Array<{
@@ -56,8 +66,75 @@ const PACKAGING_TARGETS: Array<{
   },
 ];
 
+const RUNTIME_PUBLIC_FILES = [
+  'index.html',
+  'playground.html',
+  'provider-setup.html',
+] as const;
+
+const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
+  {
+    sourceRelativePath: 'dist',
+    targetRelativePath: join('shared', 'cats-runtime', 'dist'),
+    directory: true,
+  },
+  {
+    sourceRelativePath: 'public',
+    targetRelativePath: join('shared', 'cats-runtime', 'public'),
+    directory: true,
+  },
+  {
+    sourceRelativePath: 'skills',
+    targetRelativePath: join('shared', 'cats-runtime', 'skills'),
+    directory: true,
+  },
+  {
+    sourceRelativePath: 'node_modules',
+    targetRelativePath: join('shared', 'cats-runtime', 'node_modules'),
+    directory: true,
+  },
+  {
+    sourceRelativePath: 'package.json',
+    targetRelativePath: join('shared', 'cats-runtime', 'package.json'),
+    directory: false,
+  },
+  {
+    sourceRelativePath: join('config', 'providers.yaml.example'),
+    targetRelativePath: join('shared', 'cats-runtime', 'config', 'providers.yaml.example'),
+    directory: false,
+  },
+];
+
 function defaultOutputRoot(config: DesktopHostConfig): string {
   return resolve(join(config.packageRoot, 'build', 'desktop-packaging'));
+}
+
+function runtimeDependencyPackagePath(packageName: string): string {
+  return join('node_modules', ...packageName.split('/'), 'package.json');
+}
+
+async function readRuntimePackageManifest(runtimePackageRoot: string): Promise<RuntimePackageManifest> {
+  const raw = await readFile(join(runtimePackageRoot, 'package.json'), 'utf8');
+  return JSON.parse(raw) as RuntimePackageManifest;
+}
+
+async function ensureBundledRuntimeAssets(runtimePackageRoot: string): Promise<string[]> {
+  const manifest = await readRuntimePackageManifest(runtimePackageRoot);
+  const dependencyPackagePaths = Object.keys(manifest.dependencies ?? {}).map((dependency) =>
+    runtimeDependencyPackagePath(dependency)
+  );
+  const requiredPaths = [
+    join(runtimePackageRoot, 'dist', 'index.js'),
+    join(runtimePackageRoot, 'package.json'),
+    ...RUNTIME_PUBLIC_FILES.map((fileName) => join(runtimePackageRoot, 'public', fileName)),
+    join(runtimePackageRoot, 'skills'),
+    join(runtimePackageRoot, 'config', 'providers.yaml.example'),
+    join(runtimePackageRoot, 'node_modules'),
+    ...dependencyPackagePaths.map((dependencyPath) => join(runtimePackageRoot, dependencyPath)),
+  ];
+
+  await Promise.all(requiredPaths.map((path) => ensureRequiredFile(path)));
+  return dependencyPackagePaths;
 }
 
 function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstallerContract {
@@ -514,6 +591,10 @@ function buildPackagingTarget(
     { id: 'app-server', relativePath: 'shared/dist-server/index.js', role: 'app_server' as const },
     { id: 'app-renderer', relativePath: 'shared/dist/index.html', role: 'app_renderer' as const },
     { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/dist/index.js', role: 'runtime_sidecar' as const },
+    { id: 'runtime-package-manifest', relativePath: 'shared/cats-runtime/package.json', role: 'runtime_sidecar' as const },
+    { id: 'runtime-setup-ui', relativePath: 'shared/cats-runtime/public/provider-setup.html', role: 'runtime_sidecar' as const },
+    { id: 'runtime-skills', relativePath: 'shared/cats-runtime/skills/README.md', role: 'runtime_sidecar' as const },
+    { id: 'runtime-dependencies', relativePath: 'shared/cats-runtime/node_modules/yaml/package.json', role: 'runtime_sidecar' as const },
     { id: 'installer-manifest', relativePath: `targets/${target.id}/installer-manifest.json`, role: 'manifest' as const },
   ];
   if (target.platform === 'windows') {
@@ -592,6 +673,13 @@ async function copyDirectory(source: string, target: string): Promise<void> {
   });
 }
 
+async function copyFile(source: string, target: string): Promise<void> {
+  await mkdir(dirname(target), { recursive: true });
+  await cp(source, target, {
+    force: true,
+  });
+}
+
 async function writeInstallerManifest(
   plan: DesktopPackagingPlan,
   target: DesktopPackagingTarget,
@@ -634,14 +722,23 @@ export async function stageDesktopPackagingOutputs(
   await copyDirectory(join(config.packageRoot, 'dist-electron'), join(outputRoot, 'shared', 'dist-electron'));
   const setupAssets = await stageDesktopSetupAssets(config.packageRoot, outputRoot, generatedAt);
 
-  const runtimeDistRoot = join(config.runtimePackageRoot, 'dist');
+  let runtimeDependencyPackagePaths: string[] = [];
   try {
-    await ensureRequiredFile(join(runtimeDistRoot, 'index.js'));
-    await copyDirectory(runtimeDistRoot, join(outputRoot, 'shared', 'cats-runtime', 'dist'));
+    runtimeDependencyPackagePaths = await ensureBundledRuntimeAssets(config.runtimePackageRoot);
+    for (const asset of RUNTIME_OPTIONAL_ASSETS) {
+      const sourcePath = join(config.runtimePackageRoot, asset.sourceRelativePath);
+      const targetPath = join(outputRoot, asset.targetRelativePath);
+      if (asset.directory) {
+        await copyDirectory(sourcePath, targetPath);
+      } else {
+        await copyFile(sourcePath, targetPath);
+      }
+    }
   } catch (error) {
     throw new Error(
-      `Desktop packaging requires a bundled cats-runtime sidecar at ${join(runtimeDistRoot, 'index.js')}. `
-      + `Build cats-runtime first before staging or packaging the desktop host.`,
+      `Desktop packaging requires the full bundled cats-runtime sidecar under ${config.runtimePackageRoot}. `
+      + `Build cats-runtime and install its runtime dependencies before staging or packaging the desktop host. `
+      + `Root cause: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },
     );
   }
@@ -671,9 +768,29 @@ export async function stageDesktopPackagingOutputs(
         target: 'shared/dist-electron/preload.cjs',
       },
       {
-        source: relative(outputRoot, join(runtimeDistRoot, 'index.js')),
+        source: relative(outputRoot, join(config.runtimePackageRoot, 'dist', 'index.js')),
         target: 'shared/cats-runtime/dist/index.js',
       },
+      {
+        source: relative(outputRoot, join(config.runtimePackageRoot, 'package.json')),
+        target: 'shared/cats-runtime/package.json',
+      },
+      {
+        source: relative(outputRoot, join(config.runtimePackageRoot, 'public', 'provider-setup.html')),
+        target: 'shared/cats-runtime/public/provider-setup.html',
+      },
+      {
+        source: relative(outputRoot, join(config.runtimePackageRoot, 'skills')),
+        target: 'shared/cats-runtime/skills',
+      },
+      {
+        source: relative(outputRoot, join(config.runtimePackageRoot, 'config', 'providers.yaml.example')),
+        target: 'shared/cats-runtime/config/providers.yaml.example',
+      },
+      ...runtimeDependencyPackagePaths.map((dependencyPath) => ({
+        source: relative(outputRoot, join(config.runtimePackageRoot, dependencyPath)),
+        target: join('shared', 'cats-runtime', dependencyPath),
+      })),
       ...setupAssets.map((asset) => ({
         source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
         target: asset.stageRelativePath,
