@@ -118,6 +118,13 @@ Then store only selected references in `companion-box`, for example:
 - `storageMode = imported_copy` only if the user explicitly wants a local copy
 - otherwise keep a provider reference in `metadata`
 
+This should be treated as a first-slice compatibility move, not the ideal
+long-term contract. The current `path_ref` / `linked_path` semantics are
+local-path-oriented, so remote provider references stored only in `metadata`
+remain a workaround. The more correct later direction is an explicit
+`remote_ref`-style source contract, or an equivalent first-class remote
+reference shape.
+
 Suggested metadata fields for the first slice:
 
 - `provider: "google_drive"`
@@ -228,6 +235,13 @@ For `cats-platform`, the better first interpretation is:
 - extract candidate facts/preferences/events/relationship cues
 - promote only high-signal items into companion memory / canonical memory
 
+Temporary direction for the first slice:
+
+- reuse `personal-rag-system` extraction first
+- keep `cats-platform` as the product-owned destination for selected memories
+- migrate extraction in-tree later once the built-in Cats extraction layer is
+  ready to replace that staging role
+
 This is better than trying to make the first slice a raw archive mirror.
 
 ### Why Not Just Store the Whole Transcript?
@@ -238,6 +252,15 @@ Because the current product memory model intentionally separates:
 - derived records
 - durable memory
 - retrieval context
+
+This is not just a conceptual preference. The current extraction logic in
+[`src/platform/memory/extraction.ts`](../../src/platform/memory/extraction.ts)
+promotes curated companion memory plus selected derived kinds such as
+`traits`, `event`, `relationship_note`, and `normalized_note`, but it does not
+promote `transcript`, `summary`, `caption`, `tags`, or `metadata` into
+canonical durable memory. That means a raw `conversation_log` import on its own
+will mostly act as supporting evidence unless an importer or extractor also
+produces higher-signal derived records or curated memory entries.
 
 If every LINE transcript is mirrored directly into product memory, retrieval
 quality will fall and source-scoped replacement semantics become harder to keep
@@ -299,12 +322,8 @@ selection.
 
 ## Open Issues
 
-- whether the current `path_ref` + metadata contract is enough for remote
-  provider references, or whether a new `remote_ref` source kind should be
-  added later
-- whether LINE extraction should run first inside `cats-platform`, or whether
-  the first implementation should reuse `personal-rag-system` extraction as a
-  staging service
+- when to formalize a first-class `remote_ref` source contract after validating
+  the first-slice metadata workaround
 - whether selected external assets need a stable preview/thumbnail cache inside
   `cats-platform`
 
