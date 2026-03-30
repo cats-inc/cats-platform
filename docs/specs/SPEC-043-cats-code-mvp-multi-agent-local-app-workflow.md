@@ -132,6 +132,22 @@ The project thread shall record distinct rounds of work so the product can
 group artifacts and decisions without pretending that the whole project is
 linear.
 
+A new round should begin when the thread adopts a new explicit objective,
+higher-level mode focus, or delivery handoff such as:
+
+- discovery to shaping
+- shaping to implementation
+- implementation to review
+- human verification to repair
+
+Additional messages or retries may remain inside the same round as long as the
+objective is still the same. A round should end when it reaches at least one
+of these boundaries:
+
+- a stable artifact bundle is produced
+- the thread hands off into a different primary mode
+- the thread enters a waiting state for human or agent action
+
 Examples:
 
 - discovery round
@@ -140,6 +156,35 @@ Examples:
 - review round
 - manual test round
 - repair round
+
+### Agent surface
+
+For the MVP, the multi-agent discussion, drafting, and review surface should
+target product-owned connectors for external coding-agent interfaces such as
+CLI-backed Codex, Claude, and Gemini workflows.
+
+`cats-runtime` remains the build/run substrate for local app execution,
+preview, and delivery follow-through. It is not required to be the first-slice
+discussion-session manager for the multi-agent relay loop.
+
+### Agent roster
+
+Each project thread should retain a visible agent roster for the currently
+configured participant agents.
+
+Each roster entry should include at least:
+
+- agent identity
+- provider or interface family
+- model target when known
+- transport or connector type
+- current availability or waiting state
+- quota or subscription context when known
+- recent role history such as drafter, main coder, or reviewer
+
+This roster is thread-wide rather than build-only. Discovery, shaping,
+documentation, implementation, and review rounds should all be able to inspect
+the same agent roster and quota context when routing work.
 
 ## User Stories
 
@@ -175,7 +220,8 @@ Examples:
 #### Multi-agent discussion and relay
 
 5. The MVP shall support sending the same prompt or problem statement to
-   multiple configured coding agents in parallel.
+   multiple configured coding agents in parallel through the product-owned
+   multi-agent relay surface.
 6. The product shall support a one-click relay flow so one agent's answer can
    be forwarded to one or more other agents for critique, rebuttal, or
    refinement without manual copy/paste.
@@ -183,7 +229,8 @@ Examples:
    - independent first-pass answers
    - critique after another agent's answer is visible
 8. The product shall preserve which agent said what, when it was relayed, and
-   what later critique or adoption followed.
+   what later critique or adoption followed, together with the relevant agent
+   identity and quota context that informed routing decisions.
 9. The product shall produce a convergence summary when multiple agent views
    exist, including at least:
    - areas of agreement
@@ -205,7 +252,11 @@ Examples:
 
 13. `shape` mode shall be a first-class product path, not a side comment inside
     implementation chat.
-14. The MVP shall support wireframe-like artifacts before implementation starts.
+14. The MVP shall support a minimum wireframe artifact before implementation
+    starts. The minimum acceptable artifact for the MVP is a low-fidelity
+    screen or flow layout with named regions, primary actions, and short
+    rationale; generated mock images or HTML shells are optional follow-on
+    outputs rather than the baseline contract.
 15. The user shall be able to request a new wireframe or layout rethink even
     after implementation or testing has already started.
 16. Approved wireframe or visual-direction artifacts shall remain visible as
@@ -223,6 +274,7 @@ Examples:
     - what local dependencies or environment prerequisites are required
     - whether the route appears feasible on the current machine
     - whether there are important library or ecosystem constraints
+    - what local bootstrap or setup steps remain before the route is runnable
 20. The first user-facing fit output shall present:
     - a recommended route
     - concise reasons
@@ -231,10 +283,13 @@ Examples:
 21. More technical fit detail such as libraries, database choices, and local
     service expectations may be shown as expandable depth rather than mandatory
     first-pass reading.
+22. The MVP does not need to fully automate environment bootstrapping, but
+    fit outputs shall acknowledge readiness gaps and produce an actionable
+    bootstrap handoff when the recommended route still requires local setup.
 
 #### Artifact generation and ratification
 
-22. The MVP shall treat the following as first-class project artifacts:
+23. The MVP shall treat the following as first-class project artifacts:
     - research notes
     - wireframes or shape notes
     - fit decisions
@@ -245,54 +300,57 @@ Examples:
     - review reports
     - human test notes
     - final decision summaries
-23. The convergence flow shall allow the user to nominate or accept one agent
+24. The convergence flow shall allow the user to nominate or accept one agent
     as the drafting author for a formal artifact.
-24. Drafted artifacts shall remain linked to the discussion and evidence that
+25. Drafted artifacts shall remain linked to the discussion and evidence that
     produced them.
 
 #### Implementation and review loop
 
-25. The MVP shall support selecting one primary coder for an implementation
+26. The MVP shall support selecting one primary coder for an implementation
     round and one or more secondary reviewers.
-26. Primary-coder selection may consider at least:
+27. Primary-coder selection may consider at least:
     - user preference
     - perceived agent strength for the task
     - current subscription or quota context
-27. The product shall support the user's current loop where one agent writes,
+28. The thread-wide agent roster and quota context may also inform routing
+    during discovery, shaping, document drafting, and review, not only during
+    primary-coder selection.
+29. The product shall support the user's current loop where one agent writes,
     other agents review, and feedback is routed back to the writer without
     manual copy/paste.
-28. Reviewer output shall be captured as structured review artifacts with at
+30. Reviewer output shall be captured as structured review artifacts with at
     least:
     - blocking findings
     - non-blocking suggestions
     - open questions
     - recommended next step
-29. `SPEC-041` builder-loop execution may serve as the build/run substrate
+31. `SPEC-041` builder-loop execution may serve as the build/run substrate
     inside this broader workflow, but it shall not define the entire product
     identity of `Cats Code`.
 
 #### Human verification and repair
 
-30. `human_verify` shall be a first-class working mode rather than a hidden
+32. `human_verify` shall be a first-class working mode rather than a hidden
     afterthought.
-31. The MVP shall support capturing manual-testing feedback as structured
+33. The MVP shall support capturing manual-testing feedback as structured
     project input, including at least:
     - expected behavior
     - actual behavior
     - reproduction notes
     - severity
     - optional screenshot or visual annotation
-32. Human verification may happen multiple times across the life of one
+34. Human verification may happen multiple times across the life of one
     project thread.
-33. Manual feedback shall be routable into a repair round without requiring the
+35. Manual feedback shall be routable into a repair round without requiring the
     user to rewrite it as a new free-form prompt.
 
 #### Evidence contract
 
-34. Because the MVP does not expose a visible code editor as the primary
+36. Because the MVP does not expose a visible code editor as the primary
     surface, it shall provide a usable evidence contract for trust and
     arbitration.
-35. The first evidence contract shall support at least these outputs:
+37. The first evidence contract shall support at least these outputs:
     - wireframe or visual-direction artifacts
     - preview or runnable local output when available
     - changed-files summary
@@ -300,19 +358,19 @@ Examples:
     - review summaries
     - identified risks or blockers
     - implementation status
-36. The evidence contract shall help the user decide what to do next without
+38. The evidence contract shall help the user decide what to do next without
     requiring direct code editing.
 
 #### Waiting, resume, and arbitration
 
-37. The product shall support explicit waiting states for:
+39. The product shall support explicit waiting states for:
     - agent work in progress
     - review pending
     - human testing pending
     - user arbitration pending
-38. The product shall support resuming a thread after these waiting states
+40. The product shall support resuming a thread after these waiting states
     without losing context.
-39. The user shall remain able to overrule convergence, pick a different main
+41. The user shall remain able to overrule convergence, pick a different main
     coder, request another debate round, or redirect the work into a different
     mode.
 
