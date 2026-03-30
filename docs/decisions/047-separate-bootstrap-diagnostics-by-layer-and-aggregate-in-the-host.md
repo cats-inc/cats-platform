@@ -81,6 +81,12 @@ This decision includes:
 7. Advanced recovery surfaces may still drill into the native runtime or
    product diagnostics, but the packaged bootstrap page should not need to
    reconstruct cross-layer state on its own.
+8. The first packaged aggregation slice does not require a new
+   `cats-runtime` event/history route.
+   - the host may derive runtime chronology from runtime state transitions and
+     retained setup-report metadata
+   - an explicit runtime event/history seam remains additive follow-through if
+     later evidence shows the derived view is insufficient
 
 ## Consequences
 

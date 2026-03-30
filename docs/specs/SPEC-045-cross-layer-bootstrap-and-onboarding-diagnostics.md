@@ -71,15 +71,22 @@ duplicating every raw log.
    - host helper/action ids and host-state references
 7. The aggregated host bundle shall preserve recent cross-layer chronology in a
    machine-readable way suitable for packaged recovery UI.
-8. The first slice may keep chronology bounded to recent bootstrap/onboarding
+   - in the first slice, runtime-layer chronology may be derived from
+     host-observed runtime state transitions plus retained setup-report
+     timestamps or summaries
+   - the first slice does not require a new runtime-owned event/history route
+8. A dedicated runtime event/history route may be added later if host-derived
+   runtime chronology proves insufficient, but it is not required for the
+   first implementation slice.
+9. The first slice may keep chronology bounded to recent bootstrap/onboarding
    entries rather than an unbounded lifetime log.
-9. The packaged bootstrap page shall be allowed to consume only the host bundle
+10. The packaged bootstrap page shall be allowed to consume only the host bundle
    for its default recovery summary.
-10. Advanced recovery entry points may still open the native runtime diagnostics
+11. Advanced recovery entry points may still open the native runtime diagnostics
     or setup surfaces directly.
-11. If one layer is unavailable, the aggregated host bundle shall still render
+12. If one layer is unavailable, the aggregated host bundle shall still render
     partial truth and explicitly mark that layer as unavailable or stale.
-12. The packaged setup flow shall record product-owned events for at least:
+13. The packaged setup flow shall record product-owned events for at least:
     - setup opened or resumed
     - owner/Boss Cat input staged or committed
     - runtime setup blocked
@@ -87,13 +94,24 @@ duplicating every raw log.
     - runtime apply requested
     - runtime apply confirmed or failed
     - packaged setup completion committed
-13. The host-owned diagnostics slice shall record or summarize at least:
+14. The host-owned diagnostics slice shall record or summarize at least:
     - service start and readiness failures
     - helper execution and interruption outcomes
     - relaunch/restart/elevation resume state
     - host snapshot phase/status transitions
-14. The aggregation contract shall support correlation metadata so operators can
+15. The aggregation contract shall support correlation metadata so operators can
     tell which entries belong to the same packaged bootstrap or recovery run.
+16. Each persisted or aggregated bootstrap/onboarding event shall carry enough
+    diagnostic payload for operator-driven troubleshooting:
+    - one timestamp
+    - one layer discriminator
+    - one stable event kind
+    - one human-readable summary
+    - one bounded context payload with the event's key parameters, such as
+      provider names, file paths, scan counts, or phase transitions
+    - one structured error payload when the event represents a failure or
+      degraded condition; if present, the error payload shall include a
+      human-readable message rather than only a code
 
 ### Non-Functional Requirements
 
@@ -144,6 +162,67 @@ The intended ownership model is:
 The host aggregation surface is not a replacement log store. It is a bounded
 summary and reference layer above the native records.
 
+## First-Slice Contract Sketch
+
+The first slice should freeze a minimal shared shape before implementation:
+
+```ts
+interface BootstrapEventReference {
+  artifactId?: string;
+  artifactPath?: string;
+  recordId?: string;
+  route?: string;
+}
+
+interface BootstrapEventError {
+  message: string;
+  code?: string;
+  cause?: string;
+  stack?: string;
+}
+
+interface BootstrapEvent {
+  layer: 'runtime' | 'product' | 'host';
+  kind: string;
+  timestamp: string;
+  attemptId?: string;
+  summary: string;
+  status?: 'ok' | 'degraded' | 'unavailable' | 'info';
+  context?: Record<string, unknown>;
+  error?: BootstrapEventError;
+  reference?: BootstrapEventReference;
+}
+
+interface BootstrapAggregationBundle {
+  generatedAt: string;
+  attemptId?: string;
+  layers: {
+    runtime: { summary: string; status: string; latestReference?: BootstrapEventReference };
+    product: { summary: string; status: string; latestReference?: BootstrapEventReference };
+    host: { summary: string; status: string; latestReference?: BootstrapEventReference };
+  };
+  chronology: BootstrapEvent[];
+}
+```
+
+The exact field names may change during implementation, but the first slice
+should keep this granularity:
+
+- one layer discriminator
+- one stable event kind
+- one human-readable summary
+- one timestamp
+- optional correlation metadata
+- one bounded context payload carrying the event's key parameters
+- one structured error payload when a failure or degraded condition occurred
+- one native reference instead of raw-log duplication
+
+With this minimum shape, an operator should be able to hand the latest
+bootstrap/onboarding bundle to another maintainer or agent and get a concrete
+answer about which layer failed, which step failed, and usually why. Without
+the `context` and `error` payloads, the aggregation contract would only locate
+the failing phase rather than support actual diagnosis.
+
 ## Detailed Scope
 
 ### Phase A: Freeze Ownership and Aggregation Contract
@@ -157,12 +236,26 @@ summary and reference layer above the native records.
 - persist bounded onboarding events in `cats-platform`
 - expose a product-owned read model the host can consume
 - keep those events distinct from runtime setup reports and host helper events
+- the first product-owned event set may stay minimal:
+  - `setup_opened`
+  - `runtime_apply_requested`
+  - `runtime_apply_confirmed`
+  - `setup_completed`
+- the broader requirement list remains the target contract, but not every event
+  kind must ship in the first implementation slice
 
 ### Phase C: Extend Host Persistence from Snapshot to Aggregation
 
 - keep the current host snapshot
 - add recent host lifecycle entries plus references to runtime/product records
 - preserve restart-safe recovery inspection without scraping multiple surfaces
+- the first host-owned event set may stay minimal:
+  - `host_phase_changed`
+  - `service_exited_before_ready`
+  - `helper_run_completed`
+  - `resume_action_changed`
+- runtime chronology in this phase is derived from existing runtime state/report
+  truth unless a later follow-through explicitly adds a runtime event route
 
 ### Phase D: Use Aggregation in Recovery UI
 
@@ -201,8 +294,12 @@ But it still lacks:
 - [ ] Should the first slice introduce an explicit host-issued
       `bootstrapAttemptId` propagated into product/runtime events, or is
       timestamp ordering plus host references sufficient at first?
+      - this is a Phase 2 blocker tracked by
+        [PLAN-034](../plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md)
 - [ ] Should the product-owned onboarding history live in shared chat/core
       state, or behind a separate file/read model owned by the suite host?
+      - this is a Phase 2 blocker tracked by
+        [PLAN-034](../plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md)
 - [ ] How much of the aggregated chronology should be kept in `state.json`
       versus a sibling bounded history file?
 
