@@ -115,7 +115,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   const packedPaths = new Set(packed.files.map((entry) => entry.path));
 
   assert.deepEqual(manifest.bin, {
-    cats: './dist-server/index.js',
+    'cats-platform': './dist-server/index.js',
   });
   assert.deepEqual(manifest.files, [
     'dist',
@@ -173,7 +173,7 @@ test('build removes stale packaged output before npm pack snapshots it', () => {
   assert.equal(packedPaths.has('dist-electron/stale/old-artifact.txt'), false);
 });
 
-test('local tarball install exposes the cats executable entrypoint', () => {
+test('local tarball install exposes the cats-platform executable entrypoint', () => {
   ensureBuild();
 
   const installRoot = mkdtempSync(join(tmpdir(), 'cats-pack-install-'));
@@ -204,12 +204,12 @@ test('local tarball install exposes the cats executable entrypoint', () => {
       consumerDir,
       'node_modules',
       '.bin',
-      process.platform === 'win32' ? 'cats.cmd' : 'cats',
+      process.platform === 'win32' ? 'cats-platform.cmd' : 'cats-platform',
     );
     const installedManifest = JSON.parse(readFileSync(join(installedRoot, 'package.json'), 'utf8'));
     const installedBinRelativePath = typeof installedManifest.bin === 'string'
       ? installedManifest.bin
-      : installedManifest.bin?.cats;
+      : installedManifest.bin?.['cats-platform'];
     const installedBinTargetPath = installedBinRelativePath
       ? join(installedRoot, installedBinRelativePath)
       : '';
@@ -223,7 +223,7 @@ test('local tarball install exposes the cats executable entrypoint', () => {
     });
 
     assert.equal(helpResult.status, 0);
-    assert.match(helpResult.stdout, /Usage: cats \[options\]/u);
+    assert.match(helpResult.stdout, /Usage: cats-platform \[options\]/u);
   } finally {
     if (tarballPath) {
       rmSync(tarballPath, { force: true });

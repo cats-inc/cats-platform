@@ -28,7 +28,7 @@ goal:
 - technical users should be able to try the product quickly with a
   self-hosted bootstrap command such as `npx cats-can`
 - technical users who want a persistent install should be able to use a host
-  package such as `npm install -g @cats-inc/cats-platform` and then run `cats`
+  package such as `npm install -g @cats-inc/cats-platform` and then run `cats-platform`
 - the codebase should be easy to share for open-source collaboration before a
   polished desktop wrapper exists
 
@@ -65,7 +65,7 @@ This decision includes:
 
 1. The primary public technical distribution targets are:
    - `npx cats-can` for one-shot bootstrap/install flows
-   - `npm install -g @cats-inc/cats-platform` followed by `cats` for
+   - `npm install -g @cats-inc/cats-platform` followed by `cats-platform` for
      persistent host installs
 2. The root `@cats-inc/cats-platform` package is application-first. It may expose small
    programmatic helpers for tests or internal composition, but that is

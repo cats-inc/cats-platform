@@ -4,7 +4,7 @@
   "description": "Technical host package for the Cats suite, backed by cats-runtime.",
   "type": "module",
   "bin": {
-    "cats": "./dist-server/index.js"
+    "cats-platform": "./dist-server/index.js"
   },
   "main": "dist-electron/main.js",
   "files": [

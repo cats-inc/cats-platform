@@ -457,7 +457,7 @@ export function formatAppStartupError(
 
 export function getAppHelpText(): string {
   return [
-    'Usage: cats [options]',
+    'Usage: cats-platform [options]',
     '',
     'Options:',
     '  --startup-mode <standalone|app-managed>',

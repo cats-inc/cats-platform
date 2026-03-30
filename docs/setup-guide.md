@@ -224,7 +224,7 @@ bootstrap package target is `cats-can`.
 After install, verify the executable contract with:
 
 ```bash
-cats --help
+cats-platform --help
 ```
 
 Running `cats` still expects a reachable `cats-runtime`, using

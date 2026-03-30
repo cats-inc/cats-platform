@@ -65,7 +65,7 @@ This plan does not cover:
 | Flagship product brand | `Cats` |
 | Main suite host repo target | `cats-platform` |
 | Main suite host package target | `@cats-inc/cats-platform` |
-| Persistent host executable | `cats` |
+| Persistent host executable | `cats-platform` |
 | Runtime repo/package | `cats-runtime` |
 | Installer package | `cats-can` |
 | One-shot install entrypoint | `npx cats-can` |
@@ -125,9 +125,8 @@ identity.
 - [x] Reconcile packaging docs that currently assume the host package/executable
       is `cats`.
 - [x] Document `cats-can` as the canonical one-shot install/bootstrap package.
-- [x] Decide whether the persistent local executable remains `cats` or moves to
-      a more explicit host-oriented binary name, and document that choice
-      explicitly.
+- [x] Move the persistent local executable to `cats-platform` and document
+      that choice explicitly.
 - [x] Reconcile
       [ADR-013](../decisions/013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
       and [PLAN-013](./PLAN-013-self-hosted-npm-app-packaging.md) with the new
@@ -227,6 +226,7 @@ Use this when delegating implementation:
 |------|--------|
 | 2026-03-30 | Plan created to supersede PLAN-018 and apply ADR-045 naming targets |
 | 2026-03-30 | Phase 1-3 migration slice landed across README, packaging docs, research notes, package metadata, and the new `cats-can` bootstrap package scaffold while keeping the persistent executable as `cats` |
+| 2026-03-30 | Follow-up CLI contract cleanup removed the legacy `cats` host executable alias and aligned the persistent CLI name, help text, install scripts, package-contract checks, and naming docs on `cats-platform` |
 | 2026-03-30 | Validation slice updated `tests/package-contract.test.js` for `@cats-inc/cats-platform` and replaced direct `npm.cmd` spawning with npm CLI script resolution so Windows package-contract checks can run in this environment |
 | 2026-03-30 | Local tarball smoke confirmed cats-can installs a cats-can shim and successfully hands off to the packaged @cats-inc/cats-platform CLI while keeping cats-runtime as a separate dependency |
 | 2026-03-30 | Phase 4 workspace slice landed: git mv cats cats-platform completed, root monorepo guidance now points at cats-platform/, and host-side Electron metadata plus desktop test fixtures now use the renamed workspace paths |
