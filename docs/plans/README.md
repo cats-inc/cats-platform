@@ -46,8 +46,9 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
-| [PLAN-032](./PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) | Cats Code MVP Fan-Out, Relay, and Convergence | Draft | [SPEC-043](../specs/SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) |
+| [PLAN-034](./PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md) | Cross-Layer Bootstrap and Onboarding Diagnostics | Draft | [SPEC-045](../specs/SPEC-045-cross-layer-bootstrap-and-onboarding-diagnostics.md), [ADR-047](../decisions/047-separate-bootstrap-diagnostics-by-layer-and-aggregate-in-the-host.md) |
 | [PLAN-033](./PLAN-033-integrate-packaged-setup-with-runtime-bootstrap.md) | Integrate Packaged Setup with Runtime Bootstrap | Draft | [SPEC-044](../specs/SPEC-044-integrate-packaged-setup-with-runtime-bootstrap.md), [ADR-046](../decisions/046-drive-packaged-setup-through-runtime-bootstrap-apis.md) |
+| [PLAN-032](./PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) | Cats Code MVP Fan-Out, Relay, and Convergence | Draft | [SPEC-043](../specs/SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) |
 | [PLAN-031](./PLAN-031-rename-the-main-suite-host-from-cats-to-cats-platform.md) | Rename the Main Suite Host from cats to cats-platform | Draft | N/A |
 | [PLAN-030](./PLAN-030-packaged-setup-wizard-and-provider-installation.md) | Packaged Setup Wizard and Provider Installation | In Progress | [SPEC-023](../specs/SPEC-023-packaged-setup-wizard-and-provider-installation.md), [ADR-021](../decisions/021-keep-packaged-setup-and-provider-installation-in-the-host.md) |
 | [PLAN-029](./PLAN-029-cats-code-v1-local-builder-loop.md) | Cats Code v1 Local Builder Loop | Draft | [SPEC-041](../specs/SPEC-041-cats-code-v1-local-builder-loop.md) |
