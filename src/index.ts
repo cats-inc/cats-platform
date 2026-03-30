@@ -16,6 +16,7 @@ import {
   resolveAppStartupState,
   type AppShutdownReason,
 } from './app/server/startup.js';
+import { closeAppServerGracefully } from './app/server/shutdown.js';
 import { CatsRuntimeClient } from './platform/runtime/client.js';
 import { FileChatStore } from './products/chat/state/store.js';
 import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
@@ -56,18 +57,11 @@ async function main(): Promise<void> {
     markAppStopping(startup, reason);
     writeLifecycle(formatAppStoppingMessage(startup, reason));
 
-    shutdownPromise = new Promise<void>((resolve, reject) => {
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
+    shutdownPromise = closeAppServerGracefully(server)
+      .then(() => {
         markAppStopped(startup, reason);
         writeLifecycle(formatAppStoppedMessage(startup, reason));
-        resolve();
-      });
-    })
+      })
       .catch((error) => {
         process.stderr.write(
           `${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
