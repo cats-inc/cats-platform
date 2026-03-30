@@ -61,6 +61,7 @@ import {
   resolveChannelSpawnCwd,
   syncChannelAttachmentsToWorkspace,
 } from '../state/workspace.js';
+import { readRuntimeSetupSummary } from '../../../runtime/setup.js';
 import type {
   AppShellPayload,
   AssignChannelCatInput,
@@ -277,6 +278,7 @@ export async function buildAppShellPayload(
   const core = await dependencies.chatStore.readCore();
   const resolvedState = state ?? await dependencies.chatStore.read();
   const runtime = await dependencies.runtimeClient.getHealth();
+  const runtimeSetup = await readRuntimeSetupSummary(dependencies.runtimeClient);
   const botBindings = core.botBindings.map((binding) => {
     const matchedCat = resolvedState.cats.find((cat) =>
       binding.catActorId
@@ -317,6 +319,7 @@ export async function buildAppShellPayload(
       ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
       botBindings,
       lastProductSurface: suitePrefs.lastProductSurface,
+      runtimeSetup,
     },
   );
 }

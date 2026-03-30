@@ -1,5 +1,6 @@
 import type { RuntimeStatusSummary } from '../platform/runtime/client.js';
 import type { ProviderModelSelection } from './providerSelection.js';
+import type { RuntimeSetupSummary } from './runtimeSetup.js';
 
 export type SuiteSurfaceId = 'chat' | 'work' | 'code';
 
@@ -26,6 +27,7 @@ export interface SuiteOwnerContext {
 export interface SuiteHostEnvelope extends SuiteOwnerContext {
   app: SuiteAppDescriptor;
   runtime: RuntimeStatusSummary;
+  runtimeSetup?: RuntimeSetupSummary;
   metadata: SuiteResponseMetadata;
 }
 

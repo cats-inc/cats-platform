@@ -1,8 +1,18 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 import type { SuiteSetupCompleteInput } from '../../shared/suite-contract.js';
+import type {
+  SuiteRuntimeSetupApplyInput,
+  SuiteRuntimeSetupScanInput,
+} from '../../shared/runtimeSetup.js';
 import { defaultCatProducts, normalizeSuiteSurfaceList } from '../../shared/suiteSurfaces.js';
 import { readSuitePreferences, writeSuitePreferences } from '../../shared/suitePreferences.js';
 import { createCat } from '../../products/chat/state/model/index.js';
+import { RuntimeRequestError } from '../../runtime/client.js';
+import {
+  isRuntimeSetupReady,
+  readRuntimeSetupSummary,
+  summarizeRuntimeSetupReadModel,
+} from '../../runtime/setup.js';
 import {
   buildAppShellPayload,
   type ChatApiDependencies,
@@ -14,6 +24,50 @@ export type SuiteSetupContext = RouteContext<ChatApiDependencies>;
 function reportSyncFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
   process.stderr.write(`[cats-suite-setup] ${scope}: ${message}\n`);
+}
+
+function normalizeProviderList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function sendRuntimeSetupError(
+  context: SuiteSetupContext,
+  error: unknown,
+  fallbackCode: string,
+  fallbackMessage: string,
+): void {
+  const message = error instanceof Error ? error.message : fallbackMessage;
+  const status = error instanceof RuntimeRequestError
+    ? error.status
+    : 503;
+  sendJson(context.response, status, {
+    error: {
+      code: fallbackCode,
+      message,
+    },
+  });
+}
+
+function sendRuntimeSetupRequired(
+  context: SuiteSetupContext,
+  summary: Awaited<ReturnType<typeof readRuntimeSetupSummary>>,
+): void {
+  sendJson(context.response, 409, {
+    error: {
+      code: 'runtime_setup_required',
+      message: summary.error ?? summary.summary,
+      details: {
+        runtimeSetup: summary,
+      },
+    },
+  });
 }
 
 async function handleSuiteSetupComplete(
@@ -41,6 +95,12 @@ async function handleSuiteSetupComplete(
         message: 'Setup has already been completed',
       },
     });
+    return;
+  }
+
+  const runtimeSetup = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
+  if (!isRuntimeSetupReady(runtimeSetup)) {
+    sendRuntimeSetupRequired(context, runtimeSetup);
     return;
   }
 
@@ -127,6 +187,7 @@ async function handleSuiteSetupComplete(
     payload = {
       app: { name: 'cats', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
       runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
+      runtimeSetup,
       metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },
       setupCompleteAt: core.setupCompleteAt,
       ownerDisplayName: core.ownerProfile.displayName,
@@ -137,6 +198,92 @@ async function handleSuiteSetupComplete(
   }
 
   sendJson(context.response, 200, payload);
+}
+
+async function handleRuntimeSetupState(
+  context: SuiteSetupContext,
+): Promise<void> {
+  const summary = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
+  sendJson(context.response, 200, summary);
+}
+
+async function handleRuntimeSetupScan(
+  context: SuiteSetupContext,
+): Promise<void> {
+  if (typeof context.dependencies.runtimeClient.scanSetup !== 'function') {
+    sendJson(context.response, 503, {
+      error: {
+        code: 'runtime_setup_unavailable',
+        message: 'Cats Runtime setup scan is not available.',
+      },
+    });
+    return;
+  }
+
+  let body: SuiteRuntimeSetupScanInput = {};
+  try {
+    body = await readJsonBody<SuiteRuntimeSetupScanInput>(context.request);
+  } catch {
+    body = {};
+  }
+
+  try {
+    const readModel = await context.dependencies.runtimeClient.scanSetup({
+      manual: body.manual === true,
+    });
+    sendJson(context.response, 200, summarizeRuntimeSetupReadModel(readModel));
+  } catch (error) {
+    sendRuntimeSetupError(
+      context,
+      error,
+      'runtime_setup_scan_failed',
+      'Failed to refresh Cats Runtime setup.',
+    );
+  }
+}
+
+async function handleRuntimeSetupApply(
+  context: SuiteSetupContext,
+): Promise<void> {
+  if (typeof context.dependencies.runtimeClient.applySetup !== 'function') {
+    sendJson(context.response, 503, {
+      error: {
+        code: 'runtime_setup_unavailable',
+        message: 'Cats Runtime setup apply is not available.',
+      },
+    });
+    return;
+  }
+
+  let body: SuiteRuntimeSetupApplyInput = {};
+  try {
+    body = await readJsonBody<SuiteRuntimeSetupApplyInput>(context.request);
+  } catch {
+    body = {};
+  }
+
+  const currentSummary = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
+  const requestedProviders = normalizeProviderList(body.providers);
+  const providers = requestedProviders.length > 0
+    ? requestedProviders
+    : currentSummary.suggestedProviders;
+
+  if (providers.length === 0) {
+    sendRuntimeSetupRequired(context, currentSummary);
+    return;
+  }
+
+  try {
+    const readModel = await context.dependencies.runtimeClient.applySetup(providers);
+    sendJson(context.response, 200, summarizeRuntimeSetupReadModel(readModel));
+  } catch (error) {
+    sendRuntimeSetupError(
+      context,
+      error,
+      'runtime_setup_apply_failed',
+      'Failed to apply Cats Runtime setup.',
+    );
+  }
 }
 
 async function handleSuitePreferencesUpdate(
@@ -168,6 +315,33 @@ async function handleSuitePreferencesUpdate(
 export async function routeSuiteSetupApi(
   context: SuiteSetupContext,
 ): Promise<boolean> {
+  if (context.url.pathname === '/api/suite/runtime-setup') {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    await handleRuntimeSetupState(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/suite/runtime-setup/scan') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleRuntimeSetupScan(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/suite/runtime-setup/apply') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleRuntimeSetupApply(context);
+    return true;
+  }
+
   if (context.url.pathname === '/api/suite/setup/complete') {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);

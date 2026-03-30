@@ -1,6 +1,7 @@
 import type { AppConfig } from '../../../config.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
+import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { listEnabledSuiteSurfaces } from '../../../shared/suiteSurfaces.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
 import { summarizeState } from './model/index.js';
@@ -39,6 +40,7 @@ export function createAppShell(
     ownerAvatarUrl?: string | null;
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: SuiteSurfaceId | null;
+    runtimeSetup?: RuntimeSetupSummary;
   },
 ): AppShellPayload {
   const summary = summarizeState(chat);
@@ -74,6 +76,7 @@ export function createAppShell(
       botBindings,
     },
     runtime,
+    runtimeSetup: setup?.runtimeSetup,
     metadata: {
       generatedAt: now.toISOString(),
       host: config.host,
@@ -86,4 +89,3 @@ export function createAppShell(
     lastProductSurface: setup?.lastProductSurface ?? null,
   };
 }
-

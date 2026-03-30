@@ -9,6 +9,11 @@ import type {
   SuiteHostEnvelope,
   SuiteSetupCompleteInput,
 } from '../../../shared/suite-contract.js';
+import type {
+  RuntimeSetupSummary,
+  SuiteRuntimeSetupApplyInput,
+  SuiteRuntimeSetupScanInput,
+} from '../../../shared/runtimeSetup.js';
 
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
@@ -39,6 +44,63 @@ export async function completeSuiteSetup(
   }
 
   return (await response.json()) as SuiteHostEnvelope;
+}
+
+export async function fetchRuntimeSetup(
+  signal?: AbortSignal,
+): Promise<RuntimeSetupSummary> {
+  const response = await fetch('/api/suite/runtime-setup', {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, `Failed to load runtime setup (${response.status})`));
+  }
+
+  return (await response.json()) as RuntimeSetupSummary;
+}
+
+export async function scanRuntimeSetup(
+  input: SuiteRuntimeSetupScanInput = {},
+  signal?: AbortSignal,
+): Promise<RuntimeSetupSummary> {
+  const response = await fetch('/api/suite/runtime-setup/scan', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, `Runtime scan failed (${response.status})`));
+  }
+
+  return (await response.json()) as RuntimeSetupSummary;
+}
+
+export async function applyRuntimeSetup(
+  input: SuiteRuntimeSetupApplyInput = {},
+  signal?: AbortSignal,
+): Promise<RuntimeSetupSummary> {
+  const response = await fetch('/api/suite/runtime-setup/apply', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, `Runtime apply failed (${response.status})`));
+  }
+
+  return (await response.json()) as RuntimeSetupSummary;
 }
 
 export async function fetchSuiteEnvelope(

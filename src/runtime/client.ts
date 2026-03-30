@@ -25,6 +25,10 @@ import {
   readRuntimeNdjsonResponse,
   readRuntimeSseResponse,
 } from './clientStreams.js';
+import type {
+  RuntimeSetupReadModel,
+  RuntimeSetupScanInput,
+} from './setup.js';
 
 export interface RuntimeProviderInstanceConfig {
   id: string;
@@ -205,6 +209,9 @@ export interface RuntimeWakeupCreateResult {
 
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
+  getSetupState?(): Promise<RuntimeSetupReadModel>;
+  scanSetup?(input?: RuntimeSetupScanInput): Promise<RuntimeSetupReadModel>;
+  applySetup?(providers: string[]): Promise<RuntimeSetupReadModel>;
   getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
   getProviderModels(provider: string, instance?: string | null): Promise<ProviderModelCatalog>;
   getAdvancedProviderModels(provider: string, instance?: string | null): Promise<ProviderAdvancedModelCatalog>;
@@ -302,6 +309,85 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     return normalizeRuntimeProviderConfigRegistry(await response.json());
+  }
+
+  async getSetupState(): Promise<RuntimeSetupReadModel> {
+    const response = await fetch(`${this.baseUrl}/setup-state`, {
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to fetch runtime setup state (${response.status})`),
+        response.status,
+      );
+    }
+
+    return (await response.json()) as RuntimeSetupReadModel;
+  }
+
+  async scanSetup(input: RuntimeSetupScanInput = {}): Promise<RuntimeSetupReadModel> {
+    const response = await fetch(`${this.baseUrl}/setup-scan`, {
+      method: 'POST',
+      headers: {
+        ...this.authHeaders(),
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        manual: input.manual === true,
+      }),
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to run runtime setup scan (${response.status})`),
+        response.status,
+      );
+    }
+
+    await response.json().catch(() => null);
+    return await this.getSetupState();
+  }
+
+  async applySetup(providers: string[]): Promise<RuntimeSetupReadModel> {
+    const normalizedProviders = providers
+      .map((provider) => provider.trim())
+      .filter((provider) => provider.length > 0);
+    if (normalizedProviders.length === 0) {
+      throw new Error('At least one provider is required to apply runtime setup.');
+    }
+
+    const response = await fetch(`${this.baseUrl}/setup-apply`, {
+      method: 'POST',
+      headers: {
+        ...this.authHeaders(),
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        providers: normalizedProviders,
+      }),
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to apply runtime setup (${response.status})`),
+        response.status,
+      );
+    }
+
+    await response.json().catch(() => null);
+    return await this.getSetupState();
   }
 
   async getProviderModels(

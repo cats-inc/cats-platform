@@ -97,6 +97,10 @@ contracts.
 - [ ] Land host-owned privileged provider install/resume and remediation flows,
       including Windows elevation/UAC handling and resumable installer-first
       recovery contracts
+- [ ] Extend the packaged setup/runtime-bootstrap contract beyond the current
+      first slice so API-backed, local-model, and agent-backed runtime targets
+      also converge on runtime-owned apply instead of only supporting provider
+      paths already representable by the current bootstrap/apply contract
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
 - [x] Follow up the Chat-first task-strategy handoff slice by deduplicating
