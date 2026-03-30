@@ -239,62 +239,82 @@ function buildIssues(
   }
 
   if (lastSetupAction) {
-    const interruptions = Array.isArray(lastSetupAction.interruptions)
-      ? lastSetupAction.interruptions
-      : [];
-    for (const interruption of interruptions) {
-      let title = 'Packaged setup still needs follow-through';
-      let severity: DesktopPrerequisiteIssue['severity'] = setupComplete ? 'error' : 'warning';
-      let issueId = `setup-${interruption.kind}`;
-
-      switch (interruption.kind) {
-        case 'restart_required':
-          title = 'Packaged setup needs a Windows restart before it can continue';
-          issueId = 'setup-restart-required';
-          break;
-        case 'relaunch_required':
-          title = 'Packaged setup needs the desktop host to relaunch';
-          issueId = 'setup-relaunch-required';
-          break;
-        case 'elevation_required':
-          title = 'Packaged setup needs elevation before it can continue';
-          issueId = 'setup-elevation-required';
-          break;
-        case 'auth_required':
-          title = 'Installed provider still needs authentication';
-          issueId = 'setup-auth-required';
-          severity = setupComplete ? 'error' : 'warning';
-          break;
-        case 'first_wsl_boot_required':
-          title = 'WSL distro needs its first boot before setup can continue';
-          issueId = 'setup-first-wsl-boot-required';
-          break;
-        case 'docker_warm_up_required':
-          title = 'Docker still needs to finish starting before setup can continue';
-          issueId = 'setup-docker-warm-up-required';
-          break;
-      }
-
+    const optionalCapabilityPackFollowThrough = isOptionalCapabilityPackSetupAction(lastSetupAction);
+    if (optionalCapabilityPackFollowThrough) {
       issues.push({
-        id: issueId,
-        severity,
-        title,
-        detail: interruption.summary,
+        id: 'setup-optional-capability-pack',
+        severity: 'info',
+        title: 'Optional capability pack is available for follow-through',
+        detail: lastSetupAction.manualSteps[0] ?? lastSetupAction.summary,
         target: lastSetupAction.helperId,
         category: 'install',
-        resumeKey: `setup_${lastSetupAction.helperId}_${interruption.kind}`,
-        remediation: {
-          kind: 'resume_setup',
-          label: 'Resume packaged setup',
-          resumable: lastSetupAction.resumable && interruption.resumable,
-          requiresRestart: interruption.requiresRestart,
-          docsPath: 'cats-platform/docs/setup-guide.md',
-        },
+        resumeKey: `setup_${lastSetupAction.helperId}_optional`,
+        remediation: null,
       });
+    }
+    if (!optionalCapabilityPackFollowThrough) {
+      const interruptions = Array.isArray(lastSetupAction.interruptions)
+        ? lastSetupAction.interruptions
+        : [];
+      for (const interruption of interruptions) {
+        let title = 'Packaged setup still needs follow-through';
+        let severity: DesktopPrerequisiteIssue['severity'] = setupComplete ? 'error' : 'warning';
+        let issueId = `setup-${interruption.kind}`;
+
+        switch (interruption.kind) {
+          case 'restart_required':
+            title = 'Packaged setup needs a Windows restart before it can continue';
+            issueId = 'setup-restart-required';
+            break;
+          case 'relaunch_required':
+            title = 'Packaged setup needs the desktop host to relaunch';
+            issueId = 'setup-relaunch-required';
+            break;
+          case 'elevation_required':
+            title = 'Packaged setup needs elevation before it can continue';
+            issueId = 'setup-elevation-required';
+            break;
+          case 'auth_required':
+            title = 'Installed provider still needs authentication';
+            issueId = 'setup-auth-required';
+            severity = setupComplete ? 'error' : 'warning';
+            break;
+          case 'first_wsl_boot_required':
+            title = 'WSL distro needs its first boot before setup can continue';
+            issueId = 'setup-first-wsl-boot-required';
+            break;
+          case 'docker_warm_up_required':
+            title = 'Docker still needs to finish starting before setup can continue';
+            issueId = 'setup-docker-warm-up-required';
+            break;
+        }
+
+        issues.push({
+          id: issueId,
+          severity,
+          title,
+          detail: interruption.summary,
+          target: lastSetupAction.helperId,
+          category: 'install',
+          resumeKey: `setup_${lastSetupAction.helperId}_${interruption.kind}`,
+          remediation: {
+            kind: 'resume_setup',
+            label: 'Resume packaged setup',
+            resumable: lastSetupAction.resumable && interruption.resumable,
+            requiresRestart: interruption.requiresRestart,
+            docsPath: 'cats-platform/docs/setup-guide.md',
+          },
+        });
+      }
     }
   }
 
-  if (lastSetupAction?.runState === 'failed' && (lastSetupAction.interruptions?.length ?? 0) === 0) {
+  if (
+    lastSetupAction
+    && !isOptionalCapabilityPackSetupAction(lastSetupAction)
+    && lastSetupAction.runState === 'failed'
+    && (lastSetupAction.interruptions?.length ?? 0) === 0
+  ) {
     issues.push({
       id: 'setup-recovery-required',
       severity: setupComplete ? 'error' : 'warning',
@@ -313,6 +333,7 @@ function buildIssues(
     });
   } else if (
     lastSetupAction
+    && !isOptionalCapabilityPackSetupAction(lastSetupAction)
     && lastSetupAction.manualSteps.length > 0
     && lastSetupAction.interruptions.length === 0
   ) {

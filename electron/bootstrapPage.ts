@@ -1,3 +1,5 @@
+import { isOptionalCapabilityPackSetupAction } from './setupBridge.js';
+
 export function buildDesktopBootstrapPage(): string {
   return `<!doctype html>
 <html lang="en">
@@ -377,12 +379,7 @@ export function buildDesktopBootstrapPage(): string {
         }
 
         if (lastAction) {
-          const optionalCapabilityFollowThrough = lastAction.helperId === 'windows-install-readiness-audit'
-            && Array.isArray(lastAction.plannedActions)
-            && lastAction.plannedActions.length > 0
-            && lastAction.plannedActions.every((entry) => (
-              String(entry).startsWith('local_model:') || String(entry).startsWith('docker:')
-            ));
+          const optionalCapabilityFollowThrough = isOptionalCapabilityPackSetupAction(lastAction);
           const statusClass = lastAction.runState === 'failed'
             ? 'status-unavailable'
             : lastAction.status === 'ready'

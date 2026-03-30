@@ -149,6 +149,10 @@ test('isOptionalCapabilityPackSetupAction detects optional local-model audit fol
   }), true);
   assert.equal(isOptionalCapabilityPackSetupAction({
     helperId: 'windows-install-readiness-audit',
+    plannedActions: ['docker:start_docker_desktop'],
+  }), false);
+  assert.equal(isOptionalCapabilityPackSetupAction({
+    helperId: 'windows-install-readiness-audit',
     plannedActions: ['repair_native_cli_pack'],
   }), false);
   assert.equal(isOptionalCapabilityPackSetupAction({

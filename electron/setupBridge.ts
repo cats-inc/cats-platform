@@ -123,7 +123,7 @@ export function isOptionalCapabilityPackSetupAction(
     return false;
   }
 
-  return plannedActions.every((entry) => entry.startsWith('local_model:') || entry.startsWith('docker:'));
+  return plannedActions.every((entry) => entry.startsWith('local_model:'));
 }
 
 function supportsPlatform(
