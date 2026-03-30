@@ -459,6 +459,9 @@ teaching the renderer or the user about the underlying script topology.
   path explicit: Claude Code, Cursor Agent, and Kiro are bundled today,
   while Goose and Junie remain later-path providers sourced only from
   `environment-bootstrap` knowledge until the product decides to port them.
+- The desktop bootstrap recovery UI now also surfaces that `localProviders`
+  rollout directly, so the host can tell users which local providers are
+  bundled today versus explicitly deferred without leaving the setup panel.
 - The next follow-on under `PLAN-030` is no longer the baseline host bridge or
   interruption contract; it is validating the remaining split-era governance
   and deciding if any later provider should graduate from deferred status into

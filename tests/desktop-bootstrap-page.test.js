@@ -11,7 +11,11 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /getSetupSnapshot/);
   assert.match(html, /resumeSetup/);
   assert.match(html, /snapshot\.setup/);
+  assert.match(html, /providerSetup\.localProviders/);
+  assert.match(html, /bundledInCurrentInstaller/);
   assert.match(html, /Recommended resume step/);
+  assert.match(html, /Local provider rollout/);
+  assert.match(html, /Deferred later-path providers/);
   assert.match(html, /interruption-chip/);
   assert.match(html, /renderInterruptions/);
   assert.match(html, /repo-owned packaged assets/);

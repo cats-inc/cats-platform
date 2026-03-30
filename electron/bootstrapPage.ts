@@ -269,10 +269,21 @@ export function buildDesktopBootstrapPage(): string {
               blocked: setupSnapshot.helpers.filter((helper) => !helper.available || !helper.supported).length,
             }
           : null;
+        const localProviders = Array.isArray(snapshot.packaging && snapshot.packaging.installer
+          && snapshot.packaging.installer.providerSetup
+          && snapshot.packaging.installer.providerSetup.localProviders)
+          ? snapshot.packaging.installer.providerSetup.localProviders
+          : [];
+        const providerRollout = localProviders.length > 0
+          ? {
+              bundled: localProviders.filter((provider) => provider.bundledInCurrentInstaller),
+              deferred: localProviders.filter((provider) => !provider.bundledInCurrentInstaller),
+            }
+          : null;
         const lastAction = (setupSnapshot && setupSnapshot.state && setupSnapshot.state.lastAction)
           || snapshot.setup && snapshot.setup.lastAction;
 
-        if (!helperSummary && !lastAction) {
+        if (!helperSummary && !providerRollout && !lastAction) {
           setupSummary.innerHTML = '<article class="issue-row"><div class="meta">Setup helper status is still loading.</div></article>';
           return;
         }
@@ -286,6 +297,27 @@ export function buildDesktopBootstrapPage(): string {
               + '<div class="meta">' + helperSummary.available + ' helper(s) are ready from repo-owned packaged assets.</div>'
               + (helperSummary.blocked > 0
                 ? '<div class="meta status-degraded">' + helperSummary.blocked + ' helper(s) are unavailable on this host or build.</div>'
+                : '')
+              + '</article>',
+          );
+        }
+
+        if (providerRollout) {
+          cards.push(
+            '<article class="issue-row">'
+              + '<div class="row-title"><strong>Local provider rollout</strong><span class="status-ok">'
+              + providerRollout.bundled.length + ' bundled</span></div>'
+              + '<div class="meta">Bundled in this desktop build: '
+              + escapeHtml(
+                providerRollout.bundled.length
+                  ? providerRollout.bundled.map((provider) => provider.label).join(', ')
+                  : 'none',
+              )
+              + '.</div>'
+              + (providerRollout.deferred.length
+                ? '<div class="meta status-degraded">Deferred later-path providers: '
+                  + escapeHtml(providerRollout.deferred.map((provider) => provider.label).join(', '))
+                  + '.</div>'
                 : '')
               + '</article>',
           );

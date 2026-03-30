@@ -278,6 +278,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 4 slice 7 landed: `electron/contracts.ts`, `electron/setupBridge.ts`, `electron/readiness.ts`, `electron/main.ts`, `electron/bootstrapPage.ts`, and the Windows readiness/install helpers now carry explicit interruption kinds for relaunch, restart, elevation, first WSL boot, and auth-required follow-through, while `Check-WindowsSetupReadiness.ps1` now selectively audits native provider auth readiness instead of stopping at prerequisite-only truth |
 | 2026-03-30 | Phase 4 slice 8 landed: `scripts/windows/Check-WindowsSetupReadiness.ps1` now also carries an optional Docker Desktop warm-state audit that emits `docker_warm_up_required`, and the host interruption contract/tests now treat Docker warm-up as a first-class resumable packaged setup state rather than a purely deferred note |
 | 2026-03-30 | Phase 2 slice 3 landed: `electron/contracts.ts`, `electron/packaging.ts`, and desktop packaging tests now also carry a machine-readable `installer.providerSetup.localProviders` rollout map, making the current first packaged path explicit for Claude Code, Cursor Agent, and Kiro while keeping Goose and Junie intentionally deferred instead of silently omitted |
+| 2026-03-30 | Phase 4 slice 9 landed: `electron/bootstrapPage.ts` now surfaces the packaged local-provider rollout in the setup recovery panel, so the desktop host can show which local providers are bundled today versus explicitly deferred instead of only reporting helper counts |
 
 ---
 
