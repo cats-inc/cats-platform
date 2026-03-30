@@ -212,6 +212,50 @@ test('runDesktopSetupHelper preserves docker warm-up interruptions from helper o
   assert.deepEqual(record.plannedActions, ['docker:start_docker_desktop']);
 });
 
+test('runDesktopSetupHelper preserves elevation-required recovery from the Docker Desktop helper', async () => {
+  const config = await createDesktopConfig();
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-03-30T11:09:00.000Z'),
+  });
+
+  const record = await runDesktopSetupHelper({
+    config,
+    packaging,
+    action: {
+      helperId: 'windows-docker-desktop-installer',
+      mode: 'apply',
+    },
+  }, {
+    platform: 'win32',
+    pathExists: async () => true,
+    execFile: async () => ({
+      stdout: JSON.stringify({
+        helper: 'windows-docker-desktop-installer',
+        status: 'elevation_required',
+        plannedActions: ['install_docker_desktop'],
+        warnings: [],
+        appliedChanges: [],
+        manualSteps: ['Resume packaged setup and accept the Windows UAC prompt to install Docker Desktop.'],
+        interruptions: [{
+          kind: 'elevation_required',
+          summary: 'Docker Desktop mutation requires elevation. Resume packaged setup and accept the Windows UAC prompt to install Docker Desktop.',
+          resumable: true,
+          requiresRestart: false,
+          requiresElevation: true,
+        }],
+      }),
+      stderr: '',
+    }),
+  });
+
+  assert.equal(record.helperId, 'windows-docker-desktop-installer');
+  assert.equal(record.mode, 'apply');
+  assert.equal(record.status, 'elevation_required');
+  assert.equal(record.requiresElevation, true);
+  assert.deepEqual(record.plannedActions, ['install_docker_desktop']);
+  assert.deepEqual(record.interruptions.map((entry) => entry.kind), ['elevation_required']);
+});
+
 test('runDesktopSetupHelper fails when the requested mode is unsupported', async () => {
   const config = await createDesktopConfig();
   const packaging = createDesktopPackagingPlan(config, {

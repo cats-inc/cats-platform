@@ -437,6 +437,93 @@ test('desktop bootstrap surfaces packaged setup docker warm-up as an install iss
   assert.match(installIssue?.detail ?? '', /Docker Desktop/i);
 });
 
+test('desktop bootstrap surfaces Docker Desktop elevation recovery as an install issue', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: null,
+    },
+    runtimeHealth: {
+      status: 'ok',
+      runtime: {
+        status: 'ok',
+        summary: 'Runtime is ready.',
+      },
+      providers: {
+        summary: {
+          status: 'degraded',
+          summary: 'No provider targets are configured yet.',
+          configuredProviders: 0,
+          targets: 0,
+          defaultTargets: 0,
+          ok: 0,
+          degraded: 0,
+          unavailable: 0,
+        },
+      },
+    },
+    providerDiagnostics: {
+      summary: {
+        status: 'degraded',
+        summary: 'No provider targets are configured yet.',
+        configuredProviders: 0,
+        targets: 0,
+        defaultTargets: 0,
+        ok: 0,
+        degraded: 0,
+        unavailable: 0,
+      },
+      providers: [],
+    },
+    setup: {
+      updatedAt: '2026-03-30T12:30:00.000Z',
+      lastAction: {
+        helperId: 'windows-docker-desktop-installer',
+        assetId: 'windows-docker-desktop-installer-script',
+        label: 'Windows Docker Desktop installer',
+        mode: 'apply',
+        runState: 'completed',
+        status: 'elevation_required',
+        summary: 'Windows Docker Desktop installer apply finished with elevation_required.',
+        packagedRelativePath: 'desktop-host/setup-assets/windows/Install-DockerDesktop.ps1',
+        scriptPath: null,
+        requiresElevation: true,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-03-30T12:29:00.000Z',
+        completedAt: '2026-03-30T12:30:00.000Z',
+        warnings: [],
+        plannedActions: ['install_docker_desktop'],
+        appliedChanges: [],
+        manualSteps: ['Resume packaged setup and accept the Windows UAC prompt to install Docker Desktop.'],
+        interruptions: [{
+          kind: 'elevation_required',
+          summary: 'Docker Desktop mutation requires elevation. Resume packaged setup and accept the Windows UAC prompt to install Docker Desktop.',
+          resumable: true,
+          requiresRestart: false,
+          requiresElevation: true,
+        }],
+        error: null,
+      },
+    },
+  });
+
+  const installIssue = snapshot.issues.find((issue) => issue.id === 'setup-elevation-required');
+  assert.ok(installIssue);
+  assert.equal(installIssue?.remediation?.kind, 'resume_setup');
+  assert.match(installIssue?.detail ?? '', /Docker Desktop/i);
+});
+
 test('desktop bootstrap surfaces provider remediation after setup if no provider is ready', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,
