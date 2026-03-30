@@ -425,6 +425,7 @@ export interface DesktopSetupActionRecord {
   helperId: string;
   assetId: string;
   label: string;
+  pack: DesktopProviderSetupPackId | null;
   mode: DesktopSetupHelperMode;
   runState: DesktopSetupActionRunState;
   status: string | null;
@@ -439,6 +440,7 @@ export interface DesktopSetupActionRecord {
   warnings: string[];
   plannedActions: string[];
   appliedChanges: string[];
+  optionalFollowThroughPack: DesktopProviderSetupPackId | null;
   manualSteps: string[];
   interruptions: DesktopSetupInterruption[];
   error: string | null;

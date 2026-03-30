@@ -510,6 +510,10 @@ Current implementation truth:
 - Docker warm-up is now also an explicit packaged host interruption state when
   a Docker-requiring packaged path runs the readiness audit with Docker checks
   enabled
+- optional local-model follow-through discovered by the bootstrap-time
+  readiness audit is now persisted as explicit host state on
+  `DesktopSetupActionRecord.optionalFollowThroughPack` instead of being inferred
+  only from `plannedActions`
 
 ## Dependencies
 

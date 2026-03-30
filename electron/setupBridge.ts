@@ -7,6 +7,7 @@ import type { DesktopHostConfig } from './config.js';
 import type {
   DesktopPackagingPlan,
   DesktopProviderSetupPlatform,
+  DesktopProviderSetupPackId,
   DesktopSetupActionRecord,
   DesktopSetupHelperMode,
   DesktopSetupHelperSummary,
@@ -112,9 +113,20 @@ export function shouldAutoRunSetupAudit(
 }
 
 export function isOptionalCapabilityPackSetupAction(
-  action: Pick<DesktopSetupActionRecord, 'helperId' | 'plannedActions'> | null | undefined,
+  action: Pick<
+    DesktopSetupActionRecord,
+    'helperId' | 'plannedActions' | 'optionalFollowThroughPack'
+  > | null | undefined,
 ): boolean {
-  if (!action || action.helperId !== 'windows-install-readiness-audit') {
+  if (!action) {
+    return false;
+  }
+
+  if (action.optionalFollowThroughPack !== undefined) {
+    return action.optionalFollowThroughPack === 'local_model_pack';
+  }
+
+  if (action.helperId !== 'windows-install-readiness-audit') {
     return false;
   }
 
@@ -368,6 +380,7 @@ function buildFailedActionRecord(input: {
     helperId: input.helper.id,
     assetId: input.helper.assetId,
     label: input.helper.label,
+    pack: input.helper.pack,
     mode: input.mode,
     runState: 'failed',
     status: 'failed',
@@ -382,10 +395,26 @@ function buildFailedActionRecord(input: {
     warnings: input.warnings ?? [],
     plannedActions: [],
     appliedChanges: [],
+    optionalFollowThroughPack: null,
     manualSteps: [],
     interruptions: [],
     error: input.error,
   };
+}
+
+function deriveOptionalFollowThroughPack(
+  helper: Pick<DesktopSetupHelperSummary, 'id'>,
+  plannedActions: string[],
+): DesktopProviderSetupPackId | null {
+  if (helper.id !== 'windows-install-readiness-audit' || plannedActions.length === 0) {
+    return null;
+  }
+
+  if (plannedActions.every((entry) => entry.startsWith('local_model:'))) {
+    return 'local_model_pack';
+  }
+
+  return null;
 }
 
 function buildInterruptionSummary(
@@ -652,6 +681,7 @@ export async function runDesktopSetupHelper(
     helperId: helper.id,
     assetId: helper.assetId,
     label: helper.label,
+    pack: helper.pack,
     mode: input.action.mode,
     runState,
     status,
@@ -666,6 +696,7 @@ export async function runDesktopSetupHelper(
     warnings,
     plannedActions,
     appliedChanges,
+    optionalFollowThroughPack: deriveOptionalFollowThroughPack(helper, plannedActions),
     manualSteps,
     interruptions,
     error: errorMessage ?? stderrMessage,

@@ -313,10 +313,12 @@ test('runDesktopSetupHelper normalizes successful helper execution', async () =>
   });
 
   assert.equal(record.helperId, 'windows-install-readiness-audit');
+  assert.equal(record.pack, 'native_cli_pack');
   assert.equal(record.mode, 'check');
   assert.equal(record.runState, 'completed');
   assert.equal(record.status, 'auth_required');
   assert.equal(record.restartRequired, false);
+  assert.equal(record.optionalFollowThroughPack, null);
   assert.deepEqual(record.plannedActions, ['provider:authenticate_claude_code']);
   assert.deepEqual(record.manualSteps, ['Complete the Claude Code sign-in flow, then rerun the packaged setup check.']);
   assert.deepEqual(record.interruptions.map((entry) => entry.kind), ['auth_required']);
@@ -358,6 +360,8 @@ test('runDesktopSetupHelper forwards extra audit arguments when requested by the
   });
 
   assert.equal(record.status, 'not_installed');
+  assert.equal(record.pack, 'native_cli_pack');
+  assert.equal(record.optionalFollowThroughPack, 'local_model_pack');
   assert.deepEqual(record.plannedActions, ['local_model:install_ollama_local_model']);
 });
 
@@ -398,6 +402,7 @@ test('runDesktopSetupHelper preserves docker warm-up interruptions from helper o
   });
 
   assert.equal(record.status, 'docker_warm_up_required');
+  assert.equal(record.optionalFollowThroughPack, null);
   assert.deepEqual(record.interruptions.map((entry) => entry.kind), ['docker_warm_up_required']);
   assert.deepEqual(record.plannedActions, ['docker:start_docker_desktop']);
 });

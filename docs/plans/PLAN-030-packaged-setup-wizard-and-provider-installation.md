@@ -290,6 +290,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 4 slice 14 landed: `electron/main.ts` now actually primes the repo-owned `windows-install-readiness-audit` during Windows desktop bootstrap whenever no more specific packaged setup recovery action is active, so the packaged `first_run_provider_scan` contract is now executed instead of remaining manifest-only |
 | 2026-03-30 | Phase 4 slice 15 landed: the bootstrap-time `windows-install-readiness-audit` now also carries optional `local_model_pack` follow-through, while `electron/setupBridge.ts`, `electron/readiness.ts`, and the bootstrap UI keep that Ollama/local-model state surfaced but non-blocking for the API baseline |
 | 2026-03-30 | Phase 4 slice 16 landed: `electron/readiness.ts` now labels optional capability-pack follow-through explicitly in the prerequisite panel instead of treating local-model audit results as generic setup noise, while still keeping them non-blocking |
+| 2026-03-30 | Phase 4 slice 17 landed: `electron/contracts.ts` and `electron/setupBridge.ts` now persist optional local-model follow-through as an explicit `DesktopSetupActionRecord.optionalFollowThroughPack` contract instead of forcing readiness/bootstrap consumers to infer that state from `plannedActions` heuristics |
 
 ---
 

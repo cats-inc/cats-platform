@@ -69,6 +69,15 @@ function readStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
 }
 
+function normalizeSetupPack(value: unknown): DesktopSetupActionRecord['pack'] {
+  return value === 'api_baseline'
+    || value === 'native_cli_pack'
+    || value === 'local_model_pack'
+    || value === 'wsl_power_user_pack'
+    ? value
+    : null;
+}
+
 function normalizeSetupInterruptions(value: unknown): DesktopSetupInterruption[] {
   if (!Array.isArray(value)) {
     return [];
@@ -120,6 +129,7 @@ function normalizeSetupActionRecord(value: unknown): DesktopSetupActionRecord | 
     helperId: readString(value.helperId) ?? 'unknown-helper',
     assetId: readString(value.assetId) ?? 'unknown-asset',
     label: readString(value.label) ?? 'Unknown setup helper',
+    pack: normalizeSetupPack(value.pack),
     mode,
     runState,
     status: readString(value.status),
@@ -134,6 +144,7 @@ function normalizeSetupActionRecord(value: unknown): DesktopSetupActionRecord | 
     warnings: readStringArray(value.warnings),
     plannedActions: readStringArray(value.plannedActions),
     appliedChanges: readStringArray(value.appliedChanges),
+    optionalFollowThroughPack: normalizeSetupPack(value.optionalFollowThroughPack),
     manualSteps: readStringArray(value.manualSteps),
     interruptions: normalizeSetupInterruptions(value.interruptions),
     error: readString(value.error),

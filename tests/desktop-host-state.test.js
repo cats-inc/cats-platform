@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
@@ -48,6 +48,7 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
     helperId: 'windows-install-readiness-audit',
     assetId: 'windows-setup-readiness-audit-script',
     label: 'Windows setup readiness audit',
+    pack: 'native_cli_pack',
     mode: 'check',
     runState: 'completed',
     status: 'changes_required',
@@ -62,6 +63,7 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
     warnings: [],
     plannedActions: ['repair_native_cli_pack'],
     appliedChanges: [],
+    optionalFollowThroughPack: null,
     manualSteps: [],
     interruptions: [{
       kind: 'restart_required',
@@ -144,5 +146,104 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
   assert.equal(persisted.snapshot.background.mode, 'background');
   assert.equal(persisted.snapshot.hostStatePath, config.paths.hostStatePath);
   assert.equal(persisted.setup.lastAction.helperId, 'windows-install-readiness-audit');
+  assert.equal(persisted.setup.lastAction.pack, 'native_cli_pack');
+  assert.equal(persisted.setup.lastAction.optionalFollowThroughPack, null);
   assert.equal(persisted.snapshot.setup.lastAction.status, 'changes_required');
+});
+
+test('DesktopHostStateStore loads legacy setup state without optional follow-through fields', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-host-state-legacy-'));
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_APP_ENTRY: join(workingDir, 'dist-server', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'dist', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
+    },
+    userDataDir: join(workingDir, 'user-data'),
+  });
+  const background = createDesktopBackgroundState(config);
+  const updates = createDefaultDesktopUpdateState(config.update);
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-03-30T18:00:00.000Z'),
+  });
+  const setup = createEmptyDesktopSetupState();
+  const store = new DesktopHostStateStore(config.paths.hostStatePath, {
+    now: () => new Date('2026-03-30T18:05:00.000Z'),
+  });
+
+  await mkdir(join(config.paths.hostStatePath, '..'), { recursive: true });
+  await writeFile(config.paths.hostStatePath, JSON.stringify({
+    snapshot: {
+      background,
+      updates,
+      packaging,
+      setup: {
+        updatedAt: '2026-03-30T18:02:00.000Z',
+        lastAction: {
+          helperId: 'windows-install-readiness-audit',
+          assetId: 'windows-setup-readiness-audit-script',
+          label: 'Windows setup readiness audit',
+          mode: 'check',
+          runState: 'completed',
+          status: 'not_installed',
+          summary: 'Windows setup readiness audit check finished with not_installed.',
+          packagedRelativePath: 'desktop-host/setup-assets/windows/Check-WindowsSetupReadiness.ps1',
+          scriptPath: null,
+          requiresElevation: false,
+          resumable: true,
+          restartRequired: false,
+          startedAt: '2026-03-30T18:01:00.000Z',
+          completedAt: '2026-03-30T18:02:00.000Z',
+          warnings: [],
+          plannedActions: ['local_model:install_ollama_local_model'],
+          appliedChanges: [],
+          manualSteps: [],
+          interruptions: [],
+          error: null,
+        },
+      },
+      hostStatePath: config.paths.hostStatePath,
+    },
+    background,
+    updates,
+    packaging,
+    setup: {
+      updatedAt: '2026-03-30T18:02:00.000Z',
+      lastAction: {
+        helperId: 'windows-install-readiness-audit',
+        assetId: 'windows-setup-readiness-audit-script',
+        label: 'Windows setup readiness audit',
+        mode: 'check',
+        runState: 'completed',
+        status: 'not_installed',
+        summary: 'Windows setup readiness audit check finished with not_installed.',
+        packagedRelativePath: 'desktop-host/setup-assets/windows/Check-WindowsSetupReadiness.ps1',
+        scriptPath: null,
+        requiresElevation: false,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-03-30T18:01:00.000Z',
+        completedAt: '2026-03-30T18:02:00.000Z',
+        warnings: [],
+        plannedActions: ['local_model:install_ollama_local_model'],
+        appliedChanges: [],
+        manualSteps: [],
+        interruptions: [],
+        error: null,
+      },
+    },
+    savedAt: '2026-03-30T18:03:00.000Z',
+  }, null, 2));
+
+  const loaded = await store.load(config, {
+    background,
+    updates,
+    packaging,
+    setup,
+  });
+
+  assert.ok(loaded);
+  assert.equal(loaded?.setup.lastAction?.pack, null);
+  assert.equal(loaded?.setup.lastAction?.optionalFollowThroughPack, null);
+  assert.deepEqual(loaded?.setup.lastAction?.plannedActions, ['local_model:install_ollama_local_model']);
 });
