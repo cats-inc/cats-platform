@@ -48,7 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-043](./SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) | Cats Code MVP Multi-Agent Local-App Workflow | Draft | TBD |
+| [SPEC-043](./SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) | Cats Code MVP Multi-Agent Local-App Workflow | Draft | [PLAN-032](../plans/PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) |
 | [SPEC-042](./SPEC-042-suite-renderer-route-level-chunking-and-lazy-entry.md) | Suite Renderer Route-Level Chunking and Lazy Entry | Draft | TBD |
 | [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md) | Cats Code v1 Local Builder Loop | Draft | [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md) |
 | [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md) | Cats Work Team Templates and Work Intake | Draft | [PLAN-028](../plans/PLAN-028-cats-work-team-templates-and-work-intake.md) |
