@@ -8,7 +8,6 @@
 |-------|-------|
 | **Status** | Draft / In Progress / Completed / On Hold / Cancelled |
 | **Owner** | [Conductor Name] |
-| **Assigned To** | [Specialist Agent Name] |
 | **Reviewer** | [Agent Name] |
 
 ## Related Spec
