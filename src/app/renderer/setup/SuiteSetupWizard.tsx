@@ -12,6 +12,7 @@ import {
 import { getSuiteSetupPlugins } from './plugins';
 import type { ProductSetupPlugin } from './types';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
 
 type SetupStep = 1 | 2 | 3 | 4;
 type PendingAction =
@@ -24,26 +25,9 @@ type PendingAction =
 function createInitialRuntimeSetup(
   envelope: SuiteHostEnvelope,
 ): RuntimeSetupSummary {
-  return envelope.runtimeSetup ?? {
-    source: 'assumed_ready',
-    bootstrapRequired: false,
-    status: 'ready',
-    stateStatus: 'ready',
-    summary: envelope.runtime.reachable
-      ? 'Cats Runtime is ready.'
-      : 'Cats Runtime setup will refresh when the sidecar is reachable.',
-    scannedAt: null,
-    lastManualScanAt: null,
-    appliedAt: null,
-    providerCount: 0,
-    availableCount: 0,
-    providersReadyToApply: [],
-    providersNeedingAttention: [],
-    suggestedProviders: [],
-    canRunManualScan: false,
-    canApply: false,
-    error: null,
-  };
+  return envelope.runtimeSetup ?? createUnavailableRuntimeSetupSummary(
+    new Error('Cats Runtime setup was missing from the suite envelope.'),
+  );
 }
 
 function resolveRuntimeStatusChip(

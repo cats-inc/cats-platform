@@ -210,16 +210,6 @@ async function handleRuntimeSetupState(
 async function handleRuntimeSetupScan(
   context: SuiteSetupContext,
 ): Promise<void> {
-  if (typeof context.dependencies.runtimeClient.scanSetup !== 'function') {
-    sendJson(context.response, 503, {
-      error: {
-        code: 'runtime_setup_unavailable',
-        message: 'Cats Runtime setup scan is not available.',
-      },
-    });
-    return;
-  }
-
   let body: SuiteRuntimeSetupScanInput = {};
   try {
     body = await readJsonBody<SuiteRuntimeSetupScanInput>(context.request);
@@ -245,16 +235,6 @@ async function handleRuntimeSetupScan(
 async function handleRuntimeSetupApply(
   context: SuiteSetupContext,
 ): Promise<void> {
-  if (typeof context.dependencies.runtimeClient.applySetup !== 'function') {
-    sendJson(context.response, 503, {
-      error: {
-        code: 'runtime_setup_unavailable',
-        message: 'Cats Runtime setup apply is not available.',
-      },
-    });
-    return;
-  }
-
   let body: SuiteRuntimeSetupApplyInput = {};
   try {
     body = await readJsonBody<SuiteRuntimeSetupApplyInput>(context.request);
@@ -262,14 +242,20 @@ async function handleRuntimeSetupApply(
     body = {};
   }
 
-  const currentSummary = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
   const requestedProviders = normalizeProviderList(body.providers);
-  const providers = requestedProviders.length > 0
-    ? requestedProviders
-    : currentSummary.suggestedProviders;
+  let providers = requestedProviders;
+  let currentSummary: Awaited<ReturnType<typeof readRuntimeSetupSummary>> | null = null;
 
   if (providers.length === 0) {
-    sendRuntimeSetupRequired(context, currentSummary);
+    currentSummary = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
+    providers = currentSummary.suggestedProviders;
+  }
+
+  if (providers.length === 0) {
+    sendRuntimeSetupRequired(
+      context,
+      currentSummary ?? await readRuntimeSetupSummary(context.dependencies.runtimeClient),
+    );
     return;
   }
 

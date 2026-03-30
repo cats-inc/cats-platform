@@ -101,6 +101,14 @@ contracts.
       first slice so API-backed, local-model, and agent-backed runtime targets
       also converge on runtime-owned apply instead of only supporting provider
       paths already representable by the current bootstrap/apply contract
+- [ ] Tighten the runtime-bootstrap mutation contract so packaged setup no
+      longer needs a follow-up `GET /setup-state` after `POST /setup-scan` or
+      `POST /setup-apply`, ideally by having runtime mutation responses return
+      the updated read model in the same round-trip
+- [ ] Propagate cancellation and timeout intent end-to-end through the packaged
+      setup runtime-bootstrap proxy path so hung runtime setup scans or applies
+      do not leave renderer and app-server requests pinned until the runtime
+      client timeout expires
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
 - [x] Follow up the Chat-first task-strategy handoff slice by deduplicating

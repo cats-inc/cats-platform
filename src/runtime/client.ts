@@ -209,9 +209,9 @@ export interface RuntimeWakeupCreateResult {
 
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
-  getSetupState?(): Promise<RuntimeSetupReadModel>;
-  scanSetup?(input?: RuntimeSetupScanInput): Promise<RuntimeSetupReadModel>;
-  applySetup?(providers: string[]): Promise<RuntimeSetupReadModel>;
+  getSetupState(): Promise<RuntimeSetupReadModel>;
+  scanSetup(input?: RuntimeSetupScanInput): Promise<RuntimeSetupReadModel>;
+  applySetup(providers: string[]): Promise<RuntimeSetupReadModel>;
   getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
   getProviderModels(provider: string, instance?: string | null): Promise<ProviderModelCatalog>;
   getAdvancedProviderModels(provider: string, instance?: string | null): Promise<ProviderAdvancedModelCatalog>;

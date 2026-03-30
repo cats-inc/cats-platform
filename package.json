@@ -11,8 +11,6 @@
     "dist",
     "dist-server",
     "dist-electron",
-    "assets/build/icon.ico",
-    "assets/build/icon.png",
     ".env.example",
     "README.md",
     "LICENSE"
@@ -117,7 +115,6 @@
       }
     ],
     "win": {
-      "icon": "icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -133,9 +130,6 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "installerIcon": "icon.ico",
-      "uninstallerIcon": "icon.ico",
-      "installerHeaderIcon": "icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     }

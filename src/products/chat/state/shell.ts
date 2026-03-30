@@ -4,6 +4,7 @@ import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { listEnabledSuiteSurfaces } from '../../../shared/suiteSurfaces.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
+import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
 import { summarizeState } from './model/index.js';
 import { resolveSetupCompletionTimestamp } from './setupCompletion.js';
 
@@ -76,7 +77,9 @@ export function createAppShell(
       botBindings,
     },
     runtime,
-    runtimeSetup: setup?.runtimeSetup,
+    runtimeSetup: setup?.runtimeSetup ?? createUnavailableRuntimeSetupSummary(
+      new Error('Runtime setup was missing while building the app shell.'),
+    ),
     metadata: {
       generatedAt: now.toISOString(),
       host: config.host,

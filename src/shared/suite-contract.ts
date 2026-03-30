@@ -27,7 +27,7 @@ export interface SuiteOwnerContext {
 export interface SuiteHostEnvelope extends SuiteOwnerContext {
   app: SuiteAppDescriptor;
   runtime: RuntimeStatusSummary;
-  runtimeSetup?: RuntimeSetupSummary;
+  runtimeSetup: RuntimeSetupSummary;
   metadata: SuiteResponseMetadata;
 }
 
