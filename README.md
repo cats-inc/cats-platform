@@ -47,8 +47,8 @@ The current slices are:
   sandboxed, supports tray/background lifecycle, and owns the packaged
   bootstrap/remediation seam plus a manual-check update skeleton
 - a repo-owned packaged setup helper baseline for Windows native CLI, WSL,
-  Docker Desktop, and Ollama flows, with resumable setup recovery surfaced
-  through the desktop host
+  Docker Desktop, and Ollama flows, with the repo-owned first-run provider
+  scan plus resumable setup recovery surfaced through the desktop host
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
   direct companion-session hydration metadata, and Cats-owned retrieval context
