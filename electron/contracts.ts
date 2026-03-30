@@ -108,6 +108,8 @@ export const DESKTOP_PROVIDER_SETUP_PACKS = [
 export const DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS = [
   'claude_code',
   'cursor_agent',
+  'opencode',
+  'kilo',
   'kiro',
   'goose',
   'junie',

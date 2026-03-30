@@ -19,6 +19,7 @@ const allPackages = JSON.stringify([
   '@google/gemini-cli',
   '@github/copilot',
   'opencode-ai',
+  '@kilocode/cli',
   '@augmentcode/auggie',
   '@mariozechner/pi-coding-agent',
 ]);
@@ -43,6 +44,10 @@ test('Install-NodeCliPack reports ready in check mode when the native CLI pack i
   assert.equal(result.mode, 'check');
   assert.equal(result.status, 'ready');
   assert.equal(result.packages.every((entry) => entry.plannedAction === 'skip'), true);
+  const opencodeIndex = result.packages.findIndex((entry) => entry.id === 'opencode');
+  const kiloIndex = result.packages.findIndex((entry) => entry.id === 'kilo');
+  assert.ok(opencodeIndex >= 0);
+  assert.equal(kiloIndex, opencodeIndex + 1);
 });
 
 test('Install-NodeCliPack reports missing and outdated packages in check mode', skipUnlessWindows(), async () => {
@@ -66,6 +71,10 @@ test('Install-NodeCliPack reports missing and outdated packages in check mode', 
   assert.equal(result.status, 'changes_required');
   assert.equal(
     result.packages.some((entry) => entry.packageName === '@github/copilot' && entry.plannedAction === 'install'),
+    true,
+  );
+  assert.equal(
+    result.packages.some((entry) => entry.packageName === '@kilocode/cli' && entry.plannedAction === 'install'),
     true,
   );
   assert.equal(

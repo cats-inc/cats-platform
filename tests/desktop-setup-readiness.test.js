@@ -21,6 +21,7 @@ const nativeCliPackages = JSON.stringify([
   '@google/gemini-cli',
   '@github/copilot',
   'opencode-ai',
+  '@kilocode/cli',
   '@augmentcode/auggie',
   '@mariozechner/pi-coding-agent',
 ]);
@@ -82,7 +83,7 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
   assert.deepEqual(result.plannedActions, []);
 });
 
-test('Check-WindowsSetupReadiness reports combined repair actions when native CLI and WSL prerequisites are missing', skipUnlessWindows(), async () => {
+test('Check-WindowsSetupReadiness reports elevation-required repair actions when native CLI and WSL prerequisites are missing', skipUnlessWindows(), async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-missing-'));
   const desiredPrefix = join(workingDir, '.npm-global');
 
@@ -106,14 +107,16 @@ test('Check-WindowsSetupReadiness reports combined repair actions when native CL
     '22621',
     '-WslState',
     'missing',
-    '-IncludeNativeProviders:$false',
+    '-IncludeNativeProviders',
+    '0',
   ]);
 
   const result = JSON.parse(stdout);
-  assert.equal(result.status, 'changes_required');
+  assert.equal(result.status, 'elevation_required');
   assert.equal(result.plannedActions.includes('repair_native_cli_pack'), true);
   assert.equal(result.plannedActions.includes('wsl:enable_wsl_features'), true);
   assert.equal(result.plannedActions.includes('wsl:install_wsl_kernel'), true);
+  assert.equal(result.interruptions.some((entry) => entry.kind === 'elevation_required'), true);
 });
 
 test('Check-WindowsSetupReadiness reports auth-required when native providers are installed but not yet signed in', skipUnlessWindows(), async () => {
@@ -211,7 +214,8 @@ test('Check-WindowsSetupReadiness reports docker warm-up when Docker Desktop is 
     'installed',
     '-JunieAuthState',
     'authenticated',
-    '-IncludeDocker:$true',
+    '-IncludeDocker',
+    '1',
     '-DockerState',
     'installed_engine_stopped',
   ]);
@@ -266,7 +270,8 @@ test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model
     'installed',
     '-JunieAuthState',
     'authenticated',
-    '-IncludeLocalModels:$true',
+    '-IncludeLocalModels',
+    '1',
     '-OllamaInstallState',
     'installed',
     '-OllamaApiState',

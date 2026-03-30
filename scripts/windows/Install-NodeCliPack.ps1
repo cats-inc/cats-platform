@@ -204,6 +204,7 @@ $packageCatalog = @(
   @{ id = 'gemini'; packageName = '@google/gemini-cli'; label = 'Gemini CLI' },
   @{ id = 'copilot'; packageName = '@github/copilot'; label = 'GitHub Copilot' },
   @{ id = 'opencode'; packageName = 'opencode-ai'; label = 'OpenCode' },
+  @{ id = 'kilo'; packageName = '@kilocode/cli'; label = 'Kilo' },
   @{ id = 'auggie'; packageName = '@augmentcode/auggie'; label = 'Auggie' },
   @{ id = 'pi'; packageName = '@mariozechner/pi-coding-agent'; label = 'Pi' }
 )

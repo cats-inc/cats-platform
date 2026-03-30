@@ -150,7 +150,7 @@ function Test-ClaudeNpmShimPresent {
   if ($NpmShimState -eq 'missing') {
     return $false
   }
-  return (Get-ClaudeNpmArtifacts).Count -gt 0
+  return @(Get-ClaudeNpmArtifacts).Count -gt 0
 }
 
 function Remove-ClaudeNpmShim {
@@ -158,7 +158,7 @@ function Remove-ClaudeNpmShim {
     return $false
   }
 
-  $artifacts = Get-ClaudeNpmArtifacts
+  $artifacts = @(Get-ClaudeNpmArtifacts)
   if ($artifacts.Count -eq 0) {
     return $false
   }

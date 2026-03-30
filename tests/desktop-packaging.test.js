@@ -73,6 +73,31 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'opencode'
+        && provider.pack === 'native_cli_pack'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-node-cli-pack'),
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'kilo'
+        && provider.pack === 'native_cli_pack'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-node-cli-pack'),
+    ),
+    true,
+  );
+  const bundledNativeProviders = plan.installer.providerSetup.localProviders.map((provider) => provider.id);
+  assert.equal(
+    bundledNativeProviders.indexOf('kilo'),
+    bundledNativeProviders.indexOf('opencode') + 1,
+  );
+  assert.equal(
+    plan.installer.providerSetup.localProviders.some(
       (provider) => provider.id === 'kiro'
         && provider.pack === 'native_cli_pack'
         && provider.platform === 'windows_wsl'
@@ -399,6 +424,8 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /desktop-host\\setup-assets\\windows\\Install-Ollama\.ps1/);
   assert.match(script, /desktop-host\\setup-assets\\windows\\Check-WindowsSetupReadiness\.ps1/);
   assert.match(script, /providerSetup\.localProviders/);
+  assert.match(script, /id -eq 'opencode'/);
+  assert.match(script, /id -eq 'kilo'/);
   assert.match(script, /windows-ollama-local-model-installer/);
   assert.match(script, /windows-docker-desktop-installer/);
   assert.match(script, /desktop-host\\setup-assets\\manifest\.json/);
@@ -494,6 +521,33 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(targetManifest.updates.channel, config.update.channel);
   assert.equal(targetManifest.target.artifactBaseName, 'cats-windows-x64');
   assert.equal(targetManifest.installer.providerSetup.capabilityPacks[0].id, 'api_baseline');
+  assert.equal(
+    targetManifest.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'opencode'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-node-cli-pack')
+        && provider.currentHome === 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'kilo'
+        && provider.deliveryPhase === 'initial_packaged_path'
+        && provider.bundledInCurrentInstaller === true
+        && provider.helperIds.includes('windows-node-cli-pack')
+        && provider.currentHome === 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
+    ),
+    true,
+  );
+  const targetLocalProviders = targetManifest.installer.providerSetup.localProviders.map(
+    (provider) => provider.id,
+  );
+  assert.equal(
+    targetLocalProviders.indexOf('kilo'),
+    targetLocalProviders.indexOf('opencode') + 1,
+  );
   assert.equal(
     targetManifest.installer.providerSetup.localProviders.some(
       (provider) => provider.id === 'kiro'

@@ -94,10 +94,10 @@
 #>
 param(
   [switch]$Json,
-  [bool]$IncludeWsl = $true,
-  [bool]$IncludeNativeProviders = $true,
-  [bool]$IncludeDocker = $false,
-  [bool]$IncludeLocalModels = $false,
+  [string]$IncludeWsl = 'true',
+  [string]$IncludeNativeProviders = 'true',
+  [string]$IncludeDocker = 'false',
+  [string]$IncludeLocalModels = 'false',
   [switch]$SkipNodeCheck,
   [string]$InstalledPackagesJson = '',
   [string]$OutdatedPackagesJson = '',
@@ -136,6 +136,31 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+function Resolve-BoolArgument {
+  param(
+    [string]$Name,
+    [string]$Value
+  )
+
+  $normalized = $Value.Trim().ToLowerInvariant()
+  switch ($normalized) {
+    'true' { return $true }
+    '$true' { return $true }
+    '1' { return $true }
+    'false' { return $false }
+    '$false' { return $false }
+    '0' { return $false }
+    default {
+      throw "Invalid boolean value for -${Name}: $Value"
+    }
+  }
+}
+
+$includeWslEnabled = Resolve-BoolArgument -Name 'IncludeWsl' -Value $IncludeWsl
+$includeNativeProvidersEnabled = Resolve-BoolArgument -Name 'IncludeNativeProviders' -Value $IncludeNativeProviders
+$includeDockerEnabled = Resolve-BoolArgument -Name 'IncludeDocker' -Value $IncludeDocker
+$includeLocalModelsEnabled = Resolve-BoolArgument -Name 'IncludeLocalModels' -Value $IncludeLocalModels
 
 function Write-StructuredResult {
   param(
@@ -208,7 +233,7 @@ if (-not [string]::IsNullOrWhiteSpace($CurrentUserPath)) {
 $prefixHelper = Invoke-HelperJson -ScriptPath $prefixHelperPath -Arguments $prefixHelperArguments
 
 $wslResult = $null
-if ($IncludeWsl) {
+if ($includeWslEnabled) {
   $wslArguments = @('-Json')
   if ($WindowsBuild -gt 0) {
     $wslArguments += @('-WindowsBuild', $WindowsBuild.ToString())
@@ -231,7 +256,7 @@ $gooseResult = $null
 $junieResult = $null
 $dockerResult = $null
 $ollamaResult = $null
-if ($IncludeNativeProviders) {
+if ($includeNativeProvidersEnabled) {
   $claudeArguments = @('-CheckOnly', '-Json')
   if ($ClaudeInstallState -ne 'auto') {
     $claudeArguments += @('-InstallState', $ClaudeInstallState)
@@ -268,14 +293,14 @@ if ($IncludeNativeProviders) {
   }
   $junieResult = Invoke-HelperJson -ScriptPath $junieHelperPath -Arguments $junieArguments
 }
-if ($IncludeDocker) {
+if ($includeDockerEnabled) {
   $dockerArguments = @('-CheckOnly', '-Json')
   if ($DockerState -ne 'auto') {
     $dockerArguments += @('-DockerState', $DockerState)
   }
   $dockerResult = Invoke-HelperJson -ScriptPath $dockerHelperPath -Arguments $dockerArguments
 }
-if ($IncludeLocalModels) {
+if ($includeLocalModelsEnabled) {
   $ollamaArguments = @('-CheckOnly', '-Json')
   if ($OllamaInstallState -ne 'auto') {
     $ollamaArguments += @('-InstallState', $OllamaInstallState)
@@ -406,34 +431,46 @@ if ($null -ne $ollamaResult) {
   }
 }
 
-foreach ($interruption in @($wslResult.interruptions)) {
-  $interruptions.Add($interruption)
+function Add-InterruptionsFromResult {
+  param(
+    [object]$HelperResult
+  )
+
+  if ($null -eq $HelperResult) {
+    return
+  }
+
+  if (@($HelperResult.PSObject.Properties.Match('interruptions')).Count -eq 0) {
+    return
+  }
+
+  foreach ($interruption in @($HelperResult.interruptions)) {
+    if ($null -eq $interruption) {
+      continue
+    }
+    if (@($interruption.PSObject.Properties.Match('kind')).Count -eq 0) {
+      continue
+    }
+    $interruptions.Add($interruption)
+  }
 }
-foreach ($interruption in @($claudeResult.interruptions)) {
-  $interruptions.Add($interruption)
-}
-foreach ($interruption in @($cursorResult.interruptions)) {
-  $interruptions.Add($interruption)
-}
-foreach ($interruption in @($gooseResult.interruptions)) {
-  $interruptions.Add($interruption)
-}
-foreach ($interruption in @($junieResult.interruptions)) {
-  $interruptions.Add($interruption)
-}
-foreach ($interruption in @($dockerResult.interruptions)) {
-  $interruptions.Add($interruption)
-}
-foreach ($interruption in @($ollamaResult.interruptions)) {
-  $interruptions.Add($interruption)
-}
+
+Add-InterruptionsFromResult -HelperResult $wslResult
+Add-InterruptionsFromResult -HelperResult $claudeResult
+Add-InterruptionsFromResult -HelperResult $cursorResult
+Add-InterruptionsFromResult -HelperResult $gooseResult
+Add-InterruptionsFromResult -HelperResult $junieResult
+Add-InterruptionsFromResult -HelperResult $dockerResult
+Add-InterruptionsFromResult -HelperResult $ollamaResult
 
 function Test-InterruptionPresent {
   param(
     [string]$Kind
   )
 
-  return @($interruptions) | Where-Object { $_.kind -eq $Kind } | Select-Object -First 1
+  return @($interruptions) | Where-Object {
+    $null -ne $_ -and @($_.PSObject.Properties.Match('kind')).Count -gt 0 -and $_.kind -eq $Kind
+  } | Select-Object -First 1
 }
 
 $overallStatus = if ($statuses -contains 'failed') {

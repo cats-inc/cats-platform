@@ -252,6 +252,36 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           ],
         },
         {
+          id: 'opencode',
+          label: 'OpenCode',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          deliveryPhase: 'initial_packaged_path',
+          bundledInCurrentInstaller: true,
+          helperIds: ['windows-node-cli-pack'],
+          currentHome: 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
+          targetHome: 'cats-platform packaged-host setup assets',
+          notes: [
+            'Bundled through the repo-owned Windows npm-global AI CLI pack helper.',
+            'Keeps OpenCode on the packaged native CLI path without a separate provider-specific installer.',
+          ],
+        },
+        {
+          id: 'kilo',
+          label: 'Kilo',
+          pack: 'native_cli_pack',
+          platform: 'windows',
+          deliveryPhase: 'initial_packaged_path',
+          bundledInCurrentInstaller: true,
+          helperIds: ['windows-node-cli-pack'],
+          currentHome: 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
+          targetHome: 'cats-platform packaged-host setup assets',
+          notes: [
+            'Bundled through the repo-owned Windows npm-global AI CLI pack helper.',
+            'Keeps Kilo immediately after OpenCode in the packaged local-provider rollout.',
+          ],
+        },
+        {
           id: 'kiro',
           label: 'Kiro CLI',
           pack: 'native_cli_pack',
@@ -401,7 +431,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           targetHome: 'cats-platform packaged-host setup assets',
           notes: [
             'Repo-owned rewrite of the Windows npm-global AI CLI pack installer.',
-            'Covers Codex, Gemini, Copilot, OpenCode, Auggie, and Pi in one Windows-first slice.',
+            'Covers Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, and Pi in one Windows-first slice.',
           ],
         },
         {

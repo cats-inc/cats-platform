@@ -308,7 +308,7 @@ if ($CheckOnly) {
     manualSteps = if ($status -eq 'changes_required') {
       @(
         'Launch Ollama from the Start menu, or run `ollama app.exe`, then wait for http://127.0.0.1:11434 to respond.',
-        'Use `ollama run <model>` after the service is ready to download your first local model.',
+        'Use `ollama run <model>` after the service is ready to download your first local model.'
       )
     } else {
       @()
