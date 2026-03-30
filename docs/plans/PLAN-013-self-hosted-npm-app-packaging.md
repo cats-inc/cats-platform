@@ -10,7 +10,7 @@ Implement the app-distribution direction defined in
 This plan covers the first technical self-hosted delivery path for the Cats
 host:
 
-- `npx cats-one` bootstrap flows
+- `npx cats-can` bootstrap flows
 - `npm install -g @cats-inc/cats-platform` then `cats`
 - publishable app-package curation
 - first-run bootstrap for technical evaluators
@@ -38,7 +38,7 @@ root-package SDK extraction plan.
 ### Phase 1: Packaging Contract Freeze
 
 - [ ] Freeze the first supported invocation modes:
-      - `npx cats-one`
+      - `npx cats-can`
       - `npm install -g @cats-inc/cats-platform` then `cats`
       - local dev/build flows remain supported
 - [ ] Freeze the minimum CLI command surface for the first release:
@@ -133,7 +133,7 @@ npm delivery path.
 
 ## Validation
 
-- `npx cats-one` starts bootstrap or gives actionable first-run guidance.
+- `npx cats-can` starts bootstrap or gives actionable first-run guidance.
 - `npm install -g @cats-inc/cats-platform` then `cats` starts the persistent
   host install or gives actionable first-run guidance.
 - A published-style package contains the built renderer and server assets

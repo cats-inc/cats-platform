@@ -103,7 +103,7 @@ working memory for Codex, not yet a ratified product spec or ADR.
 - The flagship product brand remains `Cats`, but the main suite
   host/repo/package target is now `cats-platform` under the `Cats Inc`
   umbrella brand, with a later public repo target of
-  `cats-inc/cats-platform`. `cats-one` is reserved for the one-shot installer
+  `cats-inc/cats-platform`. `cats-can` is reserved for the one-shot installer
   entrypoint.
 - The first real product line is a chat product, not a narrow "one-man digital
   company" shell. It should feel like a general chat app that also supports

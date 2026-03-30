@@ -3,7 +3,7 @@
 > Keep `Cats` as the flagship product brand, but rename the main suite host
 > repo/package identity from `cats` to `cats-platform` so it is clearly
 > separated from `cats-runtime`, the umbrella org/scope `cats-inc`, and the
-> zero-to-running installer entrypoint `cats-one`.
+> zero-to-running installer entrypoint `cats-can`.
 
 ## Status
 
@@ -27,8 +27,12 @@ specific:
 - the main app is the suite host above that boundary
 - the host is expected to grow into the app/plugin surface for first-party and
   later third-party products
-- the desired one-shot installation story is now `npx cats-one`, not "the host
+- the desired one-shot installation story is now `npx cats-can`, not "the host
   package name must also be the bootstrap command"
+- the installer label should reinforce the broader brand language: `cats-can`
+  can read both as a bundled "can" that packages the local suite/runtime
+  experience and as the slogan seam behind future lines such as "Cats can
+  chat", "Cats can work", and "Cats can code"
 
 Keeping the main host technically named `cats` now creates three problems.
 
@@ -44,7 +48,7 @@ Keeping the main host technically named `cats` now creates three problems.
 
 3. It muddies the packaging story.
    The desired installer entrypoint and the canonical host identity are now
-   different concerns. `cats-one` is a good onboarding/install label, but it is
+   different concerns. `cats-can` is a good onboarding/install label, but it is
    not the right long-term name for the host itself.
 
 The project therefore needs a naming model that keeps `Cats` as the public
@@ -67,8 +71,8 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 | Main suite host package target | `@cats-inc/cats-platform` |
 | Persistent host executable | `cats` |
 | Runtime repo/package | `cats-runtime` |
-| Zero-to-running installer package | `cats-one` |
-| One-shot install entrypoint | `npx cats-one` |
+| Zero-to-running installer package | `cats-can` |
+| One-shot install entrypoint | `npx cats-can` |
 
 ### Additional naming rules
 
@@ -77,9 +81,11 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
    setup, and app/plugin integration above `cats-runtime`.
 3. `cats-runtime` remains the execution/runtime boundary and keeps its current
    name.
-4. `cats-one` is reserved for installer/bootstrap flows and must not become the
+4. `cats-can` is reserved for installer/bootstrap flows and must not become the
    canonical host name.
-5. `Cats Chat`, `Cats Work`, `Cats Code`, and later apps remain product lines
+5. `cats-can` is intentionally dual-purpose branding: it should suggest both a
+   packaged local bundle and the reusable slogan frame "Cats can ...".
+6. `Cats Chat`, `Cats Work`, `Cats Code`, and later apps remain product lines
    or installable surfaces within the `Cats` ecosystem rather than reasons to
    rename the host again.
 
@@ -90,9 +96,11 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 - The host name becomes explicit about its technical role without giving up the
   stronger end-user brand `Cats`.
 - The naming stack is easier to explain:
-  `cats-inc` publishes `cats-platform`, `cats-runtime`, and `cats-one`.
-- `cats-one` gets a clean role as the onboarding/install experience instead of
+  `cats-inc` publishes `cats-platform`, `cats-runtime`, and `cats-can`.
+- `cats-can` gets a clean role as the onboarding/install experience instead of
   being forced into host/platform identity.
+- The installer label now carries a stronger memorable brand cue than a more
+  generic `one`-style name.
 - The project can keep growing toward app/plugin hosting without overloading
   the bare word `cats`.
 
@@ -120,7 +128,7 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 - **Pros**: shortest and strongest brand name; no additional rename churn
 - **Cons**: overloads brand and host identity; keeps the technical role too
   implicit; continues the mismatch between the host name and the desired
-  `cats-one` installer story
+  `cats-can` installer story
 - **Why rejected**: the project now needs a clearer technical host identity
   than bare `cats` provides
 
@@ -134,13 +142,13 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 - **Why rejected**: the team chose to optimize for the host's long-term role as
   the platform layer above `cats-runtime`, not only the current bundle shape
 
-### Alternative 3: Use `cats-one` as the host repo/package name
+### Alternative 3: Use `cats-can` as the host repo/package name
 
-- **Pros**: strong onboarding/install feel; easy to market as an all-in-one
-  starting point
+- **Pros**: strong onboarding/install feel; strong brand memory through the
+  bundled-can metaphor and the "Cats can ..." slogan seam
 - **Cons**: reads like a bundle, plan, or installer SKU rather than the
   canonical host/platform identity
-- **Why rejected**: `cats-one` is better used as the bootstrap/install entry
+- **Why rejected**: `cats-can` is better used as the bootstrap/install entry
   point than as the host's long-lived technical name
 
 ## References

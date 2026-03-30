@@ -207,7 +207,7 @@ To build a local npm tarball and optionally install it globally:
 This is the self-hosted host-package smoke path, not the Electron installer
 path. It validates the future `@cats-inc/cats-platform` package contract while
 keeping the installed executable name as `cats`. The separate one-shot
-bootstrap package target is `cats-one`.
+bootstrap package target is `cats-can`.
 
 After install, verify the executable contract with:
 

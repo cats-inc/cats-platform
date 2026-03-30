@@ -60,7 +60,7 @@ The initial distribution strategy for the Cats host is:
 More specifically:
 
 - **Consumer desktop priority**: Windows x64 Electron package first
-- **Technical/self-hosted priority**: `npx cats-one`,
+- **Technical/self-hosted priority**: `npx cats-can`,
   `npm install -g @cats-inc/cats-platform` then `cats`, and corresponding
   `cats-runtime` install/run flows
 - **Deferred desktop matrix work**:

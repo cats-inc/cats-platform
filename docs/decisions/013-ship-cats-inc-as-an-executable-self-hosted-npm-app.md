@@ -1,6 +1,6 @@
-# ADR-013: Ship `cats-platform` as a Self-Hosted npm Host and Reserve `cats-one` for Bootstrap
+# ADR-013: Ship `cats-platform` as a Self-Hosted npm Host and Reserve `cats-can` for Bootstrap
 
-> Prioritize a one-shot `npx cats-one` bootstrap path plus a persistent
+> Prioritize a one-shot `npx cats-can` bootstrap path plus a persistent
 > `@cats-inc/cats-platform` host install for technical self-hosted trials and
 > open-source collaboration, while keeping Electron as a later wrapper around
 > the same local services.
@@ -14,7 +14,7 @@ Proposed
 `Cats` is the flagship suite brand, and the current local host workspace now
 lives in `cats-platform/`. Under ADR-045, the public host package target is now
 `@cats-inc/cats-platform`, while the one-shot bootstrap/install entrypoint is
-reserved as `cats-one`. The host package already behaves more like an
+reserved as `cats-can`. The host package already behaves more like an
 application than a reusable library:
 
 - the package entrypoint boots config, runtime client, chat store, and the
@@ -26,11 +26,18 @@ At the same time, recent product direction clarified a near-term distribution
 goal:
 
 - technical users should be able to try the product quickly with a
-  self-hosted bootstrap command such as `npx cats-one`
+  self-hosted bootstrap command such as `npx cats-can`
 - technical users who want a persistent install should be able to use a host
   package such as `npm install -g @cats-inc/cats-platform` and then run `cats`
 - the codebase should be easy to share for open-source collaboration before a
   polished desktop wrapper exists
+
+The installer label itself also now carries deliberate brand semantics:
+
+- `cats-can` suggests a packaged local bundle that contains the initial
+  platform/runtime experience
+- `cats-can` also acts as the slogan seam for future product-language such as
+  "Cats can chat", "Cats can work", and "Cats can code"
 
 Earlier ADRs correctly established Electron as the preferred desktop host when
 the packaged desktop experience is built. That decision remains valid, but it
@@ -52,12 +59,12 @@ implementation starts.
 
 `@cats-inc/cats-platform` will be positioned first as an executable
 self-hosted npm app package, not as a general-purpose library package, and
-`cats-one` will be reserved for the zero-to-running bootstrap entrypoint.
+`cats-can` will be reserved for the zero-to-running bootstrap entrypoint.
 
 This decision includes:
 
 1. The primary public technical distribution targets are:
-   - `npx cats-one` for one-shot bootstrap/install flows
+   - `npx cats-can` for one-shot bootstrap/install flows
    - `npm install -g @cats-inc/cats-platform` followed by `cats` for
      persistent host installs
 2. The root `@cats-inc/cats-platform` package is application-first. It may expose small
