@@ -5,6 +5,7 @@ import { createDefaultCoreState } from '../dist-server/core/model/index.js';
 import {
   createCodeRelayThread,
   finishCodeRelayFanOut,
+  readCodeRelayThread,
   startCodeRelayFanOut,
 } from '../dist-server/products/code/state/relayState.js';
 
@@ -80,6 +81,54 @@ test('fan-out round records prompt, dispatch status, and proven providers', () =
   assert.deepEqual(finished.thread.provenProviderIds, ['codex']);
   assert.equal(finished.thread.rounds[0].status, 'waiting_for_user');
   assert.equal(finished.thread.rounds[0].messages.length, 2);
+  assert.equal(finished.thread.rounds[0].messages[0].kind, 'prompt');
+  assert.equal(finished.thread.rounds[0].messages[1].kind, 'response');
   assert.equal(finished.thread.rounds[0].dispatches[0].status, 'completed');
   assert.equal(finished.thread.rounds[0].dispatches[1].status, 'failed');
+});
+
+test('readCodeRelayThread derives deterministic fallback ids for malformed metadata', () => {
+  const created = createCodeRelayThread(
+    createDefaultCoreState(),
+    {
+      title: 'Malformed relay',
+      objective: 'Recover deterministic ids',
+      repoPath: null,
+    },
+    new Date('2026-03-30T10:00:00.000Z'),
+  );
+
+  const malformedProject = {
+    ...created.project,
+    metadata: {
+      codeRelay: {
+        version: 1,
+        contract: {
+          version: 'phase0-local-cli-v1',
+          transport: 'local_cli_subprocess',
+          supportedProviders: ['codex'],
+          notes: [],
+        },
+        status: 'active',
+        roster: [{ provider: 'codex', label: 'Codex' }],
+        rounds: [{
+          prompt: 'test',
+          dispatches: [{ agentId: 'codex:native' }],
+          messages: [{ content: 'hello' }],
+        }],
+        currentRoundId: null,
+        provenProviderIds: [],
+      },
+    },
+  };
+
+  const firstRead = readCodeRelayThread(malformedProject);
+  const secondRead = readCodeRelayThread(malformedProject);
+
+  assert.ok(firstRead);
+  assert.ok(secondRead);
+  assert.equal(firstRead.roster[0].id, secondRead.roster[0].id);
+  assert.equal(firstRead.rounds[0].id, secondRead.rounds[0].id);
+  assert.equal(firstRead.rounds[0].dispatches[0].id, secondRead.rounds[0].dispatches[0].id);
+  assert.equal(firstRead.rounds[0].messages[0].id, secondRead.rounds[0].messages[0].id);
 });

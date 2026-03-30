@@ -37,6 +37,8 @@ function createContract(): CodeRelayConnectorContract {
 }
 
 const launchSpecCache = new Map<string, Promise<LaunchSpec>>();
+const availabilityCache = new Map<string, { available: boolean; expiresAt: number }>();
+const AVAILABILITY_CACHE_TTL_MS = 30_000;
 
 function preferredWindowsCommandPath(paths: string[]): string | null {
   return paths.find((value) => value.toLowerCase().endsWith('.exe'))
@@ -112,10 +114,23 @@ async function resolveLaunchSpec(commandName: string): Promise<LaunchSpec> {
 }
 
 async function canResolveCommand(command: string): Promise<boolean> {
+  const cached = availabilityCache.get(command);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.available;
+  }
+
   try {
     await resolveLaunchSpec(command);
+    availabilityCache.set(command, {
+      available: true,
+      expiresAt: Date.now() + AVAILABILITY_CACHE_TTL_MS,
+    });
     return true;
   } catch {
+    availabilityCache.set(command, {
+      available: false,
+      expiresAt: Date.now() + AVAILABILITY_CACHE_TTL_MS,
+    });
     return false;
   }
 }
@@ -203,7 +218,8 @@ async function dispatchWithCodex(
     ...launch.prefixArgs,
     'exec',
     '--skip-git-repo-check',
-    '--dangerously-bypass-approvals-and-sandbox',
+    '-s',
+    'read-only',
     '--color',
     'never',
     '-C',

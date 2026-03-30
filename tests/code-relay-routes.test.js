@@ -59,6 +59,7 @@ function createRelayRuntimeStub() {
       }));
     },
     async dispatch(request) {
+      await new Promise((resolve) => setTimeout(resolve, 30));
       return {
         entryId: request.entry.id,
         content: `[${request.entry.provider}] ${request.prompt}`,
@@ -151,13 +152,29 @@ test('Code relay routes create threads, update roster, and fan out prompts', asy
         }),
       },
     );
-    assert.equal(fanOutResponse.status, 200);
+    assert.equal(fanOutResponse.status, 202);
     const fanOutPayload = await fanOutResponse.json();
     const round = fanOutPayload.threads[0].rounds[0];
     assert.equal(round.objective, 'Challenge the first implementation direction');
     assert.equal(round.dispatches.length, 2);
-    assert.equal(round.dispatches[0].status, 'completed');
-    assert.match(round.messages[0].content, /\[(codex|claude)\]/u);
-    assert.equal(fanOutPayload.threads[0].thread.status, 'waiting_for_user');
+    assert.equal(round.dispatches[0].status, 'running');
+    assert.equal(fanOutPayload.threads[0].thread.status, 'waiting_for_agents');
+
+    let settledPayload = fanOutPayload;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      if (settledPayload.threads[0].thread.status === 'waiting_for_user') {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      const refreshResponse = await fetch(`${baseUrl}/api/code/relay/threads`);
+      assert.equal(refreshResponse.status, 200);
+      settledPayload = await refreshResponse.json();
+    }
+
+    const settledRound = settledPayload.threads[0].rounds[0];
+    assert.equal(settledPayload.threads[0].thread.status, 'waiting_for_user');
+    assert.equal(settledRound.dispatches[0].status, 'completed');
+    assert.equal(settledRound.messages[0].kind, 'prompt');
+    assert.match(settledRound.messages[1].content, /\[(codex|claude)\]/u);
   });
 });

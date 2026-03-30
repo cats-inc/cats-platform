@@ -137,6 +137,14 @@ export function createDefaultCodeRelayRoster(): CodeRelayRosterEntry[] {
   ];
 }
 
+function fallbackRecordId(
+  projectId: string,
+  prefix: string,
+  ...parts: Array<string | number>
+): string {
+  return [projectId, prefix, ...parts].join(':');
+}
+
 export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThreadRecord | null {
   const metadata = asRecord(project.metadata);
   const relayRecord = asRecord(metadata?.[CODE_RELAY_METADATA_KEY]);
@@ -162,8 +170,8 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
     roster: rawRoster
       .map((value) => asRecord(value))
       .filter((value): value is Record<string, unknown> => value !== null)
-      .map((entry) => ({
-        id: readString(entry.id) ?? `agent-${randomUUID()}`,
+      .map((entry, rosterIndex) => ({
+        id: readString(entry.id) ?? fallbackRecordId(project.id, 'roster', rosterIndex),
         provider: readString(entry.provider) ?? 'unknown',
         label: readString(entry.label) ?? readString(entry.provider) ?? 'Unknown',
         instance: readString(entry.instance),
@@ -178,8 +186,10 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
     rounds: rawRounds
       .map((value) => asRecord(value))
       .filter((value): value is Record<string, unknown> => value !== null)
-      .map((round) => ({
-        id: readString(round.id) ?? `round-${randomUUID()}`,
+      .map((round, roundIndex) => {
+        const resolvedRoundId = readString(round.id) ?? fallbackRecordId(project.id, 'round', roundIndex);
+        return {
+        id: resolvedRoundId,
         mode: readMode(round.mode),
         objective: readString(round.objective) ?? 'Discussion round',
         status: readRoundStatus(round.status),
@@ -191,8 +201,8 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
         dispatches: (Array.isArray(round.dispatches) ? round.dispatches : [])
           .map((value) => asRecord(value))
           .filter((value): value is Record<string, unknown> => value !== null)
-          .map((dispatch) => ({
-            id: readString(dispatch.id) ?? `dispatch-${randomUUID()}`,
+          .map((dispatch, dispatchIndex) => ({
+            id: readString(dispatch.id) ?? fallbackRecordId(project.id, 'dispatch', resolvedRoundId, dispatchIndex),
             agentId: readString(dispatch.agentId) ?? 'unknown',
             source: dispatch.source === 'relay' ? 'relay' : 'fan_out',
             status: readDispatchStatus(dispatch.status),
@@ -211,9 +221,9 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
         messages: (Array.isArray(round.messages) ? round.messages : [])
           .map((value) => asRecord(value))
           .filter((value): value is Record<string, unknown> => value !== null)
-          .map((message) => ({
-            id: readString(message.id) ?? `message-${randomUUID()}`,
-            roundId: readString(message.roundId) ?? readString(round.id) ?? `round-${randomUUID()}`,
+          .map((message, messageIndex) => ({
+            id: readString(message.id) ?? fallbackRecordId(project.id, 'message', resolvedRoundId, messageIndex),
+            roundId: readString(message.roundId) ?? resolvedRoundId,
             authorKind: message.authorKind === 'agent'
               || message.authorKind === 'system'
               ? message.authorKind
@@ -228,7 +238,8 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
             createdAt: readString(message.createdAt) ?? new Date().toISOString(),
             sourceMessageId: readString(message.sourceMessageId),
           })),
-      })),
+      };
+      }),
     currentRoundId: readString(relayRecord.currentRoundId),
     provenProviderIds: readStringArray(relayRecord.provenProviderIds),
   };
@@ -475,6 +486,55 @@ export function startCodeRelayFanOut(
   };
 }
 
+export function markCodeRelayDispatchesRunning(
+  core: CatsCoreState,
+  threadId: string,
+  roundId: string,
+  agentIds: string[],
+  now: Date = new Date(),
+): { core: CatsCoreState; project: CoreProjectRecord; thread: CodeRelayThreadRecord } | null {
+  const found = findCodeRelayProject(core, threadId);
+  if (!found) {
+    return null;
+  }
+
+  const nextThread = structuredClone(found.thread);
+  const roundIndex = nextThread.rounds.findIndex((round) => round.id === roundId);
+  if (roundIndex < 0) {
+    return null;
+  }
+
+  const round = structuredClone(nextThread.rounds[roundIndex]);
+  round.dispatches = round.dispatches.map((dispatch) => (
+    agentIds.includes(dispatch.agentId)
+      ? {
+          ...dispatch,
+          status: dispatch.status === 'requested' ? 'running' : dispatch.status,
+        }
+      : dispatch
+  ));
+  round.status = 'waiting_for_agents';
+  round.waitingReason = 'Waiting for agent responses.';
+  nextThread.rounds[roundIndex] = round;
+  nextThread.status = 'waiting_for_agents';
+
+  const result = upsertCoreProject(core, {
+    id: found.project.id,
+    title: found.project.title,
+    status: found.project.status,
+    summary: found.project.summary,
+    repoPath: found.project.repoPath,
+    primaryConversationId: found.project.primaryConversationId,
+    metadata: writeCodeRelayThreadMetadata(found.project, nextThread),
+  }, now);
+
+  return {
+    core: result.core,
+    project: result.project,
+    thread: nextThread,
+  };
+}
+
 export function finishCodeRelayFanOut(
   core: CatsCoreState,
   threadId: string,
@@ -512,7 +572,7 @@ export function finishCodeRelayFanOut(
     }
 
     const messageId = `message-${randomUUID()}`;
-    round.messages.unshift({
+    round.messages.push({
       id: messageId,
       roundId,
       authorKind: 'agent',

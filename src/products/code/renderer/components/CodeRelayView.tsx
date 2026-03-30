@@ -78,22 +78,36 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
   const [quotaDrafts, setQuotaDrafts] = useState<Record<string, string>>({});
 
+  function applyThreadsPayload(
+    nextPayload: CodeRelayThreadsPayload,
+    nextSelectedThreadId: string | null = null,
+  ): void {
+    setPayload(nextPayload);
+    setSelectedThreadId(
+      nextSelectedThreadId
+      ?? nextPayload.selection.selectedThreadId
+      ?? nextPayload.threads[0]?.thread.id
+      ?? null,
+    );
+  }
+
   async function loadThreads(nextSelectedThreadId: string | null = null): Promise<void> {
     setLoading(true);
     setError('');
     try {
-      const nextPayload = await fetchCodeRelayThreads();
-      setPayload(nextPayload);
-      setSelectedThreadId(
-        nextSelectedThreadId
-        ?? nextPayload.selection.selectedThreadId
-        ?? nextPayload.threads[0]?.thread.id
-        ?? null,
-      );
+      applyThreadsPayload(await fetchCodeRelayThreads(), nextSelectedThreadId);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load relay threads.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function refreshThreads(nextSelectedThreadId: string | null = null): Promise<void> {
+    try {
+      applyThreadsPayload(await fetchCodeRelayThreads(), nextSelectedThreadId);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Failed to refresh relay threads.');
     }
   }
 
@@ -108,6 +122,17 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
   }, [createRepoPath, selectedChannelContext?.chatCwd, selectedChannelContext?.repoPath]);
 
   const selectedThread = payload?.threads.find((thread) => thread.thread.id === selectedThreadId) ?? null;
+
+  useEffect(() => {
+    if (selectedThread?.thread.status !== 'waiting_for_agents' || !selectedThreadId) {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      void refreshThreads(selectedThreadId);
+    }, 3_000);
+    return () => clearInterval(interval);
+  }, [selectedThread?.thread.status, selectedThreadId]);
 
   useEffect(() => {
     if (!selectedThread) {
@@ -139,13 +164,11 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     setBusy('create-thread');
     setError('');
     try {
-      const nextPayload = await createCodeRelayThread({
+      applyThreadsPayload(await createCodeRelayThread({
         title: createTitle.trim(),
         objective: createObjective.trim() || null,
         repoPath: createRepoPath.trim() || null,
-      });
-      setPayload(nextPayload);
-      setSelectedThreadId(nextPayload.selection.selectedThreadId);
+      }));
       setFanOutPrompt('');
       setFanOutObjective(createObjective.trim() || 'Open discovery round');
     } catch (createError) {
@@ -169,9 +192,10 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     setBusy(`roster:${agentId}`);
     setError('');
     try {
-      const nextPayload = await updateCodeRelayRosterEntry(selectedThreadId, agentId, patch);
-      setPayload(nextPayload);
-      setSelectedThreadId(nextPayload.selection.selectedThreadId ?? selectedThreadId);
+      applyThreadsPayload(
+        await updateCodeRelayRosterEntry(selectedThreadId, agentId, patch),
+        selectedThreadId,
+      );
     } catch (patchError) {
       setError(patchError instanceof Error ? patchError.message : 'Failed to update relay roster.');
     } finally {
@@ -196,14 +220,12 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     setBusy('fan-out');
     setError('');
     try {
-      const nextPayload = await runCodeRelayFanOut(selectedThreadId, {
+      applyThreadsPayload(await runCodeRelayFanOut(selectedThreadId, {
         mode: 'discover',
         objective: fanOutObjective.trim() || 'Open discovery round',
         prompt: fanOutPrompt.trim(),
         agentIds: selectedAgentIds,
-      });
-      setPayload(nextPayload);
-      setSelectedThreadId(nextPayload.selection.selectedThreadId ?? selectedThreadId);
+      }), selectedThreadId);
     } catch (fanOutError) {
       setError(fanOutError instanceof Error ? fanOutError.message : 'Failed to run relay fan-out.');
     } finally {
@@ -404,8 +426,12 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                             }));
                           }}
                           onBlur={() => {
+                            const normalized = (quotaDrafts[entry.id] ?? '').trim() || null;
+                            if ((entry.quotaNote ?? null) === normalized) {
+                              return;
+                            }
                             void handleRosterPatch(entry.id, {
-                              quotaNote: (quotaDrafts[entry.id] ?? '').trim() || null,
+                              quotaNote: normalized,
                             });
                           }}
                           placeholder="Optional advisory note"
@@ -524,6 +550,13 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                                   <pre className="codeRelayMessageBody">{responseMessage.content}</pre>
                                 </div>
                               ) : null}
+                              <button
+                                type="button"
+                                className="operatorActionButton"
+                                disabled
+                              >
+                                Relay to others (Phase 2)
+                              </button>
                             </div>
                           );
                         })}

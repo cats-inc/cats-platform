@@ -9,9 +9,9 @@ import {
   applyCodeRelayRosterProbe,
   createCodeRelayThread,
   createDefaultCodeRelayRoster,
-  findCodeRelayProject,
   finishCodeRelayFanOut,
   listCodeRelayProjects,
+  markCodeRelayDispatchesRunning,
   readCodeRelayThread,
   startCodeRelayFanOut,
   updateCodeRelayRosterEntry,
@@ -19,7 +19,6 @@ import {
 import type {
   CodeRelayMode,
   CodeRelayRecentRole,
-  CodeRelayRosterEntry,
   CodeRelayThreadRecord,
 } from '../state/relayContracts.js';
 
@@ -124,6 +123,46 @@ async function buildRelayThreadsPayload(
       selectedThreadId,
     },
   };
+}
+
+async function completeFanOutInBackground(
+  context: CodeApiRouteContext,
+  input: {
+    threadId: string;
+    roundId: string;
+    prompt: string;
+    repoPath: string | null;
+    targetEntries: CodeRelayThreadRecord['roster'];
+  },
+): Promise<void> {
+  const dispatchResults = await Promise.all(input.targetEntries.map(async (entry) => {
+    try {
+      return await context.dependencies.relayRuntime.dispatch({
+        entry,
+        prompt: input.prompt,
+        repoPath: input.repoPath,
+      });
+    } catch (error) {
+      return {
+        entryId: entry.id,
+        error: error instanceof Error ? error.message : 'Relay dispatch failed.',
+      };
+    }
+  }));
+
+  const latestCore = await context.dependencies.coreStore.readCore();
+  const finished = finishCodeRelayFanOut(
+    latestCore,
+    input.threadId,
+    input.roundId,
+    dispatchResults,
+    context.dependencies.now?.() ?? new Date(),
+  );
+  if (!finished) {
+    return;
+  }
+
+  await context.dependencies.coreStore.writeCore(finished.core);
 }
 
 export async function routeCodeRelayApi(
@@ -266,36 +305,44 @@ export async function routeCodeRelayApi(
       return true;
     }
 
-    core = started.core;
-    await context.dependencies.coreStore.writeCore(core);
-
-    const dispatchResults = await Promise.all(started.targetEntries.map(async (entry) => {
-      try {
-        return await context.dependencies.relayRuntime.dispatch({
-          entry,
-          prompt,
-          repoPath: started.project.repoPath,
-        });
-      } catch (error) {
-        return {
-          entryId: entry.id,
-          error: error instanceof Error ? error.message : 'Relay dispatch failed.',
-        };
-      }
-    }));
-
-    const finished = finishCodeRelayFanOut(core, threadId, started.round.id, dispatchResults, new Date());
-    if (!finished) {
-      sendJson(context.response, 500, {
-        error: { code: 'relay_round_finalize_failed', message: 'Failed to finalize relay round.' },
+    if (started.targetEntries.length === 0) {
+      sendJson(context.response, 400, {
+        error: { code: 'relay_agents_unavailable', message: 'No enabled relay agents were available.' },
       });
       return true;
     }
 
-    await context.dependencies.coreStore.writeCore(finished.core);
-    sendJson(context.response, 200, await buildRelayThreadsPayload(context, {
+    core = started.core;
+    await context.dependencies.coreStore.writeCore(core);
+
+    const running = markCodeRelayDispatchesRunning(
+      core,
+      threadId,
+      started.round.id,
+      started.targetEntries.map((entry) => entry.id),
+      now,
+    );
+    if (!running) {
+      sendJson(context.response, 500, {
+        error: { code: 'relay_round_start_failed', message: 'Failed to mark relay dispatches as running.' },
+      });
+      return true;
+    }
+
+    core = running.core;
+    await context.dependencies.coreStore.writeCore(core);
+    sendJson(context.response, 202, await buildRelayThreadsPayload(context, {
       selectedThreadId: threadId,
     }));
+    void completeFanOutInBackground(context, {
+      threadId,
+      roundId: started.round.id,
+      prompt,
+      repoPath: started.project.repoPath,
+      targetEntries: started.targetEntries,
+    }).catch(() => {
+      // Background dispatch failures are recorded per-agent during completion.
+    });
     return true;
   }
 
