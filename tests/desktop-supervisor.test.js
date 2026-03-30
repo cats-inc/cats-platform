@@ -109,8 +109,8 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
     'C:\\Program Files\\Cats\\resources\\app-sidecar',
   );
   assert.equal(
-    config.paths.preloadScript.endsWith('\\dist-electron\\preload.cjs'),
-    true,
+    config.paths.preloadScript,
+    'C:\\Program Files\\Cats\\resources\\app.asar\\dist-electron\\preload.cjs',
   );
 });
 

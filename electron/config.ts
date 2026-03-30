@@ -112,7 +112,7 @@ function resolveHostRuntimeRoot(
     ? resolveDesktopPath(resourcesPath)
     : resolve(joinDesktopPath(currentPackageRoot, '..'));
   return {
-    hostPackageRoot: currentPackageRoot,
+    hostPackageRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'app.asar')),
     appSidecarRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'app-sidecar')),
     runtimePackageRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'cats-runtime')),
   };
@@ -226,7 +226,7 @@ export function resolveDesktopHostConfig(
       ),
       preloadScript: resolveDesktopPath(
         env.CATS_DESKTOP_PRELOAD_SCRIPT?.trim()
-          || joinDesktopPath(packageRoot, 'dist-electron', 'preload.cjs'),
+          || joinDesktopPath(layout.hostPackageRoot, 'dist-electron', 'preload.cjs'),
       ),
       appStatePath: resolveDesktopPath(
         env.CATS_DESKTOP_STATE_PATH?.trim()
