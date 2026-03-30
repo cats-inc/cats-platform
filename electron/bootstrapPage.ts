@@ -269,6 +269,29 @@ export function buildDesktopBootstrapPage(): string {
               blocked: setupSnapshot.helpers.filter((helper) => !helper.available || !helper.supported).length,
             }
           : null;
+        const capabilityPackCatalog = Array.isArray(snapshot.packaging && snapshot.packaging.installer
+          && snapshot.packaging.installer.providerSetup
+          && snapshot.packaging.installer.providerSetup.capabilityPacks)
+          ? snapshot.packaging.installer.providerSetup.capabilityPacks
+          : [];
+        const capabilityPackCoverage = setupSnapshot
+          ? Object.entries(setupSnapshot.helpers.reduce((acc, helper) => {
+              const packId = helper.pack || 'shared';
+              if (!acc[packId]) {
+                const pack = capabilityPackCatalog.find((candidate) => candidate.id === helper.pack);
+                acc[packId] = {
+                  label: pack ? pack.label : helper.pack ? helper.pack.replace(/_/g, ' ') : 'Shared host helpers',
+                  available: 0,
+                  total: 0,
+                };
+              }
+              acc[packId].total += 1;
+              if (helper.available && helper.supported) {
+                acc[packId].available += 1;
+              }
+              return acc;
+            }, {})).map(([, value]) => value)
+          : [];
         const localProviders = Array.isArray(snapshot.packaging && snapshot.packaging.installer
           && snapshot.packaging.installer.providerSetup
           && snapshot.packaging.installer.providerSetup.localProviders)
@@ -298,6 +321,20 @@ export function buildDesktopBootstrapPage(): string {
               + (helperSummary.blocked > 0
                 ? '<div class="meta status-degraded">' + helperSummary.blocked + ' helper(s) are unavailable on this host or build.</div>'
                 : '')
+              + '</article>',
+          );
+        }
+
+        if (capabilityPackCoverage.length > 0) {
+          cards.push(
+            '<article class="issue-row">'
+              + '<div class="row-title"><strong>Capability pack coverage</strong><span class="status-ok">'
+              + capabilityPackCoverage.length + ' pack(s)</span></div>'
+              + capabilityPackCoverage.map((pack) => (
+                '<div class="meta">' + escapeHtml(pack.label) + ': '
+                + escapeHtml(String(pack.available)) + '/' + escapeHtml(String(pack.total))
+                + ' helper(s) ready from repo-owned packaged assets.</div>'
+              )).join('')
               + '</article>',
           );
         }
