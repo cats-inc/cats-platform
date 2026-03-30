@@ -488,28 +488,6 @@ async function main(): Promise<void> {
   });
   latestSnapshot = buildSnapshot(null);
 
-  mainWindow = await createMainWindow(hostConfig);
-  if (hostConfig.background.trayEnabled) {
-    trayController = createDesktopTrayController({
-      getWindow: () => mainWindow,
-      onShowSetup: async () => {
-        if (hostConfig) {
-          await showMainWindow(`${hostConfig.appBaseUrl}/setup`);
-        }
-      },
-      onShowChat: async () => {
-        if (!hostConfig) {
-          return;
-        }
-        const snapshot = latestSnapshot ?? await refreshBootstrapSnapshot();
-        await showMainWindow(`${hostConfig.appBaseUrl}${snapshot.app.entryPath}`);
-      },
-      onQuit: () => {
-        void shutdownHost();
-      },
-    });
-  }
-
   ipcMain.handle('cats-host:get-snapshot', async () => {
     return latestSnapshot ?? buildSnapshot(null);
   });
@@ -539,6 +517,28 @@ async function main(): Promise<void> {
   ipcMain.handle('cats-host:resume-setup', async () => {
     return await resumeSetupAction();
   });
+
+  mainWindow = await createMainWindow(hostConfig);
+  if (hostConfig.background.trayEnabled) {
+    trayController = createDesktopTrayController({
+      getWindow: () => mainWindow,
+      onShowSetup: async () => {
+        if (hostConfig) {
+          await showMainWindow(`${hostConfig.appBaseUrl}/setup`);
+        }
+      },
+      onShowChat: async () => {
+        if (!hostConfig) {
+          return;
+        }
+        const snapshot = latestSnapshot ?? await refreshBootstrapSnapshot();
+        await showMainWindow(`${hostConfig.appBaseUrl}${snapshot.app.entryPath}`);
+      },
+      onQuit: () => {
+        void shutdownHost();
+      },
+    });
+  }
 
   app.on('before-quit', (event) => {
     if (!shuttingDown) {

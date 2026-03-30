@@ -1,3 +1,7 @@
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { Menu, Tray, nativeImage } from 'electron';
 
 import type { BrowserWindow } from 'electron';
@@ -8,6 +12,18 @@ const TRAY_ICON_DATA_URL = `data:image/png;base64,${[
   '/58/f/5nYGBgYGBg8P///x8jIyMDA8P/P3/+fGhoaGBgYOD///8D4qCgoOB/4eHh////',
   '/w8AF/QVFzppM6IAAAAASUVORK5CYII=',
 ].join('')}`;
+
+function resolveTrayIconPath(): string | null {
+  const candidate = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'assets',
+    'build',
+    'icon.png',
+  );
+
+  return existsSync(candidate) ? candidate : null;
+}
 
 export interface DesktopTrayController {
   showWindow(): void;
@@ -23,6 +39,11 @@ interface CreateDesktopTrayControllerOptions {
 }
 
 function createTrayIcon() {
+  const iconPath = resolveTrayIconPath();
+  if (iconPath) {
+    return nativeImage.createFromPath(iconPath);
+  }
+
   return nativeImage.createFromDataURL(TRAY_ICON_DATA_URL);
 }
 

@@ -331,11 +331,28 @@ test('package.json wires Windows installers through electron-builder NSIS', asyn
   assert.equal(Object.hasOwn(packageJson, 'types'), false);
   assert.equal(packageJson.scripts['desktop:package:windows'], 'node scripts/build-desktop-installer.mjs --target windows');
   assert.equal(packageJson.scripts['start:server'], 'node dist-server/index.js');
+  assert.equal(packageJson.build.directories.buildResources, 'assets/build');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
+  assert.equal(packageJson.build.win.icon, 'icon.ico');
   assert.equal(packageJson.build.nsis.oneClick, false);
+  assert.equal(packageJson.build.nsis.installerIcon, 'icon.ico');
+  assert.equal(packageJson.build.nsis.uninstallerIcon, 'icon.ico');
+  assert.equal(packageJson.build.nsis.installerHeaderIcon, 'icon.ico');
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.to === 'desktop-host/setup-assets',
   ), true);
+});
+
+test('build resources include the shared Windows icon asset', async () => {
+  await access(join(process.cwd(), 'assets', 'build', 'icon.ico'));
+  await access(join(process.cwd(), 'assets', 'build', 'icon.png'));
+});
+
+test('desktop tray loads the shared packaged icon asset before falling back', async () => {
+  const source = await readFile(join(process.cwd(), 'electron', 'tray.ts'), 'utf8');
+
+  assert.match(source, /createFromPath/);
+  assert.match(source, /assets',\s*'build',\s*'icon\.png'/);
 });
 
 test('Windows installer smoke-check script validates bundled sidecars and host state', async () => {

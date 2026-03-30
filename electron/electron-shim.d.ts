@@ -85,6 +85,7 @@ declare module 'electron' {
 
   export const nativeImage: {
     createFromDataURL(dataUrl: string): unknown;
+    createFromPath(path: string): unknown;
   };
 
   export class Tray {

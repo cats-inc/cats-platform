@@ -363,7 +363,8 @@ Use `-SkipLaunch` if you only want file/layout verification.
 Current limitations of the first real installer slice:
 
 - unsigned build
-- no branded icon yet
+- Windows installer now reuses the baseline Cats tray icon; higher-fidelity
+  branded art is still follow-on
 - update install/apply remains manual
 - update manifests must be HTTPS, and any `downloadUrl` must stay on the
   manifest host or a host listed in `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS`
