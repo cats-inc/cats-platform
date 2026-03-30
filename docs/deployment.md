@@ -150,7 +150,15 @@ npm run desktop:package:windows
   - run host-owned first-run provider scan
   - expose a machine-readable `installer.providerSetup.helperCatalog` for the
     bundled Windows setup assets
+  - expose a machine-readable `installer.providerSetup.localProviders` rollout
+    so the host can distinguish bundled local-provider paths from deferred ones
   - map failures onto structured host state plus resumable remediation actions
+  - keep the current first packaged local-provider path bounded to Claude Code,
+    Cursor Agent, and the WSL-backed Kiro helper
+  - keep Goose, Junie, Docker/local-model helpers, and other later packs
+    explicitly deferred rather than silently missing
+  - avoid any runtime shell-out to `environment-bootstrap` or
+    `project-bootstrap`; both remain source knowledge only
 - update-channel contract in this slice:
   - manual-check skeleton only
   - optional HTTPS manifest URL via env

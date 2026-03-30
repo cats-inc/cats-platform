@@ -145,17 +145,17 @@ instead of an implicit dependency on bootstrap scripts.
       `cats-platform`-owned packaged setup asset
 - [x] Port the first Windows setup-readiness audit helper into a `cats-platform`-owned
       packaged setup asset
-- [ ] Port the remaining highest-value stable install/check knowledge into
+- [x] Port the remaining highest-value stable install/check knowledge into
       `cats-platform`-owned assets or code, prioritizing WSL prerequisite flows and
       readiness checks for the first packaged setup flow
-- [ ] Rewrite those slices as product-owned helpers or bundled assets rather
+- [x] Rewrite those slices as product-owned helpers or bundled assets rather
       than keeping raw source-repo scripts as dependencies
-- [ ] Prefer reusable product-owned helpers over one-off script copies
-- [ ] Keep ported logic traceable back to the original internal sources without
+- [x] Prefer reusable product-owned helpers over one-off script copies
+- [x] Keep ported logic traceable back to the original internal sources without
       claiming those sources remain runtime/product dependencies
-- [ ] Remove any expectation that packaged setup may shell out to
+- [x] Remove any expectation that packaged setup may shell out to
       `environment-bootstrap` or `project-bootstrap` after the split
-- [ ] Update setup, deployment, and architecture docs as soon as the first
+- [x] Update setup, deployment, and architecture docs as soon as the first
       concrete asset slices land
 
 **Deliverables**: `cats-platform` starts owning concrete packaged setup knowledge rather
@@ -169,7 +169,7 @@ split-safe.
 - [x] Define the packaged-host bridge for install/check/verify/resume actions
 - [x] Define what setup state is persisted by the host versus re-derived from
       `cats-runtime` on demand
-- [ ] Keep interruption handling explicit:
+- [x] Keep interruption handling explicit:
       - [x] relaunch
       - [x] restart required
       - [x] elevation/UAC
@@ -280,6 +280,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 2 slice 3 landed: `electron/contracts.ts`, `electron/packaging.ts`, and desktop packaging tests now also carry a machine-readable `installer.providerSetup.localProviders` rollout map, making the current first packaged path explicit for Claude Code, Cursor Agent, and Kiro while keeping Goose and Junie intentionally deferred instead of silently omitted |
 | 2026-03-30 | Phase 4 slice 9 landed: `electron/bootstrapPage.ts` now surfaces the packaged local-provider rollout in the setup recovery panel, so the desktop host can show which local providers are bundled today versus explicitly deferred instead of only reporting helper counts |
 | 2026-03-30 | Phase 5 validation slice 2 landed: `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now explicitly cross-checks the sibling `cats-runtime` A2A/bootstrap pilot against the packaged setup baseline and records that merge-back into `project-bootstrap` remains a separate evidence-led decision rather than an automatic follow-through from the repo-owned rewrites |
+| 2026-03-30 | Phase 3/4 close-out landed: `docs/deployment.md` and `docs/architecture.md` now reflect the repo-owned packaged setup boundary, staged helper/provider rollout contracts, and no-shell-out split-safe posture, allowing the remaining Phase 3 broad checklist items and the explicit interruption-handling gate to close against current implementation truth |
 
 ---
 

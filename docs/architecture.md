@@ -93,6 +93,25 @@ Packaging and repo naming now follow this split:
 - `cats-can`: one-shot bootstrap installer target
 - `cats`: persistent installed executable name for the host package
 
+### Packaged Setup Boundary
+
+The packaged setup path now has an explicit host-owned boundary:
+
+- the Electron desktop host owns helper discovery, execution, persisted setup
+  state, resume actions, and interruption recovery
+- repo-owned packaged setup helpers live under `cats-platform/scripts/windows/*`
+  and stage into `build/desktop-packaging/shared/setup-assets/windows/*`
+- the staged installer contract now carries both
+  `installer.providerSetup.helperCatalog` and
+  `installer.providerSetup.localProviders`
+- the current first packaged local-provider rollout is bounded to Claude Code,
+  Cursor Agent, and the WSL-backed Kiro helper
+- Goose, Junie, Docker/local-model helpers, and other later packs remain
+  explicitly deferred instead of being treated as silently missing baseline
+  work
+- `environment-bootstrap` and `project-bootstrap` remain source knowledge only,
+  not shipped runtime dependencies for packaged setup
+
 ### Configuration Layer
 
 - **Purpose**: Centralize environment parsing and defaults
