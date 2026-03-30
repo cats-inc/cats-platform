@@ -28,6 +28,7 @@ import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
   runDesktopSetupHelper,
+  shouldAutoRunSetupAudit,
 } from './setupBridge.js';
 import { createDesktopTrayController, type DesktopTrayController } from './tray.js';
 import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
@@ -279,6 +280,7 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
       config: hostConfig,
       services: supervisor.getSnapshots(),
     }));
+    await maybePrimeSetupAudit();
 
     const snapshot = publishSnapshot(await refreshBootstrapSnapshot());
     await maybeOpenApp(snapshot);
@@ -354,6 +356,20 @@ async function runSetupAction(
   };
   publishSnapshot(await refreshBootstrapSnapshot());
   return await getSetupSnapshot();
+}
+
+async function maybePrimeSetupAudit(): Promise<void> {
+  if (!hostConfig || process.platform !== 'win32') {
+    return;
+  }
+  if (!shouldAutoRunSetupAudit(setupState)) {
+    return;
+  }
+
+  await runSetupAction({
+    helperId: 'windows-install-readiness-audit',
+    mode: 'check',
+  });
 }
 
 async function resumeSetupAction(): Promise<DesktopSetupSnapshot> {

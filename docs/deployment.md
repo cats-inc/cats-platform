@@ -154,7 +154,7 @@ npm run desktop:package:windows
 - installer/remediation contract in this slice:
   - verify bundled app assets
   - verify bundled `cats-runtime` sidecar slot
-  - run host-owned first-run provider scan
+  - run the host-owned first-run provider scan during desktop bootstrap
   - expose a machine-readable `installer.providerSetup.helperCatalog` for the
     bundled Windows setup assets
   - expose a machine-readable `installer.providerSetup.localProviders` rollout

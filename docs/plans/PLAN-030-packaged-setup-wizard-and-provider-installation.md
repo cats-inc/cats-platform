@@ -287,6 +287,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 4 slice 11 landed: the helper catalog, staged desktop assets, Windows installer smoke coverage, and readiness audit now bundle the Docker Desktop helper as the current `local_model_pack` prerequisite slice while keeping broader Ollama/local-model follow-through for later |
 | 2026-03-30 | Phase 3/4 slice 12 landed: `scripts/windows/Install-Ollama.ps1`, the staged setup asset catalog, the packaging manifest, the Windows readiness audit, and helper tests now keep Ollama on the current repo-owned `local_model_pack` baseline instead of leaving it as later follow-through |
 | 2026-03-30 | Phase 4 slice 13 landed: `electron/setupBridge.ts` now treats manual packaged-setup follow-through as verification-first resume work, so helpers like the Ollama runtime path no longer recommend another install/apply mutation when the remaining work is just warm-state/manual completion |
+| 2026-03-30 | Phase 4 slice 14 landed: `electron/main.ts` now actually primes the repo-owned `windows-install-readiness-audit` during Windows desktop bootstrap whenever no more specific packaged setup recovery action is active, so the packaged `first_run_provider_scan` contract is now executed instead of remaining manifest-only |
 
 ---
 

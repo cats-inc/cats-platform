@@ -10,6 +10,7 @@ import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
   runDesktopSetupHelper,
+  shouldAutoRunSetupAudit,
 } from '../dist-electron/setupBridge.js';
 
 async function createDesktopConfig() {
@@ -56,6 +57,88 @@ test('buildDesktopSetupSnapshot reports repo-owned helper availability', async (
   assert.equal(prefixHelper?.supported, true);
   assert.equal(snapshot.state.lastAction, null);
   assert.equal(snapshot.resumeAction, null);
+});
+
+test('shouldAutoRunSetupAudit reruns the readiness audit when no more specific setup action is active', () => {
+  assert.equal(shouldAutoRunSetupAudit(null), true);
+  assert.equal(shouldAutoRunSetupAudit({
+    updatedAt: '2026-03-30T11:00:00.000Z',
+    lastAction: {
+      helperId: 'windows-install-readiness-audit',
+      assetId: 'windows-setup-readiness-audit-script',
+      label: 'Windows setup readiness audit',
+      mode: 'check',
+      runState: 'completed',
+      status: 'changes_required',
+      summary: 'Windows setup readiness audit check finished with changes_required.',
+      packagedRelativePath: 'desktop-host/setup-assets/windows/Check-WindowsSetupReadiness.ps1',
+      scriptPath: null,
+      requiresElevation: false,
+      resumable: true,
+      restartRequired: false,
+      startedAt: '2026-03-30T10:59:00.000Z',
+      completedAt: '2026-03-30T11:00:00.000Z',
+      warnings: [],
+      plannedActions: ['repair_native_cli_pack'],
+      appliedChanges: [],
+      manualSteps: [],
+      interruptions: [],
+      error: null,
+    },
+  }), true);
+  assert.equal(shouldAutoRunSetupAudit({
+    updatedAt: '2026-03-30T11:00:00.000Z',
+    lastAction: {
+      helperId: 'windows-ollama-local-model-installer',
+      assetId: 'windows-ollama-local-model-installer-script',
+      label: 'Windows Ollama local-model installer',
+      mode: 'apply',
+      runState: 'completed',
+      status: 'ready',
+      summary: 'Windows Ollama local-model installer apply finished with ready.',
+      packagedRelativePath: 'desktop-host/setup-assets/windows/Install-Ollama.ps1',
+      scriptPath: null,
+      requiresElevation: false,
+      resumable: true,
+      restartRequired: false,
+      startedAt: '2026-03-30T10:59:00.000Z',
+      completedAt: '2026-03-30T11:00:00.000Z',
+      warnings: [],
+      plannedActions: [],
+      appliedChanges: ['install_ollama_local_model'],
+      manualSteps: [],
+      interruptions: [],
+      error: null,
+    },
+  }), true);
+});
+
+test('shouldAutoRunSetupAudit preserves active non-audit recovery states', () => {
+  assert.equal(shouldAutoRunSetupAudit({
+    updatedAt: '2026-03-30T11:00:00.000Z',
+    lastAction: {
+      helperId: 'windows-ollama-local-model-installer',
+      assetId: 'windows-ollama-local-model-installer-script',
+      label: 'Windows Ollama local-model installer',
+      mode: 'apply',
+      runState: 'completed',
+      status: 'changes_required',
+      summary: 'Start Ollama and rerun the packaged setup check.',
+      packagedRelativePath: 'desktop-host/setup-assets/windows/Install-Ollama.ps1',
+      scriptPath: null,
+      requiresElevation: false,
+      resumable: true,
+      restartRequired: false,
+      startedAt: '2026-03-30T10:59:00.000Z',
+      completedAt: '2026-03-30T11:00:00.000Z',
+      warnings: [],
+      plannedActions: ['local_model:start_ollama_local_model'],
+      appliedChanges: ['install_ollama_local_model'],
+      manualSteps: ['Launch Ollama from the Start menu, then wait for http://127.0.0.1:11434 to respond.'],
+      interruptions: [],
+      error: null,
+    },
+  }), false);
 });
 
 test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', async () => {

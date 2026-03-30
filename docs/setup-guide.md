@@ -193,6 +193,9 @@ recommended resume step when a helper reports a resumable interruption. When a
 packaged setup step blocks on a restart or other recovery action, the bootstrap
 issue panel also reports that state as an install-category issue instead of
 showing only provider remediation.
+On Windows, the desktop host now also auto-runs the repo-owned readiness audit
+during bootstrap whenever no more specific packaged setup recovery action is
+active, so the first-run provider scan is no longer just a manifest promise.
 When a helper reports only manual follow-through, the host now prefers a
 verification-first resume step instead of recommending another install/apply
 mutation by default.

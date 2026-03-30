@@ -97,6 +97,19 @@ function createDefaultSetupState(): DesktopSetupState {
   };
 }
 
+export function shouldAutoRunSetupAudit(
+  state: DesktopSetupState | null | undefined,
+): boolean {
+  const lastAction = state?.lastAction ?? null;
+  if (!lastAction) {
+    return true;
+  }
+  if (lastAction.helperId === 'windows-install-readiness-audit') {
+    return true;
+  }
+  return lastAction.status === 'ready';
+}
+
 function supportsPlatform(
   platform: NodeJS.Platform,
   helperPlatform: DesktopProviderSetupPlatform,
