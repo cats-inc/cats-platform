@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import { resolveDesktopHostConfig } from '../dist-electron/config.js';
 import {
   buildManagedServiceSpecs,
   ManagedServiceSupervisor,
+  prepareManagedServiceLog,
 } from '../dist-electron/processSupervisor.js';
 
 class FakeChildProcess extends EventEmitter {
@@ -160,4 +164,22 @@ test('stopService gives SIGTERM its own grace window before SIGKILL', async () =
 
   assert.equal(child.stdinEnded, true);
   assert.deepEqual(child.killCalls, ['SIGTERM']);
+});
+
+test('prepareManagedServiceLog rotates the previous attempt log into a bounded backup', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'cats-managed-log-'));
+  const logPath = join(tempDir, 'cats-runtime.log');
+  const previousPath = `${logPath}.previous`;
+
+  try {
+    await writeFile(previousPath, 'older log\n', 'utf8');
+    await writeFile(logPath, 'current log\n', 'utf8');
+
+    await prepareManagedServiceLog(logPath);
+
+    assert.equal(await readFile(logPath, 'utf8'), '');
+    assert.equal(await readFile(previousPath, 'utf8'), 'current log\n');
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });

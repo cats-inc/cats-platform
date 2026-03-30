@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { access, appendFile, mkdir } from 'node:fs/promises';
+import { access, appendFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
@@ -81,6 +81,24 @@ async function ensureLaunchAssets(config: DesktopHostConfig): Promise<void> {
   await mkdir(config.paths.runtimeSessionBaseDir, { recursive: true });
   await mkdir(dirname(config.paths.runtimeConfigPath), { recursive: true });
   await mkdir(config.paths.hostLogsDir, { recursive: true });
+}
+
+function buildPreviousLogPath(logPath: string): string {
+  return `${logPath}.previous`;
+}
+
+export async function prepareManagedServiceLog(logPath: string): Promise<void> {
+  await mkdir(dirname(logPath), { recursive: true });
+  const previousLogPath = buildPreviousLogPath(logPath);
+  await rm(previousLogPath, { force: true });
+  try {
+    await rename(logPath, previousLogPath);
+  } catch (error) {
+    if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
+      throw error;
+    }
+  }
+  await writeFile(logPath, '', 'utf8');
 }
 
 export function buildManagedServiceSpecs(
@@ -252,6 +270,9 @@ export class ManagedServiceSupervisor {
     if (handle.child && handle.child.exitCode === null && handle.child.signalCode === null) {
       return;
     }
+
+    await (this.logQueues.get(spec.name) ?? Promise.resolve()).catch(() => undefined);
+    await prepareManagedServiceLog(spec.logPath);
 
     handle.expectedExit = false;
     this.updateSnapshot(spec.name, {

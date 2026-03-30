@@ -142,6 +142,10 @@ runtime-reference strategy for the first slice.
       - `runtime_apply_requested`
       - `runtime_apply_confirmed`
       - `setup_completed`
+- [ ] Allow the first slice to carry closely related defensive product events
+      when they materially improve diagnosis without changing ownership:
+      - `runtime_setup_blocked`
+      - `runtime_apply_failed`
 - [ ] Defer broader product event kinds from SPEC-045 requirement 13 until the
       minimum slice proves stable
 - [ ] Instrument the packaged setup flow to append product-owned events with:
@@ -344,6 +348,7 @@ documented, and operable after the first slice lands.
 | 2026-03-30 | Plan created to add product-owned onboarding history and a host-owned cross-layer aggregation bundle above existing runtime reports and host snapshots |
 | 2026-03-31 | First-slice implementation plan tightened: host-generated `bootstrapAttemptId`, product sidecar storage beside `chat-state.json`, bounded retention targets, and diagnostic event payload requirements were frozen so implementation can begin without open blockers |
 | 2026-03-31 | Minor follow-up clarifications landed: attempt-id transport now uses app-shell plus JSON mutation bodies, event `status` is treated as required, write-time trim is the first-slice retention rule, and merged chronology fairness now preserves recent representation from each layer |
+| 2026-03-31 | First-slice scope note updated: the minimum product event set remains the core four milestones, but defensive failure/blocked events such as `runtime_setup_blocked` and `runtime_apply_failed` are explicitly allowed when they improve packaged diagnosis without expanding ownership |
 
 ---
 
