@@ -39,6 +39,7 @@ interface DesktopSetupBridgeDependencies {
 interface RunDesktopSetupHelperInput {
   helperId: string;
   mode: DesktopSetupHelperMode;
+  extraArguments?: string[];
 }
 
 interface ExecFileLikeError {
@@ -110,6 +111,21 @@ export function shouldAutoRunSetupAudit(
   return lastAction.status === 'ready';
 }
 
+export function isOptionalCapabilityPackSetupAction(
+  action: Pick<DesktopSetupActionRecord, 'helperId' | 'plannedActions'> | null | undefined,
+): boolean {
+  if (!action || action.helperId !== 'windows-install-readiness-audit') {
+    return false;
+  }
+
+  const plannedActions = Array.isArray(action.plannedActions) ? action.plannedActions : [];
+  if (plannedActions.length === 0) {
+    return false;
+  }
+
+  return plannedActions.every((entry) => entry.startsWith('local_model:') || entry.startsWith('docker:'));
+}
+
 function supportsPlatform(
   platform: NodeJS.Platform,
   helperPlatform: DesktopProviderSetupPlatform,
@@ -155,6 +171,9 @@ function deriveResumeAction(
 ): DesktopSetupResumeAction | null {
   const lastAction = state.lastAction;
   if (!lastAction || !lastAction.resumable) {
+    return null;
+  }
+  if (isOptionalCapabilityPackSetupAction(lastAction)) {
     return null;
   }
 
@@ -588,6 +607,13 @@ export async function runDesktopSetupHelper(
     modeFlag(input.action.mode),
     '-Json',
   ];
+  if (Array.isArray(input.action.extraArguments)) {
+    for (const entry of input.action.extraArguments) {
+      if (typeof entry === 'string' && entry.length > 0) {
+        arguments_.push(entry);
+      }
+    }
+  }
 
   let output: ExecFileResult;
   let runState: DesktopSetupActionRecord['runState'] = 'completed';

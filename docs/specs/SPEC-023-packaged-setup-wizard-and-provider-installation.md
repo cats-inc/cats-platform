@@ -496,6 +496,9 @@ terminal failures:
 - first-time WSL distro initialization
 - post-install manual follow-through should resume with a verification-first
   recommendation instead of defaulting straight back to reinstall/apply
+- optional capability-pack follow-through discovered by the bootstrap-time
+  readiness audit may be surfaced to the user without being treated as a
+  blocking prerequisite for the API baseline
 - Docker daemon warm-up
 - privilege elevation round-trips
 - auth-required states after install succeeds

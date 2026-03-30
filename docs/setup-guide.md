@@ -196,6 +196,9 @@ showing only provider remediation.
 On Windows, the desktop host now also auto-runs the repo-owned readiness audit
 during bootstrap whenever no more specific packaged setup recovery action is
 active, so the first-run provider scan is no longer just a manifest promise.
+That bootstrap-time audit now also carries optional local-model follow-through
+for the current `local_model_pack`, but the host keeps those findings
+non-blocking for the API baseline and first chat.
 When a helper reports only manual follow-through, the host now prefers a
 verification-first resume step instead of recommending another install/apply
 mutation by default.

@@ -18,6 +18,7 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /providerSetup\.capabilityPacks/);
   assert.match(html, /Local provider rollout/);
   assert.match(html, /Not bundled in this desktop build/);
+  assert.match(html, /Optional capability-pack follow-through/);
   assert.match(html, /interruption-chip/);
   assert.match(html, /renderInterruptions/);
   assert.match(html, /repo-owned packaged assets/);

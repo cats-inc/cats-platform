@@ -9,6 +9,7 @@ import { createDesktopPackagingPlan } from '../dist-electron/packaging.js';
 import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
+  isOptionalCapabilityPackSetupAction,
   runDesktopSetupHelper,
   shouldAutoRunSetupAudit,
 } from '../dist-electron/setupBridge.js';
@@ -138,6 +139,21 @@ test('shouldAutoRunSetupAudit preserves active non-audit recovery states', () =>
       interruptions: [],
       error: null,
     },
+  }), false);
+});
+
+test('isOptionalCapabilityPackSetupAction detects optional local-model audit follow-through', () => {
+  assert.equal(isOptionalCapabilityPackSetupAction({
+    helperId: 'windows-install-readiness-audit',
+    plannedActions: ['local_model:install_ollama_local_model'],
+  }), true);
+  assert.equal(isOptionalCapabilityPackSetupAction({
+    helperId: 'windows-install-readiness-audit',
+    plannedActions: ['repair_native_cli_pack'],
+  }), false);
+  assert.equal(isOptionalCapabilityPackSetupAction({
+    helperId: 'windows-ollama-local-model-installer',
+    plannedActions: ['local_model:install_ollama_local_model'],
   }), false);
 });
 
@@ -301,6 +317,44 @@ test('runDesktopSetupHelper normalizes successful helper execution', async () =>
   assert.deepEqual(record.manualSteps, ['Complete the Claude Code sign-in flow, then rerun the packaged setup check.']);
   assert.deepEqual(record.interruptions.map((entry) => entry.kind), ['auth_required']);
   assert.equal(record.error, null);
+});
+
+test('runDesktopSetupHelper forwards extra audit arguments when requested by the host', async () => {
+  const config = await createDesktopConfig();
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-03-30T11:06:00.000Z'),
+  });
+
+  const record = await runDesktopSetupHelper({
+    config,
+    packaging,
+    action: {
+      helperId: 'windows-install-readiness-audit',
+      mode: 'check',
+      extraArguments: ['-IncludeLocalModels:$true'],
+    },
+  }, {
+    platform: 'win32',
+    pathExists: async () => true,
+    execFile: async (_file, args) => {
+      assert.equal(args.includes('-IncludeLocalModels:$true'), true);
+      return {
+        stdout: JSON.stringify({
+          helper: 'windows-setup-readiness-audit',
+          status: 'not_installed',
+          warnings: [],
+          plannedActions: ['local_model:install_ollama_local_model'],
+          appliedChanges: [],
+          manualSteps: [],
+          interruptions: [],
+        }),
+        stderr: '',
+      };
+    },
+  });
+
+  assert.equal(record.status, 'not_installed');
+  assert.deepEqual(record.plannedActions, ['local_model:install_ollama_local_model']);
 });
 
 test('runDesktopSetupHelper preserves docker warm-up interruptions from helper output', async () => {

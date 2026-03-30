@@ -337,6 +337,7 @@ async function runSetupAction(
   action: {
     helperId: string;
     mode: DesktopSetupHelperMode;
+    extraArguments?: string[];
   },
 ): Promise<DesktopSetupSnapshot> {
   if (!hostConfig) {
@@ -369,6 +370,7 @@ async function maybePrimeSetupAudit(): Promise<void> {
   await runSetupAction({
     helperId: 'windows-install-readiness-audit',
     mode: 'check',
+    extraArguments: ['-IncludeLocalModels:$true'],
   });
 }
 

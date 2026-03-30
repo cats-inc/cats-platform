@@ -597,3 +597,83 @@ test('desktop bootstrap surfaces provider remediation after setup if no provider
     'failed',
   );
 });
+
+test('desktop bootstrap keeps optional local-model audit follow-through non-blocking', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: null,
+    },
+    runtimeHealth: {
+      status: 'degraded',
+      runtime: {
+        status: 'ok',
+        summary: 'Runtime is ready.',
+      },
+      providers: {
+        summary: {
+          status: 'degraded',
+          summary: 'No default provider targets are configured yet.',
+          configuredProviders: 0,
+          targets: 0,
+          defaultTargets: 0,
+          ok: 0,
+          degraded: 0,
+          unavailable: 0,
+        },
+      },
+    },
+    providerDiagnostics: {
+      summary: {
+        status: 'degraded',
+        summary: 'No default provider targets are configured yet.',
+        configuredProviders: 0,
+        targets: 0,
+        defaultTargets: 0,
+        ok: 0,
+        degraded: 0,
+        unavailable: 0,
+      },
+      providers: [],
+    },
+    setup: {
+      updatedAt: '2026-03-30T13:00:00.000Z',
+      lastAction: {
+        helperId: 'windows-install-readiness-audit',
+        assetId: 'windows-setup-readiness-audit-script',
+        label: 'Windows setup readiness audit',
+        mode: 'check',
+        runState: 'completed',
+        status: 'not_installed',
+        summary: 'Windows setup readiness audit check finished with not_installed.',
+        packagedRelativePath: 'desktop-host/setup-assets/windows/Check-WindowsSetupReadiness.ps1',
+        scriptPath: null,
+        requiresElevation: false,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-03-30T12:59:30.000Z',
+        completedAt: '2026-03-30T13:00:00.000Z',
+        warnings: [],
+        plannedActions: ['local_model:install_ollama_local_model'],
+        appliedChanges: [],
+        manualSteps: [],
+        interruptions: [],
+        error: null,
+      },
+    },
+  });
+
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.equal(snapshot.actions.some((action) => action.id === 'resume_setup'), false);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup' && action.primary), true);
+});

@@ -377,6 +377,12 @@ export function buildDesktopBootstrapPage(): string {
         }
 
         if (lastAction) {
+          const optionalCapabilityFollowThrough = lastAction.helperId === 'windows-install-readiness-audit'
+            && Array.isArray(lastAction.plannedActions)
+            && lastAction.plannedActions.length > 0
+            && lastAction.plannedActions.every((entry) => (
+              String(entry).startsWith('local_model:') || String(entry).startsWith('docker:')
+            ));
           const statusClass = lastAction.runState === 'failed'
             ? 'status-unavailable'
             : lastAction.status === 'ready'
@@ -391,6 +397,9 @@ export function buildDesktopBootstrapPage(): string {
               + '<div class="meta">' + escapeHtml(lastAction.summary || 'No setup action summary recorded.') + '</div>'
               + renderInterruptions(lastAction.interruptions)
               + '<div class="meta"><code>' + escapeHtml(lastAction.mode) + '</code></div>'
+              + (optionalCapabilityFollowThrough
+                ? '<div class="meta status-ok">Optional capability-pack follow-through. This does not block the API baseline or first chat.</div>'
+                : '')
               + (lastAction.restartRequired ? '<div class="meta status-degraded">Restart is required before the next packaged setup step.</div>' : '')
               + (Array.isArray(lastAction.manualSteps) && lastAction.manualSteps.length
                 ? '<div class="meta">' + escapeHtml(lastAction.manualSteps[0]) + '</div>'

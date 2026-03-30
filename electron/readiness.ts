@@ -17,6 +17,7 @@ import type { DesktopHealthStatus } from './contracts.js';
 import type { DesktopHostConfig } from './config.js';
 import { createDesktopBackgroundState } from './hostState.js';
 import { createDesktopPackagingPlan } from './packaging.js';
+import { isOptionalCapabilityPackSetupAction } from './setupBridge.js';
 import { createDefaultDesktopUpdateState } from './update.js';
 
 export interface ReadinessPayload {
@@ -458,6 +459,7 @@ function buildActions(
   const lastSetupAction = options.setup?.lastAction ?? null;
   const canResumeSetup = Boolean(
     lastSetupAction
+    && !isOptionalCapabilityPackSetupAction(lastSetupAction)
     && lastSetupAction.resumable
     && (
       lastSetupAction.interruptions.length > 0
