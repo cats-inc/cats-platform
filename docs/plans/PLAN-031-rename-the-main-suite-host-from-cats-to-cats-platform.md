@@ -1,6 +1,6 @@
 # PLAN-031: Rename the Main Suite Host from cats to cats-platform
 
-Status: Draft (Pending Review)
+Status: In Progress
 
 ## Related Decision
 
@@ -88,11 +88,11 @@ However, the final host target is no longer `cats`; it is now
 
 ### Phase 1: Freeze the New Naming Contract
 
-- [ ] Mark ADR-045 as the active naming decision and ADR-026 as superseded.
-- [ ] Mark PLAN-031 as the active rename plan and PLAN-018 as superseded.
-- [ ] Freeze the new naming matrix for brand, host repo/package, runtime, and
+- [x] Mark ADR-045 as the active naming decision and ADR-026 as superseded.
+- [x] Mark PLAN-031 as the active rename plan and PLAN-018 as superseded.
+- [x] Freeze the new naming matrix for brand, host repo/package, runtime, and
       installer surfaces.
-- [ ] Audit current `cats` references and classify each as:
+- [x] Audit current `cats` references and classify each as:
       - brand/product label
       - host repo/package identity
       - historical note
@@ -102,33 +102,33 @@ However, the final host target is no longer `cats`; it is now
 
 ### Phase 2: Documentation and Public Language Migration
 
-- [ ] Update `README.md` to distinguish:
+- [x] Update `README.md` to distinguish:
       - `Cats` as brand/product
       - `cats-platform` as the host
       - `cats-runtime` as the runtime boundary
       - `cats-one` as the installer entrypoint
-- [ ] Update architecture, API, setup, deployment, services, and packaging docs
+- [x] Update architecture, API, setup, deployment, services, and packaging docs
       to use the new naming matrix.
-- [ ] Replace future public repo references such as `cats-inc/cats` with
+- [x] Replace future public repo references such as `cats-inc/cats` with
       `cats-inc/cats-platform`.
-- [ ] Update plugin and package-planning docs so the host package target is
+- [x] Update plugin and package-planning docs so the host package target is
       `@cats-inc/cats-platform`.
-- [ ] Keep historical notes readable where older rename stages still matter.
+- [x] Keep historical notes readable where older rename stages still matter.
 
 **Deliverables**: docs stop conflating the `Cats` brand with the technical host
 identity.
 
 ### Phase 3: Package, Installer, and Executable Alignment
 
-- [ ] Change `package.json` from the current host name to the target host
+- [x] Change `package.json` from the current host name to the target host
       package identity when the migration slice executes.
-- [ ] Reconcile packaging docs that currently assume the host package/executable
+- [x] Reconcile packaging docs that currently assume the host package/executable
       is `cats`.
-- [ ] Document `cats-one` as the canonical one-shot install/bootstrap package.
-- [ ] Decide whether the persistent local executable remains `cats` or moves to
+- [x] Document `cats-one` as the canonical one-shot install/bootstrap package.
+- [x] Decide whether the persistent local executable remains `cats` or moves to
       a more explicit host-oriented binary name, and document that choice
       explicitly.
-- [ ] Reconcile
+- [x] Reconcile
       [ADR-013](../decisions/013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
       and [PLAN-013](./PLAN-013-self-hosted-npm-app-packaging.md) with the new
       host/install split.
@@ -144,7 +144,7 @@ different concepts accidentally.
 - [ ] Plan the monorepo subproject folder rename from `cats/` to
       `cats-platform/` as a coordinated slice once references and scripts are
       ready.
-- [ ] Document transitional local-folder expectations while the monorepo still
+- [x] Document transitional local-folder expectations while the monorepo still
       uses `cats/`.
 
 **Deliverables**: repo identity and workspace guidance align with the new host
@@ -152,11 +152,11 @@ name.
 
 ### Phase 5: Validation and Cleanup
 
-- [ ] Validate that docs, package metadata, and public payloads align on the
+- [x] Validate that docs, package metadata, and public payloads align on the
       same naming model.
-- [ ] Add or update tests where public app metadata or installer text is
+- [x] Add or update tests where public app metadata or installer text is
       asserted.
-- [ ] Log what still says `cats` by design:
+- [x] Log what still says `cats` by design:
       - brand/product labels
       - historical ADR/PLAN content
       - intentionally deferred internal symbols
@@ -228,6 +228,9 @@ Use this when delegating implementation:
 | Date | Update |
 |------|--------|
 | 2026-03-30 | Plan created to supersede PLAN-018 and apply ADR-045 naming targets |
+| 2026-03-30 | Phase 1-3 migration slice landed across README, packaging docs, research notes, package metadata, and the new `cats-one` bootstrap package scaffold while keeping the persistent executable as `cats` |
+| 2026-03-30 | Validation slice updated `tests/package-contract.test.js` for `@cats-inc/cats-platform` and replaced direct `npm.cmd` spawning with npm CLI script resolution so Windows package-contract checks can run in this environment |
+| 2026-03-30 | Local tarball smoke confirmed `cats-one` installs a `cats-one` shim and successfully hands off to the packaged `@cats-inc/cats-platform` CLI while keeping `cats-runtime` as a separate dependency |
 
 ---
 

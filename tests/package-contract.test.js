@@ -16,10 +16,25 @@ function readPackageManifest() {
   return JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 }
 
+function resolveNodeCliScript(command) {
+  const scriptName = command === 'npm' ? 'npm-cli.js' : 'npx-cli.js';
+  const candidates = [];
+
+  if (command === 'npm' && process.env.npm_execpath?.trim()) {
+    candidates.push(resolve(process.env.npm_execpath.trim()));
+  }
+
+  const nodeDir = dirname(process.execPath);
+  candidates.push(resolve(nodeDir, 'node_modules', 'npm', 'bin', scriptName));
+  candidates.push(resolve(nodeDir, '..', 'node_modules', 'npm', 'bin', scriptName));
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? null;
+}
+
 function runNpmCommand(args, options = {}) {
-  const npmExecPath = process.env.npm_execpath;
-  const command = npmExecPath ? process.execPath : (process.platform === 'win32' ? 'npm.cmd' : 'npm');
-  const commandArgs = npmExecPath ? [npmExecPath, ...args] : args;
+  const npmCliPath = resolveNodeCliScript('npm');
+  const command = npmCliPath ? process.execPath : 'npm';
+  const commandArgs = npmCliPath ? [npmCliPath, ...args] : args;
   const result = spawnSync(command, commandArgs, {
     cwd: options.cwd ?? projectRoot,
     encoding: 'utf8',
@@ -28,6 +43,7 @@ function runNpmCommand(args, options = {}) {
       ...options.env,
       npm_config_loglevel: 'silent',
     },
+    shell: !npmCliPath && process.platform === 'win32',
     windowsHide: true,
   });
 
@@ -52,29 +68,6 @@ function runNodeCommand(args, options = {}) {
       ...options.env,
     },
     windowsHide: true,
-  });
-}
-
-function runLinkedBinCommand(commandPath, args, options = {}) {
-  if (process.platform === 'win32') {
-    return spawnSync('cmd.exe', ['/d', '/s', '/c', `"${commandPath}" ${args.join(' ')}`], {
-      cwd: options.cwd ?? projectRoot,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        ...options.env,
-      },
-      windowsHide: true,
-    });
-  }
-
-  return spawnSync(commandPath, args, {
-    cwd: options.cwd ?? projectRoot,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      ...options.env,
-    },
   });
 }
 
@@ -134,7 +127,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   ]);
   assert.equal(manifest.scripts.prepack, 'npm run build');
 
-  assert.equal(packed.name, 'cats');
+  assert.equal(packed.name, '@cats-inc/cats-platform');
   assert.ok(packed.version);
   assert.equal(packedPaths.has('.env.example'), true);
   assert.equal(packedPaths.has('LICENSE'), true);
@@ -206,17 +199,26 @@ test('local tarball install exposes the cats executable entrypoint', () => {
       },
     });
 
-    const installedRoot = join(consumerDir, 'node_modules', 'cats');
+    const installedRoot = join(consumerDir, 'node_modules', '@cats-inc', 'cats-platform');
     const linkedBinPath = join(
       consumerDir,
       'node_modules',
       '.bin',
       process.platform === 'win32' ? 'cats.cmd' : 'cats',
     );
+    const installedManifest = JSON.parse(readFileSync(join(installedRoot, 'package.json'), 'utf8'));
+    const installedBinRelativePath = typeof installedManifest.bin === 'string'
+      ? installedManifest.bin
+      : installedManifest.bin?.cats;
+    const installedBinTargetPath = installedBinRelativePath
+      ? join(installedRoot, installedBinRelativePath)
+      : '';
 
+    assert.equal(existsSync(installedRoot), true);
     assert.equal(existsSync(linkedBinPath), true);
+    assert.equal(existsSync(installedBinTargetPath), true);
 
-    const helpResult = runLinkedBinCommand(linkedBinPath, ['--help'], {
+    const helpResult = runNodeCommand([installedBinTargetPath, '--help'], {
       cwd: consumerDir,
     });
 
