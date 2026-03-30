@@ -107,8 +107,7 @@ test('Check-WindowsSetupReadiness reports elevation-required repair actions when
     '22621',
     '-WslState',
     'missing',
-    '-IncludeNativeProviders',
-    '0',
+    '-IncludeNativeProviders:$false',
   ]);
 
   const result = JSON.parse(stdout);
@@ -214,8 +213,7 @@ test('Check-WindowsSetupReadiness reports docker warm-up when Docker Desktop is 
     'installed',
     '-JunieAuthState',
     'authenticated',
-    '-IncludeDocker',
-    '1',
+    '-IncludeDocker:$true',
     '-DockerState',
     'installed_engine_stopped',
   ]);
@@ -270,8 +268,7 @@ test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model
     'installed',
     '-JunieAuthState',
     'authenticated',
-    '-IncludeLocalModels',
-    '1',
+    '-IncludeLocalModels:$true',
     '-OllamaInstallState',
     'installed',
     '-OllamaApiState',
