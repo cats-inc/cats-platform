@@ -11,6 +11,7 @@ import {
   SUITE_SURFACE_ROUTES,
 } from './routeMap';
 import { SuiteLobby } from './SuiteLobby';
+import { SuiteSettingsRoutes } from './settings/SuiteSettingsRoutes';
 import { SuiteSetupWizard } from './setup';
 import { fetchSuiteEnvelope } from './setup/api';
 
@@ -53,6 +54,16 @@ export default function SuiteApp() {
   const envelope = state.status === 'ready' ? state.envelope : null;
   const setupComplete = Boolean(envelope?.setupCompleteAt);
   const storedSurface = envelope?.lastProductSurface ?? 'chat';
+
+  const onEnvelopeUpdate = (updater: (current: SuiteHostEnvelope) => SuiteHostEnvelope): void => {
+    startTransition(() => {
+      setState((current) =>
+        current.status === 'ready'
+          ? { status: 'ready', envelope: updater(current.envelope) }
+          : current,
+      );
+    });
+  };
 
   useEffect(() => {
     if (!setupComplete) {
@@ -142,7 +153,15 @@ export default function SuiteApp() {
       <Route path="/lobby" element={<SuiteLobby envelope={readyEnvelope} />} />
       <Route path="/products" element={<Navigate to="/lobby" replace />} />
       <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
-      <Route path="/settings/*" element={<ChatApp />} />
+      <Route
+        path="/settings/*"
+        element={(
+          <SuiteSettingsRoutes
+            envelope={readyEnvelope}
+            onEnvelopeUpdate={onEnvelopeUpdate}
+          />
+        )}
+      />
       <Route path={`${SUITE_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.code.routePrefix}/*`} element={<CodeApp />} />

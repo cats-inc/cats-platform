@@ -595,6 +595,23 @@ function ProductCard({
       disabled={!plugin.enabled}
       onClick={onSelect}
     >
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span className="statusChip statusChipReady">
+          {plugin.installPolicy === 'required' ? 'Required' : 'Optional'}
+        </span>
+        {plugin.installState !== 'installed' ? (
+          <span className="statusChip statusChipMuted">
+            {plugin.installState === 'available'
+              ? 'Available'
+              : plugin.installState === 'installing'
+                ? 'Installing'
+                : 'Needs attention'}
+          </span>
+        ) : null}
+        {plugin.maturity === 'preview' ? (
+          <span className="statusChip statusChipMuted">Preview</span>
+        ) : null}
+      </div>
       <span className="setupProductLabel">{plugin.label}</span>
       <span className="setupProductDescription">{plugin.description}</span>
       {plugin.disabledReason ? (

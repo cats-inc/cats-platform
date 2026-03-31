@@ -73,12 +73,19 @@ function assertNavigateRoute(
   assert.equal(route.element.props.replace, true);
 }
 
-test('AppRoutes keeps legacy /chat/settings deep links as redirects to suite settings', () => {
+function assertConcreteRoute(routes: RouteDescriptor[], path: string): void {
+  const route = routes.find((entry) => entry.path === path);
+  assert.ok(route, `expected route "${path}"`);
+  assert.ok(isValidElement(route.element), `expected "${path}" to have a React element`);
+  assert.notEqual(route.element.type, Navigate, `expected "${path}" to be a concrete route`);
+}
+
+test('AppRoutes keeps product-owned /chat/settings routes while preserving suite-level data redirects', () => {
   const routes = collectRoutes(AppRoutes(createProps()));
 
-  assertNavigateRoute(routes, 'settings', '/settings/general');
-  assertNavigateRoute(routes, 'settings/general', '/settings/general');
-  assertNavigateRoute(routes, 'settings/cats', '/settings/cats');
+  assertNavigateRoute(routes, 'settings', '/chat/settings/general');
+  assertConcreteRoute(routes, 'settings/general');
+  assertConcreteRoute(routes, 'settings/cats');
   assertNavigateRoute(routes, 'settings/data', '/settings/data');
-  assertNavigateRoute(routes, 'settings/*', '/settings/general');
+  assertNavigateRoute(routes, 'settings/*', '/chat/settings/general');
 });

@@ -1,5 +1,8 @@
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
-import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
+import type {
+  SuiteProductDescriptor,
+  SuiteSurfaceId,
+} from '../../../shared/suite-contract.js';
 
 export interface ConditionalStepProps {
   provider: string;
@@ -31,6 +34,9 @@ export interface ProductSetupPlugin {
   description: string;
   enabled: boolean;
   disabledReason?: string;
+  installPolicy: SuiteProductDescriptor['installPolicy'];
+  installState: SuiteProductDescriptor['installState'];
+  maturity: SuiteProductDescriptor['maturity'];
   hasConditionalStep: boolean;
   renderConditionalStep?: (props: ConditionalStepProps) => React.ReactNode;
   validateConditionalStep?: (state: ConditionalStepState) => boolean;

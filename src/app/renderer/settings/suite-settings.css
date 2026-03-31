@@ -1,0 +1,21 @@
+@import '../../../products/chat/renderer/styles/settings.css';
+
+@media (max-width: 820px) {
+  .settingsShell {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 20px 0;
+  }
+
+  .settingsSidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .settingsTab {
+    flex: 1 1 0;
+    text-align: center;
+    padding: 8px 10px;
+  }
+}

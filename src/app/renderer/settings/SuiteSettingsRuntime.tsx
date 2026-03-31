@@ -1,0 +1,147 @@
+import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
+import type { SuiteHostEnvelope } from '../../../shared/suite-contract.js';
+import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
+import { SuiteSettingsShell } from './SuiteSettingsShell.js';
+
+function resolveRuntimeChip(
+  runtime: RuntimeStatusSummary,
+): { className: string; label: string } {
+  if (!runtime.reachable) {
+    return {
+      className: 'statusChip statusChipWarm',
+      label: 'Runtime unavailable',
+    };
+  }
+
+  const status = typeof runtime.status === 'string' ? runtime.status.toLowerCase() : '';
+  if (status === 'degraded' || status === 'warming' || status === 'starting') {
+    return {
+      className: 'statusChip statusChipWarm',
+      label: 'Runtime degraded',
+    };
+  }
+
+  return {
+    className: 'statusChip statusChipReady',
+    label: 'Runtime connected',
+  };
+}
+
+function resolveRuntimeSetupChip(
+  runtimeSetup: RuntimeSetupSummary,
+): { className: string; label: string } {
+  switch (runtimeSetup.status) {
+    case 'ready':
+      return {
+        className: 'statusChip statusChipReady',
+        label: 'Runtime ready',
+      };
+    case 'ready_to_apply':
+      return {
+        className: 'statusChip statusChipWarm',
+        label: 'Ready to apply',
+      };
+    case 'attention_required':
+      return {
+        className: 'statusChip statusChipWarm',
+        label: 'Needs remediation',
+      };
+    case 'scan_required':
+      return {
+        className: 'statusChip statusChipWarm',
+        label: 'Scan required',
+      };
+    case 'unavailable':
+    default:
+      return {
+        className: 'statusChip statusChipWarm',
+        label: 'Setup unavailable',
+      };
+  }
+}
+
+export function SuiteSettingsRuntime({
+  envelope,
+}: {
+  envelope: SuiteHostEnvelope;
+}) {
+  const runtimeChip = resolveRuntimeChip(envelope.runtime);
+  const runtimeSetupChip = resolveRuntimeSetupChip(envelope.runtimeSetup);
+
+  return (
+    <SuiteSettingsShell section="runtime" title="Runtime">
+      <div className="contentCard">
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <span className={runtimeChip.className}>{runtimeChip.label}</span>
+          <span className={runtimeSetupChip.className}>{runtimeSetupChip.label}</span>
+        </div>
+        <p className="heroNote" style={{ marginBottom: 16 }}>
+          {envelope.runtimeSetup.summary}
+        </p>
+        <div className="setupRuntimeMetrics">
+          <div className="setupRuntimeMetric">
+            <strong>{envelope.runtimeSetup.availableCount}</strong>
+            <span>ready providers</span>
+          </div>
+          <div className="setupRuntimeMetric">
+            <strong>{envelope.runtimeSetup.providerCount}</strong>
+            <span>providers scanned</span>
+          </div>
+          <div className="setupRuntimeMetric">
+            <strong>{envelope.runtimeSetup.providersNeedingAttention.length}</strong>
+            <span>need attention</span>
+          </div>
+        </div>
+      </div>
+
+      {envelope.runtimeSetup.providersReadyToApply.length > 0 ? (
+        <div className="contentCard">
+          <h2>Ready providers</h2>
+          <ul className="setupRuntimeList">
+            {envelope.runtimeSetup.providersReadyToApply.map((entry) => (
+              <li key={entry.provider}>
+                <strong>{entry.provider}</strong>
+                <span>{entry.family}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {envelope.runtimeSetup.providersNeedingAttention.length > 0 ? (
+        <div className="contentCard">
+          <h2>Need attention</h2>
+          <ul className="setupRuntimeList">
+            {envelope.runtimeSetup.providersNeedingAttention.map((entry) => (
+              <li key={entry.provider}>
+                <strong>{entry.provider}</strong>
+                <span>
+                  {entry.family}
+                  {typeof entry.remediationCount === 'number'
+                    ? ` • ${entry.remediationCount} fix step(s)`
+                    : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="contentCard">
+        <h2>Standalone setup</h2>
+        <p className="heroNote">
+          Open the standalone runtime setup when you need provider remediation or a deeper scan.
+        </p>
+        <a
+          className="secondaryButton"
+          href={`${envelope.runtime.baseUrl.replace(/\/$/, '')}/setup`}
+          target="_blank"
+          rel="noreferrer"
+          style={{ display: 'inline-flex', textDecoration: 'none' }}
+        >
+          Open Cats Runtime setup
+        </a>
+      </div>
+    </SuiteSettingsShell>
+  );
+}

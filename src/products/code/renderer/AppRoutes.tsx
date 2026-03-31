@@ -23,9 +23,6 @@ import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
-import { SettingsCats } from './components/settings-cats/SettingsCats.js';
-import { SettingsData } from './components/SettingsData.js';
-import { SettingsGeneral } from './components/SettingsGeneral.js';
 
 function noop(): void {}
 
@@ -89,24 +86,12 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        {/* Canonical settings live at /settings/*; /chat/settings/* remains redirect-only. */}
+        {/* Canonical suite settings live at /settings/* until Code owns product settings. */}
         <Route path="settings" element={<Navigate to="/settings/general" replace />} />
         <Route path="settings/general" element={<Navigate to="/settings/general" replace />} />
-        <Route path="settings/cats" element={<Navigate to="/settings/cats" replace />} />
+        <Route path="settings/runtime" element={<Navigate to="/settings/runtime" replace />} />
         <Route path="settings/data" element={<Navigate to="/settings/data" replace />} />
         <Route path="settings/*" element={<Navigate to="/settings/general" replace />} />
-        <Route
-          path="general"
-          element={<SettingsGeneral payload={payload} feedback={feedback} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} />}
-        />
-        <Route
-          path="cats"
-          element={<SettingsCats payload={payload} feedback={feedback} busy={busy} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} onBusy={onBusy} />}
-        />
-        <Route
-          path="data"
-          element={<SettingsData feedback={feedback} busy={busy} onResetSetup={onResetSetup} />}
-        />
         <Route
           path="relay"
           element={

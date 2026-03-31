@@ -23,9 +23,8 @@ import {
 import {
   CompanionWorkspace,
 } from './components/companion/CompanionWorkspace.js';
+import { ChatSettingsGeneral } from './components/ChatSettingsGeneral.js';
 import { SettingsCats } from './components/settings-cats/SettingsCats.js';
-import { SettingsData } from './components/SettingsData.js';
-import { SettingsGeneral } from './components/SettingsGeneral.js';
 
 function noop(): void {}
 
@@ -99,24 +98,34 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        {/* Canonical settings live at /settings/*; /chat/settings/* remains redirect-only. */}
-        <Route path="settings" element={<Navigate to="/settings/general" replace />} />
-        <Route path="settings/general" element={<Navigate to="/settings/general" replace />} />
-        <Route path="settings/cats" element={<Navigate to="/settings/cats" replace />} />
+        {/* Product-owned settings live at /chat/settings/*; suite settings stay at /settings/*. */}
+        <Route path="settings" element={<Navigate to="/chat/settings/general" replace />} />
+        <Route
+          path="settings/general"
+          element={(
+            <ChatSettingsGeneral
+              payload={payload}
+              feedback={feedback}
+              onPayloadUpdate={onPayloadUpdate}
+              onFeedback={onFeedback}
+            />
+          )}
+        />
+        <Route
+          path="settings/cats"
+          element={(
+            <SettingsCats
+              payload={payload}
+              feedback={feedback}
+              busy={busy}
+              onPayloadUpdate={onPayloadUpdate}
+              onFeedback={onFeedback}
+              onBusy={onBusy}
+            />
+          )}
+        />
         <Route path="settings/data" element={<Navigate to="/settings/data" replace />} />
-        <Route path="settings/*" element={<Navigate to="/settings/general" replace />} />
-        <Route
-          path="general"
-          element={<SettingsGeneral payload={payload} feedback={feedback} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} />}
-        />
-        <Route
-          path="cats"
-          element={<SettingsCats payload={payload} feedback={feedback} busy={busy} onPayloadUpdate={onPayloadUpdate} onFeedback={onFeedback} onBusy={onBusy} />}
-        />
-        <Route
-          path="data"
-          element={<SettingsData feedback={feedback} busy={busy} onResetSetup={onResetSetup} />}
-        />
+        <Route path="settings/*" element={<Navigate to="/chat/settings/general" replace />} />
         <Route
           path="chats/:channelId"
           element={

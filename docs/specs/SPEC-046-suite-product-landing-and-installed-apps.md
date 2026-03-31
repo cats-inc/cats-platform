@@ -193,6 +193,8 @@ same registration data.
   host-owned runtime and environment state
 - `/settings/data`
   host-owned reset/export/diagnostic data controls
+- `/settings/cats`
+  bounded compatibility alias that redirects to `/chat/settings/cats`
 
 ### Product-Level Routes
 
@@ -206,6 +208,10 @@ for example:
 - `/chat/settings/*`
 - `/work/settings/*`
 - `/code/settings/*`
+
+In the current slice, `Cats Chat` owns canonical product settings beneath
+`/chat/settings/*`, while `Work` and `Code` keep compatibility redirects until
+their product-specific settings surfaces exist.
 
 ## Landing Structure
 
@@ -232,6 +238,10 @@ The first host-owned landing should have these content regions:
 The layout may evolve, but Home/Office should remain the primary organizer for
 the current Lobby, while install policy and install state remain per-product
 metadata.
+
+The setup wizard should also surface install policy and preview maturity on its
+product cards so the same host registration metadata remains visible before and
+after setup completion.
 
 ## Registration Model
 

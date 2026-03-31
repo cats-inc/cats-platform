@@ -1,19 +1,19 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type SettingsSection = 'general' | 'cats' | 'data';
+type SuiteSettingsSection = 'general' | 'runtime' | 'data';
 
-export interface SettingsShellProps {
-  section: SettingsSection;
+export interface SuiteSettingsShellProps {
+  section: SuiteSettingsSection;
   title: string;
   children: ReactNode;
 }
 
-export function SettingsShell({
+export function SuiteSettingsShell({
   section,
   title,
   children,
-}: SettingsShellProps) {
+}: SuiteSettingsShellProps) {
   const navigate = useNavigate();
 
   return (
@@ -28,21 +28,28 @@ export function SettingsShell({
             color: 'var(--text)',
           }}
         >
-          Chat Settings
+          Suite Settings
         </p>
         <button
           className={section === 'general' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
-          onClick={() => navigate('/chat/settings/general')}
+          onClick={() => navigate('/settings/general')}
         >
           General
         </button>
         <button
-          className={section === 'cats' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+          className={section === 'runtime' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
-          onClick={() => navigate('/chat/settings/cats')}
+          onClick={() => navigate('/settings/runtime')}
         >
-          Cats
+          Runtime
+        </button>
+        <button
+          className={section === 'data' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+          type="button"
+          onClick={() => navigate('/settings/data')}
+        >
+          Data
         </button>
         <p
           style={{
@@ -55,21 +62,21 @@ export function SettingsShell({
             textTransform: 'uppercase',
           }}
         >
-          Suite
+          Product Settings
         </p>
         <button
           className="settingsTab"
           type="button"
-          onClick={() => navigate('/settings/general')}
+          onClick={() => navigate('/chat/settings/general')}
         >
-          Suite settings
+          Chat
         </button>
         <button
-          className={section === 'data' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+          className="settingsTab"
           type="button"
-          onClick={() => navigate('/settings/data')}
+          onClick={() => navigate('/chat/settings/cats')}
         >
-          Suite data
+          Cats
         </button>
       </nav>
       <section className="settingsContent">

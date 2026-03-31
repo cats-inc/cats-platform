@@ -59,14 +59,14 @@ contracts.
 
 ## Phase 3: Re-Tier Settings Ownership
 
-- [ ] Introduce host-owned settings sections for at least `general`, `runtime`,
+- [x] Introduce host-owned settings sections for at least `general`, `runtime`,
       and `data`.
-- [ ] Move or proxy existing suite-global settings out of Chat-owned routing.
-- [ ] Define the canonical route shape for product-owned settings beneath each
+- [x] Move or proxy existing suite-global settings out of Chat-owned routing.
+- [x] Define the canonical route shape for product-owned settings beneath each
       product prefix.
-- [ ] Add explicit redirects or compatibility handling so existing settings
+- [x] Add explicit redirects or compatibility handling so existing settings
       entry points do not break abruptly.
-- [ ] Preserve legacy deep links such as `/settings/cats` by redirecting them
+- [x] Preserve legacy deep links such as `/settings/cats` by redirecting them
       to the canonical product-owned path once that path exists.
 
 **Deliverables**: suite settings and product settings follow distinct ownership
@@ -77,7 +77,7 @@ boundaries.
 - [x] Ensure setup continues to choose a primary product from the host
       registration source.
 - [x] Reuse the same product descriptors for both setup and landing.
-- [ ] Ensure setup and landing can distinguish required products from optional
+- [x] Ensure setup and landing can distinguish required products from optional
       products without changing the user-facing primary-product selection flow.
 - [x] Surface the current default product and last-used product clearly on the
       landing.
@@ -153,6 +153,7 @@ distribution system.
 |------|--------|
 | 2026-03-31 | Plan created |
 | 2026-03-31 | Added shared suite product registry, exposed `products` in the suite envelope, and reused the same descriptors across setup and Lobby. |
+| 2026-03-31 | Moved suite settings to host-owned `/settings/*`, preserved `/settings/cats` compatibility via `/chat/settings/cats`, and surfaced install-policy metadata in setup cards. |
 
 ---
 
