@@ -36,6 +36,7 @@ export function SuiteLobby({
 }) {
   const navigate = useNavigate();
   const sections = buildSuiteLobbySections({
+    products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
   });
   const runtimeChip = resolveRuntimeChip(envelope.runtime);

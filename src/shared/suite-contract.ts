@@ -3,11 +3,35 @@ import type { ProviderModelSelection } from './providerSelection.js';
 import type { RuntimeSetupSummary } from './runtimeSetup.js';
 
 export type SuiteSurfaceId = 'chat' | 'work' | 'code';
+export type SuiteProductId = SuiteSurfaceId | (string & {});
+export type SuiteProductGroupId = 'home' | 'office';
+export type SuiteProductInstallPolicy = 'required' | 'optional';
+export type SuiteProductInstallState = 'installed' | 'available' | 'installing' | 'attention';
+export type SuiteProductMaturity = 'active' | 'preview';
 
 export interface SuiteAppDescriptor {
   name: 'cats';
   stage: 'phase-2-shell';
   runtimeBoundary: 'cats-runtime';
+}
+
+export interface SuiteProductSetupDescriptor {
+  selectable: boolean;
+  disabledReason?: string;
+  supportsFirstCat: boolean;
+}
+
+export interface SuiteProductDescriptor {
+  id: SuiteProductId;
+  surface: SuiteSurfaceId | null;
+  routePrefix: `/${string}`;
+  productName: string;
+  subtitle: string;
+  group: SuiteProductGroupId;
+  installPolicy: SuiteProductInstallPolicy;
+  installState: SuiteProductInstallState;
+  maturity: SuiteProductMaturity;
+  setup: SuiteProductSetupDescriptor;
 }
 
 export interface SuiteResponseMetadata {
@@ -26,6 +50,7 @@ export interface SuiteOwnerContext {
 
 export interface SuiteHostEnvelope extends SuiteOwnerContext {
   app: SuiteAppDescriptor;
+  products: SuiteProductDescriptor[];
   runtime: RuntimeStatusSummary;
   runtimeSetup: RuntimeSetupSummary;
   metadata: SuiteResponseMetadata;

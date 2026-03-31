@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 
 import type { SuiteSurfaceId } from '../../shared/suite-contract.js';
-import { isEnabledSuiteSurface } from '../../shared/suiteSurfaces.js';
 import {
   listSuiteSurfaceDescriptors,
   suiteSurfaceProductName,
@@ -27,14 +26,7 @@ export function SuiteSurfaceSwitcher({
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>();
-  const descriptors = useMemo(
-    () =>
-      listSuiteSurfaceDescriptors().map((descriptor) => ({
-        ...descriptor,
-        enabled: isEnabledSuiteSurface(descriptor.id),
-      })),
-    [],
-  );
+  const descriptors = useMemo(() => listSuiteSurfaceDescriptors(), []);
 
   useEffect(() => {
     if (!open) {
@@ -129,7 +121,7 @@ export function SuiteSurfaceSwitcher({
               <span className="suiteSurfaceMenuCopy">
                 <span className="suiteSurfaceMenuTitleRow">
                   <span className="suiteSurfaceMenuTitle">{descriptor.productName}</span>
-                  {!descriptor.enabled ? (
+                  {descriptor.maturity === 'preview' ? (
                     <span className="suiteSurfaceMenuBadge">Preview</span>
                   ) : null}
                 </span>

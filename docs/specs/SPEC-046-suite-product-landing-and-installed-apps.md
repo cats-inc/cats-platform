@@ -145,15 +145,19 @@ type SuiteProductId = SuiteSurfaceId | (string & {});
 
 interface SuiteProductDescriptor {
   id: SuiteProductId;
-  label: string;
+  surface: SuiteSurfaceId | null;
+  productName: string;
+  subtitle: string;
   routePrefix: string;
+  group: 'home' | 'office';
   installPolicy: 'required' | 'optional';
   installState: 'installed' | 'available' | 'installing' | 'attention';
-  launchable: boolean;
-  defaultEntry: boolean;
-  lastUsed: boolean;
-  removable: boolean;
-  settingsPath?: string | null;
+  maturity: 'active' | 'preview';
+  setup: {
+    selectable: boolean;
+    disabledReason?: string;
+    supportsFirstCat: boolean;
+  };
 }
 
 interface SuiteInstalledAppDescriptor {
@@ -169,6 +173,10 @@ interface SuiteInstalledAppDescriptor {
 
 The exact field set may evolve, but the host must stop relying only on implicit
 route knowledge for inventory UI.
+
+In the current implementation slice, the suite host envelope already carries a
+`products` array with this shape so both setup and Lobby can render from the
+same registration data.
 
 ## Information Architecture
 

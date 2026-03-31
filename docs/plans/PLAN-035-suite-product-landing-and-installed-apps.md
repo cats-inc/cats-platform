@@ -1,6 +1,6 @@
 # PLAN-035: Suite Product Landing and Installed Apps
 
-Status: Draft
+Status: In Progress
 
 ## Related Spec
 
@@ -27,14 +27,14 @@ While adding a clearer suite-host model:
 
 ## Phase 1: Establish Terminology and Host Contracts
 
-- [ ] Add host-level terminology notes to the relevant suite docs.
-- [ ] Introduce explicit product and app descriptor types under a host-owned
+- [x] Add host-level terminology notes to the relevant suite docs.
+- [x] Introduce explicit product and app descriptor types under a host-owned
       shared contract file.
-- [ ] Include install-policy and install-state fields for first-party products.
-- [ ] Extend the suite envelope or companion host API shape so the renderer can
+- [x] Include install-policy and install-state fields for first-party products.
+- [x] Extend the suite envelope or companion host API shape so the renderer can
       read product/app inventory without inferring everything from route
       prefixes.
-- [ ] Promote the current setup plugin metadata into a more general host
+- [x] Promote the current setup plugin metadata into a more general host
       registration source.
 
 **Deliverables**: stable host vocabulary and structured product/app registration
@@ -42,17 +42,17 @@ contracts.
 
 ## Phase 2: Add the Host-Owned Landing Surface
 
-- [ ] Add a suite route for `/lobby` and keep `/products` as a compatibility
+- [x] Add a suite route for `/lobby` and keep `/products` as a compatibility
       alias.
-- [ ] Build a host-owned landing page that presents:
+- [x] Build a host-owned landing page that presents:
       - Home and Office product groupings
       - per-product install policy and install-state metadata
       - installed apps
       - host actions and runtime summary
-- [ ] Add a clear navigation entry to open the landing from inside the suite.
-- [ ] Keep `/` routing behavior aligned with the existing selected/last-used
+- [x] Add a clear navigation entry to open the landing from inside the suite.
+- [x] Keep `/` routing behavior aligned with the existing selected/last-used
       product model.
-- [ ] Keep setup-complete navigation aligned with the current product-first
+- [x] Keep setup-complete navigation aligned with the current product-first
       entry flow rather than forcing a landing detour in this slice.
 
 **Deliverables**: a visible host launcher and inventory surface.
@@ -74,14 +74,14 @@ boundaries.
 
 ## Phase 4: Integrate Setup and Product Entry
 
-- [ ] Ensure setup continues to choose a primary product from the host
+- [x] Ensure setup continues to choose a primary product from the host
       registration source.
-- [ ] Reuse the same product descriptors for both setup and landing.
+- [x] Reuse the same product descriptors for both setup and landing.
 - [ ] Ensure setup and landing can distinguish required products from optional
       products without changing the user-facing primary-product selection flow.
-- [ ] Surface the current default product and last-used product clearly on the
+- [x] Surface the current default product and last-used product clearly on the
       landing.
-- [ ] Add launch actions that route into the correct product entry points.
+- [x] Add launch actions that route into the correct product entry points.
 
 **Deliverables**: setup, landing, and product entry use one consistent host
 model.
@@ -152,6 +152,7 @@ distribution system.
 | Date | Update |
 |------|--------|
 | 2026-03-31 | Plan created |
+| 2026-03-31 | Added shared suite product registry, exposed `products` in the suite envelope, and reused the same descriptors across setup and Lobby. |
 
 ---
 

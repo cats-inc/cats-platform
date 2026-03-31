@@ -50,22 +50,26 @@ test('suite surface descriptors expose product switcher metadata and stable root
       id: descriptor.id,
       routePrefix: descriptor.routePrefix,
       subtitle: descriptor.subtitle,
+      maturity: descriptor.maturity,
     })),
     [
       {
         id: 'chat',
         routePrefix: '/chat',
         subtitle: 'Conversations with companions and personal agents',
+        maturity: 'active',
       },
       {
         id: 'work',
         routePrefix: '/work',
         subtitle: 'Projects, approvals, and operator workflow',
+        maturity: 'preview',
       },
       {
         id: 'code',
         routePrefix: '/code',
         subtitle: 'Repos, runs, and coding workspace',
+        maturity: 'preview',
       },
     ],
   );

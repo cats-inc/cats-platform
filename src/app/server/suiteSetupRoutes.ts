@@ -9,6 +9,7 @@ import {
   appendSuiteOnboardingEvent,
   readSuiteOnboardingHistory,
 } from '../../shared/suiteOnboardingHistory.js';
+import { listSuiteProductDescriptors } from '../../shared/suiteProducts.js';
 import { defaultCatProducts, normalizeSuiteSurfaceList } from '../../shared/suiteSurfaces.js';
 import { readSuitePreferences, writeSuitePreferences } from '../../shared/suitePreferences.js';
 import { createCat } from '../../products/chat/state/model/index.js';
@@ -217,6 +218,7 @@ async function handleSuiteSetupComplete(
     // Return a minimal SuiteHostEnvelope so the client knows setup committed.
     payload = {
       app: { name: 'cats', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
+      products: listSuiteProductDescriptors(),
       runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
       runtimeSetup,
       metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },

@@ -125,6 +125,19 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
     const payload = await response.json();
     assert.equal(payload.setupCompleteAt, null);
     assert.equal(payload.lastProductSurface, null);
+    assert.deepEqual(
+      payload.products.map((product) => ({
+        id: product.id,
+        group: product.group,
+        maturity: product.maturity,
+        selectable: product.setup.selectable,
+      })),
+      [
+        { id: 'chat', group: 'home', maturity: 'active', selectable: true },
+        { id: 'work', group: 'office', maturity: 'preview', selectable: false },
+        { id: 'code', group: 'office', maturity: 'preview', selectable: false },
+      ],
+    );
   });
 });
 

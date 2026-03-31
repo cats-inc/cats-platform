@@ -2,6 +2,7 @@ import type { AppConfig } from '../../../config.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
+import { listSuiteProductDescriptors } from '../../../shared/suiteProducts.js';
 import { listEnabledSuiteSurfaces } from '../../../shared/suiteSurfaces.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
@@ -56,6 +57,7 @@ export function createAppShell(
       stage: 'phase-2-shell',
       runtimeBoundary: 'cats-runtime',
     },
+    products: listSuiteProductDescriptors(),
     chat: {
       id: chat.id,
       name: chat.name,

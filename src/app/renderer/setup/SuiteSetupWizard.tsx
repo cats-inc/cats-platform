@@ -101,7 +101,7 @@ export function SuiteSetupWizard({
   const setupOpenedRecorded = useRef(false);
 
   const busy = busyAction !== null;
-  const plugins = getSuiteSetupPlugins();
+  const plugins = getSuiteSetupPlugins(envelope.products);
   const selectedPlugin = plugins.find((plugin) => plugin.surface === selectedProduct);
   const showBossCatStep = Boolean(createFirstCat && selectedPlugin?.hasConditionalStep);
   const totalSteps = showBossCatStep ? 4 : 3;

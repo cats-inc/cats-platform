@@ -1,11 +1,16 @@
-import { listSuiteSurfaceDescriptors } from '../../core/suiteSurface.js';
-import type { SuiteSurfaceId } from '../../shared/suite-contract.js';
-import { SUITE_SURFACE_ROUTES } from './routeMap.js';
+import type {
+  SuiteProductDescriptor,
+  SuiteProductGroupId,
+  SuiteProductInstallPolicy,
+  SuiteProductInstallState,
+  SuiteProductMaturity,
+  SuiteSurfaceId,
+} from '../../shared/suite-contract.js';
 
-export type SuiteLobbySectionId = 'home' | 'office';
-export type SuiteLobbyInstallPolicy = 'required' | 'optional';
-export type SuiteLobbyInstallState = 'installed' | 'available' | 'installing' | 'attention';
-export type SuiteLobbyMaturity = 'active' | 'preview';
+export type SuiteLobbySectionId = SuiteProductGroupId;
+export type SuiteLobbyInstallPolicy = SuiteProductInstallPolicy;
+export type SuiteLobbyInstallState = SuiteProductInstallState;
+export type SuiteLobbyMaturity = SuiteProductMaturity;
 
 export interface SuiteLobbyProductEntry {
   surface: SuiteSurfaceId;
@@ -25,10 +30,6 @@ export interface SuiteLobbySection {
   entries: SuiteLobbyProductEntry[];
 }
 
-function resolveLobbySection(surface: SuiteSurfaceId): SuiteLobbySectionId {
-  return surface === 'chat' ? 'home' : 'office';
-}
-
 const SUITE_LOBBY_SECTION_META: Record<
   SuiteLobbySectionId,
   Pick<SuiteLobbySection, 'label' | 'description'>
@@ -44,12 +45,17 @@ const SUITE_LOBBY_SECTION_META: Record<
 };
 
 export function buildSuiteLobbySections(options: {
+  products: readonly SuiteProductDescriptor[];
   lastUsedSurface: SuiteSurfaceId | null;
 }): SuiteLobbySection[] {
   const sections = new Map<SuiteLobbySectionId, SuiteLobbySection>();
 
-  for (const descriptor of listSuiteSurfaceDescriptors()) {
-    const sectionId = resolveLobbySection(descriptor.id);
+  for (const descriptor of options.products) {
+    if (!descriptor.surface) {
+      continue;
+    }
+
+    const sectionId = descriptor.group;
     const existing = sections.get(sectionId) ?? {
       id: sectionId,
       label: SUITE_LOBBY_SECTION_META[sectionId].label,
@@ -57,16 +63,15 @@ export function buildSuiteLobbySections(options: {
       entries: [],
     };
 
-    const route = SUITE_SURFACE_ROUTES[descriptor.id];
     existing.entries.push({
-      surface: descriptor.id,
+      surface: descriptor.surface,
       productName: descriptor.productName,
       subtitle: descriptor.subtitle,
       routePrefix: descriptor.routePrefix,
-      installPolicy: 'required',
-      installState: 'installed',
-      maturity: route.placeholder ? 'preview' : 'active',
-      lastUsed: descriptor.id === options.lastUsedSurface,
+      installPolicy: descriptor.installPolicy,
+      installState: descriptor.installState,
+      maturity: descriptor.maturity,
+      lastUsed: descriptor.surface === options.lastUsedSurface,
     });
     sections.set(sectionId, existing);
   }

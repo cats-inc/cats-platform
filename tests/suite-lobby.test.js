@@ -2,9 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildSuiteLobbySections } from '../dist-server/app/renderer/lobbyModel.js';
+import { listSuiteProductDescriptors } from '../dist-server/shared/suiteProducts.js';
 
 test('buildSuiteLobbySections groups suite products into Home and Office', () => {
-  const sections = buildSuiteLobbySections({ lastUsedSurface: 'work' });
+  const sections = buildSuiteLobbySections({
+    products: listSuiteProductDescriptors(),
+    lastUsedSurface: 'work',
+  });
 
   assert.deepEqual(
     sections.map((section) => ({
