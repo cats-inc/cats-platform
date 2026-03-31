@@ -296,6 +296,7 @@ export class ManagedServiceSupervisor {
       cwd: spec.cwd,
       env: spec.env,
       stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
     }) as ChildProcessWithoutNullStreams;
 
     handle.child = child;

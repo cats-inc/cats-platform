@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { PassThrough } from 'node:stream';
 import test from 'node:test';
 
 import {
@@ -23,6 +24,8 @@ class FakeChildProcess extends EventEmitter {
     this.signalCode = null;
     this.killCalls = [];
     this.stdinEnded = false;
+    this.stdout = new PassThrough();
+    this.stderr = new PassThrough();
     this.stdin = {
       destroyed: false,
       end: () => {
@@ -193,5 +196,31 @@ test('prepareManagedServiceLog rotates the previous attempt log into a bounded b
     assert.equal(await readFile(previousPath, 'utf8'), 'current log\n');
   } finally {
     await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('startService hides Windows child consoles for managed services', async () => {
+  const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-supervisor-'));
+  const config = resolveDesktopHostConfig({
+    env: {},
+    userDataDir,
+  });
+  const spawnCalls = [];
+  const supervisor = new ManagedServiceSupervisor(config, {
+    spawn: (command, args, options) => {
+      spawnCalls.push({ command, args, options });
+      return new FakeChildProcess();
+    },
+    waitForServiceReadiness: async () => ({ ok: true }),
+  });
+  const [runtimeSpec] = buildManagedServiceSpecs(config);
+
+  try {
+    await supervisor.startService(runtimeSpec);
+
+    assert.equal(spawnCalls.length, 1);
+    assert.equal(spawnCalls[0].options.windowsHide, true);
+  } finally {
+    await rm(userDataDir, { recursive: true, force: true });
   }
 });
