@@ -22,7 +22,7 @@ function createProduct(overrides: Partial<SuiteProductDescriptor>): SuiteProduct
   };
 }
 
-test('buildSuiteSettingsProductGroups only exposes installed products with settings entries', () => {
+test('buildSuiteSettingsProductGroups hides only available products without losing in-progress settings entries', () => {
   const groups = buildSuiteSettingsProductGroups([
     createProduct({
       id: 'chat',
@@ -37,6 +37,22 @@ test('buildSuiteSettingsProductGroups only exposes installed products with setti
           id: 'cats',
           label: 'Cats',
           path: '/chat/settings/cats',
+        },
+      ],
+    }),
+    createProduct({
+      id: 'invest',
+      surface: null,
+      routePrefix: '/invest',
+      productName: 'Cats Invest',
+      group: 'office',
+      installPolicy: 'optional',
+      installState: 'attention',
+      settings: [
+        {
+          id: 'general',
+          label: 'Invest',
+          path: '/invest/settings/general',
         },
       ],
     }),
@@ -80,6 +96,17 @@ test('buildSuiteSettingsProductGroups only exposes installed products with setti
           id: 'cats',
           label: 'Cats',
           path: '/chat/settings/cats',
+        },
+      ],
+    },
+    {
+      productId: 'invest',
+      productName: 'Cats Invest',
+      entries: [
+        {
+          id: 'general',
+          label: 'Invest',
+          path: '/invest/settings/general',
         },
       ],
     },

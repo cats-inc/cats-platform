@@ -25,7 +25,7 @@ export function buildSuiteSettingsProductGroups(
   products: readonly SuiteProductDescriptor[],
 ): SuiteSettingsProductGroup[] {
   return products
-    .filter((product) => product.installState === 'installed' && (product.settings?.length ?? 0) > 0)
+    .filter((product) => product.installState !== 'available' && (product.settings?.length ?? 0) > 0)
     .map((product) => ({
       productId: product.id,
       productName: product.productName,
