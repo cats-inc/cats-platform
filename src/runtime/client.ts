@@ -235,7 +235,11 @@ export interface RuntimeClient {
 interface RuntimeClientOptions {
   apiKey?: string;
   timeoutMs?: number;
+  setupMutationTimeoutMs?: number;
 }
+
+const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
+const DEFAULT_RUNTIME_SETUP_MUTATION_TIMEOUT_MS = 120_000;
 
 export class RuntimeRequestError extends Error {
   constructor(message: string, readonly status: number) {
@@ -247,13 +251,16 @@ export class RuntimeRequestError extends Error {
 export class CatsRuntimeClient implements RuntimeClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
+  private readonly setupMutationTimeoutMs: number;
 
   constructor(
     private readonly baseUrl: string,
     options: RuntimeClientOptions = {},
   ) {
     this.apiKey = options.apiKey?.trim() || '';
-    this.timeoutMs = options.timeoutMs ?? 5000;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS;
+    this.setupMutationTimeoutMs = options.setupMutationTimeoutMs
+      ?? Math.max(this.timeoutMs, DEFAULT_RUNTIME_SETUP_MUTATION_TIMEOUT_MS);
   }
 
   async getHealth(): Promise<RuntimeStatusSummary> {
@@ -342,7 +349,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       body: JSON.stringify({
         manual: input.manual === true,
       }),
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: AbortSignal.timeout(this.setupMutationTimeoutMs),
     });
 
     if (!response.ok) {
@@ -375,7 +382,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       body: JSON.stringify({
         providers: normalizedProviders,
       }),
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: AbortSignal.timeout(this.setupMutationTimeoutMs),
     });
 
     if (!response.ok) {

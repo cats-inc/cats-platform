@@ -133,3 +133,87 @@ test('runtime client reuses the shared execution-request serializer for outbound
     },
   ]);
 });
+
+test('runtime setup scan and apply use the extended setup timeout budget', async () => {
+  const timeoutCalls = [];
+  const originalFetch = globalThis.fetch;
+  const originalAbortSignalTimeout = AbortSignal.timeout;
+
+  AbortSignal.timeout = (ms) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  };
+
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+
+    if (url.endsWith('/setup-scan')) {
+      return new Response(JSON.stringify({ status: 'completed' }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    if (url.endsWith('/setup-apply')) {
+      return new Response(JSON.stringify({ status: 'completed' }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    if (url.endsWith('/setup-state')) {
+      return new Response(JSON.stringify({
+        bootstrapRequired: true,
+        state: {
+          status: 'ready',
+          lastScanAt: '2026-03-31T03:31:21.504Z',
+          lastManualScanAt: '2026-03-31T03:31:21.504Z',
+          appliedAt: null,
+          appliedConfigPath: null,
+          error: null,
+        },
+        repair: {
+          status: 'ready',
+          summary: 'Ready providers are available.',
+          preferredScan: {
+            source: 'manualScan',
+            scannedAt: '2026-03-31T03:31:21.504Z',
+            providerCount: 1,
+            availableCount: 1,
+            unavailableCount: 0,
+            remediationCount: 0,
+          },
+          providersReadyToApply: [
+            {
+              provider: 'claude',
+              family: 'Claude Code CLI',
+            },
+          ],
+          providersNeedingAttention: [],
+        },
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    await client.scanSetup({ manual: true });
+    await client.applySetup(['claude']);
+  } finally {
+    globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalAbortSignalTimeout;
+  }
+
+  assert.deepEqual(timeoutCalls, [120000, 5000, 120000, 5000]);
+});

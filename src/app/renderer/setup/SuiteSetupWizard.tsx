@@ -14,6 +14,7 @@ import { getSuiteSetupPlugins } from './plugins';
 import type { ProductSetupPlugin } from './types';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
+import { shouldAutoScanRuntimeSetup } from '../../../shared/runtimeSetupFlow.js';
 
 type SetupStep = 1 | 2 | 3 | 4;
 type PendingAction =
@@ -99,6 +100,7 @@ export function SuiteSetupWizard({
     createInitialRuntimeSetup(envelope),
   );
   const setupOpenedRecorded = useRef(false);
+  const runtimeAutoScanAttempted = useRef(false);
 
   const busy = busyAction !== null;
   const plugins = getSuiteSetupPlugins(envelope.products);
@@ -209,6 +211,22 @@ export function SuiteSetupWizard({
     }
     void refreshRuntimeSetup({ silent: true });
   }, [step, refreshRuntimeSetup]);
+
+  useEffect(() => {
+    if (step === 3) {
+      return;
+    }
+    runtimeAutoScanAttempted.current = false;
+  }, [step]);
+
+  useEffect(() => {
+    if (!shouldAutoScanRuntimeSetup(step, runtimeSetup, runtimeAutoScanAttempted.current)) {
+      return;
+    }
+
+    runtimeAutoScanAttempted.current = true;
+    void refreshRuntimeSetup({ manual: true });
+  }, [refreshRuntimeSetup, runtimeSetup, step]);
 
   useEffect(() => {
     if (showBossCatStep || step !== 4) {
