@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-03-31-packaged-startup-terminal-popup-investigation](./2026-03-31-packaged-startup-terminal-popup-investigation.md) | 2026-03-31 | Packaged startup terminal popup investigation | Trace why packaged post-onboarding startup still opened visible terminal windows, then lock the fix around persisted setup truth, lightweight runtime health, and manual-only background discovery |
 | [2026-03-29-packaged-setup-knowledge-extraction-inventory](./2026-03-29-packaged-setup-knowledge-extraction-inventory.md) | 2026-03-29 | Packaged setup knowledge extraction inventory | Freeze which setup/install knowledge is already extracted, still trapped in `environment-bootstrap`, or safe to defer before the `cats` / `cats-runtime` repo split |
 | [2026-03-30-packaged-setup-split-safety-validation](./2026-03-30-packaged-setup-split-safety-validation.md) | 2026-03-30 | Packaged setup split-safety validation | Evidence that the first packaged setup helper baseline, host bridge, and staged asset contract now work from repo-owned `cats` assets without direct bootstrap shell-outs |
 | [2026-03-30-companion-external-knowledge-ingestion-strategy](./2026-03-30-companion-external-knowledge-ingestion-strategy.md) | 2026-03-30 | Companion external knowledge ingestion strategy | Evaluate Google Drive read-only connectors, Google Photos limits, and FB/IG plus LINE import paths for companion resources and memory promotion |
@@ -36,4 +37,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-03-30*
+*Last updated: 2026-03-31*

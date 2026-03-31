@@ -172,6 +172,45 @@ test('desktop bootstrap opens chat when setup and provider readiness are complet
   assert.equal(snapshot.packaging.targets.length >= 3, true);
 });
 
+test('desktop bootstrap opens chat after setup without requiring startup provider diagnostics reprobe', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: '2026-03-31T04:14:48.267Z',
+    },
+    runtimeHealth: {
+      status: 'ok',
+      summary: 'Runtime is ready.',
+      readiness: {
+        ready: true,
+        phase: 'ready',
+        bootstrapRequired: false,
+      },
+      runtime: {
+        status: 'ok',
+        summary: 'Runtime is ready.',
+      },
+    },
+    providerDiagnostics: null,
+  });
+
+  assert.equal(snapshot.phase, 'ready_for_chat');
+  assert.equal(snapshot.status, 'ok');
+  assert.equal(snapshot.app.entryPath, '/new');
+  assert.equal(snapshot.runtime.providerSummary, null);
+  assert.match(snapshot.summary, /without a startup provider reprobe/i);
+});
+
 test('desktop bootstrap surfaces packaged setup restart recovery as an install issue', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,

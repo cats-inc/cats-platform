@@ -42,6 +42,12 @@ export interface AppShellPayload {
 
 export interface RuntimeDiagnosticsHealthPayload {
   status?: string;
+  summary?: string;
+  readiness?: {
+    ready?: boolean;
+    phase?: string;
+    bootstrapRequired?: boolean;
+  };
   runtime?: {
     status?: string;
     summary?: string;
@@ -74,6 +80,8 @@ interface BuildDesktopBootstrapSnapshotInput {
   appShell?: AppShellPayload | null;
   runtimeHealth?: RuntimeDiagnosticsHealthPayload | null;
   providerDiagnostics?: RuntimeProviderDiagnosticsPayload | null;
+  persistedSetupCompleteAt?: string | null;
+  persistedProductSetupCompleted?: boolean;
   lastError?: string | null;
   now?: () => Date;
   background?: DesktopBackgroundState;
@@ -602,8 +610,15 @@ export function buildDesktopBootstrapSnapshot(
     input.setup,
     input.lastError,
   );
-  const setupCompleteAt = input.appShell?.setupCompleteAt ?? null;
+  const setupCompleteAt = input.appShell?.setupCompleteAt
+    ?? input.persistedSetupCompleteAt
+    ?? null;
+  const setupCompleted = Boolean(setupCompleteAt || input.persistedProductSetupCompleted);
   const entryPath = resolveAppEntryPath(setupCompleteAt);
+  const hasRuntimeHealth = Boolean(input.runtimeHealth);
+  const hasAppHealth = Boolean(input.appHealth);
+  const hasAppShell = Boolean(input.appShell);
+  const requiresProviderDiagnostics = !setupCompleted;
   let phase: DesktopBootstrapSnapshot['phase'];
   let status: DesktopBootstrapSnapshot['status'];
   let summary: string;
@@ -616,20 +631,29 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'starting_services';
     status = 'degraded';
     summary = 'Starting local Cats services and waiting for readiness.';
-  } else if (!input.runtimeHealth || !input.providerDiagnostics || !input.appHealth || !input.appShell) {
+  } else if (
+    !hasRuntimeHealth
+    || !hasAppHealth
+    || !hasAppShell
+    || (requiresProviderDiagnostics && !input.providerDiagnostics)
+  ) {
     phase = 'checking_prerequisites';
     status = 'degraded';
     summary = 'Local services are ready. Running prerequisite checks.';
-  } else if (!setupCompleteAt) {
+  } else if (!setupCompleted) {
     phase = 'ready_for_setup';
     status = 'degraded';
     summary = hasReadyProviderPath(providerSummary)
       ? 'Desktop services are ready. Continue into setup.'
       : 'Desktop services are ready. Continue into setup to choose a provider path.';
-  } else if (hasReadyProviderPath(providerSummary)) {
+  } else if (!input.providerDiagnostics || hasReadyProviderPath(providerSummary)) {
     phase = 'ready_for_chat';
-    status = 'ok';
-    summary = 'Desktop services and at least one provider path are ready.';
+    status = normalizeHealthStatus(input.runtimeHealth?.status)
+      ?? normalizeHealthStatus(input.runtimeHealth?.runtime?.status)
+      ?? 'ok';
+    summary = input.providerDiagnostics
+      ? 'Desktop services and at least one provider path are ready.'
+      : 'Desktop services are ready. Opening Cats Chat without a startup provider reprobe.';
   } else {
     phase = 'needs_prerequisites';
     status = 'unavailable';

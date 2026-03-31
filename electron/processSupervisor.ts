@@ -124,6 +124,8 @@ export function buildManagedServiceSpecs(
         CATS_RUNTIME_DATA_DIR: config.paths.runtimeDataDir,
         CATS_RUNTIME_SESSION_BASE_DIR: config.paths.runtimeSessionBaseDir,
         CATS_RUNTIME_CONFIG_PATH: config.paths.runtimeConfigPath,
+        CATS_RUNTIME_WSL_DISCOVERY_POLICY: env.CATS_RUNTIME_WSL_DISCOVERY_POLICY || 'manual_only',
+        CATS_RUNTIME_DOCKER_DISCOVERY_POLICY: env.CATS_RUNTIME_DOCKER_DISCOVERY_POLICY || 'manual_only',
       },
       healthUrl: `${config.runtimeBaseUrl}/health`,
       logPath: join(config.paths.hostLogsDir, 'cats-runtime.log'),

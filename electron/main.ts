@@ -39,10 +39,15 @@ import {
   fetchJson,
   type AppHealthPayload,
   type AppShellPayload,
+  type ReadinessPayload,
   type RuntimeDiagnosticsHealthPayload,
   type RuntimeProviderDiagnosticsPayload,
 } from './readiness.js';
 import { isDesktopHostActionId, validateDesktopUrl } from './security.js';
+import {
+  readPersistedSetupCompletionState,
+  type PersistedSetupCompletionState,
+} from './persistedSetupState.js';
 import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
@@ -177,6 +182,23 @@ function buildServiceLogReference(
     artifactId: `${service.name}-log`,
     artifactPath: service.logPath ?? undefined,
     route: service.healthUrl,
+  };
+}
+
+function normalizeRuntimeHealthPayload(
+  payload: RuntimeDiagnosticsHealthPayload | ReadinessPayload,
+): RuntimeDiagnosticsHealthPayload {
+  return {
+    status: payload.status,
+    summary: payload.summary,
+    readiness: payload.readiness,
+    runtime: 'runtime' in payload && payload.runtime
+      ? payload.runtime
+      : {
+        status: payload.status,
+        summary: payload.summary,
+      },
+    providers: 'providers' in payload ? payload.providers : undefined,
   };
 }
 
@@ -573,10 +595,18 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
   });
 }
 
-async function refreshBootstrapSnapshot(): Promise<DesktopBootstrapSnapshot> {
+async function refreshBootstrapSnapshot(
+  persistedSetup: PersistedSetupCompletionState | null = null,
+): Promise<DesktopBootstrapSnapshot> {
   if (!hostConfig || !supervisor) {
     throw new Error('Desktop host is not initialized.');
   }
+
+  const effectivePersistedSetup = persistedSetup
+    ?? await readPersistedSetupCompletionState(hostConfig.paths.appStatePath);
+  const skipStartupProviderReprobe = Boolean(
+    effectivePersistedSetup.setupCompleteAt || effectivePersistedSetup.productSetupCompleted,
+  );
 
   const [
     appHealth,
@@ -587,8 +617,14 @@ async function refreshBootstrapSnapshot(): Promise<DesktopBootstrapSnapshot> {
   ] = await Promise.allSettled([
     fetchJson<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`),
     fetchJson<AppShellPayload>(`${hostConfig.appBaseUrl}/api/app-shell`),
-    fetchJson<RuntimeDiagnosticsHealthPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/health`),
-    fetchJson<RuntimeProviderDiagnosticsPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/providers`),
+    fetchJson<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(
+      skipStartupProviderReprobe
+        ? `${hostConfig.runtimeBaseUrl}/health`
+        : `${hostConfig.runtimeBaseUrl}/diagnostics/health`,
+    ),
+    skipStartupProviderReprobe
+      ? Promise.resolve<RuntimeProviderDiagnosticsPayload | null>(null)
+      : fetchJson<RuntimeProviderDiagnosticsPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/providers`),
     fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/suite/bootstrap-diagnostics`),
   ]);
 
@@ -605,8 +641,14 @@ async function refreshBootstrapSnapshot(): Promise<DesktopBootstrapSnapshot> {
     services: supervisor.getSnapshots(),
     appHealth: appHealth.status === 'fulfilled' ? appHealth.value : null,
     appShell: appShell.status === 'fulfilled' ? appShell.value : null,
-    runtimeHealth: runtimeHealth.status === 'fulfilled' ? runtimeHealth.value : null,
-    providerDiagnostics: providerDiagnostics.status === 'fulfilled' ? providerDiagnostics.value : null,
+    runtimeHealth: runtimeHealth.status === 'fulfilled'
+      ? normalizeRuntimeHealthPayload(runtimeHealth.value)
+      : null,
+    providerDiagnostics: providerDiagnostics.status === 'fulfilled'
+      ? providerDiagnostics.value
+      : null,
+    persistedSetupCompleteAt: effectivePersistedSetup.setupCompleteAt,
+    persistedProductSetupCompleted: effectivePersistedSetup.productSetupCompleted,
     background: backgroundState ?? undefined,
     updates: updateState ?? undefined,
     packaging: packagingState ?? undefined,
@@ -615,7 +657,13 @@ async function refreshBootstrapSnapshot(): Promise<DesktopBootstrapSnapshot> {
   });
 }
 
-function hasPersistedProductSetupCompletion(): boolean {
+function hasPersistedProductSetupCompletion(
+  persistedSetup: PersistedSetupCompletionState | null = null,
+): boolean {
+  if (persistedSetup?.productSetupCompleted) {
+    return true;
+  }
+
   const productEvents = diagnosticsState?.product?.events ?? [];
   return productEvents.some((event) => event.kind === 'setup_completed' && event.status === 'ok');
 }
@@ -658,6 +706,9 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
 
   bootstrapPromise = (async () => {
     await ensureBootstrapPageVisible();
+    const persistedSetup = hostConfig
+      ? await readPersistedSetupCompletionState(hostConfig.paths.appStatePath)
+      : null;
 
     if (restartServices) {
       await supervisor.stopAll();
@@ -675,11 +726,13 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
     publishSnapshot(buildDesktopBootstrapSnapshot({
       config: hostConfig,
       services: supervisor.getSnapshots(),
+      persistedSetupCompleteAt: persistedSetup?.setupCompleteAt ?? null,
+      persistedProductSetupCompleted: persistedSetup?.productSetupCompleted ?? false,
     }));
-    const preAuditSnapshot = publishSnapshot(await refreshBootstrapSnapshot());
-    await maybePrimeSetupAudit(preAuditSnapshot);
+    const preAuditSnapshot = publishSnapshot(await refreshBootstrapSnapshot(persistedSetup));
+    await maybePrimeSetupAudit(preAuditSnapshot, persistedSetup);
 
-    const snapshot = publishSnapshot(await refreshBootstrapSnapshot());
+    const snapshot = publishSnapshot(await refreshBootstrapSnapshot(persistedSetup));
     await maybeOpenApp(snapshot);
     return snapshot;
   })().catch((error) => {
@@ -783,13 +836,16 @@ async function runSetupAction(
   return await getSetupSnapshot();
 }
 
-async function maybePrimeSetupAudit(snapshot: DesktopBootstrapSnapshot): Promise<void> {
+async function maybePrimeSetupAudit(
+  snapshot: DesktopBootstrapSnapshot,
+  persistedSetup: PersistedSetupCompletionState | null = null,
+): Promise<void> {
   if (!hostConfig || process.platform !== 'win32') {
     return;
   }
   if (!shouldAutoRunSetupAudit(setupState, {
-    setupCompleteAt: snapshot.app.setupCompleteAt,
-    productSetupCompleted: hasPersistedProductSetupCompletion(),
+    setupCompleteAt: snapshot.app.setupCompleteAt ?? persistedSetup?.setupCompleteAt ?? null,
+    productSetupCompleted: hasPersistedProductSetupCompletion(persistedSetup),
   })) {
     return;
   }

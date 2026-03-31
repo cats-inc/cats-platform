@@ -77,6 +77,8 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   ]);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_PORT, '43110');
   assert.equal(runtimeSpec.env.CATS_RUNTIME_CONFIG_PATH, 'C:\\Cats\\runtime\\providers.yaml');
+  assert.equal(runtimeSpec.env.CATS_RUNTIME_WSL_DISCOVERY_POLICY, 'manual_only');
+  assert.equal(runtimeSpec.env.CATS_RUNTIME_DOCKER_DISCOVERY_POLICY, 'manual_only');
   assert.equal(runtimeSpec.cwd, 'C:\\repo\\cats-runtime');
 
   assert.equal(appSpec.name, 'cats');
