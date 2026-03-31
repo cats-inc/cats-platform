@@ -1,18 +1,25 @@
+import type { SuiteProductDescriptor } from '../../../shared/suite-contract.js';
 import { SuiteSettingsShell } from './SuiteSettingsShell.js';
 
 export interface SuiteSettingsDataProps {
+  products: SuiteProductDescriptor[];
   feedback: string;
   busy: string;
   onResetSetup: () => void;
 }
 
 export function SuiteSettingsData({
+  products,
   feedback,
   busy,
   onResetSetup,
 }: SuiteSettingsDataProps) {
   return (
-    <SuiteSettingsShell section="data" title="Data">
+    <SuiteSettingsShell
+      section="data"
+      title="Data"
+      products={products}
+    >
       <div className="contentCard">
         <h2>Reset all data</h2>
         <p className="heroNote">

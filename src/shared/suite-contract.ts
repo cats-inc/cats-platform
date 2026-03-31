@@ -20,6 +20,12 @@ export interface SuiteProductSetupDescriptor {
   disabledReason?: string;
 }
 
+export interface SuiteProductSettingsDescriptor {
+  id: string;
+  label: string;
+  path: `/${string}`;
+}
+
 export interface SuiteProductDescriptor {
   id: SuiteProductId;
   surface: SuiteSurfaceId | null;
@@ -31,6 +37,7 @@ export interface SuiteProductDescriptor {
   installState: SuiteProductInstallState;
   maturity: SuiteProductMaturity;
   setup: SuiteProductSetupDescriptor;
+  settings?: SuiteProductSettingsDescriptor[];
 }
 
 export interface SuiteResponseMetadata {

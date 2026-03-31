@@ -18,6 +18,18 @@ const SUITE_PRODUCT_DESCRIPTORS: readonly SuiteProductDescriptor[] = [
     setup: {
       selectable: true,
     },
+    settings: [
+      {
+        id: 'general',
+        label: 'Chat',
+        path: '/chat/settings/general',
+      },
+      {
+        id: 'cats',
+        label: 'Cats',
+        path: '/chat/settings/cats',
+      },
+    ],
   },
   {
     id: 'work',
@@ -51,11 +63,16 @@ const SUITE_PRODUCT_DESCRIPTORS: readonly SuiteProductDescriptor[] = [
   },
 ] as const;
 
-export function listSuiteProductDescriptors(): SuiteProductDescriptor[] {
-  return SUITE_PRODUCT_DESCRIPTORS.map((descriptor) => ({
+function cloneSuiteProductDescriptor(descriptor: SuiteProductDescriptor): SuiteProductDescriptor {
+  return {
     ...descriptor,
     setup: { ...descriptor.setup },
-  }));
+    settings: descriptor.settings?.map((entry) => ({ ...entry })),
+  };
+}
+
+export function listSuiteProductDescriptors(): SuiteProductDescriptor[] {
+  return SUITE_PRODUCT_DESCRIPTORS.map(cloneSuiteProductDescriptor);
 }
 
 export function getSuiteProductDescriptor(productId: SuiteProductId): SuiteProductDescriptor | null {
@@ -63,10 +80,7 @@ export function getSuiteProductDescriptor(productId: SuiteProductId): SuiteProdu
   if (!matched) {
     return null;
   }
-  return {
-    ...matched,
-    setup: { ...matched.setup },
-  };
+  return cloneSuiteProductDescriptor(matched);
 }
 
 export function getSuiteProductBySurface(surface: SuiteSurfaceId): SuiteProductDescriptor | null {
@@ -74,8 +88,5 @@ export function getSuiteProductBySurface(surface: SuiteSurfaceId): SuiteProductD
   if (!matched) {
     return null;
   }
-  return {
-    ...matched,
-    setup: { ...matched.setup },
-  };
+  return cloneSuiteProductDescriptor(matched);
 }

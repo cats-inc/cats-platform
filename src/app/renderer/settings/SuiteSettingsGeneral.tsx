@@ -50,9 +50,13 @@ export function SuiteSettingsGeneral({
 
   return (
     <>
-      <SuiteSettingsShell section="general" title="General">
+      <SuiteSettingsShell
+        section="general"
+        title="General"
+        products={envelope.products}
+      >
         <div className="contentCard">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+          <div className="settingsProfileRow">
             <div
               className="settingsOwnerAvatar"
               style={avatarUrl
@@ -69,14 +73,14 @@ export function SuiteSettingsGeneral({
             >
               {!avatarUrl ? initials : null}
             </div>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontWeight: 600 }}>{envelope.ownerDisplayName}</p>
-              <p className="heroNote" style={{ margin: '6px 0 0' }}>
+            <div className="settingsProfileMeta">
+              <p className="settingsProfileName">{envelope.ownerDisplayName}</p>
+              <p className="heroNote settingsProfileNote">
                 This is your suite-wide profile across Lobby, Chat, Work, and Code.
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="settingsActionRow">
             <button
               type="button"
               className="primaryButton"
@@ -101,7 +105,7 @@ export function SuiteSettingsGeneral({
           <p className="heroNote">
             Chat-specific preferences now live beneath the Chat product route.
           </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="settingsActionRow">
             <button
               type="button"
               className="secondaryButton"

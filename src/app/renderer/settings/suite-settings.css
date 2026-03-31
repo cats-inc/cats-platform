@@ -1,4 +1,4 @@
-@import '../../../products/chat/renderer/styles/settings.css';
+@import '../../../design/components/settings-shell.css';
 
 @media (max-width: 820px) {
   .settingsShell {

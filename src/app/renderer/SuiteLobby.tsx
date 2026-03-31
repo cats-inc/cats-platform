@@ -1,33 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 
 import { suiteSurfaceProductName, suiteSurfaceRoutePrefix } from '../../core/suiteSurface.js';
-import type { RuntimeStatusSummary } from '../../platform/runtime/client.js';
+import { resolveRuntimeConnectionChip } from '../../design/components/runtimeChips.js';
 import type { SuiteHostEnvelope } from '../../shared/suite-contract.js';
 import { buildSuiteLobbySections } from './lobbyModel.js';
-
-function resolveRuntimeChip(
-  runtime: RuntimeStatusSummary,
-): { className: string; label: string } {
-  if (!runtime.reachable) {
-    return {
-      className: 'statusChip statusChipWarm',
-      label: 'Runtime unavailable',
-    };
-  }
-
-  const status = typeof runtime.status === 'string' ? runtime.status.toLowerCase() : '';
-  if (status === 'degraded' || status === 'warming' || status === 'starting') {
-    return {
-      className: 'statusChip statusChipWarm',
-      label: 'Runtime degraded',
-    };
-  }
-
-  return {
-    className: 'statusChip statusChipReady',
-    label: 'Runtime connected',
-  };
-}
 
 export function SuiteLobby({
   envelope,
@@ -39,7 +15,7 @@ export function SuiteLobby({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
   });
-  const runtimeChip = resolveRuntimeChip(envelope.runtime);
+  const runtimeChip = resolveRuntimeConnectionChip(envelope.runtime);
   const returnSurface = envelope.lastProductSurface ?? 'chat';
 
   return (

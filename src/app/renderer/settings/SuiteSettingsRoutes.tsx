@@ -50,6 +50,7 @@ export function SuiteSettingsRouteTree({
         path="data"
         element={
           <SuiteSettingsData
+            products={envelope.products}
             feedback={feedback}
             busy={busy}
             onResetSetup={onResetSetup}

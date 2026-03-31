@@ -1139,12 +1139,20 @@ test('renderer styles compose a shared design layer and product-owned chat parti
     new URL('../src/design/components/product-placeholder.css', import.meta.url),
     'utf8',
   );
+  const settingsShellStylesSource = await readFile(
+    new URL('../src/design/components/settings-shell.css', import.meta.url),
+    'utf8',
+  );
   const stylesIndexSource = await readFile(
     new URL('../src/products/chat/renderer/styles.css', import.meta.url),
     'utf8',
   );
   const settingsStylesSource = await readFile(
     new URL('../src/products/chat/renderer/styles/settings.css', import.meta.url),
+    'utf8',
+  );
+  const suiteSettingsStylesSource = await readFile(
+    new URL('../src/app/renderer/settings/suite-settings.css', import.meta.url),
     'utf8',
   );
   const chatStylesSource = await readFile(
@@ -1206,6 +1214,8 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(operatorChromeStylesSource, /\.operatorActionButton/u);
   assert.match(operatorChromeStylesSource, /\.operatorStatusBadge/u);
   assert.match(placeholderStylesSource, /\.productPlaceholderSurface/u);
+  assert.match(settingsShellStylesSource, /\.settingsShell/u);
+  assert.match(settingsShellStylesSource, /\.dangerButton/u);
   assert.match(stylesIndexSource, /@import '\.\/styles\/settings\.css';/u);
   assert.match(stylesIndexSource, /@import '\.\/styles\/chat\.css';/u);
   assert.match(stylesIndexSource, /@import '\.\/styles\/extras\.css';/u);
@@ -1224,8 +1234,20 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-thread\.css';/u);
   assert.doesNotMatch(chatWorkspaceStylesSource, /\.channelWorkspace/u);
   assert.doesNotMatch(chatWorkspaceStylesSource, /\.recentOverflowMenu/u);
-  assert.match(settingsStylesSource, /\.settingsShell/u);
+  assert.match(
+    settingsStylesSource,
+    /@import '\.\.\/\.\.\/\.\.\/\.\.\/design\/components\/settings-shell\.css';/u,
+  );
+  assert.doesNotMatch(settingsStylesSource, /\.settingsShell/u);
   assert.match(settingsStylesSource, /\.catsLayout/u);
+  assert.match(
+    suiteSettingsStylesSource,
+    /@import '\.\.\/\.\.\/\.\.\/design\/components\/settings-shell\.css';/u,
+  );
+  assert.doesNotMatch(
+    suiteSettingsStylesSource,
+    /products\/chat\/renderer\/styles\/settings\.css/u,
+  );
   assert.match(chatShellStylesSource, /\.sidebarCollapsed \.brandCopy/u);
   assert.match(chatOperatorStylesSource, /\.channelWorkspace/u);
   assert.doesNotMatch(chatOperatorStylesSource, /\.operatorPanel/u);

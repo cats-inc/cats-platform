@@ -19,17 +19,7 @@ export function SettingsShell({
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
-        <p
-          style={{
-            padding: '0 12px',
-            marginBottom: 12,
-            fontSize: '1rem',
-            fontWeight: 600,
-            color: 'var(--text)',
-          }}
-        >
-          Chat Settings
-        </p>
+        <p className="settingsNavHeading">Chat Settings</p>
         <button
           className={section === 'general' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
@@ -44,19 +34,7 @@ export function SettingsShell({
         >
           Cats
         </button>
-        <p
-          style={{
-            padding: '12px 12px 0',
-            margin: 0,
-            fontSize: '0.72rem',
-            fontWeight: 600,
-            letterSpacing: '0.08em',
-            color: 'var(--muted)',
-            textTransform: 'uppercase',
-          }}
-        >
-          Suite
-        </p>
+        <p className="settingsNavSubheading">Suite</p>
         <button
           className="settingsTab"
           type="button"

@@ -19,17 +19,7 @@ export function SettingsShell({
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
-        <p
-          style={{
-            padding: '0 12px',
-            marginBottom: 12,
-            fontSize: '1rem',
-            fontWeight: 600,
-            color: 'var(--text)',
-          }}
-        >
-          Settings
-        </p>
+        <p className="settingsNavHeading">Settings</p>
         <button
           className={section === 'general' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
