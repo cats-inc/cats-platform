@@ -30,4 +30,10 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /scheduleInitialSnapshotRetry/);
   assert.match(html, /bridge\.getSnapshot\(\)/);
   assert.match(html, /window\.setTimeout/);
+  assert.match(html, /overflow-x: hidden/);
+  assert.match(html, /align-items: start/);
+  assert.match(html, /flex-wrap: wrap/);
+  assert.match(html, /white-space: pre-wrap/);
+  assert.match(html, /overflow-wrap: anywhere/);
+  assert.match(html, /min-width: 0/);
 });

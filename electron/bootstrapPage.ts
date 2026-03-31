@@ -21,6 +21,10 @@ export function buildDesktopBootstrapPage(): string {
         --line: rgba(54, 38, 26, 0.12);
       }
       * { box-sizing: border-box; }
+      html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
       body {
         margin: 0;
         min-height: 100vh;
@@ -68,8 +72,12 @@ export function buildDesktopBootstrapPage(): string {
         display: grid;
         grid-template-columns: 1.2fr 0.8fr;
         gap: 20px;
+        align-items: start;
       }
-      .column { display: grid; gap: 20px; }
+      .column {
+        display: grid;
+        gap: 20px;
+      }
       .panel {
         border: 1px solid var(--line);
         border-radius: 20px;
@@ -96,6 +104,7 @@ export function buildDesktopBootstrapPage(): string {
         justify-content: space-between;
         gap: 16px;
         align-items: center;
+        flex-wrap: wrap;
       }
       .row-title strong { font-size: 15px; }
       .meta { font-size: 13px; color: var(--muted); }
@@ -165,6 +174,34 @@ export function buildDesktopBootstrapPage(): string {
       code {
         font-family: "Cascadia Code", "Consolas", monospace;
         font-size: 12px;
+        white-space: pre-wrap;
+      }
+      .grid,
+      .column,
+      .panel,
+      .services,
+      .issues,
+      .actions,
+      .diagnostics-list,
+      .chronology-list,
+      .setup-summary,
+      .service-row,
+      .issue-row,
+      .chronology-item,
+      .row-title,
+      .summary,
+      .meta,
+      .timeline-meta,
+      code {
+        min-width: 0;
+      }
+      .summary,
+      .row-title strong,
+      .meta,
+      .timeline-meta span,
+      code {
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
       @media (max-width: 860px) {
         main { padding: 18px; margin: 12px auto; }
