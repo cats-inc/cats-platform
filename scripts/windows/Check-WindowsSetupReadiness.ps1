@@ -191,7 +191,17 @@ function Invoke-HelperJson {
     throw "Missing helper at $ScriptPath"
   }
 
-  $raw = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Arguments) | Out-String
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = 'powershell.exe'
+  $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" $($Arguments -join ' ')"
+  $psi.UseShellExecute = $false
+  $psi.CreateNoWindow = $true
+  $psi.RedirectStandardOutput = $true
+
+  $proc = [System.Diagnostics.Process]::Start($psi)
+  $raw = $proc.StandardOutput.ReadToEnd()
+  $proc.WaitForExit()
+
   return $raw | ConvertFrom-Json
 }
 
