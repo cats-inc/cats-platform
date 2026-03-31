@@ -56,6 +56,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+
 function Write-StructuredResult {
   param(
     [pscustomobject]$Result,
@@ -115,14 +117,14 @@ function Detect-CursorInstall {
   $installed = $null -ne $command -or (Test-Path -LiteralPath $cursorExecutablePath -PathType Leaf)
   $version = $DetectedVersion
   $commandPath = if ($null -ne $command) { $command.Source } else { $cursorExecutablePath }
+  $commandSource = if ($null -ne $command) { $command.Source } else { '' }
+  $versionProbePath = Resolve-HiddenVersionProbePath `
+    -PreferredPath $commandSource `
+    -FallbackPath $cursorExecutablePath
 
-  if ($installed -and [string]::IsNullOrWhiteSpace($version)) {
+  if ($installed -and [string]::IsNullOrWhiteSpace($version) -and $versionProbePath) {
     try {
-      if ($null -ne $command) {
-        $version = (& cursor-agent --version 2>&1 | Out-String).Trim()
-      } elseif (Test-Path -LiteralPath $cursorExecutablePath -PathType Leaf) {
-        $version = (& $cursorExecutablePath --version 2>&1 | Out-String).Trim()
-      }
+      $version = Get-HiddenCommandText -FileName $versionProbePath -ArgumentList @('--version')
     } catch {
       $version = ''
     }
