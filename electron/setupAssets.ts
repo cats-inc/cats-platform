@@ -281,6 +281,12 @@ export async function stageDesktopSetupAssets(
   outputRoot: string,
   generatedAt: Date,
 ): Promise<DesktopSetupAsset[]> {
+  const sharedUtilSource = join(packageRoot, 'scripts', 'windows', '_HiddenProcess.ps1');
+  const sharedUtilTarget = join(outputRoot, 'shared', 'setup-assets', 'windows', '_HiddenProcess.ps1');
+  await access(sharedUtilSource);
+  await mkdir(dirname(sharedUtilTarget), { recursive: true });
+  await copyFile(sharedUtilSource, sharedUtilTarget);
+
   for (const asset of DESKTOP_SETUP_ASSETS) {
     const sourcePath = join(packageRoot, asset.sourceRelativePath);
     const targetPath = join(outputRoot, asset.stageRelativePath);

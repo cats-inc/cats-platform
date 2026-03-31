@@ -137,6 +137,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+
 function Resolve-BoolArgument {
   param(
     [string]$Name,
@@ -191,18 +193,9 @@ function Invoke-HelperJson {
     throw "Missing helper at $ScriptPath"
   }
 
-  $psi = New-Object System.Diagnostics.ProcessStartInfo
-  $psi.FileName = 'powershell.exe'
-  $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" $($Arguments -join ' ')"
-  $psi.UseShellExecute = $false
-  $psi.CreateNoWindow = $true
-  $psi.RedirectStandardOutput = $true
-
-  $proc = [System.Diagnostics.Process]::Start($psi)
-  $raw = $proc.StandardOutput.ReadToEnd()
-  $proc.WaitForExit()
-
-  return $raw | ConvertFrom-Json
+  $allArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ScriptPath) + $Arguments
+  $result = Invoke-HiddenCommand -FileName 'powershell.exe' -ArgumentList $allArgs
+  return $result.Output | ConvertFrom-Json
 }
 
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'

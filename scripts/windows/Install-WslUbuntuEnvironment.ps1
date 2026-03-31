@@ -71,6 +71,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+
 function Write-StructuredResult {
   param(
     [pscustomobject]$Result,
@@ -131,8 +133,8 @@ function Invoke-PreflightHelper {
     $arguments += @('-WslUserBootstrapState', $WslUserBootstrapState)
   }
 
-  $raw = (& powershell.exe @arguments) | Out-String
-  return $raw | ConvertFrom-Json
+  $result = Invoke-HiddenCommand -FileName 'powershell.exe' -ArgumentList $arguments
+  return $result.Output | ConvertFrom-Json
 }
 
 function Invoke-WslCommand {
@@ -140,9 +142,9 @@ function Invoke-WslCommand {
     [string[]]$Arguments
   )
 
-  & wsl.exe @Arguments | Out-Null
-  if ($LASTEXITCODE -ne 0) {
-    throw "wsl.exe $($Arguments -join ' ') failed with exit code $LASTEXITCODE."
+  $result = Invoke-HiddenCommand -FileName 'wsl.exe' -ArgumentList $Arguments
+  if ($result.ExitCode -ne 0) {
+    throw "wsl.exe $($Arguments -join ' ') failed with exit code $($result.ExitCode)."
   }
 }
 

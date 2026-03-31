@@ -41,6 +41,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+
 function Write-StructuredResult {
   param(
     [pscustomobject]$Result
@@ -90,8 +92,11 @@ function Test-WslUserBootstrapComplete {
   }
 
   try {
-    & wsl.exe -d $TargetDistro -u root -- sh -lc 'getent passwd 1000 >/dev/null 2>&1' | Out-Null
-    return ($LASTEXITCODE -eq 0)
+    $result = Invoke-HiddenCommand -FileName 'wsl.exe' -ArgumentList @(
+      '-d', $TargetDistro, '-u', 'root', '--', 'sh', '-lc',
+      'getent passwd 1000 >/dev/null 2>&1'
+    )
+    return ($result.ExitCode -eq 0)
   } catch {
     return $false
   }

@@ -85,6 +85,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+
 function Write-StructuredResult {
   param(
     [pscustomobject]$Result,
@@ -139,8 +141,8 @@ function Invoke-WslEnvironmentHelper {
     $arguments += @('-InstalledDistrosJson', $InstalledDistrosJson)
   }
 
-  $raw = (& powershell.exe @arguments) | Out-String
-  return $raw | ConvertFrom-Json
+  $result = Invoke-HiddenCommand -FileName 'powershell.exe' -ArgumentList $arguments
+  return $result.Output | ConvertFrom-Json
 }
 
 function Invoke-WslBash {
@@ -148,10 +150,10 @@ function Invoke-WslBash {
     [string]$Command
   )
 
-  $output = & wsl.exe -d $Distro bash -lc $Command 2>$null
+  $result = Invoke-HiddenCommand -FileName 'wsl.exe' -ArgumentList @('-d', $Distro, 'bash', '-lc', $Command)
   return [pscustomobject]@{
-    Output = $output
-    ExitCode = $LASTEXITCODE
+    Output = $result.Output
+    ExitCode = $result.ExitCode
   }
 }
 

@@ -58,6 +58,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+
 function Write-StructuredResult {
   param(
     [pscustomobject]$Result,
@@ -190,9 +192,10 @@ function Invoke-PrefixHelper {
     $arguments += '-SkipNodeCheck'
   }
 
-  $helperRaw = (& powershell.exe -NoProfile @arguments) | Out-String
-  $helperResult = $helperRaw | ConvertFrom-Json
-  if ($LASTEXITCODE -ne 0 -and $helperResult.status -eq 'failed') {
+  $allArgs = @('-NoProfile') + $arguments
+  $result = Invoke-HiddenCommand -FileName 'powershell.exe' -ArgumentList $allArgs
+  $helperResult = $result.Output | ConvertFrom-Json
+  if ($result.ExitCode -ne 0 -and $helperResult.status -eq 'failed') {
     throw "npm prefix helper failed with status $($helperResult.status)"
   }
 
