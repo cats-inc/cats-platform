@@ -615,6 +615,11 @@ async function refreshBootstrapSnapshot(): Promise<DesktopBootstrapSnapshot> {
   });
 }
 
+function hasPersistedProductSetupCompletion(): boolean {
+  const productEvents = diagnosticsState?.product?.events ?? [];
+  return productEvents.some((event) => event.kind === 'setup_completed' && event.status === 'ok');
+}
+
 async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
   if (!mainWindow || !hostConfig || snapshot.phase !== 'ready_for_chat') {
     return;
@@ -671,7 +676,8 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
       config: hostConfig,
       services: supervisor.getSnapshots(),
     }));
-    await maybePrimeSetupAudit();
+    const preAuditSnapshot = publishSnapshot(await refreshBootstrapSnapshot());
+    await maybePrimeSetupAudit(preAuditSnapshot);
 
     const snapshot = publishSnapshot(await refreshBootstrapSnapshot());
     await maybeOpenApp(snapshot);
@@ -777,11 +783,14 @@ async function runSetupAction(
   return await getSetupSnapshot();
 }
 
-async function maybePrimeSetupAudit(): Promise<void> {
+async function maybePrimeSetupAudit(snapshot: DesktopBootstrapSnapshot): Promise<void> {
   if (!hostConfig || process.platform !== 'win32') {
     return;
   }
-  if (!shouldAutoRunSetupAudit(setupState)) {
+  if (!shouldAutoRunSetupAudit(setupState, {
+    setupCompleteAt: snapshot.app.setupCompleteAt,
+    productSetupCompleted: hasPersistedProductSetupCompletion(),
+  })) {
     return;
   }
 

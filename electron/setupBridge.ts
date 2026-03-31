@@ -101,13 +101,21 @@ function createDefaultSetupState(): DesktopSetupState {
 
 export function shouldAutoRunSetupAudit(
   state: DesktopSetupState | null | undefined,
+  options: {
+    setupCompleteAt?: string | null;
+    productSetupCompleted?: boolean;
+  } = {},
 ): boolean {
+  if (options.setupCompleteAt || options.productSetupCompleted) {
+    return false;
+  }
+
   const lastAction = state?.lastAction ?? null;
   if (!lastAction) {
     return true;
   }
   if (lastAction.helperId === 'windows-install-readiness-audit') {
-    return true;
+    return false;
   }
   return lastAction.status === 'ready';
 }

@@ -61,7 +61,7 @@ test('buildDesktopSetupSnapshot reports repo-owned helper availability', async (
   assert.equal(snapshot.resumeAction, null);
 });
 
-test('shouldAutoRunSetupAudit reruns the readiness audit when no more specific setup action is active', () => {
+test('shouldAutoRunSetupAudit only primes the readiness audit before packaged setup is completed', () => {
   assert.equal(shouldAutoRunSetupAudit(null), true);
   assert.equal(shouldAutoRunSetupAudit({
     updatedAt: '2026-03-30T11:00:00.000Z',
@@ -87,7 +87,7 @@ test('shouldAutoRunSetupAudit reruns the readiness audit when no more specific s
       interruptions: [],
       error: null,
     },
-  }), true);
+  }), false);
   assert.equal(shouldAutoRunSetupAudit({
     updatedAt: '2026-03-30T11:00:00.000Z',
     lastAction: {
@@ -113,6 +113,18 @@ test('shouldAutoRunSetupAudit reruns the readiness audit when no more specific s
       error: null,
     },
   }), true);
+  assert.equal(shouldAutoRunSetupAudit({
+    updatedAt: '2026-03-30T11:00:00.000Z',
+    lastAction: null,
+  }, {
+    setupCompleteAt: '2026-03-30T11:05:00.000Z',
+  }), false);
+  assert.equal(shouldAutoRunSetupAudit({
+    updatedAt: '2026-03-30T11:00:00.000Z',
+    lastAction: null,
+  }, {
+    productSetupCompleted: true,
+  }), false);
 });
 
 test('shouldAutoRunSetupAudit preserves active non-audit recovery states', () => {
