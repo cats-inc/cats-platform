@@ -51,6 +51,8 @@ contracts.
 - [ ] Add a clear navigation entry to open the landing from inside the suite.
 - [ ] Keep `/` routing behavior aligned with the existing selected/last-used
       product model.
+- [ ] Keep setup-complete navigation aligned with the current product-first
+      entry flow rather than forcing a landing detour in this slice.
 
 **Deliverables**: a visible host launcher and inventory surface.
 
@@ -61,8 +63,10 @@ contracts.
 - [ ] Move or proxy existing suite-global settings out of Chat-owned routing.
 - [ ] Define the canonical route shape for product-owned settings beneath each
       product prefix.
-- [ ] Add redirects or compatibility handling so existing settings entry points
-      do not break abruptly.
+- [ ] Add explicit redirects or compatibility handling so existing settings
+      entry points do not break abruptly.
+- [ ] Preserve legacy deep links such as `/settings/cats` by redirecting them
+      to the canonical product-owned path once that path exists.
 
 **Deliverables**: suite settings and product settings follow distinct ownership
 boundaries.
@@ -113,6 +117,8 @@ distribution system.
 - Treat install policy (`required` vs `optional`) as separate from both
   `product` and `app`.
 - Keep the current root-entry behavior while adding a host-owned landing route.
+- Keep setup-complete entry product-first in this slice, while exposing
+  `/products` as a host-owned launcher and inventory surface.
 - Reuse the host registration source across setup and landing instead of
   maintaining separate metadata islands.
 
@@ -127,7 +133,8 @@ distribution system.
   2. Completing setup still enters the selected product.
   3. `/products` shows required products, optional products, and installed
      apps.
-  4. Suite settings and product settings route correctly.
+  4. Legacy settings links such as `/settings/cats` redirect to their canonical
+     destination without breaking deep links.
   5. Existing direct links into `/chat/*`, `/work/*`, and `/code/*` still work.
 
 ## Risks and Mitigations

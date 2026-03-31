@@ -19,7 +19,8 @@ The next slice should make that host role visible in the UI.
 This spec defines a host-owned landing and inventory model where:
 
 - setup still chooses a primary first-party product
-- `/` can continue to open the user's selected or last-used product
+- `/` continues to open the user's selected or last-used product in the current
+  slice
 - the suite exposes a dedicated host surface for required products, optional
   products, and installed apps
 - host/global settings are separated from product-owned settings
@@ -90,32 +91,37 @@ installed apps as a first-class inventory concept.
 3. Completing setup shall continue to record a selected primary product.
 4. The suite root `/` shall continue to resolve to the user's selected or
    last-used product entry.
-5. The host-owned landing shall provide a visible list of first-party products.
-6. Each product entry on the landing shall show at least:
+5. Completing setup shall continue to open the selected primary product entry
+   in the current slice rather than forcing a stop at `/products`.
+6. The host-owned landing shall provide a visible list of first-party products.
+7. Each product entry on the landing shall show at least:
    - label
    - install policy (`required` or `optional`)
    - install or availability state
    - launch action
    - whether it is the current default or last-used entry
-7. The landing shall visually distinguish required products from optional
+8. The landing shall visually distinguish required products from optional
    products.
-8. Optional products shall be representable even when they are not currently
+9. Optional products shall be representable even when they are not currently
    installed.
-9. The host-owned landing shall also provide an installed-apps section.
-10. The installed-apps section shall be able to represent:
+10. The host-owned landing shall also provide an installed-apps section.
+11. The installed-apps section shall be able to represent:
    - first-party apps
    - third-party apps
    - apps that contribute a visible entry surface
    - apps that contribute supporting capability without a main launch surface
-11. Suite-level settings shall remain host-owned and shall focus on global
+12. Suite-level settings shall remain host-owned and shall focus on global
    concerns such as owner/general settings, runtime, and data/reset controls.
-12. Product-specific settings shall be routable under the owning product route
+13. Product-specific settings shall be routable under the owning product route
     tree.
-13. The suite shall preserve direct product routes such as `/chat/*`,
+14. The suite shall preserve direct product routes such as `/chat/*`,
     `/work/*`, and `/code/*`.
-14. The setup wizard shall continue to derive its first-product choices from a
+15. The setup wizard shall continue to derive its first-product choices from a
     host-owned registration source rather than hardcoded renderer branching.
-15. The host envelope shall expose enough structured metadata to render product
+16. The host shall preserve bounded compatibility for existing deep links when
+    canonical settings ownership moves from suite-level routes to product-owned
+    routes.
+17. The host envelope shall expose enough structured metadata to render product
     and app inventory without inferring state only from route prefixes.
 
 ### UX Requirements
@@ -134,8 +140,10 @@ installed apps as a first-class inventory concept.
 The host should converge toward explicit descriptors such as:
 
 ```ts
+type SuiteProductId = SuiteSurfaceId | (string & {});
+
 interface SuiteProductDescriptor {
-  id: 'chat' | 'work' | 'code' | string;
+  id: SuiteProductId;
   label: string;
   routePrefix: string;
   installPolicy: 'required' | 'optional';
@@ -238,8 +246,6 @@ into a more general host registry instead of remaining wizard-only metadata.
 
 ## Open Questions
 
-- Should `/products` become the visible home surface after setup for some user
-  cohorts, or remain a secondary launcher beside direct product entry?
 - Which first host-owned settings subsections should exist immediately:
   `general`, `runtime`, `data`, and perhaps `updates`?
 - How should required products and optional products be grouped visually when
