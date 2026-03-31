@@ -80,6 +80,8 @@ test('suite surface descriptors expose product switcher metadata and stable root
 
 test('isSuiteNonProductPath excludes suite settings and legacy chat settings from product sync', () => {
   assert.equal(isSuiteNonProductPath('/setup'), true);
+  assert.equal(isSuiteNonProductPath('/lobby'), true);
+  assert.equal(isSuiteNonProductPath('/products'), true);
   assert.equal(isSuiteNonProductPath('/settings'), true);
   assert.equal(isSuiteNonProductPath('/settings/general'), true);
   assert.equal(isSuiteNonProductPath('/chat/settings'), true);

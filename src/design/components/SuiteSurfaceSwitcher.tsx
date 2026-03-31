@@ -17,6 +17,12 @@ interface SuiteSurfaceSwitcherProps {
   onSelectSurface: (surface: SuiteSurfaceId) => void;
 }
 
+function openSuiteLobby(): void {
+  if (typeof window !== 'undefined') {
+    window.location.assign('/lobby');
+  }
+}
+
 export function SuiteSurfaceSwitcher({
   activeSurface,
   onSelectSurface,
@@ -153,6 +159,17 @@ export function SuiteSurfaceSwitcher({
           );
         })}
       </div>
+      <div className="suiteSurfaceMenuDivider" />
+      <button
+        type="button"
+        className="suiteSurfaceMenuAction"
+        onClick={() => {
+          setOpen(false);
+          openSuiteLobby();
+        }}
+      >
+        Open Lobby
+      </button>
     </div>
   ) : null;
 

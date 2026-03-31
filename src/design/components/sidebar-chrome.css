@@ -102,6 +102,12 @@
   gap: 4px;
 }
 
+.suiteSurfaceMenuDivider {
+  height: 1px;
+  margin: 10px 2px 8px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
 .suiteSurfaceMenuItem {
   display: flex;
   align-items: flex-start;
@@ -123,6 +129,26 @@
 
 .suiteSurfaceMenuItem.isCurrent {
   background: rgba(0, 0, 0, 0.055);
+}
+
+.suiteSurfaceMenuAction {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.suiteSurfaceMenuAction:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .suiteSurfaceSwatch {

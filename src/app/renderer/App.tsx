@@ -1,5 +1,5 @@
 import { startTransition, useEffect, useRef, useState } from 'react';
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import type { SuiteHostEnvelope } from '../../shared/suite-contract';
 import ChatApp from '../../products/chat/renderer/App';
@@ -10,6 +10,7 @@ import {
   resolveSuiteSurfaceForPath,
   SUITE_SURFACE_ROUTES,
 } from './routeMap';
+import { SuiteLobby } from './SuiteLobby';
 import { SuiteSetupWizard } from './setup';
 import { fetchSuiteEnvelope } from './setup/api';
 
@@ -24,7 +25,6 @@ function resolveProductEntryPath(surface: string): string {
 }
 
 export default function SuiteApp() {
-  const navigate = useNavigate();
   const location = useLocation();
   const [state, setState] = useState<SuiteLoadState>({ status: 'loading' });
   const lastSyncedSurface = useRef<string | null>(null);
@@ -139,6 +139,8 @@ export default function SuiteApp() {
   const entryPath = resolveProductEntryPath(storedSurface);
   return (
     <Routes>
+      <Route path="/lobby" element={<SuiteLobby envelope={readyEnvelope} />} />
+      <Route path="/products" element={<Navigate to="/lobby" replace />} />
       <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
       <Route path="/settings/*" element={<ChatApp />} />
       <Route path={`${SUITE_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />

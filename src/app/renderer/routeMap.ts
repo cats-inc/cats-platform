@@ -35,6 +35,15 @@ export function isSuiteNonProductPath(pathname: string): boolean {
     return true;
   }
 
+  if (
+    pathname === '/lobby'
+    || pathname.startsWith('/lobby/')
+    || pathname === '/products'
+    || pathname.startsWith('/products/')
+  ) {
+    return true;
+  }
+
   if (pathname === '/settings' || pathname.startsWith('/settings/')) {
     return true;
   }
