@@ -9,36 +9,42 @@ interface SuiteSurfaceDescriptor {
   maturity: SuiteProductMaturity;
 }
 
-export function listSuiteSurfaceDescriptors(): SuiteSurfaceDescriptor[] {
-  return listSuiteProductDescriptors()
-    .filter((descriptor) => descriptor.surface !== null)
-    .map((descriptor) => ({
-      id: descriptor.surface!,
-      routePrefix: descriptor.routePrefix,
-      productName: descriptor.productName,
-      subtitle: descriptor.subtitle,
-      maturity: descriptor.maturity,
-    }));
+const SUITE_SURFACE_DESCRIPTORS: readonly SuiteSurfaceDescriptor[] = listSuiteProductDescriptors()
+  .filter((descriptor) => descriptor.surface !== null)
+  .map((descriptor) => ({
+    id: descriptor.surface!,
+    routePrefix: descriptor.routePrefix,
+    productName: descriptor.productName,
+    subtitle: descriptor.subtitle,
+    maturity: descriptor.maturity,
+  }));
+
+const SUITE_SURFACE_DESCRIPTOR_BY_ID = new Map(
+  SUITE_SURFACE_DESCRIPTORS.map((descriptor) => [descriptor.id, descriptor] as const),
+);
+
+export function listSuiteSurfaceDescriptors(): readonly SuiteSurfaceDescriptor[] {
+  return SUITE_SURFACE_DESCRIPTORS;
 }
 
 export function resolveSuiteSurfaceFromPath(pathname: string): SuiteSurfaceId {
-  const matchedDescriptor = listSuiteSurfaceDescriptors().find((descriptor) =>
+  const matchedDescriptor = SUITE_SURFACE_DESCRIPTORS.find((descriptor) =>
     pathname === descriptor.routePrefix || pathname.startsWith(`${descriptor.routePrefix}/`),
   );
   return matchedDescriptor?.id ?? 'chat';
 }
 
 export function suiteSurfaceProductName(surface: SuiteSurfaceId): string {
-  return listSuiteSurfaceDescriptors().find((descriptor) => descriptor.id === surface)?.productName
+  return SUITE_SURFACE_DESCRIPTOR_BY_ID.get(surface)?.productName
     ?? 'Cats Chat';
 }
 
 export function suiteSurfaceSubtitle(surface: SuiteSurfaceId): string {
-  return listSuiteSurfaceDescriptors().find((descriptor) => descriptor.id === surface)?.subtitle
+  return SUITE_SURFACE_DESCRIPTOR_BY_ID.get(surface)?.subtitle
     ?? 'Conversations with companions and personal agents';
 }
 
 export function suiteSurfaceRoutePrefix(surface: SuiteSurfaceId): `/${string}` {
-  return listSuiteSurfaceDescriptors().find((descriptor) => descriptor.id === surface)?.routePrefix
+  return SUITE_SURFACE_DESCRIPTOR_BY_ID.get(surface)?.routePrefix
     ?? '/chat';
 }

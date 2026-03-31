@@ -17,7 +17,6 @@ const SUITE_PRODUCT_DESCRIPTORS: readonly SuiteProductDescriptor[] = [
     maturity: 'active',
     setup: {
       selectable: true,
-      supportsFirstCat: true,
     },
   },
   {
@@ -33,7 +32,6 @@ const SUITE_PRODUCT_DESCRIPTORS: readonly SuiteProductDescriptor[] = [
     setup: {
       selectable: false,
       disabledReason: 'Coming soon',
-      supportsFirstCat: false,
     },
   },
   {
@@ -49,7 +47,6 @@ const SUITE_PRODUCT_DESCRIPTORS: readonly SuiteProductDescriptor[] = [
     setup: {
       selectable: false,
       disabledReason: 'Coming soon',
-      supportsFirstCat: false,
     },
   },
 ] as const;

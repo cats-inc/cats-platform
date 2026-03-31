@@ -18,7 +18,6 @@ export interface SuiteAppDescriptor {
 export interface SuiteProductSetupDescriptor {
   selectable: boolean;
   disabledReason?: string;
-  supportsFirstCat: boolean;
 }
 
 export interface SuiteProductDescriptor {

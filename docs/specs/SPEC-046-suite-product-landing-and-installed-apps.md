@@ -156,7 +156,6 @@ interface SuiteProductDescriptor {
   setup: {
     selectable: boolean;
     disabledReason?: string;
-    supportsFirstCat: boolean;
   };
 }
 

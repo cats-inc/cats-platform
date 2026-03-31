@@ -1,37 +1,29 @@
 import type {
   SuiteProductDescriptor,
   SuiteProductGroupId,
-  SuiteProductInstallPolicy,
-  SuiteProductInstallState,
-  SuiteProductMaturity,
   SuiteSurfaceId,
 } from '../../shared/suite-contract.js';
-
-export type SuiteLobbySectionId = SuiteProductGroupId;
-export type SuiteLobbyInstallPolicy = SuiteProductInstallPolicy;
-export type SuiteLobbyInstallState = SuiteProductInstallState;
-export type SuiteLobbyMaturity = SuiteProductMaturity;
 
 export interface SuiteLobbyProductEntry {
   surface: SuiteSurfaceId;
   productName: string;
   subtitle: string;
   routePrefix: `/${string}`;
-  installPolicy: SuiteLobbyInstallPolicy;
-  installState: SuiteLobbyInstallState;
-  maturity: SuiteLobbyMaturity;
+  installPolicy: SuiteProductDescriptor['installPolicy'];
+  installState: SuiteProductDescriptor['installState'];
+  maturity: SuiteProductDescriptor['maturity'];
   lastUsed: boolean;
 }
 
 export interface SuiteLobbySection {
-  id: SuiteLobbySectionId;
+  id: SuiteProductGroupId;
   label: string;
   description: string;
   entries: SuiteLobbyProductEntry[];
 }
 
 const SUITE_LOBBY_SECTION_META: Record<
-  SuiteLobbySectionId,
+  SuiteProductGroupId,
   Pick<SuiteLobbySection, 'label' | 'description'>
 > = {
   home: {
@@ -44,11 +36,13 @@ const SUITE_LOBBY_SECTION_META: Record<
   },
 };
 
+const SUITE_LOBBY_SECTION_ORDER: readonly SuiteProductGroupId[] = ['home', 'office'];
+
 export function buildSuiteLobbySections(options: {
   products: readonly SuiteProductDescriptor[];
   lastUsedSurface: SuiteSurfaceId | null;
 }): SuiteLobbySection[] {
-  const sections = new Map<SuiteLobbySectionId, SuiteLobbySection>();
+  const sections = new Map<SuiteProductGroupId, SuiteLobbySection>();
 
   for (const descriptor of options.products) {
     if (!descriptor.surface) {
@@ -76,7 +70,7 @@ export function buildSuiteLobbySections(options: {
     sections.set(sectionId, existing);
   }
 
-  return ['home', 'office']
-    .map((sectionId) => sections.get(sectionId as SuiteLobbySectionId))
+  return SUITE_LOBBY_SECTION_ORDER
+    .map((sectionId) => sections.get(sectionId))
     .filter((section): section is SuiteLobbySection => Boolean(section));
 }
