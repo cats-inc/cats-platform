@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [048-separate-suite-products-from-installable-apps](./048-separate-suite-products-from-installable-apps.md) | Separate suite products from installable apps | Accepted | 2026-03-31 |
 | [047-separate-bootstrap-diagnostics-by-layer-and-aggregate-in-the-host](./047-separate-bootstrap-diagnostics-by-layer-and-aggregate-in-the-host.md) | Separate bootstrap diagnostics by layer and aggregate in the host | Accepted | 2026-03-30 |
 | [046-drive-packaged-setup-through-runtime-bootstrap-apis](./046-drive-packaged-setup-through-runtime-bootstrap-apis.md) | Drive packaged setup through runtime bootstrap APIs | Accepted | 2026-03-30 |
 | [045-use-cats-platform-as-the-main-suite-host-under-cats-brand](./045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md) | Use cats-platform as the main suite host under Cats brand | Accepted | 2026-03-30 |
@@ -90,6 +91,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-03-30*
+*Last updated: 2026-03-31*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

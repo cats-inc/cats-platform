@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-035](./PLAN-035-suite-product-landing-and-installed-apps.md) | Suite Product Landing and Installed Apps | Draft | [SPEC-046](../specs/SPEC-046-suite-product-landing-and-installed-apps.md), [ADR-048](../decisions/048-separate-suite-products-from-installable-apps.md) |
 | [PLAN-034](./PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md) | Cross-Layer Bootstrap and Onboarding Diagnostics | Draft (Implementation Ready) | [SPEC-045](../specs/SPEC-045-cross-layer-bootstrap-and-onboarding-diagnostics.md), [ADR-047](../decisions/047-separate-bootstrap-diagnostics-by-layer-and-aggregate-in-the-host.md) |
 | [PLAN-033](./PLAN-033-integrate-packaged-setup-with-runtime-bootstrap.md) | Integrate Packaged Setup with Runtime Bootstrap | Draft | [SPEC-044](../specs/SPEC-044-integrate-packaged-setup-with-runtime-bootstrap.md), [ADR-046](../decisions/046-drive-packaged-setup-through-runtime-bootstrap-apis.md) |
 | [PLAN-032](./PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) | Cats Code MVP Fan-Out, Relay, and Convergence | Draft | [SPEC-043](../specs/SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) |

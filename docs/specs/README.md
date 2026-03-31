@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-046](./SPEC-046-suite-product-landing-and-installed-apps.md) | Suite Product Landing and Installed Apps | Draft | [PLAN-035](../plans/PLAN-035-suite-product-landing-and-installed-apps.md) |
 | [SPEC-045](./SPEC-045-cross-layer-bootstrap-and-onboarding-diagnostics.md) | Cross-Layer Bootstrap and Onboarding Diagnostics | Approved | [PLAN-034](../plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md) |
 | [SPEC-044](./SPEC-044-integrate-packaged-setup-with-runtime-bootstrap.md) | Integrate Packaged Setup with Runtime Bootstrap | Approved | [PLAN-033](../plans/PLAN-033-integrate-packaged-setup-with-runtime-bootstrap.md) |
 | [SPEC-043](./SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) | Cats Code MVP Multi-Agent Local-App Workflow | Draft | [PLAN-032](../plans/PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) |
@@ -102,6 +103,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-03-30*
+*Last updated: 2026-03-31*
 
 *See also: [plans/](../plans/) for implementation plans*
