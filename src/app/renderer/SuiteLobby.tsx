@@ -100,15 +100,21 @@ export function SuiteLobby({
                       <span className="setupProductLabel">{entry.productName}</span>
                     </div>
                     <div className="suiteLobbyProductMeta">
-                      <span
-                        className={
-                          entry.preview
-                            ? 'statusChip statusChipMuted'
-                            : 'statusChip statusChipReady'
-                        }
-                      >
-                        {entry.preview ? 'Preview' : 'Included'}
+                      <span className="statusChip statusChipReady">
+                        {entry.installPolicy === 'required' ? 'Required' : 'Optional'}
                       </span>
+                      {entry.installState !== 'installed' ? (
+                        <span className="statusChip statusChipMuted">
+                          {entry.installState === 'available'
+                            ? 'Available'
+                            : entry.installState === 'installing'
+                              ? 'Installing'
+                              : 'Needs attention'}
+                        </span>
+                      ) : null}
+                      {entry.maturity === 'preview' ? (
+                        <span className="statusChip statusChipMuted">Preview</span>
+                      ) : null}
                       {entry.lastUsed ? (
                         <span className="statusChip statusChipAccent">Last used</span>
                       ) : null}
@@ -124,17 +130,13 @@ export function SuiteLobby({
             <div className="contentCardHeader">
               <h2>Apps</h2>
             </div>
-            <button
-              type="button"
-              className="emptyStateCard suiteLobbyEmptyState"
-              onClick={() => navigate('/settings/general')}
-            >
+            <div className="emptyStateCard suiteLobbyEmptyState">
               <strong>No extra apps installed yet</strong>
               <p>
                 Shared and third-party apps will appear here once the host starts
                 installing them.
               </p>
-            </button>
+            </div>
           </section>
         </div>
       </div>

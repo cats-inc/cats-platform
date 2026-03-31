@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 
 import type { SuiteSurfaceId } from '../../shared/suite-contract.js';
 import { isEnabledSuiteSurface } from '../../shared/suiteSurfaces.js';
@@ -17,16 +18,11 @@ interface SuiteSurfaceSwitcherProps {
   onSelectSurface: (surface: SuiteSurfaceId) => void;
 }
 
-function openSuiteLobby(): void {
-  if (typeof window !== 'undefined') {
-    window.location.assign('/lobby');
-  }
-}
-
 export function SuiteSurfaceSwitcher({
   activeSurface,
   onSelectSurface,
 }: SuiteSurfaceSwitcherProps) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -165,7 +161,7 @@ export function SuiteSurfaceSwitcher({
         className="suiteSurfaceMenuAction"
         onClick={() => {
           setOpen(false);
-          openSuiteLobby();
+          navigate('/lobby');
         }}
       >
         Open Lobby

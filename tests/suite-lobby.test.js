@@ -11,7 +11,9 @@ test('buildSuiteLobbySections groups suite products into Home and Office', () =>
       id: section.id,
       entries: section.entries.map((entry) => ({
         surface: entry.surface,
-        preview: entry.preview,
+        installPolicy: entry.installPolicy,
+        installState: entry.installState,
+        maturity: entry.maturity,
         lastUsed: entry.lastUsed,
       })),
     })),
@@ -21,7 +23,9 @@ test('buildSuiteLobbySections groups suite products into Home and Office', () =>
         entries: [
           {
             surface: 'chat',
-            preview: false,
+            installPolicy: 'required',
+            installState: 'installed',
+            maturity: 'active',
             lastUsed: false,
           },
         ],
@@ -31,12 +35,16 @@ test('buildSuiteLobbySections groups suite products into Home and Office', () =>
         entries: [
           {
             surface: 'work',
-            preview: true,
+            installPolicy: 'required',
+            installState: 'installed',
+            maturity: 'preview',
             lastUsed: true,
           },
           {
             surface: 'code',
-            preview: true,
+            installPolicy: 'required',
+            installState: 'installed',
+            maturity: 'preview',
             lastUsed: false,
           },
         ],

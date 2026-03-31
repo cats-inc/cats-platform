@@ -1,16 +1,20 @@
 import { listSuiteSurfaceDescriptors } from '../../core/suiteSurface.js';
 import type { SuiteSurfaceId } from '../../shared/suite-contract.js';
-import { isEnabledSuiteSurface } from '../../shared/suiteSurfaces.js';
+import { SUITE_SURFACE_ROUTES } from './routeMap.js';
 
 export type SuiteLobbySectionId = 'home' | 'office';
+export type SuiteLobbyInstallPolicy = 'required' | 'optional';
+export type SuiteLobbyInstallState = 'installed' | 'available' | 'installing' | 'attention';
+export type SuiteLobbyMaturity = 'active' | 'preview';
 
 export interface SuiteLobbyProductEntry {
   surface: SuiteSurfaceId;
   productName: string;
   subtitle: string;
   routePrefix: `/${string}`;
-  enabled: boolean;
-  preview: boolean;
+  installPolicy: SuiteLobbyInstallPolicy;
+  installState: SuiteLobbyInstallState;
+  maturity: SuiteLobbyMaturity;
   lastUsed: boolean;
 }
 
@@ -53,14 +57,15 @@ export function buildSuiteLobbySections(options: {
       entries: [],
     };
 
-    const enabled = isEnabledSuiteSurface(descriptor.id);
+    const route = SUITE_SURFACE_ROUTES[descriptor.id];
     existing.entries.push({
       surface: descriptor.id,
       productName: descriptor.productName,
       subtitle: descriptor.subtitle,
       routePrefix: descriptor.routePrefix,
-      enabled,
-      preview: !enabled,
+      installPolicy: 'required',
+      installState: 'installed',
+      maturity: route.placeholder ? 'preview' : 'active',
       lastUsed: descriptor.id === options.lastUsedSurface,
     });
     sections.set(sectionId, existing);

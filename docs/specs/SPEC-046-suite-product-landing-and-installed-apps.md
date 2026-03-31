@@ -21,6 +21,7 @@ This spec defines a host-owned landing and inventory model where:
 - setup still chooses a primary first-party product
 - `/` continues to open the user's selected or last-used product in the current
   slice
+- the host-owned landing is now named `Lobby`
 - the suite exposes a dedicated host surface for required products, optional
   products, and installed apps
 - host/global settings are separated from product-owned settings
@@ -175,9 +176,10 @@ route knowledge for inventory UI.
 
 - `/setup`
   setup wizard before suite entry
+- `/lobby`
+  canonical host-owned Lobby for products and installed apps
 - `/products`
-  host-owned landing for required products, optional products, and installed
-  apps
+  compatibility alias that redirects to `/lobby`
 - `/settings/general`
   host-owned general settings
 - `/settings/runtime`
@@ -202,14 +204,13 @@ for example:
 
 The first host-owned landing should have these content regions:
 
-1. `Core Products`
-   - required first-party product cards
-   - open/default/last-used status
-   - install and readiness summary
+1. `Home`
+   - Chat-oriented products and companion-facing entry surfaces
+   - cards still carry required/optional and install/readiness metadata
 
-2. `Optional Products`
-   - optional first-party product cards
-   - install state and launch/manage actions when relevant
+2. `Office`
+   - Work-, Code-, and operator-oriented products
+   - cards still carry required/optional and install/readiness metadata
 
 3. `Installed Apps`
    - installed app list
@@ -221,8 +222,9 @@ The first host-owned landing should have these content regions:
    - runtime health
    - return to last-used product
 
-The layout may evolve, but `Core Products` plus `Optional Products` should
-remain the primary visual organizer for the current suite.
+The layout may evolve, but Home/Office should remain the primary organizer for
+the current Lobby, while install policy and install state remain per-product
+metadata.
 
 ## Registration Model
 
@@ -248,8 +250,8 @@ into a more general host registry instead of remaining wizard-only metadata.
 
 - Which first host-owned settings subsections should exist immediately:
   `general`, `runtime`, `data`, and perhaps `updates`?
-- How should required products and optional products be grouped visually when
-  the product catalog grows beyond the first few lines?
+- How should future optional products such as `Learn` or `Invest` map into the
+  Home/Office split while keeping their install policy legible on the card?
 - How should first-party products appear inside the installed-apps inventory
   once app packaging exists: mirrored, linked, or summarized only?
 

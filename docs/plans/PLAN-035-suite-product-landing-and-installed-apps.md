@@ -20,7 +20,7 @@ The implementation should keep today's strengths:
 
 While adding a clearer suite-host model:
 
-- a host-owned `/products` landing
+- a host-owned `/lobby` landing with `/products` as a compatibility alias
 - explicit required-product and optional-product inventory
 - explicit product and app descriptors in host state
 - host/global settings separated from product-owned settings
@@ -42,10 +42,11 @@ contracts.
 
 ## Phase 2: Add the Host-Owned Landing Surface
 
-- [ ] Add a suite route for `/products`.
+- [ ] Add a suite route for `/lobby` and keep `/products` as a compatibility
+      alias.
 - [ ] Build a host-owned landing page that presents:
-      - required first-party products
-      - optional first-party products
+      - Home and Office product groupings
+      - per-product install policy and install-state metadata
       - installed apps
       - host actions and runtime summary
 - [ ] Add a clear navigation entry to open the landing from inside the suite.
@@ -118,7 +119,7 @@ distribution system.
   `product` and `app`.
 - Keep the current root-entry behavior while adding a host-owned landing route.
 - Keep setup-complete entry product-first in this slice, while exposing
-  `/products` as a host-owned launcher and inventory surface.
+  `/lobby` as the host-owned launcher and inventory surface.
 - Reuse the host registration source across setup and landing instead of
   maintaining separate metadata islands.
 
@@ -127,12 +128,12 @@ distribution system.
 - **Unit Tests**: descriptor normalization, route helpers, and host envelope
   shaping
 - **Integration Tests**: suite host routing for `/`, `/setup`, `/products`,
-  `/settings/*`, and product prefixes
+  `/lobby`, `/settings/*`, and product prefixes
 - **Manual Testing**:
   1. Fresh setup still opens the wizard.
   2. Completing setup still enters the selected product.
-  3. `/products` shows required products, optional products, and installed
-     apps.
+  3. `/lobby` shows Home, Office, and installed apps, with per-product
+     install metadata.
   4. Legacy settings links such as `/settings/cats` redirect to their canonical
      destination without breaking deep links.
   5. Existing direct links into `/chat/*`, `/work/*`, and `/code/*` still work.
@@ -144,7 +145,7 @@ distribution system.
 | Host and product settings ownership stays mixed during migration | High | Add explicit canonical routes plus compatibility redirects early |
 | Terminology drifts between docs and UI | Medium | Land ADR/SPEC copy first and reuse labels from a shared source where possible |
 | Product/app descriptors become overfit to the current first-party slice | Medium | Keep descriptors minimal and centered on inventory, launch semantics, and install policy |
-| Landing adds friction to the fast chat entry path | Medium | Preserve `/` -> last-used product while making `/products` a clear optional host entry |
+| Landing adds friction to the fast chat entry path | Medium | Preserve `/` -> last-used product while making `/lobby` a clear optional host entry |
 
 ## Progress Log
 
