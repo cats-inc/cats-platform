@@ -387,6 +387,10 @@ test('package.json wires Windows installers through electron-builder NSIS', asyn
     (entry) => entry.to === 'desktop-host/setup-assets',
   ), true);
   assert.equal(packageJson.build.extraResources.some(
+    (entry) => entry.from === 'build/desktop-packaging/shared/app-sidecar/package.json'
+      && entry.to === 'app-sidecar/package.json',
+  ), true);
+  assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.from === 'build/desktop-packaging/shared/cats-runtime'
       && entry.to === 'cats-runtime'
       && Array.isArray(entry.filter)
@@ -406,6 +410,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
 
   assert.match(script, /app-sidecar\\dist-server\\index\.js/);
   assert.match(script, /app-sidecar\\dist\\index\.html/);
+  assert.match(script, /app-sidecar\\package\.json/);
   assert.match(script, /cats-runtime\\dist\\index\.js/);
   assert.match(script, /cats-runtime\\package\.json/);
   assert.match(script, /cats-runtime\\public\\provider-setup\.html/);
@@ -459,6 +464,11 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await seedFile(join(packageRoot, 'dist', 'index.html'), '<!doctype html>');
   await seedFile(join(packageRoot, 'dist-electron', 'main.js'), 'export {};');
   await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
+  await seedFile(join(packageRoot, 'package.json'), JSON.stringify({
+    name: '@cats-inc/cats-platform',
+    version: '0.1.0',
+    type: 'module',
+  }, null, 2));
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
@@ -491,6 +501,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'desktop-package-plan.json'));
   await access(join(plan.outputRoot, 'shared', 'dist-server', 'index.js'));
   await access(join(plan.outputRoot, 'shared', 'dist', 'index.html'));
+  await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'dist-electron', 'main.js'));
   await access(join(plan.outputRoot, 'shared', 'dist-electron', 'preload.cjs'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'dist', 'index.js'));
@@ -689,6 +700,12 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'app-package-manifest' && artifact.role === 'app_server',
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
       (artifact) => artifact.id === 'runtime-package-manifest' && artifact.role === 'runtime_sidecar',
     ),
     true,
@@ -801,6 +818,11 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
   await seedFile(join(packageRoot, 'dist', 'index.html'), '<!doctype html>');
   await seedFile(join(packageRoot, 'dist-electron', 'main.js'), 'export {};');
   await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
+  await seedFile(join(packageRoot, 'package.json'), JSON.stringify({
+    name: '@cats-inc/cats-platform',
+    version: '0.1.0',
+    type: 'module',
+  }, null, 2));
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');

@@ -128,6 +128,7 @@ $requiredFiles = @(
   @{ Path = $exePath; Label = 'installed Cats.exe' },
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\dist-server\index.js'); Label = 'bundled cats server entry' },
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\dist\index.html'); Label = 'bundled cats renderer build' },
+  @{ Path = (Join-Path $resourcesRoot 'app-sidecar\package.json'); Label = 'bundled cats app package manifest' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\dist\index.js'); Label = 'bundled cats-runtime entry' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\package.json'); Label = 'bundled cats-runtime package manifest' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\public\provider-setup.html'); Label = 'bundled cats-runtime setup UI' },
@@ -161,6 +162,7 @@ Assert-True ($packagingPlan.selfHostedNpmCompatible -eq $true) 'installer keeps 
 $windowsTarget = $packagingPlan.targets | Where-Object { $_.platform -eq 'windows' } | Select-Object -First 1
 Assert-True ($null -ne $windowsTarget) 'installer packaging plan includes a Windows target'
 Assert-True (($windowsTarget.installerFormats -contains 'nsis')) 'Windows target includes the NSIS installer format'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'app-package-manifest' }).Count -ge 1) 'Windows target includes the bundled cats app package manifest artifact'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-package-manifest' }).Count -ge 1) 'Windows target includes the bundled cats-runtime package manifest artifact'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-setup-ui' }).Count -ge 1) 'Windows target includes the bundled cats-runtime setup UI artifact'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-skills' }).Count -ge 1) 'Windows target includes the bundled cats-runtime skills artifact'

@@ -223,6 +223,8 @@ export function buildDesktopBootstrapPage(): string {
       const setupSummary = document.getElementById('setup-summary');
       const diagnosticsSummary = document.getElementById('diagnostics');
       let latestSnapshot = null;
+      let snapshotListenerBound = false;
+      let retryHandle = null;
       function escapeHtml(value) {
         return String(value)
           .replace(/&/g, '&amp;')
@@ -523,18 +525,40 @@ export function buildDesktopBootstrapPage(): string {
         renderSetup(snapshot, null);
         renderDiagnostics(snapshot);
       }
+      function ensureSnapshotListener() {
+        if (snapshotListenerBound) {
+          return;
+        }
+        bridge.onSnapshot(applySnapshot);
+        snapshotListenerBound = true;
+      }
+      function scheduleInitialSnapshotRetry() {
+        if (retryHandle !== null) {
+          return;
+        }
+        retryHandle = window.setTimeout(() => {
+          retryHandle = null;
+          void loadInitialSnapshot();
+        }, 750);
+      }
+      async function loadInitialSnapshot() {
+        try {
+          const snapshot = await bridge.getSnapshot();
+          const setupSnapshot = await bridge.getSetupSnapshot().catch(() => null);
+          ensureSnapshotListener();
+          applySnapshot(snapshot);
+          renderSetup(snapshot, setupSnapshot);
+        } catch {
+          summary.textContent = 'Waiting for local services.';
+          scheduleInitialSnapshotRetry();
+        }
+      }
       async function main() {
         if (!bridge) {
           summary.textContent = 'Desktop bridge is unavailable.';
           return;
         }
-        const [snapshot, setupSnapshot] = await Promise.all([
-          bridge.getSnapshot(),
-          bridge.getSetupSnapshot().catch(() => null),
-        ]);
-        applySnapshot(snapshot);
-        renderSetup(snapshot, setupSnapshot);
-        bridge.onSnapshot(applySnapshot);
+        void loadInitialSnapshot();
       }
       void main();
     </script>

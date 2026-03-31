@@ -26,4 +26,8 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /interruption-chip/);
   assert.match(html, /renderInterruptions/);
   assert.match(html, /repo-owned packaged assets/);
+  assert.match(html, /snapshotListenerBound/);
+  assert.match(html, /scheduleInitialSnapshotRetry/);
+  assert.match(html, /bridge\.getSnapshot\(\)/);
+  assert.match(html, /window\.setTimeout/);
 });

@@ -620,6 +620,7 @@ function buildPackagingTarget(
     { id: 'electron-preload', relativePath: 'shared/dist-electron/preload.cjs', role: 'electron_host' as const },
     { id: 'app-server', relativePath: 'shared/dist-server/index.js', role: 'app_server' as const },
     { id: 'app-renderer', relativePath: 'shared/dist/index.html', role: 'app_renderer' as const },
+    { id: 'app-package-manifest', relativePath: 'shared/app-sidecar/package.json', role: 'app_server' as const },
     { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/dist/index.js', role: 'runtime_sidecar' as const },
     { id: 'runtime-package-manifest', relativePath: 'shared/cats-runtime/package.json', role: 'runtime_sidecar' as const },
     { id: 'runtime-setup-ui', relativePath: 'shared/cats-runtime/public/provider-setup.html', role: 'runtime_sidecar' as const },
@@ -693,6 +694,7 @@ async function ensureBuiltAssets(config: DesktopHostConfig): Promise<void> {
   await ensureRequiredFile(join(config.packageRoot, 'dist', 'index.html'));
   await ensureRequiredFile(join(config.packageRoot, 'dist-electron', 'main.js'));
   await ensureRequiredFile(config.paths.preloadScript);
+  await ensureRequiredFile(join(config.packageRoot, 'package.json'));
 }
 
 async function copyDirectory(source: string, target: string): Promise<void> {
@@ -750,6 +752,7 @@ export async function stageDesktopPackagingOutputs(
   await copyDirectory(join(config.packageRoot, 'dist-server'), join(outputRoot, 'shared', 'dist-server'));
   await copyDirectory(join(config.packageRoot, 'dist'), join(outputRoot, 'shared', 'dist'));
   await copyDirectory(join(config.packageRoot, 'dist-electron'), join(outputRoot, 'shared', 'dist-electron'));
+  await copyFile(join(config.packageRoot, 'package.json'), join(outputRoot, 'shared', 'app-sidecar', 'package.json'));
   const setupAssets = await stageDesktopSetupAssets(config.packageRoot, outputRoot, generatedAt);
 
   let runtimeDependencyPackagePaths: string[] = [];
@@ -788,6 +791,10 @@ export async function stageDesktopPackagingOutputs(
       {
         source: relative(outputRoot, join(config.packageRoot, 'dist', 'index.html')),
         target: 'shared/dist/index.html',
+      },
+      {
+        source: relative(outputRoot, join(config.packageRoot, 'package.json')),
+        target: 'shared/app-sidecar/package.json',
       },
       {
         source: relative(outputRoot, join(config.packageRoot, 'dist-electron', 'main.js')),

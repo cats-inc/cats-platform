@@ -99,6 +99,10 @@
         ]
       },
       {
+        "from": "build/desktop-packaging/shared/app-sidecar/package.json",
+        "to": "app-sidecar/package.json"
+      },
+      {
         "from": "build/desktop-packaging/shared/cats-runtime",
         "to": "cats-runtime",
         "filter": [
