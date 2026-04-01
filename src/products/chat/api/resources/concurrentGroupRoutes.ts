@@ -25,6 +25,7 @@ import {
   touchConcurrentGroup,
 } from '../../state/model/index.js';
 import type {
+  CancelConcurrentChatGroupInput,
   ConcurrentChatDispatchResponse,
   ConcurrentChatDispatchResult,
   CreateConcurrentChatGroupInput,
@@ -35,15 +36,22 @@ import type {
 } from '../contracts.js';
 import {
   buildAppShellPayload,
+  cancelSessionIds,
+  collectActiveChannelSessionIds,
   handleRestError,
   nowFrom,
   persistDeletedConcurrentGroup,
   persistRenamedConcurrentGroup,
   persistUngroupedConcurrentGroup,
   sendRestError,
+  waitForCancelledChannelTurns,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
 import type { UpdateConcurrentChatGroupInput } from '../contracts.js';
+import {
+  channelDispatchCancellationRegistry,
+  DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
+} from '../../state/runtime-dispatch/cancellation.js';
 
 function requireConcurrentGroup(
   state: ChatState,
@@ -104,6 +112,7 @@ async function dispatchConcurrentBodies(
           runtimeRecovery: {
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
+          cancellationRegistry: channelDispatchCancellationRegistry,
         },
       );
       acknowledgedState = replaceState(
@@ -158,6 +167,7 @@ async function dispatchConcurrentBodies(
             runtimeRecovery: {
               staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
             },
+            cancellationRegistry: channelDispatchCancellationRegistry,
           },
         );
         const failedResults = completed.results.filter((result) => result.status === 'error');
@@ -333,6 +343,58 @@ async function handleSendConcurrentGroupMessage(
       persistAcknowledgedStateBeforeDispatch: true,
     });
     sendJson(context.response, 200, response);
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleCancelConcurrentGroup(
+  context: ChatApiRouteContext,
+  groupId: string,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<CancelConcurrentChatGroupInput>(context.request);
+    const now = nowFrom(context.dependencies);
+    const nowIso = now.toISOString();
+    const state = await context.dependencies.chatStore.read();
+    const group = requireConcurrentGroup(state, groupId);
+    if (!group.memberChannelIds.includes(body.activeChannelId)) {
+      sendRestError(
+        context,
+        400,
+        'channel_not_in_compare_group',
+        'The active chat is not part of this Parallel chat group.',
+      );
+      return;
+    }
+
+    const sessionIds = group.memberChannelIds.flatMap((channelId) =>
+      collectActiveChannelSessionIds(requireChannel(state, channelId)),
+    );
+    for (const channelId of group.memberChannelIds) {
+      channelDispatchCancellationRegistry.request(
+        channelId,
+        nowIso,
+        DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
+      );
+    }
+
+    const cancelledSessionCount = await cancelSessionIds(context, sessionIds);
+    const settledState = await waitForCancelledChannelTurns(
+      context,
+      group.memberChannelIds,
+    );
+    const appShell = await buildAppShellPayload(context.dependencies, settledState);
+    sendJson(context.response, 200, {
+      appShell,
+      groupId,
+      cancellation: {
+        activeChannelId: body.activeChannelId,
+        cancelledAt: nowIso,
+        targetChannelIds: group.memberChannelIds,
+        cancelledSessionCount,
+      },
+    });
   } catch (error) {
     handleRestError(context, error);
   }
@@ -563,6 +625,19 @@ export async function routeConcurrentGroupResourceApi(
   if (concurrentGroupMessagesMatch) {
     if (context.method === 'POST') {
       await handleSendConcurrentGroupMessage(context, concurrentGroupMessagesMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['POST']);
+    return true;
+  }
+
+  const concurrentGroupCancelMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/concurrent-groups\/([^/]+)\/cancel$/u,
+  );
+  if (concurrentGroupCancelMatch) {
+    if (context.method === 'POST') {
+      await handleCancelConcurrentGroup(context, concurrentGroupCancelMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['POST']);

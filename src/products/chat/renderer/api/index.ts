@@ -28,6 +28,8 @@ export {
 export {
   activateChatChannel,
   assignCatToChannelApi,
+  cancelChatChannel,
+  cancelConcurrentChatGroup,
   createConcurrentChatGroup,
   createChatChannel,
   createGlobalCat,

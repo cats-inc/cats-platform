@@ -19,6 +19,9 @@ import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import {
+  appendMessage,
+} from '../model/index.js';
+import {
   type DispatchFrame,
   type DispatchRequest,
   type TargetResolution,
@@ -55,6 +58,10 @@ import {
   materializeInFlightDispatchState,
   persistInFlightDispatchState,
 } from './persistence.js';
+import type {
+  ChannelDispatchCancellationRegistry,
+  ChannelDispatchCancellationRequest,
+} from './cancellation.js';
 
 export interface ProcessDispatchQueueOptions {
   state: ChatState;
@@ -81,6 +88,126 @@ export interface ProcessDispatchQueueOptions {
   chatStatePath?: string;
   runtimeDataDir?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;
+  cancellationRegistry?: ChannelDispatchCancellationRegistry;
+}
+
+function appendCancelledDispatchResult(
+  results: ChannelDispatchResult[],
+  turnId: string,
+  targetStatus: RoomWorkflowTurn['targetStatuses'][number],
+): void {
+  results.push({
+    targetKind: targetStatus.participant.participantKind,
+    targetId: targetStatus.participant.participantId,
+    targetName: targetStatus.participant.participantName,
+    sessionId: null,
+    status: 'skipped',
+    dispatchId: targetStatus.dispatchId ?? undefined,
+    turnId,
+    targetStatus: 'cancelled',
+    error: 'Stopped by user.',
+    sourceMessageId: targetStatus.sourceMessageId,
+    trigger: targetStatus.trigger,
+    dispatchDepth: targetStatus.depth,
+  });
+}
+
+function cancelInFlightWorkflowTargets(options: {
+  workflow: RoomWorkflowState;
+  activeTurn: RoomWorkflowTurn;
+  outcome: import('../../../../shared/roomRouting.js').RoomRoutingOutcome;
+  results: ChannelDispatchResult[];
+  nowIso: string;
+}): void {
+  const {
+    workflow,
+    activeTurn,
+    outcome,
+    results,
+    nowIso,
+  } = options;
+  const cancelledDispatchIds = new Set<string>();
+
+  for (const targetStatus of activeTurn.targetStatuses) {
+    if (
+      targetStatus.status !== 'pending'
+      && targetStatus.status !== 'running'
+      && targetStatus.status !== 'waiting_for_converge'
+    ) {
+      continue;
+    }
+
+    targetStatus.status = 'cancelled';
+    targetStatus.completedAt = nowIso;
+    targetStatus.error = 'Stopped by user.';
+    activeTurn.updatedAt = nowIso;
+    appendCancelledDispatchResult(results, activeTurn.id, targetStatus);
+
+    if (targetStatus.dispatchId) {
+      cancelledDispatchIds.add(targetStatus.dispatchId);
+    }
+
+    appendWorkflowEvent(
+      workflow,
+      activeTurn,
+      createWorkflowEvent(
+        activeTurn.id,
+        'target_blocked',
+        'blocked',
+        `Stopped ${targetStatus.participant.participantName} before the reply completed.`,
+        nowIso,
+        targetStatus.source,
+        targetStatus.sourceMessageId,
+        [targetStatus.participant],
+        {
+          dispatchId: targetStatus.dispatchId,
+          metadata: {
+            checkpointKind: 'completed',
+            blockedReason: 'user_cancelled',
+            cancelled: true,
+          },
+        },
+      ),
+    );
+  }
+
+  for (const dispatch of outcome.dispatches) {
+    if (
+      !cancelledDispatchIds.has(dispatch.id)
+      && dispatch.status !== 'pending'
+      && dispatch.status !== 'running'
+    ) {
+      continue;
+    }
+
+    dispatch.status = 'blocked';
+    dispatch.completedAt = nowIso;
+    dispatch.error = 'Stopped by user.';
+  }
+}
+
+function consumeCancellationRequest(
+  registry: ChannelDispatchCancellationRegistry | undefined,
+  channelId: string,
+  nowIso: string,
+  activeTurn: RoomWorkflowTurn,
+  workflow: RoomWorkflowState,
+  outcome: import('../../../../shared/roomRouting.js').RoomRoutingOutcome,
+  results: ChannelDispatchResult[],
+): ChannelDispatchCancellationRequest | null {
+  const request = registry?.consume(channelId) ?? null;
+  if (!request) {
+    return null;
+  }
+
+  cancelInFlightWorkflowTargets({
+    workflow,
+    activeTurn,
+    outcome,
+    results,
+    nowIso,
+  });
+  return request;
 }
 
 export async function processDispatchQueue(
@@ -115,6 +242,7 @@ export async function processDispatchQueue(
     transport,
     userMessage,
     workflow,
+    cancellationRegistry,
   } = options;
   let latestCheckpoint = options.latestCheckpoint;
   let nextState = options.state;
@@ -136,8 +264,44 @@ export async function processDispatchQueue(
     blockedReason: RoomRouteBlockedReason;
     note: string;
   } | null = null;
+  let cancellationRequest: ChannelDispatchCancellationRequest | null = null;
 
   while (queue.length > 0) {
+    cancellationRequest = cancellationRequest
+      ?? consumeCancellationRequest(
+        cancellationRegistry,
+        channelId,
+        nowIso,
+        activeTurn,
+        workflow,
+        outcome,
+        results,
+      );
+    if (cancellationRequest) {
+      nextState = appendMessage(
+        nextState,
+        channelId,
+        {
+          senderKind: 'system',
+          senderName: 'Chat',
+          body: cancellationRequest.note,
+        },
+        now,
+        {
+          metadata: {
+            event: 'routing_cancelled',
+            blockedReason: 'user_cancelled',
+          },
+          incrementUnread: false,
+        },
+      ).state;
+      blockedResolution = {
+        blockedReason: 'user_cancelled',
+        note: cancellationRequest.note,
+      };
+      break;
+    }
+
     const frame = queue.shift();
     if (!frame) {
       break;
@@ -502,6 +666,41 @@ export async function processDispatchQueue(
     latestCheckpoint = wakePrepared.latestCheckpoint;
     const readyRequests = wakePrepared.readyRequests;
 
+    cancellationRequest = cancellationRequest
+      ?? consumeCancellationRequest(
+        cancellationRegistry,
+        channelId,
+        nowIso,
+        activeTurn,
+        workflow,
+        outcome,
+        results,
+      );
+    if (cancellationRequest) {
+      nextState = appendMessage(
+        nextState,
+        channelId,
+        {
+          senderKind: 'system',
+          senderName: 'Chat',
+          body: cancellationRequest.note,
+        },
+        now,
+        {
+          metadata: {
+            event: 'routing_cancelled',
+            blockedReason: 'user_cancelled',
+          },
+          incrementUnread: false,
+        },
+      ).state;
+      blockedResolution = {
+        blockedReason: 'user_cancelled',
+        note: cancellationRequest.note,
+      };
+      break;
+    }
+
     if (readyRequests.length === 0) {
       continue;
     }
@@ -526,10 +725,23 @@ export async function processDispatchQueue(
       ),
     );
 
+    cancellationRequest = cancellationRequest
+      ?? consumeCancellationRequest(
+        cancellationRegistry,
+        channelId,
+        nowIso,
+        activeTurn,
+        workflow,
+        outcome,
+        results,
+      );
+
     const appliedExecutions = applyDispatchExecutions(
       nextState,
       channelId,
-      executions,
+      cancellationRequest
+        ? executions.filter((execution) => !execution.error)
+        : executions,
       now,
       {
         nowIso,
@@ -544,8 +756,40 @@ export async function processDispatchQueue(
         describeGuardReason,
       },
     );
+    if (cancellationRequest) {
+      nextState = appendMessage(
+        appliedExecutions.state,
+        channelId,
+        {
+          senderKind: 'system',
+          senderName: 'Chat',
+          body: cancellationRequest.note,
+        },
+        now,
+        {
+          metadata: {
+            event: 'routing_cancelled',
+            blockedReason: 'user_cancelled',
+          },
+          incrementUnread: false,
+        },
+      ).state;
+      cancelInFlightWorkflowTargets({
+        workflow,
+        activeTurn,
+        outcome,
+        results,
+        nowIso,
+      });
+      blockedResolution = {
+        blockedReason: 'user_cancelled',
+        note: cancellationRequest.note,
+      };
+    } else {
+      nextState = appliedExecutions.state;
+    }
     nextState = materializeInFlightDispatchState(
-      appliedExecutions.state,
+      nextState,
       channelId,
       baseRoomRouting,
       workflow,

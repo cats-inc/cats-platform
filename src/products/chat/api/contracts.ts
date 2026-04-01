@@ -528,6 +528,10 @@ export interface SendConcurrentChatMessageInput {
   attachments?: ConcurrentChatAttachmentInput[];
 }
 
+export interface CancelConcurrentChatGroupInput {
+  activeChannelId: string;
+}
+
 export interface RelayConcurrentChatMessageInput {
   activeChannelId: string;
   sourceChannelId: string;
@@ -583,6 +587,15 @@ export interface SendChannelMessageResponse {
   results: ChannelDispatchResult[];
 }
 
+export interface CancelChannelResponse {
+  appShell: AppShellPayload;
+  cancellation: {
+    channelId: string;
+    cancelledAt: string;
+    cancelledSessionCount: number;
+  };
+}
+
 export interface ConcurrentChatDispatchResult {
   channelId: string;
   status: 'sent' | 'error' | 'skipped';
@@ -599,6 +612,17 @@ export interface ConcurrentChatDispatchResponse {
   appShell: AppShellPayload;
   groupId: string;
   results: ConcurrentChatDispatchResult[];
+}
+
+export interface CancelConcurrentChatGroupResponse {
+  appShell: AppShellPayload;
+  groupId: string;
+  cancellation: {
+    activeChannelId: string;
+    cancelledAt: string;
+    cancelledSessionCount: number;
+    targetChannelIds: string[];
+  };
 }
 
 export interface ChannelExportPayload {

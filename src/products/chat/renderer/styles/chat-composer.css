@@ -47,6 +47,14 @@
   background: #333;
 }
 
+.composerStopButton {
+  background: var(--danger);
+}
+
+.composerStopButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 82%, black 18%);
+}
+
 .composerLeftGroup {
   display: flex;
   align-items: center;

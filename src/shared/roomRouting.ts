@@ -28,7 +28,8 @@ export type RoomRouteSelectionKind =
 export type RoomRouteBlockedReason =
   | 'missing_direct_chat_lead'
   | 'missing_cat_led_lead'
-  | 'no_valid_targets';
+  | 'no_valid_targets'
+  | 'user_cancelled';
 
 export type RoomRouteDefaultTargetReason =
   | 'boss_chat_default'

@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useRef,
   type Dispatch,
   type FormEvent,
   type KeyboardEvent,
@@ -20,6 +21,8 @@ import {
 } from '../../shared/channelEntry';
 import { isDirectLaneChannel } from '../../shared/channelTopology';
 import {
+  cancelChatChannel,
+  cancelConcurrentChatGroup,
   createConcurrentChatGroup,
   createChatChannel,
   fetchAppShell,
@@ -107,6 +110,18 @@ async function waitForPersistedUserTurn(
   return null;
 }
 
+interface ActiveSubmitRequest {
+  id: number;
+  kind: 'channel' | 'concurrent';
+  channelId: string;
+  groupId?: string;
+  controller: AbortController;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 export function useComposerSubmit(options: {
   state: LoadStateLike;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
@@ -169,6 +184,9 @@ export function useComposerSubmit(options: {
     setBusy,
     setFeedback,
   } = options;
+  const activeSubmitRequestRef = useRef<ActiveSubmitRequest | null>(null);
+  const nextSubmitIdRef = useRef(1);
+  const stoppedSubmitIdsRef = useRef(new Set<number>());
 
   const submitComposerMessage = useCallback(async (): Promise<void> => {
     if (state.status !== 'ready') {
@@ -208,6 +226,8 @@ export function useComposerSubmit(options: {
     };
 
     setFeedback('');
+    const submitId = nextSubmitIdRef.current;
+    nextSubmitIdRef.current += 1;
     try {
       if (showingParallelChatDraft && wasDraftingNewChat) {
         if (draftConcurrentTargets.length < 2) {
@@ -241,10 +261,18 @@ export function useComposerSubmit(options: {
         setState({ status: 'ready', payload: created.appShell });
 
         const baselineUserMessageCount = countUserMessages(created.appShell, activeChannelId);
+        const dispatchController = new AbortController();
+        activeSubmitRequestRef.current = {
+          id: submitId,
+          kind: 'concurrent',
+          channelId: activeChannelId,
+          groupId: created.group.id,
+          controller: dispatchController,
+        };
         const dispatchPromise = sendConcurrentChatMessage(created.group.id, {
           activeChannelId,
           body,
-        });
+        }, dispatchController.signal);
         const persistedPayload = await waitForPersistedUserTurn(
           activeChannelId,
           baselineUserMessageCount,
@@ -253,6 +281,7 @@ export function useComposerSubmit(options: {
         if (persistedPayload) {
           rollbackPayload = persistedPayload;
           setState({ status: 'ready', payload: persistedPayload });
+          setBusy('concurrent:dispatch');
         }
 
         const dispatch = await dispatchPromise;
@@ -284,10 +313,18 @@ export function useComposerSubmit(options: {
         setBusy('concurrent:ack');
 
         const baselineUserMessageCount = countUserMessages(initialPayload, channelId);
+        const dispatchController = new AbortController();
+        activeSubmitRequestRef.current = {
+          id: submitId,
+          kind: 'concurrent',
+          channelId,
+          groupId: compareGroupId,
+          controller: dispatchController,
+        };
         const dispatchPromise = sendConcurrentChatMessage(compareGroupId, {
           activeChannelId: channelId,
           body,
-        });
+        }, dispatchController.signal);
         const persistedPayload = await waitForPersistedUserTurn(
           channelId,
           baselineUserMessageCount,
@@ -296,6 +333,7 @@ export function useComposerSubmit(options: {
         if (persistedPayload) {
           rollbackPayload = persistedPayload;
           setState({ status: 'ready', payload: persistedPayload });
+          setBusy('concurrent:dispatch');
         }
 
         const dispatch = await dispatchPromise;
@@ -427,10 +465,17 @@ export function useComposerSubmit(options: {
       setBusy(`message:ack:${channelId}`);
 
       const baselineUserMessageCount = countUserMessages(payload, channelId);
+      const dispatchController = new AbortController();
+      activeSubmitRequestRef.current = {
+        id: submitId,
+        kind: 'channel',
+        channelId,
+        controller: dispatchController,
+      };
       const dispatchPromise = sendChatMessage(channelId, {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
-      });
+      }, dispatchController.signal);
       const persistedPayload = await waitForPersistedUserTurn(
         channelId,
         baselineUserMessageCount,
@@ -439,6 +484,7 @@ export function useComposerSubmit(options: {
       if (persistedPayload) {
         rollbackPayload = persistedPayload;
         setState({ status: 'ready', payload: persistedPayload });
+        setBusy(`message:send:${channelId}`);
       }
       const dispatch = await dispatchPromise;
       setState({ status: 'ready', payload: dispatch.appShell });
@@ -463,13 +509,22 @@ export function useComposerSubmit(options: {
         setChannelFiles([]);
       }
     } catch (error) {
+      const stopped = stoppedSubmitIdsRef.current.has(submitId);
+      if (stopped || isAbortError(error)) {
+        return;
+      }
       setState({ status: 'ready', payload: rollbackPayload });
       setComposerDraft(body);
       restoreFiles();
       setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
       navigate(rollbackPath, { replace: true });
     } finally {
-      setBusy('');
+      if (activeSubmitRequestRef.current?.id === submitId) {
+        activeSubmitRequestRef.current = null;
+      }
+      if (!stoppedSubmitIdsRef.current.has(submitId)) {
+        setBusy('');
+      }
     }
   }, [
     channelFiles,
@@ -509,6 +564,41 @@ export function useComposerSubmit(options: {
     state,
   ]);
 
+  const onStopMessage = useCallback(async (): Promise<void> => {
+    const activeRequest = activeSubmitRequestRef.current;
+    if (!activeRequest) {
+      return;
+    }
+
+    activeSubmitRequestRef.current = null;
+    stoppedSubmitIdsRef.current.add(activeRequest.id);
+    setFeedback('');
+    setBusy(
+      activeRequest.kind === 'concurrent'
+        ? 'concurrent:stop'
+        : `message:stop:${activeRequest.channelId}`,
+    );
+    activeRequest.controller.abort();
+
+    try {
+      const cancellation = activeRequest.kind === 'concurrent'
+        ? await cancelConcurrentChatGroup(activeRequest.groupId ?? '', {
+            activeChannelId: activeRequest.channelId,
+          })
+        : await cancelChatChannel(activeRequest.channelId);
+      setState({ status: 'ready', payload: cancellation.appShell });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to stop response.');
+    } finally {
+      stoppedSubmitIdsRef.current.delete(activeRequest.id);
+      setBusy('');
+    }
+  }, [
+    setBusy,
+    setFeedback,
+    setState,
+  ]);
+
   const onSendMessage = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     await submitComposerMessage();
@@ -535,6 +625,7 @@ export function useComposerSubmit(options: {
   return {
     onComposerKeyDown,
     onSendMessage,
+    onStopMessage,
     submitComposerMessage,
   };
 }

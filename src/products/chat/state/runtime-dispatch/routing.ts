@@ -35,6 +35,9 @@ import {
 import {
   prepareDispatchTurn,
 } from './turn.js';
+import type {
+  ChannelDispatchCancellationRegistry,
+} from './cancellation.js';
 import {
   materializeInFlightDispatchState,
   persistInFlightDispatchState,
@@ -52,6 +55,7 @@ interface RouteChannelMessageOptions {
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
   chatStatePath?: string;
   runtimeDataDir?: string;
+  cancellationRegistry?: ChannelDispatchCancellationRegistry;
 }
 
 function normalizePendingTargetValue(value: string | null | undefined): string | null {
@@ -252,6 +256,7 @@ export async function continueBegunChannelMessageDispatch(
     chatStatePath: options.chatStatePath,
     runtimeDataDir: options.runtimeDataDir,
     runtimeRecovery,
+    cancellationRegistry: options.cancellationRegistry,
   });
   nextState = loopResult.state;
   latestCheckpoint = loopResult.latestCheckpoint;

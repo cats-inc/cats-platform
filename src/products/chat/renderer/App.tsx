@@ -419,6 +419,7 @@ export default function App() {
   const {
     onComposerKeyDown,
     onSendMessage,
+    onStopMessage,
   } = useComposerSubmit({
     state,
     setState,
@@ -988,6 +989,7 @@ export default function App() {
             onComposerChange: setComposerDraft,
             onComposerKeyDown,
             onSendMessage,
+            onStopMessage,
             onToggleChannelPlusMenu: toggleChannelPlusMenu,
             onChannelFileSelect: openChannelFilePicker,
             onChannelFilesChange: setChannelFiles,

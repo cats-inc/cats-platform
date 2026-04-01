@@ -25,6 +25,9 @@ import type {
   UpdateChannelInput,
 } from '../contracts.js';
 import {
+  buildAppShellPayload,
+  cancelSessionIds,
+  collectActiveChannelSessionIds,
   closeSessionIds,
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
@@ -36,8 +39,13 @@ import {
   requireValidChatScopeId,
   sendChannelExport,
   sendRestError,
+  waitForCancelledChannelTurns,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
+import {
+  channelDispatchCancellationRegistry,
+  DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
+} from '../../state/runtime-dispatch/cancellation.js';
 
 function sanitizeAttachmentName(rawName: string): string {
   const basename = path.basename(rawName).trim();
@@ -334,6 +342,7 @@ async function handleRestSendMessage(
           runtimeRecovery: {
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
+          cancellationRegistry: channelDispatchCancellationRegistry,
         },
       );
       const persisted = await context.dependencies.chatStore.write(
@@ -349,6 +358,42 @@ async function handleRestSendMessage(
           results: dispatch.results,
         },
       });
+    });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleRestCancelChannel(
+  context: ChatApiRouteContext,
+  chatScopeId: string,
+  channelId: string,
+): Promise<void> {
+  try {
+    requireValidChatScopeId(chatScopeId);
+    const now = nowFrom(context.dependencies);
+    const nowIso = now.toISOString();
+    const state = await context.dependencies.chatStore.read();
+    const channel = requireChannel(state, channelId);
+
+    channelDispatchCancellationRegistry.request(
+      channelId,
+      nowIso,
+      DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
+    );
+    const cancelledSessionCount = await cancelSessionIds(
+      context,
+      collectActiveChannelSessionIds(channel),
+    );
+    const settledState = await waitForCancelledChannelTurns(context, [channelId]);
+    const appShell = await buildAppShellPayload(context.dependencies, settledState);
+    sendJson(context.response, 200, {
+      appShell,
+      cancellation: {
+        channelId,
+        cancelledAt: nowIso,
+        cancelledSessionCount,
+      },
     });
   } catch (error) {
     handleRestError(context, error);
@@ -535,21 +580,7 @@ async function handleRestDeactivateChannel(
       const channel = requireChannel(state, channelId);
 
       // Collect all active session IDs for runtime close
-      const sessionIds: Array<string | null> = [];
-      for (const assignment of channel.catAssignments) {
-        if (
-          assignment.execution.lease.status === 'ready'
-          || assignment.execution.lease.status === 'initializing'
-        ) {
-          sessionIds.push(assignment.execution.lease.sessionId);
-        }
-      }
-      if (
-        channel.orchestratorLease.status === 'ready'
-        || channel.orchestratorLease.status === 'initializing'
-      ) {
-        sessionIds.push(channel.orchestratorLease.sessionId);
-      }
+      const sessionIds = collectActiveChannelSessionIds(channel);
 
       // Flush memory and close runtime sessions (same path as routeSupport closeSessionIds)
       await closeSessionIds(context, sessionIds);
@@ -587,7 +618,7 @@ async function handleRestDeactivateChannel(
         deactivation: {
           channelId,
           closedAt: now.toISOString(),
-          closedSessionCount: sessionIds.filter(Boolean).length,
+          closedSessionCount: sessionIds.length,
         },
       });
     });
@@ -815,6 +846,23 @@ export async function routeChatChannelResourceApi(
       context,
       DEFAULT_CHAT_SCOPE_ID,
       canonicalChannelDeactivateMatch[0]!,
+    );
+    return true;
+  }
+
+  const canonicalChannelCancelMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/cancel$/u,
+  );
+  if (canonicalChannelCancelMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleRestCancelChannel(
+      context,
+      DEFAULT_CHAT_SCOPE_ID,
+      canonicalChannelCancelMatch[0]!,
     );
     return true;
   }

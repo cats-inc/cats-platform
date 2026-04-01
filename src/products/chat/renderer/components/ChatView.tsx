@@ -57,7 +57,7 @@ import { ProgressSummaryPanel } from './ProgressSummaryPanel';
 import { ProviderModelFields } from './ProviderModelFields';
 import { RunInspector } from './RunInspector';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
-import { isComposerBusy } from '../../../../shared/composer';
+import { getComposerBusyChannelId, isComposerBusy } from '../../../../shared/composer';
 import {
   getProviderDisplayName,
   getProviderModels,
@@ -92,6 +92,7 @@ export interface ChatViewProps {
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
+  onStopMessage?: () => void;
   onToggleChannelPlusMenu: () => void;
   onChannelFileSelect: () => void;
   onChannelFilesChange: (files: File[]) => void;
@@ -141,6 +142,7 @@ export function ChatView({
   onComposerChange,
   onComposerKeyDown,
   onSendMessage,
+  onStopMessage,
   onToggleChannelPlusMenu,
   onChannelFileSelect,
   onChannelFilesChange,
@@ -200,9 +202,10 @@ export function ChatView({
   const compareDispatchBusy =
     busy === 'concurrent:ack'
     || busy === 'concurrent:dispatch'
-    || busy === 'concurrent:relay';
+    || busy === 'concurrent:relay'
+    || busy === 'concurrent:stop';
   const compareRoutingBusy = compareGroupChannels.some((channel) =>
-    channel.routingStatus === 'running' || channel.routingStatus === 'blocked',
+    channel.routingStatus === 'running',
   );
   const compareBusy = compareDispatchBusy || compareRoutingBusy;
 
@@ -376,8 +379,23 @@ export function ChatView({
     [operatorView, inspectedRunId],
   );
   const composerBusy = isComposerBusy(busy);
+  const composerBusyChannelId = getComposerBusyChannelId(busy);
+  const stopBusy = busy.startsWith('message:stop:') || busy === 'concurrent:stop';
   const resumeBusy = busy === 'channel:resume';
   const canResumeChannel = !composerBusy && !resumeBusy;
+  const canStopSingleChat =
+    !isCompareGroup
+    && composerBusyChannelId === selectedChannel.id
+    && onStopMessage != null;
+  const canStopParallelChat =
+    isCompareGroup
+    && onStopMessage != null
+    && (
+      busy === 'concurrent:ack'
+      || busy === 'concurrent:dispatch'
+      || busy === 'concurrent:stop'
+    );
+  const showStopComposerAction = canStopSingleChat || canStopParallelChat;
   const comparePrevChannelId = isCompareGroup && compareMemberIndex >= 0
     ? compareMembers[(compareMemberIndex - 1 + compareMembers.length) % compareMembers.length]?.channelId ?? null
     : null;
@@ -963,7 +981,19 @@ export function ChatView({
                     onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
                 ) : null}
-                {isCompareGroup ? (
+                {showStopComposerAction ? (
+                  <button
+                    className="composerSendButton composerStopButton"
+                    disabled={stopBusy}
+                    type="button"
+                    aria-label="Stop"
+                    onClick={() => void onStopMessage?.()}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+                      <rect x="3" y="3" width="8" height="8" rx="1.6" />
+                    </svg>
+                  </button>
+                ) : isCompareGroup ? (
                   <div className="composerSplitSend">
                     <button
                       className="composerSplitSendMain"

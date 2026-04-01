@@ -48,6 +48,9 @@ import {
   setChannelStatus,
   ungroupConcurrentGroup,
 } from '../state/model/index.js';
+import {
+  channelDispatchCancellationRegistry,
+} from '../state/runtime-dispatch/cancellation.js';
 import { resumeStoredWorkflowContinuationDispatch } from '../state/orchestratorAdapter.js';
 import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
 import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
@@ -379,6 +382,91 @@ export async function closeSessionIds(
       await context.dependencies.runtimeClient.closeSession(sessionId);
     }),
   );
+}
+
+export async function cancelSessionIds(
+  context: ChatApiRouteContext,
+  sessionIds: Array<string | null | undefined>,
+): Promise<number> {
+  const validSessionIds = sessionIds.filter(
+    (sessionId): sessionId is string =>
+      typeof sessionId === 'string' && sessionId.length > 0,
+  );
+
+  await Promise.allSettled(
+    validSessionIds.map(async (sessionId) => {
+      await context.dependencies.runtimeClient.cancelSession(sessionId);
+    }),
+  );
+
+  return validSessionIds.length;
+}
+
+const CHANNEL_CANCELLATION_SETTLE_TIMEOUT_MS = 5_000;
+const CHANNEL_CANCELLATION_SETTLE_POLL_MS = 100;
+
+function waitForChannelCancellationPoll(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, CHANNEL_CANCELLATION_SETTLE_POLL_MS);
+  });
+}
+
+export function collectActiveChannelSessionIds(
+  channel: ReturnType<typeof requireChannel>,
+): string[] {
+  const sessionIds: string[] = [];
+
+  for (const assignment of channel.catAssignments) {
+    if (
+      assignment.execution.lease.status === 'ready'
+      || assignment.execution.lease.status === 'initializing'
+    ) {
+      const sessionId = assignment.execution.lease.sessionId?.trim();
+      if (sessionId) {
+        sessionIds.push(sessionId);
+      }
+    }
+  }
+
+  if (
+    channel.orchestratorLease.status === 'ready'
+    || channel.orchestratorLease.status === 'initializing'
+  ) {
+    const sessionId = channel.orchestratorLease.sessionId?.trim();
+    if (sessionId) {
+      sessionIds.push(sessionId);
+    }
+  }
+
+  return sessionIds;
+}
+
+function hasActiveChannelTurn(channel: ReturnType<typeof requireChannel>): boolean {
+  return Boolean(channel.roomRouting?.workflow.activeTurn);
+}
+
+export async function waitForCancelledChannelTurns(
+  context: ChatApiRouteContext,
+  channelIds: string[],
+): Promise<ChatState> {
+  const deadline = Date.now() + CHANNEL_CANCELLATION_SETTLE_TIMEOUT_MS;
+  let latestState = await context.dependencies.chatStore.read();
+
+  while (Date.now() < deadline) {
+    latestState = await context.dependencies.chatStore.read();
+    const pendingRequest = channelIds.some((channelId) =>
+      channelDispatchCancellationRegistry.read(channelId) != null,
+    );
+    const activeTurn = channelIds.some((channelId) =>
+      hasActiveChannelTurn(requireChannel(latestState, channelId)),
+    );
+    if (!pendingRequest && !activeTurn) {
+      return latestState;
+    }
+    await waitForChannelCancellationPoll();
+  }
+
+  return latestState;
 }
 
 function collectCatSessionIds(

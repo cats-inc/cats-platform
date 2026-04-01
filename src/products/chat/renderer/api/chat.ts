@@ -2,6 +2,9 @@ import type {
   ActivateChannelResponse,
   AppShellPayload,
   AssignChannelCatInput,
+  CancelChannelResponse,
+  CancelConcurrentChatGroupInput,
+  CancelConcurrentChatGroupResponse,
   ChatChannelView,
   ConcurrentChatDispatchResponse,
   CreateConcurrentChatGroupInput,
@@ -254,6 +257,24 @@ export async function sendChatMessage(
   return { appShell, results: dispatch.results };
 }
 
+export async function cancelChatChannel(
+  channelId: string,
+  signal?: AbortSignal,
+): Promise<CancelChannelResponse> {
+  const response = await fetch(`/api/channels/${channelId}/cancel`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+
+  return expectJson<CancelChannelResponse>(
+    response,
+    `cats channel cancel returned ${response.status}`,
+  );
+}
+
 export async function createConcurrentChatGroup(
   input: CreateConcurrentChatGroupInput,
   signal?: AbortSignal,
@@ -313,6 +334,27 @@ export async function relayConcurrentChatMessage(
   return expectJson<ConcurrentChatDispatchResponse>(
     response,
     `parallel chat relay returned ${response.status}`,
+  );
+}
+
+export async function cancelConcurrentChatGroup(
+  groupId: string,
+  input: CancelConcurrentChatGroupInput,
+  signal?: AbortSignal,
+): Promise<CancelConcurrentChatGroupResponse> {
+  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/cancel`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return expectJson<CancelConcurrentChatGroupResponse>(
+    response,
+    `parallel chat cancel returned ${response.status}`,
   );
 }
 

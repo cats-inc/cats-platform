@@ -34,7 +34,7 @@ export function shouldConnectLiveIndicatorStream(
     return false;
   }
 
-  const channelRouting = routingStatus === 'running' || routingStatus === 'blocked';
+  const channelRouting = routingStatus === 'running';
   const dispatchBusyForCurrentChannel =
     busy === 'concurrent:dispatch'
     || getComposerDispatchChannelId(busy) === channelId;
@@ -75,9 +75,7 @@ export function useLiveIndicator(options: {
 
   // Extract stable primitive from selectedChannel to avoid object reference in deps
   const leadCatId = selectedChannel?.roomRouting.leadParticipantId ?? null;
-  const workflowStatus = selectedChannel?.roomRouting.workflow.activeTurn?.status
-    ?? selectedChannel?.roomRouting.workflow.lastOutcomeEvent?.status
-    ?? null;
+  const workflowStatus = selectedChannel?.roomRouting.workflow.activeTurn?.status ?? null;
   const routingStatus = workflowStatus === 'pending'
     ? 'running'
     : workflowStatus === 'failed'
@@ -89,7 +87,7 @@ export function useLiveIndicator(options: {
   }, [state]);
 
   useEffect(() => {
-    const channelRouting = routingStatus === 'running' || routingStatus === 'blocked';
+    const channelRouting = routingStatus === 'running';
     const dispatchBusyForCurrentChannel =
       busy === 'concurrent:dispatch'
       || getComposerDispatchChannelId(busy) === channelId;

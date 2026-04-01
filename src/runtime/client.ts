@@ -229,6 +229,7 @@ export interface RuntimeClient {
   ): Promise<void>;
   createWakeup(input: RuntimeWakeupCreateInput): Promise<RuntimeWakeupCreateResult>;
   callMcp(request: unknown): Promise<Record<string, unknown> | null>;
+  cancelSession(sessionId: string): Promise<void>;
   closeSession(sessionId: string): Promise<void>;
 }
 
@@ -680,6 +681,19 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (!response.ok && response.status !== 204) {
       const rawBody = await response.text();
       throw new Error(readRuntimeErrorText(rawBody, `Failed to close session (${response.status})`));
+    }
+  }
+
+  async cancelSession(sessionId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/cancel`, {
+      method: 'POST',
+      headers: this.authHeaders(),
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok && response.status !== 204) {
+      const rawBody = await response.text();
+      throw new Error(readRuntimeErrorText(rawBody, `Failed to cancel session (${response.status})`));
     }
   }
 

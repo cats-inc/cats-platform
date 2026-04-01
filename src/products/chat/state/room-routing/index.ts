@@ -74,6 +74,7 @@ const ROOM_ROUTE_BLOCKED_REASONS = new Set<RoomRouteBlockedReason>([
   'missing_direct_chat_lead',
   'missing_cat_led_lead',
   'no_valid_targets',
+  'user_cancelled',
 ]);
 
 const ROOM_ROUTE_DEFAULT_TARGET_REASONS = new Set<RoomRouteDefaultTargetReason>([
