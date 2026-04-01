@@ -823,40 +823,6 @@ export function ChatView({
                   })}
                 </div>
               ) : null}
-              {isCompareGroup ? (
-                <div className="compareComposerScope">
-                  <span className="compareComposerScopeLabel">Send to</span>
-                  <div className="compareComposerScopeButtons" role="group" aria-label="Parallel send scope">
-                    <button
-                      className={
-                        compareSendScope === 'all_members'
-                          ? 'compareComposerScopeButton compareComposerScopeButtonActive'
-                          : 'compareComposerScopeButton'
-                      }
-                      type="button"
-                      onClick={() => onCompareSendScopeChange?.('all_members')}
-                    >
-                      All chats
-                    </button>
-                    <button
-                      className={
-                        compareSendScope === 'active_only'
-                          ? 'compareComposerScopeButton compareComposerScopeButtonActive'
-                          : 'compareComposerScopeButton'
-                      }
-                      type="button"
-                      onClick={() => onCompareSendScopeChange?.('active_only')}
-                    >
-                      Only this chat
-                    </button>
-                  </div>
-                  {compareBusy ? (
-                    <span className="compareComposerScopeStatus">
-                      Waiting for parallel replies...
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
               <div className="composerInputWrapper">
                 <ComposerHighlight
                   text={composerDraft}
@@ -866,7 +832,7 @@ export function ChatView({
                 <textarea
                   className="composerInput composerInputOverlay"
                   rows={1}
-                  placeholder={compareBusy ? 'Waiting for parallel replies...' : 'How can I help you today?'}
+                  placeholder={compareBusy ? 'Waiting for parallel replies...' : hasConversationStarted ? 'Reply...' : 'How can I help you today?'}
                   value={composerDraft}
                   disabled={composerBusy}
                   onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
@@ -948,17 +914,50 @@ export function ChatView({
                     onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
                 ) : null}
-                <button
-                  className="composerSendButton"
-                  disabled={!composerDraft.trim() || composerBusy || compareBusy}
-                  type="submit"
-                  aria-label="Send"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 13V3" />
-                    <path d="M3 7l5-5 5 5" />
-                  </svg>
-                </button>
+                {isCompareGroup ? (
+                  <div className="composerSplitSend">
+                    <button
+                      className="composerSplitSendMain"
+                      disabled={!composerDraft.trim() || composerBusy || compareBusy}
+                      type="submit"
+                      aria-label={compareSendScope === 'all_members' ? 'Send to all chats' : 'Send to this chat'}
+                    >
+                      {compareSendScope === 'all_members' ? (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
+                          <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M8 13V3" />
+                          <path d="M3 7l5-5 5 5" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      className="composerSplitSendToggle"
+                      type="button"
+                      aria-label="Switch send mode"
+                      onClick={() => onCompareSendScopeChange?.(compareSendScope === 'all_members' ? 'active_only' : 'all_members')}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 3l3 3 3-3" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="composerSendButton"
+                    disabled={!composerDraft.trim() || composerBusy || compareBusy}
+                    type="submit"
+                    aria-label="Send"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 13V3" />
+                      <path d="M3 7l5-5 5 5" />
+                    </svg>
+                  </button>
+                )}
               </div>
               <input
                 ref={channelFileInputRef}

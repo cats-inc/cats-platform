@@ -213,10 +213,7 @@ export function useComposerSubmit(options: {
         }
 
         rollbackPath = currentPathname;
-        if (
-          initialPayload.chat.selectedChannel?.id === channelId
-          && selectedChannel?.id === channelId
-        ) {
+        if (initialPayload.chat.selectedChannel?.id === channelId) {
           payload = appendOptimisticUserMessage(initialPayload, channelId, body);
           rollbackPayload = initialPayload;
           setState({ status: 'ready', payload });

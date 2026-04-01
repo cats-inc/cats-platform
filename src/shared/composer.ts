@@ -23,5 +23,5 @@ export function isComposerBusy(busy: string): boolean {
 }
 
 export function isComposerDispatchBusy(busy: string): boolean {
-  return busy === 'message:send';
+  return busy === 'message:send' || busy === 'concurrent:dispatch';
 }

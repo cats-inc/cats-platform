@@ -99,50 +99,50 @@
   color: var(--muted);
 }
 
-.compareComposerScope {
+.composerSplitSend {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.compareComposerScopeButtons {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px;
+  align-items: stretch;
+  border-radius: 999px;
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--panel) 94%, var(--panel-hover) 6%);
 }
 
-.compareComposerScopeLabel {
-  color: var(--muted-soft);
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.compareComposerScopeButton {
-  padding: 6px 10px;
+.composerSplitSendMain {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.compareComposerScopeButtonActive {
   background: var(--text);
   color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.compareComposerScopeStatus {
-  color: var(--muted);
-  font-size: 0.78rem;
-  margin-left: auto;
+.composerSplitSendMain:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 80%, transparent 20%);
+}
+
+.composerSplitSendMain:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.composerSplitSendToggle {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--text);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.composerSplitSendToggle:hover {
+  background: color-mix(in srgb, var(--text) 80%, transparent 20%);
+  color: #fff;
 }
 
 /* ── Parallel chat stacked composers ── */

@@ -332,12 +332,19 @@ export function NewChatDraft({
               className="composerSendButton"
               disabled={!composerDraft.trim() || isSubmittingFirstTurn}
               type="submit"
-              aria-label="Send"
+              aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 13V3" />
-                <path d="M3 7l5-5 5 5" />
-              </svg>
+              {isParallelMode ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
+                  <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 13V3" />
+                  <path d="M3 7l5-5 5 5" />
+                </svg>
+              )}
             </button>
           </div>
           <input

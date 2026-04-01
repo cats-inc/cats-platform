@@ -25,8 +25,14 @@ const LIVE_INDICATOR_RETRY_LIMIT = 8;
 export function shouldConnectLiveIndicatorStream(
   channelId: string | null,
   busy: string,
+  routingStatus?: string | null,
 ): boolean {
-  if (!isComposerDispatchBusy(busy) || !channelId) {
+  if (!channelId) {
+    return false;
+  }
+
+  const channelRouting = routingStatus === 'running' || routingStatus === 'blocked';
+  if (!isComposerDispatchBusy(busy) && !channelRouting) {
     return false;
   }
 
@@ -63,13 +69,15 @@ export function useLiveIndicator(options: {
 
   // Extract stable primitive from selectedChannel to avoid object reference in deps
   const leadCatId = selectedChannel?.roomRouting.leadParticipantId ?? null;
+  const routingStatus = selectedChannel?.routingStatus ?? null;
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   useEffect(() => {
-    const shouldShowWaitingIndicator = isComposerDispatchBusy(busy) && Boolean(channelId);
+    const channelRouting = routingStatus === 'running' || routingStatus === 'blocked';
+    const shouldShowWaitingIndicator = (isComposerDispatchBusy(busy) || channelRouting) && Boolean(channelId);
     let disposed = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let reconnectAttempts = 0;
@@ -104,7 +112,7 @@ export function useLiveIndicator(options: {
       if (
         disposed
         || reconnectAttempts >= LIVE_INDICATOR_RETRY_LIMIT
-        || !shouldConnectLiveIndicatorStream(channelId, busy)
+        || !shouldConnectLiveIndicatorStream(channelId, busy, routingStatus)
       ) {
         return;
       }
@@ -145,7 +153,7 @@ export function useLiveIndicator(options: {
     }
 
     function openSource(): void {
-      if (disposed || !shouldConnectLiveIndicatorStream(channelId, busy)) {
+      if (disposed || !shouldConnectLiveIndicatorStream(channelId, busy, routingStatus)) {
         return;
       }
 
@@ -188,7 +196,7 @@ export function useLiveIndicator(options: {
     stateRef.current = waitingState;
     setState(waitingState);
 
-    if (!shouldConnectLiveIndicatorStream(channelId, busy)) {
+    if (!shouldConnectLiveIndicatorStream(channelId, busy, routingStatus)) {
       clearReconnectTimer();
       closeSource();
       return undefined;
@@ -201,7 +209,7 @@ export function useLiveIndicator(options: {
       clearReconnectTimer();
       closeSource();
     };
-  }, [channelId, busy, leadCatId]);
+  }, [channelId, busy, leadCatId, routingStatus]);
 
   return state;
 }
