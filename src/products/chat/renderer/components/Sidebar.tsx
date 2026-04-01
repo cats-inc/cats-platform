@@ -160,6 +160,7 @@ function ChannelItem({
   onDelete,
   onOverflowToggle,
   titleOverride,
+  disableRename,
 }: {
   channel: ChatChannelSummary;
   payload: AppShellPayload;
@@ -171,6 +172,7 @@ function ChannelItem({
   onDelete: () => void;
   onOverflowToggle: () => void;
   titleOverride?: string;
+  disableRename?: boolean;
 }) {
   const cat = resolveCatForChannel(channel, payload);
   const [renaming, setRenaming] = useState(false);
@@ -265,16 +267,143 @@ function ChannelItem({
           style={overflowMenuStyle}
           onClick={(e) => e.stopPropagation()}
         >
-          <button type="button" onClick={startRename}>
-            Rename
-          </button>
-          <div className="recentOverflowMenuDivider" />
+          {!disableRename ? (
+            <>
+              <button type="button" onClick={startRename}>
+                Rename
+              </button>
+              <div className="recentOverflowMenuDivider" />
+            </>
+          ) : null}
           <button
             type="button"
             disabled={busy === `channel:delete:${channel.id}`}
             onClick={onDelete}
           >
             {busy === `channel:delete:${channel.id}` ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function GroupHeaderItem({
+  title,
+  isSelected,
+  busy,
+  overflowOpen,
+  onSelect,
+  onRename,
+  onDelete,
+  onOverflowToggle,
+  deleteKey,
+}: {
+  title: string;
+  isSelected: boolean;
+  busy: string;
+  overflowOpen: boolean;
+  onSelect: () => void;
+  onRename: (title: string) => void;
+  onDelete: () => void;
+  onOverflowToggle: () => void;
+  deleteKey: string;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const overflowButtonRef = useRef<HTMLButtonElement>(null);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
+  const overflowMenuStyle = useFloatingSidebarMenu(overflowButtonRef, overflowMenuRef, overflowOpen);
+
+  function startRename() {
+    onOverflowToggle();
+    setRenameValue(title);
+    setRenaming(true);
+    requestAnimationFrame(() => inputRef.current?.select());
+  }
+
+  function commitRename() {
+    const trimmed = renameValue.trim();
+    setRenaming(false);
+    if (trimmed && trimmed !== title) {
+      onRename(trimmed);
+    }
+  }
+
+  function cancelRename() {
+    setRenaming(false);
+  }
+
+  return (
+    <article
+      className={[
+        'recentItemCard',
+        overflowOpen ? 'recentItemOverflowOpen' : '',
+      ].filter(Boolean).join(' ')}
+      onClick={() => { if (!renaming) onSelect(); }}
+    >
+      {renaming ? (
+        <input
+          ref={inputRef}
+          className="recentRenameInput"
+          type="text"
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitRename();
+            if (e.key === 'Escape') cancelRename();
+          }}
+          onBlur={commitRename}
+        />
+      ) : (
+        <button
+          className="recentSelectButton"
+          onClick={(e) => { e.stopPropagation(); onSelect(); }}
+          type="button"
+        >
+          <strong>{presentChannelTitle(title)}</strong>
+        </button>
+      )}
+      {!renaming ? (
+        <span className="recentItemTrailing">
+          <span className="recentParallelGlyph">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 13V3h12v10H2z" />
+              <path d="M7 3v10" />
+              <path d="M11 3v10" />
+            </svg>
+          </span>
+          <button
+            ref={overflowButtonRef}
+            className="recentOverflowButton"
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onOverflowToggle(); }}
+          >
+            &#x22EF;
+          </button>
+        </span>
+      ) : null}
+      {overflowOpen ? (
+        <div
+          ref={overflowMenuRef}
+          className="recentOverflowMenu"
+          style={overflowMenuStyle}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button type="button" onClick={startRename}>
+            Rename
+          </button>
+          <button type="button" onClick={() => { onOverflowToggle(); /* TODO: wire ungroup API */ }}>
+            Ungroup
+          </button>
+          <div className="recentOverflowMenuDivider" />
+          <button
+            type="button"
+            disabled={busy === deleteKey}
+            onClick={onDelete}
+          >
+            {busy === deleteKey ? 'Deleting...' : 'Delete'}
           </button>
         </div>
       ) : null}
@@ -412,6 +541,7 @@ export function Sidebar({
   function renderChannelList(
     channels: ChatChannelSummary[],
     titleOverrides?: Map<string, string>,
+    options?: { disableRename?: boolean },
   ) {
     if (channels.length === 0) {
       return <div className="recentEmpty"><p>No chats yet</p></div>;
@@ -429,6 +559,7 @@ export function Sidebar({
         onDelete={() => { onOverflowMenuToggle(null); void onDeleteChannel(channel.id); }}
         onOverflowToggle={() => onOverflowMenuToggle(overflowMenuOpenId === channel.id ? null : channel.id)}
         titleOverride={titleOverrides?.get(channel.id)}
+        disableRename={options?.disableRename}
       />
     ));
   }
@@ -500,23 +631,26 @@ export function Sidebar({
       }
 
       const isGroupSelected = entry.group.memberChannelIds.includes(routeChannelId ?? '');
+      const firstChannelId = entry.group.memberChannelIds[0] ?? '';
+      const groupOverflowId = `group:${entry.group.id}`;
       return (
         <section
           key={entry.group.id}
-          className={[
-            'recentGroupCard',
-            isGroupSelected ? 'recentGroupCardSelected' : '',
-          ].filter(Boolean).join(' ')}
+          className="recentGroupCard"
         >
-          <div className="recentGroupHeader">
-            <div>
-              <p className="recentGroupEyebrow">Parallel chat</p>
-              <strong>{presentChannelTitle(entry.group.title)}</strong>
-            </div>
-            <span className="recentGroupMeta">{entry.group.memberCount} chats</span>
-          </div>
+          <GroupHeaderItem
+            title={entry.group.title}
+            isSelected={isGroupSelected}
+            busy={busy}
+            overflowOpen={overflowMenuOpenId === groupOverflowId}
+            onSelect={() => { if (firstChannelId) onSelect(firstChannelId); }}
+            onRename={(_title) => { /* TODO: wire group rename API */ }}
+            onDelete={() => { onOverflowMenuToggle(null); if (firstChannelId) void onDeleteChannel(firstChannelId); }}
+            onOverflowToggle={() => onOverflowMenuToggle(overflowMenuOpenId === groupOverflowId ? null : groupOverflowId)}
+            deleteKey={`channel:delete:${firstChannelId}`}
+          />
           <div className="recentGroupList">
-            {renderChannelList(entry.channels, entry.titleOverrides)}
+            {renderChannelList(entry.channels, entry.titleOverrides, { disableRename: true })}
           </div>
         </section>
       );
