@@ -441,7 +441,7 @@ export function collectActiveChannelSessionIds(
   return sessionIds;
 }
 
-function hasActiveChannelTurn(channel: ReturnType<typeof requireChannel>): boolean {
+export function hasActiveChannelTurn(channel: ReturnType<typeof requireChannel>): boolean {
   return Boolean(channel.roomRouting?.workflow.activeTurn);
 }
 

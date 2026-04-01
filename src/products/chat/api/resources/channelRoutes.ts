@@ -31,6 +31,7 @@ import {
   closeSessionIds,
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
+  hasActiveChannelTurn,
   maybeAutoResumeRecoveredOrchestratorContinuation,
   nowFrom,
   persistCreatedChannel,
@@ -375,12 +376,15 @@ async function handleRestCancelChannel(
     const nowIso = now.toISOString();
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
+    const shouldRequestCancellation = hasActiveChannelTurn(channel);
 
-    channelDispatchCancellationRegistry.request(
-      channelId,
-      nowIso,
-      DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
-    );
+    if (shouldRequestCancellation) {
+      channelDispatchCancellationRegistry.request(
+        channelId,
+        nowIso,
+        DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
+      );
+    }
     const cancelledSessionCount = await cancelSessionIds(
       context,
       collectActiveChannelSessionIds(channel),

@@ -39,6 +39,7 @@ import {
   cancelSessionIds,
   collectActiveChannelSessionIds,
   handleRestError,
+  hasActiveChannelTurn,
   nowFrom,
   persistDeletedConcurrentGroup,
   persistRenamedConcurrentGroup,
@@ -368,10 +369,13 @@ async function handleCancelConcurrentGroup(
       return;
     }
 
+    const activeTargetChannelIds = group.memberChannelIds.filter((channelId) =>
+      hasActiveChannelTurn(requireChannel(state, channelId)),
+    );
     const sessionIds = group.memberChannelIds.flatMap((channelId) =>
       collectActiveChannelSessionIds(requireChannel(state, channelId)),
     );
-    for (const channelId of group.memberChannelIds) {
+    for (const channelId of activeTargetChannelIds) {
       channelDispatchCancellationRegistry.request(
         channelId,
         nowIso,
@@ -382,7 +386,7 @@ async function handleCancelConcurrentGroup(
     const cancelledSessionCount = await cancelSessionIds(context, sessionIds);
     const settledState = await waitForCancelledChannelTurns(
       context,
-      group.memberChannelIds,
+      activeTargetChannelIds,
     );
     const appShell = await buildAppShellPayload(context.dependencies, settledState);
     sendJson(context.response, 200, {
@@ -391,7 +395,7 @@ async function handleCancelConcurrentGroup(
       cancellation: {
         activeChannelId: body.activeChannelId,
         cancelledAt: nowIso,
-        targetChannelIds: group.memberChannelIds,
+        targetChannelIds: activeTargetChannelIds,
         cancelledSessionCount,
       },
     });
