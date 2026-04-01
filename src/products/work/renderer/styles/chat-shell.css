@@ -264,7 +264,7 @@
   width: 100%;
   min-height: 0;
   height: 100vh;
-  padding: 0 28px 0 16px;
+  padding: 0 28px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;

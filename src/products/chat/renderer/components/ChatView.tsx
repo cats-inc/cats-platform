@@ -767,10 +767,12 @@ export function ChatView({
                     );
                   })() : null}
                 </div>
+                <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
               </section>
             ) : (
               <section className="freshChatIntro">
                 <div className="draftGreeting"><h1>{greeting}</h1></div>
+                <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
               </section>
             )}
 
@@ -974,7 +976,6 @@ export function ChatView({
                 }}
               />
             </form>
-            <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
             {isCompareGroup ? (
               <nav className="parallelFooterBar" aria-label="Parallel chat navigation">
                 <button
