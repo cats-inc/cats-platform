@@ -213,6 +213,16 @@ export function ChatView({
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
   const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!openRelayMenuId) return;
+    function onClickOutside(event: MouseEvent): void {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.messageActionMenu')) return;
+      setOpenRelayMenuId(null);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [openRelayMenuId]);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
