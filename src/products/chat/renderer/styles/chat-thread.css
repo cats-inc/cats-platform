@@ -393,8 +393,8 @@
   z-index: 5;
 }
 
-.composerCardDockedParallel {
-  bottom: 64px;
+.composerCardDocked.composerCardDockedParallel {
+  bottom: 78px;
 }
 
 .composerCardFresh {
@@ -696,8 +696,8 @@
 }
 
 @media (max-width: 720px) {
-  .composerCardDockedParallel {
-    bottom: 64px;
+  .composerCardDocked.composerCardDockedParallel {
+    bottom: 78px;
   }
 
   .parallelFooterBar {
