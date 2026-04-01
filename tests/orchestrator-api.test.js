@@ -444,6 +444,66 @@ test('POST /api/orchestrator/dispatch returns executed continuation steps from t
   });
 });
 
+test('POST /api/orchestrator/dispatch reuses the room-entry session during a concurrent wake', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
+  let createCalls = 0;
+  let releaseFirstCreate = () => {};
+  const firstCreateStarted = new Promise((resolve) => {
+    runtimeClient.createSession = async (input) => {
+      createCalls += 1;
+      if (createCalls === 1) {
+        resolve(undefined);
+        await new Promise((resume) => {
+          releaseFirstCreate = resume;
+        });
+      }
+      return originalCreateSession(input);
+    };
+  });
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      cats: [],
+    });
+    const channelId = created.channel.id;
+
+    const wakeResponsePromise = fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+
+    await firstCreateStarted;
+
+    const dispatchResponsePromise = fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Handle this directly.',
+      }),
+    });
+
+    releaseFirstCreate();
+
+    const [wakeResponse, dispatchResponse] = await Promise.all([
+      wakeResponsePromise,
+      dispatchResponsePromise,
+    ]);
+    assert.equal(wakeResponse.status, 200);
+    assert.equal(dispatchResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.sentMessages.length, 1);
+    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
+  });
+});
+
 test('POST /api/orchestrator/dispatch uses the injected channel router seam', async () => {
   const runtimeClient = createRuntimeStub();
   let buildCalls = 0;

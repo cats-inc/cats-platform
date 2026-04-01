@@ -179,7 +179,7 @@ export function resolveServerDependencies(
       _options: {
         trigger: 'dispatch' | 'approve' | 'reroute' | 'retry';
       },
-    ) => dispatchOrchestratorTurn({
+    ) => mutationGate.run(request.channelId, async () => dispatchOrchestratorTurn({
       ...request,
       senderName: request.senderName ?? undefined,
       chatStore: dependencies.chat.chatStore,
@@ -189,7 +189,7 @@ export function resolveServerDependencies(
       now: dependencies.shared.now?.(),
       companionStore,
       memoryService,
-    }));
+    })));
   const resumeWorkflowContinuationDispatch =
     dependencies.shared.resumeWorkflowContinuationDispatch
     ?? (async (

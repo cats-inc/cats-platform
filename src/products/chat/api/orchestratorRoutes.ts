@@ -36,16 +36,19 @@ async function handleDispatch(
 ): Promise<void> {
   try {
     const body = await readJsonBody<OrchestratorPlanRequest>(context.request);
-    const response = await dispatchOrchestratorTurn({
-      ...body,
-      chatStore: context.dependencies.chatStore,
-      channelRouter: context.dependencies.orchestratorChannelRouter,
-      plannerSurface: context.dependencies.orchestratorPlannerSurface,
-      runtimeClient: context.dependencies.runtimeClient,
-      now: context.dependencies.now?.(),
-      companionStore: context.dependencies.companionStore,
-      memoryService: context.dependencies.memoryService,
-    });
+    const response = await context.dependencies.mutationGate.run(
+      body.channelId,
+      async () => dispatchOrchestratorTurn({
+        ...body,
+        chatStore: context.dependencies.chatStore,
+        channelRouter: context.dependencies.orchestratorChannelRouter,
+        plannerSurface: context.dependencies.orchestratorPlannerSurface,
+        runtimeClient: context.dependencies.runtimeClient,
+        now: context.dependencies.now?.(),
+        companionStore: context.dependencies.companionStore,
+        memoryService: context.dependencies.memoryService,
+      }),
+    );
     sendJson(context.response, 200, response);
   } catch (error) {
     handleRestError(context, error);
