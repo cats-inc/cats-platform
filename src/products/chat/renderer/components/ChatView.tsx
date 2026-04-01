@@ -382,6 +382,7 @@ export function ChatView({
       selectedChannel.messages.length,
       liveIndicatorScrollKey,
     ].join('::'),
+    scrollOnChannelChange: true,
   });
 
   function navigateCompareMember(direction: 'prev' | 'next'): void {

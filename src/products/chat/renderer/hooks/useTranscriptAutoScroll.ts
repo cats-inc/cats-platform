@@ -32,6 +32,7 @@ function resolveNearBottomThreshold(composerCardElement: HTMLElement | null): nu
 export function useTranscriptAutoScroll(options: {
   channelId: string;
   scrollKey: string;
+  scrollOnChannelChange?: boolean;
 }): {
   transcriptListRef: RefCallback<HTMLDivElement>;
   composerCardRef: RefCallback<HTMLElement>;
@@ -39,7 +40,7 @@ export function useTranscriptAutoScroll(options: {
   isNearBottom: boolean;
   scrollToBottom: () => void;
 } {
-  const { channelId, scrollKey } = options;
+  const { channelId, scrollKey, scrollOnChannelChange = true } = options;
   const [transcriptListElement, setTranscriptListElement] = useState<HTMLDivElement | null>(null);
   const [composerCardElement, setComposerCardElement] = useState<HTMLElement | null>(null);
   const [bottomSentinelElement, setBottomSentinelElement] = useState<HTMLDivElement | null>(null);
@@ -197,14 +198,14 @@ export function useTranscriptAutoScroll(options: {
   }, [bottomSentinelElement, composerCardElement, syncComposerDocking, syncTranscriptBottomInset, transcriptListElement]);
 
   useEffect(() => {
-    if (!transcriptListElement) {
+    if (!transcriptListElement || !scrollOnChannelChange) {
       return;
     }
 
     shouldAutoScrollRef.current = true;
     scheduleScrollToBottom();
     return undefined;
-  }, [channelId, scheduleScrollToBottom, transcriptListElement]);
+  }, [channelId, scrollOnChannelChange, scheduleScrollToBottom, transcriptListElement]);
 
   useEffect(() => {
     if (!transcriptListElement || !shouldAutoScrollRef.current) {
