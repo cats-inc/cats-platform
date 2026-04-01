@@ -122,6 +122,24 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
+async function maybeWakeSelectedChannelBeforeConcurrentSend(
+  payload: AppShellPayload,
+  channelId: string,
+): Promise<AppShellPayload> {
+  const selectedForWake = normalizeSelectedChannelView(
+    payload.chat.selectedChannel ?? null,
+  );
+  if (
+    !selectedForWake
+    || selectedForWake.id !== channelId
+    || !shouldAwaitSelectedChannelWakeBeforeSend(selectedForWake)
+  ) {
+    return payload;
+  }
+
+  return updateSelectedChannel(channelId);
+}
+
 export function useComposerSubmit(options: {
   state: LoadStateLike;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
@@ -260,7 +278,16 @@ export function useComposerSubmit(options: {
         navigate(rollbackPath, { replace: true });
         setState({ status: 'ready', payload: created.appShell });
 
-        const baselineUserMessageCount = countUserMessages(created.appShell, activeChannelId);
+        const preparedPayload = await maybeWakeSelectedChannelBeforeConcurrentSend(
+          created.appShell,
+          activeChannelId,
+        );
+        if (preparedPayload !== created.appShell) {
+          rollbackPayload = preparedPayload;
+          setState({ status: 'ready', payload: preparedPayload });
+        }
+
+        const baselineUserMessageCount = countUserMessages(preparedPayload, activeChannelId);
         const dispatchController = new AbortController();
         activeSubmitRequestRef.current = {
           id: submitId,
@@ -312,7 +339,13 @@ export function useComposerSubmit(options: {
         setChannelFiles([]);
         setBusy('concurrent:ack');
 
-        const baselineUserMessageCount = countUserMessages(initialPayload, channelId);
+        payload = await maybeWakeSelectedChannelBeforeConcurrentSend(initialPayload, channelId);
+        rollbackPayload = payload;
+        if (payload !== initialPayload) {
+          setState({ status: 'ready', payload });
+        }
+
+        const baselineUserMessageCount = countUserMessages(payload, channelId);
         const dispatchController = new AbortController();
         activeSubmitRequestRef.current = {
           id: submitId,

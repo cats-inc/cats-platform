@@ -4614,6 +4614,106 @@ test('concurrent room-entry wake and first send reuse the same orchestrator sess
   });
 });
 
+test('parallel chat first send reuses member sessions across route wake and later member selection', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
+  let createCalls = 0;
+  let releaseFirstCreate = () => {};
+  const firstCreateStarted = new Promise((resolve) => {
+    runtimeClient.createSession = async (input) => {
+      createCalls += 1;
+      if (createCalls === 1) {
+        resolve(undefined);
+        await new Promise((resume) => {
+          releaseFirstCreate = resume;
+        });
+      }
+      return originalCreateSession(input);
+    };
+  });
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createGroupResponse = await fetch(`${baseUrl}/api/concurrent-groups`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Parallel Race',
+        targets: [
+          { provider: 'claude', instance: 'native' },
+          { provider: 'codex', instance: 'native' },
+        ],
+      }),
+    });
+    assert.equal(createGroupResponse.status, 201);
+    const createGroupPayload = await createGroupResponse.json();
+    const groupId = createGroupPayload.group.id;
+    const memberChannelIds = createGroupPayload.group.memberChannelIds;
+    const activeChannelId = createGroupPayload.appShell.chat.selectedChannelId;
+    const passiveChannelId = memberChannelIds.find((channelId) => channelId !== activeChannelId);
+    assert.ok(activeChannelId);
+    assert.ok(passiveChannelId);
+
+    const wakeResponsePromise = fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: activeChannelId }),
+    });
+
+    await firstCreateStarted;
+
+    const sendResponsePromise = fetch(`${baseUrl}/api/concurrent-groups/${groupId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        activeChannelId,
+        body: 'Hi',
+      }),
+    });
+
+    releaseFirstCreate();
+
+    const [wakeResponse, sendResponse] = await Promise.all([
+      wakeResponsePromise,
+      sendResponsePromise,
+    ]);
+    assert.equal(wakeResponse.status, 200);
+    assert.equal(sendResponse.status, 200);
+
+    const [activeChannelResponse, passiveChannelResponse] = await Promise.all([
+      fetch(`${baseUrl}/api/channels/${activeChannelId}`),
+      fetch(`${baseUrl}/api/channels/${passiveChannelId}`),
+    ]);
+    assert.equal(activeChannelResponse.status, 200);
+    assert.equal(passiveChannelResponse.status, 200);
+    const activeChannelPayload = await activeChannelResponse.json();
+    const passiveChannelPayload = await passiveChannelResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 2);
+    assert.equal(runtimeClient.sentMessages.length, 2);
+    assert.ok(activeChannelPayload.channel.orchestratorLease.sessionId);
+    assert.ok(passiveChannelPayload.channel.orchestratorLease.sessionId);
+
+    const selectPassiveResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: passiveChannelId }),
+    });
+    assert.equal(selectPassiveResponse.status, 200);
+    assert.equal(runtimeClient.createdSessions.length, 2);
+  });
+});
+
 test('solo chats without a cwd create isolated runtime sessions', async () => {
   const runtimeClient = createRuntimeStub();
 

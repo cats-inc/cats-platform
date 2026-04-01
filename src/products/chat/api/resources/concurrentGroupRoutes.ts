@@ -66,6 +66,33 @@ function requireConcurrentGroup(
   return group;
 }
 
+async function runConcurrentGroupMutation<T>(
+  context: ChatApiRouteContext,
+  groupId: string,
+  operation: (
+    state: ChatState,
+    group: ChatState['concurrentGroups'][number],
+  ) => Promise<T>,
+): Promise<T> {
+  const state = await context.dependencies.chatStore.read();
+  const group = requireConcurrentGroup(state, groupId);
+  const orderedChannelIds = [...new Set(group.memberChannelIds)].sort();
+
+  const runLocked = async (index: number): Promise<T> => {
+    if (index >= orderedChannelIds.length) {
+      const lockedState = await context.dependencies.chatStore.read();
+      return operation(lockedState, requireConcurrentGroup(lockedState, groupId));
+    }
+
+    return context.dependencies.mutationGate.run(
+      orderedChannelIds[index]!,
+      () => runLocked(index + 1),
+    );
+  };
+
+  return runLocked(0);
+}
+
 async function dispatchConcurrentBodies(
   context: ChatApiRouteContext,
   options: {
@@ -336,13 +363,19 @@ async function handleSendConcurrentGroupMessage(
       return;
     }
 
-    const response = await dispatchConcurrentBodies(context, {
+    const response = await runConcurrentGroupMutation(
+      context,
       groupId,
-      state,
-      activeChannelId: body.activeChannelId,
-      channelInputs: new Map(group.memberChannelIds.map((channelId) => [channelId, { body: body.body }])),
-      persistAcknowledgedStateBeforeDispatch: true,
-    });
+      async (lockedState, lockedGroup) => dispatchConcurrentBodies(context, {
+        groupId,
+        state: lockedState,
+        activeChannelId: body.activeChannelId,
+        channelInputs: new Map(
+          lockedGroup.memberChannelIds.map((channelId) => [channelId, { body: body.body }]),
+        ),
+        persistAcknowledgedStateBeforeDispatch: true,
+      }),
+    );
     sendJson(context.response, 200, response);
   } catch (error) {
     handleRestError(context, error);
@@ -420,175 +453,182 @@ async function handleRelayConcurrentGroupMessage(
       );
       return;
     }
-    const state = await context.dependencies.chatStore.read();
-    const group = requireConcurrentGroup(state, groupId);
-    if (!group.memberChannelIds.includes(body.activeChannelId)) {
-      sendRestError(
-        context,
-        400,
-        'channel_not_in_compare_group',
-        'The active chat is not part of this Parallel chat group.',
-      );
-      return;
-    }
-    if (!group.memberChannelIds.includes(body.sourceChannelId)) {
-      sendRestError(
-        context,
-        400,
-        'source_channel_not_in_compare_group',
-        'The source chat is not part of this Parallel chat group.',
-      );
-      return;
-    }
-
-    const sourceChannel = requireChannel(state, body.sourceChannelId);
-    const sourceMessage = sourceChannel.messages.find((message) => message.id === body.sourceMessageId) ?? null;
-    if (!sourceMessage || !sourceMessage.body.trim()) {
-      sendRestError(
-        context,
-        400,
-        'source_message_required',
-        'The selected reply could not be relayed.',
-      );
-      return;
-    }
-
-    const targetChannelIds = body.targetPolicy === 'single'
-      ? [body.targetChannelId ?? '']
-      : group.memberChannelIds.filter((channelId) => channelId !== body.sourceChannelId);
-    const normalizedTargetChannelIds = targetChannelIds.filter((channelId) =>
-      channelId
-      && channelId !== body.sourceChannelId
-      && group.memberChannelIds.includes(channelId),
-    );
-    if (normalizedTargetChannelIds.length === 0) {
-      sendRestError(
-        context,
-        400,
-        'compare_targets_required',
-        'No parallel chat targets were selected for this relay.',
-      );
-      return;
-    }
-
-    const sourceMemberLabel = buildConcurrentChatMemberLabel({
-      provider: sourceChannel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
-      instance:
-        sourceChannel.pendingInstance
-        ?? state.globalOrchestrator.executionTarget.instance
-        ?? null,
-      model:
-        sourceChannel.pendingModel
-        ?? state.globalOrchestrator.executionTarget.model
-        ?? null,
-      modelSelection:
-        sourceChannel.pendingModelSelection
-        ?? state.globalOrchestrator.executionModelSelection
-        ?? null,
-    });
-    const commandDefinition = findConcurrentRelayCommand(normalizedCommand);
-    const targetMemberLabels = normalizedTargetChannelIds.map((channelId) => {
-      const targetChannel = requireChannel(state, channelId);
-      return buildConcurrentChatMemberLabel({
-        provider: targetChannel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
-        instance:
-          targetChannel.pendingInstance
-          ?? state.globalOrchestrator.executionTarget.instance
-          ?? null,
-        model:
-          targetChannel.pendingModel
-          ?? state.globalOrchestrator.executionTarget.model
-          ?? null,
-        modelSelection:
-          targetChannel.pendingModelSelection
-          ?? state.globalOrchestrator.executionModelSelection
-          ?? null,
-      });
-    });
-    const relayBody = buildConcurrentRelayPrompt({
-      command: normalizedCommand,
-      sourceMemberLabel,
-      sourceBody: sourceMessage.body,
-    });
-
-    const now = nowFrom(context.dependencies);
-    let relayState = appendMessage(
-      state,
-      body.sourceChannelId,
-      {
-        senderKind: 'system',
-        senderName: 'Chat',
-        body: buildConcurrentRelayOutgoingNote({
-          command: normalizedCommand,
-          sourceMessageId: body.sourceMessageId,
-          targetMemberLabels,
-        }),
-      },
-      now,
-      {
-        metadata: {
-          event: 'parallel_relay_outgoing',
-          relayCommand: normalizedCommand,
-          relayCommandLabel: commandDefinition.label,
-          sourceMessageId: body.sourceMessageId,
-          sourceChannelId: body.sourceChannelId,
-          targetChannelIds: normalizedTargetChannelIds,
-        },
-        incrementUnread: false,
-      },
-    ).state;
-
-    for (const targetChannelId of normalizedTargetChannelIds) {
-      relayState = appendMessage(
-        relayState,
-        targetChannelId,
-        {
-          senderKind: 'system',
-          senderName: 'Chat',
-          body: buildConcurrentRelayIncomingNote({
-            command: normalizedCommand,
-            sourceMessageId: body.sourceMessageId,
-            sourceMemberLabel,
-          }),
-        },
-        now,
-        {
-          metadata: {
-            event: 'parallel_relay_incoming',
-            relayCommand: normalizedCommand,
-            relayCommandLabel: commandDefinition.label,
-            sourceMessageId: body.sourceMessageId,
-            sourceChannelId: body.sourceChannelId,
-            sourceMemberLabel,
-          },
-          incrementUnread: false,
-        },
-      ).state;
-    }
-
-    const response = await dispatchConcurrentBodies(context, {
+    const response = await runConcurrentGroupMutation(
+      context,
       groupId,
-      state: relayState,
-      activeChannelId: body.activeChannelId,
-      channelInputs: new Map(normalizedTargetChannelIds.map((channelId) => [
-        channelId,
-        {
-          body: relayBody,
-          messageMetadata: {
-            event: 'parallel_relay_prompt',
-            relayCommand: normalizedCommand,
-            relayCommandLabel: commandDefinition.label,
-            sourceMessageId: body.sourceMessageId,
-            sourceChannelId: body.sourceChannelId,
-            sourceMemberLabel,
-            verbosity: 'verbose',
+      async (state, group) => {
+        if (!group.memberChannelIds.includes(body.activeChannelId)) {
+          sendRestError(
+            context,
+            400,
+            'channel_not_in_compare_group',
+            'The active chat is not part of this Parallel chat group.',
+          );
+          throw new Error('response_sent');
+        }
+        if (!group.memberChannelIds.includes(body.sourceChannelId)) {
+          sendRestError(
+            context,
+            400,
+            'source_channel_not_in_compare_group',
+            'The source chat is not part of this Parallel chat group.',
+          );
+          throw new Error('response_sent');
+        }
+
+        const sourceChannel = requireChannel(state, body.sourceChannelId);
+        const sourceMessage = sourceChannel.messages.find((message) => message.id === body.sourceMessageId) ?? null;
+        if (!sourceMessage || !sourceMessage.body.trim()) {
+          sendRestError(
+            context,
+            400,
+            'source_message_required',
+            'The selected reply could not be relayed.',
+          );
+          throw new Error('response_sent');
+        }
+
+        const targetChannelIds = body.targetPolicy === 'single'
+          ? [body.targetChannelId ?? '']
+          : group.memberChannelIds.filter((channelId) => channelId !== body.sourceChannelId);
+        const normalizedTargetChannelIds = targetChannelIds.filter((channelId) =>
+          channelId
+          && channelId !== body.sourceChannelId
+          && group.memberChannelIds.includes(channelId),
+        );
+        if (normalizedTargetChannelIds.length === 0) {
+          sendRestError(
+            context,
+            400,
+            'compare_targets_required',
+            'No parallel chat targets were selected for this relay.',
+          );
+          throw new Error('response_sent');
+        }
+
+        const sourceMemberLabel = buildConcurrentChatMemberLabel({
+          provider: sourceChannel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
+          instance:
+            sourceChannel.pendingInstance
+            ?? state.globalOrchestrator.executionTarget.instance
+            ?? null,
+          model:
+            sourceChannel.pendingModel
+            ?? state.globalOrchestrator.executionTarget.model
+            ?? null,
+          modelSelection:
+            sourceChannel.pendingModelSelection
+            ?? state.globalOrchestrator.executionModelSelection
+            ?? null,
+        });
+        const commandDefinition = findConcurrentRelayCommand(normalizedCommand);
+        const targetMemberLabels = normalizedTargetChannelIds.map((channelId) => {
+          const targetChannel = requireChannel(state, channelId);
+          return buildConcurrentChatMemberLabel({
+            provider: targetChannel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
+            instance:
+              targetChannel.pendingInstance
+              ?? state.globalOrchestrator.executionTarget.instance
+              ?? null,
+            model:
+              targetChannel.pendingModel
+              ?? state.globalOrchestrator.executionTarget.model
+              ?? null,
+            modelSelection:
+              targetChannel.pendingModelSelection
+              ?? state.globalOrchestrator.executionModelSelection
+              ?? null,
+          });
+        });
+        const relayBody = buildConcurrentRelayPrompt({
+          command: normalizedCommand,
+          sourceMemberLabel,
+          sourceBody: sourceMessage.body,
+        });
+
+        const now = nowFrom(context.dependencies);
+        let relayState = appendMessage(
+          state,
+          body.sourceChannelId,
+          {
+            senderKind: 'system',
+            senderName: 'Chat',
+            body: buildConcurrentRelayOutgoingNote({
+              command: normalizedCommand,
+              sourceMessageId: body.sourceMessageId,
+              targetMemberLabels,
+            }),
           },
-        },
-      ])),
-      persistAcknowledgedStateBeforeDispatch: true,
-    });
+          now,
+          {
+            metadata: {
+              event: 'parallel_relay_outgoing',
+              relayCommand: normalizedCommand,
+              relayCommandLabel: commandDefinition.label,
+              sourceMessageId: body.sourceMessageId,
+              sourceChannelId: body.sourceChannelId,
+              targetChannelIds: normalizedTargetChannelIds,
+            },
+            incrementUnread: false,
+          },
+        ).state;
+
+        for (const targetChannelId of normalizedTargetChannelIds) {
+          relayState = appendMessage(
+            relayState,
+            targetChannelId,
+            {
+              senderKind: 'system',
+              senderName: 'Chat',
+              body: buildConcurrentRelayIncomingNote({
+                command: normalizedCommand,
+                sourceMessageId: body.sourceMessageId,
+                sourceMemberLabel,
+              }),
+            },
+            now,
+            {
+              metadata: {
+                event: 'parallel_relay_incoming',
+                relayCommand: normalizedCommand,
+                relayCommandLabel: commandDefinition.label,
+                sourceMessageId: body.sourceMessageId,
+                sourceChannelId: body.sourceChannelId,
+                sourceMemberLabel,
+              },
+              incrementUnread: false,
+            },
+          ).state;
+        }
+
+        return dispatchConcurrentBodies(context, {
+          groupId,
+          state: relayState,
+          activeChannelId: body.activeChannelId,
+          channelInputs: new Map(normalizedTargetChannelIds.map((channelId) => [
+            channelId,
+            {
+              body: relayBody,
+              messageMetadata: {
+                event: 'parallel_relay_prompt',
+                relayCommand: normalizedCommand,
+                relayCommandLabel: commandDefinition.label,
+                sourceMessageId: body.sourceMessageId,
+                sourceChannelId: body.sourceChannelId,
+                sourceMemberLabel,
+                verbosity: 'verbose',
+              },
+            },
+          ])),
+          persistAcknowledgedStateBeforeDispatch: true,
+        });
+      },
+    );
     sendJson(context.response, 200, response);
   } catch (error) {
+    if (error instanceof Error && error.message === 'response_sent') {
+      return;
+    }
     handleRestError(context, error);
   }
 }
