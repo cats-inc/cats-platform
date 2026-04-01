@@ -296,6 +296,25 @@
   height: 1px;
 }
 
+.transcriptMessageStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.transcriptMessageStackUser {
+  align-items: flex-end;
+}
+
+.transcriptMessageStackOrchestrator,
+.transcriptMessageStackAgent {
+  align-items: flex-start;
+}
+
+.transcriptMessageStackSystem {
+  align-items: center;
+}
+
 .transcriptMessage {
   max-width: 85%;
   padding: 10px 14px;
@@ -305,14 +324,12 @@
 }
 
 .transcriptMessageUser {
-  margin-left: auto;
   background: var(--user-bubble-bg);
   color: var(--text);
 }
 
 .transcriptMessageOrchestrator,
 .transcriptMessageAgent {
-  margin-right: auto;
   background: var(--panel);
   border: 1px solid var(--border);
   color: var(--text);
@@ -330,11 +347,7 @@
 }
 
 .transcriptMessageSystem {
-  margin: 4px auto;
   max-width: 90%;
-  background: transparent;
-  border: none;
-  box-shadow: none;
   text-align: center;
   color: var(--muted);
   font-size: 0.82rem;
@@ -378,6 +391,10 @@
   margin: 0 auto;
   width: 100%;
   z-index: 5;
+}
+
+.composerCardDockedParallel {
+  bottom: 72px;
 }
 
 .composerCardFresh {
@@ -500,112 +517,11 @@
   background: var(--border);
 }
 
-.compareNavigatorBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: min(100%, var(--chat-transcript-max-width, 680px));
-  margin: 10px auto 0;
-}
-
-.compareNavigatorMeta {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.compareNavigatorEyebrow {
-  margin: 0;
-  color: var(--muted-soft);
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.compareNavigatorMeta strong,
-.compareNavigatorMeta span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.compareNavigatorMeta span {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.compareNavigatorControls {
-  display: inline-flex;
-  gap: 8px;
-}
-
-.compareNavigatorButton,
-.messageActionButton {
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.76rem;
-  cursor: pointer;
-}
-
-.compareNavigatorButton:hover:not(:disabled),
-.messageActionButton:hover:not(:disabled) {
-  background: var(--panel-hover);
-  color: var(--text);
-}
-
-.compareNavigatorButton:disabled,
-.messageActionButton:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.compareNavigatorOverlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 18px;
-  pointer-events: none;
-}
-
-.compareNavigatorOverlayButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(61, 52, 38, 0.12);
-  color: var(--muted);
-  backdrop-filter: blur(6px);
-  pointer-events: auto;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-}
-
-.compareNavigatorOverlayButton:hover:not(:disabled) {
-  background: rgba(61, 52, 38, 0.22);
-  color: var(--text);
-}
-
-.compareNavigatorOverlayButton:disabled {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .messageActions {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 4px;
+  padding-inline: 4px;
 }
 
 .messageActionIcon {
@@ -636,12 +552,12 @@
   transition: opacity 0.15s ease;
 }
 
-.transcriptMessageUser > .messageActions {
+.transcriptMessageStackUser > .messageActions {
   justify-content: flex-end;
 }
 
-.transcriptMessageUser:hover .messageActionsHoverOnly,
-.transcriptMessageUser:focus-within .messageActionsHoverOnly {
+.transcriptMessageStackUser:hover .messageActionsHoverOnly,
+.transcriptMessageStackUser:focus-within .messageActionsHoverOnly {
   opacity: 1;
 }
 
@@ -691,18 +607,108 @@
   cursor: default;
 }
 
+.parallelFooterBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, calc(var(--chat-transcript-max-width, 680px) + 96px));
+  margin: 0 auto;
+  padding: 8px 12px 12px;
+  background: color-mix(in srgb, var(--canvas-bg) 90%, white 10%);
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
+  backdrop-filter: blur(10px);
+  z-index: 4;
+}
+
+.parallelFooterNavButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.parallelFooterNavButton:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.parallelFooterNavButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.parallelFooterTabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.parallelFooterTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.parallelFooterTab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.parallelFooterTab:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.parallelFooterTabActive {
+  background: var(--text);
+  color: #fff;
+}
+
+.parallelFooterTabLabel {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
 @media (max-width: 720px) {
-  .compareNavigatorBar {
-    flex-direction: column;
-    align-items: stretch;
+  .composerCardDockedParallel {
+    bottom: 84px;
   }
 
-  .compareNavigatorControls {
-    justify-content: stretch;
+  .parallelFooterBar {
+    padding-inline: 8px;
+    gap: 6px;
   }
 
-  .compareNavigatorControls > .compareNavigatorButton {
-    flex: 1;
+  .parallelFooterTab {
+    padding: 0 12px;
+  }
+
+  .parallelFooterTabLabel {
+    max-width: 132px;
   }
 }
 

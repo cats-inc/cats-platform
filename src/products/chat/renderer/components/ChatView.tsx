@@ -62,6 +62,7 @@ import {
   getProviderDisplayName,
   getProviderModels,
 } from '../../../../shared/providerCatalog';
+import { buildConcurrentChatMemberLabel } from '../../shared/concurrentChats';
 import {
   isDirectConversationMode,
   isSoloThreadConversationMode,
@@ -161,6 +162,19 @@ export function ChatView({
   onCompareSendScopeChange,
   onRelayMessage,
 }: ChatViewProps) {
+  function messageStackTone(senderKind: string): string {
+    switch (senderKind) {
+      case 'user':
+        return 'transcriptMessageStack transcriptMessageStackUser';
+      case 'orchestrator':
+        return 'transcriptMessageStack transcriptMessageStackOrchestrator';
+      case 'agent':
+        return 'transcriptMessageStack transcriptMessageStackAgent';
+      default:
+        return 'transcriptMessageStack transcriptMessageStackSystem';
+    }
+  }
+
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
 
@@ -486,36 +500,6 @@ export function ChatView({
             </button>
           </div>
         </header>
-        {isCompareGroup ? (
-          <section className="compareNavigatorBar">
-            <div className="compareNavigatorMeta">
-              <p className="compareNavigatorEyebrow">Parallel chat</p>
-              <strong>{compareGroup?.title}</strong>
-              <span>
-                {activeCompareMember?.title ?? presentChannelTitle(selectedChannel.title)}
-                {compareMemberIndex >= 0 ? ` (${compareMemberIndex + 1}/${compareMembers.length})` : ''}
-              </span>
-            </div>
-            <div className="compareNavigatorControls">
-              <button
-                className="compareNavigatorButton"
-                type="button"
-                disabled={!comparePrevChannelId}
-                onClick={() => navigateCompareMember('prev')}
-              >
-                Previous
-              </button>
-              <button
-                className="compareNavigatorButton"
-                type="button"
-                disabled={!compareNextChannelId}
-                onClick={() => navigateCompareMember('next')}
-              >
-                Next
-              </button>
-            </div>
-          </section>
-        ) : null}
         {layoutMetrics.catStatusRowVisible ? (() => {
           const catStatusIndicators = activeAssignedCats
             .map((assignment) => {
@@ -536,32 +520,6 @@ export function ChatView({
           ) : null;
         })() : null}
         <div className="channelWorkspace">
-          {isCompareGroup ? (
-            <div className="compareNavigatorOverlay">
-              <button
-                className="compareNavigatorOverlayButton compareNavigatorOverlayButtonPrev"
-                type="button"
-                disabled={!comparePrevChannelId}
-                onClick={() => navigateCompareMember('prev')}
-                aria-label="Previous parallel chat"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-              <button
-                className="compareNavigatorOverlayButton compareNavigatorOverlayButtonNext"
-                type="button"
-                disabled={!compareNextChannelId}
-                onClick={() => navigateCompareMember('next')}
-                aria-label="Next parallel chat"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
-            </div>
-          ) : null}
           <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
             {/* Feedback is now shown via NotificationContainer */}
 
@@ -569,40 +527,42 @@ export function ChatView({
               <section className="transcriptPanel">
                 <div ref={transcriptListRef} className="transcriptList">
                   {selectedChannel.messages.filter((msg) => payload.chat.showVerboseMessages || msg.metadata?.verbosity !== 'verbose').map((message) => (
-                    <article key={message.id} className={messageTone(message.senderKind)}>
-                      {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
-                        const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
-                        return speaker.kind === 'cat' && speaker.cat ? (() => {
-                          const isBoss = speaker.cat.id === payload.chat.bossCatId;
-                          const isLead = speaker.cat.id === leadParticipantId;
-                          return (
-                            <div className="transcriptMessageTop">
-                              <div
-                                className={isBoss ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
-                                style={speaker.cat.avatarUrl
-                                  ? { backgroundImage: `url(${speaker.cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                  : speaker.cat.avatarColor ? { background: speaker.cat.avatarColor } : undefined}
-                              >
-                                {speaker.cat.avatarUrl ? null : catInitials(speaker.cat.name)}
-                                {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                    <article key={message.id} className={messageStackTone(message.senderKind)}>
+                      <div className={messageTone(message.senderKind)}>
+                        {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
+                          const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
+                          return speaker.kind === 'cat' && speaker.cat ? (() => {
+                            const isBoss = speaker.cat.id === payload.chat.bossCatId;
+                            const isLead = speaker.cat.id === leadParticipantId;
+                            return (
+                              <div className="transcriptMessageTop">
+                                <div
+                                  className={isBoss ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
+                                  style={speaker.cat.avatarUrl
+                                    ? { backgroundImage: `url(${speaker.cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                    : speaker.cat.avatarColor ? { background: speaker.cat.avatarColor } : undefined}
+                                >
+                                  {speaker.cat.avatarUrl ? null : catInitials(speaker.cat.name)}
+                                  {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                                </div>
+                                <strong>{speaker.label}</strong>
                               </div>
+                            );
+                          })() : speaker.label ? (
+                            <div className="transcriptMessageTop">
                               <strong>{speaker.label}</strong>
                             </div>
-                          );
-                        })() : speaker.label ? (
-                          <div className="transcriptMessageTop">
-                            <strong>{speaker.label}</strong>
-                          </div>
-                        ) : null;
-                      })() : null}
-                      {message.body ? (
-                        <MessageBody
-                          body={message.body}
-                          cats={payload.chat.cats}
-                          channelId={selectedChannel.id}
-                          disabledMentionNames={directLaneExcludedMentionNames}
-                        />
-                      ) : null}
+                          ) : null;
+                        })() : null}
+                        {message.body ? (
+                          <MessageBody
+                            body={message.body}
+                            cats={payload.chat.cats}
+                            channelId={selectedChannel.id}
+                            disabledMentionNames={directLaneExcludedMentionNames}
+                          />
+                        ) : null}
+                      </div>
                       {message.senderKind !== 'system' ? (
                         <div
                           className={[
@@ -712,95 +672,97 @@ export function ChatView({
                     const showPreviewText = !hasContentBlocks && livePreviewText.trim().length > 0;
                     const activeTools = liveIndicator.tools.filter((t) => !t.done);
                     return (
-                      <article className="transcriptMessage transcriptMessageAgent typingIndicator">
-                        {speakerCat ? (
-                          <div className="transcriptMessageTop">
-                            <div
-                              className={speakerCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
-                              style={speakerCat.avatarUrl
-                                ? { backgroundImage: `url(${speakerCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
-                            >
-                              {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
+                      <article className="transcriptMessageStack transcriptMessageStackAgent typingIndicator">
+                        <div className="transcriptMessage transcriptMessageAgent">
+                          {speakerCat ? (
+                            <div className="transcriptMessageTop">
+                              <div
+                                className={speakerCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
+                                style={speakerCat.avatarUrl
+                                  ? { backgroundImage: `url(${speakerCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                  : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
+                              >
+                                {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
+                              </div>
+                              <strong>{speakerCat.name}</strong>
                             </div>
-                            <strong>{speakerCat.name}</strong>
-                          </div>
-                        ) : speakerLabel ? (
-                          <div className="transcriptMessageTop">
-                            <strong>{speakerLabel}</strong>
-                          </div>
-                        ) : null}
-                        {liveIndicator.phase === 'waiting' ? (
-                          <span className="typingDots"><span /><span /><span /></span>
-                        ) : (
-                          <>
-                            {showPreviewText ? (
-                              <MessageBody
-                                body={liveIndicator.previewText}
-                                cats={payload.chat.cats}
-                                channelId={selectedChannel.id}
-                                disabledMentionNames={directLaneExcludedMentionNames}
-                              />
-                            ) : liveIndicator.progressText ? (
-                              <p className="typingStatusText">{liveIndicator.progressText}</p>
-                            ) : (
-                              <span className="typingDots"><span /><span /><span /></span>
-                            )}
-                            {!showPreviewText && !hasContentBlocks && activeTools.map((tool) => (
-                              <span key={tool.toolId} className="typingToolChip">{tool.toolName}</span>
-                            ))}
-                            {hasContentBlocks ? (
-                              <div className="typingContentBlocks">
-                                {liveIndicator.contentBlocks.map((block) => (
-                                  <div
-                                    key={block.id}
-                                    className={[
-                                      'typingContentBlock',
-                                      block.kind === 'text'
-                                        ? 'typingContentBlockText'
-                                        : block.kind === 'tool'
-                                          ? 'typingContentBlockTool'
-                                          : 'typingContentBlockStatus',
-                                      block.status === 'streaming'
-                                        ? 'typingContentBlockStreaming'
-                                        : block.status === 'error'
-                                          ? 'typingContentBlockError'
-                                          : '',
-                                    ].filter(Boolean).join(' ')}
-                                  >
-                                    {block.kind !== 'text' && block.title ? (
-                                      <span className="typingContentBlockTitle">{block.title}</span>
-                                    ) : null}
-                                    {block.text ? (
-                                      <span className="typingContentBlockBody">{block.text}</span>
-                                    ) : null}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : liveIndicator.events.length > 0 ? (
-                              <div className="typingEventTape">
-                                {liveIndicator.events.map((event, index) => (
-                                  <div
-                                    key={`${event.eventType}:${event.toolId ?? ''}:${index}`}
-                                    className={[
-                                      'typingEventRow',
-                                      event.tone === 'active'
-                                        ? 'typingEventRowActive'
-                                        : event.tone === 'success'
-                                          ? 'typingEventRowSuccess'
-                                          : event.tone === 'error'
-                                            ? 'typingEventRowError'
+                          ) : speakerLabel ? (
+                            <div className="transcriptMessageTop">
+                              <strong>{speakerLabel}</strong>
+                            </div>
+                          ) : null}
+                          {liveIndicator.phase === 'waiting' ? (
+                            <span className="typingDots"><span /><span /><span /></span>
+                          ) : (
+                            <>
+                              {showPreviewText ? (
+                                <MessageBody
+                                  body={liveIndicator.previewText}
+                                  cats={payload.chat.cats}
+                                  channelId={selectedChannel.id}
+                                  disabledMentionNames={directLaneExcludedMentionNames}
+                                />
+                              ) : liveIndicator.progressText ? (
+                                <p className="typingStatusText">{liveIndicator.progressText}</p>
+                              ) : (
+                                <span className="typingDots"><span /><span /><span /></span>
+                              )}
+                              {!showPreviewText && !hasContentBlocks && activeTools.map((tool) => (
+                                <span key={tool.toolId} className="typingToolChip">{tool.toolName}</span>
+                              ))}
+                              {hasContentBlocks ? (
+                                <div className="typingContentBlocks">
+                                  {liveIndicator.contentBlocks.map((block) => (
+                                    <div
+                                      key={block.id}
+                                      className={[
+                                        'typingContentBlock',
+                                        block.kind === 'text'
+                                          ? 'typingContentBlockText'
+                                          : block.kind === 'tool'
+                                            ? 'typingContentBlockTool'
+                                            : 'typingContentBlockStatus',
+                                        block.status === 'streaming'
+                                          ? 'typingContentBlockStreaming'
+                                          : block.status === 'error'
+                                            ? 'typingContentBlockError'
                                             : '',
-                                    ].filter(Boolean).join(' ')}
-                                  >
-                                    <span className="typingEventLabel">{event.label}</span>
-                                    <span className="typingEventText">{event.text}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : null}
-                          </>
-                        )}
+                                      ].filter(Boolean).join(' ')}
+                                    >
+                                      {block.kind !== 'text' && block.title ? (
+                                        <span className="typingContentBlockTitle">{block.title}</span>
+                                      ) : null}
+                                      {block.text ? (
+                                        <span className="typingContentBlockBody">{block.text}</span>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : liveIndicator.events.length > 0 ? (
+                                <div className="typingEventTape">
+                                  {liveIndicator.events.map((event, index) => (
+                                    <div
+                                      key={`${event.eventType}:${event.toolId ?? ''}:${index}`}
+                                      className={[
+                                        'typingEventRow',
+                                        event.tone === 'active'
+                                          ? 'typingEventRowActive'
+                                          : event.tone === 'success'
+                                            ? 'typingEventRowSuccess'
+                                            : event.tone === 'error'
+                                              ? 'typingEventRowError'
+                                              : '',
+                                      ].filter(Boolean).join(' ')}
+                                    >
+                                      <span className="typingEventLabel">{event.label}</span>
+                                      <span className="typingEventText">{event.text}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
                       </article>
                     );
                   })() : null}
@@ -816,7 +778,9 @@ export function ChatView({
               ref={composerCardRef}
               className={
                 hasConversationStarted
-                  ? 'composerCard composerCardDocked'
+                  ? isCompareGroup
+                    ? 'composerCard composerCardDocked composerCardDockedParallel'
+                    : 'composerCard composerCardDocked'
                   : 'composerCard composerCardFresh'
               }
               onSubmit={(event) => void onSendMessage(event)}
@@ -859,6 +823,7 @@ export function ChatView({
               ) : null}
               {isCompareGroup ? (
                 <div className="compareComposerScope">
+                  <span className="compareComposerScopeLabel">Send to</span>
                   <div className="compareComposerScopeButtons" role="group" aria-label="Parallel send scope">
                     <button
                       className={
@@ -883,13 +848,11 @@ export function ChatView({
                       Only this chat
                     </button>
                   </div>
-                  <span className="compareComposerScopeHint">
-                    {compareBusy
-                      ? 'Waiting for parallel replies before the next send.'
-                      : compareSendScope === 'all_members'
-                        ? 'This turn fans out to every parallel chat.'
-                        : 'This turn stays in the active parallel chat only.'}
-                  </span>
+                  {compareBusy ? (
+                    <span className="compareComposerScopeStatus">
+                      Waiting for parallel replies...
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
               <div className="composerInputWrapper">
@@ -1011,6 +974,51 @@ export function ChatView({
                 }}
               />
             </form>
+            {isCompareGroup ? (
+              <nav className="parallelFooterBar" aria-label="Parallel chat navigation">
+                <button
+                  className="parallelFooterNavButton"
+                  type="button"
+                  disabled={!comparePrevChannelId}
+                  onClick={() => navigateCompareMember('prev')}
+                  aria-label="Previous parallel chat"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+                <div className="parallelFooterTabs" role="tablist" aria-label="Parallel chats">
+                  {compareMembers.map((member) => {
+                    const active = member.channelId === selectedChannel.id;
+                    const label = buildConcurrentChatMemberLabel(member);
+                    return (
+                      <button
+                        key={member.channelId}
+                        className={active ? 'parallelFooterTab parallelFooterTabActive' : 'parallelFooterTab'}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        title={`${label} · ${presentChannelTitle(member.title)}`}
+                        onClick={() => onSelect(member.channelId)}
+                      >
+                        <span className="parallelFooterTabLabel">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  className="parallelFooterNavButton"
+                  type="button"
+                  disabled={!compareNextChannelId}
+                  onClick={() => navigateCompareMember('next')}
+                  aria-label="Next parallel chat"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              </nav>
+            ) : null}
             <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
           </section>
 

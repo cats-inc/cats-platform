@@ -103,9 +103,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .compareComposerScopeButtons {
@@ -116,6 +115,12 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--panel) 94%, var(--panel-hover) 6%);
+}
+
+.compareComposerScopeLabel {
+  color: var(--muted-soft);
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .compareComposerScopeButton {
@@ -134,9 +139,10 @@
   color: #fff;
 }
 
-.compareComposerScopeHint {
+.compareComposerScopeStatus {
   color: var(--muted);
   font-size: 0.78rem;
+  margin-left: auto;
 }
 
 /* ── Parallel chat stacked composers ── */
