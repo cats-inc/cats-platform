@@ -17,6 +17,6 @@
 }
 
 .chatPaneSidePanelBelowBar {
-  top: 60px;
-  height: calc(100vh - 60px);
+  top: 52px;
+  height: calc(100vh - 52px);
 }

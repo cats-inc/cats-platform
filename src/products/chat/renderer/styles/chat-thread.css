@@ -68,7 +68,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh - 52px);
 }
 
 .channelShellFresh {
@@ -92,7 +92,7 @@
   z-index: 5;
   flex-shrink: 0;
   width: calc(100% + 56px);
-  min-height: 60px;
+  min-height: 52px;
 }
 
 .channelTopBarStart,
@@ -394,7 +394,7 @@
 }
 
 .composerCardDockedParallel {
-  bottom: 72px;
+  bottom: 56px;
 }
 
 .composerCardFresh {
@@ -612,10 +612,10 @@
   bottom: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: min(100%, calc(var(--chat-transcript-max-width, 680px) + 96px));
-  margin: 0 auto;
-  padding: 8px 12px 12px;
+  gap: 8px;
+  width: calc(100% + 56px);
+  margin: 0 -28px;
+  padding: 11px 28px;
   background: color-mix(in srgb, var(--canvas-bg) 90%, white 10%);
   border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
   backdrop-filter: blur(10px);
@@ -626,8 +626,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: transparent;
@@ -648,7 +648,7 @@
 
 .parallelFooterTabs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   min-width: 0;
   flex: 1;
@@ -663,8 +663,8 @@
 .parallelFooterTab {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 0 14px;
+  min-height: 30px;
+  padding: 0 12px;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
@@ -690,25 +690,27 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
 }
 
 @media (max-width: 720px) {
   .composerCardDockedParallel {
-    bottom: 84px;
+    bottom: 52px;
   }
 
   .parallelFooterBar {
-    padding-inline: 8px;
+    width: calc(100% + 16px);
+    margin: 0 -8px;
+    padding: 4px 8px 6px;
     gap: 6px;
   }
 
   .parallelFooterTab {
-    padding: 0 12px;
+    padding: 0 10px;
   }
 
   .parallelFooterTabLabel {
-    max-width: 132px;
+    max-width: 120px;
   }
 }
 
