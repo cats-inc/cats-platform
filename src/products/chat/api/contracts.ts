@@ -111,6 +111,14 @@ export type ChatChannelStatus =
 export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
 export type ComposerMode = 'solo' | 'cat_led';
 export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
+export type ConcurrentChatMode = 'compare';
+export type ConcurrentChatStatus = 'active' | 'archived';
+export type ConcurrentChatRelayCommandKind =
+  | 'check_this'
+  | 'adopt_this'
+  | 'debate_this'
+  | 'build_on_this';
+export type ConcurrentChatRelayTargetPolicy = 'all_others' | 'single';
 
 export interface MessageUsageSummary {
   inputTokens: number;
@@ -283,6 +291,45 @@ export interface ChatChannelSummary {
   roomMode?: RoomRoutingMode;
   routingStatus?: RoomRoutingTurnStatus;
   lastRoutingAt?: string | null;
+  orchestratorRoles?: string[];
+}
+
+export interface ConcurrentChatTarget {
+  provider: string;
+  instance: string | null;
+  model: string | null;
+  modelSelection?: ProviderModelSelection | null;
+}
+
+export interface ConcurrentChatGroupState {
+  id: string;
+  title: string;
+  mode: ConcurrentChatMode;
+  status: ConcurrentChatStatus;
+  memberChannelIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string | null;
+}
+
+export interface ConcurrentChatGroupMemberSummary extends ConcurrentChatTarget {
+  channelId: string;
+  title: string;
+  index: number;
+  lastMessageAt: string | null;
+}
+
+export interface ConcurrentChatGroupSummary {
+  id: string;
+  title: string;
+  mode: ConcurrentChatMode;
+  status: ConcurrentChatStatus;
+  memberCount: number;
+  memberChannelIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string | null;
+  members: ConcurrentChatGroupMemberSummary[];
 }
 
 export interface GlobalOrchestratorSummary {
@@ -329,6 +376,7 @@ export interface ChatState {
   bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelState[];
+  concurrentGroups: ConcurrentChatGroupState[];
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
@@ -371,6 +419,7 @@ export interface ChatShellState {
   bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelSummary[];
+  concurrentGroups: ConcurrentChatGroupSummary[];
   selectedChannel: ChatChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;
@@ -436,6 +485,13 @@ export interface CreateChatChannelInput {
   skipBossCatGreeting?: boolean;
 }
 
+export interface CreateConcurrentChatGroupInput {
+  title: string;
+  repoPath?: string;
+  responseLanguage?: string;
+  targets: ConcurrentChatTarget[];
+}
+
 export interface UpdateGlobalOrchestratorInput {
   provider: string;
   instance?: string;
@@ -455,6 +511,26 @@ export interface SendChannelMessageInput {
   pendingInstance?: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
   choiceResponse?: ChatMessageChoiceResponse | null;
+}
+
+export interface ConcurrentChatAttachmentInput {
+  name: string;
+  data: string;
+}
+
+export interface SendConcurrentChatMessageInput {
+  activeChannelId: string;
+  body: string;
+  attachments?: ConcurrentChatAttachmentInput[];
+}
+
+export interface RelayConcurrentChatMessageInput {
+  activeChannelId: string;
+  sourceChannelId: string;
+  sourceMessageId: string;
+  command: ConcurrentChatRelayCommandKind;
+  targetPolicy?: ConcurrentChatRelayTargetPolicy;
+  targetChannelId?: string;
 }
 
 export interface UpdateChannelInput {
@@ -497,6 +573,24 @@ export interface ActivateChannelResponse {
 export interface SendChannelMessageResponse {
   appShell: AppShellPayload;
   results: ChannelDispatchResult[];
+}
+
+export interface ConcurrentChatDispatchResult {
+  channelId: string;
+  status: 'sent' | 'error' | 'skipped';
+  sourceMessageId?: string;
+  error?: string;
+}
+
+export interface CreateConcurrentChatGroupResponse {
+  appShell: AppShellPayload;
+  group: ConcurrentChatGroupSummary;
+}
+
+export interface ConcurrentChatDispatchResponse {
+  appShell: AppShellPayload;
+  groupId: string;
+  results: ConcurrentChatDispatchResult[];
 }
 
 export interface ChannelExportPayload {

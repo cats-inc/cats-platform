@@ -7,6 +7,8 @@ export const UUID_PATTERN =
 export const CHAT_PREFIX = '/chat';
 export const NEW_CHAT_PATH = `${CHAT_PREFIX}/new`;
 export const NEW_CHAT_CAT_QUERY_PARAM = 'cat';
+export const NEW_CHAT_MODE_QUERY_PARAM = 'mode';
+export const NEW_CHAT_MODE_COMPARE = 'compare';
 export const SETUP_PATH = '/setup';
 export const MY_CATS_PATH_PREFIX = `${CHAT_PREFIX}/my-cats`;
 
@@ -29,6 +31,11 @@ export function buildNewChatPath(leadCatId?: string | null): string {
   return `${NEW_CHAT_PATH}?${params.toString()}`;
 }
 
+export function buildNewCompareChatPath(): string {
+  const params = new URLSearchParams([[NEW_CHAT_MODE_QUERY_PARAM, NEW_CHAT_MODE_COMPARE]]);
+  return `${NEW_CHAT_PATH}?${params.toString()}`;
+}
+
 export function buildMyCatPath(catId: string): string {
   const normalizedCatId = normalizeRouteToken(catId);
   if (!normalizedCatId) {
@@ -41,6 +48,14 @@ export function buildMyCatPath(catId: string): string {
 export function readNewChatLeadCatId(search: string): string | null {
   const params = new URLSearchParams(search);
   return normalizeRouteToken(params.get(NEW_CHAT_CAT_QUERY_PARAM));
+}
+
+export function readNewChatMode(search: string): 'default' | 'compare' {
+  const params = new URLSearchParams(search);
+  const mode = params.get(NEW_CHAT_MODE_QUERY_PARAM);
+  return mode === NEW_CHAT_MODE_COMPARE || mode === 'parallel'
+    ? 'compare'
+    : 'default';
 }
 
 export function buildChannelPath(channelId: string): string {

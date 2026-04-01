@@ -410,6 +410,92 @@
   color: var(--text);
 }
 
+.compareDraftShell {
+  overflow-y: auto;
+}
+
+.compareDraftContent {
+  width: min(100%, 920px);
+  gap: 18px;
+  padding-top: 9vh;
+  padding-bottom: 56px;
+}
+
+.compareDraftGreeting {
+  max-width: 680px;
+  margin-bottom: 6px;
+}
+
+.compareTargetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.compareTargetCard {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.compareTargetCardHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.compareTargetCardHeader p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.compareTargetRemove {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.compareTargetActions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.compareDraftComposer {
+  max-width: 100%;
+}
+
+.compareTargetCountChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.compareDraftFootnote {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-align: center;
+}
+
 .recentCatAvatar {
   grid-area: 1 / 1;
   display: grid;
@@ -497,6 +583,190 @@
   height: 1px;
   margin: 4px 8px;
   background: var(--border);
+}
+
+.compareNavigatorBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(100%, var(--chat-transcript-max-width, 680px));
+  margin: 10px auto 0;
+}
+
+.compareNavigatorMeta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.compareNavigatorEyebrow {
+  margin: 0;
+  color: var(--muted-soft);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.compareNavigatorMeta strong,
+.compareNavigatorMeta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compareNavigatorMeta span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.compareNavigatorControls {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.compareNavigatorButton,
+.messageActionButton {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.compareNavigatorButton:hover:not(:disabled),
+.messageActionButton:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.compareNavigatorButton:disabled,
+.messageActionButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.compareNavigatorOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  pointer-events: none;
+}
+
+.compareNavigatorOverlayButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(61, 52, 38, 0.12);
+  color: var(--muted);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.compareNavigatorOverlayButton:hover:not(:disabled) {
+  background: rgba(61, 52, 38, 0.22);
+  color: var(--text);
+}
+
+.compareNavigatorOverlayButton:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.messageActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.messageActionsHoverOnly {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.transcriptMessageUser:hover .messageActionsHoverOnly,
+.transcriptMessageUser:focus-within .messageActionsHoverOnly {
+  opacity: 1;
+}
+
+.messageActionsPersistent {
+  opacity: 1;
+}
+
+.messageActionMenu {
+  position: relative;
+}
+
+.messageActionPopover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  gap: 4px;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  z-index: 8;
+}
+
+.messageActionPopover button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.messageActionPopover button:hover:not(:disabled) {
+  background: var(--panel-hover);
+}
+
+.messageActionPopover button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .compareDraftContent {
+    padding-top: 48px;
+  }
+
+  .compareTargetActions,
+  .compareNavigatorBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .compareNavigatorControls {
+    justify-content: stretch;
+  }
+
+  .compareNavigatorControls > .compareNavigatorButton {
+    flex: 1;
+  }
 }
 
 /* ── Live typing indicator ── */

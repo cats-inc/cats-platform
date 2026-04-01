@@ -1,5 +1,6 @@
 import type {
   AssignChannelCatInput,
+  CreateConcurrentChatGroupInput,
   CreateChatChannelInput,
   MessageUsageSummary,
   NewChatDefaults,
@@ -97,8 +98,15 @@ export function renameChannel(
 ): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
-  channel.title = title.trim() || channel.title;
+  const nextTitle = title.trim() || channel.title;
+  channel.title = nextTitle;
   channel.updatedAt = isoAt(now);
+  for (const group of nextState.concurrentGroups) {
+    if (group.memberChannelIds.includes(channelId)) {
+      group.title = nextTitle;
+      group.updatedAt = channel.updatedAt;
+    }
+  }
   return nextState;
 }
 
@@ -107,16 +115,94 @@ export function deleteChannel(
   channelId: string,
 ): ChatState {
   const nextState = cloneState(state);
+  const groupSiblingChannelId = nextState.concurrentGroups.find((group) =>
+    group.memberChannelIds.includes(channelId),
+  )?.memberChannelIds.find((memberChannelId) => memberChannelId !== channelId) ?? '';
   const index = findChannelIndex(nextState, channelId);
   if (index === -1) {
     throw new Error(`Channel not found: ${channelId}`);
   }
 
   nextState.channels.splice(index, 1);
+  nextState.concurrentGroups = nextState.concurrentGroups
+    .map((group) => ({
+      ...group,
+      memberChannelIds: group.memberChannelIds.filter((memberChannelId) => memberChannelId !== channelId),
+    }))
+    .filter((group) => group.memberChannelIds.length > 1);
 
   if (nextState.selectedChannelId === channelId) {
-    nextState.selectedChannelId = nextState.channels[0]?.id ?? '';
+    nextState.selectedChannelId = groupSiblingChannelId || (nextState.channels[0]?.id ?? '');
   }
+
+  return nextState;
+}
+
+export function touchConcurrentGroup(
+  state: ChatState,
+  groupId: string,
+  nowIso: string,
+  lastMessageAt: string | null,
+): void {
+  const group = state.concurrentGroups.find((candidate) => candidate.id === groupId);
+  if (!group) {
+    return;
+  }
+
+  group.updatedAt = nowIso;
+  group.lastMessageAt = lastMessageAt;
+}
+
+export function findConcurrentGroupByChannelId(
+  state: ChatState,
+  channelId: string,
+): ChatState['concurrentGroups'][number] | null {
+  return state.concurrentGroups.find((group) => group.memberChannelIds.includes(channelId)) ?? null;
+}
+
+export function createConcurrentGroup(
+  state: ChatState,
+  input: CreateConcurrentChatGroupInput,
+  now: Date = new Date(),
+): ChatState {
+  if (input.targets.length < 2) {
+    throw new Error('Parallel chats require at least two model targets.');
+  }
+
+  let nextState = cloneState(state);
+  const nowIso = isoAt(now);
+  const memberChannelIds: string[] = [];
+
+  for (const target of [...input.targets].reverse()) {
+    nextState = createChannel(
+      nextState,
+      {
+        title: input.title,
+        topic: input.title,
+        repoPath: input.repoPath,
+        responseLanguage: input.responseLanguage,
+        composerMode: 'solo',
+        pendingProvider: target.provider,
+        pendingModel: target.model ?? undefined,
+        pendingInstance: target.instance ?? undefined,
+        pendingModelSelection: target.modelSelection ?? undefined,
+        skipBossCatGreeting: true,
+      },
+      now,
+    );
+    memberChannelIds.unshift(nextState.selectedChannelId);
+  }
+
+  nextState.concurrentGroups.unshift({
+    id: createChannelId(),
+    title: input.title.trim() || 'Parallel chat',
+    mode: 'compare',
+    status: 'active',
+    memberChannelIds,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    lastMessageAt: null,
+  });
 
   return nextState;
 }

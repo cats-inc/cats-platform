@@ -10,6 +10,7 @@ import type { AppShellPayload } from '../../api/contracts.js';
 import type { ModelSelectorValue } from '../components/ModelSelector.js';
 import {
   buildChannelPath,
+  buildNewCompareChatPath,
   buildNewChatPath,
   resolveVisibleChatPath,
 } from '../../shared/channelPaths.js';
@@ -42,6 +43,7 @@ export function useAppNavigationActions(options: {
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
+  resetDraftConcurrentTargets: () => void;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
@@ -61,6 +63,7 @@ export function useAppNavigationActions(options: {
     setDraftCatIds,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
+    resetDraftConcurrentTargets,
     setDraftFiles,
     setChannelFiles,
     confirm: confirmDialog,
@@ -73,6 +76,7 @@ export function useAppNavigationActions(options: {
     setDraftCatIds([]);
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
+    resetDraftConcurrentTargets();
     setDraftFiles([]);
     setChannelPlusMenuOpen(false);
     setChannelFiles([]);
@@ -83,6 +87,7 @@ export function useAppNavigationActions(options: {
     setDraftCatIds,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
+    resetDraftConcurrentTargets,
     setDraftFiles,
     setChannelPlusMenuOpen,
     setChannelFiles,
@@ -227,6 +232,7 @@ export function useAppNavigationActions(options: {
     setDraftCatIds([]);
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
+    resetDraftConcurrentTargets();
     setDraftFiles([]);
   }, [
     navigate,
@@ -238,6 +244,33 @@ export function useAppNavigationActions(options: {
     setDraftCatIds,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
+    resetDraftConcurrentTargets,
+    setDraftFiles,
+  ]);
+
+  const onStartNewCompareChat = useCallback(async (): Promise<void> => {
+    navigate(buildNewCompareChatPath());
+    setComposerDraft('');
+    setFeedback('');
+    setAddCatOpen(false);
+    setPlusMenuOpen(false);
+    setDraftCwd(null);
+    setDraftCatIds([]);
+    setDraftHighlightedCatId(null);
+    setDraftCatModelOverrides(new Map());
+    resetDraftConcurrentTargets();
+    setDraftFiles([]);
+  }, [
+    navigate,
+    setComposerDraft,
+    setFeedback,
+    setAddCatOpen,
+    setPlusMenuOpen,
+    setDraftCwd,
+    setDraftCatIds,
+    setDraftHighlightedCatId,
+    setDraftCatModelOverrides,
+    resetDraftConcurrentTargets,
     setDraftFiles,
   ]);
 
@@ -252,5 +285,6 @@ export function useAppNavigationActions(options: {
     onDirectChatCat,
     onResetSetup,
     onStartNewChat,
+    onStartNewCompareChat,
   };
 }

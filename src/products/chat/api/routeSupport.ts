@@ -186,6 +186,10 @@ export function handleRestError(
     sendRestError(context, 404, 'channel_not_found', message);
     return;
   }
+  if (message.startsWith('Concurrent group not found:')) {
+    sendRestError(context, 404, 'concurrent_group_not_found', message);
+    return;
+  }
   if (message.startsWith('Cat not found:')) {
     sendRestError(context, 404, 'cat_not_found', message);
     return;

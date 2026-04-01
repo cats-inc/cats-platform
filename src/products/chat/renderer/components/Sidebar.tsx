@@ -34,6 +34,7 @@ export interface SidebarProps {
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
+  onStartNewCompareChat: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
@@ -158,6 +159,7 @@ function ChannelItem({
   onRename,
   onDelete,
   onOverflowToggle,
+  titleOverride,
 }: {
   channel: ChatChannelSummary;
   payload: AppShellPayload;
@@ -168,6 +170,7 @@ function ChannelItem({
   onRename: (title: string) => void;
   onDelete: () => void;
   onOverflowToggle: () => void;
+  titleOverride?: string;
 }) {
   const cat = resolveCatForChannel(channel, payload);
   const [renaming, setRenaming] = useState(false);
@@ -229,7 +232,7 @@ function ChannelItem({
           }}
           type="button"
         >
-          <strong>{presentChannelTitle(channel.title)}</strong>
+          <strong>{presentChannelTitle(titleOverride ?? channel.title)}</strong>
         </button>
       )}
       {!renaming ? (
@@ -384,6 +387,7 @@ export function Sidebar({
   onCollapsedSidebarClick,
   onOpenChatsOverview,
   onStartNewChat,
+  onStartNewCompareChat,
   onSelect,
   onDeleteChannel,
   onRenameChannel,
@@ -405,7 +409,10 @@ export function Sidebar({
       .filter((catId): catId is string => Boolean(catId)),
   );
 
-  function renderChannelList(channels: ChatChannelSummary[]) {
+  function renderChannelList(
+    channels: ChatChannelSummary[],
+    titleOverrides?: Map<string, string>,
+  ) {
     if (channels.length === 0) {
       return <div className="recentEmpty"><p>No chats yet</p></div>;
     }
@@ -421,14 +428,99 @@ export function Sidebar({
         onRename={(title) => { void onRenameChannel(channel.id, title); }}
         onDelete={() => { onOverflowMenuToggle(null); void onDeleteChannel(channel.id); }}
         onOverflowToggle={() => onOverflowMenuToggle(overflowMenuOpenId === channel.id ? null : channel.id)}
+        titleOverride={titleOverrides?.get(channel.id)}
       />
     ));
   }
 
   const recentsChannels = payload.chat.channels.filter((ch) => !isDirectCatChat(ch));
+  const activeConcurrentGroups = (payload.chat.concurrentGroups ?? []).filter(
+    (group) => group.status === 'active',
+  );
+  const concurrentGroupByChannelId = new Map<string, typeof activeConcurrentGroups[number]>();
+  for (const group of activeConcurrentGroups) {
+    for (const channelId of group.memberChannelIds) {
+      concurrentGroupByChannelId.set(channelId, group);
+    }
+  }
+
+  const channelById = new Map(recentsChannels.map((channel) => [channel.id, channel] as const));
+  const recentEntries: Array<
+    | { kind: 'channel'; channel: ChatChannelSummary }
+    | {
+        kind: 'compare_group';
+        group: typeof activeConcurrentGroups[number];
+        channels: ChatChannelSummary[];
+        titleOverrides: Map<string, string>;
+      }
+  > = [];
+  const seenChannelIds = new Set<string>();
+  const seenGroupIds = new Set<string>();
+
+  for (const channel of recentsChannels) {
+    if (seenChannelIds.has(channel.id)) {
+      continue;
+    }
+
+    const compareGroup = concurrentGroupByChannelId.get(channel.id);
+    if (compareGroup && !seenGroupIds.has(compareGroup.id)) {
+      const groupChannels = compareGroup.memberChannelIds
+        .map((channelId) => channelById.get(channelId) ?? null)
+        .filter((member): member is ChatChannelSummary => member != null);
+
+      if (groupChannels.length > 1) {
+        seenGroupIds.add(compareGroup.id);
+        groupChannels.forEach((member) => seenChannelIds.add(member.id));
+        recentEntries.push({
+          kind: 'compare_group',
+          group: compareGroup,
+          channels: groupChannels,
+          titleOverrides: new Map(compareGroup.members.map((member) => [member.channelId, member.title])),
+        });
+        continue;
+      }
+    }
+
+    seenChannelIds.add(channel.id);
+    recentEntries.push({ kind: 'channel', channel });
+  }
 
   function renderByLatest() {
-    return renderChannelList(recentsChannels);
+    if (recentEntries.length === 0) {
+      return <div className="recentEmpty"><p>No chats yet</p></div>;
+    }
+
+    return recentEntries.map((entry) => {
+      if (entry.kind === 'channel') {
+        return (
+          <div key={entry.channel.id}>
+            {renderChannelList([entry.channel])}
+          </div>
+        );
+      }
+
+      const isGroupSelected = entry.group.memberChannelIds.includes(routeChannelId ?? '');
+      return (
+        <section
+          key={entry.group.id}
+          className={[
+            'recentGroupCard',
+            isGroupSelected ? 'recentGroupCardSelected' : '',
+          ].filter(Boolean).join(' ')}
+        >
+          <div className="recentGroupHeader">
+            <div>
+              <p className="recentGroupEyebrow">Parallel chat</p>
+              <strong>{presentChannelTitle(entry.group.title)}</strong>
+            </div>
+            <span className="recentGroupMeta">{entry.group.memberCount} chats</span>
+          </div>
+          <div className="recentGroupList">
+            {renderChannelList(entry.channels, entry.titleOverrides)}
+          </div>
+        </section>
+      );
+    });
   }
 
   return (
@@ -470,6 +562,20 @@ export function Sidebar({
               </svg>
             </span>
             <span className="navLabel">New chat</span>
+          </button>
+          <button
+            className="navItem"
+            onClick={() => void onStartNewCompareChat()}
+            type="button"
+          >
+            <span className="navGlyph" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 13V3h12v10H2z" />
+                <path d="M7 3v10" />
+                <path d="M11 3v10" />
+              </svg>
+            </span>
+            <span className="navLabel">Parallel chat</span>
           </button>
         </nav>
 

@@ -95,6 +95,7 @@ export function createDefaultChatState(): ChatState {
     bossCatId: null,
     cats: [],
     channels: [],
+    concurrentGroups: [],
     globalOrchestrator: createDefaultOrchestrator(createdAt),
     newChatDefaults: createDefaultNewChatDefaults(),
     capabilities: createCapabilities(),

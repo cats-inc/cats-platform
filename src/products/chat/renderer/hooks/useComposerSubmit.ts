@@ -17,7 +17,9 @@ import {
 import { normalizeSelectedChannelView } from '../../shared/channelEntry';
 import { isDirectLaneChannel } from '../../shared/channelTopology';
 import {
+  createConcurrentChatGroup,
   createChatChannel,
+  sendConcurrentChatMessage,
   sendChatMessage,
   updateSelectedChannel,
   uploadChannelAttachments,
@@ -73,6 +75,11 @@ export function useComposerSubmit(options: {
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   draftModel: ModelSelectorValue;
   soloChannelModel: ModelSelectorValue;
+  showingCompareChatDraft: boolean;
+  draftConcurrentTargets: ModelSelectorValue[];
+  resetDraftConcurrentTargets: () => void;
+  compareGroupId: string | null;
+  compareSendScope: 'all_members' | 'active_only';
   selectedChannel: SelectedChannelView | null;
   setBusy: Dispatch<SetStateAction<string>>;
   setFeedback: Dispatch<SetStateAction<string>>;
@@ -99,6 +106,11 @@ export function useComposerSubmit(options: {
     setChannelFiles,
     draftModel,
     soloChannelModel,
+    showingCompareChatDraft,
+    draftConcurrentTargets,
+    resetDraftConcurrentTargets,
+    compareGroupId,
+    compareSendScope,
     selectedChannel,
     setBusy,
     setFeedback,
@@ -116,8 +128,8 @@ export function useComposerSubmit(options: {
 
     const initialPayload = state.payload;
     const wasDraftingNewChat = showingNewChatDraft;
-    const isCatScopedLaneRoute = Boolean(draftLeadCatId) && showingMyCatDirectLane;
     const initialSelectedChannel = normalizeSelectedChannelView(initialPayload.chat.selectedChannel ?? null);
+    const isCatScopedLaneRoute = Boolean(draftLeadCatId) && showingMyCatDirectLane;
     const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftLeadCatId)
       ? initialSelectedChannel
       : null;
@@ -141,9 +153,89 @@ export function useComposerSubmit(options: {
       }
     };
 
-    setBusy('message:prepare');
     setFeedback('');
     try {
+      if (showingCompareChatDraft && wasDraftingNewChat) {
+        if (draftConcurrentTargets.length < 2) {
+          throw new Error('Choose at least two parallel chats before sending.');
+        }
+
+        setBusy('concurrent:dispatch');
+        const created = await createConcurrentChatGroup({
+          title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
+          repoPath: draftCwd ?? undefined,
+          targets: draftConcurrentTargets.map((target) => ({
+            provider: target.provider,
+            instance: target.instance ?? null,
+            model: target.model ?? null,
+            modelSelection: target.modelSelection ?? null,
+          })),
+        });
+        const activeChannelId =
+          created.appShell.chat.selectedChannelId
+          && created.group.memberChannelIds.includes(created.appShell.chat.selectedChannelId)
+            ? created.appShell.chat.selectedChannelId
+            : created.group.members[0]?.channelId ?? null;
+        if (!activeChannelId) {
+          throw new Error('Parallel chat was created without an active thread.');
+        }
+
+        rollbackPayload = created.appShell;
+        rollbackPath = buildChannelPath(activeChannelId);
+        setState({ status: 'ready', payload: created.appShell });
+        setComposerDraft('');
+        navigate(rollbackPath, { replace: true });
+
+        const dispatch = await sendConcurrentChatMessage(created.group.id, {
+          activeChannelId,
+          body,
+        });
+        setState({ status: 'ready', payload: dispatch.appShell });
+        setFeedback('');
+
+        setDraftCwd(null);
+        setDraftCatIds([]);
+        setDraftHighlightedCatId(null);
+        setDraftCatModelOverrides(new Map());
+        setDraftFiles([]);
+        resetDraftConcurrentTargets();
+        return;
+      }
+
+      if (compareGroupId && compareSendScope === 'all_members' && !wasDraftingNewChat) {
+        if (!channelId) {
+          throw new Error('No parallel chat is available for sending messages.');
+        }
+        if (channelFiles.length > 0) {
+          throw new Error(
+            'Parallel chat fan-out does not support files yet. Switch this turn to Only this chat.',
+          );
+        }
+
+        rollbackPath = currentPathname;
+        if (
+          initialPayload.chat.selectedChannel?.id === channelId
+          && selectedChannel?.id === channelId
+        ) {
+          payload = appendOptimisticUserMessage(initialPayload, channelId, body);
+          rollbackPayload = initialPayload;
+          setState({ status: 'ready', payload });
+        }
+        setComposerDraft('');
+        setChannelFiles([]);
+        setBusy('concurrent:dispatch');
+
+        const dispatch = await sendConcurrentChatMessage(compareGroupId, {
+          activeChannelId: channelId,
+          body,
+        });
+        setState({ status: 'ready', payload: dispatch.appShell });
+        setFeedback('');
+        return;
+      }
+
+      setBusy('message:prepare');
+
       if (isCatScopedLaneRoute) {
         if (!hydratedDirectLane) {
           const createdChannel = await createChatChannel({
@@ -298,6 +390,11 @@ export function useComposerSubmit(options: {
     draftModel.modelSelection,
     draftModel.model,
     draftModel.provider,
+    showingCompareChatDraft,
+    draftConcurrentTargets,
+    resetDraftConcurrentTargets,
+    compareGroupId,
+    compareSendScope,
     navigate,
     selectedChannel,
     setBusy,

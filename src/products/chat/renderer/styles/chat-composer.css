@@ -99,6 +99,46 @@
   color: var(--muted);
 }
 
+.compareComposerScope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.compareComposerScopeButtons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 94%, var(--panel-hover) 6%);
+}
+
+.compareComposerScopeButton {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.compareComposerScopeButtonActive {
+  background: var(--text);
+  color: #fff;
+}
+
+.compareComposerScopeHint {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .folderBrowserOverlay {
   position: fixed;
   inset: 0;
@@ -639,4 +679,3 @@
     padding: 8px 10px;
   }
 }
-

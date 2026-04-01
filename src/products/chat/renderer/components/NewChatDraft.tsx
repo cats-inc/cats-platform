@@ -163,9 +163,7 @@ export function NewChatDraft({
           modelSelection: highlightedCat.defaultModelSelection ?? null,
         })
       : selectedModel ?? null;
-  const chipLabel = selectedModel
-    ? buildModelSelectorLabel(selectedModel)
-    : '';
+  const chipLabel = selectedModel ? buildModelSelectorLabel(selectedModel) : '';
   const isSubmittingFirstTurn = isComposerBusy(busy);
 
   return (

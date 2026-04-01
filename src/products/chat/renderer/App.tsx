@@ -11,15 +11,20 @@ import {
   useNavigate,
 } from 'react-router-dom';
 
-import type { AppShellPayload } from '../api/contracts';
+import type {
+  AppShellPayload,
+  ConcurrentChatRelayCommandKind,
+} from '../api/contracts';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog';
 import {
   CHAT_PREFIX,
   isNewChatPath,
   readNewChatLeadCatId,
+  readNewChatMode,
 } from '../shared/channelPaths';
 import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
 import {
+  PRODUCT_PROVIDER_ORDER,
   getDefaultModel,
   getDefaultProviderInstance,
 } from '../../../shared/providerCatalog';
@@ -47,6 +52,7 @@ import { useChatEvents } from './hooks/useChatEvents';
 import {
   activateChatChannel,
   fetchAppShell,
+  relayConcurrentChatMessage,
   updateCatProfile,
   updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
@@ -82,6 +88,37 @@ function toModelSelectorValue(
   };
 }
 
+function createModelSelectorValueForProvider(provider: string): ModelSelectorValue {
+  return {
+    provider,
+    model: getDefaultModel(provider) || null,
+    instance: getDefaultProviderInstance(provider),
+    modelSelection: null,
+  };
+}
+
+function createInitialCompareTargets(baseTarget: ModelSelectorValue): ModelSelectorValue[] {
+  const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseTarget.provider)
+    ?? 'codex';
+
+  return [
+    baseTarget,
+    createModelSelectorValueForProvider(fallbackProvider),
+  ];
+}
+
+function createNextCompareTarget(
+  currentTargets: ModelSelectorValue[],
+  fallbackTarget: ModelSelectorValue,
+): ModelSelectorValue {
+  const nextProvider = PRODUCT_PROVIDER_ORDER.find((provider) =>
+    !currentTargets.some((target) => target.provider === provider),
+  ) ?? PRODUCT_PROVIDER_ORDER.find((provider) => provider !== fallbackTarget.provider)
+    ?? fallbackTarget.provider;
+
+  return createModelSelectorValueForProvider(nextProvider);
+}
+
 function sameModelSelectorValue(
   left: ModelSelectorValue,
   right: ModelSelectorValue,
@@ -100,6 +137,8 @@ export default function App() {
   const routeChannelId = channelMatch?.params.channelId ?? null;
   const routeMyCatId = myCatMatch?.params.catId ?? null;
   const showingNewChatDraft = isNewChatPath(location.pathname);
+  const showingCompareChatDraft =
+    showingNewChatDraft && readNewChatMode(location.search) === 'compare';
   const draftLeadCatId = routeMyCatId ?? readNewChatLeadCatId(location.search);
   const showingMyCatDirectLane = Boolean(routeMyCatId);
 
@@ -115,7 +154,13 @@ export default function App() {
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
   const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
+  const [draftConcurrentTargets, setDraftConcurrentTargets] = useState<ModelSelectorValue[]>(
+    () => createInitialCompareTargets(createDefaultModelSelectorValue()),
+  );
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
+  const [compareSendScope, setCompareSendScope] = useState<'all_members' | 'active_only'>(
+    'all_members',
+  );
   const [draftHighlightedCatId, setDraftHighlightedCatId] = useState<string | null>(null);
   const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<Map<string, ModelSelectorValue>>(new Map);
   const wasGenericNewChatRoute = useRef(false);
@@ -235,6 +280,14 @@ export default function App() {
       return copy;
     });
   }, []);
+  const resetDraftConcurrentTargets = useCallback(() => {
+    setDraftConcurrentTargets(createInitialCompareTargets(draftModel));
+  }, [
+    draftModel.instance,
+    draftModel.model,
+    draftModel.modelSelection,
+    draftModel.provider,
+  ]);
 
   const {
     accountMenuOpen,
@@ -309,6 +362,7 @@ export default function App() {
     onDirectChatCat,
     onResetSetup,
     onStartNewChat,
+    onStartNewCompareChat,
   } = useAppNavigationActions({
     state,
     setState,
@@ -324,6 +378,7 @@ export default function App() {
     setDraftCatIds,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
+    resetDraftConcurrentTargets,
     setDraftFiles,
     setChannelFiles,
     confirm: appConfirm,
@@ -383,6 +438,15 @@ export default function App() {
     setChannelFiles,
     draftModel,
     soloChannelModel,
+    showingCompareChatDraft,
+    draftConcurrentTargets,
+    resetDraftConcurrentTargets,
+    compareGroupId: state.status === 'ready' && selectedChannel
+      ? state.payload.chat.concurrentGroups.find((group) =>
+          group.memberChannelIds.includes(selectedChannel.id),
+        )?.id ?? null
+      : null,
+    compareSendScope,
     selectedChannel,
     setBusy,
     setFeedback,
@@ -723,6 +787,85 @@ export default function App() {
     state.status,
   ]);
 
+  const selectedConcurrentGroup = readyPayload && selectedChannel
+    ? readyPayload.chat.concurrentGroups.find((group) =>
+        group.memberChannelIds.includes(selectedChannel.id),
+      ) ?? null
+    : null;
+
+  useEffect(() => {
+    setCompareSendScope('all_members');
+  }, [selectedConcurrentGroup?.id]);
+
+  const onDraftConcurrentTargetChange = useCallback((index: number, value: ModelSelectorValue) => {
+    setDraftConcurrentTargets((prev) =>
+      prev.map((target, currentIndex) => (currentIndex === index ? value : target)),
+    );
+  }, []);
+
+  const onAddDraftConcurrentTarget = useCallback(() => {
+    setDraftConcurrentTargets((prev) => [
+      ...prev,
+      createNextCompareTarget(prev, draftModel),
+    ]);
+  }, [
+    draftModel.instance,
+    draftModel.model,
+    draftModel.modelSelection,
+    draftModel.provider,
+  ]);
+
+  const onRemoveDraftConcurrentTarget = useCallback((index: number) => {
+    setDraftConcurrentTargets((prev) => {
+      if (prev.length <= 2) {
+        return prev;
+      }
+
+      return prev.filter((_, currentIndex) => currentIndex !== index);
+    });
+  }, []);
+
+  const onRelayCompareMessage = useCallback(async (
+    messageId: string,
+    command: ConcurrentChatRelayCommandKind,
+  ): Promise<void> => {
+    if (!selectedChannel || !selectedConcurrentGroup) {
+      return;
+    }
+
+    setBusy('concurrent:dispatch');
+    setFeedback('');
+    try {
+      const dispatch = await relayConcurrentChatMessage(selectedConcurrentGroup.id, {
+        activeChannelId: selectedChannel.id,
+        sourceChannelId: selectedChannel.id,
+        sourceMessageId: messageId,
+        command,
+        targetPolicy: 'all_others',
+      });
+      startTransition(() => setState({ status: 'ready', payload: dispatch.appShell }));
+
+      const failures = dispatch.results.filter((result) => result.status === 'error');
+      if (failures.length > 0) {
+        setFeedback(
+          failures
+            .map((result) => result.error || `Relay failed for ${result.channelId}.`)
+            .join(' '),
+        );
+      }
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to relay compare message.');
+    } finally {
+      setBusy('');
+    }
+  }, [
+    selectedChannel,
+    selectedConcurrentGroup,
+    setBusy,
+    setFeedback,
+    setState,
+  ]);
+
   function updatePayload(payload: AppShellPayload): void {
     startTransition(() => setState({ status: 'ready', payload }));
   }
@@ -797,6 +940,7 @@ export default function App() {
         onCollapsedSidebarClick={onCollapsedSidebarClick}
         onOpenChatsOverview={onOpenChatsOverview}
         onStartNewChat={onStartNewChat}
+        onStartNewCompareChat={onStartNewCompareChat}
         onSelect={onSelect}
         onDeleteChannel={onDeleteChannel}
         onRenameChannel={onRenameChannel}
@@ -826,6 +970,7 @@ export default function App() {
             busy,
             feedback,
             greeting,
+            onSelect,
             channelFiles,
             channelPlusMenuOpen,
             channelPlusMenuRef,
@@ -852,6 +997,10 @@ export default function App() {
             onModelChange:
               selectedChannel?.composerMode === 'solo' ? setSoloChannelModel : undefined,
             onDirectLaneModelChange: onDirectLaneModelSave,
+            compareGroup: selectedConcurrentGroup,
+            compareSendScope,
+            onCompareSendScopeChange: setCompareSendScope,
+            onRelayMessage: onRelayCompareMessage,
             liveIndicator,
           }}
           draftSurfaceProps={{
@@ -885,6 +1034,19 @@ export default function App() {
             onDraftCatModelOverride,
             onDirectLaneModelChange: onDirectLaneModelSave,
           }}
+          compareDraftSurfaceProps={{
+            composerDraft,
+            busy,
+            onComposerChange: setComposerDraft,
+            onComposerKeyDown,
+            onSendMessage,
+            autoResize,
+            targets: draftConcurrentTargets,
+            onTargetChange: onDraftConcurrentTargetChange,
+            onAddTarget: onAddDraftConcurrentTarget,
+            onRemoveTarget: onRemoveDraftConcurrentTarget,
+          }}
+          showingCompareChatDraft={showingCompareChatDraft}
           onPayloadUpdate={updatePayload}
           onFeedback={setFeedback}
           onBusy={setBusy}

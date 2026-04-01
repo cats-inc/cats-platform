@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-036](./PLAN-036-compare-chat-concurrent-groups-and-relay.md) | Parallel Chat, Concurrent Groups, and Relay | Completed (First Slice Landed) | [SPEC-047](../specs/SPEC-047-compare-chat-concurrent-groups-and-relay.md) |
 | [PLAN-035](./PLAN-035-suite-product-landing-and-installed-apps.md) | Suite Product Landing and Installed Apps | Draft | [SPEC-046](../specs/SPEC-046-suite-product-landing-and-installed-apps.md), [ADR-048](../decisions/048-separate-suite-products-from-installable-apps.md) |
 | [PLAN-034](./PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md) | Cross-Layer Bootstrap and Onboarding Diagnostics | Draft (Implementation Ready) | [SPEC-045](../specs/SPEC-045-cross-layer-bootstrap-and-onboarding-diagnostics.md), [ADR-047](../decisions/047-separate-bootstrap-diagnostics-by-layer-and-aggregate-in-the-host.md) |
 | [PLAN-033](./PLAN-033-integrate-packaged-setup-with-runtime-bootstrap.md) | Integrate Packaged Setup with Runtime Bootstrap | Draft | [SPEC-044](../specs/SPEC-044-integrate-packaged-setup-with-runtime-bootstrap.md), [ADR-046](../decisions/046-drive-packaged-setup-through-runtime-bootstrap-apis.md) |
@@ -90,6 +91,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-03-31*
+*Last updated: 2026-04-01*
 
 *See also: [specs/](../specs/) for feature specifications*

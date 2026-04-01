@@ -7,11 +7,13 @@ import type {
   ChatChannelSummary,
   ChatChannelView,
   ChatState,
+  ConcurrentChatGroupSummary,
   GlobalOrchestratorSummary,
   ParticipantExecutionLease,
 } from '../../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
+import { buildConcurrentChatMemberLabel } from '../../shared/concurrentChats.js';
 import {
   isDirectLaneChannel,
   normalizeChannelAssignmentsForRoomMode,
@@ -213,6 +215,7 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
       ?? roomRouting.lastOutcome?.completedAt
       ?? roomRouting.lastCheckpoint?.createdAt
       ?? null,
+    orchestratorRoles: channel.orchestratorRoles ?? [],
   };
 }
 
@@ -232,9 +235,64 @@ export function buildChannelExportFilename(state: ChatState, channelId: string):
   return createChannelExportFilename(channel.title, channel.id);
 }
 
+function summarizeConcurrentGroups(state: ChatState): ConcurrentChatGroupSummary[] {
+  return state.concurrentGroups
+    .map((group) => {
+      const members = group.memberChannelIds
+        .map((channelId) => requireChannel(state, channelId))
+        .map((channel, index) => ({
+          channelId: channel.id,
+          title: channel.title,
+          index,
+          provider: channel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
+          instance:
+            channel.pendingInstance
+            ?? state.globalOrchestrator.executionTarget.instance
+            ?? null,
+          model:
+            channel.pendingModel
+            ?? state.globalOrchestrator.executionTarget.model
+            ?? null,
+          modelSelection:
+            structuredClone(channel.pendingModelSelection)
+            ?? structuredClone(state.globalOrchestrator.executionModelSelection)
+            ?? null,
+          lastMessageAt: channel.lastMessageAt,
+        }));
+
+      const lastMessageAt = members.reduce<string | null>((latest, member) => {
+        if (!member.lastMessageAt) {
+          return latest;
+        }
+        if (!latest || member.lastMessageAt > latest) {
+          return member.lastMessageAt;
+        }
+        return latest;
+      }, group.lastMessageAt);
+
+      return {
+        id: group.id,
+        title: group.title,
+        mode: group.mode,
+        status: group.status,
+        memberCount: members.length,
+        memberChannelIds: structuredClone(group.memberChannelIds),
+        createdAt: group.createdAt,
+        updatedAt: group.updatedAt,
+        lastMessageAt,
+        members: members.map((member) => ({
+          ...member,
+          title: buildConcurrentChatMemberLabel(member),
+        })),
+      };
+    })
+    .filter((group) => group.members.length > 1);
+}
+
 export function summarizeState(state: ChatState): {
   cats: ChatCat[];
   channels: ChatChannelSummary[];
+  concurrentGroups: ConcurrentChatGroupSummary[];
   selectedChannel: ChatChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
 } {
@@ -244,6 +302,7 @@ export function summarizeState(state: ChatState): {
   return {
     cats: structuredClone(state.cats),
     channels: state.channels.map((channel) => toChannelSummary(channel)),
+    concurrentGroups: summarizeConcurrentGroups(state),
     selectedChannel: selectedChannelState ? buildChannelView(state, selectedChannelState) : null,
     globalOrchestrator: structuredClone(state.globalOrchestrator),
   };

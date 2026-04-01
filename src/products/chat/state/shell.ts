@@ -65,6 +65,7 @@ export function createAppShell(
       bossCatId: chat.bossCatId,
       cats: summary.cats,
       channels: summary.channels,
+      concurrentGroups: summary.concurrentGroups,
       selectedChannel: summary.selectedChannel,
       globalOrchestrator: {
         ...summary.globalOrchestrator,

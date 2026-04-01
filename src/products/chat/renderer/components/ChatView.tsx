@@ -8,7 +8,13 @@ import {
   type RefObject,
 } from 'react';
 
-import type { AppShellPayload, ChatCat, ChatChannelView } from '../../api/contracts';
+import type {
+  AppShellPayload,
+  ChatCat,
+  ChatChannelView,
+  ConcurrentChatGroupSummary,
+  ConcurrentChatRelayCommandKind,
+} from '../../api/contracts';
 import { resolveCatStatusIndicator } from '../../shared/catStatusResolution';
 import { CatStatusRow } from './CatStatusRow';
 import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
@@ -102,10 +108,15 @@ export interface ChatViewProps {
   selectedModel?: ModelSelectorValue;
   onModelChange?: (value: ModelSelectorValue) => void;
   onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  onSelect: (channelId: string) => void;
   onOpenAddCat?: () => void;
   showAddCatButton?: boolean;
   liveIndicator?: LiveIndicatorState;
   onToggleCompanionMode?: () => void;
+  compareGroup?: ConcurrentChatGroupSummary | null;
+  compareSendScope?: 'all_members' | 'active_only';
+  onCompareSendScopeChange?: (value: 'all_members' | 'active_only') => void;
+  onRelayMessage?: (messageId: string, command: ConcurrentChatRelayCommandKind) => Promise<void>;
 }
 
 export function ChatView({
@@ -140,10 +151,15 @@ export function ChatView({
   selectedModel,
   onModelChange,
   onDirectLaneModelChange,
+  onSelect,
   onOpenAddCat,
   showAddCatButton = true,
   liveIndicator,
   onToggleCompanionMode,
+  compareGroup = null,
+  compareSendScope = 'all_members',
+  onCompareSendScopeChange,
+  onRelayMessage,
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
@@ -153,6 +169,26 @@ export function ChatView({
     ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
     : null;
   const conversationMode = resolveConversationMode(selectedChannel);
+  const compareMembers = compareGroup?.members ?? [];
+  const compareMemberIndex = compareMembers.findIndex((member) => member.channelId === selectedChannel.id);
+  const activeCompareMember = compareMemberIndex >= 0
+    ? compareMembers[compareMemberIndex]
+    : null;
+  const isCompareGroup = compareMembers.length > 1;
+  const compareGroupChannels = useMemo(
+    () => compareMembers
+      .map((member) =>
+        payload.chat.channels.find((channel) => channel.id === member.channelId) ?? null,
+      )
+      .filter((channel): channel is AppShellPayload['chat']['channels'][number] => channel != null),
+    [compareMembers, payload.chat.channels],
+  );
+  const compareDispatchBusy = busy === 'concurrent:dispatch';
+  const compareRoutingBusy = compareGroupChannels.some((channel) =>
+    channel.routingStatus === 'running' || channel.routingStatus === 'blocked',
+  );
+  const compareBusy = compareDispatchBusy || compareRoutingBusy;
+
   const isSoloComposer = isSoloThreadConversationMode(conversationMode);
   const isDirectLane = isDirectConversationMode(conversationMode);
   const layoutMode: ChatLayoutMode = isDirectLane
@@ -162,6 +198,7 @@ export function ChatView({
       : 'solo';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
+  const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
@@ -301,6 +338,10 @@ export function ChatView({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    setOpenRelayMenuId(null);
+  }, [selectedChannel.id, compareBusy]);
+
   const inspectedRun = useMemo(
     () => buildRunInspectorView(operatorView, inspectedRunId),
     [operatorView, inspectedRunId],
@@ -308,6 +349,12 @@ export function ChatView({
   const composerBusy = isComposerBusy(busy);
   const resumeBusy = busy === 'channel:resume';
   const canResumeChannel = !composerBusy && !resumeBusy;
+  const comparePrevChannelId = isCompareGroup && compareMemberIndex >= 0
+    ? compareMembers[(compareMemberIndex - 1 + compareMembers.length) % compareMembers.length]?.channelId ?? null
+    : null;
+  const compareNextChannelId = isCompareGroup && compareMemberIndex >= 0
+    ? compareMembers[(compareMemberIndex + 1) % compareMembers.length]?.channelId ?? null
+    : null;
   const composerWorkspacePath = resolveComposerWorkspacePath(
     selectedChannel.repoPath,
     selectedChannel.chatCwd,
@@ -320,6 +367,23 @@ export function ChatView({
       liveIndicatorScrollKey,
     ].join('::'),
   });
+
+  function navigateCompareMember(direction: 'prev' | 'next'): void {
+    const channelId = direction === 'prev' ? comparePrevChannelId : compareNextChannelId;
+    if (!channelId) {
+      return;
+    }
+
+    onSelect(channelId);
+  }
+
+  async function copyMessageBody(body: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(body);
+    } catch {
+      // Ignore clipboard failures; the message stays available in the transcript.
+    }
+  }
 
   return (
     <>
@@ -422,6 +486,36 @@ export function ChatView({
             </button>
           </div>
         </header>
+        {isCompareGroup ? (
+          <section className="compareNavigatorBar">
+            <div className="compareNavigatorMeta">
+              <p className="compareNavigatorEyebrow">Parallel chat</p>
+              <strong>{compareGroup?.title}</strong>
+              <span>
+                {activeCompareMember?.title ?? presentChannelTitle(selectedChannel.title)}
+                {compareMemberIndex >= 0 ? ` (${compareMemberIndex + 1}/${compareMembers.length})` : ''}
+              </span>
+            </div>
+            <div className="compareNavigatorControls">
+              <button
+                className="compareNavigatorButton"
+                type="button"
+                disabled={!comparePrevChannelId}
+                onClick={() => navigateCompareMember('prev')}
+              >
+                Previous
+              </button>
+              <button
+                className="compareNavigatorButton"
+                type="button"
+                disabled={!compareNextChannelId}
+                onClick={() => navigateCompareMember('next')}
+              >
+                Next
+              </button>
+            </div>
+          </section>
+        ) : null}
         {layoutMetrics.catStatusRowVisible ? (() => {
           const catStatusIndicators = activeAssignedCats
             .map((assignment) => {
@@ -442,6 +536,32 @@ export function ChatView({
           ) : null;
         })() : null}
         <div className="channelWorkspace">
+          {isCompareGroup ? (
+            <div className="compareNavigatorOverlay">
+              <button
+                className="compareNavigatorOverlayButton compareNavigatorOverlayButtonPrev"
+                type="button"
+                disabled={!comparePrevChannelId}
+                onClick={() => navigateCompareMember('prev')}
+                aria-label="Previous parallel chat"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <button
+                className="compareNavigatorOverlayButton compareNavigatorOverlayButtonNext"
+                type="button"
+                disabled={!compareNextChannelId}
+                onClick={() => navigateCompareMember('next')}
+                aria-label="Next parallel chat"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            </div>
+          ) : null}
           <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
             {/* Feedback is now shown via NotificationContainer */}
 
@@ -483,6 +603,85 @@ export function ChatView({
                           disabledMentionNames={directLaneExcludedMentionNames}
                         />
                       ) : null}
+                      {message.senderKind !== 'system' ? (
+                        <div
+                          className={[
+                            'messageActions',
+                            message.senderKind === 'user'
+                              ? 'messageActionsHoverOnly'
+                              : 'messageActionsPersistent',
+                          ].join(' ')}
+                        >
+                          <button
+                            className="messageActionButton"
+                            type="button"
+                            onClick={() => { void copyMessageBody(message.body); }}
+                            title="Copy message"
+                          >
+                            Copy
+                          </button>
+                          {isCompareGroup && message.senderKind !== 'user' && onRelayMessage ? (
+                            <div className="messageActionMenu">
+                              <button
+                                className="messageActionButton"
+                                type="button"
+                                disabled={compareBusy}
+                                onClick={() =>
+                                  setOpenRelayMenuId((current) =>
+                                    current === message.id ? null : message.id,
+                                  )}
+                              >
+                                Relay
+                              </button>
+                              {openRelayMenuId === message.id ? (
+                                <div className="messageActionPopover">
+                                  <button
+                                    type="button"
+                                    disabled={compareBusy}
+                                    onClick={() => {
+                                      setOpenRelayMenuId(null);
+                                      void onRelayMessage(message.id, 'check_this');
+                                    }}
+                                  >
+                                    Check with others
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={compareBusy}
+                                    onClick={() => {
+                                      setOpenRelayMenuId(null);
+                                      void onRelayMessage(message.id, 'adopt_this');
+                                    }}
+                                  >
+                                    Adopt in others
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={compareBusy}
+                                    onClick={() => {
+                                      setOpenRelayMenuId(null);
+                                      void onRelayMessage(message.id, 'debate_this');
+                                    }}
+                                  >
+                                    Debate with others
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={compareBusy}
+                                    onClick={() => {
+                                      setOpenRelayMenuId(null);
+                                      void onRelayMessage(message.id, 'build_on_this');
+                                    }}
+                                  >
+                                    Build on in others
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+
                       {message.choices && message.choices.length > 0 ? (
                         <MessageChoices
                           channelId={selectedChannel.id}
@@ -650,6 +849,41 @@ export function ChatView({
                   })}
                 </div>
               ) : null}
+              {isCompareGroup ? (
+                <div className="compareComposerScope">
+                  <div className="compareComposerScopeButtons" role="group" aria-label="Parallel send scope">
+                    <button
+                      className={
+                        compareSendScope === 'all_members'
+                          ? 'compareComposerScopeButton compareComposerScopeButtonActive'
+                          : 'compareComposerScopeButton'
+                      }
+                      type="button"
+                      onClick={() => onCompareSendScopeChange?.('all_members')}
+                    >
+                      All chats
+                    </button>
+                    <button
+                      className={
+                        compareSendScope === 'active_only'
+                          ? 'compareComposerScopeButton compareComposerScopeButtonActive'
+                          : 'compareComposerScopeButton'
+                      }
+                      type="button"
+                      onClick={() => onCompareSendScopeChange?.('active_only')}
+                    >
+                      Only this chat
+                    </button>
+                  </div>
+                  <span className="compareComposerScopeHint">
+                    {compareBusy
+                      ? 'Waiting for parallel replies before the next send.'
+                      : compareSendScope === 'all_members'
+                        ? 'This turn fans out to every parallel chat.'
+                        : 'This turn stays in the active parallel chat only.'}
+                  </span>
+                </div>
+              ) : null}
               <div className="composerInputWrapper">
                 <ComposerHighlight
                   text={composerDraft}
@@ -659,7 +893,7 @@ export function ChatView({
                 <textarea
                   className="composerInput composerInputOverlay"
                   rows={1}
-                  placeholder="How can I help you today?"
+                  placeholder={compareBusy ? 'Waiting for parallel replies...' : 'How can I help you today?'}
                   value={composerDraft}
                   disabled={composerBusy}
                   onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
@@ -743,7 +977,7 @@ export function ChatView({
                 ) : null}
                 <button
                   className="composerSendButton"
-                  disabled={!composerDraft.trim() || composerBusy}
+                  disabled={!composerDraft.trim() || composerBusy || compareBusy}
                   type="submit"
                   aria-label="Send"
                 >

@@ -21,6 +21,10 @@ import {
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
 import {
+  NewCompareChatDraft,
+  type NewCompareChatDraftProps,
+} from './components/NewCompareChatDraft.js';
+import {
   CompanionWorkspace,
 } from './components/companion/CompanionWorkspace.js';
 import { ChatSettingsGeneral } from './components/ChatSettingsGeneral.js';
@@ -38,6 +42,11 @@ type DraftSurfaceProps = Omit<
   'payload' | 'onOpenAddCat' | 'onDraftLeadCatChange' | 'allowAddCat'
 >;
 
+type CompareDraftSurfaceProps = Omit<
+  NewCompareChatDraftProps,
+  'payload'
+>;
+
 export interface AppRoutesProps {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView | null;
@@ -47,6 +56,8 @@ export interface AppRoutesProps {
   busy: string;
   chatSurfaceProps: ChatSurfaceProps;
   draftSurfaceProps: DraftSurfaceProps;
+  compareDraftSurfaceProps: CompareDraftSurfaceProps;
+  showingCompareChatDraft: boolean;
   onPayloadUpdate: (payload: AppShellPayload) => void;
   onFeedback: (message: string) => void;
   onBusy: (key: string) => void;
@@ -73,6 +84,8 @@ export function AppRoutes({
   busy,
   chatSurfaceProps,
   draftSurfaceProps,
+  compareDraftSurfaceProps,
+  showingCompareChatDraft,
   onPayloadUpdate,
   onFeedback,
   onBusy,
@@ -195,21 +208,28 @@ export function AppRoutes({
         <Route
           path="new"
           element={
-            <NewChatDraft
-              {...draftSurfaceProps}
-              payload={payload}
-              onOpenAddCat={onOpenDraftAddCat}
-              onDraftLeadCatChange={onChangeDraftLeadCat}
-              folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
-              folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
-              folderBrowseParentPath={folderBrowserSurfaceProps.folderBrowseParentPath}
-              folderBrowseEntries={folderBrowserSurfaceProps.folderBrowseEntries}
-              folderBrowseLoading={folderBrowserSurfaceProps.folderBrowseLoading}
-              folderBrowseError={folderBrowserSurfaceProps.folderBrowseError}
-              onFolderBrowsePathChange={folderBrowserSurfaceProps.onPathChange}
-              onFolderBrowse={folderBrowserSurfaceProps.onBrowse}
-              onFolderBrowseSelect={folderBrowserSurfaceProps.onSelect}
-            />
+            showingCompareChatDraft ? (
+              <NewCompareChatDraft
+                {...compareDraftSurfaceProps}
+                payload={payload}
+              />
+            ) : (
+              <NewChatDraft
+                {...draftSurfaceProps}
+                payload={payload}
+                onOpenAddCat={onOpenDraftAddCat}
+                onDraftLeadCatChange={onChangeDraftLeadCat}
+                folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
+                folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
+                folderBrowseParentPath={folderBrowserSurfaceProps.folderBrowseParentPath}
+                folderBrowseEntries={folderBrowserSurfaceProps.folderBrowseEntries}
+                folderBrowseLoading={folderBrowserSurfaceProps.folderBrowseLoading}
+                folderBrowseError={folderBrowserSurfaceProps.folderBrowseError}
+                onFolderBrowsePathChange={folderBrowserSurfaceProps.onPathChange}
+                onFolderBrowse={folderBrowserSurfaceProps.onBrowse}
+                onFolderBrowseSelect={folderBrowserSurfaceProps.onSelect}
+              />
+            )
           }
         />
         <Route

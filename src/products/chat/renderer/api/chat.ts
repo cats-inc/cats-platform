@@ -3,8 +3,13 @@ import type {
   AppShellPayload,
   AssignChannelCatInput,
   ChatChannelView,
+  ConcurrentChatDispatchResponse,
+  CreateConcurrentChatGroupInput,
+  CreateConcurrentChatGroupResponse,
   CreateChatChannelInput,
+  RelayConcurrentChatMessageInput,
   CreateCatInput,
+  SendConcurrentChatMessageInput,
   SendChannelMessageInput,
   SendChannelMessageResponse,
 } from '../../api/contracts';
@@ -246,6 +251,68 @@ export async function sendChatMessage(
     appShell = await fetchAppShell();
   }
   return { appShell, results: dispatch.results };
+}
+
+export async function createConcurrentChatGroup(
+  input: CreateConcurrentChatGroupInput,
+  signal?: AbortSignal,
+): Promise<CreateConcurrentChatGroupResponse> {
+  const response = await fetch('/api/concurrent-groups', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return expectJson<CreateConcurrentChatGroupResponse>(
+    response,
+    `parallel chat creation returned ${response.status}`,
+  );
+}
+
+export async function sendConcurrentChatMessage(
+  groupId: string,
+  input: SendConcurrentChatMessageInput,
+  signal?: AbortSignal,
+): Promise<ConcurrentChatDispatchResponse> {
+  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/messages`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return expectJson<ConcurrentChatDispatchResponse>(
+    response,
+    `parallel chat dispatch returned ${response.status}`,
+  );
+}
+
+export async function relayConcurrentChatMessage(
+  groupId: string,
+  input: RelayConcurrentChatMessageInput,
+  signal?: AbortSignal,
+): Promise<ConcurrentChatDispatchResponse> {
+  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/relay`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return expectJson<ConcurrentChatDispatchResponse>(
+    response,
+    `parallel chat relay returned ${response.status}`,
+  );
 }
 
 export async function updateCatProfile(

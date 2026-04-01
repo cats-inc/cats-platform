@@ -162,6 +162,58 @@
   background: var(--sidebar-active-bg);
 }
 
+.recentGroupCard {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 12px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, var(--accent) 18%);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel) 94%, var(--accent-soft) 6%);
+}
+
+.recentGroupCardSelected {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--border) 48%);
+}
+
+.recentGroupHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 6px 0;
+}
+
+.recentGroupHeader strong {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.recentGroupEyebrow {
+  margin: 0 0 2px;
+  color: var(--muted-soft);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.recentGroupMeta {
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.recentGroupList {
+  display: grid;
+}
+
+.recentGroupList .recentItemCard {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 .recentDeleteButton,
 .overviewDeleteButton {
   padding: 8px 10px;

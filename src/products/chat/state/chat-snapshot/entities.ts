@@ -7,6 +7,7 @@ import type {
   ChatChannelState,
   ChatMessage,
   ChatState,
+  ConcurrentChatGroupState,
   GlobalOrchestratorSummary,
   NewChatDefaults,
 } from '../../api/contracts.js';
@@ -341,6 +342,26 @@ export function normalizeNewChatDefaults(rawDefaults: unknown): NewChatDefaults 
     instance: executionTarget.instance,
     model: executionTarget.model,
     modelSelection: parseProviderModelSelection(defaultsRecord?.modelSelection),
+  };
+}
+
+export function normalizeConcurrentChatGroup(rawGroup: unknown): ConcurrentChatGroupState | null {
+  const groupRecord = asRecord(rawGroup);
+  if (!groupRecord) {
+    return null;
+  }
+
+  const rawStatus = readString(groupRecord.status, 'active');
+
+  return {
+    id: readString(groupRecord.id, randomUUID()),
+    title: readString(groupRecord.title, 'Parallel chat'),
+    mode: 'compare',
+    status: rawStatus === 'archived' ? 'archived' : 'active',
+    memberChannelIds: readStringArray(groupRecord.memberChannelIds),
+    createdAt: readString(groupRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(groupRecord.updatedAt, new Date().toISOString()),
+    lastMessageAt: readNullableString(groupRecord.lastMessageAt),
   };
 }
 

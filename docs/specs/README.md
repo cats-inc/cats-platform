@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-047](./SPEC-047-compare-chat-concurrent-groups-and-relay.md) | Parallel Chat, Concurrent Groups, and Relay Actions | Implemented (First Slice Landed) | [PLAN-036](../plans/PLAN-036-compare-chat-concurrent-groups-and-relay.md) |
 | [SPEC-046](./SPEC-046-suite-product-landing-and-installed-apps.md) | Suite Product Landing and Installed Apps | Draft | [PLAN-035](../plans/PLAN-035-suite-product-landing-and-installed-apps.md) |
 | [SPEC-045](./SPEC-045-cross-layer-bootstrap-and-onboarding-diagnostics.md) | Cross-Layer Bootstrap and Onboarding Diagnostics | Approved | [PLAN-034](../plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md) |
 | [SPEC-044](./SPEC-044-integrate-packaged-setup-with-runtime-bootstrap.md) | Integrate Packaged Setup with Runtime Bootstrap | Approved | [PLAN-033](../plans/PLAN-033-integrate-packaged-setup-with-runtime-bootstrap.md) |
@@ -103,6 +104,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-03-31*
+*Last updated: 2026-04-01*
 
 *See also: [plans/](../plans/) for implementation plans*
