@@ -1245,6 +1245,7 @@ test('direct cat chat recreates a stale lead-cat session once when runtime repor
     ['session-stale', 'session-1'],
   );
   assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.deepEqual(runtimeClient.closedSessions, ['session-stale']);
   assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
   assert.equal(channel.assignedCats[0]?.execution.lease.status, 'ready');
   assert.equal(channel.assignedCats[0]?.execution.lease.lastError, null);
@@ -1328,6 +1329,7 @@ test('direct cat chat recreates a closed lead-cat session once when runtime dema
     ['session-closed', 'session-1'],
   );
   assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.deepEqual(runtimeClient.closedSessions, ['session-closed']);
   assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
   assert.equal(channel.assignedCats[0]?.execution.lease.status, 'ready');
   assert.equal(channel.assignedCats[0]?.execution.lease.lastError, null);

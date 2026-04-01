@@ -4464,6 +4464,84 @@ test('PATCH /api/preferences wakes the selected Boss Chat entry participant', as
   });
 });
 
+test('concurrent room-entry wake and first send reuse the same orchestrator session', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
+  let createCalls = 0;
+  let releaseFirstCreate = () => {};
+  const firstCreateStarted = new Promise((resolve) => {
+    runtimeClient.createSession = async (input) => {
+      createCalls += 1;
+      if (createCalls === 1) {
+        resolve(undefined);
+        await new Promise((resume) => {
+          releaseFirstCreate = resume;
+        });
+      }
+      return originalCreateSession(input);
+    };
+  });
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Race room',
+        topic: 'Do not create two sessions during first send.',
+        skipBossCatGreeting: true,
+        composerMode: 'solo',
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const wakeResponsePromise = fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+
+    await firstCreateStarted;
+
+    const sendResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'Hi' }),
+    });
+
+    releaseFirstCreate();
+
+    const [wakeResponse, sendResponse] = await Promise.all([
+      wakeResponsePromise,
+      sendResponsePromise,
+    ]);
+    assert.equal(wakeResponse.status, 200);
+    assert.equal(sendResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.sentMessages.length, 1);
+    assert.equal(runtimeClient.sentMessages[0]?.sessionId, 'session-1');
+    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
+  });
+});
+
 test('solo chats without a cwd create isolated runtime sessions', async () => {
   const runtimeClient = createRuntimeStub();
 

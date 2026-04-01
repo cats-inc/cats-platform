@@ -1,6 +1,7 @@
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
 import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecovery.js';
 import type { ChatState } from '../api/contracts.js';
+import type { AsyncKeyedGate } from '../shared/asyncControl.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
 import { appendMessage, createChannel, requireChannel } from './model/index.js';
 import { routeChannelMessage } from './runtimeActions.js';
@@ -10,6 +11,7 @@ import type { ChatStore } from './store.js';
 export function createChatTelegramRoomBridge(input: {
   chatStore: ChatStore;
   companionStore: CompanionBoxStore;
+  mutationGate?: AsyncKeyedGate;
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
   chatStatePath?: string;
   runtimeDataDir?: string;
@@ -20,6 +22,9 @@ export function createChatTelegramRoomBridge(input: {
     },
     writeState(state) {
       return input.chatStore.write(state);
+    },
+    runExclusive(key, operation) {
+      return input.mutationGate ? input.mutationGate.run(key, operation) : operation();
     },
     findReusableRoomId(state, room) {
       if (room.roomMode !== 'direct_cat_chat') {

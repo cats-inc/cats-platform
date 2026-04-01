@@ -38,6 +38,7 @@ import {
   resumeStoredWorkflowContinuationDispatch,
 } from '../../products/chat/state/orchestratorAdapter.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
+import { createAsyncKeyedGate } from '../../products/chat/shared/asyncControl.js';
 import { createChatTaskExecutionLocator } from '../../products/chat/state/taskExecutionLocator.js';
 import { createChatTelegramRoomBridge } from '../../products/chat/state/telegramBridgeAdapter.js';
 
@@ -107,6 +108,7 @@ export function resolveServerDependencies(
     ?? createCatsMemoryService(createChatMemorySurface(dependencies.chat.chatStore), memoryStore);
   const pollingSupervisor = dependencies.chat.pollingSupervisor
     ?? createTelegramPollingSupervisor({ now: dependencies.shared.now });
+  const mutationGate = dependencies.chat.mutationGate ?? createAsyncKeyedGate();
   const defaultTelegramBotToken = process.env.CATS_TELEGRAM_BOT_TOKEN?.trim() || null;
   const deliveryClientCache = new Map<string, ReturnType<typeof createTelegramBotApiDeliveryClient>>();
   const resolveTelegramBotApiClient = (botToken: string) => {
@@ -163,6 +165,7 @@ export function resolveServerDependencies(
     ?? createChatTelegramRoomBridge({
       chatStore: dependencies.chat.chatStore,
       companionStore,
+      mutationGate,
       chatStatePath: dependencies.shared.config.chatStatePath,
       runtimeDataDir: dependencies.shared.config.runtimeDataDir,
       runtimeRecovery: {
@@ -211,6 +214,7 @@ export function resolveServerDependencies(
     },
     chat: {
       ...dependencies.chat,
+      mutationGate,
       companionStore,
       orchestratorChannelRouter,
       orchestratorPlannerSurface,

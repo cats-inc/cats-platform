@@ -24,6 +24,7 @@ import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { CompanionBoxStore } from '../../products/chat/state/companion-box/index.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import type { ChatEventHub } from '../../products/chat/api/chatEventHub.js';
+import type { AsyncKeyedGate } from '../../products/chat/shared/asyncControl.js';
 import type { WorkApiDependencies } from '../../products/work/api/index.js';
 import type { CodeApiDependencies } from '../../products/code/api/index.js';
 import type { TelegramCommandSurfaceSync } from './telegramCommandSurfaceSync.js';
@@ -56,6 +57,7 @@ export interface SharedServerDependencies {
 
 export interface ChatServerDependencies {
   chatStore: ChatStore;
+  mutationGate?: AsyncKeyedGate;
   companionStore?: CompanionBoxStore;
   orchestratorChannelRouter?: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
   orchestratorPlannerSurface?: OrchestratorPlannerSurface<ChatState>;
@@ -87,6 +89,7 @@ export interface ResolvedSharedServerDependencies extends SharedServerDependenci
 }
 
 export interface ResolvedChatServerDependencies extends ChatServerDependencies {
+  mutationGate: AsyncKeyedGate;
   companionStore: CompanionBoxStore;
   orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
   orchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState>;

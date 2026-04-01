@@ -67,6 +67,7 @@ export interface TelegramRoomBridgeRecoveryInput<TState extends TelegramRoomBrid
 export interface TelegramRoomBridge<TState extends TelegramRoomBridgeState = TelegramRoomBridgeState> {
   readState(): Promise<TState>;
   writeState(state: TState): Promise<TState>;
+  runExclusive?<T>(key: string, operation: () => Promise<T>): Promise<T>;
   findReusableRoomId(
     state: TState,
     input: TelegramRoomBridgeReusableRoomLookupInput,
@@ -319,175 +320,182 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
     };
   }
 
-  const now = input.now ?? (() => new Date());
-  const timestamp = now();
-  const { message } = pickTelegramMessage(input.update);
-  const senderName = resolveSenderName(message, input.receipt);
-  const activeBinding = resolveActiveTelegramBinding(input.context, input.receipt.bindingId);
-  const currentState = await input.roomBridge.readState();
-  const boundCat = resolveBoundCat(currentState, activeBinding, input.context);
   const existingBinding = input.telegramRelay.resolveBinding({
     conversationId: input.receipt.mappedConversationId,
     chatId: input.receipt.chatId,
     bindingId: input.receipt.bindingId,
   });
+  const lockKey = existingBinding?.linkedRoomId
+    ?? `telegram:${input.receipt.bindingId ?? 'default'}:${input.receipt.mappedConversationId}`;
+  const runExclusive = input.roomBridge.runExclusive
+    ? <T>(operation: () => Promise<T>) => input.roomBridge.runExclusive!(lockKey, operation)
+    : <T>(operation: () => Promise<T>) => operation();
 
-  let roomId = existingBinding?.linkedRoomId ?? null;
-  let nextState = currentState;
-  let roomCreated = false;
-  let dispatchedState: TState | null = null;
-  let messageCountBeforeDispatch: number | null = null;
-  const inboundBody = buildInboundBody(message);
-  const roomMode = resolveInternalRoomMode(activeBinding);
-  const createRoomInput: TelegramRoomBridgeCreateRoomInput = {
-    title: roomMode === 'direct_cat_chat' ? '' : buildRoomTitle(message, boundCat.catName),
-    topic: buildRoomTopic(activeBinding, senderName, input.receipt.chatId),
-    roomMode,
-    leadParticipantId: roomMode === 'direct_cat_chat' ? boundCat.catId ?? undefined : undefined,
-    participantCatIds: roomMode === 'direct_cat_chat' && boundCat.catId ? [boundCat.catId] : [],
-  };
-
-  try {
-    if (roomMode === 'direct_cat_chat') {
-      roomId = input.roomBridge.findReusableRoomId(nextState, createRoomInput);
-    }
-
-    if (
-      !roomExists(nextState, roomId)
-      || (
-        roomMode !== 'direct_cat_chat'
-        && shouldCreateNewRoom(message, roomId)
-      )
-    ) {
-      const previousSelection = nextState.selectedChannelId;
-      const nextRoomState = input.roomBridge.createRoom(
-        nextState,
-        createRoomInput,
-        timestamp,
-      );
-      roomId = nextRoomState.roomId;
-      nextState = restoreSelection(nextRoomState.state, previousSelection);
-      nextState = await input.roomBridge.writeState(nextState);
-      roomCreated = true;
-    }
-
-    if (!roomId) {
-      return {
-        receipt: input.receipt,
-        roomId: null,
-        roomCreated: false,
-        deliveryReceipt: null,
-      };
-    }
-
-    const linkedBinding = input.telegramRelay.linkRoom({
-      conversationId: input.receipt.mappedConversationId,
-      chatId: input.receipt.chatId,
-      bindingId: input.receipt.bindingId,
-      roomId,
-      linkedAt: timestamp.toISOString(),
-    });
-    const channelBeforeDispatch = input.roomBridge.readRoom(nextState, roomId);
-    messageCountBeforeDispatch = channelBeforeDispatch.messages.length;
-    const dispatch = await input.roomBridge.routeRoomMessage({
-      state: nextState,
-      roomId,
-      body: inboundBody,
-      senderName,
-      runtimeClient: input.runtimeClient,
-      memoryService: input.memoryService,
-      timestamp,
-    });
-    dispatchedState = dispatch.state;
-    const persistedState = await input.roomBridge.writeState(
-      restoreSelection(dispatch.state, currentState.selectedChannelId),
-    );
-    nextState = persistedState;
-
-    const replyText = buildTelegramReplyText({
-      roomBridge: input.roomBridge,
-      state: persistedState,
-      roomId,
-      roomCreated,
-      messageCountBeforeDispatch,
-    });
-    const chunks = chunkTelegramReply(replyText, TELEGRAM_REPLY_LIMIT);
-    let deliveryReceipt: TelegramDeliveryReceipt | null = null;
-    for (const chunk of chunks) {
-      deliveryReceipt = await input.telegramRelay.deliver({
-        request: {
-          operation: input.receipt.messageId && !deliveryReceipt ? 'reply' : 'send',
-          conversationId: input.receipt.mappedConversationId,
-          chatId: input.receipt.chatId,
-          replyToMessageId: !deliveryReceipt ? input.receipt.messageId : undefined,
-          text: chunk,
-          disableLinkPreview: true,
-        },
-        context: input.context,
-      });
-    }
-
-    return {
-      receipt: {
-        ...input.receipt,
-        roomRouting: describeTelegramRoomRouting(linkedBinding),
-      },
-      roomId,
-      roomCreated,
-      deliveryReceipt,
+  return runExclusive(async () => {
+    const now = input.now ?? (() => new Date());
+    const timestamp = now();
+    const { message } = pickTelegramMessage(input.update);
+    const senderName = resolveSenderName(message, input.receipt);
+    const activeBinding = resolveActiveTelegramBinding(input.context, input.receipt.bindingId);
+    const currentState = await input.roomBridge.readState();
+    const boundCat = resolveBoundCat(currentState, activeBinding, input.context);
+    let roomId = existingBinding?.linkedRoomId ?? null;
+    let nextState = currentState;
+    let roomCreated = false;
+    let dispatchedState: TState | null = null;
+    let messageCountBeforeDispatch: number | null = null;
+    const inboundBody = buildInboundBody(message);
+    const roomMode = resolveInternalRoomMode(activeBinding);
+    const createRoomInput: TelegramRoomBridgeCreateRoomInput = {
+      title: roomMode === 'direct_cat_chat' ? '' : buildRoomTitle(message, boundCat.catName),
+      topic: buildRoomTopic(activeBinding, senderName, input.receipt.chatId),
+      roomMode,
+      leadParticipantId: roomMode === 'direct_cat_chat' ? boundCat.catId ?? undefined : undefined,
+      participantCatIds: roomMode === 'direct_cat_chat' && boundCat.catId ? [boundCat.catId] : [],
     };
-  } catch (error) {
-    const errorMessage = describeBridgeFailure(error);
-    let surfacedErrorMessage = errorMessage;
-    if (roomId) {
-      const recoverySourceState = dispatchedState ?? nextState;
-      try {
-        nextState = await input.roomBridge.writeState(
-          restoreSelection(
-            input.roomBridge.buildRecoveryState({
-              state: recoverySourceState,
-              roomId,
-              senderName,
-              inboundBody,
-              occurredAt: timestamp,
-              errorMessage,
-              includeInboundMessage: !roomHasInboundMessage({
-                roomBridge: input.roomBridge,
+
+    try {
+      if (roomMode === 'direct_cat_chat') {
+        roomId = input.roomBridge.findReusableRoomId(nextState, createRoomInput);
+      }
+
+      if (
+        !roomExists(nextState, roomId)
+        || (
+          roomMode !== 'direct_cat_chat'
+          && shouldCreateNewRoom(message, roomId)
+        )
+      ) {
+        const previousSelection = nextState.selectedChannelId;
+        const nextRoomState = input.roomBridge.createRoom(
+          nextState,
+          createRoomInput,
+          timestamp,
+        );
+        roomId = nextRoomState.roomId;
+        nextState = restoreSelection(nextRoomState.state, previousSelection);
+        nextState = await input.roomBridge.writeState(nextState);
+        roomCreated = true;
+      }
+
+      if (!roomId) {
+        return {
+          receipt: input.receipt,
+          roomId: null,
+          roomCreated: false,
+          deliveryReceipt: null,
+        };
+      }
+
+      const linkedBinding = input.telegramRelay.linkRoom({
+        conversationId: input.receipt.mappedConversationId,
+        chatId: input.receipt.chatId,
+        bindingId: input.receipt.bindingId,
+        roomId,
+        linkedAt: timestamp.toISOString(),
+      });
+      const channelBeforeDispatch = input.roomBridge.readRoom(nextState, roomId);
+      messageCountBeforeDispatch = channelBeforeDispatch.messages.length;
+      const dispatch = await input.roomBridge.routeRoomMessage({
+        state: nextState,
+        roomId,
+        body: inboundBody,
+        senderName,
+        runtimeClient: input.runtimeClient,
+        memoryService: input.memoryService,
+        timestamp,
+      });
+      dispatchedState = dispatch.state;
+      const persistedState = await input.roomBridge.writeState(
+        restoreSelection(dispatch.state, currentState.selectedChannelId),
+      );
+      nextState = persistedState;
+
+      const replyText = buildTelegramReplyText({
+        roomBridge: input.roomBridge,
+        state: persistedState,
+        roomId,
+        roomCreated,
+        messageCountBeforeDispatch,
+      });
+      const chunks = chunkTelegramReply(replyText, TELEGRAM_REPLY_LIMIT);
+      let deliveryReceipt: TelegramDeliveryReceipt | null = null;
+      for (const chunk of chunks) {
+        deliveryReceipt = await input.telegramRelay.deliver({
+          request: {
+            operation: input.receipt.messageId && !deliveryReceipt ? 'reply' : 'send',
+            conversationId: input.receipt.mappedConversationId,
+            chatId: input.receipt.chatId,
+            replyToMessageId: !deliveryReceipt ? input.receipt.messageId : undefined,
+            text: chunk,
+            disableLinkPreview: true,
+          },
+          context: input.context,
+        });
+      }
+
+      return {
+        receipt: {
+          ...input.receipt,
+          roomRouting: describeTelegramRoomRouting(linkedBinding),
+        },
+        roomId,
+        roomCreated,
+        deliveryReceipt,
+      };
+    } catch (error) {
+      const errorMessage = describeBridgeFailure(error);
+      let surfacedErrorMessage = errorMessage;
+      if (roomId) {
+        const recoverySourceState = dispatchedState ?? nextState;
+        try {
+          nextState = await input.roomBridge.writeState(
+            restoreSelection(
+              input.roomBridge.buildRecoveryState({
                 state: recoverySourceState,
                 roomId,
                 senderName,
                 inboundBody,
-                messageCountBeforeDispatch,
+                occurredAt: timestamp,
+                errorMessage,
+                includeInboundMessage: !roomHasInboundMessage({
+                  roomBridge: input.roomBridge,
+                  state: recoverySourceState,
+                  roomId,
+                  senderName,
+                  inboundBody,
+                  messageCountBeforeDispatch,
+                }),
               }),
-            }),
-            currentState.selectedChannelId,
-          ),
-        );
-        input.telegramRelay.linkRoom({
-          conversationId: input.receipt.mappedConversationId,
-          chatId: input.receipt.chatId,
-          bindingId: input.receipt.bindingId,
-          roomId,
-          linkedAt: timestamp.toISOString(),
-        });
-      } catch (recoveryError) {
-        surfacedErrorMessage =
-          `${errorMessage} Recovery write also failed: ${describeBridgeFailure(recoveryError)}`;
+              currentState.selectedChannelId,
+            ),
+          );
+          input.telegramRelay.linkRoom({
+            conversationId: input.receipt.mappedConversationId,
+            chatId: input.receipt.chatId,
+            bindingId: input.receipt.bindingId,
+            roomId,
+            linkedAt: timestamp.toISOString(),
+          });
+        } catch (recoveryError) {
+          surfacedErrorMessage =
+            `${errorMessage} Recovery write also failed: ${describeBridgeFailure(recoveryError)}`;
+        }
       }
+
+      input.telegramRelay.recordBridgeDispatchFailure({
+        receipt: input.receipt,
+        context: input.context,
+        binding: activeBinding,
+        deliveredAt: timestamp.toISOString(),
+        errorMessage: surfacedErrorMessage,
+      });
+
+      throw new TelegramWebhookBridgeError(
+        'telegram_room_dispatch_failed',
+        `Telegram webhook was accepted, but Cats Chat could not process the room turn: ${surfacedErrorMessage}`,
+        roomId,
+      );
     }
-
-    input.telegramRelay.recordBridgeDispatchFailure({
-      receipt: input.receipt,
-      context: input.context,
-      binding: activeBinding,
-      deliveredAt: timestamp.toISOString(),
-      errorMessage: surfacedErrorMessage,
-    });
-
-    throw new TelegramWebhookBridgeError(
-      'telegram_room_dispatch_failed',
-      `Telegram webhook was accepted, but Cats Chat could not process the room turn: ${surfacedErrorMessage}`,
-      roomId,
-    );
-  }
+  });
 }

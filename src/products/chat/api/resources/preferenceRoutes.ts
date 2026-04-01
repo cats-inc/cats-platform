@@ -51,57 +51,82 @@ async function handleRestUpdatePreferences(
         modelSelection?: unknown;
       };
     }>(context.request);
-    let nextState = await context.dependencies.chatStore.read();
-    let shouldAttemptRecoveredOrchestratorAutoResume = false;
+    const persisted = await (
+      body.selectedChannelId !== undefined
+        ? context.dependencies.mutationGate.run(body.selectedChannelId, async () => {
+          let nextState = await context.dependencies.chatStore.read();
+          let shouldAttemptRecoveredOrchestratorAutoResume = false;
 
-    if (body.selectedChannelId !== undefined) {
-      const selectedChannelId = body.selectedChannelId;
-      nextState = selectChannel(
-        nextState,
-        selectedChannelId,
-        nowFrom(context.dependencies),
-      );
-      const wake = await wakeChannelEntryParticipant(
-        nextState,
-        selectedChannelId,
-        context.dependencies.runtimeClient,
-        nowFrom(context.dependencies),
-        {
-          companionStore: context.dependencies.companionStore,
-          memoryService: context.dependencies.memoryService,
-          chatStatePath: context.dependencies.config.chatStatePath,
-          runtimeDataDir: context.dependencies.config.runtimeDataDir,
-        },
-      );
-      nextState = wake.state;
-      shouldAttemptRecoveredOrchestratorAutoResume = wake.result?.targetKind === 'orchestrator'
-        && wake.result.status === 'started';
-    }
+          nextState = selectChannel(
+            nextState,
+            body.selectedChannelId!,
+            nowFrom(context.dependencies),
+          );
+          const wake = await wakeChannelEntryParticipant(
+            nextState,
+            body.selectedChannelId!,
+            context.dependencies.runtimeClient,
+            nowFrom(context.dependencies),
+            {
+              companionStore: context.dependencies.companionStore,
+              memoryService: context.dependencies.memoryService,
+              chatStatePath: context.dependencies.config.chatStatePath,
+              runtimeDataDir: context.dependencies.config.runtimeDataDir,
+            },
+          );
+          nextState = wake.state;
+          shouldAttemptRecoveredOrchestratorAutoResume = wake.result?.targetKind === 'orchestrator'
+            && wake.result.status === 'started';
 
-    if (typeof body.showVerboseMessages === 'boolean') {
-      nextState = {
-        ...nextState,
-        showVerboseMessages: body.showVerboseMessages,
-      };
-    }
+          if (typeof body.showVerboseMessages === 'boolean') {
+            nextState = {
+              ...nextState,
+              showVerboseMessages: body.showVerboseMessages,
+            };
+          }
 
-    if (body.newChatDefaults && typeof body.newChatDefaults === 'object') {
-      nextState = updateNewChatDefaults(nextState, {
-        provider: body.newChatDefaults.provider,
-        instance: body.newChatDefaults.instance,
-        model: body.newChatDefaults.model,
-        modelSelection: parseProviderModelSelection(body.newChatDefaults.modelSelection),
-      });
-    }
+          if (body.newChatDefaults && typeof body.newChatDefaults === 'object') {
+            nextState = updateNewChatDefaults(nextState, {
+              provider: body.newChatDefaults.provider,
+              instance: body.newChatDefaults.instance,
+              model: body.newChatDefaults.model,
+              modelSelection: parseProviderModelSelection(body.newChatDefaults.modelSelection),
+            });
+          }
 
-    const persisted = await context.dependencies.chatStore.write(nextState);
-    if (shouldAttemptRecoveredOrchestratorAutoResume && body.selectedChannelId !== undefined) {
-      await maybeAutoResumeRecoveredOrchestratorContinuation(
-        context,
-        body.selectedChannelId,
-        nowFrom(context.dependencies),
-      );
-    }
+          const nextPersisted = await context.dependencies.chatStore.write(nextState);
+          if (shouldAttemptRecoveredOrchestratorAutoResume) {
+            await maybeAutoResumeRecoveredOrchestratorContinuation(
+              context,
+              body.selectedChannelId!,
+              nowFrom(context.dependencies),
+            );
+          }
+          return nextPersisted;
+        })
+        : (async () => {
+          let nextState = await context.dependencies.chatStore.read();
+
+          if (typeof body.showVerboseMessages === 'boolean') {
+            nextState = {
+              ...nextState,
+              showVerboseMessages: body.showVerboseMessages,
+            };
+          }
+
+          if (body.newChatDefaults && typeof body.newChatDefaults === 'object') {
+            nextState = updateNewChatDefaults(nextState, {
+              provider: body.newChatDefaults.provider,
+              instance: body.newChatDefaults.instance,
+              model: body.newChatDefaults.model,
+              modelSelection: parseProviderModelSelection(body.newChatDefaults.modelSelection),
+            });
+          }
+
+          return context.dependencies.chatStore.write(nextState);
+        })()
+    );
+
     sendJson(context.response, 200, {
       preferences: {
         selectedChannelId: persisted.selectedChannelId,

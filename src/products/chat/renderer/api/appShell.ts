@@ -4,11 +4,12 @@ import type {
   UpdateGlobalOrchestratorInput,
 } from '../../api/contracts';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
+import { createKeyedRequestCoalescer } from '../../shared/asyncControl.js';
 
 import { normalizeAppShellPayload } from './normalization.js';
 import { expectJson, readErrorMessage } from './http.js';
 
-const pendingSelectedChannelUpdates = new Map<string, Promise<AppShellPayload>>();
+const pendingSelectedChannelUpdates = createKeyedRequestCoalescer<AppShellPayload>();
 
 function createAbortError(): Error {
   if (typeof DOMException === 'function') {
@@ -71,35 +72,24 @@ export async function updateSelectedChannel(
   selectedChannelId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const existing = pendingSelectedChannelUpdates.get(selectedChannelId);
-  if (existing) {
-    return raceWithAbort(existing, signal);
-  }
+  return raceWithAbort(
+    pendingSelectedChannelUpdates.run(selectedChannelId, async () => {
+      const response = await fetch('/api/preferences', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ selectedChannelId }),
+      });
 
-  const request = (async () => {
-    const response = await fetch('/api/preferences', {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ selectedChannelId }),
-    });
-
-    return mutateAndRefetch(
-      response,
-      `cats chat selection returned ${response.status}`,
-    );
-  })();
-
-  pendingSelectedChannelUpdates.set(selectedChannelId, request);
-  try {
-    return await raceWithAbort(request, signal);
-  } finally {
-    if (pendingSelectedChannelUpdates.get(selectedChannelId) === request) {
-      pendingSelectedChannelUpdates.delete(selectedChannelId);
-    }
-  }
+      return mutateAndRefetch(
+        response,
+        `cats chat selection returned ${response.status}`,
+      );
+    }),
+    signal,
+  );
 }
 
 export async function updateVerbosePreference(

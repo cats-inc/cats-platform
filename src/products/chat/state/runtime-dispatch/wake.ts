@@ -288,6 +288,9 @@ export async function executeDispatchWithRecovery(input: {
     }
 
     staleRecoveryCount += 1;
+    if (request.target.sessionId) {
+      await input.runtimeClient.closeSession(request.target.sessionId).catch(() => {});
+    }
     const ensured = await ensureTargetSession(
       dispatchState,
       input.channelId,

@@ -239,6 +239,7 @@ export async function routeRequest(
       config: dependencies.shared.config,
       runtimeClient: dependencies.shared.runtimeClient,
       chatStore: dependencies.chat.chatStore,
+      mutationGate: dependencies.chat.mutationGate,
       orchestratorChannelRouter: dependencies.chat.orchestratorChannelRouter,
       orchestratorPlannerSurface: dependencies.chat.orchestratorPlannerSurface,
       telegramRelay: dependencies.chat.telegramRelay,

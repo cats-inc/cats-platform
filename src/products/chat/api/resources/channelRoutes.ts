@@ -312,37 +312,39 @@ async function handleRestSendMessage(
   try {
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<SendChannelMessageInput>(context.request);
-    const stateBefore = await context.dependencies.chatStore.read();
-    const messageCountBefore = requireChannel(stateBefore, channelId).messages.length;
-    const dispatch = await routeChannelMessage(
-      stateBefore,
-      channelId,
-      body,
-      context.dependencies.runtimeClient,
-      nowFrom(context.dependencies),
-      {
-        companionStore: context.dependencies.companionStore,
-        memoryService: context.dependencies.memoryService,
-        chatStore: context.dependencies.chatStore,
-        chatStatePath: context.dependencies.config.chatStatePath,
-        runtimeDataDir: context.dependencies.config.runtimeDataDir,
-        runtimeRecovery: {
-          staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
-        },
-      },
-    );
-    const persisted = await context.dependencies.chatStore.write(
-      dispatch.state,
-    );
-    const userMessage =
-      requireChannel(persisted, channelId).messages[messageCountBefore] ?? null;
-
-    sendJson(context.response, 200, {
-      message: userMessage,
-      dispatch: {
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      const stateBefore = await context.dependencies.chatStore.read();
+      const messageCountBefore = requireChannel(stateBefore, channelId).messages.length;
+      const dispatch = await routeChannelMessage(
+        stateBefore,
         channelId,
-        results: dispatch.results,
-      },
+        body,
+        context.dependencies.runtimeClient,
+        nowFrom(context.dependencies),
+        {
+          companionStore: context.dependencies.companionStore,
+          memoryService: context.dependencies.memoryService,
+          chatStore: context.dependencies.chatStore,
+          chatStatePath: context.dependencies.config.chatStatePath,
+          runtimeDataDir: context.dependencies.config.runtimeDataDir,
+          runtimeRecovery: {
+            staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
+          },
+        },
+      );
+      const persisted = await context.dependencies.chatStore.write(
+        dispatch.state,
+      );
+      const userMessage =
+        requireChannel(persisted, channelId).messages[messageCountBefore] ?? null;
+
+      sendJson(context.response, 200, {
+        message: userMessage,
+        dispatch: {
+          channelId,
+          results: dispatch.results,
+        },
+      });
     });
   } catch (error) {
     handleRestError(context, error);
@@ -523,65 +525,67 @@ async function handleRestDeactivateChannel(
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
-    const now = nowFrom(context.dependencies);
-    const state = await context.dependencies.chatStore.read();
-    const channel = requireChannel(state, channelId);
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      const now = nowFrom(context.dependencies);
+      const state = await context.dependencies.chatStore.read();
+      const channel = requireChannel(state, channelId);
 
-    // Collect all active session IDs for runtime close
-    const sessionIds: Array<string | null> = [];
-    for (const assignment of channel.catAssignments) {
-      if (
-        assignment.execution.lease.status === 'ready'
-        || assignment.execution.lease.status === 'initializing'
-      ) {
-        sessionIds.push(assignment.execution.lease.sessionId);
+      // Collect all active session IDs for runtime close
+      const sessionIds: Array<string | null> = [];
+      for (const assignment of channel.catAssignments) {
+        if (
+          assignment.execution.lease.status === 'ready'
+          || assignment.execution.lease.status === 'initializing'
+        ) {
+          sessionIds.push(assignment.execution.lease.sessionId);
+        }
       }
-    }
-    if (
-      channel.orchestratorLease.status === 'ready'
-      || channel.orchestratorLease.status === 'initializing'
-    ) {
-      sessionIds.push(channel.orchestratorLease.sessionId);
-    }
-
-    // Flush memory and close runtime sessions (same path as routeSupport closeSessionIds)
-    await closeSessionIds(context, sessionIds);
-
-    // Update chat state leases to closed
-    let nextState = state;
-    for (const assignment of channel.catAssignments) {
       if (
-        assignment.execution.lease.status === 'ready'
-        || assignment.execution.lease.status === 'initializing'
+        channel.orchestratorLease.status === 'ready'
+        || channel.orchestratorLease.status === 'initializing'
       ) {
-        nextState = setChannelCatLease(
+        sessionIds.push(channel.orchestratorLease.sessionId);
+      }
+
+      // Flush memory and close runtime sessions (same path as routeSupport closeSessionIds)
+      await closeSessionIds(context, sessionIds);
+
+      // Update chat state leases to closed
+      let nextState = state;
+      for (const assignment of channel.catAssignments) {
+        if (
+          assignment.execution.lease.status === 'ready'
+          || assignment.execution.lease.status === 'initializing'
+        ) {
+          nextState = setChannelCatLease(
+            nextState,
+            channelId,
+            assignment.catId,
+            { status: 'closed', sessionId: null },
+            now,
+          );
+        }
+      }
+      if (
+        channel.orchestratorLease.status === 'ready'
+        || channel.orchestratorLease.status === 'initializing'
+      ) {
+        nextState = setChannelOrchestratorLease(
           nextState,
           channelId,
-          assignment.catId,
           { status: 'closed', sessionId: null },
           now,
         );
       }
-    }
-    if (
-      channel.orchestratorLease.status === 'ready'
-      || channel.orchestratorLease.status === 'initializing'
-    ) {
-      nextState = setChannelOrchestratorLease(
-        nextState,
-        channelId,
-        { status: 'closed', sessionId: null },
-        now,
-      );
-    }
 
-    await context.dependencies.chatStore.write(nextState);
-    sendJson(context.response, 200, {
-      deactivation: {
-        channelId,
-        closedAt: now.toISOString(),
-        closedSessionCount: sessionIds.filter(Boolean).length,
-      },
+      await context.dependencies.chatStore.write(nextState);
+      sendJson(context.response, 200, {
+        deactivation: {
+          channelId,
+          closedAt: now.toISOString(),
+          closedSessionCount: sessionIds.filter(Boolean).length,
+        },
+      });
     });
   } catch (error) {
     handleRestError(context, error);
@@ -595,30 +599,32 @@ async function handleRestActivateChannel(
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
-    const now = nowFrom(context.dependencies);
-    const activation = await activateChannelSessions(
-      await context.dependencies.chatStore.read(),
-      channelId,
-      context.dependencies.runtimeClient,
-      now,
-      {
-        companionStore: context.dependencies.companionStore,
-        memoryService: context.dependencies.memoryService,
-        chatStatePath: context.dependencies.config.chatStatePath,
-        runtimeDataDir: context.dependencies.config.runtimeDataDir,
-      },
-    );
-    await context.dependencies.chatStore.write(activation.state);
-    if (activation.results.some((result) =>
-      result.targetKind === 'orchestrator' && result.status === 'started')) {
-      await maybeAutoResumeRecoveredOrchestratorContinuation(context, channelId, now);
-    }
-    sendJson(context.response, 200, {
-      activation: {
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      const now = nowFrom(context.dependencies);
+      const activation = await activateChannelSessions(
+        await context.dependencies.chatStore.read(),
         channelId,
-        startedAt: now.toISOString(),
-        results: activation.results,
-      },
+        context.dependencies.runtimeClient,
+        now,
+        {
+          companionStore: context.dependencies.companionStore,
+          memoryService: context.dependencies.memoryService,
+          chatStatePath: context.dependencies.config.chatStatePath,
+          runtimeDataDir: context.dependencies.config.runtimeDataDir,
+        },
+      );
+      await context.dependencies.chatStore.write(activation.state);
+      if (activation.results.some((result) =>
+        result.targetKind === 'orchestrator' && result.status === 'started')) {
+        await maybeAutoResumeRecoveredOrchestratorContinuation(context, channelId, now);
+      }
+      sendJson(context.response, 200, {
+        activation: {
+          channelId,
+          startedAt: now.toISOString(),
+          results: activation.results,
+        },
+      });
     });
   } catch (error) {
     handleRestError(context, error);

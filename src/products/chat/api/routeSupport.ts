@@ -51,6 +51,7 @@ import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
 import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import type { ChatStore } from '../state/store.js';
+import type { AsyncKeyedGate } from '../shared/asyncControl.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
 import { isRuntimeSessionWorkspacePath } from '../../../core/workspacePaths.js';
 import {
@@ -76,6 +77,7 @@ export interface ChatApiDependencies {
   config: AppConfig;
   runtimeClient: RuntimeClient;
   chatStore: ChatStore;
+  mutationGate: AsyncKeyedGate;
   orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
   orchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState>;
   telegramRelay?: TelegramRelay;
