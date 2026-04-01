@@ -14,7 +14,10 @@ import {
   buildMyCatPath,
   buildNewChatPath,
 } from '../../shared/channelPaths';
-import { normalizeSelectedChannelView } from '../../shared/channelEntry';
+import {
+  normalizeSelectedChannelView,
+  shouldAwaitSelectedChannelWakeBeforeSend,
+} from '../../shared/channelEntry';
 import { isDirectLaneChannel } from '../../shared/channelTopology';
 import {
   createConcurrentChatGroup,
@@ -363,6 +366,19 @@ export function useComposerSubmit(options: {
 
       if (!channelId) {
         throw new Error('No chat is available for sending messages.');
+      }
+
+      const selectedForWake = normalizeSelectedChannelView(
+        payload.chat.selectedChannel ?? null,
+      );
+      if (
+        selectedForWake
+        && selectedForWake.id === channelId
+        && shouldAwaitSelectedChannelWakeBeforeSend(selectedForWake)
+      ) {
+        payload = await updateSelectedChannel(channelId);
+        rollbackPayload = payload;
+        setState({ status: 'ready', payload });
       }
 
       const soloDispatchTarget =

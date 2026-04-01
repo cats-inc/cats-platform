@@ -73,3 +73,12 @@ export function shouldWakeRouteChannelOnEntry(input: {
   return input.entryLifecycleState === 'sleeping'
     || input.entryLifecycleState === 'error';
 }
+
+export function shouldAwaitSelectedChannelWakeBeforeSend(
+  selectedChannel: SelectedChannelView | null,
+): boolean {
+  const lifecycle = resolveSelectedChannelEntryLifecycle(selectedChannel);
+  return lifecycle === 'sleeping'
+    || lifecycle === 'waking_up'
+    || lifecycle === 'error';
+}

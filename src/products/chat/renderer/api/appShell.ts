@@ -8,6 +8,37 @@ import type { ProviderModelSelection } from '../../../../shared/providerSelectio
 import { normalizeAppShellPayload } from './normalization.js';
 import { expectJson, readErrorMessage } from './http.js';
 
+const pendingSelectedChannelUpdates = new Map<string, Promise<AppShellPayload>>();
+
+function createAbortError(): Error {
+  if (typeof DOMException === 'function') {
+    return new DOMException('The operation was aborted.', 'AbortError');
+  }
+
+  const error = new Error('The operation was aborted.');
+  error.name = 'AbortError';
+  return error;
+}
+
+function raceWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) {
+    return promise;
+  }
+
+  if (signal.aborted) {
+    return Promise.reject(createAbortError());
+  }
+
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      signal.addEventListener('abort', () => {
+        reject(createAbortError());
+      }, { once: true });
+    }),
+  ]);
+}
+
 export async function fetchAppShell(signal?: AbortSignal): Promise<AppShellPayload> {
   const response = await fetch('/api/app-shell', {
     headers: {
@@ -40,21 +71,35 @@ export async function updateSelectedChannel(
   selectedChannelId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch('/api/preferences', {
-    method: 'PATCH',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ selectedChannelId }),
-    signal,
-  });
+  const existing = pendingSelectedChannelUpdates.get(selectedChannelId);
+  if (existing) {
+    return raceWithAbort(existing, signal);
+  }
 
-  return mutateAndRefetch(
-    response,
-    `cats chat selection returned ${response.status}`,
-    signal,
-  );
+  const request = (async () => {
+    const response = await fetch('/api/preferences', {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ selectedChannelId }),
+    });
+
+    return mutateAndRefetch(
+      response,
+      `cats chat selection returned ${response.status}`,
+    );
+  })();
+
+  pendingSelectedChannelUpdates.set(selectedChannelId, request);
+  try {
+    return await raceWithAbort(request, signal);
+  } finally {
+    if (pendingSelectedChannelUpdates.get(selectedChannelId) === request) {
+      pendingSelectedChannelUpdates.delete(selectedChannelId);
+    }
+  }
 }
 
 export async function updateVerbosePreference(
