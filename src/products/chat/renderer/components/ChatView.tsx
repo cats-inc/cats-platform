@@ -651,10 +651,30 @@ export function ChatView({
                                     disabled={compareBusy}
                                     onClick={() => {
                                       setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'build_on_this');
+                                      void onRelayMessage(message.id, 'improve_this');
                                     }}
                                   >
-                                    Build on in others
+                                    Improve in others
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={compareBusy}
+                                    onClick={() => {
+                                      setOpenRelayMenuId(null);
+                                      void onRelayMessage(message.id, 'counter_this');
+                                    }}
+                                  >
+                                    Counter with others
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={compareBusy}
+                                    onClick={() => {
+                                      setOpenRelayMenuId(null);
+                                      void onRelayMessage(message.id, 'synthesize_this');
+                                    }}
+                                  >
+                                    Synthesize with others
                                   </button>
                                 </div>
                               ) : null}

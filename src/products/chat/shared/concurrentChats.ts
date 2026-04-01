@@ -31,10 +31,22 @@ export const CONCURRENT_CHAT_RELAY_COMMANDS: ConcurrentChatRelayCommandDefinitio
     description: 'Take the strongest reasonable counter-position to another reply.',
   },
   {
-    id: 'build_on_this',
-    label: 'Build on this',
-    shortLabel: 'Build on',
-    description: 'Continue from another reply without starting over.',
+    id: 'improve_this',
+    label: 'Improve this',
+    shortLabel: 'Improve',
+    description: 'Refine, expand, or strengthen another reply.',
+  },
+  {
+    id: 'counter_this',
+    label: 'Counter this',
+    shortLabel: 'Counter',
+    description: 'Provide a strong counter-argument or alternative approach.',
+  },
+  {
+    id: 'synthesize_this',
+    label: 'Synthesize this',
+    shortLabel: 'Synthesize',
+    description: 'Combine this with your own analysis — where do they align or diverge?',
   },
 ];
 
@@ -83,11 +95,27 @@ export function buildConcurrentRelayPrompt(input: {
         '',
         sourceBlock,
       ].join('\n');
-    case 'build_on_this':
+    case 'improve_this':
       return [
-        '[Parallel relay · Build on this]',
-        'Use the quoted reply as prior work and continue from it.',
-        'Add missing depth, extensions, or implementation detail without restarting the answer.',
+        '[Parallel relay · Improve this]',
+        'Refine, expand, or strengthen the quoted reply.',
+        'Fix weaknesses, add missing depth, and produce a better version.',
+        '',
+        sourceBlock,
+      ].join('\n');
+    case 'counter_this':
+      return [
+        '[Parallel relay · Counter this]',
+        'Provide a strong counter-argument or alternative approach to the quoted reply.',
+        'Argue from the opposite perspective with concrete reasoning.',
+        '',
+        sourceBlock,
+      ].join('\n');
+    case 'synthesize_this':
+      return [
+        '[Parallel relay · Synthesize this]',
+        'Based on our conversation so far, synthesize the quoted reply with your own analysis.',
+        'Identify where you align, where you diverge, and what a combined view would look like.',
         '',
         sourceBlock,
       ].join('\n');

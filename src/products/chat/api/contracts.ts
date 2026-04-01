@@ -117,7 +117,9 @@ export type ConcurrentChatRelayCommandKind =
   | 'check_this'
   | 'adopt_this'
   | 'debate_this'
-  | 'build_on_this';
+  | 'improve_this'
+  | 'counter_this'
+  | 'synthesize_this';
 export type ConcurrentChatRelayTargetPolicy = 'all_others' | 'single';
 
 export interface MessageUsageSummary {
