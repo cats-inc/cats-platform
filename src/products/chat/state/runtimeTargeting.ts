@@ -24,7 +24,7 @@ import {
 import type { RoutingTarget } from './mentionRouter.js';
 import {
   buildOrchestratorPrompt,
-  buildSoloChatPrompt,
+  buildSoloChatTurnInstructions,
   buildCatPrompt,
   MAX_PROMPT_RECENT_MESSAGES,
 } from './prompts.js';
@@ -414,12 +414,17 @@ function describeRoutingReason(
   }
 }
 
+export interface DispatchPrompt {
+  message: string;
+  instructions?: string | null;
+}
+
 export function buildPromptForTarget(
   state: ChatState,
   channelId: string,
   request: DispatchRequest,
   transport?: RuntimeTransportContext,
-): string {
+): DispatchPrompt {
   const channel = buildChannelView(state, channelId);
   const recentMessages = sliceRecentContextForTarget(
     channel,
@@ -435,21 +440,24 @@ export function buildPromptForTarget(
 
   if (request.target.participantKind === 'orchestrator') {
     if (isSoloChatChannel(channel)) {
-      return buildSoloChatPrompt(
+      return {
+        message: request.sourceMessage.body,
+        instructions: buildSoloChatTurnInstructions(
+          channel,
+          state.globalOrchestrator,
+          routingContext,
+        ),
+      };
+    }
+    return {
+      message: buildOrchestratorPrompt(
         channel,
         state.globalOrchestrator,
         request.sourceMessage,
         request.target.participantName,
         routingContext,
-      );
-    }
-    return buildOrchestratorPrompt(
-      channel,
-      state.globalOrchestrator,
-      request.sourceMessage,
-      request.target.participantName,
-      routingContext,
-    );
+      ),
+    };
   }
 
   const cat = channel.assignedCats.find(
@@ -459,11 +467,13 @@ export function buildPromptForTarget(
     throw new Error(`Target cat is no longer assigned to the selected chat: ${request.target.participantId}`);
   }
 
-  return buildCatPrompt(
-    channel,
-    state.globalOrchestrator,
-    cat,
-    request.sourceMessage,
-    routingContext,
-  );
+  return {
+    message: buildCatPrompt(
+      channel,
+      state.globalOrchestrator,
+      cat,
+      request.sourceMessage,
+      routingContext,
+    ),
+  };
 }

@@ -39,7 +39,7 @@ export async function executeDispatch(
   companionStore?: CompanionBoxStore,
 ): Promise<DispatchExecution> {
   try {
-    const prompt = buildPromptForTarget(state, channelId, request, transport);
+    const dispatchPrompt = buildPromptForTarget(state, channelId, request, transport);
     const channel = buildChannelView(state, channelId);
     const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
       state,
@@ -51,8 +51,9 @@ export async function executeDispatch(
     );
     const runtimeResult = await runtimeClient.sendMessage(
       request.target.sessionId ?? '',
-      prompt,
+      dispatchPrompt.message,
       {
+        instructions: dispatchPrompt.instructions?.trim() || undefined,
         context: runtimeEnvelope.context,
         skills: runtimeEnvelope.skills,
       },
