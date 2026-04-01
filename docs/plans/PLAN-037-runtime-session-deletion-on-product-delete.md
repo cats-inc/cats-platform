@@ -33,6 +33,10 @@ This plan does not cover:
   lifecycle actions.
 - Do not delete runtime sessions for actions that are intentionally reversible.
 - Keep `.env.example` and config parsing truthful to the final behavior.
+- Treat parallel-group delete as the current `Delete All` behavior that removes
+  member chats; do not conflate it with `Ungroup`.
+- In the first slice, prefer `fail-and-keep` over partial delete whenever
+  runtime deletion is retained or fails.
 
 ## Phases
 
@@ -67,13 +71,16 @@ cleanup.
 - [ ] Update Cat delete to use runtime delete by default
 - [ ] Ensure product state deletion happens only after runtime cleanup is
       accepted as successful for the default mode
+- [ ] Treat already-missing runtime sessions as idempotent success
 
 **Deliverables**: destructive product deletes and runtime deletes are aligned.
 
 ### Phase 4: Failure and Feedback Semantics
 
 - [ ] Translate runtime retained/409/error cases into explicit product errors
-- [ ] Decide the first payload shape for partial-cleanup details
+- [ ] Keep the first slice on `fail-and-keep` semantics instead of partial
+      delete
+- [ ] Decide the first payload shape for retained/delete-failed details
 - [ ] Surface clear renderer feedback for failed destructive deletes
 - [ ] Keep debug-retain mode behavior understandable when the product deletes
       but runtime sessions are intentionally preserved

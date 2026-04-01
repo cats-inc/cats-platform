@@ -57,6 +57,10 @@ deletes by default.
    - deleting all chats in a parallel group
    - deleting a Cat from `MY CATS`
 
+   For parallel chat, this means the current `Delete All` action, which deletes
+   the member chat channels. It does not mean `Ungroup`, which remains
+   non-destructive.
+
 2. The following actions remain non-destructive lifecycle actions and must not
    become runtime-session deletes:
    - `Stop`
@@ -75,6 +79,11 @@ deletes by default.
    `cats-runtime`.
    - destructive delete should either complete end-to-end
    - or fail with a visible error/partial-delete explanation
+
+   In the first implementation slice, the product should prefer
+   `fail-and-keep` semantics:
+   - if runtime delete is retained or fails, keep the product object intact
+   - reserve partial-delete recovery UX for a later explicit design slice
 
 5. Idempotent missing-session cases should still be treated as successful
    cleanup.

@@ -35,6 +35,8 @@ The main affected flows are:
 - Changing `Archive cat` into a destructive action
 - Expanding this slice to every relationship mutation such as `remove cat from
   channel`
+- Changing cat-product removal or similar non-delete lifecycle mutations into
+  hard-delete behavior
 
 ## User Stories
 
@@ -54,6 +56,9 @@ The main affected flows are:
 2. Deleting a parallel group shall permanently delete all runtime sessions
    currently owned by the member channels unless debug retention mode is
    enabled.
+   - in this spec, "delete a parallel group" means the current `Delete All`
+     behavior that deletes the member chats
+   - it does not mean `Ungroup`
 3. Deleting a Cat shall permanently delete all runtime sessions currently owned
    by that Cat across chats unless debug retention mode is enabled.
 4. The product shall add a new environment flag:
@@ -80,6 +85,12 @@ The main affected flows are:
     - successful delete
     - retained runtime session / partial cleanup
     - hard failure
+12. In the default mode, the first implementation slice shall prefer
+    `fail-and-keep` semantics:
+    - if runtime session deletion is retained or fails, the product object
+      shall remain intact
+    - only already-missing runtime sessions may be treated as successful
+      idempotent cleanup
 
 ### Non-Functional Requirements
 
