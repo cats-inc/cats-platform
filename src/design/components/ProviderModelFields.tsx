@@ -72,6 +72,22 @@ function controlAppliesToEntry(
     || control.applicableEntryIds.includes(entryId);
 }
 
+function controlValueOptionAppliesToEntry(
+  option: NonNullable<ProviderAdvancedCatalogControl['values']>[number],
+  entryId: string,
+): boolean {
+  return !option.applicableEntryIds
+    || option.applicableEntryIds.length === 0
+    || option.applicableEntryIds.includes(entryId);
+}
+
+function listApplicableControlValueOptions(
+  control: ProviderAdvancedCatalogControl,
+  entryId: string,
+): NonNullable<ProviderAdvancedCatalogControl['values']> {
+  return (control.values ?? []).filter((option) => controlValueOptionAppliesToEntry(option, entryId));
+}
+
 function parseControlInputValue(
   control: ProviderAdvancedCatalogControl,
   rawValue: string,
@@ -132,9 +148,16 @@ export function listPersistentControlOptions(
   controls: ProviderAdvancedCatalogControl[],
   entryId: string,
 ): ProviderAdvancedCatalogControl[] {
-  return controls.filter((control) =>
-    control.scope !== 'request'
-    && controlAppliesToEntry(control, entryId));
+  return controls
+    .filter((control) =>
+      control.scope !== 'request'
+      && controlAppliesToEntry(control, entryId))
+    .map((control) => ({
+      ...control,
+      ...(control.kind === 'enum' && control.values
+        ? { values: listApplicableControlValueOptions(control, entryId) }
+        : {}),
+    }));
 }
 
 export function countRequestScopedControls(
@@ -155,10 +178,19 @@ export function filterPersistentControlValues(
     return undefined;
   }
 
-  const allowedKeys = new Set(
-    listPersistentControlOptions(controls, entryId).map((control) => control.key),
-  );
-  const entries = Object.entries(values).filter(([key]) => allowedKeys.has(key));
+  const allowedControls = listPersistentControlOptions(controls, entryId);
+  const allowedControlMap = new Map(allowedControls.map((control) => [control.key, control]));
+  const entries = Object.entries(values).filter(([key, value]) => {
+    const control = allowedControlMap.get(key);
+    if (!control) {
+      return false;
+    }
+    if (control.kind !== 'enum' || typeof value !== 'string' || !control.values?.length) {
+      return true;
+    }
+    return listApplicableControlValueOptions(control, entryId)
+      .some((option) => option.value === value);
+  });
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
@@ -483,6 +515,9 @@ export function ProviderModelFields({
     : 0;
   const controlValues = modelSelection?.controls ?? {};
   const supportBadge = resolveProviderSupportBadge(effectiveAdvancedCatalog.support.tier);
+  const selectedEntryNotes = !isLegacyModelTarget
+    ? entryOptions.find((option) => option.id === selectedCatalogEntryId)?.notes ?? []
+    : [];
 
   function emitSelection(next: {
     model?: string;
@@ -606,6 +641,11 @@ export function ProviderModelFields({
           ))}
           <option value={CUSTOM_LEGACY_MODEL_VALUE}>Custom legacy model...</option>
         </select>
+        {selectedEntryNotes.length > 0 ? (
+          <span className="fieldHint">
+            {selectedEntryNotes[0]}
+          </span>
+        ) : null}
       </label>
       {isLegacyModelTarget ? (
         <label className="fieldLabel">
@@ -701,6 +741,10 @@ export function ProviderModelFields({
         }
 
         if (control.kind === 'enum' && control.values && control.values.length > 0) {
+          const controlValueOptions = listApplicableControlValueOptions(
+            control,
+            selectedCatalogEntryId,
+          );
           return (
             <label className="fieldLabel providerControlField" key={control.key}>
               <span>{control.label}</span>
@@ -723,7 +767,7 @@ export function ProviderModelFields({
                 }}
               >
                 <option value="">Default</option>
-                {control.values.map((option) => (
+                {controlValueOptions.map((option) => (
                   <option key={`${control.key}-${String(option.value)}`} value={String(option.value)}>
                     {option.label}
                   </option>

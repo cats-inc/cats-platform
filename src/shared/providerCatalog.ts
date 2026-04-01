@@ -136,6 +136,7 @@ export interface ProviderAdvancedCatalogControl {
     value: ProviderAdvancedControlValue;
     label: string;
     description?: string;
+    applicableEntryIds?: string[];
   }>;
   minimum?: number;
   maximum?: number;
@@ -191,14 +192,18 @@ export const PRODUCT_PROVIDER_MODELS: Record<ProductProviderId, ProviderModelOpt
     { value: 'openclaw-coder', label: 'openclaw-coder (default)', default: true },
   ],
   claude: [
-    { value: 'claude-opus-4-6', label: 'opus 4.6 (default)', default: true },
-    { value: 'claude-sonnet-4-6', label: 'sonnet 4.6' },
-    { value: 'claude-haiku-4-5', label: 'haiku 4.5' },
+    { value: 'default', label: 'Default (recommended)', default: true },
+    { value: 'sonnet', label: 'Sonnet' },
+    { value: 'haiku', label: 'Haiku' },
   ],
   codex: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },
+    { value: 'gpt-5.4-mini', label: 'gpt-5.4-mini' },
     { value: 'gpt-5.3-codex', label: 'gpt-5.3-codex' },
     { value: 'gpt-5.2-codex', label: 'gpt-5.2-codex' },
+    { value: 'gpt-5.2', label: 'gpt-5.2' },
+    { value: 'gpt-5.1-codex-max', label: 'gpt-5.1-codex-max' },
+    { value: 'gpt-5.1-codex-mini', label: 'gpt-5.1-codex-mini' },
   ],
   gemini: [
     { value: 'gemini-3.1-pro-preview', label: 'gemini-3.1-pro-preview (default)', default: true },
@@ -501,6 +506,9 @@ function normalizeAdvancedControlValues(
       label: readNullableString(record.label) ?? String(record.value),
       ...(readNullableString(record.description)
         ? { description: readNullableString(record.description)! }
+        : {}),
+      ...(readStringArray(record.applicableEntryIds).length > 0
+        ? { applicableEntryIds: readStringArray(record.applicableEntryIds) }
         : {}),
     }];
   });

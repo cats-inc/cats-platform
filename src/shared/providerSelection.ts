@@ -71,19 +71,91 @@ function filterApplicableControls(
     return cloneSelectionControls(controls);
   }
 
-  const allowedKeys = new Set(
-    advancedCatalog.controls
-      .filter((control) =>
-        !control.applicableEntryIds
-        || control.applicableEntryIds.length === 0
-        || control.applicableEntryIds.includes(entryId)
-      )
-      .map((control) => control.key),
-  );
-  const entries = Object.entries(controls).filter(
-    ([key, value]) => allowedKeys.has(key) && isControlValue(value),
-  );
+  const allowedControls = advancedCatalog.controls.filter((control) =>
+    !control.applicableEntryIds
+    || control.applicableEntryIds.length === 0
+    || control.applicableEntryIds.includes(entryId));
+  const allowedControlMap = new Map(allowedControls.map((control) => [control.key, control]));
+  const entries = Object.entries(controls).filter(([key, value]) => {
+    const control = allowedControlMap.get(key);
+    if (!control || !isControlValue(value)) {
+      return false;
+    }
+    if (control.kind !== 'enum' || typeof value !== 'string' || !control.values?.length) {
+      return true;
+    }
+    return control.values.some((option) =>
+      option.value === value
+      && (
+        !option.applicableEntryIds
+        || option.applicableEntryIds.length === 0
+        || option.applicableEntryIds.includes(entryId)
+      ));
+  });
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+function normalizeProviderEntryAlias(input: {
+  provider: string;
+  backend: string | null | undefined;
+  catalog: ProviderModelCatalog;
+  model: string | null | undefined;
+}): string | null {
+  const normalizedModel = input.model?.trim() || '';
+  if (!normalizedModel) {
+    return null;
+  }
+
+  if (
+    input.provider === 'claude'
+    && input.backend === 'cli'
+    && input.catalog.models.some((option) => option.id === 'default')
+  ) {
+    const lower = normalizedModel.toLowerCase();
+    if (lower === 'claude-opus-4-6' || lower === 'claude-opus-4.6' || lower === 'default') {
+      return 'default';
+    }
+    if (lower === 'claude-sonnet-4-6' || lower === 'claude-sonnet-4.6' || lower === 'sonnet') {
+      return 'sonnet';
+    }
+    if (lower === 'claude-haiku-4-5' || lower === 'claude-haiku-4.5' || lower === 'haiku') {
+      return 'haiku';
+    }
+  }
+
+  return normalizedModel;
+}
+
+function normalizeTargetAliases(input: {
+  target: ProviderTargetSelection;
+  catalog: ProviderModelCatalog;
+  advancedCatalog?: ProviderAdvancedModelCatalog | null;
+}): ProviderTargetSelection {
+  const backend = input.advancedCatalog?.backend ?? input.catalog.backend;
+  const normalizedModel = normalizeProviderEntryAlias({
+    provider: input.target.provider,
+    backend,
+    catalog: input.catalog,
+    model: input.target.model,
+  });
+  const clonedSelection = cloneProviderModelSelection(input.target.modelSelection);
+  if (clonedSelection?.entryId) {
+    const normalizedEntryId = normalizeProviderEntryAlias({
+      provider: input.target.provider,
+      backend,
+      catalog: input.catalog,
+      model: clonedSelection.entryId,
+    });
+    if (normalizedEntryId) {
+      clonedSelection.entryId = normalizedEntryId;
+    }
+  }
+
+  return {
+    ...input.target,
+    ...(normalizedModel ? { model: normalizedModel } : {}),
+    ...(clonedSelection ? { modelSelection: clonedSelection } : {}),
+  };
 }
 
 function isApplicablePreset(
@@ -285,7 +357,12 @@ export function isLegacyProviderModelTarget(input: {
   model: string | null | undefined;
   modelSelection?: ProviderModelSelection | null;
 }): boolean {
-  const normalizedModel = input.model?.trim() || '';
+  const normalizedModel = normalizeProviderEntryAlias({
+    provider: input.catalog.provider,
+    backend: input.catalog.backend,
+    catalog: input.catalog,
+    model: input.model,
+  }) ?? '';
   if (!normalizedModel || input.modelSelection) {
     return false;
   }
@@ -300,22 +377,27 @@ export function resolveCatalogTargetSelection(input: {
   preserveCurrentModel: boolean;
   preserveCurrentSelection?: boolean;
 }): ProviderTargetSelection {
-  const resolvedInstance = (input.catalog.instance ?? input.target.instance) || '';
-  const normalizedTargetModel = input.target.model?.trim() || '';
-  const hasCurrentModel = input.catalog.models.some((option) => option.id === input.target.model);
+  const normalizedTarget = normalizeTargetAliases({
+    target: input.target,
+    catalog: input.catalog,
+    advancedCatalog: input.advancedCatalog,
+  });
+  const resolvedInstance = (input.catalog.instance ?? normalizedTarget.instance) || '';
+  const normalizedTargetModel = normalizedTarget.model?.trim() || '';
+  const hasCurrentModel = input.catalog.models.some((option) => option.id === normalizedTarget.model);
   const legacyModelTarget = isLegacyProviderModelTarget({
     catalog: input.catalog,
-    model: input.target.model,
-    modelSelection: input.target.modelSelection,
+    model: normalizedTarget.model,
+    modelSelection: normalizedTarget.modelSelection,
   });
   const resolvedModel = input.preserveCurrentModel && hasCurrentModel
-    ? input.target.model
+    ? normalizedTarget.model
     : input.preserveCurrentModel && legacyModelTarget
       ? normalizedTargetModel
     : resolveProviderCatalogDefaultModel(input.catalog);
   if (legacyModelTarget && input.preserveCurrentModel) {
     return {
-      provider: input.target.provider,
+      provider: normalizedTarget.provider,
       instance: resolvedInstance,
       model: normalizedTargetModel,
       modelSelection: null,
@@ -325,7 +407,7 @@ export function resolveCatalogTargetSelection(input: {
   const advancedCatalog = input.advancedCatalog ?? null;
   const preserveCurrentSelection = input.preserveCurrentSelection ?? input.preserveCurrentModel;
   const requestedSelection = preserveCurrentSelection
-    ? cloneProviderModelSelection(input.target.modelSelection)
+    ? cloneProviderModelSelection(normalizedTarget.modelSelection)
     : cloneProviderModelSelection(advancedCatalog?.defaultSelection)
       ?? null;
   const requestedEntryId = requestedSelection?.entryId?.trim();
@@ -370,7 +452,7 @@ export function resolveCatalogTargetSelection(input: {
     : [];
 
   return {
-    provider: input.target.provider,
+    provider: normalizedTarget.provider,
     instance: resolvedInstance,
     model: resolvedEntryId,
     modelSelection: resolvedSelection,

@@ -93,6 +93,81 @@ test('resolveCatalogTargetSelection keeps a manual model choice for the same pro
   assert.equal(nextTarget.model, 'claude-opus-4-6');
 });
 
+test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native CLI catalog entries', () => {
+  const nextTarget = resolveCatalogTargetSelection({
+    target: {
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-opus-4-6',
+      modelSelection: {
+        entryId: 'claude-opus-4-6',
+        entryMode: 'explicit',
+      },
+    },
+    catalog: {
+      provider: 'claude',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: 'default',
+      source: 'static',
+      cache: null,
+      models: [
+        { id: 'default', label: 'Default (recommended)', default: true },
+        { id: 'sonnet', label: 'Sonnet' },
+        { id: 'haiku', label: 'Haiku' },
+      ],
+      warnings: [],
+    },
+    advancedCatalog: normalizeProviderAdvancedModelCatalog({
+      provider: 'claude',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: 'default',
+      source: 'static',
+      cache: null,
+      entries: [
+        { id: 'default', label: 'Default (recommended)', default: true },
+        { id: 'sonnet', label: 'Sonnet' },
+        { id: 'haiku', label: 'Haiku' },
+      ],
+      presets: [],
+      controls: [
+        {
+          key: 'claude.reasoning_effort',
+          label: 'Reasoning effort',
+          kind: 'enum',
+          scope: 'both',
+          values: [
+            { value: 'low', label: 'Low', applicableEntryIds: ['default', 'sonnet'] },
+            { value: 'medium', label: 'Medium', applicableEntryIds: ['default', 'sonnet'] },
+            { value: 'high', label: 'High', applicableEntryIds: ['default', 'sonnet'] },
+            { value: 'max', label: 'Max', applicableEntryIds: ['default'] },
+          ],
+        },
+      ],
+      defaultSelection: {
+        entryId: 'default',
+        entryMode: 'explicit',
+        controls: {
+          'claude.reasoning_effort': 'medium',
+        },
+      },
+      support: {
+        tier: 'full',
+      },
+      warnings: [],
+    }, 'claude'),
+    preserveCurrentModel: true,
+    preserveCurrentSelection: true,
+  });
+
+  assert.equal(nextTarget.model, 'default');
+  assert.deepEqual(nextTarget.modelSelection, {
+    entryId: 'default',
+    entryMode: 'explicit',
+  });
+});
+
 test('isLegacyProviderModelTarget detects a raw model id that is not part of the runtime catalog', () => {
   assert.equal(
     isLegacyProviderModelTarget({
@@ -113,6 +188,30 @@ test('isLegacyProviderModelTarget detects a raw model id that is not part of the
       modelSelection: null,
     }),
     true,
+  );
+});
+
+test('isLegacyProviderModelTarget treats Claude native aliases as catalog models', () => {
+  assert.equal(
+    isLegacyProviderModelTarget({
+      catalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'default',
+        source: 'static',
+        cache: null,
+        models: [
+          { id: 'default', label: 'Default (recommended)', default: true },
+          { id: 'sonnet', label: 'Sonnet' },
+          { id: 'haiku', label: 'Haiku' },
+        ],
+        warnings: [],
+      },
+      model: 'claude-opus-4-6',
+      modelSelection: null,
+    }),
+    false,
   );
 });
 

@@ -275,3 +275,55 @@ test('persistent selector sanitization keeps request controls out of modelSelect
     'openai.max_output_tokens': 2048,
   });
 });
+
+test('persistent selector only exposes Codex effort values supported by the selected entry', () => {
+  const controls = [
+    {
+      key: 'codex.reasoning_effort',
+      label: 'Reasoning effort',
+      kind: 'enum',
+      scope: 'both',
+      applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'],
+      values: [
+        { value: 'low', label: 'Low', applicableEntryIds: ['gpt-5.4'] },
+        { value: 'medium', label: 'Medium', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
+        { value: 'high', label: 'High', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
+        { value: 'xhigh', label: 'Extra high', applicableEntryIds: ['gpt-5.4'] },
+      ],
+    },
+  ];
+
+  assert.deepEqual(
+    listPersistentControlOptions(controls, 'gpt-5.1-codex-mini')[0]?.values,
+    [
+      { value: 'medium', label: 'Medium', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
+      { value: 'high', label: 'High', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
+    ],
+  );
+  assert.deepEqual(
+    filterPersistentControlValues(controls, 'gpt-5.1-codex-mini', {
+      'codex.reasoning_effort': 'xhigh',
+    }),
+    undefined,
+  );
+});
+
+test('persistent selector hides Claude effort controls for Haiku', () => {
+  const controls = [
+    {
+      key: 'claude.reasoning_effort',
+      label: 'Reasoning effort',
+      kind: 'enum',
+      scope: 'both',
+      applicableEntryIds: ['default', 'sonnet'],
+      values: [
+        { value: 'low', label: 'Low', applicableEntryIds: ['default', 'sonnet'] },
+        { value: 'medium', label: 'Medium', applicableEntryIds: ['default', 'sonnet'] },
+        { value: 'high', label: 'High', applicableEntryIds: ['default', 'sonnet'] },
+        { value: 'max', label: 'Max', applicableEntryIds: ['default'] },
+      ],
+    },
+  ];
+
+  assert.deepEqual(listPersistentControlOptions(controls, 'haiku'), []);
+});
