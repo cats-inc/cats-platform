@@ -5,7 +5,9 @@ import {
   catalogMatchesTarget,
   countRequestScopedControls,
   filterPersistentControlValues,
+  hasExplicitDefaultEnumOption,
   listPersistentControlOptions,
+  resolveDisplayedEnumControlValue,
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
   sanitizePersistentTargetSelection,
@@ -286,7 +288,7 @@ test('persistent selector only exposes Codex effort values supported by the sele
       applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'],
       values: [
         { value: 'low', label: 'Low', applicableEntryIds: ['gpt-5.4'] },
-        { value: 'medium', label: 'Medium', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
+        { value: 'medium', label: 'Medium (default)', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
         { value: 'high', label: 'High', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
         { value: 'xhigh', label: 'Extra high', applicableEntryIds: ['gpt-5.4'] },
       ],
@@ -296,7 +298,7 @@ test('persistent selector only exposes Codex effort values supported by the sele
   assert.deepEqual(
     listPersistentControlOptions(controls, 'gpt-5.1-codex-mini')[0]?.values,
     [
-      { value: 'medium', label: 'Medium', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
+      { value: 'medium', label: 'Medium (default)', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
       { value: 'high', label: 'High', applicableEntryIds: ['gpt-5.4', 'gpt-5.1-codex-mini'] },
     ],
   );
@@ -305,6 +307,11 @@ test('persistent selector only exposes Codex effort values supported by the sele
       'codex.reasoning_effort': 'xhigh',
     }),
     undefined,
+  );
+  assert.equal(hasExplicitDefaultEnumOption(controls[0], 'gpt-5.1-codex-mini'), true);
+  assert.equal(
+    resolveDisplayedEnumControlValue(controls[0], 'gpt-5.1-codex-mini', undefined),
+    'medium',
   );
 });
 

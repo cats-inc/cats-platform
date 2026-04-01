@@ -197,7 +197,7 @@ export const PRODUCT_PROVIDER_MODELS: Record<ProductProviderId, ProviderModelOpt
     { value: 'haiku', label: 'Haiku 4.5' },
   ],
   codex: [
-    { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },
+    { value: 'gpt-5.4', label: 'gpt-5.4', default: true },
     { value: 'gpt-5.4-mini', label: 'gpt-5.4-mini' },
     { value: 'gpt-5.3-codex', label: 'gpt-5.3-codex' },
     { value: 'gpt-5.2-codex', label: 'gpt-5.2-codex' },

@@ -88,6 +88,29 @@ function listApplicableControlValueOptions(
   return (control.values ?? []).filter((option) => controlValueOptionAppliesToEntry(option, entryId));
 }
 
+export function hasExplicitDefaultEnumOption(
+  control: ProviderAdvancedCatalogControl,
+  entryId: string,
+): boolean {
+  return listApplicableControlValueOptions(control, entryId)
+    .some((option) => typeof option.label === 'string' && /\(default\)/iu.test(option.label));
+}
+
+export function resolveDisplayedEnumControlValue(
+  control: ProviderAdvancedCatalogControl,
+  entryId: string,
+  value: ProviderAdvancedControlValue | undefined,
+): string {
+  const serialized = serializeControlInputValue(value);
+  if (serialized) {
+    return serialized;
+  }
+
+  const explicitDefault = listApplicableControlValueOptions(control, entryId)
+    .find((option) => typeof option.label === 'string' && /\(default\)/iu.test(option.label));
+  return explicitDefault ? String(explicitDefault.value) : '';
+}
+
 function parseControlInputValue(
   control: ProviderAdvancedCatalogControl,
   rawValue: string,
@@ -745,12 +768,21 @@ export function ProviderModelFields({
             control,
             selectedCatalogEntryId,
           );
+          const showSyntheticDefaultOption = !hasExplicitDefaultEnumOption(
+            control,
+            selectedCatalogEntryId,
+          );
+          const displayedValue = resolveDisplayedEnumControlValue(
+            control,
+            selectedCatalogEntryId,
+            value,
+          );
           return (
             <label className="fieldLabel providerControlField" key={control.key}>
               <span>{control.label}</span>
               <select
                 className="textInput"
-                value={serializeControlInputValue(value)}
+                value={displayedValue}
                 onChange={(event) => {
                   const nextControls = event.target.value
                     ? {
@@ -766,7 +798,7 @@ export function ProviderModelFields({
                   });
                 }}
               >
-                <option value="">Default</option>
+                {showSyntheticDefaultOption ? <option value="">Default</option> : null}
                 {controlValueOptions.map((option) => (
                   <option key={`${control.key}-${String(option.value)}`} value={String(option.value)}>
                     {option.label}

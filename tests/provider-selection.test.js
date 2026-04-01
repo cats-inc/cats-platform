@@ -6,7 +6,10 @@ import {
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
 } from '../dist-server/shared/providerSelection.js';
-import { normalizeProviderAdvancedModelCatalog } from '../dist-server/shared/providerCatalog.js';
+import {
+  createStaticProviderModelCatalog,
+  normalizeProviderAdvancedModelCatalog,
+} from '../dist-server/shared/providerCatalog.js';
 
 test('resolveSelectedProviderInstance picks the runtime default instance when none is selected', () => {
   const provider = {
@@ -38,6 +41,12 @@ test('resolveSelectedProviderInstance preserves an existing instance until the r
   };
 
   assert.equal(resolveSelectedProviderInstance(provider, 'native'), 'native');
+});
+
+test('static Codex catalog keeps raw model labels without a synthetic default suffix', () => {
+  const catalog = createStaticProviderModelCatalog('codex');
+  assert.equal(catalog.models[0]?.id, 'gpt-5.4');
+  assert.equal(catalog.models[0]?.label, 'gpt-5.4');
 });
 
 test('resolveCatalogTargetSelection prefers the runtime catalog default over a stale initial model', () => {
