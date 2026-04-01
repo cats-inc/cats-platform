@@ -25,7 +25,9 @@ Cats Chat needs a parallel mode that sits between a normal solo chat and a fully
     - `check_this`
     - `adopt_this`
     - `debate_this`
-    - `build_on_this`
+    - `improve_this`
+    - `counter_this`
+    - `synthesize_this`
 11. The first slice may expose only the `all_others` relay policy in the UI, but the API must preserve a path for single-target relay later.
 12. Recents must visually keep concurrent-group members together and label each member by its provider/model target, not just by the shared room title.
 13. The composer must let the user switch a turn between `All chats` and `Only this chat`.

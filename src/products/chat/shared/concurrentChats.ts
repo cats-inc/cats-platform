@@ -65,6 +65,17 @@ export function findConcurrentRelayCommand(
     ?? CONCURRENT_CHAT_RELAY_COMMANDS[0]!;
 }
 
+export function normalizeConcurrentRelayCommand(
+  command: string | null | undefined,
+): ConcurrentChatRelayCommandKind | null {
+  if (!command) {
+    return null;
+  }
+  return CONCURRENT_CHAT_RELAY_COMMANDS.some((entry) => entry.id === command)
+    ? command as ConcurrentChatRelayCommandKind
+    : null;
+}
+
 export function buildConcurrentRelayPrompt(input: {
   command: ConcurrentChatRelayCommandKind;
   sourceMemberLabel: string;
@@ -120,7 +131,6 @@ export function buildConcurrentRelayPrompt(input: {
         sourceBlock,
       ].join('\n');
     case 'check_this':
-    default:
       return [
         '[Parallel relay · Check this]',
         'Review the quoted reply for correctness, risks, blind spots, and unsupported assumptions.',
@@ -129,4 +139,6 @@ export function buildConcurrentRelayPrompt(input: {
         sourceBlock,
       ].join('\n');
   }
+
+  throw new Error(`Unsupported concurrent relay command: ${input.command}`);
 }

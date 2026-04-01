@@ -7,6 +7,7 @@ import {
 import {
   buildConcurrentChatMemberLabel,
   buildConcurrentRelayPrompt,
+  normalizeConcurrentRelayCommand,
 } from '../../shared/concurrentChats.js';
 import {
   beginChannelMessageDispatch,
@@ -338,6 +339,16 @@ async function handleRelayConcurrentGroupMessage(
 ): Promise<void> {
   try {
     const body = await readJsonBody<RelayConcurrentChatMessageInput>(context.request);
+    const normalizedCommand = normalizeConcurrentRelayCommand(body.command);
+    if (!normalizedCommand) {
+      sendRestError(
+        context,
+        400,
+        'invalid_relay_command',
+        'The selected relay command is not supported.',
+      );
+      return;
+    }
     const state = await context.dependencies.chatStore.read();
     const group = requireConcurrentGroup(state, groupId);
     if (!group.memberChannelIds.includes(body.activeChannelId)) {
@@ -405,7 +416,7 @@ async function handleRelayConcurrentGroupMessage(
         ?? null,
     });
     const relayBody = buildConcurrentRelayPrompt({
-      command: body.command,
+      command: normalizedCommand,
       sourceMemberLabel,
       sourceBody: sourceMessage.body,
     });
