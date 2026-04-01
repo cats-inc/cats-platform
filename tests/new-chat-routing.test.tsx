@@ -1,15 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
+import type {
+  AppShellPayload,
+  ChatChannelView,
+} from '../src/products/chat/api/contracts.ts';
 import {
-  applyOptimisticPendingExecutionTarget,
-  buildNewChatChannelInput,
+  applyPendingExecutionTargetPreview,
   buildAttachedFilesMessageBody,
-  createOptimisticDraftPayload,
+  buildNewChatChannelInput,
   insertCreatedChannelIntoPayload,
-  preserveOptimisticUserMessageAfterRefresh,
 } from '../src/products/chat/renderer/chatUtils.tsx';
+import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.ts';
 import { isOptimisticDraftChannelId } from '../src/products/chat/shared/channelPaths.ts';
 
 function createPayload(): AppShellPayload {
@@ -21,23 +23,21 @@ function createPayload(): AppShellPayload {
     runtime: {
       reachable: true,
       baseUrl: 'http://127.0.0.1:3110',
-      healthy: true,
-      providerCount: 0,
-      issues: [],
-      defaultProvider: null,
-      discoveredProviders: [],
-      lastCheckedAt: '2026-03-26T00:00:00.000Z',
+      status: 'ok',
+      service: 'cats-runtime',
     },
     metadata: {
       generatedAt: '2026-03-26T00:00:00.000Z',
-      routePath: '/chat/new',
+      requestId: 'test-request',
+      version: 'test',
     },
     chat: {
+      id: 'chat',
+      name: 'Cats Chat',
       channels: [],
       selectedChannelId: null,
       selectedChannel: null,
-      channelsOverview: [],
-      channelsById: {},
+      concurrentGroups: [],
       globalOrchestrator: {
         mode: 'global',
         status: 'ready',
@@ -50,7 +50,7 @@ function createPayload(): AppShellPayload {
         systemPrompt: '',
         skillProfile: null,
         mcpProfile: null,
-        memory: { lastActiveAt: null, checkpointCount: 0, summary: null },
+        memory: { summary: null, updatedAt: null },
         telegramBotName: null,
         updatedAt: '2026-03-26T00:00:00.000Z',
       },
@@ -70,20 +70,60 @@ function createPayload(): AppShellPayload {
         runtimeSessions: true,
         maxBossCats: 1,
         maxCats: 16,
+        maxParallelChats: 5,
         availableSurfaces: ['chat'],
       },
       cats: [],
       botBindings: [],
       bossCatId: null,
-      transportThreads: [],
-      transportIndex: {
-        telegram: {
-          byThreadId: {},
-          byBindingId: {},
-        },
-      },
+      showVerboseMessages: false,
     },
   } as unknown as AppShellPayload;
+}
+
+function createChannelView(overrides: Partial<ChatChannelView> = {}): ChatChannelView {
+  const createdAt = '2026-03-27T10:00:00.000Z';
+  return {
+    id: '3f2ad424-7a53-4e1f-9d74-9a6d6328a301',
+    title: 'Real room',
+    topic: 'Created by server',
+    channelKind: 'boss_thread',
+    status: 'planned',
+    unreadCount: 0,
+    repoPath: null,
+    chatCwd: null,
+    language: null,
+    responseLanguage: 'en',
+    formationMode: 'manual',
+    skillProfile: null,
+    mcpProfile: null,
+    orchestratorRoles: [],
+    composerMode: 'solo',
+    pendingProvider: 'claude',
+    pendingModel: 'claude-opus-4-6',
+    pendingInstance: 'native',
+    pendingModelSelection: null,
+    createdAt,
+    updatedAt: createdAt,
+    lastMessageAt: null,
+    lastActivatedAt: null,
+    orchestratorLease: {
+      sessionId: null,
+      status: 'not_started',
+      cwd: null,
+      lastError: null,
+      provider: null,
+      model: null,
+      startedAt: null,
+      lastUsedAt: null,
+    },
+    catAssignments: [],
+    messages: [],
+    assignedCats: [],
+    roomRouting: createDefaultRoomRoutingState(),
+    workingMemory: undefined,
+    ...overrides,
+  } as ChatChannelView;
 }
 
 test('buildNewChatChannelInput keeps lead-cat new chats as visible threads', () => {
@@ -137,77 +177,19 @@ test('buildAttachedFilesMessageBody keeps attachment refs with the user prompt',
   );
 });
 
-test('createOptimisticDraftPayload does not mark selected-cat new chats as direct lanes', () => {
-  const optimistic = createOptimisticDraftPayload(
-    createPayload(),
-    'Build me a personal site',
-    'cat-lead',
-    { composerMode: 'cat_led' },
-  );
-
-  assert.equal(optimistic.payload.chat.channels[0]?.leadCatId, 'cat-lead');
-  assert.notEqual(optimistic.payload.chat.channels[0]?.roomMode, 'direct_cat_chat');
-  assert.equal(optimistic.payload.chat.selectedChannel?.roomRouting.mode, 'boss_chat');
-});
-
 test('isOptimisticDraftChannelId only matches optimistic draft routes', () => {
   assert.equal(isOptimisticDraftChannelId('draft-123'), true);
   assert.equal(isOptimisticDraftChannelId('7a6a9554-dc18-4a3d-8a5d-a54bdb2e31f4'), false);
   assert.equal(isOptimisticDraftChannelId(null), false);
 });
 
-test('preserveOptimisticUserMessageAfterRefresh keeps the first pending user turn after channel warmup', () => {
-  const optimistic = createOptimisticDraftPayload(
-    createPayload(),
-    'Ship it',
-    null,
-    {
-      composerMode: 'solo',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-opus-4-6',
-      pendingInstance: 'native',
-      pendingModelSelection: null,
-    },
-  );
-  const refreshed = structuredClone(optimistic.payload);
-  if (!refreshed.chat.selectedChannel) {
-    throw new Error('Expected selected channel in refreshed payload.');
-  }
-  refreshed.chat.selectedChannel.messages = [];
-  refreshed.chat.selectedChannel.lastMessageAt = null;
-  if (refreshed.chat.channels[0]) {
-    refreshed.chat.channels[0].lastMessageAt = null;
-  }
+test('applyPendingExecutionTargetPreview updates the local solo target before dispatch returns', () => {
+  const channel = createChannelView();
+  const payload = insertCreatedChannelIntoPayload(createPayload(), channel);
 
-  const preserved = preserveOptimisticUserMessageAfterRefresh(
-    optimistic.payload,
-    refreshed,
-    optimistic.channelId,
-  );
-
-  assert.equal(preserved.chat.selectedChannel?.messages.length, 1);
-  assert.equal(preserved.chat.selectedChannel?.messages[0]?.senderKind, 'user');
-  assert.equal(preserved.chat.selectedChannel?.messages[0]?.body, 'Ship it');
-  assert.equal(preserved.chat.channels[0]?.lastMessageAt, preserved.chat.selectedChannel?.messages[0]?.createdAt);
-});
-
-test('applyOptimisticPendingExecutionTarget updates the local solo target before dispatch returns', () => {
-  const optimistic = createOptimisticDraftPayload(
-    createPayload(),
-    'Ship it',
-    null,
-    {
-      composerMode: 'solo',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-opus-4-6',
-      pendingInstance: 'native',
-      pendingModelSelection: null,
-    },
-  );
-
-  const next = applyOptimisticPendingExecutionTarget(
-    optimistic.payload,
-    optimistic.channelId,
+  const next = applyPendingExecutionTargetPreview(
+    payload,
+    channel.id,
     {
       pendingProvider: 'gemini',
       pendingModel: 'gemini-3.1-pro',
@@ -225,59 +207,7 @@ test('applyOptimisticPendingExecutionTarget updates the local solo target before
 
 test('insertCreatedChannelIntoPayload promotes a real created channel without a draft route', () => {
   const payload = createPayload();
-  const createdAt = '2026-03-27T10:00:00.000Z';
-  const channel = {
-    id: '3f2ad424-7a53-4e1f-9d74-9a6d6328a301',
-    title: 'Real room',
-    topic: 'Created by server',
-    status: 'planned',
-    unreadCount: 0,
-    repoPath: null,
-    chatCwd: null,
-    language: null,
-    responseLanguage: 'en',
-    formationMode: 'manual',
-    skillProfile: 'chat-default',
-    mcpProfile: 'chat-memory',
-    orchestratorRoles: [],
-    composerMode: 'solo',
-    pendingProvider: 'claude',
-    pendingModel: 'claude-opus-4-6',
-    pendingInstance: 'native',
-    pendingModelSelection: null,
-    createdAt,
-    updatedAt: createdAt,
-    lastMessageAt: null,
-    lastActivatedAt: null,
-    orchestratorLease: {
-      sessionId: null,
-      status: 'not_started',
-      cwd: null,
-      lastError: null,
-      provider: null,
-      model: null,
-      startedAt: null,
-      lastUsedAt: null,
-    },
-    catAssignments: [],
-    messages: [],
-    assignedCats: [],
-    roomRouting: {
-      mode: 'boss_chat',
-      trigger: 'user_message',
-      blockedReason: null,
-      workflow: {
-        shape: 'single_turn',
-        currentTurn: null,
-        turnHistory: [],
-        recentEvents: [],
-        openApprovals: [],
-        targets: [],
-        checkpoints: [],
-      },
-    },
-    workingMemory: undefined,
-  } as const;
+  const channel = createChannelView();
 
   const next = insertCreatedChannelIntoPayload(payload, channel);
 
@@ -285,4 +215,5 @@ test('insertCreatedChannelIntoPayload promotes a real created channel without a 
   assert.equal(next.chat.selectedChannel?.id, channel.id);
   assert.equal(next.chat.channels[0]?.id, channel.id);
   assert.equal(next.chat.channels[0]?.roomMode, 'boss_chat');
+  assert.equal(next.chat.selectedChannel?.roomRouting.mode, 'boss_chat');
 });

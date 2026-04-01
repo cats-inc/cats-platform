@@ -4,7 +4,7 @@ import { isValidElement, type ReactNode, type RefObject } from 'react';
 
 import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/api/contracts.ts';
 import {
-  buildNewCompareChatPath,
+  buildNewParallelChatPath,
   readNewChatMode,
 } from '../src/products/chat/shared/channelPaths.ts';
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
@@ -49,6 +49,34 @@ function collectRecentLabels(node: ReactNode): string[] {
   return labels;
 }
 
+function collectGroupTitles(node: ReactNode): string[] {
+  const titles: string[] = [];
+  (function walk(current: ReactNode) {
+    if (!current) {
+      return;
+    }
+    if (Array.isArray(current)) {
+      current.forEach(walk);
+      return;
+    }
+    if (!isValidElement(current)) {
+      return;
+    }
+
+    if (
+      typeof current.props.title === 'string'
+      && typeof current.props.onUngroup === 'function'
+      && typeof current.props.onDelete === 'function'
+    ) {
+      titles.push(current.props.title);
+      return;
+    }
+
+    walk(current.props.children);
+  })(node);
+  return titles;
+}
+
 function createChannel(
   overrides: Partial<ChatChannelSummary> & { id: string; title: string },
 ): ChatChannelSummary {
@@ -72,15 +100,22 @@ function createPayload(): AppShellPayload {
   return {
     ownerDisplayName: 'Ken',
     ownerAvatarUrl: null,
+    ownerAvatarColor: null,
     setupCompleteAt: '2026-04-01T00:00:00.000Z',
-    runtimeReachable: true,
-    runtimeBaseUrl: 'http://localhost:8484',
+    runtime: {
+      baseUrl: 'http://localhost:8484',
+      reachable: true,
+      status: 'ok',
+      service: 'cats-runtime',
+    },
     metadata: {
       generatedAt: '2026-04-01T00:00:00.000Z',
       requestId: 'test-request',
       version: 'test',
     },
     chat: {
+      id: 'chat',
+      name: 'Cats Chat',
       bossCatId: 'boss-cat',
       cats: [
         {
@@ -170,6 +205,7 @@ function createPayload(): AppShellPayload {
         runtimeSessions: true,
         maxBossCats: 1,
         maxCats: 8,
+        maxParallelChats: 5,
         availableSurfaces: ['chat'],
       },
       newChatDefaults: {
@@ -198,10 +234,13 @@ test('Sidebar groups parallel chats and shows member labels in Recents', () => {
     onCollapsedSidebarClick: () => {},
     onOpenChatsOverview: () => {},
     onStartNewChat: () => {},
-    onStartNewCompareChat: () => {},
+    onStartNewParallelChat: () => {},
     onSelect: () => {},
     onDeleteChannel: () => {},
     onRenameChannel: () => {},
+    onRenameConcurrentGroup: () => {},
+    onUngroupConcurrentGroup: () => {},
+    onDeleteConcurrentGroup: () => {},
     onArchiveCat: () => {},
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
@@ -213,14 +252,15 @@ test('Sidebar groups parallel chats and shows member labels in Recents', () => {
 
   const text = textContent(tree);
   const labels = collectRecentLabels(tree);
+  const groupTitles = collectGroupTitles(tree);
   assert.match(text, /Parallel chat/i);
-  assert.match(text, /Parallel chat 1/i);
+  assert.deepEqual(groupTitles, ['Parallel chat 1']);
   assert.deepEqual(labels, ['Claude Sonnet 4', 'GPT-5']);
 });
 
-test('compare chat route helpers keep compare mode explicit and accept legacy parallel mode', () => {
-  assert.equal(buildNewCompareChatPath(), '/chat/new?mode=compare');
-  assert.equal(readNewChatMode('?mode=compare'), 'compare');
-  assert.equal(readNewChatMode('?mode=parallel'), 'compare');
+test('parallel chat route helpers keep parallel mode explicit', () => {
+  assert.equal(buildNewParallelChatPath(), '/chat/new?mode=parallel');
+  assert.equal(readNewChatMode('?mode=parallel'), 'parallel');
+  assert.equal(readNewChatMode('?mode=compare'), 'default');
   assert.equal(readNewChatMode(''), 'default');
 });
