@@ -65,6 +65,10 @@ contracts.
 - [ ] Offline transcript normalization and ingestion handoff hooks
 - [ ] Split-view chat canvas with preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
+- [ ] Refactor `ensureTargetSession(...)` so runtime session creation, lease wake state,
+      and execution-target reconciliation stop living in one function now that
+      session startup also persists runtime-sanitized model selections back into
+      channel/global state
 - [ ] Persist solo-composer model changes immediately on selector change instead of
       only committing the pending provider/model when the next message is sent
 - [ ] Add a suite-local provider catalog cache for runtime-backed model catalogs and
