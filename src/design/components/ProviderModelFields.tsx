@@ -145,6 +145,34 @@ export function countRequestScopedControls(
     && controlAppliesToEntry(control, entryId)).length;
 }
 
+export function filterPersistentControlValues(
+  controls: ProviderAdvancedCatalogControl[],
+  entryId: string,
+  values: Record<string, ProviderAdvancedControlValue> | undefined,
+): Record<string, ProviderAdvancedControlValue> | undefined {
+  if (!values) {
+    return undefined;
+  }
+
+  const allowedKeys = new Set(
+    listPersistentControlOptions(controls, entryId).map((control) => control.key),
+  );
+  const entries = Object.entries(values).filter(([key]) => allowedKeys.has(key));
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+export function shouldTreatPersistedTargetAsLegacyModel(input: {
+  catalog: ProviderModelCatalog;
+  model: string | null | undefined;
+  modelSelection?: ProviderModelSelection | null;
+}): boolean {
+  if (input.catalog.source === 'static') {
+    return false;
+  }
+
+  return isLegacyProviderModelTarget(input);
+}
+
 export function shouldDeferCatalogTargetReconciliation(input: {
   catalogSource: ProviderModelCatalog['source'];
   advancedCatalogSource: ProviderAdvancedModelCatalog['source'];
@@ -255,7 +283,7 @@ export function ProviderModelFields({
     ? advancedCatalog
     : fallbackAdvancedCatalog;
   const targetKey = `${provider}::${resolvedInstance}`;
-  const persistedLegacyModelTarget = isLegacyProviderModelTarget({
+  const persistedLegacyModelTarget = shouldTreatPersistedTargetAsLegacyModel({
     catalog: effectiveCatalog,
     model,
     modelSelection,
@@ -333,11 +361,7 @@ export function ProviderModelFields({
   ]);
 
   useEffect(() => {
-    if (effectiveCatalog.models.length === 0 && !hasBlankLegacyDraft) {
-      return;
-    }
-
-    if (hasBlankLegacyDraft) {
+    if (effectiveCatalog.models.length === 0 || hasBlankLegacyDraft) {
       return;
     }
 
@@ -363,13 +387,50 @@ export function ProviderModelFields({
       preserveCurrentModel: preserveExistingSelection,
       preserveCurrentSelection: preserveExistingSelection,
     });
+    const sanitizedControls = nextTarget.modelSelection
+      ? filterPersistentControlValues(
+          effectiveAdvancedCatalog.controls,
+          nextTarget.modelSelection.entryId ?? nextTarget.model,
+          nextTarget.modelSelection.controls,
+        )
+      : undefined;
+    const sanitizedTarget = nextTarget.modelSelection
+      ? {
+          ...nextTarget,
+          modelSelection: {
+            ...(nextTarget.modelSelection.entryId
+              ? { entryId: nextTarget.modelSelection.entryId }
+              : {}),
+            entryMode: nextTarget.modelSelection.entryMode,
+            ...(nextTarget.modelSelection.presetId
+              ? { presetId: nextTarget.modelSelection.presetId }
+              : {}),
+            ...(sanitizedControls ? { controls: sanitizedControls } : {}),
+          },
+          modelResolution: nextTarget.modelResolution
+            ? {
+                entryId: nextTarget.modelResolution.entryId,
+                model: nextTarget.modelResolution.model,
+                entryMode: nextTarget.modelResolution.entryMode,
+                ...(nextTarget.modelResolution.presetId
+                  ? { presetId: nextTarget.modelResolution.presetId }
+                  : {}),
+                ...(sanitizedControls ? { controls: sanitizedControls } : {}),
+                ...(nextTarget.modelResolution.supportTier
+                  ? { supportTier: nextTarget.modelResolution.supportTier }
+                  : {}),
+                warnings: [...nextTarget.modelResolution.warnings],
+              }
+            : nextTarget.modelResolution,
+        }
+      : nextTarget;
 
     if (
-      nextTarget.instance !== instance
-      || nextTarget.model !== model
-      || !sameProviderModelSelection(nextTarget.modelSelection, modelSelection)
+      sanitizedTarget.instance !== instance
+      || sanitizedTarget.model !== model
+      || !sameProviderModelSelection(sanitizedTarget.modelSelection, modelSelection)
     ) {
-      onTargetChangeRef.current(nextTarget);
+      onTargetChangeRef.current(sanitizedTarget);
     }
   }, [
     effectiveAdvancedCatalog,
@@ -435,7 +496,11 @@ export function ProviderModelFields({
     controls?: Record<string, ProviderAdvancedControlValue> | undefined;
   }): void {
     const nextModel = next.model ?? selectedCatalogEntryId;
-    const nextControls = next.controls;
+    const nextControls = filterPersistentControlValues(
+      effectiveAdvancedCatalog.controls,
+      nextModel,
+      next.controls,
+    );
     const nextPresetId = next.presetId ?? null;
     manualSelectionTargetKey.current = targetKey;
     setLegacyManualTargetKey(null);

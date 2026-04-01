@@ -42,11 +42,7 @@ export function ModelSelectorChip({ label, onClick }: ModelSelectorChipProps) {
 
 export function buildModelSelectorLabel(value: ModelSelectorValue, catName?: string | null): string {
   const base = buildExecutionLabel(value.provider, value.instance, value.model);
-  const presetLabel = value.modelSelection?.presetId?.trim()
-    ? value.modelSelection.presetId.trim().replace(/[-_]+/g, ' ')
-    : '';
-  const summary = presetLabel ? `${base} \u00b7 ${presetLabel}` : base;
-  return catName ? `${catName} \u00b7 ${summary}` : summary;
+  return catName ? `${catName} \u00b7 ${base}` : base;
 }
 
 // --- Panel ---

@@ -74,12 +74,10 @@ function filterApplicableControls(
   const allowedKeys = new Set(
     advancedCatalog.controls
       .filter((control) =>
-        control.scope !== 'request'
-        && (
         !control.applicableEntryIds
         || control.applicableEntryIds.length === 0
         || control.applicableEntryIds.includes(entryId)
-      ))
+      )
       .map((control) => control.key),
   );
   const entries = Object.entries(controls).filter(
@@ -315,6 +313,15 @@ export function resolveCatalogTargetSelection(input: {
     : input.preserveCurrentModel && legacyModelTarget
       ? normalizedTargetModel
     : resolveProviderCatalogDefaultModel(input.catalog);
+  if (legacyModelTarget && input.preserveCurrentModel) {
+    return {
+      provider: input.target.provider,
+      instance: resolvedInstance,
+      model: normalizedTargetModel,
+      modelSelection: null,
+      modelResolution: null,
+    };
+  }
   const advancedCatalog = input.advancedCatalog ?? null;
   const preserveCurrentSelection = input.preserveCurrentSelection ?? input.preserveCurrentModel;
   const requestedSelection = preserveCurrentSelection
@@ -361,16 +368,6 @@ export function resolveCatalogTargetSelection(input: {
   const resolvedWarnings = advancedCatalog?.warnings.length
     ? [...advancedCatalog.warnings]
     : [];
-
-  if (legacyModelTarget && input.preserveCurrentModel && !requestedSelection) {
-    return {
-      provider: input.target.provider,
-      instance: resolvedInstance,
-      model: normalizedTargetModel,
-      modelSelection: null,
-      modelResolution: null,
-    };
-  }
 
   return {
     provider: input.target.provider,

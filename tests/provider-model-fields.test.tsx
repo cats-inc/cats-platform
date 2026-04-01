@@ -4,9 +4,11 @@ import test from 'node:test';
 import {
   catalogMatchesTarget,
   countRequestScopedControls,
+  filterPersistentControlValues,
   listPersistentControlOptions,
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
+  shouldTreatPersistedTargetAsLegacyModel,
   shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
 } from '../src/design/components/ProviderModelFields.tsx';
@@ -150,6 +152,28 @@ test('support badge labels match runtime catalog support tiers', () => {
   });
 });
 
+test('static fallback catalogs do not classify unknown persisted models as legacy before runtime data arrives', () => {
+  assert.equal(
+    shouldTreatPersistedTargetAsLegacyModel({
+      catalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'claude-opus-4-6',
+        source: 'static',
+        cache: null,
+        models: [
+          { id: 'claude-opus-4-6', label: 'Opus 4.6', default: true },
+        ],
+        warnings: [],
+      },
+      model: 'claude-sonnet-4-6',
+      modelSelection: null,
+    }),
+    false,
+  );
+});
+
 test('persistent selector controls exclude request-only overrides for the chosen entry', () => {
   const controls = [
     {
@@ -157,7 +181,11 @@ test('persistent selector controls exclude request-only overrides for the chosen
       label: 'Reasoning effort',
       kind: 'enum',
       scope: 'session_default',
-      values: ['low', 'medium', 'high'],
+      values: [
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+      ],
       applicableEntryIds: ['gpt-5.4'],
     },
     {
@@ -174,4 +202,13 @@ test('persistent selector controls exclude request-only overrides for the chosen
     ['openai.reasoning_effort'],
   );
   assert.equal(countRequestScopedControls(controls, 'gpt-5.4'), 1);
+  assert.deepEqual(
+    filterPersistentControlValues(controls, 'gpt-5.4', {
+      'openai.reasoning_effort': 'medium',
+      'openai.max_output_tokens': 2048,
+    }),
+    {
+      'openai.reasoning_effort': 'medium',
+    },
+  );
 });

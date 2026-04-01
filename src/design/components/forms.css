@@ -44,28 +44,29 @@
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  font-size: 0.7rem !important;
-  font-weight: 600 !important;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
   letter-spacing: 0.03em;
   background: var(--panel);
 }
 
 .providerSupportBadgeadvanced {
-  color: #0f766e !important;
-  background: rgba(20, 184, 166, 0.1);
-  border-color: rgba(20, 184, 166, 0.25);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border) 72%);
 }
 
 .providerSupportBadgecatalog {
-  color: #92400e !important;
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.25);
+  color: var(--warm-text);
+  background: var(--warm-bg);
+  border-color: color-mix(in srgb, var(--warm-text) 24%, var(--border) 76%);
 }
 
 .providerSupportBadgereadOnly {
-  color: var(--muted-soft) !important;
-  background: rgba(148, 163, 184, 0.12);
-  border-color: rgba(148, 163, 184, 0.22);
+  color: var(--muted-text);
+  background: var(--muted-bg);
+  border-color: color-mix(in srgb, var(--muted-text) 20%, var(--border) 80%);
 }
 
 .textInput {

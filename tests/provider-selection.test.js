@@ -146,6 +146,66 @@ test('resolveCatalogTargetSelection preserves a custom legacy model id when the 
   assert.equal(nextTarget.modelResolution, null);
 });
 
+test('resolveCatalogTargetSelection preserves a legacy model id even when selection defaults are not preserved', () => {
+  const nextTarget = resolveCatalogTargetSelection({
+    target: {
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-legacy-unknown',
+      modelSelection: null,
+    },
+    catalog: {
+      provider: 'claude',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: 'claude-opus-4-6',
+      source: 'config',
+      cache: null,
+      models: [
+        { id: 'claude-opus-4-6', label: 'Opus 4.6', default: true },
+        { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
+      ],
+      warnings: [],
+    },
+    advancedCatalog: normalizeProviderAdvancedModelCatalog({
+      provider: 'claude',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: 'claude-opus-4-6',
+      source: 'config',
+      cache: null,
+      entries: [
+        { id: 'claude-opus-4-6', label: 'Opus 4.6', default: true },
+        { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
+      ],
+      presets: [
+        {
+          id: 'deep_reasoning',
+          label: 'Deep Reasoning',
+          availability: 'supported',
+          applicableEntryIds: ['claude-opus-4-6'],
+        },
+      ],
+      controls: [],
+      defaultSelection: {
+        entryMode: 'auto',
+        entryId: 'claude-opus-4-6',
+        presetId: 'deep_reasoning',
+      },
+      support: {
+        tier: 'full',
+      },
+      warnings: [],
+    }, 'claude'),
+    preserveCurrentModel: true,
+    preserveCurrentSelection: false,
+  });
+
+  assert.equal(nextTarget.model, 'claude-legacy-unknown');
+  assert.equal(nextTarget.modelSelection, null);
+  assert.equal(nextTarget.modelResolution, null);
+});
+
 test('resolveCatalogTargetSelection adopts advanced default selection presets and controls', () => {
   const nextTarget = resolveCatalogTargetSelection({
     target: {
@@ -237,7 +297,7 @@ test('resolveCatalogTargetSelection adopts advanced default selection presets an
   });
 });
 
-test('resolveCatalogTargetSelection strips request-scoped controls from persisted selector state', () => {
+test('resolveCatalogTargetSelection preserves caller-supplied controls, including request-scoped values', () => {
   const nextTarget = resolveCatalogTargetSelection({
     target: {
       provider: 'codex',
@@ -317,6 +377,7 @@ test('resolveCatalogTargetSelection strips request-scoped controls from persiste
     presetId: 'balanced',
     controls: {
       'openai.reasoning_effort': 'medium',
+      'openai.max_output_tokens': 2048,
     },
   });
 });
