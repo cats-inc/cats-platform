@@ -534,6 +534,10 @@ export interface RelayConcurrentChatMessageInput {
   targetChannelId?: string;
 }
 
+export interface UpdateConcurrentChatGroupInput {
+  title?: string;
+}
+
 export interface UpdateChannelInput {
   title?: string;
   pendingProvider?: string | null;

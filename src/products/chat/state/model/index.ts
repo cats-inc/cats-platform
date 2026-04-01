@@ -110,6 +110,68 @@ export function renameChannel(
   return nextState;
 }
 
+export function renameConcurrentGroup(
+  state: ChatState,
+  groupId: string,
+  title: string,
+  now: Date = new Date(),
+): ChatState {
+  const nextState = cloneState(state);
+  const group = nextState.concurrentGroups.find((candidate) => candidate.id === groupId);
+  if (!group) {
+    throw new Error(`Concurrent group not found: ${groupId}`);
+  }
+
+  const nextTitle = title.trim() || group.title;
+  const updatedAt = isoAt(now);
+  group.title = nextTitle;
+  group.updatedAt = updatedAt;
+  for (const memberChannelId of group.memberChannelIds) {
+    const channel = nextState.channels.find((candidate) => candidate.id === memberChannelId);
+    if (!channel) {
+      continue;
+    }
+    channel.title = nextTitle;
+    channel.updatedAt = updatedAt;
+  }
+  return nextState;
+}
+
+export function ungroupConcurrentGroup(
+  state: ChatState,
+  groupId: string,
+): ChatState {
+  const nextState = cloneState(state);
+  const groupIndex = nextState.concurrentGroups.findIndex((group) => group.id === groupId);
+  if (groupIndex === -1) {
+    throw new Error(`Concurrent group not found: ${groupId}`);
+  }
+
+  nextState.concurrentGroups.splice(groupIndex, 1);
+  return nextState;
+}
+
+export function deleteConcurrentGroup(
+  state: ChatState,
+  groupId: string,
+): ChatState {
+  const nextState = cloneState(state);
+  const group = nextState.concurrentGroups.find((candidate) => candidate.id === groupId);
+  if (!group) {
+    throw new Error(`Concurrent group not found: ${groupId}`);
+  }
+
+  const deletedChannelIds = new Set(group.memberChannelIds);
+  nextState.channels = nextState.channels.filter((channel) => !deletedChannelIds.has(channel.id));
+  nextState.concurrentGroups = nextState.concurrentGroups.filter((candidate) => candidate.id !== groupId);
+
+  if (deletedChannelIds.has(nextState.selectedChannelId)) {
+    nextState.selectedChannelId = nextState.channels[0]?.id ?? '';
+  }
+
+  return nextState;
+}
+
 export function deleteChannel(
   state: ChatState,
   channelId: string,

@@ -232,7 +232,9 @@ export function ChatView({
     : null;
   const topBarTitle = isDirectLane
     ? (directLaneCat?.name ?? leadCatRecord?.name ?? presentChannelTitle(selectedChannel.title))
-    : presentChannelTitle(selectedChannel.title);
+    : isCompareGroup && compareGroup
+      ? presentChannelTitle(compareGroup.title)
+      : presentChannelTitle(selectedChannel.title);
   const assignedCatRecords = useMemo(
     () =>
       activeAssignedCats

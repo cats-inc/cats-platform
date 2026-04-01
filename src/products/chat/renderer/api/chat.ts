@@ -12,6 +12,7 @@ import type {
   SendConcurrentChatMessageInput,
   SendChannelMessageInput,
   SendChannelMessageResponse,
+  UpdateConcurrentChatGroupInput,
 } from '../../api/contracts';
 
 import { fetchAppShell, refetchAfterMutation } from './appShell.js';
@@ -312,6 +313,66 @@ export async function relayConcurrentChatMessage(
   return expectJson<ConcurrentChatDispatchResponse>(
     response,
     `parallel chat relay returned ${response.status}`,
+  );
+}
+
+export async function renameConcurrentChatGroup(
+  groupId: string,
+  input: UpdateConcurrentChatGroupInput,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}`, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return refetchAfterMutation(
+    response,
+    `parallel chat rename returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function ungroupConcurrentChatGroup(
+  groupId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/ungroup`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+
+  return refetchAfterMutation(
+    response,
+    `parallel chat ungroup returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function deleteConcurrentChatGroup(
+  groupId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}`, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+
+  return refetchAfterMutation(
+    response,
+    `parallel chat deletion returned ${response.status}`,
+    signal,
   );
 }
 

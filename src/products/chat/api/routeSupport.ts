@@ -33,8 +33,10 @@ import {
   createChannel,
   createCat,
   deleteChannel,
+  deleteConcurrentGroup,
   deleteCat,
   renameChannel,
+  renameConcurrentGroup,
   exportChannel,
   requireChannel,
   requireCat,
@@ -44,6 +46,7 @@ import {
   setChannelCatLease,
   setChannelChatCwd,
   setChannelStatus,
+  ungroupConcurrentGroup,
 } from '../state/model/index.js';
 import { resumeStoredWorkflowContinuationDispatch } from '../state/orchestratorAdapter.js';
 import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
@@ -649,6 +652,52 @@ export async function persistRenamedChannel(
   const currentState = await context.dependencies.chatStore.read();
   const nextState = renameChannel(currentState, channelId, title, nowFrom(context.dependencies));
   return context.dependencies.chatStore.write(nextState);
+}
+
+export async function persistRenamedConcurrentGroup(
+  context: ChatApiRouteContext,
+  groupId: string,
+  title: string,
+): Promise<ChatState> {
+  const currentState = await context.dependencies.chatStore.read();
+  const nextState = renameConcurrentGroup(
+    currentState,
+    groupId,
+    title,
+    nowFrom(context.dependencies),
+  );
+  return context.dependencies.chatStore.write(nextState);
+}
+
+export async function persistUngroupedConcurrentGroup(
+  context: ChatApiRouteContext,
+  groupId: string,
+): Promise<ChatState> {
+  const currentState = await context.dependencies.chatStore.read();
+  return context.dependencies.chatStore.write(ungroupConcurrentGroup(currentState, groupId));
+}
+
+export async function persistDeletedConcurrentGroup(
+  context: ChatApiRouteContext,
+  groupId: string,
+): Promise<ChatState> {
+  const currentState = await context.dependencies.chatStore.read();
+  const group = currentState.concurrentGroups.find((candidate) => candidate.id === groupId);
+  if (!group) {
+    throw new Error(`Concurrent group not found: ${groupId}`);
+  }
+
+  await closeSessionIds(context, group.memberChannelIds.flatMap((channelId) => {
+    const channel = requireChannel(currentState, channelId);
+    return [
+      channel.orchestratorLease.sessionId,
+      ...channel.catAssignments.map((assignment) => assignment.status === 'removed'
+        ? null
+        : assignment.execution.lease.sessionId),
+    ];
+  }));
+
+  return context.dependencies.chatStore.write(deleteConcurrentGroup(currentState, groupId));
 }
 
 export async function persistCreatedCat(

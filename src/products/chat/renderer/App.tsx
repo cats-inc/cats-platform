@@ -356,6 +356,9 @@ export default function App() {
     onSelect,
     onRenameChannel,
     onDeleteChannel,
+    onRenameConcurrentGroup,
+    onUngroupConcurrentGroup,
+    onDeleteConcurrentGroup,
     onArchiveCat,
     onDeleteCat,
     onNavigateSettings,
@@ -944,6 +947,9 @@ export default function App() {
         onSelect={onSelect}
         onDeleteChannel={onDeleteChannel}
         onRenameChannel={onRenameChannel}
+        onRenameConcurrentGroup={onRenameConcurrentGroup}
+        onUngroupConcurrentGroup={onUngroupConcurrentGroup}
+        onDeleteConcurrentGroup={onDeleteConcurrentGroup}
         onArchiveCat={onArchiveCat}
         onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
         onOverflowMenuToggle={setOverflowMenuOpenId}

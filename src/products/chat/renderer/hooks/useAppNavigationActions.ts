@@ -16,10 +16,13 @@ import {
 } from '../../shared/channelPaths.js';
 import { resolveMyCatNavigationTarget } from '../myCatNavigation.js';
 import {
+  deleteConcurrentChatGroup,
   deleteChatChannel,
   deleteGlobalCat,
   renameChatChannel,
+  renameConcurrentChatGroup,
   resetSetup,
+  ungroupConcurrentChatGroup,
   updateCatProfile,
 } from '../api/index.js';
 
@@ -148,6 +151,68 @@ export function useAppNavigationActions(options: {
       setBusy('');
     }
   }, [navigate, setAddCatOpen, setBusy, setFeedback, setState]);
+
+  const onRenameConcurrentGroup = useCallback(async (
+    groupId: string,
+    title: string,
+  ): Promise<void> => {
+    setBusy(`concurrent-group:rename:${groupId}`);
+    try {
+      const payload = await renameConcurrentChatGroup(groupId, { title });
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setFeedback('');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to rename parallel chat.');
+    } finally {
+      setBusy('');
+    }
+  }, [setBusy, setFeedback, setState]);
+
+  const onUngroupConcurrentGroup = useCallback(async (groupId: string): Promise<void> => {
+    setBusy(`concurrent-group:ungroup:${groupId}`);
+    try {
+      const payload = await ungroupConcurrentChatGroup(groupId);
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setFeedback('');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to ungroup parallel chat.');
+    } finally {
+      setBusy('');
+    }
+  }, [setBusy, setFeedback, setState]);
+
+  const onDeleteConcurrentGroup = useCallback(async (groupId: string): Promise<void> => {
+    const groupTitle = state.status === 'ready'
+      ? (state.payload.chat.concurrentGroups.find((group) => group.id === groupId)?.title ?? 'this parallel chat')
+      : 'this parallel chat';
+    const confirmed = confirmDialog
+      ? await confirmDialog({
+          title: 'Delete all chats',
+          message: `Delete all chats in "${groupTitle}"? This cannot be undone.`,
+          confirmLabel: 'Delete all',
+        })
+      : true;
+    if (!confirmed) return;
+
+    setBusy(`concurrent-group:delete:${groupId}`);
+    try {
+      const payload = await deleteConcurrentChatGroup(groupId);
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setAddCatOpen(false);
+        setFeedback('');
+      });
+      navigate(resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId));
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to delete all chats.');
+    } finally {
+      setBusy('');
+    }
+  }, [confirmDialog, navigate, setAddCatOpen, setBusy, setFeedback, setState, state]);
 
   const onArchiveCat = useCallback(async (catId: string): Promise<void> => {
     const catName = state.status === 'ready'
@@ -279,6 +344,9 @@ export function useAppNavigationActions(options: {
     onSelect,
     onRenameChannel,
     onDeleteChannel,
+    onRenameConcurrentGroup,
+    onUngroupConcurrentGroup,
+    onDeleteConcurrentGroup,
     onArchiveCat,
     onDeleteCat,
     onNavigateSettings,

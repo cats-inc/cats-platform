@@ -31,9 +31,13 @@ import {
   buildAppShellPayload,
   handleRestError,
   nowFrom,
+  persistDeletedConcurrentGroup,
+  persistRenamedConcurrentGroup,
+  persistUngroupedConcurrentGroup,
   sendRestError,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
+import type { UpdateConcurrentChatGroupInput } from '../contracts.js';
 
 function requireConcurrentGroup(
   state: ChatState,
@@ -244,6 +248,49 @@ async function handleCreateConcurrentGroup(
   }
 }
 
+async function handlePatchConcurrentGroup(
+  context: ChatApiRouteContext,
+  groupId: string,
+): Promise<void> {
+  try {
+    const body = await readJsonBody<UpdateConcurrentChatGroupInput>(context.request);
+    const title = body.title?.trim();
+    if (!title) {
+      sendRestError(context, 400, 'title_required', 'Parallel chat title must not be empty.');
+      return;
+    }
+
+    await persistRenamedConcurrentGroup(context, groupId, title);
+    sendJson(context.response, 200, { updated: true, groupId });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleUngroupConcurrentGroup(
+  context: ChatApiRouteContext,
+  groupId: string,
+): Promise<void> {
+  try {
+    await persistUngroupedConcurrentGroup(context, groupId);
+    sendJson(context.response, 200, { ungrouped: true, groupId });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleDeleteConcurrentGroup(
+  context: ChatApiRouteContext,
+  groupId: string,
+): Promise<void> {
+  try {
+    await persistDeletedConcurrentGroup(context, groupId);
+    sendJson(context.response, 200, { deleted: true, groupId });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
 async function handleSendConcurrentGroupMessage(
   context: ChatApiRouteContext,
   groupId: string,
@@ -387,6 +434,23 @@ export async function routeConcurrentGroupResourceApi(
     return true;
   }
 
+  const concurrentGroupDetailMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/concurrent-groups\/([^/]+)$/u,
+  );
+  if (concurrentGroupDetailMatch) {
+    if (context.method === 'PATCH') {
+      await handlePatchConcurrentGroup(context, concurrentGroupDetailMatch[0]!);
+      return true;
+    }
+    if (context.method === 'DELETE') {
+      await handleDeleteConcurrentGroup(context, concurrentGroupDetailMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['PATCH', 'DELETE']);
+    return true;
+  }
+
   const concurrentGroupMessagesMatch = matchRoute(
     context.url.pathname,
     /^\/api\/concurrent-groups\/([^/]+)\/messages$/u,
@@ -407,6 +471,19 @@ export async function routeConcurrentGroupResourceApi(
   if (concurrentGroupRelayMatch) {
     if (context.method === 'POST') {
       await handleRelayConcurrentGroupMessage(context, concurrentGroupRelayMatch[0]!);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['POST']);
+    return true;
+  }
+
+  const concurrentGroupUngroupMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/concurrent-groups\/([^/]+)\/ungroup$/u,
+  );
+  if (concurrentGroupUngroupMatch) {
+    if (context.method === 'POST') {
+      await handleUngroupConcurrentGroup(context, concurrentGroupUngroupMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['POST']);

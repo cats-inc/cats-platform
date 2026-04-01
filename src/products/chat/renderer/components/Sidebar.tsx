@@ -38,6 +38,9 @@ export interface SidebarProps {
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
+  onRenameConcurrentGroup: (groupId: string, title: string) => void;
+  onUngroupConcurrentGroup: (groupId: string) => void;
+  onDeleteConcurrentGroup: (groupId: string) => void;
   onArchiveCat: (catId: string) => void;
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
@@ -295,8 +298,11 @@ function GroupHeaderItem({
   overflowOpen,
   onSelect,
   onRename,
+  onUngroup,
   onDelete,
   onOverflowToggle,
+  renameBusyKey,
+  ungroupBusyKey,
   deleteKey,
 }: {
   title: string;
@@ -305,8 +311,11 @@ function GroupHeaderItem({
   overflowOpen: boolean;
   onSelect: () => void;
   onRename: (title: string) => void;
+  onUngroup: () => void;
   onDelete: () => void;
   onOverflowToggle: () => void;
+  renameBusyKey: string;
+  ungroupBusyKey: string;
   deleteKey: string;
 }) {
   const [renaming, setRenaming] = useState(false);
@@ -315,6 +324,9 @@ function GroupHeaderItem({
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   const overflowMenuStyle = useFloatingSidebarMenu(overflowButtonRef, overflowMenuRef, overflowOpen);
+  const renameBusy = busy === renameBusyKey;
+  const ungroupBusy = busy === ungroupBusyKey;
+  const deleteBusy = busy === deleteKey;
 
   function startRename() {
     onOverflowToggle();
@@ -391,19 +403,26 @@ function GroupHeaderItem({
           style={overflowMenuStyle}
           onClick={(e) => e.stopPropagation()}
         >
-          <button type="button" onClick={startRename}>
-            Rename
+          <button type="button" disabled={renameBusy} onClick={startRename}>
+            {renameBusy ? 'Renaming...' : 'Rename'}
           </button>
-          <button type="button" onClick={() => { onOverflowToggle(); /* TODO: wire ungroup API */ }}>
-            Ungroup
+          <button
+            type="button"
+            disabled={ungroupBusy}
+            onClick={() => {
+              onOverflowToggle();
+              onUngroup();
+            }}
+          >
+            {ungroupBusy ? 'Ungrouping...' : 'Ungroup'}
           </button>
           <div className="recentOverflowMenuDivider" />
           <button
             type="button"
-            disabled={busy === deleteKey}
+            disabled={deleteBusy}
             onClick={onDelete}
           >
-            {busy === deleteKey ? 'Deleting...' : 'Delete'}
+            {deleteBusy ? 'Deleting...' : 'Delete All'}
           </button>
         </div>
       ) : null}
@@ -520,6 +539,9 @@ export function Sidebar({
   onSelect,
   onDeleteChannel,
   onRenameChannel,
+  onRenameConcurrentGroup,
+  onUngroupConcurrentGroup,
+  onDeleteConcurrentGroup,
   onArchiveCat,
   onAccountMenuToggle,
   onOverflowMenuToggle,
@@ -644,10 +666,13 @@ export function Sidebar({
             busy={busy}
             overflowOpen={overflowMenuOpenId === groupOverflowId}
             onSelect={() => { if (firstChannelId) onSelect(firstChannelId); }}
-            onRename={(_title) => { /* TODO: wire group rename API */ }}
-            onDelete={() => { onOverflowMenuToggle(null); if (firstChannelId) void onDeleteChannel(firstChannelId); }}
+            onRename={(title) => { void onRenameConcurrentGroup(entry.group.id, title); }}
+            onUngroup={() => { void onUngroupConcurrentGroup(entry.group.id); }}
+            onDelete={() => { onOverflowMenuToggle(null); void onDeleteConcurrentGroup(entry.group.id); }}
             onOverflowToggle={() => onOverflowMenuToggle(overflowMenuOpenId === groupOverflowId ? null : groupOverflowId)}
-            deleteKey={`channel:delete:${firstChannelId}`}
+            renameBusyKey={`concurrent-group:rename:${entry.group.id}`}
+            ungroupBusyKey={`concurrent-group:ungroup:${entry.group.id}`}
+            deleteKey={`concurrent-group:delete:${entry.group.id}`}
           />
           <div className="recentGroupList">
             {renderChannelList(entry.channels, entry.titleOverrides, { disableRename: true })}
