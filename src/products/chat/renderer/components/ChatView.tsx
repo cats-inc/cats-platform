@@ -373,7 +373,7 @@ export function ChatView({
     selectedChannel.repoPath,
     selectedChannel.chatCwd,
   );
-  const { transcriptListRef, composerCardRef, bottomSentinelRef } = useTranscriptAutoScroll({
+  const { transcriptListRef, composerCardRef, bottomSentinelRef, isNearBottom, scrollToBottom } = useTranscriptAutoScroll({
     channelId: selectedChannel.id,
     scrollKey: [
       selectedChannel.updatedAt ?? '',
@@ -785,6 +785,19 @@ export function ChatView({
               }
               onSubmit={(event) => void onSendMessage(event)}
             >
+              {hasConversationStarted && !isNearBottom ? (
+                <button
+                  className="scrollToBottomButton"
+                  type="button"
+                  aria-label="Scroll to latest"
+                  onClick={scrollToBottom}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3v10" />
+                    <path d="M3 9l5 5 5-5" />
+                  </svg>
+                </button>
+              ) : null}
               {channelFiles.length > 0 ? (
                 <div className="composerAttachments">
                   {channelFiles.map((file, index) => {

@@ -36,6 +36,8 @@ export function useTranscriptAutoScroll(options: {
   transcriptListRef: RefCallback<HTMLDivElement>;
   composerCardRef: RefCallback<HTMLElement>;
   bottomSentinelRef: RefCallback<HTMLDivElement>;
+  isNearBottom: boolean;
+  scrollToBottom: () => void;
 } {
   const { channelId, scrollKey } = options;
   const [transcriptListElement, setTranscriptListElement] = useState<HTMLDivElement | null>(null);
@@ -43,6 +45,7 @@ export function useTranscriptAutoScroll(options: {
   const [bottomSentinelElement, setBottomSentinelElement] = useState<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
+  const [isNearBottom, setIsNearBottom] = useState(true);
   const transcriptBottomInsetRef = useRef<number | null>(null);
   const composerBaselineHeightRef = useRef<number | null>(null);
   const composerFlowOffsetRef = useRef<number>(0);
@@ -53,15 +56,18 @@ export function useTranscriptAutoScroll(options: {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) {
       shouldAutoScrollRef.current = true;
+      setIsNearBottom(true);
       return;
     }
 
-    shouldAutoScrollRef.current = isScrollNearBottom({
+    const nearBottom = isScrollNearBottom({
       scrollTop: scrollContainer.scrollTop,
       clientHeight: scrollContainer.clientHeight,
       scrollHeight: scrollContainer.scrollHeight,
       threshold: resolveNearBottomThreshold(composerCardElement),
     });
+    shouldAutoScrollRef.current = nearBottom;
+    setIsNearBottom(nearBottom);
   }, [composerCardElement]);
 
   const syncTranscriptBottomInset = useCallback(() => {
@@ -256,5 +262,7 @@ export function useTranscriptAutoScroll(options: {
     transcriptListRef: setTranscriptListElement,
     composerCardRef: setComposerCardElement,
     bottomSentinelRef: setBottomSentinelElement,
+    isNearBottom,
+    scrollToBottom,
   };
 }
