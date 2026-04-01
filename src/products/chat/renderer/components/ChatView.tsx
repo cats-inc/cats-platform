@@ -631,21 +631,12 @@ export function ChatView({
                                     disabled={compareBusy}
                                     onClick={() => {
                                       setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'adopt_this');
+                                      void onRelayMessage(message.id, 'synthesize_this');
                                     }}
                                   >
-                                    Adopt in others
+                                    Synthesize with others
                                   </button>
-                                  <button
-                                    type="button"
-                                    disabled={compareBusy}
-                                    onClick={() => {
-                                      setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'debate_this');
-                                    }}
-                                  >
-                                    Debate with others
-                                  </button>
+                                  <div className="messageActionPopoverDivider" />
                                   <button
                                     type="button"
                                     disabled={compareBusy}
@@ -661,6 +652,17 @@ export function ChatView({
                                     disabled={compareBusy}
                                     onClick={() => {
                                       setOpenRelayMenuId(null);
+                                      void onRelayMessage(message.id, 'adopt_this');
+                                    }}
+                                  >
+                                    Adopt in others
+                                  </button>
+                                  <div className="messageActionPopoverDivider" />
+                                  <button
+                                    type="button"
+                                    disabled={compareBusy}
+                                    onClick={() => {
+                                      setOpenRelayMenuId(null);
                                       void onRelayMessage(message.id, 'counter_this');
                                     }}
                                   >
@@ -671,10 +673,10 @@ export function ChatView({
                                     disabled={compareBusy}
                                     onClick={() => {
                                       setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'synthesize_this');
+                                      void onRelayMessage(message.id, 'debate_this');
                                     }}
                                   >
-                                    Synthesize with others
+                                    Debate with others
                                   </button>
                                 </div>
                               ) : null}

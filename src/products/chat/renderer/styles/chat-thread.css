@@ -635,6 +635,12 @@
   cursor: default;
 }
 
+.messageActionPopoverDivider {
+  height: 1px;
+  margin: 2px 4px;
+  background: var(--border);
+}
+
 .parallelFooterBar {
   position: sticky;
   bottom: 0;
