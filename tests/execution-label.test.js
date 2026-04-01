@@ -6,7 +6,7 @@ import { buildExecutionLabel } from '../dist-server/shared/executionLabel.js';
 test('buildExecutionLabel derives backend suffixes from instance instead of rendering the raw instance id', () => {
   assert.equal(
     buildExecutionLabel('claude', 'cli/native', 'claude-opus-4-6'),
-    'Claude-CLI · Default',
+    'Claude-CLI · Opus 4.6 with 1M context',
   );
   assert.equal(
     buildExecutionLabel('openclaw', 'agent/gateway', 'openclaw-coder'),
@@ -25,7 +25,7 @@ test('buildExecutionLabel derives backend suffixes from instance instead of rend
 test('buildExecutionLabel falls back to the product default instance when state has not persisted one yet', () => {
   assert.equal(
     buildExecutionLabel('claude', null, 'claude-opus-4-6'),
-    'Claude-CLI · Default',
+    'Claude-CLI · Opus 4.6 with 1M context',
   );
   assert.equal(
     buildExecutionLabel('openclaw', null, 'openclaw-coder'),
@@ -44,9 +44,9 @@ test('buildExecutionLabel does not render raw instance identifiers in the chip l
   );
 });
 
-test('buildExecutionLabel keeps Claude native aliases concise in chip labels', () => {
+test('buildExecutionLabel resolves Claude native aliases to friendly model names', () => {
   assert.equal(
     buildExecutionLabel('claude', 'cli/native', 'default'),
-    'Claude-CLI · Default',
+    'Claude-CLI · Opus 4.6 with 1M context',
   );
 });

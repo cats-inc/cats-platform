@@ -192,9 +192,9 @@ export const PRODUCT_PROVIDER_MODELS: Record<ProductProviderId, ProviderModelOpt
     { value: 'openclaw-coder', label: 'openclaw-coder (default)', default: true },
   ],
   claude: [
-    { value: 'default', label: 'Default (recommended)', default: true },
-    { value: 'sonnet', label: 'Sonnet' },
-    { value: 'haiku', label: 'Haiku' },
+    { value: 'default', label: 'Opus 4.6 with 1M context', default: true },
+    { value: 'sonnet', label: 'Sonnet 4.6' },
+    { value: 'haiku', label: 'Haiku 4.5' },
   ],
   codex: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },
