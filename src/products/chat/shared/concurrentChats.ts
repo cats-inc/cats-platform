@@ -2,10 +2,7 @@ import type {
   ConcurrentChatRelayCommandKind,
   ConcurrentChatTarget,
 } from '../api/contracts.js';
-import {
-  getProviderDisplayName,
-  getProviderModels,
-} from '../../../shared/providerCatalog.js';
+import { buildExecutionLabel } from '../../../shared/executionLabel.js';
 
 export interface ConcurrentChatRelayCommandDefinition {
   id: ConcurrentChatRelayCommandKind;
@@ -41,26 +38,8 @@ export const CONCURRENT_CHAT_RELAY_COMMANDS: ConcurrentChatRelayCommandDefinitio
   },
 ];
 
-function normalizeModelLabel(provider: string, model: string | null): string | null {
-  if (!model) {
-    return null;
-  }
-
-  const catalogLabel = getProviderModels(provider)
-    .find((entry) => entry.value === model)?.label
-    ?.replace(/\s*\(default\)\s*/giu, '')
-    ?.trim();
-  return catalogLabel || model;
-}
-
 export function buildConcurrentChatMemberLabel(target: ConcurrentChatTarget): string {
-  const providerLabel = getProviderDisplayName(target.provider);
-  const modelLabel = normalizeModelLabel(target.provider, target.model);
-  if (!modelLabel) {
-    return providerLabel;
-  }
-
-  return `${providerLabel} · ${modelLabel}`;
+  return buildExecutionLabel(target.provider, target.instance, target.model);
 }
 
 export function createParallelChatTitle(existingCount: number): string {
