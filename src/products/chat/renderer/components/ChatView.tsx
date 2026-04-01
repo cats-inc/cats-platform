@@ -197,7 +197,7 @@ export function ChatView({
       .filter((channel): channel is AppShellPayload['chat']['channels'][number] => channel != null),
     [compareMembers, payload.chat.channels],
   );
-  const compareDispatchBusy = busy === 'concurrent:dispatch';
+  const compareDispatchBusy = busy === 'concurrent:ack' || busy === 'concurrent:dispatch';
   const compareRoutingBusy = compareGroupChannels.some((channel) =>
     channel.routingStatus === 'running' || channel.routingStatus === 'blocked',
   );
@@ -767,12 +767,10 @@ export function ChatView({
                     );
                   })() : null}
                 </div>
-                <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
               </section>
             ) : (
               <section className="freshChatIntro">
                 <div className="draftGreeting"><h1>{greeting}</h1></div>
-                <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
               </section>
             )}
 
@@ -1020,6 +1018,7 @@ export function ChatView({
                 </button>
               </nav>
             ) : null}
+            <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
           </section>
 
         </div>

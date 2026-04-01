@@ -8,7 +8,10 @@ import {
   buildConcurrentChatMemberLabel,
   buildConcurrentRelayPrompt,
 } from '../../shared/concurrentChats.js';
-import { routeChannelMessage } from '../../state/runtimeActions.js';
+import {
+  beginChannelMessageDispatch,
+  continueBegunChannelMessageDispatch,
+} from '../../state/runtimeActions.js';
 import {
   createConcurrentGroup,
   replaceState,
@@ -51,27 +54,90 @@ async function dispatchConcurrentBodies(
     state: ChatState;
     activeChannelId: string;
     channelBodies: Map<string, string>;
+    persistAcknowledgedStateBeforeDispatch?: boolean;
   },
 ): Promise<ConcurrentChatDispatchResponse> {
   const now = nowFrom(context.dependencies);
   const nowIso = now.toISOString();
   const baseState = selectChannel(options.state, options.activeChannelId, now);
+  let acknowledgedState = baseState;
+  const begunDispatches: Array<{
+    channelId: string;
+    begun: Awaited<ReturnType<typeof beginChannelMessageDispatch>> | null;
+    status: 'sent' | 'error' | 'skipped';
+    sourceMessageId?: string;
+    error?: string;
+  }> = [];
+  for (const [channelId, body] of options.channelBodies.entries()) {
+    const trimmedBody = body.trim();
+    if (!trimmedBody) {
+      begunDispatches.push({
+        channelId,
+        begun: null,
+        status: 'skipped',
+      });
+      continue;
+    }
+
+    try {
+      const begun = await beginChannelMessageDispatch(
+        acknowledgedState,
+        channelId,
+        { body: trimmedBody },
+        context.dependencies.runtimeClient,
+        now,
+        {
+          companionStore: context.dependencies.companionStore,
+          memoryService: context.dependencies.memoryService,
+          chatStatePath: context.dependencies.config.chatStatePath,
+          runtimeDataDir: context.dependencies.config.runtimeDataDir,
+          runtimeRecovery: {
+            staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
+          },
+        },
+      );
+      acknowledgedState = replaceState(
+        acknowledgedState,
+        requireChannel(begun.state, channelId),
+      );
+      begunDispatches.push({
+        channelId,
+        begun,
+        status: 'sent',
+        sourceMessageId: begun.results[0]?.sourceMessageId,
+      });
+    } catch (error) {
+      begunDispatches.push({
+        channelId,
+        begun: null,
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Failed to dispatch parallel chat turn.',
+      });
+    }
+  }
+
+  let mergedState = acknowledgedState;
+  if (options.persistAcknowledgedStateBeforeDispatch) {
+    touchConcurrentGroup(mergedState, options.groupId, nowIso, nowIso);
+    mergedState = await context.dependencies.chatStore.write(mergedState);
+  }
+
   const dispatches = await Promise.all(
-    [...options.channelBodies.entries()].map(async ([channelId, body]) => {
-      const trimmedBody = body.trim();
-      if (!trimmedBody) {
+    begunDispatches.map(async (dispatch) => {
+      if (!dispatch.begun || dispatch.status !== 'sent') {
         return {
-          channelId,
-          status: 'skipped' as const,
+          channelId: dispatch.channelId,
+          status: dispatch.status,
+          sourceMessageId: dispatch.sourceMessageId,
+          error: dispatch.error,
           state: null,
         };
       }
 
       try {
-        const dispatch = await routeChannelMessage(
-          baseState,
-          channelId,
-          { body: trimmedBody },
+        const completed = await continueBegunChannelMessageDispatch(
+          dispatch.begun,
+          dispatch.channelId,
           context.dependencies.runtimeClient,
           now,
           {
@@ -84,19 +150,19 @@ async function dispatchConcurrentBodies(
             },
           },
         );
-        const failedResults = dispatch.results.filter((result) => result.status === 'error');
+        const failedResults = completed.results.filter((result) => result.status === 'error');
         return {
-          channelId,
+          channelId: dispatch.channelId,
           status: failedResults.length > 0 ? 'error' as const : 'sent' as const,
-          sourceMessageId: dispatch.results[0]?.sourceMessageId,
+          sourceMessageId: completed.results[0]?.sourceMessageId,
           error: failedResults.length > 0
             ? failedResults.map((result) => result.error || 'Runtime dispatch failed.').join(' ')
             : undefined,
-          state: dispatch.state,
+          state: completed.state,
         };
       } catch (error) {
         return {
-          channelId,
+          channelId: dispatch.channelId,
           status: 'error' as const,
           error: error instanceof Error ? error.message : 'Failed to dispatch parallel chat turn.',
           state: null,
@@ -105,7 +171,6 @@ async function dispatchConcurrentBodies(
     }),
   );
 
-  let mergedState = baseState;
   const results: ConcurrentChatDispatchResult[] = [];
   for (const dispatch of dispatches) {
     if (dispatch.state) {
@@ -212,6 +277,7 @@ async function handleSendConcurrentGroupMessage(
       state,
       activeChannelId: body.activeChannelId,
       channelBodies: new Map(group.memberChannelIds.map((channelId) => [channelId, body.body])),
+      persistAcknowledgedStateBeforeDispatch: true,
     });
     sendJson(context.response, 200, response);
   } catch (error) {

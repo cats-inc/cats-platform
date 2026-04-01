@@ -19,7 +19,11 @@ export function shouldSubmitComposerOnKeyDown(input: ComposerKeyDecisionInput): 
 }
 
 export function isComposerBusy(busy: string): boolean {
-  return busy === 'message:prepare' || busy.startsWith('message:send');
+  return (
+    busy === 'message:prepare'
+    || busy.startsWith('message:ack:')
+    || busy.startsWith('message:send:')
+  );
 }
 
 export function isComposerDispatchBusy(busy: string): boolean {

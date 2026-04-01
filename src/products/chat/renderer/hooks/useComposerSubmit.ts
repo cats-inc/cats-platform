@@ -19,18 +19,16 @@ import { isDirectLaneChannel } from '../../shared/channelTopology';
 import {
   createConcurrentChatGroup,
   createChatChannel,
+  fetchAppShell,
   sendConcurrentChatMessage,
   sendChatMessage,
   updateSelectedChannel,
   uploadChannelAttachments,
 } from '../api';
 import {
-  applyOptimisticPendingExecutionTarget,
-  appendOptimisticUserMessage,
-  appendOptimisticUserMessages,
+  applyPendingExecutionTargetPreview,
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
-  clearCachedOptimisticUserMessages,
   createDraftChannelTitle,
   createDraftChannelTopic,
   insertCreatedChannelIntoPayload,
@@ -53,6 +51,57 @@ function isDirectLaneSelectedForCat(
 
   return isDirectLaneChannel(channel)
     && channel.roomRouting.leadParticipantId === catId;
+}
+
+const PERSISTED_TURN_POLL_MS = 120;
+const PERSISTED_TURN_POLL_LIMIT = 24;
+
+function countUserMessages(
+  payload: AppShellPayload,
+  channelId: string,
+): number {
+  const selectedChannel = normalizeSelectedChannelView(payload.chat.selectedChannel ?? null);
+  if (!selectedChannel || selectedChannel.id !== channelId) {
+    return 0;
+  }
+
+  return selectedChannel.messages.filter((message) => message.senderKind === 'user').length;
+}
+
+async function waitForPersistedUserTurn(
+  channelId: string,
+  baselineUserMessageCount: number,
+  requestPromise: Promise<unknown>,
+): Promise<AppShellPayload | null> {
+  let requestSettled = false;
+  void requestPromise.finally(() => {
+    requestSettled = true;
+  });
+
+  for (let attempt = 0; attempt < PERSISTED_TURN_POLL_LIMIT; attempt += 1) {
+    if (requestSettled) {
+      return null;
+    }
+
+    try {
+      const payload = await fetchAppShell();
+      if (countUserMessages(payload, channelId) > baselineUserMessageCount) {
+        return payload;
+      }
+    } catch {
+      // Best-effort only. The final send response remains the source of truth.
+    }
+
+    if (requestSettled) {
+      return null;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, PERSISTED_TURN_POLL_MS);
+    });
+  }
+
+  return null;
 }
 
 export function useComposerSubmit(options: {
@@ -81,7 +130,6 @@ export function useComposerSubmit(options: {
   draftConcurrentTargets: ModelSelectorValue[];
   resetDraftConcurrentTargets: () => void;
   compareGroupId: string | null;
-  compareGroupMemberChannelIds: string[];
   compareSendScope: 'all_members' | 'active_only';
   selectedChannel: SelectedChannelView | null;
   setBusy: Dispatch<SetStateAction<string>>;
@@ -113,7 +161,6 @@ export function useComposerSubmit(options: {
     draftConcurrentTargets,
     resetDraftConcurrentTargets,
     compareGroupId,
-    compareGroupMemberChannelIds,
     compareSendScope,
     selectedChannel,
     setBusy,
@@ -130,7 +177,6 @@ export function useComposerSubmit(options: {
       return;
     }
 
-    let optimisticChannelIds: string[] = [];
     const initialPayload = state.payload;
     const wasDraftingNewChat = showingNewChatDraft;
     const initialSelectedChannel = normalizeSelectedChannelView(initialPayload.chat.selectedChannel ?? null);
@@ -165,7 +211,7 @@ export function useComposerSubmit(options: {
           throw new Error('Choose at least two parallel chats before sending.');
         }
 
-        setBusy('concurrent:dispatch');
+        setBusy('concurrent:ack');
         const created = await createConcurrentChatGroup({
           title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
           repoPath: draftCwd ?? undefined,
@@ -187,19 +233,26 @@ export function useComposerSubmit(options: {
 
         rollbackPayload = created.appShell;
         rollbackPath = buildChannelPath(activeChannelId);
-        optimisticChannelIds = [...created.group.memberChannelIds];
-        setState({
-          status: 'ready',
-          payload: appendOptimisticUserMessages(created.appShell, optimisticChannelIds, body),
-        });
         setComposerDraft('');
         navigate(rollbackPath, { replace: true });
+        setState({ status: 'ready', payload: created.appShell });
 
-        const dispatch = await sendConcurrentChatMessage(created.group.id, {
+        const baselineUserMessageCount = countUserMessages(created.appShell, activeChannelId);
+        const dispatchPromise = sendConcurrentChatMessage(created.group.id, {
           activeChannelId,
           body,
         });
-        clearCachedOptimisticUserMessages(optimisticChannelIds);
+        const persistedPayload = await waitForPersistedUserTurn(
+          activeChannelId,
+          baselineUserMessageCount,
+          dispatchPromise,
+        );
+        if (persistedPayload) {
+          rollbackPayload = persistedPayload;
+          setState({ status: 'ready', payload: persistedPayload });
+        }
+
+        const dispatch = await dispatchPromise;
         setState({ status: 'ready', payload: dispatch.appShell });
         setFeedback('');
 
@@ -223,21 +276,26 @@ export function useComposerSubmit(options: {
         }
 
         rollbackPath = currentPathname;
-        optimisticChannelIds = [...compareGroupMemberChannelIds];
-        if (optimisticChannelIds.length > 0) {
-          payload = appendOptimisticUserMessages(initialPayload, optimisticChannelIds, body);
-          rollbackPayload = initialPayload;
-          setState({ status: 'ready', payload });
-        }
         setComposerDraft('');
         setChannelFiles([]);
-        setBusy('concurrent:dispatch');
+        setBusy('concurrent:ack');
 
-        const dispatch = await sendConcurrentChatMessage(compareGroupId, {
+        const baselineUserMessageCount = countUserMessages(initialPayload, channelId);
+        const dispatchPromise = sendConcurrentChatMessage(compareGroupId, {
           activeChannelId: channelId,
           body,
         });
-        clearCachedOptimisticUserMessages(optimisticChannelIds);
+        const persistedPayload = await waitForPersistedUserTurn(
+          channelId,
+          baselineUserMessageCount,
+          dispatchPromise,
+        );
+        if (persistedPayload) {
+          rollbackPayload = persistedPayload;
+          setState({ status: 'ready', payload: persistedPayload });
+        }
+
+        const dispatch = await dispatchPromise;
         setState({ status: 'ready', payload: dispatch.appShell });
         setFeedback('');
         return;
@@ -343,22 +401,30 @@ export function useComposerSubmit(options: {
       }
 
       if (soloDispatchTarget) {
-        payload = applyOptimisticPendingExecutionTarget(payload, channelId, soloDispatchTarget);
+        payload = applyPendingExecutionTargetPreview(payload, channelId, soloDispatchTarget);
       }
-      optimisticChannelIds = [channelId];
-      payload = appendOptimisticUserMessage(payload, channelId, messageBody);
       setState({ status: 'ready', payload });
       setComposerDraft('');
       setDraftFiles([]);
       setChannelFiles([]);
       navigate(rollbackPath, { replace: true });
-      setBusy(`message:send:${channelId}`);
+      setBusy(`message:ack:${channelId}`);
 
-      const dispatch = await sendChatMessage(channelId, {
+      const baselineUserMessageCount = countUserMessages(payload, channelId);
+      const dispatchPromise = sendChatMessage(channelId, {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
       });
-      clearCachedOptimisticUserMessages(optimisticChannelIds);
+      const persistedPayload = await waitForPersistedUserTurn(
+        channelId,
+        baselineUserMessageCount,
+        dispatchPromise,
+      );
+      if (persistedPayload) {
+        rollbackPayload = persistedPayload;
+        setState({ status: 'ready', payload: persistedPayload });
+      }
+      const dispatch = await dispatchPromise;
       setState({ status: 'ready', payload: dispatch.appShell });
       setComposerDraft('');
       setFeedback('');
@@ -381,7 +447,6 @@ export function useComposerSubmit(options: {
         setChannelFiles([]);
       }
     } catch (error) {
-      clearCachedOptimisticUserMessages(optimisticChannelIds);
       setState({ status: 'ready', payload: rollbackPayload });
       setComposerDraft(body);
       restoreFiles();
@@ -406,7 +471,6 @@ export function useComposerSubmit(options: {
     draftConcurrentTargets,
     resetDraftConcurrentTargets,
     compareGroupId,
-    compareGroupMemberChannelIds,
     compareSendScope,
     navigate,
     selectedChannel,

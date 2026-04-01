@@ -20,10 +20,7 @@ import {
 import { shouldWakeRouteChannelOnEntry } from '../../shared/channelEntry';
 import { isDirectLaneChannel } from '../../shared/channelTopology';
 import type { ChatLifecycleState } from '../../shared/lifecycle';
-import {
-  preserveCachedOptimisticUserMessageAfterRefresh,
-  type SelectedChannelView,
-} from '../chatUtils';
+import { type SelectedChannelView } from '../chatUtils';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -66,11 +63,8 @@ export function useAppShellRouting(options: {
 
     void fetchAppShell(controller.signal)
       .then((payload) => {
-        const nextPayload = routeChannelId
-          ? preserveCachedOptimisticUserMessageAfterRefresh(payload, routeChannelId)
-          : payload;
         startTransition(() => {
-          setState({ status: 'ready', payload: nextPayload });
+          setState({ status: 'ready', payload });
         });
       })
       .catch((error: unknown) => {
@@ -117,10 +111,7 @@ export function useAppShellRouting(options: {
     updateSelectedChannel(routeChannelId, controller.signal)
       .then((payload) => {
         if (!controller.signal.aborted) {
-          startTransition(() => setState({
-            status: 'ready',
-            payload: preserveCachedOptimisticUserMessageAfterRefresh(payload, routeChannelId),
-          }));
+          startTransition(() => setState({ status: 'ready', payload }));
         }
       })
       .catch(() => {
@@ -178,13 +169,7 @@ export function useAppShellRouting(options: {
     updateSelectedChannel(routeDirectLaneSummary.id, controller.signal)
       .then((payload) => {
         if (!controller.signal.aborted) {
-          startTransition(() => setState({
-            status: 'ready',
-            payload: preserveCachedOptimisticUserMessageAfterRefresh(
-              payload,
-              routeDirectLaneSummary.id,
-            ),
-          }));
+          startTransition(() => setState({ status: 'ready', payload }));
         }
       })
       .catch(() => {

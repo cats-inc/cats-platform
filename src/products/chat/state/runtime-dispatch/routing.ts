@@ -74,16 +74,21 @@ function describeGuardReason(reason: Exclude<RoomRoutingGuardReason, null>): str
   }
 }
 
-export async function routeChannelMessage(
+export interface BegunChannelMessageDispatch {
+  state: ChatState;
+  results: ChannelDispatchResult[];
+  preparedTurn: import('./turn.js').PreparedDispatchTurn | null;
+}
+
+export async function beginChannelMessageDispatch(
   state: ChatState,
   channelId: string,
   payload: SendChannelMessageInput,
   runtimeClient: RuntimeClient,
   now: Date = new Date(),
   options: RouteChannelMessageOptions = {},
-): Promise<{ state: ChatState; results: ChannelDispatchResult[] }> {
+): Promise<BegunChannelMessageDispatch> {
   let nextState = state;
-  const runtimeRecovery = normalizeRuntimeDispatchRecoveryPolicy(options.runtimeRecovery);
   const channelBeforeMessage = requireChannel(nextState, channelId);
   const nextPendingProvider = payload.pendingProvider === undefined
     ? channelBeforeMessage.pendingProvider
@@ -183,12 +188,27 @@ export async function routeChannelMessage(
     now,
   );
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
-  if (preparedTurn.terminalResult) {
-    return {
-      state: nextState,
-      results: preparedTurn.terminalResult.results,
-    };
+
+  return {
+    state: nextState,
+    results: preparedTurn.results,
+    preparedTurn: preparedTurn.terminalResult ? null : preparedTurn,
+  };
+}
+
+export async function continueBegunChannelMessageDispatch(
+  begun: BegunChannelMessageDispatch,
+  channelId: string,
+  runtimeClient: RuntimeClient,
+  now: Date = new Date(),
+  options: RouteChannelMessageOptions = {},
+): Promise<{ state: ChatState; results: ChannelDispatchResult[] }> {
+  if (!begun.preparedTurn) {
+    return { state: begun.state, results: begun.results };
   }
+
+  const runtimeRecovery = normalizeRuntimeDispatchRecoveryPolicy(options.runtimeRecovery);
+  let nextState = begun.state;
   const {
     activeTurn,
     baseRoomRouting,
@@ -202,7 +222,7 @@ export async function routeChannelMessage(
     results,
     userMessage,
     workflow,
-  } = preparedTurn;
+  } = begun.preparedTurn;
   let latestCheckpoint = initialCheckpoint;
   const loopResult = await processDispatchQueue({
     state: nextState,
@@ -221,15 +241,15 @@ export async function routeChannelMessage(
     maxContinuations,
     maxDispatches,
     maxTargetVisits,
-      describeGuardReason,
-      transport: options.transport,
-      companionStore: options.companionStore,
-      memoryService: options.memoryService,
-      chatStore: options.chatStore,
-      chatStatePath: options.chatStatePath,
-      runtimeDataDir: options.runtimeDataDir,
-      runtimeRecovery,
-    });
+    describeGuardReason,
+    transport: options.transport,
+    companionStore: options.companionStore,
+    memoryService: options.memoryService,
+    chatStore: options.chatStore,
+    chatStatePath: options.chatStatePath,
+    runtimeDataDir: options.runtimeDataDir,
+    runtimeRecovery,
+  });
   nextState = loopResult.state;
   latestCheckpoint = loopResult.latestCheckpoint;
   const guardReason = loopResult.guardReason;
@@ -250,4 +270,29 @@ export async function routeChannelMessage(
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
 
   return { state: nextState, results };
+}
+
+export async function routeChannelMessage(
+  state: ChatState,
+  channelId: string,
+  payload: SendChannelMessageInput,
+  runtimeClient: RuntimeClient,
+  now: Date = new Date(),
+  options: RouteChannelMessageOptions = {},
+): Promise<{ state: ChatState; results: ChannelDispatchResult[] }> {
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    payload,
+    runtimeClient,
+    now,
+    options,
+  );
+  return continueBegunChannelMessageDispatch(
+    begun,
+    channelId,
+    runtimeClient,
+    now,
+    options,
+  );
 }
