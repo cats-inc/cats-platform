@@ -65,6 +65,11 @@ contracts.
 - [ ] Offline transcript normalization and ingestion handoff hooks
 - [ ] Split-view chat canvas with preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
+- [ ] Finish destructive-delete UX above the landed runtime-session delete policy,
+      including explicit renderer feedback for retained or failed runtime cleanup,
+      clearer confirmation and busy states for chat / parallel-group / Cat delete,
+      and debug-retention messaging when
+      `CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE=true`
 - [ ] Refactor `ensureTargetSession(...)` so runtime session creation, lease wake state,
       and execution-target reconciliation stop living in one function now that
       session startup also persists runtime-sanitized model selections back into
@@ -403,4 +408,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-03-26*
+*Last updated: 2026-04-02*

@@ -236,6 +236,44 @@ test('DELETE /api/channels/:id fails and keeps product state when runtime delete
   }, { chatStore });
 });
 
+test('DELETE /api/channels/:id returns 502 and keeps product state when runtime delete errors', async () => {
+  const runtime = createRuntimeStub({
+    deleteErrors: new Map([
+      ['session-delete-error', new RuntimeRequestError('Runtime delete failed', 500)],
+    ]),
+  });
+  const chatStore = new MemoryChatStore();
+  const now = new Date('2026-04-02T12:00:00.000Z');
+  let state = await chatStore.read();
+  state = createCat(state, { name: 'Delete Error Cat', provider: 'claude' }, now);
+  const catId = state.cats[0].id;
+  state = createChannel(state, { title: 'Delete Error Channel', topic: 'cleanup' }, now);
+  const channelId = state.selectedChannelId;
+  state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
+  state = setChannelCatLease(state, channelId, catId, {
+    status: 'ready',
+    sessionId: 'session-delete-error',
+    provider: 'claude',
+    model: 'claude-default',
+  }, now);
+  await chatStore.write(state);
+
+  await withServer(runtime, async (baseUrl, store) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}`, {
+      method: 'DELETE',
+    });
+    assert.equal(response.status, 502);
+    const payload = await response.json();
+    assert.equal(payload.error.code, 'runtime_session_delete_failed');
+    assert.equal(payload.error.details.failMode, 'fail_and_keep');
+    assert.equal(payload.error.details.failures[0]?.sessionId, 'session-delete-error');
+    assert.equal(payload.error.details.failures[0]?.runtimeStatusCode, 500);
+
+    const persisted = await store.read();
+    assert.ok(persisted.channels.some((channel) => channel.id === channelId));
+  }, { chatStore });
+});
+
 test('DELETE /api/cats/:id deletes linked runtime sessions by default', async () => {
   const runtime = createRuntimeStub();
   const chatStore = new MemoryChatStore();
