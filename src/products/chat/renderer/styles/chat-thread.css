@@ -410,91 +410,6 @@
   color: var(--text);
 }
 
-.compareDraftShell {
-  overflow-y: auto;
-}
-
-.compareDraftContent {
-  width: min(100%, 920px);
-  gap: 18px;
-  padding-top: 9vh;
-  padding-bottom: 56px;
-}
-
-.compareDraftGreeting {
-  max-width: 680px;
-  margin-bottom: 6px;
-}
-
-.compareTargetGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-  width: 100%;
-}
-
-.compareTargetCard {
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
-}
-
-.compareTargetCardHeader {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.compareTargetCardHeader p {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.compareTargetRemove {
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.78rem;
-  cursor: pointer;
-}
-
-.compareTargetActions {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.compareDraftComposer {
-  max-width: 100%;
-}
-
-.compareTargetCountChip {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.compareDraftFootnote {
-  max-width: 680px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.84rem;
-  text-align: center;
-}
 
 .recentCatAvatar {
   grid-area: 1 / 1;
@@ -689,13 +604,40 @@
 .messageActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.messageActionIcon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-soft);
+  cursor: pointer;
+  padding: 0;
+}
+
+.messageActionIcon:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.messageActionIcon:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .messageActionsHoverOnly {
   opacity: 0;
   transition: opacity 0.15s ease;
+}
+
+.transcriptMessageUser > .messageActions {
+  justify-content: flex-end;
 }
 
 .transcriptMessageUser:hover .messageActionsHoverOnly,
@@ -750,11 +692,6 @@
 }
 
 @media (max-width: 720px) {
-  .compareDraftContent {
-    padding-top: 48px;
-  }
-
-  .compareTargetActions,
   .compareNavigatorBar {
     flex-direction: column;
     align-items: stretch;

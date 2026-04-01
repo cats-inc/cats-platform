@@ -34,7 +34,7 @@ export interface SidebarProps {
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
-  onStartNewCompareChat: () => void;
+  onStartNewParallelChat: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
@@ -387,7 +387,7 @@ export function Sidebar({
   onCollapsedSidebarClick,
   onOpenChatsOverview,
   onStartNewChat,
-  onStartNewCompareChat,
+  onStartNewParallelChat,
   onSelect,
   onDeleteChannel,
   onRenameChannel,
@@ -565,7 +565,7 @@ export function Sidebar({
           </button>
           <button
             className="navItem"
-            onClick={() => void onStartNewCompareChat()}
+            onClick={() => void onStartNewParallelChat()}
             type="button"
           >
             <span className="navGlyph" aria-hidden="true">

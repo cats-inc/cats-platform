@@ -318,6 +318,7 @@ export interface ChatCapabilities {
   runtimeSessions: true;
   maxBossCats: number;
   maxCats: number;
+  maxParallelChats: number;
   availableSurfaces: string[];
 }
 

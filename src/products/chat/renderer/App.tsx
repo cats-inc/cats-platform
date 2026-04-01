@@ -137,8 +137,8 @@ export default function App() {
   const routeChannelId = channelMatch?.params.channelId ?? null;
   const routeMyCatId = myCatMatch?.params.catId ?? null;
   const showingNewChatDraft = isNewChatPath(location.pathname);
-  const showingCompareChatDraft =
-    showingNewChatDraft && readNewChatMode(location.search) === 'compare';
+  const showingParallelChatDraft =
+    showingNewChatDraft && readNewChatMode(location.search) === 'parallel';
   const draftLeadCatId = routeMyCatId ?? readNewChatLeadCatId(location.search);
   const showingMyCatDirectLane = Boolean(routeMyCatId);
 
@@ -362,7 +362,7 @@ export default function App() {
     onDirectChatCat,
     onResetSetup,
     onStartNewChat,
-    onStartNewCompareChat,
+    onStartNewParallelChat,
   } = useAppNavigationActions({
     state,
     setState,
@@ -438,7 +438,7 @@ export default function App() {
     setChannelFiles,
     draftModel,
     soloChannelModel,
-    showingCompareChatDraft,
+    showingParallelChatDraft,
     draftConcurrentTargets,
     resetDraftConcurrentTargets,
     compareGroupId: state.status === 'ready' && selectedChannel
@@ -940,7 +940,7 @@ export default function App() {
         onCollapsedSidebarClick={onCollapsedSidebarClick}
         onOpenChatsOverview={onOpenChatsOverview}
         onStartNewChat={onStartNewChat}
-        onStartNewCompareChat={onStartNewCompareChat}
+        onStartNewParallelChat={onStartNewParallelChat}
         onSelect={onSelect}
         onDeleteChannel={onDeleteChannel}
         onRenameChannel={onRenameChannel}
@@ -1033,20 +1033,11 @@ export default function App() {
             draftCatModelOverrides,
             onDraftCatModelOverride,
             onDirectLaneModelChange: onDirectLaneModelSave,
+            parallelTargets: showingParallelChatDraft ? draftConcurrentTargets : undefined,
+            onParallelTargetChange: showingParallelChatDraft ? onDraftConcurrentTargetChange : undefined,
+            onAddParallelTarget: showingParallelChatDraft ? onAddDraftConcurrentTarget : undefined,
+            onRemoveParallelTarget: showingParallelChatDraft ? onRemoveDraftConcurrentTarget : undefined,
           }}
-          compareDraftSurfaceProps={{
-            composerDraft,
-            busy,
-            onComposerChange: setComposerDraft,
-            onComposerKeyDown,
-            onSendMessage,
-            autoResize,
-            targets: draftConcurrentTargets,
-            onTargetChange: onDraftConcurrentTargetChange,
-            onAddTarget: onAddDraftConcurrentTarget,
-            onRemoveTarget: onRemoveDraftConcurrentTarget,
-          }}
-          showingCompareChatDraft={showingCompareChatDraft}
           onPayloadUpdate={updatePayload}
           onFeedback={setFeedback}
           onBusy={setBusy}

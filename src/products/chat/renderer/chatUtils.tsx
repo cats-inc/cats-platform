@@ -262,6 +262,17 @@ export function buildNewChatChannelInput(options: {
   };
 }
 
+export function messageEntryTone(senderKind: string): string {
+  switch (senderKind) {
+    case 'user':
+      return 'transcriptEntry transcriptEntryUser';
+    case 'system':
+      return 'transcriptEntry transcriptEntrySystem';
+    default:
+      return 'transcriptEntry transcriptEntryAgent';
+  }
+}
+
 export function messageTone(senderKind: string): string {
   switch (senderKind) {
     case 'user':

@@ -10,7 +10,7 @@ import type { AppShellPayload } from '../../api/contracts.js';
 import type { ModelSelectorValue } from '../components/ModelSelector.js';
 import {
   buildChannelPath,
-  buildNewCompareChatPath,
+  buildNewParallelChatPath,
   buildNewChatPath,
   resolveVisibleChatPath,
 } from '../../shared/channelPaths.js';
@@ -248,8 +248,8 @@ export function useAppNavigationActions(options: {
     setDraftFiles,
   ]);
 
-  const onStartNewCompareChat = useCallback(async (): Promise<void> => {
-    navigate(buildNewCompareChatPath());
+  const onStartNewParallelChat = useCallback(async (): Promise<void> => {
+    navigate(buildNewParallelChatPath());
     setComposerDraft('');
     setFeedback('');
     setAddCatOpen(false);
@@ -285,6 +285,6 @@ export function useAppNavigationActions(options: {
     onDirectChatCat,
     onResetSetup,
     onStartNewChat,
-    onStartNewCompareChat,
+    onStartNewParallelChat,
   };
 }

@@ -50,6 +50,10 @@ export interface NewChatDraftProps {
   draftCatModelOverrides: Map<string, ModelSelectorValue>;
   onDraftCatModelOverride: (catId: string, value: ModelSelectorValue) => void;
   onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  parallelTargets?: ModelSelectorValue[];
+  onParallelTargetChange?: (index: number, value: ModelSelectorValue) => void;
+  onAddParallelTarget?: () => void;
+  onRemoveParallelTarget?: (index: number) => void;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
   folderBrowseParentPath?: string;
@@ -95,6 +99,10 @@ export function NewChatDraft({
   draftCatModelOverrides,
   onDraftCatModelOverride,
   onDirectLaneModelChange,
+  parallelTargets,
+  onParallelTargetChange,
+  onAddParallelTarget,
+  onRemoveParallelTarget,
   folderBrowsePath = '',
   folderBrowseCurrentPath = '',
   folderBrowseParentPath = '',
@@ -105,6 +113,7 @@ export function NewChatDraft({
   onFolderBrowse,
   onFolderBrowseSelect,
 }: NewChatDraftProps) {
+  const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const chatCats = payload.chat.cats.filter(isChatCat);
   const leadCat = draftLeadCatId
     ? chatCats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
@@ -182,7 +191,7 @@ export function NewChatDraft({
             <h1>{greeting}</h1>
           )}
         </div>
-        <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
+        <form className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}`} onSubmit={(event) => void onSendMessage(event)}>
           {draftFiles.length > 0 ? (
             <div className="composerAttachments">
               {draftFiles.map((file, index) => {
@@ -295,7 +304,14 @@ export function NewChatDraft({
                 </span>
               ) : null}
             </div>
-            {effectiveLeadCat ? (
+            {isParallelMode && parallelTargets?.[0] ? (
+              <div style={{ marginRight: 8 }}>
+                <ModelSelectorChip
+                  label={buildModelSelectorLabel(parallelTargets[0])}
+                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('parallel:0')}
+                />
+              </div>
+            ) : effectiveLeadCat ? (
               <ComposerCatStack
                 cats={[effectiveLeadCat, ...nonLeadDraftCatIds
                   .map((id) => chatCats.find((c) => c.id === id))
@@ -340,6 +356,46 @@ export function NewChatDraft({
             }}
           />
         </form>
+        {isParallelMode && parallelTargets && parallelTargets.length > 1 ? (
+          <div className="parallelStubStack">
+            {parallelTargets.slice(1).map((target, i, arr) => (
+              <div key={i + 1} className="parallelStubCard" style={{ zIndex: arr.length - i }}>
+                <ModelSelectorChip
+                  label={buildModelSelectorLabel(target)}
+                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo(`parallel:${i + 1}`)}
+                />
+                <button
+                  type="button"
+                  className="parallelStubRemove"
+                  disabled={isSubmittingFirstTurn || parallelTargets.length <= 2}
+                  onClick={() => onRemoveParallelTarget?.(i + 1)}
+                  aria-label="Remove parallel chat"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 8h10" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {parallelTargets && parallelTargets.length < (payload.chat.capabilities.maxParallelChats ?? 5) ? (
+          <div className="parallelAddRow">
+            <span className="parallelAddHint">Add another model to compare</span>
+            <button
+              type="button"
+              className="parallelAddButton"
+              disabled={isSubmittingFirstTurn}
+              onClick={onAddParallelTarget}
+              aria-label="Add parallel chat"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3v10" />
+                <path d="M3 8h10" />
+              </svg>
+            </button>
+          </div>
+        ) : null}
       </section>
       {sidePanelOpen ? (
         <SidePanel
@@ -436,6 +492,31 @@ export function NewChatDraft({
       return <p className="operatorEmptyState">No AI reply setup yet.</p>;
     })();
     sections.push({ id: 'execution', title: 'AI Reply', children: executionChildren });
+
+    if (isParallelMode && parallelTargets) {
+      parallelTargets.forEach((target, index) => {
+        sections.push({
+          id: `parallel:${index}`,
+          title: buildModelSelectorLabel(target),
+          children: (
+            <ProviderModelFields
+              provider={target.provider}
+              instance={target.instance ?? ''}
+              model={target.model ?? ''}
+              modelSelection={target.modelSelection}
+              onTargetChange={(next: ProviderTargetSelection) => {
+                onParallelTargetChange?.(index, {
+                  provider: next.provider,
+                  model: next.model || null,
+                  instance: next.instance || null,
+                  modelSelection: next.modelSelection ?? null,
+                });
+              }}
+            />
+          ),
+        });
+      });
+    }
 
     sections.push({
       id: 'cwd',

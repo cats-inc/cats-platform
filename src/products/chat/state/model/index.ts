@@ -196,7 +196,7 @@ export function createConcurrentGroup(
   nextState.concurrentGroups.unshift({
     id: createChannelId(),
     title: input.title.trim() || 'Parallel chat',
-    mode: 'compare',
+    mode: 'parallel',
     status: 'active',
     memberChannelIds,
     createdAt: nowIso,

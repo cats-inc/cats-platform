@@ -286,6 +286,9 @@ export function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilitie
     maxCats: typeof capabilitiesRecord?.maxCats === 'number' && capabilitiesRecord.maxCats > 0
       ? capabilitiesRecord.maxCats
       : fallback.maxCats,
+    maxParallelChats: typeof capabilitiesRecord?.maxParallelChats === 'number' && capabilitiesRecord.maxParallelChats > 0
+      ? capabilitiesRecord.maxParallelChats
+      : fallback.maxParallelChats,
     availableSurfaces: normalizeSuiteSurfaceList(
       Array.isArray(capabilitiesRecord?.availableSurfaces)
         ? (capabilitiesRecord.availableSurfaces as unknown[]).filter((v): v is string => typeof v === 'string')
@@ -356,7 +359,7 @@ export function normalizeConcurrentChatGroup(rawGroup: unknown): ConcurrentChatG
   return {
     id: readString(groupRecord.id, randomUUID()),
     title: readString(groupRecord.title, 'Parallel chat'),
-    mode: 'compare',
+    mode: 'parallel',
     status: rawStatus === 'archived' ? 'archived' : 'active',
     memberChannelIds: readStringArray(groupRecord.memberChannelIds),
     createdAt: readString(groupRecord.createdAt, new Date().toISOString()),

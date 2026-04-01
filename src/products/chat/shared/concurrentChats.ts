@@ -63,7 +63,7 @@ export function buildConcurrentChatMemberLabel(target: ConcurrentChatTarget): st
   return `${providerLabel} · ${modelLabel}`;
 }
 
-export function createCompareChatTitle(existingCount: number): string {
+export function createParallelChatTitle(existingCount: number): string {
   return existingCount > 0 ? `Parallel chat ${existingCount + 1}` : 'Parallel chat';
 }
 

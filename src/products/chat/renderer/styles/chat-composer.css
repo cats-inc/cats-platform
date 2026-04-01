@@ -139,6 +139,96 @@
   font-size: 0.78rem;
 }
 
+/* ── Parallel chat stacked composers ── */
+
+.parallelComposerAnchor {
+  position: relative;
+  z-index: 3;
+}
+
+.parallelStubStack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 680px);
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.parallelStubCard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: -14px;
+  padding: 22px 16px 8px;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 22px 22px;
+  background: transparent;
+  box-shadow: 0 2px 6px rgba(52, 38, 20, 0.06);
+}
+
+.parallelStubRemove {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.parallelStubRemove:hover:not(:disabled) {
+  background: rgba(140, 60, 50, 0.1);
+  color: #8f4f3f;
+}
+
+.parallelStubRemove:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.parallelAddRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 680px);
+  margin: 12px auto 0;
+  padding-right: 16px;
+}
+
+.parallelAddHint {
+  color: rgba(60, 100, 180, 0.6);
+  font-size: 0.78rem;
+}
+
+.parallelAddButton {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px dashed rgba(60, 100, 180, 0.4);
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(60, 100, 180, 0.7);
+  cursor: pointer;
+}
+
+.parallelAddButton:hover:not(:disabled) {
+  background: rgba(60, 100, 180, 0.08);
+  color: #3464b4;
+  border-style: solid;
+  border-color: rgba(60, 100, 180, 0.6);
+}
+
 .folderBrowserOverlay {
   position: fixed;
   inset: 0;

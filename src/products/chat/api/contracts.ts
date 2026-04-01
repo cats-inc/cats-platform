@@ -111,7 +111,7 @@ export type ChatChannelStatus =
 export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
 export type ComposerMode = 'solo' | 'cat_led';
 export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
-export type ConcurrentChatMode = 'compare';
+export type ConcurrentChatMode = 'parallel';
 export type ConcurrentChatStatus = 'active' | 'archived';
 export type ConcurrentChatRelayCommandKind =
   | 'check_this'
@@ -366,6 +366,7 @@ export interface ChatCapabilities {
   runtimeSessions: true;
   maxBossCats: number;
   maxCats: number;
+  maxParallelChats: number;
   availableSurfaces: string[];
 }
 

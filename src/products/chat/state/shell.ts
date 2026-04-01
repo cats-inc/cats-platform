@@ -76,6 +76,7 @@ export function createAppShell(
         ...chat.capabilities,
         maxBossCats: config.maxBossCats,
         maxCats: config.maxCats,
+        maxParallelChats: config.maxParallelChats,
         availableSurfaces: listEnabledSuiteSurfaces(),
       },
       showVerboseMessages: chat.showVerboseMessages,

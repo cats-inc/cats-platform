@@ -75,7 +75,7 @@ export function useComposerSubmit(options: {
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   draftModel: ModelSelectorValue;
   soloChannelModel: ModelSelectorValue;
-  showingCompareChatDraft: boolean;
+  showingParallelChatDraft: boolean;
   draftConcurrentTargets: ModelSelectorValue[];
   resetDraftConcurrentTargets: () => void;
   compareGroupId: string | null;
@@ -106,7 +106,7 @@ export function useComposerSubmit(options: {
     setChannelFiles,
     draftModel,
     soloChannelModel,
-    showingCompareChatDraft,
+    showingParallelChatDraft,
     draftConcurrentTargets,
     resetDraftConcurrentTargets,
     compareGroupId,
@@ -155,7 +155,7 @@ export function useComposerSubmit(options: {
 
     setFeedback('');
     try {
-      if (showingCompareChatDraft && wasDraftingNewChat) {
+      if (showingParallelChatDraft && wasDraftingNewChat) {
         if (draftConcurrentTargets.length < 2) {
           throw new Error('Choose at least two parallel chats before sending.');
         }
@@ -390,7 +390,7 @@ export function useComposerSubmit(options: {
     draftModel.modelSelection,
     draftModel.model,
     draftModel.provider,
-    showingCompareChatDraft,
+    showingParallelChatDraft,
     draftConcurrentTargets,
     resetDraftConcurrentTargets,
     compareGroupId,
