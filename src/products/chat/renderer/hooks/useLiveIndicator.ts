@@ -7,7 +7,10 @@ import {
   EMPTY_LIVE_INDICATOR,
   type LiveIndicatorState,
 } from '../../../../shared/liveIndicator.js';
-import { isComposerDispatchBusy } from '../../../../shared/composer.js';
+import {
+  getComposerDispatchChannelId,
+  isComposerDispatchBusy,
+} from '../../../../shared/composer.js';
 import type { SelectedChannelView } from '../chatUtils.js';
 import { isOptimisticDraftChannelId } from '../../shared/channelPaths.js';
 
@@ -32,7 +35,10 @@ export function shouldConnectLiveIndicatorStream(
   }
 
   const channelRouting = routingStatus === 'running' || routingStatus === 'blocked';
-  if (!isComposerDispatchBusy(busy) && !channelRouting) {
+  const dispatchBusyForCurrentChannel =
+    busy === 'concurrent:dispatch'
+    || getComposerDispatchChannelId(busy) === channelId;
+  if ((!isComposerDispatchBusy(busy) || !dispatchBusyForCurrentChannel) && !channelRouting) {
     return false;
   }
 
@@ -69,7 +75,14 @@ export function useLiveIndicator(options: {
 
   // Extract stable primitive from selectedChannel to avoid object reference in deps
   const leadCatId = selectedChannel?.roomRouting.leadParticipantId ?? null;
-  const routingStatus = selectedChannel?.routingStatus ?? null;
+  const workflowStatus = selectedChannel?.roomRouting.workflow.activeTurn?.status
+    ?? selectedChannel?.roomRouting.workflow.lastOutcomeEvent?.status
+    ?? null;
+  const routingStatus = workflowStatus === 'pending'
+    ? 'running'
+    : workflowStatus === 'failed'
+      ? 'error'
+      : workflowStatus;
 
   useEffect(() => {
     stateRef.current = state;
@@ -77,7 +90,12 @@ export function useLiveIndicator(options: {
 
   useEffect(() => {
     const channelRouting = routingStatus === 'running' || routingStatus === 'blocked';
-    const shouldShowWaitingIndicator = (isComposerDispatchBusy(busy) || channelRouting) && Boolean(channelId);
+    const dispatchBusyForCurrentChannel =
+      busy === 'concurrent:dispatch'
+      || getComposerDispatchChannelId(busy) === channelId;
+    const shouldShowWaitingIndicator =
+      ((isComposerDispatchBusy(busy) && dispatchBusyForCurrentChannel) || channelRouting)
+      && Boolean(channelId);
     let disposed = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let reconnectAttempts = 0;

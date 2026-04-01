@@ -19,9 +19,15 @@ export function shouldSubmitComposerOnKeyDown(input: ComposerKeyDecisionInput): 
 }
 
 export function isComposerBusy(busy: string): boolean {
-  return busy === 'message:prepare' || busy === 'message:send';
+  return busy === 'message:prepare' || busy.startsWith('message:send');
 }
 
 export function isComposerDispatchBusy(busy: string): boolean {
-  return busy === 'message:send' || busy === 'concurrent:dispatch';
+  return busy.startsWith('message:send') || busy === 'concurrent:dispatch';
+}
+
+export function getComposerDispatchChannelId(busy: string): string | null {
+  return busy.startsWith('message:send:')
+    ? busy.slice('message:send:'.length)
+    : null;
 }

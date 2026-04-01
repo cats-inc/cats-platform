@@ -27,8 +27,10 @@ import {
 import {
   applyOptimisticPendingExecutionTarget,
   appendOptimisticUserMessage,
+  appendOptimisticUserMessages,
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
+  clearCachedOptimisticUserMessages,
   createDraftChannelTitle,
   createDraftChannelTopic,
   insertCreatedChannelIntoPayload,
@@ -79,6 +81,7 @@ export function useComposerSubmit(options: {
   draftConcurrentTargets: ModelSelectorValue[];
   resetDraftConcurrentTargets: () => void;
   compareGroupId: string | null;
+  compareGroupMemberChannelIds: string[];
   compareSendScope: 'all_members' | 'active_only';
   selectedChannel: SelectedChannelView | null;
   setBusy: Dispatch<SetStateAction<string>>;
@@ -110,6 +113,7 @@ export function useComposerSubmit(options: {
     draftConcurrentTargets,
     resetDraftConcurrentTargets,
     compareGroupId,
+    compareGroupMemberChannelIds,
     compareSendScope,
     selectedChannel,
     setBusy,
@@ -126,6 +130,7 @@ export function useComposerSubmit(options: {
       return;
     }
 
+    let optimisticChannelIds: string[] = [];
     const initialPayload = state.payload;
     const wasDraftingNewChat = showingNewChatDraft;
     const initialSelectedChannel = normalizeSelectedChannelView(initialPayload.chat.selectedChannel ?? null);
@@ -182,7 +187,11 @@ export function useComposerSubmit(options: {
 
         rollbackPayload = created.appShell;
         rollbackPath = buildChannelPath(activeChannelId);
-        setState({ status: 'ready', payload: created.appShell });
+        optimisticChannelIds = [...created.group.memberChannelIds];
+        setState({
+          status: 'ready',
+          payload: appendOptimisticUserMessages(created.appShell, optimisticChannelIds, body),
+        });
         setComposerDraft('');
         navigate(rollbackPath, { replace: true });
 
@@ -190,6 +199,7 @@ export function useComposerSubmit(options: {
           activeChannelId,
           body,
         });
+        clearCachedOptimisticUserMessages(optimisticChannelIds);
         setState({ status: 'ready', payload: dispatch.appShell });
         setFeedback('');
 
@@ -213,8 +223,9 @@ export function useComposerSubmit(options: {
         }
 
         rollbackPath = currentPathname;
-        if (initialPayload.chat.selectedChannel?.id === channelId) {
-          payload = appendOptimisticUserMessage(initialPayload, channelId, body);
+        optimisticChannelIds = [...compareGroupMemberChannelIds];
+        if (optimisticChannelIds.length > 0) {
+          payload = appendOptimisticUserMessages(initialPayload, optimisticChannelIds, body);
           rollbackPayload = initialPayload;
           setState({ status: 'ready', payload });
         }
@@ -226,6 +237,7 @@ export function useComposerSubmit(options: {
           activeChannelId: channelId,
           body,
         });
+        clearCachedOptimisticUserMessages(optimisticChannelIds);
         setState({ status: 'ready', payload: dispatch.appShell });
         setFeedback('');
         return;
@@ -333,18 +345,20 @@ export function useComposerSubmit(options: {
       if (soloDispatchTarget) {
         payload = applyOptimisticPendingExecutionTarget(payload, channelId, soloDispatchTarget);
       }
+      optimisticChannelIds = [channelId];
       payload = appendOptimisticUserMessage(payload, channelId, messageBody);
       setState({ status: 'ready', payload });
       setComposerDraft('');
       setDraftFiles([]);
       setChannelFiles([]);
       navigate(rollbackPath, { replace: true });
-      setBusy('message:send');
+      setBusy(`message:send:${channelId}`);
 
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
       });
+      clearCachedOptimisticUserMessages(optimisticChannelIds);
       setState({ status: 'ready', payload: dispatch.appShell });
       setComposerDraft('');
       setFeedback('');
@@ -367,6 +381,7 @@ export function useComposerSubmit(options: {
         setChannelFiles([]);
       }
     } catch (error) {
+      clearCachedOptimisticUserMessages(optimisticChannelIds);
       setState({ status: 'ready', payload: rollbackPayload });
       setComposerDraft(body);
       restoreFiles();
@@ -391,6 +406,7 @@ export function useComposerSubmit(options: {
     draftConcurrentTargets,
     resetDraftConcurrentTargets,
     compareGroupId,
+    compareGroupMemberChannelIds,
     compareSendScope,
     navigate,
     selectedChannel,

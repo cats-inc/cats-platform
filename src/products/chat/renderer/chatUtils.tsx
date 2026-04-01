@@ -354,6 +354,11 @@ export function createOptimisticUserMessage(
   };
 }
 
+const optimisticUserMessageCache = new Map<
+  string,
+  ReturnType<typeof createOptimisticUserMessage>
+>();
+
 export function createOptimisticDraftPayload(
   payload: AppShellPayload,
   body: string,
@@ -448,26 +453,112 @@ export function appendOptimisticUserMessage(
   channelId: string,
   body: string,
 ): AppShellPayload {
+  const next = appendOptimisticUserMessages(payload, [channelId], body);
+  next.chat.selectedChannelId = channelId;
+  return next;
+}
+
+export function appendOptimisticUserMessages(
+  payload: AppShellPayload,
+  channelIds: string[],
+  body: string,
+): AppShellPayload {
+  const uniqueChannelIds = [...new Set(channelIds)];
+  if (uniqueChannelIds.length === 0) {
+    return payload;
+  }
+
   const createdAt = new Date().toISOString();
   const next = structuredClone(payload);
+  const selectedChannel = next.chat.selectedChannel;
+
+  for (const nextChannelId of uniqueChannelIds) {
+    const channelSummary = next.chat.channels.find((channel) => channel.id === nextChannelId);
+    const optimisticMessage = createOptimisticUserMessage(
+      nextChannelId,
+      body,
+      next.ownerDisplayName,
+      createdAt,
+    );
+
+    optimisticUserMessageCache.set(nextChannelId, structuredClone(optimisticMessage));
+
+    if (selectedChannel?.id === nextChannelId) {
+      selectedChannel.messages.push(optimisticMessage);
+      selectedChannel.updatedAt = createdAt;
+      selectedChannel.lastMessageAt = createdAt;
+      selectedChannel.unreadCount = 0;
+    }
+
+    if (channelSummary) {
+      channelSummary.lastMessageAt = createdAt;
+      channelSummary.unreadCount = 0;
+    }
+  }
+
+  next.metadata.generatedAt = createdAt;
+
+  return next;
+}
+
+export function clearCachedOptimisticUserMessages(channelIds: string[]): void {
+  for (const channelId of channelIds) {
+    optimisticUserMessageCache.delete(channelId);
+  }
+}
+
+export function preserveCachedOptimisticUserMessageAfterRefresh(
+  refreshedPayload: AppShellPayload,
+  channelId: string,
+): AppShellPayload {
+  const optimisticMessage = optimisticUserMessageCache.get(channelId) ?? null;
+  if (!optimisticMessage) {
+    return refreshedPayload;
+  }
+
+  const next = structuredClone(refreshedPayload);
   const selectedChannel = next.chat.selectedChannel;
   const channelSummary = next.chat.channels.find((channel) => channel.id === channelId);
 
   if (!selectedChannel || selectedChannel.id !== channelId || !channelSummary) {
-    throw new Error('No chat is available for optimistic updates.');
+    return refreshedPayload;
   }
 
-  selectedChannel.messages.push(
-    createOptimisticUserMessage(channelId, body, next.ownerDisplayName, createdAt),
+  const matchingPersistedMessage = selectedChannel.messages.some(
+    (message) =>
+      message.senderKind === 'user'
+      && !message.metadata?.optimistic
+      && message.body === optimisticMessage.body
+      && Date.parse(message.createdAt) >= Date.parse(optimisticMessage.createdAt) - 1000,
   );
-  selectedChannel.updatedAt = createdAt;
-  selectedChannel.lastMessageAt = createdAt;
+  if (matchingPersistedMessage) {
+    optimisticUserMessageCache.delete(channelId);
+    return refreshedPayload;
+  }
+
+  const alreadyPresent = selectedChannel.messages.some(
+    (message) =>
+      message.id === optimisticMessage.id
+      || (
+        message.senderKind === 'user'
+        && message.metadata?.optimistic
+        && message.body === optimisticMessage.body
+        && message.createdAt === optimisticMessage.createdAt
+      ),
+  );
+  if (alreadyPresent) {
+    return refreshedPayload;
+  }
+
+  selectedChannel.messages.push(structuredClone(optimisticMessage));
+  selectedChannel.updatedAt = optimisticMessage.createdAt;
+  selectedChannel.lastMessageAt = optimisticMessage.createdAt;
   selectedChannel.unreadCount = 0;
 
-  channelSummary.lastMessageAt = createdAt;
+  channelSummary.lastMessageAt = optimisticMessage.createdAt;
   channelSummary.unreadCount = 0;
   next.chat.selectedChannelId = channelId;
-  next.metadata.generatedAt = createdAt;
+  next.metadata.generatedAt = optimisticMessage.createdAt;
 
   return next;
 }

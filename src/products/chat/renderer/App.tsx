@@ -34,6 +34,7 @@ import {
   BootShell,
   emptyCatForm,
   pickGreeting,
+  preserveCachedOptimisticUserMessageAfterRefresh,
   type CatFormState,
 } from './chatUtils';
 import { AppRoutes } from './AppRoutes';
@@ -446,6 +447,11 @@ export default function App() {
           group.memberChannelIds.includes(selectedChannel.id),
         )?.id ?? null
       : null,
+    compareGroupMemberChannelIds: state.status === 'ready' && selectedChannel
+      ? state.payload.chat.concurrentGroups.find((group) =>
+          group.memberChannelIds.includes(selectedChannel.id),
+        )?.memberChannelIds ?? []
+      : [],
     compareSendScope,
     selectedChannel,
     setBusy,
@@ -867,7 +873,10 @@ export default function App() {
   ]);
 
   function updatePayload(payload: AppShellPayload): void {
-    startTransition(() => setState({ status: 'ready', payload }));
+    const nextPayload = routeChannelId
+      ? preserveCachedOptimisticUserMessageAfterRefresh(payload, routeChannelId)
+      : payload;
+    startTransition(() => setState({ status: 'ready', payload: nextPayload }));
   }
 
   if (state.status === 'loading') {
