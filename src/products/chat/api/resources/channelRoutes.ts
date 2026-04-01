@@ -240,34 +240,36 @@ async function handleRestPatchChannel(
   try {
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<UpdateChannelInput>(context.request);
-    let persisted = await context.dependencies.chatStore.read();
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      let persisted = await context.dependencies.chatStore.read();
 
-    if (body.title !== undefined) {
-      const title = typeof body.title === 'string' ? body.title.trim() : '';
-      if (!title) {
-        sendJson(context.response, 400, { error: 'title_required', message: 'Title must not be empty.' });
-        return;
+      if (body.title !== undefined) {
+        const title = typeof body.title === 'string' ? body.title.trim() : '';
+        if (!title) {
+          sendJson(context.response, 400, { error: 'title_required', message: 'Title must not be empty.' });
+          return;
+        }
+        persisted = await persistRenamedChannel(context, channelId, title);
       }
-      persisted = await persistRenamedChannel(context, channelId, title);
-    }
 
-    if (
-      body.pendingProvider !== undefined
-      || body.pendingModel !== undefined
-      || body.pendingInstance !== undefined
-      || body.pendingModelSelection !== undefined
-    ) {
-      const nextState = setChannelPendingExecutionTarget(persisted, channelId, {
-        provider: body.pendingProvider,
-        model: body.pendingModel,
-        instance: body.pendingInstance,
-        modelSelection: body.pendingModelSelection,
-      }, nowFrom(context.dependencies));
-      persisted = await context.dependencies.chatStore.write(nextState);
-    }
+      if (
+        body.pendingProvider !== undefined
+        || body.pendingModel !== undefined
+        || body.pendingInstance !== undefined
+        || body.pendingModelSelection !== undefined
+      ) {
+        const nextState = setChannelPendingExecutionTarget(persisted, channelId, {
+          provider: body.pendingProvider,
+          model: body.pendingModel,
+          instance: body.pendingInstance,
+          modelSelection: body.pendingModelSelection,
+        }, nowFrom(context.dependencies));
+        persisted = await context.dependencies.chatStore.write(nextState);
+      }
 
-    sendJson(context.response, 200, {
-      channel: toChannelSummary(requireChannel(persisted, channelId)),
+      sendJson(context.response, 200, {
+        channel: toChannelSummary(requireChannel(persisted, channelId)),
+      });
     });
   } catch (error) {
     handleRestError(context, error);
@@ -281,8 +283,10 @@ async function handleRestDeleteChannel(
 ): Promise<void> {
   try {
     requireValidChatScopeId(chatScopeId);
-    await persistDeletedChannel(context, channelId);
-    sendJson(context.response, 200, { deleted: true, channelId });
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      await persistDeletedChannel(context, channelId);
+      sendJson(context.response, 200, { deleted: true, channelId });
+    });
   } catch (error) {
     handleRestError(context, error);
   }

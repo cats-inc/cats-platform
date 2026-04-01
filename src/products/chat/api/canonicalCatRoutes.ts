@@ -157,15 +157,17 @@ async function handleCanonicalAssignChannelCat(
     const body = await readJsonBody<Omit<AssignChannelCatInput, 'catId'>>(
       context.request,
     );
-    const { persisted, isNew } = await persistCatAssignmentUpdate(context, channelId, {
-      catId: catId,
-      ...body,
-    });
-    const assignment = buildChannelView(persisted, channelId).assignedCats.find(
-      (candidate) => candidate.catId === catId,
-    );
-    sendJson(context.response, isNew ? 201 : 200, {
-      cat: assignment ? mapChannelCat(assignment) : null,
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      const { persisted, isNew } = await persistCatAssignmentUpdate(context, channelId, {
+        catId: catId,
+        ...body,
+      });
+      const assignment = buildChannelView(persisted, channelId).assignedCats.find(
+        (candidate) => candidate.catId === catId,
+      );
+      sendJson(context.response, isNew ? 201 : 200, {
+        cat: assignment ? mapChannelCat(assignment) : null,
+      });
     });
   } catch (error) {
     handleCanonicalCatError(context, error);
@@ -178,8 +180,10 @@ async function handleCanonicalRemoveChannelCat(
   catId: string,
 ): Promise<void> {
   try {
-    await persistCatAssignmentRemoval(context, channelId, catId);
-    sendJson(context.response, 200, { removed: true, channelId, catId });
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      await persistCatAssignmentRemoval(context, channelId, catId);
+      sendJson(context.response, 200, { removed: true, channelId, catId });
+    });
   } catch (error) {
     handleCanonicalCatError(context, error);
   }
