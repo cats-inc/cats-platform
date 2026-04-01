@@ -70,8 +70,7 @@ export function shouldWakeRouteChannelOnEntry(input: {
     return true;
   }
 
-  return input.entryLifecycleState === 'sleeping'
-    || input.entryLifecycleState === 'error';
+  return input.entryLifecycleState === 'sleeping';
 }
 
 export function shouldAwaitSelectedChannelWakeBeforeSend(
