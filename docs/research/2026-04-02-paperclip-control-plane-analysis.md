@@ -1,6 +1,6 @@
 # Paperclip Control Plane Analysis for Cats Inc
 
-Status: Unreviewed notes
+Status: Unreviewed notes — refiled 2026-04-02; original authoring date unknown, filename date is not authoritative
 
 > Scope note for current `cats`: this document preserves a broader
 > Paperclip-to-Cats product analysis. Sections discussing company root scope,
