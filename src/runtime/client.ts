@@ -207,6 +207,13 @@ export interface RuntimeWakeupCreateResult {
   coalesced: boolean;
 }
 
+export interface RuntimeDeleteSessionResult {
+  action?: string;
+  sessionId: string;
+  status: 'deleted' | 'retained';
+  reason?: string;
+}
+
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
   getSetupState(): Promise<RuntimeSetupReadModel>;
@@ -231,6 +238,7 @@ export interface RuntimeClient {
   callMcp(request: unknown): Promise<Record<string, unknown> | null>;
   cancelSession(sessionId: string): Promise<void>;
   closeSession(sessionId: string): Promise<void>;
+  deleteSession(sessionId: string): Promise<RuntimeDeleteSessionResult>;
 }
 
 interface RuntimeClientOptions {
@@ -680,7 +688,10 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok && response.status !== 204) {
       const rawBody = await response.text();
-      throw new Error(readRuntimeErrorText(rawBody, `Failed to close session (${response.status})`));
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to close session (${response.status})`),
+        response.status,
+      );
     }
   }
 
@@ -693,8 +704,51 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok && response.status !== 204) {
       const rawBody = await response.text();
-      throw new Error(readRuntimeErrorText(rawBody, `Failed to cancel session (${response.status})`));
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to cancel session (${response.status})`),
+        response.status,
+      );
     }
+  }
+
+  async deleteSession(sessionId: string): Promise<RuntimeDeleteSessionResult> {
+    const response = await fetch(`${this.baseUrl}/sessions/${sessionId}`, {
+      method: 'DELETE',
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to delete session (${response.status})`),
+        response.status,
+      );
+    }
+
+    const payload = await response.json().catch(() => null) as Partial<RuntimeDeleteSessionResult> | null;
+    const status = payload?.status;
+    if (status !== 'deleted' && status !== 'retained') {
+      throw new RuntimeRequestError(
+        'Runtime returned an invalid session delete response.',
+        response.status,
+      );
+    }
+
+    return {
+      action: payload?.action,
+      sessionId:
+        typeof payload?.sessionId === 'string' && payload.sessionId.trim().length > 0
+          ? payload.sessionId
+          : sessionId,
+      status,
+      ...(typeof payload?.reason === 'string' && payload.reason.trim().length > 0
+        ? { reason: payload.reason }
+        : {}),
+    };
   }
 
   private authHeaders(): Record<string, string> {

@@ -7,6 +7,7 @@ export interface AppConfig {
   port: number;
   runtimeBaseUrl: string;
   runtimeApiKey: string;
+  debugKeepRuntimeSessionsOnProductDelete: boolean;
   runtimeDataDir?: string;
   desktopHostStatePath?: string;
   runtimeStaleSessionRetryLimit: number;
@@ -62,12 +63,30 @@ function parseNonNegativeInt(raw: string | undefined, fallback: number): number 
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+function parseBoolean(raw: string | undefined, fallback: boolean): boolean {
+  const trimmed = raw?.trim().toLowerCase();
+  if (!trimmed) {
+    return fallback;
+  }
+  if (trimmed === 'true') {
+    return true;
+  }
+  if (trimmed === 'false') {
+    return false;
+  }
+  return fallback;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
+    debugKeepRuntimeSessionsOnProductDelete: parseBoolean(
+      env.CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE,
+      false,
+    ),
     runtimeDataDir: readFirstDefined(env, ['CATS_RUNTIME_DATA_DIR']) || undefined,
     desktopHostStatePath: readFirstDefined(env, ['CATS_DESKTOP_HOST_STATE_PATH']) || undefined,
     runtimeStaleSessionRetryLimit: parseNonNegativeInt(

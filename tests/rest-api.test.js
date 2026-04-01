@@ -71,6 +71,11 @@ function createRuntimeStub() {
     async closeSession(sessionId) {
       this.closedSessions.push(sessionId);
     },
+    async deleteSession(sessionId) {
+      this.deletedSessions = this.deletedSessions || [];
+      this.deletedSessions.push(sessionId);
+      return { action: 'delete', sessionId, status: 'deleted' };
+    },
   };
 }
 

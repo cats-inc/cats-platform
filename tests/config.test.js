@@ -21,6 +21,7 @@ test('loadConfig prefers canonical CATS_* variables over compatibility aliases',
   assert.equal(config.chatStatePath, 'C:/state/cats.json');
   assert.equal(config.runtimeBaseUrl, 'http://127.0.0.1:3110');
   assert.equal(config.runtimeApiKey, 'token');
+  assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
 });
 
@@ -35,5 +36,18 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases', () => {
   assert.equal(config.host, '127.0.0.2');
   assert.equal(config.port, 8282);
   assert.equal(config.chatStatePath, 'C:/state/legacy.json');
+  assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 1);
+});
+
+test('loadConfig enables runtime session retention override only when explicitly true', () => {
+  const enabled = loadConfig({
+    CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE: 'true',
+  });
+  const disabled = loadConfig({
+    CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE: 'false',
+  });
+
+  assert.equal(enabled.debugKeepRuntimeSessionsOnProductDelete, true);
+  assert.equal(disabled.debugKeepRuntimeSessionsOnProductDelete, false);
 });

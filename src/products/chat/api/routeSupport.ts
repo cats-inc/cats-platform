@@ -24,6 +24,7 @@ import { readSuitePreferences } from '../../../shared/suitePreferences.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
+import { RuntimeRequestError } from '../../../platform/runtime/client.js';
 import {
   appendMessage,
   archiveCat,
@@ -180,10 +181,33 @@ export function sendRestError(
   sendJson(context.response, statusCode, payload);
 }
 
+export class ChatApiError extends Error {
+  constructor(
+    readonly statusCode: number,
+    readonly code: string,
+    message: string,
+    readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'ChatApiError';
+  }
+}
+
 export function handleRestError(
   context: ChatApiRouteContext,
   error: unknown,
 ): void {
+  if (error instanceof ChatApiError) {
+    sendRestError(
+      context,
+      error.statusCode,
+      error.code,
+      error.message,
+      error.details,
+    );
+    return;
+  }
+
   const message = error instanceof Error ? error.message : 'Unknown error';
 
   if (message.startsWith('Chat not found:')) {
@@ -363,10 +387,7 @@ export async function closeSessionIds(
   context: ChatApiRouteContext,
   sessionIds: Array<string | null | undefined>,
 ): Promise<void> {
-  const validSessionIds = sessionIds.filter(
-    (sessionId): sessionId is string =>
-      typeof sessionId === 'string' && sessionId.length > 0,
-  );
+  const validSessionIds = normalizeSessionIds(sessionIds);
 
   await Promise.allSettled(
     validSessionIds.map(async (sessionId) => {
@@ -388,10 +409,7 @@ export async function cancelSessionIds(
   context: ChatApiRouteContext,
   sessionIds: Array<string | null | undefined>,
 ): Promise<number> {
-  const validSessionIds = sessionIds.filter(
-    (sessionId): sessionId is string =>
-      typeof sessionId === 'string' && sessionId.length > 0,
-  );
+  const validSessionIds = normalizeSessionIds(sessionIds);
 
   await Promise.allSettled(
     validSessionIds.map(async (sessionId) => {
@@ -400,6 +418,107 @@ export async function cancelSessionIds(
   );
 
   return validSessionIds.length;
+}
+
+function normalizeSessionIds(
+  sessionIds: Array<string | null | undefined>,
+): string[] {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+
+  for (const candidate of sessionIds) {
+    const sessionId = candidate?.trim();
+    if (!sessionId || seen.has(sessionId)) {
+      continue;
+    }
+    seen.add(sessionId);
+    normalized.push(sessionId);
+  }
+
+  return normalized;
+}
+
+interface ProductDeleteRuntimeFailureDetail {
+  sessionId: string;
+  status: 'retained' | 'error';
+  message: string;
+  runtimeStatusCode?: number;
+}
+
+export async function cleanupSessionsForProductDelete(
+  context: ChatApiRouteContext,
+  sessionIds: Array<string | null | undefined>,
+): Promise<void> {
+  const validSessionIds = normalizeSessionIds(sessionIds);
+  if (validSessionIds.length === 0) {
+    return;
+  }
+
+  if (context.dependencies.config.debugKeepRuntimeSessionsOnProductDelete) {
+    await closeSessionIds(context, validSessionIds);
+    return;
+  }
+
+  const failures: ProductDeleteRuntimeFailureDetail[] = [];
+
+  for (const sessionId of validSessionIds) {
+    try {
+      await bestEffortFlushRuntimeSessionMemory({
+        runtimeClient: context.dependencies.runtimeClient,
+        sessionId,
+        requestedPhase: 'pre_reset',
+        memoryService: context.dependencies.memoryService,
+        companionStore: context.dependencies.companionStore,
+        coreStore: context.dependencies.chatStore,
+        now: context.dependencies.now?.(),
+      });
+    } catch {
+      // Best-effort pre-delete maintenance should not block the actual delete.
+    }
+
+    try {
+      const result = await context.dependencies.runtimeClient.deleteSession(sessionId);
+      if (result.status === 'retained') {
+        failures.push({
+          sessionId,
+          status: 'retained',
+          message: result.reason?.trim() || 'cats-runtime retained the session instead of deleting it.',
+        });
+      }
+    } catch (error) {
+      if (error instanceof RuntimeRequestError && error.status === 404) {
+        continue;
+      }
+
+      failures.push({
+        sessionId,
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to delete linked runtime session.',
+        ...(error instanceof RuntimeRequestError ? { runtimeStatusCode: error.status } : {}),
+      });
+    }
+  }
+
+  if (failures.length === 0) {
+    return;
+  }
+
+  const retained = failures.filter((failure) => failure.status === 'retained');
+  const statusCode = retained.length > 0 ? 409 : 502;
+  const message = retained.length > 0
+    ? 'Linked runtime sessions could not be deleted, so the product delete was cancelled.'
+    : 'Failed to delete linked runtime sessions, so the product delete was cancelled.';
+
+  throw new ChatApiError(
+    statusCode,
+    'runtime_session_delete_failed',
+    message,
+    {
+      failures,
+      failMode: 'fail_and_keep',
+      debugOverrideEnv: 'CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE',
+    },
+  );
 }
 
 const CHANNEL_CANCELLATION_SETTLE_TIMEOUT_MS = 5_000;
@@ -718,7 +837,7 @@ export async function persistDeletedChannel(
   const currentState = await context.dependencies.chatStore.read();
   const channel = requireChannel(currentState, channelId);
 
-  await closeSessionIds(context, [
+  await cleanupSessionsForProductDelete(context, [
     channel.orchestratorLease.sessionId,
     ...channel.catAssignments.map(
       (assignment) => assignment.status === 'removed'
@@ -775,7 +894,7 @@ export async function persistDeletedConcurrentGroup(
     throw new Error(`Concurrent group not found: ${groupId}`);
   }
 
-  await closeSessionIds(context, group.memberChannelIds.flatMap((channelId) => {
+  await cleanupSessionsForProductDelete(context, group.memberChannelIds.flatMap((channelId) => {
     const channel = requireChannel(currentState, channelId);
     return [
       channel.orchestratorLease.sessionId,
@@ -1178,7 +1297,7 @@ export async function persistDeletedCat(
 ): Promise<void> {
   const currentState = await context.dependencies.chatStore.read();
   const now = nowFrom(context.dependencies);
-  await closeSessionIds(context, collectCatSessionIds(currentState, catId));
+  await cleanupSessionsForProductDelete(context, collectCatSessionIds(currentState, catId));
   const nextState = deleteCat(currentState, catId, now);
   await context.dependencies.chatStore.write(nextState);
   await writeCoreWithUpdatedBindings(context, (bindings) =>
