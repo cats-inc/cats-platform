@@ -4,7 +4,10 @@ import type {
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
 } from './providerCatalog.js';
-import { resolveProviderCatalogDefaultModel } from './providerCatalog.js';
+import {
+  normalizeProductProviderModelId,
+  resolveProviderCatalogDefaultModel,
+} from './providerCatalog.js';
 
 export interface ProviderModelSelection {
   entryId?: string;
@@ -101,7 +104,7 @@ function normalizeProviderEntryAlias(input: {
   catalog: ProviderModelCatalog;
   model: string | null | undefined;
 }): string | null {
-  const normalizedModel = input.model?.trim() || '';
+  const normalizedModel = normalizeProductProviderModelId(input.provider, input.model) ?? '';
   if (!normalizedModel) {
     return null;
   }
@@ -111,16 +114,7 @@ function normalizeProviderEntryAlias(input: {
     && input.backend === 'cli'
     && input.catalog.models.some((option) => option.id === 'default')
   ) {
-    const lower = normalizedModel.toLowerCase();
-    if (lower === 'claude-opus-4-6' || lower === 'claude-opus-4.6' || lower === 'default') {
-      return 'default';
-    }
-    if (lower === 'claude-sonnet-4-6' || lower === 'claude-sonnet-4.6' || lower === 'sonnet') {
-      return 'sonnet';
-    }
-    if (lower === 'claude-haiku-4-5' || lower === 'claude-haiku-4.5' || lower === 'haiku') {
-      return 'haiku';
-    }
+    return normalizedModel;
   }
 
   return normalizedModel;

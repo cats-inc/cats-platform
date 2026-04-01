@@ -3,6 +3,7 @@ import {
   getProviderDisplayName,
   getProviderInstances,
   getProviderModels,
+  normalizeProductProviderModelId,
 } from './providerCatalog.js';
 
 function resolveBackendSuffix(
@@ -33,11 +34,15 @@ function resolveBackendSuffix(
 
 function resolveModelLabel(provider: string, model: string | null | undefined): string | null {
   if (!model) return null;
-  const catalogLabel = getProviderModels(provider).find((m) => m.value === model)?.label;
-  const fallbackLabel = provider === 'claude' && (model === 'default' || model === 'sonnet' || model === 'haiku')
-    ? model.charAt(0).toUpperCase() + model.slice(1)
-    : model;
-  return (catalogLabel ?? fallbackLabel).replace(/\s*\(default\)\s*/iu, '');
+  const normalizedModel = normalizeProductProviderModelId(provider, model) ?? model;
+  const catalogLabel = getProviderModels(provider).find((m) => m.value === normalizedModel)?.label;
+  const fallbackLabel = provider === 'claude'
+    && (normalizedModel === 'default' || normalizedModel === 'sonnet' || normalizedModel === 'haiku')
+    ? normalizedModel.charAt(0).toUpperCase() + normalizedModel.slice(1)
+    : normalizedModel;
+  return (catalogLabel ?? fallbackLabel)
+    .replace(/\s*\((?:default|recommended)\)\s*/giu, ' ')
+    .trim();
 }
 
 export function buildExecutionLabel(

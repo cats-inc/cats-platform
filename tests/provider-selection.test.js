@@ -90,7 +90,7 @@ test('resolveCatalogTargetSelection keeps a manual model choice for the same pro
     preserveCurrentModel: true,
   });
 
-  assert.equal(nextTarget.model, 'claude-opus-4-6');
+  assert.equal(nextTarget.model, 'default');
 });
 
 test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native CLI catalog entries', () => {

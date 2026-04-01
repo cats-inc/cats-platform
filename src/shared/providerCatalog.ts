@@ -531,6 +531,31 @@ export function getProviderModels(provider: string): ProviderModelOption[] {
   return PRODUCT_PROVIDER_MODELS[provider as ProductProviderId] ?? [];
 }
 
+export function normalizeProductProviderModelId(
+  provider: string,
+  modelId: string | null | undefined,
+): string | null {
+  const normalized = modelId?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (provider === 'claude') {
+    const lower = normalized.toLowerCase();
+    if (lower === 'claude-opus-4-6' || lower === 'claude-opus-4.6' || lower === 'default') {
+      return 'default';
+    }
+    if (lower === 'claude-sonnet-4-6' || lower === 'claude-sonnet-4.6' || lower === 'sonnet') {
+      return 'sonnet';
+    }
+    if (lower === 'claude-haiku-4-5' || lower === 'claude-haiku-4.5' || lower === 'haiku') {
+      return 'haiku';
+    }
+  }
+
+  return normalized;
+}
+
 export function getDefaultModel(provider: string): string {
   return getProviderModels(provider)[0]?.value ?? '';
 }

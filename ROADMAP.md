@@ -82,6 +82,10 @@ contracts.
 - [ ] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow
+- [ ] Stop duplicating provider alias normalization rules between `cats-platform`
+      and `cats-runtime` by having runtime-owned model catalog APIs return a
+      canonical alias/legacy-id map that selector reconciliation and session
+      create flows can consume directly
 - [ ] Shift cat UX to a chat-contextual `Add cat` flow while moving registry
       administration into `Settings > Cats`
 - [x] Desktop host and tray lifecycle management above the existing Node server boundary
