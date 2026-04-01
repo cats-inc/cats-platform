@@ -24,7 +24,7 @@ import {
 import type { RoutingTarget } from './mentionRouter.js';
 import {
   buildOrchestratorPrompt,
-  buildSoloChatTurnInstructions,
+  buildSoloChatBootstrapInstructions,
   buildCatPrompt,
   MAX_PROMPT_RECENT_MESSAGES,
 } from './prompts.js';
@@ -391,6 +391,62 @@ function sliceRecentContextForTarget(
   return relevantMessages.slice(-MAX_RECENT_CONTEXT_MESSAGES);
 }
 
+function messagesBeforeSource(
+  channel: ChatChannelView,
+  sourceMessageId: string,
+): ChatMessage[] {
+  const sourceIndex = channel.messages.findIndex((message) => message.id === sourceMessageId);
+  if (sourceIndex <= 0) {
+    return [];
+  }
+
+  return channel.messages.slice(0, sourceIndex);
+}
+
+function hasVisibleResponseFromCurrentSession(
+  channel: ChatChannelView,
+  target: RoutingTarget,
+  sourceMessageId: string,
+): boolean {
+  if (!target.sessionId) {
+    return false;
+  }
+
+  return messagesBeforeSource(channel, sourceMessageId).some((message) => {
+    if (message.senderKind === 'system') {
+      return false;
+    }
+
+    if (message.metadata.sessionId !== target.sessionId) {
+      return false;
+    }
+
+    if (message.metadata.event !== 'runtime_response') {
+      return false;
+    }
+
+    if (target.participantKind === 'orchestrator') {
+      return message.metadata.targetKind === 'orchestrator';
+    }
+
+    return message.metadata.targetKind === 'cat'
+      && message.metadata.targetId === target.participantId;
+  });
+}
+
+function resolveSoloChatBootstrapInstructions(
+  channel: ChatChannelView,
+  request: DispatchRequest,
+): string | null {
+  if (hasVisibleResponseFromCurrentSession(channel, request.target, request.sourceMessage.id)) {
+    return null;
+  }
+
+  return buildSoloChatBootstrapInstructions(
+    messagesBeforeSource(channel, request.sourceMessage.id),
+  );
+}
+
 function describeRoutingReason(
   channel: ChatChannelView,
   sourceParticipant: RoomRoutingParticipantRef | null,
@@ -442,11 +498,7 @@ export function buildPromptForTarget(
     if (isSoloChatChannel(channel)) {
       return {
         message: request.sourceMessage.body,
-        instructions: buildSoloChatTurnInstructions(
-          channel,
-          state.globalOrchestrator,
-          routingContext,
-        ),
+        instructions: resolveSoloChatBootstrapInstructions(channel, request),
       };
     }
     return {

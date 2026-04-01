@@ -167,22 +167,23 @@ export function buildOrchestratorPrompt(
   ]);
 }
 
-export function buildSoloChatTurnInstructions(
-  channel: ChatChannelView,
-  orchestrator: GlobalOrchestratorSummary,
-  routingContext?: PromptRoutingContext,
+export function buildSoloChatBootstrapInstructions(
+  priorMessages: ChatMessage[],
 ): string | null {
-  const transportGuidance = transportInstruction(routingContext?.transport);
-  const sections = [
-    orchestrator.systemPrompt || null,
-    transportGuidance,
-    (channel.repoPath || channel.chatCwd)
-      ? 'Before repo-specific work, check for AGENTS.md in the working directory if a repo path is available.'
-      : null,
-    languageInstruction(channel.responseLanguage),
-  ];
-  const joined = joinPromptSections(sections);
-  return joined || null;
+  const conversationalMessages = priorMessages
+    .filter((message) => message.senderKind !== 'system' && message.body.trim().length > 0)
+    .slice(-MAX_PROMPT_RECENT_MESSAGES);
+  if (conversationalMessages.length === 0) {
+    return null;
+  }
+
+  return joinPromptSections([
+    'Earlier chat context:',
+    conversationalMessages
+      .map((message) => `[${message.senderKind}:${message.senderName}] ${message.body}`)
+      .join('\n'),
+    'Current message follows separately.',
+  ]);
 }
 
 export function buildOrchestratorRewritePrompt(

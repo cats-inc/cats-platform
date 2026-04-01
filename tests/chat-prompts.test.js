@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   buildCatPrompt,
   buildOrchestratorPrompt,
-  buildSoloChatTurnInstructions,
+  buildSoloChatBootstrapInstructions,
 } from '../dist-server/products/chat/state/prompts.js';
 
 function createChannel() {
@@ -106,69 +106,34 @@ test('cat prompt omits blank transport sections when no transport context is pro
   assert.ok(!prompt.includes('\n\n\n'));
 });
 
-test('solo chat turn instructions contain only system prompt, language, and no persona', () => {
-  const channel = {
-    ...createChannel(),
-    composerMode: 'solo',
-  };
-  const instructions = buildSoloChatTurnInstructions(
-    channel,
-    createOrchestrator(),
-    { reason: '', recentMessages: [], transport: 'web' },
-  );
-
-  assert.ok(instructions);
-  assert.match(instructions, /Be helpful\./u);
-  assert.match(instructions, /Respond in English/u);
-  assert.ok(!instructions.includes('hidden chat assistant'));
-  assert.ok(!instructions.includes('Boss Cat'));
-  assert.ok(!instructions.includes('routing'));
-  assert.ok(!instructions.includes('room assistant'));
-  assert.ok(!instructions.includes('Recent messages'));
+test('solo chat bootstrap instructions are absent without prior conversational messages', () => {
+  assert.equal(buildSoloChatBootstrapInstructions([]), null);
 });
 
-test('solo chat turn instructions include AGENTS.md guidance when cwd is set', () => {
-  const channel = {
-    ...createChannel(),
-    composerMode: 'solo',
-    chatCwd: '/workspace/project',
-  };
-  const instructions = buildSoloChatTurnInstructions(
-    channel,
-    createOrchestrator(),
-  );
-
+test('solo chat bootstrap instructions include only earlier conversational context', () => {
+  const instructions = buildSoloChatBootstrapInstructions([
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: 'Started session.',
+    },
+    {
+      senderKind: 'user',
+      senderName: 'Kenny',
+      body: 'First turn',
+    },
+    {
+      senderKind: 'agent',
+      senderName: 'Orchestrator',
+      body: 'First reply',
+    },
+  ]);
   assert.ok(instructions);
-  assert.match(instructions, /AGENTS\.md/u);
-});
-
-test('solo chat turn instructions omit AGENTS.md guidance when no cwd', () => {
-  const channel = {
-    ...createChannel(),
-    composerMode: 'solo',
-    repoPath: null,
-    chatCwd: null,
-  };
-  const instructions = buildSoloChatTurnInstructions(
-    channel,
-    createOrchestrator(),
-  );
-
-  assert.ok(instructions);
+  assert.match(instructions, /Earlier chat context:/u);
+  assert.match(instructions, /\[user:Kenny\] First turn/u);
+  assert.match(instructions, /\[agent:Orchestrator\] First reply/u);
+  assert.ok(!instructions.includes('Runtime'));
   assert.ok(!instructions.includes('AGENTS.md'));
-});
-
-test('solo chat turn instructions include telegram guidance when transport is telegram', () => {
-  const channel = {
-    ...createChannel(),
-    composerMode: 'solo',
-  };
-  const instructions = buildSoloChatTurnInstructions(
-    channel,
-    createOrchestrator(),
-    { reason: '', recentMessages: [], transport: 'telegram' },
-  );
-
-  assert.ok(instructions);
-  assert.match(instructions, /Telegram/u);
+  assert.ok(!instructions.includes('Telegram'));
+  assert.ok(!instructions.includes('Respond in English'));
 });

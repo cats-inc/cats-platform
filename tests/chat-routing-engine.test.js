@@ -58,9 +58,9 @@ function createRuntimeStub(responder) {
       this.createdSessions.push({ ...input, id: session.id });
       return session;
     },
-    async sendMessage(sessionId, content) {
-      this.sentMessages.push({ sessionId, content });
-      return responder({ sessionId, content, sentMessages: this.sentMessages });
+    async sendMessage(sessionId, content, input) {
+      this.sentMessages.push({ sessionId, content, input });
+      return responder({ sessionId, content, input, sentMessages: this.sentMessages });
     },
     async closeSession(sessionId) {
       this.closedSessions.push(sessionId);
@@ -560,6 +560,72 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
   assert.equal(soloReplies[1]?.senderKind, 'agent');
   assert.equal(soloReplies[1]?.executionProvider, 'gemini');
   assert.equal(soloReplies[1]?.executionModel, 'gemini-default');
+  assert.equal(runtimeClient.sentMessages[0]?.content, 'First turn');
+  assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
+  assert.equal(runtimeClient.sentMessages[1]?.content, 'Second turn');
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /Earlier chat context:/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[user:User\] First turn/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[agent:Orchestrator\] response from session-1/u,
+  );
+});
+
+test('solo composer mode sends raw user text without default instructions on a stable session', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Keep the runtime message raw.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Hi',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+  );
+  await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    {
+      body: 'Follow-up',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+
+  assert.equal(runtimeClient.sentMessages.length, 2);
+  assert.equal(runtimeClient.sentMessages[0]?.content, 'Hi');
+  assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
+  assert.equal(runtimeClient.sentMessages[1]?.content, 'Follow-up');
+  assert.equal(runtimeClient.sentMessages[1]?.input?.instructions, undefined);
 });
 
 test('solo composer mode honors pending runtime memory flush hooks before restarting the session', async () => {
