@@ -74,9 +74,12 @@ function filterApplicableControls(
   const allowedKeys = new Set(
     advancedCatalog.controls
       .filter((control) =>
+        control.scope !== 'request'
+        && (
         !control.applicableEntryIds
         || control.applicableEntryIds.length === 0
-        || control.applicableEntryIds.includes(entryId))
+        || control.applicableEntryIds.includes(entryId)
+      ))
       .map((control) => control.key),
   );
   const entries = Object.entries(controls).filter(
@@ -279,6 +282,19 @@ export function resolveSelectedProviderInstance(
   return provider.defaultInstance ?? provider.instances[0]?.id ?? '';
 }
 
+export function isLegacyProviderModelTarget(input: {
+  catalog: ProviderModelCatalog;
+  model: string | null | undefined;
+  modelSelection?: ProviderModelSelection | null;
+}): boolean {
+  const normalizedModel = input.model?.trim() || '';
+  if (!normalizedModel || input.modelSelection) {
+    return false;
+  }
+
+  return !input.catalog.models.some((option) => option.id === normalizedModel);
+}
+
 export function resolveCatalogTargetSelection(input: {
   target: ProviderTargetSelection;
   catalog: ProviderModelCatalog;
@@ -287,9 +303,17 @@ export function resolveCatalogTargetSelection(input: {
   preserveCurrentSelection?: boolean;
 }): ProviderTargetSelection {
   const resolvedInstance = (input.catalog.instance ?? input.target.instance) || '';
+  const normalizedTargetModel = input.target.model?.trim() || '';
   const hasCurrentModel = input.catalog.models.some((option) => option.id === input.target.model);
+  const legacyModelTarget = isLegacyProviderModelTarget({
+    catalog: input.catalog,
+    model: input.target.model,
+    modelSelection: input.target.modelSelection,
+  });
   const resolvedModel = input.preserveCurrentModel && hasCurrentModel
     ? input.target.model
+    : input.preserveCurrentModel && legacyModelTarget
+      ? normalizedTargetModel
     : resolveProviderCatalogDefaultModel(input.catalog);
   const advancedCatalog = input.advancedCatalog ?? null;
   const preserveCurrentSelection = input.preserveCurrentSelection ?? input.preserveCurrentModel;
@@ -337,6 +361,16 @@ export function resolveCatalogTargetSelection(input: {
   const resolvedWarnings = advancedCatalog?.warnings.length
     ? [...advancedCatalog.warnings]
     : [];
+
+  if (legacyModelTarget && input.preserveCurrentModel && !requestedSelection) {
+    return {
+      provider: input.target.provider,
+      instance: resolvedInstance,
+      model: normalizedTargetModel,
+      modelSelection: null,
+      modelResolution: null,
+    };
+  }
 
   return {
     provider: input.target.provider,

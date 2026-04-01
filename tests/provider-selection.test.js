@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  isLegacyProviderModelTarget,
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
 } from '../dist-server/shared/providerSelection.js';
@@ -92,6 +93,59 @@ test('resolveCatalogTargetSelection keeps a manual model choice for the same pro
   assert.equal(nextTarget.model, 'claude-opus-4-6');
 });
 
+test('isLegacyProviderModelTarget detects a raw model id that is not part of the runtime catalog', () => {
+  assert.equal(
+    isLegacyProviderModelTarget({
+      catalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'claude-opus-4-6',
+        source: 'config',
+        cache: null,
+        models: [
+          { id: 'claude-opus-4-6', label: 'Opus 4.6', default: true },
+          { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
+        ],
+        warnings: [],
+      },
+      model: 'claude-legacy-unknown',
+      modelSelection: null,
+    }),
+    true,
+  );
+});
+
+test('resolveCatalogTargetSelection preserves a custom legacy model id when the selector is in manual mode', () => {
+  const nextTarget = resolveCatalogTargetSelection({
+    target: {
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-legacy-unknown',
+      modelSelection: null,
+    },
+    catalog: {
+      provider: 'claude',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: 'claude-opus-4-6',
+      source: 'config',
+      cache: null,
+      models: [
+        { id: 'claude-opus-4-6', label: 'Opus 4.6', default: true },
+        { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
+      ],
+      warnings: [],
+    },
+    preserveCurrentModel: true,
+    preserveCurrentSelection: true,
+  });
+
+  assert.equal(nextTarget.model, 'claude-legacy-unknown');
+  assert.equal(nextTarget.modelSelection, null);
+  assert.equal(nextTarget.modelResolution, null);
+});
+
 test('resolveCatalogTargetSelection adopts advanced default selection presets and controls', () => {
   const nextTarget = resolveCatalogTargetSelection({
     target: {
@@ -180,6 +234,90 @@ test('resolveCatalogTargetSelection adopts advanced default selection presets an
     },
     supportTier: 'entry_only',
     warnings: ['Advanced catalog is runtime-owned.'],
+  });
+});
+
+test('resolveCatalogTargetSelection strips request-scoped controls from persisted selector state', () => {
+  const nextTarget = resolveCatalogTargetSelection({
+    target: {
+      provider: 'codex',
+      instance: 'main',
+      model: '',
+      modelSelection: null,
+    },
+    catalog: {
+      provider: 'codex',
+      backend: 'api',
+      instance: 'main',
+      defaultModel: 'gpt-5.4',
+      source: 'config',
+      cache: null,
+      models: [
+        { id: 'gpt-5.4', label: 'GPT-5.4', default: true },
+      ],
+      warnings: [],
+    },
+    advancedCatalog: normalizeProviderAdvancedModelCatalog({
+      provider: 'codex',
+      backend: 'api',
+      instance: 'main',
+      defaultModel: 'gpt-5.4',
+      source: 'config',
+      cache: null,
+      entries: [
+        { id: 'gpt-5.4', label: 'GPT-5.4', default: true },
+      ],
+      presets: [
+        {
+          id: 'balanced',
+          label: 'Balanced',
+          availability: 'supported',
+          applicableEntryIds: ['gpt-5.4'],
+          controlDefaults: {
+            'openai.reasoning_effort': 'medium',
+            'openai.max_output_tokens': 2048,
+          },
+        },
+      ],
+      controls: [
+        {
+          key: 'openai.reasoning_effort',
+          label: 'Reasoning effort',
+          kind: 'enum',
+          scope: 'session_default',
+          values: ['low', 'medium', 'high'],
+        },
+        {
+          key: 'openai.max_output_tokens',
+          label: 'Max output tokens',
+          kind: 'number',
+          scope: 'request',
+        },
+      ],
+      defaultSelection: {
+        entryMode: 'auto',
+        entryId: 'gpt-5.4',
+        presetId: 'balanced',
+        controls: {
+          'openai.reasoning_effort': 'medium',
+          'openai.max_output_tokens': 2048,
+        },
+      },
+      support: {
+        tier: 'full',
+      },
+      warnings: [],
+    }, 'codex'),
+    preserveCurrentModel: false,
+  });
+
+  assert.deepEqual(nextTarget.modelSelection, {
+    entryMode: 'auto',
+    entryId: 'gpt-5.4',
+    presetId: 'balanced',
+    controls: {
+      'openai.reasoning_effort': 'medium',
+    },
   });
 });
 

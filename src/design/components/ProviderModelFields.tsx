@@ -19,6 +19,7 @@ import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEve
 import {
   cloneProviderModelSelection,
   createExplicitProviderModelSelection,
+  isLegacyProviderModelTarget,
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
   sameProviderModelSelection,
@@ -109,6 +110,41 @@ function buildSelectionForEntry(
   });
 }
 
+export const CUSTOM_LEGACY_MODEL_VALUE = '__custom_legacy_model__';
+
+export function resolveProviderSupportBadge(
+  supportTier: ProviderAdvancedModelCatalog['support']['tier'] | null | undefined,
+): {
+  label: string;
+  tone: 'advanced' | 'catalog' | 'readOnly';
+} {
+  if (supportTier === 'full') {
+    return { label: 'Advanced', tone: 'advanced' };
+  }
+  if (supportTier === 'read_only') {
+    return { label: 'Read-only', tone: 'readOnly' };
+  }
+  return { label: 'Catalog', tone: 'catalog' };
+}
+
+export function listPersistentControlOptions(
+  controls: ProviderAdvancedCatalogControl[],
+  entryId: string,
+): ProviderAdvancedCatalogControl[] {
+  return controls.filter((control) =>
+    control.scope !== 'request'
+    && controlAppliesToEntry(control, entryId));
+}
+
+export function countRequestScopedControls(
+  controls: ProviderAdvancedCatalogControl[],
+  entryId: string,
+): number {
+  return controls.filter((control) =>
+    control.scope === 'request'
+    && controlAppliesToEntry(control, entryId)).length;
+}
+
 export function shouldDeferCatalogTargetReconciliation(input: {
   catalogSource: ProviderModelCatalog['source'];
   advancedCatalogSource: ProviderAdvancedModelCatalog['source'];
@@ -167,6 +203,7 @@ export function ProviderModelFields({
   const [advancedCatalog, setAdvancedCatalog] = useState<ProviderAdvancedModelCatalog>(() =>
     createStaticProviderAdvancedModelCatalog(provider),
   );
+  const [legacyManualTargetKey, setLegacyManualTargetKey] = useState<string | null>(null);
   const manualSelectionTargetKey = useRef<string | null>(null);
   const previousTargetKey = useRef<string>('');
   const onTargetChangeRef = useRef(onTargetChange);
@@ -218,12 +255,32 @@ export function ProviderModelFields({
     ? advancedCatalog
     : fallbackAdvancedCatalog;
   const targetKey = `${provider}::${resolvedInstance}`;
-  const preserveExistingSelection = manualSelectionTargetKey.current === targetKey || Boolean(modelSelection);
+  const persistedLegacyModelTarget = isLegacyProviderModelTarget({
+    catalog: effectiveCatalog,
+    model,
+    modelSelection,
+  });
+  const entryOptions = effectiveAdvancedCatalog.entries.length > 0
+    ? effectiveAdvancedCatalog.entries
+    : effectiveCatalog.models;
+  const noCatalogEntries = entryOptions.length === 0;
+  const isLegacyModelTarget =
+    noCatalogEntries
+    || legacyManualTargetKey === targetKey
+    || persistedLegacyModelTarget;
+  const hasBlankLegacyDraft =
+    legacyManualTargetKey === targetKey
+    && (model?.trim() || '').length === 0
+    && !modelSelection;
+  const preserveExistingSelection = manualSelectionTargetKey.current === targetKey
+    || Boolean(modelSelection)
+    || isLegacyModelTarget;
 
   useEffect(() => {
     if (previousTargetKey.current !== targetKey) {
       previousTargetKey.current = targetKey;
       manualSelectionTargetKey.current = null;
+      setLegacyManualTargetKey(null);
     }
     if (resolvedInstance !== instance) {
       onTargetChangeRef.current({
@@ -276,7 +333,11 @@ export function ProviderModelFields({
   ]);
 
   useEffect(() => {
-    if (effectiveCatalog.models.length === 0) {
+    if (effectiveCatalog.models.length === 0 && !hasBlankLegacyDraft) {
+      return;
+    }
+
+    if (hasBlankLegacyDraft) {
       return;
     }
 
@@ -320,6 +381,7 @@ export function ProviderModelFields({
     resolvedInstance,
     preserveExistingSelection,
     targetKey,
+    hasBlankLegacyDraft,
   ]);
 
   const instanceOptions = selectedProvider.instances.some((option) => option.id === resolvedInstance)
@@ -343,20 +405,28 @@ export function ProviderModelFields({
   const selectedInstanceCapabilitySummary = formatProviderEventCapabilitiesSummary(
     selectedInstanceCapabilities,
   );
-  const entryOptions = effectiveAdvancedCatalog.entries.length > 0
-    ? effectiveAdvancedCatalog.entries
-    : effectiveCatalog.models;
-  const selectedEntryId = entryOptions.some((option) => option.id === model)
+  const selectedCatalogEntryId = entryOptions.some((option) => option.id === model)
     ? model
     : entryOptions[0]?.id ?? '';
-  const presetOptions = effectiveAdvancedCatalog.presets.filter((preset) =>
-    presetAppliesToEntry(preset, selectedEntryId));
-  const selectedPresetId = presetOptions.some((preset) => preset.id === modelSelection?.presetId)
+  const selectedEntryId = isLegacyModelTarget ? CUSTOM_LEGACY_MODEL_VALUE : (
+    selectedCatalogEntryId || CUSTOM_LEGACY_MODEL_VALUE
+  );
+  const presetOptions = !isLegacyModelTarget
+    ? effectiveAdvancedCatalog.presets.filter((preset) =>
+      presetAppliesToEntry(preset, selectedCatalogEntryId))
+    : [];
+  const selectedPresetId = !isLegacyModelTarget
+    && presetOptions.some((preset) => preset.id === modelSelection?.presetId)
     ? modelSelection?.presetId ?? ''
     : '';
-  const controlOptions = effectiveAdvancedCatalog.controls.filter((control) =>
-    controlAppliesToEntry(control, selectedEntryId));
+  const controlOptions = !isLegacyModelTarget
+    ? listPersistentControlOptions(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
+    : [];
+  const requestScopedControlCount = !isLegacyModelTarget
+    ? countRequestScopedControls(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
+    : 0;
   const controlValues = modelSelection?.controls ?? {};
+  const supportBadge = resolveProviderSupportBadge(effectiveAdvancedCatalog.support.tier);
 
   function emitSelection(next: {
     model?: string;
@@ -364,15 +434,27 @@ export function ProviderModelFields({
     presetId?: string | null;
     controls?: Record<string, ProviderAdvancedControlValue> | undefined;
   }): void {
-    const nextModel = next.model ?? selectedEntryId;
+    const nextModel = next.model ?? selectedCatalogEntryId;
     const nextControls = next.controls;
     const nextPresetId = next.presetId ?? null;
     manualSelectionTargetKey.current = targetKey;
+    setLegacyManualTargetKey(null);
     onTargetChange({
       provider,
       instance: next.instance ?? resolvedInstance,
       model: nextModel,
       modelSelection: buildSelectionForEntry(nextModel, nextPresetId, nextControls),
+    });
+  }
+
+  function emitLegacyModel(nextModel: string, nextInstance?: string): void {
+    manualSelectionTargetKey.current = targetKey;
+    setLegacyManualTargetKey(targetKey);
+    onTargetChange({
+      provider,
+      instance: nextInstance ?? resolvedInstance,
+      model: nextModel,
+      modelSelection: null,
     });
   }
 
@@ -388,6 +470,7 @@ export function ProviderModelFields({
               ?? createFallbackProvider(event.target.value);
             const nextInstance = resolveSelectedProviderInstance(nextProvider, '');
             manualSelectionTargetKey.current = null;
+            setLegacyManualTargetKey(null);
             onTargetChange({
               provider: nextProvider.id,
               instance: nextInstance,
@@ -411,6 +494,7 @@ export function ProviderModelFields({
             value={resolvedInstance}
             onChange={(event) => {
               manualSelectionTargetKey.current = null;
+              setLegacyManualTargetKey(null);
               onTargetChange({
                 provider,
                 instance: event.target.value,
@@ -433,11 +517,20 @@ export function ProviderModelFields({
         </span>
       ) : null}
       <label className="fieldLabel">
-        <span>Model</span>
+        <div className="fieldLabelInline">
+          <span>Model</span>
+          <span className={`providerSupportBadge providerSupportBadge${supportBadge.tone}`}>
+            {supportBadge.label}
+          </span>
+        </div>
         <select
           className="textInput"
           value={selectedEntryId}
           onChange={(event) => {
+            if (event.target.value === CUSTOM_LEGACY_MODEL_VALUE) {
+              emitLegacyModel(persistedLegacyModelTarget ? model : '');
+              return;
+            }
             emitSelection({
               model: event.target.value,
               presetId: null,
@@ -451,14 +544,32 @@ export function ProviderModelFields({
               {option.status ? ` (${option.status})` : ''}
             </option>
           ))}
+          <option value={CUSTOM_LEGACY_MODEL_VALUE}>Custom legacy model...</option>
         </select>
       </label>
-      {presetOptions.length > 0 ? (
+      {isLegacyModelTarget ? (
+        <label className="fieldLabel">
+          <span>Legacy Model ID</span>
+          <input
+            className="textInput"
+            type="text"
+            value={model}
+            placeholder="e.g. claude-sonnet-4-6"
+            onChange={(event) => {
+              emitLegacyModel(event.target.value);
+            }}
+          />
+          <span className="fieldHint">
+            Manual model id passthrough. Runtime resolves this as the legacy `model` field, not a structured entry/preset selection.
+          </span>
+        </label>
+      ) : (
         <label className="fieldLabel">
           <span>Mode</span>
           <select
             className="textInput"
             value={selectedPresetId}
+            disabled={presetOptions.length === 0}
             onChange={(event) => {
               const preset = presetOptions.find((option) => option.id === event.target.value) ?? null;
               emitSelection({
@@ -469,7 +580,7 @@ export function ProviderModelFields({
               });
             }}
           >
-            <option value="">Standard</option>
+            <option value="">{presetOptions.length > 0 ? 'Standard' : 'Standard only'}</option>
             {presetOptions.map((preset) => (
               <option
                 key={preset.id}
@@ -487,9 +598,13 @@ export function ProviderModelFields({
               {presetOptions.find((preset) => preset.id === selectedPresetId)?.description
                 ?? 'Extra tuning for this model.'}
             </span>
+          ) : presetOptions.length === 0 ? (
+            <span className="fieldHint">
+              This provider target exposes only the base catalog entry for persisted chat/session settings.
+            </span>
           ) : null}
         </label>
-      ) : null}
+      )}
       {controlOptions.map((control) => {
         const value = controlValues[control.key];
         if (control.kind === 'boolean') {
@@ -500,13 +615,17 @@ export function ProviderModelFields({
                 className="textInput"
                 value={serializeControlInputValue(value)}
                 onChange={(event) => {
-                  const nextControls = {
-                    ...controlValues,
-                    [control.key]: parseControlInputValue(control, event.target.value),
-                  };
+                  const nextControls = event.target.value
+                    ? {
+                        ...controlValues,
+                        [control.key]: parseControlInputValue(control, event.target.value),
+                      }
+                    : Object.fromEntries(
+                        Object.entries(controlValues).filter(([key]) => key !== control.key),
+                      );
                   emitSelection({
                     presetId: selectedPresetId || null,
-                    controls: nextControls,
+                    controls: Object.keys(nextControls).length > 0 ? nextControls : undefined,
                   });
                 }}
               >
@@ -567,7 +686,7 @@ export function ProviderModelFields({
               min={control.kind === 'number' ? control.minimum : undefined}
               max={control.kind === 'number' ? control.maximum : undefined}
               step={control.kind === 'number' ? control.step ?? 1 : undefined}
-              placeholder={control.scope === 'request' ? 'Optional request override' : 'Optional'}
+              placeholder="Optional"
               onChange={(event) => {
                 const nextRaw = event.target.value;
                 const nextControls = nextRaw
@@ -585,14 +704,16 @@ export function ProviderModelFields({
               }}
             />
             {control.description ? (
-              <span className="fieldHint">
-                {control.description}
-                {control.scope === 'request' ? ' Runtime may treat this as request-scoped.' : ''}
-              </span>
+              <span className="fieldHint">{control.description}</span>
             ) : null}
           </label>
         );
       })}
+      {requestScopedControlCount > 0 ? (
+        <span className="fieldHint providerCatalogHint">
+          Request-only runtime overrides are hidden here because this selector persists chat/session defaults.
+        </span>
+      ) : null}
       {effectiveAdvancedCatalog.warnings.length > 0 ? (
         <span className="fieldHint providerCatalogHint">
           {effectiveAdvancedCatalog.warnings[0]}

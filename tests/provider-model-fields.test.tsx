@@ -3,6 +3,9 @@ import test from 'node:test';
 
 import {
   catalogMatchesTarget,
+  countRequestScopedControls,
+  listPersistentControlOptions,
+  resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
   shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
@@ -130,4 +133,45 @@ test('unknown capability truth stays silent in provider hints', () => {
     }),
     null,
   );
+});
+
+test('support badge labels match runtime catalog support tiers', () => {
+  assert.deepEqual(resolveProviderSupportBadge('full'), {
+    label: 'Advanced',
+    tone: 'advanced',
+  });
+  assert.deepEqual(resolveProviderSupportBadge('entry_only'), {
+    label: 'Catalog',
+    tone: 'catalog',
+  });
+  assert.deepEqual(resolveProviderSupportBadge('read_only'), {
+    label: 'Read-only',
+    tone: 'readOnly',
+  });
+});
+
+test('persistent selector controls exclude request-only overrides for the chosen entry', () => {
+  const controls = [
+    {
+      key: 'openai.reasoning_effort',
+      label: 'Reasoning effort',
+      kind: 'enum',
+      scope: 'session_default',
+      values: ['low', 'medium', 'high'],
+      applicableEntryIds: ['gpt-5.4'],
+    },
+    {
+      key: 'openai.max_output_tokens',
+      label: 'Max output tokens',
+      kind: 'number',
+      scope: 'request',
+      applicableEntryIds: ['gpt-5.4'],
+    },
+  ];
+
+  assert.deepEqual(
+    listPersistentControlOptions(controls, 'gpt-5.4').map((control) => control.key),
+    ['openai.reasoning_effort'],
+  );
+  assert.equal(countRequestScopedControls(controls, 'gpt-5.4'), 1);
 });
