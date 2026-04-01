@@ -513,6 +513,7 @@ export interface SendChannelMessageInput {
   pendingModel?: string | null;
   pendingInstance?: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
+  messageMetadata?: Record<string, unknown>;
   choiceResponse?: ChatMessageChoiceResponse | null;
 }
 

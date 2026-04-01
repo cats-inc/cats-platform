@@ -836,7 +836,7 @@ export default function App() {
       return;
     }
 
-    setBusy('concurrent:dispatch');
+    setBusy('concurrent:relay');
     setFeedback('');
     try {
       const dispatch = await relayConcurrentChatMessage(selectedConcurrentGroup.id, {

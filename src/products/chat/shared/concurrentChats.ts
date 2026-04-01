@@ -3,6 +3,7 @@ import type {
   ConcurrentChatTarget,
 } from '../api/contracts.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
+import { parseMentionsWithPositions } from '../../../core/mentionParsing.js';
 
 export interface ConcurrentChatRelayCommandDefinition {
   id: ConcurrentChatRelayCommandKind;
@@ -76,16 +77,75 @@ export function normalizeConcurrentRelayCommand(
     : null;
 }
 
+function formatRelayMessageId(sourceMessageId: string): string {
+  const normalized = sourceMessageId.trim();
+  return normalized.length > 8 ? normalized.slice(0, 8) : normalized;
+}
+
+function formatRelayTargetLabels(labels: string[]): string {
+  if (labels.length === 0) {
+    return 'no chats';
+  }
+  if (labels.length === 1) {
+    return labels[0]!;
+  }
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`;
+  }
+
+  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+}
+
+export function buildConcurrentRelayOutgoingNote(input: {
+  command: ConcurrentChatRelayCommandKind;
+  sourceMessageId: string;
+  targetMemberLabels: string[];
+}): string {
+  const commandLabel = findConcurrentRelayCommand(input.command).label;
+  return `Shared reply #${formatRelayMessageId(input.sourceMessageId)} via ${commandLabel} to ${
+    formatRelayTargetLabels(input.targetMemberLabels)
+  }.`;
+}
+
+export function buildConcurrentRelayIncomingNote(input: {
+  command: ConcurrentChatRelayCommandKind;
+  sourceMessageId: string;
+  sourceMemberLabel: string;
+}): string {
+  const commandLabel = findConcurrentRelayCommand(input.command).label;
+  return `Received ${commandLabel} from ${input.sourceMemberLabel} for reply #${
+    formatRelayMessageId(input.sourceMessageId)
+  }.`;
+}
+
+function escapeRelayQuotedMentions(body: string): string {
+  const positions = parseMentionsWithPositions(body).positions;
+  if (positions.length === 0) {
+    return body;
+  }
+
+  let cursor = 0;
+  let escaped = '';
+  for (const position of positions) {
+    escaped += body.slice(cursor, position.start);
+    escaped += `@\u200B${position.name}`;
+    cursor = position.end;
+  }
+  escaped += body.slice(cursor);
+  return escaped;
+}
+
 export function buildConcurrentRelayPrompt(input: {
   command: ConcurrentChatRelayCommandKind;
   sourceMemberLabel: string;
   sourceBody: string;
 }): string {
+  const sanitizedSourceBody = escapeRelayQuotedMentions(input.sourceBody);
   const sourceBlock = [
     '[Reply to review]',
     `Source: ${input.sourceMemberLabel}`,
     '---',
-    input.sourceBody.trim(),
+    sanitizedSourceBody.trim(),
     '---',
   ].join('\n');
 

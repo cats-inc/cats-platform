@@ -197,7 +197,10 @@ export function ChatView({
       .filter((channel): channel is AppShellPayload['chat']['channels'][number] => channel != null),
     [compareMembers, payload.chat.channels],
   );
-  const compareDispatchBusy = busy === 'concurrent:ack' || busy === 'concurrent:dispatch';
+  const compareDispatchBusy =
+    busy === 'concurrent:ack'
+    || busy === 'concurrent:dispatch'
+    || busy === 'concurrent:relay';
   const compareRoutingBusy = compareGroupChannels.some((channel) =>
     channel.routingStatus === 'running' || channel.routingStatus === 'blocked',
   );

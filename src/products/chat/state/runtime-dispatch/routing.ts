@@ -166,12 +166,15 @@ export async function beginChannelMessageDispatch(
     },
     now,
     {
-      metadata: payload.choiceResponse
-        ? {
-            event: 'choice_response',
-            sourceMessageId: payload.choiceResponse.sourceMessageId,
-          }
-        : {},
+      metadata: {
+        ...(payload.messageMetadata ?? {}),
+        ...(payload.choiceResponse
+          ? {
+              event: 'choice_response',
+              sourceMessageId: payload.choiceResponse.sourceMessageId,
+            }
+          : {}),
+      },
       choiceResponse: payload.choiceResponse,
     },
   ).state;

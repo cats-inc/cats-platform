@@ -21,15 +21,23 @@ test('shouldConnectLiveIndicatorStream skips optimistic draft channels', () => {
 });
 
 test('shouldConnectLiveIndicatorStream requires an active send on a real channel', () => {
+  const channelId = '12345678-1234-4234-8234-123456789abc';
   assert.equal(
-    shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', 'message:prepare'),
+    shouldConnectLiveIndicatorStream(channelId, 'message:prepare'),
     false,
   );
-  assert.equal(shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', ''), false);
+  assert.equal(shouldConnectLiveIndicatorStream(channelId, ''), false);
   assert.equal(shouldConnectLiveIndicatorStream(null, 'message:send'), false);
   assert.equal(
-    shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', 'message:send'),
+    shouldConnectLiveIndicatorStream(channelId, `message:send:${channelId}`),
     true,
+  );
+});
+
+test('shouldConnectLiveIndicatorStream ignores parallel relay busy state on the source channel', () => {
+  assert.equal(
+    shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', 'concurrent:relay'),
+    false,
   );
 });
 

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildConcurrentRelayIncomingNote,
+  buildConcurrentRelayOutgoingNote,
   buildConcurrentRelayPrompt,
   normalizeConcurrentRelayCommand,
 } from '../dist-server/products/chat/shared/concurrentChats.js';
@@ -24,5 +26,40 @@ test('buildConcurrentRelayPrompt throws for unsupported relay commands', () => {
       sourceBody: 'Test body',
     }),
     /Unsupported concurrent relay command/u,
+  );
+});
+
+test('buildConcurrentRelayPrompt escapes quoted mentions so relay routing does not parse them', () => {
+  const prompt = buildConcurrentRelayPrompt({
+    command: 'check_this',
+    sourceMemberLabel: 'Claude · opus',
+    sourceBody: 'Check what @anthropic-ai suggested and compare with @OpenAI.',
+  });
+
+  assert.equal(prompt.includes('@anthropic-ai'), false);
+  assert.equal(prompt.includes('@OpenAI'), false);
+  assert.equal(prompt.includes('@\u200Banthropic-ai'), true);
+  assert.equal(prompt.includes('@\u200BOpenAI'), true);
+});
+
+test('buildConcurrentRelayOutgoingNote records which reply, command, and targets were shared', () => {
+  assert.equal(
+    buildConcurrentRelayOutgoingNote({
+      command: 'improve_this',
+      sourceMessageId: '1234567890abcdef',
+      targetMemberLabels: ['Gemini-CLI', 'Codex-CLI'],
+    }),
+    'Shared reply #12345678 via Improve this to Gemini-CLI and Codex-CLI.',
+  );
+});
+
+test('buildConcurrentRelayIncomingNote records which command was received from which source', () => {
+  assert.equal(
+    buildConcurrentRelayIncomingNote({
+      command: 'synthesize_this',
+      sourceMessageId: '1234567890abcdef',
+      sourceMemberLabel: 'Claude-CLI',
+    }),
+    'Received Synthesize this from Claude-CLI for reply #12345678.',
   );
 });
