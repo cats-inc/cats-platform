@@ -523,8 +523,13 @@ export class CatsRuntimeClient implements RuntimeClient {
       id: String(data.id ?? ''),
       provider: String(data.providerName ?? input.provider),
       model: typeof data.model === 'string' ? data.model : input.model?.trim() || null,
-      modelSelection: parseProviderModelSelection(data.modelSelection),
-      modelResolution: parseProviderModelResolution(data.modelResolution),
+      modelSelection:
+        parseProviderModelSelection(data.modelSelection)
+        ?? input.modelSelection
+        ?? null,
+      modelResolution:
+        parseProviderModelResolution(data.modelResolution)
+        ?? null,
       status: typeof data.status === 'string' ? data.status : 'initializing',
       cwd: typeof data.cwd === 'string' ? data.cwd : input.cwd?.trim() || null,
       skills: data.skills && typeof data.skills === 'object'

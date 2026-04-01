@@ -217,3 +217,111 @@ test('runtime setup scan and apply use the extended setup timeout budget', async
 
   assert.deepEqual(timeoutCalls, [120000, 5000, 120000, 5000]);
 });
+
+test('runtime client preserves the runtime-sanitized modelSelection returned from session creation', async () => {
+  const requests = [];
+  let session;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    const body = typeof init.body === 'string'
+      ? JSON.parse(init.body)
+      : null;
+
+    requests.push({
+      url,
+      method: init.method ?? 'GET',
+      body,
+    });
+
+    if (url.endsWith('/sessions')) {
+      return new Response(JSON.stringify({
+        id: 'session-1',
+        providerName: 'codex',
+        model: 'gpt-5.4',
+        modelSelection: {
+          entryMode: 'auto',
+          entryId: 'gpt-5.4',
+          controls: {
+            'openai.reasoning_effort': 'high',
+          },
+        },
+        modelResolution: {
+          entryId: 'gpt-5.4',
+          model: 'gpt-5.4',
+          entryMode: 'auto',
+          controls: {
+            'openai.reasoning_effort': 'high',
+          },
+          supportTier: 'entry_only',
+          warnings: [
+            'Preset \'deep_reasoning\' is no longer available for codex/api/main; continuing without it.',
+          ],
+        },
+        status: 'ready',
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+
+    session = await client.createSession({
+      provider: 'codex',
+      instance: 'main',
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryMode: 'auto',
+        entryId: 'gpt-5.4',
+        presetId: 'deep_reasoning',
+        controls: {
+          'openai.reasoning_effort': 'high',
+        },
+      },
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(requests.length, 1);
+  assert.deepEqual(requests[0].body, {
+    provider: 'codex',
+    permissionMode: 'skip',
+    instance: 'main',
+    model: 'gpt-5.4',
+    modelSelection: {
+      entryMode: 'auto',
+      entryId: 'gpt-5.4',
+      presetId: 'deep_reasoning',
+      controls: {
+        'openai.reasoning_effort': 'high',
+      },
+    },
+  });
+  assert.deepEqual(session.modelSelection, {
+    entryMode: 'auto',
+    entryId: 'gpt-5.4',
+    controls: {
+      'openai.reasoning_effort': 'high',
+    },
+  });
+  assert.deepEqual(session.modelResolution, {
+    entryId: 'gpt-5.4',
+    model: 'gpt-5.4',
+    entryMode: 'auto',
+    controls: {
+      'openai.reasoning_effort': 'high',
+    },
+    supportTier: 'entry_only',
+    warnings: [
+      'Preset \'deep_reasoning\' is no longer available for codex/api/main; continuing without it.',
+    ],
+  });
+});

@@ -24,9 +24,12 @@ import {
   appendMessage,
   buildChannelView,
   requireChannel,
+  setChannelCatExecutionTarget,
   setChannelChatCwd,
   setChannelOrchestratorLease,
+  setChannelPendingExecutionTarget,
   setChannelRoomRouting,
+  setGlobalOrchestratorExecutionTarget,
 } from '../model/index.js';
 import { resolveRoomDefaultRoutingTarget, type RoutingTarget } from '../mentionRouter.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
@@ -383,6 +386,34 @@ export async function ensureTargetSession(
         attachmentWorkspacePath,
         targetWorkspacePath: session.cwd,
       });
+      nextState = channel.composerMode === 'solo' && channel.pendingProvider
+        ? setChannelPendingExecutionTarget(
+          nextState,
+          channelId,
+          {
+            provider: session.provider,
+            instance: sessionTarget.instance,
+            model: session.model ?? sessionTarget.model,
+            modelSelection:
+              session.modelSelection
+              ?? sessionTarget.modelSelection
+              ?? null,
+          },
+          now,
+        )
+        : setGlobalOrchestratorExecutionTarget(
+          nextState,
+          {
+            provider: session.provider,
+            instance: sessionTarget.instance,
+            model: session.model ?? sessionTarget.model,
+            modelSelection:
+              session.modelSelection
+              ?? sessionTarget.modelSelection
+              ?? null,
+          },
+          now,
+        );
       nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
       if (!spawnCwd && session.cwd) {
         nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
@@ -451,6 +482,21 @@ export async function ensureTargetSession(
       attachmentWorkspacePath,
       targetWorkspacePath: session.cwd,
     });
+    nextState = setChannelCatExecutionTarget(
+      nextState,
+      channelId,
+      target.participantId,
+      {
+        provider: session.provider,
+        instance: cat.execution.target.instance,
+        model: session.model ?? cat.execution.target.model,
+        modelSelection:
+          session.modelSelection
+          ?? cat.execution.modelSelection
+          ?? null,
+      },
+      now,
+    );
     nextState = setStartedSession(
       nextState,
       channelId,

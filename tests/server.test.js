@@ -4464,6 +4464,73 @@ test('PATCH /api/preferences wakes the selected Boss Chat entry participant', as
   });
 });
 
+test('room-entry wake persists a runtime-sanitized solo model selection after dropping a stale preset', async () => {
+  const runtimeClient = createRuntimeStub();
+  runtimeClient.createSession = async function createSession(input) {
+    const sessionId = `session-${this.createdSessions.length + 1}`;
+    this.createdSessions.push({ ...input, id: sessionId });
+    return {
+      id: sessionId,
+      provider: input.provider,
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryMode: 'auto',
+        entryId: 'gpt-5.4',
+        controls: {
+          'openai.reasoning_effort': 'high',
+        },
+      },
+      status: 'ready',
+      cwd: input.cwd ?? path.join(os.tmpdir(), '.cats-runtime', 'sessions', sessionId),
+    };
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Sanitize Solo Preset',
+        topic: 'Wake should clean stale presets from solo chats.',
+        composerMode: 'solo',
+        pendingProvider: 'codex',
+        pendingModel: 'gpt-5.4',
+        pendingModelSelection: {
+          entryMode: 'auto',
+          presetId: 'deep_reasoning',
+          controls: {
+            'openai.reasoning_effort': 'high',
+          },
+        },
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const updatePrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selectedChannelId: channelId }),
+    });
+    assert.equal(updatePrefsResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.deepEqual(channelPayload.channel.pendingModelSelection, {
+      entryMode: 'auto',
+      entryId: 'gpt-5.4',
+      controls: {
+        'openai.reasoning_effort': 'high',
+      },
+    });
+  });
+});
+
 test('concurrent room-entry wake and first send reuse the same orchestrator session', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
