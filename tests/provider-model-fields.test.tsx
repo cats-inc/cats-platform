@@ -8,6 +8,7 @@ import {
   listPersistentControlOptions,
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
+  sanitizePersistentTargetSelection,
   shouldTreatPersistedTargetAsLegacyModel,
   shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
@@ -211,4 +212,66 @@ test('persistent selector controls exclude request-only overrides for the chosen
       'openai.reasoning_effort': 'medium',
     },
   );
+});
+
+test('persistent selector sanitization keeps request controls out of modelSelection but preserves modelResolution', () => {
+  const controls = [
+    {
+      key: 'openai.reasoning_effort',
+      label: 'Reasoning effort',
+      kind: 'enum',
+      scope: 'session_default',
+      values: [
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+      ],
+      applicableEntryIds: ['gpt-5.4'],
+    },
+    {
+      key: 'openai.max_output_tokens',
+      label: 'Max output tokens',
+      kind: 'number',
+      scope: 'request',
+      applicableEntryIds: ['gpt-5.4'],
+    },
+  ];
+
+  const sanitized = sanitizePersistentTargetSelection({
+    controls,
+    target: {
+      provider: 'codex',
+      instance: 'main',
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'auto',
+        presetId: 'balanced',
+        controls: {
+          'openai.reasoning_effort': 'medium',
+          'openai.max_output_tokens': 2048,
+        },
+      },
+      modelResolution: {
+        entryId: 'gpt-5.4',
+        model: 'gpt-5.4',
+        entryMode: 'auto',
+        presetId: 'balanced',
+        controls: {
+          'openai.reasoning_effort': 'medium',
+          'openai.max_output_tokens': 2048,
+        },
+        supportTier: 'full',
+        warnings: [],
+      },
+    },
+  });
+
+  assert.deepEqual(sanitized.modelSelection?.controls, {
+    'openai.reasoning_effort': 'medium',
+  });
+  assert.deepEqual(sanitized.modelResolution?.controls, {
+    'openai.reasoning_effort': 'medium',
+    'openai.max_output_tokens': 2048,
+  });
 });

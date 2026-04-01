@@ -17,6 +17,7 @@ import {
 } from '../../shared/providerCatalog.js';
 import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEventCapabilities.js';
 import {
+  cloneProviderModelResolution,
   cloneProviderModelSelection,
   createExplicitProviderModelSelection,
   isLegacyProviderModelTarget,
@@ -171,6 +172,33 @@ export function shouldTreatPersistedTargetAsLegacyModel(input: {
   }
 
   return isLegacyProviderModelTarget(input);
+}
+
+export function sanitizePersistentTargetSelection(input: {
+  target: ProviderTargetSelection;
+  controls: ProviderAdvancedCatalogControl[];
+}): ProviderTargetSelection {
+  const clonedSelection = cloneProviderModelSelection(input.target.modelSelection);
+  if (!clonedSelection) {
+    return input.target;
+  }
+
+  const sanitizedControls = filterPersistentControlValues(
+    input.controls,
+    clonedSelection.entryId ?? input.target.model,
+    clonedSelection.controls,
+  );
+  if (sanitizedControls) {
+    clonedSelection.controls = sanitizedControls;
+  } else {
+    delete clonedSelection.controls;
+  }
+
+  return {
+    ...input.target,
+    modelSelection: clonedSelection,
+    modelResolution: cloneProviderModelResolution(input.target.modelResolution),
+  };
 }
 
 export function shouldDeferCatalogTargetReconciliation(input: {
@@ -387,43 +415,10 @@ export function ProviderModelFields({
       preserveCurrentModel: preserveExistingSelection,
       preserveCurrentSelection: preserveExistingSelection,
     });
-    const sanitizedControls = nextTarget.modelSelection
-      ? filterPersistentControlValues(
-          effectiveAdvancedCatalog.controls,
-          nextTarget.modelSelection.entryId ?? nextTarget.model,
-          nextTarget.modelSelection.controls,
-        )
-      : undefined;
-    const sanitizedTarget = nextTarget.modelSelection
-      ? {
-          ...nextTarget,
-          modelSelection: {
-            ...(nextTarget.modelSelection.entryId
-              ? { entryId: nextTarget.modelSelection.entryId }
-              : {}),
-            entryMode: nextTarget.modelSelection.entryMode,
-            ...(nextTarget.modelSelection.presetId
-              ? { presetId: nextTarget.modelSelection.presetId }
-              : {}),
-            ...(sanitizedControls ? { controls: sanitizedControls } : {}),
-          },
-          modelResolution: nextTarget.modelResolution
-            ? {
-                entryId: nextTarget.modelResolution.entryId,
-                model: nextTarget.modelResolution.model,
-                entryMode: nextTarget.modelResolution.entryMode,
-                ...(nextTarget.modelResolution.presetId
-                  ? { presetId: nextTarget.modelResolution.presetId }
-                  : {}),
-                ...(sanitizedControls ? { controls: sanitizedControls } : {}),
-                ...(nextTarget.modelResolution.supportTier
-                  ? { supportTier: nextTarget.modelResolution.supportTier }
-                  : {}),
-                warnings: [...nextTarget.modelResolution.warnings],
-              }
-            : nextTarget.modelResolution,
-        }
-      : nextTarget;
+    const sanitizedTarget = sanitizePersistentTargetSelection({
+      target: nextTarget,
+      controls: effectiveAdvancedCatalog.controls,
+    });
 
     if (
       sanitizedTarget.instance !== instance
