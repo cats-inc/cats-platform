@@ -66,6 +66,13 @@ function requireConcurrentGroup(
   return group;
 }
 
+class RelayResponseSentError extends Error {
+  constructor() {
+    super('relay_response_sent');
+    this.name = 'RelayResponseSentError';
+  }
+}
+
 async function runConcurrentGroupMutation<T>(
   context: ChatApiRouteContext,
   groupId: string,
@@ -464,7 +471,7 @@ async function handleRelayConcurrentGroupMessage(
             'channel_not_in_compare_group',
             'The active chat is not part of this Parallel chat group.',
           );
-          throw new Error('response_sent');
+          throw new RelayResponseSentError();
         }
         if (!group.memberChannelIds.includes(body.sourceChannelId)) {
           sendRestError(
@@ -473,7 +480,7 @@ async function handleRelayConcurrentGroupMessage(
             'source_channel_not_in_compare_group',
             'The source chat is not part of this Parallel chat group.',
           );
-          throw new Error('response_sent');
+          throw new RelayResponseSentError();
         }
 
         const sourceChannel = requireChannel(state, body.sourceChannelId);
@@ -485,7 +492,7 @@ async function handleRelayConcurrentGroupMessage(
             'source_message_required',
             'The selected reply could not be relayed.',
           );
-          throw new Error('response_sent');
+          throw new RelayResponseSentError();
         }
 
         const targetChannelIds = body.targetPolicy === 'single'
@@ -503,7 +510,7 @@ async function handleRelayConcurrentGroupMessage(
             'compare_targets_required',
             'No parallel chat targets were selected for this relay.',
           );
-          throw new Error('response_sent');
+          throw new RelayResponseSentError();
         }
 
         const sourceMemberLabel = buildConcurrentChatMemberLabel({
@@ -626,7 +633,7 @@ async function handleRelayConcurrentGroupMessage(
     );
     sendJson(context.response, 200, response);
   } catch (error) {
-    if (error instanceof Error && error.message === 'response_sent') {
+    if (error instanceof RelayResponseSentError) {
       return;
     }
     handleRestError(context, error);

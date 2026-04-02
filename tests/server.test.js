@@ -4714,6 +4714,52 @@ test('parallel chat first send reuses member sessions across route wake and late
   });
 });
 
+test('parallel chat relay returns a validation error without relying on magic-string control flow', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createGroupResponse = await fetch(`${baseUrl}/api/concurrent-groups`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Parallel Relay Validation',
+        targets: [
+          { provider: 'claude', instance: 'native' },
+          { provider: 'codex', instance: 'native' },
+        ],
+      }),
+    });
+    assert.equal(createGroupResponse.status, 201);
+    const createGroupPayload = await createGroupResponse.json();
+    const groupId = createGroupPayload.group.id;
+    const sourceChannelId = createGroupPayload.group.memberChannelIds[0];
+
+    const relayResponse = await fetch(`${baseUrl}/api/concurrent-groups/${groupId}/relay`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        activeChannelId: '00000000-0000-4000-8000-000000000000',
+        sourceChannelId,
+        sourceMessageId: 'message-does-not-matter-yet',
+        targetPolicy: 'all_others',
+        command: 'check_this',
+      }),
+    });
+    assert.equal(relayResponse.status, 400);
+    const relayPayload = await relayResponse.json();
+    assert.equal(relayPayload.error.code, 'channel_not_in_compare_group');
+  });
+});
+
 test('solo chats without a cwd create isolated runtime sessions', async () => {
   const runtimeClient = createRuntimeStub();
 
