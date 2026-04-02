@@ -23,7 +23,10 @@ import type {
   SendChannelMessageInput,
   UpdateChannelInput,
 } from '../contracts.js';
-import { persistAttachmentsForChannels } from '../attachmentSupport.js';
+import {
+  persistAttachmentsForChannels,
+  sanitizeAttachmentName,
+} from '../attachmentSupport.js';
 import {
   buildAppShellPayload,
   cancelSessionIds,
@@ -47,19 +50,6 @@ import {
   channelDispatchCancellationRegistry,
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
 } from '../../state/runtime-dispatch/cancellation.js';
-
-function sanitizeAttachmentName(rawName: string): string {
-  const basename = path.basename(rawName).trim();
-  const normalized = basename
-    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
-    .replace(/[. ]+$/g, '');
-
-  if (!normalized || normalized === '.' || normalized === '..') {
-    return 'attachment';
-  }
-
-  return normalized;
-}
 
 const CHANNEL_STREAM_SESSION_WAIT_MS = 1500;
 const CHANNEL_STREAM_SESSION_POLL_MS = 75;

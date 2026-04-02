@@ -15,9 +15,12 @@ export interface StoredChannelAttachment {
   relativePath: string;
 }
 
-function sanitizeAttachmentName(rawName: string): string {
+export function sanitizeAttachmentName(rawName: string): string {
   const basename = path.basename(typeof rawName === 'string' ? rawName : '');
-  const normalized = basename.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/gu, '_');
+  const normalized = basename
+    .trim()
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/gu, '_')
+    .replace(/[. ]+$/gu, '');
 
   if (!normalized || normalized === '.' || normalized === '..') {
     return 'attachment';
