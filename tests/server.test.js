@@ -4770,6 +4770,55 @@ test('parallel chat relay returns a validation error without relying on magic-st
   });
 });
 
+test('ungrouping a parallel chat materializes member chats as standalone recents entries', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createGroupResponse = await fetch(`${baseUrl}/api/concurrent-groups`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Parallel Race',
+        targets: [
+          { provider: 'claude', instance: 'native' },
+          { provider: 'codex', instance: 'native', model: 'gpt-5.4' },
+        ],
+      }),
+    });
+    assert.equal(createGroupResponse.status, 201);
+    const createGroupPayload = await createGroupResponse.json();
+    const groupId = createGroupPayload.group.id;
+    const memberChannelIds = createGroupPayload.group.memberChannelIds;
+
+    const ungroupResponse = await fetch(`${baseUrl}/api/concurrent-groups/${groupId}/ungroup`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    });
+    assert.equal(ungroupResponse.status, 200);
+
+    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(appShellResponse.status, 200);
+    const payload = await appShellResponse.json();
+
+    assert.equal(payload.chat.concurrentGroups.length, 0);
+    const memberTitles = payload.chat.channels
+      .filter((channel) => memberChannelIds.includes(channel.id))
+      .map((channel) => channel.title);
+    assert.equal(memberTitles.length, 2);
+    assert.equal(new Set(memberTitles).size, 2);
+    assert.ok(memberTitles.every((title) => title !== 'Parallel Race'));
+  });
+});
+
 test('solo chats without a cwd create isolated runtime sessions', async () => {
   const runtimeClient = createRuntimeStub();
 

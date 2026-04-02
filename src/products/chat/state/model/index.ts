@@ -27,6 +27,7 @@ import {
   resolveChannelKind,
   resolveDirectLaneLeadParticipantId,
 } from '../../shared/channelTopology.js';
+import { buildConcurrentChatMemberLabel } from '../../shared/concurrentChats.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
   applyMessageToChannel,
@@ -143,11 +144,44 @@ export function renameConcurrentGroup(
 export function ungroupConcurrentGroup(
   state: ChatState,
   groupId: string,
+  now: Date = new Date(),
 ): ChatState {
   const nextState = cloneState(state);
   const groupIndex = nextState.concurrentGroups.findIndex((group) => group.id === groupId);
   if (groupIndex === -1) {
     throw new Error(`Concurrent group not found: ${groupId}`);
+  }
+
+  const group = nextState.concurrentGroups[groupIndex]!;
+  const updatedAt = isoAt(now);
+  const normalizedGroupTitle = group.title.trim();
+
+  for (const memberChannelId of group.memberChannelIds) {
+    const channel = nextState.channels.find((candidate) => candidate.id === memberChannelId);
+    if (!channel) {
+      continue;
+    }
+
+    if (channel.title.trim() && channel.title.trim() !== normalizedGroupTitle) {
+      continue;
+    }
+
+    channel.title = buildConcurrentChatMemberLabel({
+      provider: channel.pendingProvider ?? nextState.globalOrchestrator.executionTarget.provider,
+      instance:
+        channel.pendingInstance
+        ?? nextState.globalOrchestrator.executionTarget.instance
+        ?? null,
+      model:
+        channel.pendingModel
+        ?? nextState.globalOrchestrator.executionTarget.model
+        ?? null,
+      modelSelection:
+        structuredClone(channel.pendingModelSelection)
+        ?? structuredClone(nextState.globalOrchestrator.executionModelSelection)
+        ?? null,
+    });
+    channel.updatedAt = updatedAt;
   }
 
   nextState.concurrentGroups.splice(groupIndex, 1);
