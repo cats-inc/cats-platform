@@ -15,6 +15,7 @@ import {
 import {
   beginChannelMessageDispatch,
   continueBegunChannelMessageDispatch,
+  wakeChannelEntryParticipant,
 } from '../../state/runtimeActions.js';
 import {
   appendMessage,
@@ -114,6 +115,26 @@ async function dispatchConcurrentBodies(
   const nowIso = now.toISOString();
   const baseState = selectChannel(options.state, options.activeChannelId, now);
   let acknowledgedState = baseState;
+  for (const [channelId, input] of options.channelInputs.entries()) {
+    if (!input.body.trim()) {
+      continue;
+    }
+
+    const wake = await wakeChannelEntryParticipant(
+      acknowledgedState,
+      channelId,
+      context.dependencies.runtimeClient,
+      now,
+      {
+        companionStore: context.dependencies.companionStore,
+        memoryService: context.dependencies.memoryService,
+        chatStatePath: context.dependencies.config.chatStatePath,
+        runtimeDataDir: context.dependencies.config.runtimeDataDir,
+      },
+    );
+    acknowledgedState = wake.state;
+  }
+
   const begunDispatches: Array<{
     channelId: string;
     begun: Awaited<ReturnType<typeof beginChannelMessageDispatch>> | null;

@@ -4703,6 +4703,16 @@ test('parallel chat first send reuses member sessions across route wake and late
     assert.equal(runtimeClient.sentMessages.length, 2);
     assert.ok(activeChannelPayload.channel.orchestratorLease.sessionId);
     assert.ok(passiveChannelPayload.channel.orchestratorLease.sessionId);
+    assert.deepEqual(
+      activeChannelPayload.channel.messages.slice(0, 2).map((message) => message.senderKind),
+      ['system', 'user'],
+    );
+    assert.deepEqual(
+      passiveChannelPayload.channel.messages.slice(0, 2).map((message) => message.senderKind),
+      ['system', 'user'],
+    );
+    assert.equal(activeChannelPayload.channel.messages[0]?.metadata?.event, 'session_started');
+    assert.equal(passiveChannelPayload.channel.messages[0]?.metadata?.event, 'session_started');
 
     const selectPassiveResponse = await fetch(`${baseUrl}/api/preferences`, {
       method: 'PATCH',
