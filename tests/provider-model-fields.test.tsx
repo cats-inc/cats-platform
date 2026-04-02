@@ -15,7 +15,164 @@ import {
   shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
 } from '../src/design/components/ProviderModelFields.tsx';
+import {
+  createStaticProviderModelCatalog,
+  normalizeProviderAdvancedModelCatalog,
+} from '../src/shared/providerCatalog.ts';
 import { formatProviderEventCapabilitiesSummary } from '../src/shared/providerEventCapabilities.ts';
+import { resolveCatalogTargetSelection } from '../src/shared/providerSelection.ts';
+
+function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
+  const baseCatalog = createStaticProviderModelCatalog(provider, { instance: 'native' });
+  const controls = provider === 'claude'
+    ? [{
+        key: 'claude.reasoning_effort',
+        label: 'Reasoning effort',
+        kind: 'enum',
+        scope: 'both',
+        applicableEntryIds: ['default', 'sonnet'],
+        values: [
+          { value: 'low', label: 'Low', applicableEntryIds: ['default', 'sonnet'] },
+          { value: 'medium', label: 'Medium (default)', applicableEntryIds: ['default', 'sonnet'] },
+          { value: 'high', label: 'High', applicableEntryIds: ['default', 'sonnet'] },
+          { value: 'max', label: 'Max', applicableEntryIds: ['default'] },
+        ],
+      }]
+    : [{
+        key: 'codex.reasoning_effort',
+        label: 'Reasoning effort',
+        kind: 'enum',
+        scope: 'both',
+        applicableEntryIds: [
+          'gpt-5.4',
+          'gpt-5.4-mini',
+          'gpt-5.3-codex',
+          'gpt-5.2-codex',
+          'gpt-5.2',
+          'gpt-5.1-codex-max',
+          'gpt-5.1-codex-mini',
+        ],
+        values: [
+          {
+            value: 'low',
+            label: 'Low',
+            applicableEntryIds: [
+              'gpt-5.4',
+              'gpt-5.4-mini',
+              'gpt-5.3-codex',
+              'gpt-5.2-codex',
+              'gpt-5.2',
+              'gpt-5.1-codex-max',
+            ],
+          },
+          {
+            value: 'medium',
+            label: 'Medium (default)',
+            applicableEntryIds: [
+              'gpt-5.4',
+              'gpt-5.4-mini',
+              'gpt-5.3-codex',
+              'gpt-5.2-codex',
+              'gpt-5.2',
+              'gpt-5.1-codex-max',
+              'gpt-5.1-codex-mini',
+            ],
+          },
+          {
+            value: 'high',
+            label: 'High',
+            applicableEntryIds: [
+              'gpt-5.4',
+              'gpt-5.4-mini',
+              'gpt-5.3-codex',
+              'gpt-5.2-codex',
+              'gpt-5.2',
+              'gpt-5.1-codex-max',
+              'gpt-5.1-codex-mini',
+            ],
+          },
+          {
+            value: 'xhigh',
+            label: 'Extra high',
+            applicableEntryIds: [
+              'gpt-5.4',
+              'gpt-5.4-mini',
+              'gpt-5.3-codex',
+              'gpt-5.2-codex',
+              'gpt-5.2',
+              'gpt-5.1-codex-max',
+            ],
+          },
+        ],
+      }];
+  const controlKey = provider === 'claude'
+    ? 'claude.reasoning_effort'
+    : 'codex.reasoning_effort';
+
+  const catalog = {
+    ...baseCatalog,
+    backend: 'cli',
+    source: 'dynamic' as const,
+  };
+  const advancedCatalog = normalizeProviderAdvancedModelCatalog({
+    provider,
+    backend: 'cli',
+    instance: 'native',
+    defaultModel: catalog.defaultModel,
+    source: 'dynamic',
+    cache: null,
+    entries: catalog.models,
+    presets: [],
+    controls,
+    defaultSelection: catalog.defaultModel
+      ? {
+          entryId: catalog.defaultModel,
+          entryMode: 'explicit',
+          controls: {
+            [controlKey]: 'medium',
+          },
+        }
+      : null,
+    support: {
+      tier: 'full',
+      notes: [],
+    },
+    warnings: [],
+  }, provider);
+
+  return { catalog, advancedCatalog, controlKey };
+}
+
+function reconcileReopenedTarget(input: {
+  provider: 'claude' | 'codex';
+  model: string;
+  modelSelection: {
+    entryId: string;
+    entryMode: 'explicit' | 'auto';
+    controls?: Record<string, string>;
+  };
+}) {
+  const { catalog, advancedCatalog } = buildCurrentAdvancedCatalog(input.provider);
+  const resolvedTarget = resolveCatalogTargetSelection({
+    target: {
+      provider: input.provider,
+      instance: 'native',
+      model: input.model,
+      modelSelection: input.modelSelection,
+    },
+    catalog,
+    advancedCatalog,
+    preserveCurrentModel: true,
+    preserveCurrentSelection: true,
+  });
+  return {
+    advancedCatalog,
+    target: sanitizePersistentTargetSelection({
+      target: resolvedTarget,
+      controls: advancedCatalog.controls,
+    }),
+  };
+}
 
 test('static fallback catalogs do not overwrite an existing model selection during panel reopen', () => {
   assert.equal(
@@ -333,4 +490,132 @@ test('persistent selector hides Claude effort controls for Haiku', () => {
   ];
 
   assert.deepEqual(listPersistentControlOptions(controls, 'haiku'), []);
+});
+
+test('runtime reconciliation keeps Claude Max when reopening an Opus selection', () => {
+  const { advancedCatalog, target } = reconcileReopenedTarget({
+    provider: 'claude',
+    model: 'default',
+    modelSelection: {
+      entryId: 'default',
+      entryMode: 'explicit',
+      controls: {
+        'claude.reasoning_effort': 'max',
+      },
+    },
+  });
+
+  assert.equal(
+    shouldDeferCatalogTargetReconciliation({
+      catalogSource: 'dynamic',
+      advancedCatalogSource: advancedCatalog.source,
+      model: 'default',
+      modelSelection: target.modelSelection,
+    }),
+    false,
+  );
+  assert.deepEqual(target.modelSelection, {
+    entryId: 'default',
+    entryMode: 'explicit',
+    controls: {
+      'claude.reasoning_effort': 'max',
+    },
+  });
+  assert.equal(
+    resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'default', target.modelSelection?.controls?.['claude.reasoning_effort']),
+    'max',
+  );
+});
+
+test('runtime reconciliation sanitizes Claude Max when reopening a Sonnet selection', () => {
+  const { advancedCatalog, target } = reconcileReopenedTarget({
+    provider: 'claude',
+    model: 'sonnet',
+    modelSelection: {
+      entryId: 'sonnet',
+      entryMode: 'explicit',
+      controls: {
+        'claude.reasoning_effort': 'max',
+      },
+    },
+  });
+
+  assert.deepEqual(
+    listPersistentControlOptions(advancedCatalog.controls, 'sonnet')[0]?.values?.map((option) => option.value),
+    ['low', 'medium', 'high'],
+  );
+  assert.deepEqual(target.modelSelection, {
+    entryId: 'sonnet',
+    entryMode: 'explicit',
+  });
+  assert.equal(
+    resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'sonnet', target.modelSelection?.controls?.['claude.reasoning_effort']),
+    'medium',
+  );
+});
+
+test('runtime reconciliation keeps Codex Extra High when reopening a gpt-5.4 selection', () => {
+  const { advancedCatalog, target } = reconcileReopenedTarget({
+    provider: 'codex',
+    model: 'gpt-5.4',
+    modelSelection: {
+      entryId: 'gpt-5.4',
+      entryMode: 'explicit',
+      controls: {
+        'codex.reasoning_effort': 'xhigh',
+      },
+    },
+  });
+
+  assert.equal(
+    shouldDeferCatalogTargetReconciliation({
+      catalogSource: 'dynamic',
+      advancedCatalogSource: advancedCatalog.source,
+      model: 'gpt-5.4',
+      modelSelection: target.modelSelection,
+    }),
+    false,
+  );
+  assert.deepEqual(target.modelSelection, {
+    entryId: 'gpt-5.4',
+    entryMode: 'explicit',
+    controls: {
+      'codex.reasoning_effort': 'xhigh',
+    },
+  });
+  assert.equal(
+    resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'gpt-5.4', target.modelSelection?.controls?.['codex.reasoning_effort']),
+    'xhigh',
+  );
+});
+
+test('runtime reconciliation sanitizes Codex Extra High when reopening a gpt-5.1-codex-mini selection', () => {
+  const { advancedCatalog, target } = reconcileReopenedTarget({
+    provider: 'codex',
+    model: 'gpt-5.1-codex-mini',
+    modelSelection: {
+      entryId: 'gpt-5.1-codex-mini',
+      entryMode: 'explicit',
+      controls: {
+        'codex.reasoning_effort': 'xhigh',
+      },
+    },
+  });
+
+  assert.deepEqual(
+    listPersistentControlOptions(advancedCatalog.controls, 'gpt-5.1-codex-mini')[0]?.values?.map((option) => option.value),
+    ['medium', 'high'],
+  );
+  assert.deepEqual(target.modelSelection, {
+    entryId: 'gpt-5.1-codex-mini',
+    entryMode: 'explicit',
+  });
+  assert.equal(
+    resolveDisplayedEnumControlValue(
+      advancedCatalog.controls[0],
+      'gpt-5.1-codex-mini',
+      target.modelSelection?.controls?.['codex.reasoning_effort'],
+    ),
+    'medium',
+  );
 });
