@@ -4724,6 +4724,105 @@ test('parallel chat first send reuses member sessions across route wake and late
   });
 });
 
+test('parallel chat first send fans out the selected folder and attachments to every member chat', async () => {
+  const runtimeClient = createRuntimeStub();
+  const tempWorkingDir = await mkdtemp(path.join(os.tmpdir(), 'cats-parallel-attachments-'));
+
+  try {
+    await withServer(runtimeClient, async (baseUrl) => {
+      const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ownerDisplayName: 'Kenny',
+          bossCatName: 'Smelly',
+          bossCatProvider: 'claude',
+        }),
+      });
+      assert.equal(setupResponse.status, 200);
+
+      const createGroupResponse = await fetch(`${baseUrl}/api/concurrent-groups`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Parallel Attachments',
+          repoPath: tempWorkingDir,
+          targets: [
+            { provider: 'claude', instance: 'native' },
+            { provider: 'codex', instance: 'native' },
+          ],
+        }),
+      });
+      assert.equal(createGroupResponse.status, 201);
+      const createGroupPayload = await createGroupResponse.json();
+      const groupId = createGroupPayload.group.id;
+      const memberChannelIds = createGroupPayload.group.memberChannelIds;
+      const activeChannelId =
+        createGroupPayload.appShell.chat.selectedChannelId
+        && memberChannelIds.includes(createGroupPayload.appShell.chat.selectedChannelId)
+          ? createGroupPayload.appShell.chat.selectedChannelId
+          : createGroupPayload.group.members[0]?.channelId ?? null;
+      assert.ok(activeChannelId);
+      assert.equal(memberChannelIds.length, 2);
+
+      const sendResponse = await fetch(`${baseUrl}/api/concurrent-groups/${groupId}/messages`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          activeChannelId,
+          body: 'Review the attachment.',
+          attachments: [
+            {
+              name: 'notes.txt',
+              data: Buffer.from('parallel attachment').toString('base64'),
+            },
+          ],
+        }),
+      });
+      assert.equal(sendResponse.status, 200);
+
+      const channelPayloads = await Promise.all(
+        memberChannelIds.map(async (channelId) => {
+          const response = await fetch(`${baseUrl}/api/channels/${channelId}`);
+          assert.equal(response.status, 200);
+          return response.json();
+        }),
+      );
+
+      for (const payload of channelPayloads) {
+        assert.equal(payload.channel.repoPath, tempWorkingDir);
+        const userMessage = payload.channel.messages.find((message) => message.senderKind === 'user');
+        assert.ok(userMessage);
+        assert.match(userMessage.body, /^\[Attached files in working directory:\]/);
+        assert.match(userMessage.body, /- \.cats-attachments\/notes\.txt/);
+      }
+
+      assert.equal(runtimeClient.createdSessions.length, 2);
+      assert.equal(runtimeClient.sentMessages.length, 2);
+      for (const sent of runtimeClient.sentMessages) {
+        assert.match(sent.content, /^\[Attached files in working directory:\]/);
+        assert.match(sent.content, /- \.cats-attachments\/notes\.txt/);
+      }
+
+      const attachmentContent = await readFile(
+        path.join(tempWorkingDir, '.cats-attachments', 'notes.txt'),
+        'utf8',
+      );
+      assert.equal(attachmentContent, 'parallel attachment');
+
+      await Promise.all(
+        memberChannelIds.map(async (channelId) => {
+          const response = await fetch(`${baseUrl}/api/channels/${channelId}/attachments/notes.txt`);
+          assert.equal(response.status, 200);
+          assert.equal(await response.text(), 'parallel attachment');
+        }),
+      );
+    });
+  } finally {
+    await rm(tempWorkingDir, { recursive: true, force: true });
+  }
+});
+
 test('parallel chat relay returns a validation error without relying on magic-string control flow', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {

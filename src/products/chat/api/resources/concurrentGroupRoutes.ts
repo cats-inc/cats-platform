@@ -35,6 +35,7 @@ import type {
   SendConcurrentChatMessageInput,
   ChatState,
 } from '../contracts.js';
+import { persistAttachmentsForChannels } from '../attachmentSupport.js';
 import {
   buildAppShellPayload,
   cancelSessionIds,
@@ -74,6 +75,28 @@ class RelayResponseSentError extends Error {
   }
 }
 
+class ConcurrentAttachmentWorkspaceError extends Error {
+  readonly channelIds: string[];
+
+  constructor(channelIds: string[]) {
+    super('parallel_attachment_workspace_required');
+    this.name = 'ConcurrentAttachmentWorkspaceError';
+    this.channelIds = channelIds;
+  }
+}
+
+function buildAttachedFilesMessageBody(
+  body: string,
+  attachments: Array<{ relativePath: string }>,
+): string {
+  if (attachments.length === 0) {
+    return body;
+  }
+
+  const refs = attachments.map((attachment) => `- ${attachment.relativePath}`).join('\n');
+  return `[Attached files in working directory:]\n${refs}\n\n${body}`;
+}
+
 async function runConcurrentGroupMutation<T>(
   context: ChatApiRouteContext,
   groupId: string,
@@ -108,6 +131,7 @@ async function dispatchConcurrentBodies(
     state: ChatState;
     activeChannelId: string;
     channelInputs: Map<string, SendChannelMessageInput>;
+    sharedAttachments?: NonNullable<SendConcurrentChatMessageInput['attachments']>;
     persistAcknowledgedStateBeforeDispatch?: boolean;
   },
 ): Promise<ConcurrentChatDispatchResponse> {
@@ -115,8 +139,9 @@ async function dispatchConcurrentBodies(
   const nowIso = now.toISOString();
   const baseState = selectChannel(options.state, options.activeChannelId, now);
   let acknowledgedState = baseState;
+  const hasSharedAttachments = Boolean(options.sharedAttachments?.length);
   for (const [channelId, input] of options.channelInputs.entries()) {
-    if (!input.body.trim()) {
+    if (!input.body.trim() && !hasSharedAttachments) {
       continue;
     }
 
@@ -135,6 +160,37 @@ async function dispatchConcurrentBodies(
     acknowledgedState = wake.state;
   }
 
+  let effectiveChannelInputs = options.channelInputs;
+  if (options.sharedAttachments?.length) {
+    const attachmentsByChannelId = await persistAttachmentsForChannels({
+      state: acknowledgedState,
+      channelIds: [...options.channelInputs.keys()],
+      files: options.sharedAttachments,
+      runtimeDataDir: context.dependencies.config.runtimeDataDir,
+    });
+    const missingAttachmentChannelIds = [...options.channelInputs.keys()].filter((channelId) =>
+      !attachmentsByChannelId.has(channelId));
+    if (missingAttachmentChannelIds.length > 0) {
+      throw new ConcurrentAttachmentWorkspaceError(missingAttachmentChannelIds);
+    }
+
+    effectiveChannelInputs = new Map(
+      [...options.channelInputs.entries()].map(([channelId, input]) => {
+        const attachments = attachmentsByChannelId.get(channelId) ?? [];
+        if (attachments.length === 0) {
+          return [channelId, input];
+        }
+        return [
+          channelId,
+          {
+            ...input,
+            body: buildAttachedFilesMessageBody(input.body, attachments),
+          },
+        ];
+      }),
+    );
+  }
+
   const begunDispatches: Array<{
     channelId: string;
     begun: Awaited<ReturnType<typeof beginChannelMessageDispatch>> | null;
@@ -142,7 +198,7 @@ async function dispatchConcurrentBodies(
     sourceMessageId?: string;
     error?: string;
   }> = [];
-  for (const [channelId, input] of options.channelInputs.entries()) {
+  for (const [channelId, input] of effectiveChannelInputs.entries()) {
     const trimmedBody = input.body.trim();
     if (!trimmedBody) {
       begunDispatches.push({
@@ -369,15 +425,6 @@ async function handleSendConcurrentGroupMessage(
 ): Promise<void> {
   try {
     const body = await readJsonBody<SendConcurrentChatMessageInput>(context.request);
-    if (Array.isArray(body.attachments) && body.attachments.length > 0) {
-      sendRestError(
-        context,
-        400,
-        'compare_attachments_not_supported',
-        'Shared attachments are not supported in Parallel chat yet. Switch this turn to only the current chat.',
-      );
-      return;
-    }
 
     const state = await context.dependencies.chatStore.read();
     const group = requireConcurrentGroup(state, groupId);
@@ -401,11 +448,22 @@ async function handleSendConcurrentGroupMessage(
         channelInputs: new Map(
           lockedGroup.memberChannelIds.map((channelId) => [channelId, { body: body.body }]),
         ),
+        sharedAttachments: body.attachments,
         persistAcknowledgedStateBeforeDispatch: true,
       }),
     );
     sendJson(context.response, 200, response);
   } catch (error) {
+    if (error instanceof ConcurrentAttachmentWorkspaceError) {
+      const noun = error.channelIds.length === 1 ? 'chat has' : 'chats have';
+      sendRestError(
+        context,
+        409,
+        'parallel_attachment_workspace_required',
+        `One or more parallel ${noun} no attachment workspace. Select a folder or activate the chats first.`,
+      );
+      return;
+    }
     handleRestError(context, error);
   }
 }

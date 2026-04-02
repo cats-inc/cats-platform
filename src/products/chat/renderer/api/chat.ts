@@ -199,16 +199,8 @@ export async function uploadChannelAttachments(
   files: File[],
   signal?: AbortSignal,
 ): Promise<Array<{ name: string; relativePath: string }>> {
-  const encoded = await Promise.all(
-    files.map(async (file) => {
-      const buffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (let index = 0; index < bytes.length; index++) {
-        binary += String.fromCharCode(bytes[index]);
-      }
-      return { name: file.name, data: btoa(binary) };
-    }),
+  const encoded = await encodeAttachmentFiles(
+    files,
   );
 
   const response = await fetch(`/api/channels/${channelId}/attachments`, {
@@ -226,6 +218,22 @@ export async function uploadChannelAttachments(
   }>(response, `attachment upload returned ${response.status}`);
 
   return result.attachments;
+}
+
+export async function encodeAttachmentFiles(
+  files: File[],
+): Promise<NonNullable<SendConcurrentChatMessageInput['attachments']>> {
+  return Promise.all(
+    files.map(async (file) => {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let index = 0; index < bytes.length; index++) {
+        binary += String.fromCharCode(bytes[index]);
+      }
+      return { name: file.name, data: btoa(binary) };
+    }),
+  );
 }
 
 export async function sendChatMessage(

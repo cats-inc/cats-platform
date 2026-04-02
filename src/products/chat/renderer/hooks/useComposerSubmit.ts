@@ -23,6 +23,7 @@ import { isDirectLaneChannel } from '../../shared/channelTopology';
 import {
   cancelChatChannel,
   cancelConcurrentChatGroup,
+  encodeAttachmentFiles,
   createConcurrentChatGroup,
   createChatChannel,
   fetchAppShell,
@@ -296,9 +297,13 @@ export function useComposerSubmit(options: {
           groupId: created.group.id,
           controller: dispatchController,
         };
+        const encodedAttachments = draftFiles.length > 0
+          ? await encodeAttachmentFiles(draftFiles)
+          : undefined;
         const dispatchPromise = sendConcurrentChatMessage(created.group.id, {
           activeChannelId,
           body,
+          attachments: encodedAttachments,
         }, dispatchController.signal);
         const persistedPayload = await waitForPersistedUserTurn(
           activeChannelId,
@@ -328,11 +333,6 @@ export function useComposerSubmit(options: {
         if (!channelId) {
           throw new Error('No parallel chat is available for sending messages.');
         }
-        if (channelFiles.length > 0) {
-          throw new Error(
-            'Parallel chat fan-out does not support files yet. Switch this turn to Only this chat.',
-          );
-        }
 
         rollbackPath = currentPathname;
         setComposerDraft('');
@@ -354,9 +354,13 @@ export function useComposerSubmit(options: {
           groupId: compareGroupId,
           controller: dispatchController,
         };
+        const encodedAttachments = channelFiles.length > 0
+          ? await encodeAttachmentFiles(channelFiles)
+          : undefined;
         const dispatchPromise = sendConcurrentChatMessage(compareGroupId, {
           activeChannelId: channelId,
           body,
+          attachments: encodedAttachments,
         }, dispatchController.signal);
         const persistedPayload = await waitForPersistedUserTurn(
           channelId,

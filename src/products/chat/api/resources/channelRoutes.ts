@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { matchRoute, readJsonBody, sendBinary, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
@@ -17,13 +17,13 @@ import {
 } from '../../state/model/index.js';
 import {
   ensureChannelAttachmentWorkspace,
-  syncChannelAttachmentsToWorkspace,
 } from '../../state/workspace.js';
 import type {
   CreateChatChannelInput,
   SendChannelMessageInput,
   UpdateChannelInput,
 } from '../contracts.js';
+import { persistAttachmentsForChannels } from '../attachmentSupport.js';
 import {
   buildAppShellPayload,
   cancelSessionIds,
@@ -59,38 +59,6 @@ function sanitizeAttachmentName(rawName: string): string {
   }
 
   return normalized;
-}
-
-async function resolveUniqueAttachmentName(
-  directory: string,
-  rawName: string,
-  reservedNames: Set<string>,
-): Promise<string> {
-  const sanitizedName = sanitizeAttachmentName(rawName);
-  const parsed = path.parse(sanitizedName);
-  const baseName = parsed.name || 'attachment';
-  const extension = parsed.ext;
-
-  let attempt = 0;
-  while (true) {
-    const candidate = attempt === 0
-      ? `${baseName}${extension}`
-      : `${baseName}-${attempt + 1}${extension}`;
-
-    if (reservedNames.has(candidate)) {
-      attempt += 1;
-      continue;
-    }
-
-    try {
-      await access(path.join(directory, candidate));
-      attempt += 1;
-      continue;
-    } catch {
-      reservedNames.add(candidate);
-      return candidate;
-    }
-  }
 }
 
 const CHANNEL_STREAM_SESSION_WAIT_MS = 1500;
@@ -426,15 +394,16 @@ async function handleRestUploadAttachments(
     }
 
     const state = await context.dependencies.chatStore.read();
-    const channel = requireChannel(state, channelId);
-    const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
-      channelId,
-      repoPath: channel.repoPath,
-      chatCwd: channel.chatCwd,
-      runtimeDataDir: context.dependencies.config.runtimeDataDir,
-    });
+    const attachments = (
+      await persistAttachmentsForChannels({
+        state,
+        channelIds: [channelId],
+        files: body.files,
+        runtimeDataDir: context.dependencies.config.runtimeDataDir,
+      })
+    ).get(channelId);
 
-    if (!attachmentWorkspacePath) {
+    if (!attachments) {
       sendRestError(
         context,
         409,
@@ -442,33 +411,6 @@ async function handleRestUploadAttachments(
         'Channel has no working directory. Activate the channel first.',
       );
       return;
-    }
-
-    const attachDir = path.join(attachmentWorkspacePath, '.cats-attachments');
-    await mkdir(attachDir, { recursive: true });
-
-    const attachments: Array<{ name: string; relativePath: string }> = [];
-    const reservedNames = new Set<string>();
-
-    for (const file of body.files) {
-      const safeName = await resolveUniqueAttachmentName(
-        attachDir,
-        file.name,
-        reservedNames,
-      );
-      const filePath = path.join(attachDir, safeName);
-      await writeFile(filePath, Buffer.from(file.data, 'base64'));
-      attachments.push({
-        name: safeName,
-        relativePath: `.cats-attachments/${safeName}`,
-      });
-    }
-
-    for (const targetWorkspacePath of collectChannelAttachmentSyncTargets(channel)) {
-      await syncChannelAttachmentsToWorkspace({
-        attachmentWorkspacePath,
-        targetWorkspacePath,
-      });
     }
 
     sendJson(context.response, 200, { attachments });
@@ -500,27 +442,6 @@ function buildAttachmentContentDisposition(
     .replace(/["\\]/gu, '_')
     .replace(/[^\x20-\x7E]/gu, '_');
   return `${disposition}; filename="${safeFilename}"`;
-}
-
-function collectChannelAttachmentSyncTargets(
-  channel: ReturnType<typeof requireChannel>,
-): string[] {
-  const targets = new Set<string>();
-  const pushIfPresent = (value: string | null | undefined) => {
-    const normalized = value?.trim();
-    if (normalized) {
-      targets.add(normalized);
-    }
-  };
-
-  pushIfPresent(channel.orchestratorLease.cwd);
-  for (const assignment of channel.catAssignments) {
-    if (assignment.status === 'active') {
-      pushIfPresent(assignment.execution.lease.cwd);
-    }
-  }
-
-  return [...targets];
 }
 
 async function handleRestServeAttachment(
