@@ -77,6 +77,11 @@ the send lifecycle.
      into the latest durable room state
    - finalization and failure settlement must preserve later ACKed user turns
      and other concurrent room mutations
+   - within `roomRouting`, config and outcome fields are merged separately, but
+     `workflow` currently remains a single latest-wins merge unit
+   - if overlapping background dispatches for the same channel both mutate
+     `workflow`, the newer persisted workflow snapshot wins until a stronger
+     turn/event-level merge is justified by observed product issues
 
 8. This lifecycle applies to normal composer sends regardless of room topology.
    Parallel send remains fan-out over multiple independent channel dispatches;
@@ -101,6 +106,8 @@ the send lifecycle.
 - tests and clients must distinguish `acknowledged` from `completed`
 - background dispatch errors need explicit finalization logic so a room does not
   stay stuck in `running`
+- overlapping same-channel dispatches currently resolve competing `workflow`
+  snapshots with latest-wins semantics instead of turn/event-level merging
 
 ## Follow-up
 

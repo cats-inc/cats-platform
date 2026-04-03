@@ -144,3 +144,47 @@ test('settleBegunChannelMessageDispatchFailure preserves a newer room-routing wo
       && /Injected runtime failure/u.test(message.body)),
   );
 });
+
+test('mergeCompletedDispatchState treats overlapping workflow mutations as latest-wins', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-03T12:20:00.000Z');
+  const dispatchAt = new Date('2026-04-03T12:20:05.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Workflow latest wins',
+      topic: 'Keep the newer workflow snapshot when both sides changed.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const baselineState = structuredClone(state);
+  const dispatchState = await beginChannelMessageDispatch(
+    baselineState,
+    channelId,
+    { body: 'First overlapping workflow turn' },
+    runtimeClient,
+    dispatchAt,
+  );
+
+  const latestState = structuredClone(dispatchState.state);
+  const latestWorkflow = latestState.channels.find((channel) => channel.id === channelId)?.roomRouting?.workflow;
+  assert.ok(latestWorkflow?.activeTurn);
+  latestWorkflow.activeTurn.stageId = 'newer_dispatch_stage';
+  latestWorkflow.activeTurn.updatedAt = '2026-04-03T12:20:06.000Z';
+
+  const mergedState = mergeCompletedDispatchState(
+    latestState,
+    baselineState,
+    dispatchState.state,
+    channelId,
+    dispatchAt,
+  );
+  const mergedWorkflow = requireChannel(mergedState, channelId).roomRouting.workflow;
+
+  assert.equal(mergedWorkflow.activeTurn?.stageId, 'newer_dispatch_stage');
+  assert.equal(mergedWorkflow.activeTurn?.updatedAt, '2026-04-03T12:20:06.000Z');
+});
