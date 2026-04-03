@@ -110,6 +110,7 @@ export function useComposerSubmit(options: {
   compareGroupId: string | null;
   compareSendScope: 'all_members' | 'active_only';
   selectedChannel: SelectedChannelView | null;
+  busy: string;
   setBusy: Dispatch<SetStateAction<string>>;
   setFeedback: Dispatch<SetStateAction<string>>;
 }) {
@@ -141,6 +142,7 @@ export function useComposerSubmit(options: {
     compareGroupId,
     compareSendScope,
     selectedChannel,
+    busy,
     setBusy,
     setFeedback,
   } = options;
