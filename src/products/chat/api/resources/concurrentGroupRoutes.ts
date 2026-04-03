@@ -97,22 +97,40 @@ function buildAttachedFilesMessageBody(
   return `[Attached files in working directory:]\n${refs}\n\n${body}`;
 }
 
-async function runConcurrentGroupMutation<T>(
+type ConcurrentGroupState = ChatState['concurrentGroups'][number];
+
+interface PreparedConcurrentDispatch {
+  state: ChatState;
+  activeChannelId: string;
+  channelInputs: Map<string, SendChannelMessageInput>;
+}
+
+interface BegunConcurrentDispatch {
+  channelId: string;
+  begun: Awaited<ReturnType<typeof beginChannelMessageDispatch>> | null;
+  status: 'sent' | 'error' | 'skipped';
+  sourceMessageId?: string;
+  error?: string;
+}
+
+interface StagedConcurrentDispatch {
+  groupId: string;
+  now: Date;
+  nowIso: string;
+  lockedChannelIds: string[];
+  begunDispatches: BegunConcurrentDispatch[];
+}
+
+async function runLockedChannels<T>(
   context: ChatApiRouteContext,
-  groupId: string,
-  operation: (
-    state: ChatState,
-    group: ChatState['concurrentGroups'][number],
-  ) => Promise<T>,
+  channelIds: string[],
+  operation: () => Promise<T>,
 ): Promise<T> {
-  const state = await context.dependencies.chatStore.read();
-  const group = requireConcurrentGroup(state, groupId);
-  const orderedChannelIds = [...new Set(group.memberChannelIds)].sort();
+  const orderedChannelIds = [...new Set(channelIds)].sort();
 
   const runLocked = async (index: number): Promise<T> => {
     if (index >= orderedChannelIds.length) {
-      const lockedState = await context.dependencies.chatStore.read();
-      return operation(lockedState, requireConcurrentGroup(lockedState, groupId));
+      return operation();
     }
 
     return context.dependencies.mutationGate.run(
@@ -124,17 +142,71 @@ async function runConcurrentGroupMutation<T>(
   return runLocked(0);
 }
 
+async function withLockedConcurrentGroup<T>(
+  context: ChatApiRouteContext,
+  groupId: string,
+  operation: (
+    state: ChatState,
+    group: ConcurrentGroupState,
+  ) => Promise<T>,
+): Promise<T> {
+  const state = await context.dependencies.chatStore.read();
+  const group = requireConcurrentGroup(state, groupId);
+
+  return runLockedChannels(
+    context,
+    group.memberChannelIds,
+    async () => {
+      const lockedState = await context.dependencies.chatStore.read();
+      return operation(lockedState, requireConcurrentGroup(lockedState, groupId));
+    },
+  );
+}
+
 async function dispatchConcurrentBodies(
+  context: ChatApiRouteContext,
+  options: {
+    groupId: string;
+    sharedAttachments?: NonNullable<SendConcurrentChatMessageInput['attachments']>;
+    persistAcknowledgedStateBeforeDispatch?: boolean;
+    prepare: (
+      state: ChatState,
+      group: ConcurrentGroupState,
+    ) => Promise<PreparedConcurrentDispatch>;
+  },
+): Promise<ConcurrentChatDispatchResponse> {
+  const staged = await withLockedConcurrentGroup(
+    context,
+    options.groupId,
+    async (lockedState, lockedGroup) => {
+      const prepared = await options.prepare(lockedState, lockedGroup);
+      return stageConcurrentBodies(context, {
+        groupId: options.groupId,
+        state: prepared.state,
+        activeChannelId: prepared.activeChannelId,
+        channelInputs: prepared.channelInputs,
+        lockedChannelIds: lockedGroup.memberChannelIds,
+        sharedAttachments: options.sharedAttachments,
+        persistAcknowledgedStateBeforeDispatch: options.persistAcknowledgedStateBeforeDispatch,
+      });
+    },
+  );
+
+  return finalizeConcurrentBodies(context, staged);
+}
+
+async function stageConcurrentBodies(
   context: ChatApiRouteContext,
   options: {
     groupId: string;
     state: ChatState;
     activeChannelId: string;
     channelInputs: Map<string, SendChannelMessageInput>;
+    lockedChannelIds: string[];
     sharedAttachments?: NonNullable<SendConcurrentChatMessageInput['attachments']>;
     persistAcknowledgedStateBeforeDispatch?: boolean;
   },
-): Promise<ConcurrentChatDispatchResponse> {
+): Promise<StagedConcurrentDispatch> {
   const now = nowFrom(context.dependencies);
   const nowIso = now.toISOString();
   const baseState = selectChannel(options.state, options.activeChannelId, now);
@@ -191,13 +263,7 @@ async function dispatchConcurrentBodies(
     );
   }
 
-  const begunDispatches: Array<{
-    channelId: string;
-    begun: Awaited<ReturnType<typeof beginChannelMessageDispatch>> | null;
-    status: 'sent' | 'error' | 'skipped';
-    sourceMessageId?: string;
-    error?: string;
-  }> = [];
+  const begunDispatches: BegunConcurrentDispatch[] = [];
   for (const [channelId, input] of effectiveChannelInputs.entries()) {
     const trimmedBody = input.body.trim();
     if (!trimmedBody) {
@@ -250,11 +316,24 @@ async function dispatchConcurrentBodies(
   let mergedState = acknowledgedState;
   if (options.persistAcknowledgedStateBeforeDispatch) {
     touchConcurrentGroup(mergedState, options.groupId, nowIso, nowIso);
-    mergedState = await context.dependencies.chatStore.write(mergedState);
+    await context.dependencies.chatStore.write(mergedState);
   }
 
+  return {
+    groupId: options.groupId,
+    now,
+    nowIso,
+    lockedChannelIds: [...options.lockedChannelIds],
+    begunDispatches,
+  };
+}
+
+async function finalizeConcurrentBodies(
+  context: ChatApiRouteContext,
+  staged: StagedConcurrentDispatch,
+): Promise<ConcurrentChatDispatchResponse> {
   const dispatches = await Promise.all(
-    begunDispatches.map(async (dispatch) => {
+    staged.begunDispatches.map(async (dispatch) => {
       if (!dispatch.begun || dispatch.status !== 'sent') {
         return {
           channelId: dispatch.channelId,
@@ -270,7 +349,7 @@ async function dispatchConcurrentBodies(
           dispatch.begun,
           dispatch.channelId,
           context.dependencies.runtimeClient,
-          now,
+          staged.now,
           {
             companionStore: context.dependencies.companionStore,
             memoryService: context.dependencies.memoryService,
@@ -303,30 +382,43 @@ async function dispatchConcurrentBodies(
     }),
   );
 
-  const results: ConcurrentChatDispatchResult[] = [];
-  for (const dispatch of dispatches) {
-    if (dispatch.state) {
-      mergedState = replaceState(
-        mergedState,
-        requireChannel(dispatch.state, dispatch.channelId),
-      );
-    }
-    results.push({
-      channelId: dispatch.channelId,
-      status: dispatch.status,
-      ...(dispatch.sourceMessageId ? { sourceMessageId: dispatch.sourceMessageId } : {}),
-      ...(dispatch.error ? { error: dispatch.error } : {}),
-    });
-  }
+  return runLockedChannels(
+    context,
+    staged.lockedChannelIds,
+    async () => {
+      let mergedState = await context.dependencies.chatStore.read();
+      const results: ConcurrentChatDispatchResult[] = [];
 
-  touchConcurrentGroup(mergedState, options.groupId, nowIso, nowIso);
-  const persisted = await context.dependencies.chatStore.write(mergedState);
-  const appShell = await buildAppShellPayload(context.dependencies, persisted);
-  return {
-    appShell,
-    groupId: options.groupId,
-    results,
-  };
+      for (const dispatch of dispatches) {
+        if (dispatch.state && mergedState.channels.some((channel) => channel.id === dispatch.channelId)) {
+          mergedState = replaceState(
+            mergedState,
+            requireChannel(dispatch.state, dispatch.channelId),
+          );
+          if (mergedState.selectedChannelId === dispatch.channelId) {
+            requireChannel(mergedState, dispatch.channelId).unreadCount = 0;
+          }
+        }
+        results.push({
+          channelId: dispatch.channelId,
+          status: dispatch.status,
+          ...(dispatch.sourceMessageId ? { sourceMessageId: dispatch.sourceMessageId } : {}),
+          ...(dispatch.error ? { error: dispatch.error } : {}),
+        });
+      }
+
+      if (mergedState.concurrentGroups.some((group) => group.id === staged.groupId)) {
+        touchConcurrentGroup(mergedState, staged.groupId, staged.nowIso, staged.nowIso);
+      }
+      const persisted = await context.dependencies.chatStore.write(mergedState);
+      const appShell = await buildAppShellPayload(context.dependencies, persisted);
+      return {
+        appShell,
+        groupId: staged.groupId,
+        results,
+      };
+    },
+  );
 }
 
 async function handleCreateConcurrentGroup(
@@ -438,20 +530,18 @@ async function handleSendConcurrentGroupMessage(
       return;
     }
 
-    const response = await runConcurrentGroupMutation(
-      context,
+    const response = await dispatchConcurrentBodies(context, {
       groupId,
-      async (lockedState, lockedGroup) => dispatchConcurrentBodies(context, {
-        groupId,
+      sharedAttachments: body.attachments,
+      persistAcknowledgedStateBeforeDispatch: true,
+      prepare: async (lockedState, lockedGroup) => ({
         state: lockedState,
         activeChannelId: body.activeChannelId,
         channelInputs: new Map(
           lockedGroup.memberChannelIds.map((channelId) => [channelId, { body: body.body }]),
         ),
-        sharedAttachments: body.attachments,
-        persistAcknowledgedStateBeforeDispatch: true,
       }),
-    );
+    });
     sendJson(context.response, 200, response);
   } catch (error) {
     if (error instanceof ConcurrentAttachmentWorkspaceError) {
@@ -539,10 +629,10 @@ async function handleRelayConcurrentGroupMessage(
       );
       return;
     }
-    const response = await runConcurrentGroupMutation(
-      context,
+    const response = await dispatchConcurrentBodies(context, {
       groupId,
-      async (state, group) => {
+      persistAcknowledgedStateBeforeDispatch: true,
+      prepare: async (state, group) => {
         if (!group.memberChannelIds.includes(body.activeChannelId)) {
           sendRestError(
             context,
@@ -687,8 +777,7 @@ async function handleRelayConcurrentGroupMessage(
           ).state;
         }
 
-        return dispatchConcurrentBodies(context, {
-          groupId,
+        return {
           state: relayState,
           activeChannelId: body.activeChannelId,
           channelInputs: new Map(normalizedTargetChannelIds.map((channelId) => [
@@ -706,10 +795,9 @@ async function handleRelayConcurrentGroupMessage(
               },
             },
           ])),
-          persistAcknowledgedStateBeforeDispatch: true,
-        });
+        };
       },
-    );
+    });
     sendJson(context.response, 200, response);
   } catch (error) {
     if (error instanceof RelayResponseSentError) {
