@@ -81,6 +81,78 @@ function mergeDispatchAssignmentLeases(
   }
 }
 
+function mergeDispatchRoomRoutingState(
+  latestRoomRouting: ChatChannelState['roomRouting'],
+  baselineRoomRouting: ChatChannelState['roomRouting'],
+  dispatchRoomRouting: ChatChannelState['roomRouting'],
+): ChatChannelState['roomRouting'] {
+  if (!baselineRoomRouting || !dispatchRoomRouting) {
+    return mergeChangedValue(
+      latestRoomRouting,
+      baselineRoomRouting,
+      dispatchRoomRouting,
+    );
+  }
+
+  const nextRoomRouting = structuredClone(latestRoomRouting ?? baselineRoomRouting);
+  if (!nextRoomRouting) {
+    return structuredClone(dispatchRoomRouting);
+  }
+
+  nextRoomRouting.mode = mergeChangedValue(
+    nextRoomRouting.mode,
+    baselineRoomRouting.mode,
+    dispatchRoomRouting.mode,
+  );
+  nextRoomRouting.leadParticipantId = mergeChangedValue(
+    nextRoomRouting.leadParticipantId,
+    baselineRoomRouting.leadParticipantId,
+    dispatchRoomRouting.leadParticipantId,
+  );
+  nextRoomRouting.maxContinuations = mergeChangedValue(
+    nextRoomRouting.maxContinuations,
+    baselineRoomRouting.maxContinuations,
+    dispatchRoomRouting.maxContinuations,
+  );
+  nextRoomRouting.maxDispatchesPerTurn = mergeChangedValue(
+    nextRoomRouting.maxDispatchesPerTurn,
+    baselineRoomRouting.maxDispatchesPerTurn,
+    dispatchRoomRouting.maxDispatchesPerTurn,
+  );
+  nextRoomRouting.maxTargetVisitsPerTurn = mergeChangedValue(
+    nextRoomRouting.maxTargetVisitsPerTurn,
+    baselineRoomRouting.maxTargetVisitsPerTurn,
+    dispatchRoomRouting.maxTargetVisitsPerTurn,
+  );
+  nextRoomRouting.lastOutcome = mergeChangedValue(
+    nextRoomRouting.lastOutcome,
+    baselineRoomRouting.lastOutcome,
+    dispatchRoomRouting.lastOutcome,
+  );
+  nextRoomRouting.lastCheckpoint = mergeChangedValue(
+    nextRoomRouting.lastCheckpoint,
+    baselineRoomRouting.lastCheckpoint,
+    dispatchRoomRouting.lastCheckpoint,
+  );
+  nextRoomRouting.lastWakeRequest = mergeChangedValue(
+    nextRoomRouting.lastWakeRequest,
+    baselineRoomRouting.lastWakeRequest,
+    dispatchRoomRouting.lastWakeRequest,
+  );
+  nextRoomRouting.wakeHistory = mergeChangedValue(
+    nextRoomRouting.wakeHistory,
+    baselineRoomRouting.wakeHistory,
+    dispatchRoomRouting.wakeHistory,
+  );
+  nextRoomRouting.workflow = mergeChangedValue(
+    nextRoomRouting.workflow,
+    baselineRoomRouting.workflow,
+    dispatchRoomRouting.workflow,
+  );
+
+  return nextRoomRouting;
+}
+
 export function mergeCompletedDispatchState(
   latestState: ChatState,
   baselineState: ChatState,
@@ -130,7 +202,7 @@ export function mergeCompletedDispatchState(
     baselineChannel.chatCwd,
     dispatchChannel.chatCwd,
   );
-  latestChannel.roomRouting = mergeChangedValue(
+  latestChannel.roomRouting = mergeDispatchRoomRoutingState(
     latestChannel.roomRouting,
     baselineChannel.roomRouting,
     dispatchChannel.roomRouting,

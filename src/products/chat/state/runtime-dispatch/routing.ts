@@ -49,6 +49,7 @@ import {
   finalizeDispatchTurn,
 } from './finalize.js';
 import { processDispatchQueue } from './loop.js';
+import { mergeCompletedDispatchState } from './merge.js';
 import {
   addWorkflowCheckpoint,
   appendWorkflowEvent,
@@ -318,8 +319,9 @@ export async function settleBegunChannelMessageDispatchFailure(
   } = begun.preparedTurn;
   const nowIso = now.toISOString();
 
+  const latestState = options.latestState ?? begun.state;
   let nextState = appendMessage(
-    options.latestState ?? begun.state,
+    latestState,
     channelId,
     {
       senderKind: 'system',
@@ -392,6 +394,15 @@ export async function settleBegunChannelMessageDispatchFailure(
     latestCheckpoint,
     now,
   );
+  if (options.latestState) {
+    nextState = mergeCompletedDispatchState(
+      latestState,
+      begun.state,
+      nextState,
+      channelId,
+      now,
+    );
+  }
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
 
   return { state: nextState, results };
