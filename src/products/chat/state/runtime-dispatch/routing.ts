@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto';
+
 import type {
   ChannelDispatchResult,
   SendChannelMessageInput,
+  ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
 import type {
@@ -46,6 +49,13 @@ import {
   finalizeDispatchTurn,
 } from './finalize.js';
 import { processDispatchQueue } from './loop.js';
+import {
+  addWorkflowCheckpoint,
+  appendWorkflowEvent,
+  createWorkflowEvent,
+  finalizeWorkflowTurn,
+} from '../room-routing/workflow.js';
+import { applyRoomRoutingSnapshot } from '../runtime-session/state.js';
 
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
@@ -82,6 +92,7 @@ export interface BegunChannelMessageDispatch {
   state: ChatState;
   results: ChannelDispatchResult[];
   preparedTurn: import('./turn.js').PreparedDispatchTurn | null;
+  userMessage: ChatMessage;
 }
 
 export async function beginChannelMessageDispatch(
@@ -200,6 +211,7 @@ export async function beginChannelMessageDispatch(
     state: nextState,
     results: preparedTurn.results,
     preparedTurn: preparedTurn.terminalResult ? null : preparedTurn,
+    userMessage: preparedTurn.userMessage,
   };
 }
 
@@ -275,6 +287,110 @@ export async function continueBegunChannelMessageDispatch(
     userMessageId: userMessage.id,
     describeGuardReason,
   });
+  nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+
+  return { state: nextState, results };
+}
+
+export async function settleBegunChannelMessageDispatchFailure(
+  begun: BegunChannelMessageDispatch,
+  channelId: string,
+  error: unknown,
+  now: Date = new Date(),
+  options: RouteChannelMessageOptions = {},
+): Promise<{ state: ChatState; results: ChannelDispatchResult[] }> {
+  if (!begun.preparedTurn) {
+    return { state: begun.state, results: begun.results };
+  }
+
+  const errorMessage = error instanceof Error
+    ? error.message
+    : 'Runtime dispatch failed before completion.';
+  const {
+    activeTurn,
+    baseRoomRouting,
+    latestCheckpoint: initialCheckpoint,
+    outcome,
+    results,
+    userMessage,
+    workflow,
+  } = begun.preparedTurn;
+  const nowIso = now.toISOString();
+
+  let nextState = appendMessage(
+    begun.state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: `Failed to continue the message dispatch: ${errorMessage}`,
+    },
+    now,
+    {
+      metadata: {
+        event: 'runtime_error',
+        phase: 'dispatch_continue',
+      },
+    },
+  ).state;
+
+  outcome.status = 'error';
+  outcome.completedAt = nowIso;
+  activeTurn.status = 'failed';
+  activeTurn.stageId = 'runtime_error';
+  activeTurn.completedAt = nowIso;
+  activeTurn.updatedAt = nowIso;
+
+  const latestCheckpoint = addWorkflowCheckpoint(
+    outcome,
+    workflow,
+    activeTurn,
+    'runtime_error',
+    `Room workflow failed before completion: ${errorMessage}`,
+    nowIso,
+    null,
+    [],
+    {
+      error: errorMessage,
+      checkpointSeed: randomUUID(),
+    },
+  );
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'outcome',
+      'failed',
+      `Room workflow failed before completion: ${errorMessage}`,
+      nowIso,
+      null,
+      userMessage.id,
+      [],
+      {
+        outcomeId: randomUUID(),
+        checkpointId: latestCheckpoint.id,
+        metadata: {
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+          workflowLastCheckpointId: latestCheckpoint.id,
+          failedBeforeCompletion: true,
+          previousCheckpointId: initialCheckpoint?.id ?? null,
+        },
+      },
+    ),
+  );
+  finalizeWorkflowTurn(workflow, activeTurn);
+
+  nextState = applyRoomRoutingSnapshot(
+    nextState,
+    channelId,
+    baseRoomRouting,
+    workflow,
+    outcome,
+    latestCheckpoint,
+    now,
+  );
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
 
   return { state: nextState, results };

@@ -1,8 +1,5 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import {
-  wakeChannelEntryParticipant,
-} from '../../state/runtimeActions.js';
-import {
   selectChannel,
   updateNewChatDefaults,
 } from '../../state/model/index.js';
@@ -10,7 +7,6 @@ import { parseProviderModelSelection } from '../../../../shared/providerSelectio
 import {
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
-  maybeAutoResumeRecoveredOrchestratorContinuation,
   nowFrom,
   requireValidChatScopeId,
   type ChatApiRouteContext,
@@ -55,28 +51,12 @@ async function handleRestUpdatePreferences(
       body.selectedChannelId !== undefined
         ? context.dependencies.mutationGate.run(body.selectedChannelId, async () => {
           let nextState = await context.dependencies.chatStore.read();
-          let shouldAttemptRecoveredOrchestratorAutoResume = false;
 
           nextState = selectChannel(
             nextState,
             body.selectedChannelId!,
             nowFrom(context.dependencies),
           );
-          const wake = await wakeChannelEntryParticipant(
-            nextState,
-            body.selectedChannelId!,
-            context.dependencies.runtimeClient,
-            nowFrom(context.dependencies),
-            {
-              companionStore: context.dependencies.companionStore,
-              memoryService: context.dependencies.memoryService,
-              chatStatePath: context.dependencies.config.chatStatePath,
-              runtimeDataDir: context.dependencies.config.runtimeDataDir,
-            },
-          );
-          nextState = wake.state;
-          shouldAttemptRecoveredOrchestratorAutoResume = wake.result?.targetKind === 'orchestrator'
-            && wake.result.status === 'started';
 
           if (typeof body.showVerboseMessages === 'boolean') {
             nextState = {
@@ -94,15 +74,7 @@ async function handleRestUpdatePreferences(
             });
           }
 
-          const nextPersisted = await context.dependencies.chatStore.write(nextState);
-          if (shouldAttemptRecoveredOrchestratorAutoResume) {
-            await maybeAutoResumeRecoveredOrchestratorContinuation(
-              context,
-              body.selectedChannelId!,
-              nowFrom(context.dependencies),
-            );
-          }
-          return nextPersisted;
+          return context.dependencies.chatStore.write(nextState);
         })
         : (async () => {
           let nextState = await context.dependencies.chatStore.read();

@@ -306,6 +306,41 @@ export function createConcurrentGroup(
   return nextState;
 }
 
+function describeCreatedRoom(
+  state: ChatState,
+  channelId: string,
+): string {
+  const channel = requireChannel(state, channelId);
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const activeAssignments = channel.catAssignments.filter((assignment) => assignment.status === 'active');
+  const activeCatNames = activeAssignments
+    .map((assignment) => state.cats.find((cat) => cat.id === assignment.catId)?.name ?? null)
+    .filter((name): name is string => Boolean(name));
+
+  if (roomRouting.mode === 'direct_cat_chat') {
+    return `direct chat with ${activeCatNames[0] ?? 'the selected Cat'}`;
+  }
+
+  if (channel.composerMode === 'solo' && channel.pendingProvider) {
+    return `solo chat with ${buildConcurrentChatMemberLabel({
+      provider: channel.pendingProvider,
+      instance: channel.pendingInstance,
+      model: channel.pendingModel,
+      modelSelection: channel.pendingModelSelection ?? null,
+    })}`;
+  }
+
+  if (activeCatNames.length === 1) {
+    return `Cat-led chat with ${activeCatNames[0]}`;
+  }
+
+  if (activeCatNames.length > 1) {
+    return `multi-Cat room with ${activeCatNames.join(', ')}`;
+  }
+
+  return 'Boss Chat';
+}
+
 export function createChannel(
   state: ChatState,
   input: CreateChatChannelInput,
@@ -417,7 +452,26 @@ export function createChannel(
   syncChannelLeadAndComposerMode(channel);
   nextState.channels.unshift(channel);
   nextState.selectedChannelId = channelId;
-  return nextState;
+
+  return appendMessage(
+    nextState,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Chat',
+      body: `Room created: ${describeCreatedRoom(nextState, channelId)}.`,
+    },
+    now,
+    {
+      metadata: {
+        event: 'room_created',
+        verbosity: 'verbose',
+        roomMode: resolveRoomRoutingState(channel.roomRouting).mode,
+        composerMode: channel.composerMode,
+      },
+      incrementUnread: false,
+    },
+  ).state;
 }
 
 export function assignCatToChannel(

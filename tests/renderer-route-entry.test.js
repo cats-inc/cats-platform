@@ -3,7 +3,6 @@ import test from 'node:test';
 
 import {
   resolveSelectedChannelEntryLifecycle,
-  shouldAwaitSelectedChannelWakeBeforeSend,
   shouldWakeRouteChannelOnEntry,
 } from '../dist-server/products/chat/shared/channelEntry.js';
 
@@ -20,7 +19,7 @@ test('renderer route entry wakes when a persisted room route is not yet the hydr
   );
 });
 
-test('renderer route entry wakes sleeping rooms but not awake or errored ones', () => {
+test('renderer route entry only reselects when the route is not the hydrated selected room', () => {
   assert.equal(
     shouldWakeRouteChannelOnEntry({
       routeChannelId: 'channel-1',
@@ -29,7 +28,7 @@ test('renderer route entry wakes sleeping rooms but not awake or errored ones', 
       selectedChannelViewId: 'channel-1',
       entryLifecycleState: 'sleeping',
     }),
-    true,
+    false,
   );
 
   assert.equal(
@@ -50,130 +49,6 @@ test('renderer route entry wakes sleeping rooms but not awake or errored ones', 
       selectedChannelId: 'channel-1',
       selectedChannelViewId: 'channel-1',
       entryLifecycleState: 'error',
-    }),
-    false,
-  );
-});
-
-test('composer waits for sleeping, waking, or errored selected channels before sending', () => {
-  assert.equal(
-    shouldAwaitSelectedChannelWakeBeforeSend({
-      id: 'channel-1',
-      title: 'Sleeping room',
-      topic: '',
-      channelKind: 'boss_thread',
-      status: 'configured',
-      unreadCount: 0,
-      repoPath: null,
-      chatCwd: null,
-      language: null,
-      responseLanguage: 'en',
-      formationMode: 'manual',
-      skillProfile: null,
-      mcpProfile: null,
-      orchestratorRoles: [],
-      createdAt: '2026-03-23T00:00:00.000Z',
-      updatedAt: '2026-03-23T00:00:00.000Z',
-      lastMessageAt: null,
-      lastActivatedAt: null,
-      orchestratorLease: {
-        sessionId: null,
-        status: 'not_started',
-        cwd: null,
-        lastError: null,
-        provider: 'claude',
-        model: null,
-        startedAt: null,
-        lastUsedAt: null,
-      },
-      catAssignments: [],
-      messages: [],
-      assignedCats: [],
-      roomRouting: {
-        mode: 'boss_chat',
-        leadParticipantId: null,
-        maxContinuations: 6,
-        maxDispatchesPerTurn: 12,
-        maxTargetVisitsPerTurn: 2,
-        lastOutcome: null,
-        lastCheckpoint: null,
-        lastWakeRequest: null,
-        wakeHistory: [],
-        workflow: {
-          activeTurn: null,
-          turnHistory: [],
-          eventHistory: [],
-          lastCheckpointEvent: null,
-          lastOutcomeEvent: null,
-        },
-      },
-      workingMemory: {
-        summary: null,
-        facts: [],
-        openLoops: [],
-        updatedAt: null,
-      },
-    }),
-    true,
-  );
-
-  assert.equal(
-    shouldAwaitSelectedChannelWakeBeforeSend({
-      id: 'channel-1',
-      title: 'Awake room',
-      topic: '',
-      channelKind: 'boss_thread',
-      status: 'active',
-      unreadCount: 0,
-      repoPath: null,
-      chatCwd: null,
-      language: null,
-      responseLanguage: 'en',
-      formationMode: 'manual',
-      skillProfile: null,
-      mcpProfile: null,
-      orchestratorRoles: [],
-      createdAt: '2026-03-23T00:00:00.000Z',
-      updatedAt: '2026-03-23T00:00:00.000Z',
-      lastMessageAt: null,
-      lastActivatedAt: null,
-      orchestratorLease: {
-        sessionId: 'session-1',
-        status: 'ready',
-        cwd: null,
-        lastError: null,
-        provider: 'claude',
-        model: null,
-        startedAt: null,
-        lastUsedAt: null,
-      },
-      catAssignments: [],
-      messages: [],
-      assignedCats: [],
-      roomRouting: {
-        mode: 'boss_chat',
-        leadParticipantId: null,
-        maxContinuations: 6,
-        maxDispatchesPerTurn: 12,
-        maxTargetVisitsPerTurn: 2,
-        lastOutcome: null,
-        lastCheckpoint: null,
-        lastWakeRequest: null,
-        wakeHistory: [],
-        workflow: {
-          activeTurn: null,
-          turnHistory: [],
-          eventHistory: [],
-          lastCheckpointEvent: null,
-          lastOutcomeEvent: null,
-        },
-      },
-      workingMemory: {
-        summary: null,
-        facts: [],
-        openLoops: [],
-        updatedAt: null,
-      },
     }),
     false,
   );

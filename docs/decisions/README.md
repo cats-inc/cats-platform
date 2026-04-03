@@ -82,6 +82,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [003-electron-host-manages-local-services](./003-electron-host-manages-local-services.md) | Use Electron as a thin desktop host around local services | Accepted | 2026-03-11 |
 | [004-separate-cat-identity-from-provider-execution](./004-separate-cat-identity-from-provider-execution.md) | Separate cat identity from provider execution | Accepted | 2026-03-13 |
 | [005-use-chat-cat-registry-and-channel-assignments](./005-use-chat-cat-registry-and-channel-assignments.md) | Use a global cat registry with channel assignments | Accepted | 2026-03-13 |
+| [050-use-ack-first-chat-dispatch-lifecycle](./050-use-ack-first-chat-dispatch-lifecycle.md) | Use an ACK-first chat dispatch lifecycle | Accepted | 2026-04-03 |
 <!-- Add new ADRs above this line -->
 
 ## For AI Agents
@@ -92,6 +93,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-02*
+*Last updated: 2026-04-03*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

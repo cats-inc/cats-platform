@@ -5,10 +5,13 @@ import { matchRoute, readJsonBody, sendBinary, sendJson, sendMethodNotAllowed } 
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import {
   activateChannelSessions,
-  routeChannelMessage,
+  beginChannelMessageDispatch,
+  continueBegunChannelMessageDispatch,
+  settleBegunChannelMessageDispatchFailure,
 } from '../../state/runtimeActions.js';
 import {
   buildChannelView,
+  replaceState,
   requireChannel,
   setChannelCatLease,
   setChannelOrchestratorLease,
@@ -50,9 +53,23 @@ import {
   channelDispatchCancellationRegistry,
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
 } from '../../state/runtime-dispatch/cancellation.js';
+import { publishRoomMutation } from '../transportEventPublisher.js';
 
 const CHANNEL_STREAM_SESSION_WAIT_MS = 1500;
 const CHANNEL_STREAM_SESSION_POLL_MS = 75;
+
+function publishChannelMutationEvents(
+  context: ChatApiRouteContext,
+  channelId: string,
+  kind: 'created' | 'updated' | 'message_added' = 'updated',
+): void {
+  publishRoomMutation(context.dependencies.eventHub, channelId, kind);
+  context.dependencies.eventHub?.emit({
+    kind: 'recents_changed',
+    channelId,
+    timestamp: new Date().toISOString(),
+  });
+}
 
 function resolveChannelStreamSessionId(
   channel: ReturnType<typeof requireChannel>,
@@ -283,10 +300,13 @@ async function handleRestSendMessage(
   try {
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<SendChannelMessageInput>(context.request);
+    let begunDispatch:
+      | Awaited<ReturnType<typeof beginChannelMessageDispatch>>
+      | null = null;
+
     await context.dependencies.mutationGate.run(channelId, async () => {
       const stateBefore = await context.dependencies.chatStore.read();
-      const messageCountBefore = requireChannel(stateBefore, channelId).messages.length;
-      const dispatch = await routeChannelMessage(
+      begunDispatch = await beginChannelMessageDispatch(
         stateBefore,
         channelId,
         body,
@@ -304,20 +324,96 @@ async function handleRestSendMessage(
           cancellationRegistry: channelDispatchCancellationRegistry,
         },
       );
-      const persisted = await context.dependencies.chatStore.write(
-        dispatch.state,
+      const appShell = await buildAppShellPayload(
+        context.dependencies,
+        begunDispatch.state,
       );
-      const userMessage =
-        requireChannel(persisted, channelId).messages[messageCountBefore] ?? null;
 
       sendJson(context.response, 200, {
-        message: userMessage,
+        appShell,
+        phase: 'acknowledged',
+        message: begunDispatch.userMessage,
         dispatch: {
           channelId,
-          results: dispatch.results,
+          results: begunDispatch.results,
         },
       });
     });
+
+    if (!begunDispatch) {
+      throw new Error('Channel message dispatch did not produce an acknowledged state.');
+    }
+    const acknowledgedDispatch: Awaited<ReturnType<typeof beginChannelMessageDispatch>> =
+      begunDispatch;
+
+    if (!acknowledgedDispatch.preparedTurn) {
+      publishChannelMutationEvents(context, channelId, 'message_added');
+      return;
+    }
+
+    publishChannelMutationEvents(context, channelId, 'message_added');
+    void (async () => {
+      const dispatchNow = nowFrom(context.dependencies);
+      try {
+        const completed = await continueBegunChannelMessageDispatch(
+          acknowledgedDispatch,
+          channelId,
+          context.dependencies.runtimeClient,
+          dispatchNow,
+          {
+            companionStore: context.dependencies.companionStore,
+            memoryService: context.dependencies.memoryService,
+            chatStore: context.dependencies.chatStore,
+            chatStatePath: context.dependencies.config.chatStatePath,
+            runtimeDataDir: context.dependencies.config.runtimeDataDir,
+            runtimeRecovery: {
+              staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
+            },
+            cancellationRegistry: channelDispatchCancellationRegistry,
+          },
+        );
+        await context.dependencies.mutationGate.run(channelId, async () => {
+          let latestState = await context.dependencies.chatStore.read();
+          if (!latestState.channels.some((channel) => channel.id === channelId)) {
+            return;
+          }
+          latestState = replaceState(
+            latestState,
+            requireChannel(completed.state, channelId),
+          );
+          if (latestState.selectedChannelId === channelId) {
+            requireChannel(latestState, channelId).unreadCount = 0;
+          }
+          await context.dependencies.chatStore.write(latestState);
+        });
+      } catch (error) {
+        const settled = await settleBegunChannelMessageDispatchFailure(
+          acknowledgedDispatch,
+          channelId,
+          error,
+          dispatchNow,
+          {
+            chatStore: context.dependencies.chatStore,
+          },
+        );
+        await context.dependencies.mutationGate.run(channelId, async () => {
+          let latestState = await context.dependencies.chatStore.read();
+          if (!latestState.channels.some((channel) => channel.id === channelId)) {
+            return;
+          }
+          latestState = replaceState(
+            latestState,
+            requireChannel(settled.state, channelId),
+          );
+          if (latestState.selectedChannelId === channelId) {
+            requireChannel(latestState, channelId).unreadCount = 0;
+          }
+          await context.dependencies.chatStore.write(latestState);
+        });
+      } finally {
+        publishChannelMutationEvents(context, channelId, 'updated');
+      }
+    })();
   } catch (error) {
     handleRestError(context, error);
   }

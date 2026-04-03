@@ -2,6 +2,7 @@ export {
   beginChannelMessageDispatch,
   continueBegunChannelMessageDispatch,
   routeChannelMessage,
+  settleBegunChannelMessageDispatchFailure,
 } from './runtime-dispatch/routing.js';
 export { resumeWorkflowContinuationReplay } from './runtime-dispatch/replay.js';
 export {

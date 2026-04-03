@@ -43,6 +43,34 @@ const baseConfig = {
   chatStatePath: 'unused-for-tests',
 };
 
+async function waitForCondition(
+  predicate,
+  options = {},
+) {
+  const timeoutMs = options.timeoutMs ?? 2_000;
+  const intervalMs = options.intervalMs ?? 20;
+  const deadline = Date.now() + timeoutMs;
+  let lastError = null;
+
+  while (Date.now() < deadline) {
+    try {
+      const result = await predicate();
+      if (result) {
+        return result;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+  throw new Error(`Timed out after ${timeoutMs}ms waiting for test condition.`);
+}
+
 function createRuntimeStub() {
   let nextSession = 1;
   let nextWakeup = 1;
@@ -4416,7 +4444,7 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
   });
 });
 
-test('PATCH /api/preferences wakes the selected Boss Chat entry participant', async () => {
+test('PATCH /api/preferences only selects the requested Boss Chat without waking runtime', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -4457,19 +4485,14 @@ test('PATCH /api/preferences wakes the selected Boss Chat entry participant', as
     assert.equal(channelResponse.status, 200);
     const channelPayload = await channelResponse.json();
 
-    assert.equal(runtimeClient.createdSessions.length, 1);
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
-    assert.equal(channelPayload.channel.status, 'active');
-    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.reason, 'room_entry');
-    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.status, 'completed');
-    assert.equal(
-      channelPayload.channel.roomRouting.lastWakeRequest.participant.participantKind,
-      'orchestrator',
-    );
+    assert.equal(runtimeClient.createdSessions.length, 0);
+    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
+    assert.equal(channelPayload.channel.messages[0]?.metadata?.event, 'room_created');
   });
 });
 
-test('room-entry wake persists a runtime-sanitized solo model selection after dropping a stale preset', async () => {
+test('first send persists a runtime-sanitized solo model selection after dropping a stale preset', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.createSession = async function createSession(input) {
     const sessionId = `session-${this.createdSessions.length + 1}`;
@@ -4514,18 +4537,27 @@ test('room-entry wake persists a runtime-sanitized solo model selection after dr
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
 
-    const updatePrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
-      method: 'PATCH',
+    const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ selectedChannelId: channelId }),
+      body: JSON.stringify({ body: 'Sanitize this preset.' }),
     });
-    assert.equal(updatePrefsResponse.status, 200);
+    assert.equal(sendResponse.status, 200);
+    const sendPayload = await sendResponse.json();
+    assert.equal(sendPayload.phase, 'acknowledged');
 
-    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
-    assert.equal(channelResponse.status, 200);
-    const channelPayload = await channelResponse.json();
+    const channelPayload = await waitForCondition(async () => {
+      if (runtimeClient.createdSessions.length !== 1) {
+        return null;
+      }
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      return payload.channel.pendingModelSelection?.entryId === 'gpt-5.4'
+        ? payload
+        : null;
+    });
 
-    assert.equal(runtimeClient.createdSessions.length, 1);
     assert.deepEqual(channelPayload.channel.pendingModelSelection, {
       entryMode: 'auto',
       entryId: 'gpt-5.4',
@@ -4536,23 +4568,17 @@ test('room-entry wake persists a runtime-sanitized solo model selection after dr
   });
 });
 
-test('concurrent room-entry wake and first send reuse the same orchestrator session', async () => {
+test('first send on a selected solo chat accepts the user turn before starting the orchestrator session', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
-  let createCalls = 0;
-  let releaseFirstCreate = () => {};
-  const firstCreateStarted = new Promise((resolve) => {
-    runtimeClient.createSession = async (input) => {
-      createCalls += 1;
-      if (createCalls === 1) {
-        resolve(undefined);
-        await new Promise((resume) => {
-          releaseFirstCreate = resume;
-        });
-      }
-      return originalCreateSession(input);
-    };
+  let releaseCreateSession = () => {};
+  const createSessionBlocked = new Promise((resolve) => {
+    releaseCreateSession = resolve;
   });
+  runtimeClient.createSession = async (input) => {
+    await createSessionBlocked;
+    return originalCreateSession(input);
+  };
 
   await withServer(runtimeClient, async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
@@ -4580,57 +4606,62 @@ test('concurrent room-entry wake and first send reuse the same orchestrator sess
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
 
-    const wakeResponsePromise = fetch(`${baseUrl}/api/preferences`, {
+    const selectResponse = await fetch(`${baseUrl}/api/preferences`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ selectedChannelId: channelId }),
     });
+    assert.equal(selectResponse.status, 200);
+    assert.equal(runtimeClient.createdSessions.length, 0);
 
-    await firstCreateStarted;
-
-    const sendResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+    const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ body: 'Hi' }),
     });
-
-    releaseFirstCreate();
-
-    const [wakeResponse, sendResponse] = await Promise.all([
-      wakeResponsePromise,
-      sendResponsePromise,
-    ]);
-    assert.equal(wakeResponse.status, 200);
     assert.equal(sendResponse.status, 200);
+    const sendPayload = await sendResponse.json();
+    assert.equal(sendPayload.phase, 'acknowledged');
+    assert.equal(sendPayload.message.body, 'Hi');
+    assert.equal(runtimeClient.createdSessions.length, 0);
 
-    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
-    assert.equal(channelResponse.status, 200);
-    const channelPayload = await channelResponse.json();
+    const acknowledgedChannelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(acknowledgedChannelResponse.status, 200);
+    const acknowledgedChannelPayload = await acknowledgedChannelResponse.json();
+    assert.equal(acknowledgedChannelPayload.channel.messages[0]?.metadata?.event, 'room_created');
+    assert.equal(acknowledgedChannelPayload.channel.messages[1]?.senderKind, 'user');
+    assert.equal(acknowledgedChannelPayload.channel.orchestratorLease.sessionId, null);
 
-    assert.equal(runtimeClient.createdSessions.length, 1);
-    assert.equal(runtimeClient.sentMessages.length, 1);
+    releaseCreateSession();
+
+    const channelPayload = await waitForCondition(async () => {
+      if (runtimeClient.createdSessions.length !== 1 || runtimeClient.sentMessages.length !== 1) {
+        return null;
+      }
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      return payload.channel.orchestratorLease.sessionId === 'session-1'
+        ? payload
+        : null;
+    });
+
     assert.equal(runtimeClient.sentMessages[0]?.sessionId, 'session-1');
-    assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
+    assert.equal(channelPayload.channel.messages[2]?.metadata?.event, 'session_started');
   });
 });
 
-test('parallel chat first send reuses member sessions across route wake and later member selection', async () => {
+test('parallel chat first send accepts the user turn before starting member sessions', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
-  let createCalls = 0;
-  let releaseFirstCreate = () => {};
-  const firstCreateStarted = new Promise((resolve) => {
-    runtimeClient.createSession = async (input) => {
-      createCalls += 1;
-      if (createCalls === 1) {
-        resolve(undefined);
-        await new Promise((resume) => {
-          releaseFirstCreate = resume;
-        });
-      }
-      return originalCreateSession(input);
-    };
+  let releaseCreateSession = () => {};
+  const createSessionBlocked = new Promise((resolve) => {
+    releaseCreateSession = resolve;
   });
+  runtimeClient.createSession = async (input) => {
+    await createSessionBlocked;
+    return originalCreateSession(input);
+  };
 
   await withServer(runtimeClient, async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
@@ -4664,15 +4695,7 @@ test('parallel chat first send reuses member sessions across route wake and late
     assert.ok(activeChannelId);
     assert.ok(passiveChannelId);
 
-    const wakeResponsePromise = fetch(`${baseUrl}/api/preferences`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ selectedChannelId: activeChannelId }),
-    });
-
-    await firstCreateStarted;
-
-    const sendResponsePromise = fetch(`${baseUrl}/api/concurrent-groups/${groupId}/messages`, {
+    const sendResponse = await fetch(`${baseUrl}/api/concurrent-groups/${groupId}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -4680,39 +4703,53 @@ test('parallel chat first send reuses member sessions across route wake and late
         body: 'Hi',
       }),
     });
-
-    releaseFirstCreate();
-
-    const [wakeResponse, sendResponse] = await Promise.all([
-      wakeResponsePromise,
-      sendResponsePromise,
-    ]);
-    assert.equal(wakeResponse.status, 200);
     assert.equal(sendResponse.status, 200);
+    const sendPayload = await sendResponse.json();
+    assert.equal(sendPayload.phase, 'acknowledged');
+    assert.equal(runtimeClient.createdSessions.length, 0);
 
-    const [activeChannelResponse, passiveChannelResponse] = await Promise.all([
+    const [activeAcknowledgedResponse, passiveAcknowledgedResponse] = await Promise.all([
       fetch(`${baseUrl}/api/channels/${activeChannelId}`),
       fetch(`${baseUrl}/api/channels/${passiveChannelId}`),
     ]);
-    assert.equal(activeChannelResponse.status, 200);
-    assert.equal(passiveChannelResponse.status, 200);
-    const activeChannelPayload = await activeChannelResponse.json();
-    const passiveChannelPayload = await passiveChannelResponse.json();
+    assert.equal(activeAcknowledgedResponse.status, 200);
+    assert.equal(passiveAcknowledgedResponse.status, 200);
+    const activeAcknowledgedPayload = await activeAcknowledgedResponse.json();
+    const passiveAcknowledgedPayload = await passiveAcknowledgedResponse.json();
+    assert.deepEqual(
+      activeAcknowledgedPayload.channel.messages.slice(0, 2).map((message) => message.senderKind),
+      ['system', 'user'],
+    );
+    assert.deepEqual(
+      passiveAcknowledgedPayload.channel.messages.slice(0, 2).map((message) => message.senderKind),
+      ['system', 'user'],
+    );
+    assert.equal(activeAcknowledgedPayload.channel.messages[0]?.metadata?.event, 'room_created');
+    assert.equal(passiveAcknowledgedPayload.channel.messages[0]?.metadata?.event, 'room_created');
 
-    assert.equal(runtimeClient.createdSessions.length, 2);
-    assert.equal(runtimeClient.sentMessages.length, 2);
-    assert.ok(activeChannelPayload.channel.orchestratorLease.sessionId);
-    assert.ok(passiveChannelPayload.channel.orchestratorLease.sessionId);
-    assert.deepEqual(
-      activeChannelPayload.channel.messages.slice(0, 2).map((message) => message.senderKind),
-      ['system', 'user'],
-    );
-    assert.deepEqual(
-      passiveChannelPayload.channel.messages.slice(0, 2).map((message) => message.senderKind),
-      ['system', 'user'],
-    );
-    assert.equal(activeChannelPayload.channel.messages[0]?.metadata?.event, 'session_started');
-    assert.equal(passiveChannelPayload.channel.messages[0]?.metadata?.event, 'session_started');
+    releaseCreateSession();
+
+    const [activeChannelPayload, passiveChannelPayload] = await waitForCondition(async () => {
+      if (runtimeClient.createdSessions.length !== 2 || runtimeClient.sentMessages.length !== 2) {
+        return null;
+      }
+      const [activeChannelResponse, passiveChannelResponse] = await Promise.all([
+        fetch(`${baseUrl}/api/channels/${activeChannelId}`),
+        fetch(`${baseUrl}/api/channels/${passiveChannelId}`),
+      ]);
+      assert.equal(activeChannelResponse.status, 200);
+      assert.equal(passiveChannelResponse.status, 200);
+      const payloads = await Promise.all([
+        activeChannelResponse.json(),
+        passiveChannelResponse.json(),
+      ]);
+      return payloads.every((payload) => Boolean(payload.channel.orchestratorLease.sessionId))
+        ? payloads
+        : null;
+    });
+
+    assert.equal(activeChannelPayload.channel.messages[2]?.metadata?.event, 'session_started');
+    assert.equal(passiveChannelPayload.channel.messages[2]?.metadata?.event, 'session_started');
 
     const selectPassiveResponse = await fetch(`${baseUrl}/api/preferences`, {
       method: 'PATCH',
@@ -4780,6 +4817,8 @@ test('parallel chat first send fans out the selected folder and attachments to e
         }),
       });
       assert.equal(sendResponse.status, 200);
+      const sendPayload = await sendResponse.json();
+      assert.equal(sendPayload.phase, 'acknowledged');
 
       const channelPayloads = await Promise.all(
         memberChannelIds.map(async (channelId) => {
@@ -4797,8 +4836,9 @@ test('parallel chat first send fans out the selected folder and attachments to e
         assert.match(userMessage.body, /- \.cats-attachments\/notes\.txt/);
       }
 
-      assert.equal(runtimeClient.createdSessions.length, 2);
-      assert.equal(runtimeClient.sentMessages.length, 2);
+      await waitForCondition(() =>
+        runtimeClient.createdSessions.length === 2 && runtimeClient.sentMessages.length === 2,
+      );
       for (const sent of runtimeClient.sentMessages) {
         assert.match(sent.content, /^\[Attached files in working directory:\]/);
         assert.match(sent.content, /- \.cats-attachments\/notes\.txt/);
@@ -5057,17 +5097,22 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     });
     assert.equal(messageResponse.status, 200);
     const messagePayload = await messageResponse.json();
+    assert.equal(messagePayload.phase, 'acknowledged');
+    assert.equal(messagePayload.message.body, 'Hello from solo mode');
 
-    assert.equal(runtimeClient.createdSessions.length, 1);
+    await waitForCondition(() => runtimeClient.createdSessions.length === 1);
     assert.equal(runtimeClient.createdSessions[0].workspaceKind, 'sandbox');
     assert.equal(runtimeClient.createdSessions[0].workspaceAccess, 'read_write');
     assert.equal(runtimeClient.createdSessions[0].cwd, null);
-    assert.equal(messagePayload.dispatch.results[0].status, 'sent');
-    assert.equal(messagePayload.dispatch.results[0].targetKind, 'orchestrator');
 
-    const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
-    assert.equal(channelResponse.status, 200);
-    const channelPayload = await channelResponse.json();
+    const channelPayload = await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      return payload.channel.orchestratorLease.sessionId === 'session-1'
+        ? payload
+        : null;
+    });
 
     assert.equal(channelPayload.channel.composerMode, 'solo');
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
@@ -5315,7 +5360,7 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-lead cat to 
   });
 });
 
-test('PATCH /api/preferences does not overwrite the last wake request when the selected room is already awake', async () => {
+test('PATCH /api/preferences does not overwrite the last wake request because selection no longer wakes rooms', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -5343,6 +5388,22 @@ test('PATCH /api/preferences does not overwrite the last wake request when the s
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
 
+    const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'Start the room.' }),
+    });
+    assert.equal(sendResponse.status, 200);
+    const firstChannelPayload = await waitForCondition(async () => {
+      const firstChannelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(firstChannelResponse.status, 200);
+      const payload = await firstChannelResponse.json();
+      return payload.channel.roomRouting.lastWakeRequest?.completedAt
+        ? payload
+        : null;
+    });
+    const firstWakeCompletedAt = firstChannelPayload.channel.roomRouting.lastWakeRequest?.completedAt ?? null;
+
     const firstPrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -5366,12 +5427,12 @@ test('PATCH /api/preferences does not overwrite the last wake request when the s
     assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.status, 'completed');
     assert.equal(
       channelPayload.channel.roomRouting.lastWakeRequest.completedAt,
-      '2026-03-11T00:00:00.000Z',
+      firstWakeCompletedAt,
     );
   });
 });
 
-test('PATCH /api/preferences wakes the selected direct chat lead', async () => {
+test('PATCH /api/preferences only selects the requested direct chat lead without waking it', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -5428,20 +5489,14 @@ test('PATCH /api/preferences wakes the selected direct chat lead', async () => {
     assert.equal(channelResponse.status, 200);
     const channelPayload = await channelResponse.json();
 
-    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.createdSessions.length, 0);
     assert.equal(channelPayload.channel.roomRouting.mode, 'direct_cat_chat');
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
     assert.equal(
       channelPayload.channel.assignedCats[0].execution.lease.sessionId,
-      'session-1',
+      null,
     );
-    assert.equal(channelPayload.channel.status, 'active');
-    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.reason, 'room_entry');
-    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.status, 'completed');
-    assert.equal(
-      channelPayload.channel.roomRouting.lastWakeRequest.participant.participantId,
-      catId,
-    );
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
   });
 });
 
@@ -5504,10 +5559,8 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
 
-    const wakeResponse = await fetch(`${baseUrl}/api/preferences`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ selectedChannelId: channelId }),
+    const wakeResponse = await fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
+      method: 'POST',
     });
     assert.equal(wakeResponse.status, 200);
     assert.equal(runtimeClient.createdSessions.length, 1);
@@ -5804,7 +5857,7 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
   });
 });
 
-test('PATCH /api/preferences does not fall back to Boss Cat when a direct chat lead is missing', async () => {
+test('first send does not fall back to Boss Cat when a direct chat lead is missing', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -5853,12 +5906,12 @@ test('PATCH /api/preferences does not fall back to Boss Cat when a direct chat l
     });
     assert.equal(removeResponse.status, 200);
 
-    const updatePrefsResponse = await fetch(`${baseUrl}/api/preferences`, {
-      method: 'PATCH',
+    const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ selectedChannelId: channelId }),
+      body: JSON.stringify({ body: 'Hello?' }),
     });
-    assert.equal(updatePrefsResponse.status, 200);
+    assert.equal(sendResponse.status, 200);
 
     const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
     assert.equal(channelResponse.status, 200);
@@ -5867,14 +5920,13 @@ test('PATCH /api/preferences does not fall back to Boss Cat when a direct chat l
     assert.equal(runtimeClient.createdSessions.length, 0);
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
     assert.equal(channelPayload.channel.roomRouting.mode, 'direct_cat_chat');
-    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.reason, 'room_entry');
-    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest.status, 'failed');
+    assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
     assert.equal(
-      channelPayload.channel.roomRouting.lastWakeRequest.participant.participantId,
-      catId,
+      channelPayload.channel.messages.at(-1)?.metadata?.event,
+      'routing_skipped',
     );
     assert.match(
-      channelPayload.channel.roomRouting.lastWakeRequest.error ?? '',
+      channelPayload.channel.messages.at(-1)?.body ?? '',
       /active lead Cat/i,
     );
   });

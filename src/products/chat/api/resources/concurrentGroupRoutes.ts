@@ -15,7 +15,7 @@ import {
 import {
   beginChannelMessageDispatch,
   continueBegunChannelMessageDispatch,
-  wakeChannelEntryParticipant,
+  settleBegunChannelMessageDispatchFailure,
 } from '../../state/runtimeActions.js';
 import {
   appendMessage,
@@ -55,6 +55,7 @@ import {
   channelDispatchCancellationRegistry,
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
 } from '../../state/runtime-dispatch/cancellation.js';
+import { publishRoomMutation } from '../transportEventPublisher.js';
 
 function requireConcurrentGroup(
   state: ChatState,
@@ -118,7 +119,23 @@ interface StagedConcurrentDispatch {
   now: Date;
   nowIso: string;
   lockedChannelIds: string[];
+  acknowledgedState: ChatState;
   begunDispatches: BegunConcurrentDispatch[];
+}
+
+function publishConcurrentMutationEvents(
+  context: ChatApiRouteContext,
+  channelIds: string[],
+  kind: 'created' | 'updated' | 'message_added' = 'updated',
+): void {
+  const timestamp = new Date().toISOString();
+  for (const channelId of [...new Set(channelIds)]) {
+    publishRoomMutation(context.dependencies.eventHub, channelId, kind);
+  }
+  context.dependencies.eventHub?.emit({
+    kind: 'recents_changed',
+    timestamp,
+  });
 }
 
 async function runLockedChannels<T>(
@@ -195,6 +212,58 @@ async function dispatchConcurrentBodies(
   return finalizeConcurrentBodies(context, staged);
 }
 
+async function acknowledgeConcurrentBodies(
+  context: ChatApiRouteContext,
+  options: {
+    groupId: string;
+    sharedAttachments?: NonNullable<SendConcurrentChatMessageInput['attachments']>;
+    persistAcknowledgedStateBeforeDispatch?: boolean;
+    prepare: (
+      state: ChatState,
+      group: ConcurrentGroupState,
+    ) => Promise<PreparedConcurrentDispatch>;
+  },
+): Promise<{
+  staged: StagedConcurrentDispatch;
+  response: ConcurrentChatDispatchResponse;
+}> {
+  const staged = await withLockedConcurrentGroup(
+    context,
+    options.groupId,
+    async (lockedState, lockedGroup) => {
+      const prepared = await options.prepare(lockedState, lockedGroup);
+      return stageConcurrentBodies(context, {
+        groupId: options.groupId,
+        state: prepared.state,
+        activeChannelId: prepared.activeChannelId,
+        channelInputs: prepared.channelInputs,
+        lockedChannelIds: lockedGroup.memberChannelIds,
+        sharedAttachments: options.sharedAttachments,
+        persistAcknowledgedStateBeforeDispatch: options.persistAcknowledgedStateBeforeDispatch,
+      });
+    },
+  );
+
+  const appShell = await buildAppShellPayload(
+    context.dependencies,
+    staged.acknowledgedState,
+  );
+  return {
+    staged,
+    response: {
+      appShell,
+      groupId: staged.groupId,
+      phase: 'acknowledged',
+      results: staged.begunDispatches.map((dispatch) => ({
+        channelId: dispatch.channelId,
+        status: dispatch.status,
+        ...(dispatch.sourceMessageId ? { sourceMessageId: dispatch.sourceMessageId } : {}),
+        ...(dispatch.error ? { error: dispatch.error } : {}),
+      })),
+    },
+  };
+}
+
 async function stageConcurrentBodies(
   context: ChatApiRouteContext,
   options: {
@@ -212,25 +281,6 @@ async function stageConcurrentBodies(
   const baseState = selectChannel(options.state, options.activeChannelId, now);
   let acknowledgedState = baseState;
   const hasSharedAttachments = Boolean(options.sharedAttachments?.length);
-  for (const [channelId, input] of options.channelInputs.entries()) {
-    if (!input.body.trim() && !hasSharedAttachments) {
-      continue;
-    }
-
-    const wake = await wakeChannelEntryParticipant(
-      acknowledgedState,
-      channelId,
-      context.dependencies.runtimeClient,
-      now,
-      {
-        companionStore: context.dependencies.companionStore,
-        memoryService: context.dependencies.memoryService,
-        chatStatePath: context.dependencies.config.chatStatePath,
-        runtimeDataDir: context.dependencies.config.runtimeDataDir,
-      },
-    );
-    acknowledgedState = wake.state;
-  }
 
   let effectiveChannelInputs = options.channelInputs;
   if (options.sharedAttachments?.length) {
@@ -324,6 +374,7 @@ async function stageConcurrentBodies(
     now,
     nowIso,
     lockedChannelIds: [...options.lockedChannelIds],
+    acknowledgedState: mergedState,
     begunDispatches,
   };
 }
@@ -372,11 +423,20 @@ async function finalizeConcurrentBodies(
           state: completed.state,
         };
       } catch (error) {
+        const settled = await settleBegunChannelMessageDispatchFailure(
+          dispatch.begun,
+          dispatch.channelId,
+          error,
+          staged.now,
+          {
+            chatStore: context.dependencies.chatStore,
+          },
+        );
         return {
           channelId: dispatch.channelId,
           status: 'error' as const,
           error: error instanceof Error ? error.message : 'Failed to dispatch parallel chat turn.',
-          state: null,
+          state: settled.state,
         };
       }
     }),
@@ -415,6 +475,7 @@ async function finalizeConcurrentBodies(
       return {
         appShell,
         groupId: staged.groupId,
+        phase: 'completed' as const,
         results,
       };
     },
@@ -530,7 +591,7 @@ async function handleSendConcurrentGroupMessage(
       return;
     }
 
-    const response = await dispatchConcurrentBodies(context, {
+    const acknowledged = await acknowledgeConcurrentBodies(context, {
       groupId,
       sharedAttachments: body.attachments,
       persistAcknowledgedStateBeforeDispatch: true,
@@ -542,7 +603,23 @@ async function handleSendConcurrentGroupMessage(
         ),
       }),
     });
-    sendJson(context.response, 200, response);
+    sendJson(context.response, 200, acknowledged.response);
+    publishConcurrentMutationEvents(
+      context,
+      acknowledged.staged.lockedChannelIds,
+      'message_added',
+    );
+    if (acknowledged.staged.begunDispatches.some((dispatch) => dispatch.begun && dispatch.status === 'sent')) {
+      void finalizeConcurrentBodies(context, acknowledged.staged)
+        .catch(() => {})
+        .finally(() => {
+          publishConcurrentMutationEvents(
+            context,
+            acknowledged.staged.lockedChannelIds,
+            'updated',
+          );
+        });
+    }
   } catch (error) {
     if (error instanceof ConcurrentAttachmentWorkspaceError) {
       const noun = error.channelIds.length === 1 ? 'chat has' : 'chats have';

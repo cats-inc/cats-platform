@@ -16,6 +16,34 @@ const baseConfig = {
   chatStatePath: 'unused-for-tests',
 };
 
+async function waitForCondition(
+  predicate,
+  options = {},
+) {
+  const timeoutMs = options.timeoutMs ?? 2_000;
+  const intervalMs = options.intervalMs ?? 20;
+  const deadline = Date.now() + timeoutMs;
+  let lastError = null;
+
+  while (Date.now() < deadline) {
+    try {
+      const result = await predicate();
+      if (result) {
+        return result;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+  throw new Error(`Timed out after ${timeoutMs}ms waiting for test condition.`);
+}
+
 function createRuntimeStub() {
   let nextSession = 1;
   return {
@@ -309,9 +337,10 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
     );
     assert.equal(sendMessageResponse.status, 200);
     const sendMessagePayload = await sendMessageResponse.json();
+    assert.equal(sendMessagePayload.phase, 'acknowledged');
     assert.equal(sendMessagePayload.message.body, 'Hello from canonical route');
     assert.ok(sendMessagePayload.dispatch);
-    assert.ok(sendMessagePayload.dispatch.results[0].turnId);
+    assert.match(sendMessagePayload.message.id, UUID_PATTERN);
 
     // GET /api/channels/:cid/messages – list messages
     const listMessagesResponse = await fetch(
@@ -319,11 +348,16 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
     );
     assert.equal(listMessagesResponse.status, 200);
     const listMessagesPayload = await listMessagesResponse.json();
-    assert.ok(listMessagesPayload.messages.length >= 2);
+    assert.ok(listMessagesPayload.messages.length >= 1);
 
-    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
-    assert.equal(appShellResponse.status, 200);
-    const appShellPayload = await appShellResponse.json();
+    const appShellPayload = await waitForCondition(async () => {
+      const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+      assert.equal(appShellResponse.status, 200);
+      const payload = await appShellResponse.json();
+      return payload.chat.selectedChannel.roomRouting.workflow.turnHistory[0]?.status === 'completed'
+        ? payload
+        : null;
+    });
     assert.equal(
       appShellPayload.chat.selectedChannel.roomRouting.workflow.turnHistory[0].status,
       'completed',
@@ -617,7 +651,8 @@ test('POST /api/channels supports direct Cat chat with existingCatIds and initia
       openLoops: [],
       updatedAt: null,
     });
-    assert.equal(createChannelPayload.channel.messages.length, 0);
+    assert.equal(createChannelPayload.channel.messages.length, 1);
+    assert.equal(createChannelPayload.channel.messages[0].metadata?.event, 'room_created');
   });
 });
 

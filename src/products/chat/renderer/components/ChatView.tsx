@@ -57,7 +57,10 @@ import { ProgressSummaryPanel } from './ProgressSummaryPanel';
 import { ProviderModelFields } from './ProviderModelFields';
 import { RunInspector } from './RunInspector';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
-import { getComposerBusyChannelId, isComposerBusy } from '../../../../shared/composer';
+import {
+  getComposerDispatchChannelId,
+  isComposerBusy,
+} from '../../../../shared/composer';
 import {
   getProviderDisplayName,
   getProviderModels,
@@ -177,8 +180,10 @@ export function ChatView({
     }
   }
 
-  const hasConversationStarted =
-    selectedChannel.messages.some((message) => message.senderKind !== 'system');
+  const visibleMessages = selectedChannel.messages.filter(
+    (message) => payload.chat.showVerboseMessages || message.metadata?.verbosity !== 'verbose',
+  );
+  const hasConversationStarted = visibleMessages.length > 0;
 
   const leadParticipantId = selectedChannel.roomRouting.leadParticipantId;
   const leadCat = leadParticipantId
@@ -379,20 +384,19 @@ export function ChatView({
     [operatorView, inspectedRunId],
   );
   const composerBusy = isComposerBusy(busy);
-  const composerBusyChannelId = getComposerBusyChannelId(busy);
+  const composerDispatchChannelId = getComposerDispatchChannelId(busy);
   const stopBusy = busy.startsWith('message:stop:') || busy === 'concurrent:stop';
   const resumeBusy = busy === 'channel:resume';
   const canResumeChannel = !composerBusy && !resumeBusy;
   const canStopSingleChat =
     !isCompareGroup
-    && composerBusyChannelId === selectedChannel.id
+    && composerDispatchChannelId === selectedChannel.id
     && onStopMessage != null;
   const canStopParallelChat =
     isCompareGroup
     && onStopMessage != null
     && (
-      busy === 'concurrent:ack'
-      || busy === 'concurrent:dispatch'
+      busy === 'concurrent:dispatch'
       || busy === 'concurrent:stop'
     );
   const showStopComposerAction = canStopSingleChat || canStopParallelChat;
@@ -560,7 +564,7 @@ export function ChatView({
             {hasConversationStarted ? (
               <section className="transcriptPanel">
                 <div ref={transcriptListRef} className="transcriptList">
-                  {selectedChannel.messages.filter((msg) => payload.chat.showVerboseMessages || msg.metadata?.verbosity !== 'verbose').map((message) => (
+                  {visibleMessages.map((message) => (
                     <article key={message.id} className={messageStackTone(message.senderKind)}>
                       <div className={messageTone(message.senderKind)}>
                         {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {

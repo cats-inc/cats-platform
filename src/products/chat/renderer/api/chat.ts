@@ -251,18 +251,18 @@ export async function sendChatMessage(
     signal,
   });
 
-  const { dispatch } = await expectJson<{
-    message: unknown;
+  const { appShell, message, phase, dispatch } = await expectJson<{
+    appShell: AppShellPayload;
+    message: SendChannelMessageResponse['message'];
+    phase: SendChannelMessageResponse['phase'];
     dispatch: { channelId: string; results: SendChannelMessageResponse['results'] };
   }>(response, `cats channel messaging returned ${response.status}`);
-
-  let appShell: AppShellPayload;
-  try {
-    appShell = await fetchAppShell(signal);
-  } catch {
-    appShell = await fetchAppShell();
-  }
-  return { appShell, results: dispatch.results };
+  return {
+    appShell,
+    message,
+    phase,
+    results: dispatch.results,
+  };
 }
 
 export async function cancelChatChannel(

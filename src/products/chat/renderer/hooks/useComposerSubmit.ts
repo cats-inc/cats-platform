@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useCallback,
   useRef,
   type Dispatch,
@@ -17,7 +18,6 @@ import {
 } from '../../shared/channelPaths';
 import {
   normalizeSelectedChannelView,
-  shouldAwaitSelectedChannelWakeBeforeSend,
 } from '../../shared/channelEntry';
 import { isDirectLaneChannel } from '../../shared/channelTopology';
 import {
@@ -26,7 +26,6 @@ import {
   encodeAttachmentFiles,
   createConcurrentChatGroup,
   createChatChannel,
-  fetchAppShell,
   sendConcurrentChatMessage,
   sendChatMessage,
   updateSelectedChannel,
@@ -60,55 +59,19 @@ function isDirectLaneSelectedForCat(
     && channel.roomRouting.leadParticipantId === catId;
 }
 
-const PERSISTED_TURN_POLL_MS = 120;
-const PERSISTED_TURN_POLL_LIMIT = 24;
-
-function countUserMessages(
+function isChannelDispatchRunning(
   payload: AppShellPayload,
   channelId: string,
-): number {
-  const selectedChannel = normalizeSelectedChannelView(payload.chat.selectedChannel ?? null);
-  if (!selectedChannel || selectedChannel.id !== channelId) {
-    return 0;
-  }
-
-  return selectedChannel.messages.filter((message) => message.senderKind === 'user').length;
+): boolean {
+  return payload.chat.channels.some((channel) =>
+    channel.id === channelId && channel.routingStatus === 'running');
 }
 
-async function waitForPersistedUserTurn(
-  channelId: string,
-  baselineUserMessageCount: number,
-  requestPromise: Promise<unknown>,
-): Promise<AppShellPayload | null> {
-  let requestSettled = false;
-  void requestPromise.finally(() => {
-    requestSettled = true;
-  });
-
-  for (let attempt = 0; attempt < PERSISTED_TURN_POLL_LIMIT; attempt += 1) {
-    if (requestSettled) {
-      return null;
-    }
-
-    try {
-      const payload = await fetchAppShell();
-      if (countUserMessages(payload, channelId) > baselineUserMessageCount) {
-        return payload;
-      }
-    } catch {
-      // Best-effort only. The final send response remains the source of truth.
-    }
-
-    if (requestSettled) {
-      return null;
-    }
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, PERSISTED_TURN_POLL_MS);
-    });
-  }
-
-  return null;
+function isAnyConcurrentDispatchRunning(
+  payload: AppShellPayload,
+  channelIds: string[],
+): boolean {
+  return channelIds.some((channelId) => isChannelDispatchRunning(payload, channelId));
 }
 
 interface ActiveSubmitRequest {
@@ -116,29 +79,7 @@ interface ActiveSubmitRequest {
   kind: 'channel' | 'concurrent';
   channelId: string;
   groupId?: string;
-  controller: AbortController;
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError';
-}
-
-async function maybeWakeSelectedChannelBeforeConcurrentSend(
-  payload: AppShellPayload,
-  channelId: string,
-): Promise<AppShellPayload> {
-  const selectedForWake = normalizeSelectedChannelView(
-    payload.chat.selectedChannel ?? null,
-  );
-  if (
-    !selectedForWake
-    || selectedForWake.id !== channelId
-    || !shouldAwaitSelectedChannelWakeBeforeSend(selectedForWake)
-  ) {
-    return payload;
-  }
-
-  return updateSelectedChannel(channelId);
+  channelIds?: string[];
 }
 
 export function useComposerSubmit(options: {
@@ -205,7 +146,39 @@ export function useComposerSubmit(options: {
   } = options;
   const activeSubmitRequestRef = useRef<ActiveSubmitRequest | null>(null);
   const nextSubmitIdRef = useRef(1);
-  const stoppedSubmitIdsRef = useRef(new Set<number>());
+
+  useEffect(() => {
+    if (state.status !== 'ready') {
+      return;
+    }
+
+    const activeRequest = activeSubmitRequestRef.current;
+    if (!activeRequest) {
+      return;
+    }
+
+    if (busy.startsWith('message:stop:') || busy === 'concurrent:stop') {
+      return;
+    }
+
+    const stillRunning = activeRequest.kind === 'concurrent'
+      ? isAnyConcurrentDispatchRunning(
+          state.payload,
+          activeRequest.channelIds ?? [activeRequest.channelId],
+        )
+      : isChannelDispatchRunning(state.payload, activeRequest.channelId);
+    if (stillRunning) {
+      return;
+    }
+
+    const expectedBusy = activeRequest.kind === 'concurrent'
+      ? 'concurrent:dispatch'
+      : `message:send:${activeRequest.channelId}`;
+    if (busy === expectedBusy) {
+      activeSubmitRequestRef.current = null;
+      setBusy('');
+    }
+  }, [busy, setBusy, state]);
 
   const submitComposerMessage = useCallback(async (): Promise<void> => {
     if (state.status !== 'ready') {
@@ -247,6 +220,7 @@ export function useComposerSubmit(options: {
     setFeedback('');
     const submitId = nextSubmitIdRef.current;
     nextSubmitIdRef.current += 1;
+    let keepBusyAfterReturn = false;
     try {
       if (showingParallelChatDraft && wasDraftingNewChat) {
         if (draftConcurrentTargets.length < 2) {
@@ -278,46 +252,29 @@ export function useComposerSubmit(options: {
         setComposerDraft('');
         navigate(rollbackPath, { replace: true });
         setState({ status: 'ready', payload: created.appShell });
-
-        const preparedPayload = await maybeWakeSelectedChannelBeforeConcurrentSend(
-          created.appShell,
-          activeChannelId,
-        );
-        if (preparedPayload !== created.appShell) {
-          rollbackPayload = preparedPayload;
-          setState({ status: 'ready', payload: preparedPayload });
-        }
-
-        const baselineUserMessageCount = countUserMessages(preparedPayload, activeChannelId);
-        const dispatchController = new AbortController();
-        activeSubmitRequestRef.current = {
-          id: submitId,
-          kind: 'concurrent',
-          channelId: activeChannelId,
-          groupId: created.group.id,
-          controller: dispatchController,
-        };
         const encodedAttachments = draftFiles.length > 0
           ? await encodeAttachmentFiles(draftFiles)
           : undefined;
-        const dispatchPromise = sendConcurrentChatMessage(created.group.id, {
+        const dispatch = await sendConcurrentChatMessage(created.group.id, {
           activeChannelId,
           body,
           attachments: encodedAttachments,
-        }, dispatchController.signal);
-        const persistedPayload = await waitForPersistedUserTurn(
-          activeChannelId,
-          baselineUserMessageCount,
-          dispatchPromise,
-        );
-        if (persistedPayload) {
-          rollbackPayload = persistedPayload;
-          setState({ status: 'ready', payload: persistedPayload });
-          setBusy('concurrent:dispatch');
-        }
-
-        const dispatch = await dispatchPromise;
+        });
+        rollbackPayload = dispatch.appShell;
         setState({ status: 'ready', payload: dispatch.appShell });
+        if (isAnyConcurrentDispatchRunning(dispatch.appShell, created.group.memberChannelIds)) {
+          activeSubmitRequestRef.current = {
+            id: submitId,
+            kind: 'concurrent',
+            channelId: activeChannelId,
+            groupId: created.group.id,
+            channelIds: created.group.memberChannelIds,
+          };
+          setBusy('concurrent:dispatch');
+          keepBusyAfterReturn = true;
+        } else {
+          activeSubmitRequestRef.current = null;
+        }
         setFeedback('');
 
         setDraftCwd(null);
@@ -338,43 +295,33 @@ export function useComposerSubmit(options: {
         setComposerDraft('');
         setChannelFiles([]);
         setBusy('concurrent:ack');
+        const activeGroupChannelIds = initialPayload.chat.concurrentGroups.find((group) =>
+          group.id === compareGroupId,
+        )?.memberChannelIds ?? [channelId];
 
-        payload = await maybeWakeSelectedChannelBeforeConcurrentSend(initialPayload, channelId);
-        rollbackPayload = payload;
-        if (payload !== initialPayload) {
-          setState({ status: 'ready', payload });
-        }
-
-        const baselineUserMessageCount = countUserMessages(payload, channelId);
-        const dispatchController = new AbortController();
-        activeSubmitRequestRef.current = {
-          id: submitId,
-          kind: 'concurrent',
-          channelId,
-          groupId: compareGroupId,
-          controller: dispatchController,
-        };
         const encodedAttachments = channelFiles.length > 0
           ? await encodeAttachmentFiles(channelFiles)
           : undefined;
-        const dispatchPromise = sendConcurrentChatMessage(compareGroupId, {
+        const dispatch = await sendConcurrentChatMessage(compareGroupId, {
           activeChannelId: channelId,
           body,
           attachments: encodedAttachments,
-        }, dispatchController.signal);
-        const persistedPayload = await waitForPersistedUserTurn(
-          channelId,
-          baselineUserMessageCount,
-          dispatchPromise,
-        );
-        if (persistedPayload) {
-          rollbackPayload = persistedPayload;
-          setState({ status: 'ready', payload: persistedPayload });
-          setBusy('concurrent:dispatch');
-        }
-
-        const dispatch = await dispatchPromise;
+        });
+        rollbackPayload = dispatch.appShell;
         setState({ status: 'ready', payload: dispatch.appShell });
+        if (isAnyConcurrentDispatchRunning(dispatch.appShell, activeGroupChannelIds)) {
+          activeSubmitRequestRef.current = {
+            id: submitId,
+            kind: 'concurrent',
+            channelId,
+            groupId: compareGroupId,
+            channelIds: activeGroupChannelIds,
+          };
+          setBusy('concurrent:dispatch');
+          keepBusyAfterReturn = true;
+        } else {
+          activeSubmitRequestRef.current = null;
+        }
         setFeedback('');
         return;
       }
@@ -443,19 +390,6 @@ export function useComposerSubmit(options: {
         throw new Error('No chat is available for sending messages.');
       }
 
-      const selectedForWake = normalizeSelectedChannelView(
-        payload.chat.selectedChannel ?? null,
-      );
-      if (
-        selectedForWake
-        && selectedForWake.id === channelId
-        && shouldAwaitSelectedChannelWakeBeforeSend(selectedForWake)
-      ) {
-        payload = await updateSelectedChannel(channelId);
-        rollbackPayload = payload;
-        setState({ status: 'ready', payload });
-      }
-
       const soloDispatchTarget =
         !wasDraftingNewChat
         && !isCatScopedLaneRoute
@@ -501,30 +435,23 @@ export function useComposerSubmit(options: {
       navigate(rollbackPath, { replace: true });
       setBusy(`message:ack:${channelId}`);
 
-      const baselineUserMessageCount = countUserMessages(payload, channelId);
-      const dispatchController = new AbortController();
-      activeSubmitRequestRef.current = {
-        id: submitId,
-        kind: 'channel',
-        channelId,
-        controller: dispatchController,
-      };
-      const dispatchPromise = sendChatMessage(channelId, {
+      const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
-      }, dispatchController.signal);
-      const persistedPayload = await waitForPersistedUserTurn(
-        channelId,
-        baselineUserMessageCount,
-        dispatchPromise,
-      );
-      if (persistedPayload) {
-        rollbackPayload = persistedPayload;
-        setState({ status: 'ready', payload: persistedPayload });
-        setBusy(`message:send:${channelId}`);
-      }
-      const dispatch = await dispatchPromise;
+      });
+      rollbackPayload = dispatch.appShell;
       setState({ status: 'ready', payload: dispatch.appShell });
+      if (isChannelDispatchRunning(dispatch.appShell, channelId)) {
+        activeSubmitRequestRef.current = {
+          id: submitId,
+          kind: 'channel',
+          channelId,
+        };
+        setBusy(`message:send:${channelId}`);
+        keepBusyAfterReturn = true;
+      } else {
+        activeSubmitRequestRef.current = null;
+      }
       setComposerDraft('');
       setFeedback('');
       navigate(rollbackPath, { replace: true });
@@ -546,20 +473,17 @@ export function useComposerSubmit(options: {
         setChannelFiles([]);
       }
     } catch (error) {
-      const stopped = stoppedSubmitIdsRef.current.has(submitId);
-      if (stopped || isAbortError(error)) {
-        return;
-      }
+      activeSubmitRequestRef.current = null;
       setState({ status: 'ready', payload: rollbackPayload });
       setComposerDraft(body);
       restoreFiles();
       setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
       navigate(rollbackPath, { replace: true });
     } finally {
-      if (activeSubmitRequestRef.current?.id === submitId) {
+      if (!keepBusyAfterReturn && activeSubmitRequestRef.current?.id === submitId) {
         activeSubmitRequestRef.current = null;
       }
-      if (!stoppedSubmitIdsRef.current.has(submitId)) {
+      if (!keepBusyAfterReturn) {
         setBusy('');
       }
     }
@@ -608,14 +532,12 @@ export function useComposerSubmit(options: {
     }
 
     activeSubmitRequestRef.current = null;
-    stoppedSubmitIdsRef.current.add(activeRequest.id);
     setFeedback('');
     setBusy(
       activeRequest.kind === 'concurrent'
         ? 'concurrent:stop'
         : `message:stop:${activeRequest.channelId}`,
     );
-    activeRequest.controller.abort();
 
     try {
       const cancellation = activeRequest.kind === 'concurrent'
@@ -627,7 +549,6 @@ export function useComposerSubmit(options: {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to stop response.');
     } finally {
-      stoppedSubmitIdsRef.current.delete(activeRequest.id);
       setBusy('');
     }
   }, [

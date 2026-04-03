@@ -584,6 +584,8 @@ export interface ActivateChannelResponse {
 
 export interface SendChannelMessageResponse {
   appShell: AppShellPayload;
+  message: ChatMessage | null;
+  phase: 'acknowledged';
   results: ChannelDispatchResult[];
 }
 
@@ -611,6 +613,7 @@ export interface CreateConcurrentChatGroupResponse {
 export interface ConcurrentChatDispatchResponse {
   appShell: AppShellPayload;
   groupId: string;
+  phase: 'acknowledged' | 'completed';
   results: ConcurrentChatDispatchResult[];
 }
 

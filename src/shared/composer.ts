@@ -32,6 +32,16 @@ export function isComposerDispatchBusy(busy: string): boolean {
   return busy.startsWith('message:send') || busy === 'concurrent:dispatch';
 }
 
+export function isComposerSelectionBlocked(busy: string): boolean {
+  return (
+    busy === 'message:prepare'
+    || busy.startsWith('message:ack:')
+    || busy === 'concurrent:ack'
+    || busy.startsWith('message:stop:')
+    || busy === 'concurrent:stop'
+  );
+}
+
 export function getComposerBusyChannelId(busy: string): string | null {
   if (busy.startsWith('message:ack:')) {
     return busy.slice('message:ack:'.length);

@@ -6,7 +6,7 @@ import {
 } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 
-import { isComposerBusy } from '../../../../shared/composer.js';
+import { isComposerSelectionBlocked } from '../../../../shared/composer.js';
 import type { AppShellPayload } from '../../api/contracts';
 import {
   fetchAppShell,
@@ -84,7 +84,7 @@ export function useAppShellRouting(options: {
       return;
     }
 
-    if (isComposerBusy(busy)) {
+    if (isComposerSelectionBlocked(busy)) {
       return;
     }
 
