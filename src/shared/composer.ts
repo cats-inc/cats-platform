@@ -28,6 +28,14 @@ export function isComposerBusy(busy: string): boolean {
   );
 }
 
+export function isComposerAckBusy(busy: string): boolean {
+  return (
+    busy === 'message:prepare'
+    || busy.startsWith('message:ack:')
+    || busy === 'concurrent:ack'
+  );
+}
+
 export function isComposerDispatchBusy(busy: string): boolean {
   return busy.startsWith('message:send') || busy === 'concurrent:dispatch';
 }

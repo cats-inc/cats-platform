@@ -26,6 +26,7 @@ import {
   encodeAttachmentFiles,
   createConcurrentChatGroup,
   createChatChannel,
+  fetchAppShell,
   sendConcurrentChatMessage,
   sendChatMessage,
   updateSelectedChannel,
@@ -80,6 +81,15 @@ interface ActiveSubmitRequest {
   channelId: string;
   groupId?: string;
   channelIds?: string[];
+}
+
+interface ActiveAckRequest {
+  id: number;
+  controller: AbortController;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
 }
 
 export function useComposerSubmit(options: {
@@ -146,15 +156,22 @@ export function useComposerSubmit(options: {
     setBusy,
     setFeedback,
   } = options;
-  const activeSubmitRequestRef = useRef<ActiveSubmitRequest | null>(null);
+  const activeAckRequestRef = useRef<ActiveAckRequest | null>(null);
+  const activeDispatchRequestRef = useRef<ActiveSubmitRequest | null>(null);
   const nextSubmitIdRef = useRef(1);
+
+  useEffect(() => () => {
+    activeAckRequestRef.current?.controller.abort();
+    activeAckRequestRef.current = null;
+    activeDispatchRequestRef.current = null;
+  }, []);
 
   useEffect(() => {
     if (state.status !== 'ready') {
       return;
     }
 
-    const activeRequest = activeSubmitRequestRef.current;
+    const activeRequest = activeDispatchRequestRef.current;
     if (!activeRequest) {
       return;
     }
@@ -177,10 +194,66 @@ export function useComposerSubmit(options: {
       ? 'concurrent:dispatch'
       : `message:send:${activeRequest.channelId}`;
     if (busy === expectedBusy) {
-      activeSubmitRequestRef.current = null;
+      activeDispatchRequestRef.current = null;
       setBusy('');
     }
   }, [busy, setBusy, state]);
+
+  useEffect(() => {
+    const activeRequest = activeDispatchRequestRef.current;
+    if (!activeRequest) {
+      return;
+    }
+
+    const expectedBusy = activeRequest.kind === 'concurrent'
+      ? 'concurrent:dispatch'
+      : `message:send:${activeRequest.channelId}`;
+    if (busy !== expectedBusy) {
+      return;
+    }
+
+    let cancelled = false;
+    let refetchInFlight = false;
+    const interval = window.setInterval(async () => {
+      if (cancelled || refetchInFlight) {
+        return;
+      }
+
+      refetchInFlight = true;
+      try {
+        const payload = await fetchAppShell();
+        if (cancelled) {
+          return;
+        }
+        setState({ status: 'ready', payload });
+
+        const currentRequest = activeDispatchRequestRef.current;
+        if (!currentRequest || currentRequest.id !== activeRequest.id) {
+          return;
+        }
+
+        const stillRunning = currentRequest.kind === 'concurrent'
+          ? isAnyConcurrentDispatchRunning(
+              payload,
+              currentRequest.channelIds ?? [currentRequest.channelId],
+            )
+          : isChannelDispatchRunning(payload, currentRequest.channelId);
+        if (!stillRunning) {
+          activeDispatchRequestRef.current = null;
+          setBusy('');
+        }
+      } catch {
+        // Keep the existing SSE-driven path as primary; this only prevents indefinite busy lockups.
+      } finally {
+        refetchInFlight = false;
+      }
+    }, 4_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [busy, setBusy, setState]);
 
   const submitComposerMessage = useCallback(async (): Promise<void> => {
     if (state.status !== 'ready') {
@@ -222,6 +295,11 @@ export function useComposerSubmit(options: {
     setFeedback('');
     const submitId = nextSubmitIdRef.current;
     nextSubmitIdRef.current += 1;
+    const ackController = new AbortController();
+    activeAckRequestRef.current = {
+      id: submitId,
+      controller: ackController,
+    };
     let keepBusyAfterReturn = false;
     try {
       if (showingParallelChatDraft && wasDraftingNewChat) {
@@ -239,7 +317,7 @@ export function useComposerSubmit(options: {
             model: target.model ?? null,
             modelSelection: target.modelSelection ?? null,
           })),
-        });
+        }, ackController.signal);
         const activeChannelId =
           created.appShell.chat.selectedChannelId
           && created.group.memberChannelIds.includes(created.appShell.chat.selectedChannelId)
@@ -254,6 +332,9 @@ export function useComposerSubmit(options: {
         setComposerDraft('');
         navigate(rollbackPath, { replace: true });
         setState({ status: 'ready', payload: created.appShell });
+        restoreFiles = () => {
+          setChannelFiles(originalDraftFiles);
+        };
         const encodedAttachments = draftFiles.length > 0
           ? await encodeAttachmentFiles(draftFiles)
           : undefined;
@@ -261,11 +342,14 @@ export function useComposerSubmit(options: {
           activeChannelId,
           body,
           attachments: encodedAttachments,
-        });
+        }, ackController.signal);
+        if (activeAckRequestRef.current?.id === submitId) {
+          activeAckRequestRef.current = null;
+        }
         rollbackPayload = dispatch.appShell;
         setState({ status: 'ready', payload: dispatch.appShell });
         if (isAnyConcurrentDispatchRunning(dispatch.appShell, created.group.memberChannelIds)) {
-          activeSubmitRequestRef.current = {
+          activeDispatchRequestRef.current = {
             id: submitId,
             kind: 'concurrent',
             channelId: activeChannelId,
@@ -275,7 +359,7 @@ export function useComposerSubmit(options: {
           setBusy('concurrent:dispatch');
           keepBusyAfterReturn = true;
         } else {
-          activeSubmitRequestRef.current = null;
+          activeDispatchRequestRef.current = null;
         }
         setFeedback('');
 
@@ -308,11 +392,14 @@ export function useComposerSubmit(options: {
           activeChannelId: channelId,
           body,
           attachments: encodedAttachments,
-        });
+        }, ackController.signal);
+        if (activeAckRequestRef.current?.id === submitId) {
+          activeAckRequestRef.current = null;
+        }
         rollbackPayload = dispatch.appShell;
         setState({ status: 'ready', payload: dispatch.appShell });
         if (isAnyConcurrentDispatchRunning(dispatch.appShell, activeGroupChannelIds)) {
-          activeSubmitRequestRef.current = {
+          activeDispatchRequestRef.current = {
             id: submitId,
             kind: 'concurrent',
             channelId,
@@ -322,7 +409,7 @@ export function useComposerSubmit(options: {
           setBusy('concurrent:dispatch');
           keepBusyAfterReturn = true;
         } else {
-          activeSubmitRequestRef.current = null;
+          activeDispatchRequestRef.current = null;
         }
         setFeedback('');
         return;
@@ -340,7 +427,7 @@ export function useComposerSubmit(options: {
             roomMode: 'direct_cat_chat' as const,
             leadParticipantId: draftLeadCatId ?? undefined,
             participantCatIds: draftLeadCatId ? [draftLeadCatId] : draftCatIds,
-          });
+          }, ackController.signal);
           channelId = createdChannel.id;
           if (!channelId) {
             throw new Error('No chat is available for sending messages.');
@@ -366,7 +453,7 @@ export function useComposerSubmit(options: {
           leadCatId: draftLeadCatId,
           participantCatIds: draftCatIds,
           draftModel,
-        }));
+        }), ackController.signal);
         channelId = createdChannel.id;
         if (!channelId) {
           throw new Error('No chat is available for sending messages.');
@@ -419,11 +506,15 @@ export function useComposerSubmit(options: {
             ? payload.chat.selectedChannel
             : null;
         if (!selectedForFiles?.repoPath && !selectedForFiles?.chatCwd) {
-          payload = await updateSelectedChannel(channelId);
+          payload = await updateSelectedChannel(channelId, ackController.signal);
           rollbackPayload = payload;
           setState({ status: 'ready', payload });
         }
-        const attachments = await uploadChannelAttachments(channelId, filesToUpload);
+        const attachments = await uploadChannelAttachments(
+          channelId,
+          filesToUpload,
+          ackController.signal,
+        );
         messageBody = buildAttachedFilesMessageBody(body, attachments);
       }
 
@@ -440,11 +531,14 @@ export function useComposerSubmit(options: {
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
-      });
+      }, ackController.signal);
+      if (activeAckRequestRef.current?.id === submitId) {
+        activeAckRequestRef.current = null;
+      }
       rollbackPayload = dispatch.appShell;
       setState({ status: 'ready', payload: dispatch.appShell });
       if (isChannelDispatchRunning(dispatch.appShell, channelId)) {
-        activeSubmitRequestRef.current = {
+        activeDispatchRequestRef.current = {
           id: submitId,
           kind: 'channel',
           channelId,
@@ -452,7 +546,7 @@ export function useComposerSubmit(options: {
         setBusy(`message:send:${channelId}`);
         keepBusyAfterReturn = true;
       } else {
-        activeSubmitRequestRef.current = null;
+        activeDispatchRequestRef.current = null;
       }
       setComposerDraft('');
       setFeedback('');
@@ -475,15 +569,27 @@ export function useComposerSubmit(options: {
         setChannelFiles([]);
       }
     } catch (error) {
-      activeSubmitRequestRef.current = null;
+      if (activeAckRequestRef.current?.id === submitId) {
+        activeAckRequestRef.current = null;
+      }
+      if (activeDispatchRequestRef.current?.id === submitId) {
+        activeDispatchRequestRef.current = null;
+      }
       setState({ status: 'ready', payload: rollbackPayload });
       setComposerDraft(body);
       restoreFiles();
-      setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
+      if (isAbortError(error)) {
+        setFeedback('');
+      } else {
+        setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
+      }
       navigate(rollbackPath, { replace: true });
     } finally {
-      if (!keepBusyAfterReturn && activeSubmitRequestRef.current?.id === submitId) {
-        activeSubmitRequestRef.current = null;
+      if (!keepBusyAfterReturn && activeAckRequestRef.current?.id === submitId) {
+        activeAckRequestRef.current = null;
+      }
+      if (!keepBusyAfterReturn && activeDispatchRequestRef.current?.id === submitId) {
+        activeDispatchRequestRef.current = null;
       }
       if (!keepBusyAfterReturn) {
         setBusy('');
@@ -528,12 +634,12 @@ export function useComposerSubmit(options: {
   ]);
 
   const onStopMessage = useCallback(async (): Promise<void> => {
-    const activeRequest = activeSubmitRequestRef.current;
+    const activeRequest = activeDispatchRequestRef.current;
     if (!activeRequest) {
       return;
     }
 
-    activeSubmitRequestRef.current = null;
+    activeDispatchRequestRef.current = null;
     setFeedback('');
     setBusy(
       activeRequest.kind === 'concurrent'
@@ -558,6 +664,17 @@ export function useComposerSubmit(options: {
     setFeedback,
     setState,
   ]);
+
+  const onCancelPendingSend = useCallback((): void => {
+    const activeRequest = activeAckRequestRef.current;
+    if (!activeRequest) {
+      return;
+    }
+
+    activeAckRequestRef.current = null;
+    setFeedback('');
+    activeRequest.controller.abort();
+  }, [setFeedback]);
 
   const onSendMessage = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -584,6 +701,7 @@ export function useComposerSubmit(options: {
 
   return {
     onComposerKeyDown,
+    onCancelPendingSend,
     onSendMessage,
     onStopMessage,
     submitComposerMessage,

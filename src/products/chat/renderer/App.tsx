@@ -418,6 +418,7 @@ export default function App() {
   });
   const {
     onComposerKeyDown,
+    onCancelPendingSend,
     onSendMessage,
     onStopMessage,
   } = useComposerSubmit({
@@ -989,6 +990,7 @@ export default function App() {
             onComposerChange: setComposerDraft,
             onComposerKeyDown,
             onSendMessage,
+            onCancelPendingSend,
             onStopMessage,
             onToggleChannelPlusMenu: toggleChannelPlusMenu,
             onChannelFileSelect: openChannelFilePicker,
@@ -1026,6 +1028,7 @@ export default function App() {
             onComposerChange: setComposerDraft,
             onComposerKeyDown,
             onSendMessage,
+            onCancelPendingSend,
             onTogglePlusMenu: toggleDraftPlusMenu,
             onFileSelect: openDraftFilePicker,
             onPickFolder: openDraftFolderPicker,

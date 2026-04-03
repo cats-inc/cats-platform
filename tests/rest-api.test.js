@@ -7,6 +7,7 @@ import test from 'node:test';
 import { createServer } from '../dist-server/server.js';
 import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -15,34 +16,6 @@ const baseConfig = {
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
 };
-
-async function waitForCondition(
-  predicate,
-  options = {},
-) {
-  const timeoutMs = options.timeoutMs ?? 2_000;
-  const intervalMs = options.intervalMs ?? 20;
-  const deadline = Date.now() + timeoutMs;
-  let lastError = null;
-
-  while (Date.now() < deadline) {
-    try {
-      const result = await predicate();
-      if (result) {
-        return result;
-      }
-    } catch (error) {
-      lastError = error;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-
-  if (lastError) {
-    throw lastError;
-  }
-  throw new Error(`Timed out after ${timeoutMs}ms waiting for test condition.`);
-}
 
 function createRuntimeStub() {
   let nextSession = 1;
@@ -339,7 +312,9 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
     const sendMessagePayload = await sendMessageResponse.json();
     assert.equal(sendMessagePayload.phase, 'acknowledged');
     assert.equal(sendMessagePayload.message.body, 'Hello from canonical route');
+    assert.ok(Array.isArray(sendMessagePayload.results));
     assert.ok(sendMessagePayload.dispatch);
+    assert.deepEqual(sendMessagePayload.results, sendMessagePayload.dispatch.results);
     assert.match(sendMessagePayload.message.id, UUID_PATTERN);
 
     // GET /api/channels/:cid/messages – list messages

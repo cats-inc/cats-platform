@@ -62,6 +62,7 @@ interface RouteChannelMessageOptions {
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
+  latestState?: ChatState;
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
   chatStatePath?: string;
   runtimeDataDir?: string;
@@ -318,7 +319,7 @@ export async function settleBegunChannelMessageDispatchFailure(
   const nowIso = now.toISOString();
 
   let nextState = appendMessage(
-    begun.state,
+    options.latestState ?? begun.state,
     channelId,
     {
       senderKind: 'system',

@@ -11,13 +11,13 @@ import {
 } from '../../state/runtimeActions.js';
 import {
   buildChannelView,
-  replaceState,
   requireChannel,
   setChannelCatLease,
   setChannelOrchestratorLease,
   setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
+import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
 import {
   ensureChannelAttachmentWorkspace,
 } from '../../state/workspace.js';
@@ -69,6 +69,18 @@ function publishChannelMutationEvents(
     channelId,
     timestamp: new Date().toISOString(),
   });
+}
+
+function logBackgroundDispatchPersistenceError(
+  channelId: string,
+  error: unknown,
+): void {
+  const detail = error instanceof Error
+    ? (error.stack ?? error.message)
+    : String(error);
+  process.stderr.write(
+    `[cats-chat-dispatch] failed to persist finalized dispatch for ${channelId}: ${detail}\n`,
+  );
 }
 
 function resolveChannelStreamSessionId(
@@ -333,6 +345,7 @@ async function handleRestSendMessage(
         appShell,
         phase: 'acknowledged',
         message: begunDispatch.userMessage,
+        results: begunDispatch.results,
         dispatch: {
           channelId,
           results: begunDispatch.results,
@@ -346,16 +359,21 @@ async function handleRestSendMessage(
     const acknowledgedDispatch: Awaited<ReturnType<typeof beginChannelMessageDispatch>> =
       begunDispatch;
 
+    publishChannelMutationEvents(context, channelId, 'message_added');
     if (!acknowledgedDispatch.preparedTurn) {
-      publishChannelMutationEvents(context, channelId, 'message_added');
       return;
     }
-
-    publishChannelMutationEvents(context, channelId, 'message_added');
     void (async () => {
       const dispatchNow = nowFrom(context.dependencies);
+      const dispatchChatStore = createMergedDispatchChatStore({
+        chatStore: context.dependencies.chatStore,
+        mutationGate: context.dependencies.mutationGate,
+        channelId,
+        baselineState: acknowledgedDispatch.state,
+        now: () => nowFrom(context.dependencies),
+      });
       try {
-        const completed = await continueBegunChannelMessageDispatch(
+        await continueBegunChannelMessageDispatch(
           acknowledgedDispatch,
           channelId,
           context.dependencies.runtimeClient,
@@ -363,7 +381,7 @@ async function handleRestSendMessage(
           {
             companionStore: context.dependencies.companionStore,
             memoryService: context.dependencies.memoryService,
-            chatStore: context.dependencies.chatStore,
+            chatStore: dispatchChatStore,
             chatStatePath: context.dependencies.config.chatStatePath,
             runtimeDataDir: context.dependencies.config.runtimeDataDir,
             runtimeRecovery: {
@@ -372,47 +390,49 @@ async function handleRestSendMessage(
             cancellationRegistry: channelDispatchCancellationRegistry,
           },
         );
-        await context.dependencies.mutationGate.run(channelId, async () => {
-          let latestState = await context.dependencies.chatStore.read();
-          if (!latestState.channels.some((channel) => channel.id === channelId)) {
-            return;
-          }
-          latestState = replaceState(
-            latestState,
-            requireChannel(completed.state, channelId),
-          );
-          if (latestState.selectedChannelId === channelId) {
-            requireChannel(latestState, channelId).unreadCount = 0;
-          }
-          await context.dependencies.chatStore.write(latestState);
-        });
       } catch (error) {
-        const settled = await settleBegunChannelMessageDispatchFailure(
-          acknowledgedDispatch,
-          channelId,
-          error,
-          dispatchNow,
-          {
-            chatStore: context.dependencies.chatStore,
-          },
-        );
+        try {
+          await context.dependencies.mutationGate.run(channelId, async () => {
+            const latestState = await context.dependencies.chatStore.read();
+            if (!latestState.channels.some((channel) => channel.id === channelId)) {
+              return;
+            }
+            const settled = await settleBegunChannelMessageDispatchFailure(
+              acknowledgedDispatch,
+              channelId,
+              error,
+              dispatchNow,
+              {
+                latestState,
+              },
+            );
+            if (settled.state.selectedChannelId === channelId) {
+              requireChannel(settled.state, channelId).unreadCount = 0;
+            }
+            await context.dependencies.chatStore.write(settled.state);
+          });
+        } catch (persistError) {
+          logBackgroundDispatchPersistenceError(channelId, persistError);
+        }
+        publishChannelMutationEvents(context, channelId, 'updated');
+        return;
+      }
+
+      try {
         await context.dependencies.mutationGate.run(channelId, async () => {
-          let latestState = await context.dependencies.chatStore.read();
+          const latestState = await context.dependencies.chatStore.read();
           if (!latestState.channels.some((channel) => channel.id === channelId)) {
             return;
           }
-          latestState = replaceState(
-            latestState,
-            requireChannel(settled.state, channelId),
-          );
           if (latestState.selectedChannelId === channelId) {
             requireChannel(latestState, channelId).unreadCount = 0;
+            await context.dependencies.chatStore.write(latestState);
           }
-          await context.dependencies.chatStore.write(latestState);
         });
-      } finally {
-        publishChannelMutationEvents(context, channelId, 'updated');
+      } catch (persistError) {
+        logBackgroundDispatchPersistenceError(channelId, persistError);
       }
+      publishChannelMutationEvents(context, channelId, 'updated');
     })();
   } catch (error) {
     handleRestError(context, error);

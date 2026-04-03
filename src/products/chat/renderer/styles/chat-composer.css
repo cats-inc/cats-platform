@@ -55,6 +55,16 @@
   background: color-mix(in srgb, var(--danger) 82%, black 18%);
 }
 
+.composerCancelButton {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.composerCancelButton:hover:not(:disabled) {
+  background: var(--panel-hover);
+}
+
 .composerLeftGroup {
   display: flex;
   align-items: center;

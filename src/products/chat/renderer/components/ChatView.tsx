@@ -58,6 +58,7 @@ import { ProviderModelFields } from './ProviderModelFields';
 import { RunInspector } from './RunInspector';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
 import {
+  isComposerAckBusy,
   getComposerDispatchChannelId,
   isComposerBusy,
 } from '../../../../shared/composer';
@@ -95,6 +96,7 @@ export interface ChatViewProps {
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
+  onCancelPendingSend?: () => void;
   onStopMessage?: () => void;
   onToggleChannelPlusMenu: () => void;
   onChannelFileSelect: () => void;
@@ -145,6 +147,7 @@ export function ChatView({
   onComposerChange,
   onComposerKeyDown,
   onSendMessage,
+  onCancelPendingSend,
   onStopMessage,
   onToggleChannelPlusMenu,
   onChannelFileSelect,
@@ -383,11 +386,13 @@ export function ChatView({
     () => buildRunInspectorView(operatorView, inspectedRunId),
     [operatorView, inspectedRunId],
   );
-  const composerBusy = isComposerBusy(busy);
+  const composerBusy = isComposerBusy(busy) || compareBusy;
+  const composerAckBusy = isComposerAckBusy(busy);
   const composerDispatchChannelId = getComposerDispatchChannelId(busy);
   const stopBusy = busy.startsWith('message:stop:') || busy === 'concurrent:stop';
   const resumeBusy = busy === 'channel:resume';
   const canResumeChannel = !composerBusy && !resumeBusy;
+  const showCancelComposerAction = composerAckBusy && onCancelPendingSend != null;
   const canStopSingleChat =
     !isCompareGroup
     && composerDispatchChannelId === selectedChannel.id
@@ -399,7 +404,7 @@ export function ChatView({
       busy === 'concurrent:dispatch'
       || busy === 'concurrent:stop'
     );
-  const showStopComposerAction = canStopSingleChat || canStopParallelChat;
+  const showStopComposerAction = !showCancelComposerAction && (canStopSingleChat || canStopParallelChat);
   const comparePrevChannelId = isCompareGroup && compareMemberIndex >= 0
     ? compareMembers[(compareMemberIndex - 1 + compareMembers.length) % compareMembers.length]?.channelId ?? null
     : null;
@@ -985,7 +990,19 @@ export function ChatView({
                     onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
                 ) : null}
-                {showStopComposerAction ? (
+                {showCancelComposerAction ? (
+                  <button
+                    className="composerSendButton composerCancelButton"
+                    type="button"
+                    aria-label="Cancel send"
+                    onClick={() => onCancelPendingSend?.()}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+                      <path d="M4 4l6 6" />
+                      <path d="M10 4l-6 6" />
+                    </svg>
+                  </button>
+                ) : showStopComposerAction ? (
                   <button
                     className="composerSendButton composerStopButton"
                     disabled={stopBusy}

@@ -57,17 +57,28 @@ the send lifecycle.
 
 4. Composer busy states are split into:
    - `ack`: the room and user turn are being accepted, selection remains blocked
+   - `ack` exposes a local `Cancel send` abort path for the in-flight request
    - `dispatch`: the user turn has been accepted, runtime work is running, and
      `Stop` becomes available
 
 5. `Stop` must target the running server-side dispatch, not the original send
    request.
+   - before ACK, the renderer may only abort the transport request
+   - after ACK, the renderer must not treat the accepted user turn as
+     retractable
 
 6. Background dispatch completion and background dispatch failure must both
    publish room invalidation events over the existing chat SSE channel so the
    renderer can refresh from the authoritative app shell.
 
-7. This lifecycle applies to normal composer sends regardless of room topology.
+7. Background continue work must never overwrite newer persisted channel state
+   with a stale whole-channel snapshot.
+   - every background persistence step must merge dispatch-owned changes back
+     into the latest durable room state
+   - finalization and failure settlement must preserve later ACKed user turns
+     and other concurrent room mutations
+
+8. This lifecycle applies to normal composer sends regardless of room topology.
    Parallel send remains fan-out over multiple independent channel dispatches;
    it is not a separate room model.
 
@@ -79,6 +90,8 @@ the send lifecycle.
 - first-send behavior is consistent across solo, boss, direct, and parallel
   chat flows
 - room switching is no longer blocked by the full runtime reply duration
+- ACK-stage hangs can be cancelled without conflating transport abort with
+  server-side dispatch cancellation
 - the renderer can show `Stop` only when there is an actual dispatch to cancel
 - send completion becomes state-driven instead of request-lifetime-driven
 

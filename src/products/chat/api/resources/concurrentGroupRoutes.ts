@@ -25,6 +25,7 @@ import {
   selectChannel,
   touchConcurrentGroup,
 } from '../../state/model/index.js';
+import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
 import type {
   CancelConcurrentChatGroupInput,
   ConcurrentChatDispatchResponse,
@@ -136,6 +137,13 @@ function publishConcurrentMutationEvents(
     kind: 'recents_changed',
     timestamp,
   });
+}
+
+function logConcurrentFinalizeError(error: unknown): void {
+  const detail = error instanceof Error
+    ? (error.stack ?? error.message)
+    : String(error);
+  process.stderr.write(`[cats-parallel-dispatch] failed to finalize background dispatch: ${detail}\n`);
 }
 
 async function runLockedChannels<T>(
@@ -387,15 +395,22 @@ async function finalizeConcurrentBodies(
     staged.begunDispatches.map(async (dispatch) => {
       if (!dispatch.begun || dispatch.status !== 'sent') {
         return {
+          kind: 'noop' as const,
           channelId: dispatch.channelId,
           status: dispatch.status,
           sourceMessageId: dispatch.sourceMessageId,
           error: dispatch.error,
-          state: null,
         };
       }
 
       try {
+        const dispatchChatStore = createMergedDispatchChatStore({
+          chatStore: context.dependencies.chatStore,
+          mutationGate: context.dependencies.mutationGate,
+          channelId: dispatch.channelId,
+          baselineState: dispatch.begun.state,
+          now: () => nowFrom(context.dependencies),
+        });
         const completed = await continueBegunChannelMessageDispatch(
           dispatch.begun,
           dispatch.channelId,
@@ -404,6 +419,7 @@ async function finalizeConcurrentBodies(
           {
             companionStore: context.dependencies.companionStore,
             memoryService: context.dependencies.memoryService,
+            chatStore: dispatchChatStore,
             chatStatePath: context.dependencies.config.chatStatePath,
             runtimeDataDir: context.dependencies.config.runtimeDataDir,
             runtimeRecovery: {
@@ -414,29 +430,23 @@ async function finalizeConcurrentBodies(
         );
         const failedResults = completed.results.filter((result) => result.status === 'error');
         return {
+          kind: 'completed' as const,
           channelId: dispatch.channelId,
           status: failedResults.length > 0 ? 'error' as const : 'sent' as const,
           sourceMessageId: completed.results[0]?.sourceMessageId,
           error: failedResults.length > 0
             ? failedResults.map((result) => result.error || 'Runtime dispatch failed.').join(' ')
             : undefined,
-          state: completed.state,
         };
       } catch (error) {
-        const settled = await settleBegunChannelMessageDispatchFailure(
-          dispatch.begun,
-          dispatch.channelId,
-          error,
-          staged.now,
-          {
-            chatStore: context.dependencies.chatStore,
-          },
-        );
         return {
+          kind: 'failed' as const,
           channelId: dispatch.channelId,
+          begun: dispatch.begun,
           status: 'error' as const,
           error: error instanceof Error ? error.message : 'Failed to dispatch parallel chat turn.',
-          state: settled.state,
+          sourceMessageId: dispatch.begun.results[0]?.sourceMessageId,
+          rawError: error,
         };
       }
     }),
@@ -450,14 +460,31 @@ async function finalizeConcurrentBodies(
       const results: ConcurrentChatDispatchResult[] = [];
 
       for (const dispatch of dispatches) {
-        if (dispatch.state && mergedState.channels.some((channel) => channel.id === dispatch.channelId)) {
-          mergedState = replaceState(
-            mergedState,
-            requireChannel(dispatch.state, dispatch.channelId),
+        if (!mergedState.channels.some((channel) => channel.id === dispatch.channelId)) {
+          results.push({
+            channelId: dispatch.channelId,
+            status: dispatch.status,
+            ...(dispatch.sourceMessageId ? { sourceMessageId: dispatch.sourceMessageId } : {}),
+            ...(dispatch.error ? { error: dispatch.error } : {}),
+          });
+          continue;
+        }
+
+        if (dispatch.kind === 'failed') {
+          const settled = await settleBegunChannelMessageDispatchFailure(
+            dispatch.begun,
+            dispatch.channelId,
+            dispatch.rawError,
+            staged.now,
+            {
+              latestState: mergedState,
+            },
           );
-          if (mergedState.selectedChannelId === dispatch.channelId) {
-            requireChannel(mergedState, dispatch.channelId).unreadCount = 0;
-          }
+          mergedState = settled.state;
+        }
+
+        if (dispatch.kind !== 'noop' && mergedState.selectedChannelId === dispatch.channelId) {
+          requireChannel(mergedState, dispatch.channelId).unreadCount = 0;
         }
         results.push({
           channelId: dispatch.channelId,
@@ -611,7 +638,9 @@ async function handleSendConcurrentGroupMessage(
     );
     if (acknowledged.staged.begunDispatches.some((dispatch) => dispatch.begun && dispatch.status === 'sent')) {
       void finalizeConcurrentBodies(context, acknowledged.staged)
-        .catch(() => {})
+        .catch((error) => {
+          logConcurrentFinalizeError(error);
+        })
         .finally(() => {
           publishConcurrentMutationEvents(
             context,

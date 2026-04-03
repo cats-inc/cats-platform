@@ -34,6 +34,7 @@ import {
 import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
 import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
 import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -42,34 +43,6 @@ const baseConfig = {
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
 };
-
-async function waitForCondition(
-  predicate,
-  options = {},
-) {
-  const timeoutMs = options.timeoutMs ?? 2_000;
-  const intervalMs = options.intervalMs ?? 20;
-  const deadline = Date.now() + timeoutMs;
-  let lastError = null;
-
-  while (Date.now() < deadline) {
-    try {
-      const result = await predicate();
-      if (result) {
-        return result;
-      }
-    } catch (error) {
-      lastError = error;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-
-  if (lastError) {
-    throw lastError;
-  }
-  throw new Error(`Timed out after ${timeoutMs}ms waiting for test condition.`);
-}
 
 function createRuntimeStub() {
   let nextSession = 1;
@@ -4956,6 +4929,289 @@ test('parallel chat member selection stays responsive while the first send is st
 
     const sendResponse = await sendResponsePromise;
     assert.equal(sendResponse.status, 200);
+  });
+});
+
+test('single chat background finalize preserves a newer acknowledged user turn', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalSendMessage = runtimeClient.sendMessage.bind(runtimeClient);
+  let releaseFirstDispatch = () => {};
+  const firstDispatchBlocked = new Promise((resolve) => {
+    releaseFirstDispatch = resolve;
+  });
+  let markFirstDispatchStarted = () => {};
+  const firstDispatchStarted = new Promise((resolve) => {
+    markFirstDispatchStarted = resolve;
+  });
+  let sendCount = 0;
+
+  runtimeClient.sendMessage = async (sessionId, content) => {
+    sendCount += 1;
+    if (sendCount === 1) {
+      markFirstDispatchStarted();
+      await firstDispatchBlocked;
+    }
+    return originalSendMessage(sessionId, content);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Stale Merge Guard',
+        topic: 'Keep newer user turns while earlier dispatches finish.',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const firstSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'First question' }),
+    });
+    assert.equal(firstSendResponse.status, 200);
+    const firstSendPayload = await firstSendResponse.json();
+    assert.equal(firstSendPayload.phase, 'acknowledged');
+
+    await firstDispatchStarted;
+
+    const secondSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'Second question' }),
+    });
+    assert.equal(secondSendResponse.status, 200);
+    const secondSendPayload = await secondSendResponse.json();
+    assert.equal(secondSendPayload.phase, 'acknowledged');
+
+    const acknowledgedChannelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(acknowledgedChannelResponse.status, 200);
+    const acknowledgedChannelPayload = await acknowledgedChannelResponse.json();
+    assert.deepEqual(
+      acknowledgedChannelPayload.channel.messages
+        .filter((message) => message.senderKind === 'user')
+        .map((message) => message.body),
+      ['First question', 'Second question'],
+    );
+
+    releaseFirstDispatch();
+
+    const finalChannelPayload = await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      const userBodies = payload.channel.messages
+        .filter((message) => message.senderKind === 'user')
+        .map((message) => message.body);
+      const assistantBodies = payload.channel.messages
+        .filter((message) => message.metadata?.event === 'runtime_response')
+        .map((message) => message.body);
+      return userBodies.includes('First question')
+        && userBodies.includes('Second question')
+        && assistantBodies.length >= 2
+        ? payload
+        : null;
+    });
+
+    assert.deepEqual(
+      finalChannelPayload.channel.messages
+        .filter((message) => message.senderKind === 'user')
+        .map((message) => message.body),
+      ['First question', 'Second question'],
+    );
+  });
+});
+
+test('single chat failure settlement preserves a newer acknowledged user turn', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalSendMessage = runtimeClient.sendMessage.bind(runtimeClient);
+  let releaseFirstDispatch = () => {};
+  const firstDispatchBlocked = new Promise((resolve) => {
+    releaseFirstDispatch = resolve;
+  });
+  let markFirstDispatchStarted = () => {};
+  const firstDispatchStarted = new Promise((resolve) => {
+    markFirstDispatchStarted = resolve;
+  });
+  let sendCount = 0;
+
+  runtimeClient.sendMessage = async (sessionId, content) => {
+    sendCount += 1;
+    if (sendCount === 1) {
+      markFirstDispatchStarted();
+      await firstDispatchBlocked;
+      throw new Error('Injected runtime failure');
+    }
+    return originalSendMessage(sessionId, content);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Failure Merge Guard',
+        topic: 'Do not overwrite later ACKed turns on failure.',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const firstSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'First failing question' }),
+    });
+    assert.equal(firstSendResponse.status, 200);
+    const firstSendPayload = await firstSendResponse.json();
+    assert.equal(firstSendPayload.phase, 'acknowledged');
+
+    await firstDispatchStarted;
+
+    const secondSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'Second surviving question' }),
+    });
+    assert.equal(secondSendResponse.status, 200);
+    const secondSendPayload = await secondSendResponse.json();
+    assert.equal(secondSendPayload.phase, 'acknowledged');
+
+    releaseFirstDispatch();
+
+    const finalChannelPayload = await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      const userBodies = payload.channel.messages
+        .filter((message) => message.senderKind === 'user')
+        .map((message) => message.body);
+      const runtimeError = payload.channel.messages.find((message) =>
+        message.metadata?.event === 'runtime_error'
+        && /Injected runtime failure/u.test(message.body));
+      return userBodies.includes('First failing question')
+        && userBodies.includes('Second surviving question')
+        && runtimeError
+        ? payload
+        : null;
+    });
+
+    assert.deepEqual(
+      finalChannelPayload.channel.messages
+        .filter((message) => message.senderKind === 'user')
+        .map((message) => message.body),
+      ['First failing question', 'Second surviving question'],
+    );
+  });
+});
+
+test('parallel chat finalize preserves member mutations acknowledged after send ack', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalSendMessage = runtimeClient.sendMessage.bind(runtimeClient);
+  let releaseDispatches = () => {};
+  const dispatchBlocked = new Promise((resolve) => {
+    releaseDispatches = resolve;
+  });
+  runtimeClient.sendMessage = async (sessionId, content) => {
+    await dispatchBlocked;
+    return originalSendMessage(sessionId, content);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createGroupResponse = await fetch(`${baseUrl}/api/concurrent-groups`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Parallel Merge Guard',
+        targets: [
+          { provider: 'claude', instance: 'native' },
+          { provider: 'codex', instance: 'native' },
+        ],
+      }),
+    });
+    assert.equal(createGroupResponse.status, 201);
+    const createGroupPayload = await createGroupResponse.json();
+    const groupId = createGroupPayload.group.id;
+    const memberChannelIds = createGroupPayload.group.memberChannelIds;
+    const activeChannelId =
+      createGroupPayload.appShell.chat.selectedChannelId
+      && memberChannelIds.includes(createGroupPayload.appShell.chat.selectedChannelId)
+        ? createGroupPayload.appShell.chat.selectedChannelId
+        : createGroupPayload.group.members[0]?.channelId ?? null;
+    const passiveChannelId = memberChannelIds.find((channelId) => channelId !== activeChannelId) ?? null;
+    assert.ok(activeChannelId);
+    assert.ok(passiveChannelId);
+
+    const sendResponse = await fetch(`${baseUrl}/api/concurrent-groups/${groupId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        activeChannelId,
+        body: 'Hold the background finalize while I rename a member.',
+      }),
+    });
+    assert.equal(sendResponse.status, 200);
+    const sendPayload = await sendResponse.json();
+    assert.equal(sendPayload.phase, 'acknowledged');
+
+    const renameResponse = await fetch(`${baseUrl}/api/channels/${passiveChannelId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Renamed while pending' }),
+    });
+    assert.equal(renameResponse.status, 200);
+
+    releaseDispatches();
+
+    const passiveChannelPayload = await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${passiveChannelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      const runtimeReplies = payload.channel.messages.filter((message) =>
+        message.metadata?.event === 'runtime_response');
+      return runtimeReplies.length > 0 ? payload : null;
+    });
+
+    assert.equal(passiveChannelPayload.channel.title, 'Renamed while pending');
   });
 });
 

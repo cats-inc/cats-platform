@@ -13,7 +13,7 @@ import {
   type ModelSelectorValue,
 } from './ModelSelector';
 import { ProviderModelFields } from './ProviderModelFields';
-import { isComposerBusy } from '../../../../shared/composer';
+import { isComposerAckBusy, isComposerBusy } from '../../../../shared/composer';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
 
 export interface NewChatDraftProps {
@@ -32,6 +32,7 @@ export interface NewChatDraftProps {
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
+  onCancelPendingSend?: () => void;
   onTogglePlusMenu: () => void;
   onFileSelect: () => void;
   onPickFolder: () => void;
@@ -81,6 +82,7 @@ export function NewChatDraft({
   onComposerChange,
   onComposerKeyDown,
   onSendMessage,
+  onCancelPendingSend,
   onTogglePlusMenu,
   onFileSelect,
   onPickFolder,
@@ -173,7 +175,9 @@ export function NewChatDraft({
         })
       : selectedModel ?? null;
   const chipLabel = selectedModel ? buildModelSelectorLabel(selectedModel) : '';
-  const isSubmittingFirstTurn = isComposerBusy(busy);
+  const isAckPending = isComposerAckBusy(busy);
+  const isSubmittingFirstTurn = isComposerBusy(busy) || isAckPending;
+  const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
 
   return (
     <div className="viewShell viewShellDraft">
@@ -328,24 +332,38 @@ export function NewChatDraft({
                 />
               </div>
             ) : null}
-            <button
-              className="composerSendButton"
-              disabled={!composerDraft.trim() || isSubmittingFirstTurn}
-              type="submit"
-              aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
-            >
-              {isParallelMode ? (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
-                  <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
+            {showCancelPendingSend ? (
+              <button
+                className="composerSendButton composerCancelButton"
+                type="button"
+                aria-label="Cancel send"
+                onClick={() => onCancelPendingSend?.()}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+                  <path d="M4 4l6 6" />
+                  <path d="M10 4l-6 6" />
                 </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 13V3" />
-                  <path d="M3 7l5-5 5 5" />
-                </svg>
-              )}
-            </button>
+              </button>
+            ) : (
+              <button
+                className="composerSendButton"
+                disabled={!composerDraft.trim() || isSubmittingFirstTurn}
+                type="submit"
+                aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
+              >
+                {isParallelMode ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
+                    <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 13V3" />
+                    <path d="M3 7l5-5 5 5" />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
           <input
             ref={fileInputRef}
