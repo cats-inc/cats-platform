@@ -17,8 +17,6 @@ import {
 import type { AppShellPayload } from '../../api/contracts';
 import {
   buildChannelPath,
-  buildMyCatPath,
-  buildNewChatPath,
 } from '../../shared/channelPaths';
 import {
   normalizeSelectedChannelView,
@@ -44,6 +42,10 @@ import {
   insertCreatedChannelIntoPayload,
   type SelectedChannelView,
 } from '../chatUtils';
+import {
+  resolveDraftRouteContext,
+  resolveDraftRoutePath,
+} from '../draftParticipants';
 import type { ModelSelectorValue } from '../components/ModelSelector';
 
 type LoadStateLike =
@@ -275,7 +277,11 @@ export function useComposerSubmit(options: {
     const initialPayload = state.payload;
     const wasDraftingNewChat = showingNewChatDraft;
     const initialSelectedChannel = normalizeSelectedChannelView(initialPayload.chat.selectedChannel ?? null);
-    const isCatScopedLaneRoute = Boolean(draftLeadCatId) && showingMyCatDirectLane;
+    const draftRoute = resolveDraftRouteContext({
+      draftLeadCatId,
+      showingMyCatDirectLane,
+    });
+    const isCatScopedLaneRoute = draftRoute.isDirectLaneRoute;
     const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftLeadCatId)
       ? initialSelectedChannel
       : null;
@@ -284,11 +290,9 @@ export function useComposerSubmit(options: {
     let channelId = wasDraftingNewChat || showingMyCatDirectLane
       ? hydratedDirectLane?.id ?? ''
       : initialPayload.chat.selectedChannelId;
-    let rollbackPath = showingMyCatDirectLane
-      ? buildMyCatPath(draftLeadCatId ?? '')
-      : wasDraftingNewChat
-        ? buildNewChatPath(draftLeadCatId)
-        : currentPathname;
+    let rollbackPath = draftRoute.isDirectLaneRoute || wasDraftingNewChat
+      ? resolveDraftRoutePath({ route: draftRoute })
+      : currentPathname;
     const originalDraftFiles = [...draftFiles];
     const originalChannelFiles = [...channelFiles];
     let restoreFiles = (): void => {

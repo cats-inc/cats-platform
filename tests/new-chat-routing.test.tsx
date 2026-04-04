@@ -14,9 +14,17 @@ import {
 import {
   resolveDraftParticipantSelection,
   resolveDraftRouteContext,
+  resolveDraftRoutePath,
+  resolveMissingDraftLeadPath,
 } from '../src/products/chat/renderer/draftParticipants.ts';
 import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.ts';
-import { isOptimisticDraftChannelId } from '../src/products/chat/shared/channelPaths.ts';
+import {
+  NEW_CHAT_PATH,
+  buildChannelPath,
+  buildMyCatPath,
+  buildNewChatPath,
+  isOptimisticDraftChannelId,
+} from '../src/products/chat/shared/channelPaths.ts';
 
 function createPayload(): AppShellPayload {
   return {
@@ -250,6 +258,69 @@ test('resolveDraftRouteContext distinguishes generic, lead-scoped, and direct-la
       isLeadScopedNewChatRoute: false,
       isGenericNewChatRoute: false,
     },
+  );
+});
+
+test('resolveDraftRoutePath keeps generic, lead-scoped, and direct draft entries aligned', () => {
+  const genericRoute = resolveDraftRouteContext({
+    draftLeadCatId: null,
+    showingMyCatDirectLane: false,
+  });
+  const leadScopedRoute = resolveDraftRouteContext({
+    draftLeadCatId: 'cat-lead',
+    showingMyCatDirectLane: false,
+  });
+  const directLaneRoute = resolveDraftRouteContext({
+    draftLeadCatId: 'cat-direct',
+    showingMyCatDirectLane: true,
+  });
+
+  assert.equal(resolveDraftRoutePath({ route: genericRoute }), NEW_CHAT_PATH);
+  assert.equal(resolveDraftRoutePath({ route: leadScopedRoute }), buildNewChatPath('cat-lead'));
+  assert.equal(resolveDraftRoutePath({ route: directLaneRoute }), buildMyCatPath('cat-direct'));
+  assert.equal(
+    resolveDraftRoutePath({ route: leadScopedRoute, nextLeadCatId: 'cat-reviewer' }),
+    buildNewChatPath('cat-reviewer'),
+  );
+  assert.equal(
+    resolveDraftRoutePath({ route: directLaneRoute, nextLeadCatId: 'cat-reviewer' }),
+    buildMyCatPath('cat-reviewer'),
+  );
+});
+
+test('resolveMissingDraftLeadPath falls back to visible chats only for direct-lane drafts', () => {
+  const visibleThread = {
+    id: 'visible-thread',
+    roomMode: 'boss_chat',
+    channelKind: 'boss_thread',
+  } as const;
+  const hiddenDirectLane = {
+    id: 'hidden-direct',
+    roomMode: 'direct_cat_chat',
+    channelKind: 'direct_lane',
+  } as const;
+
+  assert.equal(
+    resolveMissingDraftLeadPath({
+      route: resolveDraftRouteContext({
+        draftLeadCatId: 'cat-direct',
+        showingMyCatDirectLane: true,
+      }),
+      channels: [hiddenDirectLane, visibleThread],
+      selectedChannelId: hiddenDirectLane.id,
+    }),
+    buildChannelPath(visibleThread.id),
+  );
+  assert.equal(
+    resolveMissingDraftLeadPath({
+      route: resolveDraftRouteContext({
+        draftLeadCatId: 'cat-lead',
+        showingMyCatDirectLane: false,
+      }),
+      channels: [hiddenDirectLane, visibleThread],
+      selectedChannelId: visibleThread.id,
+    }),
+    NEW_CHAT_PATH,
   );
 });
 

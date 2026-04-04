@@ -5,7 +5,10 @@ import type {
 } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 
-import { buildNewChatPath } from '../../shared/channelPaths.js';
+import {
+  resolveDraftRouteContext,
+  resolveDraftRoutePath,
+} from '../draftParticipants.js';
 import {
   emptyCatForm,
   type CatFormState,
@@ -17,6 +20,7 @@ export function useAppDraftUiActions(options: {
   plusMenuOpen: boolean;
   draftCwd: string | null;
   draftLeadCatId: string | null;
+  showingMyCatDirectLane: boolean;
   navigate: NavigateFunction;
   setAddCatOpen: Dispatch<SetStateAction<boolean>>;
   setAddCatTab: Dispatch<SetStateAction<'existing' | 'new'>>;
@@ -34,6 +38,7 @@ export function useAppDraftUiActions(options: {
     plusMenuOpen,
     draftCwd,
     draftLeadCatId,
+    showingMyCatDirectLane,
     navigate,
     setAddCatOpen,
     setAddCatTab,
@@ -89,7 +94,16 @@ export function useAppDraftUiActions(options: {
       return;
     }
 
-    navigate(buildNewChatPath(catId), { replace: true });
+    navigate(
+      resolveDraftRoutePath({
+        route: resolveDraftRouteContext({
+          draftLeadCatId,
+          showingMyCatDirectLane,
+        }),
+        nextLeadCatId: catId,
+      }),
+      { replace: true },
+    );
   }
 
   return {

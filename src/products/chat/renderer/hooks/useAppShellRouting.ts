@@ -13,8 +13,11 @@ import {
   updateSelectedChannel,
 } from '../api';
 import {
+  resolveDraftRouteContext,
+  resolveMissingDraftLeadPath,
+} from '../draftParticipants.js';
+import {
   isOptimisticDraftChannelId,
-  NEW_CHAT_PATH,
   resolveVisibleChatPath,
 } from '../../shared/channelPaths';
 import { shouldWakeRouteChannelOnEntry } from '../../shared/channelEntry';
@@ -57,6 +60,10 @@ export function useAppShellRouting(options: {
     routeDirectLaneSummary,
     readySelectedChannel,
   } = options;
+  const draftRoute = resolveDraftRouteContext({
+    draftLeadCatId,
+    showingMyCatDirectLane,
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -141,14 +148,13 @@ export function useAppShellRouting(options: {
     const catExists = state.payload.chat.cats.some((cat) =>
       cat.id === draftLeadCatId && cat.status === 'active');
     if (!catExists) {
-      navigate(
-        showingMyCatDirectLane
-          ? resolveVisibleChatPath(state.payload.chat.channels, state.payload.chat.selectedChannelId)
-          : NEW_CHAT_PATH,
-        { replace: true },
-      );
+      navigate(resolveMissingDraftLeadPath({
+        route: draftRoute,
+        channels: state.payload.chat.channels,
+        selectedChannelId: state.payload.chat.selectedChannelId,
+      }), { replace: true });
     }
-  }, [draftLeadCatId, navigate, showingMyCatDirectLane, state]);
+  }, [draftLeadCatId, draftRoute.isDirectLaneRoute, navigate, state]);
 
   useEffect(() => {
     if (

@@ -1,3 +1,11 @@
+import type { ChatChannelSummary } from '../api/contracts.js';
+import {
+  NEW_CHAT_PATH,
+  buildMyCatPath,
+  buildNewChatPath,
+  resolveVisibleChatPath,
+} from '../shared/channelPaths.js';
+
 export interface DraftParticipantSelection {
   routeLeadCatId: string | null;
   toggleCatIds: string[];
@@ -64,4 +72,28 @@ export function resolveDraftRouteContext(input: {
     isLeadScopedNewChatRoute,
     isGenericNewChatRoute: !routeLeadCatId && !input.showingMyCatDirectLane,
   };
+}
+
+export function resolveDraftRoutePath(input: {
+  route: DraftRouteContext;
+  nextLeadCatId?: string | null;
+}): string {
+  const nextLeadCatId = normalizeCatId(input.nextLeadCatId);
+  const leadCatId = nextLeadCatId ?? input.route.routeLeadCatId;
+
+  if (input.route.isDirectLaneRoute) {
+    return leadCatId ? buildMyCatPath(leadCatId) : NEW_CHAT_PATH;
+  }
+
+  return buildNewChatPath(leadCatId);
+}
+
+export function resolveMissingDraftLeadPath(input: {
+  route: DraftRouteContext;
+  channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>>;
+  selectedChannelId: string | null | undefined;
+}): string {
+  return input.route.isDirectLaneRoute
+    ? resolveVisibleChatPath(input.channels, input.selectedChannelId)
+    : NEW_CHAT_PATH;
 }
