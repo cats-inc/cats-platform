@@ -31,6 +31,7 @@ interface BuildDesktopTrayMenuStateOptions {
   phase: DesktopBootstrapPhase;
   summary: string;
   setupCompleteAt: string | null;
+  fallbackSetupCompleteAt?: string | null;
   actions: ReadonlyArray<Pick<DesktopHostAction, 'id' | 'label' | 'primary'>>;
   products: ReadonlyArray<DesktopTrayProductDescriptor> | null | undefined;
 }
@@ -70,7 +71,8 @@ function toTrayProductLabel(productName: string): string {
 export function buildDesktopTrayMenuState(
   options: BuildDesktopTrayMenuStateOptions,
 ): DesktopTrayMenuState {
-  const products = options.setupCompleteAt
+  const effectiveSetupCompleteAt = options.setupCompleteAt ?? options.fallbackSetupCompleteAt ?? null;
+  const products = effectiveSetupCompleteAt
     ? (options.products ?? [])
       .filter(isVisibleTrayProduct)
       .map((product) => ({
@@ -83,7 +85,7 @@ export function buildDesktopTrayMenuState(
   return {
     phase: options.phase,
     summary: options.summary,
-    setupCompleteAt: options.setupCompleteAt,
+    setupCompleteAt: effectiveSetupCompleteAt,
     actions: options.actions.filter((action) => TRAY_PRIMARY_ACTION_IDS.has(action.id)),
     products,
   };

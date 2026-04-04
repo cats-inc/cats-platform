@@ -65,7 +65,14 @@ let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
 let supervisor: ManagedServiceSupervisor | null = null;
 let latestSnapshot: DesktopBootstrapSnapshot | null = null;
+let latestAppHealthPayload: AppHealthPayload | null = null;
 let latestAppShellPayload: AppShellPayload | null = null;
+let latestRuntimeHealthPayload: RuntimeDiagnosticsHealthPayload | ReadinessPayload | null = null;
+let latestProviderDiagnosticsPayload: RuntimeProviderDiagnosticsPayload | null = null;
+let latestPersistedSetupState: PersistedSetupCompletionState = {
+  setupCompleteAt: null,
+  productSetupCompleted: false,
+};
 let bootstrapPromise: Promise<DesktopBootstrapSnapshot> | null = null;
 let shuttingDown = false;
 let trayController: DesktopTrayController | null = null;
@@ -518,6 +525,7 @@ function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
     phase: snapshot.phase,
     summary: snapshot.summary,
     setupCompleteAt: snapshot.app.setupCompleteAt,
+    fallbackSetupCompleteAt: latestPersistedSetupState.setupCompleteAt,
     actions: snapshot.actions,
     products: latestAppShellPayload?.products,
   });
@@ -602,6 +610,14 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
   return buildDesktopBootstrapSnapshot({
     config: hostConfig,
     services: supervisor.getSnapshots(),
+    appHealth: latestAppHealthPayload,
+    appShell: latestAppShellPayload,
+    runtimeHealth: latestRuntimeHealthPayload
+      ? normalizeRuntimeHealthPayload(latestRuntimeHealthPayload)
+      : null,
+    providerDiagnostics: latestProviderDiagnosticsPayload,
+    persistedSetupCompleteAt: latestPersistedSetupState.setupCompleteAt,
+    persistedProductSetupCompleted: latestPersistedSetupState.productSetupCompleted,
     lastError,
     background: backgroundState ?? undefined,
     updates: updateState ?? undefined,
@@ -620,6 +636,7 @@ async function refreshBootstrapSnapshot(
 
   const effectivePersistedSetup = persistedSetup
     ?? await readPersistedSetupCompletionState(hostConfig.paths.appStatePath);
+  latestPersistedSetupState = effectivePersistedSetup;
   const skipStartupProviderReprobe = Boolean(
     effectivePersistedSetup.setupCompleteAt || effectivePersistedSetup.productSetupCompleted,
   );
@@ -644,16 +661,25 @@ async function refreshBootstrapSnapshot(
     fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/suite/bootstrap-diagnostics`),
   ]);
 
+  if (appHealth.status === 'fulfilled') {
+    latestAppHealthPayload = appHealth.value;
+  }
+  if (appShell.status === 'fulfilled') {
+    latestAppShellPayload = appShell.value;
+  }
+  if (runtimeHealth.status === 'fulfilled') {
+    latestRuntimeHealthPayload = runtimeHealth.value;
+  }
+  if (providerDiagnostics.status === 'fulfilled') {
+    latestProviderDiagnosticsPayload = providerDiagnostics.value;
+  }
+
   if (diagnosticsState && productDiagnostics.status === 'fulfilled') {
     diagnosticsState = {
       ...diagnosticsState,
       product: normalizeProductDiagnosticsPayload(productDiagnostics.value),
       updatedAt: new Date().toISOString(),
     };
-  }
-
-  if (appShell.status === 'fulfilled') {
-    latestAppShellPayload = appShell.value;
   }
 
   return buildDesktopBootstrapSnapshot({
@@ -932,7 +958,9 @@ async function shutdownHost(): Promise<void> {
   }
   shuttingDown = true;
   try {
-    trayController?.dispose();
+    const activeTrayController = trayController;
+    trayController = null;
+    activeTrayController?.dispose();
     await supervisor?.stopAll();
   } finally {
     app.exit();
@@ -955,6 +983,7 @@ async function main(): Promise<void> {
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
   });
+  latestPersistedSetupState = await readPersistedSetupCompletionState(hostConfig.paths.appStatePath);
   stateStore = new DesktopHostStateStore(hostConfig.paths.hostStatePath);
   {
     const defaultBackground = createDesktopBackgroundState(hostConfig);
@@ -982,15 +1011,7 @@ async function main(): Promise<void> {
   supervisor = new ManagedServiceSupervisor(hostConfig, {
     onStateChange: () => {
       if (hostConfig && supervisor) {
-        publishSnapshot(buildDesktopBootstrapSnapshot({
-          config: hostConfig,
-          services: supervisor.getSnapshots(),
-          background: backgroundState ?? undefined,
-          updates: updateState ?? undefined,
-          packaging: packagingState ?? undefined,
-          setup: setupState ?? undefined,
-          hostStatePath: hostConfig.paths.hostStatePath,
-        }));
+        publishSnapshot(buildSnapshot(null));
       }
     },
   });

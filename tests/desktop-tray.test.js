@@ -76,6 +76,41 @@ test('tray menu exposes installed live products after setup is complete', () => 
   );
 });
 
+test('tray menu preserves product shortcuts when setup completion comes from persisted fallback', () => {
+  const state = buildDesktopTrayMenuState({
+    phase: 'checking_prerequisites',
+    summary: 'Local services are ready. Running prerequisite checks.',
+    setupCompleteAt: null,
+    fallbackSetupCompleteAt: '2026-04-04T10:00:00.000Z',
+    actions: [
+      { id: 'open_chat', label: 'Open Cats', primary: true },
+      { id: 'quit', label: 'Quit', primary: false },
+    ],
+    products: [
+      {
+        id: 'chat',
+        productName: 'Cats Chat',
+        routePrefix: '/chat',
+        installState: 'installed',
+        setup: { selectable: true },
+      },
+      {
+        id: 'work',
+        productName: 'Cats Work',
+        routePrefix: '/work',
+        installState: 'installed',
+        setup: { selectable: true },
+      },
+    ],
+  });
+
+  assert.equal(state.setupCompleteAt, '2026-04-04T10:00:00.000Z');
+  assert.deepEqual(
+    state.products.map((product) => product.id),
+    ['chat', 'work'],
+  );
+});
+
 test('tray menu hides unavailable or disabled products from app-shell descriptors', () => {
   const state = buildDesktopTrayMenuState({
     phase: 'ready_for_chat',

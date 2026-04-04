@@ -2,6 +2,7 @@ import { app, Menu, Tray, nativeImage } from 'electron';
 
 import type { BrowserWindow, MenuItemConstructorOptions } from 'electron';
 import type { DesktopBootstrapPhase, DesktopHostActionId } from './contracts.js';
+import { createGuardedTrayLifecycle } from './trayLifecycle.js';
 import type { DesktopTrayMenuState } from './trayMenu.js';
 
 export interface DesktopTrayController {
@@ -136,10 +137,19 @@ export async function createDesktopTrayController(
     window.focus();
   };
 
+  const trayLifecycle = createGuardedTrayLifecycle<DesktopTrayMenuState>({
+    apply(state) {
+      tray.setContextMenu(Menu.buildFromTemplate(
+        buildDesktopTrayMenuTemplate(state, options, showWindow),
+      ));
+    },
+    destroy() {
+      tray.destroy();
+    },
+  });
+
   const updateMenu = (state: DesktopTrayMenuState) => {
-    tray.setContextMenu(Menu.buildFromTemplate(
-      buildDesktopTrayMenuTemplate(state, options, showWindow),
-    ));
+    trayLifecycle.update(state);
   };
 
   updateMenu({
@@ -165,7 +175,7 @@ export async function createDesktopTrayController(
     },
     updateMenu,
     dispose() {
-      tray.destroy();
+      trayLifecycle.dispose();
     },
   };
 }
