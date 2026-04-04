@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createDefaultCoreState } from '../dist-server/core/model/index.js';
 import {
   isPlatformNonProductPath,
+  resolvePlatformShellSurface,
   resolvePlatformSurfaceForPath,
   PLATFORM_SURFACE_ROUTES,
 } from '../dist-server/app/renderer/routeMap.js';
@@ -91,6 +92,14 @@ test('isPlatformNonProductPath excludes only canonical platform routes from prod
   assert.equal(isPlatformNonProductPath('/chat/settings/general'), false);
   assert.equal(isPlatformNonProductPath('/chat/new'), false);
   assert.equal(isPlatformNonProductPath('/work'), false);
+});
+
+test('resolvePlatformShellSurface keeps settings inside the last active product shell', () => {
+  assert.equal(resolvePlatformShellSurface('/settings/general', 'work'), 'work');
+  assert.equal(resolvePlatformShellSurface('/settings/runtime', 'code'), 'code');
+  assert.equal(resolvePlatformShellSurface('/settings/chat', null), 'chat');
+  assert.equal(resolvePlatformShellSurface('/work', 'chat'), 'work');
+  assert.equal(resolvePlatformShellSurface('/code/build', 'work'), 'code');
 });
 
 test('Work and Code dashboard projections stay core-backed without inventing new schemas', () => {

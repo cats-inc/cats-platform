@@ -66,3 +66,14 @@ export function resolvePlatformSurfaceForPath(pathname: string): PlatformSurface
 
   return 'chat';
 }
+
+export function resolvePlatformShellSurface(
+  pathname: string,
+  lastKnownSurface: PlatformSurfaceId | null | undefined,
+): PlatformSurfaceId {
+  if (pathname === '/settings' || pathname.startsWith('/settings/')) {
+    return lastKnownSurface ?? 'chat';
+  }
+
+  return resolvePlatformSurfaceForPath(pathname);
+}

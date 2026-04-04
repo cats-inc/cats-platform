@@ -2,11 +2,13 @@ import { startTransition, useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import type { PlatformHostEnvelope } from '../../shared/platform-contract';
+import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 import ChatApp from '../../products/chat/renderer/App';
 import WorkApp from '../../products/work/renderer/App';
 import CodeApp from '../../products/code/renderer/App';
 import {
   isPlatformNonProductPath,
+  resolvePlatformShellSurface,
   resolvePlatformSurfaceForPath,
   PLATFORM_SURFACE_ROUTES,
 } from './routeMap';
@@ -28,6 +30,7 @@ export default function PlatformApp() {
   const location = useLocation();
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
   const lastSyncedSurface = useRef<string | null>(null);
+  const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,6 +58,15 @@ export default function PlatformApp() {
   const storedSurface = envelope?.lastProductSurface ?? 'chat';
 
   useEffect(() => {
+    if (state.status !== 'ready') {
+      return;
+    }
+
+    const nextSurface = state.envelope.lastProductSurface ?? 'chat';
+    setActiveSurface((current) => (current === nextSurface ? current : nextSurface));
+  }, [state.status, state.status === 'ready' ? state.envelope.lastProductSurface : null]);
+
+  useEffect(() => {
     if (!setupComplete) {
       return;
     }
@@ -67,11 +79,22 @@ export default function PlatformApp() {
     if (isPlatformNonProductPath(location.pathname)) {
       return;
     }
+    setActiveSurface((current) => (current === currentSurface ? current : currentSurface));
     // First render: seed the ref AND sync if the current surface differs
     // from what's stored (e.g. deep-linked to /work when stored is chat).
     if (lastSyncedSurface.current === null) {
       lastSyncedSurface.current = currentSurface;
       if (currentSurface !== storedSurface) {
+        startTransition(() => {
+          setState((current) =>
+            current.status === 'ready'
+              ? {
+                  status: 'ready',
+                  envelope: { ...current.envelope, lastProductSurface: currentSurface },
+                }
+              : current,
+          );
+        });
         void fetch('/api/platform/preferences', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -82,6 +105,16 @@ export default function PlatformApp() {
     }
     if (currentSurface !== lastSyncedSurface.current) {
       lastSyncedSurface.current = currentSurface;
+      startTransition(() => {
+        setState((current) =>
+          current.status === 'ready'
+            ? {
+                status: 'ready',
+                envelope: { ...current.envelope, lastProductSurface: currentSurface },
+              }
+            : current,
+        );
+      });
       void fetch('/api/platform/preferences', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -136,10 +169,11 @@ export default function PlatformApp() {
   }
 
   // Setup complete: products at their own prefix, settings at /settings/*.
-  const entryPath = resolveProductEntryPath(storedSurface);
-  const settingsSurfaceElement = storedSurface === 'work'
+  const shellSurface = resolvePlatformShellSurface(location.pathname, activeSurface);
+  const entryPath = resolveProductEntryPath(activeSurface);
+  const settingsSurfaceElement = shellSurface === 'work'
     ? <WorkApp />
-    : storedSurface === 'code'
+    : shellSurface === 'code'
       ? <CodeApp />
       : <ChatApp />;
   return (
