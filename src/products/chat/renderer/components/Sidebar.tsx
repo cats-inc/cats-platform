@@ -34,6 +34,7 @@ export interface SidebarProps {
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
+  onStartNewGroupChat: () => void;
   onStartNewParallelChat: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
@@ -535,6 +536,7 @@ export function Sidebar({
   onCollapsedSidebarClick,
   onOpenChatsOverview,
   onStartNewChat,
+  onStartNewGroupChat,
   onStartNewParallelChat,
   onSelect,
   onDeleteChannel,
@@ -721,6 +723,21 @@ export function Sidebar({
               </svg>
             </span>
             <span className="navLabel">New chat</span>
+          </button>
+          <button
+            className="navItem"
+            onClick={() => void onStartNewGroupChat()}
+            type="button"
+          >
+            <span className="navGlyph" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="5" cy="6" r="2.25" />
+                <circle cx="11" cy="6" r="2.25" />
+                <path d="M2.75 12c.35-1.85 1.6-2.85 3.75-2.85S9.9 10.15 10.25 12" />
+                <path d="M8.6 12c.28-1.48 1.26-2.28 2.9-2.28 1.56 0 2.46.7 2.75 2.28" />
+              </svg>
+            </span>
+            <span className="navLabel">Group chat</span>
           </button>
           <button
             className="navItem"

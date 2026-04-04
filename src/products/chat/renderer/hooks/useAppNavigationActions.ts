@@ -10,6 +10,7 @@ import type { AppShellPayload } from '../../api/contracts.js';
 import type { ModelSelectorValue } from '../components/ModelSelector.js';
 import {
   buildChannelPath,
+  buildNewGroupChatPath,
   buildNewParallelChatPath,
   buildNewChatPath,
   resolveVisibleChatPath,
@@ -40,6 +41,7 @@ export function useAppNavigationActions(options: {
   setComposerDraft: Dispatch<SetStateAction<string>>;
   setAccountMenuOpen: Dispatch<SetStateAction<boolean>>;
   setAddCatOpen: Dispatch<SetStateAction<boolean>>;
+  setAddCatTab: Dispatch<SetStateAction<'existing' | 'new'>>;
   setPlusMenuOpen: Dispatch<SetStateAction<boolean>>;
   setChannelPlusMenuOpen: Dispatch<SetStateAction<boolean>>;
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
@@ -60,6 +62,7 @@ export function useAppNavigationActions(options: {
     setComposerDraft,
     setAccountMenuOpen,
     setAddCatOpen,
+    setAddCatTab,
     setPlusMenuOpen,
     setChannelPlusMenuOpen,
     setDraftCwd,
@@ -72,8 +75,11 @@ export function useAppNavigationActions(options: {
     confirm: confirmDialog,
   } = options;
 
-  const clearDraftRouteState = useCallback(() => {
-    setAddCatOpen(false);
+  const resetFreshDraftState = useCallback((options?: { openAddCatPanel?: boolean }) => {
+    setComposerDraft('');
+    setFeedback('');
+    setAddCatOpen(Boolean(options?.openAddCatPanel));
+    setAddCatTab('existing');
     setPlusMenuOpen(false);
     setDraftCwd(null);
     setDraftCatIds([]);
@@ -84,7 +90,10 @@ export function useAppNavigationActions(options: {
     setChannelPlusMenuOpen(false);
     setChannelFiles([]);
   }, [
+    setComposerDraft,
+    setFeedback,
     setAddCatOpen,
+    setAddCatTab,
     setPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
@@ -267,9 +276,9 @@ export function useAppNavigationActions(options: {
 
     const target = resolveMyCatNavigationTarget(state.payload.chat.channels, catId);
     setFeedback('');
-    clearDraftRouteState();
+    resetFreshDraftState();
     navigate(target.path);
-  }, [clearDraftRouteState, navigate, setFeedback, state]);
+  }, [navigate, resetFreshDraftState, setFeedback, state]);
 
   const onResetSetup = useCallback(async (): Promise<void> => {
     const confirmed = confirmDialog
@@ -289,54 +298,23 @@ export function useAppNavigationActions(options: {
 
   const onStartNewChat = useCallback(async (): Promise<void> => {
     navigate(buildNewChatPath(null));
-    setComposerDraft('');
-    setFeedback('');
-    setAddCatOpen(false);
-    setPlusMenuOpen(false);
-    setDraftCwd(null);
-    setDraftCatIds([]);
-    setDraftHighlightedCatId(null);
-    setDraftCatModelOverrides(new Map());
-    resetDraftConcurrentTargets();
-    setDraftFiles([]);
+    resetFreshDraftState();
   }, [
     navigate,
-    setComposerDraft,
-    setFeedback,
-    setAddCatOpen,
-    setPlusMenuOpen,
-    setDraftCwd,
-    setDraftCatIds,
-    setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
-    resetDraftConcurrentTargets,
-    setDraftFiles,
+    resetFreshDraftState,
   ]);
+
+  const onStartNewGroupChat = useCallback(async (): Promise<void> => {
+    navigate(buildNewGroupChatPath());
+    resetFreshDraftState({ openAddCatPanel: true });
+  }, [navigate, resetFreshDraftState]);
 
   const onStartNewParallelChat = useCallback(async (): Promise<void> => {
     navigate(buildNewParallelChatPath());
-    setComposerDraft('');
-    setFeedback('');
-    setAddCatOpen(false);
-    setPlusMenuOpen(false);
-    setDraftCwd(null);
-    setDraftCatIds([]);
-    setDraftHighlightedCatId(null);
-    setDraftCatModelOverrides(new Map());
-    resetDraftConcurrentTargets();
-    setDraftFiles([]);
+    resetFreshDraftState();
   }, [
     navigate,
-    setComposerDraft,
-    setFeedback,
-    setAddCatOpen,
-    setPlusMenuOpen,
-    setDraftCwd,
-    setDraftCatIds,
-    setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
-    resetDraftConcurrentTargets,
-    setDraftFiles,
+    resetFreshDraftState,
   ]);
 
   return {
@@ -353,6 +331,7 @@ export function useAppNavigationActions(options: {
     onDirectChatCat,
     onResetSetup,
     onStartNewChat,
+    onStartNewGroupChat,
     onStartNewParallelChat,
   };
 }

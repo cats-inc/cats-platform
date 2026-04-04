@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts';
+import type { NewChatMode } from '../../shared/channelPaths.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import type { BrowseDirectoryEntry } from '../api';
 import { isChatCat, truncatePath } from '../chatUtils';
@@ -42,6 +43,7 @@ export interface NewChatDraftProps {
   onToggleDraftCat: (catId: string) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
   draftLeadCatId: string | null;
+  entryMode?: NewChatMode;
   onDraftLeadCatChange: (catId: string | null) => void;
   allowAddCat?: boolean;
   selectedModel?: ModelSelectorValue;
@@ -92,6 +94,7 @@ export function NewChatDraft({
   onToggleDraftCat,
   autoResize,
   draftLeadCatId,
+  entryMode = 'default',
   onDraftLeadCatChange,
   allowAddCat = true,
   selectedModel,
@@ -117,6 +120,8 @@ export function NewChatDraft({
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const chatCats = payload.chat.cats.filter(isChatCat);
+  const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
+  const isGroupEntryMode = entryMode === 'group';
   const leadCat = draftLeadCatId
     ? chatCats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
     : null;
@@ -153,8 +158,14 @@ export function NewChatDraft({
       onPickFolder();
     }
   }
-  const hasMultipleCats = chatCats.filter((c) => c.status === 'active').length > 1;
   const isDirectLaneContext = !allowAddCat && Boolean(draftLeadCatId) && Boolean(leadCat);
+  const groupDraftSelectionLabel = draftCatIds.length === 1
+    ? '1 participant selected so far. Add more or send when ready.'
+    : draftCatIds.length > 1
+      ? `${draftCatIds.length} participants selected for this shared chat.`
+      : activeChatCats.length > 0
+        ? 'Choose which Cats should join this shared chat.'
+        : 'Add Cats in Settings before starting a shared chat.';
 
   const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
     ? chatCats.find((c) => c.id === draftHighlightedCatId) ?? null
@@ -190,6 +201,24 @@ export function NewChatDraft({
               <p className="heroNote">
                 {hasTelegramBinding ? 'Telegram-bound private lane.' : 'Private lane for this Cat.'}
               </p>
+            </>
+          ) : isGroupEntryMode ? (
+            <>
+              <p className="eyebrow">Group Chat</p>
+              <h1>Start a group chat</h1>
+              <p className="heroNote">{groupDraftSelectionLabel}</p>
+              {allowAddCat ? (
+                <div className="draftGreetingActions">
+                  <button
+                    className="secondaryButton"
+                    type="button"
+                    disabled={isSubmittingFirstTurn || activeChatCats.length === 0}
+                    onClick={onOpenAddCat}
+                  >
+                    {draftCatIds.length > 0 ? 'Edit participants' : 'Choose participants'}
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : (
             <h1>{greeting}</h1>

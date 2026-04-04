@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   buildNewChatPath,
+  buildNewGroupChatPath,
   buildMyCatPath,
   buildChannelPath,
   createChannelExportFilename,
@@ -87,6 +88,7 @@ test('new-chat route helpers preserve direct-cat draft state without creating a 
   const catId = '0d6ee0b3-cd9e-41df-9a4b-5798bb6ec8ae';
 
   assert.equal(buildNewChatPath(catId), `/chat/new?cat=${catId}`);
+  assert.equal(buildNewGroupChatPath(), '/chat/new?mode=group');
   assert.equal(buildMyCatPath(catId), `/chat/my-cats/${catId}`);
   assert.equal(buildNewChatPath('   '), NEW_CHAT_PATH);
   assert.equal(readNewChatLeadCatId(`?cat=${catId}`), catId);
@@ -98,4 +100,3 @@ test('slugifyChannelLabel falls back to chat for non-Latin input', () => {
   assert.equal(slugifyChannelLabel('   '), 'chat');
   assert.equal(slugifyChannelLabel('Hello World'), 'hello-world');
 });
-

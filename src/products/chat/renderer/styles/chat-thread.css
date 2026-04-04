@@ -455,6 +455,12 @@
   color: var(--text);
 }
 
+.draftGreetingActions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
 
 .recentCatAvatar {
   grid-area: 1 / 1;

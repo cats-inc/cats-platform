@@ -208,6 +208,7 @@ function createSidebarTree(
     onCollapsedSidebarClick: () => {},
     onOpenChatsOverview: () => {},
     onStartNewChat: () => {},
+    onStartNewGroupChat: () => {},
     onSelect: () => {},
     onDeleteChannel: () => {},
     onDeleteCat: () => {},

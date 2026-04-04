@@ -137,8 +137,8 @@ export default function App() {
   const routeChannelId = channelMatch?.params.channelId ?? null;
   const routeMyCatId = myCatMatch?.params.catId ?? null;
   const showingNewChatDraft = isNewChatPath(location.pathname);
-  const showingParallelChatDraft =
-    showingNewChatDraft && readNewChatMode(location.search) === 'parallel';
+  const newChatMode = showingNewChatDraft ? readNewChatMode(location.search) : 'default';
+  const showingParallelChatDraft = newChatMode === 'parallel';
   const draftLeadCatId = routeMyCatId ?? readNewChatLeadCatId(location.search);
   const showingMyCatDirectLane = Boolean(routeMyCatId);
 
@@ -365,6 +365,7 @@ export default function App() {
     onDirectChatCat,
     onResetSetup,
     onStartNewChat,
+    onStartNewGroupChat,
     onStartNewParallelChat,
   } = useAppNavigationActions({
     state,
@@ -375,6 +376,7 @@ export default function App() {
     setComposerDraft,
     setAccountMenuOpen,
     setAddCatOpen,
+    setAddCatTab,
     setPlusMenuOpen,
     setChannelPlusMenuOpen,
     setDraftCwd,
@@ -946,6 +948,7 @@ export default function App() {
         onCollapsedSidebarClick={onCollapsedSidebarClick}
         onOpenChatsOverview={onOpenChatsOverview}
         onStartNewChat={onStartNewChat}
+        onStartNewGroupChat={onStartNewGroupChat}
         onStartNewParallelChat={onStartNewParallelChat}
         onSelect={onSelect}
         onDeleteChannel={onDeleteChannel}
@@ -1038,6 +1041,7 @@ export default function App() {
             onToggleDraftCat: onToggleDraftCat,
             autoResize,
             draftLeadCatId,
+            entryMode: newChatMode,
             selectedModel: draftModel,
             onModelChange: onDraftModelChange,
             draftHighlightedCatId,

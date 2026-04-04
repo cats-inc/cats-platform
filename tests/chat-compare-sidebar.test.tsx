@@ -4,6 +4,7 @@ import { isValidElement, type ReactNode, type RefObject } from 'react';
 
 import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/api/contracts.ts';
 import {
+  buildNewGroupChatPath,
   buildNewParallelChatPath,
   readNewChatMode,
 } from '../src/products/chat/shared/channelPaths.ts';
@@ -75,6 +76,52 @@ function collectGroupTitles(node: ReactNode): string[] {
     walk(current.props.children);
   })(node);
   return titles;
+}
+
+function findButtonByLabel(
+  node: ReactNode,
+  label: string,
+): { props: { onClick?: () => void } } {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const match = findButtonByLabel(child, label);
+      if (match) {
+        return match;
+      }
+    }
+    throw new Error(`Button "${label}" not found.`);
+  }
+
+  if (!isValidElement(node)) {
+    throw new Error(`Button "${label}" not found.`);
+  }
+
+  if (
+    node.type === 'button'
+    && typeof node.props.className === 'string'
+    && node.props.className.includes('navItem')
+    && textContent(node.props.children).includes(label)
+  ) {
+    return node as { props: { onClick?: () => void } };
+  }
+
+  const children = node.props.children;
+  if (!children) {
+    throw new Error(`Button "${label}" not found.`);
+  }
+
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      try {
+        return findButtonByLabel(child, label);
+      } catch {
+        continue;
+      }
+    }
+    throw new Error(`Button "${label}" not found.`);
+  }
+
+  return findButtonByLabel(children, label);
 }
 
 function createChannel(
@@ -234,6 +281,7 @@ test('Sidebar groups parallel chats and shows member labels in Recents', () => {
     onCollapsedSidebarClick: () => {},
     onOpenChatsOverview: () => {},
     onStartNewChat: () => {},
+    onStartNewGroupChat: () => {},
     onStartNewParallelChat: () => {},
     onSelect: () => {},
     onDeleteChannel: () => {},
@@ -253,13 +301,58 @@ test('Sidebar groups parallel chats and shows member labels in Recents', () => {
   const text = textContent(tree);
   const labels = collectRecentLabels(tree);
   const groupTitles = collectGroupTitles(tree);
+  assert.match(text, /Group chat/i);
   assert.match(text, /Parallel chat/i);
   assert.deepEqual(groupTitles, ['Parallel chat 1']);
   assert.deepEqual(labels, ['Claude Sonnet 4', 'GPT-5']);
 });
 
-test('parallel chat route helpers keep parallel mode explicit', () => {
+test('Sidebar exposes a dedicated Group chat primary action', () => {
+  const actions: string[] = [];
+  const tree = Sidebar({
+    payload: createPayload(),
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: '',
+    surface: 'chats',
+    routeChannelId: 'compare-1',
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {
+      actions.push('solo');
+    },
+    onStartNewGroupChat: () => {
+      actions.push('group');
+    },
+    onStartNewParallelChat: () => {
+      actions.push('parallel');
+    },
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onRenameConcurrentGroup: () => {},
+    onUngroupConcurrentGroup: () => {},
+    onDeleteConcurrentGroup: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+  });
+
+  findButtonByLabel(tree, 'Group chat').props.onClick?.();
+  assert.deepEqual(actions, ['group']);
+});
+
+test('new-chat route helpers keep group and parallel entry intents explicit', () => {
+  assert.equal(buildNewGroupChatPath(), '/chat/new?mode=group');
   assert.equal(buildNewParallelChatPath(), '/chat/new?mode=parallel');
+  assert.equal(readNewChatMode('?mode=group'), 'group');
   assert.equal(readNewChatMode('?mode=parallel'), 'parallel');
   assert.equal(readNewChatMode('?mode=compare'), 'default');
   assert.equal(readNewChatMode(''), 'default');
