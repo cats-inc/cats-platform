@@ -204,6 +204,20 @@ npm run desktop:package:windows
 That command builds `cats-runtime`, builds `cats`, stages bundled sidecars, and
 produces an NSIS installer under `release/`.
 
+For macOS/Linux unsigned or test packages:
+
+```bash
+npm run desktop:package:macos
+npm run desktop:package:linux
+```
+
+For unpacked validation on Unix targets:
+
+```bash
+./scripts/macos/test-macos-package-smoke.sh
+./scripts/linux/test-linux-package-smoke.sh
+```
+
 For a post-install validation pass on Windows:
 
 ```powershell
