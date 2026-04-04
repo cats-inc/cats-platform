@@ -87,3 +87,11 @@ export function getSuiteSetupPlugins(products: readonly SuiteProductDescriptor[]
     }];
   });
 }
+
+export function resolveInitialSetupProduct(
+  plugins: readonly ProductSetupPlugin[],
+): ProductSetupPlugin['surface'] {
+  return plugins.find((plugin) => plugin.enabled)?.surface
+    ?? plugins[0]?.surface
+    ?? 'chat';
+}

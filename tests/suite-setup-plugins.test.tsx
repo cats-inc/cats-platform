@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   getSuiteSetupPlugins,
+  resolveInitialSetupProduct,
   validateGuideCatSetupStep,
 } from '../src/app/renderer/setup/plugins.tsx';
 import { listSuiteProductDescriptors } from '../src/shared/suiteProducts.ts';
@@ -51,4 +52,48 @@ test('getSuiteSetupPlugins derives setup metadata from shared suite product desc
 test('validateGuideCatSetupStep requires a selected model', () => {
   assert.equal(validateGuideCatSetupStep({ model: '' }), false);
   assert.equal(validateGuideCatSetupStep({ model: 'gpt-5.4' }), true);
+});
+
+test('resolveInitialSetupProduct prefers the first enabled setup surface', () => {
+  assert.equal(
+    resolveInitialSetupProduct([
+      {
+        surface: 'work',
+        label: 'Cats Work',
+        description: 'Work',
+        enabled: false,
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'preview',
+      },
+      {
+        surface: 'code',
+        label: 'Cats Code',
+        description: 'Code',
+        enabled: true,
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'preview',
+      },
+    ]),
+    'code',
+  );
+});
+
+test('resolveInitialSetupProduct falls back to the first plugin and then chat', () => {
+  assert.equal(
+    resolveInitialSetupProduct([
+      {
+        surface: 'work',
+        label: 'Cats Work',
+        description: 'Work',
+        enabled: false,
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'preview',
+      },
+    ]),
+    'work',
+  );
+  assert.equal(resolveInitialSetupProduct([]), 'chat');
 });

@@ -13,6 +13,7 @@ import {
 import {
   getSuiteSetupPlugins,
   GuideCatSetupFields,
+  resolveInitialSetupProduct,
   validateGuideCatSetupStep,
 } from './plugins';
 import type { ProductSetupPlugin } from './types';
@@ -89,9 +90,12 @@ export function SuiteSetupWizard({
   envelope: SuiteHostEnvelope;
   onComplete: (envelope: SuiteHostEnvelope) => void;
 }) {
+  const plugins = getSuiteSetupPlugins(envelope.products);
   const [step, setStep] = useState<SetupStep>(1);
   const [ownerName, setOwnerName] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<SuiteSurfaceId>('chat');
+  const [selectedProduct, setSelectedProduct] = useState<SuiteSurfaceId>(() =>
+    resolveInitialSetupProduct(plugins),
+  );
   const [createGuideCat, setCreateGuideCat] = useState(false);
   const [guideCatName, setGuideCatName] = useState('Guide Cat');
   const [provider, setProvider] = useState('claude');
@@ -107,8 +111,10 @@ export function SuiteSetupWizard({
   const runtimeAutoScanAttempted = useRef(false);
 
   const busy = busyAction !== null;
-  const plugins = getSuiteSetupPlugins(envelope.products);
   const totalSteps = 4;
+  const preferredProduct = resolveInitialSetupProduct(plugins);
+  const selectedProductEnabled = plugins.some((plugin) =>
+    plugin.surface === selectedProduct && plugin.enabled);
   const runtimeReady = runtimeSetup.status === 'ready' && runtimeSetup.bootstrapRequired === false;
   const canContinueGuideCatStep = !createGuideCat || validateGuideCatSetupStep({
     model,
@@ -192,6 +198,14 @@ export function SuiteSetupWizard({
     selectedProduct,
     attemptId,
   ]);
+
+  useEffect(() => {
+    if (selectedProductEnabled || selectedProduct === preferredProduct) {
+      return;
+    }
+
+    setSelectedProduct(preferredProduct);
+  }, [preferredProduct, selectedProduct, selectedProductEnabled]);
 
   useEffect(() => {
     if (setupOpenedRecorded.current) {
