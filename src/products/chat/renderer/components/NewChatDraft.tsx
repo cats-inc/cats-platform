@@ -159,6 +159,7 @@ export function NewChatDraft({
     }
   }
   const isDirectLaneContext = !allowAddCat && Boolean(draftLeadCatId) && Boolean(leadCat);
+  const isLeadScopedDraft = allowAddCat && Boolean(leadCat);
   const groupDraftSelectionLabel = draftCatIds.length === 1
     ? '1 participant selected so far. Add more or send when ready.'
     : draftCatIds.length > 1
@@ -194,7 +195,7 @@ export function NewChatDraft({
     <div className="viewShell viewShellDraft">
       <section className="draftShell">
         <div className="draftGreeting">
-          {leadCat ? (
+          {isDirectLaneContext && leadCat ? (
             <>
               <p className="eyebrow">Private Chat</p>
               <h1>{leadCat.name}</h1>
@@ -219,6 +220,14 @@ export function NewChatDraft({
                   </button>
                 </div>
               ) : null}
+            </>
+          ) : isLeadScopedDraft && leadCat ? (
+            <>
+              <p className="eyebrow">Cat-led Chat</p>
+              <h1>Start with {leadCat.name}</h1>
+              <p className="heroNote">
+                {leadCat.name} will lead this draft. Add more Cats anytime, or keep the thread focused.
+              </p>
             </>
           ) : (
             <h1>{greeting}</h1>
