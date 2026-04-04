@@ -6,6 +6,7 @@
 
 ```
 scripts/
+├── shared/    # Shared Unix shell helpers
 ├── windows/   # PowerShell (.ps1)
 ├── linux/     # Bash (.sh)
 ├── macos/     # Bash (.sh)
@@ -82,8 +83,8 @@ These scripts sync `skills/` into `.claude/skills`, `.agents/skills`, and
 
 ## Self-Hosted npm Package Helpers
 
-`cats` now also ships repo-owned npm pack/install smoke helpers on each desktop
-platform:
+`cats-platform` now also ships repo-owned npm pack/install smoke helpers on
+each desktop platform:
 
 - `scripts/windows/Pack-Install.ps1`
 - `scripts/linux/pack-install.sh`
@@ -100,10 +101,11 @@ Shared behavior:
 - `--clean` explicitly forces tarball deletion after a successful install
 - `--skip-build` assumes `npm run build` has already been run
 
-After a successful install, verify the executable contract with `cats --help`.
-This path is separate from the Electron desktop packaging and installer flows.
+After a successful install, verify the executable contract with
+`cats-platform --help`. This path is separate from the Electron desktop
+packaging and installer flows.
 
-`cats` now also ships its first repo-owned packaged setup helper:
+`cats-platform` now also ships its first repo-owned packaged setup helper:
 
 - `scripts/windows/Setup-NodeGlobalPrefix.ps1`
 - `scripts/windows/Install-NodeCliPack.ps1`
@@ -177,3 +179,58 @@ prerequisite readiness.
 
 Together these let the host treat packaged setup helpers as structured assets
 instead of raw bootstrap dependencies.
+
+## Self-Hosted Provider Helpers
+
+`cats-platform` now also ships repo-owned Unix self-hosted provider helpers so
+macOS/Linux operators do not need to depend on `environment-bootstrap` at
+runtime:
+
+- `scripts/linux/setup-node-global-prefix.sh`
+- `scripts/linux/install-node-cli-tools.sh`
+- `scripts/linux/install-claude-code.sh`
+- `scripts/linux/install-cursor-agent.sh`
+- `scripts/linux/install-goose.sh`
+- `scripts/linux/install-junie.sh`
+- `scripts/linux/install-kiro-cli.sh`
+- `scripts/linux/upgrade-cli-tools.sh`
+- `scripts/linux/check-installation.sh`
+- `scripts/macos/setup-node-global-prefix.sh`
+- `scripts/macos/install-node-cli-tools.sh`
+- `scripts/macos/install-claude-code.sh`
+- `scripts/macos/install-cursor-agent.sh`
+- `scripts/macos/install-goose.sh`
+- `scripts/macos/install-junie.sh`
+- `scripts/macos/install-kiro-cli.sh`
+- `scripts/macos/upgrade-cli-tools.sh`
+- `scripts/macos/check-installation.sh`
+
+These helpers cover the same first-pass self-hosted provider baseline that
+`environment-bootstrap` previously owned on Unix:
+
+- native installers for Claude Code, Cursor Agent, Goose, Junie, and Kiro
+- npm global-prefix setup for user-scoped installs
+- npm CLI pack install/upgrade for Codex, Gemini, Copilot, OpenCode, Kilo,
+  Auggie, and Pi
+- one-shot audit and bulk-upgrade wrappers
+
+Representative usage:
+
+```bash
+./scripts/linux/setup-node-global-prefix.sh
+./scripts/linux/install-node-cli-tools.sh
+./scripts/linux/install-claude-code.sh
+./scripts/linux/upgrade-cli-tools.sh
+./scripts/linux/check-installation.sh --strict
+```
+
+```bash
+./scripts/macos/setup-node-global-prefix.sh
+./scripts/macos/install-node-cli-tools.sh
+./scripts/macos/install-cursor-agent.sh
+./scripts/macos/upgrade-cli-tools.sh
+./scripts/macos/check-installation.sh --json
+```
+
+These are self-hosted operational helpers only. They are intentionally not yet
+wired into the packaged bootstrap/setup wizard flow.

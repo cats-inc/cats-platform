@@ -121,6 +121,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
     'dist',
     'dist-server',
     'dist-electron',
+    'scripts',
     '.env.example',
     'README.md',
     'LICENSE',
@@ -136,6 +137,14 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('dist-server/index.js'), true);
   assert.equal(packedPaths.has('dist-electron/main.js'), true);
   assert.equal(packedPaths.has('dist-electron/preload.cjs'), true);
+  assert.equal(packedPaths.has('scripts/linux/install-node-cli-tools.sh'), true);
+  assert.equal(packedPaths.has('scripts/linux/install-claude-code.sh'), true);
+  assert.equal(packedPaths.has('scripts/linux/check-installation.sh'), true);
+  assert.equal(packedPaths.has('scripts/macos/install-node-cli-tools.sh'), true);
+  assert.equal(packedPaths.has('scripts/macos/install-claude-code.sh'), true);
+  assert.equal(packedPaths.has('scripts/macos/check-installation.sh'), true);
+  assert.equal(packedPaths.has('scripts/shared/unix-provider-cli-common.sh'), true);
+  assert.equal(packedPaths.has('scripts/shared/unix-node-cli-common.sh'), true);
   assert.equal(packedPaths.has('package.json'), true);
 
   assert.equal([...packedPaths].some((path) => path.startsWith('src/')), false);

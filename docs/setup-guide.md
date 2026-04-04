@@ -252,18 +252,65 @@ To build a local npm tarball and optionally install it globally:
 ```
 
 This is the self-hosted host-package smoke path, not the Electron installer
-path. It validates the future `@cats-inc/cats-platform` package contract while
-keeping the installed executable name as `cats`. The separate one-shot
-bootstrap package target is `cats-can`.
+path. It validates the `@cats-inc/cats-platform` package contract and the
+current executable name `cats-platform`. The separate one-shot bootstrap
+package target is `cats-can`.
 
 After install, verify the executable contract with:
 
 ```bash
-cats --help
+cats-platform --help
 ```
 
-Running `cats` still expects a reachable `cats-runtime`, using
+Running `cats-platform` still expects a reachable `cats-runtime`, using
 `CATS_RUNTIME_BASE_URL` or the default `http://127.0.0.1:3110`.
+
+### Self-Hosted Provider Helpers
+
+`cats-platform` now also ships repo-owned Unix helper scripts for the
+self-hosted provider baseline that used to live only in
+`environment-bootstrap`.
+
+Linux:
+
+```bash
+./scripts/linux/setup-node-global-prefix.sh
+./scripts/linux/install-node-cli-tools.sh
+./scripts/linux/install-claude-code.sh
+./scripts/linux/install-cursor-agent.sh
+./scripts/linux/install-goose.sh
+./scripts/linux/install-junie.sh
+./scripts/linux/install-kiro-cli.sh
+./scripts/linux/upgrade-cli-tools.sh
+./scripts/linux/check-installation.sh --strict
+```
+
+macOS:
+
+```bash
+./scripts/macos/setup-node-global-prefix.sh
+./scripts/macos/install-node-cli-tools.sh
+./scripts/macos/install-claude-code.sh
+./scripts/macos/install-cursor-agent.sh
+./scripts/macos/install-goose.sh
+./scripts/macos/install-junie.sh
+./scripts/macos/install-kiro-cli.sh
+./scripts/macos/upgrade-cli-tools.sh
+./scripts/macos/check-installation.sh --json
+```
+
+Coverage in this slice:
+
+- native CLI install and upgrade for Claude Code, Cursor Agent, Goose, Junie,
+  and Kiro
+- npm global-prefix/PATH repair for user-scoped installs
+- npm CLI pack install and upgrade for Codex, Gemini, Copilot, OpenCode,
+  Kilo, Auggie, and Pi
+- self-hosted audit output for the same provider baseline
+
+These helpers are shipped as part of the npm package so self-hosted operators
+can use them after `npm install` or `npx`. They are not yet consumed by the
+desktop bootstrap/setup wizard.
 
 ### Desktop Packaging Stage
 
