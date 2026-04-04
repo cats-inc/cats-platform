@@ -20,11 +20,11 @@ dist-server/
 dist-electron/
 build/
 release/
-config/*.local.json
-config/*.local.*.json
-config/chat-state.local.json.bak
-config/platform-onboarding-history.json
+config/*
+!config/.gitkeep
+!config/*.example
 platform-preferences.json
+suite-preferences.json
 
 # === Node.js ===
 node_modules/
