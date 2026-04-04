@@ -38,8 +38,8 @@ test('resolveSuiteSurfaceForPath routes work and code prefixes to their dedicate
     ),
     {
       chat: { routePrefix: '/chat', placeholder: false, apiBase: null },
-      work: { routePrefix: '/work', placeholder: true, apiBase: '/api/work' },
-      code: { routePrefix: '/code', placeholder: true, apiBase: '/api/code' },
+      work: { routePrefix: '/work', placeholder: false, apiBase: '/api/work' },
+      code: { routePrefix: '/code', placeholder: false, apiBase: '/api/code' },
     },
   );
 });

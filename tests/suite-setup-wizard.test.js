@@ -134,8 +134,8 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
       })),
       [
         { id: 'chat', group: 'home', maturity: 'active', selectable: true },
-        { id: 'work', group: 'office', maturity: 'preview', selectable: false },
-        { id: 'code', group: 'office', maturity: 'preview', selectable: false },
+        { id: 'work', group: 'office', maturity: 'preview', selectable: true },
+        { id: 'code', group: 'office', maturity: 'preview', selectable: true },
       ],
     );
   });
@@ -163,6 +163,7 @@ test('POST /api/suite/setup/complete with createGuideCat=true creates a Guide Ca
     assert.equal(payload.ownerDisplayName, 'Kenny');
     assert.equal(payload.lastProductSurface, 'chat');
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
+    assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat', 'work', 'code']);
 
     const guideCat = payload.chat.cats.find((cat) => cat.name === 'Meowster');
     assert.ok(guideCat, 'Guide Cat should exist in cats array');

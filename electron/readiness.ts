@@ -38,6 +38,16 @@ export interface AppHealthPayload extends ReadinessPayload {
 export interface AppShellPayload {
   bootstrapAttemptId?: string | null;
   setupCompleteAt?: string | null;
+  products?: Array<{
+    id?: string;
+    productName?: string;
+    routePrefix?: string;
+    installState?: string;
+    setup?: {
+      selectable?: boolean;
+      disabledReason?: string;
+    } | null;
+  }>;
 }
 
 export interface RuntimeDiagnosticsHealthPayload {

@@ -8,6 +8,8 @@ export const ALL_SUITE_SURFACES = [
 
 const ENABLED_SUITE_SURFACES = [
   'chat',
+  'work',
+  'code',
 ] as const satisfies readonly SuiteSurfaceId[];
 
 const DEFAULT_CAT_PRODUCT_SURFACES = [

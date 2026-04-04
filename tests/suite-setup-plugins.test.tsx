@@ -32,19 +32,19 @@ test('getSuiteSetupPlugins derives setup metadata from shared suite product desc
       },
       {
         surface: 'work',
-        enabled: false,
+        enabled: true,
         installPolicy: 'required',
         installState: 'installed',
         maturity: 'preview',
-        disabledReason: 'Coming soon',
+        disabledReason: null,
       },
       {
         surface: 'code',
-        enabled: false,
+        enabled: true,
         installPolicy: 'required',
         installState: 'installed',
         maturity: 'preview',
-        disabledReason: 'Coming soon',
+        disabledReason: null,
       },
     ],
   );

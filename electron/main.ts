@@ -54,13 +54,18 @@ import {
   runDesktopSetupHelper,
   shouldAutoRunSetupAudit,
 } from './setupBridge.js';
-import { createDesktopTrayController, type DesktopTrayController } from './tray.js';
+import {
+  createDesktopTrayController,
+  type DesktopTrayController,
+} from './tray.js';
+import { buildDesktopTrayMenuState as buildElectronTrayMenuState } from './trayMenu.js';
 import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
 let supervisor: ManagedServiceSupervisor | null = null;
 let latestSnapshot: DesktopBootstrapSnapshot | null = null;
+let latestAppShellPayload: AppShellPayload | null = null;
 let bootstrapPromise: Promise<DesktopBootstrapSnapshot> | null = null;
 let shuttingDown = false;
 let trayController: DesktopTrayController | null = null;
@@ -502,9 +507,20 @@ function publishSnapshot(snapshot: DesktopBootstrapSnapshot): DesktopBootstrapSn
     hostStatePath: hostConfig?.paths.hostStatePath ?? snapshot.hostStatePath,
   };
   latestSnapshot = enriched;
+  trayController?.updateMenu(resolveDesktopTrayMenuState(enriched));
   writePersistedHostState(enriched);
   mainWindow?.webContents.send('cats-host:snapshot', enriched);
   return enriched;
+}
+
+function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
+  return buildElectronTrayMenuState({
+    phase: snapshot.phase,
+    summary: snapshot.summary,
+    setupCompleteAt: snapshot.app.setupCompleteAt,
+    actions: snapshot.actions,
+    products: latestAppShellPayload?.products,
+  });
 }
 
 function updateBackgroundState(
@@ -634,6 +650,10 @@ async function refreshBootstrapSnapshot(
       product: normalizeProductDiagnosticsPayload(productDiagnostics.value),
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  if (appShell.status === 'fulfilled') {
+    latestAppShellPayload = appShell.value;
   }
 
   return buildDesktopBootstrapSnapshot({
@@ -1015,10 +1035,16 @@ async function main(): Promise<void> {
           await showMainWindow(`${hostConfig.appBaseUrl}${path}`);
         }
       },
+      onRunAction: async (actionId) => {
+        await runHostAction(actionId);
+      },
       onQuit: () => {
         void shutdownHost();
       },
     });
+    if (latestSnapshot) {
+      trayController.updateMenu(resolveDesktopTrayMenuState(latestSnapshot));
+    }
   }
 
   app.on('before-quit', (event) => {

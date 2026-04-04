@@ -42,8 +42,7 @@ const SUITE_PRODUCT_DESCRIPTORS: readonly SuiteProductDescriptor[] = [
     installState: 'installed',
     maturity: 'preview',
     setup: {
-      selectable: false,
-      disabledReason: 'Coming soon',
+      selectable: true,
     },
   },
   {
@@ -57,8 +56,7 @@ const SUITE_PRODUCT_DESCRIPTORS: readonly SuiteProductDescriptor[] = [
     installState: 'installed',
     maturity: 'preview',
     setup: {
-      selectable: false,
-      disabledReason: 'Coming soon',
+      selectable: true,
     },
   },
 ] as const;
