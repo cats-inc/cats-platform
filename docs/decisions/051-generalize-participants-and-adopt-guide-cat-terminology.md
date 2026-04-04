@@ -57,6 +57,10 @@ The suite must not assume that a setup-created Guide Cat is inherently:
 Future product mapping may choose to align those roles, but they are distinct
 concepts by default.
 
+In the first migration slice, `Guide Cat` replaces only the setup-time
+bootstrap framing. It does not, by itself, remove `Boss Cat` as a distinct
+Chat role.
+
 ### 3. `Guide Cat` is not the orchestration system layer
 
 The orchestration system layer remains a non-personified coordination layer for

@@ -13,10 +13,11 @@
 `Cats` should stop treating the first optional intelligent helper as a hidden
 setup implementation detail of `Boss Cat` bootstrap.
 
-After the owner enters their name in the suite setup wizard, the product should
-offer an optional `Guide Cat`. `Guide Cat` remains a Cat in product language,
-but it should be modeled as a suite-level reusable helper that can support
-`Cats Chat`, `Cats Work`, and `Cats Code`.
+Immediately after the owner enters their name in the suite setup wizard, the
+product should offer an optional `Guide Cat`, before starting-product
+selection. `Guide Cat` remains a Cat in product language, but it should be
+modeled as a suite-level reusable helper that can support `Cats Chat`,
+`Cats Work`, and `Cats Code`.
 
 This setup step should stay lightweight:
 
@@ -72,8 +73,8 @@ not as another one-off special Cat mode.
 
 ### Functional Requirements
 
-1. After owner-name capture, the suite setup wizard shall offer optional Guide
-   Cat creation.
+1. Immediately after owner-name capture, and before starting-product
+   selection, the suite setup wizard shall offer optional Guide Cat creation.
 2. The setup wizard shall use `Guide Cat` as the primary user-facing and
    developer-facing term for this helper.
 3. If the owner opts into Guide Cat creation, setup shall collect only:
@@ -92,14 +93,21 @@ not as another one-off special Cat mode.
    without implying that each product owns a separate first helper.
 8. The product shall not automatically equate `Guide Cat` with `Boss Cat` or
    with the invisible orchestration system layer.
-9. The suite may use Guide Cat to generate starter ideas, onboarding guidance,
+9. The first migration slice shall replace the setup-time `Boss Cat`
+   bootstrap framing with `Guide Cat` onboarding, while keeping `Boss Cat` as
+   a distinct Chat role until a later product-mapping decision says otherwise.
+10. The suite may use Guide Cat to generate starter ideas, onboarding guidance,
    and product-entry suggestions for surfaces such as `+New chat` and future
    `+Group chat`.
-10. When Guide Cat is unavailable, missing, sleeping, or has no cached output,
+11. When Guide Cat is unavailable, missing, sleeping, or has no cached output,
     the suite shall fall back to deterministic static starter suggestions.
-11. Guide Cat-generated entry suggestions shall be cacheable local product
+12. Guide Cat-generated entry suggestions shall be cacheable local product
     data; they shall not require a permanently running session.
-12. The long-term conversation model shall support generalized participants so
+13. The first slice shall attempt one initial Guide Cat suggestion generation
+    after setup completes when a Guide Cat exists, then reuse cached
+    suggestions on entry surfaces and only lazy-refresh them when the cache is
+    stale or missing.
+14. The long-term conversation model shall support generalized participants so
     future non-Cat specialists can participate in rooms without inventing a
     second routing model.
 
@@ -124,19 +132,22 @@ Setup start
     |
     +--> Owner name
     |
-    +--> Choose starting product
-    |
-    +--> Do you want a Guide Cat? ---- no ----> runtime readiness -> finish
+    +--> Do you want a Guide Cat? ---- no ----+
     |                        |
     |                        yes
     |                        |
     |                        +--> runtime readiness
     |                        +--> Guide Cat name + target
     |                        +--> persist suite-level Guide Cat
+    |                        |
+    +------------------------+
+    |
+    +--> Choose starting product
     |
     +--> enter selected product
              |
-             +--> use Guide Cat for starter ideas when available
+             +--> use cached Guide Cat suggestions when available
+             +--> lazy-refresh when cached suggestions are stale or missing
              +--> otherwise use static fallback ideas
 ```
 
@@ -147,6 +158,8 @@ Setup start
 - `Guide Cat` is the first optional helper identity the owner may create during
   setup.
 - It is a Cat in product language.
+- In the first migration slice, it replaces setup-time `Boss Cat` bootstrap
+  framing, but it does not remove `Boss Cat` as a distinct Chat role.
 - It is not automatically the same as:
   - `Boss Cat`
   - the invisible orchestration system layer
@@ -168,20 +181,28 @@ longer be the only participant shape that the architecture can represent.
 
 Starter ideas on entry surfaces should follow this order:
 
-1. use recent cached Guide Cat suggestions if available
-2. refresh them on demand when stale and runtime is available
-3. fall back to static deterministic ideas when Guide Cat is absent or runtime
+1. attempt one initial background generation right after setup completes when a
+   Guide Cat exists
+2. use recent cached Guide Cat suggestions immediately when an entry surface
+   opens
+3. refresh them lazily on surface-open when the cache is stale or missing and
+   runtime is available
+4. do not require periodic background refresh in the first slice
+5. fall back to static deterministic ideas when Guide Cat is absent or runtime
    work is unavailable
 
 ## Open Questions
 
-- [ ] Should the first delivered slice create a Guide Cat only when `Chat` is
-      the selected starting product, or should every starting product be able
-      to opt into it immediately?
+- [ ] Should the first delivered slice keep Guide Cat setup suite-wide but only
+      expose the first visible Guide Cat consumption surface in `Chat`, or
+      should `Work` and `Code` consume it immediately too?
 - [ ] Should a created Guide Cat appear in the Chat cat registry immediately,
       or should that visibility be a later explicit product mapping?
 - [ ] Which empty-state surfaces should consume Guide Cat suggestions first:
       `+New chat` only, or also the suite landing and future `+Group chat`?
+- [ ] Should Guide Cat remain a suite-level core helper component, or later
+      grow into a small first-party product parallel to `Chat`, `Work`, and
+      `Code`?
 
 ## References
 

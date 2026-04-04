@@ -28,36 +28,43 @@ and entry discoverability without forcing a flag-day participant migration.
 
 ### Phase 1: Freeze Terminology and Product Boundaries
 
-- [ ] Task 1.1: Land `Guide Cat` as the canonical term in specs, ADRs,
+- [x] Task 1.1: Land `Guide Cat` as the canonical term in specs, ADRs,
       requirements, and terminology docs.
-- [ ] Task 1.2: Freeze the rule that `Guide Cat` is optional and is not
+- [x] Task 1.2: Freeze the rule that `Guide Cat` is optional and is not
       automatically equal to `Boss Cat` or the invisible orchestrator.
-- [ ] Task 1.3: Record the generalized `entity` / `participant` direction and
+- [x] Task 1.3: Record the generalized `entity` / `participant` direction and
       the split between conversation topology and per-turn strategy.
 
 **Deliverables**: approved documentation baseline for naming and architecture
+landed in the first documentation slice
 
 ### Phase 2: Setup Wizard and Suite Contract Changes
 
 - [ ] Task 2.1: Replace the current setup-time `createBossCat` framing with
-      `createGuideCat` in suite-level setup copy and contracts.
+      `createGuideCat` in suite-level setup copy and contracts, while keeping
+      `Boss Cat` as a distinct Chat role until later mapping decisions land.
 - [ ] Task 2.2: Keep setup inputs minimal: Guide Cat name plus runtime target
       only.
 - [ ] Task 2.3: Ensure setup can complete with or without Guide Cat.
 - [ ] Task 2.4: Persist a created Guide Cat as suite-level reusable state
-      rather than only as Boss Cat bootstrap.
+      rather than only as Boss Cat bootstrap, and keep the Guide-Cat-to-Boss
+      mapping explicit instead of implicit.
 
 **Deliverables**: setup can create or skip Guide Cat without breaking the suite
 
 ### Phase 3: Guide Cat Suggestions and Entry Surfaces
 
-- [ ] Task 3.1: Add a suite-owned cached suggestion record for Guide Cat entry
-      ideas.
-- [ ] Task 3.2: Use that suggestion seam for `+New chat` first, with static
-      fallback suggestions when Guide Cat output is missing.
-- [ ] Task 3.3: Extend the same seam later to suite landing and future
+- [ ] Task 3.1: Add a suite-owned cached suggestion record plus freshness
+      metadata for Guide Cat entry ideas.
+- [ ] Task 3.2: Attempt one initial Guide Cat suggestion generation after
+      setup completes when a Guide Cat exists.
+- [ ] Task 3.3: Use that suggestion seam for `+New chat` first, showing cached
+      ideas immediately and lazy-refreshing on surface-open when the cache is
+      stale or missing, with static fallback suggestions when Guide Cat output
+      is unavailable.
+- [ ] Task 3.4: Extend the same seam later to suite landing and future
       `+Group chat` entry surfaces.
-- [ ] Task 3.4: Use on-demand leased Guide Cat sessions for suggestion
+- [ ] Task 3.5: Use on-demand leased Guide Cat sessions for suggestion
       generation instead of an always-on background process.
 
 **Deliverables**: helpful entry ideas without requiring a permanently awake
@@ -71,7 +78,10 @@ Guide Cat
       `assignedCats`, `draftCatIds`, and `leadCatId` can be derived rather than
       remaining the only source of truth.
 - [ ] Task 4.3: Separate conversation topology from participant class and from
-      per-turn execution strategy.
+      per-turn execution strategy, starting with
+      `inferChannelComposerMode(...)`, `isDirectLaneChannel(...)`, and
+      `resolveConversationMode(...)` plus their mirrored `Work` and `Code`
+      helpers.
 - [ ] Task 4.4: Rework chat entry modeling so `+New chat`, `+Group chat`,
       direct lanes, and future non-Cat specialists depend on one shared
       participant model.
@@ -90,6 +100,9 @@ UI language
 | `src/shared/suite-contract.ts` | Modify | Replace setup-time Boss-Cat bootstrap fields with Guide Cat setup fields |
 | `src/app/server/suiteSetupRoutes.ts` | Modify | Persist Guide Cat as suite-level setup output while keeping compatibility |
 | `src/products/chat/api/contracts.ts` | Modify | Add compatibility path toward generalized participants |
+| `src/products/chat/state/model/shared.ts` | Modify | Rework `inferChannelComposerMode(...)` away from Cat-only active-roster assumptions |
+| `src/products/chat/shared/channelTopology.ts` | Modify | Rework `resolveChannelKind(...)` / `isDirectLaneChannel(...)` around explicit topology and generalized participants |
+| `src/products/chat/renderer/conversationMode.ts` | Modify | Rework `resolveConversationMode(...)` so it depends on topology and participants rather than Cat-only heuristics |
 | `src/products/chat/renderer/components/NewChatDraft.tsx` | Modify | Consume starter ideas and later `+Group chat` entry changes |
 | `tests/*` | Modify | Add targeted coverage for setup, suggestions, and participant adapters |
 
@@ -131,6 +144,7 @@ UI language
 | Date | Update |
 |------|--------|
 | 2026-04-04 | Plan created to align Guide Cat setup and participant generalization |
+| 2026-04-04 | Phase 1 documentation freeze completed; follow-up review clarified setup order, Boss Cat coexistence, suggestion triggers, and concrete Chat code hotspots |
 
 ---
 

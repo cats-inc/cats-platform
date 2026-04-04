@@ -45,7 +45,7 @@
 | Transport binding | An external bot identity (e.g., Telegram bot) attached to a Cat's private lane (`direct_cat_chat`). Inbound messages from the transport deliver into that private lane, not into a separate channel type or a `Recents` thread. |
 | Spawned room | A normal `Cats Chat` room that a Cat created or continued from a transport-bound private lane so it can appear in `Recents` and hold canonical topic work. |
 | Routing layer | The product-owned system layer that resolves mentions, default targets, wake-before-route behavior, and per-room routing mode before prompts are sent to runtime sessions. |
-| Entity | The broader reusable identity model that may later include Cats, owner-facing helpers, system-facing specialists, or other named collaborators with prompt, memory, and execution metadata. |
+| Entity | The broader reusable identity model the suite is moving toward. It is expected to subsume Cats, owner-facing helpers, system-facing specialists, and other named collaborators with prompt, memory, and execution metadata. |
 | Participant | One entity's membership inside one conversation context, including role, status, and execution lease. |
 | Lead participant | The default target participant for a room mode when an operator turn does not contain an explicit valid `@mention`. |
 | Conversation topology | The stable shape of a conversation such as direct lane, solo thread, Cat-led thread, or group room. Topology answers "what kind of room is this?" rather than "who should answer the next turn?" |
