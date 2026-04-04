@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  describeGuideCatSetupChoice,
   getSuiteSetupPlugins,
   resolveInitialSetupProduct,
   validateGuideCatSetupStep,
@@ -96,4 +97,29 @@ test('resolveInitialSetupProduct falls back to the first plugin and then chat', 
     'work',
   );
   assert.equal(resolveInitialSetupProduct([]), 'chat');
+});
+
+test('describeGuideCatSetupChoice summarizes the configured Guide Cat target', () => {
+  const summary = describeGuideCatSetupChoice({
+    createGuideCat: true,
+    guideCatName: 'Milo',
+    provider: 'claude',
+    instance: 'native',
+    model: 'claude-sonnet',
+  });
+
+  assert.deepEqual(summary?.title, 'Milo');
+  assert.match(summary?.detail ?? '', /Claude/u);
+  assert.match(summary?.detail ?? '', /claude-sonnet|Sonnet/u);
+
+  assert.equal(
+    describeGuideCatSetupChoice({
+      createGuideCat: false,
+      guideCatName: 'Milo',
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-sonnet',
+    }),
+    null,
+  );
 });

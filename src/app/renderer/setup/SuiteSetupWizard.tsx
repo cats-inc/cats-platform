@@ -11,6 +11,7 @@ import {
   scanRuntimeSetup,
 } from './api';
 import {
+  describeGuideCatSetupChoice,
   getSuiteSetupPlugins,
   GuideCatSetupFields,
   resolveInitialSetupProduct,
@@ -127,6 +128,13 @@ export function SuiteSetupWizard({
   const scannedAt = formatRuntimeTimestamp(runtimeSetup.scannedAt);
   const appliedAt = formatRuntimeTimestamp(runtimeSetup.appliedAt);
   const attemptId = envelope.bootstrapAttemptId ?? null;
+  const guideCatSummary = describeGuideCatSetupChoice({
+    createGuideCat,
+    guideCatName,
+    provider,
+    instance,
+    model,
+  });
 
   const refreshRuntimeSetup = useCallback(async (options: {
     manual?: boolean;
@@ -522,6 +530,17 @@ export function SuiteSetupWizard({
             <p className="heroNote">
               Pick which experience to start with.
             </p>
+            {guideCatSummary ? (
+              <div className="setupGuideCatSummary">
+                <span className="statusChip statusChipReady">Guide Cat</span>
+                <strong>{guideCatSummary.title}</strong>
+                <span>{guideCatSummary.detail}</span>
+              </div>
+            ) : (
+              <p className="setupRuntimeNote">
+                No Guide Cat yet. You can finish setup now and add one later.
+              </p>
+            )}
             <div className="setupProductGrid">
               {plugins.map((plugin) => (
                 <ProductCard

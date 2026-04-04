@@ -152,6 +152,24 @@
   opacity: 0.72;
 }
 
+.setupGuideCatSummary {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.setupGuideCatSummary strong {
+  font-size: 0.95rem;
+}
+
+.setupGuideCatSummary span:last-child {
+  font-size: 0.82rem;
+  opacity: 0.72;
+}
+
 /* Product selection cards */
 
 .setupProductGrid {

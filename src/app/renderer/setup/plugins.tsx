@@ -1,6 +1,7 @@
 import { CatCreationFields } from './CatCreationFields.js';
 import type { SuiteProductDescriptor } from '../../../shared/suite-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { buildExecutionLabel } from '../../../shared/executionLabel.js';
 import type { ProductSetupPlugin } from './types.js';
 
 export interface GuideCatSetupFieldsProps {
@@ -94,4 +95,24 @@ export function resolveInitialSetupProduct(
   return plugins.find((plugin) => plugin.enabled)?.surface
     ?? plugins[0]?.surface
     ?? 'chat';
+}
+
+export function describeGuideCatSetupChoice(input: {
+  createGuideCat: boolean;
+  guideCatName: string;
+  provider: string;
+  instance: string;
+  model: string;
+}): { title: string; detail: string } | null {
+  if (!input.createGuideCat) {
+    return null;
+  }
+
+  const title = input.guideCatName.trim() || 'Guide Cat';
+  const detail = buildExecutionLabel(
+    input.provider,
+    input.instance || null,
+    input.model || null,
+  );
+  return { title, detail };
 }
