@@ -60,6 +60,10 @@ import {
 } from './tray.js';
 import { buildDesktopTrayMenuState as buildElectronTrayMenuState } from './trayMenu.js';
 import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
+import {
+  applyDesktopWindowChrome,
+  resolveDesktopWindowChromeOptions,
+} from './windowChrome.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -924,6 +928,7 @@ async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindo
     show: false,
     title: 'Cats',
     backgroundColor: '#f5f1e8',
+    ...resolveDesktopWindowChromeOptions(),
     webPreferences: {
       preload: config.paths.preloadScript,
       contextIsolation: true,
@@ -943,6 +948,8 @@ async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindo
     event.preventDefault();
     void openExternalDesktopUrl(url).catch(reportExternalUrlOpenFailure);
   });
+
+  applyDesktopWindowChrome(window);
 
   await window.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));
   bootstrapPageVisible = true;
