@@ -1,5 +1,6 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 import type { SuiteSetupCompleteInput } from '../../shared/suite-contract.js';
+import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import type {
   SuiteRuntimeSetupApplyInput,
   SuiteRuntimeSetupScanInput,
@@ -26,6 +27,15 @@ import {
 import type { RouteContext } from '../../shared/http.js';
 
 export type SuiteSetupContext = RouteContext<ChatApiDependencies>;
+
+interface LegacySuiteSetupCompleteInput extends SuiteSetupCompleteInput {
+  createBossCat?: boolean;
+  bossCatName?: string;
+  bossCatProvider?: string;
+  bossCatInstance?: string;
+  bossCatModel?: string;
+  bossCatModelSelection?: ProviderModelSelection | null;
+}
 
 function reportSyncFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
@@ -94,9 +104,9 @@ function sendRuntimeSetupRequired(
 async function handleSuiteSetupComplete(
   context: SuiteSetupContext,
 ): Promise<void> {
-  let body: SuiteSetupCompleteInput;
+  let body: LegacySuiteSetupCompleteInput;
   try {
-    body = await readJsonBody<SuiteSetupCompleteInput>(context.request);
+    body = await readJsonBody<LegacySuiteSetupCompleteInput>(context.request);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Invalid request body';
     sendJson(context.response, 400, {

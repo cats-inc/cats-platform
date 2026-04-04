@@ -333,6 +333,30 @@ test('POST /api/suite/setup/complete can create Guide Cat even when starting pro
   });
 });
 
+test('POST /api/suite/setup/complete still accepts legacy Boss Cat aliases as Guide Cat compatibility', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'chat',
+        createBossCat: true,
+        bossCatName: 'Legacy Boss',
+        bossCatProvider: 'claude',
+        bossCatModel: 'claude-sonnet',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.chat.bossCatId, null, 'suite setup should not assign Boss Cat');
+    assert.ok(payload.chat.cats.some((cat) => cat.name === 'Legacy Boss'));
+    assert.equal(payload.chat.globalOrchestrator.executionTarget.provider, 'claude');
+    assert.equal(payload.chat.globalOrchestrator.executionTarget.model, 'claude-sonnet');
+  });
+});
+
 test('old POST /api/setup/complete still works alongside new endpoint', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/setup/complete`, {

@@ -73,10 +73,4 @@ export interface SuiteSetupCompleteInput {
   guideCatInstance?: string;
   guideCatModel?: string;
   guideCatModelSelection?: ProviderModelSelection | null;
-  createBossCat?: boolean;
-  bossCatName?: string;
-  bossCatProvider?: string;
-  bossCatInstance?: string;
-  bossCatModel?: string;
-  bossCatModelSelection?: ProviderModelSelection | null;
 }
