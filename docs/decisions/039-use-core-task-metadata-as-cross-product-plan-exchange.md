@@ -1,6 +1,6 @@
 # ADR-039: Use Core Task Metadata as the Cross-Product Plan Exchange Surface
 
-> `CoreTaskRecord` remains product-owned, and its metadata becomes the suite's
+> `CoreTaskRecord` remains product-owned, and its metadata becomes the platform's
 > normalized handoff surface for strategy-aware task exchange across Chat,
 > Work, and Code.
 
@@ -23,7 +23,7 @@ handoff model across `Cats Chat`, `Cats Work`, and `Cats Code`:
 - different tasks may prefer different execution rhythms such as ReAct, PDCA,
   Reflexion, or Tree-of-Thoughts
 
-The suite therefore needs a shared plan-exchange surface, but it must not:
+The platform therefore needs a shared plan-exchange surface, but it must not:
 
 - create a reverse dependency from `cats-runtime` back into `cats`
 - introduce product-specific task schemas per surface
@@ -34,7 +34,7 @@ cross-product planning conventions without a first-slice schema migration.
 
 ## Decision
 
-`CoreTaskRecord.metadata` will act as the suite-owned Unified Planning Language
+`CoreTaskRecord.metadata` will act as the platform-owned Unified Planning Language
 (UPL) handoff surface through a single namespaced block:
 
 ```ts
@@ -55,7 +55,7 @@ This decision includes:
 
 1. `CoreTaskRecord` remains the product-owned task and handoff record.
 2. Chat, Work, and Code may all write/read the same `metadata.planning` block.
-3. `metadata.planning` is the suite-normalized exchange format between product
+3. `metadata.planning` is the platform-normalized exchange format between product
    task orchestration and runtime strategy selection.
 4. `parentTaskId` remains the primary structural hierarchy field for task
    trees. `dependsOnTaskIds` is additive dependency metadata for converge,
@@ -65,7 +65,7 @@ This decision includes:
 6. `cats-runtime` must not import or directly persist `CoreTaskRecord`.
    Products translate `metadata.planning` into runtime-neutral execution
    requests when they create or wake sessions.
-7. If stronger typing is needed later, the suite should add product-owned
+7. If stronger typing is needed later, the platform should add product-owned
    read/write helpers for `metadata.planning` before considering any contract
    expansion of `CoreTaskRecord`.
 
@@ -116,13 +116,13 @@ This decision includes:
 - **Pros**: each product could optimize for its own UI
 - **Cons**: breaks cross-product interoperability and recreates translation
   complexity at every boundary
-- **Why rejected**: the suite needs one shared handoff language
+- **Why rejected**: the platform needs one shared handoff language
 
 ## References
 
 - [ADR-001](./001-use-cats-runtime-boundary.md)
 - [ADR-014](./014-freeze-parallel-delivery-boundaries-for-provider-telegram-and-chat-workstreams.md)
-- [ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
+- [ADR-025](./025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
 - [ADR-032](./032-own-task-substrate-in-core-not-runtime.md)
 - [SPEC-032](../specs/SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
 - [Research: Unified Planning Language and Cross-Product Strategy](../research/2026-03-26-unified-planning-language-and-cross-product-strategy.md)

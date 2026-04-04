@@ -19,4 +19,5 @@ export {
   normalizeArchiveMetadata,
   normalizeBotBinding,
   normalizeDurableMemoryRecord,
+  normalizeGuideCatRecord,
 } from './auxiliaryRecords.js';

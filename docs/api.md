@@ -1,6 +1,6 @@
 # API Specification
 
-> Public HTTP surface for the current `Cats` suite app shell.
+> Public HTTP surface for the current `Cats` platform app shell.
 
 ## Overview
 
@@ -8,7 +8,7 @@ The current Phase 2 API provides:
 
 - service and runtime reachability health
 - an explicit bootstrap payload for the chat renderer shell
-- a derived `Cats Core v1` read and write surface for shared suite contracts
+- a derived `Cats Core v1` read and write surface for shared platform contracts
 - a file-backed chat mutation surface
 - a chat-global cat registry plus channel-scoped cat assignment
 - runtime-backed channel activation and message routing
@@ -25,7 +25,7 @@ write seams over a full live orchestration or approval UX.
 
 Current route ownership:
 
-- `src/app/server/index.ts` is the suite-level assembler only.
+- `src/app/server/index.ts` is the platform-level assembler only.
 - `src/core/api.ts` owns `/api/core/*`.
 - `src/products/chat/api/*` owns Chat setup and canonical Chat routes.
 - `src/products/work/api/*` owns Work dashboard and task-detail projections.
@@ -875,7 +875,7 @@ Related on-disk diagnostics artifacts for packaged failures:
 - `<userData>/desktop-host/state.json`
 - `<userData>/desktop-host/logs/cats-runtime.log`
 - `<userData>/desktop-host/logs/cats.log`
-- `<userData>/config/suite-onboarding-history.json`
+- `<userData>/config/platform-onboarding-history.json`
 - `packaging`:
   - packaging `strategy`
   - staged target matrix for Windows/macOS/Linux
@@ -955,7 +955,7 @@ GET /api/core/projects
 POST /api/core/projects
 ```
 
-`POST` upserts reusable suite-level project records.
+`POST` upserts reusable platform-level project records.
 
 ### Core Project Memory
 

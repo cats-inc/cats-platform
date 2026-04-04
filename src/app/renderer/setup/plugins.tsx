@@ -1,5 +1,5 @@
 import { CatCreationFields } from './CatCreationFields.js';
-import type { SuiteProductDescriptor } from '../../../shared/suite-contract.js';
+import type { PlatformProductDescriptor } from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
 import type { ProductSetupPlugin } from './types.js';
@@ -70,7 +70,7 @@ export function validateGuideCatSetupStep(input: {
   return Boolean(input.model.trim());
 }
 
-export function getSuiteSetupPlugins(products: readonly SuiteProductDescriptor[]): ProductSetupPlugin[] {
+export function getPlatformSetupPlugins(products: readonly PlatformProductDescriptor[]): ProductSetupPlugin[] {
   return products.flatMap((product) => {
     if (!product.surface) {
       return [];

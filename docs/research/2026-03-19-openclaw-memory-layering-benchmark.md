@@ -16,9 +16,9 @@ Summary:
   - optional semantic recall over durable memory and sanitized session exports through QMD
   - hook-driven memory flushes before `/new` or compaction boundaries
 - This is a strong reference pattern because it avoids treating one transcript as the only memory surface.
-- OpenClaw still centers the gateway-owned session model. That is correct for a runtime, but it is not enough for the Cats suite because `cats` must also preserve product-level channel transcripts, cross-session Cat memory, external transport archives, and future `Cats Work` RAG corpora.
+- OpenClaw still centers the gateway-owned session model. That is correct for a runtime, but it is not enough for the Cats platform because `cats` must also preserve product-level channel transcripts, cross-session Cat memory, external transport archives, and future `Cats Work` RAG corpora.
 Relevance:
-- The Cats suite needs a memory model that spans both `cats` and `cats-runtime`.
+- The Cats platform needs a memory model that spans both `cats` and `cats-runtime`.
 - The design should borrow OpenClaw's layered separation, but move canonical ownership of user/product memory into Cats-owned stores rather than leaving it inside any single provider or runtime transcript.
 Action Items:
 - Define a Cats memory architecture spec that separates evidence transcripts, derived memory, and retrieval corpora.
@@ -81,7 +81,7 @@ memory flushes.
 ## Where Cats Must Go Further than OpenClaw
 
 OpenClaw primarily solves runtime- and agent-workspace-centric continuity. The
-Cats suite has broader product obligations:
+Cats platform has broader product obligations:
 
 1. **Full product transcript backup**
    - We need complete chat/session backup independent of whichever agent backend
@@ -206,7 +206,7 @@ Rule:
 
 ## Recommendation
 
-The Cats suite should adopt OpenClaw's separation instinct, but not its exact
+The Cats platform should adopt OpenClaw's separation instinct, but not its exact
 ownership model.
 
 - `cats-runtime` should keep provider-native continuity and normalized runtime

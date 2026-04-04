@@ -99,6 +99,15 @@ function createDefaultSetupState(): DesktopSetupState {
   };
 }
 
+function isSetupAuditHelperId(helperId: string | null | undefined): boolean {
+  if (!helperId) {
+    return false;
+  }
+
+  const asset = findAsset(helperId);
+  return asset?.kind === 'readiness_helper';
+}
+
 export function shouldAutoRunSetupAudit(
   state: DesktopSetupState | null | undefined,
   options: {
@@ -114,7 +123,7 @@ export function shouldAutoRunSetupAudit(
   if (!lastAction) {
     return true;
   }
-  if (lastAction.helperId === 'windows-install-readiness-audit') {
+  if (isSetupAuditHelperId(lastAction.helperId)) {
     return false;
   }
   return lastAction.status === 'ready';
@@ -134,7 +143,7 @@ export function isOptionalCapabilityPackSetupAction(
     return action.optionalFollowThroughPack === 'local_model_pack';
   }
 
-  if (action.helperId !== 'windows-install-readiness-audit') {
+  if (!isSetupAuditHelperId(action.helperId)) {
     return false;
   }
 
@@ -167,13 +176,32 @@ function supportsPlatform(
   platform: NodeJS.Platform,
   helperPlatform: DesktopProviderSetupPlatform,
 ): boolean {
-  if (helperPlatform === 'cross_platform') {
-    return true;
+  switch (helperPlatform) {
+    case 'cross_platform':
+      return platform === 'win32' || platform === 'darwin' || platform === 'linux';
+    case 'windows':
+    case 'windows_wsl':
+      return platform === 'win32';
+    case 'macos':
+      return platform === 'darwin';
+    case 'linux':
+      return platform === 'linux';
   }
-  if (platform !== 'win32') {
-    return false;
+}
+
+function describePlatformSupport(helperPlatform: DesktopProviderSetupPlatform): string {
+  switch (helperPlatform) {
+    case 'cross_platform':
+      return 'Windows, macOS, or Linux hosts';
+    case 'windows':
+      return 'Windows hosts';
+    case 'windows_wsl':
+      return 'Windows hosts with WSL support';
+    case 'macos':
+      return 'macOS hosts';
+    case 'linux':
+      return 'Linux hosts';
   }
-  return helperPlatform === 'windows' || helperPlatform === 'windows_wsl';
 }
 
 function modeFlag(mode: DesktopSetupHelperMode): string {
@@ -431,7 +459,7 @@ function deriveOptionalFollowThroughPack(
   helper: Pick<DesktopSetupHelperSummary, 'id'>,
   plannedActions: string[],
 ): DesktopProviderSetupPackId | null {
-  if (helper.id !== 'windows-install-readiness-audit' || plannedActions.length === 0) {
+  if (!isSetupAuditHelperId(helper.id) || plannedActions.length === 0) {
     return null;
   }
 
@@ -440,6 +468,50 @@ function deriveOptionalFollowThroughPack(
   }
 
   return null;
+}
+
+function buildHelperExecution(
+  helper: Pick<DesktopSetupHelperSummary, 'platform'>,
+  scriptPath: string,
+  mode: DesktopSetupHelperMode,
+  extraArguments: string[] | undefined,
+): {
+  command: string;
+  args: string[];
+  windowsHide: boolean;
+} {
+  const args = [modeFlag(mode), '-Json'];
+  if (Array.isArray(extraArguments)) {
+    for (const entry of extraArguments) {
+      if (typeof entry === 'string' && entry.length > 0) {
+        args.push(entry);
+      }
+    }
+  }
+
+  if (helper.platform === 'windows' || helper.platform === 'windows_wsl') {
+    return {
+      command: 'powershell.exe',
+      args: [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        scriptPath,
+        ...args,
+      ],
+      windowsHide: true,
+    };
+  }
+
+  return {
+    command: 'bash',
+    args: [
+      scriptPath,
+      ...args,
+    ],
+    windowsHide: false,
+  };
 }
 
 function buildInterruptionSummary(
@@ -560,7 +632,7 @@ export async function buildDesktopSetupSnapshot(
         available: scriptPath !== null,
         supported,
         unsupportedReason: !supported
-          ? `${helper.label} is currently only supported on Windows hosts.`
+          ? `${helper.label} is currently only supported on ${describePlatformSupport(helper.platform)}.`
           : scriptPath
             ? null
             : `${helper.label} is not currently bundled with this host build.`,
@@ -641,40 +713,16 @@ export async function runDesktopSetupHelper(
       error: `${helper.label} does not support ${input.action.mode} mode.`,
     });
   }
-  if (platform !== 'win32') {
-    return buildFailedActionRecord({
-      helper,
-      mode: input.action.mode,
-      startedAt,
-      completedAt: now().toISOString(),
-      scriptPath,
-      error: 'Packaged setup helper execution is currently implemented for Windows hosts only.',
-    });
-  }
-
-  const arguments_ = [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    scriptPath,
-    modeFlag(input.action.mode),
-    '-Json',
-  ];
-  if (Array.isArray(input.action.extraArguments)) {
-    for (const entry of input.action.extraArguments) {
-      if (typeof entry === 'string' && entry.length > 0) {
-        arguments_.push(entry);
-      }
-    }
-  }
+  const execution = buildHelperExecution(helper, scriptPath, input.action.mode, input.action.extraArguments);
 
   let output: ExecFileResult;
   let runState: DesktopSetupActionRecord['runState'] = 'completed';
   let errorMessage: string | null = null;
 
   try {
-    output = await execRunner('powershell.exe', arguments_, { windowsHide: true });
+    output = await execRunner(execution.command, execution.args, {
+      windowsHide: execution.windowsHide,
+    });
   } catch (error) {
     output = toExecFileResult(error);
     runState = 'failed';

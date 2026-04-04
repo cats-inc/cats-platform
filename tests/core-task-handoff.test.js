@@ -72,7 +72,7 @@ test('resolveCoreTaskHandoffState stops rejected tasks and completes terminal ta
   }), 'completed');
 });
 
-test('taskExecutionProductLabel exposes stable short labels for suite products', () => {
+test('taskExecutionProductLabel exposes stable short labels for platform products', () => {
   assert.equal(taskExecutionProductLabel('chat'), 'Chat');
   assert.equal(taskExecutionProductLabel('work'), 'Work');
   assert.equal(taskExecutionProductLabel('code'), 'Code');

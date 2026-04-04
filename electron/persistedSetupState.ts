@@ -30,7 +30,7 @@ async function readPersistedSetupCompleteAt(chatStatePath: string): Promise<stri
 async function readPersistedProductSetupCompleted(chatStatePath: string): Promise<boolean> {
   try {
     const raw = await readFile(
-      path.join(path.dirname(chatStatePath), 'suite-onboarding-history.json'),
+      path.join(path.dirname(chatStatePath), 'platform-onboarding-history.json'),
       'utf8',
     );
     const parsed = JSON.parse(raw) as unknown;

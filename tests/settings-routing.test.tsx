@@ -80,7 +80,7 @@ function assertConcreteRoute(routes: RouteDescriptor[], path: string): void {
   assert.notEqual(route.element.type, Navigate, `expected "${path}" to be a concrete route`);
 }
 
-test('AppRoutes keeps product-owned /chat/settings routes while preserving suite-level data redirects', () => {
+test('AppRoutes keeps product-owned /chat/settings routes while preserving platform-level data redirects', () => {
   const routes = collectRoutes(AppRoutes(createProps()));
 
   assertNavigateRoute(routes, 'settings', '/chat/settings/general');

@@ -1,36 +1,36 @@
-export type { SuiteSurfaceId } from '../../shared/suite-contract.js';
-import type { SuiteSurfaceId } from '../../shared/suite-contract.js';
-import { isEnabledSuiteSurface } from '../../shared/suiteSurfaces.js';
+export type { PlatformSurfaceId } from '../../shared/platform-contract.js';
+import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
+import { isEnabledPlatformSurface } from '../../shared/platformSurfaces.js';
 
-export interface SuiteSurfaceRoute {
-  surface: SuiteSurfaceId;
+export interface PlatformSurfaceRoute {
+  surface: PlatformSurfaceId;
   routePrefix: string;
   apiBase: string | null;
   placeholder: boolean;
 }
 
-export const SUITE_SURFACE_ROUTES: Record<SuiteSurfaceId, SuiteSurfaceRoute> = {
+export const PLATFORM_SURFACE_ROUTES: Record<PlatformSurfaceId, PlatformSurfaceRoute> = {
   chat: {
     surface: 'chat',
     routePrefix: '/chat',
     apiBase: null,
-    placeholder: !isEnabledSuiteSurface('chat'),
+    placeholder: !isEnabledPlatformSurface('chat'),
   },
   work: {
     surface: 'work',
     routePrefix: '/work',
     apiBase: '/api/work',
-    placeholder: !isEnabledSuiteSurface('work'),
+    placeholder: !isEnabledPlatformSurface('work'),
   },
   code: {
     surface: 'code',
     routePrefix: '/code',
     apiBase: '/api/code',
-    placeholder: !isEnabledSuiteSurface('code'),
+    placeholder: !isEnabledPlatformSurface('code'),
   },
 };
 
-export function isSuiteNonProductPath(pathname: string): boolean {
+export function isPlatformNonProductPath(pathname: string): boolean {
   if (pathname === '/setup') {
     return true;
   }
@@ -51,7 +51,7 @@ export function isSuiteNonProductPath(pathname: string): boolean {
   return pathname === '/chat/settings' || pathname.startsWith('/chat/settings/');
 }
 
-export function resolveSuiteSurfaceForPath(pathname: string): SuiteSurfaceId {
+export function resolvePlatformSurfaceForPath(pathname: string): PlatformSurfaceId {
   if (pathname === '/work' || pathname.startsWith('/work/')) {
     return 'work';
   }

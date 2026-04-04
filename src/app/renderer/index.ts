@@ -1,1 +1,1 @@
-export const APP_RENDERER_SLICE = 'suite';
+export const APP_RENDERER_SLICE = 'platform';

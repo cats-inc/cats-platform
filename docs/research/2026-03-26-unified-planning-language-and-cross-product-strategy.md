@@ -4,7 +4,7 @@
 
 - **Date**: 2026-03-26
 - **Author**: Claude
-- **Scope**: Cats Suite (Chat + Work + Code) and cats-runtime
+- **Scope**: Cats Platform (Chat + Work + Code) and cats-runtime
 - **Related**:
   - [Pluggable Execution Strategy Architecture (cats-runtime)](../../../cats-runtime/docs/research/2026-03-26-pluggable-execution-strategy-architecture.md)
   - [OpenManus Killer-Feature Gap Analysis](./2026-03-26-openmanus-killer-feature-gap-analysis.md)

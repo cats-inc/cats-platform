@@ -42,7 +42,7 @@ keeping Cats' stronger boundaries:
 
 - turn `Cats Code` into an actionable product surface instead of a read-only
   dashboard
-- preserve the existing suite boundary where Code stays above shared Core
+- preserve the existing platform boundary where Code stays above shared Core
   tasks/artifacts instead of creating a separate Code schema
 - make the first coding workflow local-first and workspace-first
 - reuse `cats-runtime` workspace, preview, delivery, and strategy primitives
@@ -231,7 +231,7 @@ owner enters Code task
 
 - first Code dashboard and task/artifact read routes in `cats`
 - code-oriented task/artifact projections above shared Core data
-- route mounting and suite-surface identity for `/code`
+- route mounting and platform-surface identity for `/code`
 - live event tapes in the Code renderer
 
 ### What Runtime Already Has
@@ -271,7 +271,7 @@ first serious builder slice:
 
 ## Dependencies
 
-- [ADR-025](../decisions/025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
+- [ADR-025](../decisions/025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
 - [ADR-032](../decisions/032-own-task-substrate-in-core-not-runtime.md)
 - [ADR-034](../decisions/034-require-human-approval-gates-at-pipeline-decision-points.md)
 - [ADR-038](../decisions/038-separate-room-owned-workspaces-from-session-owned-sandboxes.md)

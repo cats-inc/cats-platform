@@ -110,23 +110,38 @@ EOF
 }
 
 run_node_prefix_setup() {
+  local platform="$1"
+  shift
+
   local check_only='false'
+  local apply='false'
   local upgrade='false'
   local force='false'
+  local emit_json='false'
   local shell_rc
   local prefix
   local registry
+  local status='ready'
+  local execution_mode='apply'
+  local planned_actions=()
+  local applied_changes=()
 
   while [ $# -gt 0 ]; do
     case "$1" in
-      --check)
+      --check|-CheckOnly)
         check_only='true'
         ;;
-      -upgrade)
+      -Apply)
+        apply='true'
+        ;;
+      -upgrade|-Upgrade)
         upgrade='true'
         ;;
-      -force)
+      -force|-Force)
         force='true'
+        ;;
+      --json|-Json)
+        emit_json='true'
         ;;
       -h|--help)
         node_prefix_help "$(basename "$0")"
@@ -145,10 +160,82 @@ run_node_prefix_setup() {
     upgrade='false'
   fi
 
+  if [ "$check_only" = 'true' ]; then
+    execution_mode='check'
+  elif [ "$force" = 'true' ]; then
+    execution_mode='force'
+  elif [ "$upgrade" = 'true' ]; then
+    execution_mode='upgrade'
+  else
+    execution_mode='apply'
+  fi
+
   load_nvm_if_present
-  ensure_node_and_npm || return 1
+  if ! ensure_node_and_npm; then
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s-npm-prefix-helper",' "$platform"
+      printf '"mode":"%s",' "$execution_mode"
+      printf '"status":"failed",'
+      printf '"restartRequired":false,'
+      printf '"desiredPrefix":"%s",' "$(json_escape "$HOME/.npm-global")"
+      printf '"shellRc":"%s",' "$(json_escape "$(detect_shell_rc)")"
+      printf '"plannedActions":[],'
+      printf '"appliedChanges":[],'
+      printf '"warnings":[],'
+      printf '"manualSteps":[],'
+      printf '"interruptions":[]'
+      printf '}\n'
+    fi
+    return 1
+  fi
+
+  shell_rc="$(detect_shell_rc)"
+  prefix="$(npm config get prefix 2>/dev/null || printf '')"
+  registry="$(normalize_npm_registry "$(npm config get registry 2>/dev/null || printf '')")"
+
+  if nvm_is_active; then
+    if npmrc_has_prefix_conflict; then
+      planned_actions+=('clear_npm_prefix_conflict')
+    fi
+    if [ "$registry" != 'https://registry.npmjs.org/' ]; then
+      planned_actions+=('set_npm_registry')
+    fi
+  else
+    if [ "$prefix" != "$HOME/.npm-global" ]; then
+      planned_actions+=('set_npm_prefix')
+    fi
+    if [ "$registry" != 'https://registry.npmjs.org/' ]; then
+      planned_actions+=('set_npm_registry')
+    fi
+    if [[ ":$PATH:" != *":$HOME/.npm-global/bin:"* ]]; then
+      planned_actions+=('repair_npm_global_path')
+    fi
+  fi
+
+  if [ ${#planned_actions[@]} -gt 0 ]; then
+    status='changes_required'
+  fi
 
   if [ "$check_only" = 'true' ]; then
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s-npm-prefix-helper",' "$platform"
+      printf '"mode":"check",'
+      printf '"status":"%s",' "$status"
+      printf '"restartRequired":false,'
+      printf '"desiredPrefix":"%s",' "$(json_escape "$HOME/.npm-global")"
+      printf '"shellRc":"%s",' "$(json_escape "$shell_rc")"
+      printf '"plannedActions":'
+      json_string_array "${planned_actions[@]}"
+      printf ','
+      printf '"appliedChanges":[],'
+      printf '"warnings":[],'
+      printf '"manualSteps":[],'
+      printf '"interruptions":[]'
+      printf '}\n'
+      return 0
+    fi
     if node_prefix_ready; then
       printf 'npm global prefix is ready.\n'
       return 0
@@ -158,26 +245,72 @@ run_node_prefix_setup() {
   fi
 
   if [ "$force" = 'false' ] && [ "$upgrade" = 'false' ] && node_prefix_ready; then
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s-npm-prefix-helper",' "$platform"
+      printf '"mode":"%s",' "$execution_mode"
+      printf '"status":"ready",'
+      printf '"restartRequired":false,'
+      printf '"desiredPrefix":"%s",' "$(json_escape "$HOME/.npm-global")"
+      printf '"shellRc":"%s",' "$(json_escape "$shell_rc")"
+      printf '"plannedActions":[],'
+      printf '"appliedChanges":[],'
+      printf '"warnings":[],'
+      printf '"manualSteps":[],'
+      printf '"interruptions":[]'
+      printf '}\n'
+      return 0
+    fi
     printf 'npm global prefix is already configured.\n'
     return 0
   fi
-
-  shell_rc="$(detect_shell_rc)"
 
   if nvm_is_active; then
     nvm use --delete-prefix "$(node -v)" --silent >/dev/null 2>&1 || true
     npm config delete prefix >/dev/null 2>&1 || true
     npm config delete globalconfig >/dev/null 2>&1 || true
     npm config set registry 'https://registry.npmjs.org/'
+    applied_changes+=('set_npm_registry')
+    if npmrc_has_prefix_conflict; then
+      applied_changes+=('clear_npm_prefix_conflict')
+    fi
   else
     mkdir -p "$HOME/.npm-global"
     npm config set prefix "$HOME/.npm-global"
     npm config set registry 'https://registry.npmjs.org/'
     ensure_npm_global_path_export "$shell_rc"
+    applied_changes+=('set_npm_prefix' 'set_npm_registry' 'repair_npm_global_path')
   fi
 
   prefix="$(npm config get prefix 2>/dev/null || printf '')"
   registry="$(normalize_npm_registry "$(npm config get registry 2>/dev/null || printf '')")"
+  status='ready'
+  if ! node_prefix_ready; then
+    status='failed'
+  fi
+  if [ "$emit_json" = 'true' ]; then
+    printf '{'
+    printf '"helper":"%s-npm-prefix-helper",' "$platform"
+    printf '"mode":"%s",' "$execution_mode"
+    printf '"status":"%s",' "$status"
+    printf '"restartRequired":false,'
+    printf '"desiredPrefix":"%s",' "$(json_escape "$HOME/.npm-global")"
+    printf '"shellRc":"%s",' "$(json_escape "$shell_rc")"
+    printf '"plannedActions":'
+    json_string_array "${planned_actions[@]}"
+    printf ','
+    printf '"appliedChanges":'
+    json_string_array "${applied_changes[@]}"
+    printf ','
+    printf '"warnings":[],'
+    printf '"manualSteps":[],'
+    printf '"interruptions":[]'
+    printf '}\n'
+    if [ "$status" = 'failed' ]; then
+      return 1
+    fi
+    return 0
+  fi
   printf 'npm prefix: %s\n' "$prefix"
   printf 'npm registry: %s\n' "$registry"
   printf 'Reload your shell if PATH is stale: source %s\n' "$shell_rc"
@@ -217,9 +350,11 @@ run_node_cli_pack() {
   shift
 
   local check_only='false'
+  local apply='false'
   local upgrade='false'
   local force='false'
   local skip_prefix_setup='false'
+  local emit_json='false'
   local outdated_packages=''
   local row=''
   local id=''
@@ -230,20 +365,32 @@ run_node_cli_pack() {
   local installed_count=0
   local missing_count=0
   local changed_count=0
+  local planned_actions=()
+  local applied_changes=()
+  local packages_json=''
+  local first_package='true'
+  local package_status=''
+  local prefix_status='ready'
 
   while [ $# -gt 0 ]; do
     case "$1" in
-      --check)
+      --check|-CheckOnly)
         check_only='true'
         ;;
-      -upgrade)
+      -Apply)
+        apply='true'
+        ;;
+      -upgrade|-Upgrade)
         upgrade='true'
         ;;
-      -force)
+      -force|-Force)
         force='true'
         ;;
       --skip-prefix-setup)
         skip_prefix_setup='true'
+        ;;
+      --json|-Json)
+        emit_json='true'
         ;;
       -h|--help)
         node_cli_pack_help "$(basename "$0")"
@@ -263,10 +410,37 @@ run_node_cli_pack() {
   fi
 
   load_nvm_if_present
-  ensure_node_and_npm || return 1
+  if ! ensure_node_and_npm; then
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s-node-cli-pack",' "$platform"
+      printf '"mode":"%s",' "$( [ "$check_only" = 'true' ] && printf 'check' || [ "$force" = 'true' ] && printf 'force' || [ "$upgrade" = 'true' ] && printf 'upgrade' || printf 'apply' )"
+      printf '"status":"failed",'
+      printf '"restartRequired":false,'
+      printf '"plannedActions":[],'
+      printf '"appliedChanges":[],'
+      printf '"warnings":[],'
+      printf '"manualSteps":[],'
+      printf '"interruptions":[],'
+      printf '"packages":[]'
+      printf '}\n'
+    fi
+    return 1
+  fi
+
+  local execution_mode='apply'
+  if [ "$check_only" = 'true' ]; then
+    execution_mode='check'
+  elif [ "$force" = 'true' ]; then
+    execution_mode='force'
+  elif [ "$upgrade" = 'true' ]; then
+    execution_mode='upgrade'
+  fi
 
   if [ "$skip_prefix_setup" = 'false' ] && [ "$check_only" = 'false' ]; then
-    run_node_prefix_setup "$platform" || return 1
+    run_node_prefix_setup "$platform" -Apply >/dev/null || return 1
+  elif [ "$skip_prefix_setup" = 'false' ] && ! node_prefix_ready; then
+    prefix_status='changes_required'
   fi
 
   if nvm_is_active && npmrc_has_prefix_conflict && [ "$force" = 'false' ]; then
@@ -283,11 +457,16 @@ run_node_cli_pack() {
     [ -n "$id" ] || continue
 
     installed='false'
+    local is_outdated='false'
+    local planned_action='skip'
     if command -v "$command_name" >/dev/null 2>&1 || npm list -g "$package_name" --depth=0 >/dev/null 2>&1; then
       installed='true'
       installed_count=$((installed_count + 1))
     else
       missing_count=$((missing_count + 1))
+    fi
+    if [ "$upgrade" = 'true' ] && printf '%s' "$outdated_packages" | grep -qF "\"$package_name\""; then
+      is_outdated='true'
     fi
 
     if [ "$check_only" = 'true' ]; then
@@ -296,45 +475,100 @@ run_node_cli_pack() {
       else
         printf '%s missing.\n' "$display_name" >&2
       fi
-      continue
-    fi
-
-    if [ "$force" = 'true' ]; then
+    elif [ "$force" = 'true' ]; then
+      planned_action='reinstall'
       npm install -g "$package_name" --force
       changed_count=$((changed_count + 1))
-      continue
-    fi
-
-    if [ "$upgrade" = 'true' ]; then
+      applied_changes+=("${package_name}:reinstall")
+    elif [ "$upgrade" = 'true' ]; then
       if [ "$installed" = 'false' ]; then
+        planned_action='install'
         npm install -g "$package_name"
         changed_count=$((changed_count + 1))
-      elif printf '%s' "$outdated_packages" | grep -qF "\"$package_name\""; then
+        applied_changes+=("${package_name}:install")
+      elif [ "$is_outdated" = 'true' ]; then
+        planned_action='upgrade'
         npm install -g "$package_name@latest"
         changed_count=$((changed_count + 1))
+        applied_changes+=("${package_name}:upgrade")
       else
         printf '%s already up to date.\n' "$display_name"
       fi
-      continue
-    fi
-
-    if [ "$installed" = 'false' ]; then
+    elif [ "$installed" = 'false' ]; then
+      planned_action='install'
       npm install -g "$package_name"
       changed_count=$((changed_count + 1))
+      applied_changes+=("${package_name}:install")
     else
       printf '%s already installed.\n' "$display_name"
     fi
+
+    if [ "$planned_action" != 'skip' ]; then
+      planned_actions+=("${package_name}:${planned_action}")
+    fi
+
+    if [ "$installed" = 'true' ] && [ "$is_outdated" = 'false' ]; then
+      package_status='ready'
+    else
+      package_status='changes_required'
+    fi
+    if [ "$first_package" = 'false' ]; then
+      packages_json="${packages_json},"
+    fi
+    first_package='false'
+    packages_json="${packages_json}{\"id\":\"${id}\",\"label\":\"$(json_escape "$display_name")\",\"packageName\":\"$(json_escape "$package_name")\",\"installed\":$(json_bool "$installed"),\"outdated\":$(json_bool "$is_outdated"),\"plannedAction\":\"${planned_action}\",\"status\":\"${package_status}\"}"
   done <<EOF
 $(node_cli_package_rows)
 EOF
 
+  local status='ready'
+  if [ "$prefix_status" = 'changes_required' ] || [ $missing_count -gt 0 ]; then
+    status='changes_required'
+  fi
+
   if [ "$check_only" = 'true' ]; then
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s-node-cli-pack",' "$platform"
+      printf '"mode":"check",'
+      printf '"status":"%s",' "$status"
+      printf '"restartRequired":false,'
+      printf '"plannedActions":'
+      json_string_array "${planned_actions[@]}"
+      printf ','
+      printf '"appliedChanges":[],'
+      printf '"warnings":[],'
+      printf '"manualSteps":[],'
+      printf '"interruptions":[],'
+      printf '"packages":[%s]' "$packages_json"
+      printf '}\n'
+      return 0
+    fi
     if [ $missing_count -eq 0 ]; then
       return 0
     fi
     return 1
   fi
 
+  if [ "$emit_json" = 'true' ]; then
+    printf '{'
+    printf '"helper":"%s-node-cli-pack",' "$platform"
+    printf '"mode":"%s",' "$execution_mode"
+    printf '"status":"ready",'
+    printf '"restartRequired":false,'
+    printf '"plannedActions":'
+    json_string_array "${planned_actions[@]}"
+    printf ','
+    printf '"appliedChanges":'
+    json_string_array "${applied_changes[@]}"
+    printf ','
+    printf '"warnings":[],'
+    printf '"manualSteps":[],'
+    printf '"interruptions":[],'
+    printf '"packages":[%s]' "$packages_json"
+    printf '}\n'
+    return 0
+  fi
   printf 'npm CLI pack complete. changed=%s installed=%s missing=%s\n' "$changed_count" "$installed_count" "$missing_count"
 }
 
@@ -366,8 +600,10 @@ run_self_hosted_installation_check() {
 
   while [ $# -gt 0 ]; do
     case "$1" in
-      --json)
+      --json|-Json)
         emit_json='true'
+        ;;
+      -CheckOnly)
         ;;
       --strict)
         strict='true'

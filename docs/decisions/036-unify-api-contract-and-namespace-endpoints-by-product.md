@@ -23,7 +23,7 @@ without a product prefix. When Work and Code surfaces ship, they will collide:
 
 - `/api/cats` — is this the Chat cat roster or a shared actor list?
 - `/api/orchestrator` — Chat's orchestrator or a shared one?
-- `/api/preferences` — Chat sidebar preference or suite-wide settings?
+- `/api/preferences` — Chat sidebar preference or platform-wide settings?
 
 Meanwhile, shared resources use an artificial `/api/core/*` prefix that
 leaks an internal module name into the URL. No major API (GitHub, Slack,
@@ -151,7 +151,7 @@ Shared resources that all products consume move to the top-level namespace:
 | `/api/owner/memory/*` | `/api/chat/memory/*` |
 | `/api/runtime/mcp` | `/api/chat/runtime/mcp` |
 
-Suite-level infrastructure endpoints keep their current paths:
+Platform-level infrastructure endpoints keep their current paths:
 
 - `/health` — unchanged
 - `/api/providers` — unchanged
@@ -159,12 +159,12 @@ Suite-level infrastructure endpoints keep their current paths:
 - `/api/transports/telegram/*` — unchanged (transport layer, not product)
 - `/api/shell/browse` — unchanged (host utility)
 - `/api/shell/open-folder` — unchanged (host utility)
-- `/runtime/dashboard` — suite-hosted runtime dashboard HTML
-- `/runtime/playground` — suite-hosted runtime playground HTML
-- `/runtime/api/*` — suite-hosted runtime JSON seam
+- `/runtime/dashboard` — platform-hosted runtime dashboard HTML
+- `/runtime/playground` — platform-hosted runtime playground HTML
+- `/runtime/api/*` — platform-hosted runtime JSON seam
 
 Runtime tooling is intentionally kept out of `/api/*` because `/api/*` is
-reserved for suite and product JSON APIs. Runtime HTML and runtime JSON live
+reserved for platform and product JSON APIs. Runtime HTML and runtime JSON live
 under their own `/runtime/*` tree, as defined by ADR-037.
 
 ### 3. Backward compatibility via compatibility handlers
@@ -543,7 +543,7 @@ Recommended order:
 ## References
 
 - [ADR-010](./010-separate-read-model-app-shell-from-restful-resource-apis.md) — resource-oriented API direction
-- [ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) — suite host structure
+- [ADR-025](./025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md) — platform host structure
 - [ADR-035](./035-invert-platform-dependency-and-extract-shared-design-layer.md) — platform dependency inversion
 - [PLAN-024](../plans/PLAN-024-platform-dependency-inversion-and-design-extraction.md) — implementation plan for ADR-035
 

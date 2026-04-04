@@ -12,13 +12,13 @@
 
 Extend the existing Core task substrate so Chat, Work, and Code can hand off
 tasks through one shared planning convention, then bridge those tasks into
-`cats-runtime` through a runtime-neutral execution request. The suite keeps
+`cats-runtime` through a runtime-neutral execution request. The platform keeps
 `CoreTaskRecord` as the cross-product plan exchange surface while runtime stays
 session-local and strategy-execution-focused.
 
 ## Goals
 
-- define the suite-owned planning metadata convention for cross-product task
+- define the platform-owned planning metadata convention for cross-product task
   handoff
 - let each product resolve or override an execution strategy per task
 - bridge task planning metadata into runtime session creation/wakeup without

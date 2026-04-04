@@ -14,9 +14,9 @@
 
 ## Purpose
 
-Capture the next-stage vision for `Cats`: not just a suite with `Chat`, `Work`,
+Capture the next-stage vision for `Cats`: not just a platform with `Chat`, `Work`,
 and `Code`, but a platform where users can learn the system, use the system to
-build apps, and then publish those apps back into the same suite.
+build apps, and then publish those apps back into the same platform.
 
 This is a vision note, not an implementation spec.
 
@@ -32,7 +32,7 @@ into:
 - an **AI-assisted app builder**
 - an **AI-first app store**
 
-The key distinction is that users do not leave the suite to build apps.
+The key distinction is that users do not leave the platform to build apps.
 Instead:
 
 1. they learn the platform inside `Cats`
@@ -52,8 +52,8 @@ The stronger ambition is:
 
 - users can develop apps themselves
 - with AI assistance from day 0
-- inside the suite
-- and then ship those apps into the suite as installable products
+- inside the platform
+- and then ship those apps into the platform as installable products
 
 That makes the vision closer to:
 
@@ -73,7 +73,7 @@ From the very first launch, the user should have an AI assistant that helps
 them:
 
 - understand what `Cats` is
-- learn how the suite works
+- learn how the platform works
 - discover what `Chat`, `Work`, and `Code` each do
 - choose what kind of app or workflow to build
 - move from using the platform to creating on the platform
@@ -86,15 +86,15 @@ Without it, the platform will feel too meta and too complex too early.
 
 The intended learning path is:
 
-1. **Learn to use the suite**
+1. **Learn to use the platform**
    - understand rooms, cats, tasks, artifacts, settings, permissions
-2. **Learn to build with the suite**
+2. **Learn to build with the platform**
    - start a project
    - let `Work` decompose it
    - let `Code` implement and preview it
-3. **Learn to publish into the suite**
+3. **Learn to publish into the platform**
    - package the result as a Cats-native app
-   - install it into the current suite
+   - install it into the current platform
    - optionally share it later
 
 So the first AI assistant is not just a chat helper. It is also:
@@ -184,7 +184,7 @@ several reasons:
 - it gives `Cats` a platform identity, not just a feature checklist
 - it makes AI onboarding part of the product, not a documentation afterthought
 - it lets users grow from "using AI" to "building with AI" without leaving the
-  suite
+  platform
 - it creates a believable private-first path to a future marketplace without
   requiring public distribution on day one
 
@@ -203,7 +203,7 @@ An AI-first app store means:
 - publishing is assisted
 - installed apps can themselves be agentic
 
-The store is not just a catalog. It is part of the suite's intelligence layer.
+The store is not just a catalog. It is part of the platform's intelligence layer.
 
 ## Store, Builder, and Runtime as One System
 
@@ -212,16 +212,16 @@ The long-term loop looks like this:
 1. user describes a need in `Chat`
 2. `Work` turns it into a product plan
 3. `Code` builds the app
-4. the suite previews it
-5. the suite packages it
+4. the platform previews it
+5. the platform packages it
 6. the user installs it into `Cats`
-7. the app becomes part of the suite's available surfaces
+7. the app becomes part of the platform's available surfaces
 
 That makes the store, builder, and runtime inseparable.
 
 The most important idea is:
 
-> build-in-suite, run-in-suite, install-in-suite
+> build-in-platform, run-in-platform, install-in-platform
 
 ## First Closed Loop
 
@@ -230,12 +230,12 @@ store.
 
 The first real closed loop should be:
 
-1. the user learns the suite with an AI platform coach
+1. the user learns the platform with an AI platform coach
 2. the user describes an app idea
 3. `Work` turns it into a plan
 4. `Code` builds and previews it
 5. the result is packaged as a private Cats-native app
-6. the user installs that app back into their own suite
+6. the user installs that app back into their own platform
 
 This is enough to validate the platform thesis without immediately taking on:
 
@@ -251,7 +251,7 @@ The Day 0 assistant deserves first-class treatment.
 
 It should be capable of:
 
-- teaching the suite layout
+- teaching the platform layout
 - explaining product boundaries
 - recommending whether something should be a companion, workflow, or app
 - helping users pick between `Chat`, `Work`, and `Code`
@@ -298,7 +298,7 @@ The assistant helps determine:
 
 ### 5. Preview and iteration
 
-The user tests the app in-suite, not just by reading code.
+The user tests the app in-platform, not just by reading code.
 
 ### 6. Packaging
 
@@ -306,7 +306,7 @@ The output becomes a Cats-native app package.
 
 ### 7. Installation
 
-The app is installed into the user's suite.
+The app is installed into the user's platform.
 
 ### 8. Publication
 
@@ -318,7 +318,7 @@ The first store does not need to be a public marketplace.
 
 The strongest first version is probably:
 
-- personal/private suite app catalog
+- personal/private platform app catalog
 - local install/uninstall/update
 - internal app registry
 
@@ -349,7 +349,7 @@ should be able to host richer app identities and surfaces.
 
 ## Required Platform Primitives
 
-This vision implies several primitives that the suite will eventually need.
+This vision implies several primitives that the platform will eventually need.
 
 ### Packaging and install
 
@@ -401,7 +401,7 @@ The goal is not merely:
 
 The difference is that `Cats` apps should be:
 
-- suite-native
+- platform-native
 - installable
 - stateful
 - multi-surface
@@ -414,7 +414,7 @@ prompt marketplace.
 
 ### 1. Platform complexity
 
-If the suite becomes a builder platform too early, users may be overwhelmed.
+If the platform becomes a builder platform too early, users may be overwhelmed.
 
 This is why the Day 0 teaching assistant matters so much.
 
@@ -423,7 +423,7 @@ This is why the Day 0 teaching assistant matters so much.
 If "app" is under-specified, every future feature will become an ad hoc
 special case.
 
-The suite will eventually need a clean app contract.
+The platform will eventually need a clean app contract.
 
 ### 3. Premature public marketplace thinking
 
@@ -431,7 +431,7 @@ Going public-store too early could distract from the more important first step:
 
 - private app creation
 - private install
-- private suite-native iteration
+- private platform-native iteration
 
 ### 4. Collapsing everything into Chat
 
@@ -457,12 +457,12 @@ platform loop.
 
 1. Treat `Cats` as a future AI-first app platform, not only a chat product.
 2. Define success as:
-   - learn the suite inside the suite
-   - build apps inside the suite
-   - install/publish apps back into the suite
+   - learn the platform inside the platform
+   - build apps inside the platform
+   - install/publish apps back into the platform
 3. Make the Day 0 AI assistant a first-class platform coach, not a minor
    onboarding helper.
-4. Keep the first store private-first and suite-native.
+4. Keep the first store private-first and platform-native.
 5. Eventually define a real Cats-native app contract, not just code output.
 
 ---

@@ -5,8 +5,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
-import { resolveOrchestratorDisplayName } from '../dist-server/chat/model.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
+import { resolveOrchestratorDisplayName } from '../dist-server/products/chat/state/model/index.js';
 
 const baseConfig = {
   host: '127.0.0.1',

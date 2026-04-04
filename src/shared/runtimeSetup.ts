@@ -38,12 +38,12 @@ export interface RuntimeSetupSummary {
   error: string | null;
 }
 
-export interface SuiteRuntimeSetupScanInput {
+export interface PlatformRuntimeSetupScanInput {
   attemptId?: string | null;
   manual?: boolean;
 }
 
-export interface SuiteRuntimeSetupApplyInput {
+export interface PlatformRuntimeSetupApplyInput {
   attemptId?: string | null;
   providers?: string[];
 }

@@ -107,7 +107,7 @@ cost-control surfaces.
 
 - **Pros**: very small product change
 - **Cons**: no explicit policy, weak alerting, and no war-room level control
-- **Why rejected**: the suite needs inspectable budget policy, not only passive
+- **Why rejected**: the platform needs inspectable budget policy, not only passive
   telemetry
 
 ### Alternative 3: Delay all budget policy until after a full company-control

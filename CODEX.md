@@ -92,7 +92,7 @@ To sync skills after changes:
 - Core modules: `src/config.ts`, `src/runtime/client.ts`, `src/chat/shell.ts`,
   `src/server.ts`, `src/renderer/App.tsx`
 - Test command: `npm test`
-- Product direction: build the Node/TS suite product directly around
+- Product direction: build the Node/TS platform product directly around
   `cats-runtime` as the only runtime boundary
 
 ### Working Product Memory
@@ -100,7 +100,7 @@ To sync skills after changes:
 These notes capture the current user direction for `cats`. They are
 working memory for Codex, not yet a ratified product spec or ADR.
 
-- The flagship product brand remains `Cats`, but the main suite
+- The flagship product brand remains `Cats`, but the main platform
   host/repo/package target is now `cats-platform` under the `Cats Inc`
   umbrella brand, with a later public repo target of
   `cats-inc/cats-platform`. `cats-can` is reserved for the one-shot installer
@@ -151,7 +151,7 @@ working memory for Codex, not yet a ratified product spec or ADR.
   - `src/products/chat/api/contracts.ts`
 - Do not reshape frozen shared contracts during feature work. Shared contract
   changes must go through integration review plus docs (`SPEC/ADR/PLAN`) first.
-- Do not expand suite-host wiring directly during product work.
+- Do not expand platform-host wiring directly during product work.
   `src/app/server/**` is integration-owned.
 - Product APIs must land through product-owned delegates:
   - Chat: `src/products/chat/api/index.ts`
@@ -165,7 +165,7 @@ working memory for Codex, not yet a ratified product spec or ADR.
   tests green.
 - Follow `docs/product-integration-guide.md` and
   `docs/plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md`
-  when integrating product work into the suite host.
+  when integrating product work into the platform host.
 
 ---
 

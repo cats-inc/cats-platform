@@ -10,7 +10,7 @@
 
 ## Project Context
 
-- `cats` is the current product shell and planning repo for the Cats suite
+- `cats` is the current product shell and planning repo for the Cats platform
 - `crew-chat-poc` is the best local reference for how upper-layer apps should
   talk to `cats-runtime`
 - `Cats Core v1` is now the shared contract layer for both `Cats Chat` and
@@ -18,7 +18,7 @@
 - `Cats Chat` and `Cats Work` are parallel product tracks and should not invent
   divergent schemas for shared actors, conversations, approvals, or owner
   profile data
-- The current suite desktop path is `Electron + React/TypeScript`; do not
+- The current platform desktop path is `Electron + React/TypeScript`; do not
   assume Flutter or Tauri unless a newer ADR changes that decision
 - App code MUST depend on `cats-runtime`, not `agent-fleet`
 - Product services should use direct `cats-runtime` APIs; MCP is a planned
@@ -140,7 +140,7 @@ validated `cats-runtime` pilot posture.
 3. Do not reintroduce the retired generic `task.*.example` files as if they
    were authoritative A2A v1 artifacts.
 4. Keep the A2A docs truthful to repo reality:
-   - they may document a future suite-host or orchestrator adapter shape
+   - they may document a future platform-host or orchestrator adapter shape
    - they must not imply a live A2A endpoint if one is not implemented
 5. Keep `AGENTS.md`, agent-specific files, and repo-owned collaboration skills
    consistent with the repo's actual collaboration operating model.

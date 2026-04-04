@@ -9,12 +9,12 @@
 | Bootstrap | Completed | Subproject created from `project-bootstrap` with Node.js preset |
 | Runtime Boundary | Completed | `cats-runtime` is the only runtime dependency exposed to app code |
 | HTTP App Shell | Completed | Node server exposes `/health` as the app-managed readiness contract plus `/api/app-shell` |
-| Renderer Shell | Completed | React/Vite now runs as a route-driven suite shell above the Node server, with Chat as the active product surface, a first real Work dashboard route, a first real Code dashboard route, and top-level suite ownership split under `src/app/*` and `src/products/*` |
+| Renderer Shell | Completed | React/Vite now runs as a route-driven platform shell above the Node server, with Chat as the active product surface, a first real Work dashboard route, a first real Code dashboard route, and top-level platform ownership split under `src/app/*` and `src/products/*` |
 | Chat Product Features | Completed | Runtime-backed setup, global cat registry, first-run `/setup` onboarding, solo-composer `/new` entry, sleep/wake-aware room entry, direct-cat draft lanes from `My Cats`, stable room-routing / wake-request contracts, live mention continuation routing, transcript export, execution-aware state, product-owned companion-box sidecar ingestion/hydration seams, and Cats-owned canonical memory / retrieval seams with curated durable-memory sync, owner durable-memory CRUD, relationship/project durable-memory scope support, source-update convergence, Team 5-ready flush payloads, additive flush summaries, background-safe memory-maintenance activity logging, stable impact faceting for `sourceScopeKey` / `replacementGroup` / `removedRecordId`, and persisted-record impact projection on the core maintenance route landed |
-| Suite Foundation Planning | In Progress | The suite-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records plus a product-owned orchestrator plan/dispatch/execution-loop seam aligned with the runtime MCP facade; product-side runtime bridge routes now proxy runtime MCP and session-observe contracts, task lifecycle watchers now settle additive runtime strategy metadata from initial observe snapshots before full stream teardown where possible and synchronously converge parent tasks once all child tasks reach terminal state, task/runtime execution request normalization now flows through one reusable bridge helper path, core task detail inspection now also projects normalized `planning` plus `runtimeBridge` views for cross-product handoff inspectability, and orchestrator replay lifecycle events now land as additive core activities for blocked dispatch persistence, approval/reroute/retry auto-resume, blocked workflow-continuation replay attempts, replay outcomes, restart recovery, stranded room-workflow active-turn recovery after restart, a new core-owned recovery read surface with action envelopes plus `actionKind` filtering back to the existing approval/retry seams, a derived core task inspection detail route with parent/child family summaries, a grouped task-record inspection route, a normalized core task timeline route, a core-owned operator inbox route, a core-owned task control-plane read model with family-aware `wait for child tasks` semantics, and additive filterable summary contracts for the operator inbox / control-plane / recovery list APIs, while host compatibility-shim cleanup and later control-plane slices remain |
+| Platform Foundation Planning | In Progress | The platform-host split and shared Cats Core v1 write substrate are now in-tree, including durable project/work-item/artifact/activity/approval-binding records plus a product-owned orchestrator plan/dispatch/execution-loop seam aligned with the runtime MCP facade; product-side runtime bridge routes now proxy runtime MCP and session-observe contracts, task lifecycle watchers now settle additive runtime strategy metadata from initial observe snapshots before full stream teardown where possible and synchronously converge parent tasks once all child tasks reach terminal state, task/runtime execution request normalization now flows through one reusable bridge helper path, core task detail inspection now also projects normalized `planning` plus `runtimeBridge` views for cross-product handoff inspectability, and orchestrator replay lifecycle events now land as additive core activities for blocked dispatch persistence, approval/reroute/retry auto-resume, blocked workflow-continuation replay attempts, replay outcomes, restart recovery, stranded room-workflow active-turn recovery after restart, a new core-owned recovery read surface with action envelopes plus `actionKind` filtering back to the existing approval/retry seams, a derived core task inspection detail route with parent/child family summaries, a grouped task-record inspection route, a normalized core task timeline route, a core-owned operator inbox route, a core-owned task control-plane read model with family-aware `wait for child tasks` semantics, and additive filterable summary contracts for the operator inbox / control-plane / recovery list APIs, while host compatibility-shim cleanup and later control-plane slices remain |
 | Documentation | In Progress | Top-level docs now reflect the three-step setup wizard, Cat-private in-place lane entry, Telegram inbox MVP, runtime skill/guardrail seams, shared-core projection boundaries, the operator-loop chat surfaces, the companion-box sidecar/session-hydration contract, the Cats-owned canonical memory/retrieval substrate with promotion rules, relationship/project durable-memory scope support plus new core project/relationship memory routes, source convergence, curated durable-memory sync, Team 5 flush payloads plus additive summary/activity follow-through plus core-owned memory-maintenance inspection and action routes with impact faceting for `sourceScopeKey` / `replacementGroup` / `removedRecordId` plus persisted-record impact views, the orchestrator execution-loop/MCP seam plus additive approval, retry, blocked workflow-continuation auto-resume, new core recovery inspection routes with machine-readable action envelopes and action-kind filters, grouped task inspection/record/timeline routes, task-family summaries on the core task detail inspection route, a core-owned operator inbox route, the new core task control-plane routes plus family-aware wait-state filtering, additive list filters/summaries for those operator inspection surfaces, the Electron desktop host packaging substrate plus sandboxed bootstrap bridge, repo-owned first-run provider scan, and host/update URL hardening, the polling-first Telegram follow-on direction, and the sibling first-wave A2A collaboration pilot with a pilot-owned A2A v1.0 example set plus repo-owned collaboration skills; broader launch-track docs still remain |
-| Guide Cat and Participant Generalization | In Progress | The documentation freeze is landed: `Guide Cat` is now the optional suite-level first helper, setup is explicitly lightweight, and the future `entity` / `participant` migration away from Cat-only conversation assumptions is defined; code implementation has not started yet |
-| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, normal `Recents` threads can stay in solo-composer mode until a Cat is added, `My Cats` opens Cat-scoped in-place direct lanes rather than creating `Recents` threads, Telegram Boss Cat inbox MVP now includes polling-first setup plus durable room routing and outbound replies, per-Cat companion-box sidecar ingestion/hydration plus Cats-owned canonical memory/retrieval seams now exist without visible UI changes, curated cat/owner durable notes plus companion source mutations now sync into canonical retrieval and replace stale hits after update/delete, direct `MemoryAwareCompanionBoxStore` mutations now hit the same canonical sync boundary without route-only double flushes, relationship/project durable-memory scopes can now flush into canonical memory, participate in retrieval, and be managed through core-owned non-UI routes, retrieval previews now expose policy/selection/exclusion metadata, Chat now surfaces operator-facing approvals, reroute/retry/acknowledge seams, progress, activity, traces, run inspection, machine-readable governance/workflow summaries, a product-side runtime bridge for session observe + pre-reset/pre-compaction memory flush, core-owned recovery routes for normalized replay inspection plus direct action envelopes and action-kind filtering, a core task detail inspection route for derived governance/workflow/recovery summaries plus parent/child family topology, a grouped task-record inspection route for exact task history, a core task control-plane route for stable next actions, family-aware wait-state classification, and attention state, additive filter/summarize support on the non-UI operator inbox / control-plane / recovery APIs, and a checkpoint-driven orchestrator plan/dispatch/execution-loop seam with approval pause, stored approval-blocked dispatch replay on approve/reroute, operator retry replay on the latest product-owned dispatch snapshot, blocked `max_continuations` workflow-continuation replay on retry, recommendation-only `no_valid_targets` continuation replay that persists retryable handoff state until targets become active again, workflow-recommendation-based re-resolution when stored continuation targets go stale, automatic continuation replay resume when a matching cat assignment becomes active again plus additive replay activities for that recovery path, startup recovery that reopens stranded replay metadata and finalizes stranded room-workflow active turns after restart, activation/room-entry wake auto-resume for startup-recovered Boss Cat continuations, recovery actions, and in-flight room-workflow snapshot persistence before full route completion, while the Electron host now supervises local `cats-runtime` + `cats` with readiness-gated bootstrap, stages packaging manifests, can emit a Windows NSIS installer for test installs, persists structured bootstrap/remediation state, keeps a tray/background + update skeleton plus sandboxed bootstrap bridge in place, validates host/update URLs, auto-primes the repo-owned first-run provider scan on Windows bootstrap, now carries repo-owned packaged setup helpers for native CLI, Docker Desktop, and Ollama with resumable recovery, and also ships repo-owned self-hosted provider helpers for Unix host install/check/upgrade plus Windows WSL/Docker/check/upgrade operational surfaces outside the wizard; broader group replan auto-resume, escalation/takeover, signed-release hardening, and broader expert-only packaging/setup flows remain ahead |
+| Guide Cat and Participant Generalization | In Progress | The documentation freeze is landed and the first setup-contract slice is now in-tree: `Guide Cat` persists as optional platform-level state, setup can complete with or without it, and setup no longer silently copies Guide Cat runtime settings onto the global orchestrator; starter-suggestion and participant-generalization follow-ons still remain |
+| Cats Chat Launch Track | In Progress | First-slice onboarding now lands on `/setup`, normal `Recents` threads can stay in solo-composer mode until a Cat is added, `My Cats` opens Cat-scoped in-place direct lanes rather than creating `Recents` threads, Telegram Boss Cat inbox MVP now includes polling-first setup plus durable room routing and outbound replies, per-Cat companion-box sidecar ingestion/hydration plus Cats-owned canonical memory/retrieval seams now exist without visible UI changes, curated cat/owner durable notes plus companion source mutations now sync into canonical retrieval and replace stale hits after update/delete, direct `MemoryAwareCompanionBoxStore` mutations now hit the same canonical sync boundary without route-only double flushes, relationship/project durable-memory scopes can now flush into canonical memory, participate in retrieval, and be managed through core-owned non-UI routes, retrieval previews now expose policy/selection/exclusion metadata, Chat now surfaces operator-facing approvals, reroute/retry/acknowledge seams, progress, activity, traces, run inspection, machine-readable governance/workflow summaries, a product-side runtime bridge for session observe + pre-reset/pre-compaction memory flush, core-owned recovery routes for normalized replay inspection plus direct action envelopes and action-kind filtering, a core task detail inspection route for derived governance/workflow/recovery summaries plus parent/child family topology, a grouped task-record inspection route for exact task history, a core task control-plane route for stable next actions, family-aware wait-state classification, and attention state, additive filter/summarize support on the non-UI operator inbox / control-plane / recovery APIs, and a checkpoint-driven orchestrator plan/dispatch/execution-loop seam with approval pause, stored approval-blocked dispatch replay on approve/reroute, operator retry replay on the latest product-owned dispatch snapshot, blocked `max_continuations` workflow-continuation replay on retry, recommendation-only `no_valid_targets` continuation replay that persists retryable handoff state until targets become active again, workflow-recommendation-based re-resolution when stored continuation targets go stale, automatic continuation replay resume when a matching cat assignment becomes active again plus additive replay activities for that recovery path, startup recovery that reopens stranded replay metadata and finalizes stranded room-workflow active turns after restart, activation/room-entry wake auto-resume for startup-recovered Boss Cat continuations, recovery actions, and in-flight room-workflow snapshot persistence before full route completion, while the Electron host now supervises local `cats-runtime` + `cats` with readiness-gated bootstrap, stages packaging manifests, can emit a Windows NSIS installer plus unsigned/test macOS/Linux packages, persists structured bootstrap/remediation state, keeps a tray/background + update skeleton plus sandboxed bootstrap bridge in place, validates host/update URLs, auto-primes the repo-owned first-run provider scan on Windows/macOS/Linux bootstrap, now carries repo-owned packaged setup helpers for native CLI on Windows/macOS/Linux plus Windows Docker Desktop and local-model follow-through with resumable recovery, and also ships repo-owned self-hosted provider helpers for Unix host install/check/upgrade plus Windows WSL/Docker/check/upgrade operational surfaces outside the wizard; broader group replan auto-resume, escalation/takeover, signed-release hardening, and broader expert-only packaging/setup flows remain ahead |
 | Cats Work Launch Track | In Progress | Work now ships a first shared-core dashboard plus project/work-item/task detail surfaces above the operator inbox, control-plane, recovery, artifact, activity, and timeline read models, while broader team-operating-model workflows still remain |
 | Cats Code Launch Track | In Progress | Code now ships a shared-core workspace above code-targeted tasks plus build/preview artifact output, including task detail, output detail, and dedicated `/api/code/tasks`, `/api/code/artifacts`, `/api/code/builds`, and `/api/code/previews` read models; richer project workspaces and live preview/build loops still remain |
 
@@ -82,7 +82,7 @@ Known follow-ups:
 
 ---
 
-### WP-3: Suite Foundation Planning
+### WP-3: Platform Foundation Planning
 
 **Status**: In Progress
 **Assigned**: Codex
@@ -96,15 +96,15 @@ Known follow-ups:
 | Define `Cats Core v1` shared scope | [x] | Shared actors/resources, permissions, conversations, approvals, owner profile, and archive metadata are now the accepted planning baseline |
 | Document `Cats Chat` and `Cats Work` as parallel product tracks | [x] | Roadmap and architecture now assume a shared-core split instead of one future control-plane jump |
 | Document `cats-runtime` direct API and MCP facade responsibilities | [x] | Runtime boundary planning now distinguishes app APIs from orchestrator tool use |
-| Freeze the suite desktop stance | [x] | Electron plus React/TypeScript remains the current path; Tauri and Flutter are not on the active route |
+| Freeze the platform desktop stance | [x] | Electron plus React/TypeScript remains the current path; Tauri and Flutter are not on the active route |
 | Annotate exploratory Paperclip control-plane documents | [ ] | Existing research remains in-tree but needs explicit exploratory labels everywhere it appears |
 | Land the first implementation slices for shared storage and contracts | [x] | `src/shared/core.ts`, `src/core/model.ts`, the core-backed chat-state store, and `/api/core/*` read/write routes are now in-tree |
-| Land the suite-host first slice through Work/Code placeholders | [x] | `src/app/*`, `src/core/*`, `src/products/*`, route ownership, and placeholder Work/Code surfaces are now in place |
-| Finish validation-only Phase 8A passes | [x] | Server route coverage, suite route-map coverage, and architecture/progress doc sync are now in place |
+| Land the platform-host first slice through Work/Code placeholders | [x] | `src/app/*`, `src/core/*`, `src/products/*`, route ownership, and placeholder Work/Code surfaces are now in place |
+| Finish validation-only Phase 8A passes | [x] | Server route coverage, platform route-map coverage, and architecture/progress doc sync are now in place |
 
 #### Acceptance Criteria
 
-- [x] The suite foundation is documented in roadmap, requirements, architecture, and ADR/spec/plan form
+- [x] The platform foundation is documented in roadmap, requirements, architecture, and ADR/spec/plan form
 - [x] `Cats Core v1` scope is explicit enough for Chat and Work teams to share a contract
 - [x] The runtime boundary is documented as direct product API plus planned MCP facade
 - [x] The first implementation slices for shared storage and shared-core APIs are landed and covered by tests
@@ -135,7 +135,7 @@ Known follow-ups:
 | Add escalation and takeover support | [ ] | HITL flows are defined in planning only |
 | Complete owner durable-memory CRUD | [x] | `/api/owner/memory/{memoryId}` now supports `PUT/DELETE`, keeps canonical owner retrieval converged, and preserves the existing "writes survive sync failure" discipline |
 | Add non-route companion/source memory sync boundary | [x] | `MemoryAwareCompanionBoxStore` now auto-syncs mutation callers and companion routes consume the same pending canonical-sync result instead of re-flushing |
-| Ship desktop-safe packaging and onboarding | [ ] | The Electron host now stages Windows/macOS/Linux packaging manifests, persists host-readable bootstrap/remediation state, supports tray/background lifecycle, carries a manual-check update skeleton, can build a Windows NSIS installer for test installs, includes a reusable Windows post-install smoke-check script for installed binaries, bundled sidecars, and host-state validation, hardens the desktop host with a sandboxed preload bridge plus validated host/update URLs, and now ships repo-owned self-hosted provider-helper surfaces for Unix host paths and Windows WSL/Docker/check/upgrade operations; signed releases, wizard integration of those broader helper surfaces, privileged provider-install execution, and polished remediation flows still remain |
+| Ship desktop-safe packaging and onboarding | [ ] | The Electron host now stages Windows/macOS/Linux packaging manifests, persists host-readable bootstrap/remediation state, supports tray/background lifecycle, carries a manual-check update skeleton, can build a Windows NSIS installer plus unsigned/test macOS/Linux packages, includes a reusable Windows post-install smoke-check script for installed binaries, bundled sidecars, and host-state validation, now also includes repo-owned macOS/Linux unpacked-package smoke scripts for sidecar/setup-asset/installer-contract validation, hardens the desktop host with a sandboxed preload bridge plus validated host/update URLs, and now ships repo-owned packaged setup helpers for Windows/macOS/Linux native CLI flows plus self-hosted provider-helper surfaces for Unix host paths and Windows WSL/Docker/check/upgrade operations; signed releases, cross-platform installed-package smoke coverage, wizard integration of those broader helper surfaces, privileged provider-install execution, and polished remediation flows still remain |
 | Revisit limited mobile companion scope | [ ] | Mobile is not a full primary shell in the current plan |
 
 #### Acceptance Criteria
@@ -190,12 +190,12 @@ Known follow-ups:
 | Define lightweight Guide Cat setup requirements | [x] | Setup direction now limits inputs to name plus runtime target |
 | Define Guide Cat suggestion and fallback direction | [x] | Entry surfaces should prefer Guide Cat-generated starter ideas with static fallback |
 | Define generalized `entity` / `participant` direction | [x] | Architecture and requirements now separate participant class from topology and turn strategy |
-| Land setup, suggestion, and participant-model implementation slices | [ ] | Code delivery remains future work |
+| Land setup, suggestion, and participant-model implementation slices | [ ] | Setup-contract delivery is landed; starter-suggestion generation and participant-model migration still remain |
 
 #### Acceptance Criteria
 
-- [ ] Setup can complete with or without creating a Guide Cat
-- [ ] Guide Cat exists as a suite-level reusable helper rather than only as
+- [x] Setup can complete with or without creating a Guide Cat
+- [x] Guide Cat exists as a platform-level reusable helper rather than only as
       Boss Cat bootstrap
 - [ ] Entry surfaces can use Guide Cat suggestions while retaining deterministic
       fallback ideas
@@ -221,7 +221,7 @@ Known follow-ups:
 - [x] Decide the concrete frontend rendering approach for the product UI
 - [x] Replace the placeholder app shell with the real chat model
 - [x] Add persistence and transcript export paths
-- [ ] Suite-foundation and launch-track follow-up work continues in WP-3 through WP-5
+- [ ] Platform-foundation and launch-track follow-up work continues in WP-3 through WP-5
 
 ### WP-2: Workspace Shell Delivery
 
@@ -230,7 +230,7 @@ Known follow-ups:
 #### Key Decisions
 
 - Use `React/Vite` for the renderer while keeping Electron deferred
-- The suite desktop direction is now Electron plus React/TypeScript; Flutter and
+- The platform desktop direction is now Electron plus React/TypeScript; Flutter and
   Tauri are outside the current execution path
 - Keep the Node server as the API and future desktop-safe integration boundary
 - Serve built static assets from the Node server after `npm run build`
@@ -243,9 +243,9 @@ Known follow-ups:
 - [x] Add a local channel setup flow with persisted chat-state updates
 - [x] Add runtime-backed channel actions and composer flows
 - [x] Add a basic mention model, global cat registry, and transcript export
-- [ ] Suite-foundation and launch-track follow-up work continues in WP-3 through WP-5
+- [ ] Platform-foundation and launch-track follow-up work continues in WP-3 through WP-5
 
-### WP-3: Suite Foundation Planning
+### WP-3: Platform Foundation Planning
 
 **Most recent progress**: 2026-03-23
 
@@ -254,7 +254,7 @@ Known follow-ups:
 - `src/app/server/index.ts` now owns the app-level HTTP assembly
 - `src/products/chat/api/*` now owns Chat setup, legacy compatibility,
   chat-prefixed REST compatibility, and canonical Chat route handling
-- `src/app/renderer/*` now owns the suite-level renderer entry and routing
+- `src/app/renderer/*` now owns the platform-level renderer entry and routing
 - `src/core/*` is now the shared core seam rather than a Chat-derived contract
 - `src/core/api.ts` now owns the shared-core HTTP seam, including durable
   owner-profile, project, work-item, task, approval, approval-binding, run,
@@ -279,7 +279,7 @@ Known follow-ups:
 - `src/products/chat/*` now owns the current Chat implementation
 - `src/products/work/*` and `src/products/code/*` now own dedicated placeholder
   API and renderer surfaces
-- `src/shared/app-shell.ts` is now a compatibility shim over shared suite
+- `src/shared/app-shell.ts` is now a compatibility shim over shared platform
   envelope types and Chat-specific contracts
 
 ### WP-4: Cats Chat Launch Track
@@ -542,7 +542,7 @@ Known follow-ups:
   reuse it across runtime session creation plus auto-checkout, reducing
   duplicate `Cats Core` reads inside the same task-aware room dispatch
 - validation coverage now includes `/api/work`, `/api/code`, and the current
-  suite route map
+  platform route map
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

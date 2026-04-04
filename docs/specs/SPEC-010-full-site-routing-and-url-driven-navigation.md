@@ -9,7 +9,7 @@ like a single-shell app driven mostly by in-memory UI state plus a server-side
 `selectedChannelId`.
 
 That is acceptable for the current phase-2 chat shell, but it is not a good
-fit for the planned suite shape:
+fit for the planned platform shape:
 
 - `Cats Chat` needs stable, deep-linkable chat URLs
 - `Settings` should be addressable directly

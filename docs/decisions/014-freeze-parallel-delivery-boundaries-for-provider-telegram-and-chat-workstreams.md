@@ -22,15 +22,15 @@ baseline has since changed:
 
 - `core/` and `platform/` no longer source-import product implementations
 - `src/app/server/index.ts` is now a thin composition root
-- `src/app/server/requestRouter.ts` owns suite-host route assembly
-- graph-based dependency enforcement now runs in the main test suite
+- `src/app/server/requestRouter.ts` owns platform-host route assembly
+- graph-based dependency enforcement now runs in the main test harness
 - extracted module families have been normalized into stable directories
 
 That means the next failure mode is not "where do provider and Telegram files
 go?" The next failure mode is:
 
 - shared contract drift between Chat, Work, and Code teams
-- repeated merge conflicts in suite-host wiring
+- repeated merge conflicts in platform-host wiring
 - product teams pushing local types into shared scope without review
 
 `cats` needs one explicit ownership map before the three product tracks begin
@@ -54,11 +54,11 @@ This decision includes:
    - `src/products/chat/**`
    - `src/products/work/**`
    - `src/products/code/**`
-4. Suite-host wiring remains centrally integrated through `src/app/server/**`
+4. Platform-host wiring remains centrally integrated through `src/app/server/**`
    rather than becoming a shared edit surface for all teams.
 5. `src/app/server/requestRouter.ts` is treated as a controlled host
    composition seam. Product teams should provide product-owned routes; the
-   integration owner composes them into the suite host.
+   integration owner composes them into the platform host.
 6. New shared types should only be added when they are genuinely cross-product.
    Product-local types should stay in the owning product tree.
 
@@ -112,13 +112,13 @@ This decision includes:
 
 - parallel product teams can work in mostly disjoint write scopes
 - shared contract drift is less likely because the freeze set is explicit
-- suite-host composition remains controlled instead of becoming a new merge hotspot
+- platform-host composition remains controlled instead of becoming a new merge hotspot
 - `Cats Work` and `Cats Code` can grow without inheriting Chat as their schema owner
 
 ### Negative
 
 - some teams will need to queue behind integration review for shared-contract changes
-- suite-host route convergence is intentionally centralized, which adds a small
+- platform-host route convergence is intentionally centralized, which adds a small
   coordination cost
 
 ### Neutral
@@ -134,7 +134,7 @@ This decision includes:
 - **Pros**: fastest local feature velocity
 - **Cons**: guarantees shape drift and reconciliation pain
 - **Why rejected**: shared actors, conversations, tasks, approvals, and room
-  routing are suite-wide concepts
+  routing are platform-wide concepts
 
 ### Alternative 2: Let Every Team Edit `requestRouter.ts` Directly
 
@@ -153,11 +153,11 @@ This decision includes:
 ## References
 
 - [ADR-007](./007-establish-cats-core-v1-for-chat-and-work.md)
-- [ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
+- [ADR-025](./025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
 - [ADR-035](./035-invert-platform-dependency-and-extract-shared-design-layer.md)
 - [ADR-036](./036-unify-api-contract-and-namespace-endpoints-by-product.md)
 - [PLAN-014](../plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md)
-- [PLAN-017](../plans/PLAN-017-suite-host-refactor-for-chat-work-code-and-core.md)
+- [PLAN-017](../plans/PLAN-017-platform-host-refactor-for-chat-work-code-and-core.md)
 - [PLAN-024](../plans/PLAN-024-platform-dependency-inversion-and-design-extraction.md)
 - [ROADMAP](../../ROADMAP.md)
 

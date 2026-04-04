@@ -1,0 +1,68 @@
+.platformLobby {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 980px);
+}
+
+.platformLobbyHero {
+  gap: 18px;
+}
+
+.platformLobbyMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.platformLobbyGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+}
+
+.platformLobbySection {
+  display: grid;
+  gap: 12px;
+}
+
+.platformLobbySectionNote {
+  margin: -4px 0 0;
+}
+
+.platformLobbyProductCard {
+  gap: 8px;
+}
+
+.platformLobbyProductHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.platformLobbyProductMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.platformLobbyEmptyState {
+  padding: 4px 0;
+}
+
+.platformLobbyEmptyState strong {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .platformLobby {
+    width: 100%;
+  }
+
+  .platformLobbyGrid {
+    grid-template-columns: 1fr;
+  }
+}

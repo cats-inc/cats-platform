@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
 
 const baseConfig = {
   host: '127.0.0.1',

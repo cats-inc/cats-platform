@@ -41,6 +41,7 @@ import {
   normalizeCoreTrace,
   normalizeCoreWorkItem,
   normalizeDurableMemoryRecord,
+  normalizeGuideCatRecord,
   normalizeOwnerProfile,
 } from '../core-snapshot/index.js';
 import {
@@ -214,6 +215,7 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
   const normalized = syncCoreStateWithChatState(chat, {
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
+    guideCat: normalizeGuideCatRecord(stateRecord.guideCat),
     actors,
     conversations,
     projects,

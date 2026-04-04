@@ -1,3 +1,5 @@
+import type { ProviderModelSelection } from '../shared/providerSelection.js';
+
 export const CATS_CORE_STATE_VERSION = 5 as const;
 
 export interface CoreRecordMetadata {
@@ -528,11 +530,21 @@ export interface OwnerProfileRecord {
   updatedAt: string;
 }
 
+export interface GuideCatRecord {
+  id: string;
+  name: string;
+  executionTarget: ExecutionTargetSummary;
+  modelSelection: ProviderModelSelection | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CatsCoreState {
   version: typeof CATS_CORE_STATE_VERSION;
   updatedAt: string;
   setupCompleteAt: string | null;
   ownerProfile: OwnerProfileRecord;
+  guideCat: GuideCatRecord | null;
   actors: CoreActorRecord[];
   conversations: CoreConversationRecord[];
   projects: CoreProjectRecord[];

@@ -18,13 +18,13 @@ import {
   isNewChatPath,
   readNewChatLeadCatId,
 } from '../shared/channelPaths';
-import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
   getDefaultModel,
   getDefaultProviderInstance,
 } from '../../../shared/providerCatalog';
 import { sameProviderModelSelection } from '../../../shared/providerSelection';
-import { suiteSurfaceRoutePrefix } from '../../../core/suiteSurface.js';
+import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import {
   BootShell,
   emptyCatForm,
@@ -702,8 +702,8 @@ export default function App() {
   });
   const visibleChatChannelId = selectedChannel?.id ?? directLaneChannel?.id ?? null;
 
-  function onSwitchProduct(nextSurface: SuiteSurfaceId): void {
-    navigate(suiteSurfaceRoutePrefix(nextSurface));
+  function onSwitchProduct(nextSurface: PlatformSurfaceId): void {
+    navigate(platformSurfaceRoutePrefix(nextSurface));
   }
 
   return (

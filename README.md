@@ -1,11 +1,11 @@
 # Cats
 
-> The flagship suite app from Cats Inc.
+> The flagship platform app from Cats Inc.
 
 ## Overview
 
-`Cats` is the flagship product brand for the suite. This repo currently hosts
-the technical suite host targeted for public packaging as
+`Cats` is the flagship product brand for the platform. This repo currently hosts
+the technical platform host targeted for public packaging as
 `@cats-inc/cats-platform` inside the local monorepo folder `cats-platform/`.
 It talks to `cats-runtime` as its execution boundary and keeps the product
 model in this repo rather than inheriting it from earlier prototypes.
@@ -204,6 +204,20 @@ npm run desktop:package:windows
 That command builds `cats-runtime`, builds `cats`, stages bundled sidecars, and
 produces an NSIS installer under `release/`.
 
+For macOS/Linux unsigned or test packages:
+
+```bash
+npm run desktop:package:macos
+npm run desktop:package:linux
+```
+
+For unpacked validation on Unix targets:
+
+```bash
+./scripts/macos/test-macos-package-smoke.sh
+./scripts/linux/test-linux-package-smoke.sh
+```
+
 For a post-install validation pass on Windows:
 
 ```powershell
@@ -226,7 +240,7 @@ See [docs/](./docs/) for project details:
 ```text
 cats-platform/
 ├── electron/      # Electron desktop host bootstrap and supervision
-├── src/app/       # Suite-level server and renderer assembly
+├── src/app/       # Platform-level server and renderer assembly
 ├── src/products/  # Product slices such as Cats Chat
 ├── src/shared/    # Types shared by server and renderer
 ├── tests/         # Node built-in test runner coverage

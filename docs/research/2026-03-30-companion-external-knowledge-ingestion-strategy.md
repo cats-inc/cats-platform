@@ -64,7 +64,7 @@ The main conclusion is:
 [`POST /api/runtime/mcp`](../api.md) and wires that through
 [`src/products/chat/api/runtimeBridgeRoutes.ts`](../../src/products/chat/api/runtimeBridgeRoutes.ts)
 into [`RuntimeClient.callMcp(...)`](../../src/runtime/client.ts). That means
-the suite already has a valid connector-style boundary for external read
+the platform already has a valid connector-style boundary for external read
 capabilities.
 
 At the same time, `companion-box` is clearly product-owned and Cat-scoped. Its

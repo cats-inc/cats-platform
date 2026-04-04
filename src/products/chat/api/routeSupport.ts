@@ -20,9 +20,9 @@ import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/ru
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
-import { readSuitePreferences } from '../../../shared/suitePreferences.js';
+import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
-import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
+import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import { RuntimeRequestError } from '../../../platform/runtime/client.js';
 import {
@@ -342,7 +342,7 @@ export async function buildAppShellPayload(
     };
   });
 
-  const suitePrefs = await readSuitePreferences(dependencies.config.chatStatePath);
+  const platformPrefs = await readPlatformPreferences(dependencies.config.chatStatePath);
   const bootstrapAttemptId = await readDesktopHostBootstrapAttemptId(
     dependencies.config.desktopHostStatePath,
   );
@@ -358,8 +358,9 @@ export async function buildAppShellPayload(
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,
       ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
+      guideCat: core.guideCat,
       botBindings,
-      lastProductSurface: suitePrefs.lastProductSurface,
+      lastProductSurface: platformPrefs.lastProductSurface,
       runtimeSetup,
     },
   );
@@ -607,7 +608,7 @@ function collectCatSessionIds(
 }
 
 function catParticipatesInChat(products: readonly string[] | null | undefined): boolean {
-  return hasSuiteSurface(products, 'chat', {
+  return hasPlatformSurface(products, 'chat', {
     fallback: defaultCatProducts(),
   });
 }

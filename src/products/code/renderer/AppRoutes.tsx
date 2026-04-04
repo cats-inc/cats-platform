@@ -86,7 +86,7 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        {/* Canonical suite settings live at /settings/* until Code owns product settings. */}
+        {/* Canonical platform settings live at /settings/* until Code owns product settings. */}
         <Route path="settings" element={<Navigate to="/settings/general" replace />} />
         <Route path="settings/general" element={<Navigate to="/settings/general" replace />} />
         <Route path="settings/runtime" element={<Navigate to="/settings/runtime" replace />} />

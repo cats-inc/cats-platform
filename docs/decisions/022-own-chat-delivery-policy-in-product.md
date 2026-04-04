@@ -135,7 +135,7 @@ realize approved policy.
 - **Pros**: smallest design surface
 - **Cons**: inconsistent behavior across chats, weaker approvals, and no
   reusable control-plane model
-- **Why rejected**: the suite needs explicit, inspectable delivery governance
+- **Why rejected**: the platform needs explicit, inspectable delivery governance
 
 ## References
 

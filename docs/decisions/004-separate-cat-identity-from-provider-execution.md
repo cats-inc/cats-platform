@@ -15,7 +15,7 @@ creates the wrong long-term boundary for the product.
 
 The product direction is now clearer:
 
-- `Cats Inc` is a suite, and `Chat` is one module inside it
+- `Cats Inc` is a platform, and `Chat` is one module inside it
 - a `Cat` is a reusable named participant/persona, not a runtime vendor
   selection
 - the same cat may use different providers in different channels

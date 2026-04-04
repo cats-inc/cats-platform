@@ -23,8 +23,8 @@ release/
 config/*.local.json
 config/*.local.*.json
 config/chat-state.local.json.bak
-config/suite-onboarding-history.json
-suite-preferences.json
+config/platform-onboarding-history.json
+platform-preferences.json
 
 # === Node.js ===
 node_modules/

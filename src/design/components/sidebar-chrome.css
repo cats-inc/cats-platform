@@ -36,11 +36,11 @@
   white-space: nowrap;
 }
 
-.suiteSurfaceSwitcher {
+.platformSurfaceSwitcher {
   max-width: 100%;
 }
 
-.suiteSurfaceTrigger {
+.platformSurfaceTrigger {
   display: inline-flex;
   align-items: center;
   max-width: 100%;
@@ -55,29 +55,29 @@
   cursor: pointer;
 }
 
-.suiteSurfaceTriggerRow {
+.platformSurfaceTriggerRow {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 
-.suiteSurfaceChevron {
+.platformSurfaceChevron {
   flex: 0 0 auto;
   color: var(--muted-soft);
   transition: transform 140ms ease, color 140ms ease;
 }
 
-.suiteSurfaceTrigger:hover .suiteSurfaceChevron,
-.suiteSurfaceTrigger.isOpen .suiteSurfaceChevron {
+.platformSurfaceTrigger:hover .platformSurfaceChevron,
+.platformSurfaceTrigger.isOpen .platformSurfaceChevron {
   color: var(--text);
 }
 
-.suiteSurfaceTrigger.isOpen .suiteSurfaceChevron {
+.platformSurfaceTrigger.isOpen .platformSurfaceChevron {
   transform: rotate(180deg);
 }
 
-.suiteSurfaceMenu {
+.platformSurfaceMenu {
   z-index: 50;
   padding: 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
@@ -87,7 +87,7 @@
   backdrop-filter: blur(16px);
 }
 
-.suiteSurfaceMenuHeading {
+.platformSurfaceMenuHeading {
   margin: 0 0 10px;
   padding: 0 4px;
   color: var(--accent);
@@ -97,18 +97,18 @@
   text-transform: uppercase;
 }
 
-.suiteSurfaceMenuList {
+.platformSurfaceMenuList {
   display: grid;
   gap: 4px;
 }
 
-.suiteSurfaceMenuDivider {
+.platformSurfaceMenuDivider {
   height: 1px;
   margin: 10px 2px 8px;
   background: rgba(0, 0, 0, 0.08);
 }
 
-.suiteSurfaceMenuItem {
+.platformSurfaceMenuItem {
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -123,15 +123,15 @@
   transition: background 140ms ease, transform 140ms ease;
 }
 
-.suiteSurfaceMenuItem:hover {
+.platformSurfaceMenuItem:hover {
   background: rgba(0, 0, 0, 0.04);
 }
 
-.suiteSurfaceMenuItem.isCurrent {
+.platformSurfaceMenuItem.isCurrent {
   background: rgba(0, 0, 0, 0.055);
 }
 
-.suiteSurfaceMenuAction {
+.platformSurfaceMenuAction {
   display: flex;
   align-items: center;
   width: 100%;
@@ -147,11 +147,11 @@
   cursor: pointer;
 }
 
-.suiteSurfaceMenuAction:hover {
+.platformSurfaceMenuAction:hover {
   background: rgba(0, 0, 0, 0.04);
 }
 
-.suiteSurfaceSwatch {
+.platformSurfaceSwatch {
   width: 10px;
   height: 10px;
   margin-top: 6px;
@@ -160,26 +160,26 @@
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
 }
 
-.suiteSurfaceSwatchChat {
+.platformSurfaceSwatchChat {
   background: #E0B323;
 }
 
-.suiteSurfaceSwatchWork {
+.platformSurfaceSwatchWork {
   background: #6E8450;
 }
 
-.suiteSurfaceSwatchCode {
+.platformSurfaceSwatchCode {
   background: #4F6C92;
 }
 
-.suiteSurfaceMenuCopy {
+.platformSurfaceMenuCopy {
   display: grid;
   min-width: 0;
   flex: 1;
   gap: 2px;
 }
 
-.suiteSurfaceMenuTitleRow {
+.platformSurfaceMenuTitleRow {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -187,18 +187,18 @@
   flex-wrap: wrap;
 }
 
-.suiteSurfaceMenuTitle {
+.platformSurfaceMenuTitle {
   font-size: 0.92rem;
   font-weight: 600;
 }
 
-.suiteSurfaceMenuSubtitle {
+.platformSurfaceMenuSubtitle {
   color: var(--muted);
   font-size: 0.77rem;
   line-height: 1.35;
 }
 
-.suiteSurfaceMenuBadge {
+.platformSurfaceMenuBadge {
   display: inline-flex;
   align-items: center;
   height: 20px;
@@ -211,7 +211,7 @@
   letter-spacing: 0.02em;
 }
 
-.suiteSurfaceMenuCheck {
+.platformSurfaceMenuCheck {
   display: inline-flex;
   align-items: center;
   justify-content: center;

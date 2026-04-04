@@ -61,6 +61,30 @@ test('buildDesktopSetupSnapshot reports repo-owned helper availability', async (
   assert.equal(snapshot.resumeAction, null);
 });
 
+test('buildDesktopSetupSnapshot reports packaged Unix helper availability on Linux hosts', async () => {
+  const config = await createDesktopConfig();
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-04-04T09:00:00.000Z'),
+    platforms: ['linux'],
+  });
+
+  const snapshot = await buildDesktopSetupSnapshot({
+    config,
+    packaging,
+    state: createEmptyDesktopSetupState(),
+  }, {
+    platform: 'linux',
+    pathExists: async () => true,
+  });
+
+  const prefixHelper = snapshot.helpers.find((helper) => helper.id === 'linux-npm-prefix-helper');
+  const readinessHelper = snapshot.helpers.find((helper) => helper.id === 'linux-install-readiness-audit');
+  assert.equal(prefixHelper?.available, true);
+  assert.equal(prefixHelper?.supported, true);
+  assert.equal(readinessHelper?.available, true);
+  assert.equal(readinessHelper?.supported, true);
+});
+
 test('shouldAutoRunSetupAudit only primes the readiness audit before packaged setup is completed', () => {
   assert.equal(shouldAutoRunSetupAudit(null), true);
   assert.equal(shouldAutoRunSetupAudit({
@@ -80,6 +104,31 @@ test('shouldAutoRunSetupAudit only primes the readiness audit before packaged se
       restartRequired: false,
       startedAt: '2026-03-30T10:59:00.000Z',
       completedAt: '2026-03-30T11:00:00.000Z',
+      warnings: [],
+      plannedActions: ['repair_native_cli_pack'],
+      appliedChanges: [],
+      manualSteps: [],
+      interruptions: [],
+      error: null,
+    },
+  }), false);
+  assert.equal(shouldAutoRunSetupAudit({
+    updatedAt: '2026-04-04T09:01:00.000Z',
+    lastAction: {
+      helperId: 'linux-install-readiness-audit',
+      assetId: 'linux-setup-readiness-audit-script',
+      label: 'Linux setup readiness audit',
+      mode: 'check',
+      runState: 'completed',
+      status: 'changes_required',
+      summary: 'Linux setup readiness audit check finished with changes_required.',
+      packagedRelativePath: 'desktop-host/setup-assets/linux/check-installation.sh',
+      scriptPath: null,
+      requiresElevation: false,
+      resumable: true,
+      restartRequired: false,
+      startedAt: '2026-04-04T09:00:00.000Z',
+      completedAt: '2026-04-04T09:01:00.000Z',
       warnings: [],
       plannedActions: ['repair_native_cli_pack'],
       appliedChanges: [],
@@ -424,6 +473,49 @@ test('runDesktopSetupHelper preserves docker warm-up interruptions from helper o
   assert.equal(record.optionalFollowThroughPack, null);
   assert.deepEqual(record.interruptions.map((entry) => entry.kind), ['docker_warm_up_required']);
   assert.deepEqual(record.plannedActions, ['docker:start_docker_desktop']);
+});
+
+test('runDesktopSetupHelper executes packaged Unix helpers through bash', async () => {
+  const config = await createDesktopConfig();
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-04-04T09:02:00.000Z'),
+    platforms: ['linux'],
+  });
+
+  const record = await runDesktopSetupHelper({
+    config,
+    packaging,
+    action: {
+      helperId: 'linux-install-readiness-audit',
+      mode: 'check',
+    },
+  }, {
+    platform: 'linux',
+    pathExists: async () => true,
+    execFile: async (file, args) => {
+      assert.equal(file, 'bash');
+      assert.match(args[0] ?? '', /scripts\/linux\/check-installation\.sh$/);
+      assert.equal(args.includes('-CheckOnly'), true);
+      assert.equal(args.includes('-Json'), true);
+      return {
+        stdout: JSON.stringify({
+          helper: 'linux-install-readiness-audit',
+          status: 'ready',
+          warnings: [],
+          plannedActions: [],
+          appliedChanges: [],
+          manualSteps: [],
+          interruptions: [],
+        }),
+        stderr: '',
+      };
+    },
+  });
+
+  assert.equal(record.helperId, 'linux-install-readiness-audit');
+  assert.equal(record.status, 'ready');
+  assert.equal(record.runState, 'completed');
+  assert.equal(record.error, null);
 });
 
 test('runDesktopSetupHelper preserves elevation-required recovery from the Docker Desktop helper', async () => {

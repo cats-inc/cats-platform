@@ -20,7 +20,7 @@ import {
   cloneProviderModelSelection,
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
-import { defaultCatProducts, hasSuiteSurface } from '../../../../shared/suiteSurfaces.js';
+import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
   inferChannelKind,
   normalizeChannelAssignmentsForRoomMode,
@@ -522,7 +522,7 @@ export function assignCatToChannel(
   if (cat.status !== 'active') {
     throw new Error(`Cat is not active: ${input.catId}`);
   }
-  if (!hasSuiteSurface(cat.products, 'chat', { fallback: defaultCatProducts() })) {
+  if (!hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() })) {
     throw new Error(`Cat is not available in Cats Chat: ${input.catId}`);
   }
   const existing = channel.catAssignments.find((candidate) => candidate.catId === input.catId);

@@ -197,7 +197,7 @@ template packs.
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Work intake becomes an overdesigned org/admin suite | High | Keep the first slice narrow: one owner, one `software_delivery` template, one approval-before-handoff flow |
+| Work intake becomes an overdesigned org/admin platform | High | Keep the first slice narrow: one owner, one `software_delivery` template, one approval-before-handoff flow |
 | Team template schema leaks runtime/provider concerns | High | Keep templates product-owned and express only roles, workflow defaults, routing, strategy, and approval expectations |
 | Cross-product handoff loses acceptance criteria or intent | High | Reuse normalized `task.metadata.planning` helpers and test handoff metadata formation directly |
 | Dashboard becomes a raw trace viewer again | Medium | Lead with initiative, plan, blockers, outputs, and recovery summaries before any low-level detail |

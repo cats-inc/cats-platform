@@ -113,6 +113,7 @@ export function createDefaultCoreState(): CatsCoreState {
     updatedAt,
     setupCompleteAt: null,
     ownerProfile,
+    guideCat: null,
     actors: [
       createOwnerActor(ownerProfile),
       createDefaultOrchestratorActor(updatedAt),

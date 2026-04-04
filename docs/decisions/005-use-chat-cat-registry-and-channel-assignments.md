@@ -22,7 +22,7 @@ That left three product problems:
 
 The product direction is now clearer:
 
-- `Cats Inc` is the parent suite and `Chat` is only one module
+- `Cats Inc` is the parent platform and `Chat` is only one module
 - a `Cat` should feel like a reusable teammate across the whole chat product
 - the same cat may be assigned to many chats with different providers or models
 - removing a cat from one chat must not delete the cat itself

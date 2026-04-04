@@ -29,7 +29,7 @@ In real operator chat, there are at least three different coordination intents:
 
 Those intents should not be collapsed into one mechanism.
 
-The suite also needs to support work that becomes parallel only after a prior
+The platform also needs to support work that becomes parallel only after a prior
 specialist finishes. For example, an architecture-oriented Cat may first define
 the module boundaries, after which `Boss Cat` or the system can decide whether
 the next slice should remain sequential or branch into parallel specialist work.
@@ -76,7 +76,7 @@ orchestration.
 5. The first slice does not require a full heartbeat or scheduler subsystem.
    - completion events, checkpoint creation, and room-state transitions are
      sufficient for the initial orchestration loop
-   - heartbeat or timer-driven orchestration may come later if the suite grows
+   - heartbeat or timer-driven orchestration may come later if the platform grows
      toward longer autonomous workflows
 
 ## Consequences
@@ -121,7 +121,7 @@ orchestration.
 - **Pros**: easy to reason about up front; closer to traditional workflow tools
 - **Cons**: many useful workflows cannot be planned completely before discovery
   work or architecture work lands
-- **Why rejected**: the suite needs dynamic re-planning after checkpoints
+- **Why rejected**: the platform needs dynamic re-planning after checkpoints
 
 ### Alternative 3: Introduce heartbeat/scheduler semantics first
 

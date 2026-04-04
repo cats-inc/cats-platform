@@ -242,7 +242,7 @@ OpenClaw already has a mature subagent model:
 Cats already has the product idea of `Boss Cat` recruiting and coordinating
 specialist Cats, but the runtime behavior is not yet equally mature.
 
-The suite still lacks a strong generic lifecycle for:
+The platform still lacks a strong generic lifecycle for:
 
 - spawn specialist Cat work
 - isolate it

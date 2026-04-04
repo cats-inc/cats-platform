@@ -1,15 +1,15 @@
 import type {
-  SuiteProductDescriptor,
-  SuiteSurfaceId,
-} from '../../../shared/suite-contract.js';
+  PlatformProductDescriptor,
+  PlatformSurfaceId,
+} from '../../../shared/platform-contract.js';
 
 export interface ProductSetupPlugin {
-  surface: SuiteSurfaceId;
+  surface: PlatformSurfaceId;
   label: string;
   description: string;
   enabled: boolean;
   disabledReason?: string;
-  installPolicy: SuiteProductDescriptor['installPolicy'];
-  installState: SuiteProductDescriptor['installState'];
-  maturity: SuiteProductDescriptor['maturity'];
+  installPolicy: PlatformProductDescriptor['installPolicy'];
+  installState: PlatformProductDescriptor['installState'];
+  maturity: PlatformProductDescriptor['maturity'];
 }

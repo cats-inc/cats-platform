@@ -11,7 +11,7 @@ import {
   getDefaultModel,
   getDefaultProviderInstance,
 } from '../../../shared/providerCatalog.js';
-import { listEnabledSuiteSurfaces } from '../../../shared/suiteSurfaces.js';
+import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
 export { createEmptyMemoryCheckpoint };
 
 function isoNow(): string {
@@ -73,7 +73,7 @@ function createCapabilities(limits?: { maxBossCats?: number; maxCats?: number; m
     maxBossCats: limits?.maxBossCats ?? 1,
     maxCats: limits?.maxCats ?? 5,
     maxParallelChats: limits?.maxParallelChats ?? 5,
-    availableSurfaces: limits?.availableSurfaces ?? listEnabledSuiteSurfaces(),
+    availableSurfaces: limits?.availableSurfaces ?? listEnabledPlatformSurfaces(),
   };
 }
 

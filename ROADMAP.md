@@ -4,7 +4,7 @@
 
 ## Vision
 
-Build the cats suite around a shared `Cats Core v1` foundation, with
+Build the cats platform around a shared `Cats Core v1` foundation, with
 `Cats Chat` and `Cats Work` as separate product surfaces above
 `cats-runtime`. The current `cats` codebase still starts from a
 Node.js/TypeScript chat shell, but the roadmap now assumes parallel product
@@ -30,19 +30,19 @@ contracts.
 - [x] Basic `@mention` routing and participant management
 - [x] Transcript persistence with export designed for later ingestion
 
-### Phase 3: Suite Foundation
+### Phase 3: Platform Foundation
 
 - [x] Freeze `Cats Core v1` shared contracts for identity, actors/resources,
       permissions, conversations, bot bindings, tasks/approvals, owner profile,
       and archive metadata
-- [x] Keep the full desktop suite on one `Electron + React/TypeScript` path
+- [x] Keep the full desktop platform on one `Electron + React/TypeScript` path
       while `cats` and `cats-runtime` remain Node sidecars
 - [x] Define how `cats` hosts or exposes shared `Cats Core v1` services for
       both `Cats Chat` and `Cats Work`
 - [x] Define the split between `cats-runtime` direct product APIs and the
       planned MCP facade for orchestrator tool use
 - [x] Thin `src/app/server/index.ts` into smaller composition-root factories
-      and route-registration modules while keeping one suite-owned server
+      and route-registration modules while keeping one platform-owned server
       bootstrap surface
 - [x] Land product-owned route delegates and per-product server dependency
       slices so Chat/Work/Code teams can extend their own API surfaces without
@@ -53,13 +53,13 @@ contracts.
 - [x] Add graph-based dependency enforcement on top of the existing
       architecture-boundary tests so `core/` and `platform/` regressions are
       blocked mechanically rather than only by targeted assertions
-- [x] Finish extracting shared suite shell and design primitives into a
+- [x] Finish extracting shared platform shell and design primitives into a
       dedicated `src/design/` layer without pushing Chat-specific visuals into
       shared modules
 - [x] Publish a product integration guide that freezes shared contracts,
-      clarifies dependency-slice ownership, and defines the suite-host
+      clarifies dependency-slice ownership, and defines the platform-host
       registration protocol for parallel Chat/Work/Code delivery
-- [ ] Generalize suite-owned identities into reusable `entity` and
+- [ ] Generalize platform-owned identities into reusable `entity` and
       channel-scoped `participant` contracts so Chat, Work, and Code stop
       depending on Cat-only conversation semantics even while Cat language
       remains the product-facing default
@@ -81,7 +81,7 @@ contracts.
 - [ ] Replace the current Boss-Cat-first setup bootstrap with optional
       `Guide Cat` onboarding that captures only name plus runtime target,
       keeps setup completable without any Guide Cat, and treats Guide Cat as a
-      suite-level helper rather than implicitly equating it with Chat's
+      platform-level helper rather than implicitly equating it with Chat's
       `Boss Cat`
 - [ ] Add Guide-Cat-backed entry suggestions with deterministic static
       fallbacks so `+New chat` and later `+Group chat` empty states can be
@@ -97,7 +97,7 @@ contracts.
       channel/global state
 - [ ] Persist solo-composer model changes immediately on selector change instead of
       only committing the pending provider/model when the next message is sent
-- [ ] Add a suite-local provider catalog cache for runtime-backed model catalogs and
+- [ ] Add a platform-local provider catalog cache for runtime-backed model catalogs and
       advanced catalogs so repeated setup, cat-creation, and selector mounts do not
       refetch the same provider/instance metadata on every reopen
 - [ ] Refine advanced provider-model UX now that runtime presets and controls are
@@ -118,7 +118,7 @@ contracts.
 - [ ] Turn the current Windows NSIS-first packaging slice into a release-grade
       desktop distribution path, including signed installers, branded assets,
       and a documented release pipeline rather than test-install outputs only
-- [ ] Extend the current desktop packaging contract beyond Windows staging so
+- [x] Extend the current desktop packaging contract beyond Windows staging so
       macOS and Linux also produce real installer artifacts instead of staged
       manifests only
 - [ ] Strengthen the packaged host trust chain beyond the current HTTPS and
@@ -435,7 +435,7 @@ contracts.
 - Release-grade desktop packaging, update signing, and installer recovery
   discipline across Windows/macOS/Linux
 - Richer memory retrieval loops through structured owner profile plus archive RAG
-- Optional Chat mobile companion after the shared desktop suite stabilizes
+- Optional Chat mobile companion after the shared desktop platform stabilizes
 - Product rename or repo split once the public open-source topology is ready
 - Reusable company templates only after the core Chat/Work model is stable
 

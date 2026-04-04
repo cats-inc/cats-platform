@@ -23,9 +23,9 @@
       },
       "artifacts": [
         {
-          "artifactId": "suite-summary",
-          "name": "suite-summary",
-          "description": "Structured suite-host triage summary.",
+          "artifactId": "platform-summary",
+          "name": "platform-summary",
+          "description": "Structured platform-host triage summary.",
           "parts": [
             {
               "data": {

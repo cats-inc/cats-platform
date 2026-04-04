@@ -13,7 +13,7 @@ function printHelp() {
   process.stdout.write(`Usage: node scripts/build-desktop-installer.mjs [options]
 
 Options:
-  --target <current|windows>  Installer target. Defaults to current.
+  --target <current|windows|macos|linux>  Installer target. Defaults to current.
   --help                      Show this help text.
 `);
 }
@@ -102,15 +102,38 @@ async function runCommand(command, args, cwd) {
 
 function resolveBuilderTarget(target) {
   if (target === 'current') {
-    if (process.platform === 'win32') {
-      return 'windows';
+    switch (process.platform) {
+      case 'win32':
+        return 'windows';
+      case 'darwin':
+        return 'macos';
+      case 'linux':
+        return 'linux';
+      default:
+        throw new Error('Current-platform installer builds are only wired for Windows, macOS, and Linux.');
     }
-    throw new Error('Current-platform installer builds are only wired for Windows in this slice.');
   }
   if (target === 'windows') {
     return 'windows';
   }
+  if (target === 'macos') {
+    return 'macos';
+  }
+  if (target === 'linux') {
+    return 'linux';
+  }
   throw new Error(`Unsupported installer target: ${target}`);
+}
+
+function electronBuilderArgs(target) {
+  switch (target) {
+    case 'windows':
+      return ['electron-builder', '--win', 'nsis', '--x64', '--publish', 'never'];
+    case 'macos':
+      return ['electron-builder', '--mac', '--publish', 'never'];
+    case 'linux':
+      return ['electron-builder', '--linux', '--publish', 'never'];
+  }
 }
 
 async function main() {
@@ -124,17 +147,7 @@ async function main() {
   await runCommand('npm', ['run', 'build'], RUNTIME_ROOT);
   await runCommand('npm', ['run', 'build'], PROJECT_ROOT);
   await runCommand('node', ['scripts/package-desktop.mjs', '--platform', resolvedTarget], PROJECT_ROOT);
-
-  if (resolvedTarget === 'windows') {
-    await runCommand('npx', [
-      'electron-builder',
-      '--win',
-      'nsis',
-      '--x64',
-      '--publish',
-      'never',
-    ], PROJECT_ROOT);
-  }
+  await runCommand('npx', electronBuilderArgs(resolvedTarget), PROJECT_ROOT);
 }
 
 void main().catch((error) => {

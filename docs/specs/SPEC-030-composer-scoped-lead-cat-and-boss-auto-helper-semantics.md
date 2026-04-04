@@ -86,7 +86,7 @@ This spec does not apply to:
 - `My Cats` direct lanes
 - transport-specific transcript presentation
 - chat header redesign
-- suite-level navigation
+- platform-level navigation
 
 ## Core Decision
 

@@ -12,13 +12,13 @@
 ## Related Decisions
 
 - [ADR-007](../decisions/007-establish-cats-core-v1-for-chat-and-work.md)
-- [ADR-025](../decisions/025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
+- [ADR-025](../decisions/025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
 - [ADR-035](../decisions/035-invert-platform-dependency-and-extract-shared-design-layer.md)
 - [ADR-036](../decisions/036-unify-api-contract-and-namespace-endpoints-by-product.md)
 
 ## Related Plans
 
-- [PLAN-017](./PLAN-017-suite-host-refactor-for-chat-work-code-and-core.md)
+- [PLAN-017](./PLAN-017-platform-host-refactor-for-chat-work-code-and-core.md)
 - [PLAN-024](./PLAN-024-platform-dependency-inversion-and-design-extraction.md)
 
 ## Overview
@@ -33,9 +33,9 @@ The main refactor work has already landed:
 
 - `core/` and `platform/` no longer source-import product implementations
 - `src/app/server/index.ts` is now a thin composition root
-- `src/app/server/requestRouter.ts` owns suite-host route assembly
+- `src/app/server/requestRouter.ts` owns platform-host route assembly
 - `Cats Work` and `Cats Code` now register through product-owned API delegates
-  instead of expanding suite-host placeholder routes inline
+  instead of expanding platform-host placeholder routes inline
 - `ServerDependencies` is now split into `shared`, `chat`, `work`, and `code`
   slices so product teams can declare needs without extending Chat-centric
   wiring
@@ -46,7 +46,7 @@ That means the remaining risk is no longer architectural ambiguity. The
 remaining risk is coordination failure:
 
 - multiple teams editing the same shared contracts
-- multiple teams editing suite-host wiring directly
+- multiple teams editing platform-host wiring directly
 - product teams drifting back into cross-product imports
 
 This plan freezes the ownership map needed to start parallel delivery safely.
@@ -84,11 +84,11 @@ Rules:
 | Chat | `src/products/chat/**` | chat transcript UX, routing behavior, setup, chat renderer, chat-specific APIs, companion and operator surfaces | changing shared-core contracts without integration review; editing Work or Code product modules |
 | Work | `src/products/work/**` | work dashboard, inbox, approval and activity views, work-specific projection surfaces above core | editing Chat renderer/state; introducing Work-only types into shared contracts |
 | Code | `src/products/code/**` | code-specific product views, project/build surfaces, code-specific projections above core | editing Chat renderer/state; introducing Code-only types into shared contracts |
-| Integrator | `src/app/server/**`, suite entrypoints, shared-contract freeze set | suite-host wiring, route registration, shared contract review, cross-product convergence | implementing product-specific UX inside host composition modules |
+| Integrator | `src/app/server/**`, platform entrypoints, shared-contract freeze set | platform-host wiring, route registration, shared contract review, cross-product convergence | implementing product-specific UX inside host composition modules |
 
-## Suite Host Integration Rule
+## Platform Host Integration Rule
 
-Parallel product teams must treat the suite host as a controlled integration
+Parallel product teams must treat the platform host as a controlled integration
 surface, not as open shared workspace.
 
 Primary host-owned integration files:
@@ -101,12 +101,12 @@ Primary host-owned integration files:
 Rules:
 
 1. Product teams should land functionality in their own product modules first.
-2. Product teams should not directly expand suite-host route assembly as part
+2. Product teams should not directly expand platform-host route assembly as part
    of feature work unless acting as the designated integrator for that change.
 3. Host wiring should converge through one integration owner to prevent
    repeated merge conflicts in `requestRouter.ts`.
 4. Product routes should remain callable through product-owned modules; the
-   suite host should only register and compose them.
+   platform host should only register and compose them.
 
 ## Product Registration Protocol
 
@@ -115,7 +115,7 @@ Parallel product work must integrate through the following protocol:
 1. each product owns a route delegate under `src/products/<product>/api/`
 2. each product consumes a dedicated dependency slice from
    `src/app/server/contracts.ts`
-3. suite-host dispatch stays in `src/app/server/requestRouter.ts`
+3. platform-host dispatch stays in `src/app/server/requestRouter.ts`
 4. renderer and navigation convergence is documented in
    [product-integration-guide.md](../product-integration-guide.md)
 
@@ -123,14 +123,14 @@ Parallel product work must integrate through the following protocol:
 
 | Area | Owner | Notes |
 |------|-------|-------|
-| `src/core/**` | shared integration owner | suite-owned shared truth and persistence |
+| `src/core/**` | shared integration owner | platform-owned shared truth and persistence |
 | `src/platform/**` | shared integration owner | runtime, transport, memory, and orchestration infrastructure |
 | `src/shared/**` | shared integration owner | product-neutral contracts and utilities only |
 | `src/products/chat/**` | Chat team | Chat-specific behavior and renderer surfaces |
 | `src/products/work/**` | Work team | Work-specific product slice |
 | `src/products/code/**` | Code team | Code-specific product slice |
-| `src/app/server/**` | integration owner | suite-host composition only |
-| `src/app/renderer/**` | integration owner | top-level suite composition only |
+| `src/app/server/**` | integration owner | platform-host composition only |
+| `src/app/renderer/**` | integration owner | top-level platform composition only |
 
 ## Start-Now Execution Rules
 
@@ -156,7 +156,7 @@ Parallel product work must integrate through the following protocol:
 
 ### Integration owner
 
-- owns convergence in shared contracts and suite-host route registration
+- owns convergence in shared contracts and platform-host route registration
 - decides when a product-local type graduates into shared scope
 - keeps `requestRouter.ts` and `app/server` from becoming the next merge hotspot
 
@@ -165,7 +165,7 @@ Parallel product work must integrate through the following protocol:
 The baseline needed for parallel delivery is now in place:
 
 - `src/app/server/index.ts` has been reduced to a thin composition root
-- `src/app/server/requestRouter.ts` owns suite-host route assembly
+- `src/app/server/requestRouter.ts` owns platform-host route assembly
 - product-owned route delegates now exist for Chat, Work, and Code
 - `ServerDependencies` now exposes `shared/chat/work/code` slices
 - graph-based dependency enforcement runs under `npm test`
@@ -190,7 +190,7 @@ discipline around the ownership map above.
 | Date | Update |
 |------|--------|
 | 2026-03-19 | Original provider/Telegram/capability parallel-workstream plan created |
-| 2026-03-25 | Rewritten for the current Chat/Work/Code execution baseline after suite-host refactor, server composition slimming, graph dependency enforcement, and module directory normalization landed |
+| 2026-03-25 | Rewritten for the current Chat/Work/Code execution baseline after platform-host refactor, server composition slimming, graph dependency enforcement, and module directory normalization landed |
 
 ---
 

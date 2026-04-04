@@ -1,0 +1,78 @@
+import type { GuideCatRecord } from '../core/types.js';
+import type { RuntimeStatusSummary } from '../platform/runtime/client.js';
+import type { ProviderModelSelection } from './providerSelection.js';
+import type { RuntimeSetupSummary } from './runtimeSetup.js';
+
+export type PlatformSurfaceId = 'chat' | 'work' | 'code';
+export type PlatformProductId = PlatformSurfaceId | (string & {});
+export type PlatformProductGroupId = 'home' | 'office';
+export type PlatformProductInstallPolicy = 'required' | 'optional';
+export type PlatformProductInstallState = 'installed' | 'available' | 'installing' | 'attention';
+export type PlatformProductMaturity = 'active' | 'preview';
+
+export interface PlatformAppDescriptor {
+  name: 'cats';
+  stage: 'phase-2-shell';
+  runtimeBoundary: 'cats-runtime';
+}
+
+export interface PlatformProductSetupDescriptor {
+  selectable: boolean;
+  disabledReason?: string;
+}
+
+export interface PlatformProductSettingsDescriptor {
+  id: string;
+  label: string;
+  path: `/${string}`;
+}
+
+export interface PlatformProductDescriptor {
+  id: PlatformProductId;
+  surface: PlatformSurfaceId | null;
+  routePrefix: `/${string}`;
+  productName: string;
+  subtitle: string;
+  group: PlatformProductGroupId;
+  installPolicy: PlatformProductInstallPolicy;
+  installState: PlatformProductInstallState;
+  maturity: PlatformProductMaturity;
+  setup: PlatformProductSetupDescriptor;
+  settings?: PlatformProductSettingsDescriptor[];
+}
+
+export interface PlatformResponseMetadata {
+  generatedAt: string;
+  host: string;
+  port: number;
+}
+
+export interface PlatformOwnerContext {
+  setupCompleteAt: string | null;
+  ownerDisplayName: string;
+  ownerAvatarColor: string | null;
+  ownerAvatarUrl: string | null;
+  lastProductSurface: PlatformSurfaceId | null;
+  guideCat: GuideCatRecord | null;
+}
+
+export interface PlatformHostEnvelope extends PlatformOwnerContext {
+  app: PlatformAppDescriptor;
+  products: PlatformProductDescriptor[];
+  runtime: RuntimeStatusSummary;
+  runtimeSetup: RuntimeSetupSummary;
+  metadata: PlatformResponseMetadata;
+  bootstrapAttemptId: string | null;
+}
+
+export interface PlatformSetupCompleteInput {
+  attemptId?: string | null;
+  ownerDisplayName: string;
+  selectedProduct: PlatformSurfaceId;
+  createGuideCat?: boolean;
+  guideCatName?: string;
+  guideCatProvider?: string;
+  guideCatInstance?: string;
+  guideCatModel?: string;
+  guideCatModelSelection?: ProviderModelSelection | null;
+}

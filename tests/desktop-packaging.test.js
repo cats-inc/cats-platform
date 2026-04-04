@@ -39,6 +39,38 @@ async function seedRuntimeSidecar(runtimeRoot) {
   await seedFile(join(runtimeRoot, 'node_modules', 'yaml', 'package.json'), '{"name":"yaml"}');
 }
 
+async function seedWindowsSetupAssets(packageRoot) {
+  await seedFile(join(packageRoot, 'scripts', 'windows', '_HiddenProcess.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Goose.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Junie.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroWslCli.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-DockerDesktop.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
+}
+
+async function seedSharedUnixSetupAssets(packageRoot) {
+  await seedFile(join(packageRoot, 'scripts', 'shared', 'unix-provider-cli-common.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', 'shared', 'unix-node-cli-common.sh'), '#!/usr/bin/env bash\n');
+}
+
+async function seedUnixSetupAssets(packageRoot, platform) {
+  await seedFile(join(packageRoot, 'scripts', platform, 'setup-node-global-prefix.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-node-cli-tools.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-claude-code.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-cursor-agent.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-goose.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-junie.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-kiro-cli.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'check-installation.sh'), '#!/usr/bin/env bash\n');
+}
+
 test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defining platform outputs', () => {
   const config = resolveDesktopHostConfig({
     env: {
@@ -100,10 +132,12 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
     plan.installer.providerSetup.localProviders.some(
       (provider) => provider.id === 'kiro'
         && provider.pack === 'native_cli_pack'
-        && provider.platform === 'windows_wsl'
+        && provider.platform === 'cross_platform'
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
-        && provider.helperIds.includes('windows-kiro-wsl-installer'),
+        && provider.helperIds.includes('windows-kiro-wsl-installer')
+        && provider.helperIds.includes('linux-kiro-native-installer')
+        && provider.helperIds.includes('macos-kiro-native-installer'),
     ),
     true,
   );
@@ -179,6 +213,24 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
         && helper.assetId === 'windows-setup-readiness-audit-script'
         && helper.supportsCheckOnly === true
         && helper.supportsApply === false,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'linux-install-readiness-audit'
+        && helper.assetId === 'linux-setup-readiness-audit-script'
+        && helper.platform === 'linux'
+        && helper.supportsCheckOnly === true,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'macos-install-readiness-audit'
+        && helper.assetId === 'macos-setup-readiness-audit-script'
+        && helper.platform === 'macos'
+        && helper.supportsCheckOnly === true,
     ),
     true,
   );
@@ -298,7 +350,21 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
     ),
     true,
   );
+  assert.equal(
+    plan.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'linux-node-cli-pack' && asset.status === 'ported',
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.prioritizedAssets.some(
+      (asset) => asset.id === 'macos-node-cli-pack' && asset.status === 'ported',
+    ),
+    true,
+  );
   const windowsTarget = plan.targets.find((target) => target.id === 'windows-x64');
+  const linuxTarget = plan.targets.find((target) => target.id === 'linux-x64');
+  const macosTarget = plan.targets.find((target) => target.id === 'macos-universal');
   assert.equal(
     windowsTarget?.artifacts.some(
       (artifact) => artifact.id === 'windows-npm-prefix-helper-script' && artifact.role === 'setup_asset',
@@ -371,17 +437,81 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
     ),
     true,
   );
+  assert.equal(
+    windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-hidden-process-support-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTarget?.artifacts.some(
+      (artifact) => artifact.id === 'linux-setup-assets-manifest' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTarget?.artifacts.some(
+      (artifact) => artifact.id === 'linux-node-cli-pack-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTarget?.artifacts.some(
+      (artifact) => artifact.id === 'linux-setup-readiness-audit-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTarget?.artifacts.some(
+      (artifact) => artifact.id === 'unix-provider-cli-common-support-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    macosTarget?.artifacts.some(
+      (artifact) => artifact.id === 'macos-setup-assets-manifest' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    macosTarget?.artifacts.some(
+      (artifact) => artifact.id === 'macos-node-cli-pack-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    macosTarget?.artifacts.some(
+      (artifact) => artifact.id === 'macos-setup-readiness-audit-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    macosTarget?.artifacts.some(
+      (artifact) => artifact.id === 'unix-node-cli-common-support-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
 });
 
-test('package.json wires Windows installers through electron-builder NSIS', async () => {
+test('package.json wires Windows, macOS, and Linux installer targets through electron-builder', async () => {
   const packageJson = JSON.parse(await readFile(join(process.cwd(), 'package.json'), 'utf8'));
 
   assert.equal(packageJson.main, 'dist-electron/main.js');
   assert.equal(Object.hasOwn(packageJson, 'types'), false);
+  assert.equal(packageJson.scripts['desktop:package:linux'], 'node scripts/build-desktop-installer.mjs --target linux');
+  assert.equal(packageJson.scripts['desktop:package:macos'], 'node scripts/build-desktop-installer.mjs --target macos');
   assert.equal(packageJson.scripts['desktop:package:windows'], 'node scripts/build-desktop-installer.mjs --target windows');
+  assert.equal(packageJson.scripts['desktop:smoke:linux'], 'bash ./scripts/linux/test-linux-package-smoke.sh');
+  assert.equal(packageJson.scripts['desktop:smoke:macos'], 'bash ./scripts/macos/test-macos-package-smoke.sh');
   assert.equal(packageJson.scripts['start:server'], 'node dist-server/index.js');
   assert.equal(packageJson.build.extraMetadata?.name, 'cats');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
+  assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'dmg'), true);
+  assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'pkg'), true);
+  assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'zip'), true);
+  assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'AppImage'), true);
+  assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'deb'), true);
+  assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'tar.gz'), true);
   assert.equal(packageJson.build.nsis.oneClick, false);
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.to === 'desktop-host/setup-assets',
@@ -442,16 +572,53 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /needs_prerequisites/);
 });
 
+test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and packaged setup assets', async () => {
+  const linuxScript = await readFile(
+    join(process.cwd(), 'scripts', 'linux', 'test-linux-package-smoke.sh'),
+    'utf8',
+  );
+  const macosScript = await readFile(
+    join(process.cwd(), 'scripts', 'macos', 'test-macos-package-smoke.sh'),
+    'utf8',
+  );
+
+  assert.match(linuxScript, /release\/linux-unpacked/);
+  assert.match(linuxScript, /desktop-host\/setup-assets\/linux\/setup-node-global-prefix\.sh/);
+  assert.match(linuxScript, /desktop-host\/setup-assets\/shared\/unix-provider-cli-common\.sh/);
+  assert.match(linuxScript, /linux-node-cli-pack-script/);
+  assert.match(linuxScript, /linux-install-readiness-audit/);
+  assert.match(macosScript, /release\/mac-universal\/Cats\.app/);
+  assert.match(macosScript, /desktop-host\/setup-assets\/macos\/setup-node-global-prefix\.sh/);
+  assert.match(macosScript, /desktop-host\/setup-assets\/shared\/unix-node-cli-common\.sh/);
+  assert.match(macosScript, /macos-node-cli-pack-script/);
+  assert.match(macosScript, /macos-install-readiness-audit/);
+});
+
 test('build-desktop-installer script avoids shell execution on Windows', async () => {
   const script = await readFile(
     join(process.cwd(), 'scripts', 'build-desktop-installer.mjs'),
     'utf8',
   );
+  const linuxWrapper = await readFile(
+    join(process.cwd(), 'scripts', 'linux', 'build-linux-installer.sh'),
+    'utf8',
+  );
+  const macosWrapper = await readFile(
+    join(process.cwd(), 'scripts', 'macos', 'build-macos-installer.sh'),
+    'utf8',
+  );
 
+  assert.match(script, /<current\|windows\|macos\|linux>/);
+  assert.match(script, /case 'darwin':/);
+  assert.match(script, /case 'linux':/);
+  assert.match(script, /--mac/);
+  assert.match(script, /--linux/);
   assert.match(script, /npm-cli\.js/);
   assert.match(script, /npx-cli\.js/);
   assert.match(script, /process\.execPath/);
   assert.match(script, /shell: false/);
+  assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);
+  assert.match(macosWrapper, /build-desktop-installer\.mjs --target macos/);
 });
 
 test('stageDesktopPackagingOutputs writes staging manifests and shared assets', async () => {
@@ -469,18 +636,9 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     version: '0.1.0',
     type: 'module',
   }, null, 2));
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Goose.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Junie.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroWslCli.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-DockerDesktop.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
+  await seedWindowsSetupAssets(packageRoot);
+  await seedSharedUnixSetupAssets(packageRoot);
+  await seedUnixSetupAssets(packageRoot, 'linux');
   await seedRuntimeSidecar(runtimeRoot);
 
   const config = resolveDesktopHostConfig({
@@ -522,14 +680,31 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-DockerDesktop.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Ollama.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WindowsSetupReadiness.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_HiddenProcess.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'setup-node-global-prefix.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-node-cli-tools.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-claude-code.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-cursor-agent.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-goose.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-junie.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-kiro-cli.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'check-installation.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'shared', 'unix-provider-cli-common.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'shared', 'unix-node-cli-common.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'manifest.json'));
   await access(join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'));
+  await access(join(plan.outputRoot, 'targets', 'linux-x64', 'installer-manifest.json'));
 
   const targetManifest = JSON.parse(await readFile(
     join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'),
     'utf8',
   ));
+  const linuxTargetManifest = JSON.parse(await readFile(
+    join(plan.outputRoot, 'targets', 'linux-x64', 'installer-manifest.json'),
+    'utf8',
+  ));
   assert.equal(targetManifest.target.platform, 'windows');
+  assert.equal(linuxTargetManifest.target.platform, 'linux');
   assert.equal(targetManifest.updates.channel, config.update.channel);
   assert.equal(targetManifest.target.artifactBaseName, 'cats-windows-x64');
   assert.equal(targetManifest.installer.providerSetup.capabilityPacks[0].id, 'api_baseline');
@@ -539,7 +714,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
         && provider.helperIds.includes('windows-node-cli-pack')
-        && provider.currentHome === 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
+        && provider.currentHome.includes('Install-NodeCliPack'),
     ),
     true,
   );
@@ -549,7 +724,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
         && provider.helperIds.includes('windows-node-cli-pack')
-        && provider.currentHome === 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
+        && provider.currentHome.includes('Install-NodeCliPack'),
     ),
     true,
   );
@@ -582,7 +757,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
       (provider) => provider.id === 'junie'
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
-        && provider.currentHome === 'cats-platform/scripts/windows/Install-Junie.ps1',
+        && provider.currentHome.includes('Install-Junie'),
     ),
     true,
   );
@@ -806,6 +981,65 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     ),
     true,
   );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'windows-hidden-process-support-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTargetManifest.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'opencode'
+        && provider.platform === 'linux'
+        && provider.helperIds.includes('linux-node-cli-pack'),
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTargetManifest.installer.providerSetup.localProviders.some(
+      (provider) => provider.id === 'kiro'
+        && provider.platform === 'linux'
+        && provider.helperIds.includes('linux-kiro-native-installer'),
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTargetManifest.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'linux-install-readiness-audit'
+        && helper.packagedRelativePath === 'desktop-host/setup-assets/linux/check-installation.sh',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTargetManifest.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-install-readiness-audit',
+    ),
+    false,
+  );
+  assert.equal(
+    linuxTargetManifest.artifacts.some(
+      (artifact) => artifact.id === 'linux-setup-assets-manifest' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTargetManifest.artifacts.some(
+      (artifact) => artifact.id === 'linux-node-cli-pack-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTargetManifest.artifacts.some(
+      (artifact) => artifact.id === 'unix-provider-cli-common-support-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTargetManifest.artifacts.some(
+      (artifact) => artifact.id === 'windows-node-cli-pack-script' && artifact.role === 'setup_asset',
+    ),
+    false,
+  );
 });
 
 test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is missing', async () => {
@@ -823,18 +1057,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
     version: '0.1.0',
     type: 'module',
   }, null, 2));
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Goose.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Junie.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroWslCli.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-DockerDesktop.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
+  await seedWindowsSetupAssets(packageRoot);
   await mkdir(runtimeRoot, { recursive: true });
 
   const config = resolveDesktopHostConfig({

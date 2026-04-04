@@ -4,7 +4,7 @@
 
 ## Overview
 
-`Cats` should become the shared suite foundation for the cats initiative.
+`Cats` should become the shared platform foundation for the cats initiative.
 It must do so on a Node.js/TypeScript stack, through `cats-runtime`, and with
 shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 `Cats Work`.
@@ -182,7 +182,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: High
 - **Status**: Planned
 
-### FR-024: Unified Desktop Suite Shell
+### FR-024: Unified Desktop Platform Shell
 
 - **Description**: The full desktop surfaces for `Cats Chat` and `Cats Work`
   shall stay on one React/TypeScript renderer stack inside the Electron host
@@ -225,8 +225,8 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 ### FR-029: Optional Guide Cat Onboarding
 
-- **Description**: After owner-name capture, the suite setup flow shall offer
-  optional `Guide Cat` creation without requiring it for suite use.
+- **Description**: After owner-name capture, the platform setup flow shall offer
+  optional `Guide Cat` creation without requiring it for platform use.
 - **Priority**: High
 - **Status**: Planned
 
@@ -248,7 +248,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 ### FR-032: Generalized Participant Modeling
 
-- **Description**: The suite shall evolve from Cat-only room assumptions to a
+- **Description**: The platform shall evolve from Cat-only room assumptions to a
   generalized entity/participant model so conversation topology, routing, and
   per-turn execution strategy do not depend on every participant being a Cat.
 - **Priority**: High
@@ -270,7 +270,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 
 - Shared-core contracts should stabilize before Chat and Work implementations
   diverge
-- Product surfaces should avoid frontend stack fragmentation while the suite
+- Product surfaces should avoid frontend stack fragmentation while the platform
   foundation is still forming
 - The default desktop path is Electron plus React/TypeScript while
   `cats-runtime` and `cats` remain Node-based local services
@@ -318,7 +318,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
   a manual dev stack
 - Local onboarding SHOULD be able to capture model credentials, owner profile,
   and optional bot binding without requiring a terminal session
-- Tauri or Flutter SHOULD NOT be introduced into the primary suite path unless
+- Tauri or Flutter SHOULD NOT be introduced into the primary platform path unless
   the desktop Node-sidecar assumptions change materially
 
 ### NFR-011: Workflow Hierarchy
@@ -333,7 +333,7 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - Setup SHOULD keep Guide Cat onboarding to one optional decision plus runtime
   target selection
 - Setup SHOULD NOT require persona design, prompt authoring, or memory curation
-  before the suite becomes usable
+  before the platform becomes usable
 
 ### NFR-013: Helper Session Efficiency
 
@@ -487,17 +487,17 @@ automation flow.
 - [ ] A structured owner profile exists in the shared product model
 - [ ] Orchestrators can consume that profile without depending on archive RAG
 
-### US-014: Owner Uses Chat and Work on the Same Desktop Suite
+### US-014: Owner Uses Chat and Work on the Same Desktop Platform
 
 **As an** owner,
 **I want to** move between Chat and Work on desktop without a jarring framework
 shift,
-**So that** the suite feels like one product family instead of unrelated apps.
+**So that** the platform feels like one product family instead of unrelated apps.
 
 **Acceptance Criteria**:
 - [ ] Full desktop Chat and Work surfaces share one Electron-hosted
   React/TypeScript renderer path
-- [ ] Tray, windowing, and local packaging behave consistently across the suite
+- [ ] Tray, windowing, and local packaging behave consistently across the platform
 
 ### US-015: Operator Adds an Existing Cat from the Current Chat
 
@@ -539,7 +539,7 @@ screen first.
 **As an** owner,
 **I want to** see helpful starter ideas in `+New chat` before I send my first
 message,
-**So that** the suite feels prepared rather than empty.
+**So that** the platform feels prepared rather than empty.
 
 **Acceptance Criteria**:
 - [ ] Entry surfaces can show Guide Cat-generated starter ideas when available
@@ -548,7 +548,7 @@ message,
 
 ### US-019: Developers Build Against Generalized Participants
 
-**As a** suite developer,
+**As a** platform developer,
 **I want to** distinguish reusable entities, channel participants, conversation
 topology, and turn strategy,
 **So that** I do not need Cat-only special cases to explain every room mode.
@@ -567,7 +567,7 @@ topology, and turn strategy,
   records
 - `Cats Chat` and `Cats Work` are expected to launch from shared contracts,
   not from two unrelated product schemas
-- The current product path keeps the full desktop suite on Electron plus
+- The current product path keeps the full desktop platform on Electron plus
   React/TypeScript, with mobile treated as later companion scope
 
 ---

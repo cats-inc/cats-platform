@@ -2,7 +2,7 @@
 
 > Deployment procedures and infrastructure documentation for the current
 > `Cats` product, its `cats-platform` host target, and the planned packaged
-> suite topology.
+> platform topology.
 
 ## Environments
 
@@ -13,7 +13,7 @@
 | Containerized local | `http://127.0.0.1:8181` | Scaffold exists, but container assets need refresh before being treated as current |
 | Staging | TBD | Pre-production testing |
 | Production | TBD | Live environment |
-| Desktop distributable | Windows NSIS path landed | Electron host starts local `cats-runtime` + `cats`, waits for readiness, persists bootstrap/remediation state, stages Windows/macOS/Linux packaging outputs, and can now emit a Windows NSIS installer for test installs |
+| Desktop distributable | Cross-platform packaging commands wired; Windows smoke path validated | Electron host starts local `cats-runtime` + `cats`, waits for readiness, persists bootstrap/remediation state, stages Windows/macOS/Linux packaging outputs, emits Windows NSIS installers plus unsigned/test macOS/Linux packages, and currently has real post-install smoke validation only on Windows |
 
 ## Deployment Methods
 
@@ -82,16 +82,11 @@ npm run desktop:stage
 - current packaging substrate output root:
   - `build/desktop-packaging/desktop-package-plan.json`
   - `build/desktop-packaging/shared/*`
-  - `build/desktop-packaging/shared/setup-assets/windows/Setup-NodeGlobalPrefix.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-NodeCliPack.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-ClaudeCode.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-CursorAgent.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-Goose.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-Junie.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-WslUbuntuEnvironment.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-KiroWslCli.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Check-WindowsSetupReadiness.ps1`
+  - `build/desktop-packaging/shared/setup-assets/windows/*`
+  - `build/desktop-packaging/shared/setup-assets/linux/*`
+  - `build/desktop-packaging/shared/setup-assets/macos/*`
+  - `build/desktop-packaging/shared/setup-assets/shared/unix-provider-cli-common.sh`
+  - `build/desktop-packaging/shared/setup-assets/shared/unix-node-cli-common.sh`
   - `build/desktop-packaging/shared/setup-assets/manifest.json`
   - `build/desktop-packaging/targets/<target>/installer-manifest.json`
 - current platform wrappers:
@@ -113,6 +108,25 @@ npm run desktop:package:windows
 
 ```powershell
 .\scripts\windows\Build-WindowsInstaller.ps1
+```
+
+- macOS/Linux installer commands:
+
+```bash
+npm run desktop:package:macos
+npm run desktop:package:linux
+```
+
+```bash
+./scripts/macos/build-macos-installer.sh
+./scripts/linux/build-linux-installer.sh
+```
+
+- Unix unpacked-package smoke-check commands:
+
+```bash
+./scripts/macos/test-macos-package-smoke.sh
+./scripts/linux/test-linux-package-smoke.sh
 ```
 
 - current Windows installer output:
@@ -149,23 +163,24 @@ npm run desktop:package:windows
   - keep Electron as the thin host around bundled `cats` + `cats-runtime`
     sidecars
   - stage deterministic target manifests for Windows, macOS, and Linux while
+    wiring unsigned/test installer commands for all three host platforms while
     shipping a real Windows NSIS installer first
   - preserve the self-hosted npm path rather than replacing it
 - installer/remediation contract in this slice:
   - verify bundled app assets
   - verify bundled `cats-runtime` sidecar slot
-  - run the host-owned first-run provider scan during desktop bootstrap
+  - run the host-owned first-run provider scan during desktop bootstrap on
+    Windows/macOS/Linux via the platform-specific readiness audit
   - expose a machine-readable `installer.providerSetup.helperCatalog` for the
-    bundled Windows setup assets
+    bundled platform-scoped setup assets
   - expose a machine-readable `installer.providerSetup.localProviders` rollout
     so the host can distinguish bundled local-provider paths from future
     add-on capability packs
   - map failures onto structured host state plus resumable remediation actions
-  - keep the current first packaged local-provider path bounded to Claude Code,
-    Cursor Agent, Goose, Junie, the WSL-backed Kiro helper, and Ollama
-  - keep the current packaged local-model prerequisite path bounded to the
-    Docker Desktop installer, engine warm-state helper, and the repo-owned
-    Ollama installer plus local API follow-through
+  - keep the current first packaged native CLI path bounded to Claude Code,
+    Cursor Agent, Goose, Junie, and Kiro across Windows/macOS/Linux
+  - keep the current Windows-specific extensions bounded to the WSL-backed Kiro
+    helper plus the Docker Desktop and Ollama local-model path
   - keep broader expert-only local-model helpers and future capability
     packs outside the current packaged baseline rather than silently missing
   - avoid any runtime shell-out to `environment-bootstrap` or
@@ -182,6 +197,16 @@ npm run desktop:package:windows
   - installation directory selection enabled
   - executable signing/editing intentionally disabled for the current
     unsigned test-install path
+- macOS packaging mode in this slice:
+  - `electron-builder`
+  - targets: `dmg`, `pkg`, `zip`
+  - unsigned/test-package path only in the current slice
+  - unpacked smoke validation available through `test-macos-package-smoke.sh`
+- Linux packaging mode in this slice:
+  - `electron-builder`
+  - targets: `AppImage`, `deb`, `tar.gz`
+  - unsigned/test-package path only in the current slice
+  - unpacked smoke validation available through `test-linux-package-smoke.sh`
 
 - platform wrappers:
 

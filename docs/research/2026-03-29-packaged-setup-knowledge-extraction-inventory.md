@@ -87,9 +87,10 @@ fork a second metadata truth source.
 
 ### 3. The missing layer is packaged-host execution knowledge
 
-The main pieces still trapped inside `environment-bootstrap` are the concrete
-Windows-first execution helpers that a packaged host would need to own or
-reimplement:
+The main pieces that were trapped inside `environment-bootstrap` are the
+concrete packaged-host execution helpers that `cats-platform` needed to own or
+reimplement, starting on Windows and now extended to repo-owned macOS/Linux
+native CLI helpers:
 
 - npm-global CLI pack installation via
   [`Install-NodeCLITools.ps1`](../../../environment-bootstrap/platform/windows/Install-NodeCLITools.ps1)
@@ -137,12 +138,13 @@ ports a product-owned host asset layer.
 | Ollama local-model runtime follow-through | official Ollama Windows install guidance plus repo-local packaged setup knowledge | `cats-platform/scripts/windows/Install-Ollama.ps1` | packaged-host capability-pack assets in `cats-platform` plus current `Check-WindowsSetupReadiness.ps1` | Ported | Repo-owned helper now owns user-scoped Ollama install, upgrade, and local API warm-state follow-through while the readiness audit can consume its structured check output |
 | Windows native Goose installer | `environment-bootstrap/platform/windows/Install-Goose.ps1` + `environment-bootstrap/platform/windows/Install-WSLGoose.ps1` knowledge | `cats-platform/scripts/windows/Install-Goose.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned native installer helper now keeps Goose on the packaged setup baseline and treats post-install auth as an explicit host-owned interruption |
 | Windows native Junie installer | `environment-bootstrap/platform/windows/Install-Junie.ps1` | `cats-platform/scripts/windows/Install-Junie.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned native installer helper now keeps Junie on the packaged setup baseline and treats JetBrains sign-in follow-through as an explicit host-owned interruption |
+| Linux/macOS npm prefix, native CLI pack, native provider installers, and readiness audit | `environment-bootstrap/platform/{linux,macos}/install-*.sh`, `check-installation.sh`, and shared Unix helper knowledge | `cats-platform/scripts/{linux,macos}/*` plus `cats-platform/scripts/shared/unix-*.sh` | packaged-host assets in `cats-platform` | Ported | Repo-owned Unix helpers are now staged under `shared/setup-assets/{linux,macos}/` with shared shell support files under `shared/setup-assets/shared/`, and the packaged host executes them through the same structured setup bridge used on Windows |
 | Ngrok / tunnel setup | `Install-Ngrok-Admin.ps1`, `Setup-Ngrok.ps1` | `environment-bootstrap` only | later transport helper layer in `cats-platform` | Defer | Not part of the first packaged setup baseline |
 | Guacamole / Tailscale / workstation extras | extra-mode scripts | `environment-bootstrap` only | none for current packaged setup | Exclude | Not part of `cats-platform` packaged setup scope |
 
 ## Recommended Port Order
 
-1. Extend the Windows-first native provider installer baseline next.
+1. Extend the packaged native provider installer baseline next.
    - The prerequisite npm prefix + PATH helper is now repo-owned in
      `cats-platform/scripts/windows/Setup-NodeGlobalPrefix.ps1`.
    - The Windows npm-global CLI pack installer is now repo-owned in
@@ -188,8 +190,8 @@ ports a product-owned host asset layer.
 
 - Phase 1 can be considered landed once this inventory is accepted as the
   extraction baseline.
-- The first implementation slice after planning should be Windows-first and
-  executable, not another broad documentation pass.
+- The first implementation slice after planning should be executable, not
+  another broad documentation pass.
 - `cats-platform` should prefer product-owned asset contracts over lifting raw
   bootstrap
   scripts verbatim.

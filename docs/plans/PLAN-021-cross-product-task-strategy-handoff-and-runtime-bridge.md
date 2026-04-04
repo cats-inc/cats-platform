@@ -1,7 +1,7 @@
 # PLAN-021: Cross-Product Task Strategy Handoff and Runtime Bridge
 
 > Implementation plan for turning `CoreTaskRecord.metadata.planning` into the
-> suite's normalized handoff surface and bridging that planning intent into
+> platform's normalized handoff surface and bridging that planning intent into
 > `cats-runtime` without breaking the accepted runtime boundary.
 
 ## Metadata
@@ -120,7 +120,7 @@ Core-owned lifecycle and wakeup integration model.
 - [ ] Keep product defaults and transfer hints in product code, not runtime
 - [ ] Add fallback behavior when Work/Code surfaces are not fully active yet
 
-**Deliverables**: one deterministic suite rule for resolving effective
+**Deliverables**: one deterministic platform rule for resolving effective
 execution strategy without making runtime infer product policy.
 
 ### Phase 5: Product Surfaces, APIs, and Diagnostics

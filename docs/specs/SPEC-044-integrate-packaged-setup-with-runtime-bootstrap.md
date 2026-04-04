@@ -39,7 +39,7 @@ before the product enters the ready chat flow.
 - embedding the runtime's HTML setup page inside the packaged app
 - making `cats-platform` generate `providers.yaml` directly
 - shipping every future provider pack in the first implementation slice
-- reworking the broader Chat/Work/Code suite routing beyond what setup gating
+- reworking the broader Chat/Work/Code platform routing beyond what setup gating
   needs
 
 ## User Stories

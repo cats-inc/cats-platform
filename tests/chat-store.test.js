@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createDefaultCoreState } from '../dist-server/core/model.js';
-import { createDefaultChatState } from '../dist-server/chat/defaults.js';
+import { createDefaultCoreState } from '../dist-server/core/model/index.js';
+import { createDefaultChatState } from '../dist-server/products/chat/state/defaults.js';
 import {
   archiveCat,
   appendMessage,
@@ -20,11 +20,11 @@ import {
   toChannelSummary,
   unarchiveCat,
   updateGlobalOrchestrator,
-} from '../dist-server/chat/model.js';
-import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
-import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
-import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
-import { FileChatStore } from '../dist-server/chat/store.js';
+} from '../dist-server/products/chat/state/model/index.js';
+import { routeChannelMessage } from '../dist-server/products/chat/state/runtimeActions.js';
+import { createSharedCoreFixtureBundle } from '../dist-server/shared/coreFixtures.js';
+import { UUID_PATTERN } from '../dist-server/products/chat/shared/channelPaths.js';
+import { FileChatStore } from '../dist-server/products/chat/state/store.js';
 
 test('FileChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
@@ -1503,6 +1503,24 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
       displayName: 'Boss Owner',
       updatedAt: '2026-03-21T01:00:00.000Z',
     },
+    guideCat: {
+      id: 'guide-cat-primary',
+      name: 'Guide Cat',
+      executionTarget: {
+        provider: 'claude',
+        instance: 'native',
+        model: 'claude-sonnet',
+      },
+      modelSelection: {
+        entryMode: 'auto',
+        presetId: 'balanced',
+        controls: {
+          'openai.reasoning_effort': 'high',
+        },
+      },
+      createdAt: '2026-03-21T01:00:00.000Z',
+      updatedAt: '2026-03-21T01:00:00.000Z',
+    },
     actors: [
       ...initialCore.actors,
       {
@@ -1644,6 +1662,8 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
 
   assert.equal(reloadedCore.version, 5);
   assert.equal(reloadedCore.ownerProfile.displayName, 'Boss Owner');
+  assert.equal(reloadedCore.guideCat?.name, 'Guide Cat');
+  assert.equal(reloadedCore.guideCat?.executionTarget.model, 'claude-sonnet');
   assert.ok(reloadedCore.actors.some((actor) => actor.id === 'actor-stakeholder-1'));
   assert.ok(
     reloadedCore.conversations.some(
@@ -1798,4 +1818,3 @@ test('createChannel defaults empty draft fields to a neutral new-chat label', as
   assert.equal(state.channels[0].topic, '');
   assert.match(state.channels[0].id, UUID_PATTERN);
 });
-

@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
 
 let tempDir;
 
@@ -190,9 +190,9 @@ test('GET /api/app-shell includes runtime setup summary and bootstrap attempt id
   });
 });
 
-test('POST /api/suite/bootstrap-diagnostics/opened records a product-owned setup_opened event', async () => {
+test('POST /api/platform/bootstrap-diagnostics/opened records a product-owned setup_opened event', async () => {
   await withServer(createRuntimeSetupStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/bootstrap-diagnostics/opened`, {
+    const response = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics/opened`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ attemptId: 'attempt-opened' }),
@@ -206,11 +206,11 @@ test('POST /api/suite/bootstrap-diagnostics/opened records a product-owned setup
   });
 });
 
-test('POST /api/suite/runtime-setup/scan proxies the runtime setup scan', async () => {
+test('POST /api/platform/runtime-setup/scan proxies the runtime setup scan', async () => {
   const runtimeStub = createRuntimeSetupStub({ providers: [] });
 
   await withServer(runtimeStub, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/runtime-setup/scan`, {
+    const response = await fetch(`${baseUrl}/api/platform/runtime-setup/scan`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ manual: true }),
@@ -223,11 +223,11 @@ test('POST /api/suite/runtime-setup/scan proxies the runtime setup scan', async 
   });
 });
 
-test('POST /api/suite/runtime-setup/apply uses ready providers and exits bootstrap mode', async () => {
+test('POST /api/platform/runtime-setup/apply uses ready providers and exits bootstrap mode', async () => {
   const runtimeStub = createRuntimeSetupStub();
 
   await withServer(runtimeStub, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/runtime-setup/apply`, {
+    const response = await fetch(`${baseUrl}/api/platform/runtime-setup/apply`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({}),
@@ -245,7 +245,7 @@ test('runtime setup apply records product diagnostics events for the active boot
   const runtimeStub = createRuntimeSetupStub();
 
   await withServer(runtimeStub, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/runtime-setup/apply`, {
+    const response = await fetch(`${baseUrl}/api/platform/runtime-setup/apply`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ attemptId: 'attempt-apply' }),
@@ -253,7 +253,7 @@ test('runtime setup apply records product diagnostics events for the active boot
 
     assert.equal(response.status, 200);
 
-    const diagnosticsResponse = await fetch(`${baseUrl}/api/suite/bootstrap-diagnostics`);
+    const diagnosticsResponse = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
     assert.equal(diagnosticsResponse.status, 200);
     const diagnostics = await diagnosticsResponse.json();
     assert.equal(diagnostics.attemptId, 'attempt-apply');
@@ -264,9 +264,9 @@ test('runtime setup apply records product diagnostics events for the active boot
   });
 });
 
-test('POST /api/suite/setup/complete rejects setup until runtime bootstrap is applied', async () => {
+test('POST /api/platform/setup/complete rejects setup until runtime bootstrap is applied', async () => {
   await withServer(createRuntimeSetupStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -283,18 +283,18 @@ test('POST /api/suite/setup/complete rejects setup until runtime bootstrap is ap
   });
 });
 
-test('suite setup succeeds after runtime setup apply completes', async () => {
+test('platform setup succeeds after runtime setup apply completes', async () => {
   const runtimeStub = createRuntimeSetupStub();
 
   await withServer(runtimeStub, async (baseUrl) => {
-    const applyResponse = await fetch(`${baseUrl}/api/suite/runtime-setup/apply`, {
+    const applyResponse = await fetch(`${baseUrl}/api/platform/runtime-setup/apply`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ attemptId: 'attempt-complete' }),
     });
     assert.equal(applyResponse.status, 200);
 
-    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -311,7 +311,7 @@ test('suite setup succeeds after runtime setup apply completes', async () => {
     assert.equal(payload.runtimeSetup.status, 'ready');
     assert.equal(payload.ownerDisplayName, 'Kenny');
 
-    const diagnosticsResponse = await fetch(`${baseUrl}/api/suite/bootstrap-diagnostics`);
+    const diagnosticsResponse = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
     assert.equal(diagnosticsResponse.status, 200);
     const diagnostics = await diagnosticsResponse.json();
     assert.equal(diagnostics.attemptId, 'attempt-complete');

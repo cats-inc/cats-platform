@@ -34,6 +34,8 @@ Desktop-host regression coverage now also checks:
   action ids, validated host overrides, and validated update URLs
 - Windows installer smoke-check script coverage for bundled sidecars and the
   persisted desktop-host state contract
+- macOS/Linux unpacked-package smoke-check script coverage for bundled
+  sidecars, packaged setup assets, and platform-scoped installer contracts
 - host build smoke through `npm run build:host`
 
 ## Test Types
@@ -107,6 +109,24 @@ The smoke-check validates:
   target
 - launching the installed app refreshes the persisted desktop-host state file
   and reaches a stable bootstrap phase
+
+### macOS / Linux Unpacked Smoke Check
+
+After producing the unsigned/test desktop package outputs, run:
+
+```bash
+./scripts/macos/test-macos-package-smoke.sh
+./scripts/linux/test-linux-package-smoke.sh
+```
+
+These smoke-checks validate:
+
+- bundled `cats` sidecar assets under the packaged `Resources/` tree
+- bundled `cats-runtime` assets under the packaged `Resources/` tree
+- bundled platform-specific packaged setup helpers for macOS or Linux
+- bundled shared Unix helper libraries used by those packaged setup scripts
+- the packaged `desktop-package-plan.json` still advertises the expected
+  target platform and helper rollout
 
 ## Mocking Guidelines
 

@@ -66,6 +66,21 @@ These wrappers call `npm run desktop:start`, which builds:
 and then launches the Electron host that supervises local `cats-runtime` and
 `cats` child processes.
 
+Installer build and smoke wrappers now also exist for desktop packaging:
+
+- `scripts/windows/Build-WindowsInstaller.ps1`
+- `scripts/windows/Test-WindowsInstallerSmoke.ps1`
+- `scripts/linux/build-linux-installer.sh`
+- `scripts/linux/test-linux-package-smoke.sh`
+- `scripts/macos/build-macos-installer.sh`
+- `scripts/macos/test-macos-package-smoke.sh`
+
+These cover:
+
+- Windows NSIS installer builds plus installed-app smoke validation
+- macOS unsigned/test package builds plus unpacked app-bundle smoke validation
+- Linux unsigned/test package builds plus unpacked package smoke validation
+
 ## Collaboration Helpers
 
 `cats` also keeps repo-owned cross-platform skill sync helpers so local agent

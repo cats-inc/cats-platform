@@ -1,9 +1,9 @@
-# PLAN-024: Platform Inversion, API Unification, and Suite Host Cleanup
+# PLAN-024: Platform Inversion, API Unification, and Platform Host Cleanup
 
-> Rewrite `cats` into a cleaner suite architecture without shrinking scope:
+> Rewrite `cats` into a cleaner platform architecture without shrinking scope:
 > invert platform dependencies, extract a real shared shell/design layer,
 > decompose the current hotspots, unify API contracts, migrate endpoint
-> namespaces, serve runtime tools from the suite host, and remove every
+> namespaces, serve runtime tools from the platform host, and remove every
 > temporary compatibility layer by the end of the plan.
 
 ## Status
@@ -22,7 +22,7 @@ Execution checkpoint on 2026-03-25:
   delegates dependency assembly, startup polling reconciliation, and route
   registration to dedicated modules under `src/app/server/`
 - graph-based dependency enforcement now runs alongside the existing
-  architecture-boundary test suite so cross-layer ownership regressions are
+  architecture-boundary test harness so cross-layer ownership regressions are
   blocked mechanically in CI and local test runs
 - Directory normalization has landed for the main extracted module families:
   `src/core/api/*`, `src/core/model/*`,
@@ -49,12 +49,12 @@ Execution checkpoint on 2026-03-25:
 
 - [ADR-035](../decisions/035-invert-platform-dependency-and-extract-shared-design-layer.md)
 - [ADR-036](../decisions/036-unify-api-contract-and-namespace-endpoints-by-product.md)
-- [ADR-037](../decisions/037-serve-runtime-dashboard-and-playground-from-suite-host.md)
+- [ADR-037](../decisions/037-serve-runtime-dashboard-and-playground-from-platform-host.md)
 
 ## Purpose
 
 This plan is the execution path for the structural cleanup that `cats` still
-needs before `Chat`, `Work`, and `Code` can share one core and one suite shell
+needs before `Chat`, `Work`, and `Code` can share one core and one platform shell
 without turning the repo into a larger version of today's coupling.
 
 The earlier revision of this plan had the right ambition but an inaccurate
@@ -70,7 +70,7 @@ By the end of this plan, all of the following must be true:
 3. Core server/model hot spots are split into domain-focused modules.
 4. Chat state, routing, orchestration, and renderer hot spots are split into
    smaller modules with clear seams.
-5. A real shared suite shell/design layer exists outside Chat-specific files.
+5. A real shared platform shell/design layer exists outside Chat-specific files.
 6. API errors, envelopes, request parsing, and pagination/filtering are
    consistent across shared and product routes.
 7. Shared resources live at `/api/*`, Chat resources live at `/api/chat/*`,
@@ -82,7 +82,7 @@ By the end of this plan, all of the following must be true:
    deleted in the final cleanup phase.
 10. The refactored architecture is protected by dedicated regression coverage
     for boundaries, contracts, orchestration flows, renderer/shell behavior,
-    and suite-host runtime tooling.
+    and platform-host runtime tooling.
 
 Nothing listed above is optional. This plan includes the final cleanup.
 
@@ -109,7 +109,7 @@ removed. The current structural pressure points are:
 
 - `src/app/server/index.ts` is now a thin composition root, but the
   `src/app/server/` module family must keep wiring concerns separated so the
-  suite host does not regrow a new integration God file under a different
+  platform host does not regrow a new integration God file under a different
   filename.
 - Several major module families have now been normalized into subdirectories,
   but a smaller set of remaining flat prefix groups still needs active
@@ -132,7 +132,7 @@ that protection while refactoring, not to invent testing from scratch.
   `/api/app-shell`, `/api/preferences`, `/api/channels`, and
   `/api/orchestrator/*`.
 - Runtime dashboard/playground are still native `cats-runtime` pages rather
-  than suite-hosted surfaces in `cats`.
+  than platform-hosted surfaces in `cats`.
 
 ### Phase checkpoint
 
@@ -142,7 +142,7 @@ The plan is no longer at the untouched baseline:
 - Phase 1 seam injection and composition-root inversion have landed.
 - Phase 3 and Phase 4 hotspot decomposition have substantially reduced the
   earlier monoliths.
-- Phase 5 renderer extraction is complete: shared suite shell and reusable
+- Phase 5 renderer extraction is complete: shared platform shell and reusable
   design primitives now live under `src/design/`, while Chat-specific visuals
   stay product-owned.
 - Phase 6 through Phase 8 remain the major unfinished work.
@@ -169,8 +169,8 @@ Mandatory coverage areas:
 - Contract tests for shared and Chat API behavior, including envelopes, error
   codes, pagination/filtering, and namespace migration compatibility.
 - Integration tests for chat routing, orchestrator dispatch, task lifecycle,
-  Telegram bridge flows, and suite-host runtime interactions.
-- Renderer and shell tests that protect shared navigation, suite chrome, and
+  Telegram bridge flows, and platform-host runtime interactions.
+- Renderer and shell tests that protect shared navigation, platform chrome, and
   product-switching behavior while design extraction is underway.
 - Cleanup enforcement checks that prove legacy routes, barrels, aliases, and
   host fallbacks are actually removable when their cleanup phase lands.
@@ -270,7 +270,7 @@ Deliverables:
 
 - Classify everything currently re-exported by `shared/app-shell.ts` into one
   of three buckets:
-  shared suite contract, Chat-only contract, or obsolete re-export.
+  shared platform contract, Chat-only contract, or obsolete re-export.
 - Create explicit shared contract modules only for the shapes that are truly
   cross-product or host-level.
 - Move Chat-only contracts back to Chat-owned modules.
@@ -364,7 +364,7 @@ Exit criteria:
 
 ### Phase 5 - Renderer, Shell, and Design Extraction
 
-Pull suite-level shell and design concerns out of Chat while preserving the
+Pull platform-level shell and design concerns out of Chat while preserving the
 visual identity that already works.
 
 Key files:
@@ -383,19 +383,19 @@ Deliverables:
 - Split Chat renderer composition so `App.tsx` becomes a thin assembly layer.
 - Split `products/chat/renderer/styles.css` into tokens, shell, sidebar,
   transcript, panel, settings, and utility style modules.
-- Move suite shell structure out of Chat-owned files so Work and Code can share
+- Move platform shell structure out of Chat-owned files so Work and Code can share
   it without inheriting Chat-specific implementation details.
 
 Required outcome:
 
-- The suite shell is genuinely shared.
+- The platform shell is genuinely shared.
 - Chat-specific visuals stay in Chat; shared design primitives move out.
 
 Exit criteria:
 
 - Shared renderer/design modules exist and are used by Chat.
 - The Chat renderer and stylesheet monoliths are substantially reduced.
-- Renderer and shell regression coverage protects the extracted suite chrome.
+- Renderer and shell regression coverage protects the extracted platform chrome.
 
 ### Phase 6 - API Contract Normalization on Existing Paths
 
@@ -435,7 +435,7 @@ Exit criteria:
 
 ### Phase 7 - Namespace Migration and Runtime Tool Hosting
 
-Land the visible public URL cleanup and suite-host the runtime tools.
+Land the visible public URL cleanup and platform-host the runtime tools.
 
 Key files:
 
@@ -456,13 +456,13 @@ Deliverables:
   namespaces.
 - Serve runtime dashboard and playground from the `cats` host at
   `/runtime/dashboard` and `/runtime/playground`.
-- Expose runtime JSON through a suite-owned `/runtime/api/*` seam so the
+- Expose runtime JSON through a platform-owned `/runtime/api/*` seam so the
   runtime tools operate without depending on a user-visible second port.
 
 Required outcome:
 
 - Public route semantics match ADR-036 and ADR-037.
-- Runtime tools are part of the suite host experience, not a sidecar port leak.
+- Runtime tools are part of the platform host experience, not a sidecar port leak.
 
 Exit criteria:
 
@@ -510,7 +510,7 @@ These checks apply across the whole plan:
 - No production file should remain a multi-thousand-line integration sink once
   its phase is complete.
 - No new `platform -> products/chat` imports are introduced after Phase 1.
-- No Chat-only contract is masquerading as a suite-level contract after
+- No Chat-only contract is masquerading as a platform-level contract after
   Phase 2.
 - No mixed API contract behavior remains after Phase 6.
 - No legacy namespace or migration-only compatibility surface remains after
@@ -559,9 +559,9 @@ This plan is complete only when:
 
 - `cats` has the final dependency direction, final route namespaces, final host
   structure, and final shared design layer.
-- Runtime dashboard/playground are suite-hosted.
+- Runtime dashboard/playground are platform-hosted.
 - Legacy barrels, aliases, and migration shims are gone.
-- The final regression suite protects the architecture that the refactor
+- The final regression platform protects the architecture that the refactor
   created.
 - The final repo is easier to review, test, and extend than the one that
   existed on 2026-03-24.
@@ -583,7 +583,7 @@ track that should remain active after the main refactor lands.
   turning into new dumping grounds.
 - Rebalance test coverage so new modules gain behavior tests, not only static
   boundary checks.
-- Keep the suite composition root deliberate instead of letting
+- Keep the platform composition root deliberate instead of letting
   `app/server/index.ts` become the next integration sink.
 - Keep future product growth aligned to the approved `core/platform/product`
   dependency direction.
@@ -624,7 +624,7 @@ tests alone. For every newly extracted or newly expanded module family, add:
 - at least one boundary or contract test protecting the seam
 
 Priority follow-up areas include task lifecycle, orchestrator dispatch,
-Telegram ingress, suite shell navigation, and runtime tool hosting.
+Telegram ingress, platform shell navigation, and runtime tool hosting.
 
 #### 4. Growth Rules and Enforcement
 
@@ -641,7 +641,7 @@ following rules:
 
 #### 5. Composition Root Governance
 
-`src/app/server/index.ts` is the suite composition root. It is allowed to know
+`src/app/server/index.ts` is the platform composition root. It is allowed to know
 about product modules and adapters, but it must not become a second-generation
 God file.
 
@@ -683,7 +683,7 @@ The follow-up track is healthy when all of the following are true:
 - shared/helper files stay specific instead of becoming anonymous catch-alls
 - test growth tracks module growth with both behavior coverage and boundary
   enforcement
-- the suite composition root stays a wiring layer rather than becoming a new
+- the platform composition root stays a wiring layer rather than becoming a new
   feature implementation hub
 - file-size budgets trigger early decomposition before new monoliths emerge
 - future `Chat`, `Work`, `Code`, and `Learn` work continues to strengthen the

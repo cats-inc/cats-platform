@@ -6,15 +6,15 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
-import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
-import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
+import { UUID_PATTERN } from '../dist-server/products/chat/shared/channelPaths.js';
+import { createSharedCoreFixtureBundle } from '../dist-server/shared/coreFixtures.js';
 import {
   assignCatToChannel,
   createCat,
   createChannel,
   setChannelCatLease,
   setChannelOrchestratorLease,
-} from '../dist-server/chat/model.js';
+} from '../dist-server/products/chat/state/model/index.js';
 import {
   createCatsMemoryService,
   MemoryCanonicalMemoryStore,
@@ -33,7 +33,7 @@ import {
 } from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
 import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
 import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
 import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {
@@ -1272,14 +1272,14 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       body: JSON.stringify({
         task: {
           ...fixtures.task,
-          parentTaskId: 'task-parent-suite',
+          parentTaskId: 'task-parent-platform',
         },
       }),
     });
     assert.equal(taskResponse.status, 201);
     const taskPayload = await taskResponse.json();
     assert.equal(taskPayload.task.id, fixtures.task.id);
-    assert.equal(taskPayload.task.parentTaskId, 'task-parent-suite');
+    assert.equal(taskPayload.task.parentTaskId, 'task-parent-platform');
 
     const projectResponse = await fetch(`${baseUrl}/api/core/projects`, {
       method: 'POST',
@@ -1399,7 +1399,7 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.ok(statePayload.tasks.some((task) => task.id === fixtures.task.id));
     assert.equal(
       statePayload.tasks.find((task) => task.id === fixtures.task.id)?.parentTaskId,
-      'task-parent-suite',
+      'task-parent-platform',
     );
     assert.ok(statePayload.runs.some((run) => run.id === fixtures.run.id));
     assert.ok(statePayload.traces.some((trace) => trace.id === fixtures.trace.id));
@@ -5314,7 +5314,7 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -5760,7 +5760,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -5870,7 +5870,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
 
 test('archived cats cannot receive new Telegram bot bindings', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -5919,7 +5919,7 @@ test('archived cats cannot receive new Telegram bot bindings', async () => {
 
 test('unarchiving a cat restores it without reviving Telegram bindings', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -6020,7 +6020,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
 
 test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -6065,7 +6065,7 @@ test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async (
 
 test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({

@@ -41,7 +41,7 @@ test('desktop aggregation bundle prefers the active bootstrap attempt and keeps 
       attemptId: 'attempt-current',
       status: 'info',
       summary: 'Setup was opened.',
-      historyPath: 'C:/Users/test/AppData/Roaming/Cats/config/suite-onboarding-history.json',
+      historyPath: 'C:/Users/test/AppData/Roaming/Cats/config/platform-onboarding-history.json',
       latestReference: null,
       events: [
         createDesktopBootstrapEvent({
@@ -49,7 +49,7 @@ test('desktop aggregation bundle prefers the active bootstrap attempt and keeps 
           kind: 'setup_opened',
           timestamp: '2026-03-31T02:00:00.500Z',
           attemptId: 'attempt-current',
-          summary: 'Packaged suite setup was opened.',
+          summary: 'Packaged platform setup was opened.',
           status: 'info',
         }),
         createDesktopBootstrapEvent({
@@ -79,5 +79,5 @@ test('desktop aggregation bundle prefers the active bootstrap attempt and keeps 
     bundle.chronology.map((event) => event.layer),
     ['host', 'product', 'runtime'],
   );
-  assert.equal(bundle.layers.product.summary, 'Packaged suite setup was opened.');
+  assert.equal(bundle.layers.product.summary, 'Packaged platform setup was opened.');
 });

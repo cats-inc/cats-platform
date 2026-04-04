@@ -197,7 +197,7 @@ early product and shared-core seams. The main gaps are:
   [`paperclip/packages/adapters/codex-local/src/server/execute.ts`](../../../paperclip/packages/adapters/codex-local/src/server/execute.ts)
 - MCP and plugin surface:
   [`../decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md`](../decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md),
-  [`../plans/PLAN-006-cats-core-v1-and-suite-foundation.md`](../plans/PLAN-006-cats-core-v1-and-suite-foundation.md),
+  [`../plans/PLAN-006-cats-core-v1-and-platform-foundation.md`](../plans/PLAN-006-cats-core-v1-and-platform-foundation.md),
   [`../../../paperclip/doc/plugins/PLUGIN_SPEC.md`](../../../paperclip/doc/plugins/PLUGIN_SPEC.md),
   [`../../../paperclip/packages/plugins/sdk/src/worker-rpc-host.ts`](../../../paperclip/packages/plugins/sdk/src/worker-rpc-host.ts)
 - Product control plane:

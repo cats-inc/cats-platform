@@ -86,7 +86,7 @@ delegating runtime-owned execution details outward.
 
 ## Dependencies
 
-- [SPEC-006](./SPEC-006-cats-core-v1-and-suite-foundation.md)
+- [SPEC-006](./SPEC-006-cats-core-v1-and-platform-foundation.md)
 - [SPEC-011](./SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md)
 - [ADR-014](../decisions/014-freeze-parallel-delivery-boundaries-for-provider-telegram-and-chat-workstreams.md)
 - [cats-runtime SPEC-005](../../../cats-runtime/docs/specs/SPEC-005-runtime-managed-skills-v0.md)

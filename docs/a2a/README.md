@@ -14,7 +14,7 @@ validated for A2A layering and same-environment collaboration.
   - protocol artifacts live in `docs/a2a/`
   - durable repo state lives in markdown project-memory docs
   - procedural collaboration behavior lives in `skills/`
-- They document a future A2A-facing suite-host or orchestrator-adapter shape.
+- They document a future A2A-facing platform-host or orchestrator-adapter shape.
   They do not claim that the current repo already serves a live A2A endpoint.
 
 ## Current Repo Truth
@@ -36,7 +36,7 @@ contract.
 ## Contents
 
 - `agent-card.public.json.example` / `agent-card.public.yaml.example`
-  Public discovery-card examples for a future `cats` suite-host or
+  Public discovery-card examples for a future `cats` platform-host or
   orchestrator-facing A2A adapter.
 - `agent-card.authenticated.json.example` /
   `agent-card.authenticated.yaml.example`

@@ -13,6 +13,7 @@ import type {
   DesktopHostDiagnosticsState,
   DesktopHostActionId,
   DesktopManagedServiceLog,
+  DesktopPackagingPlatform,
   DesktopProductBootstrapDiagnostics,
   DesktopPackagingPlan,
   DesktopSetupHelperMode,
@@ -588,11 +589,59 @@ function isDesktopSetupHelperMode(value: unknown): value is DesktopSetupHelperMo
   return value === 'check' || value === 'apply' || value === 'upgrade' || value === 'force';
 }
 
-function resolveCurrentPackagingPlan(config: DesktopHostConfig): DesktopPackagingPlan {
-  return packagingState ?? createDesktopPackagingPlan(config, {
-    generatedAt: new Date(),
+function resolveHostPackagingPlatforms(
+  platform: NodeJS.Platform = process.platform,
+): DesktopPackagingPlatform[] | undefined {
+  switch (platform) {
+    case 'win32':
+      return ['windows'];
+    case 'darwin':
+      return ['macos'];
+    case 'linux':
+      return ['linux'];
+    default:
+      return undefined;
+  }
+}
+
+function buildHostPackagingPlan(
+  config: DesktopHostConfig,
+  generatedAt: Date = new Date(),
+): DesktopPackagingPlan {
+  return createDesktopPackagingPlan(config, {
+    generatedAt,
     outputRoot: config.paths.packagingOutputRoot,
+    platforms: resolveHostPackagingPlatforms(),
   });
+}
+
+function resolveDefaultSetupAuditAction(
+  platform: NodeJS.Platform = process.platform,
+): {
+  helperId: string;
+  extraArguments?: string[];
+} | null {
+  switch (platform) {
+    case 'win32':
+      return {
+        helperId: 'windows-install-readiness-audit',
+        extraArguments: ['-IncludeLocalModels:$true'],
+      };
+    case 'darwin':
+      return {
+        helperId: 'macos-install-readiness-audit',
+      };
+    case 'linux':
+      return {
+        helperId: 'linux-install-readiness-audit',
+      };
+    default:
+      return null;
+  }
+}
+
+function resolveCurrentPackagingPlan(config: DesktopHostConfig): DesktopPackagingPlan {
+  return packagingState ?? buildHostPackagingPlan(config);
 }
 
 async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
@@ -662,7 +711,7 @@ async function refreshBootstrapSnapshot(
     skipStartupProviderReprobe
       ? Promise.resolve<RuntimeProviderDiagnosticsPayload | null>(null)
       : fetchJson<RuntimeProviderDiagnosticsPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/providers`),
-    fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/suite/bootstrap-diagnostics`),
+    fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
   ]);
 
   if (appHealth.status === 'fulfilled') {
@@ -890,7 +939,7 @@ async function maybePrimeSetupAudit(
   snapshot: DesktopBootstrapSnapshot,
   persistedSetup: PersistedSetupCompletionState | null = null,
 ): Promise<void> {
-  if (!hostConfig || process.platform !== 'win32') {
+  if (!hostConfig) {
     return;
   }
   if (!shouldAutoRunSetupAudit(setupState, {
@@ -899,11 +948,15 @@ async function maybePrimeSetupAudit(
   })) {
     return;
   }
+  const setupAuditAction = resolveDefaultSetupAuditAction();
+  if (!setupAuditAction) {
+    return;
+  }
 
   await runSetupAction({
-    helperId: 'windows-install-readiness-audit',
+    helperId: setupAuditAction.helperId,
     mode: 'check',
-    extraArguments: ['-IncludeLocalModels:$true'],
+    extraArguments: setupAuditAction.extraArguments,
   });
 }
 
@@ -995,10 +1048,7 @@ async function main(): Promise<void> {
   {
     const defaultBackground = createDesktopBackgroundState(hostConfig);
     const defaultUpdates = createDefaultDesktopUpdateState(hostConfig.update);
-    const defaultPackaging = createDesktopPackagingPlan(hostConfig, {
-      generatedAt: new Date(),
-      outputRoot: hostConfig.paths.packagingOutputRoot,
-    });
+    const defaultPackaging = buildHostPackagingPlan(hostConfig);
     const defaultSetup = createEmptyDesktopSetupState();
     const restoredState = await stateStore.load(hostConfig, {
       background: defaultBackground,
@@ -1008,7 +1058,7 @@ async function main(): Promise<void> {
     });
     backgroundState = restoredState?.background ?? defaultBackground;
     updateState = restoredState?.updates ?? defaultUpdates;
-    packagingState = restoredState?.packaging ?? defaultPackaging;
+    packagingState = defaultPackaging;
     setupState = restoredState?.setup ?? defaultSetup;
     diagnosticsState = restoredState?.diagnostics ?? createEmptyDesktopDiagnosticsState([
       'cats-runtime',
