@@ -312,6 +312,28 @@ These helpers are shipped as part of the npm package so self-hosted operators
 can use them after `npm install` or `npx`. They are not yet consumed by the
 desktop bootstrap/setup wizard.
 
+### Windows Operational Aggregates
+
+Windows now also ships the repo-owned aggregate helpers that used to live only
+in `environment-bootstrap` for non-wizard operational use:
+
+```powershell
+.\scripts\windows\Install-WSLCLITools.ps1 -CheckOnly -Json
+.\scripts\windows\Install-WSLCLITools.ps1 -Apply -Distro Ubuntu
+.\scripts\windows\Install-DockerCLITools.ps1 -CheckOnly -Container cats-cli-test -Json
+.\scripts\windows\Install-DockerCLITools.ps1 -Upgrade -Container cats-cli-test
+.\scripts\windows\Upgrade-CLITools.ps1 -Distro Ubuntu -DockerContainer cats-cli-test
+```
+
+Coverage in this slice:
+
+- WSL-target install and upgrade for all 12 CLI providers
+- Docker-container install and upgrade for all 12 CLI providers
+- Windows host bulk-upgrade orchestration across native, WSL, and Docker paths
+
+These helpers are intentionally repo-owned script surfaces only. They are not
+yet wired into the packaged setup wizard/bootstrap flow.
+
 ### Desktop Packaging Stage
 
 To generate staged packaging outputs without changing the visible renderer UI:

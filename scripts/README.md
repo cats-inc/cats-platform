@@ -234,3 +234,32 @@ Representative usage:
 
 These are self-hosted operational helpers only. They are intentionally not yet
 wired into the packaged bootstrap/setup wizard flow.
+
+## Windows Aggregate Helpers
+
+`cats-platform` now also ships repo-owned Windows orchestration helpers for the
+remaining non-wizard provider-install surfaces that previously lived only in
+`environment-bootstrap`:
+
+- `scripts/windows/Install-WSLCLITools.ps1`
+- `scripts/windows/Install-DockerCLITools.ps1`
+- `scripts/windows/Upgrade-CLITools.ps1`
+
+These helpers cover:
+
+- the 12-provider WSL install/upgrade/check surface
+- the 12-provider Docker-container install/upgrade/check surface
+- one-shot Windows host + WSL + Docker bulk-upgrade orchestration
+
+Representative usage:
+
+```powershell
+.\scripts\windows\Install-WSLCLITools.ps1 -CheckOnly -Json
+.\scripts\windows\Install-WSLCLITools.ps1 -Apply -Distro Ubuntu
+.\scripts\windows\Install-DockerCLITools.ps1 -CheckOnly -Container cats-cli-test -Json
+.\scripts\windows\Install-DockerCLITools.ps1 -Upgrade -Container cats-cli-test
+.\scripts\windows\Upgrade-CLITools.ps1 -Distro Ubuntu -DockerContainer cats-cli-test
+```
+
+These are operational helper surfaces only. They are intentionally separate
+from the packaged setup wizard/bootstrap flow for now.
