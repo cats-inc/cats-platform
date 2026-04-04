@@ -10,7 +10,11 @@ import type {
   DesktopPackagingTarget,
   DesktopUpdateChannel,
 } from './contracts.js';
-import { DESKTOP_SETUP_ASSETS, stageDesktopSetupAssets } from './setupAssets.js';
+import {
+  DESKTOP_SETUP_ASSETS,
+  DESKTOP_SETUP_SUPPORT_ASSETS,
+  stageDesktopSetupAssets,
+} from './setupAssets.js';
 
 interface DesktopPackagingPlanOptions {
   generatedAt?: Date;
@@ -26,6 +30,21 @@ interface RuntimeSidecarAsset {
   sourceRelativePath: string;
   targetRelativePath: string;
   directory: boolean;
+}
+
+type DesktopHelperCatalogEntry = DesktopInstallerContract['providerSetup']['helperCatalog'][number];
+type DesktopLocalProviderEntry = DesktopInstallerContract['providerSetup']['localProviders'][number];
+type DesktopPrioritizedAssetEntry =
+  DesktopInstallerContract['providerSetup']['prioritizedAssets'][number];
+
+interface DesktopLocalProviderBaseline {
+  id: DesktopLocalProviderEntry['id'];
+  label: DesktopLocalProviderEntry['label'];
+  pack: DesktopLocalProviderEntry['pack'];
+  helperIds: string[];
+  currentHome: string;
+  targetHome: string;
+  notes: string[];
 }
 
 const PACKAGING_TARGETS: Array<{
@@ -137,7 +156,259 @@ async function ensureBundledRuntimeAssets(runtimePackageRoot: string): Promise<s
   return dependencyPackagePaths;
 }
 
-function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstallerContract {
+function filterSetupAssetsForPlatforms<T extends { targetPlatforms: DesktopPackagingPlatform[] }>(
+  assets: T[],
+  allowedPlatforms: Set<DesktopPackagingPlatform> | null,
+): T[] {
+  if (allowedPlatforms === null) {
+    return assets;
+  }
+
+  return assets.filter((asset) =>
+    asset.targetPlatforms.some((platform) => allowedPlatforms.has(platform)));
+}
+
+function collapseProviderPlatform(
+  helperCatalog: DesktopHelperCatalogEntry[],
+  helperIds: string[],
+): DesktopLocalProviderEntry['platform'] {
+  const platforms = new Set(
+    helperIds.flatMap((helperId) => {
+      const helper = helperCatalog.find((candidate) => candidate.id === helperId);
+      return helper ? [helper.platform] : [];
+    }),
+  );
+
+  if (platforms.size === 1) {
+    return [...platforms][0] ?? 'cross_platform';
+  }
+
+  return 'cross_platform';
+}
+
+function prioritizedTargetHome(
+  helper: DesktopHelperCatalogEntry,
+): DesktopPrioritizedAssetEntry['targetHome'] {
+  switch (helper.kind) {
+    case 'prerequisite_helper':
+      return helper.pack === 'local_model_pack'
+        ? 'cats-platform packaged-host capability pack assets'
+        : 'cats-platform packaged-host prerequisite assets';
+    case 'cli_pack_installer':
+      return 'cats-platform packaged-host setup assets';
+    case 'provider_installer':
+      return helper.pack === 'local_model_pack'
+        ? 'cats-platform packaged-host capability pack assets'
+        : 'cats-platform packaged-host provider assets';
+    case 'readiness_helper':
+      return 'cats-platform packaged-host diagnostics helpers';
+    case 'provider_metadata':
+      return 'cats-platform packaged host runtime bridge';
+  }
+}
+
+function prioritizedAssetId(helper: DesktopHelperCatalogEntry): string {
+  if (helper.id === 'windows-docker-desktop-installer') {
+    return 'windows-docker-local-model-helper';
+  }
+  return helper.id;
+}
+
+function buildHelperCatalog(
+  allowedPlatforms: Set<DesktopPackagingPlatform> | null,
+): DesktopHelperCatalogEntry[] {
+  return filterSetupAssetsForPlatforms(DESKTOP_SETUP_ASSETS, allowedPlatforms).map((asset) => ({
+    id: asset.helperId,
+    assetId: asset.id,
+    label: asset.label,
+    kind: asset.kind,
+    pack: asset.pack,
+    platform: asset.platform,
+    packagedRelativePath: asset.packagedRelativePath,
+    supportsCheckOnly: asset.supportsCheckOnly,
+    supportsApply: asset.supportsApply,
+    supportsUpgrade: asset.supportsUpgrade,
+    supportsForce: asset.supportsForce,
+    requiresElevation: asset.requiresElevation,
+    resumable: asset.resumable,
+    notes: asset.notes,
+  }));
+}
+
+const LOCAL_PROVIDER_BASELINES: DesktopLocalProviderBaseline[] = [
+  {
+    id: 'claude_code',
+    label: 'Claude Code',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-claude-native-installer',
+      'linux-claude-native-installer',
+      'macos-claude-native-installer',
+    ],
+    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-ClaudeCode.{ps1,sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      'Repo-owned packaged helper coverage now spans Windows, macOS, and Linux hosts.',
+    ],
+  },
+  {
+    id: 'cursor_agent',
+    label: 'Cursor Agent',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-cursor-native-installer',
+      'linux-cursor-native-installer',
+      'macos-cursor-native-installer',
+    ],
+    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-CursorAgent.{ps1,sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      'Repo-owned packaged helper coverage now spans Windows, macOS, and Linux hosts.',
+    ],
+  },
+  {
+    id: 'opencode',
+    label: 'OpenCode',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-node-cli-pack',
+      'linux-node-cli-pack',
+      'macos-node-cli-pack',
+    ],
+    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-NodeCliPack.{ps1,sh}',
+    targetHome: 'cats-platform packaged-host setup assets',
+    notes: [
+      'Bundled through the repo-owned packaged npm-global CLI pack helper on each supported host platform.',
+    ],
+  },
+  {
+    id: 'kilo',
+    label: 'Kilo',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-node-cli-pack',
+      'linux-node-cli-pack',
+      'macos-node-cli-pack',
+    ],
+    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-NodeCliPack.{ps1,sh}',
+    targetHome: 'cats-platform packaged-host setup assets',
+    notes: [
+      'Bundled through the repo-owned packaged npm-global CLI pack helper on each supported host platform.',
+      'Keeps Kilo immediately after OpenCode in the packaged local-provider rollout.',
+    ],
+  },
+  {
+    id: 'kiro',
+    label: 'Kiro CLI',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-kiro-wsl-installer',
+      'linux-kiro-native-installer',
+      'macos-kiro-native-installer',
+    ],
+    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-Kiro{WslCli.ps1,-Cli.sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      'Windows keeps the WSL-backed Kiro flow, while macOS/Linux use the repo-owned native packaged helper path.',
+    ],
+  },
+  {
+    id: 'goose',
+    label: 'Goose CLI',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-goose-native-installer',
+      'linux-goose-native-installer',
+      'macos-goose-native-installer',
+    ],
+    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-Goose.{ps1,sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      'Repo-owned packaged helper coverage now spans Windows, macOS, and Linux hosts.',
+    ],
+  },
+  {
+    id: 'junie',
+    label: 'Junie CLI',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-junie-native-installer',
+      'linux-junie-native-installer',
+      'macos-junie-native-installer',
+    ],
+    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-Junie.{ps1,sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      'Repo-owned packaged helper coverage now spans Windows, macOS, and Linux hosts.',
+    ],
+  },
+  {
+    id: 'ollama',
+    label: 'Ollama',
+    pack: 'local_model_pack',
+    helperIds: ['windows-ollama-local-model-installer'],
+    currentHome: 'cats-platform/scripts/windows/Install-Ollama.ps1',
+    targetHome: 'cats-platform packaged-host capability pack assets',
+    notes: [
+      'The first packaged local-model runtime remains Windows-only until the Unix local-model helper slice lands.',
+    ],
+  },
+];
+
+function buildLocalProviders(helperCatalog: DesktopHelperCatalogEntry[]): DesktopLocalProviderEntry[] {
+  const helperIds = new Set(helperCatalog.map((helper) => helper.id));
+
+  return LOCAL_PROVIDER_BASELINES.flatMap((provider) => {
+    const bundledHelperIds = provider.helperIds.filter((helperId) => helperIds.has(helperId));
+    if (bundledHelperIds.length === 0) {
+      return [];
+    }
+
+    return [{
+      ...provider,
+      platform: collapseProviderPlatform(helperCatalog, bundledHelperIds),
+      deliveryPhase: 'initial_packaged_path' as const,
+      bundledInCurrentInstaller: true,
+      helperIds: bundledHelperIds,
+    }];
+  });
+}
+
+function buildPrioritizedAssets(helperCatalog: DesktopHelperCatalogEntry[]): DesktopPrioritizedAssetEntry[] {
+  return [
+    {
+      id: 'runtime-provider-metadata',
+      label: 'Runtime provider metadata consumption',
+      kind: 'provider_metadata',
+      status: 'ported',
+      pack: null,
+      platform: 'cross_platform',
+      currentHome: 'cats-runtime/src/core/provider-install',
+      targetHome: 'cats-platform packaged host runtime bridge',
+      notes: [
+        'Consume runtime-owned provider install/check metadata rather than duplicating it in cats-platform.',
+      ],
+    },
+    ...helperCatalog.map((helper) => ({
+      id: prioritizedAssetId(helper),
+      label: helper.label,
+      kind: helper.kind,
+      status: 'ported' as const,
+      pack: helper.pack,
+      platform: helper.platform,
+      currentHome: `cats-platform/${DESKTOP_SETUP_ASSETS.find((asset) => asset.helperId === helper.id)?.sourceRelativePath ?? ''}`,
+      targetHome: prioritizedTargetHome(helper),
+      notes: helper.notes,
+    })),
+  ];
+}
+
+function buildInstallerContract(
+  channel: DesktopUpdateChannel,
+  allowedPlatforms: Set<DesktopPackagingPlatform> | null,
+): DesktopInstallerContract {
+  const helperCatalog = buildHelperCatalog(allowedPlatforms);
+
   return {
     prerequisiteChecks: [
       {
@@ -198,8 +469,8 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           recommended: false,
           requiresLocalInstall: true,
           notes: [
-            'Windows-first knowledge-porting target from environment-bootstrap.',
-            'Combines npm-global node CLI tools, native Windows installers, and the current first WSL-backed Kiro path.',
+            'Repo-owned packaged helper coverage now spans Windows, macOS, and Linux hosts.',
+            'Combines npm-global Node CLI tools, native Unix installers, native Windows installers, and the current WSL-backed Kiro path on Windows.',
           ],
         },
         {
@@ -222,125 +493,7 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
           ],
         },
       ],
-      localProviders: [
-        {
-          id: 'claude_code',
-          label: 'Claude Code',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          deliveryPhase: 'initial_packaged_path',
-          bundledInCurrentInstaller: true,
-          helperIds: ['windows-claude-native-installer'],
-          currentHome: 'cats-platform/scripts/windows/Install-ClaudeCode.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned native Windows installer helper is already bundled into the current desktop packaging flow.',
-          ],
-        },
-        {
-          id: 'cursor_agent',
-          label: 'Cursor Agent',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          deliveryPhase: 'initial_packaged_path',
-          bundledInCurrentInstaller: true,
-          helperIds: ['windows-cursor-native-installer'],
-          currentHome: 'cats-platform/scripts/windows/Install-CursorAgent.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned native Windows installer helper keeps Cursor on the first packaged path.',
-          ],
-        },
-        {
-          id: 'opencode',
-          label: 'OpenCode',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          deliveryPhase: 'initial_packaged_path',
-          bundledInCurrentInstaller: true,
-          helperIds: ['windows-node-cli-pack'],
-          currentHome: 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
-          targetHome: 'cats-platform packaged-host setup assets',
-          notes: [
-            'Bundled through the repo-owned Windows npm-global AI CLI pack helper.',
-            'Keeps OpenCode on the packaged native CLI path without a separate provider-specific installer.',
-          ],
-        },
-        {
-          id: 'kilo',
-          label: 'Kilo',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          deliveryPhase: 'initial_packaged_path',
-          bundledInCurrentInstaller: true,
-          helperIds: ['windows-node-cli-pack'],
-          currentHome: 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
-          targetHome: 'cats-platform packaged-host setup assets',
-          notes: [
-            'Bundled through the repo-owned Windows npm-global AI CLI pack helper.',
-            'Keeps Kilo immediately after OpenCode in the packaged local-provider rollout.',
-          ],
-        },
-        {
-          id: 'kiro',
-          label: 'Kiro CLI',
-          pack: 'native_cli_pack',
-          platform: 'windows_wsl',
-          deliveryPhase: 'initial_packaged_path',
-          bundledInCurrentInstaller: true,
-          helperIds: ['windows-kiro-wsl-installer'],
-          currentHome: 'cats-platform/scripts/windows/Install-KiroWslCli.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'The current packaged path includes one repo-owned WSL-backed provider installer, and that installer is Kiro.',
-          ],
-        },
-        {
-          id: 'goose',
-          label: 'Goose CLI',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          deliveryPhase: 'initial_packaged_path',
-          bundledInCurrentInstaller: true,
-          helperIds: ['windows-goose-native-installer'],
-          currentHome: 'cats-platform/scripts/windows/Install-Goose.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned native Windows installer helper now keeps Goose on the current packaged setup path.',
-            'Uses the Windows-native installer and leaves only post-install auth as explicit host-owned follow-through.',
-          ],
-        },
-        {
-          id: 'junie',
-          label: 'Junie CLI',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          deliveryPhase: 'initial_packaged_path',
-          bundledInCurrentInstaller: true,
-          helperIds: ['windows-junie-native-installer'],
-          currentHome: 'cats-platform/scripts/windows/Install-Junie.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned native Windows installer helper now keeps Junie on the current packaged setup path.',
-            'Preserves the post-install JetBrains sign-in follow-through as an explicit packaged setup interruption.',
-          ],
-        },
-        {
-          id: 'ollama',
-          label: 'Ollama',
-          pack: 'local_model_pack',
-          platform: 'windows',
-          deliveryPhase: 'initial_packaged_path',
-          bundledInCurrentInstaller: true,
-          helperIds: ['windows-ollama-local-model-installer'],
-          currentHome: 'cats-platform/scripts/windows/Install-Ollama.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned Windows Ollama helper now keeps the first local-model runtime on the current packaged path.',
-            'Uses the official user-scoped installer and keeps local API warm-state follow-through host-owned.',
-          ],
-        },
-      ],
+      localProviders: buildLocalProviders(helperCatalog),
       knowledgeSources: [
         {
           id: 'cats-runtime',
@@ -376,204 +529,8 @@ function buildInstallerContract(channel: DesktopUpdateChannel): DesktopInstaller
         nonInteractiveDefault: true,
         structuredResultsRequired: true,
       },
-      helperCatalog: DESKTOP_SETUP_ASSETS.map((asset) => ({
-        id: asset.helperId,
-        assetId: asset.id,
-        label: asset.label,
-        kind: asset.kind,
-        pack: asset.pack,
-        platform: asset.platform,
-        packagedRelativePath: asset.packagedRelativePath,
-        supportsCheckOnly: asset.supportsCheckOnly,
-        supportsApply: asset.supportsApply,
-        supportsUpgrade: asset.supportsUpgrade,
-        supportsForce: asset.supportsForce,
-        requiresElevation: asset.requiresElevation,
-        resumable: asset.resumable,
-        notes: asset.notes,
-      })),
-      prioritizedAssets: [
-        {
-          id: 'runtime-provider-metadata',
-          label: 'Runtime provider metadata consumption',
-          kind: 'provider_metadata',
-          status: 'ported',
-          pack: null,
-          platform: 'cross_platform',
-          currentHome: 'cats-runtime/src/core/provider-install',
-          targetHome: 'cats-platform packaged host runtime bridge',
-          notes: [
-            'Consume runtime-owned provider install/check metadata rather than duplicating it in cats-platform.',
-          ],
-        },
-        {
-          id: 'windows-npm-prefix-helper',
-          label: 'Windows npm prefix and PATH prerequisite helper',
-          kind: 'prerequisite_helper',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Setup-NodeGlobalPrefix.ps1',
-          targetHome: 'cats-platform packaged-host setup assets',
-          notes: [
-            'Repo-owned rewrite of the user-scoped npm prefix and PATH prerequisite helper.',
-            'Required before npm-global CLI installs are reliable for the packaged host.',
-          ],
-        },
-        {
-          id: 'windows-node-cli-pack',
-          label: 'Windows npm-global AI CLI pack installer',
-          kind: 'cli_pack_installer',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Install-NodeCliPack.ps1',
-          targetHome: 'cats-platform packaged-host setup assets',
-          notes: [
-            'Repo-owned rewrite of the Windows npm-global AI CLI pack installer.',
-            'Covers Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, and Pi in one Windows-first slice.',
-          ],
-        },
-        {
-          id: 'windows-claude-native-installer',
-          label: 'Windows native Claude Code installer',
-          kind: 'provider_installer',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Install-ClaudeCode.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned rewrite of the native Windows Claude Code installer flow.',
-            'Removes legacy npm-installed Claude shims so the native installer remains the packaged setup baseline.',
-          ],
-        },
-        {
-          id: 'windows-cursor-native-installer',
-          label: 'Windows native Cursor Agent installer',
-          kind: 'provider_installer',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Install-CursorAgent.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned rewrite of the native Windows Cursor Agent installer flow.',
-            'Keeps Cursor on the Windows-native install path instead of routing first through WSL.',
-          ],
-        },
-        {
-          id: 'windows-goose-native-installer',
-          label: 'Windows native Goose installer',
-          kind: 'provider_installer',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Install-Goose.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned rewrite of the native Windows Goose installer flow.',
-            'Keeps Goose on the current packaged setup path without depending on environment-bootstrap or a separate WSL variant.',
-          ],
-        },
-        {
-          id: 'windows-junie-native-installer',
-          label: 'Windows native Junie installer',
-          kind: 'provider_installer',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Install-Junie.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned rewrite of the native Windows Junie installer flow.',
-            'Keeps JetBrains sign-in follow-through explicit while removing deferred-provider ambiguity from the packaged path.',
-          ],
-        },
-        {
-          id: 'windows-wsl-prerequisite-preflight',
-          label: 'Windows WSL prerequisite preflight',
-          kind: 'prerequisite_helper',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Check-WslPrerequisites.ps1',
-          targetHome: 'cats-platform packaged-host prerequisite assets',
-          notes: [
-            'Repo-owned structured preflight slice for WSL readiness before feature enablement and distro installation.',
-          ],
-        },
-        {
-          id: 'windows-wsl-environment-installer',
-          label: 'Windows WSL substrate and Ubuntu installer',
-          kind: 'prerequisite_helper',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Install-WslUbuntuEnvironment.ps1',
-          targetHome: 'cats-platform packaged-host prerequisite assets',
-          notes: [
-            'Repo-owned rewrite of the WSL substrate enablement and Ubuntu distro registration flow.',
-            'Returns restart-required after substrate mutation so the packaged host can resume distro install cleanly after reboot.',
-            'Keeps in-distro Ubuntu package upgrades as a later manual follow-through rather than pretending that part is production-automated already.',
-          ],
-        },
-        {
-          id: 'windows-kiro-wsl-installer',
-          label: 'Windows WSL Kiro installer',
-          kind: 'provider_installer',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows_wsl',
-          currentHome: 'cats-platform/scripts/windows/Install-KiroWslCli.ps1',
-          targetHome: 'cats-platform packaged-host provider assets',
-          notes: [
-            'Repo-owned rewrite of the Kiro WSL installer flow, including PATH cleanup, kc alias repair, and post-install sign-in guidance.',
-          ],
-        },
-        {
-          id: 'windows-install-readiness-audit',
-          label: 'Windows host prerequisite and auth-state audit helper',
-          kind: 'readiness_helper',
-          status: 'ported',
-          pack: 'native_cli_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Check-WindowsSetupReadiness.ps1',
-          targetHome: 'cats-platform packaged-host diagnostics helpers',
-          notes: [
-            'Repo-owned structured audit that composes the Windows prefix, native CLI pack, and WSL preflight helpers.',
-            'Complements runtime diagnostics for host-only prerequisite and warm-state checks.',
-          ],
-        },
-        {
-          id: 'windows-docker-local-model-helper',
-          label: 'Windows Docker/local-model prerequisite helper',
-          kind: 'prerequisite_helper',
-          status: 'ported',
-          pack: 'local_model_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Install-DockerDesktop.ps1',
-          targetHome: 'cats-platform packaged-host capability pack assets',
-          notes: [
-            'Repo-owned rewrite of the Windows Docker Desktop install and warm-state helper.',
-            'Keeps Docker install mutation and engine warm-up on a structured host-owned contract instead of leaving them in source knowledge only.',
-          ],
-        },
-        {
-          id: 'windows-ollama-local-model-installer',
-          label: 'Windows Ollama local-model installer',
-          kind: 'provider_installer',
-          status: 'ported',
-          pack: 'local_model_pack',
-          platform: 'windows',
-          currentHome: 'cats-platform/scripts/windows/Install-Ollama.ps1',
-          targetHome: 'cats-platform packaged-host capability pack assets',
-          notes: [
-            'Repo-owned Windows Ollama helper makes the first local-model runtime part of the packaged baseline.',
-            'Keeps install, upgrade, and post-install API warm-state follow-through on a structured host-owned contract.',
-          ],
-        },
-      ],
+      helperCatalog,
+      prioritizedAssets: buildPrioritizedAssets(helperCatalog),
     },
     remediationActions: [
       {
@@ -615,6 +572,9 @@ function buildPackagingTarget(
   target: (typeof PACKAGING_TARGETS)[number],
 ): DesktopPackagingTarget {
   const stageDirectory = join(outputRoot, 'targets', target.id);
+  const setupAssets = DESKTOP_SETUP_ASSETS.filter((asset) => asset.targetPlatforms.includes(target.platform));
+  const setupSupportAssets = DESKTOP_SETUP_SUPPORT_ASSETS.filter((asset) =>
+    asset.targetPlatforms.includes(target.platform));
   const sharedAssets: Array<Omit<DesktopPackagingArtifact, 'required'>> = [
     { id: 'electron-main', relativePath: 'shared/dist-electron/main.js', role: 'electron_host' as const },
     { id: 'electron-preload', relativePath: 'shared/dist-electron/preload.cjs', role: 'electron_host' as const },
@@ -628,13 +588,20 @@ function buildPackagingTarget(
     { id: 'runtime-dependencies', relativePath: 'shared/cats-runtime/node_modules/yaml/package.json', role: 'runtime_sidecar' as const },
     { id: 'installer-manifest', relativePath: `targets/${target.id}/installer-manifest.json`, role: 'manifest' as const },
   ];
-  if (target.platform === 'windows') {
+  if (setupAssets.length > 0 || setupSupportAssets.length > 0) {
     sharedAssets.push({
-      id: 'windows-setup-assets-manifest',
+      id: `${target.platform}-setup-assets-manifest`,
       relativePath: 'shared/setup-assets/manifest.json',
       role: 'setup_asset' as const,
     });
-    for (const asset of DESKTOP_SETUP_ASSETS) {
+    for (const asset of setupAssets) {
+      sharedAssets.push({
+        id: asset.id,
+        relativePath: asset.stageRelativePath,
+        role: 'setup_asset' as const,
+      });
+    }
+    for (const asset of setupSupportAssets) {
       sharedAssets.push({
         id: asset.id,
         relativePath: asset.stageRelativePath,
@@ -675,7 +642,7 @@ export function createDesktopPackagingPlan(
     targets: PACKAGING_TARGETS
       .filter((target) => allowedPlatforms === null || allowedPlatforms.has(target.platform))
       .map((target) => buildPackagingTarget(config, outputRoot, target)),
-    installer: buildInstallerContract(config.update.channel),
+    installer: buildInstallerContract(config.update.channel, allowedPlatforms),
     updates: {
       channel: config.update.channel,
       autoCheckOnStartup: config.update.checkOnStartup,
@@ -717,6 +684,7 @@ async function writeInstallerManifest(
   target: DesktopPackagingTarget,
 ): Promise<void> {
   const manifestPath = join(target.stageDirectory, 'installer-manifest.json');
+  const installer = buildInstallerContract(plan.updates.channel, new Set([target.platform]));
   await mkdir(target.stageDirectory, { recursive: true });
   await writeFile(manifestPath, JSON.stringify({
     target: {
@@ -727,7 +695,7 @@ async function writeInstallerManifest(
       artifactBaseName: target.artifactBaseName,
     },
     strategy: plan.strategy,
-    installer: plan.installer,
+    installer,
     updates: plan.updates,
     artifacts: target.artifacts,
   }, null, 2));
@@ -744,6 +712,7 @@ export async function stageDesktopPackagingOutputs(
     outputRoot,
     platforms: options.platforms,
   });
+  const allowedPlatforms = new Set(plan.targets.map((target) => target.platform));
 
   await ensureBuiltAssets(config);
   await rm(outputRoot, { recursive: true, force: true });
@@ -753,7 +722,16 @@ export async function stageDesktopPackagingOutputs(
   await copyDirectory(join(config.packageRoot, 'dist'), join(outputRoot, 'shared', 'dist'));
   await copyDirectory(join(config.packageRoot, 'dist-electron'), join(outputRoot, 'shared', 'dist-electron'));
   await copyFile(join(config.packageRoot, 'package.json'), join(outputRoot, 'shared', 'app-sidecar', 'package.json'));
-  const setupAssets = await stageDesktopSetupAssets(config.packageRoot, outputRoot, generatedAt);
+  const setupAssets = await stageDesktopSetupAssets(
+    config.packageRoot,
+    outputRoot,
+    generatedAt,
+    [...allowedPlatforms],
+  );
+  const setupSupportAssets = filterSetupAssetsForPlatforms(
+    DESKTOP_SETUP_SUPPORT_ASSETS,
+    allowedPlatforms,
+  );
 
   let runtimeDependencyPackagePaths: string[] = [];
   try {
@@ -829,6 +807,10 @@ export async function stageDesktopPackagingOutputs(
         target: join('shared', 'cats-runtime', dependencyPath),
       })),
       ...setupAssets.map((asset) => ({
+        source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
+        target: asset.stageRelativePath,
+      })),
+      ...setupSupportAssets.map((asset) => ({
         source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
         target: asset.stageRelativePath,
       })),

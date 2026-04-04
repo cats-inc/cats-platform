@@ -82,16 +82,11 @@ npm run desktop:stage
 - current packaging substrate output root:
   - `build/desktop-packaging/desktop-package-plan.json`
   - `build/desktop-packaging/shared/*`
-  - `build/desktop-packaging/shared/setup-assets/windows/Setup-NodeGlobalPrefix.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-NodeCliPack.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-ClaudeCode.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-CursorAgent.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-Goose.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-Junie.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-WslUbuntuEnvironment.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Install-KiroWslCli.ps1`
-  - `build/desktop-packaging/shared/setup-assets/windows/Check-WindowsSetupReadiness.ps1`
+  - `build/desktop-packaging/shared/setup-assets/windows/*`
+  - `build/desktop-packaging/shared/setup-assets/linux/*`
+  - `build/desktop-packaging/shared/setup-assets/macos/*`
+  - `build/desktop-packaging/shared/setup-assets/shared/unix-provider-cli-common.sh`
+  - `build/desktop-packaging/shared/setup-assets/shared/unix-node-cli-common.sh`
   - `build/desktop-packaging/shared/setup-assets/manifest.json`
   - `build/desktop-packaging/targets/<target>/installer-manifest.json`
 - current platform wrappers:
@@ -154,18 +149,18 @@ npm run desktop:package:windows
 - installer/remediation contract in this slice:
   - verify bundled app assets
   - verify bundled `cats-runtime` sidecar slot
-  - run the host-owned first-run provider scan during desktop bootstrap
+  - run the host-owned first-run provider scan during desktop bootstrap on
+    Windows/macOS/Linux via the platform-specific readiness audit
   - expose a machine-readable `installer.providerSetup.helperCatalog` for the
-    bundled Windows setup assets
+    bundled platform-scoped setup assets
   - expose a machine-readable `installer.providerSetup.localProviders` rollout
     so the host can distinguish bundled local-provider paths from future
     add-on capability packs
   - map failures onto structured host state plus resumable remediation actions
-  - keep the current first packaged local-provider path bounded to Claude Code,
-    Cursor Agent, Goose, Junie, the WSL-backed Kiro helper, and Ollama
-  - keep the current packaged local-model prerequisite path bounded to the
-    Docker Desktop installer, engine warm-state helper, and the repo-owned
-    Ollama installer plus local API follow-through
+  - keep the current first packaged native CLI path bounded to Claude Code,
+    Cursor Agent, Goose, Junie, and Kiro across Windows/macOS/Linux
+  - keep the current Windows-specific extensions bounded to the WSL-backed Kiro
+    helper plus the Docker Desktop and Ollama local-model path
   - keep broader expert-only local-model helpers and future capability
     packs outside the current packaged baseline rather than silently missing
   - avoid any runtime shell-out to `environment-bootstrap` or

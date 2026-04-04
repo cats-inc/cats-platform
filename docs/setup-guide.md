@@ -208,15 +208,16 @@ recommended resume step when a helper reports a resumable interruption. When a
 packaged setup step blocks on a restart or other recovery action, the bootstrap
 issue panel also reports that state as an install-category issue instead of
 showing only provider remediation.
-On Windows, the desktop host now also auto-runs the repo-owned readiness audit
-during bootstrap whenever no more specific packaged setup recovery action is
-active, so the first-run provider scan is no longer just a manifest promise.
-That bootstrap-time audit now also carries optional local-model follow-through
-for the current `local_model_pack`, but the host keeps those findings
-non-blocking for the API baseline and first chat. That state is now persisted
-explicitly in the host setup record instead of being inferred only from helper
-planned-action strings, and the bootstrap UI now names the pack directly when
-it surfaces that follow-through.
+On packaged Windows/macOS/Linux hosts, the desktop host now also auto-runs the
+repo-owned platform-specific readiness audit during bootstrap whenever no more
+specific packaged setup recovery action is active, so the first-run provider
+scan is no longer just a manifest promise. On Windows, that bootstrap-time
+audit also carries optional local-model follow-through for the current
+`local_model_pack`, but the host keeps those findings non-blocking for the API
+baseline and first chat. That state is now persisted explicitly in the host
+setup record instead of being inferred only from helper planned-action
+strings, and the bootstrap UI now names the pack directly when it surfaces
+that follow-through.
 If the API baseline is already ready and chat can open, the bootstrap action
 bar still keeps a non-blocking setup shortcut for that optional local-model
 pack instead of hiding it behind chat-only actions.
@@ -230,13 +231,14 @@ Current interruption truth in the packaged host:
   follow-through are now explicit host-owned setup states
 - the setup recovery panel and bootstrap action bar can surface
   `Resume Packaged Setup` when the last helper run is resumable
-- `scripts/windows/Check-WindowsSetupReadiness.ps1` now also audits native
-  Claude/Cursor auth-required follow-through plus WSL first-boot readiness
-- the same readiness audit can now optionally surface
+- the Windows readiness audit now also audits native Claude/Cursor
+  auth-required follow-through plus WSL first-boot readiness
+- the same Windows readiness audit can now optionally surface
   `docker_warm_up_required` for Docker-requiring packaged paths when Docker
   Desktop is installed but its engine is not ready yet
-- the same readiness audit can now also optionally surface Ollama local-model
-  follow-through when the runtime is installed but its local API is not ready
+- the same Windows readiness audit can now also optionally surface Ollama
+  local-model follow-through when the runtime is installed but its local API is
+  not ready
 
 ### Self-Hosted npm Package Smoke
 
@@ -377,32 +379,36 @@ The current substrate writes:
 
 - `build/desktop-packaging/desktop-package-plan.json`
 - `build/desktop-packaging/shared/*`
-- `build/desktop-packaging/shared/setup-assets/windows/Setup-NodeGlobalPrefix.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Install-NodeCliPack.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Install-ClaudeCode.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Install-CursorAgent.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Install-Goose.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Install-Junie.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Check-WslPrerequisites.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Install-WslUbuntuEnvironment.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Install-KiroWslCli.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Install-DockerDesktop.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Install-Ollama.ps1`
-- `build/desktop-packaging/shared/setup-assets/windows/Check-WindowsSetupReadiness.ps1`
+- `build/desktop-packaging/shared/setup-assets/windows/*`
+  - npm prefix helper, native CLI pack installer, native provider installers,
+    WSL helpers, Docker/Ollama helpers, Windows readiness audit, and the shared
+    `_HiddenProcess.ps1` support script
+- `build/desktop-packaging/shared/setup-assets/linux/*`
+  - npm prefix helper, node CLI pack installer, Claude/Cursor/Goose/Junie/Kiro
+    native installers, and the Linux readiness audit
+- `build/desktop-packaging/shared/setup-assets/macos/*`
+  - npm prefix helper, node CLI pack installer, Claude/Cursor/Goose/Junie/Kiro
+    native installers, and the macOS readiness audit
+- `build/desktop-packaging/shared/setup-assets/shared/unix-provider-cli-common.sh`
+- `build/desktop-packaging/shared/setup-assets/shared/unix-node-cli-common.sh`
 - `build/desktop-packaging/shared/setup-assets/manifest.json`
 - `build/desktop-packaging/targets/<target>/installer-manifest.json`
 
 The staged `desktop-package-plan.json` now also carries
 `installer.providerSetup.helperCatalog`, which is the machine-readable catalog
 of bundled setup helpers, supported operations, packaged relative paths, and
-elevation expectations consumed by the desktop host bridge.
+elevation expectations consumed by the desktop host bridge. Target installer
+manifests now scope that catalog down to the assets for the current target
+platform.
 
 The same staged contract now also carries
 `installer.providerSetup.localProviders`, which freezes the current packaged
 local-provider rollout:
 
 - current packaged path: Claude Code, Cursor Agent, Goose, Junie, and the
-  WSL-backed Kiro helper, plus the bundled Ollama local-model runtime helper
+  repo-owned Kiro path across Windows/macOS/Linux
+- Windows keeps the WSL-backed Kiro helper and the bundled Ollama local-model
+  runtime helper
 
 This is intentionally a staging layer, not the final signed-installer
 publication step.

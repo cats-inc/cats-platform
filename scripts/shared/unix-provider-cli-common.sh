@@ -5,6 +5,48 @@ if [ -n "${CATS_PLATFORM_UNIX_PROVIDER_COMMON_SH:-}" ]; then
 fi
 readonly CATS_PLATFORM_UNIX_PROVIDER_COMMON_SH=1
 
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+json_bool() {
+  if [ "$1" = 'true' ]; then
+    printf 'true'
+  else
+    printf 'false'
+  fi
+}
+
+json_string_array() {
+  local first='true'
+  local value=''
+  printf '['
+  for value in "$@"; do
+    [ -n "$value" ] || continue
+    if [ "$first" = 'false' ]; then
+      printf ','
+    fi
+    first='false'
+    printf '"%s"' "$(json_escape "$value")"
+  done
+  printf ']'
+}
+
+platform_label() {
+  case "$1" in
+    linux) printf '%s\n' 'Linux' ;;
+    macos) printf '%s\n' 'macOS' ;;
+    windows) printf '%s\n' 'Windows' ;;
+    *) printf '%s\n' "$1" ;;
+  esac
+}
+
 provider_display_name() {
   case "$1" in
     claude) printf '%s\n' 'Claude Code CLI' ;;
@@ -331,23 +373,37 @@ run_native_provider_installer() {
   shift 2
 
   local check_only='false'
+  local apply='false'
   local upgrade='false'
   local force='false'
+  local emit_json='false'
   local shell_rc
   local command_path=''
   local display_name
   local attempt=1
+  local execution_mode='apply'
+  local initial_installed='false'
+  local detected_version=''
+  local planned_actions=()
+  local applied_changes=()
+  local warnings=()
 
   while [ $# -gt 0 ]; do
     case "$1" in
-      --check)
+      --check|-CheckOnly)
         check_only='true'
         ;;
-      -upgrade)
+      -Apply)
+        apply='true'
+        ;;
+      -upgrade|-Upgrade)
         upgrade='true'
         ;;
-      -force)
+      -force|-Force)
         force='true'
+        ;;
+      --json|-Json)
+        emit_json='true'
         ;;
       -h|--help)
         provider_help "$(basename "$0")" "$provider"
@@ -366,27 +422,103 @@ run_native_provider_installer() {
     upgrade='false'
   fi
 
+  if [ "$check_only" = 'true' ]; then
+    execution_mode='check'
+  elif [ "$force" = 'true' ]; then
+    execution_mode='force'
+  elif [ "$upgrade" = 'true' ]; then
+    execution_mode='upgrade'
+  else
+    execution_mode='apply'
+  fi
+
   display_name="$(provider_display_name "$provider")"
   shell_rc="$(detect_shell_rc)"
 
   if command_path="$(detect_provider_command "$platform" "$provider")"; then
+    initial_installed='true'
+    detected_version="$(provider_version_line "$command_path")"
     if [ "$check_only" = 'true' ]; then
-      printf '%s installed: %s\n' "$display_name" "$(provider_version_line "$command_path")"
+      if [ "$emit_json" = 'true' ]; then
+        printf '{'
+        printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
+        printf '"mode":"check",'
+        printf '"status":"ready",'
+        printf '"installed":true,'
+        printf '"commandPath":"%s",' "$(json_escape "$command_path")"
+        printf '"detectedVersion":"%s",' "$(json_escape "$detected_version")"
+        printf '"plannedActions":[],'
+        printf '"appliedChanges":[],'
+        printf '"warnings":[],'
+        printf '"manualSteps":[],'
+        printf '"interruptions":[]'
+        printf '}\n'
+      else
+        printf '%s installed: %s\n' "$display_name" "$detected_version"
+      fi
       return 0
     fi
 
     if [ "$force" = 'false' ] && [ "$upgrade" = 'false' ]; then
       ensure_local_bin_path_export "$shell_rc"
       ensure_provider_alias "$shell_rc" "$provider"
-      printf '%s already installed: %s\n' "$display_name" "$(provider_version_line "$command_path")"
+      if [ "$emit_json" = 'true' ]; then
+        printf '{'
+        printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
+        printf '"mode":"%s",' "$execution_mode"
+        printf '"status":"ready",'
+        printf '"installed":true,'
+        printf '"commandPath":"%s",' "$(json_escape "$command_path")"
+        printf '"detectedVersion":"%s",' "$(json_escape "$detected_version")"
+        printf '"plannedActions":[],'
+        printf '"appliedChanges":[],'
+        printf '"warnings":[],'
+        printf '"manualSteps":[],'
+        printf '"interruptions":[]'
+        printf '}\n'
+      else
+        printf '%s already installed: %s\n' "$display_name" "$detected_version"
+      fi
       return 0
     fi
   else
     if [ "$check_only" = 'true' ]; then
+      if [ "$emit_json" = 'true' ]; then
+        printf '{'
+        printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
+        printf '"mode":"check",'
+        printf '"status":"changes_required",'
+        printf '"installed":false,'
+        printf '"commandPath":null,'
+        printf '"detectedVersion":null,'
+        printf '"plannedActions":'
+        json_string_array "install_${provider}_cli"
+        printf ','
+        printf '"appliedChanges":[],'
+        printf '"warnings":[],'
+        printf '"manualSteps":[],'
+        printf '"interruptions":[]'
+        printf '}\n'
+        return 0
+      fi
       printf '%s is not installed.\n' "$display_name" >&2
       return 1
     fi
   fi
+
+  case "$execution_mode" in
+    force) planned_actions=("reinstall_${provider}_cli") ;;
+    upgrade)
+      if [ "$initial_installed" = 'true' ]; then
+        planned_actions=("upgrade_${provider}_cli")
+      else
+        planned_actions=("install_${provider}_cli")
+      fi
+      ;;
+    apply)
+      planned_actions=("install_${provider}_cli")
+      ;;
+  esac
 
   printf 'Installing %s...\n' "$display_name"
   if [ "$force" = 'true' ]; then
@@ -396,14 +528,39 @@ run_native_provider_installer() {
   else
     run_provider_install_action "$platform" "$provider" 'install'
   fi
+  applied_changes=("${planned_actions[@]}")
 
   ensure_local_bin_path_export "$shell_rc"
   ensure_provider_alias "$shell_rc" "$provider"
 
   while [ $attempt -le 3 ]; do
     if command_path="$(detect_provider_command "$platform" "$provider")"; then
-      printf '%s ready: %s\n' "$display_name" "$(provider_version_line "$command_path")"
-      printf 'Reload your shell if %s is not visible yet: source %s\n' "$display_name" "$shell_rc"
+      detected_version="$(provider_version_line "$command_path")"
+      if [ "$emit_json" = 'true' ]; then
+        warnings=("Reload your shell if ${display_name} is not visible yet: source ${shell_rc}")
+        printf '{'
+        printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
+        printf '"mode":"%s",' "$execution_mode"
+        printf '"status":"ready",'
+        printf '"installed":true,'
+        printf '"commandPath":"%s",' "$(json_escape "$command_path")"
+        printf '"detectedVersion":"%s",' "$(json_escape "$detected_version")"
+        printf '"plannedActions":'
+        json_string_array "${planned_actions[@]}"
+        printf ','
+        printf '"appliedChanges":'
+        json_string_array "${applied_changes[@]}"
+        printf ','
+        printf '"warnings":'
+        json_string_array "${warnings[@]}"
+        printf ','
+        printf '"manualSteps":[],'
+        printf '"interruptions":[]'
+        printf '}\n'
+      else
+        printf '%s ready: %s\n' "$display_name" "$detected_version"
+        printf 'Reload your shell if %s is not visible yet: source %s\n' "$display_name" "$shell_rc"
+      fi
       return 0
     fi
 
@@ -411,6 +568,26 @@ run_native_provider_installer() {
     attempt=$((attempt + 1))
   done
 
+  if [ "$emit_json" = 'true' ]; then
+    printf '{'
+    printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
+    printf '"mode":"%s",' "$execution_mode"
+    printf '"status":"failed",'
+    printf '"installed":false,'
+    printf '"commandPath":null,'
+    printf '"detectedVersion":null,'
+    printf '"plannedActions":'
+    json_string_array "${planned_actions[@]}"
+    printf ','
+    printf '"appliedChanges":'
+    json_string_array "${applied_changes[@]}"
+    printf ','
+    printf '"warnings":[],'
+    printf '"manualSteps":[],'
+    printf '"interruptions":[]'
+    printf '}\n'
+    return 1
+  fi
   printf 'Failed to verify %s after install.\n' "$display_name" >&2
   return 1
 }

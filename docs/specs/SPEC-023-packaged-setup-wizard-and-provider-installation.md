@@ -131,8 +131,9 @@ host-operations depth around that first slice:
    packs, with advanced per-provider control available when needed.
 7. The first packaged slice shall support these capability-pack directions:
    - `API Baseline (Recommended)` for API-key-backed Claude, OpenAI, and Gemini
-   - `Native CLI Pack` for the current repo-owned Windows path: Claude Code,
-     Cursor Agent, Goose, Junie, and the first WSL-backed Kiro helper
+   - `Native CLI Pack` for the current repo-owned packaged path across
+     Windows/macOS/Linux: Claude Code, Cursor Agent, Goose, Junie, and Kiro
+     (with the Windows Kiro path still WSL-backed)
    - additional packs such as local-model or future expert-only host
      prerequisites may remain later-path only
 8. The setup flow shall perform a local provider scan before offering installs
@@ -459,8 +460,9 @@ teaching the renderer or the user about the underlying script topology.
   parsing the full desktop packaging plan.
 - The staged desktop packaging contract now also carries
   `installer.providerSetup.localProviders`, making the current first packaged
-  path explicit: Claude Code, Cursor Agent, Goose, Junie, Kiro, and Ollama are
-  now all bundled into the packaged setup contract.
+  path explicit: Claude Code, Cursor Agent, Goose, Junie, and Kiro now ship on
+  the repo-owned packaged native CLI path across Windows/macOS/Linux, while
+  Ollama remains the current Windows-only local-model helper.
 - The desktop bootstrap recovery UI now also surfaces that `localProviders`
   rollout directly, so the host can tell users which local providers are
   bundled today without leaving the setup panel.
@@ -472,6 +474,12 @@ teaching the renderer or the user about the underlying script topology.
 - `scripts/windows/Install-Ollama.ps1` now also keeps the first local-model
   runtime on a repo-owned packaged helper contract, including install, upgrade,
   and API warm-state follow-through for Ollama.
+- The packaged setup bridge is no longer Windows-only: staged desktop assets
+  now include repo-owned Linux/macOS helper scripts plus the shared Unix shell
+  support files they source, `electron/setupBridge.ts` executes those helpers
+  through `bash`, `electron/main.ts` auto-primes the platform-specific
+  readiness audit on Windows/macOS/Linux, and each target installer manifest is
+  now scoped to the setup assets and local-provider rollout for that platform.
 - `docs/research/2026-03-30-packaged-setup-split-safety-validation.md` now
   also records that this packaged setup baseline stays coherent with the
   sibling `cats-runtime` A2A/bootstrap pilot and does not imply automatic
