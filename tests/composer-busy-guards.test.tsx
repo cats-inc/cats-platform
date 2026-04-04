@@ -36,3 +36,13 @@ test('composer busy helpers still recognize active ACK, dispatch, and stop state
   assert.equal(getComposerBusyChannelId('message:send:channel-1'), 'channel-1');
   assert.equal(getComposerDispatchChannelId('message:send:channel-1'), 'channel-1');
 });
+
+test('composer busy helpers keep relay semantics distinct from dispatch and selection blocking', () => {
+  assert.equal(isComposerBusy('concurrent:relay'), true);
+  assert.equal(isComposerAckBusy('concurrent:relay'), false);
+  assert.equal(isComposerDispatchBusy('concurrent:relay'), false);
+  assert.equal(isComposerSelectionBlocked('concurrent:relay'), false);
+  assert.equal(isComposerStopBusy('concurrent:relay'), false);
+  assert.equal(getComposerBusyChannelId('concurrent:relay'), null);
+  assert.equal(getComposerDispatchChannelId('concurrent:relay'), null);
+});

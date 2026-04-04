@@ -65,6 +65,15 @@ contracts.
 - [ ] Offline transcript normalization and ingestion handoff hooks
 - [ ] Split-view chat canvas with preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
+- [ ] Freeze a shared composer busy-state contract across solo, parallel, and relay flows,
+      then centralize the current ad-hoc `message:*` / `concurrent:*` strings so
+      `isComposerBusy`, `isComposerDispatchBusy`, `isComposerSelectionBlocked`,
+      compare-surface locks, live-indicator gating, and route-entry hydration all
+      consume one explicit vocabulary instead of drifting independently
+- [ ] Add renderer behavior coverage for composer busy-state transitions beyond
+      helper tests, including parallel send, compare relay, live-indicator stream
+      gating, and route-selection / `updateSelectedChannel(...)` guards so
+      future lifecycle refactors cannot silently change `concurrent:*` semantics
 - [ ] Finish destructive-delete UX above the landed runtime-session delete policy,
       including explicit renderer feedback for retained or failed runtime cleanup,
       clearer confirmation and busy states for chat / parallel-group / Cat delete,
