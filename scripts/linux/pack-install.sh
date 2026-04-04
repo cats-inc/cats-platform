@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pack cats as .tgz and optionally install it globally.
+# Pack cats-platform as .tgz and optionally install it globally.
 #
 # Usage:
 #   ./scripts/linux/pack-install.sh                   # Interactive (install defaults to yes; delete defaults to yes after install)
@@ -54,7 +54,7 @@ printf '\n\033[32mPackage created: %s\033[0m\n' "$TGZ"
 if [ "$PACK_ONLY" = true ]; then
   printf '\033[90mPack only mode. Package at: %s\033[0m\n' "$TGZ"
   printf '\033[90mYou can install later with: npm install -g %s\033[0m\n' "$TGZ_QUOTED"
-  printf '\033[90mAfter installing, try: cats --help\033[0m\n'
+  printf '\033[90mAfter installing, try: cats-platform --help\033[0m\n'
   exit 0
 fi
 
@@ -73,14 +73,14 @@ fi
 if [ "$SHOULD_INSTALL" = false ]; then
   printf '\033[90mSkipped install. Package at: %s\033[0m\n' "$TGZ"
   printf '\033[90mYou can install later with: npm install -g %s\033[0m\n' "$TGZ_QUOTED"
-  printf '\033[90mAfter installing, try: cats --help\033[0m\n'
+  printf '\033[90mAfter installing, try: cats-platform --help\033[0m\n'
   exit 0
 fi
 
 printf '\n\033[36m=== Installing globally... ===\033[0m\n'
 npm install -g "$TGZ"
 printf '\033[32mInstalled successfully!\033[0m\n'
-printf '\033[90mTry: cats --help\033[0m\n'
+printf '\033[90mTry: cats-platform --help\033[0m\n'
 
 SHOULD_DELETE=false
 if [ "$CLEAN" = true ]; then

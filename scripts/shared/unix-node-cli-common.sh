@@ -348,7 +348,14 @@ run_self_hosted_installation_check() {
   local total_missing=0
   local checks_json=''
   local first_json='true'
+  local overall_status='ready'
   local prefix_status='missing'
+  local core_present=0
+  local core_missing=0
+  local native_present=0
+  local native_missing=0
+  local node_pack_present=0
+  local node_pack_missing=0
   local command_path=''
   local provider=''
   local row=''
@@ -400,64 +407,86 @@ EOF
 
   append_check_json() {
     local check_id="$1"
-    local present="$2"
-    local kind="$3"
+    local label="$2"
+    local present="$3"
+    local kind="$4"
+    local scope="$5"
+    local status="$6"
     if [ "$first_json" = 'true' ]; then
       first_json='false'
     else
       checks_json="${checks_json},"
     fi
-    checks_json="${checks_json}{\"id\":\"${check_id}\",\"kind\":\"${kind}\",\"present\":${present}}"
+    checks_json="${checks_json}{\"id\":\"${check_id}\",\"label\":\"${label}\",\"kind\":\"${kind}\",\"scope\":\"${scope}\",\"present\":${present},\"status\":\"${status}\"}"
+  }
+
+  phase_status() {
+    local missing_count="$1"
+    if [ "$missing_count" -eq 0 ]; then
+      printf 'ready'
+    else
+      printf 'changes_required'
+    fi
   }
 
   if command -v node >/dev/null 2>&1; then
     total_present=$((total_present + 1))
+    core_present=$((core_present + 1))
     [ "$emit_json" = 'false' ] && printf 'Node.js: present\n'
-    append_check_json 'node' 'true' 'core'
+    append_check_json 'node' 'Node.js' 'true' 'core' 'host' 'ready'
   else
     total_missing=$((total_missing + 1))
+    core_missing=$((core_missing + 1))
     [ "$emit_json" = 'false' ] && printf 'Node.js: missing\n'
-    append_check_json 'node' 'false' 'core'
+    append_check_json 'node' 'Node.js' 'false' 'core' 'host' 'changes_required'
   fi
 
   if command -v npm >/dev/null 2>&1; then
     total_present=$((total_present + 1))
+    core_present=$((core_present + 1))
     [ "$emit_json" = 'false' ] && printf 'npm: present\n'
-    append_check_json 'npm' 'true' 'core'
+    append_check_json 'npm' 'npm' 'true' 'core' 'host' 'ready'
   else
     total_missing=$((total_missing + 1))
+    core_missing=$((core_missing + 1))
     [ "$emit_json" = 'false' ] && printf 'npm: missing\n'
-    append_check_json 'npm' 'false' 'core'
+    append_check_json 'npm' 'npm' 'false' 'core' 'host' 'changes_required'
   fi
 
   if command -v docker >/dev/null 2>&1; then
     total_present=$((total_present + 1))
+    core_present=$((core_present + 1))
     [ "$emit_json" = 'false' ] && printf 'Docker: present\n'
-    append_check_json 'docker' 'true' 'core'
+    append_check_json 'docker' 'Docker' 'true' 'core' 'host' 'ready'
   else
     total_missing=$((total_missing + 1))
+    core_missing=$((core_missing + 1))
     [ "$emit_json" = 'false' ] && printf 'Docker: missing\n'
-    append_check_json 'docker' 'false' 'core'
+    append_check_json 'docker' 'Docker' 'false' 'core' 'host' 'changes_required'
   fi
 
   if [ "$prefix_status" = 'ready' ]; then
     total_present=$((total_present + 1))
-    append_check_json 'node_prefix' 'true' 'core'
+    core_present=$((core_present + 1))
+    append_check_json 'node_prefix' 'npm global prefix' 'true' 'core' 'host' 'ready'
   else
     total_missing=$((total_missing + 1))
-    append_check_json 'node_prefix' 'false' 'core'
+    core_missing=$((core_missing + 1))
+    append_check_json 'node_prefix' 'npm global prefix' 'false' 'core' 'host' 'changes_required'
   fi
 
   for provider in claude cursor goose junie kiro; do
     if command_path="$(detect_provider_command "$platform" "$provider")"; then
       total_present=$((total_present + 1))
+      native_present=$((native_present + 1))
       [ "$emit_json" = 'false' ] && printf '%s: present\n' "$(provider_display_name "$provider")"
-      append_check_json "$provider" 'true' 'native'
+      append_check_json "$provider" "$(provider_display_name "$provider")" 'true' 'native' 'host' 'ready'
       unset command_path
     else
       total_missing=$((total_missing + 1))
+      native_missing=$((native_missing + 1))
       [ "$emit_json" = 'false' ] && printf '%s: missing\n' "$(provider_display_name "$provider")"
-      append_check_json "$provider" 'false' 'native'
+      append_check_json "$provider" "$(provider_display_name "$provider")" 'false' 'native' 'host' 'changes_required'
     fi
   done
 
@@ -465,25 +494,45 @@ EOF
     [ -n "$id" ] || continue
     if command -v "$command_name" >/dev/null 2>&1; then
       total_present=$((total_present + 1))
+      node_pack_present=$((node_pack_present + 1))
       [ "$emit_json" = 'false' ] && printf '%s: present\n' "$display_name"
-      append_check_json "$id" 'true' 'node'
+      append_check_json "$id" "$display_name" 'true' 'node' 'host' 'ready'
     else
       total_missing=$((total_missing + 1))
+      node_pack_missing=$((node_pack_missing + 1))
       [ "$emit_json" = 'false' ] && printf '%s: missing\n' "$display_name"
-      append_check_json "$id" 'false' 'node'
+      append_check_json "$id" "$display_name" 'false' 'node' 'host' 'changes_required'
     fi
   done <<EOF
 $(node_cli_package_rows)
 EOF
 
+  if [ "$total_missing" -gt 0 ]; then
+    overall_status='changes_required'
+  fi
+
   if [ "$emit_json" = 'true' ]; then
-    printf '{"platform":"%s","ready":%s,"present":%s,"missing":%s,"checks":[%s]}\n' \
+    printf '{"helper":"self-hosted-cli-check","platform":"%s","status":"%s","ready":%s,"present":%s,"missing":%s,"checks":[%s],"phases":[{"id":"core","label":"Core prerequisites","status":"%s","present":%s,"missing":%s},{"id":"native_provider_pack","label":"Native provider pack","status":"%s","present":%s,"missing":%s},{"id":"node_cli_pack","label":"Node CLI pack","status":"%s","present":%s,"missing":%s}],"warnings":[]}\n' \
       "$platform" \
+      "$overall_status" \
       "$( [ $total_missing -eq 0 ] && printf 'true' || printf 'false' )" \
       "$total_present" \
       "$total_missing" \
-      "$checks_json"
+      "$checks_json" \
+      "$(phase_status "$core_missing")" \
+      "$core_present" \
+      "$core_missing" \
+      "$(phase_status "$native_missing")" \
+      "$native_present" \
+      "$native_missing" \
+      "$(phase_status "$node_pack_missing")" \
+      "$node_pack_present" \
+      "$node_pack_missing"
   else
+    printf 'Status: %s\n' "$overall_status"
+    printf 'Core prerequisites: %s (present=%s missing=%s)\n' "$(phase_status "$core_missing")" "$core_present" "$core_missing"
+    printf 'Native provider pack: %s (present=%s missing=%s)\n' "$(phase_status "$native_missing")" "$native_present" "$native_missing"
+    printf 'Node CLI pack: %s (present=%s missing=%s)\n' "$(phase_status "$node_pack_missing")" "$node_pack_present" "$node_pack_missing"
     printf 'Summary: present=%s missing=%s\n' "$total_present" "$total_missing"
   fi
 

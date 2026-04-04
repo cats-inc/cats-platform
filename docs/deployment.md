@@ -68,7 +68,7 @@ npm run desktop:start
 ./scripts/macos/pack-install.sh
 ```
 
-- use `cats --help` after install to confirm the host executable contract
+- use `cats-platform --help` after install to confirm the host executable contract
 - this path validates the self-hosted tarball flow for the future
   `@cats-inc/cats-platform` package; it does not replace the Electron
   packaging flow below or the separate `cats-can` bootstrap publication target

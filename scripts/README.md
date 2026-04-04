@@ -235,6 +235,22 @@ Representative usage:
 These are self-hosted operational helpers only. They are intentionally not yet
 wired into the packaged bootstrap/setup wizard flow.
 
+The Unix `--json` audit output and Windows `-Json` aggregate output now share
+the same top-level audit core:
+
+- `helper`
+- `platform`
+- `status`
+- `ready`
+- `present`
+- `missing`
+- `checks`
+- `phases`
+- `warnings`
+
+Windows keeps additional nested detail such as `distro`, `dockerContainer`,
+and helper-specific readiness payloads for WSL/Docker follow-through.
+
 ## Windows Aggregate Helpers
 
 `cats-platform` now also ships repo-owned Windows orchestration helpers for the
@@ -252,6 +268,16 @@ These helpers cover:
 - the 12-provider Docker-container install/upgrade/check surface
 - an aggregate Windows diagnostic surface across host, WSL, and Docker paths
 - one-shot Windows host + WSL + Docker bulk-upgrade orchestration
+
+### Manual Provider Matrix
+
+| Path | Install | Check | Upgrade |
+|------|---------|-------|---------|
+| Linux host | `./scripts/linux/install-node-cli-tools.sh` plus the native `install-*.sh` helpers you need | `./scripts/linux/check-installation.sh --json` | `./scripts/linux/upgrade-cli-tools.sh` |
+| macOS host | `./scripts/macos/install-node-cli-tools.sh` plus the native `install-*.sh` helpers you need | `./scripts/macos/check-installation.sh --json` | `./scripts/macos/upgrade-cli-tools.sh` |
+| Windows native host | `.\scripts\windows\Install-NodeCliPack.ps1 -Apply` plus the native provider helpers you need | `.\scripts\windows\Check-CLITools.ps1 -Json` | `.\scripts\windows\Upgrade-CLITools.ps1` |
+| Windows WSL target | `.\scripts\windows\Install-WSLCLITools.ps1 -Apply -Distro Ubuntu` | `.\scripts\windows\Check-CLITools.ps1 -IncludeWsl -Distro Ubuntu -Json` | `.\scripts\windows\Install-WSLCLITools.ps1 -Upgrade -Distro Ubuntu` |
+| Windows Docker target | `.\scripts\windows\Install-DockerCLITools.ps1 -Apply -Container cats-cli-test` | `.\scripts\windows\Check-CLITools.ps1 -IncludeDocker -DockerContainer cats-cli-test -Json` | `.\scripts\windows\Install-DockerCLITools.ps1 -Upgrade -Container cats-cli-test` |
 
 Representative usage:
 

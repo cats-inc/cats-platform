@@ -312,6 +312,14 @@ These helpers are shipped as part of the npm package so self-hosted operators
 can use them after `npm install` or `npx`. They are not yet consumed by the
 desktop bootstrap/setup wizard.
 
+Cross-platform JSON audit core:
+
+- Unix `check-installation.sh --json` and Windows `Check-CLITools.ps1 -Json`
+  now share `helper`, `platform`, `status`, `ready`, `present`, `missing`,
+  `checks`, `phases`, and `warnings`
+- Windows keeps additional nested detail such as `distro`,
+  `dockerContainer`, WSL readiness, and Docker/Desktop follow-through payloads
+
 ### Windows Operational Aggregates
 
 Windows now also ships the repo-owned aggregate helpers that used to live only
@@ -335,6 +343,16 @@ Coverage in this slice:
 
 These helpers are intentionally repo-owned script surfaces only. They are not
 yet wired into the packaged setup wizard/bootstrap flow.
+
+### Manual Operator Matrix
+
+| Path | Install | Check | Upgrade |
+|------|---------|-------|---------|
+| Linux host | `./scripts/linux/install-node-cli-tools.sh` plus the native `install-*.sh` helpers you need | `./scripts/linux/check-installation.sh --json` | `./scripts/linux/upgrade-cli-tools.sh` |
+| macOS host | `./scripts/macos/install-node-cli-tools.sh` plus the native `install-*.sh` helpers you need | `./scripts/macos/check-installation.sh --json` | `./scripts/macos/upgrade-cli-tools.sh` |
+| Windows native host | `.\scripts\windows\Install-NodeCliPack.ps1 -Apply` plus the native provider helpers you need | `.\scripts\windows\Check-CLITools.ps1 -Json` | `.\scripts\windows\Upgrade-CLITools.ps1` |
+| Windows WSL target | `.\scripts\windows\Install-WSLCLITools.ps1 -Apply -Distro Ubuntu` | `.\scripts\windows\Check-CLITools.ps1 -IncludeWsl -Distro Ubuntu -Json` | `.\scripts\windows\Install-WSLCLITools.ps1 -Upgrade -Distro Ubuntu` |
+| Windows Docker target | `.\scripts\windows\Install-DockerCLITools.ps1 -Apply -Container cats-cli-test` | `.\scripts\windows\Check-CLITools.ps1 -IncludeDocker -DockerContainer cats-cli-test -Json` | `.\scripts\windows\Install-DockerCLITools.ps1 -Upgrade -Container cats-cli-test` |
 
 ### Desktop Packaging Stage
 

@@ -17,4 +17,11 @@ test('Check-CLITools keeps the repo-owned host, WSL, and Docker check surface al
   assert.match(script, /Install-WSLCLITools\.ps1/u);
   assert.match(script, /Install-DockerCLITools\.ps1/u);
   assert.match(script, /-CheckOnly/u);
+  assert.match(script, /helper = 'self-hosted-cli-check'/u);
+  assert.match(script, /platform = 'windows'/u);
+  assert.match(script, /present = \$allCounts\.present/u);
+  assert.match(script, /missing = \$allCounts\.missing/u);
+  assert.match(script, /checks = \$allChecks/u);
+  assert.match(script, /-Scope 'wsl'/u);
+  assert.match(script, /-Scope 'docker'/u);
 });

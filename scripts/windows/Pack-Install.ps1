@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# Pack cats as .tgz and optionally install it globally.
+# Pack cats-platform as .tgz and optionally install it globally.
 #
 # Usage:
 #   .\scripts\windows\Pack-Install.ps1                 # Interactive (install defaults to yes; delete defaults to yes after install)
@@ -65,7 +65,7 @@ try {
     if ($PackOnly) {
         Write-Host "Pack only mode. Package at: $tgz" -ForegroundColor Gray
         Write-Host "You can install later with: npm install -g $tgzQuoted" -ForegroundColor Gray
-        Write-Host "After installing, try: cats --help" -ForegroundColor Gray
+        Write-Host "After installing, try: cats-platform --help" -ForegroundColor Gray
         return
     }
 
@@ -82,7 +82,7 @@ try {
     if (-not $shouldInstall) {
         Write-Host "Skipped install. Package at: $tgz" -ForegroundColor Gray
         Write-Host "You can install later with: npm install -g $tgzQuoted" -ForegroundColor Gray
-        Write-Host "After installing, try: cats --help" -ForegroundColor Gray
+        Write-Host "After installing, try: cats-platform --help" -ForegroundColor Gray
         return
     }
 
@@ -93,7 +93,7 @@ try {
     }
 
     Write-Host "Installed successfully!" -ForegroundColor Green
-    Write-Host "Try: cats --help" -ForegroundColor Gray
+    Write-Host "Try: cats-platform --help" -ForegroundColor Gray
 
     $shouldDelete = $false
     if ($Clean) {

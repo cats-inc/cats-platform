@@ -41,6 +41,15 @@ async function assertHelp(scriptPath) {
   assert.match(stdout, /Usage:/u);
 }
 
+async function readJsonSummary(scriptPath) {
+  const { stdout } = await execFile('bash', [scriptPath, '--json'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+
+  return JSON.parse(stdout);
+}
+
 test('cats-platform ships repo-owned Unix self-hosted provider helpers', async () => {
   for (const scriptName of linuxScripts) {
     const script = await readFile(join(rootDir, 'scripts', 'linux', scriptName), 'utf8');
@@ -70,5 +79,23 @@ test('Unix self-hosted provider helpers expose help text without mutating the ho
     await assertHelp(join(rootDir, 'scripts', platform, 'install-kiro-cli.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'upgrade-cli-tools.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'check-installation.sh'));
+  }
+});
+
+test('Unix self-hosted provider audits expose the shared JSON audit core', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const summary = await readJsonSummary(
+      join(rootDir, 'scripts', platform, 'check-installation.sh'),
+    );
+
+    assert.equal(summary.helper, 'self-hosted-cli-check');
+    assert.equal(summary.platform, platform);
+    assert.equal(typeof summary.ready, 'boolean');
+    assert.match(summary.status, /^(ready|changes_required)$/u);
+    assert.equal(Array.isArray(summary.checks), true);
+    assert.equal(Array.isArray(summary.phases), true);
+    assert.equal(Array.isArray(summary.warnings), true);
+    assert.equal(summary.phases.length, 3);
+    assert.equal(summary.present + summary.missing, summary.checks.length);
   }
 });
