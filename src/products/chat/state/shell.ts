@@ -1,10 +1,10 @@
 import type { AppConfig } from '../../../config.js';
 import type { GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
-import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
-import { listSuiteProductDescriptors } from '../../../shared/suiteProducts.js';
-import { listEnabledSuiteSurfaces } from '../../../shared/suiteSurfaces.js';
+import { listPlatformProductDescriptors } from '../../../shared/platformProducts.js';
+import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
 import { summarizeState } from './model/index.js';
@@ -20,7 +20,7 @@ function resolveSetupCompleteAt(
     ownerAvatarColor: string | null;
     ownerAvatarUrl?: string | null;
     botBindings?: ChatBotBindingSummary[];
-    lastProductSurface?: SuiteSurfaceId | null;
+    lastProductSurface?: PlatformSurfaceId | null;
     guideCat?: GuideCatRecord | null;
   },
 ): string | null {
@@ -45,7 +45,7 @@ export function createAppShell(
     ownerAvatarColor: string | null;
     ownerAvatarUrl?: string | null;
     botBindings?: ChatBotBindingSummary[];
-    lastProductSurface?: SuiteSurfaceId | null;
+    lastProductSurface?: PlatformSurfaceId | null;
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
   },
@@ -60,7 +60,7 @@ export function createAppShell(
       stage: 'phase-2-shell',
       runtimeBoundary: 'cats-runtime',
     },
-    products: listSuiteProductDescriptors(),
+    products: listPlatformProductDescriptors(),
     chat: {
       id: chat.id,
       name: chat.name,
@@ -80,7 +80,7 @@ export function createAppShell(
         maxBossCats: config.maxBossCats,
         maxCats: config.maxCats,
         maxParallelChats: config.maxParallelChats,
-        availableSurfaces: listEnabledSuiteSurfaces(),
+        availableSurfaces: listEnabledPlatformSurfaces(),
       },
       showVerboseMessages: chat.showVerboseMessages,
       botBindings,

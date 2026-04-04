@@ -1,7 +1,7 @@
 import { resolveRuntimeConnectionChip } from '../../../design/components/runtimeChips.js';
-import type { SuiteHostEnvelope } from '../../../shared/suite-contract.js';
+import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
-import { SuiteSettingsShell } from './SuiteSettingsShell.js';
+import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 function resolveRuntimeSetupChip(
   runtimeSetup: RuntimeSetupSummary,
@@ -36,16 +36,16 @@ function resolveRuntimeSetupChip(
   }
 }
 
-export function SuiteSettingsRuntime({
+export function PlatformSettingsRuntime({
   envelope,
 }: {
-  envelope: SuiteHostEnvelope;
+  envelope: PlatformHostEnvelope;
 }) {
   const runtimeChip = resolveRuntimeConnectionChip(envelope.runtime);
   const runtimeSetupChip = resolveRuntimeSetupChip(envelope.runtimeSetup);
 
   return (
-    <SuiteSettingsShell
+    <PlatformSettingsShell
       section="runtime"
       title="Runtime"
       products={envelope.products}
@@ -121,6 +121,6 @@ export function SuiteSettingsRuntime({
           Open Cats Runtime setup
         </a>
       </div>
-    </SuiteSettingsShell>
+    </PlatformSettingsShell>
   );
 }

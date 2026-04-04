@@ -5,8 +5,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
-import { UUID_PATTERN } from '../dist-server/shared/channelPaths.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
+import { UUID_PATTERN } from '../dist-server/products/chat/shared/channelPaths.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
 import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {

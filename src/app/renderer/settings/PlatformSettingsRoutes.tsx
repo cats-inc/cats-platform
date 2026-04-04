@@ -2,39 +2,39 @@ import { useCallback, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
-import type { SuiteHostEnvelope } from '../../../shared/suite-contract.js';
-import { SuiteSettingsData } from './SuiteSettingsData.js';
-import { SuiteSettingsGeneral } from './SuiteSettingsGeneral.js';
-import { SuiteSettingsRuntime } from './SuiteSettingsRuntime.js';
-import './suite-settings.css';
+import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
+import { PlatformSettingsData } from './PlatformSettingsData.js';
+import { PlatformSettingsGeneral } from './PlatformSettingsGeneral.js';
+import { PlatformSettingsRuntime } from './PlatformSettingsRuntime.js';
+import './platform-settings.css';
 
-export interface SuiteSettingsRoutesProps {
-  envelope: SuiteHostEnvelope;
-  onEnvelopeUpdate: (updater: (current: SuiteHostEnvelope) => SuiteHostEnvelope) => void;
+export interface PlatformSettingsRoutesProps {
+  envelope: PlatformHostEnvelope;
+  onEnvelopeUpdate: (updater: (current: PlatformHostEnvelope) => PlatformHostEnvelope) => void;
 }
 
-interface SuiteSettingsRouteTreeProps extends SuiteSettingsRoutesProps {
+interface PlatformSettingsRouteTreeProps extends PlatformSettingsRoutesProps {
   feedback: string;
   busy: string;
   onFeedback: (message: string) => void;
   onResetSetup: () => void;
 }
 
-export function SuiteSettingsRouteTree({
+export function PlatformSettingsRouteTree({
   envelope,
   onEnvelopeUpdate,
   feedback,
   busy,
   onFeedback,
   onResetSetup,
-}: SuiteSettingsRouteTreeProps) {
+}: PlatformSettingsRouteTreeProps) {
   return (
     <Routes>
       <Route index element={<Navigate to="/settings/general" replace />} />
       <Route
         path="general"
         element={
-          <SuiteSettingsGeneral
+          <PlatformSettingsGeneral
             envelope={envelope}
             feedback={feedback}
             onEnvelopeUpdate={onEnvelopeUpdate}
@@ -44,12 +44,12 @@ export function SuiteSettingsRouteTree({
       />
       <Route
         path="runtime"
-        element={<SuiteSettingsRuntime envelope={envelope} />}
+        element={<PlatformSettingsRuntime envelope={envelope} />}
       />
       <Route
         path="data"
         element={
-          <SuiteSettingsData
+          <PlatformSettingsData
             products={envelope.products}
             feedback={feedback}
             busy={busy}
@@ -63,10 +63,10 @@ export function SuiteSettingsRouteTree({
   );
 }
 
-export function SuiteSettingsRoutes({
+export function PlatformSettingsRoutes({
   envelope,
   onEnvelopeUpdate,
-}: SuiteSettingsRoutesProps) {
+}: PlatformSettingsRoutesProps) {
   const [feedback, setFeedback] = useState('');
   const [busy, setBusy] = useState('');
   const { dialog, confirm, handleClose } = useConfirmDialog();
@@ -74,7 +74,7 @@ export function SuiteSettingsRoutes({
   const onResetSetup = useCallback(async (): Promise<void> => {
     const confirmed = await confirm({
       title: 'Reset all data',
-      message: 'This will erase all chats, cats, and suite settings. Continue?',
+      message: 'This will erase all chats, cats, and platform settings. Continue?',
       confirmLabel: 'Reset',
     });
     if (!confirmed) {
@@ -100,7 +100,7 @@ export function SuiteSettingsRoutes({
 
   return (
     <>
-      <SuiteSettingsRouteTree
+      <PlatformSettingsRouteTree
         envelope={envelope}
         onEnvelopeUpdate={onEnvelopeUpdate}
         feedback={feedback}

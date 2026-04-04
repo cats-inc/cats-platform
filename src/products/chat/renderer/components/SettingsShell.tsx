@@ -34,20 +34,20 @@ export function SettingsShell({
         >
           Cats
         </button>
-        <p className="settingsNavSubheading">Suite</p>
+        <p className="settingsNavSubheading">Platform</p>
         <button
           className="settingsTab"
           type="button"
           onClick={() => navigate('/settings/general')}
         >
-          Suite settings
+          Platform settings
         </button>
         <button
           className={section === 'data' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
           onClick={() => navigate('/settings/data')}
         >
-          Suite data
+          Platform data
         </button>
       </nav>
       <section className="settingsContent">

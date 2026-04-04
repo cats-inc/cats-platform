@@ -43,7 +43,7 @@ import type {
 import {
   isReplayableContinuationGuardReason,
 } from '../room-routing/continuationReplay.js';
-import { defaultCatProducts, hasSuiteSurface } from '../../../../shared/suiteSurfaces.js';
+import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
 
 function uniqueStrings(values: string[]): string[] {
   return values.filter((value, index) => value.length > 0 && values.indexOf(value) === index);
@@ -750,7 +750,7 @@ export function syncBotBindings(
     chat.cats
       .filter((cat) =>
         cat.status === 'active'
-        && hasSuiteSurface(cat.products, 'chat', { fallback: defaultCatProducts() }))
+        && hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() }))
       .map((cat) => createCatActorId(cat.id)),
   );
   const normalizedBindings = preservedBindings.map((binding) => {

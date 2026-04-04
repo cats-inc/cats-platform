@@ -150,7 +150,7 @@ export function buildOrchestratorPrompt(
     'When referring to teammates, mention them with @Name so Chat can route follow-up turns.',
     activeCatCount === 0
       ? 'There are no other active cats in this chat right now, so answer the user directly instead of delegating.'
-      : 'If another active cat is better suited, you may mention that cat to involve them.',
+      : 'If another active cat is better platformd, you may mention that cat to involve them.',
     `Never address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
     'Never output internal routing notes, self-instructions, or coordinator scratchpad text.',
     transportGuidance,

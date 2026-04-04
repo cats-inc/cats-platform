@@ -55,16 +55,16 @@ export function ChatSettingsGeneral({
       </div>
 
       <div className="contentCard">
-        <h2>Suite-wide settings</h2>
+        <h2>Platform-wide settings</h2>
         <p className="heroNote">
-          Owner profile, runtime status, and reset controls now live at the suite host level.
+          Owner profile, runtime status, and reset controls now live at the platform host level.
         </p>
         <button
           type="button"
           className="secondaryButton"
           onClick={() => navigate('/settings/general')}
         >
-          Open suite settings
+          Open platform settings
         </button>
       </div>
 

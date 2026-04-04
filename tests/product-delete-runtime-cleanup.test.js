@@ -14,8 +14,8 @@ import {
   createConcurrentGroup,
   setChannelCatLease,
   setChannelOrchestratorLease,
-} from '../dist-server/chat/model.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
+} from '../dist-server/products/chat/state/model/index.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
 
 const baseConfig = {
   host: '127.0.0.1',

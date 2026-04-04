@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  getPendingSuiteSurfaceMenuStyle,
-  resolveSuiteSurfaceMenuStyle,
-  resolveSuiteSurfaceMenuWidth,
-} from '../src/design/components/suiteSurfaceMenuPosition.ts';
+  getPendingPlatformSurfaceMenuStyle,
+  resolvePlatformSurfaceMenuStyle,
+  resolvePlatformSurfaceMenuWidth,
+} from '../src/design/components/platformSurfaceMenuPosition.ts';
 
-test('pending suite surface menu style stays fixed and hidden before measurement', () => {
-  assert.deepEqual(getPendingSuiteSurfaceMenuStyle(), {
+test('pending platform surface menu style stays fixed and hidden before measurement', () => {
+  assert.deepEqual(getPendingPlatformSurfaceMenuStyle(), {
     position: 'fixed',
     top: 0,
     left: 0,
@@ -18,12 +18,12 @@ test('pending suite surface menu style stays fixed and hidden before measurement
   });
 });
 
-test('suite surface menu positioning keeps the popup inside the viewport', () => {
-  assert.equal(resolveSuiteSurfaceMenuWidth(1280), 420);
-  assert.equal(resolveSuiteSurfaceMenuWidth(360), 336);
+test('platform surface menu positioning keeps the popup inside the viewport', () => {
+  assert.equal(resolvePlatformSurfaceMenuWidth(1280), 420);
+  assert.equal(resolvePlatformSurfaceMenuWidth(360), 336);
 
   assert.deepEqual(
-    resolveSuiteSurfaceMenuStyle({
+    resolvePlatformSurfaceMenuStyle({
       triggerRect: {
         top: 36,
         left: 18,
@@ -43,7 +43,7 @@ test('suite surface menu positioning keeps the popup inside the viewport', () =>
   );
 
   assert.deepEqual(
-    resolveSuiteSurfaceMenuStyle({
+    resolvePlatformSurfaceMenuStyle({
       triggerRect: {
         top: 620,
         left: 980,

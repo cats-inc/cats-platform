@@ -1,23 +1,23 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { SuiteSurfaceId } from './suite-contract.js';
+import type { PlatformSurfaceId } from './platform-contract.js';
 
-export interface SuitePreferences {
-  lastProductSurface: SuiteSurfaceId | null;
+export interface PlatformPreferences {
+  lastProductSurface: PlatformSurfaceId | null;
 }
 
-const DEFAULTS: SuitePreferences = {
+const DEFAULTS: PlatformPreferences = {
   lastProductSurface: null,
 };
 
 function resolvePreferencesPath(chatStatePath: string): string {
-  return path.join(path.dirname(chatStatePath), 'suite-preferences.json');
+  return path.join(path.dirname(chatStatePath), 'platform-preferences.json');
 }
 
-export async function readSuitePreferences(
+export async function readPlatformPreferences(
   chatStatePath: string,
-): Promise<SuitePreferences> {
+): Promise<PlatformPreferences> {
   try {
     const raw = await readFile(resolvePreferencesPath(chatStatePath), 'utf-8');
     const parsed: unknown = JSON.parse(raw);
@@ -37,9 +37,9 @@ export async function readSuitePreferences(
   }
 }
 
-export async function writeSuitePreferences(
+export async function writePlatformPreferences(
   chatStatePath: string,
-  prefs: SuitePreferences,
+  prefs: PlatformPreferences,
 ): Promise<void> {
   const filePath = resolvePreferencesPath(chatStatePath);
   await mkdir(path.dirname(filePath), { recursive: true });

@@ -4,10 +4,10 @@ import type {
 } from '../../api/contracts.js';
 import {
   defaultCatProducts,
-  ensureSuiteSurfaceIncluded,
-  hasSuiteSurface,
-  normalizeSuiteSurfaceList,
-} from '../../../../shared/suiteSurfaces.js';
+  ensurePlatformSurfaceIncluded,
+  hasPlatformSurface,
+  normalizePlatformSurfaceList,
+} from '../../../../shared/platformSurfaces.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createCatRecord } from './recordBuilders.js';
 import {
@@ -146,7 +146,7 @@ function assertUniqueCatName(state: ChatState, name: string, excludeCatId?: stri
 }
 
 function catHasChatSurface(products: readonly string[] | null | undefined): boolean {
-  return hasSuiteSurface(products, 'chat', {
+  return hasPlatformSurface(products, 'chat', {
     fallback: defaultCatProducts(),
   });
 }
@@ -163,8 +163,8 @@ export function createCat(
   }
   assertUniqueCatName(state, input.name);
   const nextState = cloneState(state);
-  const normalizedProducts = normalizeSuiteSurfaceList(input.products, {
-    allowed: normalizeSuiteSurfaceList(state.capabilities.availableSurfaces, {
+  const normalizedProducts = normalizePlatformSurfaceList(input.products, {
+    allowed: normalizePlatformSurfaceList(state.capabilities.availableSurfaces, {
       fallback: defaultCatProducts(),
     }),
     fallback: defaultCatProducts(),
@@ -172,7 +172,7 @@ export function createCat(
   const cat = createCatRecord({
     ...input,
     products: input.makeBoss
-      ? ensureSuiteSurfaceIncluded(normalizedProducts, 'chat')
+      ? ensurePlatformSurfaceIncluded(normalizedProducts, 'chat')
       : normalizedProducts,
   }, isoAt(now));
   if (!cat.avatarColor) {
@@ -290,7 +290,7 @@ export function setBossCat(
   if (cat.status !== 'active') {
     throw new Error(`Cat is not active: ${catId}`);
   }
-  cat.products = ensureSuiteSurfaceIncluded(cat.products, 'chat');
+  cat.products = ensurePlatformSurfaceIncluded(cat.products, 'chat');
   cat.updatedAt = new Date().toISOString();
   nextState.bossCatId = catId;
   return nextState;
@@ -306,8 +306,8 @@ export function updateCatProducts(
   if (!cat) {
     throw new Error(`Cat not found: ${catId}`);
   }
-  const normalizedProducts = normalizeSuiteSurfaceList(products, {
-    allowed: normalizeSuiteSurfaceList(state.capabilities.availableSurfaces, {
+  const normalizedProducts = normalizePlatformSurfaceList(products, {
+    allowed: normalizePlatformSurfaceList(state.capabilities.availableSurfaces, {
       fallback: defaultCatProducts(),
     }),
   });
@@ -316,7 +316,7 @@ export function updateCatProducts(
   }
   const hadChatSurface = catHasChatSurface(cat.products);
   cat.products = nextState.bossCatId === catId
-    ? ensureSuiteSurfaceIncluded(normalizedProducts, 'chat')
+    ? ensurePlatformSurfaceIncluded(normalizedProducts, 'chat')
     : normalizedProducts;
   cat.updatedAt = new Date().toISOString();
   if (hadChatSurface && !catHasChatSurface(cat.products)) {

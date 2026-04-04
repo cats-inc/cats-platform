@@ -3,8 +3,8 @@ import test from 'node:test';
 import { isValidElement, type ReactNode } from 'react';
 import { Navigate, Route } from 'react-router-dom';
 
-import { SuiteSettingsRouteTree } from '../src/app/renderer/settings/SuiteSettingsRoutes.tsx';
-import type { SuiteHostEnvelope } from '../src/shared/suite-contract.ts';
+import { PlatformSettingsRouteTree } from '../src/app/renderer/settings/PlatformSettingsRoutes.tsx';
+import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
 
 interface RouteDescriptor {
   path: string;
@@ -29,7 +29,7 @@ function collectRoutes(node: ReactNode, routes: RouteDescriptor[] = []): RouteDe
   return routes;
 }
 
-function createEnvelope(): SuiteHostEnvelope {
+function createEnvelope(): PlatformHostEnvelope {
   return {
     app: {
       name: 'cats',
@@ -107,9 +107,9 @@ function assertConcreteRoute(routes: RouteDescriptor[], path: string): void {
   assert.notEqual(route.element.type, Navigate);
 }
 
-test('SuiteSettingsRoutes owns canonical suite settings and preserves legacy cats redirect', () => {
+test('PlatformSettingsRoutes owns canonical platform settings and preserves legacy cats redirect', () => {
   const routes = collectRoutes(
-    SuiteSettingsRouteTree({
+    PlatformSettingsRouteTree({
       envelope: createEnvelope(),
       onEnvelopeUpdate: () => {},
       feedback: '',

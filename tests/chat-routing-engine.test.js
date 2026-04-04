@@ -10,9 +10,9 @@ import {
   createCat,
   removeCatFromChannel,
   setChannelCatLease,
-} from '../dist-server/chat/model.js';
-import { routeChannelMessage } from '../dist-server/chat/runtimeActions.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
+} from '../dist-server/products/chat/state/model/index.js';
+import { routeChannelMessage } from '../dist-server/products/chat/state/runtimeActions.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
 import { patchTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
 
 function createRuntimeStub(responder) {

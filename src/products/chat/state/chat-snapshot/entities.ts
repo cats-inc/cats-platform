@@ -30,9 +30,9 @@ import {
 } from '../../../../shared/providerSelection.js';
 import {
   defaultCatProducts,
-  listEnabledSuiteSurfaces,
-  normalizeSuiteSurfaceList,
-} from '../../../../shared/suiteSurfaces.js';
+  listEnabledPlatformSurfaces,
+  normalizePlatformSurfaceList,
+} from '../../../../shared/platformSurfaces.js';
 import { normalizeRoomRouting } from '../room-routing/snapshot.js';
 import {
   asRecord,
@@ -116,7 +116,7 @@ export function normalizeChatCat(rawCat: unknown): ChatCat | null {
     avatarUrl: readNullableString(catRecord.avatarUrl),
     defaultExecutionTarget,
     defaultModelSelection: parseProviderModelSelection(catRecord.defaultModelSelection),
-    products: normalizeSuiteSurfaceList(readStringArray(catRecord.products), {
+    products: normalizePlatformSurfaceList(readStringArray(catRecord.products), {
       fallback: defaultCatProducts(),
     }),
     memory: asRecord(catRecord.memory)
@@ -289,13 +289,13 @@ export function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilitie
     maxParallelChats: typeof capabilitiesRecord?.maxParallelChats === 'number' && capabilitiesRecord.maxParallelChats > 0
       ? capabilitiesRecord.maxParallelChats
       : fallback.maxParallelChats,
-    availableSurfaces: normalizeSuiteSurfaceList(
+    availableSurfaces: normalizePlatformSurfaceList(
       Array.isArray(capabilitiesRecord?.availableSurfaces)
         ? (capabilitiesRecord.availableSurfaces as unknown[]).filter((v): v is string => typeof v === 'string')
         : null,
       {
-        allowed: listEnabledSuiteSurfaces(),
-        fallback: listEnabledSuiteSurfaces(),
+        allowed: listEnabledPlatformSurfaces(),
+        fallback: listEnabledPlatformSurfaces(),
       },
     ),
   };

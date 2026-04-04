@@ -1,25 +1,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultChatState } from '../dist-server/chat/defaults.js';
+import { createDefaultChatState } from '../dist-server/products/chat/state/defaults.js';
 import {
   createCat,
   createChannel,
   setBossCat,
   updateCatProducts,
-} from '../dist-server/chat/model.js';
+} from '../dist-server/products/chat/state/model/index.js';
 import {
   defaultCatProducts,
-  listEnabledSuiteSurfaces,
-} from '../dist-server/shared/suiteSurfaces.js';
+  listEnabledPlatformSurfaces,
+} from '../dist-server/shared/platformSurfaces.js';
 
-test('default chat state exposes suite-enabled surfaces only', () => {
+test('default chat state exposes platform-enabled surfaces only', () => {
   const state = createDefaultChatState();
 
-  assert.deepEqual(state.capabilities.availableSurfaces, listEnabledSuiteSurfaces());
+  assert.deepEqual(state.capabilities.availableSurfaces, listEnabledPlatformSurfaces());
 });
 
-test('createCat defaults to chat products and ignores unavailable surfaces', () => {
+test('createCat defaults to chat products and falls back when surfaces are unavailable', () => {
   let state = createDefaultChatState();
 
   state = createCat(state, {
@@ -31,7 +31,7 @@ test('createCat defaults to chat products and ignores unavailable surfaces', () 
   state = createCat(state, {
     name: 'Analyst',
     provider: 'claude',
-    products: ['work'],
+    products: ['bogus'],
   });
   assert.deepEqual(state.cats[0].products, defaultCatProducts());
 });

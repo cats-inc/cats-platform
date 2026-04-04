@@ -19,8 +19,8 @@ import { buildMemoryRetrievalContext } from '../dist-server/platform/memory/retr
 import { createMemoryAwareCompanionBoxStore } from '../dist-server/products/chat/state/companionMemoryAdapter.js';
 import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companion-box/index.js';
 import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
-import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
+import { createSharedCoreFixtureBundle } from '../dist-server/shared/coreFixtures.js';
 
 function buildCompanionCat(catId, nowIso) {
   return {
@@ -511,7 +511,7 @@ test('generic retrieval context includes scoped project and relationship memory'
         subjectType: 'project',
         subjectId: fixtures.project.id,
         category: 'policy',
-        content: 'Cats Suite Launch keeps rollout notes additive and migration-safe.',
+        content: 'Cats Platform Launch keeps rollout notes additive and migration-safe.',
         confidence: 0.93,
         sourceRefs: [],
         createdAt: now.toISOString(),

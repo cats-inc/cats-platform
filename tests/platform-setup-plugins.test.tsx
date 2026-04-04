@@ -3,14 +3,14 @@ import test from 'node:test';
 
 import {
   describeGuideCatSetupChoice,
-  getSuiteSetupPlugins,
+  getPlatformSetupPlugins,
   resolveInitialSetupProduct,
   validateGuideCatSetupStep,
 } from '../src/app/renderer/setup/plugins.tsx';
-import { listSuiteProductDescriptors } from '../src/shared/suiteProducts.ts';
+import { listPlatformProductDescriptors } from '../src/shared/platformProducts.ts';
 
-test('getSuiteSetupPlugins derives setup metadata from shared suite product descriptors', () => {
-  const plugins = getSuiteSetupPlugins(listSuiteProductDescriptors());
+test('getPlatformSetupPlugins derives setup metadata from shared platform product descriptors', () => {
+  const plugins = getPlatformSetupPlugins(listPlatformProductDescriptors());
 
   assert.deepEqual(
     plugins.map((plugin) => ({

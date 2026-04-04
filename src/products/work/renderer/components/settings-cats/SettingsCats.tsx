@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import type { AppShellPayload } from '../../../api/contracts';
 import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog';
 import { ToastContainer, useToast } from '../../../../../design/components/Toast';
-import { ALL_SUITE_SURFACES } from '../../../../../shared/suiteSurfaces';
+import { ALL_PLATFORM_SURFACES } from '../../../../../shared/platformSurfaces';
 import { SettingsShell } from '../SettingsShell';
 import { useSettingsCatsRegistryActions } from '../../hooks/useSettingsCatsRegistryActions';
 import { useSettingsCatsMemory } from '../../hooks/useSettingsCatsMemory';
@@ -77,7 +77,7 @@ export function SettingsCats({
     onFeedback: toastFeedback,
   });
   const enabledSurfaces = payload.chat.capabilities.availableSurfaces;
-  const configurableSurfaces = [...ALL_SUITE_SURFACES];
+  const configurableSurfaces = [...ALL_PLATFORM_SURFACES];
 
   return (
     <>

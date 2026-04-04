@@ -1,10 +1,10 @@
 import type {
-  SuiteProductDescriptor,
-  SuiteProductId,
-  SuiteSurfaceId,
-} from './suite-contract.js';
+  PlatformProductDescriptor,
+  PlatformProductId,
+  PlatformSurfaceId,
+} from './platform-contract.js';
 
-const SUITE_PRODUCT_DESCRIPTORS: readonly SuiteProductDescriptor[] = [
+const PLATFORM_PRODUCT_DESCRIPTORS: readonly PlatformProductDescriptor[] = [
   {
     id: 'chat',
     surface: 'chat',
@@ -61,7 +61,7 @@ const SUITE_PRODUCT_DESCRIPTORS: readonly SuiteProductDescriptor[] = [
   },
 ] as const;
 
-function cloneSuiteProductDescriptor(descriptor: SuiteProductDescriptor): SuiteProductDescriptor {
+function clonePlatformProductDescriptor(descriptor: PlatformProductDescriptor): PlatformProductDescriptor {
   return {
     ...descriptor,
     setup: { ...descriptor.setup },
@@ -69,22 +69,22 @@ function cloneSuiteProductDescriptor(descriptor: SuiteProductDescriptor): SuiteP
   };
 }
 
-export function listSuiteProductDescriptors(): SuiteProductDescriptor[] {
-  return SUITE_PRODUCT_DESCRIPTORS.map(cloneSuiteProductDescriptor);
+export function listPlatformProductDescriptors(): PlatformProductDescriptor[] {
+  return PLATFORM_PRODUCT_DESCRIPTORS.map(clonePlatformProductDescriptor);
 }
 
-export function getSuiteProductDescriptor(productId: SuiteProductId): SuiteProductDescriptor | null {
-  const matched = SUITE_PRODUCT_DESCRIPTORS.find((descriptor) => descriptor.id === productId);
+export function getPlatformProductDescriptor(productId: PlatformProductId): PlatformProductDescriptor | null {
+  const matched = PLATFORM_PRODUCT_DESCRIPTORS.find((descriptor) => descriptor.id === productId);
   if (!matched) {
     return null;
   }
-  return cloneSuiteProductDescriptor(matched);
+  return clonePlatformProductDescriptor(matched);
 }
 
-export function getSuiteProductBySurface(surface: SuiteSurfaceId): SuiteProductDescriptor | null {
-  const matched = SUITE_PRODUCT_DESCRIPTORS.find((descriptor) => descriptor.surface === surface);
+export function getPlatformProductBySurface(surface: PlatformSurfaceId): PlatformProductDescriptor | null {
+  const matched = PLATFORM_PRODUCT_DESCRIPTORS.find((descriptor) => descriptor.surface === surface);
   if (!matched) {
     return null;
   }
-  return cloneSuiteProductDescriptor(matched);
+  return clonePlatformProductDescriptor(matched);
 }

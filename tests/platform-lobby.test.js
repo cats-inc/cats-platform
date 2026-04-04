@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildSuiteLobbySections } from '../dist-server/app/renderer/lobbyModel.js';
-import { listSuiteProductDescriptors } from '../dist-server/shared/suiteProducts.js';
+import { buildPlatformLobbySections } from '../dist-server/app/renderer/lobbyModel.js';
+import { listPlatformProductDescriptors } from '../dist-server/shared/platformProducts.js';
 
-test('buildSuiteLobbySections groups suite products into Home and Office', () => {
-  const sections = buildSuiteLobbySections({
-    products: listSuiteProductDescriptors(),
+test('buildPlatformLobbySections groups platform products into Home and Office', () => {
+  const sections = buildPlatformLobbySections({
+    products: listPlatformProductDescriptors(),
     lastUsedSurface: 'work',
   });
 

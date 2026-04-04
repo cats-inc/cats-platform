@@ -1,17 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 
-import { suiteSurfaceProductName, suiteSurfaceRoutePrefix } from '../../core/suiteSurface.js';
+import { platformSurfaceProductName, platformSurfaceRoutePrefix } from '../../core/platformSurface.js';
 import { resolveRuntimeConnectionChip } from '../../design/components/runtimeChips.js';
-import type { SuiteHostEnvelope } from '../../shared/suite-contract.js';
-import { buildSuiteLobbySections } from './lobbyModel.js';
+import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
+import { buildPlatformLobbySections } from './lobbyModel.js';
 
-export function SuiteLobby({
+export function PlatformLobby({
   envelope,
 }: {
-  envelope: SuiteHostEnvelope;
+  envelope: PlatformHostEnvelope;
 }) {
   const navigate = useNavigate();
-  const sections = buildSuiteLobbySections({
+  const sections = buildPlatformLobbySections({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
   });
@@ -20,23 +20,23 @@ export function SuiteLobby({
 
   return (
     <div className="screen screenCentered">
-      <div className="suiteLobby">
-        <section className="contentCard setupCard suiteLobbyHero">
+      <div className="platformLobby">
+        <section className="contentCard setupCard platformLobbyHero">
           <div className="viewIntro">
             <p className="eyebrow">Cats</p>
             <h1>Lobby</h1>
             <p className="heroNote">
-              Move between Home and Office without leaving the suite shell.
+              Move between Home and Office without leaving the platform shell.
             </p>
           </div>
 
-          <div className="suiteLobbyMeta">
+          <div className="platformLobbyMeta">
             <span className={runtimeChip.className}>{runtimeChip.label}</span>
             <span className="statusChip statusChipMuted">
               Owner: {envelope.ownerDisplayName}
             </span>
             <span className="statusChip statusChipAccent">
-              Last used: {suiteSurfaceProductName(returnSurface)}
+              Last used: {platformSurfaceProductName(returnSurface)}
             </span>
           </div>
 
@@ -44,9 +44,9 @@ export function SuiteLobby({
             <button
               type="button"
               className="primaryButton"
-              onClick={() => navigate(suiteSurfaceRoutePrefix(returnSurface))}
+              onClick={() => navigate(platformSurfaceRoutePrefix(returnSurface))}
             >
-              Open {suiteSurfaceProductName(returnSurface)}
+              Open {platformSurfaceProductName(returnSurface)}
             </button>
             <button
               type="button"
@@ -58,25 +58,25 @@ export function SuiteLobby({
           </div>
         </section>
 
-        <div className="suiteLobbyGrid">
+        <div className="platformLobbyGrid">
           {sections.map((section) => (
-            <section key={section.id} className="contentCard suiteLobbySection">
+            <section key={section.id} className="contentCard platformLobbySection">
               <div className="contentCardHeader">
                 <h2>{section.label}</h2>
               </div>
-              <p className="heroNote suiteLobbySectionNote">{section.description}</p>
+              <p className="heroNote platformLobbySectionNote">{section.description}</p>
               <div className="setupProductGrid">
                 {section.entries.map((entry) => (
                   <button
                     key={entry.surface}
                     type="button"
-                    className="setupProductCard suiteLobbyProductCard"
+                    className="setupProductCard platformLobbyProductCard"
                     onClick={() => navigate(entry.routePrefix)}
                   >
-                    <div className="suiteLobbyProductHeader">
+                    <div className="platformLobbyProductHeader">
                       <span className="setupProductLabel">{entry.productName}</span>
                     </div>
-                    <div className="suiteLobbyProductMeta">
+                    <div className="platformLobbyProductMeta">
                       <span className="statusChip statusChipReady">
                         {entry.installPolicy === 'required' ? 'Required' : 'Optional'}
                       </span>
@@ -103,11 +103,11 @@ export function SuiteLobby({
             </section>
           ))}
 
-          <section className="contentCard suiteLobbySection">
+          <section className="contentCard platformLobbySection">
             <div className="contentCardHeader">
               <h2>Apps</h2>
             </div>
-            <div className="emptyStateCard suiteLobbyEmptyState">
+            <div className="emptyStateCard platformLobbyEmptyState">
               <strong>No extra apps installed yet</strong>
               <p>
                 Shared and third-party apps will appear here once the host starts

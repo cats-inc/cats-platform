@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { SuiteHostEnvelope } from '../../../shared/suite-contract';
-import type { SuiteSurfaceId } from '../../../shared/suite-contract';
+import type { PlatformHostEnvelope } from '../../../shared/platform-contract';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import {
   applyRuntimeSetup,
-  completeSuiteSetup,
+  completePlatformSetup,
   fetchRuntimeSetup,
-  markSuiteSetupOpened,
+  markPlatformSetupOpened,
   scanRuntimeSetup,
 } from './api';
 import {
   describeGuideCatSetupChoice,
-  getSuiteSetupPlugins,
+  getPlatformSetupPlugins,
   GuideCatSetupFields,
   resolveInitialSetupProduct,
   validateGuideCatSetupStep,
@@ -36,10 +36,10 @@ type PendingAction =
   | null;
 
 function createInitialRuntimeSetup(
-  envelope: SuiteHostEnvelope,
+  envelope: PlatformHostEnvelope,
 ): RuntimeSetupSummary {
   return envelope.runtimeSetup ?? createUnavailableRuntimeSetupSummary(
-    new Error('Cats Runtime setup was missing from the suite envelope.'),
+    new Error('Cats Runtime setup was missing from the platform envelope.'),
   );
 }
 
@@ -89,17 +89,17 @@ function formatRuntimeTimestamp(timestamp: string | null): string | null {
   return parsed.toLocaleString();
 }
 
-export function SuiteSetupWizard({
+export function PlatformSetupWizard({
   envelope,
   onComplete,
 }: {
-  envelope: SuiteHostEnvelope;
-  onComplete: (envelope: SuiteHostEnvelope) => void;
+  envelope: PlatformHostEnvelope;
+  onComplete: (envelope: PlatformHostEnvelope) => void;
 }) {
-  const plugins = getSuiteSetupPlugins(envelope.products);
+  const plugins = getPlatformSetupPlugins(envelope.products);
   const [step, setStep] = useState<SetupStep>(1);
   const [ownerName, setOwnerName] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<SuiteSurfaceId>(() =>
+  const [selectedProduct, setSelectedProduct] = useState<PlatformSurfaceId>(() =>
     resolveInitialSetupProduct(plugins),
   );
   const [createGuideCat, setCreateGuideCat] = useState(false);
@@ -181,7 +181,7 @@ export function SuiteSetupWizard({
     setBusyAction('complete');
     setFeedback('');
     try {
-      const result = await completeSuiteSetup({
+      const result = await completePlatformSetup({
         attemptId,
         ownerDisplayName: ownerName.trim(),
         selectedProduct,
@@ -224,7 +224,7 @@ export function SuiteSetupWizard({
       return;
     }
     setupOpenedRecorded.current = true;
-    void markSuiteSetupOpened(attemptId).catch(() => undefined);
+    void markPlatformSetupOpened(attemptId).catch(() => undefined);
   }, [attemptId]);
 
   useEffect(() => {

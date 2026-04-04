@@ -6,13 +6,13 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../dist-server/server.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
-import { createCat } from '../dist-server/chat/model.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
+import { createCat } from '../dist-server/products/chat/state/model/index.js';
 
 let tempDir;
 
 test.before(async () => {
-  tempDir = await mkdtemp(path.join(tmpdir(), 'cats-suite-test-'));
+  tempDir = await mkdtemp(path.join(tmpdir(), 'cats-platform-test-'));
 });
 
 test.after(async () => {
@@ -135,16 +135,16 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
       })),
       [
         { id: 'chat', group: 'home', maturity: 'active', selectable: true },
-        { id: 'work', group: 'office', maturity: 'preview', selectable: false },
-        { id: 'code', group: 'office', maturity: 'preview', selectable: false },
+        { id: 'work', group: 'office', maturity: 'preview', selectable: true },
+        { id: 'code', group: 'office', maturity: 'preview', selectable: true },
       ],
     );
   });
 });
 
-test('POST /api/suite/setup/complete with createGuideCat=true persists a suite-level Guide Cat without assigning Boss Cat', async () => {
+test('POST /api/platform/setup/complete with createGuideCat=true persists a platform-level Guide Cat without assigning Boss Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -164,8 +164,8 @@ test('POST /api/suite/setup/complete with createGuideCat=true persists a suite-l
     assert.equal(payload.ownerDisplayName, 'Kenny');
     assert.equal(payload.lastProductSurface, 'chat');
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
-    assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat']);
-    assert.equal(payload.chat.cats.length, 0, 'suite setup should not inject Guide Cat into chat cats');
+    assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat', 'work', 'code']);
+    assert.equal(payload.chat.cats.length, 0, 'platform setup should not inject Guide Cat into chat cats');
     assert.equal(payload.guideCat?.name, 'Meowster');
     assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
     assert.equal(payload.guideCat?.executionTarget.model, 'claude-sonnet');
@@ -180,9 +180,9 @@ test('POST /api/suite/setup/complete with createGuideCat=true persists a suite-l
   });
 });
 
-test('POST /api/suite/setup/complete persists Guide Cat modelSelection without overwriting orchestrator selection', async () => {
+test('POST /api/platform/setup/complete persists Guide Cat modelSelection without overwriting orchestrator selection', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -216,9 +216,9 @@ test('POST /api/suite/setup/complete persists Guide Cat modelSelection without o
   });
 });
 
-test('POST /api/suite/setup/complete with createGuideCat=false does not create Guide Cat', async () => {
+test('POST /api/platform/setup/complete with createGuideCat=false does not create Guide Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -240,9 +240,9 @@ test('POST /api/suite/setup/complete with createGuideCat=false does not create G
   });
 });
 
-test('POST /api/suite/setup/complete returns 409 if already completed', async () => {
+test('POST /api/platform/setup/complete returns 409 if already completed', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -252,7 +252,7 @@ test('POST /api/suite/setup/complete returns 409 if already completed', async ()
       }),
     });
 
-    const secondResponse = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const secondResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -266,9 +266,9 @@ test('POST /api/suite/setup/complete returns 409 if already completed', async ()
   });
 });
 
-test('POST /api/suite/setup/complete with createGuideCat=true defaults name to Guide Cat', async () => {
+test('POST /api/platform/setup/complete with createGuideCat=true defaults name to Guide Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -287,10 +287,10 @@ test('POST /api/suite/setup/complete with createGuideCat=true defaults name to G
   });
 });
 
-test('chat functions normally after suite setup without Guide Cat', async () => {
+test('chat functions normally after platform setup without Guide Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup without Guide Cat
-    await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -310,9 +310,9 @@ test('chat functions normally after suite setup without Guide Cat', async () => 
   });
 });
 
-test('POST /api/suite/setup/complete can create Guide Cat even when starting product is not chat', async () => {
+test('POST /api/platform/setup/complete can create Guide Cat even when starting product is not chat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -336,9 +336,9 @@ test('POST /api/suite/setup/complete can create Guide Cat even when starting pro
   });
 });
 
-test('POST /api/suite/setup/complete still accepts legacy Boss Cat aliases as Guide Cat compatibility', async () => {
+test('POST /api/platform/setup/complete still accepts legacy Boss Cat aliases as Guide Cat compatibility', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -353,7 +353,7 @@ test('POST /api/suite/setup/complete still accepts legacy Boss Cat aliases as Gu
 
     assert.equal(response.status, 200);
     const payload = await response.json();
-    assert.equal(payload.chat.bossCatId, null, 'suite setup should not assign Boss Cat');
+    assert.equal(payload.chat.bossCatId, null, 'platform setup should not assign Boss Cat');
     assert.equal(payload.chat.cats.length, 0);
     assert.equal(payload.guideCat?.name, 'Legacy Boss');
     assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
@@ -383,7 +383,7 @@ test('old POST /api/setup/complete still works alongside new endpoint', async ()
 
 test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -405,9 +405,9 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
   });
 });
 
-test('POST /api/suite/preferences updates lastProductSurface', async () => {
+test('POST /api/platform/preferences updates lastProductSurface', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    await fetch(`${baseUrl}/api/suite/setup/complete`, {
+    await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -417,7 +417,7 @@ test('POST /api/suite/preferences updates lastProductSurface', async () => {
       }),
     });
 
-    const prefsResponse = await fetch(`${baseUrl}/api/suite/preferences`, {
+    const prefsResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ lastProductSurface: 'work' }),
@@ -430,9 +430,9 @@ test('POST /api/suite/preferences updates lastProductSurface', async () => {
   });
 });
 
-test('POST /api/suite/preferences rejects invalid surface', async () => {
+test('POST /api/platform/preferences rejects invalid surface', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/suite/preferences`, {
+    const response = await fetch(`${baseUrl}/api/platform/preferences`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ lastProductSurface: 'invalid' }),

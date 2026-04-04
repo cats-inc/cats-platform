@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildSuiteSettingsProductGroups } from '../src/app/renderer/settings/SuiteSettingsShell.tsx';
-import type { SuiteProductDescriptor } from '../src/shared/suite-contract.ts';
+import { buildPlatformSettingsProductGroups } from '../src/app/renderer/settings/PlatformSettingsShell.tsx';
+import type { PlatformProductDescriptor } from '../src/shared/platform-contract.ts';
 
-function createProduct(overrides: Partial<SuiteProductDescriptor>): SuiteProductDescriptor {
+function createProduct(overrides: Partial<PlatformProductDescriptor>): PlatformProductDescriptor {
   return {
     id: 'chat',
     surface: 'chat',
@@ -22,8 +22,8 @@ function createProduct(overrides: Partial<SuiteProductDescriptor>): SuiteProduct
   };
 }
 
-test('buildSuiteSettingsProductGroups hides only available products without losing in-progress settings entries', () => {
-  const groups = buildSuiteSettingsProductGroups([
+test('buildPlatformSettingsProductGroups hides only available products without losing in-progress settings entries', () => {
+  const groups = buildPlatformSettingsProductGroups([
     createProduct({
       id: 'chat',
       productName: 'Cats Chat',

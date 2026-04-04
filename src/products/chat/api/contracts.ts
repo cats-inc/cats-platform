@@ -37,7 +37,7 @@ import type {
   RoomWorkflowTargetStatus,
   RoomWorkflowTurn,
 } from '../../../shared/roomRouting.js';
-import type { SuiteHostEnvelope } from '../../../shared/suite-contract.js';
+import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 
 export type { BotBindingInboundMode, ExecutionTargetSummary, MemoryCheckpointSummary } from '../../../core/types.js';
@@ -432,7 +432,7 @@ export interface ChatShellState {
   botBindings: ChatBotBindingSummary[];
 }
 
-export interface AppShellPayload extends SuiteHostEnvelope {
+export interface AppShellPayload extends PlatformHostEnvelope {
   chat: ChatShellState;
 }
 

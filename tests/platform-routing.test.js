@@ -3,15 +3,15 @@ import test from 'node:test';
 
 import { createDefaultCoreState } from '../dist-server/core/model/index.js';
 import {
-  isSuiteNonProductPath,
-  resolveSuiteSurfaceForPath,
-  SUITE_SURFACE_ROUTES,
+  isPlatformNonProductPath,
+  resolvePlatformSurfaceForPath,
+  PLATFORM_SURFACE_ROUTES,
 } from '../dist-server/app/renderer/routeMap.js';
 import {
-  listSuiteSurfaceDescriptors,
-  suiteSurfaceRoutePrefix,
-  suiteSurfaceSubtitle,
-} from '../dist-server/core/suiteSurface.js';
+  listPlatformSurfaceDescriptors,
+  platformSurfaceRoutePrefix,
+  platformSurfaceSubtitle,
+} from '../dist-server/core/platformSurface.js';
 import {
   buildWorkDashboardProjection,
 } from '../dist-server/products/work/api/projection.js';
@@ -19,19 +19,19 @@ import {
   buildCodeDashboardProjection,
 } from '../dist-server/products/code/api/projection.js';
 
-test('resolveSuiteSurfaceForPath routes work and code prefixes to their dedicated suite surfaces', () => {
-  assert.equal(resolveSuiteSurfaceForPath('/'), 'chat');
-  assert.equal(resolveSuiteSurfaceForPath('/chat'), 'chat');
-  assert.equal(resolveSuiteSurfaceForPath('/chat/chats/abc'), 'chat');
-  assert.equal(resolveSuiteSurfaceForPath('/chat/settings/general'), 'chat');
-  assert.equal(resolveSuiteSurfaceForPath('/work'), 'work');
-  assert.equal(resolveSuiteSurfaceForPath('/work/war-room'), 'work');
-  assert.equal(resolveSuiteSurfaceForPath('/code'), 'code');
-  assert.equal(resolveSuiteSurfaceForPath('/code/projects/demo'), 'code');
+test('resolvePlatformSurfaceForPath routes work and code prefixes to their dedicated platform surfaces', () => {
+  assert.equal(resolvePlatformSurfaceForPath('/'), 'chat');
+  assert.equal(resolvePlatformSurfaceForPath('/chat'), 'chat');
+  assert.equal(resolvePlatformSurfaceForPath('/chat/chats/abc'), 'chat');
+  assert.equal(resolvePlatformSurfaceForPath('/chat/settings/general'), 'chat');
+  assert.equal(resolvePlatformSurfaceForPath('/work'), 'work');
+  assert.equal(resolvePlatformSurfaceForPath('/work/war-room'), 'work');
+  assert.equal(resolvePlatformSurfaceForPath('/code'), 'code');
+  assert.equal(resolvePlatformSurfaceForPath('/code/projects/demo'), 'code');
 
   assert.deepEqual(
     Object.fromEntries(
-      Object.entries(SUITE_SURFACE_ROUTES).map(([surface, route]) => [
+      Object.entries(PLATFORM_SURFACE_ROUTES).map(([surface, route]) => [
         surface,
         { routePrefix: route.routePrefix, placeholder: route.placeholder, apiBase: route.apiBase },
       ]),
@@ -44,9 +44,9 @@ test('resolveSuiteSurfaceForPath routes work and code prefixes to their dedicate
   );
 });
 
-test('suite surface descriptors expose product switcher metadata and stable root routes', () => {
+test('platform surface descriptors expose product switcher metadata and stable root routes', () => {
   assert.deepEqual(
-    listSuiteSurfaceDescriptors().map((descriptor) => ({
+    listPlatformSurfaceDescriptors().map((descriptor) => ({
       id: descriptor.id,
       routePrefix: descriptor.routePrefix,
       subtitle: descriptor.subtitle,
@@ -73,25 +73,25 @@ test('suite surface descriptors expose product switcher metadata and stable root
       },
     ],
   );
-  assert.equal(suiteSurfaceRoutePrefix('chat'), '/chat');
-  assert.equal(suiteSurfaceRoutePrefix('work'), '/work');
-  assert.equal(suiteSurfaceRoutePrefix('code'), '/code');
+  assert.equal(platformSurfaceRoutePrefix('chat'), '/chat');
+  assert.equal(platformSurfaceRoutePrefix('work'), '/work');
+  assert.equal(platformSurfaceRoutePrefix('code'), '/code');
   assert.equal(
-    suiteSurfaceSubtitle('code'),
+    platformSurfaceSubtitle('code'),
     'Repos, runs, and coding workspace',
   );
 });
 
-test('isSuiteNonProductPath excludes suite settings and legacy chat settings from product sync', () => {
-  assert.equal(isSuiteNonProductPath('/setup'), true);
-  assert.equal(isSuiteNonProductPath('/lobby'), true);
-  assert.equal(isSuiteNonProductPath('/products'), true);
-  assert.equal(isSuiteNonProductPath('/settings'), true);
-  assert.equal(isSuiteNonProductPath('/settings/general'), true);
-  assert.equal(isSuiteNonProductPath('/chat/settings'), true);
-  assert.equal(isSuiteNonProductPath('/chat/settings/general'), true);
-  assert.equal(isSuiteNonProductPath('/chat/new'), false);
-  assert.equal(isSuiteNonProductPath('/work'), false);
+test('isPlatformNonProductPath excludes platform settings and legacy chat settings from product sync', () => {
+  assert.equal(isPlatformNonProductPath('/setup'), true);
+  assert.equal(isPlatformNonProductPath('/lobby'), true);
+  assert.equal(isPlatformNonProductPath('/products'), true);
+  assert.equal(isPlatformNonProductPath('/settings'), true);
+  assert.equal(isPlatformNonProductPath('/settings/general'), true);
+  assert.equal(isPlatformNonProductPath('/chat/settings'), true);
+  assert.equal(isPlatformNonProductPath('/chat/settings/general'), true);
+  assert.equal(isPlatformNonProductPath('/chat/new'), false);
+  assert.equal(isPlatformNonProductPath('/work'), false);
 });
 
 test('Work and Code dashboard projections stay core-backed without inventing new schemas', () => {

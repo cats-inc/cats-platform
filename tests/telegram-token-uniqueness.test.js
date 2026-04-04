@@ -20,7 +20,7 @@ function createTestServer() {
         host: '127.0.0.1',
         port: 0,
         chatStatePath: ':memory:',
-        suiteId: 'cats-test',
+        platformId: 'cats-test',
         publicUrl: null,
       },
       runtimeClient,

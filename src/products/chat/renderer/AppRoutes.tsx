@@ -98,7 +98,7 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        {/* Product-owned settings live at /chat/settings/*; suite settings stay at /settings/*. */}
+        {/* Product-owned settings live at /chat/settings/*; platform settings stay at /settings/*. */}
         <Route path="settings" element={<Navigate to="/chat/settings/general" replace />} />
         <Route
           path="settings/general"

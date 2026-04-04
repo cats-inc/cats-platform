@@ -1148,8 +1148,8 @@ test('renderer styles compose a shared design layer and product-owned chat parti
     new URL('../src/products/chat/renderer/styles/settings.css', import.meta.url),
     'utf8',
   );
-  const suiteSettingsStylesSource = await readFile(
-    new URL('../src/app/renderer/settings/suite-settings.css', import.meta.url),
+  const platformSettingsStylesSource = await readFile(
+    new URL('../src/app/renderer/settings/platform-settings.css', import.meta.url),
     'utf8',
   );
   const chatStylesSource = await readFile(
@@ -1195,7 +1195,7 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(designIndexSource, /@import '\.\/components\/choices\.css';/u);
   assert.match(designIndexSource, /@import '\.\/components\/operator-chrome\.css';/u);
   assert.match(designIndexSource, /@import '\.\/components\/product-placeholder\.css';/u);
-  assert.match(designIndexSource, /@import '\.\/components\/suite-setup\.css';/u);
+  assert.match(designIndexSource, /@import '\.\/components\/platform-setup\.css';/u);
   assert.match(badgeStylesSource, /\.planPill/u);
   assert.match(badgeStylesSource, /\.promptChip/u);
   assert.match(panelStylesSource, /\.contentCard/u);
@@ -1238,11 +1238,11 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.doesNotMatch(settingsStylesSource, /\.settingsShell/u);
   assert.match(settingsStylesSource, /\.catsLayout/u);
   assert.match(
-    suiteSettingsStylesSource,
+    platformSettingsStylesSource,
     /@import '\.\.\/\.\.\/\.\.\/design\/components\/settings-shell\.css';/u,
   );
   assert.doesNotMatch(
-    suiteSettingsStylesSource,
+    platformSettingsStylesSource,
     /products\/chat\/renderer\/styles\/settings\.css/u,
   );
   assert.match(chatShellStylesSource, /\.sidebarCollapsed \.brandCopy/u);
@@ -1252,7 +1252,7 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(chatThreadStylesSource, /\.recentOverflowMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusButton/u);
-  assert.match(chatSetupStylesSource, /suite-setup\.css/u);
+  assert.match(chatSetupStylesSource, /platform-setup\.css/u);
   assert.match(extraStylesSource, /\.myCatsSection/u);
   await assert.rejects(
     readFile(new URL('../src/products/chat/renderer/styles/base.css', import.meta.url), 'utf8'),

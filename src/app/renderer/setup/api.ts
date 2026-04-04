@@ -9,13 +9,13 @@ import type {
   ProductBootstrapDiagnosticsReadModel,
 } from '../../../shared/bootstrapDiagnostics.js';
 import type {
-  SuiteHostEnvelope,
-  SuiteSetupCompleteInput,
-} from '../../../shared/suite-contract.js';
+  PlatformHostEnvelope,
+  PlatformSetupCompleteInput,
+} from '../../../shared/platform-contract.js';
 import type {
   RuntimeSetupSummary,
-  SuiteRuntimeSetupApplyInput,
-  SuiteRuntimeSetupScanInput,
+  PlatformRuntimeSetupApplyInput,
+  PlatformRuntimeSetupScanInput,
 } from '../../../shared/runtimeSetup.js';
 
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -28,11 +28,11 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
   return fallback;
 }
 
-export async function completeSuiteSetup(
-  input: SuiteSetupCompleteInput,
+export async function completePlatformSetup(
+  input: PlatformSetupCompleteInput,
   signal?: AbortSignal,
-): Promise<SuiteHostEnvelope> {
-  const response = await fetch('/api/suite/setup/complete', {
+): Promise<PlatformHostEnvelope> {
+  const response = await fetch('/api/platform/setup/complete', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -46,13 +46,13 @@ export async function completeSuiteSetup(
     throw new Error(await readErrorMessage(response, `Setup failed (${response.status})`));
   }
 
-  return (await response.json()) as SuiteHostEnvelope;
+  return (await response.json()) as PlatformHostEnvelope;
 }
 
 export async function fetchRuntimeSetup(
   signal?: AbortSignal,
 ): Promise<RuntimeSetupSummary> {
-  const response = await fetch('/api/suite/runtime-setup', {
+  const response = await fetch('/api/platform/runtime-setup', {
     headers: { Accept: 'application/json' },
     signal,
   });
@@ -65,10 +65,10 @@ export async function fetchRuntimeSetup(
 }
 
 export async function scanRuntimeSetup(
-  input: SuiteRuntimeSetupScanInput = {},
+  input: PlatformRuntimeSetupScanInput = {},
   signal?: AbortSignal,
 ): Promise<RuntimeSetupSummary> {
-  const response = await fetch('/api/suite/runtime-setup/scan', {
+  const response = await fetch('/api/platform/runtime-setup/scan', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -86,10 +86,10 @@ export async function scanRuntimeSetup(
 }
 
 export async function applyRuntimeSetup(
-  input: SuiteRuntimeSetupApplyInput = {},
+  input: PlatformRuntimeSetupApplyInput = {},
   signal?: AbortSignal,
 ): Promise<RuntimeSetupSummary> {
-  const response = await fetch('/api/suite/runtime-setup/apply', {
+  const response = await fetch('/api/platform/runtime-setup/apply', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -106,9 +106,9 @@ export async function applyRuntimeSetup(
   return (await response.json()) as RuntimeSetupSummary;
 }
 
-export async function fetchSuiteEnvelope(
+export async function fetchPlatformEnvelope(
   signal?: AbortSignal,
-): Promise<SuiteHostEnvelope> {
+): Promise<PlatformHostEnvelope> {
   const response = await fetch('/api/app-shell', {
     headers: { Accept: 'application/json' },
     signal,
@@ -118,14 +118,14 @@ export async function fetchSuiteEnvelope(
     throw new Error(`Failed to load app state (${response.status})`);
   }
 
-  return (await response.json()) as SuiteHostEnvelope;
+  return (await response.json()) as PlatformHostEnvelope;
 }
 
-export async function markSuiteSetupOpened(
+export async function markPlatformSetupOpened(
   attemptId?: string | null,
   signal?: AbortSignal,
 ): Promise<ProductBootstrapDiagnosticsReadModel> {
-  const response = await fetch('/api/suite/bootstrap-diagnostics/opened', {
+  const response = await fetch('/api/platform/bootstrap-diagnostics/opened', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',

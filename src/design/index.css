@@ -12,8 +12,8 @@
 @import './components/choices.css';
 @import './components/operator-chrome.css';
 @import './components/product-placeholder.css';
-@import './components/suite-setup.css';
-@import './components/suite-lobby.css';
+@import './components/platform-setup.css';
+@import './components/platform-lobby.css';
 @import './components/toast.css';
 @import './components/confirm-dialog.css';
 @import './components/notification.css';

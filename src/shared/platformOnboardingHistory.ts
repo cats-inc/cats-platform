@@ -14,14 +14,14 @@ import {
   type ProductBootstrapDiagnosticsReadModel,
 } from './bootstrapDiagnostics.js';
 
-interface SuiteOnboardingHistoryFile {
+interface PlatformOnboardingHistoryFile {
   schemaVersion: 1;
   updatedAt: string;
   activeAttemptId: string | null;
   events: BootstrapEvent[];
 }
 
-const EMPTY_HISTORY: SuiteOnboardingHistoryFile = {
+const EMPTY_HISTORY: PlatformOnboardingHistoryFile = {
   schemaVersion: 1,
   updatedAt: new Date(0).toISOString(),
   activeAttemptId: null,
@@ -115,7 +115,7 @@ function normalizeBootstrapEvent(value: unknown): BootstrapEvent | null {
   };
 }
 
-function normalizeHistoryFile(value: unknown): SuiteOnboardingHistoryFile {
+function normalizeHistoryFile(value: unknown): PlatformOnboardingHistoryFile {
   if (!isObjectRecord(value)) {
     return { ...EMPTY_HISTORY };
   }
@@ -145,22 +145,22 @@ async function writeAtomicJson(filePath: string, payload: unknown): Promise<void
   await rename(tempPath, filePath);
 }
 
-export function resolveSuiteOnboardingHistoryPath(chatStatePath: string): string {
-  return path.join(path.dirname(chatStatePath), 'suite-onboarding-history.json');
+export function resolvePlatformOnboardingHistoryPath(chatStatePath: string): string {
+  return path.join(path.dirname(chatStatePath), 'platform-onboarding-history.json');
 }
 
-export async function readSuiteOnboardingHistoryFile(
+export async function readPlatformOnboardingHistoryFile(
   chatStatePath: string,
-): Promise<SuiteOnboardingHistoryFile> {
+): Promise<PlatformOnboardingHistoryFile> {
   try {
-    const raw = await readFile(resolveSuiteOnboardingHistoryPath(chatStatePath), 'utf8');
+    const raw = await readFile(resolvePlatformOnboardingHistoryPath(chatStatePath), 'utf8');
     return normalizeHistoryFile(JSON.parse(raw) as unknown);
   } catch {
     return { ...EMPTY_HISTORY };
   }
 }
 
-export async function appendSuiteOnboardingEvent(
+export async function appendPlatformOnboardingEvent(
   chatStatePath: string,
   input: {
     now?: Date;
@@ -173,9 +173,9 @@ export async function appendSuiteOnboardingEvent(
     reference?: BootstrapEventReference;
   },
 ): Promise<ProductBootstrapDiagnosticsReadModel> {
-  const historyPath = resolveSuiteOnboardingHistoryPath(chatStatePath);
+  const historyPath = resolvePlatformOnboardingHistoryPath(chatStatePath);
   const now = input.now ?? new Date();
-  const current = await readSuiteOnboardingHistoryFile(chatStatePath);
+  const current = await readPlatformOnboardingHistoryFile(chatStatePath);
   const recordId = input.reference?.recordId ?? `product-${randomUUID()}`;
   const timestamp = ensureBootstrapEventTimestamp(
     now.toISOString(),
@@ -197,7 +197,7 @@ export async function appendSuiteOnboardingEvent(
     },
   };
 
-  const nextFile: SuiteOnboardingHistoryFile = {
+  const nextFile: PlatformOnboardingHistoryFile = {
     schemaVersion: 1,
     updatedAt: timestamp,
     activeAttemptId: nextEvent.attemptId ?? null,
@@ -207,19 +207,19 @@ export async function appendSuiteOnboardingEvent(
     ),
   };
   await writeAtomicJson(historyPath, nextFile);
-  return summarizeSuiteOnboardingHistory(nextFile, historyPath);
+  return summarizePlatformOnboardingHistory(nextFile, historyPath);
 }
 
-export async function readSuiteOnboardingHistory(
+export async function readPlatformOnboardingHistory(
   chatStatePath: string,
 ): Promise<ProductBootstrapDiagnosticsReadModel> {
-  const historyPath = resolveSuiteOnboardingHistoryPath(chatStatePath);
-  const file = await readSuiteOnboardingHistoryFile(chatStatePath);
-  return summarizeSuiteOnboardingHistory(file, historyPath);
+  const historyPath = resolvePlatformOnboardingHistoryPath(chatStatePath);
+  const file = await readPlatformOnboardingHistoryFile(chatStatePath);
+  return summarizePlatformOnboardingHistory(file, historyPath);
 }
 
-export function summarizeSuiteOnboardingHistory(
-  file: SuiteOnboardingHistoryFile,
+export function summarizePlatformOnboardingHistory(
+  file: PlatformOnboardingHistoryFile,
   historyPath: string,
 ): ProductBootstrapDiagnosticsReadModel {
   const layerSummary = summarizeBootstrapEvents(file.events, {

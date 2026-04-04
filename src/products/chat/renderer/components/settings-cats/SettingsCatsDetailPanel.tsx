@@ -11,7 +11,7 @@ import type {
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory';
 import type { BotFormState } from '../../hooks/useSettingsCatsRegistryActions';
 import { buildProductSurfaceToggleStates } from '../../../../../design/components/productSurfaceToggles.js';
-import { defaultCatProducts, hasSuiteSurface } from '../../../../../shared/suiteSurfaces.js';
+import { defaultCatProducts, hasPlatformSurface } from '../../../../../shared/platformSurfaces.js';
 import { MEMORY_CATEGORIES, SKILL_PROFILES, formatTransportTimestamp } from './viewSupport';
 
 interface SettingsCatsRegistryController {
@@ -88,7 +88,7 @@ export function SettingsCatsDetailPanel({
     disabled: busy === `cat:products:${cat.id}`,
   });
   const canBindTelegramBot = cat.status === 'active'
-    && hasSuiteSurface(cat.products, 'chat', { fallback: defaultCatProducts() });
+    && hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() });
 
   const [cropOpen, setCropOpen] = useState(false);
 

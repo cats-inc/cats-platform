@@ -2,31 +2,31 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 
-import type { SuiteSurfaceId } from '../../shared/suite-contract.js';
+import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 import {
-  listSuiteSurfaceDescriptors,
-  suiteSurfaceProductName,
-} from '../../core/suiteSurface.js';
+  listPlatformSurfaceDescriptors,
+  platformSurfaceProductName,
+} from '../../core/platformSurface.js';
 import {
-  getPendingSuiteSurfaceMenuStyle,
-  resolveSuiteSurfaceMenuStyle,
-} from './suiteSurfaceMenuPosition.js';
+  getPendingPlatformSurfaceMenuStyle,
+  resolvePlatformSurfaceMenuStyle,
+} from './platformSurfaceMenuPosition.js';
 
-interface SuiteSurfaceSwitcherProps {
-  activeSurface: SuiteSurfaceId;
-  onSelectSurface: (surface: SuiteSurfaceId) => void;
+interface PlatformSurfaceSwitcherProps {
+  activeSurface: PlatformSurfaceId;
+  onSelectSurface: (surface: PlatformSurfaceId) => void;
 }
 
-export function SuiteSurfaceSwitcher({
+export function PlatformSurfaceSwitcher({
   activeSurface,
   onSelectSurface,
-}: SuiteSurfaceSwitcherProps) {
+}: PlatformSurfaceSwitcherProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>();
-  const descriptors = useMemo(() => listSuiteSurfaceDescriptors(), []);
+  const descriptors = useMemo(() => listPlatformSurfaceDescriptors(), []);
 
   useEffect(() => {
     if (!open) {
@@ -71,7 +71,7 @@ export function SuiteSurfaceSwitcher({
 
       const rect = trigger.getBoundingClientRect();
       setMenuStyle(
-        resolveSuiteSurfaceMenuStyle({
+        resolvePlatformSurfaceMenuStyle({
           triggerRect: rect,
           viewportWidth: window.innerWidth,
           viewportHeight: window.innerHeight,
@@ -93,23 +93,23 @@ export function SuiteSurfaceSwitcher({
   const menuContent = open ? (
     <div
       ref={menuRef}
-      className="suiteSurfaceMenu"
-      style={menuStyle ?? getPendingSuiteSurfaceMenuStyle()}
+      className="platformSurfaceMenu"
+      style={menuStyle ?? getPendingPlatformSurfaceMenuStyle()}
       role="menu"
       aria-label="Switch product"
     >
-      <p className="suiteSurfaceMenuHeading">CATS INC</p>
-      <div className="suiteSurfaceMenuList">
+      <p className="platformSurfaceMenuHeading">CATS INC</p>
+      <div className="platformSurfaceMenuList">
         {descriptors.map((descriptor) => {
           const current = descriptor.id === activeSurface;
-          const swatchClassName = `suiteSurfaceSwatch suiteSurfaceSwatch${descriptor.id[0].toUpperCase()}${descriptor.id.slice(1)}`;
+          const swatchClassName = `platformSurfaceSwatch platformSurfaceSwatch${descriptor.id[0].toUpperCase()}${descriptor.id.slice(1)}`;
           return (
             <button
               key={descriptor.id}
               type="button"
               role="menuitemradio"
               aria-checked={current}
-              className={current ? 'suiteSurfaceMenuItem isCurrent' : 'suiteSurfaceMenuItem'}
+              className={current ? 'platformSurfaceMenuItem isCurrent' : 'platformSurfaceMenuItem'}
               onClick={() => {
                 setOpen(false);
                 if (!current) {
@@ -118,17 +118,17 @@ export function SuiteSurfaceSwitcher({
               }}
             >
               <span className={swatchClassName} aria-hidden="true" />
-              <span className="suiteSurfaceMenuCopy">
-                <span className="suiteSurfaceMenuTitleRow">
-                  <span className="suiteSurfaceMenuTitle">{descriptor.productName}</span>
+              <span className="platformSurfaceMenuCopy">
+                <span className="platformSurfaceMenuTitleRow">
+                  <span className="platformSurfaceMenuTitle">{descriptor.productName}</span>
                   {descriptor.maturity === 'preview' ? (
-                    <span className="suiteSurfaceMenuBadge">Preview</span>
+                    <span className="platformSurfaceMenuBadge">Preview</span>
                   ) : null}
                 </span>
-                <span className="suiteSurfaceMenuSubtitle">{descriptor.subtitle}</span>
+                <span className="platformSurfaceMenuSubtitle">{descriptor.subtitle}</span>
               </span>
               {current ? (
-                <span className="suiteSurfaceMenuCheck" aria-hidden="true">
+                <span className="platformSurfaceMenuCheck" aria-hidden="true">
                   <svg
                     width="12"
                     height="12"
@@ -147,10 +147,10 @@ export function SuiteSurfaceSwitcher({
           );
         })}
       </div>
-      <div className="suiteSurfaceMenuDivider" />
+      <div className="platformSurfaceMenuDivider" />
       <button
         type="button"
-        className="suiteSurfaceMenuAction"
+        className="platformSurfaceMenuAction"
         onClick={() => {
           setOpen(false);
           navigate('/lobby');
@@ -162,19 +162,19 @@ export function SuiteSurfaceSwitcher({
   ) : null;
 
   return (
-    <div ref={rootRef} className="suiteSurfaceSwitcher">
+    <div ref={rootRef} className="platformSurfaceSwitcher">
       <button
         type="button"
-        className={open ? 'suiteSurfaceTrigger isOpen' : 'suiteSurfaceTrigger'}
+        className={open ? 'platformSurfaceTrigger isOpen' : 'platformSurfaceTrigger'}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Switch product. Current product is ${suiteSurfaceProductName(activeSurface)}.`}
+        aria-label={`Switch product. Current product is ${platformSurfaceProductName(activeSurface)}.`}
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="suiteSurfaceTriggerRow">
-          <span className="brandLabel">{suiteSurfaceProductName(activeSurface)}</span>
+        <span className="platformSurfaceTriggerRow">
+          <span className="brandLabel">{platformSurfaceProductName(activeSurface)}</span>
           <svg
-            className="suiteSurfaceChevron"
+            className="platformSurfaceChevron"
             width="12"
             height="12"
             viewBox="0 0 12 12"

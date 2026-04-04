@@ -1,24 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { SuiteHostEnvelope } from '../../../shared/suite-contract.js';
+import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
-import { SuiteSettingsShell } from './SuiteSettingsShell.js';
+import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
-export interface SuiteSettingsGeneralProps {
-  envelope: SuiteHostEnvelope;
+export interface PlatformSettingsGeneralProps {
+  envelope: PlatformHostEnvelope;
   feedback: string;
-  onEnvelopeUpdate: (updater: (current: SuiteHostEnvelope) => SuiteHostEnvelope) => void;
+  onEnvelopeUpdate: (updater: (current: PlatformHostEnvelope) => PlatformHostEnvelope) => void;
   onFeedback: (message: string) => void;
 }
 
-export function SuiteSettingsGeneral({
+export function PlatformSettingsGeneral({
   envelope,
   feedback,
   onEnvelopeUpdate,
   onFeedback,
-}: SuiteSettingsGeneralProps) {
+}: PlatformSettingsGeneralProps) {
   const navigate = useNavigate();
   const [cropOpen, setCropOpen] = useState(false);
 
@@ -50,7 +50,7 @@ export function SuiteSettingsGeneral({
 
   return (
     <>
-      <SuiteSettingsShell
+      <PlatformSettingsShell
         section="general"
         title="General"
         products={envelope.products}
@@ -76,7 +76,7 @@ export function SuiteSettingsGeneral({
             <div className="settingsProfileMeta">
               <p className="settingsProfileName">{envelope.ownerDisplayName}</p>
               <p className="heroNote settingsProfileNote">
-                This is your suite-wide profile across Lobby, Chat, Work, and Code.
+                This is your platform-wide profile across Lobby, Chat, Work, and Code.
               </p>
             </div>
           </div>
@@ -124,7 +124,7 @@ export function SuiteSettingsGeneral({
         </div>
 
         {feedback ? <p className="feedbackText">{feedback}</p> : null}
-      </SuiteSettingsShell>
+      </PlatformSettingsShell>
       {cropOpen ? (
         <AvatarCropDialog
           onSave={(dataUrl) => {

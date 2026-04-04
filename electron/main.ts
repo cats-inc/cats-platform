@@ -658,7 +658,7 @@ async function refreshBootstrapSnapshot(
     skipStartupProviderReprobe
       ? Promise.resolve<RuntimeProviderDiagnosticsPayload | null>(null)
       : fetchJson<RuntimeProviderDiagnosticsPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/providers`),
-    fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/suite/bootstrap-diagnostics`),
+    fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
   ]);
 
   if (appHealth.status === 'fulfilled') {

@@ -6,7 +6,7 @@ import {
 } from '../../../core/actors.js';
 import type { BotBindingRecord, CatsCoreState } from '../../../core/types.js';
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
+import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
 import { requireCat } from '../state/model/index.js';
 import type {
@@ -61,7 +61,7 @@ function requireBindableCat(
   if (cat.status !== 'active') {
     throw new Error(`Cat is not active: ${catId}`);
   }
-  if (!hasSuiteSurface(cat.products, 'chat', { fallback: defaultCatProducts() })) {
+  if (!hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() })) {
     throw new Error(`Cat is not available in Cats Chat: ${catId}`);
   }
   return cat;

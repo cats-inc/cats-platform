@@ -13,7 +13,7 @@ test('readPersistedSetupCompletionState detects persisted setup completion from 
   await writeFile(chatStatePath, JSON.stringify({
     setupCompleteAt: '2026-03-31T04:14:48.267Z',
   }, null, 2));
-  await writeFile(path.join(root, 'config', 'suite-onboarding-history.json'), JSON.stringify({
+  await writeFile(path.join(root, 'config', 'platform-onboarding-history.json'), JSON.stringify({
     schemaVersion: 1,
     updatedAt: '2026-03-31T04:14:48.267Z',
     activeAttemptId: 'desktop-bootstrap-20260331041158321-c53f309e',

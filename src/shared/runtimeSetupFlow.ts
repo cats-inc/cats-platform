@@ -1,9 +1,9 @@
 import type { RuntimeSetupSummary } from './runtimeSetup.js';
 
-export type SuiteSetupStep = 1 | 2 | 3 | 4;
+export type PlatformSetupStep = 1 | 2 | 3 | 4;
 
 export function shouldAutoScanRuntimeSetup(
-  step: SuiteSetupStep,
+  step: PlatformSetupStep,
   runtimeSetup: RuntimeSetupSummary,
   autoScanAttempted: boolean,
 ): boolean {

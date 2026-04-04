@@ -2,28 +2,28 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type {
-  SuiteProductDescriptor,
-  SuiteProductSettingsDescriptor,
-} from '../../../shared/suite-contract.js';
+  PlatformProductDescriptor,
+  PlatformProductSettingsDescriptor,
+} from '../../../shared/platform-contract.js';
 
-type SuiteSettingsSection = 'general' | 'runtime' | 'data';
+type PlatformSettingsSection = 'general' | 'runtime' | 'data';
 
-interface SuiteSettingsProductGroup {
-  productId: SuiteProductDescriptor['id'];
+interface PlatformSettingsProductGroup {
+  productId: PlatformProductDescriptor['id'];
   productName: string;
-  entries: SuiteProductSettingsDescriptor[];
+  entries: PlatformProductSettingsDescriptor[];
 }
 
-export interface SuiteSettingsShellProps {
-  section: SuiteSettingsSection;
+export interface PlatformSettingsShellProps {
+  section: PlatformSettingsSection;
   title: string;
-  products: SuiteProductDescriptor[];
+  products: PlatformProductDescriptor[];
   children: ReactNode;
 }
 
-export function buildSuiteSettingsProductGroups(
-  products: readonly SuiteProductDescriptor[],
-): SuiteSettingsProductGroup[] {
+export function buildPlatformSettingsProductGroups(
+  products: readonly PlatformProductDescriptor[],
+): PlatformSettingsProductGroup[] {
   return products
     .filter((product) => product.installState !== 'available' && (product.settings?.length ?? 0) > 0)
     .map((product) => ({
@@ -33,19 +33,19 @@ export function buildSuiteSettingsProductGroups(
     }));
 }
 
-export function SuiteSettingsShell({
+export function PlatformSettingsShell({
   section,
   title,
   products,
   children,
-}: SuiteSettingsShellProps) {
+}: PlatformSettingsShellProps) {
   const navigate = useNavigate();
-  const productGroups = buildSuiteSettingsProductGroups(products);
+  const productGroups = buildPlatformSettingsProductGroups(products);
 
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
-        <p className="settingsNavHeading">Suite Settings</p>
+        <p className="settingsNavHeading">Platform Settings</p>
         <button
           className={section === 'general' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"

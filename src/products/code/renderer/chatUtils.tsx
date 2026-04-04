@@ -8,7 +8,7 @@ import type {
 } from '../api/contracts';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
-import { defaultCatProducts, hasSuiteSurface } from '../../../shared/suiteSurfaces.js';
+import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
@@ -39,7 +39,7 @@ export function emptyCatForm(): CatFormState {
 }
 
 export function isChatCat(cat: ChatCat): boolean {
-  return hasSuiteSurface(cat.products, 'chat', {
+  return hasPlatformSurface(cat.products, 'chat', {
     fallback: defaultCatProducts(),
   });
 }

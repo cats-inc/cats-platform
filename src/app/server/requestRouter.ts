@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ResolvedServerDependencies } from './contracts.js';
-import { routeSuiteSetupApi } from './suiteSetupRoutes.js';
+import { routePlatformSetupApi } from './platformSetupRoutes.js';
 
 import { routeCoreApi } from '../../core/api/index.js';
 import {
@@ -288,7 +288,7 @@ export async function routeRequest(
     return;
   }
 
-  if (await routeSuiteSetupApi(chatContext)) {
+  if (await routePlatformSetupApi(chatContext)) {
     return;
   }
 

@@ -7,14 +7,14 @@ import {
   upsertCoreTask,
 } from '../dist-server/core/model/index.js';
 import { MemoryCoreStore } from '../dist-server/core/store.js';
-import { createDefaultChatState } from '../dist-server/chat/defaults.js';
+import { createDefaultChatState } from '../dist-server/products/chat/state/defaults.js';
 import {
   appendMessage,
   buildChannelView,
   createChannel,
   setChannelRoomRouting,
-} from '../dist-server/chat/model.js';
-import { MemoryChatStore } from '../dist-server/chat/store.js';
+} from '../dist-server/products/chat/state/model/index.js';
+import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
 import { buildRoomWorkflowRunId } from '../dist-server/platform/orchestration/runIds.js';
 import { reconcileChatWorkflowRecoveryOnStartup } from '../dist-server/app/server/chatWorkflowRecovery.js';
 import { reconcileOrchestratorRecoveryOnStartup } from '../dist-server/app/server/orchestratorRecovery.js';

@@ -15,9 +15,9 @@ import {
   statusDotLabel,
 } from '../myCatNavigation';
 import { isDirectLaneSummary } from '../../shared/channelTopology';
-import type { SuiteSurfaceId } from '../../../../shared/suite-contract.js';
-import { resolveSuiteSurfaceFromPath } from '../../../../core/suiteSurface.js';
-import { SuiteSurfaceSwitcher } from '../../../../design/components/SuiteSurfaceSwitcher.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import { resolvePlatformSurfaceFromPath } from '../../../../core/platformSurface.js';
+import { PlatformSurfaceSwitcher } from '../../../../design/components/PlatformSurfaceSwitcher.js';
 
 export type SidebarViewMode = 'latest' | 'by_cat' | 'by_chat_type';
 
@@ -41,7 +41,7 @@ export interface SidebarProps {
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
-  onSwitchProduct: (surface: SuiteSurfaceId) => void;
+  onSwitchProduct: (surface: PlatformSurfaceId) => void;
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
   onOpenBuild?: () => void;
@@ -400,7 +400,7 @@ export function Sidebar({
   onOpenRelay,
 }: SidebarProps) {
   const currentPath = globalThis.location?.pathname ?? '/code';
-  const activeSurface = resolveSuiteSurfaceFromPath(currentPath);
+  const activeSurface = resolvePlatformSurfaceFromPath(currentPath);
   const chatCats = payload.chat.cats.filter(isChatCat);
   const showMyCats = chatCats.length > 0;
   const telegramBoundCatIds = new Set(
@@ -444,7 +444,7 @@ export function Sidebar({
       <div className="sidebarInner">
         <div className="brandRow">
           <div className="brandCopy">
-            <SuiteSurfaceSwitcher
+            <PlatformSurfaceSwitcher
               activeSurface={activeSurface}
               onSelectSurface={onSwitchProduct}
             />

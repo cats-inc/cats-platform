@@ -7,7 +7,7 @@ import {
   TOTAL_SETUP_STEPS,
 } from '../src/app/renderer/setup/flow.ts';
 
-test('suite setup flow keeps the agreed four-step order', () => {
+test('platform setup flow keeps the agreed four-step order', () => {
   assert.equal(TOTAL_SETUP_STEPS, 4);
   assert.equal(nextSetupStep(1), 2);
   assert.equal(nextSetupStep(2), 3);
@@ -15,7 +15,7 @@ test('suite setup flow keeps the agreed four-step order', () => {
   assert.equal(nextSetupStep(4), 4);
 });
 
-test('suite setup flow supports stepping backward without skipping Guide Cat or runtime', () => {
+test('platform setup flow supports stepping backward without skipping Guide Cat or runtime', () => {
   assert.equal(previousSetupStep(4), 3);
   assert.equal(previousSetupStep(3), 2);
   assert.equal(previousSetupStep(2), 1);

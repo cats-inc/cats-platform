@@ -10,7 +10,7 @@ import { createServer } from '../dist-server/server.js';
 import {
   FileChatStore,
   MemoryChatStore,
-} from '../dist-server/chat/store.js';
+} from '../dist-server/products/chat/state/store.js';
 import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companion-box/index.js';
 import { createChatTelegramRoomBridge } from '../dist-server/products/chat/state/telegramBridgeAdapter.js';
 

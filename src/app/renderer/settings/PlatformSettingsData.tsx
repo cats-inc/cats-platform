@@ -1,21 +1,21 @@
-import type { SuiteProductDescriptor } from '../../../shared/suite-contract.js';
-import { SuiteSettingsShell } from './SuiteSettingsShell.js';
+import type { PlatformProductDescriptor } from '../../../shared/platform-contract.js';
+import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
-export interface SuiteSettingsDataProps {
-  products: SuiteProductDescriptor[];
+export interface PlatformSettingsDataProps {
+  products: PlatformProductDescriptor[];
   feedback: string;
   busy: string;
   onResetSetup: () => void;
 }
 
-export function SuiteSettingsData({
+export function PlatformSettingsData({
   products,
   feedback,
   busy,
   onResetSetup,
-}: SuiteSettingsDataProps) {
+}: PlatformSettingsDataProps) {
   return (
-    <SuiteSettingsShell
+    <PlatformSettingsShell
       section="data"
       title="Data"
       products={products}
@@ -23,7 +23,7 @@ export function SuiteSettingsData({
       <div className="contentCard">
         <h2>Reset all data</h2>
         <p className="heroNote">
-          This will erase all chats, cats, suite preferences, and setup state.
+          This will erase all chats, cats, platform preferences, and setup state.
           You will be returned to the setup wizard.
         </p>
         <button
@@ -36,6 +36,6 @@ export function SuiteSettingsData({
         </button>
       </div>
       {feedback ? <p className="feedbackText">{feedback}</p> : null}
-    </SuiteSettingsShell>
+    </PlatformSettingsShell>
   );
 }

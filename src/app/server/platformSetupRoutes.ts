@@ -1,18 +1,18 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
-import type { SuiteSetupCompleteInput } from '../../shared/suite-contract.js';
+import type { PlatformSetupCompleteInput } from '../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import type {
-  SuiteRuntimeSetupApplyInput,
-  SuiteRuntimeSetupScanInput,
+  PlatformRuntimeSetupApplyInput,
+  PlatformRuntimeSetupScanInput,
 } from '../../shared/runtimeSetup.js';
 import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
 import {
-  appendSuiteOnboardingEvent,
-  readSuiteOnboardingHistory,
-} from '../../shared/suiteOnboardingHistory.js';
-import { listSuiteProductDescriptors } from '../../shared/suiteProducts.js';
+  appendPlatformOnboardingEvent,
+  readPlatformOnboardingHistory,
+} from '../../shared/platformOnboardingHistory.js';
+import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
-import { readSuitePreferences, writeSuitePreferences } from '../../shared/suitePreferences.js';
+import { readPlatformPreferences, writePlatformPreferences } from '../../shared/platformPreferences.js';
 import { RuntimeRequestError } from '../../runtime/client.js';
 import {
   isRuntimeSetupReady,
@@ -25,11 +25,11 @@ import {
 } from '../../products/chat/api/routeSupport.js';
 import type { RouteContext } from '../../shared/http.js';
 
-export type SuiteSetupContext = RouteContext<ChatApiDependencies>;
+export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 
 const GUIDE_CAT_PRIMARY_ID = 'guide-cat-primary';
 
-interface LegacySuiteSetupCompleteInput extends SuiteSetupCompleteInput {
+interface LegacyPlatformSetupCompleteInput extends PlatformSetupCompleteInput {
   createBossCat?: boolean;
   bossCatName?: string;
   bossCatProvider?: string;
@@ -40,7 +40,7 @@ interface LegacySuiteSetupCompleteInput extends SuiteSetupCompleteInput {
 
 function reportSyncFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`[cats-suite-setup] ${scope}: ${message}\n`);
+  process.stderr.write(`[cats-platform-setup] ${scope}: ${message}\n`);
 }
 
 function normalizeProviderList(value: unknown): string[] {
@@ -59,18 +59,18 @@ function normalizeAttemptId(value: unknown): string | null {
 }
 
 async function recordProductEvent(
-  context: SuiteSetupContext,
-  input: Parameters<typeof appendSuiteOnboardingEvent>[1],
+  context: PlatformSetupContext,
+  input: Parameters<typeof appendPlatformOnboardingEvent>[1],
 ): Promise<void> {
   try {
-    await appendSuiteOnboardingEvent(context.dependencies.config.chatStatePath, input);
+    await appendPlatformOnboardingEvent(context.dependencies.config.chatStatePath, input);
   } catch (error) {
     reportSyncFailure(`bootstrap_diagnostics:${input.kind}`, error);
   }
 }
 
 function sendRuntimeSetupError(
-  context: SuiteSetupContext,
+  context: PlatformSetupContext,
   error: unknown,
   fallbackCode: string,
   fallbackMessage: string,
@@ -88,7 +88,7 @@ function sendRuntimeSetupError(
 }
 
 function sendRuntimeSetupRequired(
-  context: SuiteSetupContext,
+  context: PlatformSetupContext,
   summary: Awaited<ReturnType<typeof readRuntimeSetupSummary>>,
 ): void {
   sendJson(context.response, 409, {
@@ -102,12 +102,12 @@ function sendRuntimeSetupRequired(
   });
 }
 
-async function handleSuiteSetupComplete(
-  context: SuiteSetupContext,
+async function handlePlatformSetupComplete(
+  context: PlatformSetupContext,
 ): Promise<void> {
-  let body: LegacySuiteSetupCompleteInput;
+  let body: LegacyPlatformSetupCompleteInput;
   try {
-    body = await readJsonBody<LegacySuiteSetupCompleteInput>(context.request);
+    body = await readJsonBody<LegacyPlatformSetupCompleteInput>(context.request);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Invalid request body';
     sendJson(context.response, 400, {
@@ -193,7 +193,7 @@ async function handleSuiteSetupComplete(
 
   // Best-effort side effects — failures must not prevent the 200.
   try {
-    await writeSuitePreferences(context.dependencies.config.chatStatePath, {
+    await writePlatformPreferences(context.dependencies.config.chatStatePath, {
       lastProductSurface: body.selectedProduct,
     });
   } catch (error) {
@@ -214,10 +214,10 @@ async function handleSuiteSetupComplete(
     payload = await buildAppShellPayload(context.dependencies);
   } catch (error) {
     reportSyncFailure('setup_complete_payload', error);
-    // Return a minimal SuiteHostEnvelope so the client knows setup committed.
+    // Return a minimal PlatformHostEnvelope so the client knows setup committed.
     payload = {
       app: { name: 'cats', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
-      products: listSuiteProductDescriptors(),
+      products: listPlatformProductDescriptors(),
       runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
       runtimeSetup,
       metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },
@@ -249,18 +249,18 @@ async function handleSuiteSetupComplete(
 }
 
 async function handleRuntimeSetupState(
-  context: SuiteSetupContext,
+  context: PlatformSetupContext,
 ): Promise<void> {
   const summary = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
   sendJson(context.response, 200, summary);
 }
 
 async function handleRuntimeSetupScan(
-  context: SuiteSetupContext,
+  context: PlatformSetupContext,
 ): Promise<void> {
-  let body: SuiteRuntimeSetupScanInput = {};
+  let body: PlatformRuntimeSetupScanInput = {};
   try {
-    body = await readJsonBody<SuiteRuntimeSetupScanInput>(context.request);
+    body = await readJsonBody<PlatformRuntimeSetupScanInput>(context.request);
   } catch {
     body = {};
   }
@@ -281,11 +281,11 @@ async function handleRuntimeSetupScan(
 }
 
 async function handleRuntimeSetupApply(
-  context: SuiteSetupContext,
+  context: PlatformSetupContext,
 ): Promise<void> {
-  let body: SuiteRuntimeSetupApplyInput = {};
+  let body: PlatformRuntimeSetupApplyInput = {};
   try {
-    body = await readJsonBody<SuiteRuntimeSetupApplyInput>(context.request);
+    body = await readJsonBody<PlatformRuntimeSetupApplyInput>(context.request);
   } catch {
     body = {};
   }
@@ -358,8 +358,8 @@ async function handleRuntimeSetupApply(
   }
 }
 
-async function handleSuitePreferencesUpdate(
-  context: SuiteSetupContext,
+async function handlePlatformPreferencesUpdate(
+  context: PlatformSetupContext,
 ): Promise<void> {
   try {
     const body = await readJsonBody<{ lastProductSurface?: string }>(context.request);
@@ -371,7 +371,7 @@ async function handleSuitePreferencesUpdate(
       return;
     }
 
-    await writeSuitePreferences(context.dependencies.config.chatStatePath, {
+    await writePlatformPreferences(context.dependencies.config.chatStatePath, {
       lastProductSurface: surface,
     });
 
@@ -385,14 +385,14 @@ async function handleSuitePreferencesUpdate(
 }
 
 async function handleBootstrapDiagnosticsState(
-  context: SuiteSetupContext,
+  context: PlatformSetupContext,
 ): Promise<void> {
-  const payload = await readSuiteOnboardingHistory(context.dependencies.config.chatStatePath);
+  const payload = await readPlatformOnboardingHistory(context.dependencies.config.chatStatePath);
   sendJson(context.response, 200, payload);
 }
 
 async function handleBootstrapDiagnosticsOpened(
-  context: SuiteSetupContext,
+  context: PlatformSetupContext,
 ): Promise<void> {
   let attemptId: string | null = null;
   try {
@@ -402,14 +402,14 @@ async function handleBootstrapDiagnosticsOpened(
     attemptId = null;
   }
 
-  const payload = await appendSuiteOnboardingEvent(
+  const payload = await appendPlatformOnboardingEvent(
     context.dependencies.config.chatStatePath,
     {
       now: context.dependencies.now?.() ?? new Date(),
       attemptId,
       kind: 'setup_opened',
       status: 'info',
-      summary: 'Packaged suite setup was opened.',
+      summary: 'Packaged platform setup was opened.',
       context: {
         route: '/setup',
       },
@@ -418,10 +418,10 @@ async function handleBootstrapDiagnosticsOpened(
   sendJson(context.response, 200, payload);
 }
 
-export async function routeSuiteSetupApi(
-  context: SuiteSetupContext,
+export async function routePlatformSetupApi(
+  context: PlatformSetupContext,
 ): Promise<boolean> {
-  if (context.url.pathname === '/api/suite/bootstrap-diagnostics') {
+  if (context.url.pathname === '/api/platform/bootstrap-diagnostics') {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -430,7 +430,7 @@ export async function routeSuiteSetupApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/suite/bootstrap-diagnostics/opened') {
+  if (context.url.pathname === '/api/platform/bootstrap-diagnostics/opened') {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
@@ -439,7 +439,7 @@ export async function routeSuiteSetupApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/suite/runtime-setup') {
+  if (context.url.pathname === '/api/platform/runtime-setup') {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -448,7 +448,7 @@ export async function routeSuiteSetupApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/suite/runtime-setup/scan') {
+  if (context.url.pathname === '/api/platform/runtime-setup/scan') {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
@@ -457,7 +457,7 @@ export async function routeSuiteSetupApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/suite/runtime-setup/apply') {
+  if (context.url.pathname === '/api/platform/runtime-setup/apply') {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
@@ -466,21 +466,21 @@ export async function routeSuiteSetupApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/suite/setup/complete') {
+  if (context.url.pathname === '/api/platform/setup/complete') {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
     }
-    await handleSuiteSetupComplete(context);
+    await handlePlatformSetupComplete(context);
     return true;
   }
 
-  if (context.url.pathname === '/api/suite/preferences') {
+  if (context.url.pathname === '/api/platform/preferences') {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
     }
-    await handleSuitePreferencesUpdate(context);
+    await handlePlatformPreferencesUpdate(context);
     return true;
   }
 

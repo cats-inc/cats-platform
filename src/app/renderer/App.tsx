@@ -1,39 +1,39 @@
 import { startTransition, useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
-import type { SuiteHostEnvelope } from '../../shared/suite-contract';
+import type { PlatformHostEnvelope } from '../../shared/platform-contract';
 import ChatApp from '../../products/chat/renderer/App';
 import WorkApp from '../../products/work/renderer/App';
 import CodeApp from '../../products/code/renderer/App';
 import {
-  isSuiteNonProductPath,
-  resolveSuiteSurfaceForPath,
-  SUITE_SURFACE_ROUTES,
+  isPlatformNonProductPath,
+  resolvePlatformSurfaceForPath,
+  PLATFORM_SURFACE_ROUTES,
 } from './routeMap';
-import { SuiteLobby } from './SuiteLobby';
-import { SuiteSettingsRoutes } from './settings/SuiteSettingsRoutes';
-import { SuiteSetupWizard } from './setup';
-import { fetchSuiteEnvelope } from './setup/api';
+import { PlatformLobby } from './PlatformLobby';
+import { PlatformSettingsRoutes } from './settings/PlatformSettingsRoutes';
+import { PlatformSetupWizard } from './setup';
+import { fetchPlatformEnvelope } from './setup/api';
 
-type SuiteLoadState =
+type PlatformLoadState =
   | { status: 'loading' }
-  | { status: 'ready'; envelope: SuiteHostEnvelope }
+  | { status: 'ready'; envelope: PlatformHostEnvelope }
   | { status: 'error'; message: string };
 
 function resolveProductEntryPath(surface: string): string {
-  const route = SUITE_SURFACE_ROUTES[surface as keyof typeof SUITE_SURFACE_ROUTES];
+  const route = PLATFORM_SURFACE_ROUTES[surface as keyof typeof PLATFORM_SURFACE_ROUTES];
   return route ? route.routePrefix : '/';
 }
 
-export default function SuiteApp() {
+export default function PlatformApp() {
   const location = useLocation();
-  const [state, setState] = useState<SuiteLoadState>({ status: 'loading' });
+  const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
   const lastSyncedSurface = useRef<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    void fetchSuiteEnvelope(controller.signal)
+    void fetchPlatformEnvelope(controller.signal)
       .then((envelope) => {
         if (!controller.signal.aborted) {
           startTransition(() => setState({ status: 'ready', envelope }));
@@ -55,7 +55,7 @@ export default function SuiteApp() {
   const setupComplete = Boolean(envelope?.setupCompleteAt);
   const storedSurface = envelope?.lastProductSurface ?? 'chat';
 
-  const onEnvelopeUpdate = (updater: (current: SuiteHostEnvelope) => SuiteHostEnvelope): void => {
+  const onEnvelopeUpdate = (updater: (current: PlatformHostEnvelope) => PlatformHostEnvelope): void => {
     startTransition(() => {
       setState((current) =>
         current.status === 'ready'
@@ -69,13 +69,13 @@ export default function SuiteApp() {
     if (!setupComplete) {
       return;
     }
-    const currentSurface = resolveSuiteSurfaceForPath(location.pathname);
+    const currentSurface = resolvePlatformSurfaceForPath(location.pathname);
     // Skip sync when at `/` and about to redirect to a non-chat product.
     if (location.pathname === '/' && storedSurface !== 'chat') {
       return;
     }
-    // Skip sync for suite-level routes that aren't product surfaces.
-    if (isSuiteNonProductPath(location.pathname)) {
+    // Skip sync for platform-level routes that aren't product surfaces.
+    if (isPlatformNonProductPath(location.pathname)) {
       return;
     }
     // First render: seed the ref AND sync if the current surface differs
@@ -83,7 +83,7 @@ export default function SuiteApp() {
     if (lastSyncedSurface.current === null) {
       lastSyncedSurface.current = currentSurface;
       if (currentSurface !== storedSurface) {
-        void fetch('/api/suite/preferences', {
+        void fetch('/api/platform/preferences', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ lastProductSurface: currentSurface }),
@@ -93,7 +93,7 @@ export default function SuiteApp() {
     }
     if (currentSurface !== lastSyncedSurface.current) {
       lastSyncedSurface.current = currentSurface;
-      void fetch('/api/suite/preferences', {
+      void fetch('/api/platform/preferences', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ lastProductSurface: currentSurface }),
@@ -133,7 +133,7 @@ export default function SuiteApp() {
         <Route
           path="/setup"
           element={
-            <SuiteSetupWizard
+            <PlatformSetupWizard
               envelope={readyEnvelope}
               onComplete={() => {
                 window.location.href = '/';
@@ -150,21 +150,21 @@ export default function SuiteApp() {
   const entryPath = resolveProductEntryPath(storedSurface);
   return (
     <Routes>
-      <Route path="/lobby" element={<SuiteLobby envelope={readyEnvelope} />} />
+      <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
       <Route path="/products" element={<Navigate to="/lobby" replace />} />
       <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
       <Route
         path="/settings/*"
         element={(
-          <SuiteSettingsRoutes
+          <PlatformSettingsRoutes
             envelope={readyEnvelope}
             onEnvelopeUpdate={onEnvelopeUpdate}
           />
         )}
       />
-      <Route path={`${SUITE_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
-      <Route path={`${SUITE_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
-      <Route path={`${SUITE_SURFACE_ROUTES.code.routePrefix}/*`} element={<CodeApp />} />
+      <Route path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
+      <Route path={`${PLATFORM_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
+      <Route path={`${PLATFORM_SURFACE_ROUTES.code.routePrefix}/*`} element={<CodeApp />} />
       <Route path="/setup" element={<Navigate to={entryPath} replace />} />
       <Route path="/" element={<Navigate to={entryPath} replace />} />
       <Route path="*" element={<Navigate to={entryPath} replace />} />

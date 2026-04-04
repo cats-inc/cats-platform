@@ -12,7 +12,7 @@ import {
 import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
-import { defaultCatProducts, hasSuiteSurface } from '../../shared/suiteSurfaces.js';
+import { defaultCatProducts, hasPlatformSurface } from '../../shared/platformSurfaces.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import { normalizeEffectiveBotBinding } from '../../products/chat/state/botBindings.js';
@@ -181,7 +181,7 @@ function isActiveChatBinding(chatState: ChatState, binding: BotBindingRecord): b
   return Boolean(
     cat
     && cat.status === 'active'
-    && hasSuiteSurface(cat.products, 'chat', { fallback: defaultCatProducts() }),
+    && hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() }),
   );
 }
 

@@ -18,7 +18,7 @@ import {
   upsertCoreWorkItem,
   writeApprovalDecision,
 } from '../dist-server/core/model/index.js';
-import { createSharedCoreFixtureBundle } from '../dist-server/shared/core.js';
+import { createSharedCoreFixtureBundle } from '../dist-server/shared/coreFixtures.js';
 
 test('MemoryCoreStore exposes a neutral read/write boundary for Cats Core state', async () => {
   const initialState = createDefaultCoreState();
@@ -30,16 +30,16 @@ test('MemoryCoreStore exposes a neutral read/write boundary for Cats Core state'
 
   const nextState = structuredClone(firstRead);
   nextState.setupCompleteAt = '2026-03-21T00:00:00.000Z';
-  nextState.ownerProfile.displayName = 'Suite Owner';
+  nextState.ownerProfile.displayName = 'Platform Owner';
 
   const written = await store.writeCore(nextState);
   const secondRead = await store.readCore();
 
   assert.equal(written.setupCompleteAt, '2026-03-21T00:00:00.000Z');
-  assert.equal(secondRead.ownerProfile.displayName, 'Suite Owner');
+  assert.equal(secondRead.ownerProfile.displayName, 'Platform Owner');
 
   nextState.ownerProfile.displayName = 'Mutated after write';
-  assert.equal(secondRead.ownerProfile.displayName, 'Suite Owner');
+  assert.equal(secondRead.ownerProfile.displayName, 'Platform Owner');
 });
 
 test('buildApprovalQueue only surfaces tasks that are actually pending approval', () => {
@@ -118,7 +118,7 @@ test('core model helpers persist owner profile, task approvals, and system recor
   core = patchOwnerProfile(
     core,
     {
-      displayName: 'Suite Owner',
+      displayName: 'Platform Owner',
       decisionPreferences: ['show options first'],
     },
     new Date('2026-03-21T00:00:00.000Z'),
@@ -205,7 +205,7 @@ test('core model helpers persist owner profile, task approvals, and system recor
 
   const approvals = buildApprovalQueue(core);
 
-  assert.equal(core.ownerProfile.displayName, 'Suite Owner');
+  assert.equal(core.ownerProfile.displayName, 'Platform Owner');
   assert.deepEqual(core.ownerProfile.decisionPreferences, ['show options first']);
   assert.equal(core.tasks.length, 1);
   assert.equal(core.tasks[0].approval.status, 'pending');
