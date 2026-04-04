@@ -496,6 +496,8 @@ export interface ActivateChannelResponse {
 
 export interface SendChannelMessageResponse {
   appShell: AppShellPayload;
+  message: ChatMessage | null;
+  phase: 'acknowledged';
   results: ChannelDispatchResult[];
 }
 

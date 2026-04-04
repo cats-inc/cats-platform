@@ -11,6 +11,7 @@ export interface ProviderCatalogEntry {
   label: string;
   default?: boolean;
   status?: string;
+  notes?: string[];
 }
 
 export interface ProductProviderInstanceDescriptor {

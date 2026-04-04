@@ -9,7 +9,11 @@ import {
 } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 
-import { shouldSubmitComposerOnKeyDown } from '../../../../shared/composer';
+import {
+  isComposerStopBusy,
+  normalizeComposerBusy,
+  shouldSubmitComposerOnKeyDown,
+} from '../../../../shared/composer';
 import type { AppShellPayload } from '../../api/contracts';
 import {
   buildChannelPath,
@@ -171,12 +175,13 @@ export function useComposerSubmit(options: {
       return;
     }
 
+    const normalizedBusy = normalizeComposerBusy(busy);
     const activeRequest = activeDispatchRequestRef.current;
     if (!activeRequest) {
       return;
     }
 
-    if (busy.startsWith('message:stop:') || busy === 'concurrent:stop') {
+    if (isComposerStopBusy(normalizedBusy)) {
       return;
     }
 
@@ -193,13 +198,14 @@ export function useComposerSubmit(options: {
     const expectedBusy = activeRequest.kind === 'concurrent'
       ? 'concurrent:dispatch'
       : `message:send:${activeRequest.channelId}`;
-    if (busy === expectedBusy) {
+    if (normalizedBusy === expectedBusy) {
       activeDispatchRequestRef.current = null;
       setBusy('');
     }
   }, [busy, setBusy, state]);
 
   useEffect(() => {
+    const normalizedBusy = normalizeComposerBusy(busy);
     const activeRequest = activeDispatchRequestRef.current;
     if (!activeRequest) {
       return;
@@ -208,7 +214,7 @@ export function useComposerSubmit(options: {
     const expectedBusy = activeRequest.kind === 'concurrent'
       ? 'concurrent:dispatch'
       : `message:send:${activeRequest.channelId}`;
-    if (busy !== expectedBusy) {
+    if (normalizedBusy !== expectedBusy) {
       return;
     }
 

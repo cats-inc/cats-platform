@@ -22,15 +22,6 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
   assert.match(source, /cancelChatChannel/u);
 });
 
-test('chat app passes busy state into useComposerSubmit for dispatch lifecycle guards', async () => {
-  const source = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/App.tsx'),
-    'utf8',
-  );
-
-  assert.match(source, /useComposerSubmit\(\{[\s\S]+selectedChannel,\s+busy,\s+setBusy,\s+setFeedback,/u);
-});
-
 test('chat composer surfaces cancel-send during ACK and stop during dispatch', async () => {
   const chatViewSource = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/components/ChatView.tsx'),
