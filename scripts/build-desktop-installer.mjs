@@ -14,27 +14,39 @@ function printHelp() {
 
 Options:
   --target <current|windows|macos|linux>  Installer target. Defaults to current.
-  --help                      Show this help text.
+  --arch <x64|arm64|universal>            Architecture. Defaults to platform default.
+  --help                                  Show this help text.
+
+Platform defaults:
+  windows  → nsis x64
+  macos    → dmg x64
+  linux    → AppImage arm64
 `);
 }
 
 function parseArgs(argv) {
   let target = 'current';
+  let arch = null;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, target };
+      return { help: true, target, arch };
     }
     if (value === '--target') {
       target = argv[index + 1] ?? 'current';
       index += 1;
       continue;
     }
+    if (value === '--arch') {
+      arch = argv[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, target };
+  return { help: false, target, arch };
 }
 
 async function resolveNodeCliScript(command) {
@@ -125,15 +137,30 @@ function resolveBuilderTarget(target) {
   throw new Error(`Unsupported installer target: ${target}`);
 }
 
-function electronBuilderArgs(target) {
-  switch (target) {
-    case 'windows':
-      return ['electron-builder', '--win', 'nsis', '--x64', '--publish', 'never'];
-    case 'macos':
-      return ['electron-builder', '--mac', '--publish', 'never'];
-    case 'linux':
-      return ['electron-builder', '--linux', '--publish', 'never'];
+const PLATFORM_DEFAULTS = {
+  windows: { format: 'nsis', arch: 'x64' },
+  macos: { format: 'dmg', arch: 'x64' },
+  linux: { format: 'AppImage', arch: 'arm64' },
+};
+
+const VALID_ARCHES = {
+  windows: ['x64', 'arm64'],
+  macos: ['x64', 'arm64', 'universal'],
+  linux: ['x64', 'arm64'],
+};
+
+function electronBuilderArgs(target, archOverride) {
+  const defaults = PLATFORM_DEFAULTS[target];
+  const arch = archOverride ?? defaults.arch;
+
+  if (!VALID_ARCHES[target].includes(arch)) {
+    throw new Error(`Unsupported arch '${arch}' for ${target}. Valid: ${VALID_ARCHES[target].join(', ')}`);
   }
+
+  const platformFlag = target === 'windows' ? '--win' : target === 'macos' ? '--mac' : '--linux';
+  const archFlag = `--${arch}`;
+
+  return ['electron-builder', platformFlag, defaults.format, archFlag, '--publish', 'never'];
 }
 
 async function main() {
@@ -147,7 +174,7 @@ async function main() {
   await runCommand('npm', ['run', 'build'], RUNTIME_ROOT);
   await runCommand('npm', ['run', 'build'], PROJECT_ROOT);
   await runCommand('node', ['scripts/package-desktop.mjs', '--platform', resolvedTarget], PROJECT_ROOT);
-  await runCommand('npx', electronBuilderArgs(resolvedTarget), PROJECT_ROOT);
+  await runCommand('npx', electronBuilderArgs(resolvedTarget, parsed.arch), PROJECT_ROOT);
 }
 
 void main().catch((error) => {
