@@ -134,6 +134,11 @@ contracts.
 - [ ] Land host-owned privileged provider install/resume and remediation flows,
       including Windows elevation/UAC handling and resumable installer-first
       recovery contracts
+      Progress: repo-owned helper surfaces now exist for the packaged Windows
+      native/WSL/Docker baseline, for Unix self-hosted host install/check/upgrade,
+      and for Windows self-hosted WSL/Docker/check/upgrade orchestration; the
+      remaining gap is productizing those helper surfaces through release-grade
+      wizard/remediation UX instead of only shipping them as operational scripts.
 - [ ] Extend the packaged setup/runtime-bootstrap contract beyond the current
       first slice so API-backed, local-model, and agent-backed runtime targets
       also converge on runtime-owned apply instead of only supporting provider

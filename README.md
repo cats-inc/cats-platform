@@ -52,6 +52,10 @@ The current slices are:
 - a repo-owned packaged setup helper baseline for Windows native CLI, WSL,
   Docker Desktop, and Ollama flows, with the repo-owned first-run provider
   scan plus resumable setup recovery surfaced through the desktop host
+- a repo-owned self-hosted provider-helper baseline shipped in the npm package:
+  Unix host install/check/upgrade scripts for the 12-provider host matrix, plus
+  Windows aggregate WSL / Docker / check / bulk-upgrade helpers outside the
+  packaged wizard flow
 - a Telegram Boss Cat inbox bridge with durable inbox-to-room links, webhook diagnostics, and transport-owned reply delivery
 - product-owned per-Cat companion box sidecar storage, Cat-scoped ingestion APIs,
   direct companion-session hydration metadata, and Cats-owned retrieval context
@@ -99,6 +103,9 @@ The current slices are:
       local sidecar supervision, and bootstrap prerequisite checks
 - [x] Land cross-layer packaged bootstrap diagnostics with product onboarding
       history, host/service logs, and an aggregated recovery chronology
+- [x] Ship repo-owned self-hosted provider helpers for Unix host paths plus
+      Windows WSL/Docker/check/upgrade operational surfaces without depending
+      on `environment-bootstrap` at runtime
 - [x] Land Cats-owned canonical memory records, retrieval context assembly, and
       memory flush seams without adding an external RAG dependency; curated
       cat/owner notes plus companion source mutations now sync into canonical
@@ -126,7 +133,7 @@ several Phase 3 items remain:
   and action seams
 - richer first-run remediation polish, branded/signed release assets, and
   broader expert-only capability packs beyond the current Windows NSIS-first
-  packaged setup baseline
+  packaged setup baseline and the new repo-owned self-hosted helper surface
 - offline transcript normalization and ingestion handoff hooks
 - richer semantic indexing and archive export beyond the current local
   canonical-memory and retrieval substrate
