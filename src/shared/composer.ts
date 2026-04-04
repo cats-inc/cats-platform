@@ -27,7 +27,10 @@ export function isComposerBusy(busy: string | null | undefined): boolean {
   return (
     normalizedBusy === 'message:prepare'
     || normalizedBusy.startsWith('message:ack:')
+    || normalizedBusy === 'concurrent:ack'
     || normalizedBusy.startsWith('message:send:')
+    || normalizedBusy === 'concurrent:dispatch'
+    || normalizedBusy === 'concurrent:relay'
     || normalizedBusy.startsWith('message:stop:')
     || normalizedBusy === 'concurrent:stop'
   );

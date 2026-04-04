@@ -15,6 +15,7 @@ import {
 test('composer busy helpers treat missing busy state as idle instead of throwing', () => {
   assert.equal(normalizeComposerBusy(undefined), '');
   assert.equal(isComposerBusy(undefined), false);
+  assert.equal(isComposerBusy(''), false);
   assert.equal(isComposerAckBusy(undefined), false);
   assert.equal(isComposerDispatchBusy(undefined), false);
   assert.equal(isComposerStopBusy(undefined), false);
@@ -25,6 +26,9 @@ test('composer busy helpers treat missing busy state as idle instead of throwing
 
 test('composer busy helpers still recognize active ACK, dispatch, and stop states', () => {
   assert.equal(isComposerBusy('message:ack:channel-1'), true);
+  assert.equal(isComposerBusy('concurrent:ack'), true);
+  assert.equal(isComposerBusy('concurrent:dispatch'), true);
+  assert.equal(isComposerBusy('concurrent:relay'), true);
   assert.equal(isComposerAckBusy('message:ack:channel-1'), true);
   assert.equal(isComposerDispatchBusy('message:send:channel-1'), true);
   assert.equal(isComposerStopBusy('message:stop:channel-1'), true);
