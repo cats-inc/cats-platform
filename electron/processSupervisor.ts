@@ -126,6 +126,8 @@ export function buildManagedServiceSpecs(
         CATS_RUNTIME_CONFIG_PATH: config.paths.runtimeConfigPath,
         CATS_RUNTIME_WSL_DISCOVERY_POLICY: env.CATS_RUNTIME_WSL_DISCOVERY_POLICY || 'manual_only',
         CATS_RUNTIME_DOCKER_DISCOVERY_POLICY: env.CATS_RUNTIME_DOCKER_DISCOVERY_POLICY || 'manual_only',
+        CATS_RUNTIME_NATIVE_DISCOVERY_INTERVAL_MS:
+          env.CATS_RUNTIME_NATIVE_DISCOVERY_INTERVAL_MS || '0',
       },
       healthUrl: `${config.runtimeBaseUrl}/health`,
       logPath: join(config.paths.hostLogsDir, 'cats-runtime.log'),

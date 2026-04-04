@@ -272,3 +272,58 @@ The actual lesson is:
   completion when the host diagnostic snapshot is missing or corrupt.
 - Keep runtime discovery policies explicit for the app-managed desktop runtime
   so background probes do not silently reappear in startup.
+
+## Idle Popup Follow-Through
+
+The startup fixes above were necessary but not sufficient. A later investigation
+showed that packaged `Cats` could still open visible terminals while the app was
+already sitting idle in the chat product.
+
+### What was actually happening
+
+- The packaged host was no longer polling the heavy startup diagnostics path.
+- The remaining visible windows came from the app-managed `cats-runtime`
+  process itself.
+- A live process watch captured a new child process with this parent chain:
+  - `Cats.exe` (desktop host)
+  - `Cats.exe ... resources\\cats-runtime\\dist\\index.js`
+  - `powershell.exe -NoLogo -NoProfile -Command ... CATS_RUNTIME_PWSH_EXEC_B64`
+- The same runtime log also continued to show repeated external-session
+  discovery activity after chat was already open, especially for file-backed
+  and native session import flows.
+
+### Root cause
+
+`cats-runtime` still runs background native discovery timers in
+`src/server.ts` for these provider families:
+
+- `cursor`
+- `kiro`
+- `opencode`
+- `kilo`
+- `goose`
+
+Those timers are controlled by `nativeDiscoveryIntervalMs`, which defaults to
+5 seconds. Even after the packaged host stopped calling
+`/diagnostics/providers`, the runtime would still wake up on its own and run
+native provider discovery work in the background. On Windows, those scans go
+through the runtime PowerShell wrapper used for native command execution, which
+was enough to surface transient visible terminals on the desktop.
+
+### Landed follow-through
+
+The packaged desktop host now launches the app-managed runtime with:
+
+- `CATS_RUNTIME_WSL_DISCOVERY_POLICY=manual_only`
+- `CATS_RUNTIME_DOCKER_DISCOVERY_POLICY=manual_only`
+- `CATS_RUNTIME_NATIVE_DISCOVERY_INTERVAL_MS=0`
+
+That combination means:
+
+- no background WSL discovery
+- no background Docker discovery
+- no background native session discovery timer at all
+
+Explicit setup and diagnostics flows can still trigger discovery when the user
+asks for it, but the steady-state packaged desktop runtime no longer self-starts
+those background scans while the app is idle.
