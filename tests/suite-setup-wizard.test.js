@@ -124,6 +124,7 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
 
     const payload = await response.json();
     assert.equal(payload.setupCompleteAt, null);
+    assert.equal(payload.guideCat, null);
     assert.equal(payload.lastProductSurface, null);
     assert.deepEqual(
       payload.products.map((product) => ({
@@ -134,14 +135,14 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
       })),
       [
         { id: 'chat', group: 'home', maturity: 'active', selectable: true },
-        { id: 'work', group: 'office', maturity: 'preview', selectable: true },
-        { id: 'code', group: 'office', maturity: 'preview', selectable: true },
+        { id: 'work', group: 'office', maturity: 'preview', selectable: false },
+        { id: 'code', group: 'office', maturity: 'preview', selectable: false },
       ],
     );
   });
 });
 
-test('POST /api/suite/setup/complete with createGuideCat=true creates a Guide Cat without assigning Boss Cat', async () => {
+test('POST /api/suite/setup/complete with createGuideCat=true persists a suite-level Guide Cat without assigning Boss Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
       method: 'POST',
@@ -163,17 +164,23 @@ test('POST /api/suite/setup/complete with createGuideCat=true creates a Guide Ca
     assert.equal(payload.ownerDisplayName, 'Kenny');
     assert.equal(payload.lastProductSurface, 'chat');
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
-    assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat', 'work', 'code']);
-
-    const guideCat = payload.chat.cats.find((cat) => cat.name === 'Meowster');
-    assert.ok(guideCat, 'Guide Cat should exist in cats array');
-    assert.deepEqual(guideCat.products, ['chat']);
+    assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat']);
+    assert.equal(payload.chat.cats.length, 0, 'suite setup should not inject Guide Cat into chat cats');
+    assert.equal(payload.guideCat?.name, 'Meowster');
+    assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
+    assert.equal(payload.guideCat?.executionTarget.model, 'claude-sonnet');
     assert.equal(payload.chat.globalOrchestrator.executionTarget.provider, 'claude');
-    assert.equal(payload.chat.globalOrchestrator.executionTarget.model, 'claude-sonnet');
+    assert.equal(payload.chat.globalOrchestrator.executionTarget.model, null);
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellResponse.status, 200);
+    const shellPayload = await shellResponse.json();
+    assert.equal(shellPayload.guideCat?.name, 'Meowster');
+    assert.equal(shellPayload.chat.cats.length, 0);
   });
 });
 
-test('POST /api/suite/setup/complete persists Guide Cat modelSelection and orchestrator selection', async () => {
+test('POST /api/suite/setup/complete persists Guide Cat modelSelection without overwriting orchestrator selection', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
       method: 'POST',
@@ -197,22 +204,15 @@ test('POST /api/suite/setup/complete persists Guide Cat modelSelection and orche
 
     assert.equal(response.status, 200);
     const payload = await response.json();
-    const guideCat = payload.chat.cats.find((cat) => cat.name === 'Meowster');
 
-    assert.deepEqual(guideCat.defaultModelSelection, {
+    assert.deepEqual(payload.guideCat?.modelSelection, {
       entryMode: 'auto',
       presetId: 'balanced',
       controls: {
         'openai.reasoning_effort': 'high',
       },
     });
-    assert.deepEqual(payload.chat.globalOrchestrator.executionModelSelection, {
-      entryMode: 'auto',
-      presetId: 'balanced',
-      controls: {
-        'openai.reasoning_effort': 'high',
-      },
-    });
+    assert.equal(payload.chat.globalOrchestrator.executionModelSelection, null);
   });
 });
 
@@ -236,6 +236,7 @@ test('POST /api/suite/setup/complete with createGuideCat=false does not create G
     assert.equal(payload.lastProductSurface, 'chat');
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
     assert.equal(payload.chat.cats.length, 0, 'no cats should be created');
+    assert.equal(payload.guideCat, null);
   });
 });
 
@@ -282,8 +283,7 @@ test('POST /api/suite/setup/complete with createGuideCat=true defaults name to G
     assert.equal(response.status, 200);
     const payload = await response.json();
 
-    const guideCat = payload.chat.cats.find((cat) => cat.name === 'Guide Cat');
-    assert.ok(guideCat);
+    assert.equal(payload.guideCat?.name, 'Guide Cat');
   });
 });
 
@@ -329,8 +329,10 @@ test('POST /api/suite/setup/complete can create Guide Cat even when starting pro
     const payload = await response.json();
     assert.equal(payload.lastProductSurface, 'work');
     assert.equal(payload.chat.bossCatId, null);
-    assert.ok(payload.chat.cats.some((cat) => cat.name === 'CrossProduct'));
-    assert.equal(payload.chat.globalOrchestrator.executionTarget.provider, 'claude');
+    assert.equal(payload.chat.cats.length, 0);
+    assert.equal(payload.guideCat?.name, 'CrossProduct');
+    assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
+    assert.equal(payload.chat.globalOrchestrator.executionTarget.model, null);
   });
 });
 
@@ -352,9 +354,11 @@ test('POST /api/suite/setup/complete still accepts legacy Boss Cat aliases as Gu
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.chat.bossCatId, null, 'suite setup should not assign Boss Cat');
-    assert.ok(payload.chat.cats.some((cat) => cat.name === 'Legacy Boss'));
-    assert.equal(payload.chat.globalOrchestrator.executionTarget.provider, 'claude');
-    assert.equal(payload.chat.globalOrchestrator.executionTarget.model, 'claude-sonnet');
+    assert.equal(payload.chat.cats.length, 0);
+    assert.equal(payload.guideCat?.name, 'Legacy Boss');
+    assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
+    assert.equal(payload.guideCat?.executionTarget.model, 'claude-sonnet');
+    assert.equal(payload.chat.globalOrchestrator.executionTarget.model, null);
   });
 });
 

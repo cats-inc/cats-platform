@@ -1,4 +1,5 @@
 import type { AppConfig } from '../../../config.js';
+import type { GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { SuiteSurfaceId } from '../../../shared/suite-contract.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
@@ -20,6 +21,7 @@ function resolveSetupCompleteAt(
     ownerAvatarUrl?: string | null;
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: SuiteSurfaceId | null;
+    guideCat?: GuideCatRecord | null;
   },
 ): string | null {
   return resolveSetupCompletionTimestamp(chat, {
@@ -45,6 +47,7 @@ export function createAppShell(
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: SuiteSurfaceId | null;
     runtimeSetup?: RuntimeSetupSummary;
+    guideCat?: GuideCatRecord | null;
   },
 ): AppShellPayload {
   const summary = summarizeState(chat);
@@ -97,5 +100,6 @@ export function createAppShell(
     ownerAvatarColor: setup?.ownerAvatarColor ?? null,
     ownerAvatarUrl: setup?.ownerAvatarUrl ?? null,
     lastProductSurface: setup?.lastProductSurface ?? null,
+    guideCat: setup?.guideCat ? structuredClone(setup.guideCat) : null,
   };
 }

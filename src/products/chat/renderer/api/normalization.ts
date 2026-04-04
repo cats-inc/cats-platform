@@ -184,6 +184,29 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   if (nextPayload.ownerAvatarColor === undefined) {
     (nextPayload as Record<string, unknown>).ownerAvatarColor = null;
   }
+  if (nextPayload.guideCat === undefined) {
+    (nextPayload as Record<string, unknown>).guideCat = null;
+  } else {
+    const guideCat = asRecord(nextPayload.guideCat);
+    if (!guideCat) {
+      (nextPayload as Record<string, unknown>).guideCat = null;
+    } else {
+      if (!asRecord(guideCat.executionTarget)) {
+        guideCat.executionTarget = {
+          provider: readString(guideCat.provider, 'claude'),
+          instance: readNullableString(guideCat.instance),
+          model: readNullableString(guideCat.model),
+        };
+      }
+      const executionTarget = asRecord(guideCat.executionTarget);
+      if (executionTarget && executionTarget.instance === undefined) {
+        executionTarget.instance = readNullableString(guideCat.instance);
+      }
+      if (guideCat.modelSelection === undefined) {
+        guideCat.modelSelection = null;
+      }
+    }
+  }
   if (chatState.bossCatId === undefined) {
     chatState.bossCatId = null;
   }

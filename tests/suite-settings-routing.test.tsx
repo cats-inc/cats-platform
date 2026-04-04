@@ -86,6 +86,7 @@ function createEnvelope(): SuiteHostEnvelope {
     ownerDisplayName: 'Kenny',
     ownerAvatarColor: null,
     ownerAvatarUrl: null,
+    guideCat: null,
     lastProductSurface: 'chat',
   };
 }

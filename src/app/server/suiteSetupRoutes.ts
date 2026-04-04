@@ -11,9 +11,8 @@ import {
   readSuiteOnboardingHistory,
 } from '../../shared/suiteOnboardingHistory.js';
 import { listSuiteProductDescriptors } from '../../shared/suiteProducts.js';
-import { defaultCatProducts, normalizeSuiteSurfaceList } from '../../shared/suiteSurfaces.js';
+import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import { readSuitePreferences, writeSuitePreferences } from '../../shared/suitePreferences.js';
-import { createCat } from '../../products/chat/state/model/index.js';
 import { RuntimeRequestError } from '../../runtime/client.js';
 import {
   isRuntimeSetupReady,
@@ -27,6 +26,8 @@ import {
 import type { RouteContext } from '../../shared/http.js';
 
 export type SuiteSetupContext = RouteContext<ChatApiDependencies>;
+
+const GUIDE_CAT_PRIMARY_ID = 'guide-cat-primary';
 
 interface LegacySuiteSetupCompleteInput extends SuiteSetupCompleteInput {
   createBossCat?: boolean;
@@ -156,41 +157,22 @@ async function handleSuiteSetupComplete(
   let createdGuideCatId: string | null = null;
 
   if (createGuideCat) {
-    const previousCatIds = new Set(chatState.cats.map((cat) => cat.id));
-    chatState = createCat(
-      chatState,
-      {
+    const nowIso = now.toISOString();
+    createdGuideCatId = core.guideCat?.id ?? GUIDE_CAT_PRIMARY_ID;
+    core = {
+      ...core,
+      updatedAt: nowIso,
+      guideCat: {
+        id: createdGuideCatId,
         name: guideCatName?.trim() || 'Guide Cat',
-        provider: guideCatProvider || 'claude',
-        instance: guideCatInstance,
-        model: guideCatModel,
-        modelSelection: guideCatModelSelection,
-        products: normalizeSuiteSurfaceList(defaultCatProducts(), {
-          fallback: defaultCatProducts(),
-        }),
-      },
-      now,
-    );
-
-    const guideCat = chatState.cats.find((cat) => !previousCatIds.has(cat.id));
-    if (!guideCat) {
-      sendJson(context.response, 500, {
-        error: { code: 'internal_error', message: 'Failed to create Guide Cat' },
-      });
-      return;
-    }
-    createdGuideCatId = guideCat.id;
-
-    chatState = {
-      ...chatState,
-      globalOrchestrator: {
-        ...chatState.globalOrchestrator,
         executionTarget: {
           provider: guideCatProvider || 'claude',
           instance: guideCatInstance?.trim() || null,
           model: guideCatModel ?? null,
         },
-        executionModelSelection: guideCatModelSelection,
+        modelSelection: cloneProviderModelSelection(guideCatModelSelection),
+        createdAt: core.guideCat?.createdAt ?? nowIso,
+        updatedAt: nowIso,
       },
     };
   }
@@ -244,6 +226,7 @@ async function handleSuiteSetupComplete(
       ownerDisplayName: core.ownerProfile.displayName,
       ownerAvatarColor: core.ownerProfile.avatarColor,
       ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
+      guideCat: core.guideCat,
       lastProductSurface: body.selectedProduct,
     };
   }

@@ -17,6 +17,7 @@ export {
   normalizeCoreTrace,
   normalizeCoreWorkItem,
   normalizeDurableMemoryRecord,
+  normalizeGuideCatRecord,
   normalizeOwnerProfile,
 } from './records.js';
 

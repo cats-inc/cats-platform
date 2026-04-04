@@ -1,3 +1,4 @@
+import type { GuideCatRecord } from '../core/types.js';
 import type { RuntimeStatusSummary } from '../platform/runtime/client.js';
 import type { ProviderModelSelection } from './providerSelection.js';
 import type { RuntimeSetupSummary } from './runtimeSetup.js';
@@ -52,6 +53,7 @@ export interface SuiteOwnerContext {
   ownerAvatarColor: string | null;
   ownerAvatarUrl: string | null;
   lastProductSurface: SuiteSurfaceId | null;
+  guideCat: GuideCatRecord | null;
 }
 
 export interface SuiteHostEnvelope extends SuiteOwnerContext {

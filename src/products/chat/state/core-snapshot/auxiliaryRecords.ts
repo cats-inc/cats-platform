@@ -5,10 +5,13 @@ import type {
   ArchiveMetadataRecord,
   BotBindingRecord,
   DurableMemoryRecord,
+  GuideCatRecord,
 } from '../../../../core/types.js';
 import { createCatActorId } from '../../../../core/actors.js';
+import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
 import {
   asRecord,
+  normalizeExecutionTarget,
   readNullableString,
   readNumber,
   readString,
@@ -127,5 +130,28 @@ export function normalizeDurableMemoryRecord(rawRecord: unknown): DurableMemoryR
     sourceRefs: readStringArray(record.sourceRefs),
     createdAt: readString(record.createdAt, new Date().toISOString()),
     updatedAt: readString(record.updatedAt, new Date().toISOString()),
+  };
+}
+
+export function normalizeGuideCatRecord(rawGuideCat: unknown): GuideCatRecord | null {
+  const guideCatRecord = asRecord(rawGuideCat);
+  if (!guideCatRecord) {
+    return null;
+  }
+
+  return {
+    id: readString(guideCatRecord.id, 'guide-cat-primary'),
+    name: readString(guideCatRecord.name, 'Guide Cat'),
+    executionTarget: normalizeExecutionTarget(
+      guideCatRecord.executionTarget,
+      {
+        provider: 'claude',
+        instance: null,
+        model: null,
+      },
+    ),
+    modelSelection: parseProviderModelSelection(guideCatRecord.modelSelection),
+    createdAt: readString(guideCatRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(guideCatRecord.updatedAt, new Date().toISOString()),
   };
 }

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -40,17 +40,19 @@ landed in the first documentation slice
 
 ### Phase 2: Setup Wizard and Suite Contract Changes
 
-- [ ] Task 2.1: Replace the current setup-time `createBossCat` framing with
+- [x] Task 2.1: Replace the current setup-time `createBossCat` framing with
       `createGuideCat` in suite-level setup copy and contracts, while keeping
       `Boss Cat` as a distinct Chat role until later mapping decisions land.
-- [ ] Task 2.2: Keep setup inputs minimal: Guide Cat name plus runtime target
+- [x] Task 2.2: Keep setup inputs minimal: Guide Cat name plus runtime target
       only.
-- [ ] Task 2.3: Ensure setup can complete with or without Guide Cat.
-- [ ] Task 2.4: Persist a created Guide Cat as suite-level reusable state
+- [x] Task 2.3: Ensure setup can complete with or without Guide Cat.
+- [x] Task 2.4: Persist a created Guide Cat as suite-level reusable state
       rather than only as Boss Cat bootstrap, and keep the Guide-Cat-to-Boss
       mapping explicit instead of implicit.
 
-**Deliverables**: setup can create or skip Guide Cat without breaking the suite
+**Deliverables**: setup can create or skip Guide Cat without breaking the suite,
+and a created Guide Cat now persists as suite-level state without implicitly
+rewiring the global orchestrator target
 
 ### Phase 3: Guide Cat Suggestions and Entry Surfaces
 
@@ -99,6 +101,10 @@ UI language
 | `src/app/renderer/setup/SuiteSetupWizard.tsx` | Modify | Rename setup copy and flow from Boss Cat bootstrap to optional Guide Cat |
 | `src/shared/suite-contract.ts` | Modify | Replace setup-time Boss-Cat bootstrap fields with Guide Cat setup fields |
 | `src/app/server/suiteSetupRoutes.ts` | Modify | Persist Guide Cat as suite-level setup output while keeping compatibility |
+| `src/core/types.ts` | Modify | Add suite-level `guideCat` state distinct from product-owned chat cat records |
+| `src/products/chat/state/shell.ts` | Modify | Thread suite-level `guideCat` through the app-shell envelope |
+| `src/products/chat/api/routeSupport.ts` | Modify | Expose persisted `guideCat` state in server-built shell payloads |
+| `src/products/chat/renderer/api/normalization.ts` | Modify | Normalize suite-level `guideCat` payloads for renderer consumers |
 | `src/products/chat/api/contracts.ts` | Modify | Add compatibility path toward generalized participants |
 | `src/products/chat/state/model/shared.ts` | Modify | Rework `inferChannelComposerMode(...)` away from Cat-only active-roster assumptions |
 | `src/products/chat/shared/channelTopology.ts` | Modify | Rework `resolveChannelKind(...)` / `isDirectLaneChannel(...)` around explicit topology and generalized participants |
@@ -145,6 +151,7 @@ UI language
 |------|--------|
 | 2026-04-04 | Plan created to align Guide Cat setup and participant generalization |
 | 2026-04-04 | Phase 1 documentation freeze completed; follow-up review clarified setup order, Boss Cat coexistence, suggestion triggers, and concrete Chat code hotspots |
+| 2026-04-04 | Phase 2 setup contract slice landed: Guide Cat now persists as suite-level state, setup remains optional, and Guide Cat runtime selection no longer overwrites the global orchestrator target |
 
 ---
 
