@@ -122,7 +122,6 @@ export function NewChatDraft({
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const chatCats = payload.chat.cats.filter(isChatCat);
   const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
-  const isGroupEntryMode = entryMode === 'group';
   const draftParticipants = resolveDraftParticipantSelection({ draftLeadCatId, draftCatIds });
   const leadCat = draftLeadCatId
     ? chatCats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
@@ -137,6 +136,8 @@ export function NewChatDraft({
     ? chatCats.find((c) => c.id === draftParticipants.effectiveLeadCatId && c.status === 'active') ?? null
     : null;
   const effectiveLeadCat = leadCat ?? draftLeadCat;
+  const draftParticipantCount = draftParticipants.participantCatIds.length;
+  const isGroupDraft = entryMode === 'group' || draftParticipantCount > 1;
   const hasDraftCats = draftCatIds.length > 0;
   const showSoloSelector = !effectiveLeadCat;
   const nonLeadDraftCatIds = draftLeadCat
@@ -159,11 +160,11 @@ export function NewChatDraft({
     }
   }
   const isDirectLaneContext = !allowAddCat && Boolean(draftLeadCatId) && Boolean(leadCat);
-  const isLeadScopedDraft = allowAddCat && Boolean(leadCat);
-  const groupDraftSelectionLabel = draftCatIds.length === 1
+  const isCatLedDraft = !isDirectLaneContext && Boolean(effectiveLeadCat) && !isGroupDraft;
+  const groupDraftSelectionLabel = draftParticipantCount === 1
     ? '1 participant selected so far. Add more or send when ready.'
-    : draftCatIds.length > 1
-      ? `${draftCatIds.length} participants selected for this shared chat.`
+    : draftParticipantCount > 1
+      ? `${draftParticipantCount} participants selected for this shared chat.`
       : activeChatCats.length > 0
         ? 'Choose which Cats should join this shared chat.'
         : 'Add Cats in Settings before starting a shared chat.';
@@ -203,7 +204,7 @@ export function NewChatDraft({
                 {hasTelegramBinding ? 'Telegram-bound private lane.' : 'Private lane for this Cat.'}
               </p>
             </>
-          ) : isGroupEntryMode ? (
+          ) : isGroupDraft ? (
             <>
               <p className="eyebrow">Group Chat</p>
               <h1>Start a group chat</h1>
@@ -221,12 +222,12 @@ export function NewChatDraft({
                 </div>
               ) : null}
             </>
-          ) : isLeadScopedDraft && leadCat ? (
+          ) : isCatLedDraft && effectiveLeadCat ? (
             <>
               <p className="eyebrow">Cat-led Chat</p>
-              <h1>Start with {leadCat.name}</h1>
+              <h1>Start with {effectiveLeadCat.name}</h1>
               <p className="heroNote">
-                {leadCat.name} will lead this draft. Add more Cats anytime, or keep the thread focused.
+                {effectiveLeadCat.name} will lead this draft. Add more Cats anytime, or keep the thread focused.
               </p>
             </>
           ) : (

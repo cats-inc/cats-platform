@@ -80,6 +80,54 @@ test('lead-scoped new chat draft renders cat-led copy instead of private chat co
   assert.doesNotMatch(markup, /Private Chat/u);
 });
 
+test('generic new chat draft with one selected cat renders cat-led copy', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        draftCatIds: ['cat-lead'],
+      })}
+    />,
+  );
+
+  assert.match(markup, /Cat-led Chat/u);
+  assert.match(markup, /Start with Milo/u);
+  assert.doesNotMatch(markup, /Group Chat/u);
+});
+
+test('generic new chat draft with multiple selected cats renders group chat copy', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        draftCatIds: ['cat-lead', 'cat-reviewer'],
+        payload: {
+          chat: {
+            ...createPayload().chat,
+            cats: [
+              ...createPayload().chat.cats,
+              {
+                id: 'cat-reviewer',
+                name: 'Pico',
+                status: 'active',
+                products: ['chat'],
+                defaultExecutionTarget: {
+                  provider: 'claude',
+                  instance: 'native',
+                  model: 'claude-sonnet',
+                },
+                defaultModelSelection: null,
+              },
+            ],
+          },
+        } as unknown as AppShellPayload,
+      })}
+    />,
+  );
+
+  assert.match(markup, /Group Chat/u);
+  assert.match(markup, /2 participants selected for this shared chat\./u);
+  assert.doesNotMatch(markup, /Cat-led Chat/u);
+});
+
 test('direct-lane draft keeps private chat copy', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
