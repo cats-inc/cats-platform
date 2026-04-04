@@ -5,6 +5,7 @@ import type { NewChatMode } from '../../shared/channelPaths.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import type { BrowseDirectoryEntry } from '../api';
 import { resolveDraftParticipantSelection } from '../draftParticipants';
+import { resolveDraftStarterSuggestionContext } from '../draftStarterSuggestionContext';
 import {
   resolveVisibleDraftStarterSuggestions,
   type DraftStarterSuggestion,
@@ -143,7 +144,15 @@ export function NewChatDraft({
     : null;
   const effectiveLeadCat = leadCat ?? draftLeadCat;
   const draftParticipantCount = draftParticipants.participantCatIds.length;
-  const isGroupDraft = entryMode === 'group' || draftParticipantCount > 1;
+  const draftSuggestionContext = resolveDraftStarterSuggestionContext({
+    allowAddCat,
+    draftLeadCatId,
+    hasLeadCat: Boolean(effectiveLeadCat),
+    entryMode,
+    participantCount: draftParticipantCount,
+    parallelTargetCount: parallelTargets?.length ?? 0,
+  });
+  const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
   const hasDraftCats = draftCatIds.length > 0;
   const showSoloSelector = !effectiveLeadCat;
   const nonLeadDraftCatIds = draftLeadCat
@@ -165,19 +174,8 @@ export function NewChatDraft({
       onPickFolder();
     }
   }
-  const isDirectLaneContext = !allowAddCat && Boolean(draftLeadCatId) && Boolean(leadCat);
-  const isCatLedDraft = !isDirectLaneContext && Boolean(effectiveLeadCat) && !isGroupDraft;
-  const starterSuggestionMode = isParallelMode
-    ? 'parallel'
-    : isDirectLaneContext
-      ? 'direct'
-      : isGroupDraft
-        ? 'group'
-        : isCatLedDraft
-          ? 'cat_led'
-          : 'solo';
   const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
-    mode: starterSuggestionMode,
+    mode: draftSuggestionContext.mode,
     leadCatName: effectiveLeadCat?.name ?? null,
     suggestions: starterSuggestions,
   });
