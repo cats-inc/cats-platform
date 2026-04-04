@@ -65,6 +65,9 @@ The first host-owned slice is already in-repo:
 - macOS/Linux unsigned test-package commands are now also wired through
   `electron-builder`, even though Windows remains the only post-install smoke
   path with current real-machine validation
+- macOS/Linux now also have repo-owned unpacked-package smoke scripts so the
+  built app bundle or `linux-unpacked` output can be validated deterministically
+  before installer-grade validation catches up
 - Windows packaged installs now also have a host-owned smoke-check script that
   verifies bundled sidecars and the persisted desktop-host bootstrap snapshot
 - the bootstrap bridge now stays sandboxed, validates host-controlled actions,

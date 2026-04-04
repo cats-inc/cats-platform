@@ -501,6 +501,8 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   assert.equal(packageJson.scripts['desktop:package:linux'], 'node scripts/build-desktop-installer.mjs --target linux');
   assert.equal(packageJson.scripts['desktop:package:macos'], 'node scripts/build-desktop-installer.mjs --target macos');
   assert.equal(packageJson.scripts['desktop:package:windows'], 'node scripts/build-desktop-installer.mjs --target windows');
+  assert.equal(packageJson.scripts['desktop:smoke:linux'], 'bash ./scripts/linux/test-linux-package-smoke.sh');
+  assert.equal(packageJson.scripts['desktop:smoke:macos'], 'bash ./scripts/macos/test-macos-package-smoke.sh');
   assert.equal(packageJson.scripts['start:server'], 'node dist-server/index.js');
   assert.equal(packageJson.build.extraMetadata?.name, 'cats');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
@@ -568,6 +570,28 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /ready_for_setup/);
   assert.match(script, /ready_for_chat/);
   assert.match(script, /needs_prerequisites/);
+});
+
+test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and packaged setup assets', async () => {
+  const linuxScript = await readFile(
+    join(process.cwd(), 'scripts', 'linux', 'test-linux-package-smoke.sh'),
+    'utf8',
+  );
+  const macosScript = await readFile(
+    join(process.cwd(), 'scripts', 'macos', 'test-macos-package-smoke.sh'),
+    'utf8',
+  );
+
+  assert.match(linuxScript, /release\/linux-unpacked/);
+  assert.match(linuxScript, /desktop-host\/setup-assets\/linux\/setup-node-global-prefix\.sh/);
+  assert.match(linuxScript, /desktop-host\/setup-assets\/shared\/unix-provider-cli-common\.sh/);
+  assert.match(linuxScript, /linux-node-cli-pack-script/);
+  assert.match(linuxScript, /linux-install-readiness-audit/);
+  assert.match(macosScript, /release\/mac-universal\/Cats\.app/);
+  assert.match(macosScript, /desktop-host\/setup-assets\/macos\/setup-node-global-prefix\.sh/);
+  assert.match(macosScript, /desktop-host\/setup-assets\/shared\/unix-node-cli-common\.sh/);
+  assert.match(macosScript, /macos-node-cli-pack-script/);
+  assert.match(macosScript, /macos-install-readiness-audit/);
 });
 
 test('build-desktop-installer script avoids shell execution on Windows', async () => {

@@ -28,6 +28,8 @@
     "desktop:package:linux": "node scripts/build-desktop-installer.mjs --target linux",
     "desktop:package:macos": "node scripts/build-desktop-installer.mjs --target macos",
     "desktop:package:windows": "node scripts/build-desktop-installer.mjs --target windows",
+    "desktop:smoke:linux": "bash ./scripts/linux/test-linux-package-smoke.sh",
+    "desktop:smoke:macos": "bash ./scripts/macos/test-macos-package-smoke.sh",
     "desktop:stage": "npm run build && node scripts/package-desktop.mjs --platform all",
     "desktop:stage:linux": "npm run build && node scripts/package-desktop.mjs --platform linux",
     "desktop:stage:macos": "npm run build && node scripts/package-desktop.mjs --platform macos",

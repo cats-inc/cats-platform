@@ -456,6 +456,20 @@ Current intent:
 - Windows remains the only platform with a repo-owned post-install smoke check
   in this slice
 
+Unix smoke-check entrypoints:
+
+```bash
+./scripts/macos/test-macos-package-smoke.sh
+./scripts/linux/test-linux-package-smoke.sh
+```
+
+Those validate the unpacked `electron-builder` outputs:
+
+- macOS default: `release/mac-universal/Cats.app`
+- Linux default: `release/linux-unpacked/`
+- bundled sidecars, packaged setup assets, and platform-scoped installer
+  contract truth
+
 ### Windows Post-Install Smoke Check
 
 After running the installer on a Windows machine, validate the installed app

@@ -122,6 +122,13 @@ npm run desktop:package:linux
 ./scripts/linux/build-linux-installer.sh
 ```
 
+- Unix unpacked-package smoke-check commands:
+
+```bash
+./scripts/macos/test-macos-package-smoke.sh
+./scripts/linux/test-linux-package-smoke.sh
+```
+
 - current Windows installer output:
   - `release/Cats-<version>-setup-x64.exe`
   - `release/Cats-<version>-setup-x64.exe.blockmap`
@@ -194,10 +201,12 @@ npm run desktop:package:linux
   - `electron-builder`
   - targets: `dmg`, `pkg`, `zip`
   - unsigned/test-package path only in the current slice
+  - unpacked smoke validation available through `test-macos-package-smoke.sh`
 - Linux packaging mode in this slice:
   - `electron-builder`
   - targets: `AppImage`, `deb`, `tar.gz`
   - unsigned/test-package path only in the current slice
+  - unpacked smoke validation available through `test-linux-package-smoke.sh`
 
 - platform wrappers:
 
