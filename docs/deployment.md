@@ -13,7 +13,7 @@
 | Containerized local | `http://127.0.0.1:8181` | Scaffold exists, but container assets need refresh before being treated as current |
 | Staging | TBD | Pre-production testing |
 | Production | TBD | Live environment |
-| Desktop distributable | Windows NSIS path landed | Electron host starts local `cats-runtime` + `cats`, waits for readiness, persists bootstrap/remediation state, stages Windows/macOS/Linux packaging outputs, and can now emit a Windows NSIS installer for test installs |
+| Desktop distributable | Cross-platform packaging commands wired; Windows smoke path validated | Electron host starts local `cats-runtime` + `cats`, waits for readiness, persists bootstrap/remediation state, stages Windows/macOS/Linux packaging outputs, emits Windows NSIS installers plus unsigned/test macOS/Linux packages, and currently has real post-install smoke validation only on Windows |
 
 ## Deployment Methods
 
@@ -110,6 +110,18 @@ npm run desktop:package:windows
 .\scripts\windows\Build-WindowsInstaller.ps1
 ```
 
+- macOS/Linux installer commands:
+
+```bash
+npm run desktop:package:macos
+npm run desktop:package:linux
+```
+
+```bash
+./scripts/macos/build-macos-installer.sh
+./scripts/linux/build-linux-installer.sh
+```
+
 - current Windows installer output:
   - `release/Cats-<version>-setup-x64.exe`
   - `release/Cats-<version>-setup-x64.exe.blockmap`
@@ -144,6 +156,7 @@ npm run desktop:package:windows
   - keep Electron as the thin host around bundled `cats` + `cats-runtime`
     sidecars
   - stage deterministic target manifests for Windows, macOS, and Linux while
+    wiring unsigned/test installer commands for all three host platforms while
     shipping a real Windows NSIS installer first
   - preserve the self-hosted npm path rather than replacing it
 - installer/remediation contract in this slice:
@@ -177,6 +190,14 @@ npm run desktop:package:windows
   - installation directory selection enabled
   - executable signing/editing intentionally disabled for the current
     unsigned test-install path
+- macOS packaging mode in this slice:
+  - `electron-builder`
+  - targets: `dmg`, `pkg`, `zip`
+  - unsigned/test-package path only in the current slice
+- Linux packaging mode in this slice:
+  - `electron-builder`
+  - targets: `AppImage`, `deb`, `tar.gz`
+  - unsigned/test-package path only in the current slice
 
 - platform wrappers:
 

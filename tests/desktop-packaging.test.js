@@ -493,15 +493,23 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
 });
 
-test('package.json wires Windows installers through electron-builder NSIS', async () => {
+test('package.json wires Windows, macOS, and Linux installer targets through electron-builder', async () => {
   const packageJson = JSON.parse(await readFile(join(process.cwd(), 'package.json'), 'utf8'));
 
   assert.equal(packageJson.main, 'dist-electron/main.js');
   assert.equal(Object.hasOwn(packageJson, 'types'), false);
+  assert.equal(packageJson.scripts['desktop:package:linux'], 'node scripts/build-desktop-installer.mjs --target linux');
+  assert.equal(packageJson.scripts['desktop:package:macos'], 'node scripts/build-desktop-installer.mjs --target macos');
   assert.equal(packageJson.scripts['desktop:package:windows'], 'node scripts/build-desktop-installer.mjs --target windows');
   assert.equal(packageJson.scripts['start:server'], 'node dist-server/index.js');
   assert.equal(packageJson.build.extraMetadata?.name, 'cats');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
+  assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'dmg'), true);
+  assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'pkg'), true);
+  assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'zip'), true);
+  assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'AppImage'), true);
+  assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'deb'), true);
+  assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'tar.gz'), true);
   assert.equal(packageJson.build.nsis.oneClick, false);
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.to === 'desktop-host/setup-assets',
@@ -567,11 +575,26 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
     join(process.cwd(), 'scripts', 'build-desktop-installer.mjs'),
     'utf8',
   );
+  const linuxWrapper = await readFile(
+    join(process.cwd(), 'scripts', 'linux', 'build-linux-installer.sh'),
+    'utf8',
+  );
+  const macosWrapper = await readFile(
+    join(process.cwd(), 'scripts', 'macos', 'build-macos-installer.sh'),
+    'utf8',
+  );
 
+  assert.match(script, /<current\|windows\|macos\|linux>/);
+  assert.match(script, /case 'darwin':/);
+  assert.match(script, /case 'linux':/);
+  assert.match(script, /--mac/);
+  assert.match(script, /--linux/);
   assert.match(script, /npm-cli\.js/);
   assert.match(script, /npx-cli\.js/);
   assert.match(script, /process\.execPath/);
   assert.match(script, /shell: false/);
+  assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);
+  assert.match(macosWrapper, /build-desktop-installer\.mjs --target macos/);
 });
 
 test('stageDesktopPackagingOutputs writes staging manifests and shared assets', async () => {

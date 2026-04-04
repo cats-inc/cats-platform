@@ -25,6 +25,8 @@
     "clean:dist": "node scripts/clean-dist.mjs",
     "desktop:host": "electron dist-electron/main.js",
     "desktop:package": "node scripts/build-desktop-installer.mjs --target current",
+    "desktop:package:linux": "node scripts/build-desktop-installer.mjs --target linux",
+    "desktop:package:macos": "node scripts/build-desktop-installer.mjs --target macos",
     "desktop:package:windows": "node scripts/build-desktop-installer.mjs --target windows",
     "desktop:stage": "npm run build && node scripts/package-desktop.mjs --platform all",
     "desktop:stage:linux": "npm run build && node scripts/package-desktop.mjs --platform linux",
@@ -141,6 +143,59 @@
       ],
       "signAndEditExecutable": false,
       "artifactName": "Cats-${version}-setup-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "pkg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "artifactName": "Cats-${version}-${arch}.${ext}",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "Cats-${version}-${arch}.${ext}",
+      "category": "Utility"
     },
     "nsis": {
       "oneClick": false,

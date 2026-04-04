@@ -118,7 +118,7 @@ contracts.
 - [ ] Turn the current Windows NSIS-first packaging slice into a release-grade
       desktop distribution path, including signed installers, branded assets,
       and a documented release pipeline rather than test-install outputs only
-- [ ] Extend the current desktop packaging contract beyond Windows staging so
+- [x] Extend the current desktop packaging contract beyond Windows staging so
       macOS and Linux also produce real installer artifacts instead of staged
       manifests only
 - [ ] Strengthen the packaged host trust chain beyond the current HTTPS and

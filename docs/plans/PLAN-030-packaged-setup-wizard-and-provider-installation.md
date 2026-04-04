@@ -294,6 +294,7 @@ removes local submodule convenience.
 | 2026-03-30 | Phase 4 slice 18 landed: the bootstrap issue panel, setup recovery panel, and setup-bridge helpers now render optional packaged follow-through with explicit pack labels such as `local model pack` instead of a generic capability-pack message |
 | 2026-03-30 | Phase 4 slice 19 landed: `electron/readiness.ts` now keeps an explicit `Open Setup for Local Model Pack` action available in `ready_for_chat` when the API baseline is ready but an optional local-model follow-through pack is still discoverable |
 | 2026-04-04 | Phase 4 slice 20 landed: `electron/setupAssets.ts`, `electron/packaging.ts`, `electron/setupBridge.ts`, `electron/main.ts`, and the repo-owned Unix packaged helpers now extend the packaged setup chain to macOS and Linux, including staged shared shell support files, `bash`-executed packaged helper runs, platform-scoped readiness-audit priming, and target-specific installer manifests instead of leaving packaged setup Windows-only |
+| 2026-04-04 | Packaging slice 21 landed: `package.json`, `scripts/build-desktop-installer.mjs`, and the new Unix installer wrapper scripts now wire unsigned/test `electron-builder` package commands for macOS and Linux alongside Windows, while docs now explicitly distinguish cross-platform package build support from the still-Windows-only post-install smoke path |
 
 ---
 

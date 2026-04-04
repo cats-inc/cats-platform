@@ -62,6 +62,9 @@ The first host-owned slice is already in-repo:
   manifests under `build/desktop-packaging`
 - Windows test installs can now be exercised through a real `electron-builder`
   + `NSIS` installer path
+- macOS/Linux unsigned test-package commands are now also wired through
+  `electron-builder`, even though Windows remains the only post-install smoke
+  path with current real-machine validation
 - Windows packaged installs now also have a host-owned smoke-check script that
   verifies bundled sidecars and the persisted desktop-host bootstrap snapshot
 - the bootstrap bridge now stays sandboxed, validates host-controlled actions,

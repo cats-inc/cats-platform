@@ -430,6 +430,32 @@ This currently uses `electron-builder` with the `NSIS` target and writes:
 - `release/Cats-0.1.0-setup-x64.exe` style installer output
 - `release/win-unpacked/` for unpacked verification
 
+### macOS / Linux Installer Builds
+
+Unsigned or test-package builds for the Unix desktop targets now use the same
+staged desktop packaging substrate:
+
+```bash
+npm run desktop:package:macos
+npm run desktop:package:linux
+```
+
+Platform wrappers:
+
+```bash
+./scripts/macos/build-macos-installer.sh
+./scripts/linux/build-linux-installer.sh
+```
+
+Current intent:
+
+- macOS uses `electron-builder` targets configured for `dmg`, `pkg`, and `zip`
+- Linux uses `electron-builder` targets configured for `AppImage`, `deb`, and
+  `tar.gz`
+- these are unsigned/test-package paths for now
+- Windows remains the only platform with a repo-owned post-install smoke check
+  in this slice
+
 ### Windows Post-Install Smoke Check
 
 After running the installer on a Windows machine, validate the installed app
