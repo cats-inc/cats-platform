@@ -23,7 +23,6 @@ test('resolvePlatformSurfaceForPath routes work and code prefixes to their dedic
   assert.equal(resolvePlatformSurfaceForPath('/'), 'chat');
   assert.equal(resolvePlatformSurfaceForPath('/chat'), 'chat');
   assert.equal(resolvePlatformSurfaceForPath('/chat/chats/abc'), 'chat');
-  assert.equal(resolvePlatformSurfaceForPath('/chat/settings/general'), 'chat');
   assert.equal(resolvePlatformSurfaceForPath('/work'), 'work');
   assert.equal(resolvePlatformSurfaceForPath('/work/war-room'), 'work');
   assert.equal(resolvePlatformSurfaceForPath('/code'), 'code');
@@ -82,14 +81,14 @@ test('platform surface descriptors expose product switcher metadata and stable r
   );
 });
 
-test('isPlatformNonProductPath excludes platform settings and legacy chat settings from product sync', () => {
+test('isPlatformNonProductPath excludes only canonical platform routes from product sync', () => {
   assert.equal(isPlatformNonProductPath('/setup'), true);
   assert.equal(isPlatformNonProductPath('/lobby'), true);
   assert.equal(isPlatformNonProductPath('/products'), true);
   assert.equal(isPlatformNonProductPath('/settings'), true);
   assert.equal(isPlatformNonProductPath('/settings/general'), true);
-  assert.equal(isPlatformNonProductPath('/chat/settings'), true);
-  assert.equal(isPlatformNonProductPath('/chat/settings/general'), true);
+  assert.equal(isPlatformNonProductPath('/chat/settings'), false);
+  assert.equal(isPlatformNonProductPath('/chat/settings/general'), false);
   assert.equal(isPlatformNonProductPath('/chat/new'), false);
   assert.equal(isPlatformNonProductPath('/work'), false);
 });

@@ -113,15 +113,14 @@ installed apps as a first-class inventory concept.
    - apps that contribute supporting capability without a main launch surface
 12. Platform-level settings shall remain host-owned and shall focus on global
    concerns such as owner/general settings, runtime, and data/reset controls.
-13. Product-specific settings shall be routable under the owning product route
-    tree.
+13. Product-specific settings shall contribute sections beneath the canonical
+    `/settings/*` namespace.
 14. The platform shall preserve direct product routes such as `/chat/*`,
     `/work/*`, and `/code/*`.
 15. The setup wizard shall continue to derive its first-product choices from a
     host-owned registration source rather than hardcoded renderer branching.
-16. The host shall preserve bounded compatibility for existing deep links when
-    canonical settings ownership moves from platform-level routes to product-owned
-    routes.
+16. The host shall use one canonical settings namespace and may remove pre-launch
+    aliases instead of preserving compatibility redirects.
 17. The host envelope shall expose enough structured metadata to render product
     and app inventory without inferring state only from route prefixes.
 
@@ -194,7 +193,13 @@ same registration data.
 - `/settings/data`
   host-owned reset/export/diagnostic data controls
 - `/settings/cats`
-  bounded compatibility alias that redirects to `/chat/settings/cats`
+  host-owned Cats settings
+- `/settings/chat`
+  Chat product settings section
+- `/settings/work`
+  Work product settings section
+- `/settings/code`
+  Code product settings section
 
 ### Product-Level Routes
 
@@ -202,16 +207,15 @@ same registration data.
 - `/work/*`
 - `/code/*`
 
-Each product may also own product-local settings beneath its own route tree,
-for example:
+Each product may grow nested settings under its canonical section, for example:
 
-- `/chat/settings/*`
-- `/work/settings/*`
-- `/code/settings/*`
+- `/settings/chat/*`
+- `/settings/work/*`
+- `/settings/code/*`
 
-In the current slice, `Cats Chat` owns canonical product settings beneath
-`/chat/settings/*`, while `Work` and `Code` keep compatibility redirects until
-their product-specific settings surfaces exist.
+In the current slice, `/settings/*` is the only canonical settings namespace.
+The active product shell remains visible while the main canvas switches to the
+shared settings layout.
 
 ## Landing Structure
 

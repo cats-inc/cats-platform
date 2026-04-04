@@ -48,7 +48,7 @@ export function isPlatformNonProductPath(pathname: string): boolean {
     return true;
   }
 
-  return pathname === '/chat/settings' || pathname.startsWith('/chat/settings/');
+  return false;
 }
 
 export function resolvePlatformSurfaceForPath(pathname: string): PlatformSurfaceId {

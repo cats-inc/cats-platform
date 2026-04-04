@@ -3,8 +3,8 @@ import test from 'node:test';
 import { isValidElement, type ReactNode } from 'react';
 import { Navigate, Route } from 'react-router-dom';
 
-import { PlatformSettingsRouteTree } from '../src/app/renderer/settings/PlatformSettingsRoutes.tsx';
-import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
+import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
+import { PlatformSettingsRoutes } from '../src/app/renderer/settings/PlatformSettingsRoutes.tsx';
 
 interface RouteDescriptor {
   path: string;
@@ -29,13 +29,14 @@ function collectRoutes(node: ReactNode, routes: RouteDescriptor[] = []): RouteDe
   return routes;
 }
 
-function createEnvelope(): PlatformHostEnvelope {
+function createPayload(): AppShellPayload {
   return {
-    app: {
-      name: 'cats',
-      stage: 'phase-2-shell',
-      runtimeBoundary: 'cats-runtime',
-    },
+    setupCompleteAt: '2026-03-31T00:00:00.000Z',
+    ownerDisplayName: 'Kenny',
+    ownerAvatarColor: null,
+    ownerAvatarUrl: null,
+    guideCat: null,
+    lastProductSurface: 'chat',
     products: [
       {
         id: 'chat',
@@ -50,8 +51,60 @@ function createEnvelope(): PlatformHostEnvelope {
         setup: {
           selectable: true,
         },
+        settings: [
+          {
+            id: 'chat',
+            label: 'Chat',
+            path: '/settings/chat',
+          },
+        ],
+      },
+      {
+        id: 'work',
+        surface: 'work',
+        routePrefix: '/work',
+        productName: 'Cats Work',
+        subtitle: 'Projects, approvals, and operator workflow',
+        group: 'office',
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'preview',
+        setup: {
+          selectable: true,
+        },
+        settings: [
+          {
+            id: 'work',
+            label: 'Work',
+            path: '/settings/work',
+          },
+        ],
+      },
+      {
+        id: 'code',
+        surface: 'code',
+        routePrefix: '/code',
+        productName: 'Cats Code',
+        subtitle: 'Repos, runs, and coding workspace',
+        group: 'office',
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'preview',
+        setup: {
+          selectable: true,
+        },
+        settings: [
+          {
+            id: 'code',
+            label: 'Code',
+            path: '/settings/code',
+          },
+        ],
       },
     ],
+    chat: {
+      showVerboseMessages: false,
+    },
     runtime: {
       baseUrl: 'http://127.0.0.1:3110',
       reachable: true,
@@ -82,13 +135,7 @@ function createEnvelope(): PlatformHostEnvelope {
       port: 8181,
     },
     bootstrapAttemptId: null,
-    setupCompleteAt: '2026-03-31T00:00:00.000Z',
-    ownerDisplayName: 'Kenny',
-    ownerAvatarColor: null,
-    ownerAvatarUrl: null,
-    guideCat: null,
-    lastProductSurface: 'chat',
-  };
+  } as unknown as AppShellPayload;
 }
 
 function assertNavigateRoute(routes: RouteDescriptor[], path: string, expectedTo: string): void {
@@ -107,21 +154,25 @@ function assertConcreteRoute(routes: RouteDescriptor[], path: string): void {
   assert.notEqual(route.element.type, Navigate);
 }
 
-test('PlatformSettingsRoutes owns canonical platform settings and preserves legacy cats redirect', () => {
+test('PlatformSettingsRoutes owns canonical platform settings routes', () => {
   const routes = collectRoutes(
-    PlatformSettingsRouteTree({
-      envelope: createEnvelope(),
-      onEnvelopeUpdate: () => {},
+    PlatformSettingsRoutes({
+      payload: createPayload(),
+      onPayloadUpdate: () => {},
       feedback: '',
       busy: '',
       onFeedback: () => {},
+      onBusy: () => {},
       onResetSetup: () => {},
     }),
   );
 
-  assertNavigateRoute(routes, 'cats', '/chat/settings/cats');
-  assertNavigateRoute(routes, '*', '/settings/general');
   assertConcreteRoute(routes, 'general');
+  assertConcreteRoute(routes, 'cats');
+  assertConcreteRoute(routes, 'chat');
+  assertConcreteRoute(routes, 'work');
+  assertConcreteRoute(routes, 'code');
   assertConcreteRoute(routes, 'runtime');
   assertConcreteRoute(routes, 'data');
+  assertNavigateRoute(routes, '*', '/settings/general');
 });

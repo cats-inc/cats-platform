@@ -1,114 +1,121 @@
-import { useCallback, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
-import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
+import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
+import { SettingsCats } from '../../../products/chat/renderer/components/settings-cats/SettingsCats.js';
+import { PlatformSettingsChat } from './PlatformSettingsChat.js';
 import { PlatformSettingsData } from './PlatformSettingsData.js';
 import { PlatformSettingsGeneral } from './PlatformSettingsGeneral.js';
+import { PlatformSettingsProductPlaceholder } from './PlatformSettingsProductPlaceholder.js';
 import { PlatformSettingsRuntime } from './PlatformSettingsRuntime.js';
+import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 import './platform-settings.css';
 
 export interface PlatformSettingsRoutesProps {
-  envelope: PlatformHostEnvelope;
-  onEnvelopeUpdate: (updater: (current: PlatformHostEnvelope) => PlatformHostEnvelope) => void;
-}
-
-interface PlatformSettingsRouteTreeProps extends PlatformSettingsRoutesProps {
+  payload: AppShellPayload;
+  onPayloadUpdate: (payload: AppShellPayload) => void;
   feedback: string;
   busy: string;
   onFeedback: (message: string) => void;
+  onBusy: (key: string) => void;
   onResetSetup: () => void;
 }
 
-export function PlatformSettingsRouteTree({
-  envelope,
-  onEnvelopeUpdate,
+export function PlatformSettingsRoutes({
+  payload,
+  onPayloadUpdate,
   feedback,
   busy,
   onFeedback,
+  onBusy,
   onResetSetup,
-}: PlatformSettingsRouteTreeProps) {
+}: PlatformSettingsRoutesProps) {
+  const workProduct = payload.products.find((product) => product.id === 'work');
+  const codeProduct = payload.products.find((product) => product.id === 'code');
+
   return (
     <Routes>
       <Route index element={<Navigate to="/settings/general" replace />} />
       <Route
         path="general"
-        element={
+        element={(
           <PlatformSettingsGeneral
-            envelope={envelope}
+            payload={payload}
             feedback={feedback}
-            onEnvelopeUpdate={onEnvelopeUpdate}
+            onPayloadUpdate={onPayloadUpdate}
             onFeedback={onFeedback}
           />
-        }
+        )}
       />
       <Route
+        path="cats"
+        element={(
+          <PlatformSettingsShell section="cats" title="Cats" products={payload.products}>
+            <SettingsCats
+              payload={payload}
+              feedback={feedback}
+              busy={busy}
+              onPayloadUpdate={onPayloadUpdate}
+              onFeedback={onFeedback}
+              onBusy={onBusy}
+            />
+          </PlatformSettingsShell>
+        )}
+      />
+      <Route
+        path="chat"
+        element={(
+          <PlatformSettingsChat
+            payload={payload}
+            feedback={feedback}
+            onPayloadUpdate={onPayloadUpdate}
+            onFeedback={onFeedback}
+          />
+        )}
+      />
+      {workProduct ? (
+        <Route
+          path="work"
+          element={(
+            <PlatformSettingsProductPlaceholder
+              productId="work"
+              products={payload.products}
+              title="Work"
+              subtitle={`${workProduct.productName} settings will land here as product-owned sections.`}
+            />
+          )}
+        />
+      ) : null}
+      {codeProduct ? (
+        <Route
+          path="code"
+          element={(
+            <PlatformSettingsProductPlaceholder
+              productId="code"
+              products={payload.products}
+              title="Code"
+              subtitle={`${codeProduct.productName} settings will land here as product-owned sections.`}
+            />
+          )}
+        />
+      ) : null}
+      <Route
         path="runtime"
-        element={<PlatformSettingsRuntime envelope={envelope} />}
+        element={<PlatformSettingsRuntime payload={payload} />}
       />
       <Route
         path="data"
-        element={
+        element={(
           <PlatformSettingsData
-            products={envelope.products}
+            payload={payload}
             feedback={feedback}
             busy={busy}
             onResetSetup={onResetSetup}
           />
-        }
+        )}
       />
-      <Route path="cats" element={<Navigate to="/chat/settings/cats" replace />} />
       <Route path="*" element={<Navigate to="/settings/general" replace />} />
     </Routes>
   );
 }
 
-export function PlatformSettingsRoutes({
-  envelope,
-  onEnvelopeUpdate,
-}: PlatformSettingsRoutesProps) {
-  const [feedback, setFeedback] = useState('');
-  const [busy, setBusy] = useState('');
-  const { dialog, confirm, handleClose } = useConfirmDialog();
-
-  const onResetSetup = useCallback(async (): Promise<void> => {
-    const confirmed = await confirm({
-      title: 'Reset all data',
-      message: 'This will erase all chats, cats, and platform settings. Continue?',
-      confirmLabel: 'Reset',
-    });
-    if (!confirmed) {
-      return;
-    }
-
-    setBusy('setup:reset');
-    setFeedback('');
-    try {
-      const response = await fetch('/api/setup/reset', {
-        method: 'POST',
-        headers: { Accept: 'application/json' },
-      });
-      if (!response.ok) {
-        throw new Error('Failed to reset setup.');
-      }
-      window.location.href = '/';
-    } catch (error) {
-      setBusy('');
-      setFeedback(error instanceof Error ? error.message : 'Failed to reset setup.');
-    }
-  }, [confirm]);
-
-  return (
-    <>
-      <PlatformSettingsRouteTree
-        envelope={envelope}
-        onEnvelopeUpdate={onEnvelopeUpdate}
-        feedback={feedback}
-        busy={busy}
-        onFeedback={setFeedback}
-        onResetSetup={() => void onResetSetup()}
-      />
-      <ConfirmDialog dialog={dialog} onClose={handleClose} />
-    </>
-  );
-}
+export const PlatformSettingsRouteTree = PlatformSettingsRoutes;

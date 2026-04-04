@@ -6,12 +6,10 @@ import type {
   PlatformProductSettingsDescriptor,
 } from '../../../shared/platform-contract.js';
 
-type PlatformSettingsSection = 'general' | 'runtime' | 'data';
+type PlatformSettingsSection = 'general' | 'cats' | 'runtime' | 'data' | string;
 
-interface PlatformSettingsProductGroup {
+interface PlatformSettingsProductEntry extends PlatformProductSettingsDescriptor {
   productId: PlatformProductDescriptor['id'];
-  productName: string;
-  entries: PlatformProductSettingsDescriptor[];
 }
 
 export interface PlatformSettingsShellProps {
@@ -21,16 +19,17 @@ export interface PlatformSettingsShellProps {
   children: ReactNode;
 }
 
-export function buildPlatformSettingsProductGroups(
+export function buildPlatformSettingsProductEntries(
   products: readonly PlatformProductDescriptor[],
-): PlatformSettingsProductGroup[] {
+) : PlatformSettingsProductEntry[] {
   return products
     .filter((product) => product.installState !== 'available' && (product.settings?.length ?? 0) > 0)
-    .map((product) => ({
-      productId: product.id,
-      productName: product.productName,
-      entries: product.settings?.map((entry) => ({ ...entry })) ?? [],
-    }));
+    .flatMap((product) =>
+      (product.settings ?? []).map((entry) => ({
+        ...entry,
+        productId: product.id,
+      })),
+    );
 }
 
 export function PlatformSettingsShell({
@@ -40,12 +39,12 @@ export function PlatformSettingsShell({
   children,
 }: PlatformSettingsShellProps) {
   const navigate = useNavigate();
-  const productGroups = buildPlatformSettingsProductGroups(products);
+  const productEntries = buildPlatformSettingsProductEntries(products);
 
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
-        <p className="settingsNavHeading">Platform Settings</p>
+        <p className="settingsNavHeading">Settings</p>
         <button
           className={section === 'general' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
@@ -53,6 +52,23 @@ export function PlatformSettingsShell({
         >
           General
         </button>
+        <button
+          className={section === 'cats' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+          type="button"
+          onClick={() => navigate('/settings/cats')}
+        >
+          Cats
+        </button>
+        {productEntries.map((entry) => (
+          <button
+            key={`${entry.productId}:${entry.id}`}
+            className={section === entry.productId ? 'settingsTab settingsTabActive' : 'settingsTab'}
+            type="button"
+            onClick={() => navigate(entry.path)}
+          >
+            {entry.label}
+          </button>
+        ))}
         <button
           className={section === 'runtime' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
@@ -67,28 +83,6 @@ export function PlatformSettingsShell({
         >
           Data
         </button>
-        {productGroups.length > 0 ? (
-          <>
-            <p className="settingsNavSubheading">Product Settings</p>
-            {productGroups.map((group) => (
-              <div key={group.productId} className="settingsSidebarGroup">
-                {productGroups.length > 1 ? (
-                  <p className="settingsNavProductLabel">{group.productName}</p>
-                ) : null}
-                {group.entries.map((entry) => (
-                  <button
-                    key={`${group.productId}:${entry.id}`}
-                    className="settingsTab"
-                    type="button"
-                    onClick={() => navigate(entry.path)}
-                  >
-                    {entry.label}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </>
-        ) : null}
       </nav>
       <section className="settingsContent">
         <h1>{title}</h1>

@@ -4,7 +4,6 @@ import type { AppShellPayload } from '../../../api/contracts';
 import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog';
 import { ToastContainer, useToast } from '../../../../../design/components/Toast';
 import { ALL_PLATFORM_SURFACES } from '../../../../../shared/platformSurfaces';
-import { SettingsShell } from '../SettingsShell';
 import { useSettingsCatsRegistryActions } from '../../hooks/useSettingsCatsRegistryActions';
 import { useSettingsCatsMemory } from '../../hooks/useSettingsCatsMemory';
 import { useSettingsCatsTelegram } from '../../hooks/useSettingsCatsTelegram';
@@ -81,60 +80,58 @@ export function SettingsCats({
 
   return (
     <>
-      <SettingsShell section="cats" title="Cats">
-        <div className="catsLayout">
-          <section className="contentCard">
-            <SettingsCatsRegistry
-              botBindings={botBindings}
-              busy={busy}
-              expandedCatId={expandedCatId}
-              memoryController={memoryController}
-              payload={payload}
-              registryController={{
-                botForm,
-                renameValue,
-                setBotForm,
-                setRenameValue,
-                onArchiveCat,
-                onCreateBinding,
-                onDeleteBinding,
-                onDeleteCat,
-                onMakeBossCat,
-                onRenameCat,
-                onSkillChange,
-                onUnarchiveCat,
-                onUpdateProducts,
-              }}
-              setExpandedCatId={setExpandedCatId}
-              telegramDiagnostics={telegramDiagnostics}
-              availableSurfaces={configurableSurfaces}
-              enabledSurfaces={enabledSurfaces}
-              onPayloadUpdate={onPayloadUpdate}
-              confirm={confirm}
-            />
-          </section>
-
-          <SettingsCatsCreateForm
+      <div className="catsLayout">
+        <section className="contentCard">
+          <SettingsCatsRegistry
+            botBindings={botBindings}
             busy={busy}
-            catForm={catForm}
-            onCatFormChange={setCatForm}
-            onCreateCat={onCreateCat}
-            atCatLimit={payload.chat.cats.filter((c) => c.status === 'active').length >= payload.chat.capabilities.maxCats}
+            expandedCatId={expandedCatId}
+            memoryController={memoryController}
+            payload={payload}
+            registryController={{
+              botForm,
+              renameValue,
+              setBotForm,
+              setRenameValue,
+              onArchiveCat,
+              onCreateBinding,
+              onDeleteBinding,
+              onDeleteCat,
+              onMakeBossCat,
+              onRenameCat,
+              onSkillChange,
+              onUnarchiveCat,
+              onUpdateProducts,
+            }}
+            setExpandedCatId={setExpandedCatId}
+            telegramDiagnostics={telegramDiagnostics}
             availableSurfaces={configurableSurfaces}
             enabledSurfaces={enabledSurfaces}
+            onPayloadUpdate={onPayloadUpdate}
+            confirm={confirm}
           />
+        </section>
 
-          <section className="contentCard">
-            <SettingsCatsTransportPanel
-              telegramDiagnostics={telegramDiagnostics}
-              telegramError={telegramError}
-              telegramLoading={telegramLoading}
-              telegramStatus={telegramStatus}
-              onRefresh={() => void refreshTelegramDiagnostics()}
-            />
-          </section>
-        </div>
-      </SettingsShell>
+        <SettingsCatsCreateForm
+          busy={busy}
+          catForm={catForm}
+          onCatFormChange={setCatForm}
+          onCreateCat={onCreateCat}
+          atCatLimit={payload.chat.cats.filter((c) => c.status === 'active').length >= payload.chat.capabilities.maxCats}
+          availableSurfaces={configurableSurfaces}
+          enabledSurfaces={enabledSurfaces}
+        />
+
+        <section className="contentCard">
+          <SettingsCatsTransportPanel
+            telegramDiagnostics={telegramDiagnostics}
+            telegramError={telegramError}
+            telegramLoading={telegramLoading}
+            telegramStatus={telegramStatus}
+            onRefresh={() => void refreshTelegramDiagnostics()}
+          />
+        </section>
+      </div>
       <ConfirmDialog dialog={dialog} onClose={handleClose} />
       <ToastContainer toasts={toasts} />
     </>

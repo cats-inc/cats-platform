@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import type { AppShellPayload } from '../api/contracts.js';
 import {
-  NEW_CHAT_PATH,
   resolveAppEntryPath,
   resolveVisibleChatPath,
 } from '../shared/channelPaths.js';
@@ -23,9 +22,6 @@ import {
 import {
   CompanionWorkspace,
 } from './components/companion/CompanionWorkspace.js';
-import { ChatSettingsGeneral } from './components/ChatSettingsGeneral.js';
-import { SettingsCats } from './components/settings-cats/SettingsCats.js';
-
 function noop(): void {}
 
 type ChatSurfaceProps = Omit<
@@ -47,10 +43,6 @@ export interface AppRoutesProps {
   busy: string;
   chatSurfaceProps: ChatSurfaceProps;
   draftSurfaceProps: DraftSurfaceProps;
-  onPayloadUpdate: (payload: AppShellPayload) => void;
-  onFeedback: (message: string) => void;
-  onBusy: (key: string) => void;
-  onResetSetup: () => void;
   addCatOpen: boolean;
   onToggleAddCat: () => void;
   addCatPanelProps: Omit<AddCatPanelProps, 'busy' | 'feedback'>;
@@ -73,10 +65,6 @@ export function AppRoutes({
   busy,
   chatSurfaceProps,
   draftSurfaceProps,
-  onPayloadUpdate,
-  onFeedback,
-  onBusy,
-  onResetSetup,
   addCatOpen,
   onToggleAddCat,
   addCatPanelProps,
@@ -98,34 +86,6 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        {/* Product-owned settings live at /chat/settings/*; platform settings stay at /settings/*. */}
-        <Route path="settings" element={<Navigate to="/chat/settings/general" replace />} />
-        <Route
-          path="settings/general"
-          element={(
-            <ChatSettingsGeneral
-              payload={payload}
-              feedback={feedback}
-              onPayloadUpdate={onPayloadUpdate}
-              onFeedback={onFeedback}
-            />
-          )}
-        />
-        <Route
-          path="settings/cats"
-          element={(
-            <SettingsCats
-              payload={payload}
-              feedback={feedback}
-              busy={busy}
-              onPayloadUpdate={onPayloadUpdate}
-              onFeedback={onFeedback}
-              onBusy={onBusy}
-            />
-          )}
-        />
-        <Route path="settings/data" element={<Navigate to="/settings/data" replace />} />
-        <Route path="settings/*" element={<Navigate to="/chat/settings/general" replace />} />
         <Route
           path="chats/:channelId"
           element={
@@ -225,7 +185,6 @@ export function AppRoutes({
           feedback={feedback}
         />
       ) : null}
-
     </>
   );
 }

@@ -1,15 +1,15 @@
-import type { PlatformProductDescriptor } from '../../../shared/platform-contract.js';
+import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsDataProps {
-  products: PlatformProductDescriptor[];
+  payload: AppShellPayload;
   feedback: string;
   busy: string;
   onResetSetup: () => void;
 }
 
 export function PlatformSettingsData({
-  products,
+  payload,
   feedback,
   busy,
   onResetSetup,
@@ -18,7 +18,7 @@ export function PlatformSettingsData({
     <PlatformSettingsShell
       section="data"
       title="Data"
-      products={products}
+      products={payload.products}
     >
       <div className="contentCard">
         <h2>Reset all data</h2>

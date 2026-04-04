@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type SettingsSection = 'general' | 'cats' | 'data';
+type SettingsSection = 'general' | 'cats' | 'chat' | 'data';
 
 export interface SettingsShellProps {
   section: SettingsSection;
@@ -19,35 +19,34 @@ export function SettingsShell({
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
-        <p className="settingsNavHeading">Chat Settings</p>
+        <p className="settingsNavHeading">Settings</p>
         <button
           className={section === 'general' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
-          onClick={() => navigate('/chat/settings/general')}
+          onClick={() => navigate('/settings/general')}
         >
           General
         </button>
         <button
           className={section === 'cats' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
-          onClick={() => navigate('/chat/settings/cats')}
+          onClick={() => navigate('/settings/cats')}
         >
           Cats
         </button>
-        <p className="settingsNavSubheading">Platform</p>
         <button
-          className="settingsTab"
+          className={section === 'chat' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
-          onClick={() => navigate('/settings/general')}
+          onClick={() => navigate('/settings/chat')}
         >
-          Platform settings
+          Chat
         </button>
         <button
           className={section === 'data' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
           onClick={() => navigate('/settings/data')}
         >
-          Platform data
+          Data
         </button>
       </nav>
       <section className="settingsContent">

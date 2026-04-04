@@ -1,5 +1,5 @@
 import { resolveRuntimeConnectionChip } from '../../../design/components/runtimeChips.js';
-import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
+import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
@@ -37,18 +37,18 @@ function resolveRuntimeSetupChip(
 }
 
 export function PlatformSettingsRuntime({
-  envelope,
+  payload,
 }: {
-  envelope: PlatformHostEnvelope;
+  payload: AppShellPayload;
 }) {
-  const runtimeChip = resolveRuntimeConnectionChip(envelope.runtime);
-  const runtimeSetupChip = resolveRuntimeSetupChip(envelope.runtimeSetup);
+  const runtimeChip = resolveRuntimeConnectionChip(payload.runtime);
+  const runtimeSetupChip = resolveRuntimeSetupChip(payload.runtimeSetup);
 
   return (
     <PlatformSettingsShell
       section="runtime"
       title="Runtime"
-      products={envelope.products}
+      products={payload.products}
     >
       <div className="contentCard">
         <div className="settingsChipRow">
@@ -56,29 +56,29 @@ export function PlatformSettingsRuntime({
           <span className={runtimeSetupChip.className}>{runtimeSetupChip.label}</span>
         </div>
         <p className="heroNote settingsCardNote">
-          {envelope.runtimeSetup.summary}
+          {payload.runtimeSetup.summary}
         </p>
         <div className="setupRuntimeMetrics">
           <div className="setupRuntimeMetric">
-            <strong>{envelope.runtimeSetup.availableCount}</strong>
+            <strong>{payload.runtimeSetup.availableCount}</strong>
             <span>ready providers</span>
           </div>
           <div className="setupRuntimeMetric">
-            <strong>{envelope.runtimeSetup.providerCount}</strong>
+            <strong>{payload.runtimeSetup.providerCount}</strong>
             <span>providers scanned</span>
           </div>
           <div className="setupRuntimeMetric">
-            <strong>{envelope.runtimeSetup.providersNeedingAttention.length}</strong>
+            <strong>{payload.runtimeSetup.providersNeedingAttention.length}</strong>
             <span>need attention</span>
           </div>
         </div>
       </div>
 
-      {envelope.runtimeSetup.providersReadyToApply.length > 0 ? (
+      {payload.runtimeSetup.providersReadyToApply.length > 0 ? (
         <div className="contentCard">
           <h2>Ready providers</h2>
           <ul className="setupRuntimeList">
-            {envelope.runtimeSetup.providersReadyToApply.map((entry) => (
+            {payload.runtimeSetup.providersReadyToApply.map((entry) => (
               <li key={entry.provider}>
                 <strong>{entry.provider}</strong>
                 <span>{entry.family}</span>
@@ -88,11 +88,11 @@ export function PlatformSettingsRuntime({
         </div>
       ) : null}
 
-      {envelope.runtimeSetup.providersNeedingAttention.length > 0 ? (
+      {payload.runtimeSetup.providersNeedingAttention.length > 0 ? (
         <div className="contentCard">
           <h2>Need attention</h2>
           <ul className="setupRuntimeList">
-            {envelope.runtimeSetup.providersNeedingAttention.map((entry) => (
+            {payload.runtimeSetup.providersNeedingAttention.map((entry) => (
               <li key={entry.provider}>
                 <strong>{entry.provider}</strong>
                 <span>
@@ -114,7 +114,7 @@ export function PlatformSettingsRuntime({
         </p>
         <a
           className="secondaryButton settingsInlineLink"
-          href={`${envelope.runtime.baseUrl.replace(/\/$/, '')}/setup`}
+          href={`${payload.runtime.baseUrl.replace(/\/$/, '')}/setup`}
           target="_blank"
           rel="noreferrer"
         >

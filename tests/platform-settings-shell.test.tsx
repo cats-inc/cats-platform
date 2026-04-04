@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildPlatformSettingsProductGroups } from '../src/app/renderer/settings/PlatformSettingsShell.tsx';
+import { buildPlatformSettingsProductEntries } from '../src/app/renderer/settings/PlatformSettingsShell.tsx';
 import type { PlatformProductDescriptor } from '../src/shared/platform-contract.ts';
 
 function createProduct(overrides: Partial<PlatformProductDescriptor>): PlatformProductDescriptor {
@@ -22,21 +22,16 @@ function createProduct(overrides: Partial<PlatformProductDescriptor>): PlatformP
   };
 }
 
-test('buildPlatformSettingsProductGroups hides only available products without losing in-progress settings entries', () => {
-  const groups = buildPlatformSettingsProductGroups([
+test('buildPlatformSettingsProductEntries flattens visible product settings entries', () => {
+  const entries = buildPlatformSettingsProductEntries([
     createProduct({
       id: 'chat',
       productName: 'Cats Chat',
       settings: [
         {
-          id: 'general',
+          id: 'chat',
           label: 'Chat',
-          path: '/chat/settings/general',
-        },
-        {
-          id: 'cats',
-          label: 'Cats',
-          path: '/chat/settings/cats',
+          path: '/settings/chat',
         },
       ],
     }),
@@ -82,33 +77,18 @@ test('buildPlatformSettingsProductGroups hides only available products without l
     }),
   ]);
 
-  assert.deepEqual(groups, [
+  assert.deepEqual(entries, [
     {
       productId: 'chat',
-      productName: 'Cats Chat',
-      entries: [
-        {
-          id: 'general',
-          label: 'Chat',
-          path: '/chat/settings/general',
-        },
-        {
-          id: 'cats',
-          label: 'Cats',
-          path: '/chat/settings/cats',
-        },
-      ],
+      id: 'chat',
+      label: 'Chat',
+      path: '/settings/chat',
     },
     {
       productId: 'invest',
-      productName: 'Cats Invest',
-      entries: [
-        {
-          id: 'general',
-          label: 'Invest',
-          path: '/invest/settings/general',
-        },
-      ],
+      id: 'general',
+      label: 'Invest',
+      path: '/invest/settings/general',
     },
   ]);
 });

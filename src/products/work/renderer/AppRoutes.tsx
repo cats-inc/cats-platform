@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import type { AppShellPayload } from '../api/contracts.js';
 import {
-  NEW_CHAT_PATH,
   resolveAppEntryPath,
   resolveVisibleChatPath,
 } from '../shared/channelPaths.js';
@@ -44,10 +43,6 @@ export interface AppRoutesProps {
   busy: string;
   chatSurfaceProps: ChatSurfaceProps;
   draftSurfaceProps: DraftSurfaceProps;
-  onPayloadUpdate: (payload: AppShellPayload) => void;
-  onFeedback: (message: string) => void;
-  onBusy: (key: string) => void;
-  onResetSetup: () => void;
   addCatOpen: boolean;
   onToggleAddCat: () => void;
   addCatPanelProps: Omit<AddCatPanelProps, 'busy' | 'feedback'>;
@@ -65,10 +60,6 @@ export function AppRoutes({
   busy,
   chatSurfaceProps,
   draftSurfaceProps,
-  onPayloadUpdate,
-  onFeedback,
-  onBusy,
-  onResetSetup,
   addCatOpen,
   onToggleAddCat,
   addCatPanelProps,
@@ -85,12 +76,6 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        {/* Canonical platform settings live at /settings/* until Work owns product settings. */}
-        <Route path="settings" element={<Navigate to="/settings/general" replace />} />
-        <Route path="settings/general" element={<Navigate to="/settings/general" replace />} />
-        <Route path="settings/runtime" element={<Navigate to="/settings/runtime" replace />} />
-        <Route path="settings/data" element={<Navigate to="/settings/data" replace />} />
-        <Route path="settings/*" element={<Navigate to="/settings/general" replace />} />
         <Route
           path="chats/:channelId"
           element={
@@ -189,7 +174,6 @@ export function AppRoutes({
           feedback={feedback}
         />
       ) : null}
-
     </>
   );
 }

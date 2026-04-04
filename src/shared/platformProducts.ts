@@ -20,14 +20,9 @@ const PLATFORM_PRODUCT_DESCRIPTORS: readonly PlatformProductDescriptor[] = [
     },
     settings: [
       {
-        id: 'general',
+        id: 'chat',
         label: 'Chat',
-        path: '/chat/settings/general',
-      },
-      {
-        id: 'cats',
-        label: 'Cats',
-        path: '/chat/settings/cats',
+        path: '/settings/chat',
       },
     ],
   },
@@ -44,6 +39,13 @@ const PLATFORM_PRODUCT_DESCRIPTORS: readonly PlatformProductDescriptor[] = [
     setup: {
       selectable: true,
     },
+    settings: [
+      {
+        id: 'work',
+        label: 'Work',
+        path: '/settings/work',
+      },
+    ],
   },
   {
     id: 'code',
@@ -58,6 +60,13 @@ const PLATFORM_PRODUCT_DESCRIPTORS: readonly PlatformProductDescriptor[] = [
     setup: {
       selectable: true,
     },
+    settings: [
+      {
+        id: 'code',
+        label: 'Code',
+        path: '/settings/code',
+      },
+    ],
   },
 ] as const;
 

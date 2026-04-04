@@ -11,7 +11,6 @@ import {
   PLATFORM_SURFACE_ROUTES,
 } from './routeMap';
 import { PlatformLobby } from './PlatformLobby';
-import { PlatformSettingsRoutes } from './settings/PlatformSettingsRoutes';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
 
@@ -54,16 +53,6 @@ export default function PlatformApp() {
   const envelope = state.status === 'ready' ? state.envelope : null;
   const setupComplete = Boolean(envelope?.setupCompleteAt);
   const storedSurface = envelope?.lastProductSurface ?? 'chat';
-
-  const onEnvelopeUpdate = (updater: (current: PlatformHostEnvelope) => PlatformHostEnvelope): void => {
-    startTransition(() => {
-      setState((current) =>
-        current.status === 'ready'
-          ? { status: 'ready', envelope: updater(current.envelope) }
-          : current,
-      );
-    });
-  };
 
   useEffect(() => {
     if (!setupComplete) {
@@ -148,20 +137,16 @@ export default function PlatformApp() {
 
   // Setup complete: products at their own prefix, settings at /settings/*.
   const entryPath = resolveProductEntryPath(storedSurface);
+  const settingsSurfaceElement = storedSurface === 'work'
+    ? <WorkApp />
+    : storedSurface === 'code'
+      ? <CodeApp />
+      : <ChatApp />;
   return (
     <Routes>
       <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
       <Route path="/products" element={<Navigate to="/lobby" replace />} />
-      <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
-      <Route
-        path="/settings/*"
-        element={(
-          <PlatformSettingsRoutes
-            envelope={readyEnvelope}
-            onEnvelopeUpdate={onEnvelopeUpdate}
-          />
-        )}
-      />
+      <Route path="/settings/*" element={settingsSurfaceElement} />
       <Route path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
       <Route path={`${PLATFORM_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
       <Route path={`${PLATFORM_SURFACE_ROUTES.code.routePrefix}/*`} element={<CodeApp />} />

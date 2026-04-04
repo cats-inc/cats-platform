@@ -61,16 +61,16 @@ contracts.
 
 - [x] Introduce host-owned settings sections for at least `general`, `runtime`,
       and `data`.
-- [x] Move or proxy existing platform-global settings out of Chat-owned routing.
-- [x] Define the canonical route shape for product-owned settings beneath each
-      product prefix.
-- [x] Add explicit redirects or compatibility handling so existing settings
-      entry points do not break abruptly.
-- [x] Preserve legacy deep links such as `/settings/cats` by redirecting them
-      to the canonical product-owned path once that path exists.
+- [x] Move platform-global and Cats settings out of product-owned routing.
+- [x] Define the canonical route shape for unified platform settings under
+      `/settings/*`.
+- [x] Remove pre-launch product-local settings aliases instead of preserving
+      compatibility redirects.
+- [x] Keep settings rendered inside the active product shell even though the URL
+      is host-owned.
 
-**Deliverables**: platform settings and product settings follow distinct ownership
-boundaries.
+**Deliverables**: one canonical settings namespace with clear platform-vs-product
+ownership boundaries.
 
 ## Phase 4: Integrate Setup and Product Entry
 
@@ -134,8 +134,8 @@ distribution system.
   2. Completing setup still enters the selected product.
   3. `/lobby` shows Home, Office, and installed apps, with per-product
      install metadata.
-  4. Legacy settings links such as `/settings/cats` redirect to their canonical
-     destination without breaking deep links.
+  4. Settings opened from Chat, Work, or Code keep the current product sidebar
+     while using canonical `/settings/*` routes.
   5. Existing direct links into `/chat/*`, `/work/*`, and `/code/*` still work.
 
 ## Risks and Mitigations
@@ -153,7 +153,8 @@ distribution system.
 |------|--------|
 | 2026-03-31 | Plan created |
 | 2026-03-31 | Added shared platform product registry, exposed `products` in the platform envelope, and reused the same descriptors across setup and Lobby. |
-| 2026-03-31 | Moved platform settings to host-owned `/settings/*`, preserved `/settings/cats` compatibility via `/chat/settings/cats`, and surfaced install-policy metadata in setup cards. |
+| 2026-03-31 | Moved platform settings to host-owned `/settings/*` and surfaced install-policy metadata in setup cards. |
+| 2026-04-04 | Removed pre-launch `/chat/settings/*` aliases and kept canonical settings inside the active product shell. |
 
 ---
 

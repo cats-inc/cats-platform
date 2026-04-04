@@ -47,16 +47,17 @@ function createProps(): AppRoutesProps {
     busy: '',
     chatSurfaceProps: {} as AppRoutesProps['chatSurfaceProps'],
     draftSurfaceProps: {} as AppRoutesProps['draftSurfaceProps'],
-    onPayloadUpdate: () => {},
-    onFeedback: () => {},
-    onBusy: () => {},
-    onResetSetup: () => {},
     addCatOpen: false,
     onToggleAddCat: () => {},
     addCatPanelProps: {} as AppRoutesProps['addCatPanelProps'],
     folderBrowserProps: {} as AppRoutesProps['folderBrowserProps'],
     onOpenDraftAddCat: () => {},
     onChangeDraftLeadCat: () => {},
+    companionMode: false,
+    companionCat: null,
+    onToggleCompanionMode: () => {},
+    onCompanionWake: () => {},
+    onCompanionSleep: () => {},
   };
 }
 
@@ -80,12 +81,11 @@ function assertConcreteRoute(routes: RouteDescriptor[], path: string): void {
   assert.notEqual(route.element.type, Navigate, `expected "${path}" to be a concrete route`);
 }
 
-test('AppRoutes keeps product-owned /chat/settings routes while preserving platform-level data redirects', () => {
+test('AppRoutes no longer owns the settings namespace', () => {
   const routes = collectRoutes(AppRoutes(createProps()));
 
-  assertNavigateRoute(routes, 'settings', '/chat/settings/general');
-  assertConcreteRoute(routes, 'settings/general');
-  assertConcreteRoute(routes, 'settings/cats');
-  assertNavigateRoute(routes, 'settings/data', '/settings/data');
-  assertNavigateRoute(routes, 'settings/*', '/chat/settings/general');
+  assert.ok(!routes.some((route) => route.path.startsWith('settings')));
+  assertConcreteRoute(routes, 'chats/:channelId');
+  assertConcreteRoute(routes, 'new');
+  assertNavigateRoute(routes, '*', '/chat/new');
 });

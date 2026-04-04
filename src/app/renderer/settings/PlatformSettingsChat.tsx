@@ -1,31 +1,28 @@
 import { startTransition } from 'react';
-import { useNavigate } from 'react-router-dom';
 
-import type { AppShellPayload } from '../../api/contracts.js';
-import { updateVerbosePreference } from '../api/index.js';
-import { SettingsShell } from './SettingsShell.js';
+import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
+import { updateVerbosePreference } from '../../../products/chat/renderer/api/index.js';
+import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
-export interface ChatSettingsGeneralProps {
+export interface PlatformSettingsChatProps {
   payload: AppShellPayload;
   feedback: string;
   onPayloadUpdate: (payload: AppShellPayload) => void;
   onFeedback: (message: string) => void;
 }
 
-export function ChatSettingsGeneral({
+export function PlatformSettingsChat({
   payload,
   feedback,
   onPayloadUpdate,
   onFeedback,
-}: ChatSettingsGeneralProps) {
-  const navigate = useNavigate();
-
+}: PlatformSettingsChatProps) {
   return (
-    <SettingsShell section="chat" title="Chat">
+    <PlatformSettingsShell section="chat" title="Chat" products={payload.products}>
       <div className="contentCard">
         <h2>Conversation preferences</h2>
         <p className="heroNote">
-          Product-specific chat behavior stays under the Chat route tree.
+          These settings affect Cats Chat only.
         </p>
         <button
           type="button"
@@ -55,20 +52,13 @@ export function ChatSettingsGeneral({
       </div>
 
       <div className="contentCard">
-        <h2>Platform-wide settings</h2>
+        <h2>Product scope</h2>
         <p className="heroNote">
-          Owner profile, runtime status, and reset controls now live at the platform host level.
+          Chat-specific settings stay under the unified Settings area, but remain product-owned.
         </p>
-        <button
-          type="button"
-          className="secondaryButton"
-          onClick={() => navigate('/settings/general')}
-        >
-          Open platform settings
-        </button>
       </div>
 
       {feedback ? <p className="feedbackText">{feedback}</p> : null}
-    </SettingsShell>
+    </PlatformSettingsShell>
   );
 }
