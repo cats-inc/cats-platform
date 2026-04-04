@@ -227,3 +227,48 @@ test('startService hides Windows child consoles for managed services', async () 
     await rm(userDataDir, { recursive: true, force: true });
   }
 });
+
+test('startService accepts app-managed ready lifecycle events before health polling succeeds', async () => {
+  const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-supervisor-ready-'));
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_READINESS_TIMEOUT_MS: '5',
+    },
+    userDataDir,
+  });
+  const child = new FakeChildProcess();
+  const supervisor = new ManagedServiceSupervisor(config, {
+    spawn: () => child,
+    waitForServiceReadiness: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      throw new Error('fetch failed');
+    },
+  });
+  const [, appSpec] = buildManagedServiceSpecs(config);
+
+  try {
+    const startPromise = supervisor.startService(appSpec);
+    setTimeout(() => {
+      child.stdout.write(
+        `${JSON.stringify({
+          event: 'app.ready',
+          service: 'cats',
+          phase: 'ready',
+          ready: true,
+          host: '127.0.0.1',
+          port: 8181,
+          healthUrl: 'http://127.0.0.1:8181/health',
+        })}\n`,
+      );
+    }, 10);
+
+    await startPromise;
+
+    const appSnapshot = supervisor.getSnapshots().find((snapshot) => snapshot.name === 'cats');
+    assert.ok(appSnapshot);
+    assert.equal(appSnapshot.status, 'ready');
+    assert.equal(appSnapshot.ready, true);
+  } finally {
+    await rm(userDataDir, { recursive: true, force: true });
+  }
+});

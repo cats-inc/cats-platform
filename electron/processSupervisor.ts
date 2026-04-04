@@ -33,10 +33,40 @@ interface ProcessSupervisorDependencies {
   onStateChange?: (snapshot: ManagedServiceSnapshot) => void;
 }
 
+interface ManagedServiceLifecyclePayload {
+  event?: string;
+  service?: string;
+  phase?: string;
+  ready?: boolean;
+  error?: string;
+}
+
+const DEFAULT_APP_STARTUP_TIMEOUT_MS = 90_000;
+
 function waitForTimeout(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function createStartupDeadlinePromise(serviceName: ManagedServiceName, timeoutMs: number): {
+  promise: Promise<never>;
+  cancel: () => void;
+} {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return {
+    promise: new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`Timed out waiting for ${serviceName} startup after ${timeoutMs}ms`));
+      }, timeoutMs);
+    }),
+    cancel: () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    },
+  };
 }
 
 function writeTaggedOutput(
@@ -70,6 +100,39 @@ function createInitialSnapshot(
     lastOutput: null,
     lastOutputAt: null,
   };
+}
+
+function parseManagedServiceLifecycleLine(
+  serviceName: ManagedServiceName,
+  line: string,
+): ManagedServiceLifecyclePayload | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as ManagedServiceLifecyclePayload;
+    if (typeof parsed.service !== 'string') {
+      return null;
+    }
+    if (parsed.service !== serviceName) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function getManagedServiceStartupTimeoutMs(
+  serviceName: ManagedServiceName,
+  readinessTimeoutMs: number,
+): number {
+  if (serviceName === 'cats') {
+    return Math.max(readinessTimeoutMs, DEFAULT_APP_STARTUP_TIMEOUT_MS);
+  }
+  return readinessTimeoutMs;
 }
 
 async function ensureLaunchAssets(config: DesktopHostConfig): Promise<void> {
@@ -299,14 +362,41 @@ export class ManagedServiceSupervisor {
       windowsHide: true,
     }) as ChildProcessWithoutNullStreams;
 
+    let resolveLifecycleReady: (() => void) | null = null;
+    let rejectLifecycleReady: ((error: Error) => void) | null = null;
+    const lifecycleReady = new Promise<void>((resolve, reject) => {
+      resolveLifecycleReady = resolve;
+      rejectLifecycleReady = reject;
+    });
+
     handle.child = child;
     this.updateSnapshot(spec.name, {
       pid: child.pid ?? null,
     });
 
     child.stdout.on('data', (chunk) => {
+      const text = (chunk as Buffer).toString('utf8');
       writeTaggedOutput(process.stdout, spec.name, chunk as Buffer);
-      this.recordServiceOutput(spec.name, spec.logPath, (chunk as Buffer).toString('utf8'), 'stdout');
+      this.recordServiceOutput(spec.name, spec.logPath, text, 'stdout');
+
+      for (const line of text.split(/\r?\n/u)) {
+        const lifecycle = parseManagedServiceLifecycleLine(spec.name, line);
+        if (!lifecycle) {
+          continue;
+        }
+        if (lifecycle.ready === true && lifecycle.phase === 'ready') {
+          this.updateSnapshot(spec.name, {
+            status: 'ready',
+            ready: true,
+            error: null,
+          });
+          resolveLifecycleReady?.();
+          continue;
+        }
+        if (typeof lifecycle.error === 'string' && lifecycle.error.trim().length > 0) {
+          rejectLifecycleReady?.(new Error(lifecycle.error));
+        }
+      }
     });
     child.stderr.on('data', (chunk) => {
       writeTaggedOutput(process.stderr, spec.name, chunk as Buffer);
@@ -351,9 +441,18 @@ export class ManagedServiceSupervisor {
         timeoutMs: this.config.readinessTimeoutMs,
         pollIntervalMs: this.config.readinessPollIntervalMs,
       });
+    const startupTimeoutMs = getManagedServiceStartupTimeoutMs(
+      spec.name,
+      this.config.readinessTimeoutMs,
+    );
+    const startupDeadline = createStartupDeadlinePromise(spec.name, startupTimeoutMs);
 
     try {
-      await Promise.race([readinessPromise, exitBeforeReady]);
+      await Promise.race([
+        Promise.any([readinessPromise, lifecycleReady]),
+        exitBeforeReady,
+        startupDeadline.promise,
+      ]);
       this.updateSnapshot(spec.name, {
         status: 'ready',
         ready: true,
@@ -367,6 +466,7 @@ export class ManagedServiceSupervisor {
       });
       throw error;
     } finally {
+      startupDeadline.cancel();
       if (exitBeforeReadyListener) {
         child.off('exit', exitBeforeReadyListener);
       }
