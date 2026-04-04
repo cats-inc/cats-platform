@@ -145,3 +145,22 @@ test('direct-lane draft keeps private chat copy', () => {
   assert.match(markup, /Ask Milo for a focused update or recommendation/u);
   assert.doesNotMatch(markup, /Cat-led Chat/u);
 });
+
+test('draft uses externally supplied starter suggestions before static fallback prompts', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        draftLeadCatId: 'cat-lead',
+        starterSuggestions: [
+          {
+            id: 'guide-cat-start',
+            prompt: 'Guide Cat suggests framing the first deliverable before asking Milo to execute.',
+          },
+        ],
+      })}
+    />,
+  );
+
+  assert.match(markup, /Guide Cat suggests framing the first deliverable/u);
+  assert.doesNotMatch(markup, /Ask Milo to take the first pass/u);
+});

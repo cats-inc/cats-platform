@@ -10,6 +10,20 @@ export interface DraftStarterSuggestion {
   prompt: string;
 }
 
+function sanitizeDraftStarterSuggestions(
+  suggestions: ReadonlyArray<DraftStarterSuggestion | null | undefined> | null | undefined,
+): DraftStarterSuggestion[] {
+  return (suggestions ?? []).reduce<DraftStarterSuggestion[]>((acc, suggestion) => {
+    const id = suggestion?.id?.trim() ?? '';
+    const prompt = suggestion?.prompt?.trim() ?? '';
+    if (!id || !prompt) {
+      return acc;
+    }
+    acc.push({ id, prompt });
+    return acc;
+  }, []);
+}
+
 function withCatName(
   template: string,
   catName: string | null | undefined,
@@ -125,4 +139,19 @@ export function resolveDraftStarterSuggestions(input: {
         },
       ];
   }
+}
+
+export function resolveVisibleDraftStarterSuggestions(input: {
+  mode: DraftStarterSuggestionMode;
+  leadCatName?: string | null;
+  suggestions?: ReadonlyArray<DraftStarterSuggestion | null | undefined> | null;
+}): DraftStarterSuggestion[] {
+  const providedSuggestions = sanitizeDraftStarterSuggestions(input.suggestions);
+  if (providedSuggestions.length > 0) {
+    return providedSuggestions;
+  }
+  return resolveDraftStarterSuggestions({
+    mode: input.mode,
+    leadCatName: input.leadCatName,
+  });
 }

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveDraftStarterSuggestions } from '../src/products/chat/renderer/draftStarterSuggestions.ts';
+import {
+  resolveDraftStarterSuggestions,
+  resolveVisibleDraftStarterSuggestions,
+} from '../src/products/chat/renderer/draftStarterSuggestions.ts';
 
 test('starter suggestions default to solo fallback prompts', () => {
   const suggestions = resolveDraftStarterSuggestions({ mode: 'solo' });
@@ -30,4 +33,38 @@ test('starter suggestions keep dedicated group and parallel fallback sets', () =
 
   assert.match(group[0]?.prompt ?? '', /split roles/u);
   assert.match(parallel[0]?.prompt ?? '', /different models/u);
+});
+
+test('visible starter suggestions prefer externally supplied ideas over fallback prompts', () => {
+  const suggestions = resolveVisibleDraftStarterSuggestions({
+    mode: 'group',
+    suggestions: [
+      {
+        id: 'guide-cat-brief',
+        prompt: 'Guide Cat suggests starting with the real constraint before assigning roles.',
+      },
+    ],
+  });
+
+  assert.deepEqual(suggestions, [
+    {
+      id: 'guide-cat-brief',
+      prompt: 'Guide Cat suggests starting with the real constraint before assigning roles.',
+    },
+  ]);
+});
+
+test('visible starter suggestions fall back when supplied ideas are missing or blank', () => {
+  const suggestions = resolveVisibleDraftStarterSuggestions({
+    mode: 'group',
+    suggestions: [
+      {
+        id: '   ',
+        prompt: '   ',
+      },
+    ],
+  });
+
+  assert.equal(suggestions.length, 3);
+  assert.match(suggestions[0]?.prompt ?? '', /split roles/u);
 });

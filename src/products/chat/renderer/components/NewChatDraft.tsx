@@ -5,7 +5,10 @@ import type { NewChatMode } from '../../shared/channelPaths.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import type { BrowseDirectoryEntry } from '../api';
 import { resolveDraftParticipantSelection } from '../draftParticipants';
-import { resolveDraftStarterSuggestions } from '../draftStarterSuggestions';
+import {
+  resolveVisibleDraftStarterSuggestions,
+  type DraftStarterSuggestion,
+} from '../draftStarterSuggestions';
 import { isChatCat, truncatePath } from '../chatUtils';
 import { CatAvatarRow } from './CatAvatarRow';
 import { ComposerCatStack } from './ComposerCatStack';
@@ -46,6 +49,7 @@ export interface NewChatDraftProps {
   autoResize: (el: HTMLTextAreaElement) => void;
   draftLeadCatId: string | null;
   entryMode?: NewChatMode;
+  starterSuggestions?: ReadonlyArray<DraftStarterSuggestion> | null;
   onDraftLeadCatChange: (catId: string | null) => void;
   allowAddCat?: boolean;
   selectedModel?: ModelSelectorValue;
@@ -97,6 +101,7 @@ export function NewChatDraft({
   autoResize,
   draftLeadCatId,
   entryMode = 'default',
+  starterSuggestions,
   onDraftLeadCatChange,
   allowAddCat = true,
   selectedModel,
@@ -171,9 +176,10 @@ export function NewChatDraft({
         : isCatLedDraft
           ? 'cat_led'
           : 'solo';
-  const starterSuggestions = resolveDraftStarterSuggestions({
+  const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
     mode: starterSuggestionMode,
     leadCatName: effectiveLeadCat?.name ?? null,
+    suggestions: starterSuggestions,
   });
   const groupDraftSelectionLabel = draftParticipantCount === 1
     ? '1 participant selected so far. Add more or send when ready.'
@@ -250,7 +256,7 @@ export function NewChatDraft({
           {!composerDraft.trim() ? (
             <div className="draftPromptSuggestions">
               <div className="chipRow">
-                {starterSuggestions.map((suggestion) => (
+                {visibleStarterSuggestions.map((suggestion) => (
                   <button
                     key={suggestion.id}
                     className="promptChip draftPromptChip"
