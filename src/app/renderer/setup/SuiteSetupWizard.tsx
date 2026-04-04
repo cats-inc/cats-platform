@@ -16,12 +16,17 @@ import {
   resolveInitialSetupProduct,
   validateGuideCatSetupStep,
 } from './plugins';
+import {
+  nextSetupStep,
+  previousSetupStep,
+  TOTAL_SETUP_STEPS,
+  type SetupStep,
+} from './flow';
 import type { ProductSetupPlugin } from './types';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
 import { shouldAutoScanRuntimeSetup } from '../../../shared/runtimeSetupFlow.js';
 
-type SetupStep = 1 | 2 | 3 | 4;
 type PendingAction =
   | 'complete'
   | 'refresh_runtime'
@@ -111,7 +116,6 @@ export function SuiteSetupWizard({
   const runtimeAutoScanAttempted = useRef(false);
 
   const busy = busyAction !== null;
-  const totalSteps = 4;
   const preferredProduct = resolveInitialSetupProduct(plugins);
   const selectedProductEnabled = plugins.some((plugin) =>
     plugin.surface === selectedProduct && plugin.enabled);
@@ -257,12 +261,8 @@ export function SuiteSetupWizard({
       }
 
       e.preventDefault();
-      if (step === 1) {
-        setStep(2);
-      } else if (step === 2) {
-        setStep(3);
-      } else if (step === 3) {
-        setStep(4);
+      if (step === 1 || step === 2 || step === 3) {
+        setStep(nextSetupStep(step));
       } else if (step === 4) {
         void finishSetup();
       }
@@ -272,7 +272,7 @@ export function SuiteSetupWizard({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [busy, canContinueGuideCatStep, finishSetup, ownerName, runtimeReady, step]);
 
-  const dots = Array.from({ length: totalSteps }, (_, index) => index + 1);
+  const dots = Array.from({ length: TOTAL_SETUP_STEPS }, (_, index) => index + 1);
   const runtimePrimaryDisabled = busy || (!runtimeReady && !runtimeSetup.canApply);
   const runtimePrimaryLabel = runtimeReady
     ? 'Continue'
@@ -314,7 +314,7 @@ export function SuiteSetupWizard({
               className="primaryButton"
               disabled={!ownerName.trim()}
               type="button"
-              onClick={() => setStep(2)}
+              onClick={() => setStep(nextSetupStep(step))}
             >
               Get started
             </button>
@@ -364,7 +364,7 @@ export function SuiteSetupWizard({
                 className="setupBackButton"
                 type="button"
                 disabled={busy}
-                onClick={() => setStep(1)}
+                onClick={() => setStep(previousSetupStep(step))}
               >
                 Back
               </button>
@@ -374,7 +374,7 @@ export function SuiteSetupWizard({
                 type="button"
                 onClick={() => {
                   setFeedback('');
-                  setStep(3);
+                  setStep(nextSetupStep(step));
                 }}
               >
                 Continue
@@ -471,7 +471,7 @@ export function SuiteSetupWizard({
                 className="setupBackButton"
                 type="button"
                 disabled={busy}
-                onClick={() => setStep(2)}
+                onClick={() => setStep(previousSetupStep(step))}
               >
                 Back
               </button>
@@ -500,7 +500,7 @@ export function SuiteSetupWizard({
                   type="button"
                   onClick={() => {
                     if (runtimeReady) {
-                      setStep(4);
+                      setStep(nextSetupStep(step));
                       return;
                     }
                     void applyReadyProviders();
@@ -542,7 +542,7 @@ export function SuiteSetupWizard({
                 className="setupBackButton"
                 type="button"
                 disabled={busy}
-                onClick={() => setStep(3)}
+                onClick={() => setStep(previousSetupStep(step))}
               >
                 Back
               </button>
