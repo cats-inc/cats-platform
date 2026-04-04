@@ -309,7 +309,7 @@ But it still lacks:
     native references in the first slice rather than a runtime-native attempt
     id
 - Product-owned onboarding history lives in a dedicated
-  `suite-onboarding-history.json` sidecar beside `chat-state.json`.
+  `platform-onboarding-history.json` sidecar beside `chat-state.json`.
 - The first slice keeps bounded host aggregation in the existing
   `desktop-host/state.json` artifact rather than adding a sibling host-history
   file immediately.

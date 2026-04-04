@@ -1,5 +1,5 @@
 name: "cats"
-description: "Pilot authenticated extended Agent Card example for a future Cats suite-host A2A adapter. It expands the public discovery card with product and governance workflows that should only be exposed after authentication and policy checks."
+description: "Pilot authenticated extended Agent Card example for a future Cats platform-host A2A adapter. It expands the public discovery card with product and governance workflows that should only be exposed after authentication and policy checks."
 supportedInterfaces:
   - url: "https://cats.example.com/a2a/jsonrpc"
     protocolBinding: "JSONRPC"
@@ -27,9 +27,9 @@ capabilities:
           - "spec"
           - "plan"
 securitySchemes:
-  suiteBearer:
+  platformBearer:
     httpAuthSecurityScheme:
-      description: "Bearer token used when a future A2A adapter shares the Cats suite-host's protected operator boundary."
+      description: "Bearer token used when a future A2A adapter shares the Cats platform-host's protected operator boundary."
       scheme: "Bearer"
       bearerFormat: "API key or JWT"
 defaultInputModes:
@@ -39,9 +39,9 @@ defaultOutputModes:
   - "text/plain"
   - "application/json"
 skills:
-  - id: "suite-reads"
-    name: "Suite Reads"
-    description: "Read suite-host health, operator inbox state, recovery summaries, and product projections."
+  - id: "platform-reads"
+    name: "Platform Reads"
+    description: "Read platform-host health, operator inbox state, recovery summaries, and product projections."
     tags:
       - "product"
       - "operators"

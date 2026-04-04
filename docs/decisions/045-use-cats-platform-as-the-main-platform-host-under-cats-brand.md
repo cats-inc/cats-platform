@@ -1,6 +1,6 @@
-# ADR-045: Use cats-platform as the Main Suite Host under Cats Brand
+# ADR-045: Use cats-platform as the Main Platform Host under Cats Brand
 
-> Keep `Cats` as the flagship product brand, but rename the main suite host
+> Keep `Cats` as the flagship product brand, but rename the main platform host
 > repo/package identity from `cats` to `cats-platform` so it is clearly
 > separated from `cats-runtime`, the umbrella org/scope `cats-inc`, and the
 > zero-to-running installer entrypoint `cats-can`.
@@ -15,8 +15,8 @@ Accepted
 
 ## Context
 
-[ADR-026](./026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md)
-renamed the flagship suite from `cats-inc` to `cats`.
+[ADR-026](./026-use-cats-as-the-flagship-platform-name-under-cats-inc-brand.md)
+renamed the flagship platform from `cats-inc` to `cats`.
 
 That was the right correction for the earlier awkward `cats-inc/cats-inc`
 direction, and it preserved `Cats` as the main product identity. However,
@@ -24,13 +24,13 @@ subsequent product direction made the technical role of the main host more
 specific:
 
 - `cats-runtime` remains the execution/runtime boundary
-- the main app is the suite host above that boundary
+- the main app is the platform host above that boundary
 - the host is expected to grow into the app/plugin surface for first-party and
   later third-party products
 - the desired one-shot installation story is now `npx cats-can`, not "the host
   package name must also be the bootstrap command"
 - the installer label should reinforce the broader brand language: `cats-can`
-  can read both as a bundled "can" that packages the local suite/runtime
+  can read both as a bundled "can" that packages the local platform/runtime
   experience and as the slogan seam behind future lines such as "Cats can
   chat", "Cats can work", and "Cats can code"
 
@@ -42,7 +42,7 @@ Keeping the main host technically named `cats` now creates three problems.
    harder to discuss precisely.
 
 2. It makes the host role too implicit.
-   The app is no longer just "the flagship suite name." It is the platform host
+   The app is no longer just "the flagship platform name." It is the platform host
    that assembles Chat, Work, Code, setup, packaging, and later app/plugin
    integration above `cats-runtime`.
 
@@ -57,7 +57,7 @@ product brand while giving the host a more explicit technical identity.
 ## Decision
 
 The umbrella brand remains `Cats Inc`, and the flagship product brand remains
-`Cats`, but the main suite host repo/package identity becomes
+`Cats`, but the main platform host repo/package identity becomes
 `cats-platform`.
 
 ### Naming matrix
@@ -67,8 +67,8 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 | Umbrella brand | `Cats Inc` |
 | GitHub owner / npm scope | `cats-inc` |
 | Flagship product brand | `Cats` |
-| Main suite host repo target | `cats-platform` |
-| Main suite host package target | `@cats-inc/cats-platform` |
+| Main platform host repo target | `cats-platform` |
+| Main platform host package target | `@cats-inc/cats-platform` |
 | Persistent host executable | `cats-platform` |
 | Runtime repo/package | `cats-runtime` |
 | Zero-to-running installer package | `cats-can` |
@@ -77,7 +77,7 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 ### Additional naming rules
 
 1. `Cats` remains the product/brand users see first.
-2. `cats-platform` is the technical host that owns suite assembly, packaging,
+2. `cats-platform` is the technical host that owns platform assembly, packaging,
    setup, and app/plugin integration above `cats-runtime`.
 3. `cats-runtime` remains the execution/runtime boundary and keeps its current
    name.
@@ -106,7 +106,7 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 
 ### Negative
 
-- This supersedes [ADR-026](./026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md)
+- This supersedes [ADR-026](./026-use-cats-as-the-flagship-platform-name-under-cats-inc-brand.md)
   and reopens naming migration work that had already been partially completed.
 - Repo, package, docs, and packaging metadata now need another controlled
   rename pass.
@@ -119,7 +119,7 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 - This ADR does not require immediate internal symbol cleanup across every
   module.
 - This ADR does not change the accepted runtime boundary or the Chat/Work/Code
-  suite-host direction.
+  platform-host direction.
 
 ## Alternatives Considered
 
@@ -132,11 +132,11 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 - **Why rejected**: the project now needs a clearer technical host identity
   than bare `cats` provides
 
-### Alternative 2: Use `cats-suite` as the host repo/package name
+### Alternative 2: Use `cats-platform` as the host repo/package name
 
 - **Pros**: describes the current first-party multi-product shell accurately;
   pairs cleanly with `cats-runtime`
-- **Cons**: emphasizes the bundled first-party suite more than the longer-term
+- **Cons**: emphasizes the bundled first-party platform more than the longer-term
   platform/app-host role; slightly weaker if the host becomes a broader
   installable app surface
 - **Why rejected**: the team chose to optimize for the host's long-term role as
@@ -153,9 +153,9 @@ The umbrella brand remains `Cats Inc`, and the flagship product brand remains
 
 ## References
 
-- [ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
-- [ADR-026](./026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md)
-- [PLAN-018](../plans/PLAN-018-rename-the-main-suite-from-cats-inc-to-cats.md)
+- [ADR-025](./025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
+- [ADR-026](./026-use-cats-as-the-flagship-platform-name-under-cats-inc-brand.md)
+- [PLAN-018](../plans/PLAN-018-rename-the-main-platform-from-cats-inc-to-cats.md)
 - [Cats Plugin Architecture and Packaging Strategy](../research/2026-03-24-cats-plugin-architecture-and-packaging.md)
 - [Cats as an AI-First App Store](../research/2026-03-26-cats-ai-first-app-store-vision.md)
 

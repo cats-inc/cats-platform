@@ -1,20 +1,20 @@
-# PLAN-018: Rename the Main Suite from cats-inc to cats
+# PLAN-018: Rename the Main Platform from cats-inc to cats
 
-Status: Superseded by [PLAN-031](./PLAN-031-rename-the-main-suite-host-from-cats-to-cats-platform.md)
+Status: Superseded by [PLAN-031](./PLAN-031-rename-the-main-platform-host-from-cats-to-cats-platform.md)
 
 This plan is kept for historical context on the earlier `cats-inc` -> `cats`
 rename slice. The active naming target is now `cats-platform` under
-[ADR-045](../decisions/045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md).
+[ADR-045](../decisions/045-use-cats-platform-as-the-main-platform-host-under-cats-brand.md).
 
 ## Scope
 
 Implement the naming migration required by
-[ADR-026](../decisions/026-use-cats-as-the-flagship-suite-name-under-cats-inc-brand.md).
+[ADR-026](../decisions/026-use-cats-as-the-flagship-platform-name-under-cats-inc-brand.md).
 
 This plan covers:
 
-- renaming the main suite's public-facing identity from `cats-inc` to `cats`
-- aligning repo/package/executable/docs naming with the new flagship suite name
+- renaming the main platform's public-facing identity from `cats-inc` to `cats`
+- aligning repo/package/executable/docs naming with the new flagship platform name
 - preserving `cats-runtime` as-is
 - documenting temporary compatibility seams where a hard rename would create
   avoidable churn
@@ -23,12 +23,12 @@ This plan does not cover:
 
 - changing the `cats-runtime` repo or package name
 - full internal symbol cleanup across every source file in one slice
-- changing the accepted suite-host refactor direction from [PLAN-017](./PLAN-017-suite-host-refactor-for-chat-work-code-and-core.md)
+- changing the accepted platform-host refactor direction from [PLAN-017](./PLAN-017-platform-host-refactor-for-chat-work-code-and-core.md)
 
 ## Hard Constraints
 
 - Keep `Cats Inc` as the umbrella brand.
-- Treat `Cats` as the flagship suite product name.
+- Treat `Cats` as the flagship platform product name.
 - Keep `cats-runtime` unchanged.
 - Avoid mixing this rename with unrelated architecture changes where possible.
 - Preserve compatibility where the rename would otherwise break technical trials
@@ -40,8 +40,8 @@ This plan does not cover:
 |------|--------|
 | Brand | `Cats Inc` |
 | GitHub owner/org | `cats-inc` |
-| Main suite repo | `cats` |
-| Main suite package/executable | `cats` |
+| Main platform repo | `cats` |
+| Main platform package/executable | `cats` |
 | Runtime repo/package | `cats-runtime` |
 
 ## Phases
@@ -66,13 +66,13 @@ This plan does not cover:
 - [x] Update architecture, API, setup, deployment, and services docs so they
       distinguish:
       - umbrella brand `Cats Inc`
-      - suite product `Cats`
+      - platform product `Cats`
       - runtime `cats-runtime`
-- [x] Update planning docs that still treat `cats-inc` as the canonical suite
+- [x] Update planning docs that still treat `cats-inc` as the canonical platform
       name when they are really referring to the flagship product.
 - [x] Keep historical notes readable where older repo/package names matter.
 
-**Deliverables**: public docs stop conflating the brand and the suite repo.
+**Deliverables**: public docs stop conflating the brand and the platform repo.
 
 ### Phase 3: Package and Executable Rename
 
@@ -85,12 +85,12 @@ This plan does not cover:
       and [PLAN-013](./PLAN-013-self-hosted-npm-app-packaging.md) with the new
       package name.
 
-**Deliverables**: the main suite has one canonical package/executable identity.
+**Deliverables**: the main platform has one canonical package/executable identity.
 
 ### Phase 4: Public Runtime and App Metadata Alignment
 
 - [x] Update public payloads or app-shell metadata that currently identify the
-      app as `cats-inc` when they are meant to name the flagship suite.
+      app as `cats-inc` when they are meant to name the flagship platform.
 - [x] Decide which service identifiers remain operational/internal versus
       product-facing.
 - [x] Decide whether environment variables keep temporary compatibility aliases
@@ -100,7 +100,7 @@ This plan does not cover:
 - [x] Document the compatibility and eventual cleanup rule explicitly.
 
 **Deliverables**: public metadata and runtime-facing naming stop leaking the old
-suite name unintentionally.
+platform name unintentionally.
 
 ### Phase 5: Repo and Hosting Migration Coordination
 
@@ -137,10 +137,10 @@ half-migrated naming drift.
 | Area | Action | Why |
 |------|--------|-----|
 | `package.json` | Updated | Package/executable name now uses `cats` |
-| `README.md` | Updated | Main suite identity now presents `Cats` as the flagship product |
-| `docs/api.md` | Updated | Public payloads now identify the suite as `cats` |
-| `docs/architecture.md` | Updated | Suite host identity now distinguishes brand, product, and runtime |
-| `docs/deployment.md` | Updated | Packaging and install guidance now uses the renamed suite |
+| `README.md` | Updated | Main platform identity now presents `Cats` as the flagship product |
+| `docs/api.md` | Updated | Public payloads now identify the platform as `cats` |
+| `docs/architecture.md` | Updated | Platform host identity now distinguishes brand, product, and runtime |
+| `docs/deployment.md` | Updated | Packaging and install guidance now uses the renamed platform |
 | `docs/setup-guide.md` | Updated | Quick-start and folder naming now reflect `cats/` plus compatibility notes |
 | `docs/services.md` | Updated | Product-facing service labels now use `cats`; `CATS_INC_*` stays compatibility-only |
 | `docs/decisions/013-*` | Updated in place | Packaging guidance now assumes `cats` as the app/package name while keeping existing ADR filename |
@@ -155,7 +155,7 @@ The current `cats-inc` strings that remain after this slice are intentional:
   name must be described explicitly
 - existing ADR/PLAN filenames and markdown link targets such as
   `013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md` and
-  `025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md`
+  `025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md`
 - future public repo layout references such as `cats-inc/cats` and
   `cats-inc/cats-runtime`
 - temporary compatibility aliases `CATS_INC_*`
@@ -164,7 +164,7 @@ The current audit found no accidental `cats-inc` leftovers in:
 
 - `cats/src`
 - `cats/tests`
-- public product docs that define the current suite/runtime contract
+- public product docs that define the current platform/runtime contract
 
 Operational/product-facing naming is now:
 
@@ -176,10 +176,10 @@ Operational/product-facing naming is now:
 
 ## Validation
 
-- The flagship suite is consistently called `Cats`.
-- `Cats Inc` remains clearly the umbrella brand rather than the suite repo name.
+- The flagship platform is consistently called `Cats`.
+- `Cats Inc` remains clearly the umbrella brand rather than the platform repo name.
 - Public references align on `cats-inc/cats` and `cats-inc/cats-runtime`.
-- No docs imply that `Cats Work` is the whole flagship suite.
+- No docs imply that `Cats Work` is the whole flagship platform.
 - Old `cats-inc` references are either intentionally historical or explicitly
   marked as temporary compatibility names.
 
@@ -190,7 +190,7 @@ Operational/product-facing naming is now:
 | Repo/package/display naming drift apart | High | Freeze the naming matrix first and migrate surfaces in a tracked sequence |
 | The rename collides with package-publishing assumptions in ADR-013/PLAN-013 | High | Reconcile packaging docs in the same migration plan rather than later |
 | Internal and public names diverge awkwardly | Medium | Allow temporary compatibility aliases, but document them explicitly |
-| The rename gets mixed with the suite-host refactor and becomes too large | Medium | Keep naming migration as a distinct tracked slice even if some edits land alongside PLAN-017 |
+| The rename gets mixed with the platform-host refactor and becomes too large | Medium | Keep naming migration as a distinct tracked slice even if some edits land alongside PLAN-017 |
 | Technical users lose old entrypoint expectations | Medium | Keep compatibility naming where needed until the new package/executable path is stable |
 
 ## Suggested Handoff Instruction
@@ -198,7 +198,7 @@ Operational/product-facing naming is now:
 Use this when delegating implementation:
 
 > Implement ADR-026 / PLAN-018. Keep `Cats Inc` as the umbrella brand, rename
-> the main flagship suite from `cats-inc` to `cats`, preserve `cats-runtime`,
+> the main flagship platform from `cats-inc` to `cats`, preserve `cats-runtime`,
 > and migrate docs/package/public metadata in a controlled way with explicit
 > compatibility notes where the old name must survive temporarily.
 

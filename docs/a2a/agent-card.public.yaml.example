@@ -1,5 +1,5 @@
 name: "cats"
-description: "Pilot public Agent Card example for a future A2A adapter over the Cats suite-host boundary. This example is standards-aligned documentation, not a claim that the current repo already exposes a live A2A endpoint."
+description: "Pilot public Agent Card example for a future A2A adapter over the Cats platform-host boundary. This example is standards-aligned documentation, not a claim that the current repo already exposes a live A2A endpoint."
 supportedInterfaces:
   - url: "https://cats.example.com/a2a/jsonrpc"
     protocolBinding: "JSONRPC"
@@ -17,9 +17,9 @@ capabilities:
   pushNotifications: false
   extendedAgentCard: true
 securitySchemes:
-  suiteBearer:
+  platformBearer:
     httpAuthSecurityScheme:
-      description: "Bearer token used when a future A2A adapter is fronted by the same operator/session boundary as protected Cats suite-host routes."
+      description: "Bearer token used when a future A2A adapter is fronted by the same operator/session boundary as protected Cats platform-host routes."
       scheme: "Bearer"
       bearerFormat: "API key or JWT"
 defaultInputModes:
@@ -29,9 +29,9 @@ defaultOutputModes:
   - "text/plain"
   - "application/json"
 skills:
-  - id: "suite-reads"
-    name: "Suite Reads"
-    description: "Read suite-host health, operator inbox state, recovery summaries, and product projections without mutating product data."
+  - id: "platform-reads"
+    name: "Platform Reads"
+    description: "Read platform-host health, operator inbox state, recovery summaries, and product projections without mutating product data."
     tags:
       - "product"
       - "operators"
@@ -47,7 +47,7 @@ skills:
       - "application/json"
   - id: "orchestrator-supervision"
     name: "Orchestrator Supervision"
-    description: "Model future product-side orchestrator planning, dispatch, and recovery handling over the Cats suite boundary."
+    description: "Model future product-side orchestrator planning, dispatch, and recovery handling over the Cats platform boundary."
     tags:
       - "orchestration"
       - "product"

@@ -1,7 +1,7 @@
 {
   "name": "@cats-inc/cats-platform",
   "version": "0.1.0",
-  "description": "Technical host package for the Cats suite, backed by cats-runtime.",
+  "description": "Technical host package for the Cats platform, backed by cats-runtime.",
   "type": "module",
   "bin": {
     "cats-platform": "./dist-server/index.js"
@@ -45,7 +45,7 @@
     "cats",
     "platform",
     "runtime",
-    "suite"
+    "host"
   ],
   "license": "MIT",
   "dependencies": {

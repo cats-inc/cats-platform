@@ -167,7 +167,7 @@ behavior.
 | `src/products/chat/api/**` | Modify | Product-owned transport, companion, and lifecycle routes |
 | `src/products/chat/state/**` | Modify | Session continuity, memory flush, companion state, and routing/read-model helpers |
 | `src/core/**` | Modify | Shared planning, operator-loop, task, and memory-lifecycle helpers consumed by Chat |
-| `src/design/**` | Modify | Shared suite-level primitives used by Chat v1 surfaces |
+| `src/design/**` | Modify | Shared platform-level primitives used by Chat v1 surfaces |
 | `tests/**` | Modify/Create | Companion, transport, session, and multi-Cat Chat regression coverage |
 | `docs/specs/**` | Modify (follow-on) | Update linked Chat specs if v1 sequencing changes any approved scope wording |
 
@@ -220,7 +220,7 @@ behavior.
 | 2026-03-29 | **Phase 3 complete**: SSE invalidation hub created and wired into server bootstrap + requestRouter. Event route registered. Transport event publishing wired into Telegram webhook handler. Renderer `useChatEvents` hook connected in App.tsx — refreshes room, recents, and unread on SSE events. Telegram command router wired into inbound webhook path (commands intercepted before room bridging). Reply chunking wired into outbound bridge delivery. |
 | 2026-03-29 | **Phase 4 partial**: Session continuity rules and operations landed (rules, reset/sleep/resume/compact). Companion wake triggers `activateChatChannel` + app-shell refresh. Companion sleep sends deactivation request + refresh. Full session-continuity API routes (dedicated REST endpoints for reset/compact) deferred to follow-up. |
 | 2026-03-29 | **Phase 5 partial**: CatStatusRow component rendered in ChatView for multi-Cat rooms. Cat status resolution wired with operator view. Spatial polish still needs additional transcript/operator refinements beyond the first layout normalization pass. |
-| 2026-03-29 | **Phase 6 complete**: 36 new tests across 5 test files covering session-continuity-rules, telegram-chunking, chat-event-hub, cat-status-resolution, session-health-summary. Current suite is green after later regressions were fixed separately. |
+| 2026-03-29 | **Phase 6 complete**: 36 new tests across 5 test files covering session-continuity-rules, telegram-chunking, chat-event-hub, cat-status-resolution, session-health-summary. Current platform is green after later regressions were fixed separately. |
 | 2026-03-29 | Codex: Consumed `layoutNormalization.ts` in `ChatView`, moved bottom-vs-side secondary-surface positioning into the shared `SidePanel` design component, and aligned transcript/composer widths with mode-specific layout metrics. |
 | 2026-03-30 | Codex: Extracted duplicated operator-panel chrome (`operatorPanel`, `operatorCard`, `operatorActionButton`, `operatorStatusBadge`, related timeline/meta primitives) from per-product `chat-operator.css` copies into shared `src/design/components/operator-chrome.css`, leaving product styles to own only local workspace/layout rules. |
 | 2026-03-30 | Codex: Promoted chat layout normalization into shared `src/design/chatLayout.ts` and aligned `work` / `code` ChatView clones with the same transcript-width and bottom-vs-side secondary-surface rules instead of leaving the layout seam Chat-local. |

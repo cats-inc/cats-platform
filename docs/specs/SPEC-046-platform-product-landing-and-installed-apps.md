@@ -1,4 +1,4 @@
-# SPEC-046: Suite Product Landing and Installed Apps
+# SPEC-046: Platform Product Landing and Installed Apps
 
 ## Metadata
 
@@ -10,7 +10,7 @@
 
 ## Summary
 
-`cats-platform` already behaves like a suite host: setup runs before normal
+`cats-platform` already behaves like a platform host: setup runs before normal
 entry, top-level routes are split across `chat`, `work`, and `code`, and the
 host remembers the user's last product surface.
 
@@ -22,7 +22,7 @@ This spec defines a host-owned landing and inventory model where:
 - `/` continues to open the user's selected or last-used product in the current
   slice
 - the host-owned landing is now named `Lobby`
-- the suite exposes a dedicated host surface for required products, optional
+- the platform exposes a dedicated host surface for required products, optional
   products, and installed apps
 - host/global settings are separated from product-owned settings
 
@@ -42,13 +42,13 @@ This slice focuses on:
 
 ## Terminology
 
-This spec follows [ADR-048](../decisions/048-separate-suite-products-from-installable-apps.md):
+This spec follows [ADR-048](../decisions/048-separate-platform-products-from-installable-apps.md):
 
-- `product`: a suite-owned top-level first-party experience such as
+- `product`: a platform-owned top-level first-party experience such as
   `Cats Chat`, `Cats Work`, or `Cats Code`
-- `required product`: a suite-owned product that ships as part of the current
-  baseline suite
-- `optional product`: a suite-owned product that may be installed, removed, or
+- `required product`: a platform-owned product that ships as part of the current
+  baseline platform
+- `optional product`: a platform-owned product that may be installed, removed, or
   deferred
 - `app`: an installable and publishable unit that may come from first-party or
   third-party developers
@@ -70,27 +70,27 @@ installed apps as a first-class inventory concept.
 
 ## User Stories
 
-- As a new user, I want setup to end in a clear suite experience instead of
+- As a new user, I want setup to end in a clear platform experience instead of
   feeling like a one-off wizard disconnected from the host.
 - As a returning user, I want to keep opening directly into the product I last
   used.
 - As a user, I want a clear place to see which official products are part of
-  my baseline suite and which optional products are available or installed.
+  my baseline platform and which optional products are available or installed.
 - As a user, I want a clear place to see which apps are installed.
-- As a future developer ecosystem user, I want the suite to distinguish between
+- As a future developer ecosystem user, I want the platform to distinguish between
   first-party products and installable apps cleanly.
 - As a product team, I want product settings to live with the product instead
-  of being flattened into one catch-all suite settings shell.
+  of being flattened into one catch-all platform settings shell.
 
 ## Requirements
 
 ### Functional Requirements
 
-1. The suite host shall expose a host-owned landing or inventory route for
+1. The platform host shall expose a host-owned landing or inventory route for
    products and apps.
-2. The suite shall continue to support setup-first entry through `/setup`.
+2. The platform shall continue to support setup-first entry through `/setup`.
 3. Completing setup shall continue to record a selected primary product.
-4. The suite root `/` shall continue to resolve to the user's selected or
+4. The platform root `/` shall continue to resolve to the user's selected or
    last-used product entry.
 5. Completing setup shall continue to open the selected primary product entry
    in the current slice rather than forcing a stop at `/products`.
@@ -111,23 +111,23 @@ installed apps as a first-class inventory concept.
    - third-party apps
    - apps that contribute a visible entry surface
    - apps that contribute supporting capability without a main launch surface
-12. Suite-level settings shall remain host-owned and shall focus on global
+12. Platform-level settings shall remain host-owned and shall focus on global
    concerns such as owner/general settings, runtime, and data/reset controls.
 13. Product-specific settings shall be routable under the owning product route
     tree.
-14. The suite shall preserve direct product routes such as `/chat/*`,
+14. The platform shall preserve direct product routes such as `/chat/*`,
     `/work/*`, and `/code/*`.
 15. The setup wizard shall continue to derive its first-product choices from a
     host-owned registration source rather than hardcoded renderer branching.
 16. The host shall preserve bounded compatibility for existing deep links when
-    canonical settings ownership moves from suite-level routes to product-owned
+    canonical settings ownership moves from platform-level routes to product-owned
     routes.
 17. The host envelope shall expose enough structured metadata to render product
     and app inventory without inferring state only from route prefixes.
 
 ### UX Requirements
 
-1. The landing must read as part of the suite host, not as a settings page.
+1. The landing must read as part of the platform host, not as a settings page.
 2. Required products, optional products, and installed apps must be visible
    without drilling into account settings first.
 3. The host should allow quick return from landing into the user's active
@@ -141,11 +141,11 @@ installed apps as a first-class inventory concept.
 The host should converge toward explicit descriptors such as:
 
 ```ts
-type SuiteProductId = SuiteSurfaceId | (string & {});
+type PlatformProductId = PlatformSurfaceId | (string & {});
 
-interface SuiteProductDescriptor {
-  id: SuiteProductId;
-  surface: SuiteSurfaceId | null;
+interface PlatformProductDescriptor {
+  id: PlatformProductId;
+  surface: PlatformSurfaceId | null;
   productName: string;
   subtitle: string;
   routePrefix: string;
@@ -159,7 +159,7 @@ interface SuiteProductDescriptor {
   };
 }
 
-interface SuiteInstalledAppDescriptor {
+interface PlatformInstalledAppDescriptor {
   id: string;
   label: string;
   publisher: string;
@@ -173,7 +173,7 @@ interface SuiteInstalledAppDescriptor {
 The exact field set may evolve, but the host must stop relying only on implicit
 route knowledge for inventory UI.
 
-In the current implementation slice, the suite host envelope already carries a
+In the current implementation slice, the platform host envelope already carries a
 `products` array with this shape so both setup and Lobby can render from the
 same registration data.
 
@@ -182,7 +182,7 @@ same registration data.
 ### Host-Level Routes
 
 - `/setup`
-  setup wizard before suite entry
+  setup wizard before platform entry
 - `/lobby`
   canonical host-owned Lobby for products and installed apps
 - `/products`
@@ -248,7 +248,7 @@ after setup completion.
 The host should use one registration pipeline that can support both setup and
 landing:
 
-- product descriptors for suite-owned top-level entry
+- product descriptors for platform-owned top-level entry
 - product install policy and install state
 - app descriptors for install inventory
 
@@ -257,9 +257,9 @@ into a more general host registry instead of remaining wizard-only metadata.
 
 ## Dependencies
 
-- [ADR-025](../decisions/025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
-- [ADR-045](../decisions/045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md)
-- [ADR-048](../decisions/048-separate-suite-products-from-installable-apps.md)
+- [ADR-025](../decisions/025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
+- [ADR-045](../decisions/045-use-cats-platform-as-the-main-platform-host-under-cats-brand.md)
+- [ADR-048](../decisions/048-separate-platform-products-from-installable-apps.md)
 - [SPEC-023](./SPEC-023-packaged-setup-wizard-and-provider-installation.md)
 - [Product Integration Guide](../product-integration-guide.md)
 
@@ -281,4 +281,4 @@ into a more general host registry instead of remaining wizard-only metadata.
 
 *Created: 2026-03-31*  
 *Author: Codex*  
-*Related Plan: [PLAN-035](../plans/PLAN-035-suite-product-landing-and-installed-apps.md)*
+*Related Plan: [PLAN-035](../plans/PLAN-035-platform-product-landing-and-installed-apps.md)*

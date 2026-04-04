@@ -75,7 +75,7 @@ If an agent realizes it has violated a MUST/MUST NOT directive:
 
 ## Project Overview
 
-**Purpose**: Shared planning and product application repo for the cats suite.
+**Purpose**: Shared planning and product application repo for the cats platform.
 
 **Background**: Earlier exploratory chat prototypes proved useful product ideas
 but were directly coupled to lower-level runtime backends. `cats` now carries
@@ -91,9 +91,9 @@ for shared `Cats Core v1` contracts that `Cats Chat`, `Cats Work`, and
 - Chat-first product shell above runtime-backed agent sessions
 - Parallel `Cats Chat`, `Cats Work`, and `Cats Code` product trees that reuse
   the same shared product contracts
-- Shared suite design layer in `src/design/` plus product-owned renderer
+- Shared platform design layer in `src/design/` plus product-owned renderer
   surfaces above it
-- Product-owned API delegates and server dependency slices for suite-host
+- Product-owned API delegates and server dependency slices for platform-host
   integration
 - Runtime integration through `cats-runtime` direct APIs, with a planned MCP
   facade for orchestrator-style tool use
@@ -102,12 +102,12 @@ for shared `Cats Core v1` contracts that `Cats Chat`, `Cats Work`, and
 
 ## Current Product Direction
 
-- `Cats Chat`, `Cats Work`, and `Cats Code` now share one suite host and one
+- `Cats Chat`, `Cats Work`, and `Cats Code` now share one platform host and one
   `Cats Core v1` contract layer, and should be treated as parallel product
   tracks rather than ad hoc one-off expansions.
 - `Cats Chat` remains the most mature launch surface inside this repo, but
   Work and Code are no longer speculative enough to justify Chat-centric shared
-  contracts or suite-host wiring.
+  contracts or platform-host wiring.
 - The full desktop surfaces for `Cats Chat`, `Cats Work`, and `Cats Code`
   should stay on one React/TypeScript renderer stack inside the Electron host
   chosen by ADR-003.
@@ -118,12 +118,12 @@ for shared `Cats Core v1` contracts that `Cats Chat`, `Cats Work`, and
   direct APIs; MCP is an additional tool surface for orchestrators, not a
   replacement boundary.
 - Product teams should integrate through product-owned API delegates and the
-  suite host registration protocol documented in
+  platform host registration protocol documented in
   `docs/product-integration-guide.md`.
 - Shared visual primitives may live in `src/design/`, but product-specific UI
   behavior should remain in the owning product tree unless a real multi-product
   use case has been proven.
-- The suite host is integration-owned. Product teams should not directly grow
+- The platform host is integration-owned. Product teams should not directly grow
   `src/app/server/**` as part of routine feature work.
 - The shared-contract freeze for parallel delivery currently includes:
   - `src/core/types.ts`
@@ -199,7 +199,7 @@ for shared `Cats Core v1` contracts that `Cats Chat`, `Cats Work`, and
 | `AGENTS.md` | Rules, conventions, structure | Always read first |
 | `CLAUDE.md` / `GEMINI.md` / `CODEX.md` | Agent-specific configs | After AGENTS.md |
 | `docs/AGENT-GUIDE.md` | Project SOPs, domain knowledge, common task procedures | When performing tasks |
-| `docs/product-integration-guide.md` | Parallel product registration, dependency-slice, and suite-host integration rules | When touching product boundaries or suite-host wiring |
+| `docs/product-integration-guide.md` | Parallel product registration, dependency-slice, and platform-host integration rules | When touching product boundaries or platform-host wiring |
 
 ---
 
@@ -552,7 +552,7 @@ usage() {
 8.  **Parallel delivery ownership**:
     *   Product-local feature work SHOULD stay inside the owning product tree:
         `src/products/chat/**`, `src/products/work/**`, or `src/products/code/**`
-    *   `src/app/server/**` is suite-host integration space and SHOULD converge
+    *   `src/app/server/**` is platform-host integration space and SHOULD converge
         through an integration owner rather than routine product feature edits
     *   The frozen shared-contract set MUST NOT be reshaped casually during
         product feature work; follow `docs/product-integration-guide.md`

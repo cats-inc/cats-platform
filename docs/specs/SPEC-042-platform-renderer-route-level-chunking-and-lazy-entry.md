@@ -1,6 +1,6 @@
-# SPEC-042: Suite Renderer Route-Level Chunking and Lazy Entry
+# SPEC-042: Platform Renderer Route-Level Chunking and Lazy Entry
 
-> Keep the suite renderer's initial entry lighter by splitting setup, Chat,
+> Keep the platform renderer's initial entry lighter by splitting setup, Chat,
 > Work, and Code at route boundaries instead of eagerly bundling all product
 > surfaces together.
 
@@ -14,7 +14,7 @@
 
 ## Summary
 
-The current suite renderer entry is structurally too eager for the shape of the
+The current platform renderer entry is structurally too eager for the shape of the
 product.
 
 Today the top-level app shell imports:
@@ -34,11 +34,11 @@ That is not an emergency for local desktop packaging, but it is poor alignment
 with the product's actual route structure and it weakens the self-hosted
 browser path.
 
-This spec defines the first bundle-boundary cleanup for the suite renderer:
+This spec defines the first bundle-boundary cleanup for the platform renderer:
 
 - treat route boundaries as chunk boundaries
 - lazy-load product surfaces and setup flows where practical
-- preserve current suite-host ownership and route semantics
+- preserve current platform-host ownership and route semantics
 - avoid treating `chunkSizeWarningLimit` as the primary fix
 
 ## Goals
@@ -46,16 +46,16 @@ This spec defines the first bundle-boundary cleanup for the suite renderer:
 - reduce avoidable initial renderer work for setup and Chat entry
 - ensure Work and Code product code is not eagerly loaded on first paint when
   those routes are not being entered
-- align chunking policy with the suite's existing route and ownership
+- align chunking policy with the platform's existing route and ownership
   boundaries
 - keep self-hosted and Electron entry behavior consistent
-- establish a clear performance policy before more suite surfaces are added
+- establish a clear performance policy before more platform surfaces are added
 
 ## Non-Goals
 
 - perfect bundle-size optimization across every dependency in this slice
 - broad `manualChunks` tuning as the first step
-- changing product route prefixes or suite-host navigation semantics
+- changing product route prefixes or platform-host navigation semantics
 - moving product code out of its current ownership trees
 - introducing SSR, module federation, or a second renderer architecture
 
@@ -72,14 +72,14 @@ This spec defines the first bundle-boundary cleanup for the suite renderer:
 
 ### Functional Requirements
 
-1. The suite renderer shall lazy-load product entry surfaces at route
+1. The platform renderer shall lazy-load product entry surfaces at route
    boundaries instead of eagerly importing all product renderers into the
    initial shell.
 2. The first lazy-loaded set shall include:
    - Chat product surface
    - Work product surface
    - Code product surface
-3. The setup flow should be lazy-loaded from the suite shell as well, unless a
+3. The setup flow should be lazy-loaded from the platform shell as well, unless a
    specific setup dependency must remain in the entry chunk for correctness.
 4. Route redirects and stored-surface restoration shall continue to behave the
    same after lazy loading is introduced.
@@ -90,7 +90,7 @@ This spec defines the first bundle-boundary cleanup for the suite renderer:
    correctly.
 7. The renderer shall not rely on the Electron host to pre-resolve product
    chunks; the browser/self-hosted path must remain first-class.
-8. The suite shell shall continue to own routing and setup gating logic.
+8. The platform shell shall continue to own routing and setup gating logic.
 9. Product code shall remain in product-owned trees; chunking work shall not be
    used as a reason to collapse product ownership boundaries.
 
@@ -121,9 +121,9 @@ This spec defines the first bundle-boundary cleanup for the suite renderer:
 ## Design Overview
 
 ```text
-suite shell
+platform shell
   -> load light entry shell
-  -> fetch suite envelope / setup state
+  -> fetch platform envelope / setup state
   -> choose route
   -> lazy-load target surface:
        setup
@@ -137,7 +137,7 @@ suite shell
 
 ### Phase 1: Route-Level Lazy Loading
 
-- replace eager imports of `ChatApp`, `WorkApp`, and `CodeApp` in the suite
+- replace eager imports of `ChatApp`, `WorkApp`, and `CodeApp` in the platform
   shell with `lazy(() => import(...))`
 - introduce route-level fallback UI around lazy surfaces
 - keep setup gating and redirect behavior unchanged
@@ -175,9 +175,9 @@ suite shell
 
 ## References
 
-- [ADR-043](../decisions/043-keep-suite-renderer-entry-bounded-with-route-level-lazy-loading.md)
+- [ADR-043](../decisions/043-keep-platform-renderer-entry-bounded-with-route-level-lazy-loading.md)
 - [ADR-013](../decisions/013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
-- [ADR-025](../decisions/025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
+- [ADR-025](../decisions/025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
 - [ADR-035](../decisions/035-invert-platform-dependency-and-extract-shared-design-layer.md)
 
 ---

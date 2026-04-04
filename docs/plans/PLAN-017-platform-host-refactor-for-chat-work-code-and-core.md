@@ -1,15 +1,15 @@
-# PLAN-017: Suite Host Refactor for Chat, Work, Code, and Core
+# PLAN-017: Platform Host Refactor for Chat, Work, Code, and Core
 
 Status: Draft (Pending Review)
 
 ## Scope
 
 Implement the first structural refactor slice required by
-[ADR-025](../decisions/025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md).
+[ADR-025](../decisions/025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md).
 
 This plan covers:
 
-- establishing a suite-host code skeleton inside `cats`
+- establishing a platform-host code skeleton inside `cats`
 - reversing the current `chat -> core` dependency direction
 - demoting current chat-state modules into a Chat-specific product slice
 - splitting top-level app composition from product-slice logic
@@ -27,7 +27,7 @@ This plan does not cover:
 ## Hard Constraints
 
 - Keep `cats-runtime` as the only runtime boundary.
-- Do not let Chat-specific DTOs remain the shared suite contract.
+- Do not let Chat-specific DTOs remain the shared platform contract.
 - Do not let `Work` or `Code` depend directly on current Chat-state schema.
 - Keep the first slice focused on structure and ownership boundaries.
 - Preserve existing Chat behavior as much as possible while moving code.
@@ -68,8 +68,8 @@ taxonomy for every feature.
 
 ### Phase 1: Freeze Ownership Boundaries
 
-- [x] Freeze the suite-host ownership split:
-      - `core` owns shared suite truth
+- [x] Freeze the platform-host ownership split:
+      - `core` owns shared platform truth
       - `products/chat` owns Chat-specific read models and workflow state
       - `products/work` owns Work-specific surfaces
       - `products/code` owns Code-specific surfaces
@@ -127,7 +127,7 @@ Current transitional modules after phases 1-3:
 
 ### Phase 4: Reverse the Current Dependency Direction
 
-- [x] Stop treating chat state as the suite-wide source of truth.
+- [x] Stop treating chat state as the platform-wide source of truth.
 - [x] Replace current `syncCoreStateWithChatState(...)`-style ownership with:
       - core-owned persisted state
       - Chat projection builders derived from core plus Chat-local state
@@ -138,7 +138,7 @@ Current transitional modules after phases 1-3:
       core-owned state and projection-based behavior.
 - [x] Keep migration compatibility logic explicit and temporary.
 
-**Deliverables**: the suite now follows:
+**Deliverables**: the platform now follows:
 
 ```text
 Cats Core -> Chat projection
@@ -169,7 +169,7 @@ Current transitional modules after Phase 4:
       `src/products/chat/api/*`.
 - [x] Move Chat renderer concerns under `src/products/chat/renderer/*`.
 - [x] Rename transitional types and modules where needed so Chat-specific code
-      is no longer presented as suite-wide code.
+      is no longer presented as platform-wide code.
 
 **Deliverables**: current Chat functionality now clearly lives in the Chat
 product slice.
@@ -201,11 +201,11 @@ Current transitional modules during Phase 6:
 - `src/server.ts` is now an explicit compatibility shim that re-exports the
   app-level assembler from `src/app/server/index.ts`.
 - `src/renderer/main.tsx` and `src/renderer/App.tsx` are now explicit
-  compatibility shims that re-export the suite-level renderer entry from
+  compatibility shims that re-export the platform-level renderer entry from
   `src/app/renderer/*`.
-- `src/app/server/index.ts` now owns suite-level server assembly only; Chat
+- `src/app/server/index.ts` now owns platform-level server assembly only; Chat
   route handling lives under `src/products/chat/api/*`.
-- `src/app/renderer/App.tsx` now reserves suite slots for `Cats Work` and
+- `src/app/renderer/App.tsx` now reserves platform slots for `Cats Work` and
   `Cats Code`, while still routing all existing non-Work/non-Code paths into
   the Chat product slice.
 
@@ -231,7 +231,7 @@ Current placeholder modules after Phase 7:
   derived from Cats Core, plus reserved future routes for project/preview/build
   surfaces.
 - `src/products/work/renderer/*` and `src/products/code/renderer/*` now mount
-  dedicated placeholder roots through the suite router instead of relying on
+  dedicated placeholder roots through the platform router instead of relying on
   inline placeholder JSX in `src/app/renderer/App.tsx`.
 - `src/app/server/index.ts` still wires the placeholder routes directly until a
   later route-module extraction completes the Phase 6 split.
@@ -244,7 +244,7 @@ Current placeholder modules after Phase 7:
       - Chat projection behavior
       - top-level route composition
       - renderer route composition
-- [ ] Update architecture and API docs to reflect the new suite-host layout
+- [ ] Update architecture and API docs to reflect the new platform-host layout
       once code lands.
 - [ ] Mark any remaining temporary compatibility seams clearly in code and plan
       notes.
@@ -258,10 +258,10 @@ Current validation state after Phase 8A:
 - top-level route composition now has direct coverage through
   `/api/work` and `/api/code` server tests.
 - renderer route composition now has direct coverage through
-  `tests/suite-routing.test.js`, which validates the suite route map and
+  `tests/platform-routing.test.js`, which validates the platform route map and
   current Work/Code placeholder ownership.
 - architecture, progress, and docs index files have been updated to reflect the
-  current suite-host layout and the still-temporary compatibility seams.
+  current platform-host layout and the still-temporary compatibility seams.
 
 Remaining work after Phase 8A:
 
@@ -282,8 +282,8 @@ Remaining work after Phase 8A:
 | `src/shared/core.ts` | Move/split | Shared core contracts should live under `core/*` |
 | `src/core/model.ts` | Preserve and adapt | Existing core derivation logic is the starting point for core-owned state operations |
 | `src/chat/store.ts` | Refactor heavily | This file currently preserves the reversed dependency direction |
-| `src/chat/*` | Relocate | These modules are Chat-specific, not suite-level |
-| `src/shared/app-shell.ts` | Split | Current app-shell contracts are Chat view-models rather than suite-neutral contracts |
+| `src/chat/*` | Relocate | These modules are Chat-specific, not platform-level |
+| `src/shared/app-shell.ts` | Split | Current app-shell contracts are Chat view-models rather than platform-neutral contracts |
 | `src/server.ts` | Break apart | It is currently a monolithic server and a collision point for future surfaces |
 | `src/renderer/App.tsx` | Break apart | It is currently a monolithic Chat app and a collision point for future surfaces |
 | `src/runtime/client.ts` | Relocate under platform | Runtime client is infrastructure, not product-slice code |
@@ -316,7 +316,7 @@ Remaining work after Phase 8A:
 Use this when delegating implementation:
 
 > Implement the first slice of ADR-025. Convert `cats` from a chat-shell-
-> first structure into a suite host with core-owned product projections. Reverse
+> first structure into a platform host with core-owned product projections. Reverse
 > the current `chat -> core` dependency direction, move current chat-state
 > modules into the Chat slice, and add placeholder Work/Code surfaces without
 > changing the `cats-runtime` boundary.

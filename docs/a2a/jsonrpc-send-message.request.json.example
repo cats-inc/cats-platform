@@ -8,7 +8,7 @@
       "role": "ROLE_USER",
       "parts": [
         {
-          "text": "Review the current operator inbox, the suite-host recovery posture, and the most relevant cross-product task summary. Explain the next operator action and keep references to the most relevant project-memory artifacts.",
+          "text": "Review the current operator inbox, the platform-host recovery posture, and the most relevant cross-product task summary. Explain the next operator action and keep references to the most relevant project-memory artifacts.",
           "mediaType": "text/plain"
         }
       ],

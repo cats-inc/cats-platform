@@ -44,7 +44,7 @@ The first Work priority should therefore be:
 - implementing the freelance-job aggregator, proposal submission, or payment
   pipeline in this slice
 - implementing distributed mesh execution or peer-to-peer worker sharing
-- turning `Cats Work` into a multi-company org-chart or finance suite
+- turning `Cats Work` into a multi-company org-chart or finance platform
 - exposing runtime skill manifests, MCP profiles, or provider/session IDs as
   the primary Work UX
 - replacing Chat or Code with Work; this slice coordinates those surfaces
@@ -187,7 +187,7 @@ Its default product posture is:
 - clarification, communication, or lightweight specialist work may route to
   `Cats Chat`
 
-Its default strategy posture should be compatible with existing suite
+Its default strategy posture should be compatible with existing platform
 direction:
 
 - Work default: `pdca`
@@ -214,7 +214,7 @@ useful.
 
 - [ADR-007](../decisions/007-establish-cats-core-v1-for-chat-and-work.md)
 - [ADR-014](../decisions/014-freeze-parallel-delivery-boundaries-for-provider-telegram-and-chat-workstreams.md)
-- [ADR-025](../decisions/025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
+- [ADR-025](../decisions/025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
 - [ADR-032](../decisions/032-own-task-substrate-in-core-not-runtime.md)
 - [ADR-034](../decisions/034-require-human-approval-gates-at-pipeline-decision-points.md)
 - [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)

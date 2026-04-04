@@ -146,7 +146,7 @@ This plan is explicitly **not** a visual redesign plan.
 Use this when delegating implementation:
 
 > Implement SPEC-010 / PLAN-010. Add path-based renderer routing so chats,
-> settings, and future suite surfaces are URL-driven. Make `/chats`,
+> settings, and future platform surfaces are URL-driven. Make `/chats`,
 > `/chats/:channelId`, `/settings`, and `/settings/cats` the first real page
 > routes. Keep the current UI style, layout, class names, and overall DOM
 > structure intact. Do not turn this into a visual redesign. Treat

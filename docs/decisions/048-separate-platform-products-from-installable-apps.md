@@ -1,6 +1,6 @@
-# ADR-048: Separate Suite Products from Installable Apps
+# ADR-048: Separate Platform Products from Installable Apps
 
-> Keep suite-owned top-level experiences as `products`, while using `app` for
+> Keep platform-owned top-level experiences as `products`, while using `app` for
 > installable and publishable units across first-party and third-party
 > distribution.
 
@@ -16,7 +16,7 @@ Accepted
 
 `cats-platform` is already evolving into a host above `cats-runtime`.
 
-The current suite shape already has first-party surfaces with stable top-level
+The current platform shape already has first-party surfaces with stable top-level
 identity:
 
 - `Cats Chat`
@@ -32,13 +32,13 @@ installation policy forever.
 
 Examples:
 
-- some products may ship as part of the baseline suite
+- some products may ship as part of the baseline platform
 - some products may remain optional first-party installs, such as future
   `Learn` or `Invest` lines
 
 That creates a terminology problem if the host uses only one word for both:
 
-- the suite-owned top-level experiences that define the flagship product
+- the platform-owned top-level experiences that define the flagship product
 - the installable units that may later be published by first-party or
   third-party developers
 
@@ -46,12 +46,12 @@ The host also needs a clearer information architecture for setup, landing, and
 inventory:
 
 - setup should still feel like choosing a primary Cats experience
-- the suite should expose what is installed in a host-owned surface
-- product-specific settings should not be flattened into one suite-level bucket
+- the platform should expose what is installed in a host-owned surface
+- product-specific settings should not be flattened into one platform-level bucket
 
 The naming model therefore needs to support:
 
-- suite-owned top-level products
+- platform-owned top-level products
 - installable units from first-party or third-party publishers
 - required vs optional installation policy as a separate dimension
 
@@ -61,7 +61,7 @@ The naming model therefore needs to support:
 installation policy as a separate concern from either one:
 
 1. `product`
-   - a suite-owned, first-party top-level experience line
+   - a platform-owned, first-party top-level experience line
    - products define the main top-level navigation, setup outcome, and route
      identity seen by the user
    - a product may be `required` or `optional`
@@ -80,29 +80,29 @@ Installation policy is its own dimension.
 
 ### Host responsibilities
 
-The suite host will treat these concerns separately:
+The platform host will treat these concerns separately:
 
 - setup remains product-oriented
 - the host owns product inventory, including whether a product is required or
   optional
 - the host owns installed-app visibility and app inventory surfaces
-- first-party product launch remains visible as the main suite entry model
+- first-party product launch remains visible as the main platform entry model
 - product-specific settings belong under the owning product route tree
-- suite-level settings remain reserved for host/global concerns
+- platform-level settings remain reserved for host/global concerns
 
 ### Naming guidance
 
 Use these terms consistently:
 
-- `product`: Chat, Work, Code, and other future suite-owned top-level
+- `product`: Chat, Work, Code, and other future platform-owned top-level
   experiences
 - `required product`: a product that ships as part of the current baseline
-  suite experience
-- `optional product`: a suite-owned product that may be installed, removed, or
+  platform experience
+- `optional product`: a platform-owned product that may be installed, removed, or
   deferred
 - `app`: installable units, marketplace/distribution entries, and future
   third-party packages
-- `suite host`: the `cats-platform` shell that assembles products, apps,
+- `platform host`: the `cats-platform` shell that assembles products, apps,
   setup, and host-level settings
 
 ## Consequences
@@ -124,7 +124,7 @@ Use these terms consistently:
 
 ### Negative
 
-- The suite now carries two adjacent concepts that must be documented and
+- The platform now carries two adjacent concepts that must be documented and
   reflected in UI copy carefully.
 - Product descriptors now also need explicit install policy and install-state
   modeling, rather than assuming every first-party product is always present.
@@ -146,14 +146,14 @@ Use these terms consistently:
 ### Alternative 1: Call everything `app`
 
 - **Pros**: simple public terminology; strong fit for marketplace language
-- **Cons**: blurs the distinction between the flagship suite-owned experiences
+- **Cons**: blurs the distinction between the flagship platform-owned experiences
   and smaller installable units; weakens product-level IA decisions
 - **Why not preferred**: the host needs a stable term for its first-party
   top-level experiences
 
 ### Alternative 2: Call everything `product`
 
-- **Pros**: simple for the current first-party suite
+- **Pros**: simple for the current first-party platform
 - **Cons**: awkward for future third-party publication and app-store style
   distribution; makes smaller installable units sound heavier than they are
 - **Why not preferred**: the future ecosystem direction benefits from `app`
@@ -169,8 +169,8 @@ Use these terms consistently:
 
 ## References
 
-- [ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
-- [ADR-045](./045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md)
+- [ADR-025](./025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
+- [ADR-045](./045-use-cats-platform-as-the-main-platform-host-under-cats-brand.md)
 - [Product Integration Guide](../product-integration-guide.md)
 - [Cats Plugin Architecture and Packaging Strategy](../research/2026-03-24-cats-plugin-architecture-and-packaging.md)
 

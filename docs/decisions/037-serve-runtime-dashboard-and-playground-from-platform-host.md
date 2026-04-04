@@ -1,4 +1,4 @@
-# ADR-037: Serve Runtime Dashboard and Playground from Suite Host
+# ADR-037: Serve Runtime Dashboard and Playground from Platform Host
 
 > When packaged as an Electron app, cats-runtime's dashboard and playground
 > pages are served by cats' HTTP server on the same port, under
@@ -78,13 +78,13 @@ URL namespace rules:
 - `/` — cats React SPA (Chat / Work / Code)
 - `/runtime/dashboard` — runtime dashboard (static HTML)
 - `/runtime/playground` — runtime playground (static HTML)
-- `/runtime/api/*` — runtime JSON proxied or hosted by the suite server
+- `/runtime/api/*` — runtime JSON proxied or hosted by the platform server
 - `/api/*` — JSON API endpoints only
 
 This creates one dedicated namespace for runtime tools without putting HTML
 pages under `/api/*` or scattering operator routes across the root.
 
-### 4. Runtime API access uses a suite-owned `/runtime/api/*` seam
+### 4. Runtime API access uses a platform-owned `/runtime/api/*` seam
 
 The dashboard and playground make `fetch()` calls to cats-runtime's API
 (e.g., `/health`, `/sessions`, `/providers`).
@@ -96,11 +96,11 @@ GET /runtime/api/health    →  proxy to  http://localhost:3100/health
 GET /runtime/api/sessions  →  proxy to  http://localhost:3100/sessions
 ```
 
-Dashboard/playground `fetch()` calls use the suite-owned `/runtime/api/`
+Dashboard/playground `fetch()` calls use the platform-owned `/runtime/api/`
 prefix. Users see only one port and the runtime HTML pages stay colocated with
 their runtime JSON namespace.
 
-### 5. Suite shell can link to these pages
+### 5. Platform shell can link to these pages
 
 The product switcher or sidebar can include navigation links:
 
@@ -127,7 +127,7 @@ HTML files. The browser's back button returns to the SPA.
 - Users see one application on one port in the Electron app
 - Runtime dashboard and playground are accessible without knowing
   cats-runtime's port
-- URL scheme is clean — runtime tools live under `/runtime/*`, suite APIs under
+- URL scheme is clean — runtime tools live under `/runtime/*`, platform APIs under
   `/api/*`
 - Runtime HTML and runtime JSON now share one dedicated namespace
 
@@ -137,7 +137,7 @@ HTML files. The browser's back button returns to the SPA.
   Electron resource directory
 - If cats-runtime updates its pages, the Electron app must be rebuilt
 - Runtime pages must be patched to call `/runtime/api/*` instead of raw runtime
-  paths when suite-hosted
+  paths when platform-hosted
 
 ### Neutral
 
@@ -180,7 +180,7 @@ HTML files. The browser's back button returns to the SPA.
 ## References
 
 - [ADR-036](./036-unify-api-contract-and-namespace-endpoints-by-product.md) — endpoint namespace rules
-- [ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) — suite host structure
+- [ADR-025](./025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md) — platform host structure
 - `cats-runtime/src/http/app.ts` lines 177-188 — current page serving
 - `cats-runtime/public/index.html` — dashboard source
 - `cats-runtime/public/playground.html` — playground source

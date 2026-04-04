@@ -68,7 +68,7 @@ The first slice is now implementation-ready with these decisions frozen:
    - the host exposes the active attempt id through the packaged app-shell
      read model used by the setup renderer
    - the setup renderer sends that attempt id back in JSON request bodies for
-     suite setup and runtime setup mutations in the first slice
+     platform setup and runtime setup mutations in the first slice
    - product-owned onboarding events receive that attempt id from those
      request bodies
    - runtime native artifacts are correlated by host observation time plus
@@ -77,9 +77,9 @@ The first slice is now implementation-ready with these decisions frozen:
 2. **Product-owned storage location**
    - product onboarding history lives in a dedicated `cats-platform` sidecar
      file beside `chat-state.json`, following the same persistence pattern as
-     `suite-preferences.json`
+     `platform-preferences.json`
    - proposed first-slice filename:
-     `suite-onboarding-history.json`
+     `platform-onboarding-history.json`
    - this keeps onboarding diagnostics out of Electron host state and out of
      the chat/core snapshot schema
 3. **Minimum event and bundle shape**
@@ -117,7 +117,7 @@ The first slice is now implementation-ready with these decisions frozen:
         references in the first slice
 - [x] Decide where product onboarding history lives:
       - use a dedicated `cats-platform` sidecar file beside `chat-state.json`
-      - proposed filename: `suite-onboarding-history.json`
+      - proposed filename: `platform-onboarding-history.json`
 - [x] Freeze the first-slice minimum event set and bundle shape:
       - minimal product events
       - minimal host events
@@ -134,7 +134,7 @@ runtime-reference strategy for the first slice.
 - [ ] Add shared diagnostics contracts for product-owned onboarding events
       under `src/shared/`
 - [ ] Implement a dedicated product-owned persistence helper for
-      `suite-onboarding-history.json`
+      `platform-onboarding-history.json`
 - [ ] Extend the packaged app-shell read model to expose the active
       `bootstrapAttemptId` to the setup renderer
 - [ ] Keep the first slice to the minimum product event set:
@@ -158,15 +158,15 @@ runtime-reference strategy for the first slice.
       - `error`
       - `attemptId`
       - `reference`
-- [ ] Add `attemptId` to first-slice suite setup/runtime setup mutation inputs
+- [ ] Add `attemptId` to first-slice platform setup/runtime setup mutation inputs
       and send it through JSON request bodies from the setup renderer APIs
 - [ ] Wire the first-slice product events at these points:
       - renderer/setup load enters the packaged setup flow -> `setup_opened`
       - runtime apply request is submitted -> `runtime_apply_requested`
       - runtime apply succeeds -> `runtime_apply_confirmed`
-      - suite setup commit lands -> `setup_completed`
+      - platform setup commit lands -> `setup_completed`
 - [ ] Expose a host-consumable product diagnostics read model
-      - preferred route shape: one dedicated suite diagnostics endpoint instead
+      - preferred route shape: one dedicated platform diagnostics endpoint instead
         of piggybacking raw event history onto `/api/app-shell`
       - include:
         - recent bounded event list
@@ -265,19 +265,19 @@ documented, and operable after the first slice lands.
 | `docs/specs/SPEC-045-cross-layer-bootstrap-and-onboarding-diagnostics.md` | Created | Define requirements for product-owned onboarding history and host aggregation |
 | `docs/plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md` | Created | Implementation plan for the diagnostics split |
 | `src/shared/bootstrapDiagnostics.ts` | Later | Shared first-slice event and bundle contracts for product/host diagnostics |
-| `src/shared/suiteOnboardingHistory.ts` | Later | Resolve the sidecar path beside `chat-state.json` and persist bounded product-owned onboarding events |
+| `src/shared/platformOnboardingHistory.ts` | Later | Resolve the sidecar path beside `chat-state.json` and persist bounded product-owned onboarding events |
 | `electron/contracts.ts` | Later | Add host event and aggregation contract types |
 | `electron/hostState.ts` | Later | Persist active attempt id, bounded host events, and aggregation bundle beside the existing snapshot |
 | `electron/main.ts` | Later | Publish/update host aggregation during startup and recovery |
 | `electron/bootstrapPage.ts` | Later | Read aggregated recovery summary |
-| `src/shared/suite-contract.ts` | Later | Extend packaged app-shell and setup contracts with first-slice diagnostics fields such as `bootstrapAttemptId` |
+| `src/shared/platform-contract.ts` | Later | Extend packaged app-shell and setup contracts with first-slice diagnostics fields such as `bootstrapAttemptId` |
 | `src/shared/runtimeSetup.ts` | Later | Extend runtime setup mutation inputs with first-slice diagnostics fields such as `attemptId` |
-| `src/app/server/suiteSetupRoutes.ts` | Later | Emit product-owned onboarding events during setup flow and expose a host-consumable diagnostics read model |
+| `src/app/server/platformSetupRoutes.ts` | Later | Emit product-owned onboarding events during setup flow and expose a host-consumable diagnostics read model |
 | `src/app/renderer/setup/api.ts` | Later | Send host-generated attempt id with setup/runtime bootstrap requests in first-slice JSON bodies |
-| `src/app/renderer/setup/SuiteSetupWizard.tsx` | Later | Trigger first-slice product event writes at setup-open/apply/complete milestones |
+| `src/app/renderer/setup/PlatformSetupWizard.tsx` | Later | Trigger first-slice product event writes at setup-open/apply/complete milestones |
 | `tests/desktop-host-state.test.js` | Later | Lock host aggregation persistence/reload behavior |
 | `tests/runtime-setup-flow.test.js` | Later | Lock product onboarding event recording around runtime setup |
-| `tests/suite-setup-wizard.test.js` | Later | Lock setup-open and setup-complete event behavior from the packaged wizard |
+| `tests/platform-setup-wizard.test.js` | Later | Lock setup-open and setup-complete event behavior from the packaged wizard |
 
 ## Technical Decisions
 

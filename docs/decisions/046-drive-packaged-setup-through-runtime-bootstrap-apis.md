@@ -111,7 +111,7 @@ This decision includes:
 - **Pros**: fastest apparent reuse of an existing UI
 - **Cons**: collapses product onboarding, host-managed install/resume, and
   runtime bootstrap into one operator-facing page that does not own packaged
-  product concepts such as `setupCompleteAt`, owner setup, or suite entry
+  product concepts such as `setupCompleteAt`, owner setup, or platform entry
 - **Why rejected**: packaged setup needs one product-owned UI above the runtime
   boundary, not a direct handoff into the runtime's standalone page
 

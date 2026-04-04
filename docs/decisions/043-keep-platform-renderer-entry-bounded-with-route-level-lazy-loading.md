@@ -1,6 +1,6 @@
-# ADR-043: Keep Suite Renderer Entry Bounded with Route-Level Lazy Loading
+# ADR-043: Keep Platform Renderer Entry Bounded with Route-Level Lazy Loading
 
-> Reduce the suite renderer's initial JavaScript cost by loading product
+> Reduce the platform renderer's initial JavaScript cost by loading product
 > surfaces at route boundaries instead of eagerly bundling Chat, Work, Code,
 > and setup flows into one entry chunk.
 
@@ -10,11 +10,11 @@ Proposed
 
 ## Context
 
-`cats` currently builds the suite renderer as one eager bundle:
+`cats` currently builds the platform renderer as one eager bundle:
 
 - the Vite build emits a warning that a minified chunk is larger than `500 kB`
 - the observed renderer bundle is about `771 kB` minified / `208 kB` gzip
-- the suite app eagerly imports `ChatApp`, `WorkApp`, and `CodeApp` from the
+- the platform app eagerly imports `ChatApp`, `WorkApp`, and `CodeApp` from the
   top-level renderer shell
 - the Vite config does not currently define route-aware code splitting or
   explicit chunking policy
@@ -26,7 +26,7 @@ main constraint, but it is still a real cost:
    the user even reaches the selected product surface
 2. setup entry currently carries product code that is irrelevant before setup
    is complete
-3. future suite growth will make the warning recur unless the bundle boundary
+3. future platform growth will make the warning recur unless the bundle boundary
    is addressed structurally
 
 At the same time, `cats` has explicit product route boundaries already:
@@ -45,7 +45,7 @@ renderer chunk growth.
 
 ### 1. Product surfaces should load at route boundaries
 
-The suite shell should lazy-load product renderers and setup surfaces instead
+The platform shell should lazy-load product renderers and setup surfaces instead
 of importing them eagerly into the initial renderer entry.
 
 This means the first implementation direction is:
@@ -71,12 +71,12 @@ The first optimization step should be route-level splitting, not early
 `manualChunks` may still be useful later, but only after the product and setup
 surfaces are no longer fused into the entry chunk.
 
-### 4. Keep suite-host ownership boundaries intact
+### 4. Keep platform-host ownership boundaries intact
 
-Chunking changes must preserve the current suite architecture:
+Chunking changes must preserve the current platform architecture:
 
 - product-owned UI stays in product trees
-- suite-host routing stays in the shared app shell
+- platform-host routing stays in the shared app shell
 - runtime boundaries do not move
 - chunking policy must not create new cross-product coupling
 
@@ -87,12 +87,12 @@ Chunking changes must preserve the current suite architecture:
 - self-hosted browser entry stops paying for Work and Code up front when the
   user only needs Chat or setup
 - setup entry can stay lighter and more focused
-- bundle growth has a stable containment strategy as more suite surfaces land
+- bundle growth has a stable containment strategy as more platform surfaces land
 - the project keeps a performance policy that matches its product boundaries
 
 ### Negative
 
-- route-level lazy loading adds `Suspense`/fallback handling to the suite shell
+- route-level lazy loading adds `Suspense`/fallback handling to the platform shell
 - some route transitions may show short loading states when a surface is first
   opened
 - test coverage must account for lazy-loaded route behavior
@@ -110,7 +110,7 @@ Chunking changes must preserve the current suite architecture:
 ### Alternative 1: Ignore the warning because the desktop path is local
 
 - **Pros**: no immediate code churn
-- **Cons**: the self-hosted path regresses, and future suite growth compounds
+- **Cons**: the self-hosted path regresses, and future platform growth compounds
   the same issue
 - **Why rejected**: the warning points to a real architectural seam that the
   current route structure can solve cleanly
@@ -133,9 +133,9 @@ Chunking changes must preserve the current suite architecture:
 ## References
 
 - [ADR-013](./013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
-- [ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
+- [ADR-025](./025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
 - [ADR-035](./035-invert-platform-dependency-and-extract-shared-design-layer.md)
-- [SPEC-042](../specs/SPEC-042-suite-renderer-route-level-chunking-and-lazy-entry.md)
+- [SPEC-042](../specs/SPEC-042-platform-renderer-route-level-chunking-and-lazy-entry.md)
 - [vite.config.ts](../../vite.config.ts)
 - [src/app/renderer/App.tsx](../../src/app/renderer/App.tsx)
 

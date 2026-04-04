@@ -51,11 +51,11 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-049](./SPEC-049-guide-cat-setup-and-generalized-participant-entry.md) | Guide Cat Setup and Generalized Participant Entry | Draft | [PLAN-038](../plans/PLAN-038-guide-cat-setup-and-participant-generalization.md) |
 | [SPEC-048](./SPEC-048-runtime-session-deletion-on-product-delete.md) | Runtime Session Deletion on Product Delete | Approved | [PLAN-037](../plans/PLAN-037-runtime-session-deletion-on-product-delete.md) |
 | [SPEC-047](./SPEC-047-compare-chat-concurrent-groups-and-relay.md) | Parallel Chat, Concurrent Groups, and Relay Actions | Implemented (First Slice Landed) | [PLAN-036](../plans/PLAN-036-compare-chat-concurrent-groups-and-relay.md) |
-| [SPEC-046](./SPEC-046-suite-product-landing-and-installed-apps.md) | Suite Product Landing and Installed Apps | Draft | [PLAN-035](../plans/PLAN-035-suite-product-landing-and-installed-apps.md) |
+| [SPEC-046](./SPEC-046-platform-product-landing-and-installed-apps.md) | Platform Product Landing and Installed Apps | Draft | [PLAN-035](../plans/PLAN-035-platform-product-landing-and-installed-apps.md) |
 | [SPEC-045](./SPEC-045-cross-layer-bootstrap-and-onboarding-diagnostics.md) | Cross-Layer Bootstrap and Onboarding Diagnostics | Approved | [PLAN-034](../plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md) |
 | [SPEC-044](./SPEC-044-integrate-packaged-setup-with-runtime-bootstrap.md) | Integrate Packaged Setup with Runtime Bootstrap | Approved | [PLAN-033](../plans/PLAN-033-integrate-packaged-setup-with-runtime-bootstrap.md) |
 | [SPEC-043](./SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) | Cats Code MVP Multi-Agent Local-App Workflow | Draft | [PLAN-032](../plans/PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) |
-| [SPEC-042](./SPEC-042-suite-renderer-route-level-chunking-and-lazy-entry.md) | Suite Renderer Route-Level Chunking and Lazy Entry | Draft | TBD |
+| [SPEC-042](./SPEC-042-platform-renderer-route-level-chunking-and-lazy-entry.md) | Platform Renderer Route-Level Chunking and Lazy Entry | Draft | TBD |
 | [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md) | Cats Code v1 Local Builder Loop | Draft | [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md) |
 | [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md) | Cats Work Team Templates and Work Intake | Draft | [PLAN-028](../plans/PLAN-028-cats-work-team-templates-and-work-intake.md) |
 | [SPEC-039](./SPEC-039-cats-chat-v1-priority-items.md) | Cats Chat v1 Priority Items | Draft | [PLAN-027](../plans/PLAN-027-cats-chat-v1-priority-items.md) |
@@ -89,7 +89,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-009](./SPEC-009-public-surface-naming-refresh.md) | Public-Surface Naming Refresh | Draft (Pending Review) | [PLAN-009](../plans/PLAN-009-public-surface-naming-refresh.md) |
 | [SPEC-008](./SPEC-008-restful-product-api-refactor.md) | RESTful Product API Refactor | Draft (Pending Review) | [PLAN-008](../plans/PLAN-008-restful-product-api-refactor.md) |
 | [SPEC-007](./SPEC-007-chat-contextual-cat-entry.md) | Chat-Contextual Cat Entry | Draft (Narrowed by SPEC-027) | [PLAN-007](../plans/PLAN-007-chat-contextual-cat-entry.md) |
-| [SPEC-006](./SPEC-006-cats-core-v1-and-suite-foundation.md) | Cats Core v1 and Suite Foundation | Approved | [PLAN-006](../plans/PLAN-006-cats-core-v1-and-suite-foundation.md) |
+| [SPEC-006](./SPEC-006-cats-core-v1-and-platform-foundation.md) | Cats Core v1 and Platform Foundation | Approved | [PLAN-006](../plans/PLAN-006-cats-core-v1-and-platform-foundation.md) |
 | [SPEC-005](./SPEC-005-company-control-plane-evolution.md) | Company Control Plane Evolution | Draft (Exploratory, Unreviewed) | [PLAN-005](../plans/PLAN-005-company-control-plane-evolution.md) |
 | [SPEC-004](./SPEC-004-runtime-chat-core.md) | Runtime Chat Core | Implemented | [PLAN-004](../plans/PLAN-004-runtime-chat-core.md) |
 | [SPEC-003](./SPEC-003-local-channel-setup-flow.md) | Local Channel Setup Flow | Implemented | [PLAN-003](../plans/PLAN-003-local-channel-setup-flow.md) |

@@ -10,7 +10,7 @@ Accepted
 ## Context
 
 `cats-runtime` is already the accepted runtime boundary for `cats`.
-However, the suite now needs two different ways to use runtime capabilities:
+However, the platform now needs two different ways to use runtime capabilities:
 
 - product services need stable, explicit, app-controlled APIs for health,
   session lifecycle, routing, cancellation, and operational state

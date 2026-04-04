@@ -1,4 +1,4 @@
-# PLAN-006: Cats Core v1 and Suite Foundation
+# PLAN-006: Cats Core v1 and Platform Foundation
 
 Status: Approved
 
@@ -82,7 +82,7 @@ fixtures.
 - [ ] Reuse the same actor, conversation, approval, and archive metadata model.
 - [ ] Keep Work surfaces above the same `cats-runtime` boundary.
 - [ ] Reuse the same Electron-hosted React/TypeScript desktop shell decisions as
-      Chat for suite consistency.
+      Chat for platform consistency.
 
 **Deliverables**: Work launch slice plan aligned to the shared contracts.
 

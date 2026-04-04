@@ -10,7 +10,7 @@
 
 ## Summary
 
-The Cats suite needs a memory architecture that spans both `cats` and
+The Cats platform needs a memory architecture that spans both `cats` and
 `cats-runtime` without confusing provider-native continuity, product transcript
 backup, cross-session Cat memory, and future archive/RAG retrieval.
 
@@ -49,7 +49,7 @@ This layered ownership model now has a narrower implementation follow-on:
 
 ## Goals
 
-- define a suite-wide memory layering model for `cats` and `cats-runtime`
+- define a platform-wide memory layering model for `cats` and `cats-runtime`
 - preserve full chat/session backups independent of any one agent backend
 - let the same Cat keep memory across sessions, channels, and provider changes
 - prepare `Cats Work` for all-session archive search and RAG without coupling
@@ -82,7 +82,7 @@ This layered ownership model now has a narrower implementation follow-on:
 
 ### Functional Requirements
 
-1. The Cats suite shall treat memory as a multi-layer system rather than one
+1. The Cats platform shall treat memory as a multi-layer system rather than one
    transcript store.
 2. `cats` shall own canonical product transcript backup for user-visible and
    transport-visible conversations.

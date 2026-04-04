@@ -18,12 +18,12 @@
 
 | Term | Meaning |
 |------|---------|
-| Cats Inc | The parent product suite. |
-| Cats Chat | The chat-first product surface in the Cats suite. |
-| Cats Work | The work and operations product surface in the Cats suite. |
+| Cats Inc | The parent product platform. |
+| Cats Chat | The chat-first product surface in the Cats platform. |
+| Cats Work | The work and operations product surface in the Cats platform. |
 | Cats Core v1 | The shared product contract layer for identity, actors/resources, permissions, conversations, approvals, owner profile, and archive metadata. |
 | Chat | A topic-centered conversation thread inside `Cats Chat`. Chat is the primary navigation unit, even when one or more Cats participate in it. |
-| Cat | A reusable product-facing identity in the Cats suite. A Cat is not the same thing as a provider choice, and Cats are expected to become one class of generalized reusable entities rather than the only possible participant shape. |
+| Cat | A reusable product-facing identity in the Cats platform. A Cat is not the same thing as a provider choice, and Cats are expected to become one class of generalized reusable entities rather than the only possible participant shape. |
 | Guide Cat | The canonical product and developer term for the optional first helper offered during setup. Guide Cat is a Cat identity that may help across `Chat`, `Work`, and `Code`, but it is not automatically the same thing as `Boss Cat` or the invisible orchestration layer. |
 | Boss Cat | The user-facing product term for the current default lead Cat used for new chats and default public transport entry. The default Boss Cat may begin neutral and minimally personalized before the user customizes it. |
 | Default Boss Cat | The auto-provisioned neutral Boss Cat available before the user renames, personalizes, or replaces it. |
@@ -45,7 +45,7 @@
 | Transport binding | An external bot identity (e.g., Telegram bot) attached to a Cat's private lane (`direct_cat_chat`). Inbound messages from the transport deliver into that private lane, not into a separate channel type or a `Recents` thread. |
 | Spawned room | A normal `Cats Chat` room that a Cat created or continued from a transport-bound private lane so it can appear in `Recents` and hold canonical topic work. |
 | Routing layer | The product-owned system layer that resolves mentions, default targets, wake-before-route behavior, and per-room routing mode before prompts are sent to runtime sessions. |
-| Entity | The broader reusable identity model the suite is moving toward. It is expected to subsume Cats, owner-facing helpers, system-facing specialists, and other named collaborators with prompt, memory, and execution metadata. |
+| Entity | The broader reusable identity model the platform is moving toward. It is expected to subsume Cats, owner-facing helpers, system-facing specialists, and other named collaborators with prompt, memory, and execution metadata. |
 | Participant | One entity's membership inside one conversation context, including role, status, and execution lease. |
 | Lead participant | The default target participant for a room mode when an operator turn does not contain an explicit valid `@mention`. |
 | Conversation topology | The stable shape of a conversation such as direct lane, solo thread, Cat-led thread, or group room. Topology answers "what kind of room is this?" rather than "who should answer the next turn?" |

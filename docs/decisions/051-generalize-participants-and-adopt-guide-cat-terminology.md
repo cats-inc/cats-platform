@@ -31,7 +31,7 @@ This has created two different kinds of confusion:
    - composer ownership
    - Cat identity
 
-At the same time, the suite now wants an optional first helper that can support
+At the same time, the platform now wants an optional first helper that can support
 `Chat`, `Work`, and `Code`, and the user explicitly wants that helper to be
 visible as a Cat while avoiding more internal use of the generic word
 `assistant`.
@@ -40,7 +40,7 @@ visible as a Cat while avoiding more internal use of the generic word
 
 ### 1. `Guide Cat` is the canonical term for the optional first helper
 
-The suite will use `Guide Cat` as the primary product and developer term for
+The platform will use `Guide Cat` as the primary product and developer term for
 the optional helper offered during setup.
 
 Implementation and docs should prefer `Guide Cat` over `assistant` when naming
@@ -48,7 +48,7 @@ this role.
 
 ### 2. `Guide Cat` is not automatically equal to `Boss Cat`
 
-The suite must not assume that a setup-created Guide Cat is inherently:
+The platform must not assume that a setup-created Guide Cat is inherently:
 
 - the Chat `Boss Cat`
 - the only visible public Cat
@@ -91,7 +91,7 @@ Guide Cat runtime sessions should be:
 - closed when idle
 - supported by cached outputs such as starter ideas
 
-The suite should not require an always-on Guide Cat daemon just to render entry
+The platform should not require an always-on Guide Cat daemon just to render entry
 surfaces.
 
 ## Consequences
@@ -99,7 +99,7 @@ surfaces.
 ### Positive
 
 - setup and future implementation can talk about one stable role name
-- the suite can add a first helper without hard-binding it to existing Boss Cat
+- the platform can add a first helper without hard-binding it to existing Boss Cat
   assumptions
 - future non-Cat participants become possible without inventing a second room
   model
@@ -129,7 +129,7 @@ surfaces.
 
 - **Pros**: familiar generic AI wording
 - **Cons**: collides with orchestrator, hidden helper, and future specialist
-  concepts; drifts away from the suite's Cat language
+  concepts; drifts away from the platform's Cat language
 - **Why rejected**: the user explicitly wants one stable Cat-facing term and
   less internal use of `assistant`
 

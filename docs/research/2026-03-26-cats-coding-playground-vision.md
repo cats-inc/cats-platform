@@ -19,7 +19,7 @@ memorable, and PR-friendly:
 
 This note defines the idea that real cats can participate in software ideation
 through a lightweight playful mode, with their choices turned into prompts,
-directions, and generated outputs by the suite.
+directions, and generated outputs by the platform.
 
 ## Core Thesis
 
@@ -184,11 +184,11 @@ That larger vision says:
 
 - users learn the platform inside `Cats`
 - use `Work + Code` to build apps
-- install those apps back into the suite
+- install those apps back into the platform
 
 `Cats Coding Playground` is a playful branch of that same idea:
 
-- the suite can generate app directions from unusual inputs
+- the platform can generate app directions from unusual inputs
 - even a cat's playful choices can become a seed for an installable output
 
 It is not the whole platform story, but it is a striking demonstration of what
@@ -244,7 +244,7 @@ Later versions could connect to:
 
 - `Work` for turning fish selections into structured tasks
 - `Code` preview/deploy pipelines
-- suite install flow for generated apps
+- platform install flow for generated apps
 
 ## Risks
 

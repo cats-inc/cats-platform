@@ -20,7 +20,7 @@ briefs, specs, and roadmap sequencing.
 
 ## Thesis
 
-The Cats suite should be treated as **one shared execution platform with three
+The Cats platform should be treated as **one shared execution platform with three
 different top-level product promises**:
 
 - `Cats Chat` is about **conversations**
@@ -38,7 +38,7 @@ the same primary information architecture.
 
 ## Shared Foundation
 
-The suite now has a reasonably clear shared foundation.
+The platform now has a reasonably clear shared foundation.
 
 ### Shared execution substrate
 
@@ -52,7 +52,7 @@ all three lines:
 - usage metering and rate-limit guardrails
 - executable delivery primitives
 
-This shared runtime lets the suite reuse the hard parts once while letting each
+This shared runtime lets the platform reuse the hard parts once while letting each
 product line expose a different UX.
 
 ### Shared domain model
@@ -71,7 +71,7 @@ single UI metaphor.
 
 ### Shared host, different entry surfaces
 
-I do not think the suite needs three unrelated executables. The more plausible
+I do not think the platform needs three unrelated executables. The more plausible
 shape is:
 
 - one packaged host
@@ -282,7 +282,7 @@ That means Code should emphasize:
 
 ## Strategic Differentiation
 
-If the suite ships correctly, each line has a distinct differentiation story.
+If the platform ships correctly, each line has a distinct differentiation story.
 
 ### Chat differentiation
 
@@ -360,7 +360,7 @@ These are the strongest high-level rules from this analysis.
   families, and the first software-company slice
 - a `Cats Code` product brief that defines the local builder loop, supported
   framework packs, and preview/deploy promises
-- a shared suite navigation brief that decides how Chat, Work, and Code coexist
+- a shared platform navigation brief that decides how Chat, Work, and Code coexist
   inside one packaged shell
 
 ## References

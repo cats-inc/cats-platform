@@ -13,10 +13,10 @@
 `Cats` should stop treating the first optional intelligent helper as a hidden
 setup implementation detail of `Boss Cat` bootstrap.
 
-Immediately after the owner enters their name in the suite setup wizard, the
+Immediately after the owner enters their name in the platform setup wizard, the
 product should offer an optional `Guide Cat`, before starting-product
 selection. `Guide Cat` remains a Cat in product language, but it should be
-modeled as a suite-level reusable helper that can support `Cats Chat`,
+modeled as a platform-level reusable helper that can support `Cats Chat`,
 `Cats Work`, and `Cats Code`.
 
 This setup step should stay lightweight:
@@ -38,7 +38,7 @@ not as another one-off special Cat mode.
 - capture a visible configured Cat identity for the first chosen
   provider/instance/model target
 - keep setup lightweight enough that non-technical users are not scared off
-- let `Guide Cat` support multiple suite products, not only `Cats Chat`
+- let `Guide Cat` support multiple platform products, not only `Cats Chat`
 - establish a product baseline that conversations are about generalized
   participants, while Cats remain one product-facing participant class
 - support starter ideas and empty-state guidance that can be generated instead
@@ -48,7 +48,7 @@ not as another one-off special Cat mode.
 
 - asking for persona, skill profile, memory profile, or advanced behavioral
   settings during setup
-- forcing every owner to create a `Guide Cat` before the suite is usable
+- forcing every owner to create a `Guide Cat` before the platform is usable
 - deciding that `Guide Cat` is automatically the same thing as `Boss Cat`
 - deciding that `Guide Cat` is the only orchestrator or the only runtime-backed
   brain in the system
@@ -62,8 +62,8 @@ not as another one-off special Cat mode.
 - As a first-time owner, I want to choose the runtime target for that Guide Cat
   so I know which model/provider I configured.
 - As an owner, I want setup to stay short and not ask me to design a whole
-  persona before I can use the suite.
-- As an owner, I want the suite to work even if I skip Guide Cat creation.
+  persona before I can use the platform.
+- As an owner, I want the platform to work even if I skip Guide Cat creation.
 - As a product developer, I want one stable term for this helper so naming does
   not drift between `assistant`, `Boss Cat`, `orchestrator`, and other aliases.
 - As a product developer, I want future chat entry surfaces to depend on a
@@ -74,7 +74,7 @@ not as another one-off special Cat mode.
 ### Functional Requirements
 
 1. Immediately after owner-name capture, and before starting-product
-   selection, the suite setup wizard shall offer optional Guide Cat creation.
+   selection, the platform setup wizard shall offer optional Guide Cat creation.
 2. The setup wizard shall use `Guide Cat` as the primary user-facing and
    developer-facing term for this helper.
 3. If the owner opts into Guide Cat creation, setup shall collect only:
@@ -87,20 +87,20 @@ not as another one-off special Cat mode.
 4. Setup shall not require persona, skill-profile, or memory-profile authoring
    for Guide Cat creation.
 5. Setup completion shall succeed whether or not a Guide Cat was created.
-6. The created Guide Cat shall be stored as a suite-level reusable Cat/entity,
+6. The created Guide Cat shall be stored as a platform-level reusable Cat/entity,
    not merely as an ephemeral setup preference.
-7. The suite shall be able to reuse Guide Cat in `Chat`, `Work`, and `Code`
+7. The platform shall be able to reuse Guide Cat in `Chat`, `Work`, and `Code`
    without implying that each product owns a separate first helper.
 8. The product shall not automatically equate `Guide Cat` with `Boss Cat` or
    with the invisible orchestration system layer.
 9. The first migration slice shall replace the setup-time `Boss Cat`
    bootstrap framing with `Guide Cat` onboarding, while keeping `Boss Cat` as
    a distinct Chat role until a later product-mapping decision says otherwise.
-10. The suite may use Guide Cat to generate starter ideas, onboarding guidance,
+10. The platform may use Guide Cat to generate starter ideas, onboarding guidance,
    and product-entry suggestions for surfaces such as `+New chat` and future
    `+Group chat`.
 11. When Guide Cat is unavailable, missing, sleeping, or has no cached output,
-    the suite shall fall back to deterministic static starter suggestions.
+    the platform shall fall back to deterministic static starter suggestions.
 12. Guide Cat-generated entry suggestions shall be cacheable local product
     data; they shall not require a permanently running session.
 13. The first slice shall attempt one initial Guide Cat suggestion generation
@@ -138,7 +138,7 @@ Setup start
     |                        |
     |                        +--> runtime readiness
     |                        +--> Guide Cat name + target
-    |                        +--> persist suite-level Guide Cat
+    |                        +--> persist platform-level Guide Cat
     |                        |
     +------------------------+
     |
@@ -163,7 +163,7 @@ Setup start
 - It is not automatically the same as:
   - `Boss Cat`
   - the invisible orchestration system layer
-  - the only runtime-backed intelligence surface in the suite
+  - the only runtime-backed intelligence surface in the platform
 
 ### Generalized Participants
 
@@ -193,14 +193,14 @@ Starter ideas on entry surfaces should follow this order:
 
 ## Open Questions
 
-- [ ] Should the first delivered slice keep Guide Cat setup suite-wide but only
+- [ ] Should the first delivered slice keep Guide Cat setup platform-wide but only
       expose the first visible Guide Cat consumption surface in `Chat`, or
       should `Work` and `Code` consume it immediately too?
 - [ ] Should a created Guide Cat appear in the Chat cat registry immediately,
       or should that visibility be a later explicit product mapping?
 - [ ] Which empty-state surfaces should consume Guide Cat suggestions first:
-      `+New chat` only, or also the suite landing and future `+Group chat`?
-- [ ] Should Guide Cat remain a suite-level core helper component, or later
+      `+New chat` only, or also the platform landing and future `+Group chat`?
+- [ ] Should Guide Cat remain a platform-level core helper component, or later
       grow into a small first-party product parallel to `Chat`, `Work`, and
       `Code`?
 

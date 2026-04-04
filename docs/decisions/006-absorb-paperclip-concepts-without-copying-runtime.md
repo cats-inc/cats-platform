@@ -11,7 +11,7 @@ Proposed (Exploratory / Not Current Execution Path)
 
 This ADR remains in-tree as exploratory Paperclip research. The currently
 adopted near-term execution path is defined by ADR-007 and ADR-008. Revisit
-this document only if the suite explicitly chooses to resume a larger
+this document only if the platform explicitly chooses to resume a larger
 control-plane expansion.
 
 ## Context

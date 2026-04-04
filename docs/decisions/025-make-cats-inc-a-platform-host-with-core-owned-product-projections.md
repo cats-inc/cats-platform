@@ -1,9 +1,9 @@
-# ADR-025: Make cats a Suite Host with Core-Owned Product Projections
+# ADR-025: Make cats a Platform Host with Core-Owned Product Projections
 
 > Keep `Cats Chat`, `Cats Work`, `Cats Code`, and `Cats Core` inside
 > `cats`, but reverse the current dependency direction so shared core state
 > becomes the source of truth and product surfaces consume projections instead
-> of defining suite-wide schema.
+> of defining platform-wide schema.
 
 ## Status
 
@@ -39,14 +39,14 @@ chat state -> syncCoreStateWithChatState(...) -> Cats Core state
 
 This causes three structural problems.
 
-1. Shared suite state is still defined by the current Chat-state model.
+1. Shared platform state is still defined by the current Chat-state model.
    `Cats Core` is currently derived from chat state rather than acting
    as the source of truth.
 
-2. `Chat`-specific DTOs still look like suite-level contracts.
+2. `Chat`-specific DTOs still look like platform-level contracts.
    Files such as `src/shared/app-shell.ts` describe selected-channel, cats,
    boss-cat, and global-orchestrator state. Those are valid Chat read-model
-   concepts, but they are not neutral suite-level contracts for Work or Code.
+   concepts, but they are not neutral platform-level contracts for Work or Code.
 
 3. The current app shell is still monolithic.
    `src/server.ts` and `src/renderer/App.tsx` still centralize product logic for
@@ -63,9 +63,9 @@ Neither outcome is acceptable.
 
 ## Decision
 
-`cats` will remain the single suite host for `Cats Chat`, `Cats Work`,
+`cats` will remain the single platform host for `Cats Chat`, `Cats Work`,
 `Cats Code`, and `Cats Core`, but the internal code structure will shift from
-`chat-shell-first` to `suite-host + shared-core + product-slice projections`.
+`chat-shell-first` to `platform-host + shared-core + product-slice projections`.
 
 ### 1. `Cats Core` becomes the source of truth
 
@@ -78,12 +78,12 @@ Cats Core state -> Chat projection
 ```
 
 `Chat` may still keep product-local workflow state, but it must no longer act
-as the suite-wide state owner from which `Cats Core` is derived.
+as the platform-wide state owner from which `Cats Core` is derived.
 
 ### 2. `chat/*` is demoted to a Chat product slice
 
 The current `chat` modules are a valid first implementation of Chat state,
-but they are no longer suite-level modules.
+but they are no longer platform-level modules.
 
 They will be treated as `Chat` product logic and moved under a Chat-specific
 surface in the first major refactor slice.
@@ -100,7 +100,7 @@ Instead:
 - cross-product utilities stay under `shared/*` only if they are genuinely
   product-neutral
 
-### 4. `cats` adopts a suite-host skeleton
+### 4. `cats` adopts a platform-host skeleton
 
 The target first-slice code shape is:
 
@@ -160,7 +160,7 @@ This ADR does not move product-line concerns into `cats-runtime`.
 
 - `Cats Work` and `Cats Code` can begin development without inheriting Chat as
   their schema owner.
-- Shared suite concepts stay in one place instead of being repeatedly copied
+- Shared platform concepts stay in one place instead of being repeatedly copied
   into surface-specific models.
 - The main app becomes easier to split into product slices without splitting
   repos or runtime boundaries.
@@ -198,7 +198,7 @@ This ADR does not move product-line concerns into `cats-runtime`.
 - **Pros**: strong isolation; clear ownership
 - **Cons**: premature packaging and toolchain complexity; likely overkill at the
   current maturity of shared contracts
-- **Why rejected**: the suite still benefits from one host repo and one shared
+- **Why rejected**: the platform still benefits from one host repo and one shared
   local app/runtime composition path
 
 ### Alternative 3: Only move directories without reversing dependency direction
@@ -215,7 +215,7 @@ This ADR does not move product-line concerns into `cats-runtime`.
 - **Cons**: pulls product-line concerns into the runtime boundary and conflicts
   with the already accepted split between product intent and runtime execution
 - **Why rejected**: `cats-runtime` should stay the execution boundary, not
-  become the suite host
+  become the platform host
 
 ## References
 

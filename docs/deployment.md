@@ -2,7 +2,7 @@
 
 > Deployment procedures and infrastructure documentation for the current
 > `Cats` product, its `cats-platform` host target, and the planned packaged
-> suite topology.
+> platform topology.
 
 ## Environments
 

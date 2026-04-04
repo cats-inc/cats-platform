@@ -1,11 +1,11 @@
-# PLAN-035: Suite Product Landing and Installed Apps
+# PLAN-035: Platform Product Landing and Installed Apps
 
 Status: In Progress
 
 ## Related Spec
 
-- [SPEC-046](../specs/SPEC-046-suite-product-landing-and-installed-apps.md)
-- [ADR-048](../decisions/048-separate-suite-products-from-installable-apps.md)
+- [SPEC-046](../specs/SPEC-046-platform-product-landing-and-installed-apps.md)
+- [ADR-048](../decisions/048-separate-platform-products-from-installable-apps.md)
 
 ## Overview
 
@@ -18,7 +18,7 @@ The implementation should keep today's strengths:
 - `/` still resolves to the user's selected or last-used product
 - product routes remain owned by their product trees
 
-While adding a clearer suite-host model:
+While adding a clearer platform-host model:
 
 - a host-owned `/lobby` landing with `/products` as a compatibility alias
 - explicit required-product and optional-product inventory
@@ -27,11 +27,11 @@ While adding a clearer suite-host model:
 
 ## Phase 1: Establish Terminology and Host Contracts
 
-- [x] Add host-level terminology notes to the relevant suite docs.
+- [x] Add host-level terminology notes to the relevant platform docs.
 - [x] Introduce explicit product and app descriptor types under a host-owned
       shared contract file.
 - [x] Include install-policy and install-state fields for first-party products.
-- [x] Extend the suite envelope or companion host API shape so the renderer can
+- [x] Extend the platform envelope or companion host API shape so the renderer can
       read product/app inventory without inferring everything from route
       prefixes.
 - [x] Promote the current setup plugin metadata into a more general host
@@ -42,14 +42,14 @@ contracts.
 
 ## Phase 2: Add the Host-Owned Landing Surface
 
-- [x] Add a suite route for `/lobby` and keep `/products` as a compatibility
+- [x] Add a platform route for `/lobby` and keep `/products` as a compatibility
       alias.
 - [x] Build a host-owned landing page that presents:
       - Home and Office product groupings
       - per-product install policy and install-state metadata
       - installed apps
       - host actions and runtime summary
-- [x] Add a clear navigation entry to open the landing from inside the suite.
+- [x] Add a clear navigation entry to open the landing from inside the platform.
 - [x] Keep `/` routing behavior aligned with the existing selected/last-used
       product model.
 - [x] Keep setup-complete navigation aligned with the current product-first
@@ -61,7 +61,7 @@ contracts.
 
 - [x] Introduce host-owned settings sections for at least `general`, `runtime`,
       and `data`.
-- [x] Move or proxy existing suite-global settings out of Chat-owned routing.
+- [x] Move or proxy existing platform-global settings out of Chat-owned routing.
 - [x] Define the canonical route shape for product-owned settings beneath each
       product prefix.
 - [x] Add explicit redirects or compatibility handling so existing settings
@@ -69,7 +69,7 @@ contracts.
 - [x] Preserve legacy deep links such as `/settings/cats` by redirecting them
       to the canonical product-owned path once that path exists.
 
-**Deliverables**: suite settings and product settings follow distinct ownership
+**Deliverables**: platform settings and product settings follow distinct ownership
 boundaries.
 
 ## Phase 4: Integrate Setup and Product Entry
@@ -101,19 +101,19 @@ distribution system.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/shared/suite-contract.ts` | Modify | Extend host envelope and descriptor contracts |
+| `src/shared/platform-contract.ts` | Modify | Extend host envelope and descriptor contracts |
 | `src/app/renderer/App.tsx` | Modify | Register host-owned landing and settings routes |
 | `src/app/renderer/setup/plugins.tsx` | Modify | Promote setup-only metadata into host registration data |
 | `src/app/renderer/setup/types.ts` | Modify | Align setup registration types with host descriptors |
 | `src/app/renderer/*` | Modify/Create | Add host-owned landing and settings surfaces |
-| `src/products/chat/renderer/AppRoutes.tsx` | Modify | Reduce suite-global settings ownership inside Chat routes |
-| `docs/decisions/048-separate-suite-products-from-installable-apps.md` | Create | Decision record for terminology and host model |
-| `docs/specs/SPEC-046-suite-product-landing-and-installed-apps.md` | Create | Feature spec for landing and inventory |
-| `docs/plans/PLAN-035-suite-product-landing-and-installed-apps.md` | Create | Implementation plan |
+| `src/products/chat/renderer/AppRoutes.tsx` | Modify | Reduce platform-global settings ownership inside Chat routes |
+| `docs/decisions/048-separate-platform-products-from-installable-apps.md` | Create | Decision record for terminology and host model |
+| `docs/specs/SPEC-046-platform-product-landing-and-installed-apps.md` | Create | Feature spec for landing and inventory |
+| `docs/plans/PLAN-035-platform-product-landing-and-installed-apps.md` | Create | Implementation plan |
 
 ## Technical Decisions
 
-- Use `product` for suite-owned first-party top-level experiences.
+- Use `product` for platform-owned first-party top-level experiences.
 - Use `app` for installable and publishable units.
 - Treat install policy (`required` vs `optional`) as separate from both
   `product` and `app`.
@@ -127,7 +127,7 @@ distribution system.
 
 - **Unit Tests**: descriptor normalization, route helpers, and host envelope
   shaping
-- **Integration Tests**: suite host routing for `/`, `/setup`, `/products`,
+- **Integration Tests**: platform host routing for `/`, `/setup`, `/products`,
   `/lobby`, `/settings/*`, and product prefixes
 - **Manual Testing**:
   1. Fresh setup still opens the wizard.
@@ -152,8 +152,8 @@ distribution system.
 | Date | Update |
 |------|--------|
 | 2026-03-31 | Plan created |
-| 2026-03-31 | Added shared suite product registry, exposed `products` in the suite envelope, and reused the same descriptors across setup and Lobby. |
-| 2026-03-31 | Moved suite settings to host-owned `/settings/*`, preserved `/settings/cats` compatibility via `/chat/settings/cats`, and surfaced install-policy metadata in setup cards. |
+| 2026-03-31 | Added shared platform product registry, exposed `products` in the platform envelope, and reused the same descriptors across setup and Lobby. |
+| 2026-03-31 | Moved platform settings to host-owned `/settings/*`, preserved `/settings/cats` compatibility via `/chat/settings/cats`, and surfaced install-policy metadata in setup cards. |
 
 ---
 

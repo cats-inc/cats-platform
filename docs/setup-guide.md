@@ -195,7 +195,7 @@ For packaged bootstrap or onboarding failures, collect these files first:
 - `%APPDATA%\\Cats\\desktop-host\\state.json`
 - `%APPDATA%\\Cats\\desktop-host\\logs\\cats-runtime.log`
 - `%APPDATA%\\Cats\\desktop-host\\logs\\cats.log`
-- `%APPDATA%\\Cats\\config\\suite-onboarding-history.json`
+- `%APPDATA%\\Cats\\config\\platform-onboarding-history.json`
   - this file may be absent if `cats` never reached the product-owned setup flow
 
 The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
@@ -467,7 +467,7 @@ If startup still fails after install, capture these artifacts before retrying:
 - `%APPDATA%\\Cats\\desktop-host\\state.json`
 - `%APPDATA%\\Cats\\desktop-host\\logs\\cats-runtime.log`
 - `%APPDATA%\\Cats\\desktop-host\\logs\\cats.log`
-- `%APPDATA%\\Cats\\config\\suite-onboarding-history.json`
+- `%APPDATA%\\Cats\\config\\platform-onboarding-history.json`
 
 Use `-SkipLaunch` if you only want file/layout verification.
 

@@ -318,7 +318,7 @@ These are real Paperclip features, but they should not drive the next
 - plugin marketplace / ClipHub-style packaging
 - full autonomous heartbeat scheduler as a runtime centerpiece
 
-Those belong more naturally to later `Cats Work` or broader suite-control-plane
+Those belong more naturally to later `Cats Work` or broader platform-control-plane
 scope.
 
 ## Secondary Gaps Worth Revisiting Later

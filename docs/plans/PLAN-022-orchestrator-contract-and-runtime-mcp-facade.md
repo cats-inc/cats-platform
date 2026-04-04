@@ -66,4 +66,4 @@ The follow-on execution-loop and recovery slice now continues in
 - richer `mcpProfile -> toolIntent` registries once more product profiles land
 - session-control MCP tools once downstream orchestrators need mutation paths
 - possible future export of the orchestrator plan/dispatch contract to a shared
-  suite package when another product surface consumes it
+  platform package when another product surface consumes it

@@ -1,6 +1,6 @@
 # Product Integration Guide
 
-> How `Cats Chat`, `Cats Work`, and `Cats Code` plug into the suite host
+> How `Cats Chat`, `Cats Work`, and `Cats Code` plug into the platform host
 > without colliding in shared wiring or contracts.
 
 ## Purpose
@@ -11,7 +11,7 @@ parallel inside `cats`.
 It exists to keep three things stable:
 
 1. shared `Cats Core v1` contracts
-2. suite-host wiring ownership
+2. platform-host wiring ownership
 3. product-local implementation boundaries
 
 Use this guide together with:
@@ -46,7 +46,7 @@ Current delegates:
 - `src/products/work/api/index.ts` -> `routeWorkApi(context)`
 - `src/products/code/api/index.ts` -> `routeCodeApi(context)`
 
-The suite host only dispatches into product delegates from:
+The platform host only dispatches into product delegates from:
 
 - `src/app/server/requestRouter.ts`
 
@@ -55,7 +55,7 @@ Rules:
 - Product teams implement routes inside their own product API tree.
 - Product teams should not expand `requestRouter.ts` directly for feature work.
 - New product routes should be exposed by the product delegate first, then wired
-  into the suite host by the integration owner.
+  into the platform host by the integration owner.
 
 ## Server Dependency Slices
 
@@ -84,7 +84,7 @@ createServer({
 Slice ownership:
 
 - `shared`
-  - suite-owned cross-product dependencies such as config, runtime client,
+  - platform-owned cross-product dependencies such as config, runtime client,
     startup state, and shared core store access
 - `chat`
   - chat-only stores, transport seams, companion/memory surfaces, and
@@ -98,7 +98,7 @@ Rules:
 
 - New product-specific dependencies must land in the owning slice.
 - Do not keep extending Chat-centric fields on the shared server contract.
-- The suite host composes slices; products consume their own slice only.
+- The platform host composes slices; products consume their own slice only.
 
 ## Renderer and Navigation Ownership
 
@@ -108,7 +108,7 @@ Product renderer code belongs under:
 - `src/products/work/**`
 - `src/products/code/**`
 
-Suite-level renderer composition belongs under:
+Platform-level renderer composition belongs under:
 
 - `src/app/**`
 - `src/design/**`
@@ -118,12 +118,12 @@ Rules:
 - Shared design primitives may live in `src/design/`.
 - Do not upstream Chat-specific behavior into shared UI just because another
   product might need something similar later.
-- New navigation or suite-shell registration should converge through the
+- New navigation or platform-shell registration should converge through the
   integration owner.
 
 ## Product Onboarding Checklist
 
-Before a product team adds a new suite capability, confirm:
+Before a product team adds a new platform capability, confirm:
 
 1. The change can stay inside `src/products/<product>/`.
 2. The route is owned by that product's API delegate.
@@ -135,7 +135,7 @@ Before a product team adds a new suite capability, confirm:
 
 ## Integration Owner Checklist
 
-When converging product work into the suite host:
+When converging product work into the platform host:
 
 1. Wire product delegates in `src/app/server/requestRouter.ts`.
 2. Keep `src/app/server/index.ts` as a thin composition root.

@@ -1,11 +1,11 @@
 # Cats
 
-> The flagship suite app from Cats Inc.
+> The flagship platform app from Cats Inc.
 
 ## Overview
 
-`Cats` is the flagship product brand for the suite. This repo currently hosts
-the technical suite host targeted for public packaging as
+`Cats` is the flagship product brand for the platform. This repo currently hosts
+the technical platform host targeted for public packaging as
 `@cats-inc/cats-platform` inside the local monorepo folder `cats-platform/`.
 It talks to `cats-runtime` as its execution boundary and keeps the product
 model in this repo rather than inheriting it from earlier prototypes.
@@ -226,7 +226,7 @@ See [docs/](./docs/) for project details:
 ```text
 cats-platform/
 ├── electron/      # Electron desktop host bootstrap and supervision
-├── src/app/       # Suite-level server and renderer assembly
+├── src/app/       # Platform-level server and renderer assembly
 ├── src/products/  # Product slices such as Cats Chat
 ├── src/shared/    # Types shared by server and renderer
 ├── tests/         # Node built-in test runner coverage

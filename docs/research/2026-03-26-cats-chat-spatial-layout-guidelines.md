@@ -309,16 +309,16 @@ This dashboard should answer:
 This is the minimal operator view needed to keep bounded Chat orchestration
 legible.
 
-#### 3. Suite-wide global task dashboard
+#### 3. Platform-wide global task dashboard
 
-The suite should also have a higher-level task dashboard for:
+The platform should also have a higher-level task dashboard for:
 
 - all Chat tasks
 - all Work tasks
 - all Code tasks
 - cross-product filtering and operator-level inspection
 
-This is not a Chat-local surface. It is the suite-wide control plane.
+This is not a Chat-local surface. It is the platform-wide control plane.
 
 ### Why Chat still needs its own dashboard
 
@@ -334,7 +334,7 @@ So the correct model is:
 
 - thread-local task slice for local context
 - Chat-wide lightweight dashboard for Chat-level orchestration awareness
-- suite-wide global dashboard for full multi-product oversight
+- platform-wide global dashboard for full multi-product oversight
 
 ### Scope guard
 

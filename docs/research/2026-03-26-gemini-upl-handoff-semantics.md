@@ -6,7 +6,7 @@ Status: Proposal
 
 ## Overview
 
-The Cats Suite's value proposition is "One Man Digital Company." This vision requires a seamless handoff between specialized roles. A "PM Cat" in `Cats Work` may plan a feature, but a "Dev Cat" in `Cats Code` must execute the implementation.
+The Cats Platform's value proposition is "One Man Digital Company." This vision requires a seamless handoff between specialized roles. A "PM Cat" in `Cats Work` may plan a feature, but a "Dev Cat" in `Cats Code` must execute the implementation.
 
 This document research the use of `CoreTaskRecord` (from the Paperclip-inspired task system) as a **Unified Planning Language (UPL)** to bridge different product-level strategies.
 
@@ -37,5 +37,5 @@ Instead of product-specific JSON structures, we treat the `CoreTaskRecord` as th
 ## Implementation Path
 
 1. **UPL Schema**: Enhance `cats-platform/src/shared/tasks.ts` to include `strategy_metadata` and `affinity` fields.
-2. **Handoff UI**: Build "Product Transfer" indicators in the Suite-level task dashboard.
+2. **Handoff UI**: Build "Product Transfer" indicators in the Platform-level task dashboard.
 3. **Runtime Event Bus**: Ensure `cats-runtime` emits standardized `task_status_changed` events that any active strategy can consume.

@@ -1,10 +1,10 @@
-# PLAN-031: Rename the Main Suite Host from cats to cats-platform
+# PLAN-031: Rename the Main Platform Host from cats to cats-platform
 
 Status: In Progress
 
 ## Related Decision
 
-[ADR-045](../decisions/045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md)
+[ADR-045](../decisions/045-use-cats-platform-as-the-main-platform-host-under-cats-brand.md)
 
 ## Related Spec
 
@@ -24,11 +24,11 @@ changes should be captured in targeted specs at that time.
 ## Scope
 
 Implement the rename required by
-[ADR-045](../decisions/045-use-cats-platform-as-the-main-suite-host-under-cats-brand.md).
+[ADR-045](../decisions/045-use-cats-platform-as-the-main-platform-host-under-cats-brand.md).
 
 This plan covers:
 
-- renaming the main suite host identity from `cats` to `cats-platform`
+- renaming the main platform host identity from `cats` to `cats-platform`
 - preserving `Cats` as the flagship product brand
 - preserving `cats-runtime` as the runtime boundary
 - assigning `cats-can` to the one-shot install/bootstrap experience
@@ -43,7 +43,7 @@ This plan does not cover:
   accepted
 - rewriting every internal code symbol that still contains `cats`
 - reworking unrelated architecture slices from
-  [PLAN-017](./PLAN-017-suite-host-refactor-for-chat-work-code-and-core.md) or
+  [PLAN-017](./PLAN-017-platform-host-refactor-for-chat-work-code-and-core.md) or
   later product plans
 
 ## Hard Constraints
@@ -63,8 +63,8 @@ This plan does not cover:
 | Umbrella brand | `Cats Inc` |
 | GitHub owner / npm scope | `cats-inc` |
 | Flagship product brand | `Cats` |
-| Main suite host repo target | `cats-platform` |
-| Main suite host package target | `@cats-inc/cats-platform` |
+| Main platform host repo target | `cats-platform` |
+| Main platform host package target | `@cats-inc/cats-platform` |
 | Persistent host executable | `cats-platform` |
 | Runtime repo/package | `cats-runtime` |
 | Installer package | `cats-can` |
@@ -73,7 +73,7 @@ This plan does not cover:
 ## Relationship to Earlier Rename Work
 
 This plan supersedes
-[PLAN-018](./PLAN-018-rename-the-main-suite-from-cats-inc-to-cats.md).
+[PLAN-018](./PLAN-018-rename-the-main-platform-from-cats-inc-to-cats.md).
 
 Work completed during the earlier `cats-inc` -> `cats` rename is still useful:
 
@@ -169,7 +169,7 @@ drift.
 | `package.json` | Update later | Move the host package identity off bare `cats` |
 | `README.md` | Update | Clarify brand vs host vs runtime vs installer |
 | `docs/api.md` | Update | Public metadata and host naming must distinguish product and host |
-| `docs/architecture.md` | Update | Suite-host naming and repo targets need the new contract |
+| `docs/architecture.md` | Update | Platform-host naming and repo targets need the new contract |
 | `docs/deployment.md` | Update | Packaging and installer guidance must include `cats-can` and `cats-platform` |
 | `docs/setup-guide.md` | Update | Quick-start paths and folder names need the new host target |
 | `docs/services.md` | Update | Product-facing identifiers must reflect the host rename where appropriate |
@@ -215,7 +215,7 @@ These items are expected to remain during or after the first rename slice:
 Use this when delegating implementation:
 
 > Implement ADR-045 / PLAN-031. Keep `Cats` as the flagship product brand,
-> rename the main suite host from `cats` to `cats-platform`, preserve
+> rename the main platform host from `cats` to `cats-platform`, preserve
 > `cats-runtime`, reserve `cats-can` for install/bootstrap flows, and migrate
 > docs/package/public metadata in a controlled way with explicit historical and
 > compatibility notes.

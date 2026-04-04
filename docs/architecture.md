@@ -25,7 +25,7 @@ Boss-Cat-first assumptions.
                               ▼
 ┌────────────────────────────────────────────────────────────┐
 │                cats-platform product server                │
-│  product APIs + suite orchestration + shared app services  │
+│  product APIs + platform orchestration + shared app services  │
 └──────────────┬───────────────────────────────┬─────────────┘
                │                               │
                │ shared domain                  │ runtime access
@@ -50,9 +50,9 @@ individual workers.
 
 ## Components
 
-## Current Suite-Host Code Layout
+## Current Platform-Host Code Layout
 
-The current first-slice code layout now follows the suite-host split accepted
+The current first-slice code layout now follows the platform-host split accepted
 in ADR-025:
 
 ```text
@@ -72,7 +72,7 @@ src/
 Current ownership:
 
 - `src/app/server/*` owns top-level HTTP composition
-- `src/app/renderer/*` owns top-level suite routing
+- `src/app/renderer/*` owns top-level platform routing
 - `src/core/*` owns shared Cats Core contracts and persistence seams
 - `src/products/chat/*` owns Chat-specific state, routing, and renderer
   behavior
@@ -199,7 +199,7 @@ Cat/orchestrator infrastructure.
 
 ### Guide Cat and Participant Generalization
 
-The suite now has an explicit architectural direction for two adjacent but
+The platform now has an explicit architectural direction for two adjacent but
 separate concepts:
 
 - `Guide Cat`: the optional first helper created during setup
@@ -246,14 +246,14 @@ Guide Cat should also use this runtime boundary through an event-driven leased
 session lifecycle:
 
 - no always-on Guide Cat daemon is required
-- the suite may wake Guide Cat on demand for entry suggestions or scoped help
-- the suite may reuse a warm Guide Cat session briefly
+- the platform may wake Guide Cat on demand for entry suggestions or scoped help
+- the platform may reuse a warm Guide Cat session briefly
 - Guide Cat output such as starter ideas should be cacheable local product data
   so empty states do not depend on a live session
 
 ### HTTP Server
 
-- **Purpose**: Publish the product API, host shared suite services, and serve
+- **Purpose**: Publish the product API, host shared platform services, and serve
   built static assets
 - **Technology**: Native `node:http`
 - **Responsibilities**: Serve `/health`, `/api/app-shell`, shared-core product
@@ -394,7 +394,7 @@ service.
 ### Chat Shell Model
 
 - **Purpose**: Describe the current product contract shared by server and
-  renderer while a stronger suite-wide contract is designed
+  renderer while a stronger platform-wide contract is designed
 - **Technology**: Plain TypeScript data structures
 - **Responsibilities**: Expose chat state, cat registry, cat assignment, message,
   session, capability, room-routing resolution, and wake-request state
@@ -421,7 +421,7 @@ rather than to any one provider's native thread model. See
 and
 [ADR-005](./decisions/005-use-chat-cat-registry-and-channel-assignments.md).
 
-Under the accepted suite direction, this existing cat model is expected to
+Under the accepted platform direction, this existing cat model is expected to
 evolve into the broader `Cats Core v1` actor/resource model rather than being
 discarded outright.
 
@@ -476,17 +476,17 @@ enabling deep links in built mode.
 
 ## Current Compatibility Seams
 
-The suite-host refactor is intentionally incremental. These seams are still
+The platform-host refactor is intentionally incremental. These seams are still
 temporary and should not be treated as final ownership boundaries:
 
 - `src/server.ts` is a shim that re-exports the real app-level assembler from
   `src/app/server/index.ts`
 - `src/renderer/App.tsx` and `src/renderer/main.tsx` are shims that re-export
-  the real suite renderer entry from `src/app/renderer/*`
+  the real platform renderer entry from `src/app/renderer/*`
 - `src/chat/*` is still a compatibility shim over
   `src/products/chat/state/*`
 - `src/shared/app-shell.ts` is now a compatibility shim that re-exports
-  `src/shared/suite-contract.ts` and `src/products/chat/api/contracts.ts`
+  `src/shared/platform-contract.ts` and `src/products/chat/api/contracts.ts`
 - `src/products/chat/api/*` now owns Chat setup, legacy compatibility, and
   canonical/public Chat HTTP contracts, while `src/app/server/index.ts` stays
   assembly-only
@@ -647,14 +647,14 @@ intentionally deferred:
 - richer `Cats Work` project/work-item and team-operating-model surfaces above
   the shared core
 - any limited mobile companion scope, which is intentionally secondary to the
-  desktop suite
+  desktop platform
 
 ## Technology Stack
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
 | Renderer | React + Vite | Current Chat shell and future Chat/Work product UIs |
-| Product app | Node.js + TypeScript | Product-facing backend shell and shared suite services |
+| Product app | Node.js + TypeScript | Product-facing backend shell and shared platform services |
 | Shared contracts | TypeScript modules today | `Cats Core v1` actors, channels, approvals, owner profile, archive metadata |
 | Runtime boundary | `cats-runtime` | Direct runtime APIs plus planned MCP facade |
 | Testing | `node:test` | Lightweight smoke and integration tests |

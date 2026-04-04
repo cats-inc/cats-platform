@@ -24,11 +24,11 @@ models, permissions, and orchestration semantics before either product is
 stable.
 
 At the same time, the team does not want to overbuild a large "core platform"
-before the first suite release.
+before the first platform release.
 
 ## Decision
 
-The suite will define a minimal shared `Cats Core v1` layer now.
+The platform will define a minimal shared `Cats Core v1` layer now.
 
 `Cats Core v1` is the shared product contract for:
 
@@ -63,7 +63,7 @@ Additional rules:
   diverges.
 - Owner profile, approvals, bot bindings, and archive metadata get a single
   product-owned home.
-- The suite can launch incrementally without committing to a heavyweight core
+- The platform can launch incrementally without committing to a heavyweight core
   service too early.
 
 ### Negative
@@ -88,7 +88,7 @@ Additional rules:
 
 - **Pros**: Least upfront planning work.
 - **Cons**: Chat and Work likely diverge immediately under parallel delivery.
-- **Why rejected**: The suite timing is too tight for schema drift.
+- **Why rejected**: The platform timing is too tight for schema drift.
 
 ### Alternative 2: Build a large standalone Cats Core service immediately
 
@@ -102,15 +102,15 @@ Additional rules:
 - **Pros**: Maximum local speed for each team.
 - **Cons**: Guarantees duplication and painful reconciliation later.
 - **Why rejected**: Shared actors, approvals, owner memory, and transport
-  bindings are core suite concepts.
+  bindings are core platform concepts.
 
 ## References
 
 - [Architecture](../architecture.md)
 - [Requirements](../requirements.md)
 - [ROADMAP](../../ROADMAP.md)
-- [SPEC-006](../specs/SPEC-006-cats-core-v1-and-suite-foundation.md)
-- [PLAN-006](../plans/PLAN-006-cats-core-v1-and-suite-foundation.md)
+- [SPEC-006](../specs/SPEC-006-cats-core-v1-and-platform-foundation.md)
+- [PLAN-006](../plans/PLAN-006-cats-core-v1-and-platform-foundation.md)
 
 ---
 

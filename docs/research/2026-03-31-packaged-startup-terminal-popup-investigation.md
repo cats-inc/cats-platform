@@ -18,7 +18,7 @@ Source:
   - `%APPDATA%\Cats\desktop-host\state.json`
   - `%APPDATA%\Cats\desktop-host\logs\cats-runtime.log`
   - `%APPDATA%\Cats\config\chat-state.local.json`
-  - `%APPDATA%\Cats\config\suite-onboarding-history.json`
+  - `%APPDATA%\Cats\config\platform-onboarding-history.json`
 
 ## Problem Statement
 
@@ -69,7 +69,7 @@ probe local CLIs.
 The installed machine had these persisted product-owned files:
 
 - `%APPDATA%\Cats\config\chat-state.local.json`
-- `%APPDATA%\Cats\config\suite-onboarding-history.json`
+- `%APPDATA%\Cats\config\platform-onboarding-history.json`
 
 Those files already showed setup completion, including a real
 `setupCompleteAt` value plus a `setup_completed` onboarding event.
@@ -147,7 +147,7 @@ all before the user simply reached `Cats Chat`.
 from:
 
 - `chat-state.local.json`
-- `suite-onboarding-history.json`
+- `platform-onboarding-history.json`
 
 This avoids trusting `desktop-host/state.json` as the only source of truth for
 "has setup already completed?".
@@ -227,7 +227,7 @@ the desktop host path.
 After applying the fix and packaging a fresh local Windows build:
 
 - `npm run build:host` passed
-- the targeted regression test suite passed
+- the targeted regression checks passed
 - `npm run desktop:package:windows` succeeded
 - launching the new `release/win-unpacked/Cats.exe` under process watch for
   22 seconds produced:

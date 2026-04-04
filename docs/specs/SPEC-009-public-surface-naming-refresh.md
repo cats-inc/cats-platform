@@ -46,7 +46,7 @@ when it removes product confusion without destabilizing the app.
 
 Reasoning:
 
-- `Cat / Cats` aligns with `Cats Chat`, `cats`, and the broader suite brand
+- `Cat / Cats` aligns with `Cats Chat`, `cats`, and the broader platform brand
 - `Paw / Paws` reads more like a body-part metaphor than a reusable actor or
   teammate resource
 

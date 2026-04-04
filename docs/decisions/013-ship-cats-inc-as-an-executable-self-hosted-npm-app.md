@@ -11,7 +11,7 @@ Proposed
 
 ## Context
 
-`Cats` is the flagship suite brand, and the current local host workspace now
+`Cats` is the flagship platform brand, and the current local host workspace now
 lives in `cats-platform/`. Under ADR-045, the public host package target is now
 `@cats-inc/cats-platform`, while the one-shot bootstrap/install entrypoint is
 reserved as `cats-can`. The host package already behaves more like an

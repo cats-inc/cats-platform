@@ -15,10 +15,10 @@ Proposed
 
 ## Context
 
-[ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md)
+[ADR-025](./025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md)
 established the target direction: `Cats Core` becomes the source of truth,
 and product surfaces (Chat, Work, Code) consume projections. The directory
-layout was adjusted accordingly, and `SuiteApp` in
+layout was adjusted accordingly, and `PlatformApp` in
 `src/app/renderer/App.tsx` already routes to per-product React subtrees.
 
 However, the **internal dependency graph and file decomposition** were never
@@ -46,7 +46,7 @@ duplicate platform code. Neither is acceptable.
 
 Additionally, `shared/app-shell.ts` re-exports 73 type names from
 `products/chat/api/contracts.ts`, giving Chat-specific DTOs the appearance
-of suite-level contracts. `platform/orchestration/execution.ts` and
+of platform-level contracts. `platform/orchestration/execution.ts` and
 `platform/orchestration/toolIntent.ts` both import from this re-export
 barrel, perpetuating the illusion that Chat types are shared types.
 
@@ -69,7 +69,7 @@ core/model, platform/*) and create parallel oversized files per product.
 ### Issue 3: Design tokens locked inside Chat
 
 All CSS custom properties (`:root` variables for colors, typography, spacing,
-shadows) live in `products/chat/renderer/styles.css`. The suite-level
+shadows) live in `products/chat/renderer/styles.css`. The platform-level
 `renderer/styles.css` is a single line:
 
 ```css
@@ -153,7 +153,7 @@ The specific interfaces to extract:
 ### 2. Retire `shared/app-shell.ts` as a re-export barrel
 
 `shared/app-shell.ts` currently re-exports 73 Chat-specific types, giving
-them false suite-level status. This file will be removed.
+them false platform-level status. This file will be removed.
 
 - Consumers inside `products/chat/` will import directly from
   `products/chat/api/contracts.ts`
@@ -379,7 +379,7 @@ architectural safety net for subsequent Work and Code development.
 ### 6. Product switcher preparation
 
 The sidebar dropdown product switcher requires that the sidebar frame
-(logo area, user avatar, dropdown trigger) is owned by the suite shell,
+(logo area, user avatar, dropdown trigger) is owned by the platform shell,
 not by any individual product.
 
 The current `ChatApp.tsx` owns the entire sidebar including the shell chrome.
@@ -387,9 +387,9 @@ After decomposition (step 3d), the sidebar frame moves to `app/renderer/`:
 
 ```
 app/renderer/
-  SuiteApp.tsx            — route switching (already exists)
-  SuiteShell.tsx          — sidebar frame: logo, product switcher, user avatar
-  SuiteSidebar.tsx        — sidebar slot that renders per-product sidebar content
+  PlatformApp.tsx            — route switching (already exists)
+  PlatformShell.tsx          — sidebar frame: logo, product switcher, user avatar
+  PlatformSidebar.tsx        — sidebar slot that renders per-product sidebar content
 
 products/chat/renderer/
   ChatSidebar.tsx         — chat-specific sidebar content (channel list, cat list)
@@ -400,7 +400,7 @@ products/work/renderer/
   WorkCanvas.tsx          — work main content
 ```
 
-Each product exposes a `Sidebar` and a `Canvas` component. `SuiteShell`
+Each product exposes a `Sidebar` and a `Canvas` component. `PlatformShell`
 renders the shared chrome and delegates the sidebar body and main content
 to the active product's components.
 
@@ -416,7 +416,7 @@ to the active product's components.
   product surface automatically inherits the correct visual identity
 - The refactor strengthens the testing baseline instead of pretending the repo
   starts from zero
-- The suite shell chrome (sidebar frame, product switcher) is owned at the
+- The platform shell chrome (sidebar frame, product switcher) is owned at the
   correct level, not inside Chat
 
 ### Negative
@@ -437,7 +437,7 @@ to the active product's components.
 - This ADR does not require changes to `cats-runtime`
 - This ADR does not require Work or Code to ship — it prepares the
   ground for them
-- Existing `SuiteApp` route structure is preserved
+- Existing `PlatformApp` route structure is preserved
 
 ## Alternatives Considered
 
@@ -467,7 +467,7 @@ to the active product's components.
 - **Pros**: strong compile-time isolation; independent versioning
 - **Cons**: premature packaging complexity; shared state access becomes
   cross-package imports; toolchain overhead (workspaces, build ordering)
-- **Why rejected**: same reasoning as ADR-025 Alternative 2 — the suite
+- **Why rejected**: same reasoning as ADR-025 Alternative 2 — the platform
   benefits from one host repo and one shared composition path at current
   maturity
 
@@ -482,7 +482,7 @@ to the active product's components.
 
 ## References
 
-- [ADR-025](./025-make-cats-inc-a-suite-host-with-core-owned-product-projections.md) — suite host structure
+- [ADR-025](./025-make-cats-inc-a-platform-host-with-core-owned-product-projections.md) — platform host structure
 - [ADR-010](./010-separate-read-model-app-shell-from-restful-resource-apis.md) — API surface separation
 - [ADR-007](./007-establish-cats-core-v1-for-chat-and-work.md) — Cats Core as shared domain
 - [PLAN-024](../plans/PLAN-024-platform-dependency-inversion-and-design-extraction.md) — implementation plan

@@ -1,4 +1,4 @@
-# SPEC-006: Cats Core v1 and Suite Foundation
+# SPEC-006: Cats Core v1 and Platform Foundation
 
 Status: Approved
 
@@ -21,7 +21,7 @@ archive metadata.
 
 ### Functional Requirements
 
-- The suite must define shared records for identity, actors/resources,
+- The platform must define shared records for identity, actors/resources,
   permissions, conversations, bot bindings, tasks/runs, approvals, owner
   profile, and archive metadata.
 - `Cats Chat` must use those shared records rather than treating channel or cat
@@ -32,9 +32,9 @@ archive metadata.
   APIs for operational control.
 - Orchestrator-style agents must have a future MCP tool path to `cats-runtime`
   that does not bypass product-owned permissions or approval state.
-- The suite must support one external orchestrator bot binding per public
+- The platform must support one external orchestrator bot binding per public
   transport identity.
-- The suite must support escalation, approval, and takeover state as
+- The platform must support escalation, approval, and takeover state as
   first-class product data.
 - Operational search must stay product-owned; archive/RAG remains a downstream
   pipeline rather than the live source of truth.
@@ -43,7 +43,7 @@ archive metadata.
 
 - `Cats Core v1` should remain small enough for fast parallel adoption.
 - The migration should preserve current chat-shell behavior where practical.
-- The suite should keep the full desktop surfaces on one Electron-hosted
+- The platform should keep the full desktop surfaces on one Electron-hosted
   React/TypeScript path while the shared contracts are still settling.
 - Mobile, if added, should begin as companion scope rather than a second full
   primary shell.
@@ -53,7 +53,7 @@ archive metadata.
 ## Out of Scope
 
 - Replacing `cats-runtime`
-- Building a full standalone `Cats Core` platform before the first suite launch
+- Building a full standalone `Cats Core` platform before the first platform launch
 - Shipping mobile-specific shells in this planning slice
 - Turning exploratory Paperclip control-plane notes into the active execution
   plan
@@ -62,7 +62,7 @@ archive metadata.
 
 - Accepted ADRs define `Cats Core v1` and the runtime API plus MCP split.
 - Roadmap, progress, requirements, and architecture all describe the same
-  shared suite direction.
+  shared platform direction.
 - Chat and Work teams can identify which shared entities they must reuse.
 - The first implementation plan can be broken down without reopening the
   contract-level decisions.
