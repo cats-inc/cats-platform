@@ -321,6 +321,7 @@ in `environment-bootstrap` for non-wizard operational use:
 .\scripts\windows\Install-WSLCLITools.ps1 -CheckOnly -Json
 .\scripts\windows\Install-WSLCLITools.ps1 -Apply -Distro Ubuntu
 .\scripts\windows\Install-DockerCLITools.ps1 -CheckOnly -Container cats-cli-test -Json
+.\scripts\windows\Check-CLITools.ps1 -IncludeWsl -IncludeDocker -DockerContainer cats-cli-test -Json
 .\scripts\windows\Install-DockerCLITools.ps1 -Upgrade -Container cats-cli-test
 .\scripts\windows\Upgrade-CLITools.ps1 -Distro Ubuntu -DockerContainer cats-cli-test
 ```
@@ -329,6 +330,7 @@ Coverage in this slice:
 
 - WSL-target install and upgrade for all 12 CLI providers
 - Docker-container install and upgrade for all 12 CLI providers
+- aggregate host/WSL/Docker detection for the same provider baseline
 - Windows host bulk-upgrade orchestration across native, WSL, and Docker paths
 
 These helpers are intentionally repo-owned script surfaces only. They are not

@@ -243,12 +243,14 @@ remaining non-wizard provider-install surfaces that previously lived only in
 
 - `scripts/windows/Install-WSLCLITools.ps1`
 - `scripts/windows/Install-DockerCLITools.ps1`
+- `scripts/windows/Check-CLITools.ps1`
 - `scripts/windows/Upgrade-CLITools.ps1`
 
 These helpers cover:
 
 - the 12-provider WSL install/upgrade/check surface
 - the 12-provider Docker-container install/upgrade/check surface
+- an aggregate Windows diagnostic surface across host, WSL, and Docker paths
 - one-shot Windows host + WSL + Docker bulk-upgrade orchestration
 
 Representative usage:
@@ -257,6 +259,7 @@ Representative usage:
 .\scripts\windows\Install-WSLCLITools.ps1 -CheckOnly -Json
 .\scripts\windows\Install-WSLCLITools.ps1 -Apply -Distro Ubuntu
 .\scripts\windows\Install-DockerCLITools.ps1 -CheckOnly -Container cats-cli-test -Json
+.\scripts\windows\Check-CLITools.ps1 -IncludeWsl -IncludeDocker -DockerContainer cats-cli-test -Json
 .\scripts\windows\Install-DockerCLITools.ps1 -Upgrade -Container cats-cli-test
 .\scripts\windows\Upgrade-CLITools.ps1 -Distro Ubuntu -DockerContainer cats-cli-test
 ```
