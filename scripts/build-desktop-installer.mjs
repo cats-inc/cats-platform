@@ -14,24 +14,24 @@ function printHelp() {
 
 Options:
   --target <current|windows|macos|linux>  Installer target. Defaults to current.
-  --arch <x64|arm64|universal>            Architecture. Defaults to platform default.
+  --arch <x64|arm64|universal>            Override the configured target architectures.
+  --format <nsis|dmg|pkg|zip|AppImage|deb|tar.gz>
+                                         Override the configured installer formats.
   --help                                  Show this help text.
 
-Platform defaults:
-  windows  → nsis x64
-  macos    → dmg x64
-  linux    → AppImage arm64
+Without --arch/--format, the electron-builder target matrix from package.json is preserved.
 `);
 }
 
 function parseArgs(argv) {
   let target = 'current';
   let arch = null;
+  let format = null;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, target, arch };
+      return { help: true, target, arch, format };
     }
     if (value === '--target') {
       target = argv[index + 1] ?? 'current';
@@ -43,10 +43,15 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
+    if (value === '--format') {
+      format = argv[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, target, arch };
+  return { help: false, target, arch, format };
 }
 
 async function resolveNodeCliScript(command) {
@@ -137,10 +142,10 @@ function resolveBuilderTarget(target) {
   throw new Error(`Unsupported installer target: ${target}`);
 }
 
-const PLATFORM_DEFAULTS = {
-  windows: { format: 'nsis', arch: 'x64' },
-  macos: { format: 'dmg', arch: 'x64' },
-  linux: { format: 'AppImage', arch: 'arm64' },
+const PLATFORM_FORMATS = {
+  windows: ['nsis'],
+  macos: ['dmg', 'pkg', 'zip'],
+  linux: ['AppImage', 'deb', 'tar.gz'],
 };
 
 const VALID_ARCHES = {
@@ -149,18 +154,47 @@ const VALID_ARCHES = {
   linux: ['x64', 'arm64'],
 };
 
-function electronBuilderArgs(target, archOverride) {
-  const defaults = PLATFORM_DEFAULTS[target];
-  const arch = archOverride ?? defaults.arch;
-
-  if (!VALID_ARCHES[target].includes(arch)) {
-    throw new Error(`Unsupported arch '${arch}' for ${target}. Valid: ${VALID_ARCHES[target].join(', ')}`);
+function normalizeFormat(target, formatOverride) {
+  if (formatOverride === null) {
+    return null;
   }
 
-  const platformFlag = target === 'windows' ? '--win' : target === 'macos' ? '--mac' : '--linux';
-  const archFlag = `--${arch}`;
+  const canonicalFormat = PLATFORM_FORMATS[target].find(
+    (candidate) => candidate.toLowerCase() === formatOverride.toLowerCase(),
+  );
 
-  return ['electron-builder', platformFlag, defaults.format, archFlag, '--publish', 'never'];
+  if (!canonicalFormat) {
+    throw new Error(
+      `Unsupported format '${formatOverride}' for ${target}. Valid: ${PLATFORM_FORMATS[target].join(', ')}`,
+    );
+  }
+
+  return canonicalFormat;
+}
+
+function electronBuilderArgs(target, archOverride, formatOverride) {
+  if (archOverride !== null && !VALID_ARCHES[target].includes(archOverride)) {
+    throw new Error(
+      `Unsupported arch '${archOverride}' for ${target}. Valid: ${VALID_ARCHES[target].join(', ')}`,
+    );
+  }
+
+  const format = normalizeFormat(target, formatOverride);
+  const platformFlag = target === 'windows' ? '--win' : target === 'macos' ? '--mac' : '--linux';
+  const args = ['electron-builder', platformFlag];
+
+  if (format !== null) {
+    args.push(format);
+  } else if (archOverride !== null) {
+    args.push(...PLATFORM_FORMATS[target], `--${archOverride}`);
+  }
+
+  if (format !== null && archOverride !== null) {
+    args.push(`--${archOverride}`);
+  }
+
+  args.push('--publish', 'never');
+  return args;
 }
 
 async function main() {
@@ -174,7 +208,7 @@ async function main() {
   await runCommand('npm', ['run', 'build'], RUNTIME_ROOT);
   await runCommand('npm', ['run', 'build'], PROJECT_ROOT);
   await runCommand('node', ['scripts/package-desktop.mjs', '--platform', resolvedTarget], PROJECT_ROOT);
-  await runCommand('npx', electronBuilderArgs(resolvedTarget, parsed.arch), PROJECT_ROOT);
+  await runCommand('npx', electronBuilderArgs(resolvedTarget, parsed.arch, parsed.format), PROJECT_ROOT);
 }
 
 void main().catch((error) => {

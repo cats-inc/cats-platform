@@ -103,6 +103,20 @@ function Refresh-UserPath {
     [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
 }
 
+function Get-WindowsArchitecture {
+  $arch = if (-not [string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
+    $env:PROCESSOR_ARCHITEW6432
+  } else {
+    $env:PROCESSOR_ARCHITECTURE
+  }
+
+  if ([string]::IsNullOrWhiteSpace($arch)) {
+    return ''
+  }
+
+  return $arch.Trim().ToUpperInvariant()
+}
+
 function Detect-GooseInstall {
   $gooseExecutablePath = Resolve-GooseExecutablePath
 
@@ -245,6 +259,11 @@ $warnings = [System.Collections.Generic.List[string]]::new()
 $manualSteps = [System.Collections.Generic.List[string]]::new()
 $authSatisfied = [bool]$detected.installed -and (Test-GooseAuthSatisfied)
 
+$windowsArchitecture = Get-WindowsArchitecture
+if ($windowsArchitecture -eq 'ARM64') {
+  $warnings.Add('Goose CLI does not ship a native ARM64 Windows binary. It will run under x64 emulation with reduced performance.')
+}
+
 if (-not $detected.installed) {
   $plannedActions.Add('install_goose_native')
 }
@@ -254,6 +273,18 @@ if ($CheckOnly) {
     if ($authSatisfied) { 'ready' } else { 'auth_required' }
   } else {
     'not_installed'
+  }
+  $checkManualSteps = [System.Collections.Generic.List[object]]::new()
+  $checkInterruptions = [System.Collections.Generic.List[object]]::new()
+  if ($status -eq 'auth_required') {
+    $checkManualSteps.Add('Run goose configure, or set OPENAI_API_KEY / ANTHROPIC_API_KEY before first use.')
+    $checkInterruptions.Add([pscustomobject]@{
+        kind = 'auth_required'
+        summary = 'Complete goose configure or set OPENAI_API_KEY / ANTHROPIC_API_KEY, then rerun the packaged setup check.'
+        resumable = $true
+        requiresRestart = $false
+        requiresElevation = $false
+      })
   }
 
   $result = [pscustomobject]@{
@@ -265,24 +296,10 @@ if ($CheckOnly) {
     commandPath = $detected.commandPath
     restartRequired = $false
     plannedActions = $plannedActions.ToArray()
-    warnings = @()
+    warnings = $warnings.ToArray()
     appliedChanges = @()
-    manualSteps = if ($status -eq 'auth_required') {
-      @('Run goose configure, or set OPENAI_API_KEY / ANTHROPIC_API_KEY before first use.')
-    } else {
-      @()
-    }
-    interruptions = if ($status -eq 'auth_required') {
-      @([pscustomobject]@{
-          kind = 'auth_required'
-          summary = 'Complete goose configure or set OPENAI_API_KEY / ANTHROPIC_API_KEY, then rerun the packaged setup check.'
-          resumable = $true
-          requiresRestart = $false
-          requiresElevation = $false
-        })
-    } else {
-      @()
-    }
+    manualSteps = $checkManualSteps.ToArray()
+    interruptions = $checkInterruptions.ToArray()
   }
   Write-StructuredResult -Result $result -ExitCode 0
 }

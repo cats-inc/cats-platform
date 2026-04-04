@@ -609,8 +609,14 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   );
 
   assert.match(script, /<current\|windows\|macos\|linux>/);
+  assert.match(script, /--arch <x64\|arm64\|universal>/);
+  assert.match(script, /--format <nsis\|dmg\|pkg\|zip\|AppImage\|deb\|tar\.gz>/);
+  assert.match(script, /Without --arch\/--format, the electron-builder target matrix from package\.json is preserved\./);
   assert.match(script, /case 'darwin':/);
   assert.match(script, /case 'linux':/);
+  assert.match(script, /macos:\s*\['dmg', 'pkg', 'zip'\]/);
+  assert.match(script, /linux:\s*\['AppImage', 'deb', 'tar\.gz'\]/);
+  assert.match(script, /candidate\.toLowerCase\(\) === formatOverride\.toLowerCase\(\)/);
   assert.match(script, /--mac/);
   assert.match(script, /--linux/);
   assert.match(script, /npm-cli\.js/);

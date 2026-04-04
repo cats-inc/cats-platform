@@ -151,7 +151,19 @@
         {
           "target": "dmg",
           "arch": [
-            "x64"
+            "universal"
+          ]
+        },
+        {
+          "target": "pkg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
           ]
         }
       ],
@@ -165,6 +177,21 @@
         {
           "target": "AppImage",
           "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64",
             "arm64"
           ]
         }
