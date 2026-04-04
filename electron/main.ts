@@ -1010,17 +1010,10 @@ async function main(): Promise<void> {
   if (hostConfig.background.trayEnabled) {
     trayController = await createDesktopTrayController({
       getWindow: () => mainWindow,
-      onShowSetup: async () => {
+      onNavigate: async (path) => {
         if (hostConfig) {
-          await showMainWindow(`${hostConfig.appBaseUrl}/setup`);
+          await showMainWindow(`${hostConfig.appBaseUrl}${path}`);
         }
-      },
-      onShowChat: async () => {
-        if (!hostConfig) {
-          return;
-        }
-        const snapshot = latestSnapshot ?? await refreshBootstrapSnapshot();
-        await showMainWindow(`${hostConfig.appBaseUrl}${snapshot.app.entryPath}`);
       },
       onQuit: () => {
         void shutdownHost();

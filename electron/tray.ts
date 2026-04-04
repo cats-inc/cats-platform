@@ -10,8 +10,7 @@ export interface DesktopTrayController {
 
 interface CreateDesktopTrayControllerOptions {
   getWindow: () => BrowserWindow | null;
-  onShowSetup: () => Promise<void>;
-  onShowChat: () => Promise<void>;
+  onNavigate: (path: string) => Promise<void>;
   onQuit: () => void;
 }
 
@@ -51,28 +50,23 @@ export async function createDesktopTrayController(
     window.focus();
   };
 
+  const navItem = (label: string, path: string) => ({
+    label,
+    click: () => {
+      runTrayAction(async () => {
+        await options.onNavigate(path);
+        showWindow();
+      });
+    },
+  });
+
   tray.setContextMenu(Menu.buildFromTemplate([
-    {
-      label: 'Open Cats',
-      click: () => {
-        runTrayAction(async () => {
-          await options.onShowChat();
-          showWindow();
-        });
-      },
-    },
-    {
-      label: 'Open Setup',
-      click: () => {
-        runTrayAction(async () => {
-          await options.onShowSetup();
-          showWindow();
-        });
-      },
-    },
-    {
-      type: 'separator',
-    },
+    navItem('Open Chat', '/chat'),
+    navItem('Open Work', '/work'),
+    navItem('Open Code', '/code'),
+    { type: 'separator' as const },
+    navItem('Settings', '/settings'),
+    { type: 'separator' as const },
     {
       label: 'Quit',
       click: () => {
