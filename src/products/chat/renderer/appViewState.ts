@@ -98,12 +98,12 @@ export function deriveAppViewState(input: {
   pathname: string;
   payload: AppShellPayload;
   draftLeadCatId: string | null;
+  showingGenericNewChatDraft: boolean;
   selectedChannel: SelectedChannelView | null;
   selectedDirectLane: SelectedChannelView | null;
   routeDirectLaneSummary: ReturnType<typeof findDirectLaneForCat> | null;
   showingMyCatDirectLane: boolean;
   addCatOpen: boolean;
-  showingNewChatDraft: boolean;
   draftCatIds: string[];
 }) {
   const {
@@ -115,8 +115,8 @@ export function deriveAppViewState(input: {
     routeDirectLaneSummary,
     selectedChannel,
     selectedDirectLane,
+    showingGenericNewChatDraft,
     showingMyCatDirectLane,
-    showingNewChatDraft,
   } = input;
   const surface: Surface =
     pathname.startsWith('/settings')
@@ -157,7 +157,7 @@ export function deriveAppViewState(input: {
   const draftCatIdSet = new Set(draftCatIds);
   const showDirectLaneBoot = Boolean(routeDirectLaneSummary && !directLaneChannel);
   const showAddCatPanel =
-    addCatOpen && (Boolean(selectedChannel) || (showingNewChatDraft && !draftLeadCatId));
+    addCatOpen && (Boolean(selectedChannel) || showingGenericNewChatDraft);
 
   return {
     surface,

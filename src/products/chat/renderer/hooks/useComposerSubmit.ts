@@ -106,7 +106,7 @@ export function useComposerSubmit(options: {
   showingMyCatDirectLane: boolean;
   draftEntryKind: 'solo' | 'group' | 'direct';
   draftLeadCatId: string | null;
-  draftCatIds: string[];
+  draftParticipantCatIds: string[];
   draftCwd: string | null;
   draftFiles: File[];
   channelFiles: File[];
@@ -139,7 +139,7 @@ export function useComposerSubmit(options: {
     showingMyCatDirectLane,
     draftEntryKind,
     draftLeadCatId,
-    draftCatIds,
+    draftParticipantCatIds,
     draftCwd,
     draftFiles,
     channelFiles,
@@ -432,7 +432,7 @@ export function useComposerSubmit(options: {
             entryKind: 'direct',
             repoPath: draftCwd,
             leadCatId: draftLeadCatId,
-            participantCatIds: draftLeadCatId ? [draftLeadCatId] : draftCatIds,
+            participantCatIds: draftParticipantCatIds,
           }), ackController.signal);
           channelId = createdChannel.id;
           if (!channelId) {
@@ -458,7 +458,7 @@ export function useComposerSubmit(options: {
           entryKind: draftEntryKind,
           repoPath: draftCwd,
           leadCatId: draftLeadCatId,
-          participantCatIds: draftCatIds,
+          participantCatIds: draftParticipantCatIds,
           draftModel,
         }), ackController.signal);
         channelId = createdChannel.id;
@@ -606,7 +606,7 @@ export function useComposerSubmit(options: {
     channelFiles,
     composerDraft,
     currentPathname,
-    draftCatIds,
+    draftParticipantCatIds,
     draftCwd,
     draftFiles,
     draftEntryKind,

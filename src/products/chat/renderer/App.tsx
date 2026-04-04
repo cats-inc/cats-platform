@@ -39,6 +39,7 @@ import {
 } from './chatUtils';
 import { AppRoutes } from './AppRoutes';
 import { deriveAppRouteState, deriveAppViewState, type AppLoadState } from './appViewState';
+import { resolveDraftParticipantSelection } from './draftParticipants';
 import { useAppChrome } from './hooks/useAppChrome';
 import { useAppDraftUiActions } from './hooks/useAppDraftUiActions';
 import { useAppNavigationActions } from './hooks/useAppNavigationActions';
@@ -152,11 +153,12 @@ export default function App() {
   const [greeting] = useState(pickGreeting);
   const [draftCwd, setDraftCwd] = useState<string | null>(null);
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
+  const draftParticipants = resolveDraftParticipantSelection({ draftLeadCatId, draftCatIds });
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
   const draftEntryKind: NewChatEntryKind = showingMyCatDirectLane
     ? 'direct'
-    : newChatMode === 'group' || draftLeadCatId || draftCatIds.length > 0
+    : newChatMode === 'group' || draftParticipants.hasParticipants
       ? 'group'
       : 'solo';
   const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
@@ -439,8 +441,8 @@ export default function App() {
     showingNewChatDraft,
     showingMyCatDirectLane,
     draftEntryKind,
-    draftLeadCatId,
-    draftCatIds,
+    draftLeadCatId: draftParticipants.routeLeadCatId,
+    draftParticipantCatIds: draftParticipants.participantCatIds,
     draftCwd,
     draftFiles,
     channelFiles,
@@ -502,7 +504,7 @@ export default function App() {
   }, [routeChannelTitle]);
 
   useEffect(() => {
-    const isGenericNewChatRoute = showingNewChatDraft && !draftLeadCatId;
+    const isGenericNewChatRoute = showingNewChatDraft && !draftParticipants.hasRouteLeadCat;
     const justEnteredGenericNewChatRoute = isGenericNewChatRoute && !wasGenericNewChatRoute.current;
     wasGenericNewChatRoute.current = isGenericNewChatRoute;
     if (!justEnteredGenericNewChatRoute) {
@@ -512,7 +514,7 @@ export default function App() {
     setDraftCatIds([]);
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
-  }, [draftLeadCatId, setDraftCatIds, showingNewChatDraft]);
+  }, [draftParticipants.hasRouteLeadCat, setDraftCatIds, showingNewChatDraft]);
 
   useEffect(() => {
     if (!readyChat) {
@@ -920,12 +922,12 @@ export default function App() {
     pathname: location.pathname,
     payload,
     draftLeadCatId,
+    showingGenericNewChatDraft: showingNewChatDraft && !draftParticipants.hasRouteLeadCat,
     selectedChannel,
     selectedDirectLane,
     routeDirectLaneSummary,
     showingMyCatDirectLane,
     addCatOpen,
-    showingNewChatDraft,
     draftCatIds,
   });
   const visibleChatChannelId = selectedChannel?.id ?? directLaneChannel?.id ?? null;
@@ -1072,7 +1074,7 @@ export default function App() {
             selectableCats,
             assignableCatCount,
             addCatTab,
-            showingNewChatDraft: showingNewChatDraft && !draftLeadCatId,
+            showingNewChatDraft: showingNewChatDraft && !draftParticipants.hasRouteLeadCat,
             draftCatIdSet,
             assignedCatIds,
             catForm,
@@ -1083,7 +1085,7 @@ export default function App() {
             onToggleDraftCat: onToggleDraftCat,
             onCatFormChange: setCatForm,
             onCreateCat: (event) => {
-              if (showingNewChatDraft && !draftLeadCatId) {
+              if (showingNewChatDraft && !draftParticipants.hasRouteLeadCat) {
                 void onCreateAndDraftCat(event);
                 return;
               }

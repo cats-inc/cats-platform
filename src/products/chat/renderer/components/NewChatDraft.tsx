@@ -4,6 +4,7 @@ import type { AppShellPayload } from '../../api/contracts';
 import type { NewChatMode } from '../../shared/channelPaths.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import type { BrowseDirectoryEntry } from '../api';
+import { resolveDraftParticipantSelection } from '../draftParticipants';
 import { isChatCat, truncatePath } from '../chatUtils';
 import { CatAvatarRow } from './CatAvatarRow';
 import { ComposerCatStack } from './ComposerCatStack';
@@ -122,6 +123,7 @@ export function NewChatDraft({
   const chatCats = payload.chat.cats.filter(isChatCat);
   const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
   const isGroupEntryMode = entryMode === 'group';
+  const draftParticipants = resolveDraftParticipantSelection({ draftLeadCatId, draftCatIds });
   const leadCat = draftLeadCatId
     ? chatCats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
     : null;
@@ -132,7 +134,7 @@ export function NewChatDraft({
       && binding.catId === leadCat.id),
   );
   const draftLeadCat = !leadCat && draftCatIds.length > 0
-    ? chatCats.find((c) => c.id === draftCatIds[0] && c.status === 'active') ?? null
+    ? chatCats.find((c) => c.id === draftParticipants.effectiveLeadCatId && c.status === 'active') ?? null
     : null;
   const effectiveLeadCat = leadCat ?? draftLeadCat;
   const hasDraftCats = draftCatIds.length > 0;
@@ -142,9 +144,7 @@ export function NewChatDraft({
     : leadCat
       ? draftCatIds.filter((id) => id !== leadCat.id)
       : draftCatIds;
-  const visibleDraftCatIds = leadCat
-    ? [leadCat.id, ...draftCatIds.filter((id) => id !== leadCat.id)]
-    : draftCatIds;
+  const visibleDraftCatIds = draftParticipants.participantCatIds;
   const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');

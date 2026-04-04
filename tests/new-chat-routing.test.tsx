@@ -11,6 +11,7 @@ import {
   buildNewChatChannelInput,
   insertCreatedChannelIntoPayload,
 } from '../src/products/chat/renderer/chatUtils.tsx';
+import { resolveDraftParticipantSelection } from '../src/products/chat/renderer/draftParticipants.ts';
 import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.ts';
 import { isOptimisticDraftChannelId } from '../src/products/chat/shared/channelPaths.ts';
 
@@ -178,6 +179,34 @@ test('buildNewChatChannelInput marks direct drafts explicitly and preserves dire
   assert.equal(input.roomMode, 'direct_cat_chat');
   assert.equal(input.leadParticipantId, 'cat-lead');
   assert.deepEqual(input.participantCatIds, ['cat-lead']);
+});
+
+test('resolveDraftParticipantSelection dedupes toggled cats and keeps route lead first', () => {
+  const selection = resolveDraftParticipantSelection({
+    draftLeadCatId: 'cat-lead',
+    draftCatIds: ['cat-helper', 'cat-lead', 'cat-helper', '   '],
+  });
+
+  assert.equal(selection.routeLeadCatId, 'cat-lead');
+  assert.deepEqual(selection.toggleCatIds, ['cat-helper', 'cat-lead']);
+  assert.deepEqual(selection.participantCatIds, ['cat-lead', 'cat-helper']);
+  assert.equal(selection.effectiveLeadCatId, 'cat-lead');
+  assert.equal(selection.hasRouteLeadCat, true);
+  assert.equal(selection.hasParticipants, true);
+});
+
+test('resolveDraftParticipantSelection falls back to the first selected cat when no route lead exists', () => {
+  const selection = resolveDraftParticipantSelection({
+    draftLeadCatId: null,
+    draftCatIds: ['cat-helper', 'cat-reviewer'],
+  });
+
+  assert.equal(selection.routeLeadCatId, null);
+  assert.deepEqual(selection.toggleCatIds, ['cat-helper', 'cat-reviewer']);
+  assert.deepEqual(selection.participantCatIds, ['cat-helper', 'cat-reviewer']);
+  assert.equal(selection.effectiveLeadCatId, 'cat-helper');
+  assert.equal(selection.hasRouteLeadCat, false);
+  assert.equal(selection.hasParticipants, true);
 });
 
 test('buildAttachedFilesMessageBody keeps attachment refs with the user prompt', () => {
