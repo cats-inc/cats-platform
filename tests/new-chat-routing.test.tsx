@@ -130,11 +130,13 @@ test('buildNewChatChannelInput keeps lead-cat new chats as visible threads', () 
   const input = buildNewChatChannelInput({
     body: 'Ship the landing page',
     existingCount: 2,
+    entryKind: 'group',
     leadCatId: 'cat-lead',
     participantCatIds: ['cat-lead', 'cat-helper'],
     repoPath: 'C:/work/demo',
   });
 
+  assert.equal(input.entryKind, 'group');
   assert.equal(input.roomMode, undefined);
   assert.equal(input.leadParticipantId, 'cat-lead');
   assert.deepEqual(input.participantCatIds, ['cat-lead', 'cat-helper']);
@@ -146,6 +148,7 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
   const input = buildNewChatChannelInput({
     body: 'Ship the landing page',
     existingCount: 2,
+    entryKind: 'solo',
     draftModel: {
       provider: 'claude',
       model: 'claude-opus-4-6',
@@ -154,11 +157,27 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
     },
   });
 
+  assert.equal(input.entryKind, 'solo');
   assert.equal(input.roomMode, undefined);
   assert.equal(input.composerMode, 'solo');
   assert.equal(input.pendingProvider, 'claude');
   assert.equal(input.pendingModel, 'claude-opus-4-6');
   assert.equal(input.pendingInstance, 'native');
+});
+
+test('buildNewChatChannelInput marks direct drafts explicitly and preserves direct room mode', () => {
+  const input = buildNewChatChannelInput({
+    body: 'Wake up and check Telegram',
+    existingCount: 2,
+    entryKind: 'direct',
+    leadCatId: 'cat-lead',
+    participantCatIds: ['cat-lead'],
+  });
+
+  assert.equal(input.entryKind, 'direct');
+  assert.equal(input.roomMode, 'direct_cat_chat');
+  assert.equal(input.leadParticipantId, 'cat-lead');
+  assert.deepEqual(input.participantCatIds, ['cat-lead']);
 });
 
 test('buildAttachedFilesMessageBody keeps attachment refs with the user prompt', () => {

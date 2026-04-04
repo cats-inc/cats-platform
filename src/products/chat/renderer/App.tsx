@@ -14,6 +14,7 @@ import {
 import type {
   AppShellPayload,
   ConcurrentChatRelayCommandKind,
+  NewChatEntryKind,
 } from '../api/contracts';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog';
 import {
@@ -153,6 +154,11 @@ export default function App() {
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
+  const draftEntryKind: NewChatEntryKind = showingMyCatDirectLane
+    ? 'direct'
+    : newChatMode === 'group' || draftLeadCatId || draftCatIds.length > 0
+      ? 'group'
+      : 'solo';
   const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
   const [draftConcurrentTargets, setDraftConcurrentTargets] = useState<ModelSelectorValue[]>(
     () => createInitialCompareTargets(createDefaultModelSelectorValue()),
@@ -432,6 +438,7 @@ export default function App() {
     setComposerDraft,
     showingNewChatDraft,
     showingMyCatDirectLane,
+    draftEntryKind,
     draftLeadCatId,
     draftCatIds,
     draftCwd,

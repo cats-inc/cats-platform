@@ -5,6 +5,7 @@ import type {
   ChatChannelSummary,
   ChatMessage,
   CreateChatChannelInput,
+  NewChatEntryKind,
 } from '../api/contracts';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
@@ -210,6 +211,7 @@ export function buildAttachedFilesMessageBody(
 export function buildNewChatChannelInput(options: {
   body: string;
   existingCount: number;
+  entryKind?: NewChatEntryKind;
   repoPath?: string | null;
   leadCatId?: string | null;
   participantCatIds?: string[];
@@ -223,6 +225,7 @@ export function buildNewChatChannelInput(options: {
   const {
     body,
     existingCount,
+    entryKind,
     repoPath,
     leadCatId,
     participantCatIds = [],
@@ -230,12 +233,25 @@ export function buildNewChatChannelInput(options: {
   } = options;
   const normalizedLeadCatId = leadCatId?.trim() || null;
   const normalizedParticipantCatIds = participantCatIds.filter((id) => id !== normalizedLeadCatId);
+  const resolvedEntryKind = entryKind
+    ?? (normalizedLeadCatId || normalizedParticipantCatIds.length > 0 ? 'group' : 'solo');
+  const directLeadCatId = normalizedLeadCatId ?? normalizedParticipantCatIds[0] ?? null;
   const baseInput: CreateChatChannelInput = {
     title: createDraftChannelTitle(body, existingCount),
     topic: createDraftChannelTopic(body),
+    entryKind: resolvedEntryKind,
     skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
   };
+
+  if (resolvedEntryKind === 'direct' && directLeadCatId) {
+    return {
+      ...baseInput,
+      roomMode: 'direct_cat_chat',
+      leadParticipantId: directLeadCatId,
+      participantCatIds: [directLeadCatId, ...normalizedParticipantCatIds.filter((id) => id !== directLeadCatId)],
+    };
+  }
 
   if (normalizedLeadCatId) {
     return {

@@ -41,7 +41,6 @@ import {
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
   createDraftChannelTitle,
-  createDraftChannelTopic,
   insertCreatedChannelIntoPayload,
   type SelectedChannelView,
 } from '../chatUtils';
@@ -105,6 +104,7 @@ export function useComposerSubmit(options: {
   setComposerDraft: Dispatch<SetStateAction<string>>;
   showingNewChatDraft: boolean;
   showingMyCatDirectLane: boolean;
+  draftEntryKind: 'solo' | 'group' | 'direct';
   draftLeadCatId: string | null;
   draftCatIds: string[];
   draftCwd: string | null;
@@ -137,6 +137,7 @@ export function useComposerSubmit(options: {
     setComposerDraft,
     showingNewChatDraft,
     showingMyCatDirectLane,
+    draftEntryKind,
     draftLeadCatId,
     draftCatIds,
     draftCwd,
@@ -421,19 +422,18 @@ export function useComposerSubmit(options: {
         return;
       }
 
-      setBusy('message:prepare');
+        setBusy('message:prepare');
 
       if (isCatScopedLaneRoute) {
         if (!hydratedDirectLane) {
-          const createdChannel = await createChatChannel({
-            title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
-            topic: createDraftChannelTopic(body),
-            skipBossCatGreeting: true,
-            repoPath: draftCwd ?? undefined,
-            roomMode: 'direct_cat_chat' as const,
-            leadParticipantId: draftLeadCatId ?? undefined,
+          const createdChannel = await createChatChannel(buildNewChatChannelInput({
+            body,
+            existingCount: initialPayload.chat.channels.length,
+            entryKind: 'direct',
+            repoPath: draftCwd,
+            leadCatId: draftLeadCatId,
             participantCatIds: draftLeadCatId ? [draftLeadCatId] : draftCatIds,
-          }, ackController.signal);
+          }), ackController.signal);
           channelId = createdChannel.id;
           if (!channelId) {
             throw new Error('No chat is available for sending messages.');
@@ -455,6 +455,7 @@ export function useComposerSubmit(options: {
         const createdChannel = await createChatChannel(buildNewChatChannelInput({
           body,
           existingCount: initialPayload.chat.channels.length,
+          entryKind: draftEntryKind,
           repoPath: draftCwd,
           leadCatId: draftLeadCatId,
           participantCatIds: draftCatIds,
@@ -608,6 +609,7 @@ export function useComposerSubmit(options: {
     draftCatIds,
     draftCwd,
     draftFiles,
+    draftEntryKind,
     draftLeadCatId,
     draftModel.instance,
     draftModel.modelSelection,
