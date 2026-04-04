@@ -77,6 +77,7 @@ test('lead-scoped new chat draft renders cat-led copy instead of private chat co
 
   assert.match(markup, /Cat-led Chat/u);
   assert.match(markup, /Start with Milo/u);
+  assert.match(markup, /Ask Milo to take the first pass/u);
   assert.doesNotMatch(markup, /Private Chat/u);
 });
 
@@ -125,6 +126,7 @@ test('generic new chat draft with multiple selected cats renders group chat copy
 
   assert.match(markup, /Group Chat/u);
   assert.match(markup, /2 participants selected for this shared chat\./u);
+  assert.match(markup, /split roles, and ask for a coordinated plan/u);
   assert.doesNotMatch(markup, /Cat-led Chat/u);
 });
 
@@ -140,5 +142,6 @@ test('direct-lane draft keeps private chat copy', () => {
 
   assert.match(markup, /Private Chat/u);
   assert.match(markup, /Private lane for this Cat\./u);
+  assert.match(markup, /Ask Milo for a focused update or recommendation/u);
   assert.doesNotMatch(markup, /Cat-led Chat/u);
 });

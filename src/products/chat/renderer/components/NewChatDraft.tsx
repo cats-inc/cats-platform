@@ -5,6 +5,7 @@ import type { NewChatMode } from '../../shared/channelPaths.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import type { BrowseDirectoryEntry } from '../api';
 import { resolveDraftParticipantSelection } from '../draftParticipants';
+import { resolveDraftStarterSuggestions } from '../draftStarterSuggestions';
 import { isChatCat, truncatePath } from '../chatUtils';
 import { CatAvatarRow } from './CatAvatarRow';
 import { ComposerCatStack } from './ComposerCatStack';
@@ -161,6 +162,19 @@ export function NewChatDraft({
   }
   const isDirectLaneContext = !allowAddCat && Boolean(draftLeadCatId) && Boolean(leadCat);
   const isCatLedDraft = !isDirectLaneContext && Boolean(effectiveLeadCat) && !isGroupDraft;
+  const starterSuggestionMode = isParallelMode
+    ? 'parallel'
+    : isDirectLaneContext
+      ? 'direct'
+      : isGroupDraft
+        ? 'group'
+        : isCatLedDraft
+          ? 'cat_led'
+          : 'solo';
+  const starterSuggestions = resolveDraftStarterSuggestions({
+    mode: starterSuggestionMode,
+    leadCatName: effectiveLeadCat?.name ?? null,
+  });
   const groupDraftSelectionLabel = draftParticipantCount === 1
     ? '1 participant selected so far. Add more or send when ready.'
     : draftParticipantCount > 1
@@ -233,6 +247,23 @@ export function NewChatDraft({
           ) : (
             <h1>{greeting}</h1>
           )}
+          {!composerDraft.trim() ? (
+            <div className="draftPromptSuggestions">
+              <div className="chipRow">
+                {starterSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.id}
+                    className="promptChip draftPromptChip"
+                    type="button"
+                    disabled={isSubmittingFirstTurn}
+                    onClick={() => onComposerChange(suggestion.prompt)}
+                  >
+                    {suggestion.prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
         <form className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}`} onSubmit={(event) => void onSendMessage(event)}>
           {draftFiles.length > 0 ? (

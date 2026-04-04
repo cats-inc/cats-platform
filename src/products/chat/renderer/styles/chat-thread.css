@@ -461,6 +461,30 @@
   justify-content: center;
 }
 
+.draftPromptSuggestions {
+  margin-top: 18px;
+}
+
+.draftPromptSuggestions .chipRow {
+  justify-content: center;
+}
+
+.draftPromptChip {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.draftPromptChip:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.draftPromptChip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 
 .recentCatAvatar {
   grid-area: 1 / 1;
