@@ -137,43 +137,50 @@ async function handleSuiteSetupComplete(
   }
 
   const ownerDisplayName = body.ownerDisplayName?.trim() || 'Owner';
+  const createGuideCat = body.createGuideCat ?? body.createBossCat ?? false;
+  const guideCatName = body.guideCatName ?? body.bossCatName;
+  const guideCatProvider = body.guideCatProvider ?? body.bossCatProvider;
+  const guideCatInstance = body.guideCatInstance ?? body.bossCatInstance;
+  const guideCatModel = body.guideCatModel ?? body.bossCatModel;
+  const guideCatModelSelection = body.guideCatModelSelection ?? body.bossCatModelSelection ?? null;
+  let createdGuideCatId: string | null = null;
 
-  if (body.createBossCat && body.selectedProduct === 'chat') {
+  if (createGuideCat) {
     const previousCatIds = new Set(chatState.cats.map((cat) => cat.id));
     chatState = createCat(
       chatState,
       {
-        name: body.bossCatName?.trim() || 'Boss Cat',
-        provider: body.bossCatProvider || 'claude',
-        instance: body.bossCatInstance,
-        model: body.bossCatModel,
-        modelSelection: body.bossCatModelSelection,
-        products: normalizeSuiteSurfaceList([body.selectedProduct], {
+        name: guideCatName?.trim() || 'Guide Cat',
+        provider: guideCatProvider || 'claude',
+        instance: guideCatInstance,
+        model: guideCatModel,
+        modelSelection: guideCatModelSelection,
+        products: normalizeSuiteSurfaceList(defaultCatProducts(), {
           fallback: defaultCatProducts(),
         }),
       },
       now,
     );
 
-    const bossCat = chatState.cats.find((cat) => !previousCatIds.has(cat.id));
-    if (!bossCat) {
+    const guideCat = chatState.cats.find((cat) => !previousCatIds.has(cat.id));
+    if (!guideCat) {
       sendJson(context.response, 500, {
-        error: { code: 'internal_error', message: 'Failed to create Boss Cat' },
+        error: { code: 'internal_error', message: 'Failed to create Guide Cat' },
       });
       return;
     }
+    createdGuideCatId = guideCat.id;
 
     chatState = {
       ...chatState,
-      bossCatId: bossCat.id,
       globalOrchestrator: {
         ...chatState.globalOrchestrator,
         executionTarget: {
-          provider: body.bossCatProvider || 'claude',
-          instance: body.bossCatInstance?.trim() || null,
-          model: body.bossCatModel ?? null,
+          provider: guideCatProvider || 'claude',
+          instance: guideCatInstance?.trim() || null,
+          model: guideCatModel ?? null,
         },
-        executionModelSelection: body.bossCatModelSelection ?? null,
+        executionModelSelection: guideCatModelSelection,
       },
     };
   }
@@ -239,7 +246,8 @@ async function handleSuiteSetupComplete(
     summary: `Packaged setup completed for ${body.selectedProduct}.`,
     context: {
       selectedProduct: body.selectedProduct,
-      createBossCat: body.createBossCat,
+      createGuideCat,
+      guideCatId: createdGuideCatId,
       setupCompleteAt: core.setupCompleteAt,
     },
   });

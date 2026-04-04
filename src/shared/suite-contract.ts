@@ -67,7 +67,13 @@ export interface SuiteSetupCompleteInput {
   attemptId?: string | null;
   ownerDisplayName: string;
   selectedProduct: SuiteSurfaceId;
-  createBossCat: boolean;
+  createGuideCat?: boolean;
+  guideCatName?: string;
+  guideCatProvider?: string;
+  guideCatInstance?: string;
+  guideCatModel?: string;
+  guideCatModelSelection?: ProviderModelSelection | null;
+  createBossCat?: boolean;
   bossCatName?: string;
   bossCatProvider?: string;
   bossCatInstance?: string;

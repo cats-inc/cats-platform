@@ -1,10 +1,25 @@
-import type { ReactNode } from 'react';
-
 import { CatCreationFields } from './CatCreationFields.js';
-import type { SuiteProductDescriptor, SuiteSurfaceId } from '../../../shared/suite-contract.js';
-import type { ConditionalStepProps, ProductSetupPlugin } from './types.js';
+import type { SuiteProductDescriptor } from '../../../shared/suite-contract.js';
+import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { ProductSetupPlugin } from './types.js';
 
-function ChatBossCatStep({
+export interface GuideCatSetupFieldsProps {
+  provider: string;
+  instance: string;
+  model: string;
+  modelSelection: ProviderModelSelection | null;
+  catName: string;
+  runtimeReachable: boolean;
+  onTargetChange: (target: {
+    provider: string;
+    instance: string;
+    model: string;
+    modelSelection?: ProviderModelSelection | null;
+  }) => void;
+  onCatNameChange: (name: string) => void;
+}
+
+export function GuideCatSetupFields({
   provider,
   instance,
   model,
@@ -13,7 +28,7 @@ function ChatBossCatStep({
   runtimeReachable,
   onTargetChange,
   onCatNameChange,
-}: ConditionalStepProps) {
+}: GuideCatSetupFieldsProps) {
   return (
     <>
       <CatCreationFields
@@ -24,9 +39,9 @@ function ChatBossCatStep({
         model={model}
         modelSelection={modelSelection}
         onTargetChange={onTargetChange}
-        nameLabel="Boss Cat name"
-        namePlaceholder="Boss Cat"
-        nameHint="Your personal AI agent that manages tasks and coordinates other cats."
+        nameLabel="Guide Cat name"
+        namePlaceholder="Guide Cat"
+        nameHint="An optional helper Cat that can support you across Chat, Work, and Code."
         autoFocusName
         hideMakeBoss
         hideProductToggles
@@ -48,29 +63,17 @@ function ChatBossCatStep({
   );
 }
 
-interface SetupPluginExtras {
-  hasConditionalStep: boolean;
-  renderConditionalStep?: (props: ConditionalStepProps) => ReactNode;
-  validateConditionalStep?: ProductSetupPlugin['validateConditionalStep'];
+export function validateGuideCatSetupStep(input: {
+  model: string;
+}): boolean {
+  return Boolean(input.model.trim());
 }
-
-const SETUP_PLUGIN_EXTRAS: Partial<Record<SuiteSurfaceId, SetupPluginExtras>> = {
-  chat: {
-    hasConditionalStep: true,
-    renderConditionalStep: (props) => <ChatBossCatStep {...props} />,
-    validateConditionalStep: (state) => Boolean(state.model.trim()),
-  },
-};
 
 export function getSuiteSetupPlugins(products: readonly SuiteProductDescriptor[]): ProductSetupPlugin[] {
   return products.flatMap((product) => {
     if (!product.surface) {
       return [];
     }
-
-    const extras = SETUP_PLUGIN_EXTRAS[product.surface] ?? {
-      hasConditionalStep: false,
-    };
 
     return [{
       surface: product.surface,
@@ -81,9 +84,6 @@ export function getSuiteSetupPlugins(products: readonly SuiteProductDescriptor[]
       installPolicy: product.installPolicy,
       installState: product.installState,
       maturity: product.maturity,
-      hasConditionalStep: extras.hasConditionalStep,
-      renderConditionalStep: extras.renderConditionalStep,
-      validateConditionalStep: extras.validateConditionalStep,
     }];
   });
 }

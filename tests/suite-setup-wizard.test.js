@@ -141,7 +141,7 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
   });
 });
 
-test('POST /api/suite/setup/complete with createBossCat=true creates Boss Cat', async () => {
+test('POST /api/suite/setup/complete with createGuideCat=true creates a Guide Cat without assigning Boss Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
       method: 'POST',
@@ -149,10 +149,10 @@ test('POST /api/suite/setup/complete with createBossCat=true creates Boss Cat', 
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: true,
-        bossCatName: 'Meowster',
-        bossCatProvider: 'claude',
-        bossCatModel: 'claude-sonnet',
+        createGuideCat: true,
+        guideCatName: 'Meowster',
+        guideCatProvider: 'claude',
+        guideCatModel: 'claude-sonnet',
       }),
     });
 
@@ -162,17 +162,17 @@ test('POST /api/suite/setup/complete with createBossCat=true creates Boss Cat', 
     assert.ok(payload.setupCompleteAt, 'setupCompleteAt should be set');
     assert.equal(payload.ownerDisplayName, 'Kenny');
     assert.equal(payload.lastProductSurface, 'chat');
-    assert.ok(payload.chat.bossCatId, 'bossCatId should be non-null');
-    assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat']);
+    assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
 
-    const bossCat = payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId);
-    assert.ok(bossCat, 'Boss Cat should exist in cats array');
-    assert.equal(bossCat.name, 'Meowster');
-    assert.deepEqual(bossCat.products, ['chat']);
+    const guideCat = payload.chat.cats.find((cat) => cat.name === 'Meowster');
+    assert.ok(guideCat, 'Guide Cat should exist in cats array');
+    assert.deepEqual(guideCat.products, ['chat']);
+    assert.equal(payload.chat.globalOrchestrator.executionTarget.provider, 'claude');
+    assert.equal(payload.chat.globalOrchestrator.executionTarget.model, 'claude-sonnet');
   });
 });
 
-test('POST /api/suite/setup/complete persists Boss Cat modelSelection and orchestrator selection', async () => {
+test('POST /api/suite/setup/complete persists Guide Cat modelSelection and orchestrator selection', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
       method: 'POST',
@@ -180,11 +180,11 @@ test('POST /api/suite/setup/complete persists Boss Cat modelSelection and orches
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: true,
-        bossCatName: 'Meowster',
-        bossCatProvider: 'codex',
-        bossCatModel: 'gpt-5.4',
-        bossCatModelSelection: {
+        createGuideCat: true,
+        guideCatName: 'Meowster',
+        guideCatProvider: 'codex',
+        guideCatModel: 'gpt-5.4',
+        guideCatModelSelection: {
           entryMode: 'auto',
           presetId: 'balanced',
           controls: {
@@ -196,9 +196,9 @@ test('POST /api/suite/setup/complete persists Boss Cat modelSelection and orches
 
     assert.equal(response.status, 200);
     const payload = await response.json();
-    const bossCat = payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId);
+    const guideCat = payload.chat.cats.find((cat) => cat.name === 'Meowster');
 
-    assert.deepEqual(bossCat.defaultModelSelection, {
+    assert.deepEqual(guideCat.defaultModelSelection, {
       entryMode: 'auto',
       presetId: 'balanced',
       controls: {
@@ -215,7 +215,7 @@ test('POST /api/suite/setup/complete persists Boss Cat modelSelection and orches
   });
 });
 
-test('POST /api/suite/setup/complete with createBossCat=false does not create Boss Cat', async () => {
+test('POST /api/suite/setup/complete with createGuideCat=false does not create Guide Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
       method: 'POST',
@@ -223,7 +223,7 @@ test('POST /api/suite/setup/complete with createBossCat=false does not create Bo
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: false,
+        createGuideCat: false,
       }),
     });
 
@@ -246,7 +246,7 @@ test('POST /api/suite/setup/complete returns 409 if already completed', async ()
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: false,
+        createGuideCat: false,
       }),
     });
 
@@ -256,7 +256,7 @@ test('POST /api/suite/setup/complete returns 409 if already completed', async ()
       body: JSON.stringify({
         ownerDisplayName: 'Kenny Again',
         selectedProduct: 'chat',
-        createBossCat: false,
+        createGuideCat: false,
       }),
     });
 
@@ -264,7 +264,7 @@ test('POST /api/suite/setup/complete returns 409 if already completed', async ()
   });
 });
 
-test('POST /api/suite/setup/complete with createBossCat=true defaults name to Boss Cat', async () => {
+test('POST /api/suite/setup/complete with createGuideCat=true defaults name to Guide Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
       method: 'POST',
@@ -272,31 +272,30 @@ test('POST /api/suite/setup/complete with createBossCat=true defaults name to Bo
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: true,
-        bossCatName: '',
-        bossCatProvider: 'claude',
+        createGuideCat: true,
+        guideCatName: '',
+        guideCatProvider: 'claude',
       }),
     });
 
     assert.equal(response.status, 200);
     const payload = await response.json();
 
-    const bossCat = payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId);
-    assert.ok(bossCat);
-    assert.equal(bossCat.name, 'Boss Cat');
+    const guideCat = payload.chat.cats.find((cat) => cat.name === 'Guide Cat');
+    assert.ok(guideCat);
   });
 });
 
-test('chat functions normally after suite setup without Boss Cat', async () => {
+test('chat functions normally after suite setup without Guide Cat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    // Complete setup without Boss Cat
+    // Complete setup without Guide Cat
     await fetch(`${baseUrl}/api/suite/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: false,
+        createGuideCat: false,
       }),
     });
 
@@ -307,6 +306,30 @@ test('chat functions normally after suite setup without Boss Cat', async () => {
     assert.ok(shell.setupCompleteAt);
     assert.equal(shell.chat.bossCatId, null);
     assert.equal(shell.chat.channels.length, 0, 'no channels created during setup');
+  });
+});
+
+test('POST /api/suite/setup/complete can create Guide Cat even when starting product is not chat', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/suite/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        selectedProduct: 'work',
+        createGuideCat: true,
+        guideCatName: 'CrossProduct',
+        guideCatProvider: 'claude',
+        guideCatModel: 'claude-sonnet',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.lastProductSurface, 'work');
+    assert.equal(payload.chat.bossCatId, null);
+    assert.ok(payload.chat.cats.some((cat) => cat.name === 'CrossProduct'));
+    assert.equal(payload.chat.globalOrchestrator.executionTarget.provider, 'claude');
   });
 });
 
@@ -337,7 +360,7 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: false,
+        createGuideCat: false,
       }),
     });
 
@@ -361,7 +384,7 @@ test('POST /api/suite/preferences updates lastProductSurface', async () => {
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: false,
+        createGuideCat: false,
       }),
     });
 

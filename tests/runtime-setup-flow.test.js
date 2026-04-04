@@ -272,7 +272,7 @@ test('POST /api/suite/setup/complete rejects setup until runtime bootstrap is ap
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: false,
+        createGuideCat: false,
       }),
     });
 
@@ -301,7 +301,7 @@ test('suite setup succeeds after runtime setup apply completes', async () => {
         attemptId: 'attempt-complete',
         ownerDisplayName: 'Kenny',
         selectedProduct: 'chat',
-        createBossCat: false,
+        createGuideCat: false,
       }),
     });
 

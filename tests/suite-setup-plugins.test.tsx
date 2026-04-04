@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { getSuiteSetupPlugins } from '../src/app/renderer/setup/plugins.tsx';
+import {
+  getSuiteSetupPlugins,
+  validateGuideCatSetupStep,
+} from '../src/app/renderer/setup/plugins.tsx';
 import { listSuiteProductDescriptors } from '../src/shared/suiteProducts.ts';
 
 test('getSuiteSetupPlugins derives setup metadata from shared suite product descriptors', () => {
@@ -14,7 +17,6 @@ test('getSuiteSetupPlugins derives setup metadata from shared suite product desc
       installPolicy: plugin.installPolicy,
       installState: plugin.installState,
       maturity: plugin.maturity,
-      hasConditionalStep: plugin.hasConditionalStep,
       disabledReason: plugin.disabledReason ?? null,
     })),
     [
@@ -24,7 +26,6 @@ test('getSuiteSetupPlugins derives setup metadata from shared suite product desc
         installPolicy: 'required',
         installState: 'installed',
         maturity: 'active',
-        hasConditionalStep: true,
         disabledReason: null,
       },
       {
@@ -33,7 +34,6 @@ test('getSuiteSetupPlugins derives setup metadata from shared suite product desc
         installPolicy: 'required',
         installState: 'installed',
         maturity: 'preview',
-        hasConditionalStep: false,
         disabledReason: 'Coming soon',
       },
       {
@@ -42,9 +42,13 @@ test('getSuiteSetupPlugins derives setup metadata from shared suite product desc
         installPolicy: 'required',
         installState: 'installed',
         maturity: 'preview',
-        hasConditionalStep: false,
         disabledReason: 'Coming soon',
       },
     ],
   );
+});
+
+test('validateGuideCatSetupStep requires a selected model', () => {
+  assert.equal(validateGuideCatSetupStep({ model: '' }), false);
+  assert.equal(validateGuideCatSetupStep({ model: 'gpt-5.4' }), true);
 });
