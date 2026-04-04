@@ -11,7 +11,10 @@ import {
   buildNewChatChannelInput,
   insertCreatedChannelIntoPayload,
 } from '../src/products/chat/renderer/chatUtils.tsx';
-import { resolveDraftParticipantSelection } from '../src/products/chat/renderer/draftParticipants.ts';
+import {
+  resolveDraftParticipantSelection,
+  resolveDraftRouteContext,
+} from '../src/products/chat/renderer/draftParticipants.ts';
 import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.ts';
 import { isOptimisticDraftChannelId } from '../src/products/chat/shared/channelPaths.ts';
 
@@ -207,6 +210,47 @@ test('resolveDraftParticipantSelection falls back to the first selected cat when
   assert.equal(selection.effectiveLeadCatId, 'cat-helper');
   assert.equal(selection.hasRouteLeadCat, false);
   assert.equal(selection.hasParticipants, true);
+});
+
+test('resolveDraftRouteContext distinguishes generic, lead-scoped, and direct-lane routes', () => {
+  assert.deepEqual(
+    resolveDraftRouteContext({
+      draftLeadCatId: null,
+      showingMyCatDirectLane: false,
+    }),
+    {
+      routeLeadCatId: null,
+      isDirectLaneRoute: false,
+      isLeadScopedNewChatRoute: false,
+      isGenericNewChatRoute: true,
+    },
+  );
+
+  assert.deepEqual(
+    resolveDraftRouteContext({
+      draftLeadCatId: 'cat-lead',
+      showingMyCatDirectLane: false,
+    }),
+    {
+      routeLeadCatId: 'cat-lead',
+      isDirectLaneRoute: false,
+      isLeadScopedNewChatRoute: true,
+      isGenericNewChatRoute: false,
+    },
+  );
+
+  assert.deepEqual(
+    resolveDraftRouteContext({
+      draftLeadCatId: 'cat-direct',
+      showingMyCatDirectLane: true,
+    }),
+    {
+      routeLeadCatId: 'cat-direct',
+      isDirectLaneRoute: true,
+      isLeadScopedNewChatRoute: false,
+      isGenericNewChatRoute: false,
+    },
+  );
 });
 
 test('buildAttachedFilesMessageBody keeps attachment refs with the user prompt', () => {

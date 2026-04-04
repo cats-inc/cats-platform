@@ -7,6 +7,13 @@ export interface DraftParticipantSelection {
   hasParticipants: boolean;
 }
 
+export interface DraftRouteContext {
+  routeLeadCatId: string | null;
+  isDirectLaneRoute: boolean;
+  isLeadScopedNewChatRoute: boolean;
+  isGenericNewChatRoute: boolean;
+}
+
 function normalizeCatId(value: string | null | undefined): string | null {
   const normalized = value?.trim();
   return normalized ? normalized : null;
@@ -40,5 +47,21 @@ export function resolveDraftParticipantSelection(input: {
     effectiveLeadCatId: participantCatIds[0] ?? null,
     hasRouteLeadCat: Boolean(routeLeadCatId),
     hasParticipants: participantCatIds.length > 0,
+  };
+}
+
+export function resolveDraftRouteContext(input: {
+  draftLeadCatId: string | null;
+  showingMyCatDirectLane: boolean;
+}): DraftRouteContext {
+  const routeLeadCatId = normalizeCatId(input.draftLeadCatId);
+  const isDirectLaneRoute = Boolean(input.showingMyCatDirectLane && routeLeadCatId);
+  const isLeadScopedNewChatRoute = Boolean(routeLeadCatId) && !isDirectLaneRoute;
+
+  return {
+    routeLeadCatId,
+    isDirectLaneRoute,
+    isLeadScopedNewChatRoute,
+    isGenericNewChatRoute: !routeLeadCatId && !input.showingMyCatDirectLane,
   };
 }
