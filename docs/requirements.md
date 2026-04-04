@@ -223,6 +223,37 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: High
 - **Status**: Planned
 
+### FR-029: Optional Guide Cat Onboarding
+
+- **Description**: After owner-name capture, the suite setup flow shall offer
+  optional `Guide Cat` creation without requiring it for suite use.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-030: Minimal Guide Cat Setup Inputs
+
+- **Description**: Setup shall collect only Guide Cat name plus runtime target
+  information, and shall not ask for persona, skill-profile, or memory-profile
+  authoring during setup.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-031: Guide Cat Entry Suggestions with Fallback
+
+- **Description**: Entry surfaces such as `+New chat` and future `+Group chat`
+  shall be able to consume Guide Cat-generated starter ideas while retaining a
+  deterministic static fallback when Guide Cat is absent or unavailable.
+- **Priority**: Medium
+- **Status**: Planned
+
+### FR-032: Generalized Participant Modeling
+
+- **Description**: The suite shall evolve from Cat-only room assumptions to a
+  generalized entity/participant model so conversation topology, routing, and
+  per-turn execution strategy do not depend on every participant being a Cat.
+- **Priority**: High
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -296,6 +327,20 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
   displaced into management-first navigation
 - Reusable resource management SHOULD remain available without becoming the
   default path for chat-time assignment tasks
+
+### NFR-012: Setup Simplicity
+
+- Setup SHOULD keep Guide Cat onboarding to one optional decision plus runtime
+  target selection
+- Setup SHOULD NOT require persona design, prompt authoring, or memory curation
+  before the suite becomes usable
+
+### NFR-013: Helper Session Efficiency
+
+- Guide Cat SHOULD use an event-driven leased session lifecycle instead of an
+  always-on background session
+- Entry suggestions SHOULD be cacheable local data so empty states remain
+  usable without live runtime work
 
 ## User Stories
 
@@ -478,6 +523,41 @@ screen first.
 - [ ] `Settings > Cats` exposes the reusable registry
 - [ ] `Settings > Cats` still supports direct `Create new`
 
+### US-017: Owner Optionally Creates a Guide Cat During Setup
+
+**As an** owner,
+**I want to** decide during setup whether I want a `Guide Cat`,
+**So that** I can opt into help without being forced into a more complex setup.
+
+**Acceptance Criteria**:
+- [ ] Setup asks whether the owner wants a Guide Cat after owner-name capture
+- [ ] Setup completes successfully with or without a Guide Cat
+- [ ] Guide Cat setup asks only for name plus runtime target
+
+### US-018: Owner Sees Helpful Starter Ideas Before the First Chat
+
+**As an** owner,
+**I want to** see helpful starter ideas in `+New chat` before I send my first
+message,
+**So that** the suite feels prepared rather than empty.
+
+**Acceptance Criteria**:
+- [ ] Entry surfaces can show Guide Cat-generated starter ideas when available
+- [ ] Static fallback suggestions remain available when Guide Cat is absent or
+      unavailable
+
+### US-019: Developers Build Against Generalized Participants
+
+**As a** suite developer,
+**I want to** distinguish reusable entities, channel participants, conversation
+topology, and turn strategy,
+**So that** I do not need Cat-only special cases to explain every room mode.
+
+**Acceptance Criteria**:
+- [ ] Docs define `entity`, `participant`, `conversation topology`, and
+      `turn strategy` as separate concepts
+- [ ] New setup and conversation work references those concepts consistently
+
 ## Constraints
 
 - The stack for this subproject is Node.js/TypeScript
@@ -492,5 +572,4 @@ screen first.
 
 ---
 
-*Last updated: 2026-03-17*
-
+*Last updated: 2026-04-04*

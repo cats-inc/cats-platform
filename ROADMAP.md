@@ -59,6 +59,10 @@ contracts.
 - [x] Publish a product integration guide that freezes shared contracts,
       clarifies dependency-slice ownership, and defines the suite-host
       registration protocol for parallel Chat/Work/Code delivery
+- [ ] Generalize suite-owned identities into reusable `entity` and
+      channel-scoped `participant` contracts so Chat, Work, and Code stop
+      depending on Cat-only conversation semantics even while Cat language
+      remains the product-facing default
 
 ### Phase 4: Cats Chat Launch Track
 
@@ -74,6 +78,14 @@ contracts.
       helper tests, including parallel send, compare relay, live-indicator stream
       gating, and route-selection / `updateSelectedChannel(...)` guards so
       future lifecycle refactors cannot silently change `concurrent:*` semantics
+- [ ] Replace the current Boss-Cat-first setup bootstrap with optional
+      `Guide Cat` onboarding that captures only name plus runtime target,
+      keeps setup completable without any Guide Cat, and treats Guide Cat as a
+      suite-level helper rather than implicitly equating it with Chat's
+      `Boss Cat`
+- [ ] Add Guide-Cat-backed entry suggestions with deterministic static
+      fallbacks so `+New chat` and later `+Group chat` empty states can be
+      prepared dynamically without depending on a permanently awake helper
 - [ ] Finish destructive-delete UX above the landed runtime-session delete policy,
       including explicit renderer feedback for retained or failed runtime cleanup,
       clearer confirmation and busy states for chat / parallel-group / Cat delete,
@@ -424,4 +436,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-04-03*
+*Last updated: 2026-04-04*

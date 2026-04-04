@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [051-generalize-participants-and-adopt-guide-cat-terminology](./051-generalize-participants-and-adopt-guide-cat-terminology.md) | Generalize participants and adopt Guide Cat terminology | Accepted | 2026-04-04 |
 | [049-cascade-product-deletes-into-runtime-session-deletion](./049-cascade-product-deletes-into-runtime-session-deletion.md) | Cascade product deletes into runtime session deletion | Accepted | 2026-04-02 |
 | [048-separate-suite-products-from-installable-apps](./048-separate-suite-products-from-installable-apps.md) | Separate suite products from installable apps | Accepted | 2026-03-31 |
 | [047-separate-bootstrap-diagnostics-by-layer-and-aggregate-in-the-host](./047-separate-bootstrap-diagnostics-by-layer-and-aggregate-in-the-host.md) | Separate bootstrap diagnostics by layer and aggregate in the host | Accepted | 2026-03-30 |
@@ -93,6 +94,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-03*
+*Last updated: 2026-04-04*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

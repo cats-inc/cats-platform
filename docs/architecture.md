@@ -9,7 +9,9 @@ host identity `cats-platform` and now uses the matching local monorepo folder
 `cats-platform/`. The current implementation is still a split architecture: a
 Node server owns product and runtime-facing APIs, and a React/Vite renderer
 owns the operator-facing shell. The accepted next step is to add `Cats Core
-v1` so `Cats Chat` and `Cats Work` can launch on the same shared domain model.
+v1` so `Cats Chat`, `Cats Work`, and `Cats Code` can launch on the same shared
+domain model while setup and conversation modeling stop depending on
+Boss-Cat-first assumptions.
 
 ## Architecture Diagram
 
@@ -195,6 +197,33 @@ compatibility seam. Runtime wake/stream flows and renderer direct-lane chrome
 therefore resolve from topology first rather than assuming every room has Boss
 Cat/orchestrator infrastructure.
 
+### Guide Cat and Participant Generalization
+
+The suite now has an explicit architectural direction for two adjacent but
+separate concepts:
+
+- `Guide Cat`: the optional first helper created during setup
+- generalized `entity` / `participant` modeling for future conversation work
+
+`Guide Cat` is intentionally not the same thing as:
+
+- the Chat `Boss Cat`
+- the invisible orchestration system layer
+- the only runtime-backed helper that may ever exist
+
+The long-term domain shape is:
+
+- reusable `entity` records with identity, prompt, memory, and execution
+  defaults
+- channel-scoped `participant` records with role, status, and lease state
+- conversation topology such as direct, solo-thread, Cat-led thread, and group
+- per-turn execution strategy such as default routing, explicit mention,
+  compare, or future fan-out
+
+Current Chat contracts still expose Cat-specific fields such as
+`catAssignments`, `assignedCats`, `draftCatIds`, and `leadCatId`, but those are
+now a compatibility seam rather than the intended final shared model.
+
 ### Runtime Client and Runtime Boundary
 
 - **Purpose**: Keep `cats-runtime` as the only execution boundary while
@@ -212,6 +241,15 @@ Cat/orchestrator infrastructure.
   - MCP tool surface for orchestrator-style agents that need runtime
     capabilities without direct provider coupling
   - keep backend details out of higher layers
+
+Guide Cat should also use this runtime boundary through an event-driven leased
+session lifecycle:
+
+- no always-on Guide Cat daemon is required
+- the suite may wake Guide Cat on demand for entry suggestions or scoped help
+- the suite may reuse a warm Guide Cat session briefly
+- Guide Cat output such as starter ideas should be cacheable local product data
+  so empty states do not depend on a live session
 
 ### HTTP Server
 
@@ -655,4 +693,4 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-03-28*
+*Last updated: 2026-04-04*

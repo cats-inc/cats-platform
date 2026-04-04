@@ -23,7 +23,8 @@
 | Cats Work | The work and operations product surface in the Cats suite. |
 | Cats Core v1 | The shared product contract layer for identity, actors/resources, permissions, conversations, approvals, owner profile, and archive metadata. |
 | Chat | A topic-centered conversation thread inside `Cats Chat`. Chat is the primary navigation unit, even when one or more Cats participate in it. |
-| Cat | A reusable named participant/persona in `Cats Chat`. A Cat is not the same thing as a provider choice and is expected to evolve into the broader actor/resource model. |
+| Cat | A reusable product-facing identity in the Cats suite. A Cat is not the same thing as a provider choice, and Cats are expected to become one class of generalized reusable entities rather than the only possible participant shape. |
+| Guide Cat | The canonical product and developer term for the optional first helper offered during setup. Guide Cat is a Cat identity that may help across `Chat`, `Work`, and `Code`, but it is not automatically the same thing as `Boss Cat` or the invisible orchestration layer. |
 | Boss Cat | The user-facing product term for the current default lead Cat used for new chats and default public transport entry. The default Boss Cat may begin neutral and minimally personalized before the user customizes it. |
 | Default Boss Cat | The auto-provisioned neutral Boss Cat available before the user renames, personalizes, or replaces it. |
 | Primary Orchestrator Cat | The formal product and domain term for the Cat selected as the default public orchestrator. In UI copy, this should usually be presented as `Boss Cat`. |
@@ -44,7 +45,11 @@
 | Transport binding | An external bot identity (e.g., Telegram bot) attached to a Cat's private lane (`direct_cat_chat`). Inbound messages from the transport deliver into that private lane, not into a separate channel type or a `Recents` thread. |
 | Spawned room | A normal `Cats Chat` room that a Cat created or continued from a transport-bound private lane so it can appear in `Recents` and hold canonical topic work. |
 | Routing layer | The product-owned system layer that resolves mentions, default targets, wake-before-route behavior, and per-room routing mode before prompts are sent to runtime sessions. |
+| Entity | The broader reusable identity model that may later include Cats, owner-facing helpers, system-facing specialists, or other named collaborators with prompt, memory, and execution metadata. |
+| Participant | One entity's membership inside one conversation context, including role, status, and execution lease. |
 | Lead participant | The default target participant for a room mode when an operator turn does not contain an explicit valid `@mention`. |
+| Conversation topology | The stable shape of a conversation such as direct lane, solo thread, Cat-led thread, or group room. Topology answers "what kind of room is this?" rather than "who should answer the next turn?" |
+| Turn strategy | The per-turn execution shape such as default routing, explicit mention routing, compare/parallel execution, or future fan-out/converge behavior. Turn strategy should not be confused with participant class. |
 | Skill profile | A product-owned capability mapping that decides which runtime skill names should be requested for a Cat in a given room or transport context. |
 | Runtime skill catalog | The `cats-runtime` hosted catalog of execution-ready `SKILL.md` packages that can be validated, resolved, and mounted into sessions. |
 | Runtime skill manifest | The product-to-runtime request payload that carries requested skill names plus optional context metadata for one session or wake flow. |
@@ -55,6 +60,7 @@
 | Actor / Resource | The broader `Cats Core v1` term for a human, orchestrator, worker, stakeholder, virtual friend, or other reusable participant. |
 | Execution target | The provider/model preference selected for a cat or orchestrator in one context. |
 | Execution lease | The currently active runtime session metadata used to execute work through a provider. |
+| Leased session | The preferred lifecycle for reusable helper intelligence such as `Guide Cat`: wake on demand, reuse briefly when still warm, and close when idle rather than staying always-on. |
 | Memory checkpoint | Product-owned summary data, facts, and open loops that should survive session restarts or provider changes. |
 | Owner profile | Structured product-owned memory for the boss or owner, including tone, preferences, escalation thresholds, and decision style. |
 | Approval loop | The product state where an owner must approve, redirect, or reject a proposed action before dispatch or reply. |
@@ -83,4 +89,4 @@
 
 ---
 
-Last updated: 2026-03-29
+Last updated: 2026-04-04

@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-038](./PLAN-038-guide-cat-setup-and-participant-generalization.md) | Guide Cat Setup and Participant Generalization | Draft | [SPEC-049](../specs/SPEC-049-guide-cat-setup-and-generalized-participant-entry.md), [ADR-051](../decisions/051-generalize-participants-and-adopt-guide-cat-terminology.md) |
 | [PLAN-037](./PLAN-037-runtime-session-deletion-on-product-delete.md) | Runtime Session Deletion on Product Delete | Draft | [SPEC-048](../specs/SPEC-048-runtime-session-deletion-on-product-delete.md), [ADR-049](../decisions/049-cascade-product-deletes-into-runtime-session-deletion.md) |
 | [PLAN-036](./PLAN-036-compare-chat-concurrent-groups-and-relay.md) | Parallel Chat, Concurrent Groups, and Relay | Completed (First Slice Landed) | [SPEC-047](../specs/SPEC-047-compare-chat-concurrent-groups-and-relay.md) |
 | [PLAN-035](./PLAN-035-suite-product-landing-and-installed-apps.md) | Suite Product Landing and Installed Apps | Draft | [SPEC-046](../specs/SPEC-046-suite-product-landing-and-installed-apps.md), [ADR-048](../decisions/048-separate-suite-products-from-installable-apps.md) |
@@ -92,6 +93,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-02*
+*Last updated: 2026-04-04*
 
 *See also: [specs/](../specs/) for feature specifications*
