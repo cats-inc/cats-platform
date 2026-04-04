@@ -370,13 +370,19 @@ export async function persistCreatedChannel(
   input: CreateChatChannelInput,
 ): Promise<ChatState> {
   const now = nowFrom(context.dependencies);
+  const requestedRoomMode = input.roomMode ?? (input.entryKind === 'direct' ? 'direct_cat_chat' : 'boss_chat');
+  const requestedComposerMode = input.composerMode ?? (input.entryKind === 'solo' ? 'solo' : null);
   let nextState = createChannel(
     await context.dependencies.chatStore.read(),
     input,
     now,
   );
 
-  if (!input.skipBossCatGreeting && input.roomMode !== 'direct_cat_chat' && input.composerMode !== 'solo') {
+  if (
+    !input.skipBossCatGreeting
+    && requestedRoomMode !== 'direct_cat_chat'
+    && requestedComposerMode !== 'solo'
+  ) {
     nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
   }
 

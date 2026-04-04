@@ -341,6 +341,15 @@ function describeCreatedRoom(
   return 'Boss Chat';
 }
 
+function resolveRequestedRoomMode(
+  input: CreateChatChannelInput,
+): NonNullable<CreateChatChannelInput['roomMode']> {
+  if (input.roomMode) {
+    return input.roomMode;
+  }
+  return input.entryKind === 'direct' ? 'direct_cat_chat' : 'boss_chat';
+}
+
 export function createChannel(
   state: ChatState,
   input: CreateChatChannelInput,
@@ -353,10 +362,11 @@ export function createChannel(
   const catDrafts = input.cats ?? [];
   const createdCats = catDrafts.map((palInput) => createCatRecord(palInput, nowIso));
   const participantCatIds = input.participantCatIds ?? [];
+  const requestedRoomMode = resolveRequestedRoomMode(input);
 
   // Auto-generate title for direct cat chats when title is empty
   let title = input.title.trim();
-  if (!title && input.roomMode === 'direct_cat_chat') {
+  if (!title && requestedRoomMode === 'direct_cat_chat') {
     const singleCatName = createdCats.length === 1
       ? createdCats[0]?.name
       : participantCatIds.length === 1
@@ -368,9 +378,9 @@ export function createChannel(
   const requestedLeadParticipantId = normalizeLeadParticipantId(input.leadParticipantId);
   const defaultLeadParticipantId = requestedLeadParticipantId
     ?? (
-      input.roomMode === 'direct_cat_chat' && createdCats.length === 1
+      requestedRoomMode === 'direct_cat_chat' && createdCats.length === 1
         ? createdCats[0]?.id ?? null
-        : input.roomMode === 'direct_cat_chat' && createdCats.length === 0 && participantCatIds.length === 1
+        : requestedRoomMode === 'direct_cat_chat' && createdCats.length === 0 && participantCatIds.length === 1
           ? participantCatIds[0] ?? null
           : participantCatIds.length > 0
             ? participantCatIds[0] ?? null
@@ -401,7 +411,7 @@ export function createChannel(
 
   const normalizedCatAssignments = normalizeChannelAssignmentsForRoomMode(
     catAssignments,
-    input.roomMode ?? 'boss_chat',
+    requestedRoomMode,
     defaultLeadParticipantId,
   );
 
@@ -410,7 +420,7 @@ export function createChannel(
     title,
     topic,
     channelKind: inferChannelKind({
-      roomMode: input.roomMode ?? 'boss_chat',
+      roomMode: requestedRoomMode,
       participants: normalizedCatAssignments,
     }),
     recoverableDirectLaneCatId: null,
@@ -425,8 +435,9 @@ export function createChannel(
     mcpProfile: normalizeOptionalText(input.mcpProfile) ?? 'chat-memory',
     orchestratorRoles: normalizeList(input.orchestratorRoles),
     composerMode: input.composerMode
+      ?? (input.entryKind === 'solo' ? 'solo' : undefined)
       ?? inferChannelComposerMode({
-        roomMode: input.roomMode,
+        roomMode: requestedRoomMode,
         activeCatIds: normalizedCatAssignments
           .filter((assignment) => assignment.status === 'active')
           .map((assignment) => assignment.catId),
@@ -443,7 +454,7 @@ export function createChannel(
     catAssignments: normalizedCatAssignments,
     messages: [],
     roomRouting: createDefaultRoomRoutingState({
-      mode: input.roomMode,
+      mode: requestedRoomMode,
       leadParticipantId: defaultLeadParticipantId,
     }),
     workingMemory: createEmptyMemoryCheckpoint(),
