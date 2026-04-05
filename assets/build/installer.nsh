@@ -1,4 +1,6 @@
 ; --- Uninstaller: optional user-data removal ---
+!include "LogicLib.nsh"
+!include "nsDialogs.nsh"
 
 Var RemoveUserDataCheckbox
 Var RemoveUserDataState
